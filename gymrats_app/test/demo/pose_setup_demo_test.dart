@@ -7,11 +7,11 @@ import '../support/fakes.dart';
 import '../support/pose_fixtures.dart';
 
 void main() {
-  testWidgets('demo picker lists every exercise', (tester) async {
+  testWidgets('demo picker lists only push-up', (tester) async {
     await tester.pumpWidget(const PoseSetupDemoApp());
     expect(find.text('Push-up'), findsOneWidget);
-    expect(find.text('Sit-up'), findsOneWidget);
-    expect(find.text('Pull-up'), findsOneWidget);
+    expect(find.text('Sit-up'), findsNothing);
+    expect(find.text('Pull-up'), findsNothing);
   });
 
   testWidgets('picker -> Ready -> Start -> complete page -> picker', (
@@ -31,9 +31,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Sit-up'));
+    await tester.tap(find.text('Push-up'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('about 1.5 m away'), findsOneWidget);
+    expect(find.textContaining('Place the phone'), findsNothing);
 
     Future<void> feed(int ms, PoseFrame frame) async {
       now = Duration(milliseconds: ms);
@@ -44,11 +44,11 @@ void main() {
     }
 
     await feed(0, standingFrame());
-    expect(find.textContaining('reason: ready'), findsOneWidget);
+    expect(find.text('Hold still...'), findsOneWidget);
     await feed(1500, standingFrame());
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
-    expect(find.text('Setup complete: Sit-up'), findsOneWidget);
+    expect(find.text('Setup complete: Push-up'), findsOneWidget);
     expect(camera.isStreaming, isFalse);
 
     await tester.tap(find.text('Back to exercise picker'));

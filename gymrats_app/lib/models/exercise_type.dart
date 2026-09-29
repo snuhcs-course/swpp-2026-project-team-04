@@ -1,8 +1,8 @@
 /// Exercises a user can choose for a battle.
+///
+/// Only push-up is supported for now. Other exercises come in later versions.
 enum ExerciseType {
-  pushUp('Push-up'),
-  sitUp('Sit-up'),
-  pullUp('Pull-up');
+  pushUp('Push-up');
 
   const ExerciseType(this.label);
 

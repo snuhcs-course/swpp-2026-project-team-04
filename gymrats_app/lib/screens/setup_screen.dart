@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/exercise_type.dart';
@@ -11,7 +12,8 @@ const _readyColor = Colors.greenAccent;
 
 /// Guides phone placement and waits until the body is reliably detected.
 ///
-/// Pops with the selected [ExerciseType] when the user presses Start.
+/// Pops with the selected [ExerciseType] when the user presses Start, or by
+/// itself after the user stays Ready for [SetupConfig.autoStartDelay].
 class SetupScreen extends StatefulWidget {
   const SetupScreen({
     super.key,
@@ -22,7 +24,11 @@ class SetupScreen extends StatefulWidget {
 
   final ExerciseType exercise;
 
-  /// Shows a toggle for the landmark and status debug overlay.
+  /// Draws the detected landmarks on the preview and prints the checker
+  /// values (reason, fps, hold, auto start, thresholds) to the debug log,
+  /// e.g. the `flutter run` terminal or `adb logcat`. Nothing is drawn as
+  /// text over the camera. The log is written in every build mode, so only
+  /// the demo turns this on.
   final bool showDebugTools;
 
   /// Builds the view model; replaces the default one in tests.
@@ -34,7 +40,11 @@ class SetupScreen extends StatefulWidget {
 
 class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
   late final SetupViewModel _viewModel;
-  bool _debugVisible = true;
+  bool _finished = false;
+  Orientation? _orientation;
+  final Stopwatch _sinceLog = Stopwatch();
+  String? _lastLogKey;
+  bool _configLogged = false;
 
   @override
   void initState() {
@@ -43,7 +53,93 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
         widget.createViewModel?.call() ??
         SetupViewModel(exercise: widget.exercise);
     WidgetsBinding.instance.addObserver(this);
+    _viewModel.addListener(_onViewModelChanged);
+    // The phone may lie on the floor in either orientation. Upside-down
+    // portrait is left out, like most Android apps.
+    SystemChrome.setPreferredOrientations(_setupOrientations);
     _viewModel.start();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final orientation = MediaQuery.orientationOf(context);
+    if (_orientation != null && _orientation != orientation) {
+      _viewModel.onScreenRotated();
+    }
+    _orientation = orientation;
+  }
+
+  static const _setupOrientations = [
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ];
+
+  void _onViewModelChanged() {
+    if (widget.showDebugTools) _logDebug();
+    if (_viewModel.state.autoStarted) _finish();
+  }
+
+  /// Logs the live checker values when they change, at most every 250 ms,
+  /// and at least once per second while frames arrive. When no frames
+  /// arrive (stream stalled), nothing is logged.
+  void _logDebug() {
+    final state = _viewModel.state;
+    if (state.phase != SetupPhase.running) return;
+    final c = _viewModel.config;
+    if (!_configLogged) {
+      _configLogged = true;
+      debugPrint(
+        'pose_setup config | minLikelihood=${c.minLikelihood} '
+        'margin=${c.frameMargin * 100}% '
+        'bodySize=${c.minBodySizeRatio * 100}%-${c.maxBodySizeRatio * 100}% '
+        'maxNoseOffset=${c.maxNoseOffsetRatio} hold=${_s(c.readyDelay)} '
+        'drop=${_s(c.dropDelay)} autoStart=${_s(c.autoStartDelay)} '
+        'detectorTimeout=${_s(c.detectorFailureTimeout)}',
+      );
+    }
+    final status = state.status;
+    final key =
+        '${status.reason.name} ${status.isReady} '
+        '${state.autoStartIn?.inSeconds}';
+    final elapsed = _sinceLog.elapsedMilliseconds;
+    final due =
+        !_sinceLog.isRunning ||
+        elapsed >= 1000 ||
+        (key != _lastLogKey && elapsed >= 250);
+    if (!due) return;
+    _lastLogKey = key;
+    _sinceLog
+      ..reset()
+      ..start();
+    final held = c.readyDelay * status.readyProgress;
+    final autoStart = state.autoStartIn == null ? '-' : _s(state.autoStartIn!);
+    debugPrint(
+      'pose_setup | reason=${status.reason.name} fps=${state.fps} '
+      'ready=${status.isReady} hold=${_s(held)}/${_s(c.readyDelay)} '
+      'autoStart=$autoStart/${_s(c.autoStartDelay)} '
+      '${_orientationInfo()}',
+    );
+  }
+
+  /// Camera and screen orientation, to debug rotation problems.
+  String _orientationInfo() {
+    final value = _viewModel.cameraController?.value;
+    final screen = MediaQuery.maybeOrientationOf(context)?.name;
+    return 'device=${value?.deviceOrientation.name} '
+        'sensor=${_viewModel.cameraController?.description.sensorOrientation} '
+        'frameRotation=${_viewModel.frameRotation} screen=$screen';
+  }
+
+  static String _s(Duration d) =>
+      '${(d.inMilliseconds / 1000).toStringAsFixed(1)}s';
+
+  /// Leaves the screen with the exercise, once.
+  void _finish() {
+    if (_finished || !mounted) return;
+    _finished = true;
+    Navigator.pop(context, widget.exercise);
   }
 
   @override
@@ -63,7 +159,10 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _viewModel.removeListener(_onViewModelChanged);
     _viewModel.dispose();
+    // The rest of the app is portrait only.
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
@@ -77,7 +176,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
           builder: (context, vm, _) {
             final state = vm.state;
             final running = state.phase == SetupPhase.running;
-            final showDebug = widget.showDebugTools && _debugVisible && running;
+            final showDebug = widget.showDebugTools && running;
             return Stack(
               fit: StackFit.expand,
               children: [
@@ -89,23 +188,16 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                 SafeArea(
                   child: Column(
                     children: [
-                      _TopBar(
-                        guideText: vm.guideText,
+                      _TopButtons(
                         canSwitchCamera: running && vm.canSwitchCamera,
                         onSwitchCamera: vm.switchCamera,
-                        showDebugToggle: widget.showDebugTools,
-                        debugVisible: _debugVisible,
-                        onToggleDebug: () =>
-                            setState(() => _debugVisible = !_debugVisible),
                       ),
-                      if (showDebug) _DebugPanel(viewModel: vm),
                       const Spacer(),
                       if (running)
                         _BottomPanel(
-                          status: state.status,
-                          onStart: state.canStart
-                              ? () => Navigator.pop(context, widget.exercise)
-                              : null,
+                          state: state,
+                          autoStartDelay: vm.config.autoStartDelay,
+                          onStart: state.canStart ? _finish : null,
                         ),
                     ],
                   ),
@@ -136,13 +228,18 @@ class _CameraView extends StatelessWidget {
       return const ColoredBox(color: Colors.black);
     }
     final frame = viewModel.state.lastFrame;
-    // previewSize is in landscape; the app is portrait.
+    // previewSize is always landscape (width > height). Swap it when the
+    // screen is portrait so the preview box matches the screen. Landmarks are
+    // in the upright image for the current device orientation, so they line
+    // up with the box in both orientations.
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     return ClipRect(
       child: FittedBox(
         fit: BoxFit.cover,
         child: SizedBox(
-          width: previewSize.height,
-          height: previewSize.width,
+          width: landscape ? previewSize.width : previewSize.height,
+          height: landscape ? previewSize.height : previewSize.width,
           child: CameraPreview(
             controller,
             child: showLandmarks && frame != null
@@ -218,55 +315,36 @@ class _ReadyBorder extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({
-    required this.guideText,
+/// Back and camera switch buttons floating over the preview.
+class _TopButtons extends StatelessWidget {
+  const _TopButtons({
     required this.canSwitchCamera,
     required this.onSwitchCamera,
-    required this.showDebugToggle,
-    required this.debugVisible,
-    required this.onToggleDebug,
   });
 
-  final String guideText;
   final bool canSwitchCamera;
   final VoidCallback onSwitchCamera;
-  final bool showDebugToggle;
-  final bool debugVisible;
-  final VoidCallback onToggleDebug;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black54,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+    final style = IconButton.styleFrom(backgroundColor: Colors.black45);
+    return Padding(
+      padding: const EdgeInsets.all(8),
       child: Row(
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             tooltip: 'Back',
+            style: style,
             onPressed: () => Navigator.maybePop(context),
           ),
-          Expanded(
-            child: Text(
-              guideText,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ),
+          const Spacer(),
           if (canSwitchCamera)
             IconButton(
               icon: const Icon(Icons.cameraswitch, color: Colors.white),
               tooltip: 'Switch camera',
+              style: style,
               onPressed: onSwitchCamera,
-            ),
-          if (showDebugToggle)
-            IconButton(
-              icon: Icon(
-                Icons.bug_report,
-                color: debugVisible ? Colors.amberAccent : Colors.white,
-              ),
-              tooltip: 'Debug overlay',
-              onPressed: onToggleDebug,
             ),
         ],
       ),
@@ -275,13 +353,24 @@ class _TopBar extends StatelessWidget {
 }
 
 class _BottomPanel extends StatelessWidget {
-  const _BottomPanel({required this.status, required this.onStart});
+  const _BottomPanel({
+    required this.state,
+    required this.autoStartDelay,
+    required this.onStart,
+  });
 
-  final SetupStatus status;
+  final SetupState state;
+  final Duration autoStartDelay;
   final VoidCallback? onStart;
 
   @override
   Widget build(BuildContext context) {
+    final status = state.status;
+    final left = state.autoStartIn;
+    // The bar fills while holding still, then again during the countdown.
+    final progress = left == null
+        ? status.readyProgress
+        : 1 - left.inMicroseconds / autoStartDelay.inMicroseconds;
     return Container(
       width: double.infinity,
       color: Colors.black54,
@@ -290,7 +379,7 @@ class _BottomPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            status.message,
+            state.message,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: status.isReady ? _readyColor : Colors.white,
@@ -300,7 +389,7 @@ class _BottomPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           LinearProgressIndicator(
-            value: status.readyProgress,
+            value: progress.clamp(0.0, 1.0),
             color: _readyColor,
             backgroundColor: Colors.white24,
           ),
@@ -395,42 +484,3 @@ class _PhaseMessage extends StatelessWidget {
 }
 
 /// Live checker values for manual testing.
-class _DebugPanel extends StatelessWidget {
-  const _DebugPanel({required this.viewModel});
-
-  final SetupViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    final state = viewModel.state;
-    final status = state.status;
-    final c = viewModel.config;
-    String s(Duration d) => '${(d.inMilliseconds / 1000).toStringAsFixed(1)} s';
-    final held = c.readyDelay * status.readyProgress;
-    final lines = [
-      'reason: ${status.reason.name}',
-      'ready: ${status.isReady}  hold: ${s(held)} / ${s(c.readyDelay)}',
-      'fps: ${state.fps}',
-      'minLikelihood: ${c.minLikelihood}  margin: ${c.frameMargin * 100}%',
-      'body size: ${c.minBodySizeRatio * 100}%-${c.maxBodySizeRatio * 100}%',
-      'drop: ${s(c.dropDelay)}  detector timeout: '
-          '${s(c.detectorFailureTimeout)}',
-    ];
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.all(8),
-        padding: const EdgeInsets.all(8),
-        color: Colors.black87,
-        child: Text(
-          lines.join('\n'),
-          style: const TextStyle(
-            color: Colors.amberAccent,
-            fontFamily: 'monospace',
-            fontSize: 12,
-          ),
-        ),
-      ),
-    );
-  }
-}

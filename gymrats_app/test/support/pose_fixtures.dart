@@ -54,6 +54,28 @@ final Set<BodyLandmark> rightSideLandmarks = BodyLandmark.values
     .where((l) => l.name.startsWith('right'))
     .toSet();
 
+const Set<BodyLandmark> handLandmarks = {
+  BodyLandmark.leftWrist,
+  BodyLandmark.rightWrist,
+  BodyLandmark.leftPinky,
+  BodyLandmark.rightPinky,
+  BodyLandmark.leftIndex,
+  BodyLandmark.rightIndex,
+  BodyLandmark.leftThumb,
+  BodyLandmark.rightThumb,
+};
+
+/// Nose and eyes: hiding them looks like a user who turned away.
+const Set<BodyLandmark> faceLandmarks = {
+  BodyLandmark.nose,
+  BodyLandmark.leftEyeInner,
+  BodyLandmark.leftEye,
+  BodyLandmark.leftEyeOuter,
+  BodyLandmark.rightEyeInner,
+  BodyLandmark.rightEye,
+  BodyLandmark.rightEyeOuter,
+};
+
 const Set<BodyLandmark> feetLandmarks = {
   BodyLandmark.leftAnkle,
   BodyLandmark.rightAnkle,
@@ -97,19 +119,48 @@ PoseFrame standingFrame({
   );
 }
 
-/// The standing pose rotated 90 degrees, like a side-view push-up:
-/// about 75% of the frame wide and 25% high.
-PoseFrame lyingFrame() {
+/// Hips, knees, and feet: hidden behind the body in a front-view push-up.
+final Set<BodyLandmark> lowerBodyLandmarks = BodyLandmark.values
+    .where(
+      (l) => const [
+        'Hip',
+        'Knee',
+        'Ankle',
+        'Heel',
+        'FootIndex',
+      ].any((part) => l.name.endsWith(part)),
+    )
+    .toSet();
+
+/// A front-view push-up: the standing pose made wide and short, like a
+/// body seen head-on from a phone on the floor, with the lower body hidden.
+/// About 47% of the frame wide, facing the camera.
+PoseFrame pushUpFrontFrame() {
   const c = imageSize / 2;
   return PoseFrame(
     imageWidth: imageSize,
     imageHeight: imageSize,
     keypoints: {
       for (final MapEntry(key: l, value: (x, y)) in _standing.entries)
-        l: kp(l, y, c + (x - c) * 1.2),
+        l: kp(
+          l,
+          c + (x - c) * 2.5,
+          c + (y - c) * 0.3,
+          likelihood: lowerBodyLandmarks.contains(l) ? 0.1 : 0.95,
+        ),
     },
   );
 }
+
+/// [frame] mirrored left-right, like the front camera preview.
+PoseFrame mirrored(PoseFrame frame) => PoseFrame(
+  imageWidth: frame.imageWidth,
+  imageHeight: frame.imageHeight,
+  keypoints: {
+    for (final MapEntry(key: l, value: k) in frame.keypoints.entries)
+      l: kp(l, frame.imageWidth - k.x, k.y, likelihood: k.likelihood),
+  },
+);
 
 /// A blank camera frame, NV21 with a single plane by default, like the
 /// Android CameraX stream.

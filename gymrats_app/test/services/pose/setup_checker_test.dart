@@ -55,20 +55,19 @@ void main() {
       expect(status.message, 'Move closer to the camera.');
     });
 
-    test('size uses the width for a lying body', () {
-      // Lying push-up pose: wide but short.
-      final status = checker(ExerciseType.pushUp).update(lyingFrame());
+    test('size uses the width for a wide, short front-view push-up', () {
+      final status = checker(ExerciseType.pushUp).update(pushUpFrontFrame());
       expect(status.reason, SetupReason.ready);
     });
 
-    test('missingParts names the feet when ankles are out of frame', () {
+    test('missingParts names the hands when they are out of frame', () {
       final frame = standingFrame(
-        move: {for (final l in feetLandmarks) l: (500, 995)},
+        move: {for (final l in handLandmarks) l: (500, 995)},
       );
       final status = checker(ExerciseType.pushUp).update(frame);
       expect(status.reason, SetupReason.missingParts);
-      expect(status.missingParts, [BodyPart.feet]);
-      expect(status.message, 'Feet not visible.');
+      expect(status.missingParts, [BodyPart.hands]);
+      expect(status.message, 'Hands not visible.');
     });
 
     test('missingParts names the hands when wrists have low likelihood', () {
@@ -82,24 +81,34 @@ void main() {
     test('missingParts joins several parts', () {
       final frame = standingFrame(
         hide: {
-          BodyLandmark.nose,
+          BodyLandmark.leftElbow,
           BodyLandmark.leftWrist,
           BodyLandmark.rightWrist,
-          BodyLandmark.leftAnkle,
-          BodyLandmark.rightAnkle,
         },
       );
       final status = checker(ExerciseType.pushUp).update(frame);
-      expect(status.missingParts, [
-        BodyPart.head,
-        BodyPart.hands,
-        BodyPart.feet,
-      ]);
-      expect(status.message, 'Head, hands and feet not visible.');
+      expect(status.missingParts, [BodyPart.elbows, BodyPart.hands]);
+      expect(status.message, 'Elbows and hands not visible.');
     });
 
-    test('size checks run before the missing parts check', () {
-      final far = standingFrame(scale: 0.4, hide: {BodyLandmark.nose});
+    test('a face above the frame is a missing head, not a turned one', () {
+      // Nose and eyes are confidently detected but outside the frame margin.
+      final frame = standingFrame(
+        move: {
+          BodyLandmark.nose: (500, 10),
+          BodyLandmark.leftEye: (515, 5),
+          BodyLandmark.rightEye: (485, 5),
+        },
+        hide: {BodyLandmark.leftWrist, BodyLandmark.rightWrist},
+      );
+      final status = checker(ExerciseType.pushUp).update(frame);
+      expect(status.reason, SetupReason.missingParts);
+      expect(status.missingParts, [BodyPart.head, BodyPart.hands]);
+      expect(status.message, 'Head and hands not visible.');
+    });
+
+    test('size checks run before the other checks', () {
+      final far = standingFrame(scale: 0.4, hide: faceLandmarks);
       expect(
         checker(ExerciseType.pushUp).update(far).reason,
         SetupReason.tooFar,
@@ -126,78 +135,161 @@ void main() {
     });
   });
 
-  group('required landmarks', () {
-    test('push-up is valid with only the left side visible', () {
-      final frame = standingFrame(hide: rightSideLandmarks);
+  group('facing forward', () {
+    test('face hidden (back or head turned away) is not facing', () {
+      final status = checker(ExerciseType.pushUp)
+          .update(standingFrame(hide: faceLandmarks));
+      expect(status.reason, SetupReason.notFacingForward);
+      expect(status.message, 'Face the camera.');
+      expect(status.isReady, isFalse);
+    });
+
+    test('one eye hidden is not facing', () {
+      final status = checker(ExerciseType.pushUp)
+          .update(standingFrame(hide: {BodyLandmark.rightEye}));
+      expect(status.reason, SetupReason.notFacingForward);
+    });
+
+    test('head turned: both eyes on one side of the nose', () {
+      final frame = standingFrame(move: {BodyLandmark.nose: (525, 150)});
       expect(
         checker(ExerciseType.pushUp).update(frame).reason,
-        SetupReason.ready,
+        SetupReason.notFacingForward,
       );
     });
 
-    test('push-up is valid with only the right side visible', () {
-      final frame = standingFrame(hide: leftSideLandmarks);
-      expect(
-        checker(ExerciseType.pushUp).update(frame).reason,
-        SetupReason.ready,
-      );
-    });
-
-    test('one-side check does not mix sides', () {
-      // Left ankle and right wrist missing: neither side is complete.
+    test('body sideways: shoulders overlap, nose far from their midpoint', () {
       final frame = standingFrame(
-        hide: {BodyLandmark.leftAnkle, BodyLandmark.rightWrist},
-      );
-      expect(
-        checker(ExerciseType.pushUp).update(frame).reason,
-        SetupReason.missingParts,
-      );
-    });
-
-    test('sit-up does not need the arms', () {
-      final frame = standingFrame(
-        hide: {
-          BodyLandmark.leftElbow,
-          BodyLandmark.rightElbow,
-          BodyLandmark.leftWrist,
-          BodyLandmark.rightWrist,
+        move: {
+          BodyLandmark.leftShoulder: (460, 250),
+          BodyLandmark.rightShoulder: (440, 250),
         },
       );
       expect(
-        checker(ExerciseType.sitUp).update(frame).reason,
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.notFacingForward,
+      );
+    });
+
+    test('nose offset exactly at the limit still faces forward', () {
+      // Shoulders 440-560: midpoint 500, half width 60. 0.5 * 60 = 30.
+      final frame = standingFrame(
+        move: {
+          BodyLandmark.nose: (530, 150),
+          BodyLandmark.leftEye: (545, 140),
+          BodyLandmark.rightEye: (515, 140),
+        },
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
         SetupReason.ready,
       );
     });
 
-    test('pull-up needs both sides', () {
-      final frame = standingFrame(hide: rightSideLandmarks);
-      final status = checker(ExerciseType.pullUp).update(frame);
+    test('nose offset just over the limit is not facing', () {
+      final frame = standingFrame(
+        move: {
+          BodyLandmark.nose: (531, 150),
+          BodyLandmark.leftEye: (546, 140),
+          BodyLandmark.rightEye: (516, 140),
+        },
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.notFacingForward,
+      );
+    });
+
+    test('facing check runs before the missing parts check', () {
+      final frame = standingFrame(
+        hide: {...faceLandmarks, BodyLandmark.leftWrist},
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.notFacingForward,
+      );
+    });
+
+    test('without both shoulders, missing parts are reported instead', () {
+      final frame = standingFrame(
+        hide: {...faceLandmarks, BodyLandmark.leftShoulder},
+      );
+      final status = checker(ExerciseType.pushUp).update(frame);
       expect(status.reason, SetupReason.missingParts);
-      expect(status.missingParts, [
+      expect(status.missingParts, [BodyPart.head, BodyPart.shoulders]);
+    });
+
+    test('mirrored image (left and right swapped) still faces forward', () {
+      final c = checker(ExerciseType.pushUp);
+      expect(c.update(mirrored(standingFrame())).reason, SetupReason.ready);
+      expect(c.update(mirrored(pushUpFrontFrame())).reason, SetupReason.ready);
+    });
+
+    test('mirrored sideways body is still not facing', () {
+      final frame = standingFrame(
+        move: {
+          BodyLandmark.leftShoulder: (460, 250),
+          BodyLandmark.rightShoulder: (440, 250),
+        },
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(mirrored(frame)).reason,
+        SetupReason.notFacingForward,
+      );
+    });
+
+    test('custom nose offset limit is used', () {
+      final c = SetupChecker(
+        exercise: ExerciseType.pushUp,
+        config: const SetupConfig(maxNoseOffsetRatio: 0.1),
+        clock: () => now,
+      );
+      final frame = standingFrame(
+        move: {
+          BodyLandmark.nose: (510, 150),
+          BodyLandmark.leftEye: (525, 140),
+          BodyLandmark.rightEye: (495, 140),
+        },
+      );
+      expect(c.update(frame).reason, SetupReason.notFacingForward);
+    });
+  });
+
+  group('required landmarks (front-view push-up)', () {
+    test('push-up is the only exercise for now', () {
+      expect(ExerciseType.values, [ExerciseType.pushUp]);
+    });
+
+    test('both arms are required', () {
+      final frame = standingFrame(
+        hide: {BodyLandmark.rightElbow, BodyLandmark.rightWrist},
+      );
+      final status = checker(ExerciseType.pushUp).update(frame);
+      expect(status.reason, SetupReason.missingParts);
+      expect(status.missingParts, [BodyPart.elbows, BodyPart.hands]);
+    });
+
+    test('both shoulders are required', () {
+      final frame = standingFrame(hide: {BodyLandmark.rightShoulder});
+      expect(checker(ExerciseType.pushUp).update(frame).missingParts, [
         BodyPart.shoulders,
-        BodyPart.elbows,
-        BodyPart.hands,
-        BodyPart.hips,
       ]);
     });
 
-    test('pull-up does not need the legs', () {
+    test('hips, knees, and feet are not required', () {
       final frame = standingFrame(
-        hide: {BodyLandmark.leftKnee, BodyLandmark.rightKnee, ...feetLandmarks},
+        hide: {
+          BodyLandmark.leftHip,
+          BodyLandmark.rightHip,
+          BodyLandmark.leftKnee,
+          BodyLandmark.rightKnee,
+          ...feetLandmarks,
+        },
       );
       expect(
-        checker(ExerciseType.pullUp).update(frame).reason,
+        checker(ExerciseType.pushUp).update(frame).reason,
         SetupReason.ready,
       );
-    });
-
-    test('every exercise needs the nose', () {
-      for (final exercise in ExerciseType.values) {
-        final frame = standingFrame(hide: {BodyLandmark.nose});
-        expect(checker(exercise).update(frame).missingParts, [
-          BodyPart.head,
-        ], reason: exercise.name);
-      }
     });
   });
 
@@ -205,8 +297,8 @@ void main() {
     test('likelihood exactly at the threshold counts as visible', () {
       final frame = standingFrame(
         likelihoods: {
-          BodyLandmark.leftAnkle: 0.6,
-          BodyLandmark.rightAnkle: 0.6,
+          BodyLandmark.leftWrist: 0.6,
+          BodyLandmark.rightWrist: 0.6,
         },
       );
       expect(
@@ -218,13 +310,13 @@ void main() {
     test('likelihood just below the threshold is not visible', () {
       final frame = standingFrame(
         likelihoods: {
-          BodyLandmark.leftAnkle: 0.59,
-          BodyLandmark.rightAnkle: 0.59,
+          BodyLandmark.leftWrist: 0.59,
+          BodyLandmark.rightWrist: 0.59,
         },
       );
       expect(
         checker(ExerciseType.pushUp).update(frame).message,
-        'Feet not visible.',
+        'Hands not visible.',
       );
     });
 
@@ -323,20 +415,5 @@ void main() {
       at(c, 0, standingFrame());
       expect(at(c, 200, standingFrame()).isReady, isTrue);
     });
-  });
-
-  test('placement guide text per exercise', () {
-    expect(
-      placementGuideFor(ExerciseType.pushUp),
-      'Place the phone on the floor, facing your side, about 2 m away.',
-    );
-    expect(
-      placementGuideFor(ExerciseType.sitUp),
-      'Place the phone on the floor, facing your side, about 1.5 m away.',
-    );
-    expect(
-      placementGuideFor(ExerciseType.pullUp),
-      'Place the phone at chest height, facing you, about 2.5 m away.',
-    );
   });
 }

@@ -41,10 +41,6 @@ void main() {
     expect(vm.state.phase, SetupPhase.running);
     expect(camera.isStreaming, isTrue);
     expect(vm.state.canStart, isFalse);
-    expect(
-      vm.guideText,
-      'Place the phone on the floor, facing your side, about 2 m away.',
-    );
   });
 
   group('permission', () {
@@ -109,13 +105,22 @@ void main() {
       expect(vm.state.lastFrame, isNotNull);
     });
 
-    test('feet missing keeps Start disabled', () async {
+    test('hands missing keeps Start disabled', () async {
       final frame = standingFrame(
-        move: {for (final l in feetLandmarks) l: (500, 995)},
+        move: {for (final l in handLandmarks) l: (500, 995)},
       );
       await feed(0, frame);
       await feed(2000, frame);
-      expect(vm.state.status.message, 'Feet not visible.');
+      expect(vm.state.status.message, 'Hands not visible.');
+      expect(vm.state.canStart, isFalse);
+    });
+
+    test('not facing the camera keeps Start disabled', () async {
+      final frame = standingFrame(hide: faceLandmarks);
+      await feed(0, frame);
+      await feed(2000, frame);
+      expect(vm.state.status.reason, SetupReason.notFacingForward);
+      expect(vm.state.status.message, 'Face the camera.');
       expect(vm.state.canStart, isFalse);
     });
 
@@ -138,6 +143,131 @@ void main() {
       expect(vm.state.fps, 10);
       await feed(2000, emptyFrame());
       expect(vm.state.fps, 1);
+    });
+  });
+
+  group('screen rotation', () {
+    test('reopens the running camera and restarts the hold', () async {
+      await vm.start();
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      expect(vm.state.status.isReady, isTrue);
+      await vm.onScreenRotated();
+      expect(camera.startCount, 2);
+      expect(vm.state.phase, SetupPhase.running);
+      expect(vm.state.status.isReady, isFalse);
+    });
+
+    test('does not open the camera when permission was denied', () async {
+      camera.permission = CameraPermission.denied;
+      await vm.start();
+      await vm.onScreenRotated();
+      expect(camera.startCount, 0);
+      expect(vm.state.phase, SetupPhase.permissionDenied);
+    });
+  });
+
+  group('auto start', () {
+    setUp(() => vm.start());
+
+    test('counts down after Ready and finishes after 3 s', () async {
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      expect(vm.state.status.isReady, isTrue);
+      expect(vm.state.autoStartIn, const Duration(seconds: 3));
+      expect(vm.state.message, 'Ready! Starting in 3...');
+      await feed(3600, standingFrame());
+      expect(vm.state.message, 'Ready! Starting in 1...');
+      expect(vm.state.autoStarted, isFalse);
+      await feed(4500, standingFrame());
+      expect(vm.state.autoStarted, isTrue);
+      expect(vm.state.autoStartIn, isNull);
+    });
+
+    test('auto start stays set once reached', () async {
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      await feed(4500, standingFrame());
+      await feed(4600, emptyFrame());
+      expect(vm.state.autoStarted, isTrue);
+    });
+
+    test('losing Ready cancels and restarts the countdown', () async {
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      await feed(3000, standingFrame());
+      // 0.5 s of invalid frames drops Ready.
+      await feed(3100, emptyFrame());
+      await feed(3600, emptyFrame());
+      expect(vm.state.status.isReady, isFalse);
+      expect(vm.state.autoStartIn, isNull);
+      // Ready again needs 1.5 s, then a full new 3 s countdown.
+      await feed(3700, standingFrame());
+      await feed(5200, standingFrame());
+      expect(vm.state.autoStartIn, const Duration(seconds: 3));
+      await feed(8100, standingFrame());
+      expect(vm.state.autoStarted, isFalse);
+      await feed(8200, standingFrame());
+      expect(vm.state.autoStarted, isTrue);
+    });
+
+    test('one bad frame does not stop the countdown', () async {
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      await feed(2000, emptyFrame());
+      expect(vm.state.autoStartIn, const Duration(milliseconds: 2500));
+      await feed(4500, standingFrame());
+      expect(vm.state.autoStarted, isTrue);
+    });
+
+    test('pause and resume restart the hold and the countdown', () async {
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      await feed(3000, standingFrame());
+      expect(vm.state.autoStartIn, isNotNull);
+      await vm.pause();
+      await vm.resume();
+      expect(vm.state.autoStartIn, isNull);
+      await feed(3100, standingFrame());
+      expect(vm.state.status.isReady, isFalse);
+      await feed(4600, standingFrame());
+      expect(vm.state.autoStartIn, const Duration(seconds: 3));
+      await feed(7500, standingFrame());
+      expect(vm.state.autoStarted, isFalse);
+      await feed(7600, standingFrame());
+      expect(vm.state.autoStarted, isTrue);
+    });
+
+    test('0.5 s of detector failures cancels the countdown', () async {
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      await feed(2000, standingFrame());
+      await feed(2100, null);
+      await feed(2600, null);
+      expect(vm.state.status.isReady, isFalse);
+      expect(vm.state.autoStartIn, isNull);
+      // Detection recovers: a fresh 1.5 s hold, then a fresh 3 s countdown.
+      await feed(2700, standingFrame());
+      await feed(4200, standingFrame());
+      expect(vm.state.autoStartIn, const Duration(seconds: 3));
+      await feed(7100, standingFrame());
+      expect(vm.state.autoStarted, isFalse);
+    });
+
+    test('custom auto start delay is used', () async {
+      final custom = SetupViewModel(
+        exercise: ExerciseType.pushUp,
+        config: const SetupConfig(autoStartDelay: Duration(seconds: 1)),
+        camera: camera,
+        estimator: estimator,
+        clock: () => now,
+      );
+      await custom.start();
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      await feed(2500, standingFrame());
+      expect(custom.state.autoStarted, isTrue);
+      custom.dispose();
     });
   });
 

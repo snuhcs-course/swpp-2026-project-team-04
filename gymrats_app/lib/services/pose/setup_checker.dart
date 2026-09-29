@@ -16,6 +16,8 @@ class SetupConfig {
     this.readyDelay = const Duration(milliseconds: 1500),
     this.dropDelay = const Duration(milliseconds: 500),
     this.detectorFailureTimeout = const Duration(seconds: 3),
+    this.maxNoseOffsetRatio = 0.5,
+    this.autoStartDelay = const Duration(seconds: 3),
   });
 
   /// Minimum ML Kit likelihood for a landmark to count as visible.
@@ -41,20 +43,33 @@ class SetupConfig {
 
   /// How long pose detection may keep failing before an error is shown.
   final Duration detectorFailureTimeout;
+
+  /// Facing check: the nose may be at most this far from the shoulder
+  /// midpoint, as a fraction of half the shoulder width. Larger offsets mean
+  /// the body or head is turned away from the camera.
+  final double maxNoseOffsetRatio;
+
+  /// After Ready, how long the user must stay Ready before setup finishes
+  /// by itself. The user is far from the phone and cannot tap Start.
+  final Duration autoStartDelay;
 }
 
 /// Result of checking one frame, in the order the checks run.
-enum SetupReason { noPerson, tooClose, tooFar, missingParts, ready }
+enum SetupReason {
+  noPerson,
+  tooClose,
+  tooFar,
+  notFacingForward,
+  missingParts,
+  ready,
+}
 
 /// Body parts named in "not visible" messages.
 enum BodyPart {
   head('head'),
   shoulders('shoulders'),
   elbows('elbows'),
-  hands('hands'),
-  hips('hips'),
-  knees('knees'),
-  feet('feet');
+  hands('hands');
 
   const BodyPart(this.label);
 
@@ -99,6 +114,8 @@ class SetupStatus {
         return 'Move back a little.';
       case SetupReason.tooFar:
         return 'Move closer to the camera.';
+      case SetupReason.notFacingForward:
+        return 'Face the camera.';
       case SetupReason.missingParts:
         return '${_capitalize(_joinParts(missingParts))} not visible.';
       case SetupReason.ready:
@@ -114,18 +131,6 @@ class SetupStatus {
 
   static String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-}
-
-/// Where to place the phone for [exercise].
-String placementGuideFor(ExerciseType exercise) {
-  switch (exercise) {
-    case ExerciseType.pushUp:
-      return 'Place the phone on the floor, facing your side, about 2 m away.';
-    case ExerciseType.sitUp:
-      return 'Place the phone on the floor, facing your side, about 1.5 m away.';
-    case ExerciseType.pullUp:
-      return 'Place the phone at chest height, facing you, about 2.5 m away.';
-  }
 }
 
 typedef _PartLandmarks = ({
@@ -149,31 +154,14 @@ const _hands = (
   left: BodyLandmark.leftWrist,
   right: BodyLandmark.rightWrist,
 );
-const _hips = (
-  part: BodyPart.hips,
-  left: BodyLandmark.leftHip,
-  right: BodyLandmark.rightHip,
-);
-const _knees = (
-  part: BodyPart.knees,
-  left: BodyLandmark.leftKnee,
-  right: BodyLandmark.rightKnee,
-);
-const _feet = (
-  part: BodyPart.feet,
-  left: BodyLandmark.leftAnkle,
-  right: BodyLandmark.rightAnkle,
-);
 
-/// Required parts per exercise, besides the nose.
+/// Required parts per exercise, besides the nose. All exercises use a front
+/// view, so both the left and the right landmark of each part must be visible.
+/// In a front-view push-up the hips, knees, and feet are hidden behind the
+/// body, so they are not required.
 const Map<ExerciseType, List<_PartLandmarks>> _requiredParts = {
-  ExerciseType.pushUp: [_shoulders, _elbows, _hands, _hips, _knees, _feet],
-  ExerciseType.sitUp: [_shoulders, _hips, _knees, _feet],
-  ExerciseType.pullUp: [_shoulders, _elbows, _hands, _hips],
+  ExerciseType.pushUp: [_shoulders, _elbows, _hands],
 };
-
-/// Exercises that need both body sides visible (front view).
-const _bothSidesRequired = {ExerciseType.pullUp};
 
 /// Decides whether the user is placed well enough to start [exercise].
 ///
@@ -268,6 +256,10 @@ class SetupChecker {
     if (size > config.maxBodySizeRatio) return (SetupReason.tooClose, const []);
     if (size < config.minBodySizeRatio) return (SetupReason.tooFar, const []);
 
+    if (_isFacingForward(frame) == false) {
+      return (SetupReason.notFacingForward, const []);
+    }
+
     final missing = _missingParts(frame);
     if (missing.isNotEmpty) return (SetupReason.missingParts, missing);
     return (SetupReason.ready, const []);
@@ -288,32 +280,46 @@ class SetupChecker {
     );
   }
 
+  /// Whether the user faces the camera (front view).
+  ///
+  /// Returns null when the shoulders are not both visible, so the missing
+  /// parts check reports them instead. Face landmarks are judged by
+  /// likelihood only: a face that is out of frame is a missing head, not a
+  /// turned one.
+  bool? _isFacingForward(PoseFrame frame) {
+    final leftShoulder = frame[BodyLandmark.leftShoulder];
+    final rightShoulder = frame[BodyLandmark.rightShoulder];
+    if (!isVisible(leftShoulder, frame) || !isVisible(rightShoulder, frame)) {
+      return null;
+    }
+
+    Keypoint? face(BodyLandmark l) {
+      final k = frame[l];
+      return k != null && k.likelihood >= config.minLikelihood ? k : null;
+    }
+
+    final nose = face(BodyLandmark.nose);
+    final leftEye = face(BodyLandmark.leftEye);
+    final rightEye = face(BodyLandmark.rightEye);
+    // Face hidden: the user turned their back or head away.
+    if (nose == null || leftEye == null || rightEye == null) return false;
+
+    // Facing the camera, the eyes are on opposite sides of the nose.
+    if ((leftEye.x - nose.x) * (rightEye.x - nose.x) >= 0) return false;
+
+    // Sideways, the shoulders overlap and the nose leaves their midpoint.
+    final halfWidth = (leftShoulder!.x - rightShoulder!.x).abs() / 2;
+    if (halfWidth == 0) return false;
+    final midX = (leftShoulder.x + rightShoulder.x) / 2;
+    return (nose.x - midX).abs() / halfWidth <= config.maxNoseOffsetRatio;
+  }
+
   List<BodyPart> _missingParts(PoseFrame frame) {
     bool seen(BodyLandmark l) => isVisible(frame[l], frame);
-    final required = _requiredParts[exercise]!;
-    final headMissing = !seen(BodyLandmark.nose);
-
-    List<BodyPart> missingFor(bool Function(_PartLandmarks) partSeen) => [
-      if (headMissing) BodyPart.head,
-      for (final p in required)
-        if (!partSeen(p)) p.part,
+    return [
+      if (!seen(BodyLandmark.nose)) BodyPart.head,
+      for (final p in _requiredParts[exercise]!)
+        if (!seen(p.left) || !seen(p.right)) p.part,
     ];
-
-    if (_bothSidesRequired.contains(exercise)) {
-      return missingFor((p) => seen(p.left) && seen(p.right));
-    }
-
-    final left = missingFor((p) => seen(p.left));
-    final right = missingFor((p) => seen(p.right));
-    if (left.length != right.length) {
-      return left.length < right.length ? left : right;
-    }
-    // Same count: report the side the detector is more confident about.
-    double confidence(BodyLandmark Function(_PartLandmarks) pick) => required
-        .map((p) => frame[pick(p)]?.likelihood ?? 0)
-        .fold(0.0, (a, b) => a + b);
-    return confidence((p) => p.left) >= confidence((p) => p.right)
-        ? left
-        : right;
   }
 }

@@ -40,6 +40,8 @@ class SetupState {
     this.errorMessage,
     this.lastFrame,
     this.fps = 0,
+    this.autoStartIn,
+    this.autoStarted = false,
   });
 
   final SetupPhase phase;
@@ -59,8 +61,25 @@ class SetupState {
   /// Frames processed during the last second.
   final int fps;
 
+  /// Time left before setup finishes by itself; null unless counting down.
+  final Duration? autoStartIn;
+
+  /// The user stayed Ready for [SetupConfig.autoStartDelay]: setup is done
+  /// without a tap. The screen leaves as if Start was pressed.
+  final bool autoStarted;
+
   bool get canStart => phase == SetupPhase.running && status.isReady;
 
+  /// Message for the user, including the auto start countdown.
+  String get message {
+    final left = autoStartIn;
+    if (left == null) return status.message;
+    final seconds = (left.inMilliseconds / 1000).ceil();
+    return 'Ready! Starting in $seconds...';
+  }
+
+  /// Copies the state. The auto start countdown is always cleared: it is
+  /// only valid for the frame that computed it.
   SetupState copyWith({
     SetupPhase? phase,
     SetupStatus? status,
@@ -75,6 +94,7 @@ class SetupState {
     errorMessage: errorMessage ?? this.errorMessage,
     lastFrame: lastFrame ?? this.lastFrame,
     fps: fps ?? this.fps,
+    autoStarted: autoStarted,
   );
 }
 
@@ -107,6 +127,7 @@ class SetupViewModel extends ChangeNotifier {
   bool _disposed = false;
   bool _pausedByLifecycle = false;
   Duration? _failingSince;
+  Duration? _readySince;
   final Queue<Duration> _frameTimes = Queue();
 
   static Clock _stopwatchClock() {
@@ -116,13 +137,14 @@ class SetupViewModel extends ChangeNotifier {
 
   SetupState get state => _state;
 
-  String get guideText => placementGuideFor(exercise);
-
   /// Controller for the camera preview; null while the camera is stopped.
   CameraController? get cameraController =>
       _state.phase == SetupPhase.running ? _camera.controller : null;
 
   bool get isFrontCamera => _camera.isFrontCamera;
+
+  /// Rotation passed to pose detection for the latest frame, in degrees.
+  int get frameRotation => _camera.rotationDegrees;
 
   bool get canSwitchCamera => _camera.canSwitchCamera;
 
@@ -168,6 +190,17 @@ class SetupViewModel extends ChangeNotifier {
 
   /// Tries again after an error.
   Future<void> retry() => start();
+
+  /// Reopens the camera after the screen rotated. The camera plugin reads
+  /// the orientation when the camera opens, so a rotation during startup
+  /// would leave the preview and the frame rotation 90 degrees off. Does
+  /// nothing while paused or showing a permission or error message.
+  Future<void> onScreenRotated() async {
+    if (_state.phase == SetupPhase.starting ||
+        _state.phase == SetupPhase.running) {
+      await start();
+    }
+  }
 
   /// Opens the system settings so the user can allow the camera.
   Future<void> openSettings() => _camera.openSettings();
@@ -226,13 +259,30 @@ class SetupViewModel extends ChangeNotifier {
     while (now - _frameTimes.first > const Duration(seconds: 1)) {
       _frameTimes.removeFirst();
     }
+    final status = _checker.update(frame);
+    final (autoStartIn, autoStarted) = _autoStart(status, now);
     _setState(
-      _state.copyWith(
-        status: _checker.update(frame),
+      SetupState(
+        phase: _state.phase,
+        status: status,
         lastFrame: frame,
         fps: _frameTimes.length,
+        autoStartIn: autoStartIn,
+        autoStarted: autoStarted,
       ),
     );
+  }
+
+  /// Counts down [SetupConfig.autoStartDelay] while the user stays Ready.
+  /// Leaving Ready cancels the countdown.
+  (Duration?, bool) _autoStart(SetupStatus status, Duration now) {
+    if (_state.autoStarted) return (null, true);
+    if (!status.isReady) {
+      _readySince = null;
+      return (null, false);
+    }
+    final left = config.autoStartDelay - (now - (_readySince ??= now));
+    return left <= Duration.zero ? (null, true) : (left, false);
   }
 
   void _onDetectorFailure() {
@@ -251,6 +301,7 @@ class SetupViewModel extends ChangeNotifier {
     } else if (failing >= config.dropDelay) {
       // Frames are being skipped, so the pose is no longer confirmed.
       _checker.reset();
+      _readySince = null;
       final s = _state.status;
       _setState(
         _state.copyWith(
@@ -268,6 +319,7 @@ class SetupViewModel extends ChangeNotifier {
   void _resetTracking() {
     _checker.reset();
     _failingSince = null;
+    _readySince = null;
     _frameTimes.clear();
   }
 

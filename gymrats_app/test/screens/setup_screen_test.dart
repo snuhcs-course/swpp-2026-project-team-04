@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
@@ -9,7 +10,18 @@ import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
 import '../support/fakes.dart';
 import '../support/pose_fixtures.dart';
 
+/// Counts routes popped from the navigator.
+class _PopCounter extends NavigatorObserver {
+  int pops = 0;
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => pops++;
+}
+
 void main() {
+  late _PopCounter popCounter;
+  setUp(() => popCounter = _PopCounter());
+
   late FakeCameraService camera;
   late FakePoseEstimator estimator;
   late Duration now;
@@ -26,6 +38,7 @@ void main() {
   Future<void> open(WidgetTester tester, {bool debug = false}) async {
     await tester.pumpWidget(
       MaterialApp(
+        navigatorObservers: [popCounter],
         home: Builder(
           builder: (context) => TextButton(
             onPressed: () async {
@@ -67,14 +80,71 @@ void main() {
     find.ancestor(of: find.text('Start'), matching: find.byType(FilledButton)),
   );
 
-  testWidgets('shows the placement guide', (tester) async {
+  testWidgets('no guide text bar, only floating back and switch buttons', (
+    tester,
+  ) async {
     await open(tester);
-    expect(
-      find.text(
-        'Place the phone on the floor, facing your side, about 2 m away.',
-      ),
-      findsOneWidget,
+    expect(find.textContaining('Place the phone'), findsNothing);
+    expect(find.byTooltip('Back'), findsOneWidget);
+  });
+
+  testWidgets('allows landscape while open and restores portrait on leave', (
+    tester,
+  ) async {
+    final calls = <List<dynamic>>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'SystemChrome.setPreferredOrientations') {
+          calls.add(call.arguments as List<dynamic>);
+        }
+        return null;
+      },
     );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await open(tester);
+    expect(calls, [
+      [
+        'DeviceOrientation.portraitUp',
+        'DeviceOrientation.landscapeLeft',
+        'DeviceOrientation.landscapeRight',
+      ],
+    ]);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(calls.last, ['DeviceOrientation.portraitUp']);
+  });
+
+  testWidgets('rotating the screen reopens the camera', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2316);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await open(tester);
+    expect(camera.startCount, 1);
+    tester.view.physicalSize = const Size(2316, 1080);
+    await tester.pumpAndSettle();
+    expect(camera.startCount, 2);
+    expect(camera.isStreaming, isTrue);
+    // Same orientation again: no restart.
+    tester.view.physicalSize = const Size(2300, 1080);
+    await tester.pumpAndSettle();
+    expect(camera.startCount, 2);
+  });
+
+  testWidgets('works in a landscape window', (tester) async {
+    tester.view.physicalSize = const Size(2316, 1080);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await open(tester);
+    await feed(tester, 0, pushUpFrontFrame());
+    await feed(tester, 1500, pushUpFrontFrame());
+    expect(find.text('Ready! Starting in 3...'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('permission denied shows explanation and Open settings', (
@@ -154,16 +224,75 @@ void main() {
     expect(startButton(tester).onPressed, isNull);
   });
 
-  testWidgets('feet missing keeps Start disabled', (tester) async {
+  testWidgets('hands missing keeps Start disabled', (tester) async {
     await open(tester);
     final frame = standingFrame(
-      move: {for (final l in feetLandmarks) l: (500, 995)},
+      move: {for (final l in handLandmarks) l: (500, 995)},
     );
     await feed(tester, 0, frame);
-    expect(find.text('Feet not visible.'), findsOneWidget);
+    expect(find.text('Hands not visible.'), findsOneWidget);
     await feed(tester, 2000, frame);
-    expect(find.text('Feet not visible.'), findsOneWidget);
+    expect(find.text('Hands not visible.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNull);
+  });
+
+  testWidgets('not facing the camera keeps Start disabled', (tester) async {
+    await open(tester);
+    final frame = standingFrame(hide: faceLandmarks);
+    await feed(tester, 0, frame);
+    await feed(tester, 2000, frame);
+    expect(find.text('Face the camera.'), findsOneWidget);
+    expect(startButton(tester).onPressed, isNull);
+  });
+
+  testWidgets('staying Ready for 3 s finishes setup without a tap', (
+    tester,
+  ) async {
+    await open(tester);
+    await feed(tester, 0, standingFrame());
+    await feed(tester, 1500, standingFrame());
+    await feed(tester, 3000, standingFrame());
+    expect(find.text('Ready! Starting in 2...'), findsOneWidget);
+    expect(popped, isNull);
+    await feed(tester, 4500, standingFrame());
+    await tester.pumpAndSettle();
+    expect(popped, ExerciseType.pushUp);
+    expect(camera.isStreaming, isFalse);
+  });
+
+  testWidgets('auto start and a Start tap together pop only once', (
+    tester,
+  ) async {
+    await open(tester);
+    await feed(tester, 0, standingFrame());
+    await feed(tester, 1500, standingFrame());
+    await feed(tester, 4500, standingFrame());
+    // The pop has started; more frames arrive and the user taps Start
+    // while the route is still animating out.
+    await feed(tester, 4600, standingFrame());
+    // Call the handler directly: a real tap would hit-test through the
+    // closing route and could press the button behind it.
+    startButton(tester).onPressed?.call();
+    await feed(tester, 4700, standingFrame());
+    await tester.pumpAndSettle();
+    expect(popCounter.pops, 1);
+    expect(popped, ExerciseType.pushUp);
+    expect(find.text('open'), findsOneWidget);
+  });
+
+  testWidgets('leaving Ready cancels the auto start countdown', (tester) async {
+    await open(tester);
+    await feed(tester, 0, standingFrame());
+    await feed(tester, 1500, standingFrame());
+    await feed(tester, 2000, emptyFrame());
+    await feed(tester, 2600, emptyFrame());
+    expect(
+      find.text('No one detected. Step into the camera view.'),
+      findsOneWidget,
+    );
+    await feed(tester, 5000, emptyFrame());
+    await tester.pumpAndSettle();
+    expect(popped, isNull);
   });
 
   testWidgets('Ready enables Start, which returns the exercise', (
@@ -173,7 +302,7 @@ void main() {
     await feed(tester, 0, standingFrame());
     expect(find.text('Hold still...'), findsOneWidget);
     await feed(tester, 1500, standingFrame());
-    expect(find.text('Ready! Press Start.'), findsOneWidget);
+    expect(find.text('Ready! Starting in 3...'), findsOneWidget);
     expect(startButton(tester).onPressed, isNotNull);
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
@@ -208,20 +337,49 @@ void main() {
     expect(camera.startCount, 2);
   });
 
-  testWidgets('debug overlay shows checker values and can be hidden', (
+  /// Captures debugPrint output while [body] runs.
+  Future<List<String>> captureLogs(Future<void> Function() body) async {
+    final logs = <String>[];
+    final original = debugPrint;
+    debugPrint = (String? message, {int? wrapWidth}) => logs.add(message ?? '');
+    try {
+      await body();
+    } finally {
+      debugPrint = original;
+    }
+    return logs;
+  }
+
+  testWidgets('debug tools log checker values and draw no text overlay', (
     tester,
   ) async {
-    await open(tester, debug: true);
-    await feed(tester, 0, emptyFrame());
-    expect(find.textContaining('reason: noPerson'), findsOneWidget);
-    expect(find.textContaining('minLikelihood: 0.6'), findsOneWidget);
-    await tester.tap(find.byTooltip('Debug overlay'));
-    await tester.pump();
-    expect(find.textContaining('reason: noPerson'), findsNothing);
+    final logs = await captureLogs(() async {
+      await open(tester, debug: true);
+      await feed(tester, 0, emptyFrame());
+      // Logs are throttled on real time (at most every 250 ms).
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await feed(tester, 1000, standingFrame());
+    });
+    expect(
+      logs.where((l) => l.startsWith('pose_setup config |')),
+      hasLength(1),
+    );
+    expect(logs.first, contains('minLikelihood=0.6'));
+    expect(logs, contains(contains('reason=noPerson fps=')));
+    expect(logs, contains(contains('reason=ready')));
+    // No debug text or toggle on screen.
+    expect(find.textContaining('reason'), findsNothing);
+    expect(find.byTooltip('Debug overlay'), findsNothing);
+    expect(find.byIcon(Icons.bug_report), findsNothing);
   });
 
-  testWidgets('no debug toggle unless requested', (tester) async {
-    await open(tester);
-    expect(find.byTooltip('Debug overlay'), findsNothing);
+  testWidgets('no debug logs unless requested', (tester) async {
+    final logs = await captureLogs(() async {
+      await open(tester);
+      await feed(tester, 0, emptyFrame());
+    });
+    expect(logs.where((l) => l.startsWith('pose_setup')), isEmpty);
   });
 }
