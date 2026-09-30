@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' show Offset;
 
 import 'package:camera/camera.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart'
@@ -147,6 +149,78 @@ PoseFrame pushUpFrontFrame() {
           c + (x - c) * 2.5,
           c + (y - c) * 0.3,
           likelihood: lowerBodyLandmarks.contains(l) ? 0.1 : 0.95,
+        ),
+    },
+  );
+}
+
+/// A front-view push-up pose with a chosen elbow angle, arm span, and
+/// shoulder tilt.
+///
+/// [spanRatio] is the raw shoulder-to-wrist distance divided by shoulder
+/// width (not yet compared with the top pose). [tiltDeg] rotates the whole
+/// pose so the shoulder line leaves horizontal by that many degrees.
+PoseFrame pushUpFrame({
+  double elbowAngle = 170,
+  double spanRatio = 1.2,
+  double tiltDeg = 0,
+  double likelihood = 0.95,
+  Set<BodyLandmark> hide = const {},
+}) {
+  const midX = 500.0;
+  const midY = 400.0;
+  const shoulderWidth = 200.0;
+  final radians = elbowAngle * math.pi / 180;
+  final denom = 1 - math.cos(radians);
+  final arm = denom.abs() < 1e-6
+      ? shoulderWidth
+      : spanRatio * shoulderWidth / denom;
+  final bend = math.sin(radians);
+  final down = -math.cos(radians);
+
+  Offset wristOf(Offset shoulder, double inward) {
+    final elbow = Offset(shoulder.dx, shoulder.dy + arm);
+    return Offset(elbow.dx + inward * bend * arm, elbow.dy + down * arm);
+  }
+
+  final origin = const Offset(midX, midY);
+  final tilt = tiltDeg * math.pi / 180;
+  final cos = math.cos(tilt);
+  final sin = math.sin(tilt);
+  Offset turn(Offset point) {
+    final dx = point.dx - origin.dx;
+    final dy = point.dy - origin.dy;
+    return Offset(
+      origin.dx + dx * cos - dy * sin,
+      origin.dy + dx * sin + dy * cos,
+    );
+  }
+
+  final leftShoulder = const Offset(midX - shoulderWidth / 2, midY);
+  final rightShoulder = const Offset(midX + shoulderWidth / 2, midY);
+  final points = {
+    BodyLandmark.leftShoulder: turn(leftShoulder),
+    BodyLandmark.rightShoulder: turn(rightShoulder),
+    BodyLandmark.leftElbow: turn(
+      Offset(leftShoulder.dx, leftShoulder.dy + arm),
+    ),
+    BodyLandmark.rightElbow: turn(
+      Offset(rightShoulder.dx, rightShoulder.dy + arm),
+    ),
+    BodyLandmark.leftWrist: turn(wristOf(leftShoulder, 1)),
+    BodyLandmark.rightWrist: turn(wristOf(rightShoulder, -1)),
+  };
+
+  return PoseFrame(
+    imageWidth: imageSize,
+    imageHeight: imageSize,
+    keypoints: {
+      for (final MapEntry(key: landmark, value: point) in points.entries)
+        landmark: kp(
+          landmark,
+          point.dx,
+          point.dy,
+          likelihood: hide.contains(landmark) ? 0.1 : likelihood,
         ),
     },
   );
