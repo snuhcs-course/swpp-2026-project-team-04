@@ -25,8 +25,8 @@ void main() {
     expect(find.byKey(repPhaseKey), findsOneWidget);
     expect(find.textContaining('UP'), findsOneWidget);
 
-    await harness.feed(1900, pushUpFrame(elbowAngle: 120, spanRatio: 1));
-    await harness.feed(2300, pushUpFrame(elbowAngle: 80, spanRatio: 0.6));
+    await harness.feed(1900, pushUpFrame(depth: 0.6));
+    await harness.feed(2300, pushUpFrame(depth: 1.5));
     expect(find.textContaining('DOWN'), findsOneWidget);
     await harness.feed(2700, pushUpFrame());
 
@@ -47,7 +47,7 @@ void main() {
     await harness.openCounter(tester);
     await harness.feed(1500, pushUpFrame());
     await harness.feed(1800, pushUpFrame());
-    await harness.feed(1900, pushUpFrame(elbowAngle: 120, spanRatio: 1.05));
+    await harness.feed(1900, pushUpFrame(depth: 0.9));
     await harness.feed(2300, pushUpFrame());
 
     expect(find.text('Go lower'), findsOneWidget);

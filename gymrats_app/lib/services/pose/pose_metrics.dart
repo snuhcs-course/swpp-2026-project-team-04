@@ -4,10 +4,15 @@ import '../../models/pose_frame.dart';
 
 /// Measurements from one frame.
 ///
-/// Angles and ratios are unchanged by rotating or mirroring the image.
-/// Null means the landmarks needed for that value were not reliable.
+/// Angles are unchanged by rotating or mirroring the image. Null means the
+/// landmarks needed for that value were not reliable.
 class PoseMetrics {
-  const PoseMetrics({this.elbowAngle, this.spanRatio, this.tilt});
+  const PoseMetrics({
+    this.elbowAngle,
+    this.noseY,
+    this.shoulderWidth,
+    this.tilt,
+  });
 
   /// Shoulder–elbow–wrist angle in degrees. 180 is a straight arm.
   ///
@@ -15,9 +20,13 @@ class PoseMetrics {
   /// is used.
   final double? elbowAngle;
 
-  /// Distance from the shoulder midpoint to the wrist midpoint, divided by
-  /// the shoulder width. Smaller means the hands are closer to the shoulders.
-  final double? spanRatio;
+  /// Vertical position of the nose in the upright image, in pixels. Grows
+  /// as the head goes down.
+  final double? noseY;
+
+  /// Distance between the shoulders, in pixels. Scales the head drop so the
+  /// depth does not depend on how far away the phone is.
+  final double? shoulderWidth;
 
   /// Absolute tilt of the shoulder line away from horizontal, in degrees.
   ///
@@ -42,17 +51,15 @@ double? angleDegrees(Keypoint? a, Keypoint? b, Keypoint? c) {
 bool _usable(Keypoint? keypoint, double minLikelihood) =>
     keypoint != null && keypoint.likelihood >= minLikelihood;
 
-/// Reads elbow angle, span, and shoulder tilt from [frame].
+/// Reads elbow angle, nose height, shoulder width, and shoulder tilt from
+/// [frame].
 ///
 /// A landmark below [minLikelihood] is ignored, even if its coordinates sit
 /// inside the image.
 PoseMetrics measurePose(PoseFrame frame, {double minLikelihood = 0.6}) {
+  final nose = frame[BodyLandmark.nose];
   final leftShoulder = frame[BodyLandmark.leftShoulder];
   final rightShoulder = frame[BodyLandmark.rightShoulder];
-  final leftElbow = frame[BodyLandmark.leftElbow];
-  final rightElbow = frame[BodyLandmark.rightElbow];
-  final leftWrist = frame[BodyLandmark.leftWrist];
-  final rightWrist = frame[BodyLandmark.rightWrist];
 
   double? armAngle(Keypoint? shoulder, Keypoint? elbow, Keypoint? wrist) {
     if (!_usable(shoulder, minLikelihood) ||
@@ -63,48 +70,37 @@ PoseMetrics measurePose(PoseFrame frame, {double minLikelihood = 0.6}) {
     return angleDegrees(shoulder, elbow, wrist);
   }
 
-  final left = armAngle(leftShoulder, leftElbow, leftWrist);
-  final right = armAngle(rightShoulder, rightElbow, rightWrist);
+  final left = armAngle(
+    leftShoulder,
+    frame[BodyLandmark.leftElbow],
+    frame[BodyLandmark.leftWrist],
+  );
+  final right = armAngle(
+    rightShoulder,
+    frame[BodyLandmark.rightElbow],
+    frame[BodyLandmark.rightWrist],
+  );
   final double? elbow = switch ((left, right)) {
     (final l?, final r?) => (l + r) / 2,
     (final l?, null) => l,
     (null, final r?) => r,
     _ => null,
   };
+  final noseY = _usable(nose, minLikelihood) ? nose!.y : null;
 
   if (!_usable(leftShoulder, minLikelihood) ||
       !_usable(rightShoulder, minLikelihood)) {
-    return PoseMetrics(elbowAngle: elbow);
+    return PoseMetrics(elbowAngle: elbow, noseY: noseY);
   }
 
   final dx = leftShoulder!.x - rightShoulder!.x;
   final dy = leftShoulder.y - rightShoulder.y;
-  final shoulderWidth = math.sqrt(dx * dx + dy * dy);
-  final tilt = math.atan2(dy.abs(), dx.abs()) * 180 / math.pi;
-
-  final wrists = [
-    if (_usable(leftWrist, minLikelihood)) leftWrist!,
-    if (_usable(rightWrist, minLikelihood)) rightWrist!,
-  ];
-  double? span;
-  if (shoulderWidth > 1e-6 && wrists.isNotEmpty) {
-    final midX = (leftShoulder.x + rightShoulder.x) / 2;
-    final midY = (leftShoulder.y + rightShoulder.y) / 2;
-    var wristX = 0.0;
-    var wristY = 0.0;
-    for (final wrist in wrists) {
-      wristX += wrist.x;
-      wristY += wrist.y;
-    }
-    wristX /= wrists.length;
-    wristY /= wrists.length;
-    final dist = math.sqrt(
-      math.pow(wristX - midX, 2) + math.pow(wristY - midY, 2),
-    );
-    span = dist / shoulderWidth;
-  }
-
-  return PoseMetrics(elbowAngle: elbow, spanRatio: span, tilt: tilt);
+  return PoseMetrics(
+    elbowAngle: elbow,
+    noseY: noseY,
+    shoulderWidth: math.sqrt(dx * dx + dy * dy),
+    tilt: math.atan2(dy.abs(), dx.abs()) * 180 / math.pi,
+  );
 }
 
 /// Smooths measurements with a time-constant exponential moving average.
@@ -116,7 +112,8 @@ class MetricSmoother {
 
   final Duration tau;
   double? _elbow;
-  double? _span;
+  double? _noseY;
+  double? _shoulderWidth;
   double? _tilt;
 
   PoseMetrics update(PoseMetrics raw, Duration dt) {
@@ -124,14 +121,21 @@ class MetricSmoother {
         ? 1.0
         : 1 - math.exp(-dt.inMicroseconds / tau.inMicroseconds);
     _elbow = _blend(_elbow, raw.elbowAngle, alpha);
-    _span = _blend(_span, raw.spanRatio, alpha);
+    _noseY = _blend(_noseY, raw.noseY, alpha);
+    _shoulderWidth = _blend(_shoulderWidth, raw.shoulderWidth, alpha);
     _tilt = _blend(_tilt, raw.tilt, alpha);
-    return PoseMetrics(elbowAngle: _elbow, spanRatio: _span, tilt: _tilt);
+    return PoseMetrics(
+      elbowAngle: _elbow,
+      noseY: _noseY,
+      shoulderWidth: _shoulderWidth,
+      tilt: _tilt,
+    );
   }
 
   void reset() {
     _elbow = null;
-    _span = null;
+    _noseY = null;
+    _shoulderWidth = null;
     _tilt = null;
   }
 

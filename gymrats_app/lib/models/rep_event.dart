@@ -13,16 +13,16 @@ enum RejectReason {
 
 /// One judged repetition, valid or not.
 ///
-/// [minElbowAngle], [minSpanRatio], and [maxTilt] are kept so a later
-/// result screen can explain the rep without the original frames.
+/// [maxDepth], [minElbowAngle], and [maxTilt] are kept so a later result
+/// screen can explain the rep without the original frames.
 class RepEvent {
   const RepEvent({
     required this.index,
     required this.valid,
     required this.at,
     this.reason,
+    this.maxDepth,
     this.minElbowAngle,
-    this.minSpanRatio,
     this.maxTilt,
   });
 
@@ -37,11 +37,12 @@ class RepEvent {
   /// Time of the frame that closed the rep, from the injected clock.
   final Duration at;
 
-  /// Smallest elbow angle seen during the attempt, in degrees.
-  final double? minElbowAngle;
+  /// Deepest head drop of the attempt, in top-pose shoulder widths.
+  final double? maxDepth;
 
-  /// Smallest shoulder-to-wrist span, relative to the top pose (1 = top).
-  final double? minSpanRatio;
+  /// Smallest elbow angle seen during the attempt, in degrees. Null when
+  /// the arms were never visible; at the bottom they usually are not.
+  final double? minElbowAngle;
 
   /// Largest shoulder-line tilt from horizontal during the attempt, degrees.
   final double? maxTilt;

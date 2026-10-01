@@ -40,14 +40,13 @@ void main() {
     await pumpEventQueue();
   }
 
-  PoseFrame pose({double elbow = 170, double span = 1.2}) =>
-      pushUpFrame(elbowAngle: elbow, spanRatio: span);
+  PoseFrame pose({double depth = 0}) => pushUpFrame(depth: depth);
 
   Future<void> countOneRep() async {
     await feed(0, pose());
     await feed(300, pose());
-    await feed(400, pose(elbow: 120, span: 1));
-    await feed(800, pose(elbow: 80, span: 0.6));
+    await feed(400, pose(depth: 0.6));
+    await feed(800, pose(depth: 1.5));
     await feed(1200, pose());
   }
 
@@ -65,7 +64,7 @@ void main() {
     await vm.start();
     await feed(0, pose());
     await feed(300, pose());
-    await feed(400, pose(elbow: 120, span: 1.05));
+    await feed(400, pose(depth: 0.9));
     await feed(800, pose());
     expect(vm.state.validReps, 0);
     expect(vm.state.invalidReps, 1);
@@ -82,8 +81,8 @@ void main() {
     expect(vm.state.snapshot.phase, RepPhase.idle);
     await feed(2000, pose());
     await feed(2300, pose());
-    await feed(2400, pose(elbow: 120, span: 1));
-    await feed(2800, pose(elbow: 80, span: 0.6));
+    await feed(2400, pose(depth: 0.6));
+    await feed(2800, pose(depth: 1.5));
     await feed(3200, pose());
     expect(vm.state.validReps, 1);
     expect(events.last.index, 1);
@@ -123,7 +122,7 @@ void main() {
     await vm.start();
     await feed(0, pose());
     await feed(300, pose());
-    await feed(400, pose(elbow: 120, span: 1));
+    await feed(400, pose(depth: 0.6));
     expect(vm.state.snapshot.phase, RepPhase.descending);
     await feed(500, null);
     await feed(1000, null);

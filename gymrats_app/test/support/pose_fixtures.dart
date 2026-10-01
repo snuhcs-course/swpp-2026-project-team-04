@@ -154,13 +154,18 @@ PoseFrame pushUpFrontFrame() {
   );
 }
 
-/// A front-view push-up pose with a chosen elbow angle, arm span, and
-/// shoulder tilt.
+/// Shoulder width of [pushUpFrame], in pixels.
+const double pushUpShoulderWidth = 200;
+
+/// A front-view push-up pose with a chosen head depth, elbow angle, arm
+/// span, and shoulder tilt.
 ///
-/// [spanRatio] is the raw shoulder-to-wrist distance divided by shoulder
-/// width (not yet compared with the top pose). [tiltDeg] rotates the whole
-/// pose so the shoulder line leaves horizontal by that many degrees.
+/// [depth] moves the nose down by that many shoulder widths from the top
+/// pose. [spanRatio] is the shoulder-to-wrist distance divided by shoulder
+/// width. [tiltDeg] rotates the whole pose so the shoulder line leaves
+/// horizontal by that many degrees.
 PoseFrame pushUpFrame({
+  double depth = 0,
   double elbowAngle = 170,
   double spanRatio = 1.2,
   double tiltDeg = 0,
@@ -169,7 +174,7 @@ PoseFrame pushUpFrame({
 }) {
   const midX = 500.0;
   const midY = 400.0;
-  const shoulderWidth = 200.0;
+  const shoulderWidth = pushUpShoulderWidth;
   final radians = elbowAngle * math.pi / 180;
   final denom = 1 - math.cos(radians);
   final arm = denom.abs() < 1e-6
@@ -199,6 +204,9 @@ PoseFrame pushUpFrame({
   final leftShoulder = const Offset(midX - shoulderWidth / 2, midY);
   final rightShoulder = const Offset(midX + shoulderWidth / 2, midY);
   final points = {
+    BodyLandmark.nose: turn(
+      Offset(midX, midY - 100 + depth * shoulderWidth),
+    ),
     BodyLandmark.leftShoulder: turn(leftShoulder),
     BodyLandmark.rightShoulder: turn(rightShoulder),
     BodyLandmark.leftElbow: turn(

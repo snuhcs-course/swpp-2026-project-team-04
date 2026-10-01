@@ -185,7 +185,7 @@ class _CounterPageState extends State<_CounterPage>
         ..start();
       debugPrint(
         'rep_judge | phase=${snap.phase.name} '
-        'elbow=${_n(snap.elbowAngle)} span=${_n(snap.spanRatio)} '
+        'depth=${_n(snap.depth, 2)} elbow=${_n(snap.elbowAngle)} '
         'tilt=${_n(snap.tilt)} fps=${state.fps} '
         'valid=${state.validReps} invalid=${state.invalidReps}',
       );
@@ -195,13 +195,14 @@ class _CounterPageState extends State<_CounterPage>
       debugPrint(
         'rep_judge rep | #${event.index} '
         'valid=${event.valid} reason=${event.reason?.name ?? '-'} '
-        'minElbow=${_n(event.minElbowAngle)} '
-        'minSpan=${_n(event.minSpanRatio)} maxTilt=${_n(event.maxTilt)}',
+        'maxDepth=${_n(event.maxDepth, 2)} '
+        'minElbow=${_n(event.minElbowAngle)} maxTilt=${_n(event.maxTilt)}',
       );
     }
   }
 
-  static String _n(double? value) => value?.toStringAsFixed(1) ?? '-';
+  static String _n(double? value, [int digits = 1]) =>
+      value?.toStringAsFixed(digits) ?? '-';
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -346,8 +347,8 @@ class _DebugPanel extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Text(
         '${_phaseLabel(snap.phase)}  '
+        'depth ${snap.depth?.toStringAsFixed(2) ?? '-'}  '
         'elbow ${n(snap.elbowAngle)}°  '
-        'span ${snap.spanRatio?.toStringAsFixed(2) ?? '-'}  '
         'tilt ${n(snap.tilt)}°  '
         '${state.fps} fps',
         key: repPhaseKey,

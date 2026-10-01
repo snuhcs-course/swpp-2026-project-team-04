@@ -7,17 +7,22 @@ import 'package:gymrats_app/services/pose/pose_metrics.dart';
 import '../../support/pose_fixtures.dart';
 
 void main() {
-  test('straight arms are about 180 degrees with the requested span', () {
-    final metrics = measurePose(pushUpFrame(elbowAngle: 180, spanRatio: 1.2));
+  test('straight arms are about 180 degrees on a level shoulder line', () {
+    final metrics = measurePose(pushUpFrame(elbowAngle: 180));
     expect(metrics.elbowAngle, closeTo(180, 0.2));
-    expect(metrics.spanRatio, closeTo(1.2, 0.02));
+    expect(metrics.shoulderWidth, closeTo(pushUpShoulderWidth, 0.01));
     expect(metrics.tilt, closeTo(0, 0.2));
   });
 
   test('a right angle is measured on both arms', () {
     final metrics = measurePose(pushUpFrame(elbowAngle: 90, spanRatio: 1));
     expect(metrics.elbowAngle, closeTo(90, 0.2));
-    expect(metrics.spanRatio, closeTo(1, 0.02));
+  });
+
+  test('the nose moves down with depth', () {
+    final top = measurePose(pushUpFrame());
+    final down = measurePose(pushUpFrame(depth: 1.5));
+    expect(down.noseY! - top.noseY!, closeTo(1.5 * pushUpShoulderWidth, 0.01));
   });
 
   test('one visible arm is enough', () {
@@ -29,27 +34,38 @@ void main() {
       ),
     );
     expect(metrics.elbowAngle, closeTo(120, 0.2));
-    expect(metrics.spanRatio, isNotNull);
   });
 
-  test('mirroring and tilting do not change the elbow angle or span', () {
+  test('hidden wrists leave the head and shoulders', () {
+    final metrics = measurePose(
+      pushUpFrame(
+        depth: 1.5,
+        hide: {BodyLandmark.leftWrist, BodyLandmark.rightWrist},
+      ),
+    );
+    expect(metrics.elbowAngle, isNull);
+    expect(metrics.noseY, isNotNull);
+    expect(metrics.shoulderWidth, isNotNull);
+  });
+
+  test('mirroring and tilting do not change the elbow angle', () {
     final frame = pushUpFrame(elbowAngle: 100, spanRatio: 0.75, tiltDeg: 20);
     final straight = measurePose(pushUpFrame(elbowAngle: 100, spanRatio: 0.75));
     final tilted = measurePose(frame);
     final flipped = measurePose(mirrored(frame));
 
     expect(tilted.elbowAngle, closeTo(straight.elbowAngle!, 0.2));
-    expect(tilted.spanRatio, closeTo(straight.spanRatio!, 0.02));
+    expect(tilted.shoulderWidth, closeTo(straight.shoulderWidth!, 0.01));
     expect(tilted.tilt, closeTo(20, 0.2));
     expect(flipped.elbowAngle, closeTo(tilted.elbowAngle!, 0.2));
-    expect(flipped.spanRatio, closeTo(tilted.spanRatio!, 0.02));
     expect(flipped.tilt, closeTo(tilted.tilt!, 0.2));
   });
 
-  test('a low-likelihood arm is ignored', () {
+  test('low-likelihood landmarks are ignored', () {
     final metrics = measurePose(pushUpFrame(likelihood: 0.2));
     expect(metrics.elbowAngle, isNull);
-    expect(metrics.spanRatio, isNull);
+    expect(metrics.noseY, isNull);
+    expect(metrics.shoulderWidth, isNull);
   });
 
   test('smoothing follows a time constant instead of the frame count', () {

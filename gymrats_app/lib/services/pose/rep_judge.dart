@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../models/pose_frame.dart';
 import '../../models/rep_event.dart';
 import 'pose_metrics.dart';
@@ -6,44 +8,57 @@ import 'pose_metrics.dart';
 typedef RepClock = Duration Function();
 
 /// Thresholds for the front-view push-up rep judge.
+///
+/// Depth is how far the nose has dropped below the top pose, in top-pose
+/// shoulder widths. With the phone on the floor in front of the user, a
+/// full push-up measured about 1.4 to 1.9 on test recordings.
 class RepJudgeConfig {
   const RepJudgeConfig({
     this.minLikelihood = 0.6,
     this.topAngle = 155,
-    this.enterAngle = 140,
-    this.bottomAngle = 100,
-    this.bottomSpanRatio = 0.7,
     this.topHold = const Duration(milliseconds: 300),
-    this.minRepDuration = const Duration(milliseconds: 650),
+    this.enterDepth = 0.35,
+    this.topDepth = 0.25,
+    this.shallowDepth = 0.8,
+    this.bottomDepth = 1.1,
+    this.partialDepth = 0.6,
+    this.reDescentDepth = 0.4,
+    this.minRepDuration = const Duration(milliseconds: 300),
     this.maxShoulderTilt = 15,
-    this.partialRiseAngle = 130,
-    this.reDescentDrop = 20,
     this.maxFrameGap = const Duration(milliseconds: 500),
     this.maxAttempt = const Duration(seconds: 12),
     this.smoothingTau = const Duration(milliseconds: 65),
+    this.baselineTau = const Duration(milliseconds: 500),
   });
 
   /// Minimum ML Kit likelihood for a landmark to be used.
   final double minLikelihood;
 
-  /// Elbow angle that counts as the top (arms extended), in degrees.
+  /// Elbow angle that counts as extended arms, in degrees.
   final double topAngle;
 
-  /// Elbow angle below which a descent has started. Below [topAngle], so
-  /// noise around the top does not start and finish a rep.
-  final double enterAngle;
-
-  /// Elbow angle that counts as the bottom of the push-up.
-  final double bottomAngle;
-
-  /// Span, relative to the top pose, that also counts as the bottom.
-  ///
-  /// A front view barely changes the elbow angle when the elbows stay tucked,
-  /// so the shoulder-to-wrist distance is a second depth signal.
-  final double bottomSpanRatio;
-
-  /// How long the top pose must be held before counting can start.
+  /// How long extended arms must be seen before counting can start.
   final Duration topHold;
+
+  /// Depth that starts an attempt.
+  final double enterDepth;
+
+  /// Depth at or below which the head is back at the top.
+  final double topDepth;
+
+  /// An attempt that returns to the top without reaching this depth was
+  /// not a push-up (a nod, standing up) and is dropped without a verdict.
+  final double shallowDepth;
+
+  /// Depth that counts as the bottom of the push-up.
+  final double bottomDepth;
+
+  /// Rising above this depth after the bottom, then going down again
+  /// without a lockout, is an incomplete lockout.
+  final double partialDepth;
+
+  /// How far the head must go down again, after [partialDepth], to reject.
+  final double reDescentDepth;
 
   /// Reps faster than this are rejected.
   final Duration minRepDuration;
@@ -51,13 +66,7 @@ class RepJudgeConfig {
   /// Shoulder line steeper than this, in degrees, rejects the rep.
   final double maxShoulderTilt;
 
-  /// Rising past this angle and then dropping again is an incomplete lockout.
-  final double partialRiseAngle;
-
-  /// How far the elbow must bend again, after [partialRiseAngle], to reject.
-  final double reDescentDrop;
-
-  /// A longer gap between frames discards the attempt in progress.
+  /// Longer without a usable frame discards the attempt in progress.
   final Duration maxFrameGap;
 
   /// An attempt still open after this long is discarded.
@@ -65,23 +74,26 @@ class RepJudgeConfig {
 
   /// Time constant of the measurement smoothing.
   final Duration smoothingTau;
+
+  /// Time constant with which the top pose follows the user between reps.
+  final Duration baselineTau;
 }
 
 /// Where the user is in a push-up.
 enum RepPhase {
-  /// Waiting for a stable top pose.
+  /// Waiting for extended arms.
   idle,
 
-  /// Arms extended. The next descent can count.
+  /// At the top. The next descent can count.
   up,
 
   /// Moving down, bottom not reached yet.
   descending,
 
-  /// Bottom reached. Waiting for the arms to extend.
+  /// Bottom reached. Waiting for the return to the top.
   bottom,
 
-  /// Landmarks were lost. The top pose has to be found again.
+  /// The head was lost. Extended arms have to be seen again.
   lost,
 }
 
@@ -90,7 +102,7 @@ class JudgeSnapshot {
   const JudgeSnapshot({
     required this.phase,
     this.elbowAngle,
-    this.spanRatio,
+    this.depth,
     this.tilt,
   });
 
@@ -98,12 +110,12 @@ class JudgeSnapshot {
 
   final RepPhase phase;
 
-  /// Smoothed elbow angle, in degrees.
+  /// Smoothed elbow angle, in degrees. Null while the arms are not visible.
   final double? elbowAngle;
 
-  /// Span relative to the calibrated top pose once that exists, otherwise
-  /// the raw shoulder-to-wrist ratio.
-  final double? spanRatio;
+  /// Head drop below the top pose, in shoulder widths. Null until the top
+  /// pose is known.
+  final double? depth;
 
   /// Smoothed shoulder tilt, in degrees.
   final double? tilt;
@@ -120,6 +132,12 @@ class RepUpdate {
 }
 
 /// Counts front-view push-ups from pose landmarks.
+///
+/// From the front, the elbow angle barely changes and the hands leave the
+/// frame or drop in likelihood near the bottom, so depth comes from the head:
+/// the nose drops by more than a shoulder width while the face stays
+/// visible. The arms are used where they are reliable, at the top: extended
+/// arms start counting, and a visible bent arm blocks the lockout.
 ///
 /// Pure Dart: depends only on [PoseFrame], so tests drive it with synthetic
 /// frames and an injected clock. The pose model itself is not part of this
@@ -140,12 +158,13 @@ class RepJudge {
   Duration? _lastAt;
   Duration? _topSince;
   Duration? _attemptStarted;
-  double? _baselineSpan;
-  double _minElbow = 180;
-  double _minSpan = 1;
+  double? _topNoseY;
+  double? _topWidth;
+  double _maxDepth = 0;
+  double _highestSinceBottom = 0;
+  double? _minElbow;
   double _maxTilt = 0;
-  double _peakElbow = 0;
-  bool _rosePastPartial = false;
+  double? _previousTilt;
   int _nextIndex = 1;
 
   static RepClock _stopwatchClock() {
@@ -159,7 +178,8 @@ class RepJudge {
     _lastAt = null;
     _topSince = null;
     _clearAttempt();
-    _baselineSpan = null;
+    _topNoseY = null;
+    _topWidth = null;
     _nextIndex = 1;
     _smoother.reset();
   }
@@ -171,135 +191,143 @@ class RepJudge {
     _phase = RepPhase.lost;
     _topSince = null;
     _clearAttempt();
-    _baselineSpan = null;
+    _topNoseY = null;
+    _topWidth = null;
     _smoother.reset();
   }
 
   /// Judges [frame] and maybe closes one rep.
   RepUpdate update(PoseFrame frame) {
     final now = _clock();
-    if (_lastAt != null && now - _lastAt! > config.maxFrameGap) {
-      abandon();
-    }
-    final dt = _lastAt == null ? Duration.zero : now - _lastAt!;
-    _lastAt = now;
+    final gap = _lastAt == null ? Duration.zero : now - _lastAt!;
+    if (gap > config.maxFrameGap) abandon();
 
     final raw = measurePose(frame, minLikelihood: config.minLikelihood);
-    if (raw.elbowAngle == null) {
-      abandon();
-      return RepUpdate(snapshot: _snapshot(null, null));
+    // Arms and shoulders come and go; without the head there is no depth.
+    if (raw.noseY == null) {
+      return RepUpdate(snapshot: JudgeSnapshot(phase: _phase));
     }
+    final dt = gap > config.maxFrameGap ? Duration.zero : gap;
+    _lastAt = now;
 
     final smoothed = _smoother.update(raw, dt);
-    final elbow = smoothed.elbowAngle!;
-    final span = smoothed.spanRatio;
-    final tilt = smoothed.tilt;
-    final relative = _relative(span);
+    final elbow = raw.elbowAngle == null ? null : smoothed.elbowAngle;
+    final tilt = raw.tilt == null ? null : smoothed.tilt;
+
+    if (_phase == RepPhase.idle || _phase == RepPhase.lost) {
+      _holdTop(now, elbow, smoothed);
+      return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt));
+    }
+
+    final depth = _depth(smoothed)!;
+    if (_phase == RepPhase.up) {
+      _followTop(elbow, depth, smoothed, dt);
+      if (depth >= config.enterDepth) _beginAttempt(now, depth);
+    }
 
     if (_phase == RepPhase.descending || _phase == RepPhase.bottom) {
-      if (elbow < _minElbow) _minElbow = elbow;
-      if (relative != null && relative < _minSpan) _minSpan = relative;
-      if (tilt != null && tilt > _maxTilt) _maxTilt = tilt;
-      final started = _attemptStarted;
-      if (started != null && now - started > config.maxAttempt) {
+      _maxDepth = math.max(_maxDepth, depth);
+      if (elbow != null) _minElbow = math.min(_minElbow ?? elbow, elbow);
+      // A single-frame spike from a shoulder near the edge is not a tilt.
+      if (tilt != null && _previousTilt != null) {
+        _maxTilt = math.max(_maxTilt, math.min(tilt, _previousTilt!));
+      }
+      if (now - _attemptStarted! > config.maxAttempt) {
         _clearAttempt();
         _phase = RepPhase.idle;
         _topSince = null;
-        return RepUpdate(snapshot: _snapshot(smoothed, relative));
+        _previousTilt = tilt;
+        return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt));
       }
     }
+    _previousTilt = tilt;
 
-    final event = _advance(now, elbow, span, relative, tilt);
-    return RepUpdate(snapshot: _snapshot(smoothed, relative), event: event);
+    final event = _advance(now, depth, elbow);
+    return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt), event: event);
   }
 
-  RepEvent? _advance(
-    Duration now,
-    double elbow,
-    double? span,
-    double? relative,
-    double? tilt,
-  ) {
-    if (_phase == RepPhase.idle || _phase == RepPhase.lost) {
-      _holdTop(now, elbow, span);
-      return null;
-    }
-
-    if (_phase == RepPhase.up && elbow < config.enterAngle) {
-      _beginAttempt(now, elbow, relative, tilt);
-    }
-
+  RepEvent? _advance(Duration now, double depth, double? elbow) {
     if (_phase == RepPhase.descending) {
-      final deep =
-          elbow <= config.bottomAngle ||
-          (relative != null && relative <= config.bottomSpanRatio);
-      if (deep) {
+      if (depth >= config.bottomDepth) {
         _phase = RepPhase.bottom;
-        _peakElbow = elbow;
-        _rosePastPartial = false;
-      } else if (elbow >= config.topAngle) {
-        final event = _reject(RejectReason.insufficientDepth, now);
-        _finishAtTop(span);
+        _highestSinceBottom = depth;
+      } else if (depth <= config.topDepth) {
+        final event = _maxDepth >= config.shallowDepth
+            ? _emit(now, RejectReason.insufficientDepth)
+            : null;
+        _finishAtTop();
         return event;
       }
     }
 
     if (_phase == RepPhase.bottom) {
-      if (elbow >= config.topAngle) {
+      _highestSinceBottom = math.min(_highestSinceBottom, depth);
+      final armsExtended = elbow == null || elbow >= config.topAngle;
+      if (depth <= config.topDepth && armsExtended) {
         final event = _complete(now);
-        _finishAtTop(span);
+        _finishAtTop();
         return event;
       }
-      if (elbow > _peakElbow) _peakElbow = elbow;
-      if (elbow >= config.partialRiseAngle) _rosePastPartial = true;
-      if (_rosePastPartial && _peakElbow - elbow >= config.reDescentDrop) {
-        final event = _reject(RejectReason.incompleteExtension, now);
-        _rosePastPartial = false;
-        _peakElbow = elbow;
+      if (_highestSinceBottom <= config.partialDepth &&
+          depth - _highestSinceBottom >= config.reDescentDepth) {
+        final event = _emit(now, RejectReason.incompleteExtension);
+        _beginAttempt(now, depth);
         return event;
       }
     }
     return null;
   }
 
-  void _holdTop(Duration now, double elbow, double? span) {
-    if (elbow >= config.topAngle) {
-      _topSince ??= now;
-      if (now - _topSince! >= config.topHold) {
-        _baselineSpan = span;
-        _phase = RepPhase.up;
-        _topSince = null;
-      }
-    } else {
+  void _holdTop(Duration now, double? elbow, PoseMetrics smoothed) {
+    if (elbow == null) return;
+    if (elbow < config.topAngle || smoothed.shoulderWidth == null) {
+      _topSince = null;
+      return;
+    }
+    _topSince ??= now;
+    if (now - _topSince! >= config.topHold) {
+      _topNoseY = smoothed.noseY;
+      _topWidth = smoothed.shoulderWidth;
+      _phase = RepPhase.up;
       _topSince = null;
     }
   }
 
-  void _beginAttempt(
-    Duration now,
-    double elbow,
-    double? relative,
-    double? tilt,
+  /// Moves the top pose towards the current one while the arms are seen
+  /// extended, so the user may shift on the mat between reps.
+  void _followTop(
+    double? elbow,
+    double depth,
+    PoseMetrics smoothed,
+    Duration dt,
   ) {
-    _phase = RepPhase.descending;
-    _attemptStarted = now;
-    _minElbow = elbow;
-    _minSpan = relative ?? 1;
-    _maxTilt = tilt ?? 0;
-    _peakElbow = elbow;
-    _rosePastPartial = false;
+    if (elbow == null || elbow < config.topAngle) return;
+    if (depth >= config.enterDepth) return;
+    final alpha = config.baselineTau.inMicroseconds == 0
+        ? 1.0
+        : 1 - math.exp(-dt.inMicroseconds / config.baselineTau.inMicroseconds);
+    _topNoseY = _topNoseY! + alpha * (smoothed.noseY! - _topNoseY!);
+    final width = smoothed.shoulderWidth;
+    if (width != null) _topWidth = _topWidth! + alpha * (width - _topWidth!);
   }
 
-  void _finishAtTop(double? span) {
+  void _beginAttempt(Duration now, double depth) {
+    _phase = RepPhase.descending;
+    _attemptStarted = now;
+    _maxDepth = depth;
+    _highestSinceBottom = depth;
+    _minElbow = null;
+    _maxTilt = 0;
+  }
+
+  void _finishAtTop() {
     _phase = RepPhase.up;
     _clearAttempt();
-    if (span != null) _baselineSpan = span;
   }
 
   RepEvent _complete(Duration now) {
-    final started = _attemptStarted ?? now;
     final RejectReason? reason;
-    if (now - started < config.minRepDuration) {
+    if (now - _attemptStarted! < config.minRepDuration) {
       reason = RejectReason.tooFast;
     } else if (_maxTilt > config.maxShoulderTilt) {
       reason = RejectReason.shouldersNotLevel;
@@ -309,37 +337,40 @@ class RepJudge {
     return _emit(now, reason);
   }
 
-  RepEvent _reject(RejectReason reason, Duration now) => _emit(now, reason);
-
-  RepEvent _emit(Duration now, RejectReason? reason) {
-    return RepEvent(
-      index: _nextIndex++,
-      valid: reason == null,
-      reason: reason,
-      at: now,
-      minElbowAngle: _minElbow,
-      minSpanRatio: _minSpan,
-      maxTilt: _maxTilt,
-    );
-  }
+  RepEvent _emit(Duration now, RejectReason? reason) => RepEvent(
+    index: _nextIndex++,
+    valid: reason == null,
+    reason: reason,
+    at: now,
+    maxDepth: _maxDepth,
+    minElbowAngle: _minElbow,
+    maxTilt: _maxTilt,
+  );
 
   void _clearAttempt() {
     _attemptStarted = null;
-    _rosePastPartial = false;
-    _peakElbow = 0;
+    _maxDepth = 0;
+    _highestSinceBottom = 0;
+    _minElbow = null;
+    _maxTilt = 0;
+    _previousTilt = null;
   }
 
-  double? _relative(double? span) {
-    final baseline = _baselineSpan;
-    if (span == null || baseline == null || baseline < 1e-6) return null;
-    return span / baseline;
+  double? _depth(PoseMetrics smoothed) {
+    final top = _topNoseY;
+    final width = _topWidth;
+    final nose = smoothed.noseY;
+    if (top == null || width == null || width < 1e-6 || nose == null) {
+      return null;
+    }
+    return (nose - top) / width;
   }
 
-  JudgeSnapshot _snapshot(PoseMetrics? smoothed, double? relative) =>
+  JudgeSnapshot _snapshot(double? elbow, PoseMetrics smoothed, double? tilt) =>
       JudgeSnapshot(
         phase: _phase,
-        elbowAngle: smoothed?.elbowAngle,
-        spanRatio: relative ?? smoothed?.spanRatio,
-        tilt: smoothed?.tilt,
+        elbowAngle: elbow,
+        depth: _depth(smoothed),
+        tilt: tilt,
       );
 }
