@@ -19,9 +19,23 @@ class SetupScreen extends StatefulWidget {
     required this.exercise,
     this.showDebugTools = false,
     this.createViewModel,
+    this.exitOrientations = const [DeviceOrientation.portraitUp],
   });
 
+  /// The phone may lie on the floor in either orientation. Upside-down
+  /// portrait is left out, like most Android apps.
+  static const orientations = [
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ];
+
   final ExerciseType exercise;
+
+  /// Orientations restored when the screen closes. The rest of the app is
+  /// portrait only; a screen that keeps the phone on the floor passes
+  /// [orientations] instead.
+  final List<DeviceOrientation> exitOrientations;
 
   /// Draws the detected landmarks on the preview and prints the checker
   /// values (reason, fps, hold, auto start, thresholds) to the debug log,
@@ -53,9 +67,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
         SetupViewModel(exercise: widget.exercise);
     WidgetsBinding.instance.addObserver(this);
     _viewModel.addListener(_onViewModelChanged);
-    // The phone may lie on the floor in either orientation. Upside-down
-    // portrait is left out, like most Android apps.
-    SystemChrome.setPreferredOrientations(_setupOrientations);
+    SystemChrome.setPreferredOrientations(SetupScreen.orientations);
     _viewModel.start();
   }
 
@@ -68,12 +80,6 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
     }
     _orientation = orientation;
   }
-
-  static const _setupOrientations = [
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ];
 
   void _onViewModelChanged() {
     if (widget.showDebugTools) _logDebug();
@@ -134,11 +140,14 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
   static String _s(Duration d) =>
       '${(d.inMilliseconds / 1000).toStringAsFixed(1)}s';
 
-  /// Leaves the screen with the exercise, once.
-  void _finish() {
+  /// Leaves the screen with the exercise, once. The camera is released
+  /// first: the next screen opens its own camera right away, and this
+  /// screen is only disposed after the exit transition.
+  Future<void> _finish() async {
     if (_finished || !mounted) return;
     _finished = true;
-    Navigator.pop(context, widget.exercise);
+    await _viewModel.releaseCamera();
+    if (mounted) Navigator.pop(context, widget.exercise);
   }
 
   @override
@@ -160,8 +169,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _viewModel.removeListener(_onViewModelChanged);
     _viewModel.dispose();
-    // The rest of the app is portrait only.
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setPreferredOrientations(widget.exitOrientations);
     super.dispose();
   }
 

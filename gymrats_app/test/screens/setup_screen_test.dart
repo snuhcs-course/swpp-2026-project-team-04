@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -266,13 +268,12 @@ void main() {
     await open(tester);
     await feed(tester, 0, standingFrame());
     await feed(tester, 1500, standingFrame());
+    // The button hides once setup finishes, so keep its handler to press
+    // it late, like a tap that lands while the screen is closing.
+    final tapStart = startButton(tester).onPressed!;
     await feed(tester, 4500, standingFrame());
-    // The pop has started; more frames arrive and the user taps Start
-    // while the route is still animating out.
     await feed(tester, 4600, standingFrame());
-    // Call the handler directly: a real tap would hit-test through the
-    // closing route and could press the button behind it.
-    startButton(tester).onPressed?.call();
+    tapStart();
     await feed(tester, 4700, standingFrame());
     await tester.pumpAndSettle();
     expect(popCounter.pops, 1);
@@ -309,6 +310,23 @@ void main() {
     expect(popped, ExerciseType.pushUp);
     expect(camera.isStreaming, isFalse);
     expect(estimator.closed, isTrue);
+  });
+
+  testWidgets('Start leaves only after the camera is released', (
+    tester,
+  ) async {
+    await open(tester);
+    await feed(tester, 0, standingFrame());
+    await feed(tester, 1500, standingFrame());
+    camera.stopGate = Completer();
+    await tester.tap(find.text('Start'));
+    await tester.pump();
+    expect(camera.stopCount, 1);
+    expect(popCounter.pops, 0);
+    camera.stopGate!.complete();
+    await tester.pumpAndSettle();
+    expect(popCounter.pops, 1);
+    expect(popped, ExerciseType.pushUp);
   });
 
   testWidgets('back button releases camera and detector', (tester) async {
