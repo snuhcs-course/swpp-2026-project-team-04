@@ -54,6 +54,43 @@ void main() {
     expect(tester.widget<Text>(find.byKey(validRepsKey)).data, '0');
     expect(tester.widget<Text>(find.byKey(invalidRepsKey)).data, 'Invalid 1');
   });
+
+  testWidgets('stop ends the round and lists reject reasons', (tester) async {
+    final harness = _Harness();
+    await harness.openCounter(tester);
+    await harness.feed(1500, pushUpFrame());
+    await harness.feed(1800, pushUpFrame());
+    await harness.feed(1900, pushUpFrame(depth: 0.9));
+    await harness.feed(2300, pushUpFrame());
+
+    await tester.tap(find.byKey(stopRoundKey));
+    await tester.pump();
+
+    expect(find.byKey(roundResultKey), findsOneWidget);
+    expect(find.text('Stopped'), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(validRepsKey)).data, '0');
+    expect(tester.widget<Text>(find.byKey(invalidRepsKey)).data, 'Invalid 1');
+    expect(find.text('Go lower × 1'), findsOneWidget);
+    expect(find.byKey(repPhaseKey), findsNothing);
+  });
+
+  testWidgets('the round ends with the same result after 60 seconds', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    await harness.openCounter(tester);
+    await harness.feed(1500, pushUpFrame());
+    await harness.feed(1800, pushUpFrame());
+    await harness.feed(2200, pushUpFrame(depth: 0.6));
+    await harness.feed(2600, pushUpFrame(depth: 1.5));
+    await harness.feed(3000, pushUpFrame());
+    expect(tester.widget<Text>(find.byKey(remainingTimeKey)).data, '0:58');
+
+    await harness.feed(61500, pushUpFrame());
+    expect(find.text("Time's up"), findsOneWidget);
+    expect(tester.widget<Text>(find.byKey(validRepsKey)).data, '1');
+    expect(find.text('No rejected reps'), findsOneWidget);
+  });
 }
 
 class _Harness {

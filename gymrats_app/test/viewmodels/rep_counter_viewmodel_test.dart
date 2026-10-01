@@ -99,6 +99,26 @@ void main() {
     expect(camera.isStreaming, isTrue);
   });
 
+  test('rotating reopens the camera and keeps the score', () async {
+    await vm.start();
+    await countOneRep();
+    await feed(1500, pose(depth: 0.6));
+    expect(vm.state.snapshot.phase, RepPhase.descending);
+    await vm.onScreenRotated();
+    expect(camera.startCount, 2);
+    expect(vm.state.phase, CounterPhase.running);
+    expect(vm.state.validReps, 1);
+    expect(vm.state.snapshot.phase, RepPhase.idle);
+  });
+
+  test('rotating while paused does not open the camera', () async {
+    await vm.start();
+    await vm.pause();
+    await vm.onScreenRotated();
+    expect(camera.startCount, 1);
+    expect(camera.isStreaming, isFalse);
+  });
+
   test('denied permission keeps the camera off', () async {
     camera.permission = CameraPermission.denied;
     await vm.start();
@@ -115,6 +135,46 @@ void main() {
     expect(vm.state.phase, CounterPhase.detectorError);
     expect(camera.isStreaming, isFalse);
     await vm.retry();
+    expect(vm.state.phase, CounterPhase.running);
+  });
+
+  test('finish keeps the counts and releases the camera', () async {
+    await vm.start();
+    await countOneRep();
+    await vm.finish(stoppedByUser: true);
+    expect(vm.state.phase, CounterPhase.finished);
+    expect(vm.state.roundEnd, RoundEnd.stopped);
+    expect(vm.state.validReps, 1);
+    expect(vm.history, hasLength(1));
+    expect(camera.isStreaming, isFalse);
+    await feed(2000, pose());
+    expect(vm.state.validReps, 1);
+    await vm.resume();
+    expect(vm.state.phase, CounterPhase.finished);
+  });
+
+  test('the round ends when 60 seconds have passed', () async {
+    await vm.start();
+    await countOneRep();
+    await feed(59999, pose());
+    expect(vm.state.phase, CounterPhase.running);
+    await feed(60000, pose());
+    expect(vm.state.phase, CounterPhase.finished);
+    expect(vm.state.roundEnd, RoundEnd.timeUp);
+    expect(vm.state.remaining, Duration.zero);
+    expect(vm.state.validReps, 1);
+    expect(camera.isStreaming, isFalse);
+  });
+
+  test('time spent in the background does not count', () async {
+    await vm.start();
+    await countOneRep();
+    await vm.pause();
+    now = const Duration(seconds: 90);
+    await vm.resume();
+    expect(vm.state.phase, CounterPhase.running);
+    expect(vm.state.validReps, 1);
+    await feed(91000, pose());
     expect(vm.state.phase, CounterPhase.running);
   });
 

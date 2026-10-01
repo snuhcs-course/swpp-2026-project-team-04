@@ -3,14 +3,16 @@
 // Run from gymrats_app/:
 //   flutter run -t lib/demo/rep_judge_demo.dart -d <device-id>
 //
-// Needs no login, server, or battle screen. Setup runs first, then the
-// counter. Checker values and each rep are printed to the debug log.
+// Needs no login, server, or battle screen. Setup runs first, then a
+// 60-second counter. Stop, or the end of that minute, shows the result.
+// Checker values and each rep are printed to the debug log.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/exercise_type.dart';
+import '../models/rep_event.dart';
 import '../screens/setup_screen.dart';
 import '../services/pose/rep_judge.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
@@ -22,6 +24,9 @@ const validRepsKey = Key('validReps');
 const invalidRepsKey = Key('invalidReps');
 const repPhaseKey = Key('repPhase');
 const repFlashKey = Key('repFlash');
+const stopRoundKey = Key('stopRound');
+const roundResultKey = Key('roundResult');
+const remainingTimeKey = Key('remainingTime');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +73,8 @@ class _ExercisePicker extends StatelessWidget {
         builder: (_) => SetupScreen(
           exercise: exercise,
           showDebugTools: true,
+          // The phone stays where setup placed it.
+          exitOrientations: SetupScreen.orientations,
           createViewModel: switch (createSetup) {
             final create? => () => create(exercise),
             null => null,
@@ -136,6 +143,7 @@ class _CounterPageState extends State<_CounterPage>
   bool _flashValid = false;
   final Stopwatch _sinceLog = Stopwatch();
   String? _lastLogKey;
+  Orientation? _orientation;
 
   @override
   void initState() {
@@ -143,10 +151,32 @@ class _CounterPageState extends State<_CounterPage>
     _viewModel = widget.createViewModel?.call() ?? RepCounterViewModel();
     WidgetsBinding.instance.addObserver(this);
     _viewModel.addListener(_onViewModel);
+    SystemChrome.setPreferredOrientations(SetupScreen.orientations);
     _viewModel.start();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final orientation = MediaQuery.orientationOf(context);
+    if (_orientation != null && _orientation != orientation) {
+      _viewModel.onScreenRotated();
+    }
+    _orientation = orientation;
+  }
+
   void _onViewModel() {
+    final phase = _viewModel.state.phase;
+    if (phase != _loggedPhase) {
+      _loggedPhase = phase;
+      final value = _viewModel.cameraController?.value;
+      debugPrint(
+        'rep_judge camera | phase=${phase.name} '
+        'device=${value?.deviceOrientation.name} '
+        'frameRotation=${_viewModel.frameRotation} '
+        'error=${_viewModel.state.errorMessage ?? '-'}',
+      );
+    }
     final event = _viewModel.state.lastEvent;
     if (event == null || event.at == _shownAt) {
       _log(false);
@@ -166,6 +196,7 @@ class _CounterPageState extends State<_CounterPage>
   }
 
   Duration? _shownAt;
+  CounterPhase? _loggedPhase;
 
   /// Logs the live judge values when they change, at most every 250 ms.
   void _log(bool freshRep) {
@@ -224,6 +255,7 @@ class _CounterPageState extends State<_CounterPage>
     WidgetsBinding.instance.removeObserver(this);
     _viewModel.removeListener(_onViewModel);
     _viewModel.dispose();
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
@@ -234,12 +266,15 @@ class _CounterPageState extends State<_CounterPage>
       builder: (context, _) {
         final state = _viewModel.state;
         final running = state.phase == CounterPhase.running;
+        final finished = state.phase == CounterPhase.finished;
         return Scaffold(
           backgroundColor: Colors.black,
           body: Stack(
             fit: StackFit.expand,
             children: [
-              if (running)
+              if (finished)
+                _RoundResult(state: state, history: _viewModel.history)
+              else if (running)
                 PoseCameraView(
                   controller: _viewModel.cameraController,
                   frame: state.lastFrame,
@@ -256,13 +291,16 @@ class _CounterPageState extends State<_CounterPage>
                       exercise: widget.exercise,
                       onBack: () => Navigator.maybePop(context),
                       onReset: running ? _viewModel.reset : null,
+                      onStop: running
+                          ? () => _viewModel.finish(stoppedByUser: true)
+                          : null,
                       onSwitch: running && _viewModel.canSwitchCamera
                           ? _viewModel.switchCamera
                           : null,
                     ),
-                    _Scoreboard(state: state),
+                    if (!finished) _Scoreboard(state: state),
                     const Spacer(),
-                    if (_flash != null)
+                    if (_flash != null && !finished)
                       _Flash(text: _flash!, valid: _flashValid),
                     if (running) _DebugPanel(state: state),
                   ],
@@ -296,6 +334,11 @@ class _Scoreboard extends StatelessWidget {
               fontSize: 64,
               fontWeight: FontWeight.bold,
             ),
+          ),
+          Text(
+            _formatRoundTime(state.remaining),
+            key: remainingTimeKey,
+            style: const TextStyle(color: Colors.white, fontSize: 22),
           ),
           Text(
             'Invalid ${state.invalidReps}',
@@ -364,12 +407,14 @@ class _CounterTopBar extends StatelessWidget {
     required this.exercise,
     required this.onBack,
     required this.onReset,
+    required this.onStop,
     required this.onSwitch,
   });
 
   final ExerciseType exercise;
   final VoidCallback onBack;
   final VoidCallback? onReset;
+  final VoidCallback? onStop;
   final VoidCallback? onSwitch;
 
   @override
@@ -389,6 +434,12 @@ class _CounterTopBar extends StatelessWidget {
           Text(exercise.label, style: const TextStyle(color: Colors.white70)),
           const Spacer(),
           TextButton(onPressed: onReset, child: const Text('Reset')),
+          if (onStop != null)
+            TextButton(
+              key: stopRoundKey,
+              onPressed: onStop,
+              child: const Text('Stop'),
+            ),
           if (onSwitch != null)
             IconButton(
               icon: const Icon(Icons.cameraswitch, color: Colors.white),
@@ -441,7 +492,8 @@ class _CounterMessage extends StatelessWidget {
       ),
       CounterPhase.starting ||
       CounterPhase.paused ||
-      CounterPhase.running => (null, null, const <Widget>[]),
+      CounterPhase.running ||
+      CounterPhase.finished => (null, null, const <Widget>[]),
     };
     if (title == null) {
       return const Center(child: CircularProgressIndicator());
@@ -470,6 +522,83 @@ class _CounterMessage extends StatelessWidget {
       ),
     );
   }
+}
+
+class _RoundResult extends StatelessWidget {
+  const _RoundResult({required this.state, required this.history});
+
+  final RepCounterState state;
+  final List<RepEvent> history;
+
+  @override
+  Widget build(BuildContext context) {
+    final reasons = <RejectReason, int>{};
+    for (final event in history) {
+      final reason = event.reason;
+      if (event.valid || reason == null) continue;
+      reasons[reason] = (reasons[reason] ?? 0) + 1;
+    }
+    final title = state.roundEnd == RoundEnd.stopped ? 'Stopped' : "Time's up";
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
+        child: Column(
+          key: roundResultKey,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(color: Colors.white70, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${state.validReps}',
+              key: validRepsKey,
+              style: const TextStyle(
+                color: Colors.greenAccent,
+                fontSize: 72,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Text(
+              'valid',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Invalid ${state.invalidReps}',
+              key: invalidRepsKey,
+              style: const TextStyle(color: Colors.white, fontSize: 22),
+            ),
+            const SizedBox(height: 12),
+            if (reasons.isEmpty)
+              const Text(
+                'No rejected reps',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              )
+            else
+              for (final reason in RejectReason.values)
+                if (reasons[reason] case final count?)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      '${reason.message} × $count',
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatRoundTime(Duration duration) {
+  final seconds = duration.inSeconds;
+  final rest = (seconds % 60).toString().padLeft(2, '0');
+  return '${seconds ~/ 60}:$rest';
 }
 
 String _phaseLabel(RepPhase phase) => switch (phase) {

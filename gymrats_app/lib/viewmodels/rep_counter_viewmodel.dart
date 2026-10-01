@@ -29,7 +29,13 @@ enum CounterPhase {
 
   /// Pose detection kept failing.
   detectorError,
+
+  /// The round was stopped, or the time limit ran out. The camera is off.
+  finished,
 }
+
+/// How a finished round ended. [none] while the round is still open.
+enum RoundEnd { none, stopped, timeUp }
 
 /// Immutable state rendered by the rep counter.
 class RepCounterState {
@@ -43,6 +49,8 @@ class RepCounterState {
     this.errorMessage,
     this.lastFrame,
     this.fps = 0,
+    this.remaining = const Duration(seconds: 60),
+    this.roundEnd = RoundEnd.none,
   });
 
   final CounterPhase phase;
@@ -62,6 +70,12 @@ class RepCounterState {
   /// Frames processed during the last second.
   final int fps;
 
+  /// Time left in the round. Frozen once the round ends.
+  final Duration remaining;
+
+  /// Why the round ended. [RoundEnd.none] until then.
+  final RoundEnd roundEnd;
+
   RepCounterState copyWith({
     CounterPhase? phase,
     int? validReps,
@@ -73,6 +87,8 @@ class RepCounterState {
     String? errorMessage,
     PoseFrame? lastFrame,
     int? fps,
+    Duration? remaining,
+    RoundEnd? roundEnd,
   }) => RepCounterState(
     phase: phase ?? this.phase,
     validReps: validReps ?? this.validReps,
@@ -83,6 +99,8 @@ class RepCounterState {
     errorMessage: errorMessage ?? this.errorMessage,
     lastFrame: lastFrame ?? this.lastFrame,
     fps: fps ?? this.fps,
+    remaining: remaining ?? this.remaining,
+    roundEnd: roundEnd ?? this.roundEnd,
   );
 }
 
@@ -96,6 +114,7 @@ class RepCounterViewModel extends ChangeNotifier {
     PoseEstimator? estimator,
     RepJudge? judge,
     RepClock? clock,
+    this.roundLength = const Duration(seconds: 60),
     this.detectorFailureTimeout = const Duration(seconds: 3),
     this.dropDelay = const Duration(milliseconds: 500),
   }) : _camera = camera ?? CameraService(),
@@ -110,6 +129,9 @@ class RepCounterViewModel extends ChangeNotifier {
   late final RepJudge _judge;
   final RepClock _clock;
 
+  /// How long a round lasts once the camera is running. Stop ends it sooner.
+  final Duration roundLength;
+
   /// How long pose detection may keep failing before an error is shown.
   final Duration detectorFailureTimeout;
 
@@ -119,10 +141,15 @@ class RepCounterViewModel extends ChangeNotifier {
   final StreamController<RepEvent> _reps = StreamController.broadcast();
 
   RepCounterState _state = const RepCounterState();
+  final List<RepEvent> _history = [];
   int _session = 0;
   bool _disposed = false;
+  bool _finishing = false;
   bool _pausedByLifecycle = false;
   Duration? _failingSince;
+  Duration? _roundStartedAt;
+  Duration _pausedAccumulated = Duration.zero;
+  Duration? _pauseBegan;
   final Queue<Duration> _frameTimes = Queue();
 
   static RepClock _stopwatchClock() {
@@ -131,6 +158,9 @@ class RepCounterViewModel extends ChangeNotifier {
   }
 
   RepCounterState get state => _state;
+
+  /// Every rep judged in this round, including rejected ones.
+  List<RepEvent> get history => List.unmodifiable(_history);
 
   /// Judged reps, valid and rejected. Does not replay reps from before the
   /// listener subscribed.
@@ -155,14 +185,21 @@ class RepCounterViewModel extends ChangeNotifier {
   ///
   /// [keepScore] retains the rep counts, used when the camera is switched.
   Future<void> start({bool keepScore = false}) async {
-    if (_disposed) return;
+    if (_disposed || _state.phase == CounterPhase.finished) return;
     final session = ++_session;
     _failingSince = null;
     _frameTimes.clear();
+    if (!keepScore) {
+      _history.clear();
+      _roundStartedAt = null;
+      _pausedAccumulated = Duration.zero;
+      _pauseBegan = null;
+    }
     _setState(
       RepCounterState(
         validReps: keepScore ? _state.validReps : 0,
         invalidReps: keepScore ? _state.invalidReps : 0,
+        remaining: keepScore ? _state.remaining : roundLength,
       ),
     );
 
@@ -192,7 +229,11 @@ class RepCounterViewModel extends ChangeNotifier {
       return;
     }
     if (session != _session) return;
-    _setState(_state.copyWith(phase: CounterPhase.running));
+    _roundStartedAt ??= _clock();
+    _setState(
+      _state.copyWith(phase: CounterPhase.running, remaining: _remaining()),
+    );
+    if (_remaining() == Duration.zero) unawaited(finish());
   }
 
   /// Tries again after an error.
@@ -209,9 +250,54 @@ class RepCounterViewModel extends ChangeNotifier {
     await start(keepScore: true);
   }
 
-  /// Zeroes the counts and the judge. The camera keeps running.
+  /// Reopens the camera after the screen rotated, keeping the score. The
+  /// camera plugin reads the orientation when the camera opens, so the
+  /// preview and the frame rotation would otherwise be 90 degrees off. The
+  /// rep in progress is dropped. Does nothing while paused or showing a
+  /// message.
+  Future<void> onScreenRotated() async {
+    if (_state.phase != CounterPhase.starting &&
+        _state.phase != CounterPhase.running) {
+      return;
+    }
+    _judge.abandon();
+    await start(keepScore: true);
+  }
+
+  /// Ends the round, releases the camera, and keeps the counts.
+  ///
+  /// [stoppedByUser] is false when [roundLength] runs out. An in-progress
+  /// attempt is dropped and is not added to [history].
+  Future<void> finish({bool stoppedByUser = false}) async {
+    if (_disposed ||
+        _finishing ||
+        _state.phase == CounterPhase.finished ||
+        _state.phase == CounterPhase.permissionDenied ||
+        _state.phase == CounterPhase.cameraError ||
+        _state.phase == CounterPhase.detectorError) {
+      return;
+    }
+    _finishing = true;
+    _session++;
+    _failingSince = null;
+    _frameTimes.clear();
+    _pauseBegan = null;
+    _judge.abandon();
+    _setState(
+      _state.copyWith(
+        phase: CounterPhase.finished,
+        roundEnd: stoppedByUser ? RoundEnd.stopped : RoundEnd.timeUp,
+        remaining: _remaining(),
+        snapshot: JudgeSnapshot.initial,
+      ),
+    );
+    await _camera.stop();
+  }
+
+  /// Zeroes the counts and the judge. The camera and the round clock keep running.
   void reset() {
     _judge.reset();
+    _history.clear();
     _setState(
       _state.copyWith(
         validReps: 0,
@@ -224,14 +310,23 @@ class RepCounterViewModel extends ChangeNotifier {
 
   /// App moved to the background: stop the stream and release the camera.
   Future<void> pause() async {
-    if (_disposed || _pausedByLifecycle) return;
+    if (_disposed ||
+        _pausedByLifecycle ||
+        _state.phase == CounterPhase.finished) {
+      return;
+    }
     _pausedByLifecycle = true;
     _session++;
     _failingSince = null;
     _frameTimes.clear();
+    if (_roundStartedAt != null && _pauseBegan == null) {
+      _pauseBegan = _clock();
+    }
     if (_state.phase == CounterPhase.starting ||
         _state.phase == CounterPhase.running) {
-      _setState(_state.copyWith(phase: CounterPhase.paused));
+      _setState(
+        _state.copyWith(phase: CounterPhase.paused, remaining: _remaining()),
+      );
     }
     await _camera.stop();
   }
@@ -241,9 +336,17 @@ class RepCounterViewModel extends ChangeNotifier {
   Future<void> resume() async {
     if (_disposed || !_pausedByLifecycle) return;
     _pausedByLifecycle = false;
+    if (_pauseBegan != null) {
+      _pausedAccumulated += _clock() - _pauseBegan!;
+      _pauseBegan = null;
+    }
+    if (_roundElapsed() case final elapsed? when elapsed >= roundLength) {
+      await finish();
+      return;
+    }
     if (_state.phase == CounterPhase.paused ||
         _state.phase == CounterPhase.permissionDenied) {
-      await start();
+      await start(keepScore: true);
     }
   }
 
@@ -271,7 +374,11 @@ class RepCounterViewModel extends ChangeNotifier {
     }
     final update = _judge.update(frame);
     final event = update.event;
-    if (event != null && !_reps.isClosed) _reps.add(event);
+    if (event != null) {
+      _history.add(event);
+      if (!_reps.isClosed) _reps.add(event);
+    }
+    final remaining = _remaining();
     _setState(
       _state.copyWith(
         phase: _state.phase,
@@ -282,8 +389,10 @@ class RepCounterViewModel extends ChangeNotifier {
         snapshot: update.snapshot,
         lastFrame: frame,
         fps: _frameTimes.length,
+        remaining: remaining,
       ),
     );
+    if (remaining == Duration.zero) unawaited(finish());
   }
 
   void _onDetectorFailure() {
@@ -308,6 +417,21 @@ class RepCounterViewModel extends ChangeNotifier {
         _state.copyWith(snapshot: const JudgeSnapshot(phase: RepPhase.lost)),
       );
     }
+  }
+
+  Duration? _roundElapsed() {
+    final started = _roundStartedAt;
+    if (started == null) return null;
+    var elapsed = _clock() - started - _pausedAccumulated;
+    if (_pauseBegan != null) elapsed -= _clock() - _pauseBegan!;
+    return elapsed.isNegative ? Duration.zero : elapsed;
+  }
+
+  Duration _remaining() {
+    final elapsed = _roundElapsed();
+    if (elapsed == null) return roundLength;
+    final left = roundLength - elapsed;
+    return left.isNegative ? Duration.zero : left;
   }
 
   void _setState(RepCounterState state) {
