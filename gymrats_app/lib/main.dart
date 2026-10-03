@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'models/exercise_type.dart';
 import 'screens/setup_screen.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +21,7 @@ class GymRatsApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'GymRats',
-      theme: ThemeData(colorSchemeSeed: Colors.green, useMaterial3: true),
+      theme: AppTheme.dark,
       // HomeScreen and the rest of the flow come in later branches.
       home: const Scaffold(body: Center(child: Text('GymRats'))),
       onGenerateRoute: (settings) => switch (settings.name) {
