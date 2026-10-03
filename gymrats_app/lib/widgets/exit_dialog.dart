@@ -3,16 +3,15 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 /// Asks before leaving the match flow: a pink exit icon, [title] over
-/// [message], a big lime [stayLabel] button and a pink [leaveLabel] one.
+/// [message], a big lime 계속하기 button and a pink [leaveLabel] one.
 ///
-/// Pops true for [leaveLabel], false for [stayLabel].
+/// Pops true for [leaveLabel], false for 계속하기.
 class ExitDialog extends StatelessWidget {
   const ExitDialog({
     super.key,
     required this.title,
     required this.message,
     required this.leaveLabel,
-    this.stayLabel = '계속하기',
   });
 
   /// For leaving a found match, on the versus and setup screens.
@@ -20,15 +19,13 @@ class ExitDialog extends StatelessWidget {
     : title = '게임에서 나갈까요?',
       // Fixed 과: RepBot is the only opponent until real users can match.
       message = '$opponentName과의 대결이 취소되고\n홈으로 돌아가요.',
-      leaveLabel = '게임 나가기',
-      stayLabel = '계속하기';
+      leaveLabel = '게임 나가기';
 
   /// For leaving the search, on the matching screen.
   const ExitDialog.matching({super.key})
     : title = '매칭을 취소할까요?',
       message = '상대 찾기를 멈추고\n홈으로 돌아가요.',
-      leaveLabel = '매칭 취소',
-      stayLabel = '계속하기';
+      leaveLabel = '매칭 취소';
 
   final String title;
 
@@ -37,7 +34,6 @@ class ExitDialog extends StatelessWidget {
   final String message;
 
   final String leaveLabel;
-  final String stayLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +81,7 @@ class ExitDialog extends StatelessWidget {
                   ),
                   textStyle: buttonText,
                 ),
-                child: Text(stayLabel),
+                child: const Text('계속하기'),
               ),
               const SizedBox(height: 4),
               TextButton(

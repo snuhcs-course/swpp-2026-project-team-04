@@ -7,7 +7,6 @@ const _dialog = ExitDialog(
   title: 'title',
   message: 'message',
   leaveLabel: 'leave',
-  stayLabel: 'stay',
 );
 
 void main() {
@@ -52,13 +51,12 @@ void main() {
     return answer;
   }
 
-  testWidgets('shows the words it is given under a pink exit icon', (
-    tester,
-  ) async {
+  testWidgets('shows the words it is given and 계속하기 under a pink exit '
+      'icon', (tester) async {
     await open(tester);
     await tester.tap(find.text('ask'));
     await tester.pumpAndSettle();
-    for (final words in ['title', 'message', 'leave', 'stay']) {
+    for (final words in ['title', 'message', 'leave', '계속하기']) {
       expect(find.text(words), findsOneWidget, reason: words);
     }
     final icon = tester.widget<Icon>(find.byIcon(Icons.logout_rounded));
@@ -77,14 +75,14 @@ void main() {
     );
   });
 
-  testWidgets('stay is a big lime button, leave pink words under it', (
+  testWidgets('계속하기 is a big lime button, leave pink words under it', (
     tester,
   ) async {
     await open(tester);
     await tester.tap(find.text('ask'));
     await tester.pumpAndSettle();
     final stay = find.ancestor(
-      of: find.text('stay'),
+      of: find.text('계속하기'),
       matching: find.byType(FilledButton),
     );
     final lime = tester.widget<Material>(
@@ -104,7 +102,7 @@ void main() {
   testWidgets('only the leave button answers true', (tester) async {
     await open(tester);
     expect(await ask(tester, () => tester.tap(find.text('leave'))), isTrue);
-    expect(await ask(tester, () => tester.tap(find.text('stay'))), isFalse);
+    expect(await ask(tester, () => tester.tap(find.text('계속하기'))), isFalse);
     // Outside the dialog, on the barrier.
     expect(
       await ask(tester, () => tester.tapAt(const Offset(5, 5))),

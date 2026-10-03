@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/widgets.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
@@ -158,4 +159,13 @@ class FakeMatchmaker implements Matchmaker {
     if (error != null) throw error!;
     return opponent;
   }
+}
+
+/// Names of the routes pushed, in order.
+class PushLog extends NavigatorObserver {
+  final names = <String?>[];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      names.add(route.settings.name);
 }

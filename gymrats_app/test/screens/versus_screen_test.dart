@@ -9,23 +9,16 @@ import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/exit_game_button.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 
+import '../support/fakes.dart';
+
 const _matchup = Matchup(
   exercise: ExerciseType.pushUp,
   playerName: '우현',
   opponent: Opponent(name: 'RepBot', isBot: true),
 );
 
-/// Names of the routes pushed, in order.
-class _PushLog extends NavigatorObserver {
-  final names = <String?>[];
-
-  @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
-      names.add(route.settings.name);
-}
-
 void main() {
-  late _PushLog pushes;
+  late PushLog pushes;
 
   /// Opens VersusScreen from a home page. The match setup route is a stub
   /// that shows the matchup it received, with a "ready" button that returns
@@ -39,7 +32,7 @@ void main() {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    pushes = _PushLog();
+    pushes = PushLog();
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,

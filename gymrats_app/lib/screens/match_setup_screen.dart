@@ -36,9 +36,13 @@ class _MatchSetupScreenState extends State<MatchSetupScreen> {
   /// still creates it, through [_createSetupViewModel], and disposes it.
   SetupViewModel? _setupViewModel;
 
-  SetupViewModel _createSetupViewModel() => _setupViewModel =
-      widget.createViewModel?.call() ??
-      SetupViewModel(exercise: widget.matchup.exercise);
+  SetupViewModel _createSetupViewModel() {
+    final viewModel =
+        widget.createViewModel?.call() ??
+        SetupViewModel(exercise: widget.matchup.exercise);
+    _setupViewModel = viewModel;
+    return viewModel;
+  }
 
   /// Goes home. Setup stops first: SetupScreen keeps checking frames while
   /// it slides away, and finishing then would pop home itself, leaving an
@@ -54,7 +58,7 @@ class _MatchSetupScreenState extends State<MatchSetupScreen> {
   /// top route, which is then the dialog, with the exercise. So the dialog
   /// takes any result, and the exercise is passed on as if the dialog had
   /// not been there.
-  Future<void> _confirmExit() async {
+  Future<void> _askToLeave() async {
     final result = await showDialog<Object?>(
       context: context,
       builder: (_) =>
@@ -73,7 +77,7 @@ class _MatchSetupScreenState extends State<MatchSetupScreen> {
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmExit();
+        if (!didPop) _askToLeave();
       },
       child: Stack(
         fit: StackFit.expand,
@@ -90,7 +94,7 @@ class _MatchSetupScreenState extends State<MatchSetupScreen> {
               child: Padding(
                 // As around SetupScreen's top buttons, so all three line up.
                 padding: const EdgeInsets.all(8),
-                child: ExitGameButton(onPressed: _confirmExit),
+                child: ExitGameButton(onPressed: _askToLeave),
               ),
             ),
           ),

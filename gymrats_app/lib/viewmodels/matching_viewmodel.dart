@@ -90,9 +90,7 @@ class MatchingViewModel extends ChangeNotifier {
   Future<void> start() async {
     if (_disposed) return;
     final session = ++_session;
-    _startedAt = _clock();
-    _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _startTicker();
     // The name stays through a retry, so the avatar does not flicker.
     _setState(MatchingState(playerName: _state.playerName));
     try {
@@ -127,6 +125,12 @@ class MatchingViewModel extends ChangeNotifier {
   void cancel() {
     _session++;
     _stopTicker();
+  }
+
+  void _startTicker() {
+    _startedAt = _clock();
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
   void _tick() {

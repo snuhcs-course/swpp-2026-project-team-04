@@ -42,11 +42,11 @@ class _MatchingScreenState extends State<MatchingScreen>
 
   /// One radar turn per cycle.
   late final AnimationController _radar;
-  bool _navigated = false;
+  bool _openedVersus = false;
 
   /// True while the cancel dialog is open. A found opponent waits for it:
   /// moving on would replace the dialog, not this screen.
-  bool _confirming = false;
+  bool _askingToLeave = false;
 
   static const _radarPeriod = Duration(seconds: 3);
 
@@ -79,8 +79,8 @@ class _MatchingScreenState extends State<MatchingScreen>
   /// Replaces this screen with the versus screen once an opponent is found.
   void _openVersusIfFound() {
     final matchup = _viewModel.state.matchup;
-    if (matchup == null || _navigated || _confirming || !mounted) return;
-    _navigated = true;
+    if (matchup == null || _openedVersus || _askingToLeave || !mounted) return;
+    _openedVersus = true;
     Navigator.pushReplacementNamed(
       context,
       GymRatsApp.versusRoute,
@@ -90,20 +90,24 @@ class _MatchingScreenState extends State<MatchingScreen>
 
   /// Asks before leaving on a back attempt. 계속하기 keeps searching, or
   /// moves on if an opponent was found meanwhile.
-  Future<void> _confirmCancel() async {
-    _confirming = true;
-    final cancel = await confirmExit(context, const ExitDialog.matching());
-    _confirming = false;
+  Future<void> _askToLeave() async {
+    _askingToLeave = true;
+    final leave = await confirmExit(context, const ExitDialog.matching());
+    _askingToLeave = false;
     if (!mounted) return;
-    if (cancel) {
-      _close();
+    if (leave) {
+      _leave();
     } else {
       _openVersusIfFound();
     }
   }
 
-  /// Leaves for home. The pop makes PopScope cancel the search.
-  void _close() => popToHome(context);
+  /// Goes home. The search stops first, so a result arriving while this
+  /// screen slides away cannot replace home.
+  void _leave() {
+    _viewModel.cancel();
+    popToHome(context);
+  }
 
   @override
   void dispose() {
@@ -115,47 +119,60 @@ class _MatchingScreenState extends State<MatchingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     return ChangeNotifierProvider<MatchingViewModel>.value(
       value: _viewModel,
-      // Back only asks. The ways out (매칭 취소, 매칭 취소 in the dialog) pop
-      // this route, and the pop stops the search, so a result arriving
-      // while this screen slides away cannot replace home.
       child: PopScope<Object?>(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
-          if (didPop) {
-            _viewModel.cancel();
-          } else {
-            _confirmCancel();
-          }
+          if (!didPop) _askToLeave();
         },
         child: Scaffold(
           body: GridBackground(
             child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                child: Column(
-                  children: [
-                    _BattleChip(exercise: widget.exercise),
-                    const SizedBox(height: 28),
-                    Text(
-                      'AI 상대를 찾는 중',
-                      textAlign: TextAlign.center,
-                      style: text.headlineMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(child: _SearchArea(radar: _radar)),
-                    const SizedBox(height: 24),
-                    const _GuideCard(),
-                    const SizedBox(height: 16),
-                    _CancelButton(onPressed: _close),
-                  ],
-                ),
+              child: _MatchingContent(
+                exercise: widget.exercise,
+                radar: _radar,
+                onCancel: _leave,
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MatchingContent extends StatelessWidget {
+  const _MatchingContent({
+    required this.exercise,
+    required this.radar,
+    required this.onCancel,
+  });
+
+  final ExerciseType exercise;
+  final Animation<double> radar;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Column(
+        children: [
+          _BattleChip(exercise: exercise),
+          const SizedBox(height: 28),
+          Text(
+            'AI 상대를 찾는 중',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 12),
+          Expanded(child: _SearchArea(radar: radar)),
+          const SizedBox(height: 24),
+          const _GuideCard(),
+          const SizedBox(height: 16),
+          _CancelButton(onPressed: onCancel),
+        ],
       ),
     );
   }

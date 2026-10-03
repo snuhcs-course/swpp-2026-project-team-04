@@ -37,13 +37,13 @@ class _VersusScreenState extends State<VersusScreen> {
   Future<void> _startSetup() async {
     if (_settingUp) return;
     _settingUp = true;
-    final ready = await Navigator.pushNamed<ExerciseType>(
+    final exercise = await Navigator.pushNamed<ExerciseType>(
       context,
       GymRatsApp.matchSetupRoute,
       arguments: widget.matchup,
     );
     if (!mounted) return;
-    if (ready == null) {
+    if (exercise == null) {
       _settingUp = false;
       return;
     }
@@ -55,7 +55,7 @@ class _VersusScreenState extends State<VersusScreen> {
   }
 
   /// Asks before leaving, on a back attempt or the 게임 나가기 button.
-  Future<void> _confirmExit() async {
+  Future<void> _askToLeave() async {
     final leave = await confirmExit(
       context,
       ExitDialog.game(opponentName: widget.matchup.opponent.name),
@@ -70,57 +70,93 @@ class _VersusScreenState extends State<VersusScreen> {
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmExit();
+        if (!didPop) _askToLeave();
       },
       child: Scaffold(
         body: GridBackground(
           child: Column(
             children: [
-              ColoredBox(
-                color: _Tint.player,
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                    child: Column(
-                      children: [
-                        _Header(
-                          exercise: matchup.exercise,
-                          onExit: _confirmExit,
-                        ),
-                        const SizedBox(height: 16),
-                        _PlayerRow(name: matchup.playerName),
-                      ],
-                    ),
-                  ),
-                ),
+              _PlayerSide(matchup: matchup, onExit: _askToLeave),
+              const Expanded(child: _VsBand()),
+              _OpponentSide(
+                opponent: matchup.opponent,
+                onStartSetup: _startSetup,
               ),
-              Expanded(
-                child: CustomPaint(
-                  painter: const _SplitPainter(),
-                  child: const Center(
-                    child: FittedBox(fit: BoxFit.scaleDown, child: _VsMark()),
-                  ),
-                ),
-              ),
-              ColoredBox(
-                color: _Tint.opponent,
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    child: Column(
-                      children: [
-                        _OpponentRow(opponent: matchup.opponent),
-                        const SizedBox(height: 32),
-                        const _RulesCard(),
-                        const SizedBox(height: 16),
-                        AccentButton(title: '자세 세팅 시작', onPressed: _startSetup),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The top part, on the user's tint: the header, then the user. The tint
+/// runs under the status bar; the content stays below it.
+class _PlayerSide extends StatelessWidget {
+  const _PlayerSide({required this.matchup, required this.onExit});
+
+  final Matchup matchup;
+  final VoidCallback onExit;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: _Tint.player,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: Column(
+            children: [
+              _Header(exercise: matchup.exercise, onExit: onExit),
+              const SizedBox(height: 16),
+              _PlayerRow(name: matchup.playerName),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The band between the two parts: "VS" over the diagonal split.
+class _VsBand extends StatelessWidget {
+  const _VsBand();
+
+  @override
+  Widget build(BuildContext context) {
+    return const CustomPaint(
+      painter: _SplitPainter(),
+      child: Center(
+        child: FittedBox(fit: BoxFit.scaleDown, child: _VsMark()),
+      ),
+    );
+  }
+}
+
+/// The bottom part, on the opponent's tint: the opponent, the rules, and
+/// the button to the pose setup. The tint runs under the navigation bar.
+class _OpponentSide extends StatelessWidget {
+  const _OpponentSide({required this.opponent, required this.onStartSetup});
+
+  final Opponent opponent;
+  final VoidCallback onStartSetup;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: _Tint.opponent,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            children: [
+              _OpponentRow(opponent: opponent),
+              const SizedBox(height: 32),
+              const _RulesCard(),
+              const SizedBox(height: 16),
+              AccentButton(title: '자세 세팅 시작', onPressed: onStartSetup),
             ],
           ),
         ),
