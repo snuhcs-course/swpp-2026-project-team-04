@@ -24,6 +24,10 @@ class _FakeController extends CameraController {
 
   final Completer<void> initGate = Completer();
   Object? initError;
+
+  /// When set, dispose() waits for it, like a slow release.
+  Completer<void>? disposeGate;
+  Object? disposeError;
   bool streaming = false;
   bool disposed = false;
 
@@ -48,9 +52,11 @@ class _FakeController extends CameraController {
 
   @override
   Future<void> dispose() async {
+    await disposeGate?.future;
     disposed = true;
     streaming = false;
     await super.dispose();
+    if (disposeError != null) throw disposeError!;
   }
 }
 
@@ -141,6 +147,49 @@ void main() {
     await second;
     expect(controllers, hasLength(2));
     expect(controllers.first.disposed, isTrue);
+    expect(controllers.last.streaming, isTrue);
+  });
+
+  test('another service opens its camera only after this one is released', () async {
+    final starting = service.start(onImage);
+    await pumpEventQueue();
+    controllers.single.initGate.complete();
+    await starting;
+    final first = controllers.single..disposeGate = Completer();
+    final next = CameraService(
+      listCameras: () async => cameras,
+      createController: (d) {
+        final c = _FakeController(d)..initGate.complete();
+        controllers.add(c);
+        return c;
+      },
+    );
+
+    final stopping = service.stop();
+    final nextStarting = next.start(onImage);
+    await pumpEventQueue();
+    expect(controllers, hasLength(1));
+
+    first.disposeGate!.complete();
+    await stopping;
+    await nextStarting;
+    expect(first.disposed, isTrue);
+    expect(controllers.last.streaming, isTrue);
+    await next.stop();
+  });
+
+  test('a release the plugin rejects does not block the next start', () async {
+    var starting = service.start(onImage);
+    await pumpEventQueue();
+    controllers.single
+      ..disposeError = PlatformException(code: 'IllegalStateException')
+      ..initGate.complete();
+    await starting;
+    starting = service.start(onImage);
+    await pumpEventQueue();
+    controllers.last.initGate.complete();
+    await starting;
+    expect(controllers, hasLength(2));
     expect(controllers.last.streaming, isTrue);
   });
 

@@ -1,12 +1,11 @@
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/exercise_type.dart';
-import '../models/pose_frame.dart';
 import '../services/pose/setup_checker.dart';
 import '../viewmodels/setup_viewmodel.dart';
+import '../widgets/pose_camera_view.dart';
 
 const _readyColor = Colors.greenAccent;
 
@@ -20,9 +19,23 @@ class SetupScreen extends StatefulWidget {
     required this.exercise,
     this.showDebugTools = false,
     this.createViewModel,
+    this.exitOrientations = const [DeviceOrientation.portraitUp],
   });
 
+  /// The phone may lie on the floor in either orientation. Upside-down
+  /// portrait is left out, like most Android apps.
+  static const orientations = [
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ];
+
   final ExerciseType exercise;
+
+  /// Orientations restored when the screen closes. The rest of the app is
+  /// portrait only; a screen that keeps the phone on the floor passes
+  /// [orientations] instead.
+  final List<DeviceOrientation> exitOrientations;
 
   /// Draws the detected landmarks on the preview and prints the checker
   /// values (reason, fps, hold, auto start, thresholds) to the debug log,
@@ -54,9 +67,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
         SetupViewModel(exercise: widget.exercise);
     WidgetsBinding.instance.addObserver(this);
     _viewModel.addListener(_onViewModelChanged);
-    // The phone may lie on the floor in either orientation. Upside-down
-    // portrait is left out, like most Android apps.
-    SystemChrome.setPreferredOrientations(_setupOrientations);
+    SystemChrome.setPreferredOrientations(SetupScreen.orientations);
     _viewModel.start();
   }
 
@@ -69,12 +80,6 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
     }
     _orientation = orientation;
   }
-
-  static const _setupOrientations = [
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ];
 
   void _onViewModelChanged() {
     if (widget.showDebugTools) _logDebug();
@@ -135,11 +140,14 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
   static String _s(Duration d) =>
       '${(d.inMilliseconds / 1000).toStringAsFixed(1)}s';
 
-  /// Leaves the screen with the exercise, once.
-  void _finish() {
+  /// Leaves the screen with the exercise, once. The camera is released
+  /// first: the next screen opens its own camera right away, and this
+  /// screen is only disposed after the exit transition.
+  Future<void> _finish() async {
     if (_finished || !mounted) return;
     _finished = true;
-    Navigator.pop(context, widget.exercise);
+    await _viewModel.releaseCamera();
+    if (mounted) Navigator.pop(context, widget.exercise);
   }
 
   @override
@@ -161,8 +169,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _viewModel.removeListener(_onViewModelChanged);
     _viewModel.dispose();
-    // The rest of the app is portrait only.
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setPreferredOrientations(widget.exitOrientations);
     super.dispose();
   }
 
@@ -181,7 +188,13 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
               fit: StackFit.expand,
               children: [
                 if (running)
-                  _CameraView(viewModel: vm, showLandmarks: showDebug)
+                  PoseCameraView(
+                    controller: vm.cameraController,
+                    frame: state.lastFrame,
+                    mirror: vm.isFrontCamera,
+                    showLandmarks: showDebug,
+                    isVisible: vm.isVisible,
+                  )
                 else
                   _PhaseMessage(viewModel: vm),
                 if (running) _ReadyBorder(ready: state.status.isReady),
@@ -209,89 +222,6 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
       ),
     );
   }
-}
-
-/// Camera preview filling the screen, with optional landmark dots.
-class _CameraView extends StatelessWidget {
-  const _CameraView({required this.viewModel, required this.showLandmarks});
-
-  final SetupViewModel viewModel;
-  final bool showLandmarks;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = viewModel.cameraController;
-    final previewSize = controller?.value.previewSize;
-    if (controller == null ||
-        !controller.value.isInitialized ||
-        previewSize == null) {
-      return const ColoredBox(color: Colors.black);
-    }
-    final frame = viewModel.state.lastFrame;
-    // previewSize is always landscape (width > height). Swap it when the
-    // screen is portrait so the preview box matches the screen. Landmarks are
-    // in the upright image for the current device orientation, so they line
-    // up with the box in both orientations.
-    final landscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
-    return ClipRect(
-      child: FittedBox(
-        fit: BoxFit.cover,
-        child: SizedBox(
-          width: landscape ? previewSize.width : previewSize.height,
-          height: landscape ? previewSize.height : previewSize.width,
-          child: CameraPreview(
-            controller,
-            child: showLandmarks && frame != null
-                ? CustomPaint(
-                    painter: _LandmarkPainter(
-                      frame: frame,
-                      mirror: viewModel.isFrontCamera,
-                      isVisible: (k) => viewModel.isVisible(k, frame),
-                    ),
-                  )
-                : null,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Draws detected landmarks: green when visible, red otherwise.
-class _LandmarkPainter extends CustomPainter {
-  _LandmarkPainter({
-    required this.frame,
-    required this.mirror,
-    required this.isVisible,
-  });
-
-  final PoseFrame frame;
-
-  /// The front camera preview is mirrored, ML Kit coordinates are not.
-  final bool mirror;
-  final bool Function(Keypoint keypoint) isVisible;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sx = size.width / frame.imageWidth;
-    final sy = size.height / frame.imageHeight;
-    final radius = size.shortestSide / 90;
-    final visible = Paint()..color = _readyColor;
-    final hidden = Paint()..color = Colors.redAccent;
-    for (final k in frame.keypoints.values) {
-      final x = k.x * sx;
-      canvas.drawCircle(
-        Offset(mirror ? size.width - x : x, k.y * sy),
-        radius,
-        isVisible(k) ? visible : hidden,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_LandmarkPainter old) =>
-      old.frame != frame || old.mirror != mirror;
 }
 
 class _ReadyBorder extends StatelessWidget {
