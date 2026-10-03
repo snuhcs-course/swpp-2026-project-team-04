@@ -3,9 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'models/exercise_type.dart';
+import 'models/matchup.dart';
 import 'screens/coming_soon_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/matching_screen.dart';
 import 'screens/setup_screen.dart';
+import 'screens/versus_screen.dart';
+import 'services/matching/bot_matchmaker.dart';
+import 'services/matching/matchmaker.dart';
 import 'services/user/in_memory_user_repository.dart';
 import 'services/user/user_repository.dart';
 import 'theme/app_theme.dart';
@@ -22,13 +27,18 @@ class GymRatsApp extends StatelessWidget {
 
   static const setupRoute = '/setup';
   static const matchingRoute = '/matching';
+  static const versusRoute = '/versus';
+  static const battleRoute = '/battle';
 
   @override
   Widget build(BuildContext context) {
-    // One repository for the whole app. It sits above the navigator, so
-    // every route sees the same data.
-    return Provider<UserRepository>(
-      create: (_) => InMemoryUserRepository(),
+    // One repository and one matchmaker for the whole app. They sit above
+    // the navigator, so every route sees the same ones.
+    return MultiProvider(
+      providers: [
+        Provider<UserRepository>(create: (_) => InMemoryUserRepository()),
+        Provider<Matchmaker>(create: (_) => BotMatchmaker()),
+      ],
       child: MaterialApp(
         title: 'GymRats',
         theme: AppTheme.dark,
@@ -39,10 +49,22 @@ class GymRatsApp extends StatelessWidget {
             builder: (_) =>
                 SetupScreen(exercise: settings.arguments! as ExerciseType),
           ),
-          // Placeholder until MatchingScreen is built.
           matchingRoute => MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) => const ComingSoonScreen(message: '매칭 중 화면은 구현 예정'),
+            builder: (_) =>
+                MatchingScreen(exercise: settings.arguments! as ExerciseType),
+          ),
+          versusRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                VersusScreen(matchup: settings.arguments! as Matchup),
+          ),
+          // Placeholder until P10 builds the battle screen. It will read the
+          // Matchup from settings.arguments, like the versus route.
+          battleRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                const ComingSoonScreen(message: '배틀 화면은 P10에서 구현 예정'),
           ),
           _ => null,
         },

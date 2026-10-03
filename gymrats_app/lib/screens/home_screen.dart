@@ -10,6 +10,7 @@ import '../models/user_profile.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
+import '../widgets/accent_button.dart';
 import '../widgets/grid_background.dart';
 
 /// First screen: greets the user and starts a battle against the AI.
@@ -42,7 +43,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startMatching() {
-    Navigator.pushNamed(context, GymRatsApp.matchingRoute);
+    Navigator.pushNamed(
+      context,
+      GymRatsApp.matchingRoute,
+      arguments: ExerciseType.pushUp,
+    );
   }
 
   @override
@@ -92,7 +97,11 @@ class _HomeContent extends StatelessWidget {
           bestReps: profile.bestReps,
         ),
         const SizedBox(height: 20),
-        _StartButton(onPressed: onStart),
+        AccentButton(
+          title: 'AI와 1v1 대결',
+          hint: '${battleDuration.inSeconds}초 안에 더 많이 하면 승리',
+          onPressed: onStart,
+        ),
         if (lastMatch != null) ...[
           const SizedBox(height: 32),
           const _SectionHeader('최근 경기'),
@@ -300,71 +309,6 @@ class _PushUpPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PushUpPainter oldDelegate) => false;
-}
-
-/// Big lime button: title and hint on the left, an arrow on the right, and a
-/// soft lime glow underneath.
-class _StartButton extends StatelessWidget {
-  const _StartButton({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  static const _radius = BorderRadius.all(Radius.circular(AppTheme.cardRadius));
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: _radius,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accent.withValues(alpha: 0.22),
-            offset: const Offset(0, 14),
-            blurRadius: 36,
-          ),
-        ],
-      ),
-      child: FilledButton(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.fromLTRB(24, 18, 20, 18),
-          shape: const RoundedRectangleBorder(borderRadius: _radius),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'AI와 1v1 대결',
-                    style: text.headlineSmall?.copyWith(
-                      color: AppColors.background,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${battleDuration.inSeconds}초 안에 더 많이 하면 승리',
-                    style: text.bodyMedium?.copyWith(
-                      color: AppColors.background,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Icon(
-              Icons.arrow_forward_rounded,
-              size: 28,
-              color: AppColors.background,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// The latest battle in one line: result badge, exercise and opponent, score.

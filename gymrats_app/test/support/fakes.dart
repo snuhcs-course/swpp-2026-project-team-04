@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:camera/camera.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/user_profile.dart';
+import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/pose_estimator.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
@@ -134,5 +137,25 @@ class FakeUserRepository implements UserRepository {
     await gate?.future;
     if (error != null) throw error!;
     return profile;
+  }
+}
+
+/// Returns [opponent], or throws [error] when set, like a server would.
+class FakeMatchmaker implements Matchmaker {
+  Opponent opponent = const Opponent(name: 'RepBot', isBot: true);
+  Exception? error;
+
+  /// Exercises asked for, in order.
+  final List<ExerciseType> requests = [];
+
+  /// When set, findOpponent() waits for it, like a long search.
+  Completer<void>? gate;
+
+  @override
+  Future<Opponent> findOpponent(ExerciseType exercise) async {
+    requests.add(exercise);
+    await gate?.future;
+    if (error != null) throw error!;
+    return opponent;
   }
 }

@@ -37,7 +37,8 @@ void main() {
       );
   });
 
-  /// Opens HomeScreen on a phone-sized screen, with a stub matching route.
+  /// Opens HomeScreen on a phone-sized screen, with a stub matching route
+  /// that shows its argument.
   Future<void> open(
     WidgetTester tester, {
     Size size = const Size(412, 915),
@@ -52,8 +53,9 @@ void main() {
           createViewModel: () => HomeViewModel(repository: repository),
         ),
         routes: {
-          GymRatsApp.matchingRoute: (_) =>
-              const Scaffold(body: Text('matching')),
+          GymRatsApp.matchingRoute: (context) => Scaffold(
+            body: Text('matching ${ModalRoute.of(context)!.settings.arguments}'),
+          ),
         },
       ),
     );
@@ -288,11 +290,11 @@ void main() {
     expect(repository.fetchCount, 2);
   });
 
-  testWidgets('the start button opens the matching route', (tester) async {
+  testWidgets('the start button opens matching for push-ups', (tester) async {
     await open(tester);
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pumpAndSettle();
-    expect(find.text('matching'), findsOneWidget);
+    expect(find.text('matching ${ExerciseType.pushUp}'), findsOneWidget);
   });
 
   testWidgets('fits a small phone without overflow', (tester) async {
