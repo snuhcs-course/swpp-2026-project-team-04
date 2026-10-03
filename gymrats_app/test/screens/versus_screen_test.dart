@@ -5,6 +5,8 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/widgets/exit_dialog.dart';
+import 'package:gymrats_app/widgets/exit_game_button.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 
 const _matchup = Matchup(
@@ -26,9 +28,9 @@ void main() {
   late _PushLog pushes;
 
   /// Opens VersusScreen from a home page. The match setup route is a stub
-  /// with a "ready" button that returns the exercise and a "back" button
-  /// that returns null, like MatchSetupScreen. The battle route shows its
-  /// matchup.
+  /// that shows the matchup it received, with a "ready" button that returns
+  /// the exercise and a "back" button that returns null, like
+  /// MatchSetupScreen. The battle route shows its matchup.
   Future<void> open(
     WidgetTester tester, {
     Matchup matchup = _matchup,
@@ -59,13 +61,16 @@ void main() {
           GymRatsApp.matchSetupRoute => MaterialPageRoute<ExerciseType>(
             settings: settings,
             builder: (context) {
-              final exercise = settings.arguments! as ExerciseType;
+              final matchup = settings.arguments! as Matchup;
               return Scaffold(
                 body: Column(
                   children: [
-                    Text('setup ${exercise.name}'),
+                    Text(
+                      'setup ${matchup.exercise.name} '
+                      'vs ${matchup.opponent.name}',
+                    ),
                     TextButton(
-                      onPressed: () => Navigator.pop(context, exercise),
+                      onPressed: () => Navigator.pop(context, matchup.exercise),
                       child: const Text('ready'),
                     ),
                     TextButton(
@@ -98,10 +103,13 @@ void main() {
   int setupPushes() =>
       pushes.names.where((name) => name == GymRatsApp.matchSetupRoute).length;
 
-  /// The dialog's 매칭 취소. On this screen the words are only a tooltip.
-  final dialogCancel = find.descendant(
-    of: find.byType(AlertDialog),
-    matching: find.text('매칭 취소'),
+  /// The 게임 나가기 button at the top left.
+  final exitButton = find.byType(ExitGameButton);
+
+  /// The dialog's 게임 나가기, not the button on the screen.
+  final dialogExit = find.descendant(
+    of: find.byType(ExitDialog),
+    matching: find.text('게임 나가기'),
   );
 
   testWidgets('shows me versus RepBot, the rules and the setup button', (
@@ -109,7 +117,8 @@ void main() {
   ) async {
     await open(tester);
     expect(find.byType(GridBackground), findsOneWidget);
-    expect(find.byTooltip('매칭 취소'), findsOneWidget);
+    expect(exitButton, findsOneWidget);
+    expect(find.text('게임 나가기'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsOneWidget);
     expect(find.text('푸쉬업 · 60초'), findsOneWidget);
     expect(find.text('나'), findsOneWidget);
@@ -130,6 +139,23 @@ void main() {
     // No tier, record, or auto-cancel countdown.
     expect(find.textContaining('승률'), findsNothing);
     expect(find.textContaining('15'), findsNothing);
+  });
+
+  testWidgets('게임 나가기 on the left; MATCH FOUND over the exercise, '
+      'right aligned', (tester) async {
+    await open(tester);
+    final exit = tester.getRect(exitButton);
+    final found = tester.getRect(find.text('MATCH FOUND'));
+    final exercise = tester.getRect(find.text('푸쉬업 · 60초'));
+    expect(exit.left, 20);
+    expect(found.left, greaterThan(exit.right));
+    // Two lines, both ending at the right padding.
+    expect(found.bottom, lessThanOrEqualTo(exercise.top));
+    expect(found.right, 412 - 20);
+    expect(exercise.right, 412 - 20);
+    // Side by side with the button.
+    expect(found.top, greaterThanOrEqualTo(exit.top));
+    expect(exercise.bottom, lessThanOrEqualTo(exit.bottom));
   });
 
   testWidgets('fonts and colors: lime for me, pink for the opponent', (
@@ -180,41 +206,56 @@ void main() {
     expect(find.byIcon(Icons.smart_toy_rounded), findsNothing);
   });
 
-  testWidgets('system back keeps the screen and asks; 계속하기 stays', (
+  final asks = <(String, Future<void> Function(WidgetTester))>[
+    ('system back', (tester) => tester.binding.handlePopRoute()),
+    ('the 게임 나가기 button', (tester) => tester.tap(exitButton)),
+  ];
+  for (final (name, ask) in asks) {
+    testWidgets('$name keeps the screen and asks; 계속하기 stays', (
+      tester,
+    ) async {
+      await open(tester);
+      await ask(tester);
+      await tester.pumpAndSettle();
+      expect(find.text('게임에서 나갈까요?'), findsOneWidget);
+      expect(find.text('MATCH FOUND'), findsOneWidget);
+
+      await tester.tap(find.text('계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExitDialog), findsNothing);
+      expect(find.text('MATCH FOUND'), findsOneWidget);
+    });
+
+    testWidgets('$name, then 게임 나가기 in the dialog, goes home', (
+      tester,
+    ) async {
+      await open(tester);
+      await ask(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(dialogExit);
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(VersusScreen), findsNothing);
+    });
+  }
+
+  testWidgets('the dialog names the opponent from the matchup', (
     tester,
   ) async {
-    await open(tester);
-    await tester.binding.handlePopRoute();
+    await open(
+      tester,
+      matchup: const Matchup(
+        exercise: ExerciseType.pushUp,
+        playerName: '우현',
+        opponent: Opponent(name: 'IronBot', isBot: true),
+      ),
+    );
+    await tester.tap(exitButton);
     await tester.pumpAndSettle();
-    expect(find.text('매칭을 취소할까요?'), findsOneWidget);
-    expect(find.text('MATCH FOUND'), findsOneWidget);
-
-    await tester.tap(find.text('계속하기'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(find.text('MATCH FOUND'), findsOneWidget);
-  });
-
-  testWidgets('매칭 취소 in the back dialog goes home', (tester) async {
-    await open(tester);
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    await tester.tap(dialogCancel);
-    await tester.pumpAndSettle();
-    expect(find.text('home'), findsOneWidget);
-    expect(find.byType(VersusScreen), findsNothing);
-  });
-
-  testWidgets('the close button cancels the matching without asking', (
-    tester,
-  ) async {
-    await open(tester);
-    await tester.tap(find.byTooltip('매칭 취소'));
-    await tester.pump();
-    expect(find.byType(AlertDialog), findsNothing);
-    await tester.pumpAndSettle();
-    expect(find.text('home'), findsOneWidget);
-    expect(find.byType(VersusScreen), findsNothing);
+    expect(
+      find.text('IronBot과의 대결이 취소되고\n홈으로 돌아가요.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('back from setup stays here, and setup can open again', (
@@ -223,7 +264,7 @@ void main() {
     await open(tester);
     await tester.tap(find.text('자세 세팅 시작'));
     await tester.pumpAndSettle();
-    expect(find.text('setup pushUp'), findsOneWidget);
+    expect(find.text('setup pushUp vs RepBot'), findsOneWidget);
 
     await tester.tap(find.text('back'));
     await tester.pumpAndSettle();
@@ -231,7 +272,7 @@ void main() {
 
     await tester.tap(find.text('자세 세팅 시작'));
     await tester.pumpAndSettle();
-    expect(find.text('setup pushUp'), findsOneWidget);
+    expect(find.text('setup pushUp vs RepBot'), findsOneWidget);
     expect(setupPushes(), 2);
   });
 
@@ -273,6 +314,12 @@ void main() {
   testWidgets('fits a small phone without overflow', (tester) async {
     await open(tester, size: const Size(360, 640));
     expect(find.text('자세 세팅 시작'), findsOneWidget);
+    expect(find.text('MATCH FOUND'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(exitButton);
+    await tester.pumpAndSettle();
+    expect(find.byType(ExitDialog), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

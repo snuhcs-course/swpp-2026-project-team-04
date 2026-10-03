@@ -8,6 +8,7 @@ import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/matching_viewmodel.dart';
+import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 
 import '../support/fakes.dart';
@@ -92,7 +93,7 @@ void main() {
 
   /// The dialog's 매칭 취소, not the button on the screen.
   final dialogCancel = find.descendant(
-    of: find.byType(AlertDialog),
+    of: find.byType(ExitDialog),
     matching: find.text('매칭 취소'),
   );
 
@@ -101,7 +102,8 @@ void main() {
   ) async {
     await open(tester);
     expect(find.byType(GridBackground), findsOneWidget);
-    expect(find.byTooltip('닫기'), findsOneWidget);
+    // No close button at the top; 매칭 취소 at the bottom is the way out.
+    expect(find.byIcon(Icons.close_rounded), findsNothing);
     expect(find.text('푸쉬업 · 60초 · 1v1'), findsOneWidget);
     expect(find.text('AI 상대를 찾는 중'), findsOneWidget);
     expect(find.text('기다리는 동안 자리를 준비해 두세요'), findsOneWidget);
@@ -156,7 +158,6 @@ void main() {
   });
 
   final ways = <(String, Future<void> Function(WidgetTester))>[
-    ('the close button', (tester) => tester.tap(find.byTooltip('닫기'))),
     ('매칭 취소', (tester) => tester.tap(find.text('매칭 취소'))),
     (
       '매칭 취소 in the back dialog',
@@ -189,11 +190,12 @@ void main() {
     await open(tester);
     await back(tester);
     expect(find.text('매칭을 취소할까요?'), findsOneWidget);
+    expect(find.text('상대 찾기를 멈추고\n홈으로 돌아가요.'), findsOneWidget);
     expect(find.byType(MatchingScreen), findsOneWidget);
 
     await tester.tap(find.text('계속하기'));
     await transition(tester);
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(ExitDialog), findsNothing);
     expect(find.text('AI 상대를 찾는 중'), findsOneWidget);
     expect(tester.hasRunningAnimations, isTrue);
 

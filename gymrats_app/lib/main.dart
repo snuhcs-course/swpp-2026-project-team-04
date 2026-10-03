@@ -66,7 +66,7 @@ class GymRatsApp extends StatelessWidget {
           matchSetupRoute => MaterialPageRoute<ExerciseType>(
             settings: settings,
             builder: (_) =>
-                MatchSetupScreen(exercise: settings.arguments! as ExerciseType),
+                MatchSetupScreen(matchup: settings.arguments! as Matchup),
           ),
           // Placeholder until P10 builds the battle screen. It will read the
           // Matchup from settings.arguments, like the versus route.

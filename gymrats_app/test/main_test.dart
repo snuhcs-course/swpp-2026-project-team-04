@@ -12,6 +12,7 @@ import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
+import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -42,15 +43,16 @@ void main() {
     expect(find.text('RepBot'), findsOneWidget);
     expect(find.text('AI'), findsOneWidget);
 
-    // System back only asks; 매칭 취소 in the dialog goes home.
+    // System back only asks; 게임 나가기 in the dialog goes home.
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('매칭을 취소할까요?'), findsOneWidget);
+    expect(find.text('게임에서 나갈까요?'), findsOneWidget);
+    expect(find.text('RepBot과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsOneWidget);
     await tester.tap(
       find.descendant(
-        of: find.byType(AlertDialog),
-        matching: find.text('매칭 취소'),
+        of: find.byType(ExitDialog),
+        matching: find.text('게임 나가기'),
       ),
     );
     await tester.pumpAndSettle();
@@ -89,23 +91,29 @@ void main() {
     final context = tester.element(find.byType(HomeScreen));
     // Builds the screens without showing them: shown, they would ask the
     // real camera plugin for permission.
-    Widget screenFor(String name) {
-      final route = generate(
-        RouteSettings(name: name, arguments: ExerciseType.pushUp),
-      );
+    Widget screenFor(String name, Object arguments) {
+      final route = generate(RouteSettings(name: name, arguments: arguments));
       expect(route, isA<MaterialPageRoute<ExerciseType>>());
       return (route! as MaterialPageRoute<ExerciseType>).builder(context);
     }
 
+    const matchup = Matchup(
+      exercise: ExerciseType.pushUp,
+      playerName: '우현',
+      opponent: BotMatchmaker.bot,
+    );
     expect(
-      screenFor(GymRatsApp.matchSetupRoute),
+      screenFor(GymRatsApp.matchSetupRoute, matchup),
       isA<MatchSetupScreen>().having(
-        (screen) => screen.exercise,
-        'exercise',
-        ExerciseType.pushUp,
+        (screen) => screen.matchup,
+        'matchup',
+        same(matchup),
       ),
     );
-    expect(screenFor(GymRatsApp.setupRoute), isA<SetupScreen>());
+    expect(
+      screenFor(GymRatsApp.setupRoute, ExerciseType.pushUp),
+      isA<SetupScreen>(),
+    );
   });
 
   testWidgets('the battle route is a placeholder until P10', (tester) async {

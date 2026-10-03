@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
+import 'package:gymrats_app/widgets/exit_dialog.dart';
+import 'package:gymrats_app/widgets/exit_game_button.dart';
 
 import '../support/fakes.dart';
 import '../support/pose_fixtures.dart';
+
+const _matchup = Matchup(
+  exercise: ExerciseType.pushUp,
+  playerName: '우현',
+  opponent: Opponent(name: 'RepBot', isBot: true),
+);
 
 void main() {
   late FakeCameraService camera;
@@ -49,7 +58,7 @@ void main() {
         .push(
           MaterialPageRoute<ExerciseType>(
             builder: (_) => MatchSetupScreen(
-              exercise: ExerciseType.pushUp,
+              matchup: _matchup,
               createViewModel: () => SetupViewModel(
                 exercise: ExerciseType.pushUp,
                 camera: camera,
@@ -72,25 +81,39 @@ void main() {
     await tester.pump();
   }
 
-  /// Opens the dialog with system back.
-  Future<void> back(WidgetTester tester) async {
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-  }
+  /// The 게임 나가기 button on top of SetupScreen.
+  final exitButton = find.byType(ExitGameButton);
 
-  /// The 매칭 취소 button on top of SetupScreen; the dialog has its own.
-  final cancelButton = find.ancestor(
-    of: find.descendant(
-      of: find.byType(MatchSetupScreen),
-      matching: find.text('매칭 취소'),
+  /// The dialog's 게임 나가기, not the button on the screen.
+  final dialogExit = find.descendant(
+    of: find.byType(ExitDialog),
+    matching: find.text('게임 나가기'),
+  );
+
+  /// The ways to open the dialog, each pumped until it is shown.
+  final asks = <(String, Future<void> Function(WidgetTester))>[
+    (
+      'system back',
+      (tester) async {
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+      },
     ),
-    matching: find.bySubtype<FilledButton>(),
-  );
-
-  final dialogCancel = find.descendant(
-    of: find.byType(AlertDialog),
-    matching: find.text('매칭 취소'),
-  );
+    (
+      'SetupScreen\'s back button',
+      (tester) async {
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+      },
+    ),
+    (
+      'the 게임 나가기 button',
+      (tester) async {
+        await tester.tap(exitButton);
+        await tester.pumpAndSettle();
+      },
+    ),
+  ];
 
   /// SetupScreen's round button with [tooltip], tap area included.
   Finder setupButton(String tooltip) => find.ancestor(
@@ -99,76 +122,84 @@ void main() {
   );
 
   for (final size in const [Size(360, 640), Size(640, 360)]) {
-    testWidgets('매칭 취소 sits at the top center, clear of Back and Switch camera '
-        '(${size.width.toInt()}x${size.height.toInt()})', (tester) async {
+    testWidgets('게임 나가기 sits at the top center, clear of Back and Switch '
+        'camera (${size.width.toInt()}x${size.height.toInt()})', (
+      tester,
+    ) async {
       await open(tester, size: size);
       expect(find.byType(SetupScreen), findsOneWidget);
-      final cancel = tester.getRect(cancelButton);
-      expect(cancel.center.dx, moreOrLessEquals(size.width / 2));
+      final exit = tester.getRect(exitButton);
+      expect(exit.center.dx, moreOrLessEquals(size.width / 2));
       for (final tooltip in ['Back', 'Switch camera']) {
         final button = tester.getRect(setupButton(tooltip));
-        expect(cancel.overlaps(button), isFalse, reason: tooltip);
+        expect(exit.overlaps(button), isFalse, reason: tooltip);
         // On one line with SetupScreen's buttons.
-        expect(cancel.center.dy, moreOrLessEquals(button.center.dy));
+        expect(exit.center.dy, moreOrLessEquals(button.center.dy));
       }
 
       // SetupScreen's buttons still get their taps.
       await tester.tap(find.byTooltip('Switch camera'));
       await tester.pump();
       expect(camera.switchCount, 1);
+
+      // The dialog fits too.
+      await tester.tap(exitButton);
+      await tester.pumpAndSettle();
+      expect(find.byType(ExitDialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   }
 
-  testWidgets('system back keeps the screen and asks; 계속하기 stays', (
-    tester,
-  ) async {
-    await open(tester);
-    await back(tester);
-    expect(find.text('매칭을 취소할까요?'), findsOneWidget);
-    expect(find.byType(MatchSetupScreen), findsOneWidget);
+  for (final (name, ask) in asks) {
+    testWidgets('$name keeps the screen and asks; 계속하기 stays', (
+      tester,
+    ) async {
+      await open(tester);
+      await ask(tester);
+      expect(find.text('게임에서 나갈까요?'), findsOneWidget);
+      expect(find.text('RepBot과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
+      expect(find.byType(MatchSetupScreen), findsOneWidget);
+      // Setup goes on under the dialog.
+      expect(camera.isStreaming, isTrue);
 
-    await tester.tap(find.text('계속하기'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(find.byType(MatchSetupScreen), findsOneWidget);
-    expect(camera.isStreaming, isTrue);
-    expect(popped, isNull);
-  });
+      await tester.tap(find.text('계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExitDialog), findsNothing);
+      expect(find.byType(MatchSetupScreen), findsOneWidget);
+      expect(camera.isStreaming, isTrue);
+      expect(popped, isNull);
+    });
+  }
 
-  testWidgets('SetupScreen\'s back button asks the same', (tester) async {
-    await open(tester);
-    await tester.tap(find.byTooltip('Back'));
-    await tester.pumpAndSettle();
-    expect(find.text('매칭을 취소할까요?'), findsOneWidget);
-    expect(find.byType(MatchSetupScreen), findsOneWidget);
-  });
+  for (final (name, ask) in [asks.first, asks.last]) {
+    testWidgets('$name, then 게임 나가기 in the dialog, goes home, closing '
+        'versus too', (tester) async {
+      await open(tester);
+      await ask(tester);
+      await tester.tap(dialogExit);
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+      expect(find.text('versus'), findsNothing);
+      expect(find.byType(MatchSetupScreen), findsNothing);
+      expect(popped, isNull);
+      expect(camera.isStreaming, isFalse);
+      expect(estimator.closed, isTrue);
+    });
 
-  testWidgets('매칭 취소 in the back dialog goes home, closing versus too', (
-    tester,
-  ) async {
-    await open(tester);
-    await back(tester);
-    await tester.tap(dialogCancel);
-    await tester.pumpAndSettle();
-    expect(find.text('home'), findsOneWidget);
-    expect(find.text('versus'), findsNothing);
-    expect(find.byType(MatchSetupScreen), findsNothing);
-    expect(popped, isNull);
-    expect(camera.isStreaming, isFalse);
-    expect(estimator.closed, isTrue);
-  });
-
-  testWidgets('the 매칭 취소 button goes home without asking', (tester) async {
-    await open(tester);
-    await tester.tap(cancelButton);
-    await tester.pump();
-    expect(find.byType(AlertDialog), findsNothing);
-    await tester.pumpAndSettle();
-    expect(find.text('home'), findsOneWidget);
-    expect(find.text('versus'), findsNothing);
-    expect(popped, isNull);
-    expect(camera.isStreaming, isFalse);
-  });
+    testWidgets('setup finishing under the dialog from $name closes it and '
+        'passes the exercise on', (tester) async {
+      await open(tester);
+      await ask(tester);
+      // The user ignores the dialog and holds Ready until the auto start.
+      for (final ms in [0, 1500, 3000, 4500]) {
+        await feed(tester, ms, standingFrame());
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(ExitDialog), findsNothing);
+      expect(popped, ExerciseType.pushUp);
+      expect(find.text('versus'), findsOneWidget);
+    });
+  }
 
   testWidgets('Start pops with the exercise', (tester) async {
     await open(tester);
@@ -180,28 +211,16 @@ void main() {
     expect(find.text('versus'), findsOneWidget);
   });
 
-  testWidgets('setup finishing under the dialog closes it and passes the '
-      'exercise on', (tester) async {
-    await open(tester);
-    await back(tester);
-    // The user ignores the dialog and holds Ready until the auto start.
-    for (final ms in [0, 1500, 3000, 4500]) {
-      await feed(tester, ms, standingFrame());
-    }
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(popped, ExerciseType.pushUp);
-    expect(find.text('versus'), findsOneWidget);
-  });
-
-  testWidgets('a frame arriving after 매칭 취소 cannot finish setup and pop '
+  testWidgets('a frame arriving after 게임 나가기 cannot finish setup and pop '
       'home', (tester) async {
     await open(tester);
     for (final ms in [0, 1500, 3000]) {
       await feed(tester, ms, standingFrame());
     }
     expect(find.text('Ready! Starting in 2...'), findsOneWidget);
-    await tester.tap(cancelButton);
+    await tester.tap(exitButton);
+    await tester.pumpAndSettle();
+    await tester.tap(dialogExit);
     await tester.pump();
     // The screen is sliding away; this frame would end the countdown.
     await feed(tester, 4500, standingFrame());

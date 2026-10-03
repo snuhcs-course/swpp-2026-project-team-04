@@ -11,16 +11,15 @@ import '../services/matching/matchmaker.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/matching_viewmodel.dart';
-import '../widgets/cancel_matching.dart';
+import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/player_avatar.dart';
-import '../widgets/square_close_button.dart';
 
 /// Searches for an AI opponent while a radar spins, then moves on to the
 /// versus screen.
 ///
-/// Back only asks whether to cancel; the close and 매칭 취소 buttons go home
-/// right away. The versus screen replaces this one rather than covering it.
+/// Back only asks whether to cancel; the 매칭 취소 button goes home right
+/// away. The versus screen replaces this one rather than covering it.
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({
     super.key,
@@ -93,7 +92,7 @@ class _MatchingScreenState extends State<MatchingScreen>
   /// moves on if an opponent was found meanwhile.
   Future<void> _confirmCancel() async {
     _confirming = true;
-    final cancel = await confirmCancelMatching(context);
+    final cancel = await confirmExit(context, const ExitDialog.matching());
     _confirming = false;
     if (!mounted) return;
     if (cancel) {
@@ -119,8 +118,8 @@ class _MatchingScreenState extends State<MatchingScreen>
     final text = Theme.of(context).textTheme;
     return ChangeNotifierProvider<MatchingViewModel>.value(
       value: _viewModel,
-      // Back only asks. The ways out (X, 매칭 취소, 매칭 취소 in the dialog)
-      // pop this route, and the pop stops the search, so a result arriving
+      // Back only asks. The ways out (매칭 취소, 매칭 취소 in the dialog) pop
+      // this route, and the pop stops the search, so a result arriving
       // while this screen slides away cannot replace home.
       child: PopScope<Object?>(
         canPop: false,
@@ -135,10 +134,10 @@ class _MatchingScreenState extends State<MatchingScreen>
           body: GridBackground(
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                 child: Column(
                   children: [
-                    _TopBar(exercise: widget.exercise, onClose: _close),
+                    _BattleChip(exercise: widget.exercise),
                     const SizedBox(height: 28),
                     Text(
                       'AI 상대를 찾는 중',
@@ -158,26 +157,6 @@ class _MatchingScreenState extends State<MatchingScreen>
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Close button on the left and the battle chip in the middle.
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.exercise, required this.onClose});
-
-  final ExerciseType exercise;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SquareCloseButton(tooltip: '닫기', onPressed: onClose),
-        Expanded(child: Center(child: _BattleChip(exercise: exercise))),
-        // Balances the close button so the chip sits in the middle.
-        const SizedBox(width: SquareCloseButton.size),
-      ],
     );
   }
 }

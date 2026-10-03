@@ -7,18 +7,17 @@ import '../models/exercise_type_korean.dart';
 import '../models/matchup.dart';
 import '../theme/app_theme.dart';
 import '../widgets/accent_button.dart';
-import '../widgets/cancel_matching.dart';
+import '../widgets/exit_dialog.dart';
+import '../widgets/exit_game_button.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/player_avatar.dart';
-import '../widgets/square_close_button.dart';
 
 /// Shows who battles whom, the rules, and the button to the pose setup.
 ///
 /// It has no view model: everything it shows comes from [matchup], and its
-/// only behavior is navigation. Back only asks whether to cancel the
-/// matching; the close button at the top left cancels right away. When
-/// setup finishes, the battle screen replaces this one, so going back from
-/// the battle leads home.
+/// only behavior is navigation. Back and the 게임 나가기 button at the top
+/// left both ask before going home. When setup finishes, the battle screen
+/// replaces this one, so going back from the battle leads home.
 class VersusScreen extends StatefulWidget {
   const VersusScreen({super.key, required this.matchup});
 
@@ -34,14 +33,14 @@ class _VersusScreenState extends State<VersusScreen> {
 
   /// Opens the pose setup. MatchSetupScreen returns the exercise when the
   /// user is ready, or null if it closes without one; then this screen
-  /// stays. (Its 매칭 취소 closes this screen as well.)
+  /// stays. (Its 게임 나가기 closes this screen as well.)
   Future<void> _startSetup() async {
     if (_settingUp) return;
     _settingUp = true;
     final ready = await Navigator.pushNamed<ExerciseType>(
       context,
       GymRatsApp.matchSetupRoute,
-      arguments: widget.matchup.exercise,
+      arguments: widget.matchup,
     );
     if (!mounted) return;
     if (ready == null) {
@@ -55,11 +54,14 @@ class _VersusScreenState extends State<VersusScreen> {
     );
   }
 
-  /// Asks before leaving on a back attempt.
-  Future<void> _confirmCancel() async {
-    final cancel = await confirmCancelMatching(context);
+  /// Asks before leaving, on a back attempt or the 게임 나가기 button.
+  Future<void> _confirmExit() async {
+    final leave = await confirmExit(
+      context,
+      ExitDialog.game(opponentName: widget.matchup.opponent.name),
+    );
     if (!mounted) return;
-    if (cancel) popToHome(context);
+    if (leave) popToHome(context);
   }
 
   @override
@@ -68,7 +70,7 @@ class _VersusScreenState extends State<VersusScreen> {
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmCancel();
+        if (!didPop) _confirmExit();
       },
       child: Scaffold(
         body: GridBackground(
@@ -79,14 +81,12 @@ class _VersusScreenState extends State<VersusScreen> {
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    // Top 12 puts the close button where the matching
-                    // screen has its own.
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                     child: Column(
                       children: [
                         _Header(
                           exercise: matchup.exercise,
-                          onCancel: () => popToHome(context),
+                          onExit: _confirmExit,
                         ),
                         const SizedBox(height: 16),
                         _PlayerRow(name: matchup.playerName),
@@ -178,40 +178,46 @@ class _SplitPainter extends CustomPainter {
   bool shouldRepaint(_SplitPainter oldDelegate) => false;
 }
 
-/// The close button and "MATCH FOUND" on the left, the exercise and length
-/// on the right.
+/// The 게임 나가기 button on the left; "MATCH FOUND" over the exercise and
+/// length on the right.
 class _Header extends StatelessWidget {
-  const _Header({required this.exercise, required this.onCancel});
+  const _Header({required this.exercise, required this.onExit});
 
   final ExerciseType exercise;
-  final VoidCallback onCancel;
+  final VoidCallback onExit;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Row(
       children: [
-        SquareCloseButton(tooltip: '매칭 취소', onPressed: onCancel),
-        const SizedBox(width: 14),
-        Text(
-          'MATCH FOUND',
-          style: text.displaySmall?.copyWith(
-            fontSize: 15,
-            letterSpacing: 3,
-            color: AppColors.accent,
-          ),
-        ),
+        ExitGameButton(onPressed: onExit),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            '${exercise.koreanName} · ${battleDuration.inSeconds}초',
-            textAlign: TextAlign.right,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: text.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.textSecondary,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'MATCH FOUND',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.displaySmall?.copyWith(
+                  fontSize: 15,
+                  letterSpacing: 3,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${exercise.koreanName} · ${battleDuration.inSeconds}초',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: text.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
         ),
       ],
