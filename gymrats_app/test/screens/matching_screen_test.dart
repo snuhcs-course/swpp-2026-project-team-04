@@ -84,6 +84,18 @@ void main() {
     await transition(tester);
   }
 
+  /// System back. One frame later the dialog it opens takes taps.
+  Future<void> back(WidgetTester tester) async {
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+  }
+
+  /// The dialog's 매칭 취소, not the button on the screen.
+  final dialogCancel = find.descendant(
+    of: find.byType(AlertDialog),
+    matching: find.text('매칭 취소'),
+  );
+
   testWidgets('shows the chip, title, guide card and the user\'s initial', (
     tester,
   ) async {
@@ -146,7 +158,13 @@ void main() {
   final ways = <(String, Future<void> Function(WidgetTester))>[
     ('the close button', (tester) => tester.tap(find.byTooltip('닫기'))),
     ('매칭 취소', (tester) => tester.tap(find.text('매칭 취소'))),
-    ('system back', (tester) => tester.binding.handlePopRoute()),
+    (
+      '매칭 취소 in the back dialog',
+      (tester) async {
+        await back(tester);
+        await tester.tap(dialogCancel);
+      },
+    ),
   ];
   for (final (name, leave) in ways) {
     testWidgets('$name goes home, and a result arriving meanwhile is ignored', (
@@ -164,6 +182,61 @@ void main() {
       expect(find.textContaining('versus'), findsNothing);
     });
   }
+
+  testWidgets('system back keeps the screen and asks; 계속하기 searches on', (
+    tester,
+  ) async {
+    await open(tester);
+    await back(tester);
+    expect(find.text('매칭을 취소할까요?'), findsOneWidget);
+    expect(find.byType(MatchingScreen), findsOneWidget);
+
+    await tester.tap(find.text('계속하기'));
+    await transition(tester);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('AI 상대를 찾는 중'), findsOneWidget);
+    expect(tester.hasRunningAnimations, isTrue);
+
+    matchmaker.gate!.complete();
+    await transition(tester);
+    expect(find.text('versus 우현 vs RepBot'), findsOneWidget);
+  });
+
+  testWidgets('an opponent found while asking waits; 계속하기 then moves on', (
+    tester,
+  ) async {
+    await open(tester);
+    await back(tester);
+    matchmaker.gate!.complete();
+    await transition(tester);
+    // Moving on now would replace the dialog instead of this screen.
+    expect(find.text('매칭을 취소할까요?'), findsOneWidget);
+    expect(find.textContaining('versus'), findsNothing);
+
+    await tester.tap(find.text('계속하기'));
+    await transition(tester);
+    expect(find.text('versus 우현 vs RepBot'), findsOneWidget);
+    expect(find.byType(MatchingScreen), findsNothing);
+
+    // Replaced, not pushed: going back skips the matching screen.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('home'), findsOneWidget);
+  });
+
+  testWidgets('an opponent found while asking, then 매칭 취소, goes home', (
+    tester,
+  ) async {
+    await open(tester);
+    await back(tester);
+    matchmaker.gate!.complete();
+    await transition(tester);
+    await tester.tap(dialogCancel);
+    await tester.pumpAndSettle();
+    expect(find.text('home'), findsOneWidget);
+    expect(find.byType(MatchingScreen), findsNothing);
+    expect(find.textContaining('versus'), findsNothing);
+  });
 
   testWidgets('a failed search stops the radar and offers a retry', (
     tester,

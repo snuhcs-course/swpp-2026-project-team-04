@@ -11,13 +11,16 @@ import '../services/matching/matchmaker.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/matching_viewmodel.dart';
+import '../widgets/cancel_matching.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/player_avatar.dart';
+import '../widgets/square_close_button.dart';
 
 /// Searches for an AI opponent while a radar spins, then moves on to the
 /// versus screen.
 ///
-/// The versus screen replaces this one, so going back from it leads home.
+/// Back only asks whether to cancel; the close and 매칭 취소 buttons go home
+/// right away. The versus screen replaces this one rather than covering it.
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({
     super.key,
@@ -42,6 +45,10 @@ class _MatchingScreenState extends State<MatchingScreen>
   late final AnimationController _radar;
   bool _navigated = false;
 
+  /// True while the cancel dialog is open. A found opponent waits for it:
+  /// moving on would replace the dialog, not this screen.
+  bool _confirming = false;
+
   static const _radarPeriod = Duration(seconds: 3);
 
   @override
@@ -61,15 +68,19 @@ class _MatchingScreenState extends State<MatchingScreen>
   }
 
   void _onViewModelChanged() {
-    final state = _viewModel.state;
     // The radar only shows while searching.
-    if (state.phase == MatchingPhase.searching) {
+    if (_viewModel.state.phase == MatchingPhase.searching) {
       if (!_radar.isAnimating) _radar.repeat();
     } else {
       _radar.stop();
     }
-    final matchup = state.matchup;
-    if (matchup == null || _navigated || !mounted) return;
+    _openVersusIfFound();
+  }
+
+  /// Replaces this screen with the versus screen once an opponent is found.
+  void _openVersusIfFound() {
+    final matchup = _viewModel.state.matchup;
+    if (matchup == null || _navigated || _confirming || !mounted) return;
     _navigated = true;
     Navigator.pushReplacementNamed(
       context,
@@ -78,8 +89,22 @@ class _MatchingScreenState extends State<MatchingScreen>
     );
   }
 
-  /// Leaves for home. PopScope then cancels the search.
-  void _close() => Navigator.maybePop(context);
+  /// Asks before leaving on a back attempt. 계속하기 keeps searching, or
+  /// moves on if an opponent was found meanwhile.
+  Future<void> _confirmCancel() async {
+    _confirming = true;
+    final cancel = await confirmCancelMatching(context);
+    _confirming = false;
+    if (!mounted) return;
+    if (cancel) {
+      _close();
+    } else {
+      _openVersusIfFound();
+    }
+  }
+
+  /// Leaves for home. The pop makes PopScope cancel the search.
+  void _close() => popToHome(context);
 
   @override
   void dispose() {
@@ -94,11 +119,17 @@ class _MatchingScreenState extends State<MatchingScreen>
     final text = Theme.of(context).textTheme;
     return ChangeNotifierProvider<MatchingViewModel>.value(
       value: _viewModel,
-      // Any way out (X, 매칭 취소, system back) stops the search, so a
-      // result arriving while this screen slides away cannot replace home.
-      child: PopScope(
+      // Back only asks. The ways out (X, 매칭 취소, 매칭 취소 in the dialog)
+      // pop this route, and the pop stops the search, so a result arriving
+      // while this screen slides away cannot replace home.
+      child: PopScope<Object?>(
+        canPop: false,
         onPopInvokedWithResult: (didPop, _) {
-          if (didPop) _viewModel.cancel();
+          if (didPop) {
+            _viewModel.cancel();
+          } else {
+            _confirmCancel();
+          }
         },
         child: Scaffold(
           body: GridBackground(
@@ -138,28 +169,14 @@ class _TopBar extends StatelessWidget {
   final ExerciseType exercise;
   final VoidCallback onClose;
 
-  static const _buttonSize = 46.0;
-
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton(
-          onPressed: onClose,
-          tooltip: '닫기',
-          icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
-          style: IconButton.styleFrom(
-            backgroundColor: AppColors.card,
-            fixedSize: const Size.square(_buttonSize),
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(14)),
-              side: BorderSide(color: AppColors.border),
-            ),
-          ),
-        ),
+        SquareCloseButton(tooltip: '닫기', onPressed: onClose),
         Expanded(child: Center(child: _BattleChip(exercise: exercise))),
         // Balances the close button so the chip sits in the middle.
-        const SizedBox(width: _buttonSize),
+        const SizedBox(width: SquareCloseButton.size),
       ],
     );
   }

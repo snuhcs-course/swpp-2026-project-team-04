@@ -7,14 +7,18 @@ import '../models/exercise_type_korean.dart';
 import '../models/matchup.dart';
 import '../theme/app_theme.dart';
 import '../widgets/accent_button.dart';
+import '../widgets/cancel_matching.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/player_avatar.dart';
+import '../widgets/square_close_button.dart';
 
 /// Shows who battles whom, the rules, and the button to the pose setup.
 ///
 /// It has no view model: everything it shows comes from [matchup], and its
-/// only behavior is navigation. When setup finishes, the battle screen
-/// replaces this one, so going back from the battle leads home.
+/// only behavior is navigation. Back only asks whether to cancel the
+/// matching; the close button at the top left cancels right away. When
+/// setup finishes, the battle screen replaces this one, so going back from
+/// the battle leads home.
 class VersusScreen extends StatefulWidget {
   const VersusScreen({super.key, required this.matchup});
 
@@ -28,14 +32,15 @@ class _VersusScreenState extends State<VersusScreen> {
   /// Set while the setup screen is open, so a second tap does nothing.
   bool _settingUp = false;
 
-  /// Opens the pose setup. SetupScreen returns the exercise when the user
-  /// is ready, or null when they go back; then this screen stays.
+  /// Opens the pose setup. MatchSetupScreen returns the exercise when the
+  /// user is ready, or null if it closes without one; then this screen
+  /// stays. (Its 매칭 취소 closes this screen as well.)
   Future<void> _startSetup() async {
     if (_settingUp) return;
     _settingUp = true;
     final ready = await Navigator.pushNamed<ExerciseType>(
       context,
-      GymRatsApp.setupRoute,
+      GymRatsApp.matchSetupRoute,
       arguments: widget.matchup.exercise,
     );
     if (!mounted) return;
@@ -50,56 +55,74 @@ class _VersusScreenState extends State<VersusScreen> {
     );
   }
 
+  /// Asks before leaving on a back attempt.
+  Future<void> _confirmCancel() async {
+    final cancel = await confirmCancelMatching(context);
+    if (!mounted) return;
+    if (cancel) popToHome(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final matchup = widget.matchup;
-    return Scaffold(
-      body: GridBackground(
-        child: Column(
-          children: [
-            ColoredBox(
-              color: _Tint.player,
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: Column(
-                    children: [
-                      _Header(exercise: matchup.exercise),
-                      const SizedBox(height: 24),
-                      _PlayerRow(name: matchup.playerName),
-                    ],
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmCancel();
+      },
+      child: Scaffold(
+        body: GridBackground(
+          child: Column(
+            children: [
+              ColoredBox(
+                color: _Tint.player,
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    // Top 12 puts the close button where the matching
+                    // screen has its own.
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Column(
+                      children: [
+                        _Header(
+                          exercise: matchup.exercise,
+                          onCancel: () => popToHome(context),
+                        ),
+                        const SizedBox(height: 16),
+                        _PlayerRow(name: matchup.playerName),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: CustomPaint(
-                painter: const _SplitPainter(),
-                child: const Center(
-                  child: FittedBox(fit: BoxFit.scaleDown, child: _VsMark()),
-                ),
-              ),
-            ),
-            ColoredBox(
-              color: _Tint.opponent,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  child: Column(
-                    children: [
-                      _OpponentRow(opponent: matchup.opponent),
-                      const SizedBox(height: 32),
-                      const _RulesCard(),
-                      const SizedBox(height: 16),
-                      AccentButton(title: '자세 세팅 시작', onPressed: _startSetup),
-                    ],
+              Expanded(
+                child: CustomPaint(
+                  painter: const _SplitPainter(),
+                  child: const Center(
+                    child: FittedBox(fit: BoxFit.scaleDown, child: _VsMark()),
                   ),
                 ),
               ),
-            ),
-          ],
+              ColoredBox(
+                color: _Tint.opponent,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    child: Column(
+                      children: [
+                        _OpponentRow(opponent: matchup.opponent),
+                        const SizedBox(height: 32),
+                        const _RulesCard(),
+                        const SizedBox(height: 16),
+                        AccentButton(title: '자세 세팅 시작', onPressed: _startSetup),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -155,17 +178,21 @@ class _SplitPainter extends CustomPainter {
   bool shouldRepaint(_SplitPainter oldDelegate) => false;
 }
 
-/// "MATCH FOUND" on the left, the exercise and length on the right.
+/// The close button and "MATCH FOUND" on the left, the exercise and length
+/// on the right.
 class _Header extends StatelessWidget {
-  const _Header({required this.exercise});
+  const _Header({required this.exercise, required this.onCancel});
 
   final ExerciseType exercise;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Row(
       children: [
+        SquareCloseButton(tooltip: '매칭 취소', onPressed: onCancel),
+        const SizedBox(width: 14),
         Text(
           'MATCH FOUND',
           style: text.displaySmall?.copyWith(

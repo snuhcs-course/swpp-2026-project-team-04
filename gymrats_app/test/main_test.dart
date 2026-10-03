@@ -1,10 +1,12 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
+import 'package:gymrats_app/screens/match_setup_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
+import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
@@ -21,7 +23,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   }
 
-  testWidgets('start leads through matching to versus; back goes home', (
+  testWidgets('start leads through matching to versus; cancelling goes home', (
     tester,
   ) async {
     await tester.pumpWidget(const GymRatsApp());
@@ -40,8 +42,17 @@ void main() {
     expect(find.text('RepBot'), findsOneWidget);
     expect(find.text('AI'), findsOneWidget);
 
-    // System back; the versus screen has no back button.
+    // System back only asks; 매칭 취소 in the dialog goes home.
     await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('매칭을 취소할까요?'), findsOneWidget);
+    expect(find.text('MATCH FOUND'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('매칭 취소'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
   });
@@ -66,6 +77,35 @@ void main() {
     final versus = tester.element(find.byType(VersusScreen));
     expect(versus.read<UserRepository>(), same(repository));
     expect(versus.read<Matchmaker>(), same(matchmaker));
+  });
+
+  testWidgets('the matching flow sets up in MatchSetupScreen; the setup '
+      'route still opens SetupScreen', (tester) async {
+    await tester.pumpWidget(const GymRatsApp());
+    await tester.pumpAndSettle();
+    final generate = tester
+        .widget<MaterialApp>(find.byType(MaterialApp))
+        .onGenerateRoute!;
+    final context = tester.element(find.byType(HomeScreen));
+    // Builds the screens without showing them: shown, they would ask the
+    // real camera plugin for permission.
+    Widget screenFor(String name) {
+      final route = generate(
+        RouteSettings(name: name, arguments: ExerciseType.pushUp),
+      );
+      expect(route, isA<MaterialPageRoute<ExerciseType>>());
+      return (route! as MaterialPageRoute<ExerciseType>).builder(context);
+    }
+
+    expect(
+      screenFor(GymRatsApp.matchSetupRoute),
+      isA<MatchSetupScreen>().having(
+        (screen) => screen.exercise,
+        'exercise',
+        ExerciseType.pushUp,
+      ),
+    );
+    expect(screenFor(GymRatsApp.setupRoute), isA<SetupScreen>());
   });
 
   testWidgets('the battle route is a placeholder until P10', (tester) async {

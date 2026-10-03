@@ -25,9 +25,10 @@ class _PushLog extends NavigatorObserver {
 void main() {
   late _PushLog pushes;
 
-  /// Opens VersusScreen from a home page. The setup route is a stub with
-  /// a "ready" button that returns the exercise and a "back" button that
-  /// returns null, like SetupScreen. The battle route shows its matchup.
+  /// Opens VersusScreen from a home page. The match setup route is a stub
+  /// with a "ready" button that returns the exercise and a "back" button
+  /// that returns null, like MatchSetupScreen. The battle route shows its
+  /// matchup.
   Future<void> open(
     WidgetTester tester, {
     Matchup matchup = _matchup,
@@ -55,7 +56,7 @@ void main() {
           ),
         ),
         onGenerateRoute: (settings) => switch (settings.name) {
-          GymRatsApp.setupRoute => MaterialPageRoute<ExerciseType>(
+          GymRatsApp.matchSetupRoute => MaterialPageRoute<ExerciseType>(
             settings: settings,
             builder: (context) {
               final exercise = settings.arguments! as ExerciseType;
@@ -95,13 +96,20 @@ void main() {
   }
 
   int setupPushes() =>
-      pushes.names.where((name) => name == GymRatsApp.setupRoute).length;
+      pushes.names.where((name) => name == GymRatsApp.matchSetupRoute).length;
+
+  /// The dialog's 매칭 취소. On this screen the words are only a tooltip.
+  final dialogCancel = find.descendant(
+    of: find.byType(AlertDialog),
+    matching: find.text('매칭 취소'),
+  );
 
   testWidgets('shows me versus RepBot, the rules and the setup button', (
     tester,
   ) async {
     await open(tester);
     expect(find.byType(GridBackground), findsOneWidget);
+    expect(find.byTooltip('매칭 취소'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsOneWidget);
     expect(find.text('푸쉬업 · 60초'), findsOneWidget);
     expect(find.text('나'), findsOneWidget);
@@ -170,6 +178,43 @@ void main() {
     expect(find.text('M'), findsOneWidget);
     expect(find.text('AI'), findsNothing);
     expect(find.byIcon(Icons.smart_toy_rounded), findsNothing);
+  });
+
+  testWidgets('system back keeps the screen and asks; 계속하기 stays', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('매칭을 취소할까요?'), findsOneWidget);
+    expect(find.text('MATCH FOUND'), findsOneWidget);
+
+    await tester.tap(find.text('계속하기'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('MATCH FOUND'), findsOneWidget);
+  });
+
+  testWidgets('매칭 취소 in the back dialog goes home', (tester) async {
+    await open(tester);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(dialogCancel);
+    await tester.pumpAndSettle();
+    expect(find.text('home'), findsOneWidget);
+    expect(find.byType(VersusScreen), findsNothing);
+  });
+
+  testWidgets('the close button cancels the matching without asking', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.tap(find.byTooltip('매칭 취소'));
+    await tester.pump();
+    expect(find.byType(AlertDialog), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.text('home'), findsOneWidget);
+    expect(find.byType(VersusScreen), findsNothing);
   });
 
   testWidgets('back from setup stays here, and setup can open again', (
