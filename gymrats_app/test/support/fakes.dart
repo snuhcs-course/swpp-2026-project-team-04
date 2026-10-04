@@ -4,6 +4,7 @@ import 'dart:collection';
 import 'package:camera/camera.dart';
 import 'package:flutter/widgets.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
@@ -128,6 +129,7 @@ class FakePoseEstimator implements PoseEstimator {
 }
 
 /// Returns [profile], or throws [error] when set, like a server would.
+/// Saved battles go to [saved]; [profile] does not change by itself.
 class FakeUserRepository implements UserRepository {
   UserProfile profile = const UserProfile(name: '우현');
   Exception? error;
@@ -136,12 +138,24 @@ class FakeUserRepository implements UserRepository {
   /// When set, fetchProfile() waits for it, like a slow server.
   Completer<void>? gate;
 
+  /// Battles saved, in order.
+  final List<MatchRecord> saved = [];
+
+  /// When set, saveMatch() throws it.
+  Exception? saveError;
+
   @override
   Future<UserProfile> fetchProfile() async {
     fetchCount++;
     await gate?.future;
     if (error != null) throw error!;
     return profile;
+  }
+
+  @override
+  Future<void> saveMatch(MatchRecord record) async {
+    if (saveError != null) throw saveError!;
+    saved.add(record);
   }
 }
 
@@ -165,13 +179,17 @@ class FakeMatchmaker implements Matchmaker {
   }
 }
 
-/// Names of the routes pushed, in order.
+/// Names of the routes pushed or put in place of another, in order.
 class PushLog extends NavigatorObserver {
   final names = <String?>[];
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
       names.add(route.settings.name);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
+      names.add(newRoute?.settings.name);
 }
 
 /// Judges nothing itself: each frame closes the next rep queued with

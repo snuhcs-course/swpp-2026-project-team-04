@@ -10,6 +10,7 @@ import '../models/battle_rules.dart';
 import '../models/matchup.dart';
 import '../services/device/device_controls.dart';
 import '../services/opponent/bot_opponent.dart';
+import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
@@ -60,6 +61,7 @@ class _BattleScreenState extends State<BattleScreen>
           matchup: widget.matchup,
           counter: RepCounterViewModel(roundLength: battleDuration),
           opponent: BotOpponent(),
+          repository: context.read<UserRepository>(),
           sound: const DeviceRepSound(),
         );
     _viewModel.addListener(_onViewModelChanged);

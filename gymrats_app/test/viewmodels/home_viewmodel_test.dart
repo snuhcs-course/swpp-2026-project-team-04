@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 
 import '../support/fakes.dart';
@@ -33,6 +34,34 @@ void main() {
     await vm.load();
     expect(vm.state.phase, HomePhase.ready);
     expect(vm.state.profile, same(repository.profile));
+  });
+
+  test(
+    'a reload keeps the profile on screen until the new one comes',
+    () async {
+      await vm.load();
+      final shown = vm.state.profile;
+      repository
+        ..profile = const UserProfile(name: '우현', bestReps: 40)
+        ..gate = Completer();
+      final reloading = vm.load();
+      expect(vm.state.phase, HomePhase.ready);
+      expect(vm.state.profile, same(shown));
+
+      repository.gate!.complete();
+      await reloading;
+      expect(vm.state.phase, HomePhase.ready);
+      expect(vm.state.profile!.bestReps, 40);
+    },
+  );
+
+  test('a failed reload keeps the profile', () async {
+    await vm.load();
+    final shown = vm.state.profile;
+    repository.error = Exception('offline');
+    await vm.load();
+    expect(vm.state.phase, HomePhase.ready);
+    expect(vm.state.profile, same(shown));
   });
 
   test('load while loading fetches only once', () async {

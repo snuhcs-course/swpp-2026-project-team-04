@@ -297,6 +297,49 @@ void main() {
     expect(find.text('matching ${ExerciseType.pushUp}'), findsOneWidget);
   });
 
+  testWidgets('coming back home loads the latest battle and best record', (
+    tester,
+  ) async {
+    // The app's observer tells HomeScreen when it shows again.
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        navigatorObservers: [GymRatsApp.routeObserver],
+        home: HomeScreen(
+          createViewModel: () => HomeViewModel(repository: repository),
+        ),
+        routes: {
+          GymRatsApp.matchingRoute: (_) =>
+              const Scaffold(body: Text('a battle')),
+        },
+      ),
+    );
+    await tester.pump();
+    expect(find.text('개인 최고 32회'), findsOneWidget);
+    expect(find.text('24'), findsOneWidget);
+
+    await tester.tap(find.text('AI와 1v1 대결'));
+    await tester.pumpAndSettle();
+    // The battle was saved meanwhile.
+    repository.profile = const UserProfile(
+      name: '우현',
+      bestReps: 40,
+      lastMatch: MatchRecord(
+        exercise: ExerciseType.pushUp,
+        opponentName: 'RepBot',
+        myReps: 40,
+        opponentReps: 30,
+      ),
+    );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(repository.fetchCount, 2);
+    expect(find.text('개인 최고 40회'), findsOneWidget);
+    expect(find.text('40'), findsOneWidget);
+    expect(find.text('30'), findsOneWidget);
+    expect(find.text('24'), findsNothing);
+  });
+
   testWidgets('fits a small phone without overflow', (tester) async {
     repository.profile = const UserProfile(
       name: '우현',

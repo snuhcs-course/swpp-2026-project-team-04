@@ -61,6 +61,7 @@ void main() {
         roundLength: battleDuration,
       ),
       opponent: opponent,
+      repository: FakeUserRepository(),
       sound: FakeRepSound(),
       now: () => DateTime(2026, 10, 4, 14, 32),
     );

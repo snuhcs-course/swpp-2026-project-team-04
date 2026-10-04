@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/demo/battle_demo.dart';
+import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/battle_result.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
+import 'package:gymrats_app/screens/result_screen.dart';
+import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/widgets/landmark_overlay.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
 
@@ -61,5 +67,40 @@ void main() {
     expect(find.text('배틀 데모'), findsOneWidget);
     expect(find.text('경기 시간 60초'), findsOneWidget);
     expect(find.text('배틀 시작'), findsOneWidget);
+  });
+
+  testWidgets('the result screen shows; 다시 매칭 opens the next battle', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const BattleDemoApp());
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    // What the battle does when time is up. A demo round runs on real
+    // time, so the test does not wait for it.
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .pushReplacementNamed(
+          GymRatsApp.resultRoute,
+          arguments: BattleResult(
+            matchup: const Matchup(
+              exercise: ExerciseType.pushUp,
+              playerName: '우현',
+              opponent: BotMatchmaker.bot,
+            ),
+            myReps: 8,
+            myInvalidReps: 1,
+            opponentReps: 7,
+            endedAt: DateTime(2026, 10, 4, 14, 32),
+          ),
+        );
+    await tester.pumpAndSettle();
+    expect(find.byType(ResultScreen), findsOneWidget);
+    expect(find.text('WIN'), findsOneWidget);
+
+    await tester.tap(find.text('다시 매칭'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(ResultScreen), findsNothing);
+    expect(find.byType(BattleScreen), findsOneWidget);
   });
 }

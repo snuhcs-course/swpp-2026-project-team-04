@@ -1,3 +1,4 @@
+import 'battle_rules.dart';
 import 'match_record.dart';
 import 'matchup.dart';
 
@@ -12,6 +13,7 @@ class BattleResult {
     required this.myInvalidReps,
     required this.opponentReps,
     required this.endedAt,
+    this.roundLength = battleDuration,
   });
 
   final Matchup matchup;
@@ -27,6 +29,9 @@ class BattleResult {
 
   /// When time ran out, for the result screen's header.
   final DateTime endedAt;
+
+  /// How long the round was, for the result screen's header.
+  final Duration roundLength;
 
   /// What the home screen keeps of this battle.
   MatchRecord get record => MatchRecord(

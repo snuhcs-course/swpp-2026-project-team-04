@@ -26,6 +26,7 @@ void main() {
   late FakeRepJudge judge;
   late FakeOpponentSource opponent;
   late FakeRepSound sound;
+  late FakeUserRepository repository;
   late Duration now;
   late BattleViewModel vm;
 
@@ -35,6 +36,7 @@ void main() {
     judge = FakeRepJudge();
     opponent = FakeOpponentSource();
     sound = FakeRepSound();
+    repository = FakeUserRepository();
     now = Duration.zero;
     vm = BattleViewModel(
       matchup: _matchup,
@@ -46,6 +48,7 @@ void main() {
         roundLength: battleDuration,
       ),
       opponent: opponent,
+      repository: repository,
       sound: sound,
       now: () => _endedAt,
     );
@@ -171,6 +174,41 @@ void main() {
     expect(vm.state.result, same(result));
   });
 
+  test('a battle that runs its full time is saved once', () async {
+    await vm.start();
+    judge.closeRep();
+    await frame(5);
+    opponent.emit();
+    await pumpEventQueue();
+    await frame(60);
+    await pumpEventQueue();
+    expect(repository.saved, hasLength(1));
+    final record = repository.saved.single;
+    expect(record.exercise, ExerciseType.pushUp);
+    expect(record.opponentName, 'RepBot');
+    expect(record.myReps, 1);
+    expect(record.opponentReps, 1);
+    expect(vm.state.result!.roundLength, battleDuration);
+  });
+
+  test('a battle left early is not saved', () async {
+    await vm.start();
+    judge.closeRep();
+    await frame(5);
+    vm.leave();
+    await pumpEventQueue();
+    expect(repository.saved, isEmpty);
+  });
+
+  test('a failed save still shows the result', () async {
+    repository.saveError = Exception('offline');
+    await vm.start();
+    await frame(60);
+    await pumpEventQueue();
+    expect(vm.state.phase, BattlePhase.timeUp);
+    expect(vm.state.result, isNotNull);
+  });
+
   test('the rep closed by the last frame counts and still beeps', () async {
     await vm.start();
     judge.closeRep();
@@ -250,6 +288,7 @@ void main() {
           roundLength: battleDuration,
         ),
         opponent: opponent,
+        repository: FakeUserRepository(),
         sound: FakeRepSound(),
         now: () => _endedAt,
       );

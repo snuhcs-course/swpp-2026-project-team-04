@@ -148,28 +148,37 @@ void main() {
     );
   });
 
-  testWidgets('the result route is a placeholder until the result screen', (
-    tester,
-  ) async {
+  testWidgets('after the result, home shows the saved battle', (tester) async {
     await tester.pumpWidget(const GymRatsApp());
     await tester.pumpAndSettle();
+    expect(find.text('개인 최고 32회'), findsOneWidget);
+    final result = BattleResult(
+      matchup: const Matchup(
+        exercise: ExerciseType.pushUp,
+        playerName: '우현',
+        opponent: BotMatchmaker.bot,
+      ),
+      myReps: 40,
+      myInvalidReps: 2,
+      opponentReps: 30,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    );
+    // What the battle does when time is up: save, then show the result.
+    await tester
+        .element(find.byType(HomeScreen))
+        .read<UserRepository>()
+        .saveMatch(result.record);
     tester
         .state<NavigatorState>(find.byType(Navigator))
-        .pushNamed(
-          GymRatsApp.resultRoute,
-          arguments: BattleResult(
-            matchup: const Matchup(
-              exercise: ExerciseType.pushUp,
-              playerName: '우현',
-              opponent: BotMatchmaker.bot,
-            ),
-            myReps: 26,
-            myInvalidReps: 3,
-            opponentReps: 24,
-            endedAt: DateTime(2026, 10, 4, 14, 32),
-          ),
-        );
+        .pushNamed(GymRatsApp.resultRoute, arguments: result);
     await tester.pumpAndSettle();
-    expect(find.text('결과 화면은 다음 단계에서 구현 예정'), findsOneWidget);
+    expect(find.text('WIN'), findsOneWidget);
+    expect(find.text('10개 차이로 이겼어요!'), findsOneWidget);
+
+    await tester.tap(find.text('홈으로'));
+    await tester.pumpAndSettle();
+    expect(find.text('개인 최고 40회'), findsOneWidget);
+    expect(find.text('40'), findsOneWidget);
+    expect(find.text('30'), findsOneWidget);
   });
 }

@@ -7,6 +7,7 @@ import '../models/matchup.dart';
 import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
 import '../services/opponent/opponent_source.dart';
+import '../services/user/user_repository.dart';
 import 'rep_counter_viewmodel.dart';
 
 /// Where the battle is.
@@ -108,11 +109,15 @@ class BattleState {
 /// The opponent plays only while the user's round clock runs. It starts
 /// when the camera first runs, goes on while the camera reopens, and is
 /// held while the app is in the background or the camera has failed.
+///
+/// A battle that runs its full time is saved to the [UserRepository]; one
+/// left early is not.
 class BattleViewModel extends ChangeNotifier {
   BattleViewModel({
     required this.matchup,
     required this.counter,
     required this._opponent,
+    required this._repository,
     required this._sound,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now {
@@ -129,6 +134,7 @@ class BattleViewModel extends ChangeNotifier {
   final RepCounterViewModel counter;
 
   final OpponentSource _opponent;
+  final UserRepository _repository;
   final RepSound _sound;
   final DateTime Function() _now;
   late final StreamSubscription<RepEvent> _myRepSubscription;
@@ -298,6 +304,7 @@ class BattleViewModel extends ChangeNotifier {
       myInvalidReps: counterState.invalidReps,
       opponentReps: _state.opponentReps,
       endedAt: _now(),
+      roundLength: counter.roundLength,
     );
     _setState(
       _state.copyWith(
@@ -308,6 +315,17 @@ class BattleViewModel extends ChangeNotifier {
         result: result,
       ),
     );
+    unawaited(_save(result));
+  }
+
+  /// Keeps the battle for the home screen's latest match and best record.
+  /// A failed save loses only the record; the result still shows.
+  Future<void> _save(BattleResult result) async {
+    try {
+      await _repository.saveMatch(result.record);
+    } on Exception {
+      // The home screen keeps showing the previous record.
+    }
   }
 
   /// The banner shows every verdict, and a counted rep beeps. The last rep

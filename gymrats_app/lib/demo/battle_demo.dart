@@ -10,27 +10,32 @@
 // rejected one, with the four reasons in turn. The camera is a stand-in
 // too: it needs no camera, sends blank frames on a timer, and shows the
 // design's pose as dots. Only these stand-ins differ from the app; the
-// battle screen and its view models are the app's own.
+// battle and result screens and their view models are the app's own.
+// 다시 매칭 on the result screen opens the next battle right away.
 import 'dart:async';
 import 'dart:collection';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../main.dart';
+import '../models/battle_result.dart';
 import '../models/exercise_type.dart';
 import '../models/matchup.dart';
 import '../models/pose_frame.dart';
 import '../models/rep_event.dart';
 import '../screens/battle_screen.dart';
-import '../screens/coming_soon_screen.dart';
+import '../screens/result_screen.dart';
 import '../services/device/device_controls.dart';
 import '../services/matching/bot_matchmaker.dart';
 import '../services/opponent/bot_opponent.dart';
 import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
 import '../services/pose/rep_judge.dart';
+import '../services/user/in_memory_user_repository.dart';
+import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
@@ -63,19 +68,28 @@ class BattleDemoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GymRats battle demo',
-      theme: AppTheme.dark,
-      home: _DemoHome(roundLength: roundLength),
-      onGenerateRoute: (settings) => switch (settings.name) {
-        // As in the app until the result screen is built.
-        GymRatsApp.resultRoute => MaterialPageRoute<void>(
-          settings: settings,
-          builder: (_) =>
-              const ComingSoonScreen(message: '결과 화면은 다음 단계에서 구현 예정'),
-        ),
-        _ => null,
-      },
+    // Battles are saved here, as in the app, for as long as the demo runs.
+    return Provider<UserRepository>(
+      create: (_) => InMemoryUserRepository(),
+      child: MaterialApp(
+        title: 'GymRats battle demo',
+        theme: AppTheme.dark,
+        home: _DemoHome(roundLength: roundLength),
+        onGenerateRoute: (settings) => switch (settings.name) {
+          GymRatsApp.resultRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                ResultScreen(result: settings.arguments! as BattleResult),
+          ),
+          // 다시 매칭 on the result screen skips the search here too and
+          // opens the next battle.
+          GymRatsApp.matchingRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => _TouchBattle(roundLength: roundLength),
+          ),
+          _ => null,
+        },
+      ),
     );
   }
 }
@@ -162,17 +176,24 @@ class _TouchBattleState extends State<_TouchBattle> {
   final _judge = _TouchJudge();
 
   /// Handed to BattleScreen, which disposes it.
-  late final BattleViewModel _viewModel = BattleViewModel(
-    matchup: _matchup,
-    counter: RepCounterViewModel(
-      camera: _StandInCamera(),
-      estimator: _StandInEstimator(),
-      judge: _judge,
-      roundLength: widget.roundLength,
-    ),
-    opponent: BotOpponent(roundLength: widget.roundLength),
-    sound: const DeviceRepSound(),
-  );
+  late final BattleViewModel _viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = BattleViewModel(
+      matchup: _matchup,
+      counter: RepCounterViewModel(
+        camera: _StandInCamera(),
+        estimator: _StandInEstimator(),
+        judge: _judge,
+        roundLength: widget.roundLength,
+      ),
+      opponent: BotOpponent(roundLength: widget.roundLength),
+      repository: context.read<UserRepository>(),
+      sound: const DeviceRepSound(),
+    );
+  }
 
   void _touch(Offset position, {required bool counted}) {
     if (_viewModel.counter.state.phase != CounterPhase.running) return;
