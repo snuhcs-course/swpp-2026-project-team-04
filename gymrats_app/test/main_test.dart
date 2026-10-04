@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
@@ -116,20 +118,58 @@ void main() {
     );
   });
 
-  testWidgets('the battle route is a placeholder until P10', (tester) async {
+  testWidgets('the battle route builds the battle for the matchup', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const GymRatsApp());
+    await tester.pumpAndSettle();
+    final generate = tester
+        .widget<MaterialApp>(find.byType(MaterialApp))
+        .onGenerateRoute!;
+    const matchup = Matchup(
+      exercise: ExerciseType.pushUp,
+      playerName: '우현',
+      opponent: BotMatchmaker.bot,
+    );
+    // Built without showing it: shown, it would open the real camera.
+    final route = generate(
+      const RouteSettings(name: GymRatsApp.battleRoute, arguments: matchup),
+    );
+    expect(route, isA<MaterialPageRoute<void>>());
+    expect(
+      (route! as MaterialPageRoute<void>).builder(
+        tester.element(find.byType(HomeScreen)),
+      ),
+      isA<BattleScreen>().having(
+        (screen) => screen.matchup,
+        'matchup',
+        same(matchup),
+      ),
+    );
+  });
+
+  testWidgets('the result route is a placeholder until the result screen', (
+    tester,
+  ) async {
     await tester.pumpWidget(const GymRatsApp());
     await tester.pumpAndSettle();
     tester
         .state<NavigatorState>(find.byType(Navigator))
         .pushNamed(
-          GymRatsApp.battleRoute,
-          arguments: const Matchup(
-            exercise: ExerciseType.pushUp,
-            playerName: '우현',
-            opponent: BotMatchmaker.bot,
+          GymRatsApp.resultRoute,
+          arguments: BattleResult(
+            matchup: const Matchup(
+              exercise: ExerciseType.pushUp,
+              playerName: '우현',
+              opponent: BotMatchmaker.bot,
+            ),
+            myReps: 26,
+            myInvalidReps: 3,
+            opponentReps: 24,
+            endedAt: DateTime(2026, 10, 4, 14, 32),
           ),
         );
     await tester.pumpAndSettle();
-    expect(find.text('배틀 화면은 P10에서 구현 예정'), findsOneWidget);
+    expect(find.text('결과 화면은 다음 단계에서 구현 예정'), findsOneWidget);
   });
 }

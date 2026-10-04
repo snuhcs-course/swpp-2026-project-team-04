@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'models/exercise_type.dart';
 import 'models/matchup.dart';
+import 'screens/battle_screen.dart';
 import 'screens/coming_soon_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/match_setup_screen.dart';
@@ -33,6 +34,7 @@ class GymRatsApp extends StatelessWidget {
   /// SetupScreen inside the matching flow, with a way to cancel the match.
   static const matchSetupRoute = '/match-setup';
   static const battleRoute = '/battle';
+  static const resultRoute = '/result';
 
   @override
   Widget build(BuildContext context) {
@@ -68,12 +70,17 @@ class GymRatsApp extends StatelessWidget {
             builder: (_) =>
                 MatchSetupScreen(matchup: settings.arguments! as Matchup),
           ),
-          // Placeholder until P10 builds the battle screen. It will read the
-          // Matchup from settings.arguments, like the versus route.
           battleRoute => MaterialPageRoute<void>(
             settings: settings,
             builder: (_) =>
-                const ComingSoonScreen(message: '배틀 화면은 P10에서 구현 예정'),
+                BattleScreen(matchup: settings.arguments! as Matchup),
+          ),
+          // Placeholder until the result screen is built. It will read the
+          // BattleResult from settings.arguments.
+          resultRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                const ComingSoonScreen(message: '결과 화면은 다음 단계에서 구현 예정'),
           ),
           _ => null,
         },
