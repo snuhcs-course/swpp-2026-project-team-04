@@ -118,8 +118,8 @@ class BattleViewModel extends ChangeNotifier {
   }) : _now = now ?? DateTime.now {
     _state = BattleState(remaining: counter.roundLength);
     counter.addListener(_onCounterChanged);
-    _myReps = counter.reps.listen(_onMyRep);
-    _opponentReps = _opponent.reps.listen(_onOpponentRep);
+    _myRepSubscription = counter.reps.listen(_onMyRep);
+    _opponentRepSubscription = _opponent.reps.listen(_onOpponentRep);
   }
 
   final Matchup matchup;
@@ -131,16 +131,21 @@ class BattleViewModel extends ChangeNotifier {
   final OpponentSource _opponent;
   final RepSound _sound;
   final DateTime Function() _now;
-  late final StreamSubscription<RepEvent> _myReps;
-  late final StreamSubscription<RepEvent> _opponentReps;
+  late final StreamSubscription<RepEvent> _myRepSubscription;
+  late final StreamSubscription<RepEvent> _opponentRepSubscription;
 
   late BattleState _state;
-  bool _opponentStarted = false;
+
+  /// Whether the counter's round clock has started: the camera has run once
+  /// since [start] or [retry]. The opponent starts at the same moment.
+  bool _roundClockStarted = false;
   bool _disposed = false;
 
-  /// Ends the round if no frame does. The rep counter only checks its clock
-  /// when a frame is processed, so a stalled camera would never end it.
+  /// Ends the round if frames stop coming; see [_armWatchdog].
   Timer? _watchdog;
+
+  /// How long past the end of the round the watchdog waits for the counter
+  /// to end it by itself.
   static const _watchdogGrace = Duration(seconds: 2);
 
   BattleState get state => _state;
@@ -164,7 +169,7 @@ class BattleViewModel extends ChangeNotifier {
   Future<void> retry() async {
     if (_state.phase != BattlePhase.failed) return;
     _opponent.stop();
-    _opponentStarted = false;
+    _roundClockStarted = false;
     _setState(BattleState(remaining: counter.roundLength));
     await counter.retry();
   }
@@ -178,6 +183,9 @@ class BattleViewModel extends ChangeNotifier {
     unawaited(counter.finish(stoppedByUser: true));
   }
 
+  /// Called on every counter change, up to once a frame. Keeps the opponent
+  /// and the watchdog in step with the round clock, then follows the
+  /// counter's phase.
   void _onCounterChanged() {
     if (_roundOver) return;
     final counterState = counter.state;
@@ -185,11 +193,11 @@ class BattleViewModel extends ChangeNotifier {
     _armWatchdog(counterState);
     switch (counterState.phase) {
       case CounterPhase.starting:
-        _follow(counterState, BattlePhase.starting);
+        _copyMySide(counterState, BattlePhase.starting);
       case CounterPhase.running:
-        _follow(counterState, BattlePhase.playing);
+        _copyMySide(counterState, BattlePhase.playing);
       case CounterPhase.paused:
-        _follow(counterState, BattlePhase.paused);
+        _copyMySide(counterState, BattlePhase.paused);
       case CounterPhase.permissionDenied ||
           CounterPhase.cameraError ||
           CounterPhase.detectorError:
@@ -201,8 +209,9 @@ class BattleViewModel extends ChangeNotifier {
     }
   }
 
-  /// Copies the user's side of the round from the counter.
-  void _follow(RepCounterState counterState, BattlePhase phase) {
+  /// Copies the user's side of the round from the counter: valid and
+  /// rejected reps, and the time left.
+  void _copyMySide(RepCounterState counterState, BattlePhase phase) {
     _setState(
       _state.copyWith(
         phase: phase,
@@ -213,15 +222,29 @@ class BattleViewModel extends ChangeNotifier {
     );
   }
 
-  /// Runs the opponent exactly while the counter's round clock runs: the
-  /// counter only leaves out the time between pause and resume.
+  /// Keeps the opponent in step with the user's round clock. The counter
+  /// starts that clock the first time the camera runs, and from then on
+  /// stops it only between [pause] and [resume].
+  ///
+  /// - starting: before the first run the round has not begun, so the
+  ///   opponent waits. After it, the camera is only reopening (after a
+  ///   rotation or the background) while the clock runs, so it goes on.
+  /// - running: the first run starts the opponent; later ones resume it.
+  /// - paused: held, like the clock.
+  /// - failed: held. [retry] restarts both sides from zero anyway.
+  /// - finished: stopped.
+  ///
+  /// This runs on every counter change. Resuming a running opponent or
+  /// pausing a held one does nothing.
   void _syncOpponent(CounterPhase phase) {
     switch (phase) {
-      case CounterPhase.running || CounterPhase.starting:
-        if (_opponentStarted) {
+      case CounterPhase.starting:
+        if (_roundClockStarted) _opponent.resume();
+      case CounterPhase.running:
+        if (_roundClockStarted) {
           _opponent.resume();
-        } else if (phase == CounterPhase.running) {
-          _opponentStarted = true;
+        } else {
+          _roundClockStarted = true;
           _opponent.start();
         }
       case CounterPhase.paused ||
@@ -234,21 +257,35 @@ class BattleViewModel extends ChangeNotifier {
     }
   }
 
-  /// Rearms the watchdog for the time left, while the round clock runs.
+  /// Whether the user's round clock runs in [phase]: it has started, and
+  /// the camera is running or only reopening. The same cases in which
+  /// [_syncOpponent] keeps the opponent going.
+  bool _isRoundClockRunning(CounterPhase phase) =>
+      _roundClockStarted &&
+      (phase == CounterPhase.running || phase == CounterPhase.starting);
+
+  /// Ends the round in case frames stop coming. The counter checks its
+  /// clock only when it processes a frame, so with a stalled camera time
+  /// would never run out.
+  ///
+  /// The timer is set again on every counter change, for the time left plus
+  /// [_watchdogGrace]. While frames come, it is replaced before it fires and
+  /// the counter ends the round itself. It is off while the clock is held.
   void _armWatchdog(RepCounterState counterState) {
     _watchdog?.cancel();
-    final running =
-        counterState.phase == CounterPhase.running ||
-        counterState.phase == CounterPhase.starting;
-    if (!_opponentStarted || !running) return;
+    if (!_isRoundClockRunning(counterState.phase)) return;
     _watchdog = Timer(
       counterState.remaining + _watchdogGrace,
       () => unawaited(counter.finish()),
     );
   }
 
-  /// Only a round that ran out of time has a result; [leave] stops the
-  /// counter too, but marks the battle left first.
+  /// Builds the result once time is up.
+  ///
+  /// The counter also finishes when [leave] stops it, but [leave] marks the
+  /// battle left first and [_onCounterChanged] then ignores the counter. The
+  /// check below is only a guard: a round that ends any other way is left
+  /// without a result.
   void _finishRound(RepCounterState counterState) {
     _watchdog?.cancel();
     if (counterState.roundEnd != RoundEnd.timeUp) {
@@ -304,8 +341,8 @@ class BattleViewModel extends ChangeNotifier {
     _disposed = true;
     _watchdog?.cancel();
     counter.removeListener(_onCounterChanged);
-    unawaited(_myReps.cancel());
-    unawaited(_opponentReps.cancel());
+    unawaited(_myRepSubscription.cancel());
+    unawaited(_opponentRepSubscription.cancel());
     _opponent.dispose();
     counter.dispose();
     super.dispose();

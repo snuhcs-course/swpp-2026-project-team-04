@@ -9,12 +9,15 @@ import '../theme/app_theme.dart';
 /// stage, as in the battle design.
 ///
 /// It dips down and back up once each time [moves] goes up. Give it a box
-/// of the design's 142 × 128 shape.
+/// of [designSize]'s shape.
 class OpponentMannequin extends StatefulWidget {
   const OpponentMannequin({super.key, required this.moves});
 
   /// How many reps the opponent has made so far, valid or not.
   final int moves;
+
+  /// The design's canvas; the painters scale it to their size.
+  static const designSize = Size(142, 128);
 
   /// One dip, down and up again. Shorter than the bot's closest reps.
   static const dipDuration = Duration(milliseconds: 800);
@@ -73,9 +76,6 @@ class _OpponentMannequinState extends State<OpponentMannequin>
   }
 }
 
-/// The design's canvas; painters scale it to their size.
-const _designSize = Size(142, 128);
-
 /// The faint spotlight, the floor grid, the disc, and the figure's shadow.
 /// Nothing here moves.
 class _StagePainter extends CustomPainter {
@@ -111,7 +111,10 @@ class _StagePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas
       ..clipRect(Offset.zero & size)
-      ..scale(size.width / _designSize.width, size.height / _designSize.height);
+      ..scale(
+        size.width / OpponentMannequin.designSize.width,
+        size.height / OpponentMannequin.designSize.height,
+      );
     _paintSpotlight(canvas);
     final line = Paint()
       ..color = AppColors.opponent.withValues(alpha: 0.2)
@@ -325,7 +328,10 @@ class _FigurePainter extends CustomPainter {
     final t = depth.value;
     canvas
       ..clipRect(Offset.zero & size)
-      ..scale(size.width / _designSize.width, size.height / _designSize.height);
+      ..scale(
+        size.width / OpponentMannequin.designSize.width,
+        size.height / OpponentMannequin.designSize.height,
+      );
     final head = Offset.lerp(_headUp, _headDown, t)!;
     final parts = [
       for (final segment in _segments)

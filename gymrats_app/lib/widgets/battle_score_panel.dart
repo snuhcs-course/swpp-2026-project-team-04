@@ -7,6 +7,11 @@ import '../theme/app_theme.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import 'grid_background.dart';
 
+/// The clock and the time bar turn amber once this many seconds are left.
+const _warningSeconds = 10;
+
+bool _isLastSeconds(BattleState state) => state.secondsLeft <= _warningSeconds;
+
 /// The battle's bottom panel: the time bar, both scores with the clock
 /// between them, the share of reps, and the verdict on the user's latest
 /// rep.
@@ -74,9 +79,6 @@ class _TimeBar extends StatelessWidget {
     );
   }
 }
-
-/// The clock and the time bar turn amber for the last 10 seconds.
-bool _isLastSeconds(BattleState state) => state.secondsLeft <= 10;
 
 /// My score, the clock, and the opponent's score, along one bottom line.
 class _Scoreboard extends StatelessWidget {

@@ -27,14 +27,16 @@ class BotOpponent implements OpponentSource {
   final StreamController<RepEvent> _reps = StreamController.broadcast();
 
   List<RepEvent> _plan = const [];
-  int _next = 0;
+
+  /// Index in [_plan] of the next rep to send.
+  int _nextRep = 0;
   bool _stopped = true;
 
-  /// Round time run before the current stretch.
-  Duration _banked = Duration.zero;
+  /// Round time run before the last start or resume. Grows at each pause.
+  Duration _elapsedBeforeResume = Duration.zero;
 
-  /// Clock time the current stretch began; null while paused or stopped.
-  Duration? _runningSince;
+  /// Clock time of the last start or resume; null while paused or stopped.
+  Duration? _resumedAt;
   Timer? _timer;
 
   /// The first rep cannot end before this.
@@ -113,26 +115,26 @@ class BotOpponent implements OpponentSource {
   void start() {
     _timer?.cancel();
     _plan = planRound(_random, roundLength);
-    _next = 0;
+    _nextRep = 0;
     _stopped = false;
-    _banked = Duration.zero;
-    _runningSince = _clock();
+    _elapsedBeforeResume = Duration.zero;
+    _resumedAt = _clock();
     _scheduleNext();
   }
 
   @override
   void pause() {
-    final since = _runningSince;
-    if (since == null) return;
-    _banked += _clock() - since;
-    _runningSince = null;
+    final resumedAt = _resumedAt;
+    if (resumedAt == null) return;
+    _elapsedBeforeResume += _clock() - resumedAt;
+    _resumedAt = null;
     _timer?.cancel();
   }
 
   @override
   void resume() {
-    if (_stopped || _runningSince != null) return;
-    _runningSince = _clock();
+    if (_stopped || _resumedAt != null) return;
+    _resumedAt = _clock();
     _scheduleNext();
   }
 
@@ -140,7 +142,7 @@ class BotOpponent implements OpponentSource {
   void stop() {
     _timer?.cancel();
     _stopped = true;
-    _runningSince = null;
+    _resumedAt = null;
   }
 
   @override
@@ -149,19 +151,22 @@ class BotOpponent implements OpponentSource {
     unawaited(_reps.close());
   }
 
+  /// Round time run so far, leaving out paused time.
   Duration get _elapsed {
-    final since = _runningSince;
-    return since == null ? _banked : _banked + (_clock() - since);
+    final resumedAt = _resumedAt;
+    return resumedAt == null
+        ? _elapsedBeforeResume
+        : _elapsedBeforeResume + (_clock() - resumedAt);
   }
 
   void _scheduleNext() {
-    if (_next >= _plan.length) return;
-    final wait = _plan[_next].at - _elapsed;
+    if (_nextRep >= _plan.length) return;
+    final wait = _plan[_nextRep].at - _elapsed;
     _timer = Timer(wait.isNegative ? Duration.zero : wait, _deliverNext);
   }
 
   void _deliverNext() {
-    _reps.add(_plan[_next++]);
+    _reps.add(_plan[_nextRep++]);
     _scheduleNext();
   }
 }

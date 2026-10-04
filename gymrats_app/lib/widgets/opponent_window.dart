@@ -26,7 +26,6 @@ class OpponentWindow extends StatelessWidget {
   /// 1 on a phone like the design's; smaller with a short camera.
   final double scale;
 
-  static const _width = 142.0;
   static const _radius = BorderRadius.all(Radius.circular(18));
 
   /// The design's near-black pink: a trace of pink over the background.
@@ -38,7 +37,7 @@ class OpponentWindow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: _width * scale,
+      width: OpponentMannequin.designSize.width * scale,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: _surface,
@@ -61,49 +60,58 @@ class OpponentWindow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AspectRatio(
-            aspectRatio: 142 / 128,
+            aspectRatio: OpponentMannequin.designSize.aspectRatio,
             child: OpponentMannequin(moves: moves),
           ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: AppColors.opponent.withValues(alpha: 0.25),
-                ),
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          opponent.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ),
-                      if (opponent.isBot) ...[
-                        const SizedBox(width: 6),
-                        const _AiTag(),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  _LiveLight(live: live),
-                ],
-              ),
-            ),
-          ),
+          _Caption(opponent: opponent, live: live),
         ],
+      ),
+    );
+  }
+}
+
+/// Under a faint pink line: the opponent's name with an AI tag for a bot,
+/// then the LIVE light.
+class _Caption extends StatelessWidget {
+  const _Caption({required this.opponent, required this.live});
+
+  final Opponent opponent;
+  final bool live;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppColors.opponent.withValues(alpha: 0.25)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    opponent.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (opponent.isBot) ...[
+                  const SizedBox(width: 6),
+                  const _AiTag(),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            _LiveLight(live: live),
+          ],
+        ),
       ),
     );
   }

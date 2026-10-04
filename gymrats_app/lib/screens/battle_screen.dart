@@ -42,14 +42,14 @@ class BattleScreen extends StatefulWidget {
 class _BattleScreenState extends State<BattleScreen>
     with WidgetsBindingObserver {
   late final BattleViewModel _viewModel;
-  bool _started = false;
+  bool _cameraStarted = false;
   Orientation? _orientation;
 
   /// True while the leave dialog is open. Time running out closes it.
   bool _askingToLeave = false;
 
   /// Set once 결과 보기 is pressed, so a second tap does nothing.
-  bool _showingResult = false;
+  bool _openedResult = false;
 
   @override
   void initState() {
@@ -74,12 +74,12 @@ class _BattleScreenState extends State<BattleScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final orientation = MediaQuery.orientationOf(context);
-    if (!_started && orientation == Orientation.portrait) {
+    if (!_cameraStarted && orientation == Orientation.portrait) {
       // The camera reads the orientation when it opens, so the round waits
       // for portrait.
-      _started = true;
+      _cameraStarted = true;
       _viewModel.start();
-    } else if (_started && orientation != _orientation) {
+    } else if (_cameraStarted && orientation != _orientation) {
       _viewModel.onScreenRotated();
     }
     _orientation = orientation;
@@ -127,10 +127,10 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   /// Replaces this screen with the result screen.
-  void _showResult() {
+  void _openResult() {
     final result = _viewModel.state.result;
-    if (_showingResult || result == null) return;
-    _showingResult = true;
+    if (_openedResult || result == null) return;
+    _openedResult = true;
     Navigator.pushReplacementNamed(
       context,
       GymRatsApp.resultRoute,
@@ -172,7 +172,7 @@ class _BattleScreenState extends State<BattleScreen>
                 if (timeUp)
                   TimeUpOverlay(
                     result: _viewModel.state.result!,
-                    onShowResult: _showResult,
+                    onShowResult: _openResult,
                   ),
               ],
             ),
@@ -207,33 +207,27 @@ class _BattleLayoutState extends State<_BattleLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final preview = context.select<RepCounterViewModel, Size?>(
+    final previewSize = context.select<RepCounterViewModel, Size?>(
       (counter) => counter.cameraController?.value.previewSize,
     );
     // previewSize is landscape; in portrait the preview is its swap, as in
     // PoseCameraView.
-    if (preview != null) _aspectRatio = preview.height / preview.width;
+    if (previewSize != null) {
+      _aspectRatio = previewSize.height / previewSize.width;
+    }
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final cameraHeight = math.max(
-          0.0,
-          math.min(
-            width / _aspectRatio,
-            constraints.maxHeight - _minPanelHeight - bottomInset,
-          ),
-        );
-        final box = Size(
-          math.min(width, cameraHeight * _aspectRatio),
-          cameraHeight,
-        );
+        final cameraSize = _cameraSize(constraints.biggest, bottomInset);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: cameraHeight,
-              child: _CameraArea(box: box, matchup: widget.matchup),
+              height: cameraSize.height,
+              child: _CameraArea(
+                cameraSize: cameraSize,
+                matchup: widget.matchup,
+              ),
             ),
             Expanded(
               child: BattleScorePanel(
@@ -245,15 +239,25 @@ class _BattleLayoutState extends State<_BattleLayout> {
       },
     );
   }
+
+  /// The camera box in [area]: full width in the preview's shape, or
+  /// shorter and narrower when the panel below would get less than
+  /// [_minPanelHeight].
+  Size _cameraSize(Size area, double bottomInset) {
+    final fullWidthHeight = area.width / _aspectRatio;
+    final heightAbovePanel = area.height - _minPanelHeight - bottomInset;
+    final height = math.max(0.0, math.min(fullWidthHeight, heightAbovePanel));
+    return Size(math.min(area.width, height * _aspectRatio), height);
+  }
 }
 
 /// The camera box, with the user's name chip and the opponent's window over
 /// its top corners.
 class _CameraArea extends StatelessWidget {
-  const _CameraArea({required this.box, required this.matchup});
+  const _CameraArea({required this.cameraSize, required this.matchup});
 
   /// The camera box's size, at most the area's.
-  final Size box;
+  final Size cameraSize;
 
   final Matchup matchup;
 
@@ -272,7 +276,7 @@ class _CameraArea extends StatelessWidget {
     return Stack(
       children: [
         Center(
-          child: SizedBox.fromSize(size: box, child: const _CameraBox()),
+          child: SizedBox.fromSize(size: cameraSize, child: const _CameraBox()),
         ),
         Positioned(
           left: 16,
@@ -287,7 +291,7 @@ class _CameraArea extends StatelessWidget {
             moves: moves,
             live: live,
             // Smaller with a short camera, down to three quarters.
-            scale: (box.height / _designHeight).clamp(0.75, 1.0),
+            scale: (cameraSize.height / _designHeight).clamp(0.75, 1.0),
           ),
         ),
       ],
@@ -305,6 +309,19 @@ class _CameraBox extends StatelessWidget {
     final counter = context.watch<RepCounterViewModel>();
     final state = counter.state;
     final frame = state.lastFrame;
+    final Widget? overlay = switch (state.phase) {
+      CounterPhase.running when frame != null => LandmarkOverlay(
+        frame: frame,
+        mirror: counter.isFrontCamera,
+        isVisible: counter.isVisible,
+      ),
+      CounterPhase.starting ||
+      CounterPhase.paused => const Center(child: CircularProgressIndicator()),
+      CounterPhase.permissionDenied ||
+      CounterPhase.cameraError ||
+      CounterPhase.detectorError => _CameraFailed(state: state),
+      CounterPhase.running || CounterPhase.finished => null,
+    };
     return RepaintBoundary(
       child: Stack(
         fit: StackFit.expand,
@@ -313,19 +330,7 @@ class _CameraBox extends StatelessWidget {
             controller: counter.cameraController,
             mirror: counter.isFrontCamera,
           ),
-          if (state.phase == CounterPhase.running && frame != null)
-            LandmarkOverlay(
-              frame: frame,
-              mirror: counter.isFrontCamera,
-              isVisible: counter.isVisible,
-            ),
-          if (state.phase == CounterPhase.starting ||
-              state.phase == CounterPhase.paused)
-            const Center(child: CircularProgressIndicator()),
-          if (state.phase == CounterPhase.permissionDenied ||
-              state.phase == CounterPhase.cameraError ||
-              state.phase == CounterPhase.detectorError)
-            _CameraFailed(state: state),
+          ?overlay,
         ],
       ),
     );
