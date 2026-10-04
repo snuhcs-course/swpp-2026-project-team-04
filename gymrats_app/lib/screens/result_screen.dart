@@ -30,58 +30,82 @@ class _ResultScreenState extends State<ResultScreen> {
   /// Set once a button is pressed, so a second tap does nothing.
   bool _leaving = false;
 
-  void _goHome() {
+  /// Both buttons go through here, so only the first one pressed acts:
+  /// after 홈으로, 다시 매칭 does nothing either.
+  void _leaveOnce(VoidCallback navigate) {
     if (_leaving) return;
     _leaving = true;
-    popToHome(context);
+    navigate();
   }
 
-  void _matchAgain() {
-    if (_leaving) return;
-    _leaving = true;
+  void _goHome() => _leaveOnce(() => popToHome(context));
+
+  void _matchAgain() => _leaveOnce(() {
     Navigator.pushReplacementNamed(
       context,
       GymRatsApp.matchingRoute,
       arguments: widget.result.matchup.exercise,
     );
-  }
+  });
 
   @override
   Widget build(BuildContext context) {
-    final result = widget.result;
     return Scaffold(
       body: GridBackground(
         child: SafeArea(
-          // Scrolls on a short phone; on a tall one the buttons sit at the
-          // bottom.
-          child: CustomScrollView(
-            slivers: [
-              SliverFillRemaining(
-                hasScrollBody: false,
-                // Inside, so the bottom padding stays on screen too.
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _Header(result: result),
-                      const SizedBox(height: 18),
-                      _Verdict(result: result),
-                      const SizedBox(height: 18),
-                      _ScoreCard(result: result),
-                      const SizedBox(height: 18),
-                      _Stats(result: result),
-                      const Spacer(),
-                      const SizedBox(height: 18),
-                      _Buttons(onHome: _goHome, onMatchAgain: _matchAgain),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          child: _ResultContent(
+            result: widget.result,
+            onGoHome: _goHome,
+            onMatchAgain: _matchAgain,
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Everything on the screen, top to bottom. Scrolls on a short phone; on a
+/// tall one the buttons sit at the bottom.
+class _ResultContent extends StatelessWidget {
+  const _ResultContent({
+    required this.result,
+    required this.onGoHome,
+    required this.onMatchAgain,
+  });
+
+  final BattleResult result;
+  final VoidCallback onGoHome;
+  final VoidCallback onMatchAgain;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          // Padding inside the sliver, not a SliverPadding around it: the
+          // sliver fills what is left of the screen, so padding after it
+          // would fall below the screen.
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Header(result: result),
+                const SizedBox(height: 18),
+                _Verdict(result: result),
+                const SizedBox(height: 18),
+                _ScoreCard(result: result),
+                const SizedBox(height: 18),
+                _MyStats(result: result),
+                const Spacer(),
+                const SizedBox(height: 18),
+                _Buttons(onGoHome: onGoHome, onMatchAgain: onMatchAgain),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -93,19 +117,23 @@ class _Header extends StatelessWidget {
 
   final BattleResult result;
 
+  /// [time] as hours and minutes, e.g. "14:32".
+  static String _clockTime(DateTime time) {
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    return '${twoDigits(time.hour)}:${twoDigits(time.minute)}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final label = Theme.of(context).textTheme.bodySmall
+    final labelStyle = Theme.of(context).textTheme.bodySmall
         ?.copyWith(fontSize: 13, color: AppColors.textSecondary);
-    final ended = result.endedAt;
-    String twoDigits(int value) => value.toString().padLeft(2, '0');
     return SizedBox(
       height: 44,
       child: Row(
         children: [
           Text(
             'RESULT',
-            style: label?.copyWith(
+            style: labelStyle?.copyWith(
               fontFamily: AppFonts.number,
               fontWeight: FontWeight.w700,
               letterSpacing: 2.6,
@@ -116,11 +144,11 @@ class _Header extends StatelessWidget {
             child: Text(
               '${result.matchup.exercise.koreanName} · '
               '${result.roundLength.inSeconds}초 · '
-              '오늘 ${twoDigits(ended.hour)}:${twoDigits(ended.minute)}',
+              '오늘 ${_clockTime(result.endedAt)}',
               textAlign: TextAlign.end,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: label?.copyWith(fontWeight: FontWeight.w500),
+              style: labelStyle?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -141,7 +169,7 @@ class _Verdict extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final (word, color, line) = switch (result.outcome) {
+    final (word, color, message) = switch (result.outcome) {
       MatchOutcome.win => (
         'WIN',
         AppColors.accent,
@@ -177,7 +205,7 @@ class _Verdict extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          line,
+          message,
           textAlign: TextAlign.center,
           style: text.headlineSmall?.copyWith(fontSize: 22),
         ),
@@ -201,8 +229,28 @@ class _ScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
     final playerName = result.matchup.playerName;
     final opponent = result.matchup.opponent;
+    final myAvatar = _Avatar(
+      color: AppColors.accent,
+      fill: AppColors.cardHigh,
+      child: playerName.isEmpty
+          ? const Icon(Icons.person_rounded, size: 22)
+          : Text(
+              playerName.characters.first,
+              style: text.headlineSmall?.copyWith(fontSize: 16),
+            ),
+    );
+    final opponentAvatar = _Avatar(
+      color: AppColors.opponent,
+      fill: _opponentFill,
+      child: Icon(
+        opponent.isBot ? Icons.smart_toy_rounded : Icons.person_rounded,
+        size: 22,
+        color: AppColors.opponent,
+      ),
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
       decoration: BoxDecoration(
@@ -213,44 +261,26 @@ class _ScoreCard extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _PlayerScore(
+            child: _Score(
               name: playerName,
               score: result.myReps,
               color: AppColors.accent,
-              avatar: _Avatar(
-                color: AppColors.accent,
-                fill: AppColors.cardHigh,
-                child: playerName.isEmpty
-                    ? const Icon(Icons.person_rounded, size: 22)
-                    : Text(
-                        playerName.characters.first,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontSize: 16),
-                      ),
-              ),
+              avatar: myAvatar,
             ),
           ),
           Text(
             ':',
-            style: Theme.of(context).textTheme.displayLarge
-                ?.copyWith(fontSize: 32, color: AppColors.textMuted),
+            style: text.displayLarge?.copyWith(
+              fontSize: 32,
+              color: AppColors.textMuted,
+            ),
           ),
           Expanded(
-            child: _PlayerScore(
+            child: _Score(
               name: opponent.name,
               score: result.opponentReps,
               color: AppColors.opponent,
-              avatar: _Avatar(
-                color: AppColors.opponent,
-                fill: _opponentFill,
-                child: Icon(
-                  opponent.isBot
-                      ? Icons.smart_toy_rounded
-                      : Icons.person_rounded,
-                  size: 22,
-                  color: AppColors.opponent,
-                ),
-              ),
+              avatar: opponentAvatar,
             ),
           ),
         ],
@@ -259,9 +289,9 @@ class _ScoreCard extends StatelessWidget {
   }
 }
 
-/// A player's avatar over their name and score.
-class _PlayerScore extends StatelessWidget {
-  const _PlayerScore({
+/// One side of the score card: the avatar over the name and the score.
+class _Score extends StatelessWidget {
+  const _Score({
     required this.name,
     required this.score,
     required this.color,
@@ -328,8 +358,8 @@ class _Avatar extends StatelessWidget {
 }
 
 /// The user's counted reps, rejected reps, and accuracy, side by side.
-class _Stats extends StatelessWidget {
-  const _Stats({required this.result});
+class _MyStats extends StatelessWidget {
+  const _MyStats({required this.result});
 
   final BattleResult result;
 
@@ -339,27 +369,24 @@ class _Stats extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: _Stat(label: '인정', value: '${result.myReps}', unit: '회'),
+          child: _StatCard(label: '인정', value: result.myReps, unit: '회'),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _Stat(
+          child: _StatCard(
             label: '무효',
-            value: '${result.myInvalidReps}',
+            value: result.myInvalidReps,
             unit: '회',
             color: AppColors.warning,
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          // Nothing to measure without a judged rep.
-          child: accuracy == null
-              ? const _Stat(label: '정확도', value: '—')
-              : _Stat(
-                  label: '정확도',
-                  value: '${(accuracy * 100).round()}',
-                  unit: '%',
-                ),
+          child: _StatCard(
+            label: '정확도',
+            value: accuracy == null ? null : (accuracy * 100).round(),
+            unit: '%',
+          ),
         ),
       ],
     );
@@ -367,26 +394,29 @@ class _Stats extends StatelessWidget {
 }
 
 /// A small card: a gray label over a number and its unit.
-class _Stat extends StatelessWidget {
-  const _Stat({
+class _StatCard extends StatelessWidget {
+  const _StatCard({
     required this.label,
     required this.value,
-    this.unit,
+    required this.unit,
     this.color = AppColors.textPrimary,
   });
 
   final String label;
-  final String value;
 
-  /// After the number in small gray letters, e.g. "회"; left out when null.
-  final String? unit;
+  /// Null shows "—" without [unit]: accuracy has nothing to measure before
+  /// a judged rep.
+  final int? value;
+
+  /// After the number in small gray letters, e.g. "회".
+  final String unit;
 
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final unit = this.unit;
+    final value = this.value;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -404,10 +434,10 @@ class _Stat extends StatelessWidget {
           const SizedBox(height: 4),
           Text.rich(
             TextSpan(
-              text: value,
+              text: value == null ? '—' : '$value',
               style: text.displaySmall?.copyWith(fontSize: 24, color: color),
               children: [
-                if (unit != null)
+                if (value != null)
                   TextSpan(
                     text: unit,
                     style: text.bodySmall?.copyWith(
@@ -427,9 +457,9 @@ class _Stat extends StatelessWidget {
 
 /// 홈으로 and 다시 매칭, side by side.
 class _Buttons extends StatelessWidget {
-  const _Buttons({required this.onHome, required this.onMatchAgain});
+  const _Buttons({required this.onGoHome, required this.onMatchAgain});
 
-  final VoidCallback onHome;
+  final VoidCallback onGoHome;
   final VoidCallback onMatchAgain;
 
   static const _shape = RoundedRectangleBorder(
@@ -438,19 +468,19 @@ class _Buttons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = Theme.of(context).textTheme.titleMedium
+    final labelStyle = Theme.of(context).textTheme.titleMedium
         ?.copyWith(fontSize: 16, fontWeight: FontWeight.w700);
     return Row(
       children: [
         Expanded(
           child: OutlinedButton(
-            onPressed: onHome,
+            onPressed: onGoHome,
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(56),
               foregroundColor: AppColors.textPrimary,
               side: const BorderSide(color: AppColors.border, width: 1.5),
               shape: _shape,
-              textStyle: label,
+              textStyle: labelStyle,
             ),
             child: const Text('홈으로'),
           ),
@@ -462,7 +492,7 @@ class _Buttons extends StatelessWidget {
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(56),
               shape: _shape,
-              textStyle: label,
+              textStyle: labelStyle,
             ),
             child: const Text('다시 매칭'),
           ),

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../models/exercise_type.dart';
 import '../../models/match_record.dart';
 import '../../models/user_profile.dart';
@@ -26,7 +28,7 @@ class InMemoryUserRepository implements UserRepository {
     final best = _profile.bestReps;
     _profile = UserProfile(
       name: _profile.name,
-      bestReps: best == null || record.myReps > best ? record.myReps : best,
+      bestReps: best == null ? record.myReps : math.max(best, record.myReps),
       lastMatch: record,
     );
   }

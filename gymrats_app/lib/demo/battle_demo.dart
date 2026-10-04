@@ -11,7 +11,6 @@
 // too: it needs no camera, sends blank frames on a timer, and shows the
 // design's pose as dots. Only these stand-ins differ from the app; the
 // battle and result screens and their view models are the app's own.
-// 다시 매칭 on the result screen opens the next battle right away.
 import 'dart:async';
 import 'dart:collection';
 
@@ -81,8 +80,8 @@ class BattleDemoApp extends StatelessWidget {
             builder: (_) =>
                 ResultScreen(result: settings.arguments! as BattleResult),
           ),
-          // 다시 매칭 on the result screen skips the search here too and
-          // opens the next battle.
+          // The demo has no search: 다시 매칭 on the result screen opens the
+          // next battle right away.
           GymRatsApp.matchingRoute => MaterialPageRoute<void>(
             settings: settings,
             builder: (_) => _TouchBattle(roundLength: roundLength),
