@@ -18,7 +18,8 @@ enum SetupPhase {
   /// Camera running, frames are being checked.
   running,
 
-  /// App is in the background; the camera is released.
+  /// App is in the background, or the screen is closing; the camera is
+  /// released.
   paused,
 
   /// Camera permission was denied.
@@ -125,6 +126,7 @@ class SetupViewModel extends ChangeNotifier {
   /// Incremented whenever the camera stops, so late callbacks are ignored.
   int _session = 0;
   bool _disposed = false;
+  bool _released = false;
   bool _pausedByLifecycle = false;
   Duration? _failingSince;
   Duration? _readySince;
@@ -154,7 +156,7 @@ class SetupViewModel extends ChangeNotifier {
 
   /// Asks for permission if needed, then starts the camera and detection.
   Future<void> start() async {
-    if (_disposed) return;
+    if (_disposed || _released) return;
     final session = ++_session;
     _resetTracking();
     _setState(const SetupState());
@@ -223,6 +225,18 @@ class SetupViewModel extends ChangeNotifier {
         _state.phase == SetupPhase.running) {
       _setState(const SetupState(phase: SetupPhase.paused));
     }
+    await _camera.stop();
+  }
+
+  /// Releases the camera before the screen closes, so the next screen can
+  /// open it. Unlike [pause], [resume] does not restart it.
+  Future<void> releaseCamera() async {
+    if (_disposed) return;
+    _released = true;
+    _session++;
+    _resetTracking();
+    // Drop the preview before its controller is disposed.
+    _setState(const SetupState(phase: SetupPhase.paused));
     await _camera.stop();
   }
 

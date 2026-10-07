@@ -388,6 +388,20 @@ void main() {
       expect(vm.state.canStart, isFalse);
     });
 
+    test('releaseCamera stops the camera and keeps it off', () async {
+      await vm.start();
+      await vm.releaseCamera();
+      expect(camera.stopCount, 1);
+      expect(camera.isStreaming, isFalse);
+      expect(vm.state.phase, SetupPhase.paused);
+      expect(vm.cameraController, isNull);
+      await vm.pause();
+      await vm.resume();
+      await vm.onScreenRotated();
+      expect(camera.startCount, 1);
+      expect(camera.isStreaming, isFalse);
+    });
+
     test('switch camera restarts with the next camera', () async {
       await vm.start();
       await vm.switchCamera();

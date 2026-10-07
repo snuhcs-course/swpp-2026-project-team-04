@@ -20,7 +20,11 @@ class CameraUnavailableException implements Exception {
 /// Frames stay on the device: they are only handed to [start]'s callback.
 ///
 /// [start] and [stop] run one after another, never interleaved, so a stop
-/// requested while the camera is still opening releases it afterwards.
+/// requested while the camera is still opening releases it afterwards. The
+/// order holds across every instance: the Android camera plugin keeps one
+/// camera for the whole app, and disposing any controller releases whichever
+/// camera is open. A screen that opens its camera while the previous screen
+/// is still closing would otherwise lose its preview and frames.
 class CameraService {
   CameraService({
     this.preferredLens = CameraLensDirection.front,
@@ -34,7 +38,7 @@ class CameraService {
 
   final Future<List<CameraDescription>> Function() _listCameras;
   final CameraController Function(CameraDescription) _createController;
-  Future<void> _lastOperation = Future.value();
+  static Future<void> _lastOperation = Future.value();
 
   List<CameraDescription>? _cameras;
   CameraDescription? _current;
@@ -133,7 +137,13 @@ class CameraService {
     } on CameraException {
       // The controller is disposed below either way.
     }
-    await controller.dispose();
+    try {
+      await controller.dispose();
+    } on CameraException {
+      // Already released by the plugin; the next start opens a new camera.
+    } on PlatformException {
+      // Same, reported by the Android plugin as a platform error.
+    }
   }
 
   /// Rotation to apply to camera frames so they are upright, in degrees.
