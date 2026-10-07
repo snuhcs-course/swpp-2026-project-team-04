@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'models/battle_result.dart';
 import 'models/exercise_type.dart';
 import 'models/matchup.dart';
-import 'screens/coming_soon_screen.dart';
+import 'screens/battle_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/match_setup_screen.dart';
 import 'screens/matching_screen.dart';
+import 'screens/result_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/versus_screen.dart';
 import 'services/matching/bot_matchmaker.dart';
@@ -33,6 +35,10 @@ class GymRatsApp extends StatelessWidget {
   /// SetupScreen inside the matching flow, with a way to cancel the match.
   static const matchSetupRoute = '/match-setup';
   static const battleRoute = '/battle';
+  static const resultRoute = '/result';
+
+  /// Tells HomeScreen when it shows again, so it reloads the latest battle.
+  static final routeObserver = RouteObserver<ModalRoute<void>>();
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +52,7 @@ class GymRatsApp extends StatelessWidget {
       child: MaterialApp(
         title: 'GymRats',
         theme: AppTheme.dark,
+        navigatorObservers: [routeObserver],
         home: const HomeScreen(),
         onGenerateRoute: (settings) => switch (settings.name) {
           setupRoute => MaterialPageRoute<ExerciseType>(
@@ -68,12 +75,15 @@ class GymRatsApp extends StatelessWidget {
             builder: (_) =>
                 MatchSetupScreen(matchup: settings.arguments! as Matchup),
           ),
-          // Placeholder until P10 builds the battle screen. It will read the
-          // Matchup from settings.arguments, like the versus route.
           battleRoute => MaterialPageRoute<void>(
             settings: settings,
             builder: (_) =>
-                const ComingSoonScreen(message: '배틀 화면은 P10에서 구현 예정'),
+                BattleScreen(matchup: settings.arguments! as Matchup),
+          ),
+          resultRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                ResultScreen(result: settings.arguments! as BattleResult),
           ),
           _ => null,
         },

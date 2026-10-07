@@ -40,17 +40,21 @@ class HomeViewModel extends ChangeNotifier {
 
   HomeState get state => _state;
 
-  /// Fetches the profile; an [Exception] from the repository shows the
-  /// failed state. Does nothing while a fetch is running.
+  /// Fetches the profile. Does nothing while a fetch is running.
+  ///
+  /// The first load shows the loading state, and the failed state on an
+  /// [Exception] from the repository. A reload keeps the profile on screen
+  /// until the new one arrives, and keeps it if the reload fails.
   Future<void> load() async {
     if (_disposed || _fetching) return;
     _fetching = true;
-    _setState(_state.copyWith(phase: HomePhase.loading));
+    final reloading = _state.profile != null;
+    if (!reloading) _setState(_state.copyWith(phase: HomePhase.loading));
     try {
       final profile = await _repository.fetchProfile();
       _setState(_state.copyWith(phase: HomePhase.ready, profile: profile));
     } on Exception {
-      _setState(_state.copyWith(phase: HomePhase.failed));
+      if (!reloading) _setState(_state.copyWith(phase: HomePhase.failed));
     } finally {
       _fetching = false;
     }

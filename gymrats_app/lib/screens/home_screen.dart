@@ -24,7 +24,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
   late final HomeViewModel _viewModel;
 
   @override
@@ -37,7 +37,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    GymRatsApp.routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  /// Home shows again after a battle or a cancelled match: the latest
+  /// battle and the best record may have changed.
+  @override
+  void didPopNext() => _viewModel.load();
+
+  @override
   void dispose() {
+    GymRatsApp.routeObserver.unsubscribe(this);
     _viewModel.dispose();
     super.dispose();
   }
