@@ -4,6 +4,12 @@ GymRats is a Flutter Android app for camera-based exercise battles. The `iterati
 
 This is a local prototype, not an online multiplayer release. No account, backend server, or second phone is required.
 
+## Demo video
+
+[Watch or download the Iteration 1 demo](Demo_Video.mp4)
+
+This is a low-resolution copy of the original demo recording.
+
 ## Implemented features
 
 - **Home:** push-up selection, a sample user profile, best record, and latest match.
