@@ -6,7 +6,7 @@ This is a local prototype, not an online multiplayer release. No account, backen
 
 ## Demo video
 
-[Watch or download the Iteration 1 demo](Demo_Video.mp4)
+[Watch or download the Iteration 1 demo](demo-videos/iteration-1-demo-video.mp4)
 
 This is a low-resolution copy of the original demo recording.
 
