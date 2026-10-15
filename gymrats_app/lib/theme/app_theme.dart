@@ -39,9 +39,34 @@ abstract final class AppFonts {
   static const body = 'IBMPlexSansKR';
 }
 
+/// Padding and gap steps (Design Documentation 2.5.5). Screens use only
+/// these for padding and gaps.
+abstract final class AppSpacing {
+  static const double s4 = 4;
+  static const double s8 = 8;
+  static const double s12 = 12;
+  static const double s16 = 16;
+  static const double s20 = 20;
+  static const double s24 = 24;
+  static const double s32 = 32;
+  static const double s48 = 48;
+}
+
+/// Corner radii (Design Documentation 2.5.6). Pills use [StadiumBorder].
+abstract final class AppRadius {
+  /// Small boxes inside a card: tiles, tags, input fields.
+  static const double small = 12;
+
+  /// Cards, panels, and all buttons.
+  static const double card = 18;
+
+  /// Dialogs, bottom sheets, the top corners of a bottom panel.
+  static const double sheet = 24;
+}
+
 /// Builds the app's [ThemeData] from [AppColors] and [AppFonts].
 abstract final class AppTheme {
-  static const double cardRadius = 18;
+  static const double cardRadius = AppRadius.card;
 
   /// The app's only theme: always dark, whatever the system setting.
   static final ThemeData dark = _buildDark();
@@ -57,6 +82,7 @@ abstract final class AppTheme {
     return base.copyWith(
       textTheme: _textTheme(base.textTheme),
       cardTheme: _cardTheme,
+      inputDecorationTheme: _inputTheme(base.textTheme),
     );
   }
 
@@ -96,9 +122,39 @@ abstract final class AppTheme {
       displayLarge: asNumber(text.displayLarge),
       displayMedium: asNumber(text.displayMedium),
       displaySmall: asNumber(text.displaySmall),
+      // Small numbers, e.g. match history scores (Design Documentation 2.5.3).
+      titleLarge: asNumber(text.titleLarge),
       headlineLarge: asHeadline(text.headlineLarge),
       headlineMedium: asHeadline(text.headlineMedium),
       headlineSmall: asHeadline(text.headlineSmall),
+    );
+  }
+
+  /// Text fields: a card-colored box with radius [AppRadius.small], a lime
+  /// outline while focused, and amber for errors (2.5.2: every problem is
+  /// amber).
+  static InputDecorationTheme _inputTheme(TextTheme text) {
+    OutlineInputBorder outline(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: const BorderRadius.all(
+            Radius.circular(AppRadius.small),
+          ),
+          borderSide: BorderSide(color: color, width: width),
+        );
+    return InputDecorationTheme(
+      filled: true,
+      fillColor: AppColors.card,
+      contentPadding: const EdgeInsets.all(AppSpacing.s16),
+      hintStyle: text.bodyLarge?.copyWith(color: AppColors.textMuted),
+      labelStyle: text.bodyLarge?.copyWith(color: AppColors.textSecondary),
+      floatingLabelStyle: text.bodyMedium?.copyWith(color: AppColors.accent),
+      errorStyle: text.bodyMedium?.copyWith(color: AppColors.warning),
+      errorMaxLines: 2,
+      border: outline(AppColors.border),
+      enabledBorder: outline(AppColors.border),
+      focusedBorder: outline(AppColors.accent, 2),
+      errorBorder: outline(AppColors.warning),
+      focusedErrorBorder: outline(AppColors.warning, 2),
     );
   }
 
