@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 
 import '../models/form_report.dart';
 import '../models/user_profile.dart';
+import '../services/api/api_client.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/user/user_repository.dart';
+import 'login_viewmodel.dart';
 
 /// What the home screen is showing.
 enum HomePhase {
@@ -23,6 +25,7 @@ class HomeState {
     this.phase = HomePhase.loading,
     this.profile,
     this.latestForm,
+    this.errorMessage,
   });
 
   final HomePhase phase;
@@ -33,15 +36,20 @@ class HomeState {
   /// The newest form report saved on this device; null when there is none.
   final FormReport? latestForm;
 
+  /// Why the load failed, e.g. no network; null for the default message.
+  final String? errorMessage;
+
   HomeState copyWith({
     HomePhase? phase,
     UserProfile? profile,
     FormReport? latestForm,
     bool clearLatestForm = false,
+    String? errorMessage,
   }) => HomeState(
     phase: phase ?? this.phase,
     profile: profile ?? this.profile,
     latestForm: clearLatestForm ? null : latestForm ?? this.latestForm,
+    errorMessage: errorMessage ?? this.errorMessage,
   );
 }
 
@@ -73,8 +81,15 @@ class HomeViewModel extends ChangeNotifier {
     try {
       final profile = await _repository.fetchProfile();
       _setState(_state.copyWith(phase: HomePhase.ready, profile: profile));
-    } on Exception {
-      if (!reloading) _setState(_state.copyWith(phase: HomePhase.failed));
+    } on Exception catch (e) {
+      if (!reloading) {
+        _setState(
+          _state.copyWith(
+            phase: HomePhase.failed,
+            errorMessage: e is ApiException ? e.message : genericErrorMessage,
+          ),
+        );
+      }
     } finally {
       _fetching = false;
     }

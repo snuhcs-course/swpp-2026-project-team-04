@@ -3,7 +3,10 @@ import 'dart:collection';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/widgets.dart';
+import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/auth_session.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/match_page.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
@@ -15,6 +18,9 @@ import 'package:gymrats_app/services/opponent/opponent_source.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/pose_estimator.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
+import 'package:gymrats_app/services/auth/token_store.dart';
+import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 
 import 'pose_fixtures.dart';
@@ -157,7 +163,59 @@ class FakeUserRepository implements UserRepository {
     if (saveError != null) throw saveError!;
     saved.add(record);
   }
+
+  /// Pages returned by fetchHistory, in order: the first for no cursor,
+  /// then one per cursor "1", "2", ...
+  List<List<MatchRecord>> historyPages = [[]];
+
+  /// When set, fetchHistory() throws it.
+  Exception? historyError;
+
+  /// When set, fetchHistory() throws it for every page but the first.
+  Exception? nextPageError;
+
+  /// When set, fetchHistory() waits for it.
+  Completer<void>? historyGate;
+
+  /// Cursors fetchHistory() was called with, null for the first page.
+  final List<String?> historyCursors = [];
+
+  @override
+  Future<MatchPage> fetchHistory({String? cursor, int limit = 20}) async {
+    historyCursors.add(cursor);
+    await historyGate?.future;
+    if (historyError != null) throw historyError!;
+    if (cursor != null && nextPageError != null) throw nextPageError!;
+    final index = cursor == null ? 0 : int.parse(cursor);
+    final next = index + 1;
+    return MatchPage(
+      items: historyPages[index],
+      nextCursor: next < historyPages.length ? '$next' : null,
+    );
+  }
 }
+
+/// A test account, logged in by [signedInAuth].
+const testAccount = Account(id: 1, loginId: 'woohyun', nickname: '우현');
+
+/// Accounts in memory with [testAccount] already logged in, as after an
+/// earlier app run.
+InMemoryAuthRepository signedInAuth() => InMemoryAuthRepository(
+  store: MemoryTokenStore(
+    const AuthSession(token: 'test-token', account: testAccount),
+  ),
+);
+
+/// The whole app on in-memory repositories, already logged in.
+GymRatsApp testApp({
+  InMemoryAuthRepository? auth,
+  UserRepository? users,
+  Matchmaker Function()? createMatchmaker,
+}) => GymRatsApp(
+  authRepository: auth ?? signedInAuth(),
+  userRepository: users ?? InMemoryUserRepository(),
+  createMatchmaker: createMatchmaker,
+);
 
 /// Returns [opponent], or throws [error] when set, like a server would.
 class FakeMatchmaker implements Matchmaker {

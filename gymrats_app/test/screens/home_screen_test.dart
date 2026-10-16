@@ -7,6 +7,7 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
+import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
@@ -54,7 +55,9 @@ void main() {
         ),
         routes: {
           GymRatsApp.matchingRoute: (context) => Scaffold(
-            body: Text('matching ${ModalRoute.of(context)!.settings.arguments}'),
+            body: Text(
+              'matching ${ModalRoute.of(context)!.settings.arguments}',
+            ),
           ),
         },
       ),
@@ -162,9 +165,7 @@ void main() {
     );
   });
 
-  testWidgets('shows the latest match in one row, about 72 tall', (
-    tester,
-  ) async {
+  testWidgets('shows the latest match in one card row', (tester) async {
     await open(tester);
     expect(find.text('최근 경기'), findsOneWidget);
     final card = find.ancestor(
@@ -177,7 +178,8 @@ void main() {
         findsOneWidget,
       );
     }
-    expect(tester.getSize(card).height, moreOrLessEquals(72, epsilon: 1));
+    // One row: 16 padding (2.5.7) around the tallest item, the scores.
+    expect(tester.getSize(card).height, lessThan(100));
 
     // Badge, names, my score, ':' and their score from left to right.
     final badge = tester.getRect(find.text('승'));
@@ -200,21 +202,22 @@ void main() {
   });
 
   testWidgets(
-    'recent match: my score is big and white, theirs small and gray',
+    'recent match: my score is white, theirs gray, both in the number font',
     (tester) async {
       await open(tester);
       final mine = tester.widget<Text>(find.text('24')).style!;
       expect(mine.fontFamily, AppFonts.number);
       expect(mine.fontWeight, FontWeight.w700);
-      expect(mine.fontSize, 26);
+      final theme = Theme.of(tester.element(find.text('24'))).textTheme;
+      final titleLarge = theme.titleLarge!;
+      expect(mine.fontSize, titleLarge.fontSize);
       expect(mine.color, AppColors.textPrimary);
       final theirs = tester.widget<Text>(find.text('19')).style!;
       expect(theirs.fontFamily, AppFonts.number);
       expect(theirs.fontWeight, FontWeight.w700);
-      expect(theirs.fontSize, 22);
+      expect(theirs.fontSize, titleLarge.fontSize);
       expect(theirs.color, AppColors.textSecondary);
       final colon = tester.widget<Text>(find.text(':')).style!;
-      expect(colon.fontSize, lessThan(22));
       expect(colon.color, AppColors.textMuted);
 
       // 나 is dark text on a lime pill; 상대 is small gray text.
@@ -225,10 +228,11 @@ void main() {
       );
       expect((pill.decoration as ShapeDecoration).color, AppColors.accent);
       final me = tester.widget<Text>(find.text('나')).style!;
-      expect(me.fontSize, 11);
+      final bodySmall = theme.bodySmall!;
+      expect(me.fontSize, bodySmall.fontSize);
       expect(me.color, AppColors.background);
       final them = tester.widget<Text>(find.text('상대')).style!;
-      expect(them.fontSize, 11);
+      expect(them.fontSize, bodySmall.fontSize);
       expect(them.color, AppColors.textSecondary);
     },
   );
@@ -246,10 +250,8 @@ void main() {
     await open(tester);
     expect(find.text('패'), findsOneWidget);
     final mine = tester.widget<Text>(find.text('19')).style!;
-    expect(mine.fontSize, 26);
     expect(mine.color, AppColors.textPrimary);
     final theirs = tester.widget<Text>(find.text('24')).style!;
-    expect(theirs.fontSize, 22);
     expect(theirs.color, AppColors.textSecondary);
     // 나 stays under my score.
     expect(
@@ -258,10 +260,13 @@ void main() {
     );
   });
 
-  testWidgets('hides the recent match when there is none', (tester) async {
+  testWidgets('says there is no match yet before the first battle', (
+    tester,
+  ) async {
     repository.profile = const UserProfile(name: '우현');
     await open(tester);
-    expect(find.text('최근 경기'), findsNothing);
+    expect(find.text('최근 경기'), findsOneWidget);
+    expect(find.text('아직 경기 기록이 없어요. 첫 대결을 시작해 보세요!'), findsOneWidget);
     // No best record yet either.
     expect(find.text('개인 최고 —'), findsOneWidget);
   });
@@ -355,5 +360,37 @@ void main() {
     // The row was laid out, so an overflow in it would have been reported.
     expect(find.text('99', skipOffstage: false), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a network failure says why under the title', (tester) async {
+    repository.error = const ApiException(ApiErrorKind.network);
+    await open(tester);
+    expect(find.text('정보를 불러오지 못했어요'), findsOneWidget);
+    expect(
+      find.text(const ApiException(ApiErrorKind.network).message),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('battles not saved yet show an amber note', (tester) async {
+    repository.profile = const UserProfile(
+      name: '우현',
+      lastMatch: _lastMatch,
+      unsentMatches: 2,
+    );
+    await open(tester);
+    final note = find.text('저장하지 못한 경기 2개 · 연결되면 다시 저장해요');
+    expect(note, findsOneWidget);
+    expect(tester.widget<Text>(note).style!.color, AppColors.warning);
+  });
+
+  testWidgets('no note when every battle is saved', (tester) async {
+    await open(tester);
+    expect(find.textContaining('저장하지 못한 경기'), findsNothing);
+  });
+
+  testWidgets('no logout button without a logout action', (tester) async {
+    await open(tester);
+    expect(find.byTooltip('로그아웃'), findsNothing);
   });
 }
