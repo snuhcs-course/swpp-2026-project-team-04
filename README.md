@@ -63,11 +63,11 @@ The APK is generated at `gymrats_app/build/app/outputs/flutter-apk/app-debug.apk
 ## Current limitations
 
 - **No real PvP or network synchronization:** `BotMatchmaker` selects RepBot and `BotOpponent` generates local rep events. The opponent is not a remote camera feed or a trained exercise model.
-- **No login, database, or persistent history:** `InMemoryUserRepository` starts with sample profile/record data. Changes are lost when the app process restarts.
+- **No login or database:** `InMemoryUserRepository` starts with sample profile and match data. Those records are lost when the app process restarts. Form reports are the exception and stay in a file on the phone.
 - **Push-ups only:** additional exercises are not implemented.
-- **Limited front-view judging:** setup checks visible upper-body landmarks, not full-body form. Knees and hips are not required, so the judge cannot reliably distinguish knee push-ups or assess torso sagging. Unusual camera placement and unrelated movements may produce incorrect counts.
+- **Limited front-view judging:** setup requires the upper body with straight arms, a phone propped at 60° or steeper and sitting still, and refuses an upright body when the hips are visible. During the round, a lean or a shake of the phone drops that rep. Knee push-ups are rejected from a personal hip angle taken at a straight-arm top, or from a default angle when that top never appears. A cat pose (hips folded, arms never bent, head at the bottom) is told to bend the arms. Belly and wall push-ups are rejected only when the hips are seen. From the front those parts are often hidden, and then the rep is judged on head depth alone. A push-up that reaches depth and locks out still counts when the descent was fast. An attempt that returns to the top in under a tenth of a second is dropped as tracking noise, with no count and no message. The thresholds are not yet tuned on devices. Unusual camera placement and unrelated movements may produce incorrect counts.
 - **Device-dependent detection and sound:** counting depends on lighting, framing, and landmark confidence. Rep beeps use Android media volume and may be quiet on some devices.
-- **No post-match coaching or rep timeline:** these are separate from the current live rejection feedback and result statistics.
+- **Form feedback stays on the phone:** each finished battle's measurements are saved as a file on the device (newest 20), and the feedback screen computes its rule findings from them. The rules cover rejected reps, left-right balance while the head is down, a loss of depth late in the round, descents that reached the bottom too quickly, elbows flared out past the shoulders, hands planted much wider than the shoulders, and the head dropping ahead of shoulders that themselves moved. A small extra from the floor camera, an elbow tucked across the chest, or a merely wide grip stays quiet. A rule with too little data stays quiet. None of those last three change the count. Each fault shows a prepared side-view example, about 2.5 seconds, that loops until it is tapped. Knees are on the floor only in the knee example. Nothing is uploaded, and reinstalling the app deletes the saved reports.
 
 ## Checks and tests
 
@@ -85,9 +85,11 @@ The test suite covers pose/setup rules, rep judging, bot behavior, repositories,
 ```text
 gymrats_app/
   lib/main.dart             Integrated app entry point and navigation
-  lib/screens/              Home, matching, versus, setup, battle, result
+  lib/screens/              Home, matching, versus, setup, battle, result, feedback
   lib/viewmodels/           Screen state and battle/counting coordination
   lib/services/pose/        Camera, ML Kit estimator, setup checker, rep judge
+  lib/services/feedback/    Form reports and the rules that read them
+  lib/services/device/      Beeps, screen-on, and phone placement
   lib/services/matching/    Matchmaker interface and local bot matching
   lib/services/opponent/    Opponent interface and simulated rep events
   lib/services/user/        Repository interface and in-memory records

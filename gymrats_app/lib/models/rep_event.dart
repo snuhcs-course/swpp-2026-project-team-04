@@ -3,7 +3,26 @@ enum RejectReason {
   insufficientDepth('Go lower'),
   incompleteExtension('Lock out your arms'),
   shouldersNotLevel('Keep shoulders level'),
-  tooFast('Slow down');
+
+  /// No longer produced by the rep judge. A fast descent is feedback after
+  /// the battle. Kept so an older report still reads, and so the bot can
+  /// still draw a rejected rep.
+  tooFast('Slow down'),
+
+  /// The knees were seen bent on the floor: a knee push-up.
+  kneesDown('Knees up'),
+
+  /// The head reached the bottom while the arms stayed straight.
+  armsStraight('Bend your arms'),
+
+  /// The hips were seen down at the hands while the head was at the bottom.
+  bellyDown('Hips up'),
+
+  /// The body was seen upright, as when pushing off a wall.
+  notFloorPushUp('Floor push-up'),
+
+  /// The phone leaned or shook after the round started.
+  phoneMoved('Hold the phone still');
 
   const RejectReason(this.message);
 
@@ -24,6 +43,7 @@ class RepEvent {
     this.maxDepth,
     this.minElbowAngle,
     this.maxTilt,
+    this.descent,
   });
 
   /// 1-based index within the current judging session.
@@ -46,4 +66,8 @@ class RepEvent {
 
   /// Largest shoulder-line tilt from horizontal during the attempt, degrees.
   final double? maxTilt;
+
+  /// Time from the start of the attempt until the head first reached the
+  /// bottom. Null when the rep never got that far.
+  final Duration? descent;
 }

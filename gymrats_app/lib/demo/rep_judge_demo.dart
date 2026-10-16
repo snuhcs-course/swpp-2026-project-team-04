@@ -4,7 +4,7 @@
 //   flutter run -t lib/demo/rep_judge_demo.dart -d <device-id>
 //
 // Needs no login, server, or battle screen. Setup runs first, then a
-// 60-second counter. Stop, or the end of that minute, shows the result.
+// The round counter. Stop, or the end of the round, shows the result.
 // Checker values and each rep are printed to the debug log.
 import 'dart:async';
 

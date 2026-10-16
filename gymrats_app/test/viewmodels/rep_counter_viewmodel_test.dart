@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
@@ -26,6 +27,7 @@ void main() {
       camera: camera,
       estimator: estimator,
       clock: () => now,
+      phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
       judge: RepJudge(config: fast, clock: () => now),
     );
     vm.reps.listen(events.add);
@@ -69,6 +71,33 @@ void main() {
     expect(vm.state.validReps, 0);
     expect(vm.state.invalidReps, 1);
     expect(events.single.reason, RejectReason.insufficientDepth);
+  });
+
+  test('form samples are taken at most every 100 ms of the round', () async {
+    await vm.start();
+    for (var ms = 0; ms <= 500; ms += 33) {
+      await feed(ms, pose());
+    }
+    final times = [for (final s in vm.formSamples) s.at.inMilliseconds];
+    expect(times, [0, 132, 264, 396]);
+    expect(vm.formSamples.first.leftElbow, isNotNull);
+    expect(vm.formSamples.first.rightElbow, isNotNull);
+    expect(vm.formSamples.first.hipAngle, isNull);
+  });
+
+  test('rep records carry the time into the round', () async {
+    await vm.start();
+    await countOneRep();
+    expect(vm.repRecords.single.at, const Duration(milliseconds: 1200));
+    expect(vm.repRecords.single.valid, isTrue);
+  });
+
+  test('a new round clears the samples and the rep records', () async {
+    await vm.start();
+    await countOneRep();
+    vm.reset();
+    expect(vm.formSamples, isEmpty);
+    expect(vm.repRecords, isEmpty);
   });
 
   test('reset clears the counts and the judge', () async {

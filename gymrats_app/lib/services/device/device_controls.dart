@@ -23,6 +23,18 @@ class DeviceRepSound implements RepSound {
 /// during a battle, so the screen timeout would otherwise stop the camera.
 Future<void> keepScreenOn(bool on) => _send('keepScreenOn', on);
 
+/// The app's private files folder on the device, or null without a native
+/// side (tests, other platforms).
+Future<String?> appFilesDirectory() async {
+  try {
+    return await _channel.invokeMethod<String>('filesDir');
+  } on MissingPluginException {
+    return null;
+  } on PlatformException {
+    return null;
+  }
+}
+
 /// Calls MainActivity. A missing or failing native side is ignored: neither
 /// feature is worth stopping the battle for.
 Future<void> _send(String method, [Object? arguments]) async {

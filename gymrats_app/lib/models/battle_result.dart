@@ -1,4 +1,5 @@
 import 'battle_rules.dart';
+import 'form_report.dart';
 import 'match_record.dart';
 import 'matchup.dart';
 
@@ -14,6 +15,7 @@ class BattleResult {
     required this.opponentReps,
     required this.endedAt,
     this.roundLength = battleDuration,
+    this.form,
   });
 
   final Matchup matchup;
@@ -32,6 +34,10 @@ class BattleResult {
 
   /// How long the round was, for the result screen's header.
   final Duration roundLength;
+
+  /// The user's measurements in this battle, for the form feedback. Null
+  /// when the battle was built without them.
+  final FormReport? form;
 
   /// What the home screen keeps of this battle.
   MatchRecord get record => MatchRecord(

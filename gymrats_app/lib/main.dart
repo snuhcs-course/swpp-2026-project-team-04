@@ -4,14 +4,17 @@ import 'package:provider/provider.dart';
 
 import 'models/battle_result.dart';
 import 'models/exercise_type.dart';
+import 'models/form_report.dart';
 import 'models/matchup.dart';
 import 'screens/battle_screen.dart';
+import 'screens/feedback_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/match_setup_screen.dart';
 import 'screens/matching_screen.dart';
 import 'screens/result_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/versus_screen.dart';
+import 'services/feedback/form_report_store.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
 import 'services/user/in_memory_user_repository.dart';
@@ -37,6 +40,9 @@ class GymRatsApp extends StatelessWidget {
   static const battleRoute = '/battle';
   static const resultRoute = '/result';
 
+  /// The form feedback of one battle, from the result screen or home.
+  static const feedbackRoute = '/feedback';
+
   /// Tells HomeScreen when it shows again, so it reloads the latest battle.
   static final routeObserver = RouteObserver<ModalRoute<void>>();
 
@@ -48,6 +54,7 @@ class GymRatsApp extends StatelessWidget {
       providers: [
         Provider<UserRepository>(create: (_) => InMemoryUserRepository()),
         Provider<Matchmaker>(create: (_) => BotMatchmaker()),
+        Provider<FormReportStore>(create: (_) => FileFormReportStore()),
       ],
       child: MaterialApp(
         title: 'GymRats',
@@ -84,6 +91,11 @@ class GymRatsApp extends StatelessWidget {
             settings: settings,
             builder: (_) =>
                 ResultScreen(result: settings.arguments! as BattleResult),
+          ),
+          feedbackRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                FeedbackScreen(report: settings.arguments! as FormReport),
           ),
           _ => null,
         },
