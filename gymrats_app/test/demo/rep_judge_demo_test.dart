@@ -75,7 +75,7 @@ void main() {
     expect(find.byKey(repPhaseKey), findsNothing);
   });
 
-  testWidgets('the round ends with the same result after 60 seconds', (
+  testWidgets('the round ends with the same result after 30 seconds', (
     tester,
   ) async {
     final harness = _Harness();
@@ -85,9 +85,9 @@ void main() {
     await harness.feed(2200, pushUpFrame(depth: 0.6));
     await harness.feed(2600, pushUpFrame(depth: 1.5));
     await harness.feed(3000, pushUpFrame());
-    expect(tester.widget<Text>(find.byKey(remainingTimeKey)).data, '0:58');
+    expect(tester.widget<Text>(find.byKey(remainingTimeKey)).data, '0:28');
 
-    await harness.feed(61500, pushUpFrame());
+    await harness.feed(33000, pushUpFrame());
     expect(find.text("Time's up"), findsOneWidget);
     expect(tester.widget<Text>(find.byKey(validRepsKey)).data, '1');
     expect(find.text('No rejected reps'), findsOneWidget);

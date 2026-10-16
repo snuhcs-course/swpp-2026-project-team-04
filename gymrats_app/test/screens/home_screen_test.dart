@@ -71,12 +71,12 @@ void main() {
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
     expect(find.text('오늘도 한 판,\n붙어볼까요?'), findsOneWidget);
     expect(find.text('종목 선택'), findsOneWidget);
-    expect(find.text('60초 · 1v1'), findsOneWidget);
+    expect(find.text('30초 · 1v1'), findsOneWidget);
     expect(find.text('푸쉬업'), findsOneWidget);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     expect(find.text('개인 최고 32회'), findsOneWidget);
     expect(find.text('AI와 1v1 대결'), findsOneWidget);
-    expect(find.text('60초 안에 더 많이 하면 승리'), findsOneWidget);
+    expect(find.text('30초 안에 더 많이 하면 승리'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(FilledButton),

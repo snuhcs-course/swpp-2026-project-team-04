@@ -66,10 +66,9 @@ class BotOpponent implements OpponentSource {
   /// Plans one round: when each rep ends, and which ones are rejected.
   ///
   /// The valid count is drawn first, so every round lands in the bot's
-  /// pace: 20 to 28 in a 60-second round, 7 to 9 in a 20-second one. A few
+  /// pace: 10 to 14 in a 30-second round, 20 to 28 in a 60-second one. A few
   /// rejected reps are mixed in. Gaps widen towards the end, and each rep
-  /// moves a little off its slot. In a 60-second round, reps stay at least
-  /// 0.9 seconds apart and in order.
+  /// moves a little off its slot. Reps stay in order inside the round.
   static List<RepEvent> planRound(math.Random random, Duration roundLength) {
     int atPace(int perMinute) =>
         (perMinute * roundLength.inMicroseconds / _paceLength.inMicroseconds)

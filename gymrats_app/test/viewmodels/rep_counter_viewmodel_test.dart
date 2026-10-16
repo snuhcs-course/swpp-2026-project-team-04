@@ -182,12 +182,12 @@ void main() {
     expect(vm.state.phase, CounterPhase.finished);
   });
 
-  test('the round ends when 60 seconds have passed', () async {
+  test('the round ends when 30 seconds have passed', () async {
     await vm.start();
     await countOneRep();
-    await feed(59999, pose());
+    await feed(29999, pose());
     expect(vm.state.phase, CounterPhase.running);
-    await feed(60000, pose());
+    await feed(30000, pose());
     expect(vm.state.phase, CounterPhase.finished);
     expect(vm.state.roundEnd, RoundEnd.timeUp);
     expect(vm.state.remaining, Duration.zero);

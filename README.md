@@ -1,6 +1,6 @@
 # GymRats
 
-GymRats is a Flutter Android app for camera-based exercise battles. The `iteration-1-demo` branch implements a **60-second push-up battle against RepBot, a simulated opponent**.
+GymRats is a Flutter Android app for camera-based exercise battles. The `iteration-1-demo` branch implements a **30-second push-up battle against RepBot, a simulated opponent**.
 
 This is a local prototype, not an online multiplayer release. No account, backend server, or second phone is required.
 
@@ -16,7 +16,7 @@ This is a low-resolution copy of the original demo recording.
 - **Matching and versus:** simulated matching with RepBot, opponent information, and battle rules.
 - **Pose setup:** camera preview, landmark overlay, framing and visibility checks, and an automatic countdown after holding a valid pose.
 - **Rep judging:** Google ML Kit pose detection and a Dart state machine using head depth, arm extension, shoulder tilt, and timing. Counted reps and rejection reasons appear on screen.
-- **Battle:** a 60-second timer, both scores, an animated opponent mannequin, live feedback, and an Android beep for each counted rep.
+- **Battle:** a 30-second timer, both scores, an animated opponent mannequin, live feedback, and an Android beep for each counted rep.
 - **Results:** win/loss/draw, final scores, valid/rejected rep counts, and the proportion of judged reps that counted. Users can return home or match again.
 - **Session records:** completed matches update the best record and latest match in memory. Leaving early does not save a result.
 
@@ -57,7 +57,7 @@ The APK is generated at `gymrats_app/build/app/outputs/flutter-apk/app-debug.apk
 2. Continue from the versus screen to pose setup and allow camera access.
 3. Secure the phone on the floor in front of you, screen facing you. Face the camera in a push-up position and adjust the distance until your head, both shoulders, elbows, and wrists are detected.
 4. Hold a valid setup pose for about 1.5 seconds, then remain ready during the three-second automatic countdown.
-5. Perform push-ups during the 60-second battle. Start with extended arms, lower your body, and return to the top. Counted reps increase your score; rejected attempts show feedback.
+5. Perform push-ups during the 30-second battle. Start with extended arms, lower your body, and return to the top. Counted reps increase your score; rejected attempts show feedback.
 6. At time-up, check the result and statistics. Return home to see the updated latest match and best record, or start another match.
 
 ## Current limitations

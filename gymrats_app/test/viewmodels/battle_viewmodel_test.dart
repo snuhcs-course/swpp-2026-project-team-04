@@ -91,7 +91,7 @@ void main() {
     expect(vm.state.phase, BattlePhase.playing);
     expect(opponent.startCount, 1);
     expect(opponent.running, isTrue);
-    expect(vm.state.secondsLeft, 60);
+    expect(vm.state.secondsLeft, 30);
   });
 
   test('a counted rep raises my score and beeps', () async {
@@ -102,7 +102,7 @@ void main() {
     expect(vm.state.feedback!.valid, isTrue);
     expect(vm.state.feedbackCount, 1);
     expect(sound.played, 1);
-    expect(vm.state.remaining, const Duration(seconds: 58));
+    expect(vm.state.remaining, const Duration(seconds: 28));
   });
 
   test('a rejected rep shows its reason and stays silent', () async {
@@ -147,7 +147,7 @@ void main() {
     camera.startGate!.complete();
     await pumpEventQueue();
     expect(vm.state.phase, BattlePhase.playing);
-    expect(vm.state.remaining, const Duration(seconds: 50));
+    expect(vm.state.remaining, const Duration(seconds: 20));
     expect(opponent.startCount, 1);
   });
 

@@ -1,6 +1,6 @@
 # GymRats app
 
-Flutter Android client for the Iteration 1 demo. `lib/main.dart` launches the integrated flow: **home → simulated matching → versus → pose setup → 60-second battle → result → form feedback**.
+Flutter Android client for the Iteration 1 demo. `lib/main.dart` launches the integrated flow: **home → simulated matching → versus → pose setup → 30-second battle → result → form feedback**.
 
 The opponent is local RepBot. Profile and match records are in memory. Form reports stay in a file on the phone. Online PvP and authentication are not implemented on this branch. See the [repository README](../README.md) for features, prerequisites, the walkthrough, and limitations.
 

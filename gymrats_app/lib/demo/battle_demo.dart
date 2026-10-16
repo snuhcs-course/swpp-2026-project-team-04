@@ -42,7 +42,7 @@ import '../widgets/grid_background.dart';
 import '../widgets/pose_camera_view.dart';
 
 /// Round length in seconds, set with `--dart-define=BATTLE_SECONDS=20`.
-const _battleSeconds = int.fromEnvironment('BATTLE_SECONDS', defaultValue: 60);
+const _battleSeconds = int.fromEnvironment('BATTLE_SECONDS', defaultValue: 30);
 
 const _matchup = Matchup(
   exercise: ExerciseType.pushUp,

@@ -23,7 +23,7 @@ abstract final class AppColors {
   /// - invalid reps: the "not counted" popup in the battle and the invalid
   ///   count on the result screen
   /// - the "needs improvement" posture label
-  /// - the battle timer during its last 10 seconds
+  /// - the battle timer during its last 5 seconds
   static const warning = Color(0xFFFFB547);
 }
 
