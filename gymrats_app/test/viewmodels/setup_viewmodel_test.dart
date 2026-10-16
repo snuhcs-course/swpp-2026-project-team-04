@@ -8,6 +8,7 @@ import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
 
 import '../support/fakes.dart';
+import '../support/placed_phone.dart';
 import '../support/pose_fixtures.dart';
 
 void main() {
@@ -25,6 +26,7 @@ void main() {
       camera: camera,
       estimator: estimator,
       clock: () => now,
+      phoneTilt: placedPhone(),
     );
   });
 
@@ -261,6 +263,7 @@ void main() {
         camera: camera,
         estimator: estimator,
         clock: () => now,
+        phoneTilt: placedPhone(),
       );
       await custom.start();
       await feed(0, standingFrame());

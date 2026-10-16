@@ -26,6 +26,21 @@ void main() {
       expect(status.isReady, isFalse);
     });
 
+    test('a flat or shaky phone is not ready', () {
+      final flat = checker(
+        ExerciseType.pushUp,
+      ).update(pushUpFrontFrame(), phonePropped: false);
+      expect(flat.reason, SetupReason.phoneTooFlat);
+      expect(flat.message, '폰을 더 세워 주세요.');
+      expect(flat.isReady, isFalse);
+
+      final shaky = checker(
+        ExerciseType.pushUp,
+      ).update(pushUpFrontFrame(), phoneStill: false);
+      expect(shaky.reason, SetupReason.phoneShaky);
+      expect(shaky.isReady, isFalse);
+    });
+
     test('noPerson when no landmark passes the likelihood threshold', () {
       final frame = standingFrame(likelihood: 0.2);
       expect(
@@ -289,6 +304,62 @@ void main() {
       expect(
         checker(ExerciseType.pushUp).update(frame).reason,
         SetupReason.ready,
+      );
+    });
+  });
+
+  group('push-up pose', () {
+    test('an upright body with the hips in view is not a push-up', () {
+      final status = checker(
+        ExerciseType.pushUp,
+      ).update(standingFrame(showHips: true));
+      expect(status.reason, SetupReason.notInPushUp);
+      expect(status.message, 'Get into a push-up with straight arms.');
+    });
+
+    test('an upright body never becomes Ready', () {
+      final c = checker(ExerciseType.pushUp);
+      at(c, 0, standingFrame(showHips: true));
+      expect(at(c, 3000, standingFrame(showHips: true)).isReady, isFalse);
+    });
+
+    test('bent arms are not the top of a push-up', () {
+      final frame = standingFrame(
+        move: {
+          BodyLandmark.leftElbow: (640, 380),
+          BodyLandmark.rightElbow: (360, 380),
+        },
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.notInPushUp,
+      );
+    });
+
+    test('a plank with the hips just behind the shoulders is ready', () {
+      expect(
+        checker(
+          ExerciseType.pushUp,
+        ).update(pushUpFrontFrame(showHips: true)).reason,
+        SetupReason.ready,
+      );
+    });
+
+    test('hidden hips leave the decision to the straight arms', () {
+      expect(
+        checker(ExerciseType.pushUp).update(pushUpFrontFrame()).reason,
+        SetupReason.ready,
+      );
+    });
+
+    test('missing parts are reported before the pose', () {
+      final frame = standingFrame(
+        showHips: true,
+        hide: {BodyLandmark.leftWrist, BodyLandmark.rightWrist},
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.missingParts,
       );
     });
   });

@@ -10,6 +10,7 @@ import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
 
 import '../support/fakes.dart';
+import '../support/placed_phone.dart';
 import '../support/pose_fixtures.dart';
 
 /// Counts routes popped from the navigator.
@@ -55,6 +56,7 @@ void main() {
                       camera: camera,
                       estimator: estimator,
                       clock: () => now,
+                      phoneTilt: placedPhone(),
                     ),
                   ),
                 ),
@@ -312,9 +314,7 @@ void main() {
     expect(estimator.closed, isTrue);
   });
 
-  testWidgets('Start leaves only after the camera is released', (
-    tester,
-  ) async {
+  testWidgets('Start leaves only after the camera is released', (tester) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
     await feed(tester, 1500, standingFrame());

@@ -7,6 +7,7 @@ import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
 
 import '../support/fakes.dart';
+import '../support/placed_phone.dart';
 import '../support/pose_fixtures.dart';
 
 void main() {
@@ -117,11 +118,13 @@ class _Harness {
           camera: setupCamera,
           estimator: setupEstimator,
           clock: () => now,
+          phoneTilt: placedPhone(),
         ),
         createCounter: () => RepCounterViewModel(
           camera: counterCamera,
           estimator: counterEstimator,
           clock: () => now,
+          phoneTilt: placedPhone(),
           judge: RepJudge(
             config: const RepJudgeConfig(smoothingTau: Duration.zero),
             clock: () => now,
