@@ -1,5 +1,8 @@
+.env
+*tokens*.json
+.dart_tool/
+*.log
 .venv/
 __pycache__/
 .pytest_cache/
-.env
 *.db

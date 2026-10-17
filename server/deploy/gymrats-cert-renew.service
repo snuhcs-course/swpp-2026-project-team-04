@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew GymRats short-lived IP TLS certificate
+After=network-online.target nginx.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/gymrats/battle/certbot-venv/bin/certbot renew --quiet --config-dir /srv/gymrats/battle/tls/config --work-dir /srv/gymrats/battle/tls/work --logs-dir /srv/gymrats/battle/tls/logs --deploy-hook "/usr/sbin/nginx -t && /usr/bin/systemctl reload nginx"
