@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/exercise_type.dart';
 import '../services/pose/setup_checker.dart';
 import '../viewmodels/setup_viewmodel.dart';
-import '../widgets/pose_camera_view.dart';
+import '../widgets/pose_avatar_toggle_view.dart';
 
 const _readyColor = Colors.greenAccent;
 
@@ -188,7 +188,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
               fit: StackFit.expand,
               children: [
                 if (running)
-                  PoseCameraView(
+                  PoseAvatarToggleView(
                     controller: vm.cameraController,
                     frame: state.lastFrame,
                     mirror: vm.isFrontCamera,

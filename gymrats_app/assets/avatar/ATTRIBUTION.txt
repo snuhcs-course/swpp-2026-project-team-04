@@ -1,0 +1,24 @@
+GymRats prototype avatar assets (local conversion, bind-pose cleanup).
+
+Rigged Low Poly Astronaut: original model ThunderWare Games, rigging MrLentereng.
+https://mrlentereng.itch.io/rigged-low-poly-astronaut
+CC0 https://creativecommons.org/publicdomain/zero/1.0/
+
+Corebreaker Robot: Donitz.
+https://donitz.itch.io/corebreaker-robot-model
+CC0 https://creativecommons.org/publicdomain/zero/1.0/
+
+Mannequiny art: GDQuest. CC BY 4.0.
+https://github.com/gdquest-demos/godot-3d-mannequin
+https://creativecommons.org/licenses/by/4.0/
+Changes: GLB conversion, reset pose and constraints removed, legacy material
+alpha restored to opaque, at most four skin weights per vertex.
+Original license is retained in Mannequiny-LICENSE.txt.
+This use does not imply GDQuest's endorsement.
+
+Rigged and Animated Humanoid: XCVG.
+https://opengameart.org/content/rigged-and-animated-humanoid
+CC0 https://creativecommons.org/publicdomain/zero/1.0/
+
+Three.js 0.180.0: MIT. Full license retained in Three-LICENSE.txt.
+No MediaPipe runtime or new camera/detector is bundled into this Flutter feature.

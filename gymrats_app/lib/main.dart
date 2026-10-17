@@ -11,6 +11,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/match_setup_screen.dart';
 import 'screens/matching_screen.dart';
+import 'screens/online_lobby_screen.dart';
 import 'screens/result_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/signup_screen.dart';
@@ -59,6 +60,7 @@ class GymRatsApp extends StatefulWidget {
 
   static const signupRoute = '/signup';
   static const historyRoute = '/history';
+  static const onlineBattleRoute = '/online-battle';
 
   static const setupRoute = '/setup';
   static const matchingRoute = '/matching';
@@ -137,6 +139,13 @@ class _GymRatsAppState extends State<GymRatsApp> {
           },
         ),
         onGenerateRoute: (settings) => switch (settings.name) {
+          GymRatsApp.onlineBattleRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => OnlineLobbyScreen(
+              auth: widget.authRepository,
+              onAuthenticationFailed: _auth.logOut,
+            ),
+          ),
           GymRatsApp.signupRoute => MaterialPageRoute<void>(
             settings: settings,
             builder: (_) => const SignupScreen(),

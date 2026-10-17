@@ -160,6 +160,13 @@ class _HomeContent extends StatelessWidget {
           const SizedBox(height: AppSpacing.s8),
           _UnsentNote(count: profile.unsentMatches),
         ],
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () =>
+              Navigator.pushNamed(context, GymRatsApp.onlineBattleRoute),
+          icon: const Icon(Icons.public),
+          label: const Text('온라인 1v1 · 아바타 대결'),
+        ),
       ],
     );
   }
