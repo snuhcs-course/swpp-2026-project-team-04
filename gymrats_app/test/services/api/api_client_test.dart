@@ -161,6 +161,6 @@ void main() {
   });
 
   test('the default server is the team server under /api', () {
-    expect(ApiClient.defaultBaseUrl.toString(), 'http://52.78.38.225/api');
+    expect(ApiClient.defaultBaseUrl.toString(), 'https://52.78.38.225/api');
   });
 }

@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../config/server_config.dart';
+
 /// Why a request to the server failed.
 enum ApiErrorKind {
   /// No connection, or the server could not be reached.
@@ -46,21 +48,13 @@ class ApiException implements Exception {
 
 /// Talks JSON to the GymRats API.
 ///
-/// The base URL lives only here. It is `http://52.78.38.225/api` until the
-/// server has HTTPS; `--dart-define=GYMRATS_API=<url>` points the app at
-/// another server, e.g. `http://10.0.2.2:8000` for one running on the
-/// computer next to an emulator.
+/// Production uses the fixed HTTPS team endpoint. Tests may inject [baseUrl].
 class ApiClient {
   ApiClient({http.Client? httpClient, Uri? baseUrl, this.timeout = _timeout})
     : _http = httpClient ?? http.Client(),
       baseUrl = baseUrl ?? defaultBaseUrl;
 
-  static final defaultBaseUrl = Uri.parse(
-    const String.fromEnvironment(
-      'GYMRATS_API',
-      defaultValue: 'http://52.78.38.225/api',
-    ),
-  );
+  static final defaultBaseUrl = Uri.parse(gymratsApiBaseUrl);
 
   static const _timeout = Duration(seconds: 10);
 
