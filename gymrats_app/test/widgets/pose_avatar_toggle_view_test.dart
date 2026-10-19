@@ -73,29 +73,34 @@ void main() {
     },
   );
 
-  testWidgets('long press selects any of the four real assets', (tester) async {
-    AvatarModel? selected;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: PoseAvatarToggleView(
-            controller: null,
-            avatarBuilder: (_, _, model) {
-              selected = model;
-              return const Text('avatar');
-            },
+  testWidgets(
+    'long press scrolls through the full catalog and selects a new avatar',
+    (tester) async {
+      AvatarModel? selected;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PoseAvatarToggleView(
+              controller: null,
+              avatarBuilder: (_, _, model) {
+                selected = model;
+                return const Text('avatar');
+              },
+            ),
           ),
         ),
-      ),
-    );
-    await tester.longPress(find.byKey(const Key('avatarCameraToggle')));
-    await tester.pumpAndSettle();
-    for (final model in AvatarModel.values) {
-      expect(find.text(model.label), findsOneWidget);
-    }
-    await tester.tap(find.text('XCVG Humanoid'));
-    await tester.pumpAndSettle();
-    expect(selected, AvatarModel.humanoid);
-    expect(find.text('카메라 보기'), findsOneWidget);
-  });
+      );
+      await tester.longPress(find.byKey(const Key('avatarCameraToggle')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('스켈레톤 워리어').hitTestable(),
+        240,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.text('스켈레톤 워리어'));
+      await tester.pumpAndSettle();
+      expect(selected, AvatarModel.skeletonWarrior);
+      expect(find.text('카메라 보기'), findsOneWidget);
+    },
+  );
 }

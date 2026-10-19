@@ -14,6 +14,7 @@ import '../widgets/opponent_avatar_panel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
+import '../widgets/battle_score_balance.dart';
 import 'setup_screen.dart';
 import 'feedback_screen.dart';
 
@@ -424,6 +425,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                           ),
                         )
                       : PoseAvatarToggleView(
+                          chestSnapshot: counter.snapshot,
                           initialModel: session.avatar,
                           allowAvatarSelection: false,
                           controller: _counter.cameraController,
@@ -439,6 +441,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    BattleScoreBalance(
+                      mine: session.myReps,
+                      theirs: session.opponentReps,
+                    ),
+                    const SizedBox(height: 8),
                     if (!session.connected && !terminal)
                       const Text(
                         '재연결 중 · 경기 시간은 계속 진행됩니다.',

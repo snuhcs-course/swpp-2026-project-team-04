@@ -2,7 +2,7 @@
 
 GymRats is a Flutter Android app for camera-based exercise battles. This integration combines online avatar battles, authentication/history, 30-second rounds, phone-placement checks, and on-device form feedback. The video below is the historical Iteration 1 demo.
 
-The main app requires a signed-in account. Online battles require two different accounts and the team API/WSS server. The lower AI battle button uses local RepBot; the primary button starts online matching. Choose one of four avatars from the profile button.
+The main app requires a signed-in account. Online battles require two different accounts and the team API/WSS server. The lower AI battle button uses local RepBot; the primary button starts online matching. Choose from 25 avatars in the profile screen, with thumbnails, search, category filters and a 3D preview. The catalog includes the original four models, twelve Kenney skin appearances and nine KayKit fantasy/skeleton characters; source licenses are bundled with the app.
 
 The integrated server defaults to 30-second rounds and accepts the expanded form/phone-motion rejection reasons. Deploy this server version before testing those rules online; the client follows the duration actually supplied by the server. Source integration and local APK builds do not deploy the server.
 

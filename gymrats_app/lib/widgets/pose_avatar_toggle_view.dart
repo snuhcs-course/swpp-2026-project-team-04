@@ -5,6 +5,8 @@ import '../models/avatar_model.dart';
 import '../models/pose_frame.dart';
 import 'pose_avatar_view.dart';
 import 'pose_camera_view.dart';
+import '../services/pose/rep_judge.dart';
+import 'chest_height_overlay.dart';
 
 /// Changes presentation only. Never starts/stops the camera or the detector.
 class PoseAvatarToggleView extends StatefulWidget {
@@ -19,6 +21,7 @@ class PoseAvatarToggleView extends StatefulWidget {
     this.avatarBuilder,
     this.initialModel = AvatarModel.astronaut,
     this.allowAvatarSelection = true,
+    this.chestSnapshot,
   });
 
   final CameraController? controller;
@@ -29,6 +32,7 @@ class PoseAvatarToggleView extends StatefulWidget {
   final Widget? cameraOverlay;
   final AvatarModel initialModel;
   final bool allowAvatarSelection;
+  final JudgeSnapshot? chestSnapshot;
 
   /// Allows widget tests to exercise the toggle without a platform WebView.
   final Widget Function(PoseFrame? frame, bool mirror, AvatarModel model)?
@@ -52,16 +56,25 @@ class _PoseAvatarToggleViewState extends State<PoseAvatarToggleView> {
     final result = await showModalBottomSheet<AvatarModel>(
       context: context,
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final model in AvatarModel.values)
-              ListTile(
-                title: Text(model.label),
-                trailing: model == _model ? const Icon(Icons.check) : null,
-                onTap: () => Navigator.pop(context, model),
-              ),
-          ],
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * .65,
+          child: ListView(
+            children: [
+              for (final model in AvatarModel.values)
+                ListTile(
+                  title: Text(model.label),
+                  subtitle: Text(model.category),
+                  leading: Image.asset(
+                    model.thumbnailPath,
+                    width: 44,
+                    height: 44,
+                    errorBuilder: (_, _, _) => const Icon(Icons.person_outline),
+                  ),
+                  trailing: model == _model ? const Icon(Icons.check) : null,
+                  onTap: () => Navigator.pop(context, model),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -93,6 +106,13 @@ class _PoseAvatarToggleViewState extends State<PoseAvatarToggleView> {
         ),
         ?widget.cameraOverlay,
       ],
+      if (widget.chestSnapshot case final snapshot?)
+        ChestHeightOverlay(
+          frame: widget.frame,
+          snapshot: snapshot,
+          mirror: widget.mirror,
+          drawGuide: !_avatar,
+        ),
       Align(
         alignment: Alignment.centerRight,
         child: Padding(

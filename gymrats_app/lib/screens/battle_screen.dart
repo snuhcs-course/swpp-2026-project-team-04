@@ -326,6 +326,7 @@ class _CameraBox extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           PoseAvatarToggleView(
+            chestSnapshot: state.snapshot,
             controller: counter.cameraController,
             frame: state.phase == CounterPhase.running ? frame : null,
             mirror: counter.isFrontCamera,

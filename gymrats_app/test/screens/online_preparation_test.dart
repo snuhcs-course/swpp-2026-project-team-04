@@ -12,6 +12,8 @@ import 'package:gymrats_app/screens/feedback_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/pose_avatar_toggle_view.dart';
+import 'package:gymrats_app/widgets/battle_score_balance.dart';
+import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
@@ -94,6 +96,32 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('online battle uses server score ratio and chest HUD', (
+    tester,
+  ) async {
+    await open(tester);
+    session.startAtMs = session.serverNow - 100;
+    session.endAtMs = session.serverNow + 29900;
+    session.phase = OnlinePhase.playing;
+    session.myReps = 3;
+    session.opponentReps = 2;
+    session.notifyListeners();
+    estimator.frames.add(standingFrame());
+    camera.emit();
+    await tester.pumpAndSettle();
+    expect(find.byType(ChestHeightOverlay), findsOneWidget);
+    final balance = tester.widget<BattleScoreBalance>(
+      find.byType(BattleScoreBalance),
+    );
+    expect(balance.mine, 3);
+    expect(balance.theirs, 2);
+    expect(find.text('나 60%'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await captureFlowSnapshot('online-battle-live-indicators');
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
 
   testWidgets('online setup requires a propped and still phone', (
     tester,

@@ -45,8 +45,71 @@ Future<InMemoryAuthRepository> _auth() async {
 }
 
 void main() {
+  testWidgets('catalog search and category filtering select a new avatar', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final auth = await _auth();
+    final avatars = MemoryAvatarStore();
+    await prepareFlowSnapshotFonts(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: ProfileScreen(
+          auth: auth,
+          avatars: avatars,
+          previewBuilder: (_) => const SizedBox(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    if (const String.fromEnvironment('ONLINE_FLOW_SNAPSHOT_URI').isNotEmpty) {
+      await tester.runAsync(() async {
+        final context = tester.element(find.byType(ProfileScreen));
+        await Future.wait(
+          AvatarModel.values.map(
+            (a) => precacheImage(
+              ResizeImage(AssetImage(a.thumbnailPath), width: 128),
+              context,
+            ),
+          ),
+        );
+      });
+      await tester.pumpAndSettle();
+    }
+    await tester.ensureVisible(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), '스켈레톤');
+    await tester.pumpAndSettle();
+    expect(find.byType(RadioListTile<AvatarModel>), findsNWidgets(4));
+    await tester.scrollUntilVisible(
+      find.text('스켈레톤 워리어').hitTestable(),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('스켈레톤 워리어'));
+    await tester.pumpAndSettle();
+    expect(
+      await avatars.read(auth.session!.account.id),
+      AvatarModel.skeletonWarrior,
+    );
+    await captureFlowSnapshot('profile-skeleton-catalog');
+    await tester.ensureVisible(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), '');
+    final fantasy = find.widgetWithText(ChoiceChip, '판타지');
+    await tester.ensureVisible(fantasy);
+    await tester.tap(fantasy);
+    await tester.pumpAndSettle();
+    expect(find.byType(RadioListTile<AvatarModel>), findsNWidgets(5));
+    await tester.enterText(find.byType(TextField), 'no-such-avatar');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('검색 결과가 없어요'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'profile offers four avatars, saves the selection and restores it',
+    'profile offers the full avatar catalog, saves selection and restores it',
     (tester) async {
       await prepareFlowSnapshotFonts(tester);
       tester.view.physicalSize = const Size(360, 800);
@@ -68,9 +131,16 @@ void main() {
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
       expect(find.text('내프로필'), findsOneWidget);
-      expect(find.byType(RadioListTile<AvatarModel>), findsNWidgets(4));
+      expect(
+        find.byType(RadioListTile<AvatarModel>),
+        findsNWidgets(AvatarModel.values.length),
+      );
       await captureFlowSnapshot('profile-avatars');
-      await tester.scrollUntilVisible(find.text('XCVG Humanoid'), 160);
+      await tester.scrollUntilVisible(
+        find.text('XCVG Humanoid').hitTestable(),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('XCVG Humanoid'));
       await tester.pumpAndSettle();
       expect(
@@ -78,25 +148,14 @@ void main() {
         AvatarModel.humanoid,
       );
       expect(
-        tester
-            .widget<RadioGroup<AvatarModel>>(
-              find.byType(RadioGroup<AvatarModel>),
-            )
-            .groupValue,
+        await avatars.read(auth.session!.account.id),
         AvatarModel.humanoid,
       );
       expect(find.text('저장했어요. 다음 온라인 대결에 적용됩니다.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<RadioGroup<AvatarModel>>(
-              find.byType(RadioGroup<AvatarModel>),
-            )
-            .groupValue,
-        AvatarModel.humanoid,
-      );
+      expect(find.text('총 25종 · 선택: XCVG Humanoid'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -117,7 +176,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Corebreaker Robot'), 160);
+    await tester.scrollUntilVisible(
+      find.text('Corebreaker Robot').hitTestable(),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('Corebreaker Robot'));
     await tester.pumpAndSettle();
     expect(await avatars.read(auth.session!.account.id), AvatarModel.astronaut);
@@ -152,7 +215,11 @@ void main() {
       await tester.tap(find.byTooltip('프로필'));
       await tester.pumpAndSettle();
       expect(find.byType(ProfileScreen), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Corebreaker Robot'), 160);
+      await tester.scrollUntilVisible(
+        find.text('Corebreaker Robot').hitTestable(),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Corebreaker Robot'));
       await tester.pumpAndSettle();
       await tester.binding.handlePopRoute();

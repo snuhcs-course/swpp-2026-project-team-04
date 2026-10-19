@@ -69,6 +69,7 @@ flutter:
   assets:
     - assets/avatar/
     - assets/avatar/models/
+    - assets/avatar/thumbnails/
 
   # Static TTFs from fonts.google.com; licenses are next to them (*-OFL.txt).
   fonts:

@@ -19,10 +19,11 @@ function rig(id){
 const p=(x,y,z=0)=>({x,y,z,visibility:1,presence:1});
 const pose=Array.from({length:33},()=>p(0,0));
 Object.assign(pose,{7:p(.07,-.7),8:p(-.07,-.7),11:p(.2,-.5),12:p(-.2,-.5),13:p(.45,-.3),14:p(-.3,-.85),15:p(.6,-.55),16:p(-.3,-1.1),23:p(.12,0),24:p(-.12,0),25:p(.15,.4),26:p(-.2,.3,.2),27:p(.15,.8),28:p(-.2,.65,.3),31:p(.15,.85,-.15),32:p(-.2,.7,.15)});
-for(const id of ['astronaut','robot','mannequiny','xcvg']){
+const catalog=JSON.parse(readFileSync(new URL('../../gymrats_app/assets/avatar/catalog-assets.json',import.meta.url)));
+for(const {asset:id} of catalog){
   const {model,bones}=rig(id),target=new PoseRetargeter(model,bones);
-  assert.equal(target.entries.length,11,`${id}: expected arms, legs, feet, neck`);assert.ok(target.restFrame,`${id}: torso mapping`);
-  for(let i=0;i<90;i++)assert.equal(target.update(pose,1000+i*50,.05),12);
+  assert.ok(target.entries.length>=10,`${id}: expected arms, legs and feet`);assert.ok(target.restFrame,`${id}: torso mapping`);
+  for(let i=0;i<90;i++)assert.equal(target.update(pose,1000+i*50,.05),target.entries.length+1);
   for(const entry of target.entries){
     const actual=entry.local.clone().applyQuaternion(entry.bone.getWorldQuaternion(new THREE.Quaternion()));
     const avg=ids=>ids.map(i=>new THREE.Vector3(pose[i].x,-pose[i].y,-pose[i].z)).reduce((a,b)=>a.add(b),new THREE.Vector3()).multiplyScalar(1/ids.length);
@@ -34,5 +35,5 @@ for(const id of ['astronaut','robot','mannequiny','xcvg']){
   for(const [bone,q] of target.rest)assert.ok(bone.quaternion.angleTo(q)<.001,`${id}: lost tracking recovery`);
   const invalid=pose.map(p=>({...p,x:NaN}));assert.equal(target.update(invalid,20000,.05),0);
   target.update(pose,21000,.05);target.reset();for(const [bone,q] of target.rest)assert.deepEqual(bone.quaternion.toArray(),q.toArray());
-  console.log(`PASS ${id}: ${bones.length} bones, 12 mappings; direction, finite rotations, lost tracking, reset`);
+  console.log(`PASS ${id}: ${bones.length} bones, ${target.entries.length+1} mappings; direction, finite rotations, lost tracking, reset`);
 }

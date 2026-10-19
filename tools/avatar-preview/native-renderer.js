@@ -39,6 +39,8 @@ try {
         group.add(root);scene.add(group);group.updateMatrixWorld(true);
         const bones=[];root.traverse(o=>{if(o.isBone)bones.push(o);});
         retargeter=new PoseRetargeter(group,bones);rootMotion=new ScreenRootMotion(group,bones);message.textContent='관절 인식을 기다리는 중…';credits.textContent=attribution[name]??name;
+        if(name.startsWith('kenney_'))credits.textContent='Kenney · CC0 · '+name.replace('kenney_','');
+        if(name.startsWith('kaykit_'))credits.textContent='Kay Lousberg · CC0 · '+name.replace('kaykit_','');
         elbows=new ElbowHighlight(document.getElementById('elbow-overlay'),bones);
         host({type:'modelReady',id:name,bones:bones.length});
       }catch(error){if(ticket===generation){host({type:'error',message:error.message});message.textContent='아바타 로드 실패';}}

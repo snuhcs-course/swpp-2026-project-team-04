@@ -27,7 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true, _saving = false;
   bool _loadFailed = false;
   String? _error;
-  bool _saved = false;
+  String _category = '전체', _query = '';
 
   @override
   void initState() {
@@ -72,7 +72,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (avatar == null || account == null || _loading || _saving) return;
     setState(() {
       _saving = true;
-      _saved = false;
       _error = null;
     });
     try {
@@ -80,10 +79,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted || widget.auth.session?.account.id != account.id) return;
       setState(() {
         _selected = avatar;
-        _saved = true;
       });
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('저장했어요. 다음 온라인 대결에 적용됩니다.')),
+        );
     } catch (_) {
-      if (mounted) setState(() => _error = '저장하지 못했어요. 다시 선택해주세요.');
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('저장하지 못했어요. 다시 선택해주세요.')),
+          );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -92,6 +101,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final account = widget.auth.session?.account;
+    final categories = [
+      '전체',
+      ...AvatarModel.values.map((a) => a.category).toSet(),
+    ];
+    final matches = AvatarModel.values
+        .where(
+          (a) =>
+              (_category == '전체' || a.category == _category) &&
+              '${a.label} ${a.assetName} ${a.category}'.toLowerCase().contains(
+                _query.trim().toLowerCase(),
+              ),
+        )
+        .toList();
     return PopScope(
       canPop: !_saving,
       child: Scaffold(
@@ -135,6 +157,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    Text(
+                      '총 ${AvatarModel.values.length}종 · 선택: ${_selected.label}',
+                      style: const TextStyle(color: AppColors.accent),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: '아바타 검색',
+                        prefixIcon: Icon(Icons.search),
+                        hintText: '이름 · 스타일로 찾아보세요',
+                      ),
+                      onChanged: (value) => setState(() => _query = value),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final category in categories)
+                          ChoiceChip(
+                            label: Text(category),
+                            selected: _category == category,
+                            onSelected: (_) =>
+                                setState(() => _category = category),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (matches.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('검색 결과가 없어요. 다른 이름이나 분류를 선택해주세요.'),
+                      ),
                     if (_error != null) ...[
                       Text(
                         _error!,
@@ -150,20 +205,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onChanged: _select,
                       child: Column(
                         children: [
-                          for (final avatar in AvatarModel.values)
+                          for (final avatar in matches)
                             Card(
                               child: RadioListTile<AvatarModel>(
                                 value: avatar,
                                 title: Text(avatar.label),
+                                subtitle: Text(
+                                  '${avatar.category} · ${avatar.credit}',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                                 enabled:
                                     account != null && !_saving && !_loadFailed,
-                                secondary: Icon(
-                                  avatar == _selected
-                                      ? Icons.check_circle
-                                      : Icons.person_outline,
-                                  color: avatar == _selected
-                                      ? AppColors.accent
-                                      : AppColors.textSecondary,
+                                secondary: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.asset(
+                                    avatar.thumbnailPath,
+                                    width: 56,
+                                    height: 64,
+                                    fit: BoxFit.cover,
+                                    cacheWidth: 128,
+                                    semanticLabel: '${avatar.label} 미리보기',
+                                    errorBuilder: (_, _, _) => const SizedBox(
+                                      width: 56,
+                                      height: 64,
+                                      child: Icon(Icons.person_outline),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -171,14 +238,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     if (_saving) const LinearProgressIndicator(),
-                    if (_saved)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 12),
-                        child: Text(
-                          '저장했어요. 다음 온라인 대결에 적용됩니다.',
-                          style: TextStyle(color: AppColors.accent),
-                        ),
-                      ),
                   ],
                 ),
         ),

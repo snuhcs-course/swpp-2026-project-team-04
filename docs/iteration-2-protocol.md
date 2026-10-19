@@ -67,7 +67,7 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 
 ## 4. 아바타 목록과 설정
 
-사용자가 확정한 프로토타입 아바타는 다음 4종이다. 식별자는 외형 교체와 무관하게 유지하며 서버와 앱에서 같은 목록을 사용한다. 네 모델을 내려받아 GLB로 변환했고, 기존 ML Kit 관절 좌표로 움직이는 로컬 앱 렌더러를 구현했다.
+기존 4종의 식별자는 유지하며, 2026-10-19에 전체 목록을 25종으로 확장했다. 서버와 앱은 같은 허용 목록을 사용한다. 모든 모델은 로컬 GLB와 썸네일로 포함하고, 기존 ML Kit 관절 좌표로 구동한다.
 
 | avatar_id | 설정 표시 이름 | 원본 | 라이선스 기록 |
 |---|---|---|---|
@@ -75,6 +75,10 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 | `avatar_02` | 로봇 | [Corebreaker Robot](https://donitz.itch.io/corebreaker-robot-model) | 제작자 Donitz, CC0 |
 | `avatar_03` | 마네킹 | [GDQuest Mannequiny](https://github.com/gdquest-demos/godot-3d-mannequin) | 저장소 기준 아트 CC BY 4.0, 코드 MIT. 사용 파일별 LICENSE 확인 및 출처 표시 |
 | `avatar_04` | 휴머노이드 | [XCVG Rigged Humanoid](https://opengameart.org/content/rigged-and-animated-humanoid) | 제작자 XCVG, CC0 |
+
+추가 목록: `avatar_05`~`08`은 Kenney Protagonists, `09`~`12`는 Retro, `13`~`16`은 Survivors의 저작자 제공 스킨이다. `17`~`21`은 KayKit Adventurers(기사·바바리안·메이지·로그·후드 로그), `22`~`25`는 KayKit Skeletons(메이지·미니언·로그·워리어)다. 추가 리소스는 CC0이며 원본 URL·라이선스·변환 사항은 `gymrats_app/assets/avatar/ATTRIBUTION.txt` 및 팩별 LICENSE에 기록한다. Kenney 12종은 공통 리그/메시에 서로 다른 원본 스킨을 적용한 외형이다.
+
+프로필에서 썸네일·3D 미리보기·검색·분류 필터로 선택하며, ID는 계정별 기기 저장소에 유지된다. 새 ID를 온라인에서 사용하려면 서버의 이 허용 목록도 배포해야 한다. 알 수 없는 ID나 원격 모델 URL은 계속 거절한다.
 
 리소스를 도입할 때 배포본의 라이선스와 원본 URL을 함께 보관한다. Mannequiny는 앱의 크레딧 화면과 저장소의 제3자 리소스 고지에 `GDQuest and contributors (https://www.gdquest.com/)`, 원본 링크, CC BY 4.0 링크 및 변경 사항을 표시한다. 코드를 가져올 경우 MIT 고지도 보존한다. CC0 모델도 추적을 위해 제작자·출처를 기록한다.
 

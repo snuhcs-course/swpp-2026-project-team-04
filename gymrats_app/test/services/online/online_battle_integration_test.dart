@@ -161,6 +161,53 @@ void main() {
           .map((p) => p['player_id'] as String)
           .toList();
 
+  test(
+    'all catalog avatars can match and appear on the opponent client',
+    () async {
+      for (final avatar in AvatarModel.values) {
+        final s = BattleServer(
+          authenticate: (token) => token == 'alpha'
+              ? const BattleIdentity('a', 'Alpha')
+              : const BattleIdentity('b', 'Beta'),
+          readyTimeoutMs: 10000,
+        );
+        await s.start();
+        final endpoint = Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle');
+        final a = OnlineBattleSession(
+          endpoint: endpoint,
+          accessToken: 'alpha',
+          avatar: avatar,
+          allowInsecureLoopback: true,
+        );
+        final b = OnlineBattleSession(
+          endpoint: endpoint,
+          accessToken: 'beta',
+          avatar: AvatarModel.robot,
+          allowInsecureLoopback: true,
+        );
+        try {
+          await a.connect();
+          await until(() => a.phase == OnlinePhase.queued);
+          await b.connect();
+          await until(
+            () =>
+                a.phase == OnlinePhase.preparing &&
+                b.phase == OnlinePhase.preparing,
+          );
+          expect(b.opponent!.avatar, avatar);
+          expect(a.error, isNull);
+          await a.leave();
+          await until(() => b.terminal);
+        } finally {
+          a.dispose();
+          b.dispose();
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await s.close();
+        }
+      }
+    },
+  );
+
   test('FIFO pairs by queue arrival, not connection order', () async {
     final s = await server(ready: 10000);
     final a = await Wire.open(s, 'alpha');

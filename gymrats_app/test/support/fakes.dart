@@ -260,6 +260,7 @@ class PushLog extends NavigatorObserver {
 /// [closeRep], if any. Frames still have to come through the camera and
 /// estimator fakes.
 class FakeRepJudge extends RepJudge {
+  JudgeSnapshot snapshot = JudgeSnapshot.initial;
   final Queue<RepEvent> _verdicts = Queue();
   int _index = 0;
 
@@ -275,7 +276,7 @@ class FakeRepJudge extends RepJudge {
 
   @override
   RepUpdate update(PoseFrame frame) => RepUpdate(
-    snapshot: JudgeSnapshot.initial,
+    snapshot: snapshot,
     event: _verdicts.isEmpty ? null : _verdicts.removeFirst(),
   );
 }

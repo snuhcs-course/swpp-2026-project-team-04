@@ -179,6 +179,7 @@ class JudgeSnapshot {
     this.depth,
     this.tilt,
     this.shoulderDrop,
+    this.topShoulderY,
   });
 
   static const initial = JudgeSnapshot(phase: RepPhase.idle);
@@ -198,6 +199,9 @@ class JudgeSnapshot {
   /// How far the shoulders have dropped below the top pose, in shoulder
   /// widths. Compared with [depth] to see whether the head led the chest.
   final double? shoulderDrop;
+
+  /// Calibrated shoulder midpoint in upright image pixels, for visual guidance.
+  final double? topShoulderY;
 }
 
 /// The result of feeding one frame to [RepJudge].
@@ -692,5 +696,6 @@ class RepJudge {
         depth: _depth(smoothed),
         tilt: tilt,
         shoulderDrop: _shoulderDrop(smoothed),
+        topShoulderY: _topShoulderY,
       );
 }

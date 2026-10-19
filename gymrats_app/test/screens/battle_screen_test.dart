@@ -17,9 +17,14 @@ import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/landmark_overlay.dart';
 import 'package:gymrats_app/widgets/opponent_mannequin.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
+import 'package:gymrats_app/widgets/battle_score_balance.dart';
+import 'package:gymrats_app/widgets/chest_height_overlay.dart';
+import 'package:gymrats_app/services/pose/rep_judge.dart';
 
 import '../support/fakes.dart';
 import '../support/pose_fixtures.dart';
+import '../support/flow_snapshot.dart';
+import '../support/placed_phone.dart';
 
 const _matchup = Matchup(
   exercise: ExerciseType.pushUp,
@@ -57,6 +62,7 @@ void main() {
         camera: camera,
         estimator: estimator,
         judge: judge,
+        phoneTilt: placedPhone(),
         clock: () => now,
         roundLength: battleDuration,
       ),
@@ -128,6 +134,27 @@ void main() {
     of: find.byType(ExitDialog),
     matching: find.text('게임 나가기'),
   );
+
+  testWidgets('live indicators fit a small phone', (tester) async {
+    await prepareFlowSnapshotFonts(tester);
+    await open(tester, size: const Size(360, 640));
+    judge.snapshot = const JudgeSnapshot(
+      phase: RepPhase.descending,
+      shoulderDrop: .5,
+      topShoulderY: 200,
+    );
+    judge.closeRep();
+    await frame(tester, 1, pose: standingFrame());
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(ChestHeightOverlay), findsOneWidget);
+    expect(find.text('하강 50% · 어깨 너비 기준'), findsOneWidget);
+    expect(
+      tester.widget<BattleScoreBalance>(find.byType(BattleScoreBalance)).mine,
+      1,
+    );
+    expect(tester.takeException(), isNull);
+    await captureFlowSnapshot('ai-battle-live-indicators');
+  });
 
   testWidgets('shows the camera, my chip, the opponent window, and the '
       'scores', (tester) async {
