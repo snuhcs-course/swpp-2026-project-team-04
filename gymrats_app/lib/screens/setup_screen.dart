@@ -197,11 +197,11 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                   )
                 else
                   _PhaseMessage(viewModel: vm),
-                if (running) _ReadyBorder(ready: state.status.isReady),
+                if (running) PoseReadyBorder(ready: state.status.isReady),
                 SafeArea(
                   child: Column(
                     children: [
-                      _TopButtons(
+                      PoseSetupTopButtons(
                         canSwitchCamera: running && vm.canSwitchCamera,
                         onSwitchCamera: vm.switchCamera,
                       ),
@@ -224,8 +224,8 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
   }
 }
 
-class _ReadyBorder extends StatelessWidget {
-  const _ReadyBorder({required this.ready});
+class PoseReadyBorder extends StatelessWidget {
+  const PoseReadyBorder({super.key, required this.ready});
 
   final bool ready;
 
@@ -246,14 +246,19 @@ class _ReadyBorder extends StatelessWidget {
 }
 
 /// Back and camera switch buttons floating over the preview.
-class _TopButtons extends StatelessWidget {
-  const _TopButtons({
+class PoseSetupTopButtons extends StatelessWidget {
+  const PoseSetupTopButtons({
+    super.key,
     required this.canSwitchCamera,
     required this.onSwitchCamera,
+    this.onBack,
+    this.center,
   });
 
   final bool canSwitchCamera;
   final VoidCallback onSwitchCamera;
+  final VoidCallback? onBack;
+  final Widget? center;
 
   @override
   Widget build(BuildContext context) {
@@ -266,9 +271,11 @@ class _TopButtons extends StatelessWidget {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             tooltip: 'Back',
             style: style,
-            onPressed: () => Navigator.maybePop(context),
+            onPressed: onBack ?? () => Navigator.maybePop(context),
           ),
           const Spacer(),
+          ?center,
+          if (center != null) const Spacer(),
           if (canSwitchCamera)
             IconButton(
               icon: const Icon(Icons.cameraswitch, color: Colors.white),
@@ -301,6 +308,35 @@ class _BottomPanel extends StatelessWidget {
     final progress = left == null
         ? status.readyProgress
         : 1 - left.inMicroseconds / autoStartDelay.inMicroseconds;
+    return PoseSetupPanel(
+      message: state.message,
+      ready: status.isReady,
+      progress: progress,
+      onStart: onStart,
+    );
+  }
+}
+
+/// Shared camera setup and waiting controls; online start remains server-owned.
+class PoseSetupPanel extends StatelessWidget {
+  const PoseSetupPanel({
+    super.key,
+    required this.message,
+    required this.ready,
+    required this.progress,
+    required this.onStart,
+    this.buttonLabel = 'Start',
+    this.notice,
+  });
+  final String message;
+  final bool ready;
+  final double progress;
+  final VoidCallback? onStart;
+  final String buttonLabel;
+  final Widget? notice;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       color: Colors.black54,
@@ -309,10 +345,10 @@ class _BottomPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            state.message,
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: status.isReady ? _readyColor : Colors.white,
+              color: ready ? _readyColor : Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.w600,
             ),
@@ -332,9 +368,10 @@ class _BottomPanel extends StatelessWidget {
                 backgroundColor: _readyColor,
                 foregroundColor: Colors.black,
               ),
-              child: const Text('Start'),
+              child: Text(buttonLabel),
             ),
           ),
+          if (notice != null) ...[const SizedBox(height: 8), notice!],
         ],
       ),
     );

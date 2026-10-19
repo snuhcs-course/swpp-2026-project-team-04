@@ -10,15 +10,20 @@ import '../services/pose/setup_checker.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../widgets/opponent_avatar_panel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
+import '../widgets/exit_dialog.dart';
+import '../widgets/exit_game_button.dart';
+import 'setup_screen.dart';
 
 class OnlineBattleScreen extends StatefulWidget {
   const OnlineBattleScreen({
     super.key,
     required this.session,
     this.createCounter,
+    this.setupConfig = const SetupConfig(),
   });
   final OnlineBattleSession session;
   final RepCounterViewModel Function()? createCounter;
+  final SetupConfig setupConfig;
   @override
   State<OnlineBattleScreen> createState() => _OnlineBattleScreenState();
 }
@@ -27,7 +32,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     with WidgetsBindingObserver {
   late final RepCounterViewModel _counter;
   StreamSubscription<dynamic>? _reps;
-  final _setup = SetupChecker(exercise: ExerciseType.pushUp);
+  late final SetupChecker _setup;
+  SetupStatus _setupStatus = SetupStatus.initial;
   PoseFrame? _seen;
   bool _setupReady = false,
       _roundStarted = false,
@@ -37,6 +43,10 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   @override
   void initState() {
     super.initState();
+    _setup = SetupChecker(
+      exercise: ExerciseType.pushUp,
+      config: widget.setupConfig,
+    );
     WidgetsBinding.instance.addObserver(this);
     unawaited(keepScreenOn(true));
     // Online timing is owned by the server. The counter's offline 60s clock
@@ -79,11 +89,13 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       session.publishPose(frame);
       if (frame != null && !identical(frame, _seen)) {
         _seen = frame;
-        _setupReady = _setup.update(frame).isReady;
+        _setupStatus = _setup.update(frame);
+        _setupReady = _setupStatus.isReady;
       }
     } else {
       session.publishPose(null);
       _setup.reset();
+      _setupStatus = SetupStatus.initial;
       _setupReady = false;
     }
     if (session.canReady &&
@@ -114,23 +126,12 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _asking = true;
     final leave = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('온라인 배틀에서 나갈까요?'),
-        content: Text(
-          session.startAtMs == null
-              ? '매칭이 취소됩니다.'
-              : '시작 후 나가면 서버 규칙에 따라 기권 처리됩니다.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('계속하기'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('나가기'),
-          ),
-        ],
+      builder: (context) => ExitDialog(
+        title: '게임에서 나갈까요?',
+        message: session.startAtMs == null
+            ? '${session.opponent!.name}과의 대결이 취소되고\n홈으로 돌아가요.'
+            : '시작 후 나가면 서버 규칙에 따라\n기권 처리됩니다.',
+        leaveLabel: '게임 나가기',
       ),
     );
     _asking = false;
@@ -160,6 +161,99 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       CounterPhase.cameraError,
       CounterPhase.detectorError,
     }.contains(counter.phase);
+    if (!terminal &&
+        (session.phase == OnlinePhase.preparing ||
+            session.phase == OnlinePhase.scheduled)) {
+      final scheduled = session.phase == OnlinePhase.scheduled;
+      return PopScope<Object?>(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) unawaited(_exit());
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (counter.phase == CounterPhase.running)
+                PoseAvatarToggleView(
+                  initialModel: session.avatar,
+                  allowAvatarSelection: false,
+                  controller: _counter.cameraController,
+                  frame: counter.lastFrame,
+                  mirror: _counter.isFrontCamera,
+                )
+              else if (cameraFailed)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('카메라 권한 또는 자세 인식을 확인해주세요.'),
+                        TextButton(
+                          onPressed:
+                              counter.phase == CounterPhase.permissionDenied
+                              ? _counter.openSettings
+                              : _counter.retry,
+                          child: const Text('카메라 다시 준비'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                const Center(child: CircularProgressIndicator()),
+              PoseReadyBorder(ready: _setupReady),
+              SafeArea(
+                child: Column(
+                  children: [
+                    PoseSetupTopButtons(
+                      canSwitchCamera:
+                          counter.phase == CounterPhase.running &&
+                          _counter.canSwitchCamera &&
+                          !scheduled,
+                      onSwitchCamera: () => unawaited(_counter.switchCamera()),
+                      onBack: () => unawaited(_exit()),
+                      center: ExitGameButton(
+                        onPressed: () => unawaited(_exit()),
+                      ),
+                    ),
+                    const Spacer(),
+                    PoseSetupPanel(
+                      message: scheduled
+                          ? '${session.countdownSeconds}초 후 함께 시작'
+                          : ready
+                          ? '상대 준비를 기다리는 중…'
+                          : _setupStatus.message,
+                      ready: _setupReady,
+                      progress: _setupStatus.readyProgress,
+                      buttonLabel: scheduled
+                          ? '경기 시작 대기'
+                          : ready
+                          ? '준비 취소'
+                          : 'Start',
+                      onStart: session.canReady && (ready || _setupReady)
+                          ? () => session.ready(!ready)
+                          : null,
+                      notice: Text(
+                        !session.connected
+                            ? '재연결 중 · 준비 상태를 확인하고 있어요.'
+                            : session.readyPlayers.contains(opponent.id)
+                            ? '${opponent.name} · 준비 완료'
+                            : '${opponent.name} · 자세 세팅 중',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return PopScope(
       canPop: terminal,
       onPopInvokedWithResult: (didPop, _) {
@@ -250,7 +344,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                           const SizedBox(height: 16),
                           FilledButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text('로비로 돌아가기'),
+                            child: const Text('홈으로 돌아가기'),
                           ),
                         ],
                       ),
@@ -297,24 +391,6 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                       const Text(
                         '재연결 중 · 경기 시간은 계속 진행됩니다.',
                         style: TextStyle(color: Colors.amber),
-                      ),
-                    if (session.phase == OnlinePhase.preparing)
-                      FilledButton(
-                        onPressed: session.canReady && (ready || _setupReady)
-                            ? () => session.ready(!ready)
-                            : null,
-                        child: Text(
-                          ready
-                              ? '준비 취소 · 상대 대기'
-                              : _setupReady
-                              ? '준비 완료'
-                              : '기존 자세 확인 기준을 맞춰주세요',
-                        ),
-                      ),
-                    if (session.phase == OnlinePhase.scheduled)
-                      Text(
-                        '${session.countdownSeconds}초 후 함께 시작',
-                        style: const TextStyle(fontSize: 22),
                       ),
                     if (session.phase == OnlinePhase.awaitingResult)
                       const Text('서버의 최종 결과를 기다리는 중…'),

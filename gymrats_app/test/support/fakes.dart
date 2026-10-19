@@ -22,6 +22,8 @@ import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/auth/token_store.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
+import 'package:gymrats_app/services/user/avatar_store.dart';
+import 'package:gymrats_app/screens/online_lobby_screen.dart';
 
 import 'pose_fixtures.dart';
 
@@ -211,10 +213,14 @@ GymRatsApp testApp({
   InMemoryAuthRepository? auth,
   UserRepository? users,
   Matchmaker Function()? createMatchmaker,
+  AvatarStore? avatarStore,
+  OnlineSessionFactory? createOnlineSession,
 }) => GymRatsApp(
   authRepository: auth ?? signedInAuth(),
   userRepository: users ?? InMemoryUserRepository(),
   createMatchmaker: createMatchmaker,
+  avatarStore: avatarStore,
+  createOnlineSession: createOnlineSession,
 );
 
 /// Returns [opponent], or throws [error] when set, like a server would.

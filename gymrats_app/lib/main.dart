@@ -12,6 +12,7 @@ import 'screens/login_screen.dart';
 import 'screens/match_setup_screen.dart';
 import 'screens/matching_screen.dart';
 import 'screens/online_lobby_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/result_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/signup_screen.dart';
@@ -23,6 +24,7 @@ import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
 import 'services/user/server_user_repository.dart';
 import 'services/user/user_repository.dart';
+import 'services/user/avatar_store.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
 
@@ -36,6 +38,7 @@ Future<void> main() async {
     GymRatsApp(
       authRepository: auth,
       userRepository: ServerUserRepository(api: api, auth: auth),
+      avatarStore: SecureAvatarStore(),
     ),
   );
 }
@@ -50,6 +53,8 @@ class GymRatsApp extends StatefulWidget {
     required this.authRepository,
     required this.userRepository,
     this.createMatchmaker,
+    this.avatarStore,
+    this.createOnlineSession,
   });
 
   final AuthRepository authRepository;
@@ -57,10 +62,13 @@ class GymRatsApp extends StatefulWidget {
 
   /// Defaults to [BotMatchmaker].
   final Matchmaker Function()? createMatchmaker;
+  final AvatarStore? avatarStore;
+  final OnlineSessionFactory? createOnlineSession;
 
   static const signupRoute = '/signup';
   static const historyRoute = '/history';
   static const onlineBattleRoute = '/online-battle';
+  static const profileRoute = '/profile';
 
   static const setupRoute = '/setup';
   static const matchingRoute = '/matching';
@@ -81,11 +89,13 @@ class GymRatsApp extends StatefulWidget {
 class _GymRatsAppState extends State<GymRatsApp> {
   final _navigator = GlobalKey<NavigatorState>();
   late final AuthViewModel _auth;
+  late final AvatarStore _avatars;
   AuthStatus? _shownStatus;
 
   @override
   void initState() {
     super.initState();
+    _avatars = widget.avatarStore ?? MemoryAvatarStore();
     _auth = AuthViewModel(repository: widget.authRepository)
       ..addListener(_onAuthChanged)
       ..restore();
@@ -144,7 +154,14 @@ class _GymRatsAppState extends State<GymRatsApp> {
             builder: (_) => OnlineLobbyScreen(
               auth: widget.authRepository,
               onAuthenticationFailed: _auth.logOut,
+              avatarStore: _avatars,
+              createSession: widget.createOnlineSession,
             ),
+          ),
+          GymRatsApp.profileRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                ProfileScreen(auth: widget.authRepository, avatars: _avatars),
           ),
           GymRatsApp.signupRoute => MaterialPageRoute<void>(
             settings: settings,

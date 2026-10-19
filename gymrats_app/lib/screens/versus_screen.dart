@@ -19,9 +19,20 @@ import '../widgets/player_avatar.dart';
 /// left both ask before going home. When setup finishes, the battle screen
 /// replaces this one, so going back from the battle leads home.
 class VersusScreen extends StatefulWidget {
-  const VersusScreen({super.key, required this.matchup});
+  const VersusScreen({
+    super.key,
+    required this.matchup,
+    this.onStartSetup,
+    this.onLeave,
+    this.duration = battleDuration,
+  });
 
   final Matchup matchup;
+
+  /// Live matches use the same presentation without the offline route logic.
+  final Future<void> Function()? onStartSetup;
+  final Future<void> Function()? onLeave;
+  final Duration duration;
 
   @override
   State<VersusScreen> createState() => _VersusScreenState();
@@ -37,6 +48,14 @@ class _VersusScreenState extends State<VersusScreen> {
   Future<void> _startSetup() async {
     if (_settingUp) return;
     _settingUp = true;
+    if (widget.onStartSetup case final start?) {
+      try {
+        await start();
+      } finally {
+        _settingUp = false;
+      }
+      return;
+    }
     final exercise = await Navigator.pushNamed<ExerciseType>(
       context,
       GymRatsApp.matchSetupRoute,
@@ -61,7 +80,13 @@ class _VersusScreenState extends State<VersusScreen> {
       ExitDialog.game(opponentName: widget.matchup.opponent.name),
     );
     if (!mounted) return;
-    if (leave) popToHome(context);
+    if (leave) {
+      if (widget.onLeave case final leaveMatch?) {
+        await leaveMatch();
+      } else {
+        popToHome(context);
+      }
+    }
   }
 
   @override
@@ -76,7 +101,11 @@ class _VersusScreenState extends State<VersusScreen> {
         body: GridBackground(
           child: Column(
             children: [
-              _PlayerSide(matchup: matchup, onExit: _askToLeave),
+              _PlayerSide(
+                matchup: matchup,
+                onExit: _askToLeave,
+                duration: widget.duration,
+              ),
               const Expanded(child: _VsBand()),
               _OpponentSide(
                 opponent: matchup.opponent,
@@ -93,10 +122,15 @@ class _VersusScreenState extends State<VersusScreen> {
 /// The top part, on the user's tint: the header, then the user. The tint
 /// runs under the status bar; the content stays below it.
 class _PlayerSide extends StatelessWidget {
-  const _PlayerSide({required this.matchup, required this.onExit});
+  const _PlayerSide({
+    required this.matchup,
+    required this.onExit,
+    required this.duration,
+  });
 
   final Matchup matchup;
   final VoidCallback onExit;
+  final Duration duration;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +142,11 @@ class _PlayerSide extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           child: Column(
             children: [
-              _Header(exercise: matchup.exercise, onExit: onExit),
+              _Header(
+                exercise: matchup.exercise,
+                onExit: onExit,
+                duration: duration,
+              ),
               const SizedBox(height: 16),
               _PlayerRow(name: matchup.playerName),
             ],
@@ -217,10 +255,15 @@ class _SplitPainter extends CustomPainter {
 /// The 게임 나가기 button on the left; "MATCH FOUND" over the exercise and
 /// length on the right.
 class _Header extends StatelessWidget {
-  const _Header({required this.exercise, required this.onExit});
+  const _Header({
+    required this.exercise,
+    required this.onExit,
+    required this.duration,
+  });
 
   final ExerciseType exercise;
   final VoidCallback onExit;
+  final Duration duration;
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +288,7 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${exercise.koreanName} · ${battleDuration.inSeconds}초',
+                '${exercise.koreanName} · ${duration.inSeconds}초',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: text.bodyMedium?.copyWith(
@@ -331,7 +374,10 @@ class _OpponentRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: text.displaySmall?.copyWith(fontSize: 28),
               ),
-              if (opponent.isBot) ...[const SizedBox(height: 8), const _AiTag()],
+              if (opponent.isBot) ...[
+                const SizedBox(height: 8),
+                const _AiTag(),
+              ],
             ],
           ),
         ),
