@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 
 import 'models/battle_result.dart';
 import 'models/exercise_type.dart';
+import 'models/form_report.dart';
 import 'models/matchup.dart';
 import 'screens/battle_screen.dart';
+import 'screens/feedback_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -20,6 +22,7 @@ import 'screens/versus_screen.dart';
 import 'services/api/api_client.dart';
 import 'services/auth/auth_repository.dart';
 import 'services/auth/token_store.dart';
+import 'services/feedback/form_report_store.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
 import 'services/user/server_user_repository.dart';
@@ -79,6 +82,9 @@ class GymRatsApp extends StatefulWidget {
   static const battleRoute = '/battle';
   static const resultRoute = '/result';
 
+  /// The form feedback of one battle, from the result screen or home.
+  static const feedbackRoute = '/feedback';
+
   /// Tells HomeScreen when it shows again, so it reloads the latest battle.
   static final routeObserver = RouteObserver<ModalRoute<void>>();
 
@@ -128,6 +134,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
           create: (_) => widget.createMatchmaker?.call() ?? BotMatchmaker(),
         ),
         ChangeNotifierProvider<AuthViewModel>.value(value: _auth),
+        Provider<FormReportStore>(create: (_) => FileFormReportStore()),
       ],
       child: MaterialApp(
         title: 'GymRats',
@@ -200,6 +207,11 @@ class _GymRatsAppState extends State<GymRatsApp> {
             settings: settings,
             builder: (_) =>
                 ResultScreen(result: settings.arguments! as BattleResult),
+          ),
+          GymRatsApp.feedbackRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                FeedbackScreen(report: settings.arguments! as FormReport),
           ),
           _ => null,
         },

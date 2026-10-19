@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/exercise_type.dart';
 import '../models/pose_frame.dart';
+import '../services/device/phone_tilt.dart';
 import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
 import '../services/pose/setup_checker.dart';
@@ -107,9 +108,11 @@ class SetupViewModel extends ChangeNotifier {
     this.config = const SetupConfig(),
     CameraService? camera,
     PoseEstimator? estimator,
+    PhoneTiltMonitor? phoneTilt,
     Clock? clock,
   }) : _camera = camera ?? CameraService(),
        _estimator = estimator ?? PoseEstimator(),
+       _phoneTilt = phoneTilt ?? PhoneTiltMonitor.platform(),
        _clock = clock ?? _stopwatchClock() {
     _checker = SetupChecker(exercise: exercise, config: config, clock: _clock);
   }
@@ -118,6 +121,7 @@ class SetupViewModel extends ChangeNotifier {
   final SetupConfig config;
   final CameraService _camera;
   final PoseEstimator _estimator;
+  final PhoneTiltMonitor _phoneTilt;
   final Clock _clock;
   late final SetupChecker _checker;
 
@@ -128,6 +132,7 @@ class SetupViewModel extends ChangeNotifier {
   bool _disposed = false;
   bool _released = false;
   bool _pausedByLifecycle = false;
+  bool _tiltHeld = false;
   Duration? _failingSince;
   Duration? _readySince;
   final Queue<Duration> _frameTimes = Queue();
@@ -157,6 +162,7 @@ class SetupViewModel extends ChangeNotifier {
   /// Asks for permission if needed, then starts the camera and detection.
   Future<void> start() async {
     if (_disposed || _released) return;
+    _holdTilt();
     final session = ++_session;
     _resetTracking();
     _setState(const SetupState());
@@ -273,7 +279,12 @@ class SetupViewModel extends ChangeNotifier {
     while (now - _frameTimes.first > const Duration(seconds: 1)) {
       _frameTimes.removeFirst();
     }
-    final status = _checker.update(frame);
+    final status = _checker.update(
+      frame,
+      phonePropped: _phoneTilt.isPropped,
+      phoneStill: _phoneTilt.isStill,
+    );
+    logPoseLive('setup', frame, tilt: _phoneTilt);
     final (autoStartIn, autoStarted) = _autoStart(status, now);
     _setState(
       SetupState(
@@ -337,6 +348,12 @@ class SetupViewModel extends ChangeNotifier {
     _frameTimes.clear();
   }
 
+  void _holdTilt() {
+    if (_tiltHeld) return;
+    _tiltHeld = true;
+    _phoneTilt.retain();
+  }
+
   void _setState(SetupState state) {
     if (_disposed) return;
     _state = state;
@@ -347,6 +364,7 @@ class SetupViewModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _session++;
+    if (_tiltHeld) _phoneTilt.release();
     unawaited(_camera.stop());
     unawaited(_estimator.close());
     super.dispose();

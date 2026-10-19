@@ -84,6 +84,11 @@ class Wire {
 }
 
 void main() {
+  test('production battle server defaults to thirty seconds', () async {
+    final s = BattleServer(authenticate: (_) => null);
+    expect(s.durationMs, 30000);
+    await s.close();
+  });
   Future<BattleServer> server({
     int duration = 1500,
     int reconnect = 300,
@@ -471,6 +476,20 @@ void main() {
     expect(b.opponentFrame![BodyLandmark.leftElbow]!.likelihood, .9);
     a.submitRep(const RepEvent(index: 99, valid: true, at: Duration.zero));
     await until(() => b.opponentReps == 1 && a.myReps == 1);
+    var rejected = 0;
+    for (final reason in RejectReason.values) {
+      a.submitRep(
+        RepEvent(
+          index: 100 + rejected,
+          valid: false,
+          reason: reason,
+          at: Duration.zero,
+        ),
+      );
+      rejected++;
+      await until(() => a.myInvalidReps == rejected);
+      expect(a.error, isNull, reason: 'Server must accept ${reason.name}');
+    }
     await until(
       () => b.opponentFrame == null,
     ); // no new camera frame → clear stale pose

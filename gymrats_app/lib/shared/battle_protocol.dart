@@ -5,6 +5,11 @@ const battleReasons = {
   'incomplete_extension',
   'shoulders_not_level',
   'too_fast',
+  'knees_down',
+  'arms_straight',
+  'belly_down',
+  'not_floor_push_up',
+  'phone_moved',
 };
 
 class BattleProtocolError implements Exception {

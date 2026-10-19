@@ -79,7 +79,7 @@ class OnlineBattleSession extends ChangeNotifier {
   OnlinePhase phase = OnlinePhase.idle;
   String? playerId, matchId, queueId, error;
   OnlinePlayer? opponent;
-  int durationMs = 60000;
+  int durationMs = 30000;
   int? startAtMs, endAtMs;
   int myReps = 0, myInvalidReps = 0, opponentReps = 0;
   bool connected = false, opponentConnected = true;
@@ -405,18 +405,24 @@ class OnlineBattleSession extends ChangeNotifier {
 
   void submitRep(RepEvent rep) {
     if (!roundRunning) return;
-    final reasons = {
-      RejectReason.insufficientDepth: 'insufficient_depth',
-      RejectReason.incompleteExtension: 'incomplete_extension',
-      RejectReason.shouldersNotLevel: 'shoulders_not_level',
-      RejectReason.tooFast: 'too_fast',
+    final reason = switch (rep.reason) {
+      RejectReason.insufficientDepth => 'insufficient_depth',
+      RejectReason.incompleteExtension => 'incomplete_extension',
+      RejectReason.shouldersNotLevel => 'shoulders_not_level',
+      RejectReason.tooFast => 'too_fast',
+      RejectReason.kneesDown => 'knees_down',
+      RejectReason.armsStraight => 'arms_straight',
+      RejectReason.bellyDown => 'belly_down',
+      RejectReason.notFloorPushUp => 'not_floor_push_up',
+      RejectReason.phoneMoved => 'phone_moved',
+      null => null,
     };
     final seq = ++_repSeq,
         message = _message('rep.submit', {
           'rep_seq': seq,
           'elapsed_ms': elapsedMs,
           'valid': rep.valid,
-          'reason': rep.valid ? null : reasons[rep.reason],
+          'reason': rep.valid ? null : reason,
         }, requestId: '$_nonce-rep-$seq');
     _pending[seq] = message;
     _send(message);

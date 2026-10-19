@@ -4,10 +4,14 @@ import 'dart:collection';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/battle_rules.dart';
+import '../models/form_report.dart';
 import '../models/pose_frame.dart';
 import '../models/rep_event.dart';
+import '../services/device/phone_tilt.dart';
 import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
+import '../services/pose/pose_metrics.dart';
 import '../services/pose/rep_judge.dart';
 
 /// What the rep counter is doing with the camera.
@@ -49,7 +53,7 @@ class RepCounterState {
     this.errorMessage,
     this.lastFrame,
     this.fps = 0,
-    this.remaining = const Duration(seconds: 60),
+    this.remaining = battleDuration,
     this.roundEnd = RoundEnd.none,
   });
 
@@ -113,12 +117,15 @@ class RepCounterViewModel extends ChangeNotifier {
     CameraService? camera,
     PoseEstimator? estimator,
     RepJudge? judge,
+    PhoneTiltMonitor? phoneTilt,
     RepClock? clock,
-    this.roundLength = const Duration(seconds: 60),
+    this.roundLength = battleDuration,
     this.detectorFailureTimeout = const Duration(seconds: 3),
     this.dropDelay = const Duration(milliseconds: 500),
+    this.sampleInterval = const Duration(milliseconds: 100),
   }) : _camera = camera ?? CameraService(),
        _estimator = estimator ?? PoseEstimator(),
+       _phoneTilt = phoneTilt ?? PhoneTiltMonitor.platform(),
        _clock = clock ?? _stopwatchClock() {
     // One clock drives both fps and judging, unless a judge is injected.
     _judge = judge ?? RepJudge(clock: _clock);
@@ -126,6 +133,7 @@ class RepCounterViewModel extends ChangeNotifier {
 
   final CameraService _camera;
   final PoseEstimator _estimator;
+  final PhoneTiltMonitor _phoneTilt;
   late final RepJudge _judge;
   final RepClock _clock;
 
@@ -138,12 +146,31 @@ class RepCounterViewModel extends ChangeNotifier {
   /// How long detection may fail before the attempt in progress is dropped.
   final Duration dropDelay;
 
+  /// Shortest time between two [formSamples]. 100 ms keeps a 30 s round to
+  /// about 300 samples whatever the camera's frame rate.
+  final Duration sampleInterval;
+
   final StreamController<RepEvent> _reps = StreamController.broadcast();
 
   RepCounterState _state = const RepCounterState();
   final List<RepEvent> _history = [];
+  final List<Duration> _repTimes = [];
+  final List<FormSample> _samples = [];
+  final List<FormPose> _poses = [];
+  FormPose? _attemptPose;
+  double _attemptPoseDepth = double.negativeInfinity;
+  FormPose? _leftFlarePose;
+  double _leftFlareScore = formMaxElbowSpread;
+  FormPose? _rightFlarePose;
+  double _rightFlareScore = formMaxElbowSpread;
+  FormPose? _handsPose;
+  double _handsScore = formMaxHandSpan;
+  FormPose? _headPose;
+  double _headScore = formMaxHeadLead;
+  Duration? _lastSampleAt;
   int _session = 0;
   bool _disposed = false;
+  bool _tiltHeld = false;
   bool _finishing = false;
   bool _pausedByLifecycle = false;
   Duration? _failingSince;
@@ -159,8 +186,31 @@ class RepCounterViewModel extends ChangeNotifier {
 
   RepCounterState get state => _state;
 
+  bool get isPhonePropped => _phoneTilt.isPropped;
+  bool get isPhoneStill => _phoneTilt.isStill;
+
   /// Every rep judged in this round, including rejected ones.
   List<RepEvent> get history => List.unmodifiable(_history);
+
+  /// [history] with the time into the round at which each rep closed.
+  List<RepRecord> get repRecords => [
+    for (var i = 0; i < _history.length; i++)
+      RepRecord.fromEvent(_history[i], _repTimes[i]),
+  ];
+
+  // AI-assisted: Cursor, Grok 4.7, 2026-10-16, 송현우
+  /// Body measurements taken through this round, for the form report.
+  List<FormSample> get formSamples => List.unmodifiable(_samples);
+
+  /// Deepest stick figure of each judged rep.
+  List<FormPose> get formPoses => List.unmodifiable(_poses);
+
+  /// The moment each coaching rule would point at. Unused when the rule
+  /// stays quiet.
+  FormPose? get leftFlarePose => _leftFlarePose;
+  FormPose? get rightFlarePose => _rightFlarePose;
+  FormPose? get handsPose => _handsPose;
+  FormPose? get headPose => _headPose;
 
   /// Judged reps, valid and rejected. Does not replay reps from before the
   /// listener subscribed.
@@ -186,11 +236,12 @@ class RepCounterViewModel extends ChangeNotifier {
   /// [keepScore] retains the rep counts, used when the camera is switched.
   Future<void> start({bool keepScore = false}) async {
     if (_disposed || _state.phase == CounterPhase.finished) return;
+    _holdTilt();
     final session = ++_session;
     _failingSince = null;
     _frameTimes.clear();
     if (!keepScore) {
-      _history.clear();
+      _clearRound();
       _roundStartedAt = null;
       _pausedAccumulated = Duration.zero;
       _pauseBegan = null;
@@ -230,6 +281,7 @@ class RepCounterViewModel extends ChangeNotifier {
     }
     if (session != _session) return;
     _roundStartedAt ??= _clock();
+    _phoneTilt.lock();
     _setState(
       _state.copyWith(phase: CounterPhase.running, remaining: _remaining()),
     );
@@ -295,9 +347,16 @@ class RepCounterViewModel extends ChangeNotifier {
   }
 
   /// Zeroes the counts and the judge. The camera and the round clock keep running.
-  void reset() {
+  /// Online play sets [restartClock] to exclude preparation from form timestamps.
+  void reset({bool restartClock = false}) {
     _judge.reset();
-    _history.clear();
+    _clearRound();
+    if (restartClock) {
+      _roundStartedAt = _clock();
+      _pausedAccumulated = Duration.zero;
+      _pauseBegan = null;
+      _phoneTilt.lock();
+    }
     _setState(
       _state.copyWith(
         validReps: 0,
@@ -373,11 +432,28 @@ class RepCounterViewModel extends ChangeNotifier {
       _frameTimes.removeFirst();
     }
     final update = _judge.update(frame);
-    final event = update.event;
+    final event = update.event == null
+        ? null
+        : rejectIfPhoneMoved(update.event!, phoneMoved: _phoneTilt.isDisturbed);
+    logPoseLive(
+      'battle',
+      frame,
+      depth: update.snapshot.depth,
+      tilt: _phoneTilt,
+    );
+    final elapsed = _roundElapsed() ?? Duration.zero;
     if (event != null) {
       _history.add(event);
+      _repTimes.add(elapsed);
+      final pose = _attemptPose;
+      if (pose != null && _poses.length < 40) {
+        _poses.add(pose.copyWith(repIndex: event.index));
+      }
+      _attemptPose = null;
+      _attemptPoseDepth = double.negativeInfinity;
       if (!_reps.isClosed) _reps.add(event);
     }
+    _sample(frame, update.snapshot, elapsed);
     final remaining = _remaining();
     _setState(
       _state.copyWith(
@@ -393,6 +469,120 @@ class RepCounterViewModel extends ChangeNotifier {
       ),
     );
     if (remaining == Duration.zero) unawaited(finish());
+  }
+
+  void _clearRound() {
+    _history.clear();
+    _repTimes.clear();
+    _samples.clear();
+    _poses.clear();
+    _attemptPose = null;
+    _attemptPoseDepth = double.negativeInfinity;
+    _leftFlarePose = null;
+    _leftFlareScore = formMaxElbowSpread;
+    _rightFlarePose = null;
+    _rightFlareScore = formMaxElbowSpread;
+    _handsPose = null;
+    _handsScore = formMaxHandSpan;
+    _headPose = null;
+    _headScore = formMaxHeadLead;
+    _lastSampleAt = null;
+  }
+
+  /// Keeps the measurements of [frame], at most once per [sampleInterval]
+  /// and only once the round clock runs.
+  void _sample(PoseFrame frame, JudgeSnapshot snapshot, Duration elapsed) {
+    if (_roundStartedAt == null) return;
+    final last = _lastSampleAt;
+    if (last != null && elapsed - last < sampleInterval) return;
+    _lastSampleAt = elapsed;
+    final raw = measurePose(frame, minLikelihood: _judge.config.minLikelihood);
+    _samples.add(
+      FormSample(
+        at: elapsed,
+        depth: snapshot.depth,
+        leftElbow: raw.leftElbowAngle,
+        rightElbow: raw.rightElbowAngle,
+        tilt: raw.tilt,
+        torsoDrop: raw.torsoDrop,
+        hipAngle: raw.hipAngle,
+        shoulderDrop: snapshot.shoulderDrop,
+        leftSpread: raw.leftElbowSpread,
+        rightSpread: raw.rightElbowSpread,
+        handSpan: raw.handSpan,
+      ),
+    );
+    _trackPose(frame, snapshot, elapsed, raw);
+  }
+
+  /// Keeps a few stick figures: the deepest frame of the open attempt, and
+  /// the strongest moment of each coaching rule. Runs at the sample rate,
+  /// not on every camera frame.
+  void _trackPose(
+    PoseFrame frame,
+    JudgeSnapshot snapshot,
+    Duration elapsed,
+    PoseMetrics raw,
+  ) {
+    FormPose? take() => FormPose.capture(
+      frame,
+      at: elapsed,
+      mirror: isFrontCamera,
+      minLikelihood: _judge.config.minLikelihood,
+    );
+    final phase = snapshot.phase;
+    final depth = snapshot.depth;
+    if ((phase == RepPhase.descending || phase == RepPhase.bottom) &&
+        depth != null &&
+        depth >= _attemptPoseDepth) {
+      final pose = take();
+      if (pose != null) {
+        _attemptPose = pose;
+        _attemptPoseDepth = depth;
+      }
+    }
+
+    final span = raw.handSpan;
+    if (span != null && span >= _handsScore) {
+      final pose = take();
+      if (pose != null &&
+          pose.points.containsKey('leftWrist') &&
+          pose.points.containsKey('rightWrist')) {
+        _handsPose = pose;
+        _handsScore = span;
+      }
+    }
+
+    if (depth != null && depth >= formWorkingDepth) {
+      final left = raw.leftElbowSpread;
+      if (left != null && left >= _leftFlareScore) {
+        final pose = take();
+        if (pose != null && pose.points.containsKey('leftElbow')) {
+          _leftFlarePose = pose;
+          _leftFlareScore = left;
+        }
+      }
+      final right = raw.rightElbowSpread;
+      if (right != null && right >= _rightFlareScore) {
+        final pose = take();
+        if (pose != null && pose.points.containsKey('rightElbow')) {
+          _rightFlarePose = pose;
+          _rightFlareScore = right;
+        }
+      }
+
+      final drop = snapshot.shoulderDrop;
+      if (drop != null && drop >= formMinShoulderDrop) {
+        final lead = depth - drop;
+        if (lead >= _headScore && lead > drop * formHeadLeadRatio) {
+          final pose = take();
+          if (pose != null && pose.points.containsKey('nose')) {
+            _headPose = pose;
+            _headScore = lead;
+          }
+        }
+      }
+    }
   }
 
   void _onDetectorFailure() {
@@ -434,6 +624,12 @@ class RepCounterViewModel extends ChangeNotifier {
     return left.isNegative ? Duration.zero : left;
   }
 
+  void _holdTilt() {
+    if (_tiltHeld) return;
+    _tiltHeld = true;
+    _phoneTilt.retain();
+  }
+
   void _setState(RepCounterState state) {
     if (_disposed) return;
     _state = state;
@@ -444,6 +640,7 @@ class RepCounterViewModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _session++;
+    if (_tiltHeld) _phoneTilt.release();
     unawaited(_reps.close());
     unawaited(_camera.stop());
     unawaited(_estimator.close());

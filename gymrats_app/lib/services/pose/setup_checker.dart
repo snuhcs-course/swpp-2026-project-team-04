@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../../models/exercise_type.dart';
 import '../../models/pose_frame.dart';
+import 'pose_metrics.dart';
 
 /// Returns monotonic elapsed time. Injected so tests can control time.
 typedef Clock = Duration Function();
@@ -18,6 +19,8 @@ class SetupConfig {
     this.detectorFailureTimeout = const Duration(seconds: 3),
     this.maxNoseOffsetRatio = 0.5,
     this.autoStartDelay = const Duration(seconds: 3),
+    this.pushUpArmAngle = 155,
+    this.maxPushUpTorsoDrop = 1.0,
   });
 
   /// Minimum ML Kit likelihood for a landmark to count as visible.
@@ -52,6 +55,14 @@ class SetupConfig {
   /// After Ready, how long the user must stay Ready before setup finishes
   /// by itself. The user is far from the phone and cannot tap Start.
   final Duration autoStartDelay;
+
+  /// Both elbows must be at least this straight, in degrees, to start a
+  /// push-up. The same angle the rep judge needs at the top.
+  final double pushUpArmAngle;
+
+  /// With the hips visible, a torso drop above this, in shoulder widths,
+  /// means the user is upright, not in a plank. See [torsoDropOf].
+  final double maxPushUpTorsoDrop;
 }
 
 /// Result of checking one frame, in the order the checks run.
@@ -61,6 +72,11 @@ enum SetupReason {
   tooFar,
   notFacingForward,
   missingParts,
+  notInPushUp,
+
+  // AI-assisted: Cursor, Grok 4.7, 2026-10-16, 송현우
+  phoneTooFlat,
+  phoneShaky,
   ready,
 }
 
@@ -118,6 +134,12 @@ class SetupStatus {
         return 'Face the camera.';
       case SetupReason.missingParts:
         return '${_capitalize(_joinParts(missingParts))} not visible.';
+      case SetupReason.notInPushUp:
+        return 'Get into a push-up with straight arms.';
+      case SetupReason.phoneTooFlat:
+        return '폰을 더 세워 주세요.';
+      case SetupReason.phoneShaky:
+        return '폰이 흔들리지 않게 두세요.';
       case SetupReason.ready:
         return 'Hold still...';
     }
@@ -201,9 +223,21 @@ class SetupChecker {
   }
 
   /// Checks [frame] and updates the stable Ready state.
-  SetupStatus update(PoseFrame frame) {
+  ///
+  /// [phonePropped] is the phone at 60° or steeper from flat. [phoneStill]
+  /// is the gyro quiet. Both come from the phone sensors, not the pose.
+  /// Defaults leave existing pose-only tests unchanged.
+  SetupStatus update(
+    PoseFrame frame, {
+    bool phonePropped = true,
+    bool phoneStill = true,
+  }) {
     final now = _clock();
-    final (reason, missing) = _evaluate(frame);
+    final (reason, missing) = !phonePropped
+        ? (SetupReason.phoneTooFlat, const <BodyPart>[])
+        : !phoneStill
+        ? (SetupReason.phoneShaky, const <BodyPart>[])
+        : _evaluate(frame);
 
     if (reason == SetupReason.ready) {
       _invalidSince = null;
@@ -262,7 +296,44 @@ class SetupChecker {
 
     final missing = _missingParts(frame);
     if (missing.isNotEmpty) return (SetupReason.missingParts, missing);
+    if (exercise == ExerciseType.pushUp && !_isInPushUp(frame)) {
+      return (SetupReason.notInPushUp, const []);
+    }
     return (SetupReason.ready, const []);
+  }
+
+  /// Whether the user holds the top of a push-up: both arms straight and,
+  /// when the hips can be seen, the body lying down, not upright.
+  ///
+  /// Runs after the missing parts check, so both arms are visible. Hidden
+  /// hips are normal from the front and do not fail the check.
+  bool _isInPushUp(PoseFrame frame) {
+    Keypoint? seen(BodyLandmark l) {
+      final k = frame[l];
+      return isVisible(k, frame) ? k : null;
+    }
+
+    final arms = [
+      angleDegrees(
+        seen(BodyLandmark.leftShoulder),
+        seen(BodyLandmark.leftElbow),
+        seen(BodyLandmark.leftWrist),
+      ),
+      angleDegrees(
+        seen(BodyLandmark.rightShoulder),
+        seen(BodyLandmark.rightElbow),
+        seen(BodyLandmark.rightWrist),
+      ),
+    ];
+    if (arms.any((a) => a == null || a < config.pushUpArmAngle)) return false;
+
+    final drop = torsoDropOf(
+      leftShoulder: seen(BodyLandmark.leftShoulder),
+      rightShoulder: seen(BodyLandmark.rightShoulder),
+      leftHip: seen(BodyLandmark.leftHip),
+      rightHip: seen(BodyLandmark.rightHip),
+    );
+    return drop == null || drop <= config.maxPushUpTorsoDrop;
   }
 
   double _bodySizeRatio(List<Keypoint> visible, PoseFrame frame) {

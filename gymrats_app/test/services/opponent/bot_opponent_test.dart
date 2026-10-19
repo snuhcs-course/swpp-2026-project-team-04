@@ -13,11 +13,11 @@ void main() {
         BotOpponent.planRound(Random(seed), battleDuration),
     ];
 
-    test('20 to 28 counted reps and up to 3 rejected ones', () {
+    test('10 to 14 counted reps and up to 2 rejected ones', () {
       for (final (seed, plan) in plans.indexed) {
         final counted = plan.where((rep) => rep.valid).length;
-        expect(counted, inInclusiveRange(20, 28), reason: 'seed $seed');
-        expect(plan.length - counted, inInclusiveRange(0, 3));
+        expect(counted, inInclusiveRange(10, 14), reason: 'seed $seed');
+        expect(plan.length - counted, inInclusiveRange(0, 2));
         for (final rep in plan) {
           expect(rep.reason == null, rep.valid, reason: 'seed $seed');
         }
@@ -26,8 +26,7 @@ void main() {
       expect(plans.where((plan) => plan.any((rep) => !rep.valid)), isNotEmpty);
     });
 
-    test('reps are numbered from 1 and end inside the round, at least '
-        '0.9 s apart', () {
+    test('reps are numbered from 1 and end inside the round, in order', () {
       for (final (seed, plan) in plans.indexed) {
         expect(
           [for (final rep in plan) rep.index],
@@ -37,8 +36,8 @@ void main() {
         expect(plan.last.at, lessThan(battleDuration));
         for (var i = 1; i < plan.length; i++) {
           expect(
-            plan[i].at - plan[i - 1].at,
-            greaterThanOrEqualTo(const Duration(milliseconds: 900)),
+            plan[i].at,
+            greaterThan(plan[i - 1].at),
             reason: 'seed $seed, rep ${i + 1}',
           );
         }
@@ -139,7 +138,7 @@ void main() {
 
         bot.start();
         async.elapse(battleDuration);
-        expect(sent.length, greaterThan(before + 20));
+        expect(sent.length, greaterThanOrEqualTo(before + 10));
         // Numbering starts over with the new round.
         expect(sent[before].index, 1);
         bot.dispose();

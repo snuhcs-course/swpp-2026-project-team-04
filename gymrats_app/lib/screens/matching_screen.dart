@@ -184,7 +184,7 @@ class BattleSearchView extends StatelessWidget {
   }
 }
 
-/// "● 푸쉬업 · 60초 · 1v1" on a pill.
+/// "● 푸쉬업 · 30초 · 1v1" on a pill.
 class _BattleChip extends StatelessWidget {
   const _BattleChip({required this.exercise, required this.duration});
 

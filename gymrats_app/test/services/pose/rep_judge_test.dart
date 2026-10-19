@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
@@ -94,6 +96,7 @@ void main() {
     expect(update.event!.index, 1);
     expect(update.event!.maxDepth, closeTo(1.5, 0.01));
     expect(update.event!.minElbowAngle, closeTo(150, 0.5));
+    expect(update.event!.descent, const Duration(milliseconds: 400));
     expect(update.snapshot.phase, RepPhase.up);
   });
 
@@ -192,13 +195,22 @@ void main() {
     expect(update.event!.valid, isTrue);
   });
 
-  test('a rep faster than 300 ms is rejected', () {
+  test('a fast descent still counts and keeps how long it took', () {
     final c = judge();
     calibrate(c);
     final fastRep = perform(c, 400, downAt: 100, backAt: 299);
-    expect(fastRep.event!.reason, RejectReason.tooFast);
-    expect(fastRep.event!.reason!.message, 'Slow down');
-    expect(perform(c, 800, downAt: 100, backAt: 300).event!.valid, isTrue);
+    expect(fastRep.event!.valid, isTrue);
+    expect(fastRep.event!.reason, isNull);
+    expect(fastRep.event!.descent, const Duration(milliseconds: 100));
+  });
+
+  test('a return to the top within 100 ms is dropped', () {
+    final c = judge();
+    calibrate(c);
+    final noise = perform(c, 400, downAt: 40, backAt: 90);
+    expect(noise.event, isNull);
+    expect(noise.snapshot.phase, RepPhase.up);
+    expect(perform(c, 800).event!.index, 1);
   });
 
   test('a face missing for a moment keeps the rep', () {
@@ -304,6 +316,314 @@ void main() {
     final c = judge();
     calibrate(c);
     expect(at(c, 400, pose(depth: 0.6)).snapshot.depth, closeTo(0.6, 0.01));
+  });
+
+  group('cheats, judged only when seen', () {
+    // Shoulders of pushUpFrame are at y = 400, 200 px apart.
+    const leftX = 400.0;
+    const rightX = 600.0;
+
+    /// A rep whose hips sit at [hipY] for each head depth, with knees at
+    /// [knee] offsets from the hips when given.
+    RepUpdate repWithHips(
+      RepJudge c,
+      double Function(double depth) hipY, {
+      (double, double)? knee,
+      bool hipsAtBottom = true,
+      bool bendArms = true,
+    }) {
+      PoseFrame frame(double depth, {bool showHips = true}) {
+        final y = hipY(depth);
+        return pushUpFrame(
+          depth: depth,
+          elbowAngle: bendArms && depth >= 0.8 ? 120 : 170,
+          lowerBody: showHips
+              ? {
+                  BodyLandmark.leftHip: (leftX, y),
+                  BodyLandmark.rightHip: (rightX, y),
+                  if (knee != null) ...{
+                    BodyLandmark.leftKnee: (leftX + knee.$1, y + knee.$2),
+                    BodyLandmark.rightKnee: (rightX - knee.$1, y + knee.$2),
+                  },
+                }
+              : const {},
+        );
+      }
+
+      at(c, 0, frame(0));
+      at(c, 300, frame(0));
+      at(c, 400, frame(0.6));
+      at(c, 600, frame(1.2, showHips: hipsAtBottom));
+      at(c, 700, frame(1.4, showHips: hipsAtBottom));
+      at(c, 800, frame(1.5, showHips: hipsAtBottom));
+      at(c, 1000, frame(0.6));
+      return at(c, 1200, frame(0));
+    }
+
+    test('a plank whose hips follow the head counts', () {
+      final update = repWithHips(judge(), (d) => 430 + 0.5 * d * 200);
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('hips that stay up are not called a belly push-up', () {
+      // The hips never come down to the hands. From the front they also
+      // barely move, which used to be misread as the belly on the floor.
+      final update = repWithHips(judge(), (_) => 430);
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('hips that drop to the hands are a belly push-up', () {
+      // Wrists of pushUpFrame sit near y = 640.
+      final update = repWithHips(judge(), (_) => 640);
+      expect(update.event!.reason, RejectReason.bellyDown);
+      expect(update.event!.reason!.message, 'Hips up');
+    });
+
+    test('knees next to the hands are a knee push-up', () {
+      // Open hip angle, so only the knee sitting by the wrists gives it away.
+      final update = repWithHips(judge(), (_) => 500, knee: (0, 140));
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('knees almost at the hands are a knee push-up', () {
+      // gap = (610 - 640) / 200 = -0.15. The hip angle stays open.
+      final update = repWithHips(judge(), (_) => 500, knee: (0, 110));
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('knees at a plank distance behind the hands still count', () {
+      // gap = (560 - 640) / 200 = -0.40, where a real plank's knees sat.
+      final update = repWithHips(judge(), (_) => 500, knee: (0, 60));
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('a shallow knee push-up is still too shallow', () {
+      final c = judge();
+      PoseFrame frame(double depth) => pushUpFrame(
+        depth: depth,
+        lowerBody: {
+          BodyLandmark.leftHip: (leftX, 500),
+          BodyLandmark.rightHip: (rightX, 500),
+          BodyLandmark.leftKnee: (leftX, 640),
+          BodyLandmark.rightKnee: (rightX, 640),
+        },
+      );
+      at(c, 0, frame(0));
+      at(c, 300, frame(0));
+      at(c, 500, frame(0.6));
+      at(c, 800, frame(0.9));
+      final update = at(c, 1200, frame(0));
+      expect(update.event!.reason, RejectReason.insufficientDepth);
+    });
+
+    test('an upright body is a wall push-up', () {
+      final update = repWithHips(judge(), (d) => 840 + 0.5 * d * 200);
+      expect(update.event!.reason, RejectReason.notFloorPushUp);
+      expect(update.event!.reason!.message, 'Floor push-up');
+    });
+
+    test('knees bent under the hips are a knee push-up', () {
+      final update = repWithHips(
+        judge(),
+        (d) => 430 + 0.5 * d * 200,
+        knee: (80, 10),
+      );
+      expect(update.event!.reason, RejectReason.kneesDown);
+      expect(update.event!.reason!.message, 'Knees up');
+    });
+
+    test('knees folded at the top stay folded after the angle opens', () {
+      final c = judge();
+      PoseFrame frame(double depth, {required bool bent}) {
+        final y = 430 + 0.5 * depth * 200;
+        final kneeY = bent ? y + 10 : y + 80;
+        final kneeX = bent ? 80.0 : 0.0;
+        return pushUpFrame(
+          depth: depth,
+          elbowAngle: depth >= 0.8 ? 120 : 170,
+          lowerBody: {
+            BodyLandmark.leftHip: (leftX, y),
+            BodyLandmark.rightHip: (rightX, y),
+            BodyLandmark.leftKnee: (leftX + kneeX, kneeY),
+            BodyLandmark.rightKnee: (rightX - kneeX, kneeY),
+          },
+        );
+      }
+
+      at(c, 0, frame(0, bent: true));
+      at(c, 200, frame(0, bent: true));
+      at(c, 300, frame(0, bent: true));
+      at(c, 500, frame(0.6, bent: false));
+      at(c, 800, frame(1.4, bent: false));
+      final update = at(c, 1200, frame(0, bent: false));
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('a deep rep with straight arms is not a push-up', () {
+      final update = repWithHips(
+        judge(),
+        (d) => 430 + 0.5 * d * 200,
+        knee: (80, 10),
+        bendArms: false,
+      );
+      expect(update.event!.reason, RejectReason.armsStraight);
+    });
+
+    test('bent knees with a straight frame between them still count', () {
+      final c = judge();
+      PoseFrame frame(double depth, {required bool bent}) {
+        final y = 430 + 0.5 * depth * 200;
+        // An extended knee stays below the hip. A bent one folds, but not
+        // for three frames in a row, so the latch never sets.
+        final kneeY = bent ? y + 10 : y + 120;
+        final kneeX = bent ? 80.0 : 0.0;
+        return pushUpFrame(
+          depth: depth,
+          lowerBody: {
+            BodyLandmark.leftHip: (leftX, y),
+            BodyLandmark.rightHip: (rightX, y),
+            BodyLandmark.leftKnee: (leftX + kneeX, kneeY),
+            BodyLandmark.rightKnee: (rightX - kneeX, kneeY),
+          },
+        );
+      }
+
+      at(c, 0, frame(0, bent: false));
+      at(c, 300, frame(0, bent: false));
+      at(c, 400, frame(0.6, bent: true));
+      at(c, 550, frame(0.9, bent: false));
+      at(c, 700, frame(1.2, bent: true));
+      at(c, 850, frame(1.4, bent: false));
+      at(c, 1000, frame(1.3, bent: true));
+      final update = at(c, 1300, frame(0, bent: false));
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('a straight body with the knees far behind the hands counts', () {
+      final c = judge();
+      PoseFrame frame(double depth) {
+        final y = 430 + 0.5 * depth * 200;
+        return pushUpFrame(
+          depth: depth,
+          elbowAngle: depth >= 0.8 ? 120 : 170,
+          lowerBody: {
+            BodyLandmark.leftHip: (leftX, y),
+            BodyLandmark.rightHip: (rightX, y),
+            BodyLandmark.leftKnee: (leftX, 450),
+            BodyLandmark.rightKnee: (rightX, 450),
+          },
+        );
+      }
+
+      at(c, 0, frame(0));
+      at(c, 300, frame(0));
+      at(c, 400, frame(0.6));
+      at(c, 800, frame(1.5));
+      final update = at(c, 1200, frame(0));
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('hips hidden at the bottom cannot reject for the belly', () {
+      final update = repWithHips(judge(), (_) => 430, hipsAtBottom: false);
+      expect(update.event!.valid, isTrue);
+    });
+
+    /// Shoulder–hip–knee angle [hipDeg], with the knee kept behind the hands.
+    PoseFrame hipFrame(
+      double hipDeg, {
+      double depth = 0,
+      double elbow = 170,
+    }) {
+      Offset kneeOf(Offset hip, double turn) {
+        final rad = turn * hipDeg * math.pi / 180;
+        final vx = 0.0;
+        final vy = 400 - hip.dy;
+        final rx = vx * math.cos(rad) - vy * math.sin(rad);
+        final ry = vx * math.sin(rad) + vy * math.cos(rad);
+        final len = math.sqrt(rx * rx + ry * ry);
+        return Offset(hip.dx + rx / len * 90, hip.dy + ry / len * 90);
+      }
+
+      const leftHip = Offset(leftX, 470);
+      const rightHip = Offset(rightX, 470);
+      final leftKnee = kneeOf(leftHip, 1);
+      final rightKnee = kneeOf(rightHip, -1);
+      return pushUpFrame(
+        depth: depth,
+        elbowAngle: elbow,
+        lowerBody: {
+          BodyLandmark.leftHip: (leftHip.dx, leftHip.dy),
+          BodyLandmark.rightHip: (rightHip.dx, rightHip.dy),
+          BodyLandmark.leftKnee: (leftKnee.dx, leftKnee.dy),
+          BodyLandmark.rightKnee: (rightKnee.dx, rightKnee.dy),
+        },
+      );
+    }
+
+    test('a kneel from the first frame is knees without a normal plank', () {
+      final c = judge();
+      at(c, 0, hipFrame(130));
+      at(c, 300, hipFrame(130));
+      at(c, 500, hipFrame(140, depth: 0.6, elbow: 140));
+      at(c, 800, hipFrame(140, depth: 1.4, elbow: 120));
+      final update = at(c, 1200, hipFrame(130));
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('one normal top uses the wider knee line', () {
+      final c = judge();
+      at(c, 0, hipFrame(170));
+      at(c, 300, hipFrame(164));
+      at(c, 400, hipFrame(145));
+      at(c, 600, hipFrame(160, depth: 0.6, elbow: 140));
+      at(c, 900, hipFrame(160, depth: 1.4, elbow: 120));
+      final update = at(c, 1300, hipFrame(170));
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('one normal top still catches a short kneel flash', () {
+      final c = judge();
+      at(c, 0, hipFrame(170));
+      at(c, 300, hipFrame(167));
+      at(c, 400, hipFrame(135));
+      at(c, 600, hipFrame(160, depth: 0.6, elbow: 140));
+      at(c, 900, hipFrame(160, depth: 1.4, elbow: 120));
+      final update = at(c, 1300, hipFrame(170));
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('three normal tops tighten the knee line', () {
+      final c = judge();
+      at(c, 0, hipFrame(170));
+      at(c, 300, hipFrame(164));
+      at(c, 400, hipFrame(167));
+      at(c, 500, hipFrame(170));
+      at(c, 600, hipFrame(145));
+      at(c, 800, hipFrame(160, depth: 0.6, elbow: 140));
+      at(c, 1100, hipFrame(160, depth: 1.4, elbow: 120));
+      final update = at(c, 1500, hipFrame(170));
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('a plank after a kneel can count again', () {
+      final c = judge();
+      at(c, 0, hipFrame(130));
+      at(c, 300, hipFrame(130));
+      at(c, 500, hipFrame(140, depth: 1.4, elbow: 120));
+      expect(at(c, 900, hipFrame(130)).event!.reason, RejectReason.kneesDown);
+      at(c, 1000, hipFrame(168));
+      at(c, 1300, hipFrame(168));
+      at(c, 1500, hipFrame(168, depth: 0.6, elbow: 140));
+      at(c, 1800, hipFrame(168, depth: 1.4, elbow: 120));
+      final update = at(c, 2200, hipFrame(168));
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('a hidden lower body leaves the rep valid', () {
+      final c = judge();
+      calibrate(c);
+      expect(perform(c, 400).event!.valid, isTrue);
+    });
   });
 
   test('a one-frame dip does not start a rep while smoothing', () {

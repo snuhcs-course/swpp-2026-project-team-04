@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/exercise_type.dart';
+import '../models/form_report.dart';
 import '../models/pose_frame.dart';
 import '../services/device/device_controls.dart';
+import '../services/feedback/form_report_store.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
@@ -13,6 +15,7 @@ import '../widgets/pose_avatar_toggle_view.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
 import 'setup_screen.dart';
+import 'feedback_screen.dart';
 
 class OnlineBattleScreen extends StatefulWidget {
   const OnlineBattleScreen({
@@ -20,10 +23,12 @@ class OnlineBattleScreen extends StatefulWidget {
     required this.session,
     this.createCounter,
     this.setupConfig = const SetupConfig(),
+    this.formReports,
   });
   final OnlineBattleSession session;
   final RepCounterViewModel Function()? createCounter;
   final SetupConfig setupConfig;
+  final FormReportStore? formReports;
   @override
   State<OnlineBattleScreen> createState() => _OnlineBattleScreenState();
 }
@@ -35,6 +40,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   late final SetupChecker _setup;
   SetupStatus _setupStatus = SetupStatus.initial;
   PoseFrame? _seen;
+  FormReport? _formReport;
+  bool _reportCreated = false;
   bool _setupReady = false,
       _roundStarted = false,
       _stopping = false,
@@ -49,7 +56,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     );
     WidgetsBinding.instance.addObserver(this);
     unawaited(keepScreenOn(true));
-    // Online timing is owned by the server. The counter's offline 60s clock
+    // Online timing is owned by the server. The counter's offline round clock
     // must not start/finish a different round during camera preparation.
     _counter =
         widget.createCounter?.call() ??
@@ -68,12 +75,42 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   void _syncRound() {
     if (session.roundRunning && !_roundStarted) {
       _roundStarted = true;
-      _counter.reset();
+      _counter.reset(restartClock: true);
     }
     if (!_stopping &&
         (session.terminal || (_roundStarted && session.remainingMs == 0))) {
       _stopping = true;
       unawaited(_counter.finish(stoppedByUser: session.terminal));
+    }
+    if (!_reportCreated &&
+        _roundStarted &&
+        session.phase == OnlinePhase.finished &&
+        session.result?['reason'] == 'time_up') {
+      _reportCreated = true;
+      final report = FormReport(
+        endedAt: DateTime.fromMillisecondsSinceEpoch(
+          (session.result?['ended_at_ms'] as int?) ?? session.serverNow,
+        ),
+        opponentName: session.opponent!.name,
+        roundLength: Duration(milliseconds: session.durationMs),
+        reps: _counter.repRecords,
+        samples: _counter.formSamples,
+        poses: _counter.formPoses,
+        leftFlarePose: _counter.leftFlarePose,
+        rightFlarePose: _counter.rightFlarePose,
+        handsPose: _counter.handsPose,
+        headPose: _counter.headPose,
+      );
+      _formReport = report;
+      unawaited(_saveReport(report));
+    }
+  }
+
+  Future<void> _saveReport(FormReport report) async {
+    try {
+      await (widget.formReports ?? FileFormReportStore()).save(report);
+    } on Exception {
+      // The report remains available on this result screen if saving fails.
     }
   }
 
@@ -89,7 +126,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       session.publishPose(frame);
       if (frame != null && !identical(frame, _seen)) {
         _seen = frame;
-        _setupStatus = _setup.update(frame);
+        _setupStatus = _setup.update(
+          frame,
+          phonePropped: _counter.isPhonePropped,
+          phoneStill: _counter.isPhoneStill,
+        );
         _setupReady = _setupStatus.isReady;
       }
     } else {
@@ -342,6 +383,17 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 16),
+                          if (_formReport case final report?)
+                            TextButton(
+                              onPressed: () => Navigator.push<void>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      FeedbackScreen(report: report),
+                                ),
+                              ),
+                              child: const Text('자세 피드백 보기'),
+                            ),
                           FilledButton(
                             onPressed: () => Navigator.pop(context),
                             child: const Text('홈으로 돌아가기'),

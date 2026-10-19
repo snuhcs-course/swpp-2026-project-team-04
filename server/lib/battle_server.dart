@@ -69,7 +69,7 @@ class _Match {
 class BattleServer {
   BattleServer({
     required this.authenticate,
-    this.durationMs = 60000,
+    this.durationMs = 30000,
     this.countdownMs = 3000,
     this.readyTimeoutMs = 60000,
     this.reconnectMs = 10000,

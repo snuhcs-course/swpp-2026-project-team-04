@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
@@ -26,6 +27,7 @@ void main() {
       camera: camera,
       estimator: estimator,
       clock: () => now,
+      phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
       judge: RepJudge(config: fast, clock: () => now),
     );
     vm.reps.listen(events.add);
@@ -71,6 +73,33 @@ void main() {
     expect(events.single.reason, RejectReason.insufficientDepth);
   });
 
+  test('form samples are taken at most every 100 ms of the round', () async {
+    await vm.start();
+    for (var ms = 0; ms <= 500; ms += 33) {
+      await feed(ms, pose());
+    }
+    final times = [for (final s in vm.formSamples) s.at.inMilliseconds];
+    expect(times, [0, 132, 264, 396]);
+    expect(vm.formSamples.first.leftElbow, isNotNull);
+    expect(vm.formSamples.first.rightElbow, isNotNull);
+    expect(vm.formSamples.first.hipAngle, isNull);
+  });
+
+  test('rep records carry the time into the round', () async {
+    await vm.start();
+    await countOneRep();
+    expect(vm.repRecords.single.at, const Duration(milliseconds: 1200));
+    expect(vm.repRecords.single.valid, isTrue);
+  });
+
+  test('a new round clears the samples and the rep records', () async {
+    await vm.start();
+    await countOneRep();
+    vm.reset();
+    expect(vm.formSamples, isEmpty);
+    expect(vm.repRecords, isEmpty);
+  });
+
   test('reset clears the counts and the judge', () async {
     await vm.start();
     await countOneRep();
@@ -86,6 +115,15 @@ void main() {
     await feed(3200, pose());
     expect(vm.state.validReps, 1);
     expect(events.last.index, 1);
+  });
+
+  test('online reset restarts feedback clock after preparation', () async {
+    await vm.start();
+    await feed(10000, pose());
+    vm.reset(restartClock: true);
+    await feed(10100, pose());
+    expect(vm.formSamples.single.at, const Duration(milliseconds: 100));
+    expect(vm.state.remaining, const Duration(milliseconds: 29900));
   });
 
   test('pause releases the camera and resume starts it again', () async {
@@ -153,12 +191,12 @@ void main() {
     expect(vm.state.phase, CounterPhase.finished);
   });
 
-  test('the round ends when 60 seconds have passed', () async {
+  test('the round ends when 30 seconds have passed', () async {
     await vm.start();
     await countOneRep();
-    await feed(59999, pose());
+    await feed(29999, pose());
     expect(vm.state.phase, CounterPhase.running);
-    await feed(60000, pose());
+    await feed(30000, pose());
     expect(vm.state.phase, CounterPhase.finished);
     expect(vm.state.roundEnd, RoundEnd.timeUp);
     expect(vm.state.remaining, Duration.zero);

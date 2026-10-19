@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/form_report.dart';
 import '../models/user_profile.dart';
 import '../services/api/api_client.dart';
+import '../services/feedback/form_report_store.dart';
 import '../services/user/user_repository.dart';
 import 'login_viewmodel.dart';
 
@@ -22,6 +24,7 @@ class HomeState {
   const HomeState({
     this.phase = HomePhase.loading,
     this.profile,
+    this.latestForm,
     this.errorMessage,
   });
 
@@ -30,25 +33,33 @@ class HomeState {
   /// The last loaded profile; null until a load succeeds.
   final UserProfile? profile;
 
+  /// The newest form report saved on this device; null when there is none.
+  final FormReport? latestForm;
+
   /// Why the load failed, e.g. no network; null for the default message.
   final String? errorMessage;
 
   HomeState copyWith({
     HomePhase? phase,
     UserProfile? profile,
+    FormReport? latestForm,
+    bool clearLatestForm = false,
     String? errorMessage,
   }) => HomeState(
     phase: phase ?? this.phase,
     profile: profile ?? this.profile,
+    latestForm: clearLatestForm ? null : latestForm ?? this.latestForm,
     errorMessage: errorMessage ?? this.errorMessage,
   );
 }
 
-/// Loads the user's profile for the home screen.
+/// Loads the user's profile, and the latest form report, for the home
+/// screen.
 class HomeViewModel extends ChangeNotifier {
-  HomeViewModel({required this._repository});
+  HomeViewModel({required this._repository, this._formReports});
 
   final UserRepository _repository;
+  final FormReportStore? _formReports;
 
   HomeState _state = const HomeState();
   bool _fetching = false;
@@ -60,7 +71,8 @@ class HomeViewModel extends ChangeNotifier {
   ///
   /// The first load shows the loading state, and the failed state on an
   /// [Exception] from the repository. A reload keeps the profile on screen
-  /// until the new one arrives, and keeps it if the reload fails.
+  /// until the new one arrives, and keeps it if the reload fails. The form
+  /// report is extra: failing to read it changes nothing else.
   Future<void> load() async {
     if (_disposed || _fetching) return;
     _fetching = true;
@@ -80,6 +92,20 @@ class HomeViewModel extends ChangeNotifier {
       }
     } finally {
       _fetching = false;
+    }
+    await _loadLatestForm();
+  }
+
+  Future<void> _loadLatestForm() async {
+    final store = _formReports;
+    if (store == null) return;
+    try {
+      final latest = await store.latest();
+      _setState(
+        _state.copyWith(latestForm: latest, clearLatestForm: latest == null),
+      );
+    } on Exception {
+      // The home screen shows no feedback entry.
     }
   }
 

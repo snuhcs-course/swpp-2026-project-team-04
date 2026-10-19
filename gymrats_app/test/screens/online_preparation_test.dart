@@ -6,6 +6,9 @@ import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
+import 'package:gymrats_app/services/device/phone_tilt.dart';
+import 'package:gymrats_app/services/feedback/form_report_store.dart';
+import 'package:gymrats_app/screens/feedback_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/pose_avatar_toggle_view.dart';
@@ -13,6 +16,7 @@ import 'package:gymrats_app/widgets/pose_avatar_toggle_view.dart';
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
 import '../support/pose_fixtures.dart';
+import '../support/placed_phone.dart';
 
 class _Session extends OnlineBattleSession {
   _Session()
@@ -52,6 +56,8 @@ void main() {
   late FakeCameraService camera;
   late FakePoseEstimator estimator;
   late RepCounterViewModel counter;
+  late PhoneTiltMonitor phone;
+  late InMemoryFormReportStore reports;
 
   Future<void> open(WidgetTester tester, {bool denied = false}) async {
     await prepareFlowSnapshotFonts(tester);
@@ -63,10 +69,13 @@ void main() {
     camera = FakeCameraService();
     if (denied) camera.permission = CameraPermission.denied;
     estimator = FakePoseEstimator();
+    phone = placedPhone();
+    reports = InMemoryFormReportStore();
     counter = RepCounterViewModel(
       camera: camera,
       estimator: estimator,
       judge: FakeRepJudge(),
+      phoneTilt: phone,
       roundLength: const Duration(days: 1),
     );
     await tester.pumpWidget(
@@ -74,6 +83,7 @@ void main() {
         theme: AppTheme.dark,
         home: OnlineBattleScreen(
           session: session,
+          formReports: reports,
           createCounter: () => counter,
           setupConfig: const SetupConfig(
             readyDelay: Duration.zero,
@@ -84,6 +94,74 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('online setup requires a propped and still phone', (
+    tester,
+  ) async {
+    await open(tester);
+    phone.isPropped = false;
+    estimator.frames.add(standingFrame());
+    camera.emit();
+    await tester.pumpAndSettle();
+    expect(find.text('폰을 더 세워 주세요.'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Start'))
+          .onPressed,
+      isNull,
+    );
+    phone.isPropped = true;
+    phone.isStill = false;
+    estimator.frames.add(standingFrame());
+    camera.emit();
+    await tester.pumpAndSettle();
+    expect(find.text('폰이 흔들리지 않게 두세요.'), findsOneWidget);
+    phone.isStill = true;
+    estimator.frames.add(standingFrame());
+    camera.emit();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start'));
+    await tester.pump();
+    expect(session.readyRequests, [true]);
+    phone.isStill = false;
+    estimator.frames.add(standingFrame());
+    camera.emit();
+    await tester.pumpAndSettle();
+    expect(session.readyRequests, [true, false]);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('completed online round saves feedback once and opens it', (
+    tester,
+  ) async {
+    await open(tester);
+    session.durationMs = 30000;
+    session.startAtMs = session.serverNow - 100;
+    session.endAtMs = session.serverNow + 29900;
+    session.phase = OnlinePhase.playing;
+    session.notifyListeners();
+    await tester.pump();
+    estimator.frames.add(standingFrame());
+    camera.emit();
+    await tester.pump();
+    session.phase = OnlinePhase.finished;
+    session.result = {'reason': 'time_up', 'ended_at_ms': 1792400000000};
+    session.notifyListeners();
+    await tester.pumpAndSettle();
+    session.notifyListeners();
+    await tester.pumpAndSettle();
+    expect(await reports.list(), hasLength(1));
+    final report = (await reports.list()).single;
+    expect(report.roundLength, const Duration(seconds: 30));
+    expect(report.opponentName, '상대사용자');
+    expect(report.samples, isNotEmpty);
+    await tester.tap(find.text('자세 피드백 보기'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FeedbackScreen), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
 
   testWidgets(
     'same full-screen setup blocks Start until valid pose; ready waits for server',

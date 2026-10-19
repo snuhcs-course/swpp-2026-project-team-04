@@ -20,7 +20,7 @@ BattleResult _result({
   int invalid = 3,
   int theirs = 24,
   Matchup matchup = _matchup,
-  Duration roundLength = const Duration(seconds: 60),
+  Duration roundLength = const Duration(seconds: 30),
 }) => BattleResult(
   matchup: matchup,
   myReps: mine,
@@ -83,7 +83,7 @@ void main() {
   ) async {
     await open(tester, _result());
     expect(find.text('RESULT'), findsOneWidget);
-    expect(find.text('푸쉬업 · 60초 · 오늘 14:32'), findsOneWidget);
+    expect(find.text('푸쉬업 · 30초 · 오늘 14:32'), findsOneWidget);
     expect(find.text('WIN'), findsOneWidget);
     expect(colorOf(tester, 'WIN'), AppColors.accent);
     expect(find.text('2개 차이로 이겼어요!'), findsOneWidget);
