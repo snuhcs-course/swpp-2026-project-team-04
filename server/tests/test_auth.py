@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -166,3 +167,19 @@ def test_weak_secrets_are_refused(monkeypatch, secret):
     monkeypatch.setenv("SOME_SECRET", secret)
     with pytest.raises(ImproperlyConfigured):
         _secret("SOME_SECRET")
+
+
+# AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+def test_unknown_path_answers_json_404(client):
+    response = client.get("/nope")
+    assert response.status_code == 404
+    assert response["Content-Type"] == "application/json"
+    assert response.json() == {"detail": "not_found"}
+
+
+def test_server_error_answers_json_500(rf):
+    from gymrats.urls import server_error
+
+    response = server_error(rf.get("/"))
+    assert response.status_code == 500
+    assert json.loads(response.content) == {"detail": "server_error"}
