@@ -7,14 +7,20 @@ import '../viewmodels/history_viewmodel.dart';
 import '../widgets/auth_form.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/match_record_card.dart';
+import 'match_feedback_screen.dart';
 
 /// Every battle the user finished, newest first, loaded page by page as
-/// the list scrolls. Opened from home's "최근 경기".
+/// the list scrolls: the result and the one-line form feedback of each.
+/// The 기록 tab of the home shell; a row with feedback opens it.
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key, this.createViewModel});
+  const HistoryScreen({super.key, this.createViewModel, this.asTab = false});
 
   /// Builds the view model; replaces the default one in tests.
   final HistoryViewModel Function()? createViewModel;
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// Shown as the 기록 tab: no back button, the tab bar leads away.
+  final bool asTab;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -47,7 +53,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           child: SafeArea(
             child: Column(
               children: [
-                const TopBar(title: '경기 기록'),
+                TopBar(title: '경기 기록', showBack: !widget.asTab),
                 Expanded(
                   child: Consumer<HistoryViewModel>(
                     builder: (context, vm, _) {
@@ -110,7 +116,14 @@ class _HistoryList extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s12),
       itemBuilder: (context, index) {
         if (index < matches.length) {
-          return MatchRecordCard(match: matches[index], showDate: true);
+          // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+          final match = matches[index];
+          return MatchRecordCard(
+            match: match,
+            showDate: true,
+            showFeedback: true,
+            onTap: feedbackTap(context, match),
+          );
         }
         if (state.loadMoreFailed) {
           return CenteredMessage(title: '더 불러오지 못했어요', onRetry: onLoadMore);

@@ -20,4 +20,6 @@ urlpatterns = [
     path("auth/", include("accounts.urls")),
     path("users/", include("accounts.me_urls")),
     path("matches", include("matches.urls")),
+    # Battle server only (P11); nginx does not forward /api/internal/.
+    path("internal/", include("matches.internal_urls")),
 ]

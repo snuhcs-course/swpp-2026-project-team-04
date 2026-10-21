@@ -112,8 +112,9 @@ class BattleState {
 /// when the camera first runs, goes on while the camera reopens, and is
 /// held while the app is in the background or the camera has failed.
 ///
-/// A battle that runs its full time is saved to the [UserRepository], and
-/// its form report to the [FormReportStore]; one left early is not.
+/// A battle that runs its full time is saved to the [UserRepository] with
+/// its form report, and the report also to the [FormReportStore] on this
+/// phone; one left early is not.
 class BattleViewModel extends ChangeNotifier {
   BattleViewModel({
     required this.matchup,
@@ -335,11 +336,12 @@ class BattleViewModel extends ChangeNotifier {
     unawaited(_save(result));
   }
 
-  /// Keeps the battle for the home screen's latest match and best record.
-  /// A failed save loses only the record; the result still shows.
+  /// Keeps the battle, with its form report, for the home screen and the
+  /// history. A failed upload stays queued in the repository; the result
+  /// still shows.
   Future<void> _save(BattleResult result) async {
     try {
-      await _repository.saveMatch(result.record);
+      await _repository.saveMatch(result.record, report: result.form);
     } on Exception {
       // The home screen keeps showing the previous record.
     }

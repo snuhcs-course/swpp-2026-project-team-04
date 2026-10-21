@@ -4,6 +4,7 @@ import os
 
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-django-secret-not-used-anywhere-else")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-not-used-anywhere-else-1")
+os.environ.setdefault("RESULTS_SECRET", "test-results-secret-not-used-anywhere-else")
 os.environ.setdefault("DATABASE_URL", "sqlite://:memory:")
 
 from .settings import *  # noqa: E402,F403

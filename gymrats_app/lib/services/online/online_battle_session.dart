@@ -109,6 +109,19 @@ class OnlineBattleSession extends ChangeNotifier {
       remainingMs > 0 &&
       !terminal;
   bool get canReady => connected && phase == OnlinePhase.preparing;
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// The battle server lost this battle (restart, protocol §8): it ended
+  /// void with no result, or the server no longer knows it.
+  bool get matchUnconfirmed => serverRestarted || matchNotFound;
+
+  /// Ended void because the battle server restarted.
+  bool get serverRestarted =>
+      phase == OnlinePhase.voided && result?['reason'] == 'server_restarted';
+
+  /// The battle server no longer knows this battle (restart or expired).
+  bool get matchNotFound => phase == OnlinePhase.failed && _matchNotFound;
+  bool _matchNotFound = false;
   String? get outcome {
     if (result?['players'] is! List) return null;
     for (final p in result!['players'] as List) {
@@ -251,6 +264,7 @@ class OnlineBattleSession extends ChangeNotifier {
         phase = OnlinePhase.cancelled;
       } else if (type == 'match.found') {
         matchId = m['match_id'] as String;
+        _matchNotFound = false;
         durationMs = integer(p['duration_ms'], 1, 60000);
         _readPlayers(p['players']);
         phase = OnlinePhase.preparing;
@@ -319,6 +333,7 @@ class OnlineBattleSession extends ChangeNotifier {
         } else {
           error = '온라인 요청 오류: $code';
           if (code == 'MATCH_NOT_FOUND' || matchId == null) {
+            _matchNotFound = code == 'MATCH_NOT_FOUND';
             phase = OnlinePhase.failed;
           }
         }

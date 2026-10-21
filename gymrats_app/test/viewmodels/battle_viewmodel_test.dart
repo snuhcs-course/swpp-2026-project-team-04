@@ -195,6 +195,8 @@ void main() {
     expect(record.myReps, 1);
     expect(record.opponentReps, 1);
     expect(vm.state.result!.roundLength, battleDuration);
+    // The form report goes up with the battle.
+    expect(repository.savedReports.single, same(vm.state.result!.form));
   });
 
   test('a full battle keeps its form report, with the rep times', () async {

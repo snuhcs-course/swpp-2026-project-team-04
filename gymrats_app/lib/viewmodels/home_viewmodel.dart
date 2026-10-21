@@ -1,9 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/form_report.dart';
+import '../models/match_record.dart';
 import '../models/user_profile.dart';
 import '../services/api/api_client.dart';
-import '../services/feedback/form_report_store.dart';
 import '../services/user/user_repository.dart';
 import 'login_viewmodel.dart';
 
@@ -24,7 +23,8 @@ class HomeState {
   const HomeState({
     this.phase = HomePhase.loading,
     this.profile,
-    this.latestForm,
+    this.recent = const [],
+    this.recentIsFallback = false,
     this.errorMessage,
   });
 
@@ -33,8 +33,15 @@ class HomeState {
   /// The last loaded profile; null until a load succeeds.
   final UserProfile? profile;
 
-  /// The newest form report saved on this device; null when there is none.
-  final FormReport? latestForm;
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// Up to [HomeViewModel.recentCount] newest battles, newest first, each
+  /// with its one-line feedback.
+  final List<MatchRecord> recent;
+
+  /// [recent] is only the profile's latest battle, which carries no
+  /// feedback, because the recent battles could not be loaded. Its row then
+  /// shows no feedback line rather than a wrong "피드백 없음".
+  final bool recentIsFallback;
 
   /// Why the load failed, e.g. no network; null for the default message.
   final String? errorMessage;
@@ -42,24 +49,26 @@ class HomeState {
   HomeState copyWith({
     HomePhase? phase,
     UserProfile? profile,
-    FormReport? latestForm,
-    bool clearLatestForm = false,
+    List<MatchRecord>? recent,
+    bool? recentIsFallback,
     String? errorMessage,
   }) => HomeState(
     phase: phase ?? this.phase,
     profile: profile ?? this.profile,
-    latestForm: clearLatestForm ? null : latestForm ?? this.latestForm,
+    recent: recent ?? this.recent,
+    recentIsFallback: recentIsFallback ?? this.recentIsFallback,
     errorMessage: errorMessage ?? this.errorMessage,
   );
 }
 
-/// Loads the user's profile, and the latest form report, for the home
-/// screen.
+/// Loads the user's profile and recent battles for the home screen.
 class HomeViewModel extends ChangeNotifier {
-  HomeViewModel({required this._repository, this._formReports});
+  HomeViewModel({required this._repository});
+
+  /// How many battles "최근 경기" shows.
+  static const recentCount = 3;
 
   final UserRepository _repository;
-  final FormReportStore? _formReports;
 
   HomeState _state = const HomeState();
   bool _fetching = false;
@@ -71,8 +80,9 @@ class HomeViewModel extends ChangeNotifier {
   ///
   /// The first load shows the loading state, and the failed state on an
   /// [Exception] from the repository. A reload keeps the profile on screen
-  /// until the new one arrives, and keeps it if the reload fails. The form
-  /// report is extra: failing to read it changes nothing else.
+  /// until the new one arrives, and keeps it if the reload fails. The
+  /// profile load sends queued battles first, so the recent battles are
+  /// read after it and include them.
   Future<void> load() async {
     if (_disposed || _fetching) return;
     _fetching = true;
@@ -80,7 +90,15 @@ class HomeViewModel extends ChangeNotifier {
     if (!reloading) _setState(_state.copyWith(phase: HomePhase.loading));
     try {
       final profile = await _repository.fetchProfile();
-      _setState(_state.copyWith(phase: HomePhase.ready, profile: profile));
+      final (recent, fallback) = await _loadRecent(profile);
+      _setState(
+        _state.copyWith(
+          phase: HomePhase.ready,
+          profile: profile,
+          recent: recent,
+          recentIsFallback: fallback,
+        ),
+      );
     } on Exception catch (e) {
       if (!reloading) {
         _setState(
@@ -93,19 +111,16 @@ class HomeViewModel extends ChangeNotifier {
     } finally {
       _fetching = false;
     }
-    await _loadLatestForm();
   }
 
-  Future<void> _loadLatestForm() async {
-    final store = _formReports;
-    if (store == null) return;
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// The recent battles; when they cannot be loaded, the profile's latest
+  /// battle, so home still shows something.
+  Future<(List<MatchRecord>, bool)> _loadRecent(UserProfile profile) async {
     try {
-      final latest = await store.latest();
-      _setState(
-        _state.copyWith(latestForm: latest, clearLatestForm: latest == null),
-      );
+      return (await _repository.fetchRecent(limit: recentCount), false);
     } on Exception {
-      // The home screen shows no feedback entry.
+      return (<MatchRecord>[?profile.lastMatch], true);
     }
   }
 

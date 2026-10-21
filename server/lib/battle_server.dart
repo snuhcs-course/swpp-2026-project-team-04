@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:math';
 
 import '../../gymrats_app/lib/shared/battle_protocol.dart';
+import 'result_store.dart';
 
 String _signature(dynamic value) {
   dynamic canonical(dynamic v) {
@@ -74,8 +75,12 @@ class BattleServer {
     this.readyTimeoutMs = 60000,
     this.reconnectMs = 10000,
     this.heartbeatTimeoutMs = 15000,
+    this.results,
   });
   final BattleAuthenticator authenticate;
+
+  /// P11 storage; null keeps results in memory only (local tests, dev).
+  final BattleResultStore? results;
   final int durationMs,
       countdownMs,
       readyTimeoutMs,
@@ -91,6 +96,11 @@ class BattleServer {
   HttpServer? _http;
   Timer? _timer;
   bool _closing = false;
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  // Battles a previous process left running, voided at start-up: match id to
+  // player ids. A player resuming one is told it ended void.
+  final _lost = <String, Set<String>>{};
+  final _storing = <Future<void>>{};
   int get now => _epoch + _clock.elapsedMilliseconds;
   int get port => _http!.port;
   String _id() => List.generate(
@@ -98,6 +108,15 @@ class BattleServer {
     (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0'),
   ).join();
   Future<void> start({InternetAddress? address, int port = 0}) async {
+    // Before accepting sockets, so a reconnecting app already finds its
+    // battle in _lost.
+    if (results case final store?) {
+      try {
+        _lost.addAll(
+          await store.recover(now).timeout(const Duration(seconds: 10)),
+        );
+      } catch (_) {}
+    }
     _http = await HttpServer.bind(
       address ?? InternetAddress.loopbackIPv4,
       port,
@@ -340,6 +359,11 @@ class BattleServer {
             'start_at_ms': m.start,
             'end_at_ms': m.end,
           });
+          _store(
+            (store) => store.started(m.id, m.start!, [
+              for (final player in m.players) player.identity.id,
+            ]),
+          );
         }
         return reply('request.accepted', {});
       case 'rep.submit':
@@ -395,6 +419,17 @@ class BattleServer {
         return reply('request.accepted', {});
       case 'match.resume':
         fields(payload, {});
+        final lostId = message['match_id'];
+        if (p.match?.id != lostId &&
+            _lost[lostId]?.contains(p.identity.id) == true) {
+          return _envelope(
+            p,
+            'match.void',
+            {'reason': 'server_restarted', 'ended_at_ms': null},
+            requestId: rid,
+            matchId: lostId as String,
+          );
+        }
         final m = _activeMatch(p, message);
         if (m.disconnected.remove(p.identity.id) != null && !m.terminal)
           _broadcast(m, 'match.connection_state', {
@@ -461,6 +496,20 @@ class BattleServer {
     m.ended = now;
     m.result = {'reason': reason, 'ended_at_ms': now};
     _broadcast(m, 'match.void', m.result!);
+    // On shutdown the next start-up voids it in storage instead, so a
+    // resuming app still learns what happened.
+    if (!_closing) _store((store) => store.voided(m.id, reason));
+  }
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  void _store(Future<void> Function(BattleResultStore store) call) {
+    final store = results;
+    if (store == null) return;
+    late final Future<void> pending;
+    pending = call(store)
+        .catchError((_) {})
+        .whenComplete(() => _storing.remove(pending));
+    _storing.add(pending);
   }
 
   void _finish(_Match m, String reason, {String? loser}) {
@@ -495,6 +544,27 @@ class BattleServer {
           .toList(),
     };
     _broadcast(m, 'match.finished', m.result!);
+    // P11 saver: once per result_id, since a terminal match never finishes again.
+    _store(
+      (store) => store.finished({
+        'match_id': m.id,
+        'result_id': m.result!['result_id'],
+        'reason': reason,
+        'ended_at_ms': m.ended,
+        'players': [
+          for (final player in m.result!['players'] as List)
+            {
+              'player_id': player['player_id'],
+              'display_name': m.roster.firstWhere(
+                (r) => r['player_id'] == player['player_id'],
+              )['display_name'],
+              'valid_reps': player['valid_reps'],
+              'invalid_reps': player['invalid_reps'],
+              'outcome': player['outcome'],
+            },
+        ],
+      }),
+    );
   }
 
   void _disconnect(_Player p, WebSocket socket) {
@@ -572,5 +642,8 @@ class BattleServer {
       ),
     );
     await _http?.close(force: true);
+    // Let results that are being stored finish, within the stop timeout.
+    await Future.wait(_storing.toList())
+        .timeout(const Duration(seconds: 5), onTimeout: () => []);
   }
 }

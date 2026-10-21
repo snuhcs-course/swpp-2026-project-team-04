@@ -60,6 +60,7 @@ void main() {
   late RepCounterViewModel counter;
   late PhoneTiltMonitor phone;
   late InMemoryFormReportStore reports;
+  late FakeUserRepository repository;
 
   Future<void> open(WidgetTester tester, {bool denied = false}) async {
     await prepareFlowSnapshotFonts(tester);
@@ -73,6 +74,7 @@ void main() {
     estimator = FakePoseEstimator();
     phone = placedPhone();
     reports = InMemoryFormReportStore();
+    repository = FakeUserRepository();
     counter = RepCounterViewModel(
       camera: camera,
       estimator: estimator,
@@ -86,6 +88,7 @@ void main() {
         home: OnlineBattleScreen(
           session: session,
           formReports: reports,
+          userRepository: repository,
           createCounter: () => counter,
           setupConfig: const SetupConfig(
             readyDelay: Duration.zero,
@@ -160,10 +163,11 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('completed online round saves feedback once and opens it', (
-    tester,
+  /// Plays a short online round and ends it with the server's [result].
+  Future<void> finishRound(
+    WidgetTester tester,
+    Map<String, dynamic> result,
   ) async {
-    await open(tester);
     session.durationMs = 30000;
     session.startAtMs = session.serverNow - 100;
     session.endAtMs = session.serverNow + 29900;
@@ -174,13 +178,59 @@ void main() {
     camera.emit();
     await tester.pump();
     session.phase = OnlinePhase.finished;
-    session.result = {'reason': 'time_up', 'ended_at_ms': 1792400000000};
+    session.result = result;
     session.notifyListeners();
     await tester.pumpAndSettle();
     session.notifyListeners();
     await tester.pumpAndSettle();
+  }
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  testWidgets('a failed feedback upload still shows the result and feedback', (
+    tester,
+  ) async {
+    await open(tester);
+    repository.feedbackSaveError = Exception('offline');
+    await finishRound(tester, {
+      'result_id': 'r' * 32,
+      'reason': 'time_up',
+      'ended_at_ms': 1792400000000,
+    });
+    expect(await reports.list(), hasLength(1));
+    expect(find.text('자세 피드백 보기'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('a result without a result id uploads nothing', (tester) async {
+    await open(tester);
+    await finishRound(tester, {
+      'reason': 'time_up',
+      'ended_at_ms': 1792400000000,
+    });
+    expect(await reports.list(), hasLength(1));
+    expect(repository.savedFeedback, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('completed online round saves feedback once and opens it', (
+    tester,
+  ) async {
+    await open(tester);
+    await finishRound(tester, {
+      'result_id': 'r' * 32,
+      'reason': 'time_up',
+      'ended_at_ms': 1792400000000,
+    });
     expect(await reports.list(), hasLength(1));
     final report = (await reports.list()).single;
+    // Uploaded once, under the battle server's result id.
+    expect(repository.savedFeedback, hasLength(1));
+    expect(repository.savedFeedback.single.$1, 'r' * 32);
+    expect(repository.savedFeedback.single.$2, same(report));
+    expect(repository.saved, isEmpty);
     expect(report.roundLength, const Duration(seconds: 30));
     expect(report.opponentName, '상대사용자');
     expect(report.samples, isNotEmpty);

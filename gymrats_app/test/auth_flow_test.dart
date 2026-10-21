@@ -108,11 +108,14 @@ void main() {
     expect(find.text('로그인이 만료됐어요. 다시 로그인해 주세요.'), findsOneWidget);
   });
 
-  testWidgets('the recent match card opens history', (tester) async {
+  // Updated for the 홈 | 기록 tabs: "전체 기록" switches to the 기록 tab
+  // (task: match history with feedback); a battle card opens its feedback.
+  testWidgets('"전체 기록" switches to the 기록 tab', (tester) async {
     await start(tester, signedInAuth());
-    await tester.tap(find.text('푸쉬업 · vs RepBot'));
+    await tester.tap(find.text('전체 기록 ›'));
     await tester.pumpAndSettle();
     expect(find.byType(HistoryScreen), findsOneWidget);
     expect(find.text('경기 기록'), findsOneWidget);
+    expect(find.byTooltip('뒤로'), findsNothing);
   });
 }

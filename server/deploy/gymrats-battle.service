@@ -12,6 +12,10 @@ ExecStart=/srv/gymrats/battle/current/gymrats-battle
 Environment=BATTLE_HOST=127.0.0.1
 Environment=BATTLE_PORT=8080
 Environment=BATTLE_AUTH_URL=http://127.0.0.1:8000/users/me
+# P11 result saver. The server reads only RESULTS_SECRET from the team .env
+# (group gymrats, read-only here); no other team secret enters its environment.
+Environment=BATTLE_RESULTS_URL=http://127.0.0.1:8000/internal/
+Environment=BATTLE_RESULTS_ENV_FILE=/srv/gymrats/.env
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=10

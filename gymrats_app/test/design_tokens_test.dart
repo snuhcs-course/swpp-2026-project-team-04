@@ -9,6 +9,8 @@ const _checked = [
   'lib/screens/login_screen.dart',
   'lib/screens/signup_screen.dart',
   'lib/screens/history_screen.dart',
+  'lib/screens/home_shell_screen.dart',
+  'lib/screens/match_feedback_screen.dart',
   'lib/widgets/auth_form.dart',
   'lib/widgets/match_record_card.dart',
 ];

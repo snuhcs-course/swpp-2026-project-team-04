@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
+import 'package:gymrats_app/screens/match_feedback_screen.dart';
+import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -170,5 +173,70 @@ void main() {
     await tester.tap(find.byTooltip('뒤로'));
     await tester.pumpAndSettle();
     expect(find.text('home'), findsOneWidget);
+  });
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  group('feedback', () {
+    MatchRecord withFeedback(int id, String? issue) => MatchRecord(
+      id: id,
+      exercise: ExerciseType.pushUp,
+      opponentName: 'RepBot',
+      myReps: 10,
+      opponentReps: 5,
+      playedAt: DateTime(2026, 10, 15, 21, id),
+      feedbackSummary: FeedbackSummary(
+        validReps: 10,
+        invalidReps: 1,
+        issueCount: issue == null ? 0 : 1,
+        topIssue: issue,
+      ),
+    );
+
+    testWidgets('each row shows only the result and one feedback line', (
+      tester,
+    ) async {
+      repository.historyPages = [
+        [withFeedback(2, '깊이 부족 1회'), withFeedback(1, null), _record(9, 9)],
+      ];
+      await open(tester);
+      await tester.pumpAndSettle();
+      expect(find.text('깊이 부족 1회'), findsOneWidget);
+      expect(find.text('좋은 자세'), findsOneWidget);
+      expect(find.text('피드백 없음'), findsOneWidget);
+    });
+
+    testWidgets('a row with feedback opens it; one without does nothing', (
+      tester,
+    ) async {
+      repository.historyPages = [
+        [withFeedback(2, null), _record(9, 9, day: 14)],
+      ];
+      repository.feedbackError = Exception('offline');
+      await tester.pumpWidget(const SizedBox());
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<UserRepository>.value(value: repository),
+            Provider<FormReportStore>.value(value: InMemoryFormReportStore()),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const HistoryScreen(asTab: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('뒤로'), findsNothing);
+      await tester.tap(find.text('피드백 없음'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MatchFeedbackScreen), findsNothing);
+      await tester.tap(find.text('좋은 자세'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MatchFeedbackScreen), findsOneWidget);
+      expect(repository.feedbackRequests, [2]);
+    });
   });
 }

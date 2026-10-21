@@ -5,9 +5,8 @@ import '../main.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
-import '../models/form_report.dart';
+import '../models/match_record.dart';
 import '../models/user_profile.dart';
-import '../services/feedback/form_report_store.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
@@ -15,16 +14,27 @@ import '../widgets/accent_button.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/match_record_card.dart';
+import 'match_feedback_screen.dart';
 
 /// First screen after login: online is primary; AI practice stays below history.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.createViewModel, this.onLogOut});
+  const HomeScreen({
+    super.key,
+    this.createViewModel,
+    this.onLogOut,
+    this.onOpenHistory,
+  });
 
   /// Builds the view model; replaces the default one in tests.
   final HomeViewModel Function()? createViewModel;
 
   /// Logs out after the user confirms. No logout button when null.
   final Future<void> Function()? onLogOut;
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// "전체 기록 ›": switches to the 기록 tab. Opens history as its own page
+  /// when null.
+  final VoidCallback? onOpenHistory;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -38,10 +48,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     super.initState();
     _viewModel =
         widget.createViewModel?.call() ??
-        HomeViewModel(
-          repository: context.read<UserRepository>(),
-          formReports: context.read<FormReportStore>(),
-        );
+        HomeViewModel(repository: context.read<UserRepository>());
     _viewModel.load();
   }
 
@@ -73,7 +80,15 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
   /// History may show battles saved since home loaded, so home reloads
   /// when it comes back (didPopNext).
-  void _openHistory() => Navigator.pushNamed(context, GymRatsApp.historyRoute);
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  void _openHistory() {
+    final openTab = widget.onOpenHistory;
+    if (openTab != null) {
+      openTab();
+    } else {
+      Navigator.pushNamed(context, GymRatsApp.historyRoute);
+    }
+  }
 
   Future<void> _confirmLogOut() async {
     final logOut = widget.onLogOut;
@@ -107,7 +122,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 ),
                 HomePhase.ready => _HomeContent(
                   profile: vm.state.profile!,
-                  latestForm: vm.state.latestForm,
+                  recent: vm.state.recent,
+                  recentIsFallback: vm.state.recentIsFallback,
                   onStart: _startMatching,
                   onOpenHistory: _openHistory,
                   onLogOut: widget.onLogOut == null ? null : _confirmLogOut,
@@ -127,7 +143,8 @@ class _HomeContent extends StatelessWidget {
     required this.onStart,
     required this.onOpenHistory,
     this.onLogOut,
-    this.latestForm,
+    this.recent = const [],
+    this.recentIsFallback = false,
   });
 
   final UserProfile profile;
@@ -135,12 +152,15 @@ class _HomeContent extends StatelessWidget {
   final VoidCallback onOpenHistory;
   final VoidCallback? onLogOut;
 
-  /// The newest saved form report; null hides the feedback section.
-  final FormReport? latestForm;
+  /// The newest battles, each with its feedback line; empty before the
+  /// first battle.
+  final List<MatchRecord> recent;
+
+  /// [recent] is the profile's latest battle only, without feedback.
+  final bool recentIsFallback;
 
   @override
   Widget build(BuildContext context) {
-    final lastMatch = profile.lastMatch;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       children: [
@@ -162,10 +182,17 @@ class _HomeContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.s32),
         _SectionHeader('최근 경기', detail: '전체 기록', onDetail: onOpenHistory),
         const SizedBox(height: AppSpacing.s12),
-        if (lastMatch != null)
-          MatchRecordCard(match: lastMatch, onTap: onOpenHistory)
-        else
-          _NoMatchYet(onTap: onOpenHistory),
+        // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+        if (recent.isEmpty) _NoMatchYet(onTap: onOpenHistory),
+        for (final (index, match) in recent.indexed) ...[
+          if (index > 0) const SizedBox(height: AppSpacing.s12),
+          MatchRecordCard(
+            match: match,
+            showDate: true,
+            showFeedback: !recentIsFallback,
+            onTap: feedbackTap(context, match),
+          ),
+        ],
         if (profile.unsentMatches > 0) ...[
           const SizedBox(height: AppSpacing.s8),
           _UnsentNote(count: profile.unsentMatches),
@@ -176,71 +203,7 @@ class _HomeContent extends StatelessWidget {
           icon: const Icon(Icons.smart_toy_rounded),
           label: const Text('AI와 1v1 대결'),
         ),
-        if (latestForm case final form?) ...[
-          const SizedBox(height: 32),
-          const _SectionHeader('최근 자세 피드백'),
-          const SizedBox(height: 12),
-          _LatestFormRow(report: form),
-        ],
       ],
-    );
-  }
-}
-
-/// The newest form report saved on this phone. Tapping opens its feedback.
-class _LatestFormRow extends StatelessWidget {
-  const _LatestFormRow({required this.report});
-
-  final FormReport report;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final t = report.endedAt;
-    String two(int v) => v.toString().padLeft(2, '0');
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => Navigator.pushNamed(
-          context,
-          GymRatsApp.feedbackRoute,
-          arguments: report,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            children: [
-              const Icon(Icons.insights_rounded, color: AppColors.accent),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'vs ${report.opponentName} · ${t.month}/${t.day} '
-                      '${two(t.hour)}:${two(t.minute)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodyLarge,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '인정 ${report.validReps}회 · 무효 ${report.invalidReps}회',
-                      style: text.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textMuted,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

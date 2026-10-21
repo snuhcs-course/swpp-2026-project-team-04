@@ -25,6 +25,9 @@ def _secret(name: str) -> str:
 SECRET_KEY = _secret("DJANGO_SECRET_KEY")
 JWT_SECRET = _secret("JWT_SECRET")
 DEBUG = os.environ.get("DJANGO_DEBUG") == "1"
+# Shared with the battle server for the P11 result saver (matches/internal.py).
+# Optional: without a 32+ character value the internal endpoints refuse all calls.
+RESULTS_SECRET = os.environ.get("RESULTS_SECRET", "")
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS", "52.78.38.225,localhost,127.0.0.1,10.0.2.2"
 ).split(",")

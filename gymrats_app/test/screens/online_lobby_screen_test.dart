@@ -93,6 +93,7 @@ void main() {
       final auth = await loggedIn();
       late _Session session;
       final camera = FakeCameraService();
+      final repository = FakeUserRepository();
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
@@ -104,6 +105,7 @@ void main() {
                   MaterialPageRoute(
                     builder: (_) => OnlineLobbyScreen(
                       auth: auth,
+                      userRepository: repository,
                       createSession: (u, t, a) => session = _Session(u, t, a),
                       createCounter: () => RepCounterViewModel(
                         camera: camera,
@@ -136,6 +138,14 @@ void main() {
       await tester.tap(find.text('계속하기'));
       await tester.pumpAndSettle();
       expect(find.byType(OnlineBattleScreen), findsOneWidget);
+      // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+      // The battle gets the repository its feedback is uploaded to.
+      expect(
+        tester
+            .widget<OnlineBattleScreen>(find.byType(OnlineBattleScreen))
+            .userRepository,
+        same(repository),
+      );
       expect(session.left, isFalse);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();

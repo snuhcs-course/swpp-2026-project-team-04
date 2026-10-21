@@ -9,6 +9,7 @@ import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
+import '../services/user/user_repository.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../widgets/opponent_avatar_panel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
@@ -25,11 +26,17 @@ class OnlineBattleScreen extends StatefulWidget {
     this.createCounter,
     this.setupConfig = const SetupConfig(),
     this.formReports,
+    this.userRepository,
   });
   final OnlineBattleSession session;
   final RepCounterViewModel Function()? createCounter;
   final SetupConfig setupConfig;
   final FormReportStore? formReports;
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// Receives the battle's form report under the server's result id; the
+  /// battle itself is stored by the battle server (P11).
+  final UserRepository? userRepository;
   @override
   State<OnlineBattleScreen> createState() => _OnlineBattleScreenState();
 }
@@ -112,6 +119,15 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       await (widget.formReports ?? FileFormReportStore()).save(report);
     } on Exception {
       // The report remains available on this result screen if saving fails.
+    }
+    // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+    final resultId = session.result?['result_id'];
+    final repository = widget.userRepository;
+    if (resultId is! String || repository == null) return;
+    try {
+      await repository.saveFeedback(resultId, report);
+    } on Exception {
+      // Queued in the repository and sent again with the next load.
     }
   }
 
@@ -361,17 +377,20 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            switch (session.phase) {
-                              OnlinePhase.finished => switch (session.outcome) {
-                                'win' => '승리',
-                                'loss' => '패배',
-                                'draw' => '무승부',
-                                _ => '서버 결과 확인 중',
-                              },
-                              OnlinePhase.voided => '경기 무효',
-                              OnlinePhase.cancelled => '경기 취소',
-                              _ => '연결 오류',
-                            },
+                            session.matchUnconfirmed
+                                ? '경기를 확인할 수 없어요'
+                                : switch (session.phase) {
+                                    OnlinePhase.finished =>
+                                      switch (session.outcome) {
+                                        'win' => '승리',
+                                        'loss' => '패배',
+                                        'draw' => '무승부',
+                                        _ => '서버 결과 확인 중',
+                                      },
+                                    OnlinePhase.voided => '경기 무효',
+                                    OnlinePhase.cancelled => '경기 취소',
+                                    _ => '연결 오류',
+                                  },
                             style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -379,8 +398,12 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            session.error ??
-                                '종료 사유: ${session.result?['reason'] ?? '알 수 없음'}',
+                            session.serverRestarted
+                                ? '서버가 다시 시작되어 이 경기는 기록되지 않았어요.'
+                                : session.matchNotFound
+                                ? '서버에서 이 경기를 찾을 수 없어요.'
+                                : session.error ??
+                                      '종료 사유: ${session.result?['reason'] ?? '알 수 없음'}',
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 16),

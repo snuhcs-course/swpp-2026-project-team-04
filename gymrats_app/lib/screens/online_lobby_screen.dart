@@ -8,6 +8,7 @@ import '../models/exercise_type.dart';
 import '../models/matchup.dart';
 import '../services/auth/auth_repository.dart';
 import '../services/user/avatar_store.dart';
+import '../services/user/user_repository.dart';
 import '../services/online/online_battle_session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/exit_dialog.dart';
@@ -34,6 +35,7 @@ class OnlineLobbyScreen extends StatefulWidget {
     this.createCounter,
     this.avatarStore,
     this.autoJoin = true,
+    this.userRepository,
   });
   final AuthRepository auth;
   final OnlineSessionFactory? createSession;
@@ -41,6 +43,11 @@ class OnlineLobbyScreen extends StatefulWidget {
   final RepCounterViewModel Function()? createCounter;
   final AvatarStore? avatarStore;
   final bool autoJoin;
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// Where the battle's form feedback is uploaded; null keeps it on the
+  /// phone only.
+  final UserRepository? userRepository;
   @override
   State<OnlineLobbyScreen> createState() => _OnlineLobbyScreenState();
 }
@@ -163,6 +170,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
             : OnlineBattleScreen(
                 session: session,
                 createCounter: widget.createCounter,
+                userRepository: widget.userRepository,
               ),
       ),
     );

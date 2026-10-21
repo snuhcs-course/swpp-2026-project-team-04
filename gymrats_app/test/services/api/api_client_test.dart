@@ -133,6 +133,18 @@ void main() {
     );
   });
 
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  test('a proxy error page is classed by its status', () async {
+    await expectLater(
+      _client((_) async => http.Response('<html>413</html>', 413)).get('/x'),
+      throwsA(_apiError(ApiErrorKind.rejected, status: 413)),
+    );
+    await expectLater(
+      _client((_) async => http.Response('<html>502</html>', 502)).get('/x'),
+      throwsA(_apiError(ApiErrorKind.server, status: 502)),
+    );
+  });
+
   test('no connection is a network error', () async {
     await expectLater(
       _client((_) async => throw const SocketException('down')).get('/x'),
