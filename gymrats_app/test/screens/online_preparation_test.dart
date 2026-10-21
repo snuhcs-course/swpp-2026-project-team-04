@@ -33,10 +33,14 @@ class _Session extends OnlineBattleSession {
     opponent = const OnlinePlayer('opponent', '상대사용자', AvatarModel.robot);
   }
   final readyRequests = <bool>[];
+
+  /// False: the server has not answered ready yet (a slow confirmation).
+  bool confirmReady = true;
   @override
   void ready(bool value) {
     if (!canReady) return;
     readyRequests.add(value);
+    if (!confirmReady) return;
     if (value) {
       readyPlayers.add(playerId!);
     } else {
@@ -287,6 +291,96 @@ void main() {
       await tester.pump();
     },
   );
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  group('auto ready', () {
+    Future<void> pose(WidgetTester tester, bool ready) async {
+      estimator.frames.add(ready ? standingFrame() : emptyFrame());
+      camera.emit();
+      // Not pumpAndSettle: it moves the clock past the 3 seconds.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+
+    testWidgets('a ready pose sends ready by itself after 3 seconds', (
+      tester,
+    ) async {
+      await open(tester);
+      await pose(tester, true);
+      expect(find.textContaining('초 후 자동으로 준비해요'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 2900));
+      expect(session.readyRequests, isEmpty);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(session.readyRequests, [true]);
+      await tester.pump();
+      expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('losing the pose within 3 seconds cancels; it starts over', (
+      tester,
+    ) async {
+      await open(tester);
+      await pose(tester, true);
+      await tester.pump(const Duration(seconds: 2));
+      await pose(tester, false);
+      expect(find.textContaining('초 후 자동으로 준비해요'), findsNothing);
+      await tester.pump(const Duration(seconds: 2));
+      expect(session.readyRequests, isEmpty);
+      // Ready again: a full new 3 seconds.
+      await pose(tester, true);
+      await tester.pump(const Duration(seconds: 2));
+      expect(session.readyRequests, isEmpty);
+      await tester.pump(const Duration(milliseconds: 1100));
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('after 준비 취소 it waits until the pose is found again', (
+      tester,
+    ) async {
+      await open(tester);
+      await pose(tester, true);
+      await tester.tap(find.text('Start'));
+      await tester.pump();
+      expect(session.readyRequests, [true]);
+      await tester.tap(find.text('준비 취소'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(session.readyRequests, [true, false]);
+      await pose(tester, false);
+      await pose(tester, true);
+      await tester.pump(const Duration(milliseconds: 3100));
+      expect(session.readyRequests, [true, false, true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a slow confirmation does not send ready again', (
+      tester,
+    ) async {
+      await open(tester);
+      session.confirmReady = false;
+      await pose(tester, true);
+      await tester.pump(const Duration(milliseconds: 3100));
+      expect(session.readyRequests, [true]);
+      // More frames while the confirmation is on its way.
+      for (var i = 0; i < 5; i++) {
+        await pose(tester, true);
+        await tester.pump(const Duration(seconds: 1));
+      }
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('Start during the countdown sends ready once', (tester) async {
+      await open(tester);
+      await pose(tester, true);
+      await tester.tap(find.text('Start'));
+      await tester.pump(const Duration(seconds: 4));
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
 
   testWidgets(
     'losing the valid pose revokes ready instead of starting the round',

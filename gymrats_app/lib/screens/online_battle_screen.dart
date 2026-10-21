@@ -54,7 +54,83 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       _roundStarted = false,
       _stopping = false,
       _asking = false;
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// Sends ready by itself once the pose has stayed ready for
+  /// [SetupConfig.autoStartDelay], like the bot setup's auto start. Losing
+  /// the pose before then cancels it; the next ready pose starts it again.
+  Timer? _autoReady;
+  DateTime? _autoReadyAt;
+
+  /// The user cancelled ready: no auto ready until the pose is lost and
+  /// found again, or they press Start.
+  bool _autoReadyPaused = false;
+
+  /// Ready was sent and the server has not confirmed it yet, so it is not
+  /// sent again while the confirmation is on its way.
+  bool _readySent = false;
+
   OnlineBattleSession get session => widget.session;
+  bool get _iAmReady => session.readyPlayers.contains(session.playerId);
+
+  void _syncAutoReady() {
+    if (!_setupReady) _autoReadyPaused = false;
+    if (_iAmReady || !_setupReady || !session.canReady) _readySent = false;
+    final waiting =
+        session.canReady &&
+        _setupReady &&
+        !_iAmReady &&
+        !_autoReadyPaused &&
+        !_readySent;
+    if (!waiting) {
+      _cancelAutoReady();
+      return;
+    }
+    if (_autoReady != null) return;
+    final delay = widget.setupConfig.autoStartDelay;
+    _autoReadyAt = DateTime.now().add(delay);
+    _autoReady = Timer(delay, () {
+      _autoReady = null;
+      _autoReadyAt = null;
+      if (mounted && session.canReady && _setupReady && !_iAmReady) {
+        _readySent = true;
+        session.ready(true);
+      }
+    });
+  }
+
+  void _cancelAutoReady() {
+    _autoReady?.cancel();
+    _autoReady = null;
+    _autoReadyAt = null;
+  }
+
+  /// Start or 준비 취소. Cancelling pauses the auto ready.
+  void _toggleReady() {
+    final cancelling = _iAmReady;
+    _autoReadyPaused = cancelling;
+    _readySent = !cancelling;
+    _cancelAutoReady();
+    session.ready(!cancelling);
+  }
+
+  /// Whole seconds left before the auto ready; null when not counting.
+  int? get _autoReadySeconds {
+    final at = _autoReadyAt;
+    if (at == null) return null;
+    final left = at.difference(DateTime.now()).inMilliseconds;
+    return (left / 1000).ceil().clamp(1, 60);
+  }
+
+  /// The setup bar: holding the pose, then the auto ready countdown.
+  double get _setupProgress {
+    final at = _autoReadyAt;
+    if (at == null) return _setupStatus.readyProgress;
+    final delay = widget.setupConfig.autoStartDelay.inMicroseconds;
+    final left = at.difference(DateTime.now()).inMicroseconds;
+    return delay == 0 ? 1 : 1 - left / delay;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -133,6 +209,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   void _onSession() {
     _syncRound();
+    _syncAutoReady();
     if (mounted) setState(() {});
   }
 
@@ -161,6 +238,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         session.readyPlayers.contains(session.playerId)) {
       session.ready(false);
     }
+    _syncAutoReady();
     if (mounted) setState(() {});
   }
 
@@ -200,6 +278,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   @override
   void dispose() {
+    _cancelAutoReady();
     unawaited(keepScreenOn(false));
     WidgetsBinding.instance.removeObserver(this);
     session.removeListener(_onSession);
@@ -283,16 +362,18 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                           ? '${session.countdownSeconds}초 후 함께 시작'
                           : ready
                           ? '상대 준비를 기다리는 중…'
+                          : _autoReadySeconds != null
+                          ? '자세 확인! $_autoReadySeconds초 후 자동으로 준비해요'
                           : _setupStatus.message,
                       ready: _setupReady,
-                      progress: _setupStatus.readyProgress,
+                      progress: _setupProgress,
                       buttonLabel: scheduled
                           ? '경기 시작 대기'
                           : ready
                           ? '준비 취소'
                           : 'Start',
                       onStart: session.canReady && (ready || _setupReady)
-                          ? () => session.ready(!ready)
+                          ? _toggleReady
                           : null,
                       notice: Text(
                         !session.connected
