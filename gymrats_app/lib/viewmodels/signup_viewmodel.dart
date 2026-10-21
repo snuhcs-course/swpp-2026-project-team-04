@@ -61,8 +61,10 @@ abstract final class SignupRules {
 
   static String? password(String value) {
     if (value.isEmpty) return '비밀번호를 입력해 주세요.';
-    if (value.length < passwordMin) return '비밀번호는 $passwordMin자 이상이어야 해요.';
-    if (value.length > passwordMax) return '비밀번호는 $passwordMax자 이하여야 해요.';
+    // Characters as the server counts them (code points, not UTF-16 units).
+    final length = value.runes.length;
+    if (length < passwordMin) return '비밀번호는 $passwordMin자 이상이어야 해요.';
+    if (length > passwordMax) return '비밀번호는 $passwordMax자 이하여야 해요.';
     return null;
   }
 
