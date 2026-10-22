@@ -12,12 +12,20 @@ reaches it at `http://52.78.38.225/api` (nginx forwards `/api/` to gunicorn on
 | POST | `/auth/signup` | `nickname`, `login_id`, `password` | 201 `{token, user}`; 409 `login_id_taken` |
 | POST | `/auth/login` | `login_id`, `password` | 200 `{token, user}`; 401 `invalid_credentials` |
 | GET | `/users/me` | | `{id, login_id, nickname, best_reps, last_match}` |
-| POST | `/matches` | `client_id`, `exercise`, `opponent_name`, `my_reps`, `opponent_reps`, `played_at` | 201 the saved match; 200 when that `client_id` was saved before |
-| GET | `/matches?limit=20&before=<id>` | | `{items, next_before}`, newest first |
+| POST | `/matches` | `client_id`, `exercise`, `opponent_name`, `my_reps`, `opponent_reps`, `played_at`, optional `feedback` (`{summary, report}`) | 201 the saved match; 200 when that `client_id` was saved before |
+| GET | `/matches?limit=20&before=<id>` | | `{items, next_before}`, newest first; each item has `outcome`, `reason`, `has_feedback`, `feedback_summary` |
+| PUT | `/matches/feedback/<client_id>` | `summary`, `report` | 201/200 `{client_id, summary}`; stores the user's form report (online battles use the `result_id`) |
+| GET | `/matches/<id>/feedback` | | `{match_id, summary, report}`; 404 `not_found` when none or not the user's |
 
 Every endpoint except `/health`, sign-up, and login needs `Authorization: Bearer <token>`
 (a JWT); without a valid one the answer is 401 `invalid_token`. A user only sees their
 own matches. Invalid fields get 422 with the reasons in `detail`.
+
+The battle server (P11, `docs/iteration-2-protocol.md` §8) stores online results through
+`POST /internal/results`, `/internal/battles/start`, `/internal/battles/void`, and
+`/internal/battles/recover`. They need the `X-Results-Secret` header (`RESULTS_SECRET` in
+`/srv/gymrats/.env`), answer only direct loopback calls, and nginx does not forward
+`/api/internal/`. Each result becomes one match row per player with `client_id = result_id`.
 
 Rules: `login_id` is 4 to 20 lowercase letters, digits, or `_`; `nickname` is 1 to 12
 characters; `password` is 8 to 64 characters. Passwords are stored as bcrypt hashes.

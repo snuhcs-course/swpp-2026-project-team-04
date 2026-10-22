@@ -81,6 +81,10 @@ class ApiClient {
   Future<Object?> post(String path, Object body, {bool authorized = true}) =>
       _send('POST', path, body: body, authorized: authorized);
 
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  Future<Object?> put(String path, Object body, {bool authorized = true}) =>
+      _send('PUT', path, body: body, authorized: authorized);
+
   Future<Object?> _send(
     String method,
     String path, {
@@ -117,13 +121,18 @@ class ApiClient {
     }
 
     final status = response.statusCode;
-    final Object? json;
+    final ok = status >= 200 && status < 300;
+    Object? json;
     try {
       json = response.body.isEmpty ? null : jsonDecode(response.body);
     } on FormatException {
-      throw ApiException(ApiErrorKind.server, statusCode: status);
+      if (ok) throw ApiException(ApiErrorKind.server, statusCode: status);
+      // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+      // An error page from the proxy, e.g. nginx's HTML 413 for a body over
+      // its limit: the status still decides the kind below.
+      json = null;
     }
-    if (status >= 200 && status < 300) return json;
+    if (ok) return json;
 
     final detail = json is Map && json['detail'] is String
         ? json['detail'] as String

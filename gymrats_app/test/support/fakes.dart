@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/auth_session.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/match_page.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
@@ -160,10 +161,63 @@ class FakeUserRepository implements UserRepository {
     return profile;
   }
 
+  /// Reports saved with [saved], in the same order (null when none).
+  final List<FormReport?> savedReports = [];
+
   @override
-  Future<void> saveMatch(MatchRecord record) async {
+  Future<void> saveMatch(MatchRecord record, {FormReport? report}) async {
     if (saveError != null) throw saveError!;
     saved.add(record);
+    savedReports.add(report);
+  }
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// Online feedback saved, as (result id, report), in order.
+  final List<(String, FormReport)> savedFeedback = [];
+
+  /// When set, saveFeedback() throws it.
+  Exception? feedbackSaveError;
+
+  @override
+  Future<void> saveFeedback(String resultId, FormReport report) async {
+    if (feedbackSaveError != null) throw feedbackSaveError!;
+    savedFeedback.add((resultId, report));
+  }
+
+  /// What fetchRecent() returns, newest first.
+  List<MatchRecord> recent = [];
+
+  /// When set, fetchRecent() throws it.
+  Exception? recentError;
+
+  /// The limits fetchRecent() was called with.
+  final List<int> recentLimits = [];
+
+  @override
+  Future<List<MatchRecord>> fetchRecent({int limit = 3}) async {
+    recentLimits.add(limit);
+    if (recentError != null) throw recentError!;
+    return recent.take(limit).toList();
+  }
+
+  /// Stored reports by match id; a missing id has no feedback.
+  Map<int, FormReport> reports = {};
+
+  /// When set, fetchFeedback() throws it.
+  Exception? feedbackError;
+
+  /// When set, fetchFeedback() waits for it.
+  Completer<void>? feedbackGate;
+
+  /// Match ids fetchFeedback() was called with.
+  final List<int> feedbackRequests = [];
+
+  @override
+  Future<FormReport?> fetchFeedback(int matchId) async {
+    feedbackRequests.add(matchId);
+    await feedbackGate?.future;
+    if (feedbackError != null) throw feedbackError!;
+    return reports[matchId];
   }
 
   /// Pages returned by fetchHistory, in order: the first for no cursor,

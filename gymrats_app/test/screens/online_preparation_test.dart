@@ -33,10 +33,14 @@ class _Session extends OnlineBattleSession {
     opponent = const OnlinePlayer('opponent', '상대사용자', AvatarModel.robot);
   }
   final readyRequests = <bool>[];
+
+  /// False: the server has not answered ready yet (a slow confirmation).
+  bool confirmReady = true;
   @override
   void ready(bool value) {
     if (!canReady) return;
     readyRequests.add(value);
+    if (!confirmReady) return;
     if (value) {
       readyPlayers.add(playerId!);
     } else {
@@ -60,6 +64,7 @@ void main() {
   late RepCounterViewModel counter;
   late PhoneTiltMonitor phone;
   late InMemoryFormReportStore reports;
+  late FakeUserRepository repository;
 
   Future<void> open(WidgetTester tester, {bool denied = false}) async {
     await prepareFlowSnapshotFonts(tester);
@@ -73,6 +78,7 @@ void main() {
     estimator = FakePoseEstimator();
     phone = placedPhone();
     reports = InMemoryFormReportStore();
+    repository = FakeUserRepository();
     counter = RepCounterViewModel(
       camera: camera,
       estimator: estimator,
@@ -86,6 +92,7 @@ void main() {
         home: OnlineBattleScreen(
           session: session,
           formReports: reports,
+          userRepository: repository,
           createCounter: () => counter,
           setupConfig: const SetupConfig(
             readyDelay: Duration.zero,
@@ -160,10 +167,11 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('completed online round saves feedback once and opens it', (
-    tester,
+  /// Plays a short online round and ends it with the server's [result].
+  Future<void> finishRound(
+    WidgetTester tester,
+    Map<String, dynamic> result,
   ) async {
-    await open(tester);
     session.durationMs = 30000;
     session.startAtMs = session.serverNow - 100;
     session.endAtMs = session.serverNow + 29900;
@@ -174,13 +182,59 @@ void main() {
     camera.emit();
     await tester.pump();
     session.phase = OnlinePhase.finished;
-    session.result = {'reason': 'time_up', 'ended_at_ms': 1792400000000};
+    session.result = result;
     session.notifyListeners();
     await tester.pumpAndSettle();
     session.notifyListeners();
     await tester.pumpAndSettle();
+  }
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  testWidgets('a failed feedback upload still shows the result and feedback', (
+    tester,
+  ) async {
+    await open(tester);
+    repository.feedbackSaveError = Exception('offline');
+    await finishRound(tester, {
+      'result_id': 'r' * 32,
+      'reason': 'time_up',
+      'ended_at_ms': 1792400000000,
+    });
+    expect(await reports.list(), hasLength(1));
+    expect(find.text('자세 피드백 보기'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('a result without a result id uploads nothing', (tester) async {
+    await open(tester);
+    await finishRound(tester, {
+      'reason': 'time_up',
+      'ended_at_ms': 1792400000000,
+    });
+    expect(await reports.list(), hasLength(1));
+    expect(repository.savedFeedback, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('completed online round saves feedback once and opens it', (
+    tester,
+  ) async {
+    await open(tester);
+    await finishRound(tester, {
+      'result_id': 'r' * 32,
+      'reason': 'time_up',
+      'ended_at_ms': 1792400000000,
+    });
     expect(await reports.list(), hasLength(1));
     final report = (await reports.list()).single;
+    // Uploaded once, under the battle server's result id.
+    expect(repository.savedFeedback, hasLength(1));
+    expect(repository.savedFeedback.single.$1, 'r' * 32);
+    expect(repository.savedFeedback.single.$2, same(report));
+    expect(repository.saved, isEmpty);
     expect(report.roundLength, const Duration(seconds: 30));
     expect(report.opponentName, '상대사용자');
     expect(report.samples, isNotEmpty);
@@ -237,6 +291,96 @@ void main() {
       await tester.pump();
     },
   );
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  group('auto ready', () {
+    Future<void> pose(WidgetTester tester, bool ready) async {
+      estimator.frames.add(ready ? standingFrame() : emptyFrame());
+      camera.emit();
+      // Not pumpAndSettle: it moves the clock past the 3 seconds.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+
+    testWidgets('a ready pose sends ready by itself after 3 seconds', (
+      tester,
+    ) async {
+      await open(tester);
+      await pose(tester, true);
+      expect(find.textContaining('초 후 자동으로 준비해요'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 2900));
+      expect(session.readyRequests, isEmpty);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(session.readyRequests, [true]);
+      await tester.pump();
+      expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('losing the pose within 3 seconds cancels; it starts over', (
+      tester,
+    ) async {
+      await open(tester);
+      await pose(tester, true);
+      await tester.pump(const Duration(seconds: 2));
+      await pose(tester, false);
+      expect(find.textContaining('초 후 자동으로 준비해요'), findsNothing);
+      await tester.pump(const Duration(seconds: 2));
+      expect(session.readyRequests, isEmpty);
+      // Ready again: a full new 3 seconds.
+      await pose(tester, true);
+      await tester.pump(const Duration(seconds: 2));
+      expect(session.readyRequests, isEmpty);
+      await tester.pump(const Duration(milliseconds: 1100));
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('after 준비 취소 it waits until the pose is found again', (
+      tester,
+    ) async {
+      await open(tester);
+      await pose(tester, true);
+      await tester.tap(find.text('Start'));
+      await tester.pump();
+      expect(session.readyRequests, [true]);
+      await tester.tap(find.text('준비 취소'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(session.readyRequests, [true, false]);
+      await pose(tester, false);
+      await pose(tester, true);
+      await tester.pump(const Duration(milliseconds: 3100));
+      expect(session.readyRequests, [true, false, true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a slow confirmation does not send ready again', (
+      tester,
+    ) async {
+      await open(tester);
+      session.confirmReady = false;
+      await pose(tester, true);
+      await tester.pump(const Duration(milliseconds: 3100));
+      expect(session.readyRequests, [true]);
+      // More frames while the confirmation is on its way.
+      for (var i = 0; i < 5; i++) {
+        await pose(tester, true);
+        await tester.pump(const Duration(seconds: 1));
+      }
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('Start during the countdown sends ready once', (tester) async {
+      await open(tester);
+      await pose(tester, true);
+      await tester.tap(find.text('Start'));
+      await tester.pump(const Duration(seconds: 4));
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
 
   testWidgets(
     'losing the valid pose revokes ready instead of starting the round',

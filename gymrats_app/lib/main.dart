@@ -9,7 +9,7 @@ import 'models/matchup.dart';
 import 'screens/battle_screen.dart';
 import 'screens/feedback_screen.dart';
 import 'screens/history_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/home_shell_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/match_setup_screen.dart';
 import 'screens/matching_screen.dart';
@@ -147,9 +147,10 @@ class _GymRatsAppState extends State<GymRatsApp> {
               body: Center(child: CircularProgressIndicator()),
             ),
             AuthStatus.signedOut => const LoginScreen(),
-            // A new HomeScreen per account, so nothing of the previous
+            // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+            // A new home shell per account, so nothing of the previous
             // user's profile stays on screen.
-            AuthStatus.signedIn => HomeScreen(
+            AuthStatus.signedIn => HomeShellScreen(
               key: ValueKey(auth.account?.id),
               onLogOut: auth.logOut,
             ),
@@ -163,6 +164,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
               onAuthenticationFailed: _auth.logOut,
               avatarStore: _avatars,
               createSession: widget.createOnlineSession,
+              userRepository: widget.userRepository,
             ),
           ),
           GymRatsApp.profileRoute => MaterialPageRoute<void>(

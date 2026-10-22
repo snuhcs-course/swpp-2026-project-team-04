@@ -5,18 +5,21 @@ import '../models/match_record.dart';
 import '../theme/app_theme.dart';
 
 /// One battle in a card: result badge, exercise and opponent (and the date
-/// when [showDate]), and both scores. Used by home's "최근 경기" and the
-/// history list. Tappable when [onTap] is set.
+/// when [showDate], the one-line form feedback when [showFeedback]), and
+/// both scores. Used by home's "최근 경기" and the history list. Tappable
+/// when [onTap] is set.
 class MatchRecordCard extends StatelessWidget {
   const MatchRecordCard({
     super.key,
     required this.match,
     this.showDate = false,
+    this.showFeedback = false,
     this.onTap,
   });
 
   final MatchRecord match;
   final bool showDate;
+  final bool showFeedback;
   final VoidCallback? onTap;
 
   @override
@@ -51,6 +54,10 @@ class MatchRecordCard extends StatelessWidget {
                           color: AppColors.textSecondary,
                         ),
                       ),
+                    ],
+                    if (showFeedback) ...[
+                      const SizedBox(height: AppSpacing.s4),
+                      FeedbackLine(match: match),
                     ],
                   ],
                 ),
@@ -163,6 +170,45 @@ class _Scores extends StatelessWidget {
             const SizedBox(height: AppSpacing.s4),
             Text('상대', style: label?.copyWith(color: AppColors.textSecondary)),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+// AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+/// The battle's form feedback in one line: the top thing to fix in amber,
+/// "좋은 자세" in lime when there was nothing to fix, or "피드백 없음" for a
+/// battle stored without feedback.
+class FeedbackLine extends StatelessWidget {
+  const FeedbackLine({super.key, required this.match});
+
+  final MatchRecord match;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = match.feedbackSummary;
+    final (icon, color, label) = switch (summary) {
+      null => (Icons.remove_rounded, AppColors.textMuted, '피드백 없음'),
+      _ when summary.topIssue != null => (
+        Icons.error_outline_rounded,
+        AppColors.warning,
+        summary.line,
+      ),
+      _ => (Icons.check_circle_outline_rounded, AppColors.accent, summary.line),
+    };
+    final text = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Icon(icon, color: color, size: text.bodyMedium?.fontSize),
+        const SizedBox(width: AppSpacing.s4),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: text.bodySmall?.copyWith(color: color),
+          ),
         ),
       ],
     );

@@ -82,26 +82,42 @@ class FormErrorMessage extends StatelessWidget {
 
 /// The back arrow and a title at the top of a pushed screen.
 class TopBar extends StatelessWidget {
-  const TopBar({super.key, required this.title, this.onBack});
+  const TopBar({
+    super.key,
+    required this.title,
+    this.onBack,
+    this.showBack = true,
+  });
 
   final String title;
 
   /// Defaults to popping this screen.
   final VoidCallback? onBack;
 
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  /// False for a tab's own title, which has nothing to go back to.
+  final bool showBack;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8),
+      padding: EdgeInsets.symmetric(
+        horizontal: showBack ? AppSpacing.s8 : AppSpacing.s20,
+      ),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            tooltip: '뒤로',
-            color: AppColors.textPrimary,
-            onPressed: onBack ?? () => Navigator.maybePop(context),
-          ),
-          const SizedBox(width: AppSpacing.s4),
+          // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+          if (showBack) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              tooltip: '뒤로',
+              color: AppColors.textPrimary,
+              onPressed: onBack ?? () => Navigator.maybePop(context),
+            ),
+            const SizedBox(width: AppSpacing.s4),
+          ] else
+            // Same height as the back button, so the title sits alike.
+            const SizedBox(height: kMinInteractiveDimension),
           Text(
             title,
             style: Theme.of(context).textTheme.titleMedium

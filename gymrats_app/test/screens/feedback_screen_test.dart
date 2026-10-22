@@ -1,10 +1,12 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/form_report.dart';
+import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/models/user_profile.dart';
@@ -12,6 +14,8 @@ import 'package:gymrats_app/screens/feedback_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
+import 'package:gymrats_app/services/feedback/form_summary.dart';
+import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 
@@ -206,49 +210,48 @@ void main() {
     expect(find.text('자세 피드백 보기'), findsNothing);
   });
 
-  testWidgets('home lists the latest saved feedback and opens it', (
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  // Home no longer lists the phone's latest report on its own: each of its
+  // recent battles carries its feedback (task: match history with feedback).
+  testWidgets('a recent battle on home opens the same feedback screen', (
     tester,
   ) async {
     phone(tester);
     final repository = FakeUserRepository()
-      ..profile = const UserProfile(name: '우현');
-    final store = InMemoryFormReportStore();
-    await store.save(_report);
-    await tester.pumpWidget(
-      app(
-        HomeScreen(
-          createViewModel: () =>
-              HomeViewModel(repository: repository, formReports: store),
+      ..profile = const UserProfile(name: '우현')
+      ..recent = [
+        MatchRecord(
+          id: 5,
+          exercise: ExerciseType.pushUp,
+          opponentName: 'RepBot',
+          myReps: 1,
+          opponentReps: 0,
+          playedAt: _report.endedAt,
+          feedbackSummary: summarizeForm(_report),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('최근 자세 피드백'), findsOneWidget);
-    expect(find.text('인정 1회 · 무효 1회'), findsOneWidget);
-    await tester.tap(find.text('vs RepBot · 10/11 09:05'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.byType(FeedbackScreen), findsOneWidget);
-  });
-
-  testWidgets('home without saved feedback has no feedback section', (
-    tester,
-  ) async {
-    phone(tester);
-    final repository = FakeUserRepository()
-      ..profile = const UserProfile(name: '우현');
+      ]
+      ..reports = {5: _report};
     await tester.pumpWidget(
-      app(
-        HomeScreen(
-          createViewModel: () => HomeViewModel(
-            repository: repository,
-            formReports: InMemoryFormReportStore(),
+      MultiProvider(
+        providers: [
+          Provider<UserRepository>.value(value: repository),
+          Provider<FormReportStore>.value(value: InMemoryFormReportStore()),
+        ],
+        child: app(
+          HomeScreen(
+            createViewModel: () => HomeViewModel(repository: repository),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('최근 자세 피드백'), findsNothing);
+    await tester.tap(find.text('푸쉬업 · vs RepBot'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(FeedbackScreen), findsOneWidget);
+    expect(
+      tester.widget<FeedbackScreen>(find.byType(FeedbackScreen)).report,
+      same(_report),
+    );
   });
 }

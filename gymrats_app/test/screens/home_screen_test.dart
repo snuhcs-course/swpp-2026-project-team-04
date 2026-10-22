@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
@@ -11,6 +12,7 @@ import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
+import 'package:gymrats_app/widgets/match_record_card.dart';
 
 import '../support/fakes.dart';
 
@@ -35,7 +37,9 @@ void main() {
         name: '우현',
         bestReps: 32,
         lastMatch: _lastMatch,
-      );
+      )
+      // Home lists the recent battles (task: match history with feedback).
+      ..recent = [_lastMatch];
   });
 
   /// Opens HomeScreen on a phone-sized screen, with a stub matching route
@@ -252,6 +256,7 @@ void main() {
         opponentReps: 24,
       ),
     );
+    repository.recent = [repository.profile.lastMatch!];
     await open(tester);
     expect(find.text('패'), findsOneWidget);
     final mine = tester.widget<Text>(find.text('19')).style!;
@@ -269,6 +274,7 @@ void main() {
     tester,
   ) async {
     repository.profile = const UserProfile(name: '우현');
+    repository.recent = [];
     await open(tester);
     expect(find.text('최근 경기'), findsOneWidget);
     expect(find.text('아직 경기 기록이 없어요. 첫 대결을 시작해 보세요!'), findsOneWidget);
@@ -365,6 +371,7 @@ void main() {
         opponentReps: 30,
       ),
     );
+    repository.recent = [repository.profile.lastMatch!];
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(repository.fetchCount, 2);
@@ -385,6 +392,7 @@ void main() {
         opponentReps: 99,
       ),
     );
+    repository.recent = [repository.profile.lastMatch!];
     await open(tester, size: const Size(360, 640));
     // The row was laid out, so an overflow in it would have been reported.
     expect(find.text('99', skipOffstage: false), findsOneWidget);
@@ -407,6 +415,7 @@ void main() {
       lastMatch: _lastMatch,
       unsentMatches: 2,
     );
+    repository.recent = [repository.profile.lastMatch!];
     await open(tester);
     final note = find.text('저장하지 못한 경기 2개 · 연결되면 다시 저장해요');
     expect(note, findsOneWidget);
@@ -421,5 +430,89 @@ void main() {
   testWidgets('no logout button without a logout action', (tester) async {
     await open(tester);
     expect(find.byTooltip('로그아웃'), findsNothing);
+  });
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  group('recent battles', () {
+    MatchRecord battle(int id, {String? issue, bool feedback = true}) =>
+        MatchRecord(
+          id: id,
+          exercise: ExerciseType.pushUp,
+          opponentName: 'Rival$id',
+          myReps: 10 + id,
+          opponentReps: 5,
+          playedAt: DateTime(2026, 10, 21, 9, id),
+          feedbackSummary: feedback
+              ? FeedbackSummary(
+                  validReps: 10,
+                  invalidReps: 0,
+                  issueCount: issue == null ? 0 : 1,
+                  topIssue: issue,
+                )
+              : null,
+        );
+
+    testWidgets('home shows the newest three with result, date, feedback', (
+      tester,
+    ) async {
+      repository.recent = [
+        battle(5, issue: '깊이 부족 1회'),
+        battle(4),
+        battle(3, feedback: false),
+        battle(2),
+        battle(1),
+      ];
+      await open(tester);
+      await tester.scrollUntilVisible(find.text('피드백 없음'), 180);
+      expect(find.byType(MatchRecordCard), findsNWidgets(3));
+      expect(find.text('푸쉬업 · vs Rival5'), findsOneWidget);
+      expect(find.text('푸쉬업 · vs Rival3'), findsOneWidget);
+      expect(find.text('푸쉬업 · vs Rival2'), findsNothing);
+      expect(find.text('깊이 부족 1회'), findsOneWidget);
+      expect(find.text('10월 21일 09:05'), findsOneWidget);
+    });
+
+    testWidgets('"전체 기록" calls the tab switch when given', (tester) async {
+      var opened = 0;
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: HomeScreen(
+            createViewModel: () => HomeViewModel(repository: repository),
+            onOpenHistory: () => opened++,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.scrollUntilVisible(find.text('전체 기록 ›'), 180);
+      await tester.tap(find.text('전체 기록 ›'));
+      await tester.pump();
+      expect(opened, 1);
+    });
+
+    testWidgets('the fallback latest battle shows no feedback line', (
+      tester,
+    ) async {
+      repository.recentError = Exception('offline');
+      await open(tester);
+      await tester.scrollUntilVisible(find.text('푸쉬업 · vs RepBot'), 180);
+      expect(find.text('피드백 없음'), findsNothing);
+    });
+
+    testWidgets('a row without feedback is not tappable', (tester) async {
+      repository.recent = [battle(3, feedback: false)];
+      await open(tester);
+      await tester.scrollUntilVisible(find.text('피드백 없음'), 180);
+      final ink = tester.widget<InkWell>(
+        find.ancestor(
+          of: find.text('푸쉬업 · vs Rival3'),
+          matching: find.byType(InkWell),
+        ),
+      );
+      expect(ink.onTap, isNull);
+    });
   });
 }

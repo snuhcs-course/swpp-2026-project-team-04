@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 
@@ -83,5 +85,50 @@ void main() {
     // Notifying a disposed view model would throw here.
     await expectLater(loading, completes);
     expect(vm.state.profile, isNull);
+  });
+
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+  group('recent battles', () {
+    MatchRecord battle(int reps) => MatchRecord(
+      id: reps,
+      exercise: ExerciseType.pushUp,
+      opponentName: 'RepBot',
+      myReps: reps,
+      opponentReps: 0,
+    );
+
+    test('load asks for the newest three after the profile', () async {
+      repository.recent = [for (var r = 5; r >= 1; r--) battle(r)];
+      await vm.load();
+      expect(repository.recentLimits, [HomeViewModel.recentCount]);
+      expect(HomeViewModel.recentCount, 3);
+      expect(vm.state.recent.map((m) => m.myReps), [5, 4, 3]);
+      expect(vm.state.recentIsFallback, isFalse);
+    });
+
+    test('a failed recent load falls back to the latest battle', () async {
+      final last = battle(9);
+      repository
+        ..profile = UserProfile(name: '우현', lastMatch: last)
+        ..recentError = Exception('offline');
+      await vm.load();
+      expect(vm.state.phase, HomePhase.ready);
+      expect(vm.state.recent, [same(last)]);
+      expect(vm.state.recentIsFallback, isTrue);
+    });
+
+    test('without any battle the fallback is empty', () async {
+      repository.recentError = Exception('offline');
+      await vm.load();
+      expect(vm.state.recent, isEmpty);
+    });
+
+    test('a reload shows the battles saved meanwhile', () async {
+      repository.recent = [battle(1)];
+      await vm.load();
+      repository.recent = [battle(2), battle(1)];
+      await vm.load();
+      expect(vm.state.recent.map((m) => m.myReps), [2, 1]);
+    });
   });
 }

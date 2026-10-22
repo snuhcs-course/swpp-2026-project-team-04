@@ -61,6 +61,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // Home keeps its scroll position; the greeting is at the top.
+    await tester.scrollUntilVisible(find.text('안녕하세요, 우현님'), -180);
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
   });
 
@@ -181,6 +183,8 @@ void main() {
     await tester.tap(find.text('홈으로'));
     await tester.pumpAndSettle();
     expect(find.text('개인 최고 40회'), findsOneWidget);
+    // The recent battles sit below the start buttons.
+    await tester.scrollUntilVisible(find.text('40'), 180);
     expect(find.text('40'), findsOneWidget);
     expect(find.text('30'), findsOneWidget);
   });
