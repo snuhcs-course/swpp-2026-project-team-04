@@ -63,6 +63,11 @@ void main() {
       expect(SignupRules.password('a' * 64), isNull);
       expect(SignupRules.password('a' * 65), isNotNull);
       expect(SignupRules.password('가' * 30), isNull);
+      // Emoji are one character each, as on the server.
+      expect(SignupRules.password('😀' * 4), isNotNull);
+      expect(SignupRules.password('😀' * 8), isNull);
+      expect(SignupRules.password('😀' * 64), isNull);
+      expect(SignupRules.password('😀' * 65), isNotNull);
     });
 
     test('confirmation', () {

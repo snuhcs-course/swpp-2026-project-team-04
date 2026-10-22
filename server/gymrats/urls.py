@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from django.urls import include, path
 from rest_framework.decorators import (
     api_view,
@@ -23,3 +24,18 @@ urlpatterns = [
     # Battle server only (P11); nginx does not forward /api/internal/.
     path("internal/", include("matches.internal_urls")),
 ]
+
+
+# AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+# Unknown paths and crashes answer in the API's {"detail": ...} shape, not
+# Django's HTML pages, so the app can read every error.
+def not_found(request, exception=None):
+    return JsonResponse({"detail": "not_found"}, status=404)
+
+
+def server_error(request):
+    return JsonResponse({"detail": "server_error"}, status=500)
+
+
+handler404 = not_found
+handler500 = server_error
