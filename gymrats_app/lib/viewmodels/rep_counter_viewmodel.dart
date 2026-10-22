@@ -280,8 +280,11 @@ class RepCounterViewModel extends ChangeNotifier {
       return;
     }
     if (session != _session) return;
+    // Reopening the camera is not a new round. Locking again would take the
+    // leaned phone as the baseline, so the lean would still count.
+    final newRound = _roundStartedAt == null;
     _roundStartedAt ??= _clock();
-    _phoneTilt.lock();
+    if (newRound) _phoneTilt.lock();
     _setState(
       _state.copyWith(phase: CounterPhase.running, remaining: _remaining()),
     );

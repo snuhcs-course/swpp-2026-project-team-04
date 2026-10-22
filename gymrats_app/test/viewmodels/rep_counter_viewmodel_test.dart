@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
@@ -147,6 +149,62 @@ void main() {
     expect(vm.state.phase, CounterPhase.running);
     expect(vm.state.validReps, 1);
     expect(vm.state.snapshot.phase, RepPhase.idle);
+  });
+
+  test('reopening the camera does not forgive a leaned phone', () async {
+    final samples = StreamController<GravitySample>(sync: true);
+    addTearDown(samples.close);
+    final tilt = PhoneTiltMonitor(samples: samples.stream, clock: () => now);
+    final leanedCamera = FakeCameraService();
+    final leanedEstimator = FakePoseEstimator();
+    final leaned = RepCounterViewModel(
+      camera: leanedCamera,
+      estimator: leanedEstimator,
+      clock: () => now,
+      phoneTilt: tilt,
+      judge: RepJudge(config: fast, clock: () => now),
+    );
+    addTearDown(leaned.dispose);
+    final leanedEvents = <RepEvent>[];
+    leaned.reps.listen(leanedEvents.add);
+
+    Future<void> feed(int ms, PoseFrame? frame) async {
+      now = Duration(milliseconds: ms);
+      leanedEstimator.frames.add(frame);
+      leanedCamera.emit();
+      await pumpEventQueue();
+    }
+
+    const held = GravitySample(0, 9.8, 0, gyroX: 0, gyroY: 0, gyroZ: 0);
+    // About 20° off the upright lock. Past the 10° band.
+    const leanedPhone = GravitySample(
+      0,
+      9.2,
+      3.35,
+      gyroX: 0,
+      gyroY: 0,
+      gyroZ: 0,
+    );
+
+    await leaned.start();
+    now = const Duration(milliseconds: 500);
+    samples.add(held);
+    now = const Duration(milliseconds: 600);
+    samples.add(leanedPhone);
+    now = const Duration(milliseconds: 1100);
+    samples.add(leanedPhone);
+    expect(tilt.isDisturbed, isTrue);
+
+    await leaned.onScreenRotated();
+    expect(tilt.isDisturbed, isTrue);
+
+    await feed(1200, pose());
+    await feed(1500, pose());
+    await feed(1600, pose(depth: 0.6));
+    await feed(2000, pose(depth: 1.5));
+    await feed(2400, pose());
+    expect(leanedEvents.single.reason, RejectReason.phoneMoved);
+    expect(leaned.state.validReps, 0);
   });
 
   test('rotating while paused does not open the camera', () async {
