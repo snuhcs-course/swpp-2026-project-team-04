@@ -5,20 +5,25 @@ import '../main.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
-import '../models/match_record.dart';
 import '../models/user_profile.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/accent_button.dart';
+import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
+import '../widgets/match_record_card.dart';
 
-/// First screen: greets the user and starts a battle against the AI.
+/// First screen after login: greets the user, starts a battle against the
+/// AI, and opens the match history from "최근 경기".
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.createViewModel});
+  const HomeScreen({super.key, this.createViewModel, this.onLogOut});
 
   /// Builds the view model; replaces the default one in tests.
   final HomeViewModel Function()? createViewModel;
+
+  /// Logs out after the user confirms. No logout button when null.
+  final Future<void> Function()? onLogOut;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -62,6 +67,24 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
+  /// History may show battles saved since home loaded, so home reloads
+  /// when it comes back (didPopNext).
+  void _openHistory() => Navigator.pushNamed(context, GymRatsApp.historyRoute);
+
+  Future<void> _confirmLogOut() async {
+    final logOut = widget.onLogOut;
+    if (logOut == null) return;
+    final confirmed = await confirmExit(
+      context,
+      const ExitDialog(
+        title: '로그아웃할까요?',
+        message: '다시 들어오려면\n아이디와 비밀번호가 필요해요.',
+        leaveLabel: '로그아웃',
+      ),
+    );
+    if (confirmed) await logOut();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<HomeViewModel>.value(
@@ -74,10 +97,15 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 HomePhase.loading => const Center(
                   child: CircularProgressIndicator(),
                 ),
-                HomePhase.failed => _LoadFailed(onRetry: vm.load),
+                HomePhase.failed => _LoadFailed(
+                  message: vm.state.errorMessage,
+                  onRetry: vm.load,
+                ),
                 HomePhase.ready => _HomeContent(
                   profile: vm.state.profile!,
                   onStart: _startMatching,
+                  onOpenHistory: _openHistory,
+                  onLogOut: widget.onLogOut == null ? null : _confirmLogOut,
                 ),
               },
             ),
@@ -89,10 +117,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 }
 
 class _HomeContent extends StatelessWidget {
-  const _HomeContent({required this.profile, required this.onStart});
+  const _HomeContent({
+    required this.profile,
+    required this.onStart,
+    required this.onOpenHistory,
+    this.onLogOut,
+  });
 
   final UserProfile profile;
   final VoidCallback onStart;
+  final VoidCallback onOpenHistory;
+  final VoidCallback? onLogOut;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +135,7 @@ class _HomeContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       children: [
-        _Greeting(name: profile.name),
+        _Greeting(name: profile.name, onLogOut: onLogOut),
         const SizedBox(height: 32),
         _SectionHeader('종목 선택', detail: '${battleDuration.inSeconds}초 · 1v1'),
         const SizedBox(height: 12),
@@ -114,11 +149,16 @@ class _HomeContent extends StatelessWidget {
           hint: '${battleDuration.inSeconds}초 안에 더 많이 하면 승리',
           onPressed: onStart,
         ),
-        if (lastMatch != null) ...[
-          const SizedBox(height: 32),
-          const _SectionHeader('최근 경기'),
-          const SizedBox(height: 12),
-          _RecentMatchRow(match: lastMatch),
+        const SizedBox(height: AppSpacing.s32),
+        _SectionHeader('최근 경기', detail: '전체 기록', onDetail: onOpenHistory),
+        const SizedBox(height: AppSpacing.s12),
+        if (lastMatch != null)
+          MatchRecordCard(match: lastMatch, onTap: onOpenHistory)
+        else
+          _NoMatchYet(onTap: onOpenHistory),
+        if (profile.unsentMatches > 0) ...[
+          const SizedBox(height: AppSpacing.s8),
+          _UnsentNote(count: profile.unsentMatches),
         ],
       ],
     );
@@ -126,19 +166,36 @@ class _HomeContent extends StatelessWidget {
 }
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name});
+  const _Greeting({required this.name, this.onLogOut});
 
   final String name;
+  final VoidCallback? onLogOut;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final onLogOut = this.onLogOut;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '안녕하세요, $name님',
-          style: text.titleMedium?.copyWith(color: AppColors.textSecondary),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '안녕하세요, $name님',
+                style: text.titleMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            if (onLogOut != null)
+              IconButton(
+                onPressed: onLogOut,
+                tooltip: '로그아웃',
+                color: AppColors.textSecondary,
+                icon: const Icon(Icons.logout_rounded),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         // Line break set by hand: Flutter may break Korean inside a word.
@@ -149,11 +206,13 @@ class _Greeting extends StatelessWidget {
 }
 
 /// Bold title above a card, with an optional gray note at the right end.
+/// The note is a link when [onDetail] is set.
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title, {this.detail});
+  const _SectionHeader(this.title, {this.detail, this.onDetail});
 
   final String title;
   final String? detail;
+  final VoidCallback? onDetail;
 
   @override
   Widget build(BuildContext context) {
@@ -171,7 +230,15 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        if (detail != null)
+        if (detail != null && onDetail != null)
+          TextButton(
+            onPressed: onDetail,
+            child: Text(
+              '$detail ›',
+              style: text.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            ),
+          )
+        else if (detail != null)
           Text(
             detail,
             style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
@@ -323,35 +390,24 @@ class _PushUpPainter extends CustomPainter {
   bool shouldRepaint(_PushUpPainter oldDelegate) => false;
 }
 
-/// The latest battle in one line: result badge, exercise and opponent, score.
-class _RecentMatchRow extends StatelessWidget {
-  const _RecentMatchRow({required this.match});
+/// The "최근 경기" card before the first battle.
+class _NoMatchYet extends StatelessWidget {
+  const _NoMatchYet({required this.onTap});
 
-  final MatchRecord match;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ConstrainedBox(
-        // About 72 tall, as in the design; taller only if the text needs it.
-        constraints: const BoxConstraints(minHeight: 72),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              _ResultBadge(outcome: match.outcome),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  '${match.exercise.koreanName} · vs ${match.opponentName}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ),
-              const SizedBox(width: 12),
-              _MatchScores(match: match),
-            ],
+          padding: const EdgeInsets.all(AppSpacing.s16),
+          child: Text(
+            '아직 경기 기록이 없어요. 첫 대결을 시작해 보세요!',
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: AppColors.textSecondary),
           ),
         ),
       ),
@@ -359,129 +415,36 @@ class _RecentMatchRow extends StatelessWidget {
   }
 }
 
-/// My score and the opponent's, each with a label underneath. Mine always
-/// stands out, whoever won.
-class _MatchScores extends StatelessWidget {
-  const _MatchScores({required this.match});
+/// Battles that are not on the server yet, in amber: they are retried on
+/// the next load, so the user knows the record is not lost.
+class _UnsentNote extends StatelessWidget {
+  const _UnsentNote({required this.count});
 
-  final MatchRecord match;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final number = _inNumberFont(text, text.titleLarge);
     return Row(
-      mainAxisSize: MainAxisSize.min,
-      // The two numbers share a baseline although their sizes differ.
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
       children: [
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${match.myReps}',
-              style: number?.copyWith(
-                fontSize: 26,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            const _MeTag(),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          // Raised a little so the colon sits between the numbers rather
-          // than on their baseline, as in the design.
-          child: Transform.translate(
-            offset: const Offset(0, -2),
-            child: Text(
-              ':',
-              style: number?.copyWith(fontSize: 20, color: AppColors.textMuted),
-            ),
+        const Icon(Icons.cloud_off_rounded, color: AppColors.warning),
+        const SizedBox(width: AppSpacing.s8),
+        Expanded(
+          child: Text(
+            '저장하지 못한 경기 $count개 · 연결되면 다시 저장해요',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.warning),
           ),
-        ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${match.opponentReps}',
-              style: number?.copyWith(
-                fontSize: 22,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '상대',
-              style: text.labelSmall?.copyWith(color: AppColors.textSecondary),
-            ),
-          ],
         ),
       ],
     );
   }
 }
 
-/// "나" in dark text on a lime pill, under the user's score.
-class _MeTag extends StatelessWidget {
-  const _MeTag();
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return DecoratedBox(
-      decoration: const ShapeDecoration(
-        color: AppColors.accent,
-        shape: StadiumBorder(),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        child: Text(
-          '나',
-          style: text.labelSmall?.copyWith(color: AppColors.background),
-        ),
-      ),
-    );
-  }
-}
-
-/// 승, 패 or 무 in the outcome color on a faint tint of it: lime when the
-/// user won, pink when the opponent did.
-class _ResultBadge extends StatelessWidget {
-  const _ResultBadge({required this.outcome});
-
-  final MatchOutcome outcome;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (outcome) {
-      MatchOutcome.win => AppColors.accent,
-      MatchOutcome.lose => AppColors.opponent,
-      MatchOutcome.draw => AppColors.textSecondary,
-    };
-    return Container(
-      width: 40,
-      height: 40,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        outcome.label,
-        // Black Han Sans, the headline font, at badge size.
-        style: Theme.of(context).textTheme.headlineSmall
-            ?.copyWith(fontSize: 18, color: color),
-      ),
-    );
-  }
-}
-
 class _LoadFailed extends StatelessWidget {
-  const _LoadFailed({required this.onRetry});
+  const _LoadFailed({required this.message, required this.onRetry});
 
+  /// Why loading failed; null for no extra line.
+  final String? message;
   final VoidCallback onRetry;
 
   @override
@@ -491,6 +454,18 @@ class _LoadFailed extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('정보를 불러오지 못했어요', style: Theme.of(context).textTheme.titleMedium),
+          if (message case final message?) ...[
+            const SizedBox(height: AppSpacing.s8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s32),
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: AppColors.textSecondary),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           FilledButton(onPressed: onRetry, child: const Text('다시 시도')),
         ],

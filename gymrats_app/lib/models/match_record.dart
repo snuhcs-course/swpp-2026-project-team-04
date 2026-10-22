@@ -19,6 +19,7 @@ class MatchRecord {
     required this.opponentName,
     required this.myReps,
     required this.opponentReps,
+    this.playedAt,
   });
 
   final ExerciseType exercise;
@@ -31,6 +32,9 @@ class MatchRecord {
 
   /// Reps counted for the opponent.
   final int opponentReps;
+
+  /// When the battle ended; null for sample data that has no time.
+  final DateTime? playedAt;
 
   /// More reps wins; the same count is a draw.
   MatchOutcome get outcome => switch (myReps.compareTo(opponentReps)) {

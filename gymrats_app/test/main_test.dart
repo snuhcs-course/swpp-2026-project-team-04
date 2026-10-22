@@ -17,6 +17,8 @@ import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:provider/provider.dart';
 
+import 'support/fakes.dart';
+
 void main() {
   /// Taps start and lets the matching page slide in. The radar keeps
   /// turning, so pumpAndSettle would only return after the bot is found.
@@ -29,7 +31,7 @@ void main() {
   testWidgets('start leads through matching to versus; cancelling goes home', (
     tester,
   ) async {
-    await tester.pumpWidget(const GymRatsApp());
+    await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
 
@@ -64,7 +66,7 @@ void main() {
   testWidgets('every screen gets the same repository and matchmaker', (
     tester,
   ) async {
-    await tester.pumpWidget(const GymRatsApp());
+    await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
     final home = tester.element(find.byType(HomeScreen));
     final repository = home.read<UserRepository>();
@@ -85,7 +87,7 @@ void main() {
 
   testWidgets('the matching flow sets up in MatchSetupScreen; the setup '
       'route still opens SetupScreen', (tester) async {
-    await tester.pumpWidget(const GymRatsApp());
+    await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
     final generate = tester
         .widget<MaterialApp>(find.byType(MaterialApp))
@@ -121,7 +123,7 @@ void main() {
   testWidgets('the battle route builds the battle for the matchup', (
     tester,
   ) async {
-    await tester.pumpWidget(const GymRatsApp());
+    await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
     final generate = tester
         .widget<MaterialApp>(find.byType(MaterialApp))
@@ -149,7 +151,7 @@ void main() {
   });
 
   testWidgets('after the result, home shows the saved battle', (tester) async {
-    await tester.pumpWidget(const GymRatsApp());
+    await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
     expect(find.text('개인 최고 32회'), findsOneWidget);
     final result = BattleResult(

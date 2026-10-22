@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+
+import '../support/fakes.dart';
 
 void main() {
   final theme = AppTheme.dark;
@@ -52,7 +53,7 @@ void main() {
   });
 
   testWidgets('GymRatsApp uses the dark theme', (tester) async {
-    await tester.pumpWidget(const GymRatsApp());
+    await tester.pumpWidget(testApp());
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.theme, same(AppTheme.dark));
   });

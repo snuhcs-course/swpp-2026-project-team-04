@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/user_profile.dart';
+import '../services/api/api_client.dart';
 import '../services/user/user_repository.dart';
+import 'login_viewmodel.dart';
 
 /// What the home screen is showing.
 enum HomePhase {
@@ -17,15 +19,29 @@ enum HomePhase {
 
 /// Immutable state rendered by the home screen.
 class HomeState {
-  const HomeState({this.phase = HomePhase.loading, this.profile});
+  const HomeState({
+    this.phase = HomePhase.loading,
+    this.profile,
+    this.errorMessage,
+  });
 
   final HomePhase phase;
 
   /// The last loaded profile; null until a load succeeds.
   final UserProfile? profile;
 
-  HomeState copyWith({HomePhase? phase, UserProfile? profile}) =>
-      HomeState(phase: phase ?? this.phase, profile: profile ?? this.profile);
+  /// Why the load failed, e.g. no network; null for the default message.
+  final String? errorMessage;
+
+  HomeState copyWith({
+    HomePhase? phase,
+    UserProfile? profile,
+    String? errorMessage,
+  }) => HomeState(
+    phase: phase ?? this.phase,
+    profile: profile ?? this.profile,
+    errorMessage: errorMessage ?? this.errorMessage,
+  );
 }
 
 /// Loads the user's profile for the home screen.
@@ -53,8 +69,15 @@ class HomeViewModel extends ChangeNotifier {
     try {
       final profile = await _repository.fetchProfile();
       _setState(_state.copyWith(phase: HomePhase.ready, profile: profile));
-    } on Exception {
-      if (!reloading) _setState(_state.copyWith(phase: HomePhase.failed));
+    } on Exception catch (e) {
+      if (!reloading) {
+        _setState(
+          _state.copyWith(
+            phase: HomePhase.failed,
+            errorMessage: e is ApiException ? e.message : genericErrorMessage,
+          ),
+        );
+      }
     } finally {
       _fetching = false;
     }
