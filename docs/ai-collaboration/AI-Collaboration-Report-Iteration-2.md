@@ -34,8 +34,7 @@ TODO(team): each member's prompts for their tasks.
 - Review loop: the reviewer subagent found a race where an app could pre-post a row under a `result_id` and make the
   P11 saver roll back (Critical), and a late restart recovery voiding live battles (Major); both fixed with tests
   (`test_app_cannot_pre_post_an_online_result`, `test_late_recover_spares_battles_the_new_process_started`).
-- Emulator walkthrough with screenshots and a screen recording of home, the 기록 tab, the stored feedback screen, the
-  offline error, and retry.
+- Emulator walkthrough with a screen recording of home, the 기록 tab, the stored feedback screen, offline error, retry.
 
 ## 4. Hallucinations / Errors
 - Wrong expected value in a test: assumed `ended_at_ms` 1792022460000 was 2026-10-18 03:21 UTC; it is 2026-10-15
@@ -45,6 +44,8 @@ TODO(team): each member's prompts for their tasks.
 - Widget test timing: used `pumpAndSettle`, which moved the fake clock past the 3 s auto-ready window
   (`test/screens/online_preparation_test.dart`). Caught by the failing assertion; replaced with short pumps.
 - Reported a phone-based test was ready while the phone was locked; the screenshot showed only the lock screen.
+- The first exported Prompt Log (`0e7f450`) kept a computer host name and a server login from a pasted terminal output;
+  the privacy grep only looked for email and paths. Caught by a wider grep before the PR; redaction terms added.
 - TODO(team): other members' cases.
 
 ## 5. Prompt Revisions
