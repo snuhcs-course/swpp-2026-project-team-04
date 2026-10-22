@@ -104,6 +104,39 @@ void main() {
     tilt.release();
   });
 
+  test('the round keeps the gravity stream after setup lets go', () async {
+    var listeners = 0;
+    final samples = StreamController<GravitySample>.broadcast(
+      sync: true,
+      onListen: () {
+        listeners++;
+        if (listeners > 1) throw StateError('two gravity listeners');
+      },
+      onCancel: () => listeners--,
+    );
+    addTearDown(samples.close);
+    PhoneTiltMonitor.debugUsePlatformStream(samples.stream);
+    addTearDown(() => PhoneTiltMonitor.debugUsePlatformStream(null));
+
+    final setup = PhoneTiltMonitor.platform();
+    final round = PhoneTiltMonitor.platform();
+    expect(identical(setup, round), isTrue);
+
+    setup.retain();
+    samples.add(_upright());
+    expect(setup.tiltDegrees, closeTo(90, 0.1));
+    setup.release();
+    round.retain();
+    await pumpEventQueue();
+    samples.add(_upright(gyro: 0.1));
+    expect(round.tiltDegrees, closeTo(90, 0.1));
+    expect(round.gyroSpeed, closeTo(0.1, 0.001));
+    expect(listeners, 1);
+    round.release();
+    await pumpEventQueue();
+    expect(listeners, 0);
+  });
+
   test('a moved phone does not count the rep', () {
     const counted = RepEvent(index: 1, valid: true, at: Duration(seconds: 3));
     final rejected = rejectIfPhoneMoved(counted, phoneMoved: true);

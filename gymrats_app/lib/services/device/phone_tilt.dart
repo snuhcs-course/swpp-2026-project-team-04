@@ -88,12 +88,28 @@ class PhoneTiltMonitor {
       _clock = clock ?? _sinceStart();
 
   /// The platform gravity stream. Missing on tests and desktop.
-  factory PhoneTiltMonitor.platform() => PhoneTiltMonitor(samples: _platform());
+  ///
+  /// Setup and the round share this one monitor. Android delivers the gravity
+  /// stream to a single listener, so the round's own monitor never saw a
+  /// sample and a lean during the battle still counted.
+  factory PhoneTiltMonitor.platform() =>
+      _platformMonitor ??= PhoneTiltMonitor(samples: _platform());
+
+  static PhoneTiltMonitor? _platformMonitor;
+
+  /// Replaces the shared monitor. Tests pass null to drop it.
+  @visibleForTesting
+  static void debugUsePlatformStream(Stream<GravitySample>? samples) {
+    _platformMonitor = samples == null
+        ? null
+        : PhoneTiltMonitor(samples: samples);
+  }
 
   final Stream<GravitySample>? _samples;
   final Duration Function() _clock;
 
   StreamSubscription<GravitySample>? _sub;
+  Future<void>? _stopping;
   int _users = 0;
   bool _listenFailed = false;
 
@@ -136,8 +152,18 @@ class PhoneTiltMonitor {
 
   void retain() {
     _users++;
+    _listen();
+  }
+
+  void _listen() {
+    if (_users == 0 || _sub != null || _listenFailed) return;
     final samples = _samples;
-    if (_sub != null || _listenFailed || samples == null) return;
+    if (samples == null) return;
+    final stopping = _stopping;
+    if (stopping != null) {
+      stopping.whenComplete(_listen);
+      return;
+    }
     try {
       _sub = samples.listen(_onSample, onError: (_) {});
     } on MissingPluginException {
@@ -151,8 +177,16 @@ class PhoneTiltMonitor {
     if (_users == 0) return;
     _users--;
     if (_users > 0) return;
-    unawaited(_sub?.cancel());
+    final sub = _sub;
     _sub = null;
+    if (sub == null) return;
+    final stopping = sub.cancel();
+    _stopping = stopping;
+    stopping.whenComplete(() {
+      if (!identical(_stopping, stopping)) return;
+      _stopping = null;
+      if (_users > 0) _listen();
+    });
   }
 
   /// Remembers the current angle. Later lean or shake sets [isDisturbed].

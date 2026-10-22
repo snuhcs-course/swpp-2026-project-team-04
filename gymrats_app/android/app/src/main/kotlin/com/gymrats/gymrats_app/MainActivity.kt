@@ -90,6 +90,7 @@ class MainActivity : FlutterActivity() {
         EventChannel(messenger, "gymrats/gravity").setStreamHandler(
             object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                    stopGravity()
                     gravitySink = events
                     motionListener.reset()
                     val manager = getSystemService(SENSOR_SERVICE) as SensorManager
