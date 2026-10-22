@@ -1,109 +1,148 @@
 # GymRats
 
-GymRats is a Flutter Android app for camera-based exercise battles. This integration combines online avatar battles, authentication/history, 30-second rounds, phone-placement checks, and on-device form feedback. The video below is the historical Iteration 1 demo.
+GymRats is an Android app that turns push-ups into a 30-second, real-time 1v1 battle. The phone stands on the floor in front of you, and its camera counts your reps with an on-device pose model, so video never leaves the phone. You are matched with another player online, or play against the AI rival RepBot, and you see your opponent as a 3D avatar that copies their real movement. After each battle, a form report tells you what to fix.
 
-The main app requires a signed-in account. Online battles require two different accounts and the team API/WSS server. The lower AI battle button uses local RepBot; the primary button starts online matching. Choose from 25 avatars in the profile screen, with thumbnails, search, category filters and a 3D preview. The catalog includes the original four models, twelve Kenney skin appearances and nine KayKit fantasy/skeleton characters; source licenses are bundled with the app.
-
-The integrated server defaults to 30-second rounds and accepts the expanded form/phone-motion rejection reasons. Deploy this server version before testing those rules online; the client follows the duration actually supplied by the server. Source integration and local APK builds do not deploy the server.
+This branch, `iteration-2-demo`, holds the code shown in the **Iteration 2 demo** (pull requests #6 to #11 merged). The app talks to the team server, which is already running, so you only need to install the app.
 
 ## Demo video
 
-[Watch or download the Iteration 1 demo](demo-videos/iteration-1-demo-video.mp4)
+[Watch or download the Iteration 2 demo (1 min 47 s)](demo-videos/iteration-2-demo-video.mp4)
 
-This is a low-resolution copy of the original demo recording.
+Recorded on two phones playing each other online:
 
-## Implemented features
+| Time (approx.) | What you see |
+|---|---|
+| 0:00 | Sign-up |
+| 0:12 | Choosing an avatar in Profile |
+| 0:18 | Home → **온라인 1v1 대결** (online 1v1 battle) |
+| 0:24 | Matching on both phones |
+| 0:30 | Pose setup: framing hints until "Ready! Press Start." |
+| 0:54 | The battle: your camera and score below, the opponent's avatar above |
+| 1:24 | Result (win / loss) |
+| 1:30 | Form feedback with side-view examples and a depth chart |
+| 1:42 | The per-rep record |
 
-- **Home:** authenticated user profile, avatar selection, best record, latest match, and saved form feedback.
-- **Matching and versus:** FIFO online matching with real opponent information, or simulated matching with RepBot. Online pose setup starts after matching.
-- **Online avatars:** bundled rigged avatars follow the opponent's joint coordinates. No camera video or audio is sent.
-- **Pose setup:** camera preview, landmark overlay, framing and visibility checks, and an automatic countdown after holding a valid pose.
-- **Rep judging:** Google ML Kit pose detection and a Dart state machine using head depth, arm extension, shoulder tilt, and timing. Counted reps and rejection reasons appear on screen.
-- **Battle:** a 30-second timer, both scores, an animated opponent mannequin, live feedback, and an Android beep for each counted rep.
-- **Results:** win/loss/draw, final scores, valid/rejected rep counts, and the proportion of judged reps that counted. Users can return home or match again.
-- **Session records:** completed AI matches use the authenticated history repository. Online scores/results are server-authoritative; this branch does not add online result persistence to the history API. Leaving early does not create a completed form report.
+The Iteration 1 demo (AI battle only) is in [demo-videos/iteration-1-demo-video.mp4](demo-videos/iteration-1-demo-video.mp4).
 
-## Getting started
+## What Iteration 2 adds
 
-### Prerequisites
+| Feature | What you can do | PR |
+|---|---|---|
+| **Accounts** | Sign up with a nickname, ID and password, stay logged in, and log out. | #6 |
+| **Online 1v1 battle** | Match with the next player waiting on the server (first come, first served). Both scores update live, and the server decides the result. Leaving after the start is a forfeit, and not reconnecting within 10 s is a loss. | #8 |
+| **Opponent avatars** | Pick one of 25 3D avatars in Profile (search, category filter, preview). During a battle the opponent appears as their avatar, moved by their joint coordinates; no camera video or audio is sent. | #8 |
+| **30-second rounds** | Every battle, online or against RepBot, lasts 30 s. | #7 |
+| **Fair rep judging** | Setup checks the phone is propped at 60° or steeper and still. During the round a lean or a shake of the phone drops that rep, and knee, belly, wall and "cat" push-ups are rejected with a reason on screen. | #7, #10 |
+| **Form feedback** | After a battle: rejected reps by reason, left–right imbalance, loss of depth late in the round, fast descents, flared elbows, wide hands and the head dropping first, each with a side-view example and a fix, plus depth and elbow-angle charts and a per-rep record. | #7 |
+| **History** | Home shows your best record and 3 latest battles; the **기록** (history) tab lists all of them. Tapping a battle reopens its form feedback, which is stored on the server. | #6, #9 |
+| **Team server** | Django REST API and a Dart battle server on AWS Lightsail (Seoul), reached over HTTPS and WSS only. | #6, #8 |
 
-- Flutter SDK with Dart **3.13.4 or a compatible 3.x version**, as required by `gymrats_app/pubspec.yaml`.
-- Android Studio / Android SDK and a configured Android toolchain. The Android project targets Java 17.
-- An Android phone with **Android 7.0 / API 24 or newer**, a camera, and USB debugging enabled. Accept the USB debugging authorization prompt.
+Still from Iteration 1: the AI battle against RepBot, camera pose setup, ML Kit rep counting, and the result screen.
 
-A physical Android phone is recommended for exercise testing. The main app runs in portrait orientation.
+### Next: Iteration 3
 
-### Run the integrated demo
+- Measure push-up counting accuracy on real recordings (AI module testing)
+- Clearer feedback, so a beginner knows exactly what to fix
+- A tier system and tier-based matching
+- A second exercise, such as squats
+
+## How it works
+
+![System architecture in Iteration 2](https://raw.githubusercontent.com/wiki/snuhcs-course/swpp-2026-project-team-04/images/architecture/system-architecture.png)
+
+- **On the phone:** the camera, Google ML Kit pose detection (33 landmarks) and our rep judge run on the phone, together with the gravity sensor and gyroscope checks. The phone also builds the form report.
+- **Battle server** (Dart, WebSocket at `/ws/v1/battle`): pairs players, syncs the start, relays rep events and pose keypoints (at most 10 frames per second) between the two phones, keeps the clock and score, and decides the result. The message contract is [docs/iteration-2-protocol.md](docs/iteration-2-protocol.md).
+- **REST API** (Django REST Framework at `/api/`, SQLite): accounts with JWT log-in, profile, match history and saved form reports.
+- Both go through nginx with an IP-address HTTPS certificate on one Lightsail instance. Camera frames, images and audio never leave the phone.
+
+The full design is in the [Design Documentation](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki/Design-Documentation).
+
+## Technology stack
+
+| Part | Stack |
+|---|---|
+| Android app | Flutter (Dart `^3.13.4`), MVVM with Provider · `camera` · `google_mlkit_pose_detection` · `webview_flutter` with bundled three.js for the 3D avatars · `fl_chart` · `http` · `flutter_secure_storage` · `permission_handler` |
+| Battle server | Dart (`dart:io` WebSocket), run by systemd |
+| REST API | Python 3.12 · Django 5.2.7 · Django REST Framework 3.16.1 · SimpleJWT 5.5.1 · bcrypt · gunicorn · SQLite |
+| Hosting | AWS Lightsail (Seoul) · nginx · Let's Encrypt IP certificate, renewed by a systemd timer |
+| Tests | `flutter_test` and `fake_async` · pytest, pytest-django and pytest-cov |
+
+## Development environment
+
+| Part | Requirements |
+|---|---|
+| App | Flutter SDK with Dart 3.13.4 or a compatible 3.x (we used Flutter 3.47.5), Android Studio with the Android SDK, Java 17 |
+| Phone | Android 7.0 (API 24) or newer with a front camera and USB debugging on. A real phone is needed for exercise; the app runs in portrait. |
+| Online battle | Two phones, each signed in with a different account, and an internet connection |
+| Server | Nothing to set up: the app uses the team server at `https://52.78.38.225`. To run the API yourself, see [server/README.md](server/README.md). |
+
+## Run the demo
+
+### 1. Get the code
 
 ```sh
 git clone https://github.com/snuhcs-course/swpp-2026-project-team-04.git
-# Check out the integration branch after it has been published, or use the existing local integration checkout.
-cd swpp-2026-project-team-04/gymrats_app
-flutter doctor
+cd swpp-2026-project-team-04
+git checkout iteration-2-demo
+```
+
+### 2. Install the app
+
+```sh
+cd gymrats_app
 flutter pub get
 flutter devices
 flutter run -d <device-id>
 ```
 
-Replace `<device-id>` with the Android device ID shown by `flutter devices`. Grant camera access when prompted. **Plain `flutter run` launches the integrated app through `lib/main.dart`; no standalone demo entry point is required.**
+Grant camera access when asked. For an APK instead, run `flutter build apk --debug`; it is written to `gymrats_app/build/app/outputs/flutter-apk/app-debug.apk`.
 
-To build a debug APK locally:
+### 3. Try the flows
 
-```sh
-flutter build apk --debug
-```
+1. **Sign up.** Tap **처음이신가요? 회원가입**. The ID is 4 to 20 lowercase letters, digits or `_`, the nickname 1 to 12 characters, and the password 8 to 64 characters.
+2. **Place the phone.** Stand it on the floor in front of where your head will be, screen facing you, propped at 60° or steeper, and do not touch it during the round.
+3. **Battle RepBot (one phone).** On Home, tap **AI와 1v1 대결**, then **자세 세팅 시작**. Get into the top of a push-up until head, shoulders, elbows and wrists are found. After "Ready! Press Start." the round starts by itself in 3 s, or tap **Start**. Do push-ups for 30 s.
+4. **Battle a person (two phones).** On both phones, tap **온라인 1v1 대결**. After matching, both players set up the same way, and the battle starts when both are ready.
+5. **See the result and feedback.** Tap **자세 피드백 보기** on the result screen, then **홈으로**. Home shows the new battle, and the **기록** tab lists every battle; tap one to open its feedback again.
 
-The APK is generated at `gymrats_app/build/app/outputs/flutter-apk/app-debug.apk` relative to the repository root.
+## Tests and checks
 
-## Demo walkthrough
+| Part | From | Command | Last result |
+|---|---|---|---|
+| App | `gymrats_app/` | `flutter analyze` and `flutter test` | 675 passed, 1 skipped (10/23) |
+| REST API | `server/` | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` | 76 passed, 96% line coverage |
+| App coverage by layer | `gymrats_app/` | `flutter test --coverage`, then `python3 ../tools/coverage_by_layer.py coverage/lcov.info` | Model 95.8%, ViewModel 94.4%, Service 91.3%, View 91.7% (10/21) |
 
-1. Sign in. For the AI walkthrough, tap the lower **AI와 1v1 대결** button to search for RepBot. The primary **온라인 1v1 대결** button instead queues for a real player.
-2. Continue from the versus screen to pose setup and allow camera access.
-3. Secure the phone on the floor in front of you, screen facing you. Face the camera in a push-up position and adjust the distance until your head, both shoulders, elbows, and wrists are detected.
-4. Hold a valid setup pose for about 1.5 seconds, then remain ready during the three-second automatic countdown.
-5. Perform push-ups during the 30-second battle. Start with extended arms, lower your body, and return to the top. Counted reps increase your score; rejected attempts show feedback.
-6. At time-up, check the result and statistics. Return home to see the updated latest match and best record, or start another match.
+Setup, commands and the full results are in the [Testing Documentation](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki/Testing-Documentation). Automated tests do not replace a check on a real phone.
 
-## Current limitations
+## Known limitations
 
-- **AI practice is simulated:** `BotMatchmaker` selects RepBot and `BotOpponent` generates local rep events. Online mode instead exchanges avatar pose coordinates through WSS.
-- **Local-only preferences and coaching:** avatar selection is saved per account on this device; form reports are device-local files, not cross-device records. Online battle history persistence remains separate backend work.
-- **Push-ups only:** additional exercises are not implemented.
-- **Limited front-view judging:** setup requires the upper body with straight arms, a phone propped at 60° or steeper and sitting still, and refuses an upright body when the hips are visible. During the round, a lean or a shake of the phone drops that rep. Knee push-ups are rejected from a personal hip angle taken at a straight-arm top, or from a default angle when that top never appears. A cat pose (hips folded, arms never bent, head at the bottom) is told to bend the arms. Belly and wall push-ups are rejected only when the hips are seen. From the front those parts are often hidden, and then the rep is judged on head depth alone. A push-up that reaches depth and locks out still counts when the descent was fast. An attempt that returns to the top in under a tenth of a second is dropped as tracking noise, with no count and no message. The thresholds are not yet tuned on devices. Unusual camera placement and unrelated movements may produce incorrect counts.
-- **Device-dependent detection and sound:** counting depends on lighting, framing, and landmark confidence. Rep beeps use Android media volume and may be quiet on some devices.
-- **Form feedback stays on the phone:** each finished battle's measurements are saved as a file on the device (newest 20), and the feedback screen computes its rule findings from them. The rules cover rejected reps, left-right balance while the head is down, a loss of depth late in the round, descents that reached the bottom too quickly, elbows flared out past the shoulders, hands planted much wider than the shoulders, and the head dropping ahead of shoulders that themselves moved. A small extra from the floor camera, an elbow tucked across the chest, or a merely wide grip stays quiet. A rule with too little data stays quiet. None of those last three change the count. Each fault shows a prepared side-view example, about 2.5 seconds, that loops until it is tapped. Knees are on the floor only in the knee example. Nothing is uploaded, and reinstalling the app deletes the saved reports.
+- Push-ups only.
+- The phone judges its own reps, and the server trusts that judgment.
+- Judging from the front: when the hips are out of view, belly and wall push-ups cannot be told apart, and the rep is judged on head depth alone. The thresholds are not yet tuned across many phones.
+- If the server cannot be reached, unsent matches wait in memory and are lost if the app is closed.
+- During matching or setup, a busy phone can miss its "still connected" signal; enough misses make the server cancel the match. A fix is planned.
 
-## Checks and tests
+## Repository
 
-From `gymrats_app/`:
+| Folder | Contents |
+|---|---|
+| `gymrats_app/` | The Flutter app (`lib/`) and its tests (`test/`) |
+| `server/` | The Django REST API, the Dart battle server (`lib/`, `bin/`), their tests and the deployment files (`deploy/`) |
+| `docs/` | The battle protocol, the testing notes and the AI collaboration notes |
+| `tools/` | The per-layer coverage script, Android diagnostics and the avatar preview |
+| `demo-videos/` | Demo videos for each iteration |
 
-```sh
-flutter analyze
-flutter test
-```
+Branches: `main` holds the integrated code. Each task is a branch from `main` that comes back through a pull request, reviewed first by an AI agent and then approved and merged by the PM. `iteration-N-demo` holds the code shown in that iteration's demo.
 
-The test suite covers pose/setup rules, rep judging, bot behavior, repositories, view models, widgets, and navigation. Automated tests do not replace a physical-device camera check.
+## Documents
 
-## Repository layout
-
-```text
-gymrats_app/
-  lib/main.dart             Integrated app entry point and navigation
-  lib/screens/              Home, matching, versus, setup, battle, result, feedback
-  lib/viewmodels/           Screen state and battle/counting coordination
-  lib/services/pose/        Camera, ML Kit estimator, setup checker, rep judge
-  lib/services/feedback/    Form reports and the rules that read them
-  lib/services/device/      Beeps, screen-on, and phone placement
-  lib/services/matching/    Matchmaker interface and local bot matching
-  lib/services/opponent/    Opponent interface and simulated rep events
-  lib/services/user/        Repository interface and in-memory records
-  lib/models/               Battle, match, pose, and rep data
-  lib/demo/                 Standalone development entry points
-  test/                     Unit and widget tests
-```
-
-## Documentation
-
-- [Project Wiki](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki)
+- [Requirements and Specifications](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki/Requirements-and-Specifications)
 - [Design Documentation](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki/Design-Documentation)
-- [App development notes and standalone demos](gymrats_app/README.md)
+- [Testing Documentation](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki/Testing-Documentation)
+- [AI Collaboration Report – Iteration 2](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki/AI-Collaboration-Report-%E2%80%93-Iteration-2)
+- [Meeting Logs](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki/Meeting-Logs)
+
+## Team
+
+SWPP 2026 Team 4: Woohyun Song (PM in Iteration 2: design, documents, reviews), Jinyoung Park (accounts, REST API, history and saved feedback), Hyunwoo Song (rep judging, phone placement, form feedback), Sangwoo Hahn (matching, battle server, online battle, avatars, HTTPS).
