@@ -11,6 +11,7 @@ import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/exit_game_button.dart';
 
 import '../support/fakes.dart';
+import '../support/placed_phone.dart';
 import '../support/pose_fixtures.dart';
 
 const _matchup = Matchup(
@@ -64,6 +65,7 @@ void main() {
                 camera: camera,
                 estimator: estimator,
                 clock: () => now,
+                phoneTilt: placedPhone(),
               ),
             ),
           ),
@@ -151,9 +153,7 @@ void main() {
   }
 
   for (final (name, ask) in asks) {
-    testWidgets('$name keeps the screen and asks; 계속하기 stays', (
-      tester,
-    ) async {
+    testWidgets('$name keeps the screen and asks; 계속하기 stays', (tester) async {
       await open(tester);
       await ask(tester);
       expect(find.text('게임에서 나갈까요?'), findsOneWidget);

@@ -23,12 +23,25 @@ class RepJudgeConfig {
     this.bottomDepth = 1.1,
     this.partialDepth = 0.6,
     this.reDescentDepth = 0.4,
-    this.minRepDuration = const Duration(milliseconds: 300),
+    this.noiseFloor = const Duration(milliseconds: 100),
     this.maxShoulderTilt = 15,
     this.maxFrameGap = const Duration(milliseconds: 500),
     this.maxAttempt = const Duration(seconds: 12),
     this.smoothingTau = const Duration(milliseconds: 65),
     this.baselineTau = const Duration(milliseconds: 500),
+    this.minCheatFrames = 3,
+    this.maxTorsoDrop = 1.2,
+    this.kneeBentAngle = 110,
+    this.adoptHipAngle = 160,
+    this.defaultKneeHip = 155,
+    this.hipFoldWide = 25,
+    this.baselineFrames = 3,
+    this.hipFoldFromSetup = 20,
+    this.straightArmAngle = 160,
+    this.minKneeHandGap = -0.22,
+    this.maxKneeHandGap = 1.0,
+    this.maxHipHandGap = 0.45,
+    this.minHipOnFloorGap = -0.05,
   });
 
   /// Minimum ML Kit likelihood for a landmark to be used.
@@ -60,8 +73,11 @@ class RepJudgeConfig {
   /// How far the head must go down again, after [partialDepth], to reject.
   final double reDescentDepth;
 
-  /// Reps faster than this are rejected.
-  final Duration minRepDuration;
+  /// An attempt that returns to the top sooner than this is dropped, with
+  /// no count and no reason. A real push-up cannot finish that quickly;
+  /// the dip is tracking noise. How fast a real descent was is form
+  /// feedback, not a reason to reject the rep.
+  final Duration noiseFloor;
 
   /// Shoulder line steeper than this, in degrees, rejects the rep.
   final double maxShoulderTilt;
@@ -77,6 +93,64 @@ class RepJudgeConfig {
 
   /// Time constant with which the top pose follows the user between reps.
   final Duration baselineTau;
+
+  /// Upright body, belly, and the sharp knee fold need the body part in at
+  /// least this many frames. A knee latch from the setup baseline is one
+  /// frame. Hidden parts never reject a rep.
+  final int minCheatFrames;
+
+  /// With the hips seen, a torso drop above this in every such frame means
+  /// an upright body, as against a wall. See [torsoDropOf].
+  final double maxTorsoDrop;
+
+  /// A shoulder–hip–knee angle below this, in degrees, is a knee push-up.
+  /// From the front that angle often stays open, so [kneeHandGap] is the
+  /// other way a kneeling body is seen.
+  final double kneeBentAngle;
+
+  // AI-assisted: Cursor, Grok 4.7, 2026-10-16, 송현우
+  /// One straight-arm top at or above this, in degrees, is a normal plank
+  /// and becomes the personal baseline. Kneeling tops on the two floor
+  /// recordings stayed at or below 154°, and real planks stayed at or
+  /// above 163°, so a kneeling start cannot set the baseline.
+  final double adoptHipAngle;
+
+  /// With no personal baseline yet, a straight-arm top below this is knees.
+  /// Someone who kneels from the first frame never produces [adoptHipAngle].
+  final double defaultKneeHip;
+
+  /// Degrees more folded than the personal baseline that count as knees
+  /// while fewer than [baselineFrames] normal tops have been seen.
+  final double hipFoldWide;
+
+  /// Normal tops kept before the knee line tightens to [hipFoldFromSetup].
+  /// The value is not refreshed after this, so a later kneel cannot move it.
+  final int baselineFrames;
+
+  /// Degrees more folded than the personal baseline, once [baselineFrames]
+  /// normal tops have been seen. One such frame at the top is enough.
+  final double hipFoldFromSetup;
+
+  /// A rep that reaches the bottom with the elbows still at or above this
+  /// never bent the arms. The cat-pose reps did that: the head dropped
+  /// while the elbows stayed around 170°. A real rep on that recording
+  /// bent to about 105–140°.
+  final double straightArmAngle;
+
+  /// [PoseMetrics.kneeHandGap] inside this range means the knees are on the
+  /// floor next to the hands. On the floor-camera recording a real plank's
+  /// knees still sat 0.28 to 0.47 shoulder widths behind the hands, and the
+  /// short kneeling stretch sat about 0.18 to 0.21. The near edge is -0.22
+  /// so that plank is not rejected.
+  final double minKneeHandGap;
+  final double maxKneeHandGap;
+
+  /// [PoseMetrics.hipHandGap] at or below this, and at or above
+  /// [minHipOnFloorGap], means the hips dropped onto the floor with the
+  /// hands. A plank's hips, even at the bottom, stayed above that band on
+  /// the floor-camera recording.
+  final double maxHipHandGap;
+  final double minHipOnFloorGap;
 }
 
 /// Where the user is in a push-up.
@@ -104,6 +178,7 @@ class JudgeSnapshot {
     this.elbowAngle,
     this.depth,
     this.tilt,
+    this.shoulderDrop,
   });
 
   static const initial = JudgeSnapshot(phase: RepPhase.idle);
@@ -119,6 +194,10 @@ class JudgeSnapshot {
 
   /// Smoothed shoulder tilt, in degrees.
   final double? tilt;
+
+  /// How far the shoulders have dropped below the top pose, in shoulder
+  /// widths. Compared with [depth] to see whether the head led the chest.
+  final double? shoulderDrop;
 }
 
 /// The result of feeding one frame to [RepJudge].
@@ -144,7 +223,8 @@ class RepUpdate {
 /// class; it only interprets keypoints.
 ///
 /// The body-line check is the shoulder tilt. From the front the hips are
-/// hidden, so a sagging torso cannot be seen and is not judged here.
+/// usually hidden, so knees, belly, and an upright body are judged only in
+/// attempts where those parts were seen. Otherwise the rep stands.
 class RepJudge {
   RepJudge({this.config = const RepJudgeConfig(), RepClock? clock})
     : _clock = clock ?? _stopwatchClock(),
@@ -159,6 +239,7 @@ class RepJudge {
   Duration? _topSince;
   Duration? _attemptStarted;
   double? _topNoseY;
+  double? _topShoulderY;
   double? _topWidth;
   double _maxDepth = 0;
   double _highestSinceBottom = 0;
@@ -166,6 +247,21 @@ class RepJudge {
   double _maxTilt = 0;
   double? _previousTilt;
   int _nextIndex = 1;
+
+  int _torsoFrames = 0;
+  double _minTorsoDrop = double.infinity;
+  int _kneeBentFrames = 0;
+  int _kneeFloorFrames = 0;
+  bool _kneesLatched = false;
+  Duration? _straightHipSince;
+  double? _baselineHip;
+  final List<double> _baselineHips = [];
+  int _hipHandFrames = 0;
+  double _minHipHandGap = double.infinity;
+
+  /// Time from the start of the attempt until the head first reached the
+  /// bottom. Null until then.
+  Duration? _descent;
 
   static RepClock _stopwatchClock() {
     final stopwatch = Stopwatch()..start();
@@ -179,7 +275,12 @@ class RepJudge {
     _topSince = null;
     _clearAttempt();
     _topNoseY = null;
+    _topShoulderY = null;
     _topWidth = null;
+    _kneesLatched = false;
+    _straightHipSince = null;
+    _baselineHip = null;
+    _baselineHips.clear();
     _nextIndex = 1;
     _smoother.reset();
   }
@@ -192,7 +293,12 @@ class RepJudge {
     _topSince = null;
     _clearAttempt();
     _topNoseY = null;
+    _topShoulderY = null;
     _topWidth = null;
+    _kneesLatched = false;
+    _straightHipSince = null;
+    _baselineHip = null;
+    _baselineHips.clear();
     _smoother.reset();
   }
 
@@ -216,18 +322,28 @@ class RepJudge {
 
     if (_phase == RepPhase.idle || _phase == RepPhase.lost) {
       _holdTop(now, elbow, smoothed);
-      return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt));
+      // The frame that becomes ready is already a straight-arm top. Judge
+      // it now, so a kneel from the first moment latches before the descent.
+      if (_phase != RepPhase.up) {
+        _watchKnees(raw);
+        return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt));
+      }
     }
 
     final depth = _depth(smoothed)!;
+    _watchKnees(raw);
     if (_phase == RepPhase.up) {
       _followTop(elbow, depth, smoothed, dt);
+      _lockSetupHip(elbow, depth, raw);
+      _watchKneeFromSetup(elbow, depth, raw);
+      _clearKneeLatchIfPlank(now, elbow, depth, raw);
       if (depth >= config.enterDepth) _beginAttempt(now, depth);
     }
 
     if (_phase == RepPhase.descending || _phase == RepPhase.bottom) {
       _maxDepth = math.max(_maxDepth, depth);
       if (elbow != null) _minElbow = math.min(_minElbow ?? elbow, elbow);
+      _watchLowerBody(raw, depth);
       // A single-frame spike from a shoulder near the edge is not a tilt.
       if (tilt != null && _previousTilt != null) {
         _maxTilt = math.max(_maxTilt, math.min(tilt, _previousTilt!));
@@ -251,10 +367,11 @@ class RepJudge {
       if (depth >= config.bottomDepth) {
         _phase = RepPhase.bottom;
         _highestSinceBottom = depth;
+        _descent ??= now - _attemptStarted!;
       } else if (depth <= config.topDepth) {
-        final event = _maxDepth >= config.shallowDepth
-            ? _emit(now, RejectReason.insufficientDepth)
-            : null;
+        final event = _tooBrief(now) || _maxDepth < config.shallowDepth
+            ? null
+            : _emit(now, RejectReason.insufficientDepth);
         _finishAtTop();
         return event;
       }
@@ -264,13 +381,18 @@ class RepJudge {
       _highestSinceBottom = math.min(_highestSinceBottom, depth);
       final armsExtended = elbow == null || elbow >= config.topAngle;
       if (depth <= config.topDepth && armsExtended) {
-        final event = _complete(now);
+        final event = _tooBrief(now) ? null : _complete(now);
         _finishAtTop();
         return event;
       }
       if (_highestSinceBottom <= config.partialDepth &&
           depth - _highestSinceBottom >= config.reDescentDepth) {
-        final event = _emit(now, RejectReason.incompleteExtension);
+        // A flicker this short is not a missed lockout. Keep judging.
+        if (_tooBrief(now)) {
+          _beginAttempt(now, depth);
+          return null;
+        }
+        final event = _emit(now, _withKnees(RejectReason.incompleteExtension));
         _beginAttempt(now, depth);
         return event;
       }
@@ -287,6 +409,7 @@ class RepJudge {
     _topSince ??= now;
     if (now - _topSince! >= config.topHold) {
       _topNoseY = smoothed.noseY;
+      _topShoulderY = smoothed.shoulderY ?? _topShoulderY;
       _topWidth = smoothed.shoulderWidth;
       _phase = RepPhase.up;
       _topSince = null;
@@ -307,8 +430,172 @@ class RepJudge {
         ? 1.0
         : 1 - math.exp(-dt.inMicroseconds / config.baselineTau.inMicroseconds);
     _topNoseY = _topNoseY! + alpha * (smoothed.noseY! - _topNoseY!);
+    final shoulderY = smoothed.shoulderY;
+    if (shoulderY != null) {
+      final top = _topShoulderY;
+      _topShoulderY = top == null ? shoulderY : top + alpha * (shoulderY - top);
+    }
     final width = smoothed.shoulderWidth;
     if (width != null) _topWidth = _topWidth! + alpha * (width - _topWidth!);
+  }
+
+  /// Normal plank tops. The first one is kept immediately, with a wider
+  /// knee line. After [RepJudgeConfig.baselineFrames] the line tightens
+  /// and the value freezes, so a later kneel cannot become the baseline.
+  void _lockSetupHip(double? elbow, double depth, PoseMetrics raw) {
+    if (_baselineHips.length >= config.baselineFrames) return;
+    final hip = raw.hipAngle;
+    final openTop =
+        elbow != null &&
+        elbow >= config.topAngle &&
+        depth < config.topDepth &&
+        hip != null &&
+        hip >= config.adoptHipAngle;
+    if (!openTop) return;
+    _baselineHips.add(hip);
+    _baselineHip = _baselineValue();
+  }
+
+  /// One sample is that angle. Two are their mean. Three are the median.
+  double _baselineValue() {
+    final sorted = [..._baselineHips]..sort();
+    if (sorted.length == 2) return (sorted[0] + sorted[1]) / 2;
+    return sorted[sorted.length ~/ 2];
+  }
+
+  /// Wider until three normal tops have been seen, then the tight line.
+  double get _foldMargin => _baselineHips.length >= config.baselineFrames
+      ? config.hipFoldFromSetup
+      : config.hipFoldWide;
+
+  /// One straight-arm frame at the top. With a personal baseline, folded
+  /// [_foldMargin] past it. With none, below [RepJudgeConfig.defaultKneeHip],
+  /// which is how a kneel from the first frame is caught. The descent can
+  /// open the angle again; the latch stays.
+  void _watchKneeFromSetup(double? elbow, double depth, PoseMetrics raw) {
+    final hip = raw.hipAngle;
+    if (hip == null || elbow == null) return;
+    if (elbow < config.topAngle || depth >= config.topDepth) return;
+    final base = _baselineHip;
+    if (base != null) {
+      if (hip <= base - _foldMargin) _kneesLatched = true;
+    } else if (hip < config.defaultKneeHip) {
+      _kneesLatched = true;
+    }
+  }
+
+  /// Shoulder–hip–knee angle. Three frames below [RepJudgeConfig.kneeBentAngle]
+  /// latch the rep as knees. A straighter frame clears that streak, not the
+  /// latch: the fold was at the top, and it opens again on the way down.
+  void _watchKnees(PoseMetrics raw) {
+    final hipAngle = raw.hipAngle;
+    if (hipAngle == null) return;
+    if (hipAngle < config.kneeBentAngle) {
+      _kneeBentFrames++;
+      if (_kneeBentFrames >= config.minCheatFrames) _kneesLatched = true;
+    } else {
+      _kneeBentFrames = 0;
+    }
+  }
+
+  /// A plank top, arms straight and hips open, forgets an earlier knee latch
+  /// so the next rep can count. Hidden hips do the same after [topHold]: a
+  /// part that is not seen does not keep rejecting.
+  void _clearKneeLatchIfPlank(
+    Duration now,
+    double? elbow,
+    double depth,
+    PoseMetrics raw,
+  ) {
+    final hip = raw.hipAngle;
+    final base = _baselineHip;
+    final backToSetup =
+        hip == null ||
+        (base == null ? hip >= config.adoptHipAngle : hip > base - _foldMargin);
+    final plank =
+        elbow != null &&
+        elbow >= config.topAngle &&
+        depth < config.topDepth &&
+        backToSetup;
+    if (!plank) {
+      _straightHipSince = null;
+      return;
+    }
+    _straightHipSince ??= now;
+    if (now - _straightHipSince! >= config.topHold) _kneesLatched = false;
+  }
+
+  /// Records what the attempt showed of the hips and knees, raw: the cheat
+  /// checks count frames, so one noisy frame cannot reject a rep.
+  void _watchLowerBody(PoseMetrics raw, double depth) {
+    final drop = raw.torsoDrop;
+    if (drop != null) {
+      _torsoFrames++;
+      _minTorsoDrop = math.min(_minTorsoDrop, drop);
+    }
+    final kneeGap = raw.kneeHandGap;
+    if (kneeGap != null) {
+      // Knees next to the hands are on the floor. Knees far behind the
+      // hands are a plank, and one such frame clears a flicker. A hidden
+      // knee leaves the count alone.
+      if (kneeGap >= config.minKneeHandGap &&
+          kneeGap <= config.maxKneeHandGap) {
+        _kneeFloorFrames++;
+      } else {
+        _kneeFloorFrames = 0;
+      }
+    }
+    final hipGap = raw.hipHandGap;
+    if (hipGap != null && depth >= config.bottomDepth) {
+      _hipHandFrames++;
+      _minHipHandGap = math.min(_minHipHandGap, hipGap);
+    }
+  }
+
+  /// Knees were seen on the floor for [RepJudgeConfig.minCheatFrames]
+  /// consecutive frames, either folded or sitting next to the hands.
+  bool _kneesDown() {
+    final frames = config.minCheatFrames;
+    return _kneesLatched ||
+        _kneeBentFrames >= frames ||
+        _kneeFloorFrames >= frames;
+  }
+
+  /// Straight arms through the bottom of a rep whose hips were already
+  /// latched as knees. A plank that simply keeps the elbows extended, with
+  /// the hips open, still counts. The cat pose had both: the fold, and
+  /// elbows that stayed around 170°.
+  bool _armsNeverBent() =>
+      _kneesLatched &&
+      _minElbow != null &&
+      _minElbow! >= config.straightArmAngle &&
+      _maxDepth >= config.bottomDepth;
+
+  bool _uprightTorso() =>
+      _torsoFrames >= config.minCheatFrames &&
+      _minTorsoDrop > config.maxTorsoDrop;
+
+  /// A kneeling body replaces a missed lockout. A rep that never reached
+  /// depth stays insufficient depth. The hips of a knee push-up barely
+  /// move, which is not the belly resting on the floor.
+  RejectReason _withKnees(RejectReason reason) =>
+      _kneesDown() ? RejectReason.kneesDown : reason;
+
+  /// The cheat seen in this attempt, if any. Arms and a setup-baseline
+  /// kneel do not use [RepJudgeConfig.minCheatFrames]; an upright body and
+  /// a belly on the floor do.
+  RejectReason? _cheat() {
+    if (_armsNeverBent() && !_uprightTorso()) return RejectReason.armsStraight;
+    if (_kneesDown()) return RejectReason.kneesDown;
+    if (_uprightTorso()) return RejectReason.notFloorPushUp;
+    // Hips down at the hands. Hips that merely stay put, as they do when
+    // the knees hold them up, are not a belly on the floor.
+    if (_hipHandFrames >= config.minCheatFrames &&
+        _minHipHandGap <= config.maxHipHandGap &&
+        _minHipHandGap >= config.minHipOnFloorGap) {
+      return RejectReason.bellyDown;
+    }
+    return null;
   }
 
   void _beginAttempt(Duration now, double depth) {
@@ -318,6 +605,17 @@ class RepJudge {
     _highestSinceBottom = depth;
     _minElbow = null;
     _maxTilt = 0;
+    _descent = null;
+    _clearLowerBody();
+  }
+
+  void _clearLowerBody() {
+    _torsoFrames = 0;
+    _minTorsoDrop = double.infinity;
+    _kneeBentFrames = 0;
+    _kneeFloorFrames = 0;
+    _hipHandFrames = 0;
+    _minHipHandGap = double.infinity;
   }
 
   void _finishAtTop() {
@@ -325,10 +623,18 @@ class RepJudge {
     _clearAttempt();
   }
 
+  /// True when this attempt is too short to be a push-up. The caller drops
+  /// it without [_emit], so it takes no index and shows no reason.
+  bool _tooBrief(Duration now) {
+    final started = _attemptStarted;
+    return started != null && now - started < config.noiseFloor;
+  }
+
   RepEvent _complete(Duration now) {
     final RejectReason? reason;
-    if (now - _attemptStarted! < config.minRepDuration) {
-      reason = RejectReason.tooFast;
+    final cheat = _cheat();
+    if (cheat != null) {
+      reason = cheat;
     } else if (_maxTilt > config.maxShoulderTilt) {
       reason = RejectReason.shouldersNotLevel;
     } else {
@@ -345,6 +651,7 @@ class RepJudge {
     maxDepth: _maxDepth,
     minElbowAngle: _minElbow,
     maxTilt: _maxTilt,
+    descent: _descent,
   );
 
   void _clearAttempt() {
@@ -354,6 +661,8 @@ class RepJudge {
     _minElbow = null;
     _maxTilt = 0;
     _previousTilt = null;
+    _descent = null;
+    _clearLowerBody();
   }
 
   double? _depth(PoseMetrics smoothed) {
@@ -366,11 +675,22 @@ class RepJudge {
     return (nose - top) / width;
   }
 
+  double? _shoulderDrop(PoseMetrics smoothed) {
+    final top = _topShoulderY;
+    final width = _topWidth;
+    final shoulder = smoothed.shoulderY;
+    if (top == null || width == null || width < 1e-6 || shoulder == null) {
+      return null;
+    }
+    return (shoulder - top) / width;
+  }
+
   JudgeSnapshot _snapshot(double? elbow, PoseMetrics smoothed, double? tilt) =>
       JudgeSnapshot(
         phase: _phase,
         elbowAngle: elbow,
         depth: _depth(smoothed),
         tilt: tilt,
+        shoulderDrop: _shoulderDrop(smoothed),
       );
 }

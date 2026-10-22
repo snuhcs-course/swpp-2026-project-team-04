@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/battle_result.dart';
+import '../models/form_report.dart';
 import '../models/matchup.dart';
 import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
+import '../services/feedback/form_report_store.dart';
 import '../services/opponent/opponent_source.dart';
 import '../services/user/user_repository.dart';
 import 'rep_counter_viewmodel.dart';
@@ -73,7 +75,7 @@ class BattleState {
   /// Set once time is up.
   final BattleResult? result;
 
-  /// Whole seconds left, rounded up: 60 at the start, 0 at the end.
+  /// Whole seconds left, rounded up: the full round at the start, 0 at the end.
   int get secondsLeft =>
       (remaining.inMicroseconds / Duration.microsecondsPerSecond).ceil();
 
@@ -110,8 +112,8 @@ class BattleState {
 /// when the camera first runs, goes on while the camera reopens, and is
 /// held while the app is in the background or the camera has failed.
 ///
-/// A battle that runs its full time is saved to the [UserRepository]; one
-/// left early is not.
+/// A battle that runs its full time is saved to the [UserRepository], and
+/// its form report to the [FormReportStore]; one left early is not.
 class BattleViewModel extends ChangeNotifier {
   BattleViewModel({
     required this.matchup,
@@ -119,6 +121,7 @@ class BattleViewModel extends ChangeNotifier {
     required this._opponent,
     required this._repository,
     required this._sound,
+    this._formReports,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now {
     _state = BattleState(remaining: counter.roundLength);
@@ -136,6 +139,7 @@ class BattleViewModel extends ChangeNotifier {
   final OpponentSource _opponent;
   final UserRepository _repository;
   final RepSound _sound;
+  final FormReportStore? _formReports;
   final DateTime Function() _now;
   late final StreamSubscription<RepEvent> _myRepSubscription;
   late final StreamSubscription<RepEvent> _opponentRepSubscription;
@@ -298,13 +302,26 @@ class BattleViewModel extends ChangeNotifier {
       _setState(_state.copyWith(phase: BattlePhase.left));
       return;
     }
+    final endedAt = _now();
     final result = BattleResult(
       matchup: matchup,
       myReps: counterState.validReps,
       myInvalidReps: counterState.invalidReps,
       opponentReps: _state.opponentReps,
-      endedAt: _now(),
+      endedAt: endedAt,
       roundLength: counter.roundLength,
+      form: FormReport(
+        endedAt: endedAt,
+        opponentName: matchup.opponent.name,
+        roundLength: counter.roundLength,
+        reps: counter.repRecords,
+        samples: counter.formSamples,
+        poses: counter.formPoses,
+        leftFlarePose: counter.leftFlarePose,
+        rightFlarePose: counter.rightFlarePose,
+        handsPose: counter.handsPose,
+        headPose: counter.headPose,
+      ),
     );
     _setState(
       _state.copyWith(
@@ -325,6 +342,14 @@ class BattleViewModel extends ChangeNotifier {
       await _repository.saveMatch(result.record);
     } on Exception {
       // The home screen keeps showing the previous record.
+    }
+    final form = result.form;
+    final store = _formReports;
+    if (form == null || store == null) return;
+    try {
+      await store.save(form);
+    } on Exception {
+      // The feedback still opens from the result screen, just not later.
     }
   }
 

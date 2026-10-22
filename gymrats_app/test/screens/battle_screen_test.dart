@@ -140,7 +140,7 @@ void main() {
     expect(find.text('AI'), findsOneWidget);
     expect(find.text('LIVE'), findsOneWidget);
     expect(find.text('나'), findsOneWidget);
-    expect(find.text('1:00'), findsOneWidget);
+    expect(find.text('0:30'), findsOneWidget);
     expect(find.text('남은 시간'), findsOneWidget);
     expect(find.text('동점'), findsOneWidget);
     expect(
@@ -237,16 +237,16 @@ void main() {
     );
   });
 
-  testWidgets('the clock turns amber for the last 10 seconds', (tester) async {
+  testWidgets('the clock turns amber for the last 5 seconds', (tester) async {
     await open(tester);
-    await frame(tester, 49.5);
+    await frame(tester, 24.5);
     expect(
-      tester.widget<Text>(find.text('0:11')).style!.color,
+      tester.widget<Text>(find.text('0:06')).style!.color,
       AppColors.accent,
     );
-    await frame(tester, 50);
+    await frame(tester, 25);
     expect(
-      tester.widget<Text>(find.text('0:10')).style!.color,
+      tester.widget<Text>(find.text('0:05')).style!.color,
       AppColors.warning,
     );
   });

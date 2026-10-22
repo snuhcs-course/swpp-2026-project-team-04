@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
+import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 
@@ -27,6 +29,7 @@ void main() {
   late FakeOpponentSource opponent;
   late FakeRepSound sound;
   late FakeUserRepository repository;
+  late InMemoryFormReportStore reports;
   late Duration now;
   late BattleViewModel vm;
 
@@ -37,6 +40,7 @@ void main() {
     opponent = FakeOpponentSource();
     sound = FakeRepSound();
     repository = FakeUserRepository();
+    reports = InMemoryFormReportStore();
     now = Duration.zero;
     vm = BattleViewModel(
       matchup: _matchup,
@@ -46,10 +50,12 @@ void main() {
         judge: judge,
         clock: () => now,
         roundLength: battleDuration,
+        phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
       ),
       opponent: opponent,
       repository: repository,
       sound: sound,
+      formReports: reports,
       now: () => _endedAt,
     );
   });
@@ -85,7 +91,7 @@ void main() {
     expect(vm.state.phase, BattlePhase.playing);
     expect(opponent.startCount, 1);
     expect(opponent.running, isTrue);
-    expect(vm.state.secondsLeft, 60);
+    expect(vm.state.secondsLeft, 30);
   });
 
   test('a counted rep raises my score and beeps', () async {
@@ -96,7 +102,7 @@ void main() {
     expect(vm.state.feedback!.valid, isTrue);
     expect(vm.state.feedbackCount, 1);
     expect(sound.played, 1);
-    expect(vm.state.remaining, const Duration(seconds: 58));
+    expect(vm.state.remaining, const Duration(seconds: 28));
   });
 
   test('a rejected rep shows its reason and stays silent', () async {
@@ -141,7 +147,7 @@ void main() {
     camera.startGate!.complete();
     await pumpEventQueue();
     expect(vm.state.phase, BattlePhase.playing);
-    expect(vm.state.remaining, const Duration(seconds: 50));
+    expect(vm.state.remaining, const Duration(seconds: 20));
     expect(opponent.startCount, 1);
   });
 
@@ -191,6 +197,27 @@ void main() {
     expect(vm.state.result!.roundLength, battleDuration);
   });
 
+  test('a full battle keeps its form report, with the rep times', () async {
+    await vm.start();
+    judge.closeRep();
+    await frame(5);
+    judge.closeRep(reason: RejectReason.tooFast);
+    await frame(9);
+    await frame(60);
+    await pumpEventQueue();
+
+    final form = vm.state.result!.form!;
+    expect(form.endedAt, _endedAt);
+    expect(form.opponentName, 'RepBot');
+    expect([for (final r in form.reps) r.at], const [
+      Duration(seconds: 5),
+      Duration(seconds: 9),
+    ]);
+    expect(form.reps.last.reason, RejectReason.tooFast);
+    expect(form.samples, isNotEmpty);
+    expect(await reports.list(), [same(form)]);
+  });
+
   test('a battle left early is not saved', () async {
     await vm.start();
     judge.closeRep();
@@ -198,6 +225,7 @@ void main() {
     vm.leave();
     await pumpEventQueue();
     expect(repository.saved, isEmpty);
+    expect(await reports.list(), isEmpty);
   });
 
   test('a failed save still shows the result', () async {
@@ -286,6 +314,7 @@ void main() {
           judge: FakeRepJudge(),
           clock: () => async.elapsed,
           roundLength: battleDuration,
+          phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
         ),
         opponent: opponent,
         repository: FakeUserRepository(),

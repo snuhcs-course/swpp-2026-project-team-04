@@ -8,7 +8,7 @@ import '../viewmodels/battle_viewmodel.dart';
 import 'grid_background.dart';
 
 /// The clock and the time bar turn amber once this many seconds are left.
-const _warningSeconds = 10;
+const _warningSeconds = 5;
 
 bool _isLastSeconds(BattleState state) => state.secondsLeft <= _warningSeconds;
 

@@ -5,7 +5,9 @@ import '../main.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
+import '../models/form_report.dart';
 import '../models/user_profile.dart';
+import '../services/feedback/form_report_store.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
@@ -37,7 +39,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     super.initState();
     _viewModel =
         widget.createViewModel?.call() ??
-        HomeViewModel(repository: context.read<UserRepository>());
+        HomeViewModel(
+          repository: context.read<UserRepository>(),
+          formReports: context.read<FormReportStore>(),
+        );
     _viewModel.load();
   }
 
@@ -103,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 ),
                 HomePhase.ready => _HomeContent(
                   profile: vm.state.profile!,
+                  latestForm: vm.state.latestForm,
                   onStart: _startMatching,
                   onOpenHistory: _openHistory,
                   onLogOut: widget.onLogOut == null ? null : _confirmLogOut,
@@ -122,12 +128,16 @@ class _HomeContent extends StatelessWidget {
     required this.onStart,
     required this.onOpenHistory,
     this.onLogOut,
+    this.latestForm,
   });
 
   final UserProfile profile;
   final VoidCallback onStart;
   final VoidCallback onOpenHistory;
   final VoidCallback? onLogOut;
+
+  /// The newest saved form report; null hides the feedback section.
+  final FormReport? latestForm;
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +170,71 @@ class _HomeContent extends StatelessWidget {
           const SizedBox(height: AppSpacing.s8),
           _UnsentNote(count: profile.unsentMatches),
         ],
+        if (latestForm case final form?) ...[
+          const SizedBox(height: 32),
+          const _SectionHeader('최근 자세 피드백'),
+          const SizedBox(height: 12),
+          _LatestFormRow(report: form),
+        ],
       ],
+    );
+  }
+}
+
+/// The newest form report saved on this phone. Tapping opens its feedback.
+class _LatestFormRow extends StatelessWidget {
+  const _LatestFormRow({required this.report});
+
+  final FormReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final t = report.endedAt;
+    String two(int v) => v.toString().padLeft(2, '0');
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(
+          context,
+          GymRatsApp.feedbackRoute,
+          arguments: report,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              const Icon(Icons.insights_rounded, color: AppColors.accent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'vs ${report.opponentName} · ${t.month}/${t.day} '
+                      '${two(t.hour)}:${two(t.minute)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodyLarge,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '인정 ${report.validReps}회 · 무효 ${report.invalidReps}회',
+                      style: text.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

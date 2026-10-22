@@ -65,7 +65,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BattleScreen), findsNothing);
     expect(find.text('배틀 데모'), findsOneWidget);
-    expect(find.text('경기 시간 60초'), findsOneWidget);
+    expect(find.text('경기 시간 30초'), findsOneWidget);
     expect(find.text('배틀 시작'), findsOneWidget);
   });
 

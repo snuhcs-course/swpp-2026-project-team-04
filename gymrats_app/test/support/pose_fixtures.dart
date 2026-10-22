@@ -98,14 +98,20 @@ PoseFrame emptyFrame() =>
 /// [scale] resizes the body around the frame center. [hide] gives landmarks
 /// a low likelihood. [move] places landmarks at new coordinates.
 /// [likelihoods] overrides single likelihoods.
+///
+/// The hips are hidden unless [showHips], as in a front-view push-up, so
+/// the setup push-up check judges only the straight arms. With the hips
+/// shown, the body is upright and is not a push-up.
 PoseFrame standingFrame({
   double scale = 1,
   double likelihood = 0.95,
   Set<BodyLandmark> hide = const {},
   Map<BodyLandmark, (double, double)> move = const {},
   Map<BodyLandmark, double> likelihoods = const {},
+  bool showHips = false,
 }) {
   const c = imageSize / 2;
+  final hidden = {...hide, if (!showHips) ...hipLandmarks};
   return PoseFrame(
     imageWidth: imageSize,
     imageHeight: imageSize,
@@ -115,11 +121,16 @@ PoseFrame standingFrame({
           l,
           move[l]?.$1 ?? c + (x - c) * scale,
           move[l]?.$2 ?? c + (y - c) * scale,
-          likelihood: hide.contains(l) ? 0.1 : likelihoods[l] ?? likelihood,
+          likelihood: hidden.contains(l) ? 0.1 : likelihoods[l] ?? likelihood,
         ),
     },
   );
 }
+
+const Set<BodyLandmark> hipLandmarks = {
+  BodyLandmark.leftHip,
+  BodyLandmark.rightHip,
+};
 
 /// Hips, knees, and feet: hidden behind the body in a front-view push-up.
 final Set<BodyLandmark> lowerBodyLandmarks = BodyLandmark.values
@@ -137,8 +148,13 @@ final Set<BodyLandmark> lowerBodyLandmarks = BodyLandmark.values
 /// A front-view push-up: the standing pose made wide and short, like a
 /// body seen head-on from a phone on the floor, with the lower body hidden.
 /// About 47% of the frame wide, facing the camera.
-PoseFrame pushUpFrontFrame() {
+///
+/// [showHips] makes the hips visible just behind the shoulders, as in a
+/// plank seen from the floor.
+PoseFrame pushUpFrontFrame({bool showHips = false}) {
   const c = imageSize / 2;
+  bool hidden(BodyLandmark l) =>
+      lowerBodyLandmarks.contains(l) && !(showHips && hipLandmarks.contains(l));
   return PoseFrame(
     imageWidth: imageSize,
     imageHeight: imageSize,
@@ -148,7 +164,7 @@ PoseFrame pushUpFrontFrame() {
           l,
           c + (x - c) * 2.5,
           c + (y - c) * 0.3,
-          likelihood: lowerBodyLandmarks.contains(l) ? 0.1 : 0.95,
+          likelihood: hidden(l) ? 0.1 : 0.95,
         ),
     },
   );
@@ -163,7 +179,9 @@ const double pushUpShoulderWidth = 200;
 /// [depth] moves the nose down by that many shoulder widths from the top
 /// pose. [spanRatio] is the shoulder-to-wrist distance divided by shoulder
 /// width. [tiltDeg] rotates the whole pose so the shoulder line leaves
-/// horizontal by that many degrees.
+/// horizontal by that many degrees. [lowerBody] adds hips, knees, or feet
+/// at the given points; without it the lower body is absent, as usual from
+/// the front.
 PoseFrame pushUpFrame({
   double depth = 0,
   double elbowAngle = 170,
@@ -171,6 +189,7 @@ PoseFrame pushUpFrame({
   double tiltDeg = 0,
   double likelihood = 0.95,
   Set<BodyLandmark> hide = const {},
+  Map<BodyLandmark, (double, double)> lowerBody = const {},
 }) {
   const midX = 500.0;
   const midY = 400.0;
@@ -217,6 +236,8 @@ PoseFrame pushUpFrame({
     ),
     BodyLandmark.leftWrist: turn(wristOf(leftShoulder, 1)),
     BodyLandmark.rightWrist: turn(wristOf(rightShoulder, -1)),
+    for (final MapEntry(key: landmark, value: (x, y)) in lowerBody.entries)
+      landmark: turn(Offset(x, y)),
   };
 
   return PoseFrame(

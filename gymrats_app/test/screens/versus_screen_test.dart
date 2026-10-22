@@ -113,7 +113,7 @@ void main() {
     expect(exitButton, findsOneWidget);
     expect(find.text('게임 나가기'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsOneWidget);
-    expect(find.text('푸쉬업 · 60초'), findsOneWidget);
+    expect(find.text('푸쉬업 · 30초'), findsOneWidget);
     expect(find.text('나'), findsOneWidget);
     expect(find.text('우현'), findsOneWidget);
     expect(find.text('우'), findsOneWidget);
@@ -139,7 +139,7 @@ void main() {
     await open(tester);
     final exit = tester.getRect(exitButton);
     final found = tester.getRect(find.text('MATCH FOUND'));
-    final exercise = tester.getRect(find.text('푸쉬업 · 60초'));
+    final exercise = tester.getRect(find.text('푸쉬업 · 30초'));
     expect(exit.left, 20);
     expect(found.left, greaterThan(exit.right));
     // Two lines, both ending at the right padding.

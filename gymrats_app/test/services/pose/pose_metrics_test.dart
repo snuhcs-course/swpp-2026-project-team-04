@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/pose/pose_metrics.dart';
 
@@ -77,5 +78,82 @@ void main() {
     );
     final alpha = 1 - math.exp(-1);
     expect(blended.elbowAngle, closeTo(100 + alpha * (0 - 100), 0.01));
+  });
+
+  test('elbow spread and hand span are measured in shoulder widths', () {
+    Keypoint at(BodyLandmark landmark, double x, double y) => Keypoint(
+      landmark: landmark,
+      x: x,
+      y: y,
+      likelihood: 1,
+    );
+    final metrics = measurePose(
+      PoseFrame(
+        imageWidth: 1000,
+        imageHeight: 1000,
+        keypoints: {
+          BodyLandmark.leftShoulder: at(BodyLandmark.leftShoulder, 400, 400),
+          BodyLandmark.rightShoulder: at(BodyLandmark.rightShoulder, 600, 400),
+          BodyLandmark.leftElbow: at(BodyLandmark.leftElbow, 200, 420),
+          BodyLandmark.rightElbow: at(BodyLandmark.rightElbow, 700, 400),
+          BodyLandmark.leftWrist: at(BodyLandmark.leftWrist, 300, 500),
+          BodyLandmark.rightWrist: at(BodyLandmark.rightWrist, 700, 500),
+          BodyLandmark.nose: at(BodyLandmark.nose, 500, 300),
+        },
+      ),
+    );
+    expect(metrics.shoulderY, 400);
+    expect(metrics.leftElbowSpread, closeTo(1, 0.01));
+    expect(metrics.rightElbowSpread, closeTo(0.5, 0.01));
+    expect(metrics.handSpan, closeTo(2, 0.01));
+
+    final tucked = measurePose(
+      PoseFrame(
+        imageWidth: 1000,
+        imageHeight: 1000,
+        keypoints: {
+          BodyLandmark.leftShoulder: at(BodyLandmark.leftShoulder, 400, 400),
+          BodyLandmark.rightShoulder: at(BodyLandmark.rightShoulder, 600, 400),
+          BodyLandmark.leftElbow: at(BodyLandmark.leftElbow, 480, 500),
+          BodyLandmark.rightElbow: at(BodyLandmark.rightElbow, 250, 500),
+        },
+      ),
+    );
+    expect(tucked.leftElbowSpread, 0);
+    expect(tucked.rightElbowSpread, 0);
+  });
+
+  test('a stick figure keeps visible joints and mirrors the front camera', () {
+    Keypoint at(BodyLandmark landmark, double x, double y, [double p = 1]) =>
+        Keypoint(landmark: landmark, x: x, y: y, likelihood: p);
+    final frame = PoseFrame(
+      imageWidth: 1000,
+      imageHeight: 1000,
+      keypoints: {
+        BodyLandmark.leftShoulder: at(BodyLandmark.leftShoulder, 400, 400),
+        BodyLandmark.rightShoulder: at(BodyLandmark.rightShoulder, 600, 400),
+        BodyLandmark.leftElbow: at(BodyLandmark.leftElbow, 200, 500),
+        BodyLandmark.rightWrist: at(BodyLandmark.rightWrist, 800, 500, 0.2),
+        BodyLandmark.nose: at(BodyLandmark.nose, 500, 250),
+      },
+    );
+    final plain = FormPose.capture(
+      frame,
+      at: Duration.zero,
+      mirror: false,
+      minLikelihood: 0.6,
+    )!;
+    expect(plain.points['leftShoulder']!.x, -0.5);
+    expect(plain.points.containsKey('rightWrist'), isFalse);
+    expect(plain.points['nose']!.y, closeTo(-0.75, 0.01));
+
+    final mirrored = FormPose.capture(
+      frame,
+      at: Duration.zero,
+      mirror: true,
+      minLikelihood: 0.6,
+    )!;
+    expect(mirrored.points['leftShoulder']!.x, 0.5);
+    expect(mirrored.points['leftElbow']!.x, closeTo(1.5, 0.01));
   });
 }

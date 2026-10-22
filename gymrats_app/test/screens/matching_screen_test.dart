@@ -104,7 +104,7 @@ void main() {
     expect(find.byType(GridBackground), findsOneWidget);
     // No close button at the top; 매칭 취소 at the bottom is the way out.
     expect(find.byIcon(Icons.close_rounded), findsNothing);
-    expect(find.text('푸쉬업 · 60초 · 1v1'), findsOneWidget);
+    expect(find.text('푸쉬업 · 30초 · 1v1'), findsOneWidget);
     expect(find.text('AI 상대를 찾는 중'), findsOneWidget);
     expect(find.text('기다리는 동안 자리를 준비해 두세요'), findsOneWidget);
     expect(

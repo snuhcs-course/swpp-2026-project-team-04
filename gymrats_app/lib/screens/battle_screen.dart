@@ -9,6 +9,7 @@ import '../main.dart';
 import '../models/battle_rules.dart';
 import '../models/matchup.dart';
 import '../services/device/device_controls.dart';
+import '../services/feedback/form_report_store.dart';
 import '../services/opponent/bot_opponent.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
@@ -21,7 +22,7 @@ import '../widgets/opponent_window.dart';
 import '../widgets/pose_camera_view.dart';
 import '../widgets/time_up_overlay.dart';
 
-/// The 60-second battle: the user's camera on top, the opponent in a small
+/// The battle: the user's camera on top, the opponent in a small
 /// window, and the scores below.
 ///
 /// The round starts once the camera runs in portrait. Back asks before
@@ -63,6 +64,7 @@ class _BattleScreenState extends State<BattleScreen>
           opponent: BotOpponent(),
           repository: context.read<UserRepository>(),
           sound: const DeviceRepSound(),
+          formReports: context.read<FormReportStore>(),
         );
     _viewModel.addListener(_onViewModelChanged);
     WidgetsBinding.instance.addObserver(this);

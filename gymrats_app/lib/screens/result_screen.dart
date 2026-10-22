@@ -40,6 +40,16 @@ class _ResultScreenState extends State<ResultScreen> {
 
   void _goHome() => _leaveOnce(() => popToHome(context));
 
+  /// Opens on top, so back comes here again. Not one of the leaving buttons.
+  void _openFeedback() {
+    if (_leaving) return;
+    Navigator.pushNamed(
+      context,
+      GymRatsApp.feedbackRoute,
+      arguments: widget.result.form,
+    );
+  }
+
   void _matchAgain() => _leaveOnce(() {
     Navigator.pushReplacementNamed(
       context,
@@ -57,6 +67,7 @@ class _ResultScreenState extends State<ResultScreen> {
             result: widget.result,
             onGoHome: _goHome,
             onMatchAgain: _matchAgain,
+            onOpenFeedback: widget.result.form == null ? null : _openFeedback,
           ),
         ),
       ),
@@ -71,11 +82,15 @@ class _ResultContent extends StatelessWidget {
     required this.result,
     required this.onGoHome,
     required this.onMatchAgain,
+    this.onOpenFeedback,
   });
 
   final BattleResult result;
   final VoidCallback onGoHome;
   final VoidCallback onMatchAgain;
+
+  /// Null hides the feedback button: the battle has no form report.
+  final VoidCallback? onOpenFeedback;
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +113,10 @@ class _ResultContent extends StatelessWidget {
                 _ScoreCard(result: result),
                 const SizedBox(height: 18),
                 _MyStats(result: result),
+                if (onOpenFeedback case final open?) ...[
+                  const SizedBox(height: 12),
+                  _FeedbackButton(onPressed: open),
+                ],
                 const Spacer(),
                 const SizedBox(height: 18),
                 _Buttons(onGoHome: onGoHome, onMatchAgain: onMatchAgain),
@@ -450,6 +469,32 @@ class _StatCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Opens the form feedback of this battle.
+class _FeedbackButton extends StatelessWidget {
+  const _FeedbackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.insights_rounded),
+      label: const Text('자세 피드백 보기'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        foregroundColor: AppColors.accent,
+        side: const BorderSide(color: AppColors.border, width: 1.5),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+        ),
+        textStyle: Theme.of(context).textTheme.titleSmall
+            ?.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }
