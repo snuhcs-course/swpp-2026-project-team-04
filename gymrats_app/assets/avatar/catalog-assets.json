@@ -1,0 +1,127 @@
+[
+  {
+    "asset": "astronaut",
+    "bytes": 438248,
+    "sha256": "498b9795d3f4852ff6b6b2bc05a7ea66fcc1b24a807c51485ac1729ef53dc04a"
+  },
+  {
+    "asset": "robot",
+    "bytes": 343692,
+    "sha256": "1e529a81d1b1bf04e3a99e71f9a2cf80558482c8605bb7e1fc264fa8532bbc56"
+  },
+  {
+    "asset": "mannequiny",
+    "bytes": 926800,
+    "sha256": "acb45a5507e6203552f483cc84d329132f4dd190d023ff9f535710389a09d294"
+  },
+  {
+    "asset": "xcvg",
+    "bytes": 124392,
+    "sha256": "7d3b5d909e8b4cd4cc69a751c51848cccdf9f5eeec143378787aa718477ec64b"
+  },
+  {
+    "asset": "kenney_criminalmalea",
+    "bytes": 121108,
+    "sha256": "9d90198be93713f73fb87b39795c995b3db7bbfa555402331de6ed01104a492d"
+  },
+  {
+    "asset": "kenney_cyborgfemalea",
+    "bytes": 131860,
+    "sha256": "e522ad4478fb439288e9be6327c408f48acbd4f8c19bc0d2dcfcfee269cff2f5"
+  },
+  {
+    "asset": "kenney_skaterfemalea",
+    "bytes": 124468,
+    "sha256": "14a13aef0edfa5ff04d75165d584fa2e4519935e9ab5c13eb656285631c71dea"
+  },
+  {
+    "asset": "kenney_skatermalea",
+    "bytes": 125036,
+    "sha256": "4a72cda78e162d99197e58d28b6ce19456280a708560eab20ceb9b3ae43d726a"
+  },
+  {
+    "asset": "kenney_humanfemalea",
+    "bytes": 129396,
+    "sha256": "fce4eb070ea318cd33968c78c9393e5e3b2be9e67adae9bd80d6af6cef90993f"
+  },
+  {
+    "asset": "kenney_humanmalea",
+    "bytes": 131264,
+    "sha256": "154783b9e99bea4fb361347d3b6a855a452c322322cdb34c75678655378cb3b9"
+  },
+  {
+    "asset": "kenney_zombiefemalea",
+    "bytes": 130364,
+    "sha256": "15ba8caebdfab7876a5b487b25f5c66b189b7a3045d318de43e5ad725547e676"
+  },
+  {
+    "asset": "kenney_zombiemalea",
+    "bytes": 135944,
+    "sha256": "fe22229f494adaf771d23fb509a5369cd5df0e6d2e795e901bb3a81b2526aede"
+  },
+  {
+    "asset": "kenney_survivorfemalea",
+    "bytes": 163744,
+    "sha256": "a86feba40a98e14d211aa299cd1cc62825859159a2a9341f29992f54ffe29426"
+  },
+  {
+    "asset": "kenney_survivormaleb",
+    "bytes": 158888,
+    "sha256": "9bce84bfbcbaa9c8e1c560a0a8c3b0e64a1f99f9b98acad672da050b7be0f9d2"
+  },
+  {
+    "asset": "kenney_zombiea",
+    "bytes": 179628,
+    "sha256": "19067fd72f1ee324eba426aed1c7963523f098cfedabb00365a2c00cca416069"
+  },
+  {
+    "asset": "kenney_zombiec",
+    "bytes": 163604,
+    "sha256": "877fbf736126781c6f6462880c7e1159096e9067ae036ba7aa8d5fa045aa4327"
+  },
+  {
+    "asset": "kaykit_knight",
+    "bytes": 381036,
+    "sha256": "ff2b0916e09e62615b9517ee6ceb67f37b2544e38ce3b766327286cc477c4649"
+  },
+  {
+    "asset": "kaykit_barbarian",
+    "bytes": 332496,
+    "sha256": "cd059310d4de4b88cd2ca2a1c02ded6c067c005b262e2a780cc1d9231abc94c0"
+  },
+  {
+    "asset": "kaykit_mage",
+    "bytes": 311404,
+    "sha256": "eadbed63160685a2a09cedd52481f2c541e33794ee6673b6dfb5a945da69ac6f"
+  },
+  {
+    "asset": "kaykit_rogue",
+    "bytes": 334896,
+    "sha256": "f58468e0e816e355cde9cebdc4c5773bb05f98e97ece13a36243b5d8718deb67"
+  },
+  {
+    "asset": "kaykit_rogue_hooded",
+    "bytes": 316416,
+    "sha256": "caa2eecec97045270c9dcffd8f2dcb3c667315ac27da00e6b25132ab03bee223"
+  },
+  {
+    "asset": "kaykit_skeleton_mage",
+    "bytes": 268236,
+    "sha256": "1f885bcf372f1e851b260319a1d7dd420df2185cd7a73a4ac5938a140e3ad909"
+  },
+  {
+    "asset": "kaykit_skeleton_minion",
+    "bytes": 323528,
+    "sha256": "ba5991844ff9c47a24b62253681bd52dd88e9dd2a23c511c5426b08212cfe26f"
+  },
+  {
+    "asset": "kaykit_skeleton_rogue",
+    "bytes": 339216,
+    "sha256": "dab51d2672952aee9ce894fae07ba17a4a93af36bc76cdf6282ffc062cb4f2e3"
+  },
+  {
+    "asset": "kaykit_skeleton_warrior",
+    "bytes": 375176,
+    "sha256": "65d943859ae1859faaa9975d9203b4ebd76ab99c0e4d0993ed249a1922f5f42d"
+  }
+]

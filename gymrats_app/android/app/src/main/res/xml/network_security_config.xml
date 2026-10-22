@@ -1,10 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The team server has no HTTPS yet. Plain HTTP is allowed only to it and
-     to a server on the computer next to an emulator (10.0.2.2); every other
-     host needs HTTPS. Remove the server entry once it serves HTTPS. -->
+<!-- The fixed team endpoints now have a publicly trusted IP certificate. -->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">52.78.38.225</domain>
-        <domain includeSubdomains="false">10.0.2.2</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
 </network-security-config>

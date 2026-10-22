@@ -1,0 +1,14 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><title>Flutter avatar bridge QA</title><style>body{margin:0;padding:20px;background:#111722;color:#e6edf5;font:14px sans-serif}iframe{width:360px;height:480px;border:1px solid #607080;border-radius:12px}button{padding:8px;margin:4px}pre{white-space:pre-wrap}</style><h1>Flutter asset renderer · 좌표 연결 QA</h1><p>실제 Flutter 번들과 4종 GLB를 사용합니다. 합성 관절 좌표만 전달하며 카메라는 사용하지 않습니다.</p><div id="models"></div><iframe id="view" src="native-assets/index.html"></iframe><pre id="log">렌더러 준비 중…</pre><script type="module">
+const frame=document.getElementById('view'),log=document.getElementById('log');let current='astronaut',timer;
+const ids=['astronaut','robot','mannequiny','xcvg'];
+async function load(id){current=id;clearInterval(timer);const bridge=frame.contentWindow.AvatarBridge;
+ const data=await (await fetch(`native-assets/models/${id}.glb`)).arrayBuffer();
+ let binary='';for(const byte of new Uint8Array(data))binary+=String.fromCharCode(byte);const base64=btoa(binary);
+ bridge.beginModel(id);for(let i=0;i<base64.length;i+=49152)bridge.appendModel(base64.slice(i,i+49152));bridge.finishModel();
+}
+function pose(){const p=(x,y,z=0)=>({x,y,z,visibility:1}),points=Array.from({length:33},()=>null);
+ Object.assign(points,{7:p(.07,-.7),8:p(-.07,-.7),11:p(.2,-.5),12:p(-.2,-.5),13:p(.4,-.3),14:p(-.3,-.85),15:p(.6,-.55),16:p(-.3,-1.1),23:p(.12,0),24:p(-.12,0),25:p(.15,.4),26:p(-.2,.3,.2),27:p(.15,.8),28:p(-.2,.65,.3),31:p(.15,.85,-.15),32:p(-.2,.7,.15)});
+ frame.contentWindow.AvatarBridge.pose({landmarks:points,mirror:false});}
+for(const id of ids){const button=document.createElement('button');button.textContent=id;button.onclick=()=>load(id);document.getElementById('models').append(button);}
+frame.onload=()=>{frame.contentWindow.AvatarHost={postMessage(raw){const data=JSON.parse(raw);log.textContent=JSON.stringify(data,null,2);if(data.type==='modelReady'){pose();timer=setInterval(pose,66);}}};load(current);};
+</script></html>

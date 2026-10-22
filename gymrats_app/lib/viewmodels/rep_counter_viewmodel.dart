@@ -186,6 +186,9 @@ class RepCounterViewModel extends ChangeNotifier {
 
   RepCounterState get state => _state;
 
+  bool get isPhonePropped => _phoneTilt.isPropped;
+  bool get isPhoneStill => _phoneTilt.isStill;
+
   /// Every rep judged in this round, including rejected ones.
   List<RepEvent> get history => List.unmodifiable(_history);
 
@@ -344,9 +347,16 @@ class RepCounterViewModel extends ChangeNotifier {
   }
 
   /// Zeroes the counts and the judge. The camera and the round clock keep running.
-  void reset() {
+  /// Online play sets [restartClock] to exclude preparation from form timestamps.
+  void reset({bool restartClock = false}) {
     _judge.reset();
     _clearRound();
+    if (restartClock) {
+      _roundStartedAt = _clock();
+      _pausedAccumulated = Duration.zero;
+      _pauseBegan = null;
+      _phoneTilt.lock();
+    }
     _setState(
       _state.copyWith(
         validReps: 0,

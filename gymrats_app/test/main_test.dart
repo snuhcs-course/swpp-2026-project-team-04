@@ -23,6 +23,7 @@ void main() {
   /// Taps start and lets the matching page slide in. The radar keeps
   /// turning, so pumpAndSettle would only return after the bot is found.
   Future<void> startMatching(WidgetTester tester) async {
+    await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));

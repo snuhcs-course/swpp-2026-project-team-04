@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GymRats · Avatar Lab</title><link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script></head>
+<body><header><span>GYMRATS / LOCAL PROTOTYPE</span><h1>Avatar Lab</h1><p>4종 아바타의 실제 뼈대와 관절 움직임을 확인하세요.</p></header>
+<main><section class="stage"><nav id="models"></nav><div id="viewport"></div><div class="hint">드래그: 회전 · 휠: 확대 · 우클릭 드래그: 이동</div><div id="status" role="status">모델 준비 중…</div></section>
+<aside><h2>Joint inspector</h2><p>선택한 관절의 로컬 축을 기준으로 회전합니다.</p><label>관절<select id="bones"></select></label><div id="sliders"></div>
+<label>자동 테스트 축<select id="axis"><option value="x">X</option><option value="y">Y</option><option value="z" selected>Z</option></select></label>
+<button id="play">관절 움직임 시작</button><button id="reset" class="secondary">전체 자세 초기화</button>
+<label class="check"><input type="checkbox" id="skeleton">뼈대 표시</label><label class="check"><input type="checkbox" id="wireframe">와이어프레임</label>
+<div class="note">이 페이지는 수동 관절 점검용입니다. 실제 카메라 자세 연동은 Flutter 앱의 아바타 보기 버튼을 사용하세요.</div>
+<h3>Source & license</h3><div id="credits"></div><p class="note">원본은 source-assets, 웹 변환본은 models 폴더에 보관됩니다. 외부 전송 없이 이 컴퓨터에서 실행됩니다.</p></aside></main><script type="module" src="app.js"></script></body></html>

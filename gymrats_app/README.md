@@ -1,8 +1,8 @@
 # GymRats app
 
-Flutter Android client for the Iteration 1 demo. `lib/main.dart` launches the integrated flow: **home → simulated matching → versus → pose setup → 30-second battle → result → form feedback**.
+Flutter Android client integrating avatar battles, 30-second rounds, form feedback, and phone placement. `lib/main.dart` launches **login → home → online or AI matching → versus → pose setup → battle → result → form feedback**.
 
-The opponent is local RepBot. Profile and match records are in memory. Form reports stay in a file on the phone. Online PvP and authentication are not implemented on this branch. See the [repository README](../README.md) for features, prerequisites, the walkthrough, and limitations.
+The primary home button queues for an authenticated online opponent; the lower button uses local RepBot. Avatar selection is in the profile screen and saved per account on this device. Completed rounds have on-device form reports. Online rounds use the server's clock and require the integrated server deployment for the new 30-second default and rejection reasons. See the [repository README](../README.md) and [online protocol](../docs/iteration-2-protocol.md) for details.
 
 ## Run the integrated app
 
@@ -14,7 +14,7 @@ flutter devices
 flutter run -d <device-id>
 ```
 
-Use an Android phone running API 23 or newer, enable USB debugging, and grant camera access. The Flutter SDK must include Dart 3.13.4 or a compatible 3.x version. The main app is locked to portrait orientation.
+Use an Android phone running API 24 or newer, enable USB debugging, and grant camera access. The Flutter SDK must include Dart 3.13.4 or a compatible 3.x version. The main app starts in portrait orientation.
 
 ## Standalone development demos
 

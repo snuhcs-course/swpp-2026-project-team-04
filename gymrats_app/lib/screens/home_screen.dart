@@ -16,8 +16,7 @@ import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/match_record_card.dart';
 
-/// First screen after login: greets the user, starts a battle against the
-/// AI, and opens the match history from "최근 경기".
+/// First screen after login: online is primary; AI practice stays below history.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.createViewModel, this.onLogOut});
 
@@ -155,9 +154,10 @@ class _HomeContent extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         AccentButton(
-          title: 'AI와 1v1 대결',
+          title: '온라인 1v1 대결',
           hint: '${battleDuration.inSeconds}초 안에 더 많이 하면 승리',
-          onPressed: onStart,
+          onPressed: () =>
+              Navigator.pushNamed(context, GymRatsApp.onlineBattleRoute),
         ),
         const SizedBox(height: AppSpacing.s32),
         _SectionHeader('최근 경기', detail: '전체 기록', onDetail: onOpenHistory),
@@ -170,6 +170,12 @@ class _HomeContent extends StatelessWidget {
           const SizedBox(height: AppSpacing.s8),
           _UnsentNote(count: profile.unsentMatches),
         ],
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: onStart,
+          icon: const Icon(Icons.smart_toy_rounded),
+          label: const Text('AI와 1v1 대결'),
+        ),
         if (latestForm case final form?) ...[
           const SizedBox(height: 32),
           const _SectionHeader('최근 자세 피드백'),
@@ -261,6 +267,13 @@ class _Greeting extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
+            ),
+            IconButton(
+              onPressed: () =>
+                  Navigator.pushNamed(context, GymRatsApp.profileRoute),
+              tooltip: '프로필',
+              color: AppColors.textSecondary,
+              icon: const Icon(Icons.account_circle_outlined),
             ),
             if (onLogOut != null)
               IconButton(

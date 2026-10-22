@@ -1,0 +1,46 @@
+GymRats prototype avatar assets (local conversion, bind-pose cleanup).
+
+Rigged Low Poly Astronaut: original model ThunderWare Games, rigging MrLentereng.
+https://mrlentereng.itch.io/rigged-low-poly-astronaut
+CC0 https://creativecommons.org/publicdomain/zero/1.0/
+
+Corebreaker Robot: Donitz.
+https://donitz.itch.io/corebreaker-robot-model
+CC0 https://creativecommons.org/publicdomain/zero/1.0/
+
+Mannequiny art: GDQuest. CC BY 4.0.
+https://github.com/gdquest-demos/godot-3d-mannequin
+https://creativecommons.org/licenses/by/4.0/
+Changes: GLB conversion, reset pose and constraints removed, legacy material
+alpha restored to opaque, at most four skin weights per vertex.
+Original license is retained in Mannequiny-LICENSE.txt.
+This use does not imply GDQuest's endorsement.
+
+Rigged and Animated Humanoid: XCVG.
+https://opengameart.org/content/rigged-and-animated-humanoid
+CC0 https://creativecommons.org/publicdomain/zero/1.0/
+
+Three.js 0.180.0: MIT. Full license retained in Three-LICENSE.txt.
+No MediaPipe runtime or new camera/detector is bundled into this Flutter feature.
+
+Expanded catalog (2026-10-19): 21 additional CC0 avatar appearances.
+Kenney: Animated Characters Protagonists, Retro, Survivors (4 skins per pack).
+https://kenney.nl/assets/animated-characters-protagonists
+https://kenney.nl/assets/animated-characters-retro
+https://kenney.nl/assets/animated-characters-survivors
+Each pack's original License.txt is retained as Kenney-<pack>-LICENSE.txt.
+These twelve appearances share the author's characterMedium rig/geometry and
+use the distinct author-provided skin textures; they are not twelve new meshes.
+
+Kay Lousberg / KayKit: Adventurers (Knight, Barbarian, Mage, Rogue,
+Rogue Hooded) and Skeletons (Mage, Minion, Rogue, Warrior). CC0.
+https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0
+Original licenses retained in KayKit-Adventurers-LICENSE.txt and
+KayKit-Skeletons-LICENSE.txt. Only the published free GitHub assets are used.
+
+Changes: normalize bone names, remove canned animation tracks and constraints,
+convert to embedded GLB, resize large textures to 512 px, render thumbnails.
+Models are driven by the user's live pose rather than the original clips.
+Catalog file hashes and model sizes are in catalog-assets.json.
+Original downloads stay in the ignored tools/avatar-preview/source-assets cache.

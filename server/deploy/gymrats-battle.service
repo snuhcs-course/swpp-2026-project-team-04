@@ -1,0 +1,26 @@
+[Unit]
+Description=GymRats FIFO online battle server
+After=network.target gymrats-api.service
+Wants=gymrats-api.service
+
+[Service]
+Type=simple
+User=sangwoo
+Group=gymrats
+WorkingDirectory=/srv/gymrats/battle/current
+ExecStart=/srv/gymrats/battle/current/gymrats-battle
+Environment=BATTLE_HOST=127.0.0.1
+Environment=BATTLE_PORT=8080
+Environment=BATTLE_AUTH_URL=http://127.0.0.1:8000/users/me
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=256M
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

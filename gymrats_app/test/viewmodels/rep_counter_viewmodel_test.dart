@@ -117,6 +117,15 @@ void main() {
     expect(events.last.index, 1);
   });
 
+  test('online reset restarts feedback clock after preparation', () async {
+    await vm.start();
+    await feed(10000, pose());
+    vm.reset(restartClock: true);
+    await feed(10100, pose());
+    expect(vm.formSamples.single.at, const Duration(milliseconds: 100));
+    expect(vm.state.remaining, const Duration(milliseconds: 29900));
+  });
+
   test('pause releases the camera and resume starts it again', () async {
     await vm.start();
     expect(vm.state.phase, CounterPhase.running);

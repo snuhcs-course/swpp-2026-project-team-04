@@ -22,6 +22,8 @@ import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/auth/token_store.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
+import 'package:gymrats_app/services/user/avatar_store.dart';
+import 'package:gymrats_app/screens/online_lobby_screen.dart';
 
 import 'pose_fixtures.dart';
 
@@ -211,10 +213,14 @@ GymRatsApp testApp({
   InMemoryAuthRepository? auth,
   UserRepository? users,
   Matchmaker Function()? createMatchmaker,
+  AvatarStore? avatarStore,
+  OnlineSessionFactory? createOnlineSession,
 }) => GymRatsApp(
   authRepository: auth ?? signedInAuth(),
   userRepository: users ?? InMemoryUserRepository(),
   createMatchmaker: createMatchmaker,
+  avatarStore: avatarStore,
+  createOnlineSession: createOnlineSession,
 );
 
 /// Returns [opponent], or throws [error] when set, like a server would.
@@ -254,6 +260,7 @@ class PushLog extends NavigatorObserver {
 /// [closeRep], if any. Frames still have to come through the camera and
 /// estimator fakes.
 class FakeRepJudge extends RepJudge {
+  JudgeSnapshot snapshot = JudgeSnapshot.initial;
   final Queue<RepEvent> _verdicts = Queue();
   int _index = 0;
 
@@ -269,7 +276,7 @@ class FakeRepJudge extends RepJudge {
 
   @override
   RepUpdate update(PoseFrame frame) => RepUpdate(
-    snapshot: JudgeSnapshot.initial,
+    snapshot: snapshot,
     event: _verdicts.isEmpty ? null : _verdicts.removeFirst(),
   );
 }

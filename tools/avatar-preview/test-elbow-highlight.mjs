@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import * as THREE from './vendor/three/build/three.module.js';
+import {elbowAngle,ElbowHighlight} from './elbow-highlight.js';
+const p=(x,y,z=0)=>({x,y,z,visibility:1});
+const pose=Array(33).fill(null);pose[11]=p(-1,0,1);pose[13]=p(0,0);pose[15]=p(1,0,-1);
+assert.equal(elbowAngle(pose,'left'),180);assert.equal(elbowAngle(pose,'right'),null);
+pose[15]=p(0,1,20);assert.equal(elbowAngle(pose,'left'),90); // z intentionally ignored, same as judge.
+pose[15]=p(-.5,Math.sqrt(.75));assert.ok(Math.abs(elbowAngle(pose,'left')-60)<1e-8);
+pose[15].visibility=.1;assert.equal(elbowAngle(pose,'left'),null);
+pose[15]=p(NaN,0);assert.equal(elbowAngle(pose,'left'),null);
+pose[15]=p(0,0);assert.equal(elbowAngle(pose,'left'),null);
+pose[15]=p(0,1);
+const context=new Proxy({measureText:text=>({width:text.length*7})},{get:(o,k)=>k in o?o[k]:()=>{}});
+const canvas={width:0,height:0,getContext:()=>context};
+const bones=['UpperArm.L','LowerArm.L','Hand.L'].map((name,i)=>{const b=new THREE.Bone();b.name=name;b.position.set(i*.1,.5,0);return b;});
+const camera=new THREE.PerspectiveCamera(40,.75,.01,60);camera.position.z=4;camera.updateMatrixWorld(true);
+const overlay=new ElbowHighlight(canvas,bones),before=JSON.stringify(pose),rotations=bones.map(b=>b.quaternion.toArray());
+overlay.update(pose,camera,360,480,false,.016);overlay.update(pose,camera,360,480,true,.016);
+assert.equal(JSON.stringify(pose),before);assert.deepEqual(bones.map(b=>b.quaternion.toArray()),rotations);
+assert.equal(overlay.angles.left,90);overlay.update(null,camera,360,480,false,.016);assert.equal(overlay.angles.left,undefined);
+console.log('PASS elbow overlay: 180/90/60°, confidence, missing/invalid/zero-length, mirroring, no pose mutation');

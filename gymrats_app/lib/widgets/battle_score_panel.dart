@@ -6,6 +6,7 @@ import '../models/rep_event.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import 'grid_background.dart';
+import 'battle_score_balance.dart';
 
 /// The clock and the time bar turn amber once this many seconds are left.
 const _warningSeconds = 5;
@@ -31,7 +32,7 @@ class BattleScorePanel extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(16, 22, 16, 22 + bottomInset),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -250,27 +251,10 @@ class _ShareBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final share = context.select<BattleViewModel, double>((vm) {
-      final total = vm.state.myReps + vm.state.opponentReps;
-      return total == 0 ? 0.5 : vm.state.myReps / total;
-    });
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(5),
-      child: SizedBox(
-        height: 10,
-        child: ColoredBox(
-          color: AppColors.opponent,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: share,
-              heightFactor: 1,
-              child: const ColoredBox(color: AppColors.accent),
-            ),
-          ),
-        ),
-      ),
+    final (mine, theirs) = context.select<BattleViewModel, (int, int)>(
+      (vm) => (vm.state.myReps, vm.state.opponentReps),
     );
+    return BattleScoreBalance(mine: mine, theirs: theirs);
   }
 }
 

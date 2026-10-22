@@ -61,8 +61,7 @@ class _MatchingScreenState extends State<MatchingScreen>
           exercise: widget.exercise,
         );
     _viewModel.addListener(_onViewModelChanged);
-    _radar = AnimationController(vsync: this, duration: _radarPeriod)
-      ..repeat();
+    _radar = AnimationController(vsync: this, duration: _radarPeriod)..repeat();
     _viewModel.start();
   }
 
@@ -129,9 +128,10 @@ class _MatchingScreenState extends State<MatchingScreen>
         child: Scaffold(
           body: GridBackground(
             child: SafeArea(
-              child: _MatchingContent(
+              child: BattleSearchView(
                 exercise: widget.exercise,
-                radar: _radar,
+                title: 'AI 상대를 찾는 중',
+                searchArea: _SearchArea(radar: _radar),
                 onCancel: _leave,
               ),
             ),
@@ -142,16 +142,22 @@ class _MatchingScreenState extends State<MatchingScreen>
   }
 }
 
-class _MatchingContent extends StatelessWidget {
-  const _MatchingContent({
+/// Shared pre-match presentation; AI and live matching keep separate logic.
+class BattleSearchView extends StatelessWidget {
+  const BattleSearchView({
+    super.key,
     required this.exercise,
-    required this.radar,
+    required this.title,
+    required this.searchArea,
     required this.onCancel,
+    this.duration = battleDuration,
   });
 
   final ExerciseType exercise;
-  final Animation<double> radar;
+  final String title;
+  final Widget searchArea;
   final VoidCallback onCancel;
+  final Duration duration;
 
   @override
   Widget build(BuildContext context) {
@@ -159,15 +165,15 @@ class _MatchingContent extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       child: Column(
         children: [
-          _BattleChip(exercise: exercise),
+          _BattleChip(exercise: exercise, duration: duration),
           const SizedBox(height: 28),
           Text(
-            'AI 상대를 찾는 중',
+            title,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 12),
-          Expanded(child: _SearchArea(radar: radar)),
+          Expanded(child: searchArea),
           const SizedBox(height: 24),
           const _GuideCard(),
           const SizedBox(height: 16),
@@ -180,9 +186,10 @@ class _MatchingContent extends StatelessWidget {
 
 /// "● 푸쉬업 · 30초 · 1v1" on a pill.
 class _BattleChip extends StatelessWidget {
-  const _BattleChip({required this.exercise});
+  const _BattleChip({required this.exercise, required this.duration});
 
   final ExerciseType exercise;
+  final Duration duration;
 
   @override
   Widget build(BuildContext context) {
@@ -208,12 +215,11 @@ class _BattleChip extends StatelessWidget {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                '${exercise.koreanName} · ${battleDuration.inSeconds}초 · 1v1',
+                '${exercise.koreanName} · ${duration.inSeconds}초 · 1v1',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -237,47 +243,55 @@ class _SearchArea extends StatelessWidget {
     if (failed) {
       return _SearchFailed(onRetry: context.read<MatchingViewModel>().retry);
     }
-    return Column(
-      children: [
-        const _ElapsedTime(),
-        const SizedBox(height: 16),
-        Expanded(child: _Radar(animation: radar)),
-      ],
+    final state = context.watch<MatchingViewModel>().state;
+    return BattleSearchRadar(
+      animation: radar,
+      elapsed: state.elapsed,
+      playerName: state.playerName,
     );
   }
 }
 
-/// Time since the search started, e.g. "0:08".
-class _ElapsedTime extends StatelessWidget {
-  const _ElapsedTime();
+/// The same elapsed timer and animated radar for either matching service.
+class BattleSearchRadar extends StatelessWidget {
+  const BattleSearchRadar({
+    super.key,
+    required this.animation,
+    required this.elapsed,
+    required this.playerName,
+  });
+  final Animation<double> animation;
+  final Duration elapsed;
+  final String? playerName;
 
   @override
   Widget build(BuildContext context) {
-    final elapsed = context.select<MatchingViewModel, Duration>(
-      (vm) => vm.state.elapsed,
-    );
     final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
-    return Text(
-      '${elapsed.inMinutes}:$seconds',
-      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-        fontSize: 22,
-        color: AppColors.accent,
-      ),
+    return Column(
+      children: [
+        Text(
+          '${elapsed.inMinutes}:$seconds',
+          style: Theme.of(context).textTheme.displaySmall
+              ?.copyWith(fontSize: 22, color: AppColors.accent),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: _Radar(animation: animation, name: playerName),
+        ),
+      ],
     );
   }
 }
 
 /// Spinning radar with the user's avatar in the middle.
 class _Radar extends StatelessWidget {
-  const _Radar({required this.animation});
+  const _Radar({required this.animation, required this.name});
 
   final Animation<double> animation;
+  final String? name;
 
   @override
   Widget build(BuildContext context) {
-    final name = context.select<MatchingViewModel, String?>(
-      (vm) => vm.state.playerName,
-    );
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -375,7 +389,8 @@ class _RadarPainter extends CustomPainter {
 
     for (final (distance, degrees, dot, opacity) in _blips) {
       canvas.drawCircle(
-        center + Offset.fromDirection(degrees * math.pi / 180, radius * distance),
+        center +
+            Offset.fromDirection(degrees * math.pi / 180, radius * distance),
         radius * dot,
         Paint()..color = AppColors.opponent.withValues(alpha: opacity),
       );
@@ -484,9 +499,8 @@ class _CancelButton extends StatelessWidget {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppTheme.cardRadius)),
         ),
-        textStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-        ),
+        textStyle: Theme.of(context).textTheme.titleMedium
+            ?.copyWith(fontWeight: FontWeight.w700),
       ),
       child: const Text('매칭 취소'),
     );

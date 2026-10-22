@@ -17,7 +17,7 @@ import '../screens/setup_screen.dart';
 import '../services/pose/rep_judge.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../viewmodels/setup_viewmodel.dart';
-import '../widgets/pose_camera_view.dart';
+import '../widgets/pose_avatar_toggle_view.dart';
 
 /// Keys the widget tests look up.
 const validRepsKey = Key('validReps');
@@ -275,7 +275,7 @@ class _CounterPageState extends State<_CounterPage>
               if (finished)
                 _RoundResult(state: state, history: _viewModel.history)
               else if (running)
-                PoseCameraView(
+                PoseAvatarToggleView(
                   controller: _viewModel.cameraController,
                   frame: state.lastFrame,
                   mirror: _viewModel.isFrontCamera,

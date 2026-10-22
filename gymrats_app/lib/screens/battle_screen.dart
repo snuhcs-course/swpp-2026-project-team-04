@@ -19,7 +19,7 @@ import '../widgets/battle_score_panel.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/landmark_overlay.dart';
 import '../widgets/opponent_window.dart';
-import '../widgets/pose_camera_view.dart';
+import '../widgets/pose_avatar_toggle_view.dart';
 import '../widgets/time_up_overlay.dart';
 
 /// The battle: the user's camera on top, the opponent in a small
@@ -314,11 +314,6 @@ class _CameraBox extends StatelessWidget {
     final state = counter.state;
     final frame = state.lastFrame;
     final Widget? overlay = switch (state.phase) {
-      CounterPhase.running when frame != null => LandmarkOverlay(
-        frame: frame,
-        mirror: counter.isFrontCamera,
-        isVisible: counter.isVisible,
-      ),
       CounterPhase.starting ||
       CounterPhase.paused => const Center(child: CircularProgressIndicator()),
       CounterPhase.permissionDenied ||
@@ -330,9 +325,18 @@ class _CameraBox extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          PoseCameraView(
+          PoseAvatarToggleView(
+            chestSnapshot: state.snapshot,
             controller: counter.cameraController,
+            frame: state.phase == CounterPhase.running ? frame : null,
             mirror: counter.isFrontCamera,
+            cameraOverlay: state.phase == CounterPhase.running && frame != null
+                ? LandmarkOverlay(
+                    frame: frame,
+                    mirror: counter.isFrontCamera,
+                    isVisible: counter.isVisible,
+                  )
+                : null,
           ),
           ?overlay,
         ],

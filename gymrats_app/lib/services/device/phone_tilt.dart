@@ -82,6 +82,8 @@ double tiltFromFlatDegrees(GravitySample sample) {
 /// [shakeGyroRadPerSec], again for [placementHold].
 class PhoneTiltMonitor {
   PhoneTiltMonitor({Stream<GravitySample>? samples, Duration Function()? clock})
+    // Keep the public injection parameter named samples rather than _samples.
+    // ignore: prefer_initializing_formals
     : _samples = samples,
       _clock = clock ?? _sinceStart();
 

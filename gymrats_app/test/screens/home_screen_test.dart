@@ -54,6 +54,10 @@ void main() {
           createViewModel: () => HomeViewModel(repository: repository),
         ),
         routes: {
+          GymRatsApp.onlineBattleRoute: (_) =>
+              const Scaffold(body: Text('online matching')),
+          GymRatsApp.profileRoute: (_) =>
+              const Scaffold(body: Text('my profile')),
           GymRatsApp.matchingRoute: (context) => Scaffold(
             body: Text(
               'matching ${ModalRoute.of(context)!.settings.arguments}',
@@ -78,6 +82,7 @@ void main() {
     expect(find.text('푸쉬업'), findsOneWidget);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     expect(find.text('개인 최고 32회'), findsOneWidget);
+    expect(find.text('온라인 1v1 대결'), findsOneWidget);
     expect(find.text('AI와 1v1 대결'), findsOneWidget);
     expect(find.text('30초 안에 더 많이 하면 승리'), findsOneWidget);
     expect(
@@ -275,11 +280,11 @@ void main() {
     repository.gate = Completer();
     await open(tester);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('AI와 1v1 대결'), findsNothing);
+    expect(find.text('온라인 1v1 대결'), findsNothing);
     repository.gate!.complete();
     await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('AI와 1v1 대결'), findsOneWidget);
+    expect(find.text('온라인 1v1 대결'), findsOneWidget);
   });
 
   testWidgets('a failed load shows a retry button that loads again', (
@@ -295,8 +300,31 @@ void main() {
     expect(repository.fetchCount, 2);
   });
 
-  testWidgets('the start button opens matching for push-ups', (tester) async {
+  testWidgets(
+    'primary accent button opens online; AI stays in the lower outline button',
+    (tester) async {
+      await open(tester);
+      expect(find.widgetWithText(FilledButton, '온라인 1v1 대결'), findsOneWidget);
+      await tester.tap(find.text('온라인 1v1 대결'));
+      await tester.pumpAndSettle();
+      expect(find.text('online matching'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
+      expect(find.widgetWithText(OutlinedButton, 'AI와 1v1 대결'), findsOneWidget);
+    },
+  );
+
+  testWidgets('profile button opens profile', (tester) async {
     await open(tester);
+    await tester.tap(find.byTooltip('프로필'));
+    await tester.pumpAndSettle();
+    expect(find.text('my profile'), findsOneWidget);
+  });
+
+  testWidgets('lower AI button opens matching for push-ups', (tester) async {
+    await open(tester);
+    await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pumpAndSettle();
     expect(find.text('matching ${ExerciseType.pushUp}'), findsOneWidget);
@@ -323,6 +351,7 @@ void main() {
     expect(find.text('개인 최고 32회'), findsOneWidget);
     expect(find.text('24'), findsOneWidget);
 
+    await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pumpAndSettle();
     // The battle was saved meanwhile.
