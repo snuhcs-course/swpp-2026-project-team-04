@@ -1,6 +1,10 @@
 # Runs the app and server tests with coverage on GitHub's Linux runners for every pull request to main
 # (and every push to main), so coverage no longer depends on a member's own computer.
 # The results are posted as one comment on the PR, updated on every new push.
+#
+# A single `flutter test --coverage` over the whole suite hangs while collecting coverage, so coverage
+# is measured one test file at a time (tools/coverage_per_file.sh) in 4 parallel shards and merged by
+# line in the report job. Pass/fail counts come from one normal `flutter test` run.
 name: Tests and coverage
 
 on:
@@ -23,9 +27,9 @@ defaults:
 
 jobs:
   app:
-    name: Flutter app (analyze, test, coverage)
+    name: Flutter app (analyze, test)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -47,15 +51,11 @@ jobs:
         working-directory: gymrats_app
         run: flutter analyze 2>&1 | tee ../analyze-output.txt
 
-      - name: flutter test --coverage
+      - name: flutter test
         id: test
         if: always() && steps.analyze.conclusion != 'cancelled'
         working-directory: gymrats_app
-        run: flutter test --coverage 2>&1 | tee ../test-output.txt
-
-      - name: Coverage by layer
-        if: always() && hashFiles('gymrats_app/coverage/lcov.info') != ''
-        run: python3 tools/coverage_by_layer.py gymrats_app/coverage/lcov.info --html coverage-by-layer.html | tee coverage-by-layer.md
+        run: flutter test 2>&1 | tee ../test-output.txt
 
       - name: Job summary
         if: always()
@@ -64,8 +64,6 @@ jobs:
             echo "## Flutter app"
             echo "- analyze: ${{ steps.analyze.outcome }}"
             echo "- test: ${{ steps.test.outcome }} ($(grep -oE '[0-9:]+ \+[0-9]+( ~[0-9]+)?( -[0-9]+)?: .*' test-output.txt | tail -1 || true))"
-            echo
-            [ -f coverage-by-layer.md ] && cat coverage-by-layer.md || echo "No coverage data."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload app results
@@ -77,9 +75,39 @@ jobs:
           path: |
             analyze-output.txt
             test-output.txt
-            coverage-by-layer.md
-            coverage-by-layer.html
-            gymrats_app/coverage/lcov.info
+
+  coverage:
+    name: Flutter coverage (shard ${{ matrix.shard }} of 4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.5
+          cache: true
+
+      - name: flutter pub get
+        working-directory: gymrats_app
+        run: flutter pub get
+
+      - name: Coverage per test file
+        working-directory: gymrats_app
+        run: bash ../tools/coverage_per_file.sh ${{ matrix.shard }} 4 coverage/parts
+
+      - name: Upload coverage part
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-part-${{ matrix.shard }}
+          if-no-files-found: ignore
+          path: gymrats_app/coverage/parts/
 
   server:
     name: Django API (pytest, coverage)
@@ -123,9 +151,9 @@ jobs:
           path: server-output.txt
 
   report:
-    name: Post results on the PR
-    needs: [app, server]
-    if: always() && github.event_name == 'pull_request'
+    name: Coverage by layer and PR comment
+    needs: [app, coverage, server]
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -137,7 +165,28 @@ jobs:
         with:
           path: results
 
+      - name: Coverage by layer (merged shards)
+        run: |
+          shopt -s nullglob
+          parts=(results/coverage-part-*/*.info)
+          if [ ${#parts[@]} -gt 0 ]; then
+            python3 tools/coverage_by_layer.py "${parts[@]}" --html results/coverage-by-layer.html | tee results/coverage-by-layer.md
+          else
+            echo "No coverage parts." | tee results/coverage-by-layer.md
+          fi
+          cat results/coverage-by-layer.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload merged coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-by-layer
+          if-no-files-found: ignore
+          path: |
+            results/coverage-by-layer.md
+            results/coverage-by-layer.html
+
       - name: Build the comment
+        if: github.event_name == 'pull_request'
         env:
           APP_RESULT: ${{ needs.app.result }}
           SERVER_RESULT: ${{ needs.server.result }}
@@ -146,6 +195,7 @@ jobs:
         run: python3 tools/ci_test_report.py results > comment.md
 
       - name: Post or update the comment
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
