@@ -4,8 +4,8 @@
 Usage (in CI, after actions/download-artifact into RESULTS_DIR):
     python3 tools/ci_test_report.py RESULTS_DIR > comment.md
 
-Reads app-results/{analyze-output,test-output}.txt, app-results/coverage-by-layer.md and
-server-results/server-output.txt, and prints a Markdown comment with the per-layer coverage
+Reads app-results/{analyze-output,test-output}.txt, coverage-by-layer.md (merged from the per-file
+coverage shards), every coverage-part-*/left-out.txt, and server-results/server-output.txt, and prints a Markdown comment with the per-layer coverage
 against the Testing Documentation targets, the test counts, and the commit it ran on.
 Environment: APP_RESULT, SERVER_RESULT (job results), HEAD_SHA, RUN_URL.
 """
@@ -75,7 +75,10 @@ def main(results):
 
     analyze = read(app / "analyze-output.txt")
     tests = read(app / "test-output.txt")
-    layers = layer_rows(read(app / "coverage-by-layer.md"))
+    layers = layer_rows(read(Path(results) / "coverage-by-layer.md"))
+    left_out = []
+    for f in sorted(Path(results).rglob("left-out.txt")):
+        left_out += [l.strip() for l in read(f).splitlines() if l.strip()]
     server_cov, server_summary = server_numbers(read(srv / "server-output.txt"))
     counts = flutter_counts(tests)
     issues = re.search(r"(\d+) issues? found", analyze)
@@ -89,11 +92,11 @@ def main(results):
                                          (f"{issues.group(1)} issue(s) — see the run log" if issues else "see the run log")))
     if counts:
         passed, skipped, failed, tail = counts
-        out.append(f"- `flutter test --coverage`: {passed} passed, {skipped} skipped, {failed} failed ({tail})")
+        out.append(f"- `flutter test`: {passed} passed, {skipped} skipped, {failed} failed ({tail})")
         for name in failing_tests(tests):
             out.append(f"  - failed: {name}")
     else:
-        out.append("- `flutter test --coverage`: no result (the run stopped early; see the run log)")
+        out.append("- `flutter test`: no result (the run stopped early; see the run log)")
     out.append("")
     if layers:
         out += ["| Layer | Lines hit / found | Coverage | Target | Status |", "|---|---|---|---|---|"]
@@ -101,6 +104,12 @@ def main(results):
             target = TARGETS.get(name)
             out.append(f"| {name} | {hit} / {found} | {pct:.1f}% | {f'{target:.0f}%' if target else '–'} | "
                        f"{mark(pct, target) if target else '–'} |")
+        out.append("")
+        out.append("Coverage is measured one test file at a time in 4 parallel shards (`tools/coverage_per_file.sh`) and merged "
+                   "by line; a full `flutter test --coverage` run hangs while collecting coverage.")
+        if left_out:
+            out.append("Not in the coverage numbers (tests still ran in `flutter test` above):")
+            out += [f"- `{l}`" for l in left_out]
     else:
         out.append("No coverage data (see the run log).")
 
@@ -110,10 +119,11 @@ def main(results):
                f"(target {SERVER_TARGET:.0f}%: {mark(server_cov, SERVER_TARGET)})")
 
     out += ["", "<details><summary>Reproduce</summary>", "", "```",
-            "cd gymrats_app && flutter pub get && flutter analyze && flutter test --coverage",
-            "python3 tools/coverage_by_layer.py gymrats_app/coverage/lcov.info",
+            "cd gymrats_app && flutter pub get && flutter analyze && flutter test",
+            "bash ../tools/coverage_per_file.sh            # all files; CI runs shards 0-3 of 4",
+            "python3 ../tools/coverage_by_layer.py coverage/parts/*.info",
             "cd server && python -m pip install -r requirements-dev.txt && python -m pytest --cov=accounts --cov=matches --cov=gymrats",
-            "```", "", "Flutter 3.47.5 (Dart 3.13.4), Python 3.12, ubuntu-latest. lcov.info and the HTML report are in the run's artifacts.",
+            "```", "", "Flutter 3.47.5 (Dart 3.13.4), Python 3.12, ubuntu-latest. The lcov parts and the HTML report are in the run's artifacts.",
             "</details>", ""]
     print("\n".join(out))
 
