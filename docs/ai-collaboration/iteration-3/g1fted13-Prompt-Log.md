@@ -92,3 +92,10 @@ PM(진영이형)의 PR #14(ci/test_coverage)를 내가 리뷰하고 승인했어
 8. push 뒤 PR #13의 CI 댓글을 확인해(https://api.github.com/repos/snuhcs-course/swpp-2026-project-team-04/issues/13/comments). CI는 몇 분 걸리니까 아직 안 끝났으면 그렇다고만 알려줘.
    끝났으면 결과를 요약해 주고, 그 숫자를 테스트 노트와 PR 본문 \"How to test\"에 넣을 수정안을 보여줘. 추가 commit/push와 PR 본문 수정은 하기 전에 나한테 먼저 물어봐.
 </pasted_content id=\"0bd3\">"
+
+## 2026-10-27 · Woohyun Song · docs/battle_rules
+<!-- 97027bac 2026-10-26T15:46:27.596Z -->
+[Woohyun Song, 10-27 00:46] "응. 끝난 거로 보여"
+
+<!-- 97027bac 2026-10-26T15:49:20.969Z -->
+[Woohyun Song, 10-27 00:49] "응. 이대로 진행해."
