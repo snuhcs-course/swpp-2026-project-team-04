@@ -15,18 +15,22 @@ The branch sits on `main` at `fd8a76f`, with PR #14's CI. I ran the commands fro
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | see the CI comment on the W4 PR (not opened yet); no W4 change | 10/27 | CI comment "Tests and coverage (GitHub Actions)" |
-| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W4 PR (not opened yet); no W4 change | 10/27 | CI comment "Tests and coverage (GitHub Actions)" |
-| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W4 PR (not opened yet); no W4 change | 10/27 | CI comment "Tests and coverage (GitHub Actions)" |
-| View | flutter_test (widget) | 75% | see the CI comment on the W4 PR (not opened yet) | 10/27 | CI comment "Tests and coverage (GitHub Actions)" |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: `server/` unchanged; CI runs it | 10/27 | CI `pytest --cov` |
+| Model | flutter_test | 90% | 98.1% (210/214 lines); no W4 change | 10/27 | CI comment "Tests and coverage (GitHub Actions)" on PR #15, commit `915f825`, [run 40354323954](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/40354323954) |
+| ViewModel | flutter_test, fakes | 90% | 94.4% (837/887); no W4 change | 10/27 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 92.0% (1592/1731); no W4 change | 10/27 | same CI comment |
+| View | flutter_test (widget) | 75% | 91.0% (3221/3538) | 10/27 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (76 passed); `server/` unchanged | 10/27 | same CI comment, `pytest --cov=accounts --cov=matches --cov=gymrats` |
 
 - **Tests:** `flutter test` 698 passed, 0 failed, 1 skipped.
   - The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
   - `flutter analyze` found no issues.
   - Server `pytest` was not run locally because `server/` did not change.
-- **Coverage:** not collected on this PC; `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The per-layer numbers, commit hash and run link come from the W4 PR's CI comment and are added here when it posts.
-- **Shortfalls:** none known. The View layer's number for the new widget is pending CI.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers above come from the CI comment on PR #15 for commit `915f825` (2026-10-27 01:02 KST).
+  - CI measures one test file at a time in 4 shards and merges them by line.
+  - App total is 92.0% (6006/6530 lines, with "Other" 91.2%).
+  - The CI also reports `flutter analyze` with no issues and `flutter test` 698 passed, 1 skipped, 0 failed.
+- **Left out of the coverage numbers:** `test/screens/setup_screen_test.dart`, which hit the 240 s per-file limit in the coverage run. It still passed in `flutter test`. It is not a W4 file, so `SetupScreen` lines count as not hit.
+- **Shortfalls:** none. Every layer is above its target.
 
 Test cases added or changed in this step:
 
