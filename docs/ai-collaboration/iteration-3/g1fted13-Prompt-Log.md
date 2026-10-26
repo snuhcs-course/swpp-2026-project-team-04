@@ -63,3 +63,32 @@ CLAUDE.md는 200줄 이하로 두고, 바꾼 줄만 보여줘.
 <!-- 36318d41 2026-10-25T06:33:45.306Z -->
 <!-- 36318d41 2026-10-25T06:42:29.879Z -->
 <!-- 36318d41 2026-10-25T17:43:02.814Z -->
+
+## 2026-10-26 · Woohyun Song · docs/battle_rules
+<!-- 36318d41 2026-10-25T18:09:45.287Z -->
+[Woohyun Song, 10-26 03:09] "응. PR도 넣자. 이후에 우리가 implement할 때 Claude Design을 이용하면서 할 수 있는지도 알려줘"
+
+<!-- 97027bac 2026-10-26T14:50:38.378Z -->
+[Woohyun Song, 10-26 23:50] "<pasted_content id=\"0bd3\">
+PM(진영이형)의 PR #14(ci/test_coverage)를 내가 리뷰하고 승인했어. 내용을 기록하고, 머지됐으면 내 W1 브랜치에 반영해줘.
+
+[PR #14 내용]
+- .github/workflows/tests.yml 이 main으로 가는 모든 PR에서 GitHub Actions(리눅스)로 돌아:
+  flutter analyze, flutter test, 앱 커버리지(tools/coverage_per_file.sh로 테스트 파일별로 4개 shard에서 측정 → tools/coverage_by_layer.py로 줄 단위 합침), 서버 pytest --cov.
+- 결과는 PR에 \"Tests and coverage (GitHub Actions)\" 댓글 하나로 달리고, push할 때마다 갱신돼.
+- 첫 실행(df1ec0f) 결과: 앱 675 passed / 1 skipped, analyze 문제없음, 커버리지 Model 98.1 / ViewModel 94.4 / Service 92.0 / View 91.6%(5954/6452줄), 서버 76 passed·96%. 10/23 맥 측정값과 똑같았어.
+- .github/ 와 tools/의 CI 파일은 PM 소유라 건드리지 마.
+
+[기록 바꾸기 — 지금 바로]
+1. 커버리지 규칙을 바꿔. 이 PC에서는 계속 flutter test만 돌리고 로컬 커버리지는 안 돌려. 대신 테스트 노트(docs/testing/iteration-3/[REDACTED:custom_term].md)와 PR 본문의 커버리지는 그 PR의 CI 댓글 숫자를 쓰고, 커밋 해시와 실행 링크를 같이 적어.
+2. progress.md \"Decisions and notes\"에 있는 커버리지 줄을 이걸로 바꾸고 오늘 날짜로 기록해. 이미 쓴 테스트 노트에 \"not measured on this Windows PC\" 문구가 있으면 \"CI 댓글 참고\"로 바꿔.
+3. CLAUDE.md의 Windows 줄과 .claude/agents/reviewer.md 의 커버리지 규칙도 같은 내용으로 맞춰줘. 리뷰어는 로컬 커버리지를 요구하지 말고, CI 댓글 숫자를 근거로 봐.
+
+[W1 브랜치 반영 — #14가 머지된 경우에만]
+4. git fetch origin 하고, origin/main에 \"Merge pull request #14\"가 있는지 확인해. 없으면 여기서 멈추고 나한테 알려줘.
+5. 있으면 docs/battle_rules 에서 git merge origin/main (rebase나 force push는 하지 마). 충돌은 내 파일에서만 풀고, 다른 파일 충돌이면 멈추고 물어봐.
+6. flutter analyze, flutter test 다시 돌리고, ownership_guard.py --check-diff 확인해(python은 ~/anaconda3/python.exe).
+7. CLAUDE.md 7단계(내 노트 갱신, 세션 export)를 하고 git push origin docs/battle_rules 해줘.
+8. push 뒤 PR #13의 CI 댓글을 확인해(https://api.github.com/repos/snuhcs-course/swpp-2026-project-team-04/issues/13/comments). CI는 몇 분 걸리니까 아직 안 끝났으면 그렇다고만 알려줘.
+   끝났으면 결과를 요약해 주고, 그 숫자를 테스트 노트와 PR 본문 \"How to test\"에 넣을 수정안을 보여줘. 추가 commit/push와 PR 본문 수정은 하기 전에 나한테 먼저 물어봐.
+</pasted_content id=\"0bd3\">"
