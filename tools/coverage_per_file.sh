@@ -30,9 +30,10 @@ for f in $(find test -name '*_test.dart' ! -name 'public_wss_smoke_test.dart' | 
   took=$(( $(date +%s) - start ))
   if [ "$code" -eq 124 ] || [ "$code" -eq 137 ]; then
     echo "$f timeout after ${limit}s" >> "$out/left-out.txt"
-  elif [ ! -s "$part" ]; then
+  elif [ ! -s "$part" ] && [ "$code" -ne 0 ]; then
     echo "$f no coverage written (exit $code)" >> "$out/left-out.txt"
   fi
+  # exit 0 with no coverage = the test loads no lib/ code (e.g. it reads source files as text): nothing to count.
   echo "[$shard/$shards] $f exit=$code ${took}s"
 done
 echo "shard $shard/$shards: $n test files; left out: $(wc -l < "$out/left-out.txt")"

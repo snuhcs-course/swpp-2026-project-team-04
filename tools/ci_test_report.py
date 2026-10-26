@@ -28,7 +28,14 @@ def read(path):
 
 
 def flutter_counts(text):
-    """Last progress line of `flutter test`, e.g. '01:02 +658 ~1 -2: Some tests failed.'"""
+    """Counts from `flutter test`: the GitHub reporter's summary ('675 tests passed, 1 skipped.'), or the
+    compact/expanded reporter's last progress line ('01:02 +658 ~1 -2: Some tests failed.')."""
+    for line in reversed(text.splitlines()):
+        if re.search(r"\d+ tests? (passed|failed)", line):
+            def num(word):
+                m = re.search(r"(\d+) (?:tests? )?" + word, line)
+                return int(m.group(1)) if m else 0
+            return num("passed"), num("skipped"), num("failed"), re.sub(r"^\W+", "", line).strip()
     found = re.findall(r"\d+:\d+ \+(\d+)(?: ~(\d+))?(?: -(\d+))?: (.*)", text)
     if not found:
         return None
@@ -38,6 +45,9 @@ def flutter_counts(text):
 
 def failing_tests(text, limit=10):
     names = []
+    for m in re.finditer(r"^\u274c (?:.*?/gymrats_app/)?(test/[^:]+: .+)$", text, flags=re.M):
+        if m.group(1) not in names:
+            names.append(m.group(1).strip())
     for m in re.finditer(r"\d+:\d+ \+\d+(?: ~\d+)? -\d+: (.+?) \[E\]", text):
         name = m.group(1).strip()
         if name not in names:
