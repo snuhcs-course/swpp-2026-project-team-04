@@ -9,8 +9,8 @@
 // model. Setup runs first, then the round counter. Stop, or the end of the
 // round, shows the result and saves the recording: every judged frame's 33
 // landmarks, the phone sensor values, the image brightness, and the live
-// verdicts, as JSON in the app's own files folder. No camera image is
-// stored.
+// verdicts, plus every setup frame with the setup check's result, as JSON
+// in the app's own files folder. No camera image is stored.
 //
 // Copy the recordings to the repo with
 //   powershell tools/diagnose/Pull-PushupCases.ps1      (Windows)
@@ -35,6 +35,7 @@ import '../services/device/phone_tilt.dart';
 import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
 import '../services/pose/rep_judge.dart';
+import '../services/pose/setup_checker.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../viewmodels/setup_viewmodel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
@@ -191,7 +192,7 @@ class RecordingSetup {
     this.device = '',
     this.placement = '',
     this.lighting = 'bright',
-    this.model = PoseDetectionModel.base,
+    this.model = PoseDetectionModel.accurate,
     this.roundLength = battleDuration,
   });
 
@@ -311,6 +312,76 @@ class RecordedFrame {
   final FrameMark? mark;
 }
 
+/// One frame the setup check saw before the round, with its verdict, so
+/// setup thresholds can be set from the same data as the judge's.
+class SetupFrame {
+  const SetupFrame({
+    required this.at,
+    required this.pose,
+    required this.reason,
+    this.ready = false,
+    this.progress = 0,
+    this.missing = const [],
+    this.phoneTilt,
+    this.gyro,
+    this.gravity,
+    this.fps,
+  });
+
+  /// Time since setup opened.
+  final Duration at;
+  final PoseFrame pose;
+
+  /// The check's result for this frame alone.
+  final SetupReason reason;
+
+  /// The stable Ready state, and the progress towards it, 0 to 1.
+  final bool ready;
+  final double progress;
+  final List<BodyPart> missing;
+  final double? phoneTilt;
+  final double? gyro;
+  final List<double>? gravity;
+  final int? fps;
+}
+
+/// Collects the frames setup checked from the setup view model's states.
+class SetupRecorder {
+  final List<SetupFrame> _frames = [];
+  PoseFrame? _last;
+
+  List<SetupFrame> get frames => List.unmodifiable(_frames);
+
+  /// Takes [state]'s frame when it is one setup has not checked before.
+  void observe(
+    SetupState state, {
+    required Duration at,
+    PhoneTiltMonitor? phoneTilt,
+  }) {
+    final pose = state.lastFrame;
+    if (pose == null || identical(pose, _last)) return;
+    _last = pose;
+    final status = state.status;
+    _frames.add(
+      SetupFrame(
+        at: at,
+        pose: pose,
+        reason: status.reason,
+        ready: status.isReady,
+        progress: status.readyProgress,
+        missing: status.missingParts,
+        phoneTilt: phoneTilt?.tiltDegrees,
+        gyro: phoneTilt?.gyroSpeed,
+        gravity: switch (phoneTilt?.lastSample) {
+          final g? => [g.x, g.y, g.z],
+          null => null,
+        },
+        fps: state.fps,
+      ),
+    );
+  }
+}
+
 /// A recorded set, as saved to and read from one JSON file.
 ///
 /// Landmark values are rounded (0.1 px, likelihood to 4 places) to keep
@@ -324,6 +395,7 @@ class PushUpRecording {
     required this.setup,
     required this.frames,
     required this.liveEvents,
+    this.setupFrames = const [],
     this.frontCamera = true,
     this.frameRotation = 0,
     this.judge = const {},
@@ -346,6 +418,10 @@ class PushUpRecording {
   /// What the judge decided while the set was filmed.
   final List<RepEvent> liveEvents;
 
+  /// The setup check's frames before the round. Empty in recordings made
+  /// before setup was recorded.
+  final List<SetupFrame> setupFrames;
+
   /// The judge that made [liveEvents]: see [describeJudge].
   final Map<String, Object?> judge;
 
@@ -354,6 +430,7 @@ class PushUpRecording {
   /// Pretty metadata, then one frame per line.
   String encode() {
     const placeholder = '__frames__';
+    const setupPlaceholder = '__setupFrames__';
     final head = const JsonEncoder.withIndent('  ').convert({
       'format': format,
       'version': version,
@@ -366,12 +443,20 @@ class PushUpRecording {
       'landmarks': [for (final l in BodyLandmark.values) l.name],
       'judge': judge,
       'live': [for (final e in liveEvents) _eventToJson(e)],
+      'setupFrames': setupPlaceholder,
       'frames': placeholder,
     });
-    final lines = [
-      for (final f in frames) '    ${jsonEncode(_frameToJson(f))}',
-    ];
-    return head.replaceFirst('"$placeholder"', '[\n${lines.join(',\n')}\n  ]');
+    String lines(Iterable<Map<String, Object?>> items) {
+      final all = [for (final i in items) '    ${jsonEncode(i)}'];
+      return all.isEmpty ? '[]' : '[\n${all.join(',\n')}\n  ]';
+    }
+
+    return head
+        .replaceFirst(
+          '"$setupPlaceholder"',
+          lines(setupFrames.map(_setupFrameToJson)),
+        )
+        .replaceFirst('"$placeholder"', lines(frames.map(_frameToJson)));
   }
 
   /// Reads [encode]'s output. Throws [FormatException] for another format
@@ -397,6 +482,10 @@ class PushUpRecording {
         for (final e in json['live']! as List)
           _eventFromJson(e as Map<String, Object?>),
       ],
+      setupFrames: [
+        for (final f in json['setupFrames'] as List? ?? const [])
+          _setupFrameFromJson(f as Map<String, Object?>, landmarks),
+      ],
       frames: [
         for (final f in json['frames']! as List)
           _frameFromJson(f as Map<String, Object?>, landmarks),
@@ -404,29 +493,92 @@ class PushUpRecording {
     );
   }
 
+  /// Image size and, per landmark in [BodyLandmark] order, x, y, z, and
+  /// likelihood; four nulls for a landmark the frame does not have.
+  static Map<String, Object?> _poseToJson(PoseFrame pose) => {
+    'w': pose.imageWidth,
+    'h': pose.imageHeight,
+    'p': [
+      for (final l in BodyLandmark.values)
+        ...switch (pose[l]) {
+          final k? => [
+            _round(k.x, 1),
+            _round(k.y, 1),
+            _round(k.z, 1),
+            _round(k.likelihood, 4),
+          ],
+          null => const [null, null, null, null],
+        },
+    ],
+  };
+
+  static PoseFrame _poseFromJson(
+    Map<String, Object?> json,
+    List<Object?> values,
+    List<BodyLandmark> landmarks,
+  ) {
+    final keypoints = <BodyLandmark, Keypoint>{};
+    for (var i = 0; i < landmarks.length; i++) {
+      final x = values[i * 4] as num?;
+      if (x == null) continue;
+      keypoints[landmarks[i]] = Keypoint(
+        landmark: landmarks[i],
+        x: x.toDouble(),
+        y: (values[i * 4 + 1] as num).toDouble(),
+        z: (values[i * 4 + 2] as num).toDouble(),
+        likelihood: (values[i * 4 + 3] as num).toDouble(),
+      );
+    }
+    return PoseFrame(
+      imageWidth: (json['w']! as num).toDouble(),
+      imageHeight: (json['h']! as num).toDouble(),
+      keypoints: keypoints,
+    );
+  }
+
+  static List<double>? _gravityFromJson(Object? json) => switch (json) {
+    final List g => [for (final v in g) (v as num).toDouble()],
+    _ => null,
+  };
+
+  static Map<String, Object?> _setupFrameToJson(SetupFrame f) => {
+    't': f.at.inMicroseconds,
+    ..._poseToJson(f.pose),
+    'reason': f.reason.name,
+    if (f.ready) 'ready': true,
+    'progress': _round(f.progress, 2),
+    if (f.missing.isNotEmpty) 'missing': [for (final m in f.missing) m.name],
+    if (f.phoneTilt != null) 'tilt': _round(f.phoneTilt!, 2),
+    if (f.gyro != null) 'gyro': _round(f.gyro!, 3),
+    if (f.gravity case final g?) 'g': [for (final v in g) _round(v, 3)],
+    if (f.fps != null) 'fps': f.fps,
+  };
+
+  static SetupFrame _setupFrameFromJson(
+    Map<String, Object?> json,
+    List<BodyLandmark> landmarks,
+  ) => SetupFrame(
+    at: Duration(microseconds: json['t']! as int),
+    pose: _poseFromJson(json, json['p']! as List, landmarks),
+    reason: SetupReason.values.byName(json['reason']! as String),
+    ready: json['ready'] as bool? ?? false,
+    progress: (json['progress'] as num?)?.toDouble() ?? 0,
+    missing: [
+      for (final m in json['missing'] as List? ?? const [])
+        BodyPart.values.byName(m as String),
+    ],
+    phoneTilt: (json['tilt'] as num?)?.toDouble(),
+    gyro: (json['gyro'] as num?)?.toDouble(),
+    gravity: _gravityFromJson(json['g']),
+    fps: json['fps'] as int?,
+  );
+
   static Map<String, Object?> _frameToJson(RecordedFrame f) {
     final pose = f.pose;
     return {
       't': f.at.inMicroseconds,
       if (f.mark != null) 'mark': f.mark!.name,
-      if (pose != null) ...{
-        'w': pose.imageWidth,
-        'h': pose.imageHeight,
-        // x, y, z, likelihood per landmark, in [BodyLandmark] order; four
-        // nulls for a landmark the frame does not have.
-        'p': [
-          for (final l in BodyLandmark.values)
-            ...switch (pose[l]) {
-              final k? => [
-                _round(k.x, 1),
-                _round(k.y, 1),
-                _round(k.z, 1),
-                _round(k.likelihood, 4),
-              ],
-              null => const [null, null, null, null],
-            },
-        ],
-      },
+      if (pose != null) ..._poseToJson(pose),
       if (f.phoneTilt != null) 'tilt': _round(f.phoneTilt!, 2),
       if (f.gyro != null) 'gyro': _round(f.gyro!, 3),
       if (f.phoneMoved) 'moved': true,
@@ -442,26 +594,10 @@ class PushUpRecording {
   ) {
     final at = Duration(microseconds: json['t']! as int);
     final mark = json['mark'];
-    PoseFrame? pose;
-    if (json['p'] case final List values) {
-      final keypoints = <BodyLandmark, Keypoint>{};
-      for (var i = 0; i < landmarks.length; i++) {
-        final x = values[i * 4] as num?;
-        if (x == null) continue;
-        keypoints[landmarks[i]] = Keypoint(
-          landmark: landmarks[i],
-          x: x.toDouble(),
-          y: (values[i * 4 + 1] as num).toDouble(),
-          z: (values[i * 4 + 2] as num).toDouble(),
-          likelihood: (values[i * 4 + 3] as num).toDouble(),
-        );
-      }
-      pose = PoseFrame(
-        imageWidth: (json['w']! as num).toDouble(),
-        imageHeight: (json['h']! as num).toDouble(),
-        keypoints: keypoints,
-      );
-    }
+    final pose = switch (json['p']) {
+      final List values => _poseFromJson(json, values, landmarks),
+      _ => null,
+    };
     return RecordedFrame(
       at: at,
       pose: pose,
@@ -469,10 +605,7 @@ class PushUpRecording {
       gyro: (json['gyro'] as num?)?.toDouble(),
       phoneMoved: json['moved'] as bool? ?? false,
       fps: json['fps'] as int?,
-      gravity: switch (json['g']) {
-        final List g => [for (final v in g) (v as num).toDouble()],
-        _ => null,
-      },
+      gravity: _gravityFromJson(json['g']),
       luma: (json['luma'] as num?)?.toDouble(),
       mark: mark == null ? null : FrameMark.values.byName(mark as String),
     );
@@ -575,6 +708,7 @@ class PushUpRecorder {
     required RecordingLabel label,
     required RecordingSetup setup,
     required List<RepEvent> liveEvents,
+    List<SetupFrame> setupFrames = const [],
     bool frontCamera = true,
     int frameRotation = 0,
     Map<String, Object?> judge = const {},
@@ -583,6 +717,7 @@ class PushUpRecorder {
     recordedAt: recordedAt,
     label: label,
     setup: setup,
+    setupFrames: setupFrames,
     frontCamera: frontCamera,
     frameRotation: frameRotation,
     frames: frames,
@@ -629,6 +764,11 @@ Map<String, Object?> describeJudge(RepJudgeConfig c) => {
     'maxKneeHandGap': c.maxKneeHandGap,
     'maxHipHandGap': c.maxHipHandGap,
     'minHipOnFloorGap': c.minHipOnFloorGap,
+    'minBellyTorsoDrop': c.minBellyTorsoDrop,
+    'minShoulderDrop': c.minShoulderDrop,
+    'bowHipHandGap': c.bowHipHandGap,
+    'bowTorsoDrop': c.bowTorsoDrop,
+    'maxShinLiftGap': c.maxShinLiftGap,
   },
 };
 
@@ -858,6 +998,36 @@ class _RecorderFormState extends State<_RecorderForm> {
       placement: _placement.text.trim(),
     );
     const exercise = ExerciseType.pushUp;
+    final setupRecorder = SetupRecorder();
+    final phoneTilt = app.phoneTilt ?? PhoneTiltMonitor.platform();
+    final stopwatch = Stopwatch()..start();
+    final clock = app.clock ?? () => stopwatch.elapsed;
+    final setupStart = clock();
+    SetupViewModel createSetup() {
+      final viewModel =
+          app.createSetup?.call(exercise) ??
+          SetupViewModel(
+            exercise: exercise,
+            estimator: PoseEstimator(
+              detector: PoseDetector(
+                options: PoseDetectorOptions(
+                  mode: PoseDetectionMode.stream,
+                  model: setup.model,
+                ),
+              ),
+            ),
+            phoneTilt: phoneTilt,
+          );
+      viewModel.addListener(
+        () => setupRecorder.observe(
+          viewModel.state,
+          at: clock() - setupStart,
+          phoneTilt: phoneTilt,
+        ),
+      );
+      return viewModel;
+    }
+
     final result = await Navigator.push<ExerciseType>(
       context,
       MaterialPageRoute(
@@ -866,10 +1036,7 @@ class _RecorderFormState extends State<_RecorderForm> {
           showDebugTools: true,
           // The phone stays where setup placed it.
           exitOrientations: SetupScreen.orientations,
-          createViewModel: switch (app.createSetup) {
-            final create? => () => create(exercise),
-            null => null,
-          },
+          createViewModel: createSetup,
         ),
       ),
     );
@@ -877,8 +1044,13 @@ class _RecorderFormState extends State<_RecorderForm> {
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            _CounterPage(app: app, label: label, setup: setup, record: _record),
+        builder: (_) => _CounterPage(
+          app: app,
+          label: label,
+          setup: setup,
+          record: _record,
+          setupFrames: setupRecorder.frames,
+        ),
       ),
     );
   }
@@ -1004,12 +1176,16 @@ class _CounterPage extends StatefulWidget {
     required this.label,
     required this.setup,
     required this.record,
+    this.setupFrames = const [],
   });
 
   final RepJudgeDemoApp app;
   final RecordingLabel label;
   final RecordingSetup setup;
   final bool record;
+
+  /// What setup checked before this round; saved with the recording.
+  final List<SetupFrame> setupFrames;
 
   @override
   State<_CounterPage> createState() => _CounterPageState();
@@ -1157,6 +1333,7 @@ class _CounterPageState extends State<_CounterPage>
         label: widget.label,
         setup: widget.setup,
         liveEvents: _viewModel.history,
+        setupFrames: widget.setupFrames,
         frontCamera: _viewModel.isFrontCamera,
         frameRotation: _viewModel.frameRotation,
         judge: describeJudge(widget.app.judgeConfig),

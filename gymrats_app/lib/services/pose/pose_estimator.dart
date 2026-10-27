@@ -6,6 +6,11 @@ import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import '../../models/pose_frame.dart';
 
 /// Runs ML Kit pose detection on camera frames, one frame at a time.
+///
+/// Uses the accurate model: on the H1 push-up recordings the base model
+/// read a straight plank's hip at 127-139° (accurate: 157-170°), which
+/// rejected every normal rep as knees, and accurate still ran at 23-25 fps
+/// against 27 for base on the SM-S741N used for the recordings.
 class PoseEstimator {
   PoseEstimator({PoseDetector? detector})
     : _detector =
@@ -13,7 +18,7 @@ class PoseEstimator {
           PoseDetector(
             options: PoseDetectorOptions(
               mode: PoseDetectionMode.stream,
-              model: PoseDetectionModel.base,
+              model: PoseDetectionModel.accurate,
             ),
           );
 

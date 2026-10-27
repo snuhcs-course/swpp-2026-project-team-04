@@ -31,7 +31,7 @@ class RepJudgeConfig {
     this.baselineTau = const Duration(milliseconds: 500),
     this.minCheatFrames = 3,
     this.maxTorsoDrop = 1.2,
-    this.kneeBentAngle = 110,
+    this.kneeBentAngle = 0,
     this.adoptHipAngle = 160,
     this.defaultKneeHip = 155,
     this.hipFoldWide = 25,
@@ -41,7 +41,12 @@ class RepJudgeConfig {
     this.minKneeHandGap = -0.22,
     this.maxKneeHandGap = 1.0,
     this.maxHipHandGap = 0.45,
-    this.minHipOnFloorGap = -0.05,
+    this.minHipOnFloorGap = -0.08,
+    this.minBellyTorsoDrop = 1.1,
+    this.minShoulderDrop = 0.7,
+    this.bowHipHandGap = -0.6,
+    this.bowTorsoDrop = 0.3,
+    this.maxShinLiftGap = -0.22,
   });
 
   /// Minimum ML Kit likelihood for a landmark to be used.
@@ -65,6 +70,13 @@ class RepJudgeConfig {
 
   /// Depth that counts as the bottom of the push-up.
   final double bottomDepth;
+
+  /// The shoulders must also drop this far below the top, in top-pose
+  /// shoulder widths, for the bottom to count. A head nod moves the nose
+  /// alone: on the H1 recordings the valid reps dropped the shoulders 0.75
+  /// or more, and half reps with a head nod 0.57 to 0.90. Without a
+  /// shoulder measurement the nose depth decides alone.
+  final double minShoulderDrop;
 
   /// Rising above this depth after the bottom, then going down again
   /// without a lockout, is an incomplete lockout.
@@ -103,9 +115,12 @@ class RepJudgeConfig {
   /// an upright body, as against a wall. See [torsoDropOf].
   final double maxTorsoDrop;
 
-  /// A shoulder–hip–knee angle below this, in degrees, is a knee push-up.
-  /// From the front that angle often stays open, so [kneeHandGap] is the
-  /// other way a kneeling body is seen.
+  /// A shoulder–hip–knee angle below this for [minCheatFrames] frames, in
+  /// degrees, is a knee push-up. 0 turns the check off, the default: from
+  /// the front the hips are hidden and ML Kit guesses them, so on the H1
+  /// recordings this check rejected 13 of 29 normal reps. It was the only
+  /// check that caught 4 of the 9 kneeling-bow reps; [bowHipHandGap] now
+  /// catches them.
   final double kneeBentAngle;
 
   // AI-assisted: Cursor, Grok 4.7, 2026-10-16, 송현우
@@ -146,11 +161,45 @@ class RepJudgeConfig {
   final double maxKneeHandGap;
 
   /// [PoseMetrics.hipHandGap] at or below this, and at or above
-  /// [minHipOnFloorGap], means the hips dropped onto the floor with the
-  /// hands. A plank's hips, even at the bottom, stayed above that band on
-  /// the floor-camera recording.
+  /// [minHipOnFloorGap], means the hips came down to the hands.
+  /// [minCheatFrames] such frames and a torso drop of [minBellyTorsoDrop]
+  /// somewhere in the attempt are the belly on the floor. On the H1
+  /// recordings normal reps' hips reached -0.06, so the gap alone is not
+  /// enough.
   final double maxHipHandGap;
   final double minHipOnFloorGap;
+
+  /// Torso drop, in shoulder widths, of a belly on the floor. Belly reps on
+  /// the H1 recordings reached 1.13 to 1.30 and normal reps 1.08 at most.
+  /// Knee reps reached 1.10 (a kneeling bow) and 1.64 (straight arms on the
+  /// knees), but without three frames of hips at the hands.
+  final double minBellyTorsoDrop;
+
+  /// At the attempt's deepest frame, hips at or above this
+  /// [PoseMetrics.hipHandGap] with a torso drop at or below [bowTorsoDrop]
+  /// are a kneeling bow: the hips sat back over the heels while the head
+  /// went down. On the H2 recordings 16 of 20 bow reps read -1.21 to
+  /// -0.74 with a torso drop of 0.0 or less; the other 4 read -0.52 to
+  /// -0.37. Normal reps read -0.54 at most with a torso drop under 0.3
+  /// (-0.79 only with 0.75), reps far from the phone -0.13 to -0.16, and
+  /// knee push-ups -0.14 to -0.32.
+  final double bowHipHandGap;
+  final double bowTorsoDrop;
+
+  /// Shins lifted at the top are a knee push-up: [PoseMetrics.ankleKneeGap]
+  /// at or below this in at least half of the last straight-arm top frames
+  /// before the descent, and in at least [minCheatFrames] of them. A top
+  /// frame with hidden ankles counts as not lifted. On the H2 recordings,
+  /// the median over each rep's top frames (head within 0.3 shoulder widths
+  /// of its highest, elbows at 150° or more): normal reps -0.18 to +0.02,
+  /// knee push-ups of the session-2 and session-3 sets -0.27 to -0.19
+  /// (other windows read a little lower); session 1's knee set read -0.21
+  /// to -0.04 and is caught by the knee line instead. Only the last frames
+  /// count: walking back from the phone between reps reads -0.56. During
+  /// the descent the readings overlap, so they are not used. -0.21 would
+  /// also catch the two knee reps at -0.21 but rejected a normal rep far
+  /// from the phone.
+  final double maxShinLiftGap;
 }
 
 /// Where the user is in a push-up.
@@ -261,7 +310,11 @@ class RepJudge {
   double? _baselineHip;
   final List<double> _baselineHips = [];
   int _hipHandFrames = 0;
-  double _minHipHandGap = double.infinity;
+  final List<bool> _topShins = [];
+  bool _shinsLifted = false;
+  double _maxTorsoDrop = double.negativeInfinity;
+  double? _deepHipHandGap;
+  double? _deepTorsoDrop;
 
   /// Time from the start of the attempt until the head first reached the
   /// bottom. Null until then.
@@ -341,13 +394,25 @@ class RepJudge {
       _lockSetupHip(elbow, depth, raw);
       _watchKneeFromSetup(elbow, depth, raw);
       _clearKneeLatchIfPlank(now, elbow, depth, raw);
-      if (depth >= config.enterDepth) _beginAttempt(now, depth);
+      _watchShinsAtTop(elbow, depth, raw);
+      if (depth >= config.enterDepth) {
+        final count = _topShins.where((l) => l).length;
+        final lifted =
+            count >= config.minCheatFrames && count * 2 >= _topShins.length;
+        _beginAttempt(now, depth);
+        _shinsLifted = lifted;
+      }
     }
 
     if (_phase == RepPhase.descending || _phase == RepPhase.bottom) {
+      if (depth >= _maxDepth) {
+        // Hidden hips at the deepest frame leave no bow reading.
+        _deepHipHandGap = raw.hipHandGap;
+        _deepTorsoDrop = raw.torsoDrop;
+      }
       _maxDepth = math.max(_maxDepth, depth);
       if (elbow != null) _minElbow = math.min(_minElbow ?? elbow, elbow);
-      _watchLowerBody(raw, depth);
+      _watchLowerBody(raw);
       // A single-frame spike from a shoulder near the edge is not a tilt.
       if (tilt != null && _previousTilt != null) {
         _maxTilt = math.max(_maxTilt, math.min(tilt, _previousTilt!));
@@ -362,13 +427,23 @@ class RepJudge {
     }
     _previousTilt = tilt;
 
-    final event = _advance(now, depth, elbow);
+    // A hidden shoulder keeps its last smoothed value; it must not hold the
+    // rep above the bottom.
+    final shoulderDrop = raw.shoulderY == null ? null : _shoulderDrop(smoothed);
+    final event = _advance(now, depth, shoulderDrop, elbow);
     return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt), event: event);
   }
 
-  RepEvent? _advance(Duration now, double depth, double? elbow) {
+  RepEvent? _advance(
+    Duration now,
+    double depth,
+    double? shoulderDrop,
+    double? elbow,
+  ) {
     if (_phase == RepPhase.descending) {
-      if (depth >= config.bottomDepth) {
+      final shouldersDown =
+          shoulderDrop == null || shoulderDrop >= config.minShoulderDrop;
+      if (depth >= config.bottomDepth && shouldersDown) {
         _phase = RepPhase.bottom;
         _highestSinceBottom = depth;
         _descent ??= now - _attemptStarted!;
@@ -392,12 +467,17 @@ class RepJudge {
       if (_highestSinceBottom <= config.partialDepth &&
           depth - _highestSinceBottom >= config.reDescentDepth) {
         // A flicker this short is not a missed lockout. Keep judging.
+        // The re-attempt sees no top frames, so it keeps the shin verdict
+        // as it keeps the knee latch.
+        final shinsLifted = _shinsLifted;
         if (_tooBrief(now)) {
           _beginAttempt(now, depth);
+          _shinsLifted = shinsLifted;
           return null;
         }
         final event = _emit(now, _withKnees(RejectReason.incompleteExtension));
         _beginAttempt(now, depth);
+        _shinsLifted = shinsLifted;
         return event;
       }
     }
@@ -530,12 +610,16 @@ class RepJudge {
   }
 
   /// Records what the attempt showed of the hips and knees, raw: the cheat
-  /// checks count frames, so one noisy frame cannot reject a rep.
-  void _watchLowerBody(PoseMetrics raw, double depth) {
+  /// checks count frames, so one noisy frame cannot reject a rep alone. The
+  /// belly's torso drop is the attempt's peak, though: on the H1 belly reps
+  /// it never came in the same frames as the hips at the hands, so one
+  /// noisy torso frame can add to three hip frames.
+  void _watchLowerBody(PoseMetrics raw) {
     final drop = raw.torsoDrop;
     if (drop != null) {
       _torsoFrames++;
       _minTorsoDrop = math.min(_minTorsoDrop, drop);
+      _maxTorsoDrop = math.max(_maxTorsoDrop, drop);
     }
     final kneeGap = raw.kneeHandGap;
     if (kneeGap != null) {
@@ -550,27 +634,44 @@ class RepJudge {
       }
     }
     final hipGap = raw.hipHandGap;
-    if (hipGap != null && depth >= config.bottomDepth) {
+    if (hipGap != null &&
+        hipGap >= config.minHipOnFloorGap &&
+        hipGap <= config.maxHipHandGap) {
       _hipHandFrames++;
-      _minHipHandGap = math.min(_minHipHandGap, hipGap);
     }
   }
 
   /// Knees were seen on the floor for [RepJudgeConfig.minCheatFrames]
-  /// consecutive frames, either folded or sitting next to the hands.
+  /// consecutive frames, either folded or sitting next to the hands, or the
+  /// hips sat back in a kneeling bow.
   bool _kneesDown() {
     final frames = config.minCheatFrames;
     return _kneesLatched ||
         _kneeBentFrames >= frames ||
-        _kneeFloorFrames >= frames;
+        _kneeFloorFrames >= frames ||
+        _shinsLifted ||
+        _bowedBack();
   }
 
-  /// Straight arms through the bottom of a rep whose hips were already
-  /// latched as knees. A plank that simply keeps the elbows extended, with
-  /// the hips open, still counts. The cat pose had both: the fold, and
-  /// elbows that stayed around 170°.
+  /// The arms may lock out at the top of a bow, so it is told apart by the
+  /// hips at the bottom, not the elbows: front-view elbow angles of bows
+  /// and normal reps overlap.
+  bool _bowedBack() {
+    final gap = _deepHipHandGap;
+    final drop = _deepTorsoDrop;
+    return gap != null &&
+        drop != null &&
+        gap <= config.bowHipHandGap &&
+        drop <= config.bowTorsoDrop;
+  }
+
+  /// Straight arms through the bottom of a rep already seen on the knees.
+  /// A plank that simply keeps the elbows extended, with the hips open,
+  /// still counts. The cat pose had both: the fold, and elbows that stayed
+  /// around 170°. On H1's straight-arm reps on the knees, the knees showed
+  /// by the hands as often as by the fold, so either one is enough.
   bool _armsNeverBent() =>
-      _kneesLatched &&
+      _kneesDown() &&
       _minElbow != null &&
       _minElbow! >= config.straightArmAngle &&
       _maxDepth >= config.bottomDepth;
@@ -590,16 +691,32 @@ class RepJudge {
   /// a belly on the floor do.
   RejectReason? _cheat() {
     if (_armsNeverBent() && !_uprightTorso()) return RejectReason.armsStraight;
+    if (_bellyOnFloor()) return RejectReason.bellyDown;
     if (_kneesDown()) return RejectReason.kneesDown;
     if (_uprightTorso()) return RejectReason.notFloorPushUp;
-    // Hips down at the hands. Hips that merely stay put, as they do when
-    // the knees hold them up, are not a belly on the floor.
-    if (_hipHandFrames >= config.minCheatFrames &&
-        _minHipHandGap <= config.maxHipHandGap &&
-        _minHipHandGap >= config.minHipOnFloorGap) {
-      return RejectReason.bellyDown;
-    }
     return null;
+  }
+
+  /// Hips down at the hands with the torso sagging. Checked before the
+  /// knees: a sagging belly also folds the hip angle at the top, which
+  /// used to close every belly rep as knees. Hips that merely stay put, as
+  /// they do when the knees hold them up, do not sag the torso.
+  bool _bellyOnFloor() =>
+      _hipHandFrames >= config.minCheatFrames &&
+      _maxTorsoDrop >= config.minBellyTorsoDrop;
+
+  static const _shinWindow = 10;
+
+  /// Keeps the last straight-arm top frames before the descent and whether
+  /// their shins read lifted.
+  void _watchShinsAtTop(double? elbow, double depth, PoseMetrics raw) {
+    if (elbow == null || elbow < config.topAngle) return;
+    if (depth >= config.enterDepth) return;
+    // Hidden ankles push out older readings, so a part no longer seen
+    // cannot reject the rep.
+    final gap = raw.ankleKneeGap;
+    _topShins.add(gap != null && gap <= config.maxShinLiftGap);
+    if (_topShins.length > _shinWindow) _topShins.removeAt(0);
   }
 
   void _beginAttempt(Duration now, double depth) {
@@ -619,7 +736,11 @@ class RepJudge {
     _kneeBentFrames = 0;
     _kneeFloorFrames = 0;
     _hipHandFrames = 0;
-    _minHipHandGap = double.infinity;
+    _maxTorsoDrop = double.negativeInfinity;
+    _topShins.clear();
+    _shinsLifted = false;
+    _deepHipHandGap = null;
+    _deepTorsoDrop = null;
   }
 
   void _finishAtTop() {

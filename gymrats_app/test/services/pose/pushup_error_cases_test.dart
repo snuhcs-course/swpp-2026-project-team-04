@@ -5,6 +5,7 @@ import 'package:gymrats_app/demo/rep_judge_demo.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
 import '../../support/pose_fixtures.dart';
@@ -14,34 +15,112 @@ import '../../support/pushup_case_loader.dart';
 /// skipped with its reason, until the judge fix turns it back on.
 const knownErrors = <String, String>{
   '20261026-000317_normal':
-      'known error: normal reps 1 and 4 rejected as kneesDown (hip angle '
-      'under 110° for 3 frames at the bottom); the belly-down rep 5 is '
-      'rejected as kneesDown, not bellyDown',
+      'known error: the belly-down rep 5 (labelled from memory) has no torso '
+      'sag and is rejected as kneesDown by a 2-frame hip fold at the top',
   '20261026-000418_normal':
       'known error: the base model reads the plank hip at 127-139°, so '
       'every normal rep latches kneesDown at the top',
   '20261026-000522_normal':
-      'known error: normal reps 1 and 4 rejected as kneesDown (hip angle '
-      'under 110° at the bottom), rep 2 by a one-frame hip dip at the top',
+      'known error: normal rep 2 is rejected as kneesDown by a 2-frame hip '
+      'dip at the top (141° against the 162° baseline); a 3-frame rule '
+      'would also miss knee reps 2 and 3 of 20261026-000615_knees',
   '20261027-142000_halfRepHeadNod':
-      'known error: every half rep passes the nose depth (1.5-1.8) and is '
-      'rejected as kneesDown by the knee-hand gap, not insufficientDepth',
+      'known error: half reps 3 and 4 dropped the shoulders 0.90 and 0.78, '
+      'past the 0.70 line, and are rejected as kneesDown, not '
+      'insufficientDepth',
   '20261027-142116_bellyDown':
-      'known error: no rep is rejected as bellyDown; reps 2-5 latch kneesDown '
-      'at the top (hip angle), rep 1 is insufficientDepth',
-  '20261027-142240_knees':
-      'known error: normal reps 1 and 2 rejected as kneesDown (hip angle '
-      'under 110° at the bottom)',
-  '20261027-142341_normal':
-      'known error: normal reps 1, 7, 8 rejected as kneesDown (hip angle '
-      'under 110° at the bottom; reps 7, 8 farther from the phone)',
-  '20261027-145535_knees':
-      'known error: kneeling-bow rep 2 (elbows stayed at 166°) is rejected as '
-      'armsStraight, not kneesDown; the other 8 are kneesDown, reps 1-4 only '
-      'through the hip angle under 110° rule',
+      'known error: belly rep 1 never reached the bottom and is '
+      'insufficientDepth, not bellyDown',
   '20261027-142432_normal':
-      'known error: farther from the phone, normal reps 1-4 rejected as '
-      'kneesDown (hip angle under 110°), rep 5 as insufficientDepth',
+      'known error: farther from the phone, normal rep 5 is '
+      'insufficientDepth: the shoulders dropped 0.27 although the elbows '
+      'reached 44°',
+  '20261027-145535_knees':
+      'known error: kneeling-bow rep 2 kept the elbows straight through '
+      'the bottom and is armsStraight, not kneesDown',
+  '20261027-222907_knees':
+      'known error: false count; knee push-ups 16 and 17 count: their '
+      'shins read -0.21 at the top, just past the -0.22 line. Knee rep 18 '
+      'is insufficientDepth, and the rock back after rep 19 closes as an '
+      'extra insufficientDepth',
+};
+
+/// What today's judge closes, rep by rep, for each known error: `valid` or
+/// the reason name. Pins the partial fixes inside the skipped cases, so a
+/// regression there fails even while the labelled test stays skipped.
+const knownVerdicts = <String, List<String>>{
+  '20261026-000317_normal': ['valid', 'valid', 'valid', 'valid', 'kneesDown'],
+  '20261026-000418_normal': [
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+  ],
+  '20261026-000522_normal': [
+    'valid',
+    'kneesDown',
+    'valid',
+    'valid',
+    'valid',
+    'valid',
+    'valid',
+  ],
+  '20261027-142000_halfRepHeadNod': [
+    'insufficientDepth',
+    'insufficientDepth',
+    'kneesDown',
+    'kneesDown',
+    'insufficientDepth',
+  ],
+  '20261027-142116_bellyDown': [
+    'insufficientDepth',
+    'bellyDown',
+    'bellyDown',
+    'bellyDown',
+    'bellyDown',
+  ],
+  '20261027-142432_normal': [
+    'valid',
+    'valid',
+    'valid',
+    'valid',
+    'insufficientDepth',
+  ],
+  '20261027-145535_knees': [
+    'kneesDown',
+    'armsStraight',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+  ],
+  '20261027-222907_knees': [
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'valid',
+    'valid',
+    'insufficientDepth',
+    'kneesDown',
+    'insufficientDepth',
+  ],
 };
 
 void main() {
@@ -58,6 +137,7 @@ void main() {
         expect(ids, contains(id), reason: 'known error for a missing case');
         expect(reason, startsWith('known error: '));
       }
+      expect(knownVerdicts.keys.toSet(), knownErrors.keys.toSet());
     });
 
     test('every per-rep label agrees with the set totals', () {
@@ -90,6 +170,14 @@ void main() {
         final result = replay(c.recording);
         expect(result.matches(label), isTrue, reason: describeCase(c, result));
       }, skip: knownErrors[c.id]);
+      if (knownVerdicts[c.id] case final verdicts?) {
+        test('${c.id} still replays as known, rep by rep', () {
+          final result = replay(c.recording);
+          expect([
+            for (final e in result.events) e.reason?.name ?? 'valid',
+          ], verdicts);
+        });
+      }
     }
   });
 
@@ -251,10 +339,10 @@ void main() {
       final config = copy.judge['config']! as Map<String, Object?>;
       expect(config['bottomDepth'], 1.1);
       expect(config['topHoldMs'], 300);
-      expect(config, hasLength(28));
+      expect(config, hasLength(33));
       expect(copy.judge['commit'], isNull);
       expect(copy.setup.device, 'test');
-      expect(copy.setup.model, PoseDetectionModel.base);
+      expect(copy.setup.model, PoseDetectionModel.accurate);
       expect(copy.setup.roundLength, const Duration(seconds: 30));
       expect(copy.frames, hasLength(3));
 
@@ -290,6 +378,71 @@ void main() {
         RegExp(r'^    \{"t":', multiLine: true).allMatches(json),
         hasLength(3),
       );
+    });
+
+    test('setup frames keep their verdict through encode and decode', () {
+      final original = PushUpRecording(
+        id: 'synthetic',
+        recordedAt: DateTime(2026, 10, 27),
+        label: RecordingLabel.of(CaseKind.normal, 1),
+        setup: const RecordingSetup(device: 'test'),
+        frames: top(),
+        liveEvents: const [],
+        setupFrames: [
+          SetupFrame(
+            at: const Duration(milliseconds: 40),
+            pose: pushUpFrame(),
+            reason: SetupReason.missingParts,
+            progress: 0.123,
+            missing: const [BodyPart.hands, BodyPart.elbows],
+            phoneTilt: 71.234,
+            gyro: 0.0123,
+            gravity: const [1.5, 9.6, 0.4],
+            fps: 22,
+          ),
+          SetupFrame(
+            at: const Duration(milliseconds: 1500),
+            pose: pushUpFrame(),
+            reason: SetupReason.ready,
+            ready: true,
+            progress: 1,
+          ),
+        ],
+      );
+      final json = original.encode();
+      final copy = PushUpRecording.decode(json);
+
+      final [missing, ready] = copy.setupFrames;
+      expect(missing.at, const Duration(milliseconds: 40));
+      expect(missing.reason, SetupReason.missingParts);
+      expect(missing.ready, isFalse);
+      expect(missing.progress, 0.12);
+      expect(missing.missing, [BodyPart.hands, BodyPart.elbows]);
+      expect(missing.phoneTilt, 71.23);
+      expect(missing.gyro, 0.012);
+      expect(missing.gravity, [1.5, 9.6, 0.4]);
+      expect(missing.fps, 22);
+      expect(missing.pose.keypoints.keys, pushUpFrame().keypoints.keys);
+      expect(ready.reason, SetupReason.ready);
+      expect(ready.ready, isTrue);
+      expect(ready.missing, isEmpty);
+      expect(ready.phoneTilt, isNull);
+      expect(ready.gravity, isNull);
+      expect(copy.frames, hasLength(2));
+      // One setup frame per line, like the judged frames.
+      expect(
+        RegExp(r'^    \{"t":', multiLine: true).allMatches(json),
+        hasLength(4),
+      );
+    });
+
+    test('a recording made before setup was recorded has no setup frames', () {
+      final json = recording(top()).encode();
+      expect(json, contains('"setupFrames": []'));
+      final old = json.replaceFirst('"setupFrames": [],', '');
+      expect(old, isNot(contains('setupFrames')));
+      expect(PushUpRecording.decode(old).setupFrames, isEmpty);
+      expect(PushUpRecording.decode(old).frames, hasLength(2));
     });
 
     test('a full set survives the round trip with the same replay', () {

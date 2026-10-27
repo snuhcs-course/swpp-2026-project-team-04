@@ -17,8 +17,8 @@
     "heightCm": 183,
     "armCm": null,
     "shoulderCm": null,
-    "device": "",
-    "placement": "",
+    "device": "SM-S741N",
+    "placement": "floor, usual distance",
     "lighting": "bright",
     "model": "accurate",
     "roundSeconds": 30

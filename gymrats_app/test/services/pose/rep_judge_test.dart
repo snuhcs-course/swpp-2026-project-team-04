@@ -32,6 +32,7 @@ void main() {
 
   PoseFrame pose({
     double depth = 0,
+    double? shoulderDrop,
     double elbow = 170,
     double tilt = 0,
     Set<BodyLandmark> hide = const {},
@@ -39,6 +40,7 @@ void main() {
   }) {
     final frame = pushUpFrame(
       depth: depth,
+      shoulderDrop: shoulderDrop,
       elbowAngle: elbow,
       tiltDeg: tilt,
       hide: hide,
@@ -128,6 +130,24 @@ void main() {
     expect(update.event!.valid, isTrue);
   });
 
+  test('shoulders hidden at the bottom do not hold the rep up', () {
+    final c = judge();
+    calibrate(c);
+    // The last shoulder drop seen is under the line; the hidden shoulders
+    // must not keep it.
+    at(c, 400, pose(depth: 0.6, shoulderDrop: 0.3));
+    final bottom = at(
+      c,
+      800,
+      pose(
+        depth: 1.5,
+        hide: {BodyLandmark.leftShoulder, BodyLandmark.rightShoulder},
+      ),
+    );
+    expect(bottom.snapshot.phase, RepPhase.bottom);
+    expect(at(c, 1200, pose()).event!.valid, isTrue);
+  });
+
   test('a rep that stops short of the bottom is rejected for depth', () {
     final c = judge();
     calibrate(c);
@@ -138,6 +158,28 @@ void main() {
     expect(update.event!.reason, RejectReason.insufficientDepth);
     expect(update.event!.reason!.message, 'Go lower');
     expect(update.snapshot.phase, RepPhase.up);
+  });
+
+  test('a head nod with the shoulders kept up is rejected for depth', () {
+    final c = judge();
+    calibrate(c);
+    at(c, 400, pose(depth: 0.6, shoulderDrop: 0.3));
+    final bottom = at(c, 800, pose(depth: 1.6, shoulderDrop: 0.6));
+    expect(bottom.snapshot.phase, RepPhase.descending);
+    expect(bottom.snapshot.shoulderDrop, closeTo(0.6, 0.01));
+    final update = at(c, 1200, pose());
+    expect(update.event!.reason, RejectReason.insufficientDepth);
+    expect(update.event!.maxDepth, closeTo(1.6, 0.01));
+  });
+
+  test('the shoulders reaching the line complete the bottom', () {
+    final c = judge();
+    calibrate(c);
+    at(c, 400, pose(depth: 0.6, shoulderDrop: 0.3));
+    at(c, 800, pose(depth: 1.6, shoulderDrop: 0.6));
+    final bottom = at(c, 900, pose(depth: 1.6, shoulderDrop: 0.7));
+    expect(bottom.snapshot.phase, RepPhase.bottom);
+    expect(at(c, 1300, pose()).event!.valid, isTrue);
   });
 
   test('a small dip is not a rep at all', () {
@@ -323,6 +365,20 @@ void main() {
     const leftX = 400.0;
     const rightX = 600.0;
 
+    /// Wrist height of pushUpFrame at [depth]: 640 at the top, and the arms
+    /// drop with the shoulders.
+    double wristY(double depth) => 640 + 0.6 * depth * pushUpShoulderWidth;
+
+    /// pushUpFrame keeps the arms 1.2 shoulder widths long at every depth,
+    /// so its plank hips, a few pixels below the shoulders, end up far above
+    /// the hands at the bottom, as the hips of a kneeling bow do. Tests of
+    /// the other lower-body rules, counting or rejecting, turn the bow check
+    /// off so they can only pass through their own rule.
+    const noBow = RepJudgeConfig(
+      smoothingTau: Duration.zero,
+      bowHipHandGap: double.negativeInfinity,
+    );
+
     /// A rep whose hips sit at [hipY] for each head depth, with knees at
     /// [knee] offsets from the hips when given.
     RepUpdate repWithHips(
@@ -361,40 +417,351 @@ void main() {
     }
 
     test('a plank whose hips follow the head counts', () {
-      final update = repWithHips(judge(), (d) => 430 + 0.5 * d * 200);
+      final update = repWithHips(
+        judge(config: noBow),
+        (d) => 430 + 0.5 * d * 200,
+      );
       expect(update.event!.valid, isTrue);
     });
 
     test('hips that stay up are not called a belly push-up', () {
       // The hips never come down to the hands. From the front they also
       // barely move, which used to be misread as the belly on the floor.
-      final update = repWithHips(judge(), (_) => 430);
+      final update = repWithHips(judge(config: noBow), (_) => 430);
       expect(update.event!.valid, isTrue);
     });
 
+    test('hips sat back over the heels at the bottom are a kneeling bow', () {
+      // A plank top (hips 1.05 shoulder widths below the shoulders) whose
+      // hips stay put while the head goes down: 0.15 widths below the
+      // shoulders and 1.05 above the hands at the bottom. The arms lock out.
+      final update = repWithHips(judge(), (_) => 610);
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('hips that sink less than the shoulders are not a bow', () {
+      // Torso drop 1.05 at the top and 0.45 at the bottom, as on the
+      // recorded normal reps: past bowTorsoDrop, so the rep counts.
+      final update = repWithHips(judge(), (d) => 610 + 0.2 * d * 200);
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('a bow with the hips hidden at the bottom is not judged as one', () {
+      final update = repWithHips(judge(), (_) => 610, hipsAtBottom: false);
+      expect(update.event!.valid, isTrue);
+    });
+
+    /// A straight-arm top frame whose ankles sit [shin] shoulder widths
+    /// from the knees, far behind the hands, at [depth].
+    PoseFrame shinFrame(double shin, {double depth = 0}) => pushUpFrame(
+      depth: depth,
+      elbowAngle: depth >= 0.8 ? 120 : 170,
+      lowerBody: {
+        BodyLandmark.leftKnee: (leftX, 450),
+        BodyLandmark.rightKnee: (rightX, 450),
+        BodyLandmark.leftAnkle: (leftX, 450 + shin * 200),
+        BodyLandmark.rightAnkle: (rightX, 450 + shin * 200),
+      },
+    );
+
+    RepUpdate shinRep(RepJudge c, List<double> topShins) {
+      at(c, 0, shinFrame(topShins.first));
+      at(c, 300, shinFrame(topShins.first));
+      var t = 300;
+      for (final shin in topShins) {
+        t += 40;
+        at(c, t, shinFrame(shin));
+      }
+      at(c, t + 200, shinFrame(0, depth: 0.6));
+      at(c, t + 500, shinFrame(0, depth: 1.5));
+      return at(c, t + 900, shinFrame(0));
+    }
+
+    test('shins lifted at the top are a knee push-up', () {
+      final update = shinRep(judge(), List.filled(10, -0.3));
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('straight legs at the top count', () {
+      final update = shinRep(judge(), List.filled(10, -0.1));
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('shins lifted only while moving before the plank still count', () {
+      // Walking back from the phone lifts the shins; the last ten top
+      // frames before the descent are a flat plank.
+      final update = shinRep(judge(), [
+        ...List.filled(10, -0.5),
+        ...List.filled(10, -0.1),
+      ]);
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('hidden ankles leave the rep alone', () {
+      final c = judge();
+      PoseFrame frame({double depth = 0}) => pushUpFrame(
+        depth: depth,
+        elbowAngle: depth >= 0.8 ? 120 : 170,
+        hide: {BodyLandmark.leftAnkle, BodyLandmark.rightAnkle},
+        lowerBody: {
+          BodyLandmark.leftKnee: (leftX, 450),
+          BodyLandmark.rightKnee: (rightX, 450),
+        },
+      );
+      at(c, 0, frame());
+      at(c, 300, frame());
+      at(c, 400, frame());
+      at(c, 600, frame(depth: 0.6));
+      at(c, 900, frame(depth: 1.5));
+      expect(at(c, 1300, frame()).event!.valid, isTrue);
+    });
+
+    test('a few lifted frames are not enough', () {
+      // Two of the last ten top frames read lifted: under minCheatFrames.
+      final update = shinRep(judge(), [
+        ...List.filled(8, -0.1),
+        ...List.filled(2, -0.3),
+      ]);
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('half of the last top frames lifted are a knee push-up', () {
+      final half = shinRep(judge(), [
+        ...List.filled(5, -0.1),
+        ...List.filled(5, -0.3),
+      ]);
+      expect(half.event!.reason, RejectReason.kneesDown);
+      final fewer = shinRep(judge(), [
+        ...List.filled(6, -0.1),
+        ...List.filled(4, -0.3),
+      ]);
+      expect(fewer.event!.valid, isTrue);
+    });
+
+    test('ankles hidden in the last plank frames drop older lifted ones', () {
+      final c = judge();
+      PoseFrame hidden({double depth = 0}) => pushUpFrame(
+        depth: depth,
+        elbowAngle: depth >= 0.8 ? 120 : 170,
+        hide: {BodyLandmark.leftAnkle, BodyLandmark.rightAnkle},
+        lowerBody: {
+          BodyLandmark.leftKnee: (leftX, 450),
+          BodyLandmark.rightKnee: (rightX, 450),
+        },
+      );
+      at(c, 0, shinFrame(-0.5));
+      at(c, 300, shinFrame(-0.5));
+      var t = 300;
+      for (var i = 0; i < 10; i++) {
+        at(c, t += 40, shinFrame(-0.5));
+      }
+      for (var i = 0; i < 10; i++) {
+        at(c, t += 40, hidden());
+      }
+      at(c, t + 200, hidden(depth: 0.6));
+      at(c, t + 500, hidden(depth: 1.5));
+      expect(at(c, t + 900, hidden()).event!.valid, isTrue);
+    });
+
+    test('a missed lockout keeps the lifted shins for the next try', () {
+      final c = judge();
+      at(c, 0, shinFrame(-0.3));
+      at(c, 300, shinFrame(-0.3));
+      var t = 300;
+      for (var i = 0; i < 10; i++) {
+        at(c, t += 40, shinFrame(-0.3));
+      }
+      at(c, t + 200, shinFrame(0, depth: 0.6));
+      at(c, t + 500, shinFrame(0, depth: 1.5));
+      at(c, t + 800, shinFrame(0, depth: 0.5));
+      final missed = at(c, t + 1100, shinFrame(0, depth: 1.0));
+      expect(missed.event!.reason, RejectReason.kneesDown);
+      at(c, t + 1400, shinFrame(0, depth: 1.5));
+      final next = at(c, t + 1800, shinFrame(0));
+      expect(next.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('a small torso drop with the hips near the hands is not a bow', () {
+      // Hips 0.15 shoulder widths below the shoulders at the bottom, as in
+      // a bow, but only 0.5 above the hands: the gap side keeps it a plank.
+      final c = judge();
+      PoseFrame frame(double depth) => pushUpFrame(
+        depth: depth,
+        elbowAngle: depth >= 0.8 ? 120 : 170,
+        lowerBody: {
+          BodyLandmark.leftHip: (leftX, 610),
+          BodyLandmark.rightHip: (rightX, 610),
+          if (depth >= 0.8) ...{
+            BodyLandmark.leftWrist: (leftX, 710),
+            BodyLandmark.rightWrist: (rightX, 710),
+          },
+        },
+      );
+      at(c, 0, frame(0));
+      at(c, 300, frame(0));
+      at(c, 400, frame(0.6));
+      at(c, 600, frame(1.2));
+      at(c, 800, frame(1.5));
+      at(c, 1000, frame(0.6));
+      expect(at(c, 1200, frame(0)).event!.valid, isTrue);
+    });
+
     test('hips that drop to the hands are a belly push-up', () {
-      // Wrists of pushUpFrame sit near y = 640.
-      final update = repWithHips(judge(), (_) => 640);
+      // The torso sags 1.2 shoulder widths, past minBellyTorsoDrop.
+      final update = repWithHips(judge(), wristY);
       expect(update.event!.reason, RejectReason.bellyDown);
       expect(update.event!.reason!.message, 'Hips up');
     });
 
     test('knees next to the hands are a knee push-up', () {
       // Open hip angle, so only the knee sitting by the wrists gives it away.
-      final update = repWithHips(judge(), (_) => 500, knee: (0, 140));
+      final update = repWithHips(
+        judge(),
+        (d) => wristY(d) - 140,
+        knee: (0, 140),
+      );
       expect(update.event!.reason, RejectReason.kneesDown);
     });
 
     test('knees almost at the hands are a knee push-up', () {
-      // gap = (610 - 640) / 200 = -0.15. The hip angle stays open.
-      final update = repWithHips(judge(), (_) => 500, knee: (0, 110));
+      // gap = -30 / 200 = -0.15. The hip angle stays open.
+      final update = repWithHips(
+        judge(),
+        (d) => wristY(d) - 140,
+        knee: (0, 110),
+      );
       expect(update.event!.reason, RejectReason.kneesDown);
     });
 
     test('knees at a plank distance behind the hands still count', () {
-      // gap = (560 - 640) / 200 = -0.40, where a real plank's knees sat.
-      final update = repWithHips(judge(), (_) => 500, knee: (0, 60));
+      // gap = -80 / 200 = -0.40, where a real plank's knees sat.
+      final update = repWithHips(
+        judge(),
+        (d) => wristY(d) - 140,
+        knee: (0, 60),
+      );
       expect(update.event!.valid, isTrue);
+    });
+
+    test('a belly on the floor is not called knees', () {
+      // The knees also sit by the hands; the sagging torso decides.
+      final update = repWithHips(judge(), wristY, knee: (0, 0));
+      expect(update.event!.reason, RejectReason.bellyDown);
+    });
+
+    test('the belly band starts 0.08 shoulder widths above the hands', () {
+      // Longer arms keep the torso drop between the belly line (1.1) and
+      // an upright body (1.2) for both: 1.25 + gap.
+      RepUpdate run(double gap) {
+        final c = judge();
+        PoseFrame frame(double depth) {
+          final y = 400 + 0.6 * depth * 200 + (1.25 + gap) * 200;
+          return pushUpFrame(
+            depth: depth,
+            spanRatio: 1.25,
+            elbowAngle: depth >= 0.8 ? 120 : 170,
+            lowerBody: {
+              BodyLandmark.leftHip: (leftX, y),
+              BodyLandmark.rightHip: (rightX, y),
+            },
+          );
+        }
+
+        at(c, 0, frame(0));
+        at(c, 300, frame(0));
+        at(c, 400, frame(0.6));
+        at(c, 600, frame(1.2));
+        at(c, 700, frame(1.4));
+        at(c, 800, frame(1.5));
+        at(c, 1000, frame(0.6));
+        return at(c, 1200, frame(0));
+      }
+
+      expect(run(-0.07).event!.reason, RejectReason.bellyDown);
+      expect(run(-0.09).event!.valid, isTrue);
+    });
+
+    test('a belly rep does not carry its torso sag to the next rep', () {
+      final c = judge();
+      PoseFrame frame(double depth, {required bool belly}) {
+        final y = belly ? wristY(depth) : 430 + 0.6 * depth * 200;
+        return pushUpFrame(
+          depth: depth,
+          elbowAngle: depth >= 0.8 ? 120 : 170,
+          lowerBody: {
+            BodyLandmark.leftHip: (leftX, y),
+            BodyLandmark.rightHip: (rightX, y),
+          },
+        );
+      }
+
+      void rep(int start, {required bool belly}) {
+        at(c, start, frame(0.6, belly: belly));
+        at(c, start + 200, frame(1.2, belly: belly));
+        at(c, start + 300, frame(1.4, belly: belly));
+        at(c, start + 400, frame(1.5, belly: belly));
+        at(c, start + 600, frame(0.6, belly: belly));
+      }
+
+      at(c, 0, frame(0, belly: false));
+      at(c, 300, frame(0, belly: false));
+      rep(400, belly: true);
+      final belly = at(c, 1200, frame(0, belly: false));
+      expect(belly.event!.reason, RejectReason.bellyDown);
+      // Hips only at the hands, no sag: the torso peak was not kept.
+      at(c, 1500, frame(0, belly: false));
+      at(c, 1700, frame(0.6, belly: false));
+      PoseFrame atHands(double depth) => pushUpFrame(
+        depth: depth,
+        spanRatio: 0.9,
+        elbowAngle: depth >= 0.8 ? 120 : 170,
+        lowerBody: {
+          BodyLandmark.leftHip: (leftX, 400 + 0.6 * depth * 200 + 180),
+          BodyLandmark.rightHip: (rightX, 400 + 0.6 * depth * 200 + 180),
+        },
+      );
+      at(c, 1900, atHands(1.2));
+      at(c, 2000, atHands(1.4));
+      at(c, 2100, atHands(1.5));
+      at(c, 2300, frame(0.6, belly: false));
+      final next = at(c, 2500, frame(0, belly: false));
+      expect(next.event!.valid, isTrue);
+    });
+
+    test('hips at the hands without a sagging torso are not a belly', () {
+      // Short arms: the hips reach the hands with a torso drop of 0.9.
+      final c = judge();
+      PoseFrame frame(double depth) {
+        final y = 400 + 0.6 * depth * 200 + 0.9 * 200;
+        return pushUpFrame(
+          depth: depth,
+          spanRatio: 0.9,
+          elbowAngle: depth >= 0.8 ? 120 : 170,
+          lowerBody: {
+            BodyLandmark.leftHip: (leftX, y),
+            BodyLandmark.rightHip: (rightX, y),
+          },
+        );
+      }
+
+      at(c, 0, frame(0));
+      at(c, 300, frame(0));
+      at(c, 400, frame(0.6));
+      at(c, 600, frame(1.2));
+      at(c, 700, frame(1.4));
+      at(c, 800, frame(1.5));
+      at(c, 1000, frame(0.6));
+      expect(at(c, 1200, frame(0)).event!.valid, isTrue);
+    });
+
+    test('straight arms with the knees by the hands are not a push-up', () {
+      final update = repWithHips(
+        judge(),
+        (d) => wristY(d) - 140,
+        knee: (0, 140),
+        bendArms: false,
+      );
+      expect(update.event!.reason, RejectReason.armsStraight);
     });
 
     test('a shallow knee push-up is still too shallow', () {
@@ -424,7 +791,7 @@ void main() {
 
     test('knees bent under the hips are a knee push-up', () {
       final update = repWithHips(
-        judge(),
+        judge(config: noBow),
         (d) => 430 + 0.5 * d * 200,
         knee: (80, 10),
       );
@@ -433,7 +800,7 @@ void main() {
     });
 
     test('knees folded at the top stay folded after the angle opens', () {
-      final c = judge();
+      final c = judge(config: noBow);
       PoseFrame frame(double depth, {required bool bent}) {
         final y = 430 + 0.5 * depth * 200;
         final kneeY = bent ? y + 10 : y + 80;
@@ -461,7 +828,7 @@ void main() {
 
     test('a deep rep with straight arms is not a push-up', () {
       final update = repWithHips(
-        judge(),
+        judge(config: noBow),
         (d) => 430 + 0.5 * d * 200,
         knee: (80, 10),
         bendArms: false,
@@ -470,7 +837,7 @@ void main() {
     });
 
     test('bent knees with a straight frame between them still count', () {
-      final c = judge();
+      final c = judge(config: noBow);
       PoseFrame frame(double depth, {required bool bent}) {
         final y = 430 + 0.5 * depth * 200;
         // An extended knee stays below the hip. A bent one folds, but not
@@ -499,8 +866,51 @@ void main() {
       expect(update.event!.valid, isTrue);
     });
 
+    test('the optional hip angle rule needs the fold in a row', () {
+      // The same bent, straight, bent pattern with the rule turned on.
+      final c = judge(
+        config: const RepJudgeConfig(
+          smoothingTau: Duration.zero,
+          kneeBentAngle: 110,
+          bowHipHandGap: double.negativeInfinity,
+        ),
+      );
+      PoseFrame frame(double depth, {required bool bent}) {
+        final y = 430 + 0.6 * depth * 200;
+        final kneeY = bent ? y + 10 : y + 120;
+        final kneeX = bent ? 80.0 : 0.0;
+        return pushUpFrame(
+          depth: depth,
+          elbowAngle: depth >= 0.8 ? 120 : 170,
+          lowerBody: {
+            BodyLandmark.leftHip: (leftX, y),
+            BodyLandmark.rightHip: (rightX, y),
+            BodyLandmark.leftKnee: (leftX + kneeX, kneeY),
+            BodyLandmark.rightKnee: (rightX - kneeX, kneeY),
+          },
+        );
+      }
+
+      at(c, 0, frame(0, bent: false));
+      at(c, 300, frame(0, bent: false));
+      at(c, 400, frame(0.6, bent: true));
+      at(c, 550, frame(0.9, bent: false));
+      at(c, 700, frame(1.2, bent: true));
+      at(c, 850, frame(1.4, bent: false));
+      at(c, 1000, frame(1.3, bent: true));
+      expect(at(c, 1300, frame(0, bent: false)).event!.valid, isTrue);
+
+      // Three folded frames in a row in the attempt latch it.
+      at(c, 1700, frame(0.6, bent: false));
+      at(c, 1850, frame(1.2, bent: true));
+      at(c, 2000, frame(1.4, bent: true));
+      at(c, 2100, frame(1.5, bent: true));
+      final knees = at(c, 2400, frame(0, bent: false));
+      expect(knees.event!.reason, RejectReason.kneesDown);
+    });
+
     test('a straight body with the knees far behind the hands counts', () {
-      final c = judge();
+      final c = judge(config: noBow);
       PoseFrame frame(double depth) {
         final y = 430 + 0.5 * depth * 200;
         return pushUpFrame(
@@ -523,17 +933,54 @@ void main() {
       expect(update.event!.valid, isTrue);
     });
 
+    test('a hip angle folded only at the bottom no longer rejects', () {
+      // The fold ML Kit guesses for hidden hips at the bottom of normal
+      // reps. The knees stay far behind the hands.
+      PoseFrame frame(double depth) {
+        // The hips stay 30 px below the shoulders.
+        final y = 430 + 0.6 * depth * 200;
+        final folded = depth >= 1.2;
+        return pushUpFrame(
+          depth: depth,
+          elbowAngle: depth >= 0.8 ? 120 : 170,
+          lowerBody: {
+            BodyLandmark.leftHip: (leftX, y),
+            BodyLandmark.rightHip: (rightX, y),
+            BodyLandmark.leftKnee: (leftX + (folded ? 80 : 0), y + 10),
+            BodyLandmark.rightKnee: (rightX - (folded ? 80 : 0), y + 10),
+          },
+        );
+      }
+
+      RepUpdate run(RepJudge c) {
+        at(c, 0, frame(0));
+        at(c, 300, frame(0));
+        at(c, 400, frame(0.6));
+        at(c, 600, frame(1.2));
+        at(c, 700, frame(1.4));
+        at(c, 800, frame(1.5));
+        at(c, 1000, frame(0.6));
+        return at(c, 1200, frame(0));
+      }
+
+      expect(run(judge(config: noBow)).event!.valid, isTrue);
+      final strict = judge(
+        config: const RepJudgeConfig(
+          smoothingTau: Duration.zero,
+          kneeBentAngle: 110,
+          bowHipHandGap: double.negativeInfinity,
+        ),
+      );
+      expect(run(strict).event!.reason, RejectReason.kneesDown);
+    });
+
     test('hips hidden at the bottom cannot reject for the belly', () {
       final update = repWithHips(judge(), (_) => 430, hipsAtBottom: false);
       expect(update.event!.valid, isTrue);
     });
 
     /// Shoulder–hip–knee angle [hipDeg], with the knee kept behind the hands.
-    PoseFrame hipFrame(
-      double hipDeg, {
-      double depth = 0,
-      double elbow = 170,
-    }) {
+    PoseFrame hipFrame(double hipDeg, {double depth = 0, double elbow = 170}) {
       Offset kneeOf(Offset hip, double turn) {
         final rad = turn * hipDeg * math.pi / 180;
         final vx = 0.0;
@@ -561,7 +1008,7 @@ void main() {
     }
 
     test('a kneel from the first frame is knees without a normal plank', () {
-      final c = judge();
+      final c = judge(config: noBow);
       at(c, 0, hipFrame(130));
       at(c, 300, hipFrame(130));
       at(c, 500, hipFrame(140, depth: 0.6, elbow: 140));
@@ -571,7 +1018,7 @@ void main() {
     });
 
     test('one normal top uses the wider knee line', () {
-      final c = judge();
+      final c = judge(config: noBow);
       at(c, 0, hipFrame(170));
       at(c, 300, hipFrame(164));
       at(c, 400, hipFrame(145));
@@ -582,7 +1029,7 @@ void main() {
     });
 
     test('one normal top still catches a short kneel flash', () {
-      final c = judge();
+      final c = judge(config: noBow);
       at(c, 0, hipFrame(170));
       at(c, 300, hipFrame(167));
       at(c, 400, hipFrame(135));
@@ -593,7 +1040,7 @@ void main() {
     });
 
     test('three normal tops tighten the knee line', () {
-      final c = judge();
+      final c = judge(config: noBow);
       at(c, 0, hipFrame(170));
       at(c, 300, hipFrame(164));
       at(c, 400, hipFrame(167));
@@ -606,7 +1053,7 @@ void main() {
     });
 
     test('a plank after a kneel can count again', () {
-      final c = judge();
+      final c = judge(config: noBow);
       at(c, 0, hipFrame(130));
       at(c, 300, hipFrame(130));
       at(c, 500, hipFrame(140, depth: 1.4, elbow: 120));

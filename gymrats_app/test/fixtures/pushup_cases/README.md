@@ -36,6 +36,10 @@ Only pose landmarks and phone sensor values are stored, never camera images.
   made `live`. The replay test uses the judge of the current code, so after a judge change `live` and the replay
   may differ on purpose.
 - `live`: the reps the judge closed while filming (`index`, `valid`, `reason`, `t` in µs, `maxDepth`, ...).
+- `setupFrames`, one per line, every frame the setup check saw before the round (empty or missing in recordings
+  made before 2026-10-27): `t` (µs since setup opened), `w`/`h`/`p` as in `frames`, `reason` (the `SetupReason` of
+  that frame alone), `ready` (true once the stable Ready state is on), `progress` (0 to 1 towards Ready),
+  `missing` (body parts not seen, for `missingParts`), `tilt`, `gyro`, `g`, `fps` as in `frames`.
 - `frames`, one per line, every frame the judge saw:
   `t` (µs, the time the judge read), `w`/`h` (upright image size), `p` (x, y, z, likelihood for each landmark,
   in `landmarks` order; nulls for a missing one), `tilt` (phone degrees from flat), `gyro` (rad/s), `moved`

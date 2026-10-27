@@ -13,6 +13,7 @@ import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
 
@@ -148,7 +149,15 @@ void main() {
       expect(recording.frames.first.luma, 0);
       expect(recording.setup.device, 'S22');
       expect(recording.setup.placement, 'floor 1.5 m');
-      expect(recording.setup.model, PoseDetectionModel.base);
+      expect(recording.setup.model, PoseDetectionModel.accurate);
+      // The two frames setup checked, with its verdict on each.
+      expect(
+        [for (final f in recording.setupFrames) f.at.inMilliseconds],
+        [0, 1500],
+      );
+      expect(recording.setupFrames.last.ready, isTrue);
+      expect(recording.setupFrames.last.reason, SetupReason.ready);
+      expect(recording.setupFrames.first.pose.hasPerson, isTrue);
       expect(recording.frontCamera, isTrue);
       expect(recording.frameRotation, 270);
       expect(
@@ -185,12 +194,12 @@ void main() {
           await tester.pumpAndSettle();
           await _enter(tester, find.byKey(repsFieldKey), '3');
           await _tapVisible(tester, find.text('dim'));
-          await _tapVisible(tester, find.text('accurate'));
+          await _tapVisible(tester, find.text('base'));
           await _tapVisible(tester, find.text('60 s'));
           await tester.pump();
         },
       );
-      expect(harness.counterArgs!.setup.model, PoseDetectionModel.accurate);
+      expect(harness.counterArgs!.setup.model, PoseDetectionModel.base);
       expect(tester.widget<Text>(find.byKey(remainingTimeKey)).data, '1:00');
       expect(find.text('Knees on the floor'), findsOneWidget);
 
