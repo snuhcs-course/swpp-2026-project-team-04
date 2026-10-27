@@ -39,10 +39,8 @@ const knownErrors = <String, String>{
       'known error: kneeling-bow rep 2 kept the elbows straight through '
       'the bottom and is armsStraight, not kneesDown',
   '20261027-222907_knees':
-      'known error: false count; knee push-ups 16 and 17 count: their '
-      'shins read -0.21 at the top, just past the -0.22 line. Knee rep 18 '
-      'is insufficientDepth, and the rock back after rep 19 closes as an '
-      'extra insufficientDepth',
+      'known error: wrong reason (knee rep 18 is insufficientDepth) and an '
+      'extra rejected event (the rock back after rep 19)',
 };
 
 /// What today's judge closes, rep by rep, for each known error: `valid` or
@@ -115,8 +113,8 @@ const knownVerdicts = <String, List<String>>{
     'kneesDown',
     'kneesDown',
     'kneesDown',
-    'valid',
-    'valid',
+    'kneesDown',
+    'kneesDown',
     'insufficientDepth',
     'kneesDown',
     'insufficientDepth',

@@ -195,13 +195,16 @@ visible. Still open: normal rep 2 of `20261026-000522_normal` (2-frame hip dip a
   shoulder height overlap between bows and normal reps from the front, so the arms cannot tell them apart; the bow
   is caught even when the arms lock out. Checking the bow before `armsStraight` turned the straight-arm knee reps of
   `20261027-145620_knees` into `kneesDown`, so the order stayed.
-- **Shins lifted at the top** (`maxShinLiftGap: -0.22`, new `PoseMetrics.ankleKneeGap`): at least half of the last 10
-  straight-arm top frames before the descent with the ankles 0.22 shoulder widths or more above the knees are a knee
-  push-up. Per-rep medians at the top: normal −0.18 to +0.02, knee push-ups −0.27 to −0.19. Measured during the
+- **Shins lifted at the top** (`maxShinLiftGap: -0.20`, new `PoseMetrics.ankleKneeGap`): at least half of the last 10
+  straight-arm top frames before the descent with the ankles 0.20 shoulder widths or more above the knees are a knee
+  push-up. Per-rep medians at the top: normal −0.14 to +0.02, knee push-ups −0.27 to −0.19. Measured during the
   descent the two overlap (−0.30 already rejected far normal reps), and the whole top phase failed too: walking back
-  from the phone between reps 6 and 7 of `20261027-142341_normal` read −0.56. Line sweep on every set: −0.22 catches
-  knee reps 13 and 19 of `20261027-222907_knees` with no normal rep lost; −0.21 and −0.20 catch all four but reject
-  rep 6 of a far-normal set.
+  from the phone between reps 6 and 7 of `20261027-142341_normal` read −0.56. Line sweep on all 21 sets (12 labelled,
+  9 raw): −0.22 catches knee reps 13 and 19 of `20261027-222907_knees`; −0.21 to −0.19 also catch reps 16 and 17
+  and change one more rep, rep 6 of the unlabelled set `20261027-221743_normal`. Its last top frames read −0.13 to
+  −0.25, like the kneeling reps 8–11 after it (−0.13 to −0.28) and unlike reps 1–5 before it (−0.03 to −0.10) at the
+  same distance, so it was most likely already on the knees; that set stays out of the fixtures because its labels
+  are uncertain. −0.20 was chosen (user, 2026-10-27).
 - **Not adopted: a wider knee line.** Moving `minKneeHandGap` from −0.22 to −0.28 rejected 9 normal reps (3 of 6
   far-normal) and caught none of the four counted knee reps; −0.35 rejected 31 and caught 3.
 - **Setup** (`SetupConfig.maxPushUpTorsoDrop` 1.0 → 1.5): of 506 setup frames that showed "Get into a push-up with
@@ -210,13 +213,13 @@ visible. Still open: normal rep 2 of `20261026-000522_normal` (2-frame hip dip a
   hips pushed back reads lower and passed, which matches the user's report. No set showed "too far".
 
 Totals after the second fix, on the accurate sets with the session-3 set (88 labelled reps): kneeling-bow reps counted
-0 of 20 (was 4 of 9 in session 2, plus 1 of 11 live in session 3); knee push-ups counted 2 of 8 in
+0 of 20 (was 4 of 9 in session 2, plus 1 of 11 live in session 3); knee push-ups counted 0 of 8 in
 `20261027-222907_knees` (was 4 of 8 live); normal reps wrongly rejected unchanged at 2 of 29; the first-fix rows above
 are otherwise unchanged.
 
 Replay after the second fix: `20261027-145535_knees` KD, arms, KD × 7 (the four counted bows are rejected);
-`20261027-222907_knees` KD × 15, OK, OK, depth, KD, depth (bows 11 of 11 and knee reps 12–15, 18, 19 rejected; knee
-reps 16 and 17 still count at −0.21). Every other case is unchanged.
+`20261027-222907_knees` KD × 17, depth, KD, depth (every bow and knee rep rejected; knee rep 18 as
+`insufficientDepth`). Every other case is unchanged.
 
 ## Limitations
 - One person and one phone (SM-S741N), floor placement at the usual distance plus one farther position. The user

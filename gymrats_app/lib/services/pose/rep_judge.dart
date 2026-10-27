@@ -46,7 +46,7 @@ class RepJudgeConfig {
     this.minShoulderDrop = 0.7,
     this.bowHipHandGap = -0.6,
     this.bowTorsoDrop = 0.3,
-    this.maxShinLiftGap = -0.22,
+    this.maxShinLiftGap = -0.2,
   });
 
   /// Minimum ML Kit likelihood for a landmark to be used.
@@ -191,14 +191,16 @@ class RepJudgeConfig {
   /// before the descent, and in at least [minCheatFrames] of them. A top
   /// frame with hidden ankles counts as not lifted. On the H2 recordings,
   /// the median over each rep's top frames (head within 0.3 shoulder widths
-  /// of its highest, elbows at 150° or more): normal reps -0.18 to +0.02,
+  /// of its highest, elbows at 150° or more): normal reps -0.14 to +0.02,
   /// knee push-ups of the session-2 and session-3 sets -0.27 to -0.19
   /// (other windows read a little lower); session 1's knee set read -0.21
   /// to -0.04 and is caught by the knee line instead. Only the last frames
   /// count: walking back from the phone between reps reads -0.56. During
-  /// the descent the readings overlap, so they are not used. -0.21 would
-  /// also catch the two knee reps at -0.21 but rejected a normal rep far
-  /// from the phone.
+  /// the descent the readings overlap, so they are not used. -0.21 to
+  /// -0.19 change only three reps: two knee reps at -0.21, and rep 6 of an
+  /// unlabelled set whose last top frames (-0.13 to -0.25) match the user's
+  /// kneeling reps after it, not the normal reps before it (-0.03 to
+  /// -0.10).
   final double maxShinLiftGap;
 }
 
