@@ -115,6 +115,11 @@ class PhoneTiltMonitor {
 
   double? tiltDegrees;
   double? gyroSpeed;
+
+  /// The latest raw sample, so a recorder can keep the screen-plane roll
+  /// that [tiltDegrees] leaves out. Null until the sensor reported.
+  GravitySample? get lastSample => _lastSample;
+  GravitySample? _lastSample;
   bool isPropped = false;
   bool isStill = false;
   bool isDisturbed = false;
@@ -199,6 +204,7 @@ class PhoneTiltMonitor {
   }
 
   void _onSample(GravitySample sample) {
+    _lastSample = sample;
     final tilt = tiltFromFlatDegrees(sample);
     tiltDegrees = tilt;
     gyroSpeed = sample.hasGyro ? sample.gyroSpeed : null;
