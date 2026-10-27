@@ -47,6 +47,7 @@ class RepJudgeConfig {
     this.bowHipHandGap = -0.6,
     this.bowTorsoDrop = 0.3,
     this.maxShinLiftGap = -0.2,
+    this.bowHipRise = -1.5,
   });
 
   /// Minimum ML Kit likelihood for a landmark to be used.
@@ -74,7 +75,10 @@ class RepJudgeConfig {
   /// The shoulders must also drop this far below the top, in top-pose
   /// shoulder widths, for the bottom to count. A head nod moves the nose
   /// alone: on the H1 recordings the valid reps dropped the shoulders 0.75
-  /// or more, and half reps with a head nod 0.57 to 0.90. Without a
+  /// or more, and half reps with a head nod 0.57 to 0.90. 0.67 was tried
+  /// for two slightly shallow reps of a later set and not kept: it left
+  /// 0.02 above the highest head nod still caught here, and ten rejected
+  /// reps then fell through to the knee and arm checks instead. Without a
   /// shoulder measurement the nose depth decides alone.
   final double minShoulderDrop;
 
@@ -202,6 +206,17 @@ class RepJudgeConfig {
   /// kneeling reps after it, not the normal reps before it (-0.03 to
   /// -0.10).
   final double maxShinLiftGap;
+
+  /// [PoseMetrics.hipHandGap] at the deepest frame minus its median over
+  /// the last top frames before the descent, at or below this, is a
+  /// kneeling bow: the hips went back over the heels while the head went
+  /// down. It does not look at the arms, so a bow is caught whether the
+  /// elbows stay straight or fold on the way down. On the H2 recordings 24
+  /// of 34 bow reps moved -4.0 to -1.12 (every bow that kept the arms
+  /// straight among them), normal reps +0.02 or more (one far rep -0.90),
+  /// knee push-ups +0.11 or more, head-nod half reps -0.08 or more. Any
+  /// line from -0.8 to -2.0 gave the same verdicts.
+  final double bowHipRise;
 }
 
 /// Where the user is in a push-up.
@@ -314,6 +329,8 @@ class RepJudge {
   int _hipHandFrames = 0;
   final List<bool> _topShins = [];
   bool _shinsLifted = false;
+  final List<double> _topHipHand = [];
+  double? _attemptTopHipHand;
   double _maxTorsoDrop = double.negativeInfinity;
   double? _deepHipHandGap;
   double? _deepTorsoDrop;
@@ -397,12 +414,15 @@ class RepJudge {
       _watchKneeFromSetup(elbow, depth, raw);
       _clearKneeLatchIfPlank(now, elbow, depth, raw);
       _watchShinsAtTop(elbow, depth, raw);
+      _watchHipsAtTop(depth, raw);
       if (depth >= config.enterDepth) {
         final count = _topShins.where((l) => l).length;
         final lifted =
             count >= config.minCheatFrames && count * 2 >= _topShins.length;
+        final topHipHand = _median(_topHipHand);
         _beginAttempt(now, depth);
         _shinsLifted = lifted;
+        _attemptTopHipHand = topHipHand;
       }
     }
 
@@ -472,14 +492,17 @@ class RepJudge {
         // The re-attempt sees no top frames, so it keeps the shin verdict
         // as it keeps the knee latch.
         final shinsLifted = _shinsLifted;
+        final topHipHand = _attemptTopHipHand;
         if (_tooBrief(now)) {
           _beginAttempt(now, depth);
           _shinsLifted = shinsLifted;
+          _attemptTopHipHand = topHipHand;
           return null;
         }
         final event = _emit(now, _withKnees(RejectReason.incompleteExtension));
         _beginAttempt(now, depth);
         _shinsLifted = shinsLifted;
+        _attemptTopHipHand = topHipHand;
         return event;
       }
     }
@@ -661,6 +684,10 @@ class RepJudge {
   bool _bowedBack() {
     final gap = _deepHipHandGap;
     final drop = _deepTorsoDrop;
+    final top = _attemptTopHipHand;
+    if (gap != null && top != null && gap - top <= config.bowHipRise) {
+      return true;
+    }
     return gap != null &&
         drop != null &&
         gap <= config.bowHipHandGap &&
@@ -721,6 +748,23 @@ class RepJudge {
     if (_topShins.length > _shinWindow) _topShins.removeAt(0);
   }
 
+  /// Keeps the last top-frame hip–hand gaps before the descent. Hidden
+  /// hips are skipped: an older reading left in the window sat lower, so it
+  /// can only make the rise smaller, never reject a rep.
+  void _watchHipsAtTop(double depth, PoseMetrics raw) {
+    if (depth >= config.enterDepth) return;
+    final gap = raw.hipHandGap;
+    if (gap == null) return;
+    _topHipHand.add(gap);
+    if (_topHipHand.length > _shinWindow) _topHipHand.removeAt(0);
+  }
+
+  double? _median(List<double> values) {
+    if (values.length < config.minCheatFrames) return null;
+    final sorted = [...values]..sort();
+    return sorted[sorted.length ~/ 2];
+  }
+
   void _beginAttempt(Duration now, double depth) {
     _phase = RepPhase.descending;
     _attemptStarted = now;
@@ -741,6 +785,8 @@ class RepJudge {
     _maxTorsoDrop = double.negativeInfinity;
     _topShins.clear();
     _shinsLifted = false;
+    _topHipHand.clear();
+    _attemptTopHipHand = null;
     _deepHipHandGap = null;
     _deepTorsoDrop = null;
   }

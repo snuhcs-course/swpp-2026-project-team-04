@@ -221,6 +221,31 @@ Replay after the second fix: `20261027-145535_knees` KD, arms, KD × 7 (the four
 `20261027-222907_knees` KD × 17, depth, KD, depth (every bow and knee rep rejected; knee rep 18 as
 `insufficientDepth`). Every other case is unchanged.
 
+## Third fix (2026-10-28, session 4)
+Session 4: three sets with the second-fix build (`b66344a-shin020`), kept raw outside the repo because only part of
+each set could be labelled. In the latest, `20261028-001230_s26-fe_normal`, the user did normal reps, then knees,
+then from rep 11 a kneeling bow, keeping the arms straight from about rep 15. Six of those bows counted (reps 15,
+16, 18, 19, 20, 22): their hips sat −0.43 to −0.56 above the hands at the deepest frame, short of the −0.6 bow line,
+and no knee was seen, so `armsStraight` did not apply. Reps 3 and 5 (slightly shallow normal reps) were
+`insufficientDepth`: the shoulders dropped 0.67, under the 0.70 line.
+
+- **Hips rising in the bow** (`bowHipRise: -1.5`): the hip–hand gap at the deepest frame minus its median over the
+  last top frames before the descent. Bows −4.0 to −1.12 in 24 of 34 reps (all the straight-arm bows among them),
+  normal reps +0.02 or more (one far rep −0.90, already `insufficientDepth`), knee push-ups +0.11 or more, head-nod
+  half reps −0.08 or more. It does not use the elbows, so it also covers a bow whose arms fold on the way down (not
+  recorded yet). Replay on every labelled and raw set: the six counted bows are rejected (4 `kneesDown`, 2
+  `armsStraight`), bow rep 13 of the same set and knee rep 7 of the raw set `20261027-221954_knees` change from
+  `incompleteExtension` to `kneesDown`, nothing else changes; any line from −0.8 to −2.0 gives the same verdicts.
+- **Considered, not adopted: elbows straight at the deepest frame** (160°). It caught the same six bows with no
+  other change, but every synthetic test frame keeps the elbows at 170° at all depths, so it needed a change to the
+  shared test support; the hip rise needs none.
+- **Shoulder line 0.67 tried, kept at 0.70** (user, 2026-10-28): 0.67 lets reps 3 and 5 count and turns no other
+  rejected rep into a counted one on any recording, but ten rejected reps then pass the depth check and are caught
+  only by the knee or arm checks (three of them in half-rep sets), and the highest labelled head nod still caught as
+  `insufficientDepth` is 0.65, a margin of 0.02. The code keeps 0.70; the user is trying a 0.67 build on the phone.
+  A head-nod check by shape (shoulder drop over head drop: labelled head nods 0.32–0.37, normal reps 0.40 or more)
+  is a candidate once more head-nod and shallow normal sets are recorded.
+
 ## Limitations
 - One person and one phone (SM-S741N), floor placement at the usual distance plus one farther position. The user
   could not record other devices or placements for H1 (2026-10-27); the device and placement fields of session 2 were

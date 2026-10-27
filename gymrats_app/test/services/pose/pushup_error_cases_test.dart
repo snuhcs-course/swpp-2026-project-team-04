@@ -337,7 +337,7 @@ void main() {
       final config = copy.judge['config']! as Map<String, Object?>;
       expect(config['bottomDepth'], 1.1);
       expect(config['topHoldMs'], 300);
-      expect(config, hasLength(33));
+      expect(config, hasLength(34));
       expect(copy.judge['commit'], isNull);
       expect(copy.setup.device, 'test');
       expect(copy.setup.model, PoseDetectionModel.accurate);

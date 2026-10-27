@@ -769,6 +769,7 @@ Map<String, Object?> describeJudge(RepJudgeConfig c) => {
     'bowHipHandGap': c.bowHipHandGap,
     'bowTorsoDrop': c.bowTorsoDrop,
     'maxShinLiftGap': c.maxShinLiftGap,
+    'bowHipRise': c.bowHipRise,
   },
 };
 

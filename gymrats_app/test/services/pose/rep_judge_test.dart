@@ -172,6 +172,18 @@ void main() {
     expect(update.event!.maxDepth, closeTo(1.6, 0.01));
   });
 
+  test('the shoulder line sits at 0.70 shoulder widths', () {
+    RepUpdate bottom(double drop) {
+      final c = judge();
+      calibrate(c);
+      at(c, 400, pose(depth: 0.6, shoulderDrop: 0.3));
+      return at(c, 800, pose(depth: 1.6, shoulderDrop: drop));
+    }
+
+    expect(bottom(0.69).snapshot.phase, RepPhase.descending);
+    expect(bottom(0.71).snapshot.phase, RepPhase.bottom);
+  });
+
   test('the shoulders reaching the line complete the bottom', () {
     final c = judge();
     calibrate(c);
@@ -375,6 +387,13 @@ void main() {
     /// the other lower-body rules, counting or rejecting, turn the bow check
     /// off so they can only pass through their own rule.
     const noBow = RepJudgeConfig(
+      smoothingTau: Duration.zero,
+      bowHipHandGap: double.negativeInfinity,
+      bowHipRise: double.negativeInfinity,
+    );
+
+    /// Only the hip rise of the two bow checks.
+    const riseOnly = RepJudgeConfig(
       smoothingTau: Duration.zero,
       bowHipHandGap: double.negativeInfinity,
     );
@@ -604,6 +623,68 @@ void main() {
       at(c, 800, frame(1.5));
       at(c, 1000, frame(0.6));
       expect(at(c, 1200, frame(0)).event!.valid, isTrue);
+    });
+
+    /// A rep held at the top for four frames with the hips at 610 (0.15
+    /// shoulder widths above the hands), whose hips sit at [bottomHip] at
+    /// the deepest frame.
+    PoseFrame hipAt(double depth, double hipY) => pushUpFrame(
+      depth: depth,
+      elbowAngle: depth >= 0.8 ? 120 : 170,
+      lowerBody: {
+        BodyLandmark.leftHip: (leftX, hipY),
+        BodyLandmark.rightHip: (rightX, hipY),
+      },
+    );
+
+    RepUpdate hipRep(RepJudge c, double bottomHip) {
+      for (final t in [0, 300, 340, 380]) {
+        at(c, t, hipAt(0, 610));
+      }
+      at(c, 500, hipAt(0.6, 610));
+      at(c, 800, hipAt(1.5, bottomHip));
+      at(c, 1000, hipAt(0.6, 610));
+      return at(c, 1200, hipAt(0, 610));
+    }
+
+    test('hips rising toward the head from the top are a kneeling bow', () {
+      // Bottom: hips 1.65 shoulder widths above the hands, a rise of 1.5.
+      final update = hipRep(judge(config: riseOnly), 490);
+      expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('hips that stay put while the hands drop are not a rise', () {
+      // The hands drop 0.9 shoulder widths with the shoulders; the hips
+      // stay: a rise of only -0.9.
+      final update = hipRep(judge(config: riseOnly), 610);
+      expect(update.event!.valid, isTrue);
+    });
+
+    test('a rise needs three top frames with the hips seen', () {
+      // Two top frames only: no top reading, so the rise cannot reject.
+      final c = judge(config: riseOnly);
+      at(c, 0, hipAt(0, 610));
+      at(c, 300, hipAt(0, 610));
+      at(c, 340, hipAt(0, 610));
+      at(c, 500, hipAt(0.6, 610));
+      at(c, 800, hipAt(1.5, 490));
+      at(c, 1000, hipAt(0.6, 610));
+      expect(at(c, 1200, hipAt(0, 610)).event!.valid, isTrue);
+    });
+
+    test('a missed lockout keeps the top hips for the next try', () {
+      final c = judge(config: riseOnly);
+      for (final t in [0, 300, 340, 380]) {
+        at(c, t, hipAt(0, 610));
+      }
+      at(c, 500, hipAt(0.6, 610));
+      at(c, 800, hipAt(1.5, 610));
+      at(c, 1100, hipAt(0.5, 610));
+      final missed = at(c, 1400, hipAt(1.0, 610));
+      expect(missed.event!.reason, RejectReason.incompleteExtension);
+      at(c, 1700, hipAt(1.5, 490));
+      final next = at(c, 2100, hipAt(0, 610));
+      expect(next.event!.reason, RejectReason.kneesDown);
     });
 
     test('hips that drop to the hands are a belly push-up', () {
