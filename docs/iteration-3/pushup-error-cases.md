@@ -1,6 +1,6 @@
 # Push-up judge error cases (Iteration 3, P9)
 
-Owner: Hyunwoo Song (`hyun-1210`) | Status: two recording sessions done (2026-10-26: 4 sets, 23 reps; 2026-10-27: 7 sets, 52 reps)
+Owner: Hyunwoo Song (`hyun-1210`) | Status: judge fix replayed (P14, 2026-10-27); two recording sessions done (2026-10-26: 4 sets, 23 reps; 2026-10-27: 7 sets, 52 reps)
 
 Where the push-up judge (`gymrats_app/lib/services/pose/rep_judge.dart`) is wrong, measured on recorded sets.
 Every case is a replayable fixture in `gymrats_app/test/fixtures/pushup_cases/` (format in that folder's
@@ -64,7 +64,15 @@ the user's account; the shoulder width in the image (median per rep) shows where
 | `20261027-145535_knees` | 25 | 9 × knees, done like a deep kneeling bow (hips back, head down) | KD, arms, KD × 7 | wrong reason (rep 2) | rep 2 kept the elbows at 166°, so `armsStraight`; reps 1–4 read as a plank at the top (hip 165–168°, knees far behind the hands) and are caught only by hip < 110° at the bottom |
 | `20261027-145620_knees` | 25 | 7 × knees, then 4 × straight arms on the knees | KD × 7, arms × 4 | none (passes) | reps 1–7: top-of-rep hip folded 86–110° below the baseline for 7–72 frames; reps 8–11: elbows 169–174° with the knee latch on |
 
-KD = rejected as `kneesDown`; depth = `insufficientDepth`; arms = `armsStraight`.
+Session 3 (2026-10-27 evening): same person and phone, accurate model, recorded with the first H2 build (judge fix
+plus setup recording). Nine sets were saved; only the latest could be labelled from memory, the other eight are kept
+outside the repo as raw data (setup analysis below).
+
+| Case id | fps (median) | Labelled | Live = replay (per rep) | Error type | Cause (from the rule trace) |
+|---|---|---|---|---|---|
+| `20261027-222907_knees` | 24 | reps 1–11 kneeling bow, 12–19 knee push-ups; a rock back with straight arms after rep 19 is not a rep | lockout × 2, KD × 2, lockout × 3, OK, lockout × 2, KD × 2, OK, KD × 2, OK, OK, depth, OK, depth | false count (reps 8, 13, 16, 17, 19), wrong reason | bow reps never locked the arms out between reps (`incompleteExtension`); the knee push-ups kept the knees 0.25–0.31 shoulder widths past the hands, beyond the −0.22 knee line |
+
+KD = rejected as `kneesDown`; depth = `insufficientDepth`; arms = `armsStraight`; lockout = `incompleteExtension`.
 
 ## Summary by error type
 | Error type | Cases | Frequency (session 1) | Setups |
@@ -107,8 +115,9 @@ knee fix alone would make the judge count them. The kneeling bow is caught only 
   normal or mixed sets, and 6 of 7 reps done farther away. Without it the far reps count (4 of 5 and
   2 of 2).
 - **Depth does not filter a head nod:** the half-rep nose depth (1.53–1.80) is in the normal range (1.32–2.13, one far rep at 0.84). The
-  shoulder drop planned for H2 overlaps too (half reps 0.41–0.80 shoulder widths, normal 0.42–0.73), so it needs
-  another measure or a smoothed one; the minimum elbow angle (half reps 113–145°) also overlaps the knee set's normal
+  shoulder drop planned for H2 overlaps too when measured raw from the last top frame (half reps 0.41–0.80 shoulder
+  widths, normal 0.42–0.73), so it needs another measure or a smoothed one (the judge's own measure separates better,
+  see "After the judge fix"); the minimum elbow angle (half reps 113–145°) also overlaps the knee set's normal
   reps (134–150°).
 - **`bellyDown` never fired** (0 of 6), and the belly reps also count once the knee rules are off (5 of 6): the hip–hand gap reached −0.07 to +0.02, so the −0.05 line is crossed only
   for a few frames, and the top-of-rep knee latch closes the rep as `kneesDown` first.
@@ -123,6 +132,91 @@ knee fix alone would make the judge count them. The kneeling bow is caught only 
 - **Straight-arm reps on the knees** (`20261027-145620_knees`, reps 8–11) get `armsStraight` only while the knee latch
   is on. For reps 9–11 the latch came from the hip < 110° rule; with the rule dropped they fall back to `kneesDown`
   unless the straight-arm check also accepts the knee–hand gap.
+
+## After the judge fix (P14, `fix/pushup_judge_accuracy`)
+Changes, each decided from the cases above (2026-10-27):
+- the hip angle under 110° rule is off (`kneeBentAngle: 0`);
+- the bottom also needs the shoulders 0.70 shoulder widths down (`minShoulderDrop`), so a head nod stays shallow.
+  Measured as the judge's `JudgeSnapshot.shoulderDrop`: the smoothed shoulder height against the top pose the judge
+  follows between reps, per rep the peak of the attempt. Valid reps reached 0.75–0.98, head-nod half reps 0.57, 0.61,
+  0.65, 0.78, 0.90 (the raw measure in the session-2 findings overlapped more). The margin is 0.05, from one person
+  and one phone;
+- belly: 3 attempt frames with the hips within the hand band (`minHipOnFloorGap: -0.08`) and a torso drop of 1.10
+  (`minBellyTorsoDrop`) as the attempt's peak, checked before the knees. Peak torso drop per rep: belly reps 2–5
+  1.13–1.30, normal reps 1.08 at most, knee reps up to 1.10 (kneeling bow) and 1.64 (straight arms on the knees), the
+  latter two without three hip frames at the hands. Requiring the torso drop in the same frames as the hip gap lost
+  all four belly reps: the two peaks never coincided;
+- `armsStraight` also when the knees show by the hands, not only through the hip-fold latch;
+- the app uses the ML Kit accurate model.
+
+Not adopted: a 3-frame top-of-rep knee fold. It lost knee reps 2 and 3 of `20261026-000615_knees` (2-frame folds of
+38° and 63°) to save one normal rep (a 2-frame 33° dip), so the two cannot be told apart by frame count or angle.
+
+Replay of every case (live verdict at recording → current judge):
+
+| Case id | Before | After |
+|---|---|---|
+| `20261026-000317_normal` | KD, OK, OK, KD, KD | OK, OK, OK, OK, KD |
+| `20261026-000418_normal` (base model) | KD × 6 | KD × 6 |
+| `20261026-000522_normal` | KD, KD, OK, KD, OK, OK, OK | OK, KD, OK × 5 |
+| `20261026-000615_knees` | KD × 5 | KD × 5 |
+| `20261027-142000_halfRepHeadNod` | KD × 5 | depth, depth, KD, KD, depth |
+| `20261027-142116_bellyDown` | depth, KD × 4 | depth, belly × 4 |
+| `20261027-142240_knees` | KD, KD, OK × 3, KD × 4 | OK × 5, KD × 4 |
+| `20261027-142341_normal` | KD, OK × 5, KD, KD | OK × 8 |
+| `20261027-142432_normal` | KD × 4, depth | OK × 4, depth |
+| `20261027-145535_knees` (kneeling bow) | KD, arms, KD × 7 | **OK × 4**, KD × 5; second fix: KD, arms, KD × 7 |
+| `20261027-145620_knees` | KD × 7, arms × 4 | KD × 7, arms × 4 |
+
+Totals on the accurate sets (69 closed reps):
+
+| | Before | After |
+|---|---|---|
+| Verdict equals the label | 42 of 69 | 59 of 69 |
+| Normal reps wrongly rejected | 15 of 29 | 2 of 29 |
+| Knee reps rejected (`kneesDown`) | 16 of 16 | 16 of 16 |
+| Straight-arm reps on the knees as `armsStraight` | 4 of 4 | 4 of 4 |
+| Head-nod half reps counted / as `insufficientDepth` | 0 / 0 of 5 | 0 / 3 of 5 |
+| Belly reps counted / as `bellyDown` | 0 / 0 of 6 | 0 / 4 of 6 |
+| Kneeling-bow reps counted | 0 of 9 | **4 of 9** |
+
+Superseded by the second fix below (the bow is now caught by the hips at the bottom). Accepted trade-off at the time
+(user, 2026-10-27): the kneeling bow is caught only by the hip under 110° rule, which also rejected
+half of the normal reps; its four counted reps stay a named known error until the setup guide makes the lower body
+visible. Still open: normal rep 2 of `20261026-000522_normal` (2-frame hip dip at the top) and rep 5 of
+`20261027-142432_normal` (farther, shoulders 0.27 down). Recordings from now on also keep the setup frames
+(`setupFrames`, see the fixture README) for the setup fix.
+
+## Second fix (2026-10-27 evening, session 3)
+- **Kneeling bow** (`bowHipHandGap: -0.6`, `bowTorsoDrop: 0.3`): at the attempt's deepest frame, hips at least 0.6
+  shoulder widths above the hands with a torso drop of 0.3 or less are a bow (`kneesDown`). At that frame the bow reps
+  read −1.21 to −0.36 (16 of 20 past the line), normal reps −0.79 to −0.08 (the closest with a small torso drop:
+  −0.54), six far-normal reps of a session-3 set −0.16 to −0.13, knee push-ups −0.32 to −0.14. Elbow angles and
+  shoulder height overlap between bows and normal reps from the front, so the arms cannot tell them apart; the bow
+  is caught even when the arms lock out. Checking the bow before `armsStraight` turned the straight-arm knee reps of
+  `20261027-145620_knees` into `kneesDown`, so the order stayed.
+- **Shins lifted at the top** (`maxShinLiftGap: -0.22`, new `PoseMetrics.ankleKneeGap`): at least half of the last 10
+  straight-arm top frames before the descent with the ankles 0.22 shoulder widths or more above the knees are a knee
+  push-up. Per-rep medians at the top: normal −0.18 to +0.02, knee push-ups −0.27 to −0.19. Measured during the
+  descent the two overlap (−0.30 already rejected far normal reps), and the whole top phase failed too: walking back
+  from the phone between reps 6 and 7 of `20261027-142341_normal` read −0.56. Line sweep on every set: −0.22 catches
+  knee reps 13 and 19 of `20261027-222907_knees` with no normal rep lost; −0.21 and −0.20 catch all four but reject
+  rep 6 of a far-normal set.
+- **Not adopted: a wider knee line.** Moving `minKneeHandGap` from −0.22 to −0.28 rejected 9 normal reps (3 of 6
+  far-normal) and caught none of the four counted knee reps; −0.35 rejected 31 and caught 3.
+- **Setup** (`SetupConfig.maxPushUpTorsoDrop` 1.0 → 1.5): of 506 setup frames that showed "Get into a push-up with
+  straight arms", 492 had straight arms and failed only on a torso drop above 1.0. The top of a plank reads 1.05–1.22
+  on the labelled sets (one rep 1.54) and an upright body over 2, so 1.0 turned good planks away; a kneel with the
+  hips pushed back reads lower and passed, which matches the user's report. No set showed "too far".
+
+Totals after the second fix, on the accurate sets with the session-3 set (88 labelled reps): kneeling-bow reps counted
+0 of 20 (was 4 of 9 in session 2, plus 1 of 11 live in session 3); knee push-ups counted 2 of 8 in
+`20261027-222907_knees` (was 4 of 8 live); normal reps wrongly rejected unchanged at 2 of 29; the first-fix rows above
+are otherwise unchanged.
+
+Replay after the second fix: `20261027-145535_knees` KD, arms, KD × 7 (the four counted bows are rejected);
+`20261027-222907_knees` KD × 15, OK, OK, depth, KD, depth (bows 11 of 11 and knee reps 12–15, 18, 19 rejected; knee
+reps 16 and 17 still count at −0.21). Every other case is unchanged.
 
 ## Limitations
 - One person and one phone (SM-S741N), floor placement at the usual distance plus one farther position. The user
