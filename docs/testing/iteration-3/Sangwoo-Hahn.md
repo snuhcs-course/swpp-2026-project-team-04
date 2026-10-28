@@ -19,7 +19,7 @@ doc)", so the checks below only confirm that the branch is still green. I ran th
 | View | flutter_test (widget) | 75% | unchanged from `main`; see the CI comment on the S1 PR | 10/28 | (same) |
 | API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 10/28 | – |
 
-- **Commands:** `flutter analyze` and `flutter test` in `gymrats_app/`; `python .claude/hooks/ownership_guard.py --check-diff` (ok: 5 changed files, all owned by S1).
+- **Commands:** `flutter analyze` and `flutter test` in `gymrats_app/`; the team ownership guard `ownership_guard.py --check-diff` (ok: 5 changed files, all owned by S1).
 - **Tests:** `flutter test` 675 passed, 0 failed, 1 skipped. The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`. `flutter analyze` found no issues. Server `pytest` was not run because `server/` did not change.
 - **Coverage:** not collected locally for this step, since no code changed. The per-layer numbers equal those of `main` at `94956b5` and appear in the PR's CI comment.
 - **Shortfalls:** none against the targets in this step.
