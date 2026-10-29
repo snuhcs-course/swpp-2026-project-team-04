@@ -151,6 +151,14 @@ git stash pop
 <!-- 36318d41 2026-10-26T16:00:00.015Z -->
 [Woohyun Song, 10-27 01:00] "응. 전부 그대로 진행해줘."
 
+<!-- 36318d41 2026-10-29T01:50:04.744Z -->
+[Woohyun Song, 10-29 10:50] "1. 실기기 확인
+- 봇 매칭 후 경고가 잘 떠.
+- 경고 위에서 뒤로가기를 누르면 매칭을 취소할지 물어봐.
+- 온라인 매칭은 아직 확인 안해봤어.
+- 폰으로 보니까 그림이 마음에 안 들어. 픽토그램에서 x100 써있는 부분을 없애는 편이 나아보여. 이거는 claude design으로 수정안을 다시 띄워줘.
+2. #13은 merge됐어."
+
 <!-- Left out on purpose: prompts of another step or session that live in that step's entries, answers to the agent's questions (quoted in the AI notes), and prompts that are not about development (user, 2026-10-26). The keys stay so a later export does not add them again. -->
 <!-- 36318d41 2026-10-25T06:28:56.571Z -->
 <!-- 36318d41 2026-10-25T06:33:45.306Z -->
@@ -158,3 +166,9 @@ git stash pop
 <!-- 36318d41 2026-10-25T17:43:02.814Z -->
 <!-- 36318d41 2026-10-26T14:26:00.051Z -->
 <!-- 97027bac 2026-10-26T15:55:10.707Z -->
+<!-- d262aa69 2026-10-27T00:56:08.786Z -->
+<!-- d262aa69 2026-10-27T01:38:25.996Z -->
+<!-- d262aa69 2026-10-27T02:04:53.769Z -->
+<!-- d262aa69 2026-10-27T02:45:10.588Z -->
+<!-- d262aa69 2026-10-29T01:20:49.698Z -->
+<!-- d262aa69 2026-10-29T01:45:39.102Z -->
