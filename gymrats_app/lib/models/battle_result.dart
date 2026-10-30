@@ -1,11 +1,12 @@
 import 'battle_rules.dart';
 import 'form_report.dart';
+import 'game_score.dart';
 import 'match_record.dart';
 import 'matchup.dart';
 
-/// A battle that ran its full time, as the result screen shows it.
+/// A battle that ended by time or KO, as the result screen shows it.
 ///
-/// BattleViewModel builds it when time runs out. The result screen receives
+/// BattleViewModel builds it when the round ends. The result screen receives
 /// it as its route argument.
 class BattleResult {
   const BattleResult({
@@ -14,6 +15,10 @@ class BattleResult {
     required this.myInvalidReps,
     required this.opponentReps,
     required this.endedAt,
+    this.myScore = 0,
+    this.opponentScore = 0,
+    this.end = GameEnd.timeUp,
+    this.decidedOutcome,
     this.roundLength = battleDuration,
     this.form,
   });
@@ -29,7 +34,20 @@ class BattleResult {
   /// The opponent's valid reps: their score.
   final int opponentReps;
 
-  /// When time ran out, for the result screen's header.
+  /// The user's game score.
+  final int myScore;
+
+  /// The opponent's game score.
+  final int opponentScore;
+
+  /// Whether time ran out or a KO ended the battle.
+  final GameEnd end;
+
+  /// The outcome by the game's rules. Null for a battle built without a
+  /// game: more reps then wins.
+  final MatchOutcome? decidedOutcome;
+
+  /// When the round ended, for the result screen's header.
   final DateTime endedAt;
 
   /// How long the round was, for the result screen's header.
@@ -46,6 +64,7 @@ class BattleResult {
     myReps: myReps,
     opponentReps: opponentReps,
     playedAt: endedAt,
+    decidedOutcome: decidedOutcome,
   );
 
   MatchOutcome get outcome => record.outcome;

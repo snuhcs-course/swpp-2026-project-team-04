@@ -3,12 +3,16 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/battle_result.dart';
+import '../models/battle_rules.dart';
 import '../models/form_report.dart';
+import '../models/game_score.dart';
 import '../models/matchup.dart';
 import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
+import '../services/game/battle_game.dart';
 import '../services/opponent/opponent_source.dart';
+import '../services/pose/rep_judge.dart';
 import '../services/user/user_repository.dart';
 import 'rep_counter_viewmodel.dart';
 
@@ -26,7 +30,7 @@ enum BattlePhase {
   /// The camera or pose detection failed. Retrying restarts the round.
   failed,
 
-  /// Time ran out; [BattleState.result] is set.
+  /// Time ran out or a KO landed; [BattleState.result] is set.
   timeUp,
 
   /// The user left before the end; nothing is kept.
@@ -40,6 +44,13 @@ class BattleState {
     this.myReps = 0,
     this.myInvalidReps = 0,
     this.opponentReps = 0,
+    this.myScore = 0,
+    this.opponentScore = 0,
+    this.myBarShare = 0.5,
+    this.danger = false,
+    this.fever = false,
+    this.myLastScore,
+    this.opponentLastScore,
     required this.remaining,
     this.feedback,
     this.feedbackCount = 0,
@@ -49,14 +60,35 @@ class BattleState {
 
   final BattlePhase phase;
 
-  /// The user's valid reps: their score.
+  /// The user's valid reps.
   final int myReps;
 
   /// The user's reps that did not count.
   final int myInvalidReps;
 
-  /// The opponent's valid reps: their score.
+  /// The opponent's valid reps.
   final int opponentReps;
+
+  /// The user's game score.
+  final int myScore;
+
+  /// The opponent's game score.
+  final int opponentScore;
+
+  /// The user's share of the health bar, from 0 to 1.
+  final double myBarShare;
+
+  /// Whether the user is about to lose: the screen edge flashes.
+  final bool danger;
+
+  /// Whether the round is in fever time.
+  final bool fever;
+
+  /// What the user's latest valid rep earned; null before the first.
+  final GameRepScore? myLastScore;
+
+  /// What the opponent's latest valid rep earned; null before the first.
+  final GameRepScore? opponentLastScore;
 
   /// Time left in the round, from the rep counter.
   final Duration remaining;
@@ -87,6 +119,13 @@ class BattleState {
     int? myReps,
     int? myInvalidReps,
     int? opponentReps,
+    int? myScore,
+    int? opponentScore,
+    double? myBarShare,
+    bool? danger,
+    bool? fever,
+    GameRepScore? myLastScore,
+    GameRepScore? opponentLastScore,
     Duration? remaining,
     RepEvent? feedback,
     int? feedbackCount,
@@ -97,6 +136,13 @@ class BattleState {
     myReps: myReps ?? this.myReps,
     myInvalidReps: myInvalidReps ?? this.myInvalidReps,
     opponentReps: opponentReps ?? this.opponentReps,
+    myScore: myScore ?? this.myScore,
+    opponentScore: opponentScore ?? this.opponentScore,
+    myBarShare: myBarShare ?? this.myBarShare,
+    danger: danger ?? this.danger,
+    fever: fever ?? this.fever,
+    myLastScore: myLastScore ?? this.myLastScore,
+    opponentLastScore: opponentLastScore ?? this.opponentLastScore,
     remaining: remaining ?? this.remaining,
     feedback: feedback ?? this.feedback,
     feedbackCount: feedbackCount ?? this.feedbackCount,
@@ -112,7 +158,10 @@ class BattleState {
 /// when the camera first runs, goes on while the camera reopens, and is
 /// held while the app is in the background or the camera has failed.
 ///
-/// A battle that runs its full time is saved to the [UserRepository] with
+/// Both players' reps also feed a [BattleGame], which keeps the game score,
+/// the health bar, and the danger state. A KO ends the round at once.
+///
+/// A battle that ends by time or KO is saved to the [UserRepository] with
 /// its form report, and the report also to the [FormReportStore] on this
 /// phone; one left early is not.
 class BattleViewModel extends ChangeNotifier {
@@ -123,8 +172,10 @@ class BattleViewModel extends ChangeNotifier {
     required this._repository,
     required this._sound,
     this._formReports,
+    this._rules = battleRules,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now {
+    _game = _newGame();
     _state = BattleState(remaining: counter.roundLength);
     counter.addListener(_onCounterChanged);
     _myRepSubscription = counter.reps.listen(_onMyRep);
@@ -141,11 +192,16 @@ class BattleViewModel extends ChangeNotifier {
   final UserRepository _repository;
   final RepSound _sound;
   final FormReportStore? _formReports;
+  final BattleRules _rules;
   final DateTime Function() _now;
   late final StreamSubscription<RepEvent> _myRepSubscription;
   late final StreamSubscription<RepEvent> _opponentRepSubscription;
 
   late BattleState _state;
+  late BattleGame _game;
+
+  /// How many of the user's judged reps the game has seen.
+  int _scoredMyReps = 0;
 
   /// Whether the counter's round clock has started: the camera has run once
   /// since [start] or [retry]. The opponent starts at the same moment.
@@ -160,6 +216,13 @@ class BattleViewModel extends ChangeNotifier {
   static const _watchdogGrace = Duration(seconds: 2);
 
   BattleState get state => _state;
+
+  /// A game with nobody on the board.
+  BattleGame _newGame() => BattleGame(
+    rules: _rules,
+    // Becomes counter.passDepth when feat/squat_judge merges.
+    passDepth: const RepJudgeConfig().bottomDepth,
+  );
 
   bool get _roundOver =>
       _state.phase == BattlePhase.timeUp || _state.phase == BattlePhase.left;
@@ -181,6 +244,8 @@ class BattleViewModel extends ChangeNotifier {
     if (_state.phase != BattlePhase.failed) return;
     _opponent.stop();
     _roundClockStarted = false;
+    _game = _newGame();
+    _scoredMyReps = 0;
     _setState(BattleState(remaining: counter.roundLength));
     await counter.retry();
   }
@@ -195,13 +260,15 @@ class BattleViewModel extends ChangeNotifier {
   }
 
   /// Called on every counter change, up to once a frame. Keeps the opponent
-  /// and the watchdog in step with the round clock, then follows the
-  /// counter's phase.
+  /// and the watchdog in step with the round clock, scores new reps, then
+  /// follows the counter's phase. A KO ends the round last, so this frame's
+  /// counts are in the result.
   void _onCounterChanged() {
     if (_roundOver) return;
     final counterState = counter.state;
     _syncOpponent(counterState.phase);
     _armWatchdog(counterState);
+    _scoreMyNewReps();
     switch (counterState.phase) {
       case CounterPhase.starting:
         _copyMySide(counterState, BattlePhase.starting);
@@ -218,6 +285,47 @@ class BattleViewModel extends ChangeNotifier {
       case CounterPhase.finished:
         _finishRound(counterState);
     }
+    _endRoundOnKo();
+  }
+
+  /// Gives the game the reps the counter judged since the last change.
+  ///
+  /// Read from the counter here, not from its [RepCounterViewModel.reps]
+  /// stream: a rep closed on the last frame reaches the stream only after
+  /// the round has ended, and it must be in the final score. Each rep's time
+  /// is round time, which the judge's own [RepEvent.at] is not.
+  void _scoreMyNewReps() {
+    if (counter.history.length <= _scoredMyReps) return;
+    final records = counter.repRecords;
+    for (final record in records.skip(_scoredMyReps)) {
+      final score = _game.addMyRep(
+        RepEvent(
+          index: record.index,
+          valid: record.valid,
+          at: record.at,
+          reason: record.reason,
+          maxDepth: record.maxDepth,
+        ),
+      );
+      if (score != null) _state = _state.copyWith(myLastScore: score);
+    }
+    _scoredMyReps = records.length;
+    _state = _withGameStanding(_state);
+  }
+
+  /// [state] with the score, the bar, and the danger state from the game.
+  BattleState _withGameStanding(BattleState state) => state.copyWith(
+    myScore: _game.me.points,
+    opponentScore: _game.opponent.points,
+    myBarShare: _game.myBarShare,
+    danger: _game.inDanger,
+  );
+
+  /// Stops the round if the bar reached an end. Ending it this way counts as
+  /// time up for the counter, which then follows the normal way to the
+  /// result.
+  void _endRoundOnKo() {
+    if (_game.isKo && !_roundOver) unawaited(counter.finish());
   }
 
   /// Copies the user's side of the round from the counter: valid and
@@ -229,6 +337,7 @@ class BattleViewModel extends ChangeNotifier {
         myReps: counterState.validReps,
         myInvalidReps: counterState.invalidReps,
         remaining: counterState.remaining,
+        fever: _rules.isFever(counter.roundLength - counterState.remaining),
       ),
     );
   }
@@ -291,7 +400,7 @@ class BattleViewModel extends ChangeNotifier {
     );
   }
 
-  /// Builds the result once time is up.
+  /// Builds the result once time is up or a KO has stopped the counter.
   ///
   /// The counter also finishes when [leave] stops it, but [leave] marks the
   /// battle left first and [_onCounterChanged] then ignores the counter. The
@@ -304,17 +413,23 @@ class BattleViewModel extends ChangeNotifier {
       return;
     }
     final endedAt = _now();
+    final ko = _game.isKo;
+    final played = ko ? _timePlayedToKo(counterState) : counter.roundLength;
     final result = BattleResult(
       matchup: matchup,
       myReps: counterState.validReps,
       myInvalidReps: counterState.invalidReps,
       opponentReps: _state.opponentReps,
+      myScore: _game.me.points,
+      opponentScore: _game.opponent.points,
+      end: ko ? GameEnd.ko : GameEnd.timeUp,
+      decidedOutcome: _game.outcome,
       endedAt: endedAt,
-      roundLength: counter.roundLength,
+      roundLength: played,
       form: FormReport(
         endedAt: endedAt,
         opponentName: matchup.opponent.name,
-        roundLength: counter.roundLength,
+        roundLength: played,
         reps: counter.repRecords,
         samples: counter.formSamples,
         poses: counter.formPoses,
@@ -334,6 +449,16 @@ class BattleViewModel extends ChangeNotifier {
       ),
     );
     unawaited(_save(result));
+  }
+
+  /// How long a round ended by a KO lasted, for the pace in the form report.
+  ///
+  /// In whole seconds, rounded up past the time played: the KO rep closes at
+  /// the very end, and the pace chart only takes reps from before the end.
+  Duration _timePlayedToKo(RepCounterState counterState) {
+    final played = counter.roundLength - counterState.remaining;
+    final roundedUp = Duration(seconds: played.inSeconds + 1);
+    return roundedUp < counter.roundLength ? roundedUp : counter.roundLength;
   }
 
   /// Keeps the battle, with its form report, for the home screen and the
@@ -367,12 +492,17 @@ class BattleViewModel extends ChangeNotifier {
 
   void _onOpponentRep(RepEvent rep) {
     if (_roundOver) return;
+    final score = _game.addOpponentRep(rep);
     _setState(
-      _state.copyWith(
-        opponentReps: _state.opponentReps + (rep.valid ? 1 : 0),
-        opponentMoves: _state.opponentMoves + 1,
+      _withGameStanding(
+        _state.copyWith(
+          opponentReps: _state.opponentReps + (rep.valid ? 1 : 0),
+          opponentMoves: _state.opponentMoves + 1,
+          opponentLastScore: score,
+        ),
       ),
     );
+    _endRoundOnKo();
   }
 
   void _setState(BattleState state) {

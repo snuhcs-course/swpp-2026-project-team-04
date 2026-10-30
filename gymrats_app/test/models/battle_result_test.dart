@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 
@@ -35,6 +36,30 @@ void main() {
     expect(_result(mine: 20, theirs: 23).margin, 3);
     expect(_result(mine: 22, theirs: 22).outcome, MatchOutcome.draw);
     expect(_result(mine: 22, theirs: 22).margin, 0);
+  });
+
+  test('the outcome from the game wins over the reps, also in the record', () {
+    final result = BattleResult(
+      matchup: _matchup,
+      myReps: 5,
+      myInvalidReps: 1,
+      opponentReps: 6,
+      myScore: 110,
+      opponentScore: 90,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    );
+    expect(result.outcome, MatchOutcome.win);
+    expect(result.record.outcome, MatchOutcome.win);
+    expect(result.record.myReps, 5);
+    expect(result.myScore, 110);
+    expect(result.opponentScore, 90);
+  });
+
+  test('a battle ends by time unless told otherwise', () {
+    expect(_result().end, GameEnd.timeUp);
+    expect(_result().myScore, 0);
+    expect(_result().opponentScore, 0);
   });
 
   test('accuracy is counted reps over judged reps', () {
