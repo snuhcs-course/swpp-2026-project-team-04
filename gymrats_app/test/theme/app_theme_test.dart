@@ -19,6 +19,17 @@ void main() {
     expect(scheme.outline, AppColors.border);
   });
 
+  test('fever has its own color, apart from the player, opponent, and '
+      'warning', () {
+    expect(AppColors.fever, const Color(0xFF3DE8FF));
+    expect({
+      AppColors.fever,
+      AppColors.accent,
+      AppColors.opponent,
+      AppColors.warning,
+    }, hasLength(4));
+  });
+
   test('text uses the primary text color', () {
     expect(theme.textTheme.bodyMedium!.color, AppColors.textPrimary);
     expect(theme.textTheme.displayLarge!.color, AppColors.textPrimary);
