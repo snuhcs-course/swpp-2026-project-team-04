@@ -168,6 +168,11 @@ git stash pop
 이게 경고화면에 같이 보여주는 메시지야, 아니면 다른 거야?
 경고하는 메시지 자체는 원래대로 무리하지 말라는 메시지여야해. 단지 x100 그림이 별로여서 그림만 바꾼 거고"
 
+<!-- 36318d41 2026-10-30T12:11:55.183Z -->
+[Woohyun Song, 10-30 21:11] "폰 확인 결과: 그림은 그대로 둬.
+온라인 확인 통과: 폰은 손대지 않았더니 5초 뒤 자동으로 닫혔고, 에뮬레이터는 확인을 눌러 닫았어. 둘 다 자세 세팅으로 넘어갔고 매칭이 취소되지 않았어.
+이 결과를 progress.md, 테스트 노트, PR #15 본문에 적어 줘. 테스트 노트 커버리지 칸에는 8bc26b3 CI 숫자를 같은 커밋에 넣고 push해 줘."
+
 <!-- Left out on purpose: prompts of another step or session that live in that step's entries, answers to the agent's questions (quoted in the AI notes), and prompts that are not about development (user, 2026-10-26). The keys stay so a later export does not add them again. -->
 <!-- 36318d41 2026-10-25T06:28:56.571Z -->
 <!-- 36318d41 2026-10-25T06:33:45.306Z -->
