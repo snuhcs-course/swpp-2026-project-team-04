@@ -159,6 +159,15 @@ git stash pop
 - 폰으로 보니까 그림이 마음에 안 들어. 픽토그램에서 x100 써있는 부분을 없애는 편이 나아보여. 이거는 claude design으로 수정안을 다시 띄워줘.
 2. #13은 merge됐어."
 
+<!-- 36318d41 2026-10-30T11:15:00.931Z -->
+[Woohyun Song, 10-30 20:15] "A3로 해줘. 말한 대로 PNG 다시 만들고 테스트, 노트, push, PR #15 본문까지 진행해 줘."
+
+<!-- 36318d41 2026-10-30T11:31:14.936Z -->
+[Woohyun Song, 10-30 20:31] "스크린 리더 설명: 그림과 맞게 \"팔을 깊게 굽힌 채 무리하다 팔꿈치를 다친 모습\"으로 고쳤습니다.
+
+이게 경고화면에 같이 보여주는 메시지야, 아니면 다른 거야?
+경고하는 메시지 자체는 원래대로 무리하지 말라는 메시지여야해. 단지 x100 그림이 별로여서 그림만 바꾼 거고"
+
 <!-- Left out on purpose: prompts of another step or session that live in that step's entries, answers to the agent's questions (quoted in the AI notes), and prompts that are not about development (user, 2026-10-26). The keys stay so a later export does not add them again. -->
 <!-- 36318d41 2026-10-25T06:28:56.571Z -->
 <!-- 36318d41 2026-10-25T06:33:45.306Z -->

@@ -57,7 +57,7 @@ so they are quoted here from the session export.
 - Before proposing a threshold, check the numbers already recorded in the code (comments, test data).
 - Name the clock behind every time rule.
 
-## W4 `feat/safe_warning` – safety warning when a match is found (P12), 2026-10-26 ~ 2026-10-27
+## W4 `feat/safe_warning` – safety warning when a match is found (P12), 2026-10-26 ~ 2026-10-30
 
 ### a. Where AI was used
 - **The dialog:** Claude Code wrote `gymrats_app/lib/widgets/safe_warning_dialog.dart` (L1–207, commit `3db59cb`): `SafeWarningDialog` (L17), its picture box `_Picture` (L158), `safeWarningRoute` (L186) and `showSafeWarning` (L203).
@@ -69,13 +69,15 @@ so they are quoted here from the session export.
   - Claude Design: three internal sketches (A/B/C) on a private Design canvas; the user picked A.
   - Claude Code then wrote a Pillow script, kept outside the repo, that draws sketch A's shapes and exports `gymrats_app/assets/images/safe_warning.png` at 1x/2x/3x (`3db59cb`).
   - The art is drawn for this app: no third-party image, no new package.
+  - After a phone check the user asked to drop "×100". The agent put two revisions on the canvas (A2, A3); the user picked A3, and the agent changed the script and redid the PNGs and the screen reader label (`50b8a18`).
 - **Tests:** `test/widgets/safe_warning_dialog_test.dart` (new), plus updates to `test/screens/versus_screen_test.dart`, `test/screens/online_lobby_screen_test.dart` and `test/design_tokens_test.dart`.
-- **Review:** the `reviewer` subagent ran two rounds on the code: CHANGES_REQUESTED, then APPROVE.
+- **Review:** the `reviewer` subagent ran two rounds on the code: CHANGES_REQUESTED, then APPROVE. Later rounds checked these notes and the pictogram change.
 - **Decided by the user:**
   - the warning's content and layout (a pictogram of a push-up done too hard, the message below);
   - sketches as internal-only material;
   - an image file (PNG), instead of the agent's recommended "draw it in code"; the PM agreed to the `pubspec.yaml` line and the asset path;
   - sketch A, out of the agent's three;
+  - after the phone check, removing "×100", and A3 out of the agent's two revisions;
   - the online 5 s auto-close, picked from the agent's options, where it was marked recommended.
 - **Proposed or decided by the agent, and reported to the user:**
   - back on the warning asks whether to leave, and staying shows it again;
@@ -86,6 +88,7 @@ so they are quoted here from the session export.
 - [Woohyun Song, 10-26] "일단은 내부 스케치로 쓰기로 결정하자. 그리고 W4를 시작하자. '안전 경고'는 매칭이 잡힌 후 게임이 시작하기 전에 유저에게 무리하여 플레이할 경우 신체에 무리가 될 수 있으니 몸상태에 유의하여 게임하라는 알림이야. 픽토그램 같은 이미지로 푸쉬업을 무리해서 하다가 다치는 이미지를 넣고 하단에 안전 메시지를 넣으면 돼." (line breaks shown as spaces)
 - [Woohyun Song, 10-26] "1. PM이 동의했어. 2. PNG로 가자. 3. 너가 Claude Design 캔버스에 시안 3가지를 만들어줘." (line breaks shown as spaces)
 - [Woohyun Song, 10-26] "A로 가자."
+- [Woohyun Song, 10-29] "폰으로 보니까 그림이 마음에 안 들어. 픽토그램에서 x100 써있는 부분을 없애는 편이 나아보여. 이거는 claude design으로 수정안을 다시 띄워줘."
 - [Woohyun Song, 10-26] answer to the agent's two questions, sent as a new message after the question turn was interrupted (an answer, not a prompt, so it is not in the Prompt Log; from the session export): "5초 뒤 자동 닫힘 (Recommended)" for how the online warning closes, and "이미지 파일(PNG/SVG)" for the pictogram.
 
 ### c. What AI did well
@@ -110,6 +113,7 @@ so they are quoted here from the session export.
   - The Prompt Log builder's regex dropped the last prompt. Caught by re-running `extract_prompts.py`.
 - **Invalid result noticed:** one "passing" `main_test.dart` run happened after the other session had switched the working tree to the W1 branch, so it tested W1 code. The reflog showed this. The run was discarded and repeated after the restore.
 - **Unrelated reformatting:** `dart format` re-wrapped existing tests. It was reverted so the diff holds only W4 changes.
+- **Picture detail that did not work on a phone:** the agent added "×100" and the repetition lines to sketch A by itself; the user's brief did not ask for them. Sketch A had been picked on the canvas and passed the tests, so only the user's phone check caught it: the user disliked the picture and named "×100". The agent offered two revisions, and the user picked A3, which also drops the lines. Cost: one more round of sketches and PNGs.
 
 ### e. Prompt revisions
 - **Before:** "일단은 내부 스케치로 쓰기로 결정하자. 그리고 W4를 시작하자." (interrupted by the user)

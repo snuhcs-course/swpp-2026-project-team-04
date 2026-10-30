@@ -84,3 +84,28 @@ Test cases added or changed in this step:
 Acceptance criteria → tests:
 - **Bot match found, then the warning shows, and pose setup starts only after confirm:** `versus_screen_test.dart` "the pose setup starts only after 확인" and "opens over MATCH FOUND with the picture, the message and 확인".
 - **Online match found, then the warning shows, and the match does not time out because of it:** `online_lobby_screen_test.dart` "live flow uses AI radar then real-player VS before camera setup" (closes itself after 5 s, shorter than the server's ready limit) and "leaving … closes both battle and lobby to home" (확인 (5)).
+
+#### 2026-10-30 · code at commit `50b8a18` · step W4 `feat/safe_warning` (simpler pictogram after the device check)
+After a check on a phone, the pictogram drops the "×100" text and the repetition lines, and its screen reader label now matches the picture. No logic changed. The branch also has `main` merged in, with #13 and #16. I ran the commands from the Plan in `gymrats_app/` on Windows, on this code, without coverage.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on PR #15 | 10/30 | CI comment "Tests and coverage (GitHub Actions)" on PR #15 |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on PR #15 | 10/30 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on PR #15 | 10/30 | same CI comment |
+| View | flutter_test (widget) | 75% | see the CI comment on PR #15 | 10/30 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | see the CI comment on PR #15; `server/` unchanged | 10/30 | same CI comment |
+
+- **Tests:** `flutter test` 714 passed, 0 failed, 1 skipped.
+  - The 16 more than the last entry are `test/ai_eval/` from PR #16 on `main`; this push adds no tests.
+  - The skipped test is `test/services/online/public_wss_smoke_test.dart`, as before.
+  - The four W4 test files alone: 55 passed.
+  - `flutter analyze` found no issues.
+- **Coverage:** the last posted numbers are for `4cc0218` ([run 40803648440](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/40803648440)): Model 98.1%, ViewModel 94.4%, Service 92.0%, View 91.0%, server 96%, all above target and the same as in the entry above. This push's only W4 changes are the PNGs and one label string; it also brings in `test/ai_eval/` from #16. The CI comment on PR #15 updates for the new head.
+- **Shortfalls:** none known.
+- **Test cases added or changed in this step:** none. `safe_warning_dialog_test.dart` still checks the PNG sizes (240×150, 480×300, 720×450), and the tests read the label from `SafeWarningDialog.pictureLabel`.
+- **Manual check (the user's phone, 2026-10-29, on the earlier picture):**
+  - Bot match found: the warning shows.
+  - Back on the warning: the leave question appears.
+  - Online match: not checked yet.
+  - The new picture has not been checked on a phone yet.
