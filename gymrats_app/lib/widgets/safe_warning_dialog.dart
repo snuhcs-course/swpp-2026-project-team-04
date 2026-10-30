@@ -25,7 +25,7 @@ class SafeWarningDialog extends StatefulWidget {
   static const picture = 'assets/images/safe_warning.png';
 
   /// What a screen reader says for [picture].
-  static const pictureLabel = '팔을 깊게 굽힌 채 너무 많이 반복하다 팔꿈치를 다친 모습';
+  static const pictureLabel = '팔을 깊게 굽힌 채 무리하다 팔꿈치를 다친 모습';
 
   @override
   State<SafeWarningDialog> createState() => _SafeWarningDialogState();
