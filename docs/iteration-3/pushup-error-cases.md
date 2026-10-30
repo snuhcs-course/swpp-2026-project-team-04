@@ -136,10 +136,11 @@ knee fix alone would make the judge count them. The kneeling bow is caught only 
 ## After the judge fix (P14, `fix/pushup_judge_accuracy`)
 Changes, each decided from the cases above (2026-10-27):
 - the hip angle under 110° rule is off (`kneeBentAngle: 0`);
-- the bottom also needs the shoulders 0.70 shoulder widths down (`minShoulderDrop`), so a head nod stays shallow.
+- the bottom also needs the shoulders 0.70 shoulder widths down (`minShoulderDrop`, 0.68 since 2026-10-30, see the third
+  fix), so a head nod stays shallow.
   Measured as the judge's `JudgeSnapshot.shoulderDrop`: the smoothed shoulder height against the top pose the judge
   follows between reps, per rep the peak of the attempt. Valid reps reached 0.75–0.98, head-nod half reps 0.57, 0.61,
-  0.65, 0.78, 0.90 (the raw measure in the session-2 findings overlapped more). The margin is 0.05, from one person
+  0.65, 0.78, 0.90 (the raw measure in the session-2 findings overlapped more). The margin at 0.70 was 0.05, from one person
   and one phone;
 - belly: 3 attempt frames with the hips within the hand band (`minHipOnFloorGap: -0.08`) and a torso drop of 1.10
   (`minBellyTorsoDrop`) as the attempt's peak, checked before the knees. Peak torso drop per rep: belly reps 2–5
@@ -199,8 +200,8 @@ visible. Still open: normal rep 2 of `20261026-000522_normal` (2-frame hip dip a
   straight-arm top frames before the descent with the ankles 0.20 shoulder widths or more above the knees are a knee
   push-up. Per-rep medians at the top: normal −0.14 to +0.02, knee push-ups −0.27 to −0.19. Measured during the
   descent the two overlap (−0.30 already rejected far normal reps), and the whole top phase failed too: walking back
-  from the phone between reps 6 and 7 of `20261027-142341_normal` read −0.56. Line sweep on all 21 sets (12 labelled,
-  9 raw): −0.22 catches knee reps 13 and 19 of `20261027-222907_knees`; −0.21 to −0.19 also catch reps 16 and 17
+  from the phone between reps 6 and 7 of `20261027-142341_normal` read −0.56. Line sweep on all 20 sets (12 labelled,
+  8 raw): −0.22 catches knee reps 13 and 19 of `20261027-222907_knees`; −0.21 to −0.19 also catch reps 16 and 17
   and change one more rep, rep 6 of the unlabelled set `20261027-221743_normal`. Its last top frames read −0.13 to
   −0.25, like the kneeling reps 8–11 after it (−0.13 to −0.28) and unlike reps 1–5 before it (−0.03 to −0.10) at the
   same distance, so it was most likely already on the knees; that set stays out of the fixtures because its labels
@@ -242,9 +243,17 @@ and no knee was seen, so `armsStraight` did not apply. Reps 3 and 5 (slightly sh
 - **Shoulder line 0.67 tried, kept at 0.70** (user, 2026-10-28): 0.67 lets reps 3 and 5 count and turns no other
   rejected rep into a counted one on any recording, but ten rejected reps then pass the depth check and are caught
   only by the knee or arm checks (three of them in half-rep sets), and the highest labelled head nod still caught as
-  `insufficientDepth` is 0.65, a margin of 0.02. The code keeps 0.70; the user is trying a 0.67 build on the phone.
+  `insufficientDepth` is 0.65, a margin of 0.02. The code kept 0.70 then; the user tried a 0.67 build on the phone.
   A head-nod check by shape (shoulder drop over head drop: labelled head nods 0.32–0.37, normal reps 0.40 or more)
   is a candidate once more head-nod and shallow normal sets are recorded.
+
+- **Shoulder line moved to 0.68** (user, 2026-10-30, after testers found 0.70 too strict). Replayed on all 23 raw
+  recordings: no rep goes from rejected to counted, and eight rejected reps go from `insufficientDepth` to `kneesDown`
+  (seven) or `armsStraight` (one); two of the eight are in half-rep sets, so a head nod there gets another reason.
+  Five recordings change besides the fixture `20261027-222907_knees`, whose knee rep 18
+  is now `kneesDown`. Reps 3 and 5 of `20261028-001230_s26-fe_normal` stay `insufficientDepth`: they reached 0.67, so
+  this line does not count them. The highest labelled head nod still caught as `insufficientDepth` (0.65) is 0.03 under
+  the line.
 
 ## Limitations
 - One person and one phone (SM-S741N), floor placement at the usual distance plus one farther position. The user

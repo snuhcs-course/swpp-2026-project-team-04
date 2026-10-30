@@ -172,7 +172,7 @@ void main() {
     expect(update.event!.maxDepth, closeTo(1.6, 0.01));
   });
 
-  test('the shoulder line sits at 0.70 shoulder widths', () {
+  test('the shoulder line sits at 0.68 shoulder widths', () {
     RepUpdate bottom(double drop) {
       final c = judge();
       calibrate(c);
@@ -180,8 +180,8 @@ void main() {
       return at(c, 800, pose(depth: 1.6, shoulderDrop: drop));
     }
 
-    expect(bottom(0.69).snapshot.phase, RepPhase.descending);
-    expect(bottom(0.71).snapshot.phase, RepPhase.bottom);
+    expect(bottom(0.67).snapshot.phase, RepPhase.descending);
+    expect(bottom(0.69).snapshot.phase, RepPhase.bottom);
   });
 
   test('the shoulders reaching the line complete the bottom', () {

@@ -43,7 +43,7 @@ class RepJudgeConfig {
     this.maxHipHandGap = 0.45,
     this.minHipOnFloorGap = -0.08,
     this.minBellyTorsoDrop = 1.1,
-    this.minShoulderDrop = 0.7,
+    this.minShoulderDrop = 0.68,
     this.bowHipHandGap = -0.6,
     this.bowTorsoDrop = 0.3,
     this.maxShinLiftGap = -0.2,
@@ -75,11 +75,12 @@ class RepJudgeConfig {
   /// The shoulders must also drop this far below the top, in top-pose
   /// shoulder widths, for the bottom to count. A head nod moves the nose
   /// alone: on the H1 recordings the valid reps dropped the shoulders 0.75
-  /// or more, and half reps with a head nod 0.57 to 0.90. 0.67 was tried
-  /// for two slightly shallow reps of a later set and not kept: it left
-  /// 0.02 above the highest head nod still caught here, and ten rejected
-  /// reps then fell through to the knee and arm checks instead. Without a
-  /// shoulder measurement the nose depth decides alone.
+  /// or more, and half reps with a head nod 0.57 to 0.90. The line was
+  /// 0.70 until testers found it too strict. At 0.68 no recorded rep goes
+  /// from rejected to counted; eight rejected reps fall through from the
+  /// depth check to the knee and arm checks, and the highest head nod still
+  /// caught here (0.65) is 0.03 under the line. Without a shoulder
+  /// measurement the nose depth decides alone.
   final double minShoulderDrop;
 
   /// Rising above this depth after the bottom, then going down again

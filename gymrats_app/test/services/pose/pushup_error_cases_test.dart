@@ -26,7 +26,7 @@ const knownErrors = <String, String>{
       'would also miss knee reps 2 and 3 of 20261026-000615_knees',
   '20261027-142000_halfRepHeadNod':
       'known error: half reps 3 and 4 dropped the shoulders 0.90 and 0.78, '
-      'past the 0.70 line, and are rejected as kneesDown, not '
+      'past the 0.68 line, and are rejected as kneesDown, not '
       'insufficientDepth',
   '20261027-142116_bellyDown':
       'known error: belly rep 1 never reached the bottom and is '
@@ -39,8 +39,8 @@ const knownErrors = <String, String>{
       'known error: kneeling-bow rep 2 kept the elbows straight through '
       'the bottom and is armsStraight, not kneesDown',
   '20261027-222907_knees':
-      'known error: wrong reason (knee rep 18 is insufficientDepth) and an '
-      'extra rejected event (the rock back after rep 19)',
+      'known error: an extra rejected event (the rock back after rep 19 '
+      'closes as insufficientDepth)',
 };
 
 /// What today's judge closes, rep by rep, for each known error: `valid` or
@@ -115,7 +115,7 @@ const knownVerdicts = <String, List<String>>{
     'kneesDown',
     'kneesDown',
     'kneesDown',
-    'insufficientDepth',
+    'kneesDown',
     'kneesDown',
     'insufficientDepth',
   ],
