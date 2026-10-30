@@ -13,6 +13,7 @@ const _checked = [
   'lib/screens/match_feedback_screen.dart',
   'lib/widgets/auth_form.dart',
   'lib/widgets/match_record_card.dart',
+  'lib/widgets/safe_warning_dialog.dart',
 ];
 
 /// Pattern and what it catches.
