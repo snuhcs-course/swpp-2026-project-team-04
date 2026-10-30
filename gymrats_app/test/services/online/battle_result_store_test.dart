@@ -12,6 +12,10 @@ import '../../../../server/lib/battle_server.dart';
 // ignore: avoid_relative_lib_imports
 import '../../../../server/lib/result_store.dart';
 
+// The same library the server imports: by package: it would be another type.
+// ignore: avoid_relative_lib_imports
+import '../../../lib/models/battle_rules.dart';
+
 import 'online_battle_integration_test.dart' show Wire, until;
 
 class FakeResultStore implements BattleResultStore {
@@ -48,6 +52,7 @@ void main() {
   Future<BattleServer> server(
     BattleResultStore store, {
     int duration = 300,
+    BattleRules rules = battleRules,
   }) async {
     final s = BattleServer(
       authenticate: (token) => switch (token) {
@@ -60,6 +65,7 @@ void main() {
       readyTimeoutMs: 2000,
       reconnectMs: 200,
       results: store,
+      rules: rules,
     );
     await s.start();
     addTearDown(s.close);
@@ -115,6 +121,43 @@ void main() {
       expect(saved['match_id'], a.match);
       expect(saved['result_id'], finished['payload']['result_id']);
       expect(saved['reason'], 'time_up');
+      expect(saved['players'], [
+        {
+          'player_id': '1',
+          'display_name': 'Alpha',
+          'valid_reps': 1,
+          'invalid_reps': 0,
+          'outcome': 'win',
+        },
+        {
+          'player_id': '2',
+          'display_name': 'Beta',
+          'valid_reps': 0,
+          'invalid_reps': 0,
+          'outcome': 'loss',
+        },
+      ]);
+    });
+
+    test('a KO is stored with its reason, without the game score', () async {
+      final store = FakeResultStore();
+      final s = await server(
+        store,
+        duration: 5000,
+        rules: const BattleRules(koLead: 10),
+      );
+      final (a, b) = await playing(s);
+      a.send('rep.submit', {
+        'rep_seq': 1,
+        'elapsed_ms': 10,
+        'valid': true,
+        'reason': null,
+      });
+      await a.next('rep.accepted');
+      await b.next('match.finished');
+      await until(() => store.results.isNotEmpty);
+      final saved = store.results.single;
+      expect(saved['reason'], 'ko');
       expect(saved['players'], [
         {
           'player_id': '1',

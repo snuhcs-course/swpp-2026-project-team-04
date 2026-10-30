@@ -13,6 +13,10 @@ import 'package:gymrats_app/services/online/pose_wire.dart';
 // ignore: avoid_relative_lib_imports
 import '../../../../server/lib/battle_server.dart';
 
+// The same library the server imports: by package: it would be another type.
+// ignore: avoid_relative_lib_imports
+import '../../../lib/models/battle_rules.dart';
+
 import 'package:gymrats_app/shared/battle_protocol.dart';
 
 Future<void> until(bool Function() condition) async {
@@ -93,6 +97,7 @@ void main() {
     int duration = 1500,
     int reconnect = 300,
     int ready = 1000,
+    BattleRules rules = battleRules,
   }) async {
     final s = BattleServer(
       authenticate: (token) => switch (token) {
@@ -106,6 +111,7 @@ void main() {
       countdownMs: 80,
       readyTimeoutMs: ready,
       reconnectMs: reconnect,
+      rules: rules,
     );
     await s.start();
     addTearDown(s.close);
@@ -160,6 +166,238 @@ void main() {
       (found['payload']['players'] as List)
           .map((p) => p['player_id'] as String)
           .toList();
+
+  group('the game on the server', () {
+    Map<String, dynamic> rep(
+      int seq,
+      int elapsed, {
+      String? grade,
+      String? reason,
+    }) => {
+      'rep_seq': seq,
+      'elapsed_ms': elapsed,
+      'valid': reason == null,
+      'reason': reason,
+      'grade': ?grade,
+    };
+
+    Map<String, dynamic> player(Map<String, dynamic> finished, String id) =>
+        (finished['payload']['players'] as List)
+            .cast<Map<String, dynamic>>()
+            .firstWhere((p) => p['player_id'] == id);
+
+    test('match.found names the fever start and the KO lead', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      for (final wire in [a, b]) {
+        final found = wire.events.firstWhere((e) => e['type'] == 'match.found');
+        expect(found['payload']['fever_start_ms'], 20000);
+        expect(found['payload']['ko_lead'], 100);
+      }
+    });
+
+    test('points, combo, and the grade reach both players', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'good'));
+      final first = (await a.next('rep.accepted'))['payload'];
+      expect(first['points'], 10);
+      expect(first['combo'], 1);
+      expect(first['game_score'], 10);
+
+      a.send('rep.submit', rep(2, 20, grade: 'excellent'));
+      final second = (await a.next('rep.accepted'))['payload'];
+      expect(second['points'], 20);
+      expect(second['combo'], 2);
+      expect(second['game_score'], 30);
+
+      await b.next('rep.updated');
+      final seen = (await b.next('rep.updated'))['payload'];
+      expect(seen['player_id'], 'a');
+      expect(seen['grade'], 'excellent');
+      expect(seen['combo'], 2);
+      expect(seen['points'], 20);
+      expect(seen['game_score'], 30);
+      expect(seen['valid_reps'], 2);
+    });
+
+    test('no grade counts as good; a rejected rep breaks the combo', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10));
+      expect((await a.next('rep.accepted'))['payload']['game_score'], 10);
+
+      a.send('rep.submit', rep(2, 20, reason: 'insufficient_depth'));
+      final rejected = (await a.next('rep.accepted'))['payload'];
+      expect(rejected['points'], 0);
+      expect(rejected['combo'], 0);
+      expect(rejected['game_score'], 10);
+
+      a.send('rep.submit', rep(3, 30));
+      final next = (await a.next('rep.accepted'))['payload'];
+      expect(next['points'], 10);
+      expect(next['combo'], 1);
+    });
+
+    test('a bad grade, or a grade on a rejected rep, is refused', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'perfect'));
+      expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
+      a.send('rep.submit', rep(1, 10, grade: 'good', reason: 'too_fast'));
+      expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
+      a.send('rep.submit', rep(1, 10, grade: 'good'));
+      expect((await a.next('rep.accepted'))['payload']['valid_reps'], 1);
+    });
+
+    test('a rep from the fever start on scores double', () async {
+      final s = await server(
+        rules: const BattleRules(feverStart: Duration(milliseconds: 100)),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 99));
+      expect((await a.next('rep.accepted'))['payload']['points'], 10);
+      b.send('rep.submit', rep(1, 100));
+      expect((await b.next('rep.accepted'))['payload']['points'], 20);
+    });
+
+    test('a sent-again rep does not score twice', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10), rid: 'first');
+      expect((await a.next('rep.accepted'))['payload']['game_score'], 10);
+      a.send('rep.submit', rep(1, 10), rid: 'again');
+      expect((await a.next('rep.accepted'))['payload']['game_score'], 10);
+    });
+
+    test('at time up the game score decides, not the reps', () async {
+      final s = await server(
+        duration: 400,
+        rules: const BattleRules(excellentPoints: 50),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'excellent'));
+      await a.next('rep.accepted');
+      b.send('rep.submit', rep(1, 10));
+      await b.next('rep.accepted');
+      b.send('rep.submit', rep(2, 20));
+      await b.next('rep.accepted');
+
+      final finished = await a.next('match.finished');
+      expect(finished['payload']['reason'], 'time_up');
+      expect(finished['payload']['winner_id'], 'a');
+      expect(player(finished, 'a')['game_score'], 50);
+      expect(player(finished, 'a')['valid_reps'], 1);
+      expect(player(finished, 'b')['game_score'], 25);
+      expect(player(finished, 'b')['outcome'], 'loss');
+    });
+
+    test('the same game score goes to more valid reps', () async {
+      final s = await server(
+        duration: 400,
+        rules: const BattleRules(excellentPoints: 25),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'excellent'));
+      await a.next('rep.accepted');
+      b.send('rep.submit', rep(1, 10));
+      await b.next('rep.accepted');
+      b.send('rep.submit', rep(2, 20));
+      await b.next('rep.accepted');
+      final finished = await a.next('match.finished');
+      expect(player(finished, 'a')['game_score'], 25);
+      expect(player(finished, 'b')['game_score'], 25);
+      expect(finished['payload']['winner_id'], 'b');
+    });
+
+    test('the same game score and reps are a draw', () async {
+      final s = await server(duration: 400);
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10));
+      await a.next('rep.accepted');
+      b.send('rep.submit', rep(1, 10));
+      await b.next('rep.accepted');
+      final finished = await a.next('match.finished');
+      expect(finished['payload']['winner_id'], isNull);
+      expect(player(finished, 'a')['outcome'], 'draw');
+    });
+
+    test('a KO ends the match at once, after the ACK, for both', () async {
+      final s = await server(
+        duration: 5000,
+        rules: const BattleRules(koLead: 20),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10));
+      await a.next('rep.accepted');
+      a.send('rep.submit', rep(2, 20));
+      expect((await a.next('rep.accepted'))['payload']['game_score'], 25);
+
+      final finished = await a.next('match.finished');
+      expect(finished['payload']['reason'], 'ko');
+      expect(finished['payload']['winner_id'], 'a');
+      expect(player(finished, 'a')['game_score'], 25);
+      expect(player(finished, 'b')['outcome'], 'loss');
+      await b.next('rep.updated');
+      await b.next('rep.updated');
+      expect((await b.next('match.finished'))['payload']['reason'], 'ko');
+
+      b.send('rep.submit', rep(1, 30));
+      expect((await b.next('error'))['payload']['code'], 'INVALID_STATE');
+    });
+
+    test('the KO rep sent again after the end gets its first ACK', () async {
+      final s = await server(
+        duration: 5000,
+        rules: const BattleRules(koLead: 10),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10));
+      final first = (await a.next('rep.accepted'))['payload'];
+      await a.next('match.finished');
+
+      a.send('rep.submit', rep(1, 10));
+      expect((await a.next('rep.accepted'))['payload'], first);
+      expect(
+        a.events.where((e) => e['type'] == 'match.finished'),
+        hasLength(1),
+      );
+    });
+
+    test('the same rep with another grade is a conflict', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'good'));
+      await a.next('rep.accepted');
+      a.send('rep.submit', rep(1, 10, grade: 'excellent'));
+      expect((await a.next('error'))['payload']['code'], 'REP_CONFLICT');
+    });
+
+    test('the snapshot restores the game score', () async {
+      final s = await server(duration: 3000);
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'excellent'));
+      await a.next('rep.accepted');
+      a.send('match.resume', {});
+      final snapshot = (await a.next('match.snapshot'))['payload'];
+      expect(snapshot['scores']['a']['game_score'], 15);
+      expect(snapshot['scores']['b']['game_score'], 0);
+      expect(snapshot['fever_start_ms'], 20000);
+      expect(snapshot['ko_lead'], 100);
+    });
+  });
 
   test(
     'all catalog avatars can match and appear on the opponent client',
