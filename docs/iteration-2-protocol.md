@@ -359,12 +359,14 @@ flutter test test/services/online/online_battle_integration_test.dart test/widge
 
 | 메시지 | 추가 필드 | 뜻 |
 |---|---|---|
-| `match.found`, `match.snapshot` | `fever_start_ms`, `ko_lead` | 피버 시작 시각과 KO 점수 차. 앱은 체력 바를 `ko_lead`로 그린다 |
-| `rep.submit` | `grade`: `"good"`, `"excellent"` 또는 없음 | 유효 rep의 등급. 깊이 비교는 `passDepth`가 있는 폰이 한다. 유효 rep에 없으면 `good`으로 본다. 거절 rep에 값을 보내거나 모르는 값을 보내면 `INVALID_PAYLOAD` |
-| `rep.accepted`, `rep.updated` | `combo`, `points`, `game_score` | 연속 콤보 수(거절 rep 뒤 0), 이 rep의 점수, 그 선수의 누적 게임 점수. 폰은 `valid_reps`처럼 서버 누적값으로 덮어쓴다. `rep.updated`에는 보낸 쪽의 `grade`도 그대로 실린다 |
+| `match.found`, `match.snapshot` | `fever_start_ms`, `ko_lead`, `average_points` | 피버 시작 시각, KO 점수 차, Average rep의 점수. 앱은 체력 바를 `ko_lead`로 그린다. `average_points`가 없는 서버에는 `"average"`를 보내지 않는다 |
+| `rep.submit` | `grade`: `"average"`, `"good"`, `"excellent"` 또는 없음 | rep의 등급. 깊이와 팔꿈치 각도는 폰이 판단한다. 유효 rep에는 `good`이나 `excellent`이고, 없으면 `good`으로 본다. `average`는 `valid: false`이고 `reason: "insufficient_depth"`일 때만 허용하며, 그 밖의 거절 rep에는 값을 보내지 않는다. 어긋난 조합이나 모르는 값은 `INVALID_PAYLOAD` |
+| `rep.accepted`, `rep.updated` | `combo`, `points`, `game_score` | 연속 콤보 수(거절 rep과 Average rep 뒤 0), 이 rep의 점수, 그 선수의 누적 게임 점수. 폰은 `valid_reps`처럼 서버 누적값으로 덮어쓴다. `rep.updated`에는 보낸 쪽의 `grade`도 그대로 실린다 |
 | `match.finished`의 `players[]`, `match.snapshot`의 `scores` | `game_score` | 최종 또는 현재 게임 점수 |
 
 - **종료 사유 `ko`:** `rep.submit`을 수락한 직후 점수 차가 `ko_lead` 이상이면 서버는 `rep.accepted`와 `rep.updated`를 보낸 다음 `match.finished`(`reason: "ko"`)로 경기를 끝낸다. 그 뒤의 새 `rep.submit`은 종료 후 이벤트이므로 `INVALID_STATE`다.
+- **Average rep:** `valid: false`이므로 `invalid_reps`에 들어가고 `valid_reps`에는 들어가지 않는다. 서버는 같은 코드(`PlayerGameScore.addRep`)로 `average_points`를 더하고, 피버 때 배수를 적용하며, 콤보 보너스 없이 콤보를 끊는다. KO 판정은 다른 rep와 같다. 기준(거절 사유 `insufficient_depth`, `minElbowAngle` 105° 이하)은 폰이 판단하고 각도는 보내지 않는다. 서버가 폰의 판정을 믿는 것은 `valid`, `grade`와 같다.
+- **옛 앱, 옛 서버와 섞일 때:** 옛 앱은 거절 rep에 `grade`를 보내지 않으므로 그 rep는 지금처럼 0점이다. 옛 앱은 `rep.updated`의 `grade: "average"`로 +N을 띄우지 않지만 `game_score`를 그대로 쓰므로 점수와 바는 같다. 새 앱은 `match.found`와 `match.snapshot`에 `average_points`가 있을 때만 `"average"`를 보낸다. W3 서버는 거절 rep에 `grade`가 있으면 `INVALID_PAYLOAD`를 주기 때문이다. W3 서버에 붙으면 Average는 꺼지고 그 rep는 0점이다.
 - **승자:** `time_up`과 `ko`는 게임 점수가 높은 쪽 → 유효 횟수가 많은 쪽 → 무승부(`winner_id: null`) 순서로 정한다. `forfeit`와 `disconnect_timeout`은 지금처럼 나간 쪽이 패배한다.
 - **저장:** 결과 저장(`BattleResultStore.finished`)에는 게임 점수를 넣지 않는다(배틀 규칙 문서 10장 9번). `reason`에 `ko`가 올 수 있다.
 - **배포 순서:** Django → 배틀 서버 → 앱. Django가 먼저인 이유는, Django `REASONS`에 `ko`가 들어가기 전에 배틀 서버를 배포하면 KO 경기의 저장이 거절되기 때문이다(마이그레이션은 없다). 옛 서버는 모르는 필드를 거절하므로, 앱은 `match.found`에 `fever_start_ms`가 있을 때만 `grade`를 보내고 게임 화면을 켠다.

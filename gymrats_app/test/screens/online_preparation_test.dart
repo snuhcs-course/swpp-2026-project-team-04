@@ -292,6 +292,98 @@ void main() {
       await tester.pump();
     });
 
+    testWidgets('an average rep says its reason and its points, and only that '
+        'rep does', (tester) async {
+      final judge = DepthRepJudge();
+      await open(tester, judge: judge);
+      await play(tester);
+      judge.closeRep(reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      await closeRep(tester);
+      expect(find.text('가슴을 더 내려요 · +5 AVERAGE'), findsOneWidget);
+
+      // The latest score is still the average one.
+      judge.closeRep(
+        reason: RejectReason.insufficientDepth,
+        minElbowAngle: 120,
+      );
+      await closeRep(tester);
+      expect(find.text('가슴을 더 내려요'), findsOneWidget);
+      judge.closeRep(reason: RejectReason.kneesDown, minElbowAngle: 90);
+      await closeRep(tester);
+      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
+      expect(find.textContaining('AVERAGE'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a server without Average has no points for that rep', (
+      tester,
+    ) async {
+      final judge = DepthRepJudge();
+      await open(tester, judge: judge);
+      await play(tester);
+      session.rules = const BattleRules(averagePoints: 0);
+      judge.closeRep(reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      await closeRep(tester);
+      expect(find.text('가슴을 더 내려요'), findsOneWidget);
+      expect(session.myLastScore, isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets("the result counts the user's grades", (tester) async {
+      final judge = DepthRepJudge();
+      await open(tester, judge: judge);
+      await play(tester);
+      judge.closeRep(maxDepth: 1.9);
+      await closeRep(tester);
+      judge.closeRep(maxDepth: 1.4);
+      await closeRep(tester);
+      judge.closeRep(reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      await closeRep(tester);
+      judge.closeRep(reason: RejectReason.kneesDown, minElbowAngle: 90);
+      await closeRep(tester);
+      await finishRound(tester, {
+        'result_id': 'r' * 32,
+        'reason': 'time_up',
+        'players': [
+          {'player_id': 'me', 'outcome': 'win'},
+          {'player_id': 'opponent', 'outcome': 'loss'},
+        ],
+      });
+      expect(find.text('Excellent 1 · Good 1 · Average 1'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets("the result's grades go by the server's rules and the "
+        "counter's pass depth", (tester) async {
+      final judge = DepthRepJudge(
+        config: const RepJudgeConfig(bottomDepth: .75),
+      );
+      await open(tester, judge: judge);
+      await play(tester);
+      // A server without Average: this rep earned nothing.
+      session.rules = const BattleRules(averagePoints: 0);
+      judge.closeRep(reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      await closeRep(tester);
+      // 1.6 x 0.75: a push-up at this depth would only be good.
+      judge.closeRep(maxDepth: 1.2);
+      await closeRep(tester);
+      await finishRound(tester, {
+        'result_id': 'r' * 32,
+        'reason': 'time_up',
+        'players': [
+          {'player_id': 'me', 'outcome': 'win'},
+          {'player_id': 'opponent', 'outcome': 'loss'},
+        ],
+      });
+      expect(find.text('Excellent 1 · Good 0 · Average 0'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
     testWidgets("a rep's grade goes by the counter's pass depth", (
       tester,
     ) async {
