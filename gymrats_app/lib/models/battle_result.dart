@@ -65,6 +65,7 @@ class BattleResult {
     opponentReps: opponentReps,
     playedAt: endedAt,
     decidedOutcome: decidedOutcome,
+    gameEnd: end,
   );
 
   MatchOutcome get outcome => record.outcome;

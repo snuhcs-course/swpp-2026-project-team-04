@@ -1,5 +1,6 @@
 import 'exercise_type.dart';
 import 'feedback_summary.dart';
+import 'game_score.dart';
 
 /// How a battle ended for the user.
 enum MatchOutcome {
@@ -23,6 +24,7 @@ class MatchRecord {
     this.playedAt,
     this.id,
     this.decidedOutcome,
+    this.gameEnd,
     this.feedbackSummary,
   });
 
@@ -48,6 +50,9 @@ class MatchRecord {
   /// The outcome the server stored. An online forfeit or disconnect is a
   /// loss whatever the reps, so it wins over [myReps] and [opponentReps].
   final MatchOutcome? decidedOutcome;
+
+  /// How a battle just played stopped, for its upload; null otherwise.
+  final GameEnd? gameEnd;
 
   /// The battle's one-line form feedback; null when none was stored, e.g.
   /// for a battle saved before feedback was kept.

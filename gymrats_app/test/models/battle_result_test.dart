@@ -56,6 +56,19 @@ void main() {
     expect(result.opponentScore, 90);
   });
 
+  test('the record says how the game stopped, for the upload', () {
+    expect(_result().record.gameEnd, GameEnd.timeUp);
+    final ko = BattleResult(
+      matchup: _matchup,
+      myReps: 5,
+      myInvalidReps: 0,
+      opponentReps: 1,
+      end: GameEnd.ko,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    );
+    expect(ko.record.gameEnd, GameEnd.ko);
+  });
+
   test('with a game the big numbers and the margin are the points; without '
       'one they are the reps', () {
     final withGame = BattleResult(
