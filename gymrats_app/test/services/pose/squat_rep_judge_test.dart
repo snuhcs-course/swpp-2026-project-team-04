@@ -23,7 +23,11 @@ PoseFrame pose(double hip, {bool oneSide = false}) {
 void main() {
   test('standing, deep squat and standing count exactly one rep', () {
     var now = Duration.zero;
-    final judge = SquatRepJudge(clock: () => now);
+    final judge = SquatRepJudge(
+      clock: () => now,
+      smoothingTau: Duration.zero,
+      baselineTau: Duration.zero,
+    );
     judge.update(pose(200));
     now += const Duration(milliseconds: 300);
     expect(judge.update(pose(200)).snapshot.phase, RepPhase.up);
@@ -41,7 +45,11 @@ void main() {
   });
   test('a shallow squat is rejected and small movement is ignored', () {
     var now = Duration.zero;
-    final judge = SquatRepJudge(clock: () => now);
+    final judge = SquatRepJudge(
+      clock: () => now,
+      smoothingTau: Duration.zero,
+      baselineTau: Duration.zero,
+    );
     judge.update(pose(200));
     now += const Duration(milliseconds: 300);
     judge.update(pose(200));
@@ -54,7 +62,11 @@ void main() {
   });
   test('long tracking loss abandons the attempt', () {
     var now = Duration.zero;
-    final judge = SquatRepJudge(clock: () => now);
+    final judge = SquatRepJudge(
+      clock: () => now,
+      smoothingTau: Duration.zero,
+      baselineTau: Duration.zero,
+    );
     judge.update(pose(200));
     now += const Duration(milliseconds: 300);
     judge.update(pose(200));
@@ -66,7 +78,11 @@ void main() {
 
   test('descending again before standing rejects the incomplete rep', () {
     var now = Duration.zero;
-    final judge = SquatRepJudge(clock: () => now);
+    final judge = SquatRepJudge(
+      clock: () => now,
+      smoothingTau: Duration.zero,
+      baselineTau: Duration.zero,
+    );
     judge.update(pose(200));
     now += const Duration(milliseconds: 300);
     judge.update(pose(200));
@@ -84,7 +100,11 @@ void main() {
 
   test('reset and abandon preserve the expected repetition index', () {
     var now = Duration.zero;
-    final judge = SquatRepJudge(clock: () => now);
+    final judge = SquatRepJudge(
+      clock: () => now,
+      smoothingTau: Duration.zero,
+      baselineTau: Duration.zero,
+    );
     void advance(int ms) => now += Duration(milliseconds: ms);
     judge.update(pose(200));
     advance(300);
@@ -136,4 +156,15 @@ void main() {
       );
     },
   );
+  test('default smoothing dampens a brief landmark jump', () {
+    var now = Duration.zero;
+    final judge = SquatRepJudge(clock: () => now);
+    judge.update(pose(200));
+    now += const Duration(milliseconds: 300);
+    judge.update(pose(200));
+    now += const Duration(milliseconds: 10);
+    final update = judge.update(pose(300));
+    expect(update.snapshot.depth, lessThan(.25));
+    expect(update.snapshot.phase, RepPhase.up);
+  });
 }

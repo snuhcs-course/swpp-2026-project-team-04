@@ -478,7 +478,7 @@ void main() {
     },
   );
   test('two real Flutter sessions match, exchange avatar pose and use server result', () async {
-    final s = await server(duration: 1800);
+    final s = await server(duration: 3000);
     final uri = Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle');
     final a = OnlineBattleSession(
           endpoint: uri,
@@ -536,6 +536,8 @@ void main() {
       rejected++;
       await until(() => a.myInvalidReps == rejected);
       expect(a.error, isNull, reason: 'Server must accept ${reason.name}');
+      // Leave room under the server's per-second control-message limit.
+      await Future<void>.delayed(const Duration(milliseconds: 100));
     }
     await until(
       () => b.opponentFrame == null,

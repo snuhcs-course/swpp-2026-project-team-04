@@ -7,20 +7,25 @@ import 'rep_judge.dart';
 
 /// Experimental frontal squat judge. Depth is relative to the standing thigh.
 class SquatRepJudge implements ExerciseRepJudge {
-  SquatRepJudge({RepClock? clock}) : _clock = clock ?? _newClock();
+  SquatRepJudge({
+    RepClock? clock,
+    this.smoothingTau = const Duration(milliseconds: 65),
+    this.baselineTau = const Duration(milliseconds: 500),
+  }) : _clock = clock ?? _newClock();
   static RepClock _newClock() {
     final watch = Stopwatch()..start();
     return () => watch.elapsed;
   }
 
   final RepClock _clock;
+  final Duration smoothingTau, baselineTau;
   @override
   double get minLikelihood => .6;
   @override
   double get passDepth => .75;
   RepPhase _phase = RepPhase.idle;
   Duration? _last, _standingSince, _start, _bottomAt;
-  double? _top;
+  double? _top, _smoothedThigh;
   double _max = 0, _lowestAfterBottom = double.infinity;
   int _index = 1;
 
@@ -29,7 +34,7 @@ class SquatRepJudge implements ExerciseRepJudge {
     _index = 1;
     _phase = RepPhase.idle;
     _last = _standingSince = _start = _bottomAt = null;
-    _top = null;
+    _top = _smoothedThigh = null;
     _max = 0;
     _lowestAfterBottom = double.infinity;
   }
@@ -38,7 +43,7 @@ class SquatRepJudge implements ExerciseRepJudge {
   void abandon() {
     _phase = RepPhase.lost;
     _standingSince = _start = _bottomAt = _last = null;
-    _top = null;
+    _top = _smoothedThigh = null;
     _max = 0;
     _lowestAfterBottom = double.infinity;
   }
@@ -72,10 +77,19 @@ class SquatRepJudge implements ExerciseRepJudge {
     if (measurements.isEmpty) {
       return RepUpdate(snapshot: JudgeSnapshot(phase: _phase));
     }
+    final previousAt = _last;
     _last = now;
-    final thigh =
+    final measuredThigh =
         measurements.map((v) => v.$1).reduce((a, b) => a + b) /
         measurements.length;
+    double alpha(Duration tau) => previousAt == null || tau <= Duration.zero
+        ? 1
+        : 1 - math.exp(-(now - previousAt).inMicroseconds / tau.inMicroseconds);
+    _smoothedThigh = _smoothedThigh == null
+        ? measuredThigh
+        : _smoothedThigh! +
+              alpha(smoothingTau) * (measuredThigh - _smoothedThigh!);
+    final thigh = _smoothedThigh!;
     final shin =
         measurements.map((v) => v.$2).reduce((a, b) => a + b) /
         measurements.length;
@@ -92,7 +106,11 @@ class SquatRepJudge implements ExerciseRepJudge {
       }
       return RepUpdate(snapshot: JudgeSnapshot(phase: _phase));
     }
-    final depth = 1 - thigh / _top!;
+    var depth = 1 - thigh / _top!;
+    if (_phase == RepPhase.up && depth < .25 && standing) {
+      _top = _top! + alpha(baselineTau) * (thigh - _top!);
+      depth = 1 - thigh / _top!;
+    }
     RepEvent? event;
     if (_start != null && now - _start! > const Duration(seconds: 12)) {
       abandon();
