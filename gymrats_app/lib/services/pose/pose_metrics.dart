@@ -18,6 +18,7 @@ class PoseMetrics {
     this.torsoDrop,
     this.hipAngle,
     this.kneeHandGap,
+    this.ankleKneeGap,
     this.hipHandGap,
     this.shoulderY,
     this.leftElbowSpread,
@@ -68,6 +69,12 @@ class PoseMetrics {
   /// push-up. Largely negative means the knees are far behind the hands.
   /// Null unless the knees, a wrist, and both shoulders are visible.
   final double? kneeHandGap;
+
+  /// Ankle midpoint minus knee midpoint, in shoulder widths. Near 0 means
+  /// straight legs, as in a plank. Negative means the ankles sit above the
+  /// knees in the image: shins lifted or folded, as in a knee push-up.
+  /// Null unless a knee, an ankle, and both shoulders are visible.
+  final double? ankleKneeGap;
 
   /// Hip midpoint minus wrist midpoint, in shoulder widths. Near 0 means
   /// the hips have dropped to the hands. Null unless a hip, a wrist, and
@@ -252,6 +259,11 @@ PoseMetrics measurePose(PoseFrame frame, {double minLikelihood = 0.6}) {
       width,
       _midY(usable(BodyLandmark.leftKnee), usable(BodyLandmark.rightKnee)),
       _midY(leftWrist, rightWrist),
+    ),
+    ankleKneeGap: _overWidth(
+      width,
+      _midY(usable(BodyLandmark.leftAnkle), usable(BodyLandmark.rightAnkle)),
+      _midY(usable(BodyLandmark.leftKnee), usable(BodyLandmark.rightKnee)),
     ),
     hipHandGap: _overWidth(
       width,

@@ -359,6 +359,35 @@ void main() {
       expect(at(c, 3000, standingFrame(showHips: true)).isReady, isFalse);
     });
 
+    test('a plank with the hips 1.2 shoulder widths down is ready', () {
+      // Shoulders 120 apart at y 250: hips at 394 drop 1.2 widths.
+      final frame = standingFrame(
+        showHips: true,
+        move: {
+          BodyLandmark.leftHip: (530, 394),
+          BodyLandmark.rightHip: (470, 394),
+        },
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.ready,
+      );
+    });
+
+    test('hips 1.6 shoulder widths down are upright', () {
+      final frame = standingFrame(
+        showHips: true,
+        move: {
+          BodyLandmark.leftHip: (530, 442),
+          BodyLandmark.rightHip: (470, 442),
+        },
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.notInPushUp,
+      );
+    });
+
     test('bent arms are not the top of a push-up', () {
       final frame = standingFrame(
         move: {

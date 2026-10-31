@@ -177,13 +177,17 @@ const double pushUpShoulderWidth = 200;
 /// span, and shoulder tilt.
 ///
 /// [depth] moves the nose down by that many shoulder widths from the top
-/// pose. [spanRatio] is the shoulder-to-wrist distance divided by shoulder
+/// pose. [shoulderDrop] moves the shoulders, with the arms, down by that
+/// many shoulder widths; it defaults to 0.6 of [depth], about what the
+/// shoulders did on real push-up recordings. A head nod is a [depth] with
+/// a small [shoulderDrop]. [spanRatio] is the shoulder-to-wrist distance divided by shoulder
 /// width. [tiltDeg] rotates the whole pose so the shoulder line leaves
 /// horizontal by that many degrees. [lowerBody] adds hips, knees, or feet
 /// at the given points; without it the lower body is absent, as usual from
 /// the front.
 PoseFrame pushUpFrame({
   double depth = 0,
+  double? shoulderDrop,
   double elbowAngle = 170,
   double spanRatio = 1.2,
   double tiltDeg = 0,
@@ -220,8 +224,9 @@ PoseFrame pushUpFrame({
     );
   }
 
-  final leftShoulder = const Offset(midX - shoulderWidth / 2, midY);
-  final rightShoulder = const Offset(midX + shoulderWidth / 2, midY);
+  final shoulderY = midY + (shoulderDrop ?? 0.6 * depth) * shoulderWidth;
+  final leftShoulder = Offset(midX - shoulderWidth / 2, shoulderY);
+  final rightShoulder = Offset(midX + shoulderWidth / 2, shoulderY);
   final points = {
     BodyLandmark.nose: turn(
       Offset(midX, midY - 100 + depth * shoulderWidth),

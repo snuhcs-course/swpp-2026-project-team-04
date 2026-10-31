@@ -81,12 +81,8 @@ void main() {
   });
 
   test('elbow spread and hand span are measured in shoulder widths', () {
-    Keypoint at(BodyLandmark landmark, double x, double y) => Keypoint(
-      landmark: landmark,
-      x: x,
-      y: y,
-      likelihood: 1,
-    );
+    Keypoint at(BodyLandmark landmark, double x, double y) =>
+        Keypoint(landmark: landmark, x: x, y: y, likelihood: 1);
     final metrics = measurePose(
       PoseFrame(
         imageWidth: 1000,
@@ -121,6 +117,32 @@ void main() {
     );
     expect(tucked.leftElbowSpread, 0);
     expect(tucked.rightElbowSpread, 0);
+  });
+
+  test('the ankle-knee gap is measured in shoulder widths', () {
+    final lifted = measurePose(
+      pushUpFrame(
+        lowerBody: {
+          BodyLandmark.leftKnee: (400, 500),
+          BodyLandmark.rightKnee: (600, 500),
+          BodyLandmark.leftAnkle: (400, 440),
+          BodyLandmark.rightAnkle: (600, 460),
+        },
+      ),
+    );
+    // Ankles 50 px above the knees, shoulders 200 px apart.
+    expect(lifted.ankleKneeGap, closeTo(-0.25, 0.01));
+
+    final hidden = measurePose(
+      pushUpFrame(
+        hide: {BodyLandmark.leftAnkle, BodyLandmark.rightAnkle},
+        lowerBody: {
+          BodyLandmark.leftKnee: (400, 500),
+          BodyLandmark.rightKnee: (600, 500),
+        },
+      ),
+    );
+    expect(hidden.ankleKneeGap, isNull);
   });
 
   test('a stick figure keeps visible joints and mirrors the front camera', () {
