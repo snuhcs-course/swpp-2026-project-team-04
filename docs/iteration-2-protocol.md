@@ -367,5 +367,5 @@ flutter test test/services/online/online_battle_integration_test.dart test/widge
 - **종료 사유 `ko`:** `rep.submit`을 수락한 직후 점수 차가 `ko_lead` 이상이면 서버는 `rep.accepted`와 `rep.updated`를 보낸 다음 `match.finished`(`reason: "ko"`)로 경기를 끝낸다. 그 뒤의 새 `rep.submit`은 종료 후 이벤트이므로 `INVALID_STATE`다.
 - **승자:** `time_up`과 `ko`는 게임 점수가 높은 쪽 → 유효 횟수가 많은 쪽 → 무승부(`winner_id: null`) 순서로 정한다. `forfeit`와 `disconnect_timeout`은 지금처럼 나간 쪽이 패배한다.
 - **저장:** 결과 저장(`BattleResultStore.finished`)에는 게임 점수를 넣지 않는다(배틀 규칙 문서 10장 9번). `reason`에 `ko`가 올 수 있다.
-- **배포 순서:** 서버를 앱보다 먼저 배포한다. 옛 서버는 모르는 필드를 거절하므로, 앱은 `match.found`에 `fever_start_ms`가 있을 때만 `grade`를 보내고 게임 화면을 켠다. Django `REASONS`에 `ko`가 들어가기 전에 배포하면 KO 경기의 저장이 거절된다.
+- **배포 순서:** Django → 배틀 서버 → 앱. Django가 먼저인 이유는, Django `REASONS`에 `ko`가 들어가기 전에 배틀 서버를 배포하면 KO 경기의 저장이 거절되기 때문이다(마이그레이션은 없다). 옛 서버는 모르는 필드를 거절하므로, 앱은 `match.found`에 `fever_start_ms`가 있을 때만 `grade`를 보내고 게임 화면을 켠다.
 - **빌드:** 배틀 서버가 `gymrats_app/lib/models/battle_rules.dart`, `game_score.dart`, `gymrats_app/lib/services/game/player_game_score.dart`를 새로 import한다. 배포용 `source.tar`에 이 세 파일이 있어야 컴파일된다.
