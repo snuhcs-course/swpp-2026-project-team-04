@@ -6,6 +6,7 @@ import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/services/pose/squat_demo_judge.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 
 import '../support/fakes.dart';
@@ -62,6 +63,41 @@ void main() {
     expect(events, hasLength(1));
     expect(events.single.valid, isTrue);
     expect(vm.state.snapshot.phase, RepPhase.up);
+  });
+
+  test('squat demo counts despite a disturbed phone sensor', () async {
+    final demoCamera = FakeCameraService();
+    final demoEstimator = FakePoseEstimator();
+    final tilt = PhoneTiltMonitor(samples: const Stream.empty());
+    var demoNow = Duration.zero;
+    final demo = RepCounterViewModel(
+      camera: demoCamera,
+      estimator: demoEstimator,
+      clock: () => demoNow,
+      phoneTilt: tilt,
+      judge: SquatDemoJudge(clock: () => demoNow),
+    );
+    addTearDown(demo.dispose);
+    await demo.start();
+    tilt.isDisturbed = true;
+    for (final frame in [
+      standingFrame(showHips: true),
+      standingFrame(
+        showHips: true,
+        move: {
+          BodyLandmark.leftHip: (530, 670),
+          BodyLandmark.rightHip: (470, 670),
+        },
+      ),
+      standingFrame(showHips: true),
+    ]) {
+      demoNow += const Duration(milliseconds: 100);
+      demoEstimator.frames.add(frame);
+      demoCamera.emit();
+      await pumpEventQueue();
+    }
+    expect(demo.state.validReps, 1);
+    expect(demo.state.invalidReps, 0);
   });
 
   test('a shallow rep is counted as invalid', () async {

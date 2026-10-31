@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/matchup.dart';
+import '../models/exercise_type.dart';
 import '../theme/app_theme.dart';
 import 'opponent_mannequin.dart';
 
@@ -13,6 +14,7 @@ class OpponentWindow extends StatelessWidget {
     required this.moves,
     required this.live,
     this.scale = 1,
+    this.exercise = ExerciseType.pushUp,
   });
 
   final Opponent opponent;
@@ -25,6 +27,7 @@ class OpponentWindow extends StatelessWidget {
 
   /// 1 on a phone like the design's; smaller with a short camera.
   final double scale;
+  final ExerciseType exercise;
 
   static const _radius = BorderRadius.all(Radius.circular(18));
 
@@ -61,7 +64,7 @@ class OpponentWindow extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: OpponentMannequin.designSize.aspectRatio,
-            child: OpponentMannequin(moves: moves),
+            child: OpponentMannequin(moves: moves, exercise: exercise),
           ),
           _Caption(opponent: opponent, live: live),
         ],

@@ -109,6 +109,7 @@ class _VersusScreenState extends State<VersusScreen> {
               const Expanded(child: _VsBand()),
               _OpponentSide(
                 opponent: matchup.opponent,
+                exercise: matchup.exercise,
                 onStartSetup: _startSetup,
               ),
             ],
@@ -175,9 +176,14 @@ class _VsBand extends StatelessWidget {
 /// The bottom part, on the opponent's tint: the opponent, the rules, and
 /// the button to the pose setup. The tint runs under the navigation bar.
 class _OpponentSide extends StatelessWidget {
-  const _OpponentSide({required this.opponent, required this.onStartSetup});
+  const _OpponentSide({
+    required this.opponent,
+    required this.exercise,
+    required this.onStartSetup,
+  });
 
   final Opponent opponent;
+  final ExerciseType exercise;
   final VoidCallback onStartSetup;
 
   @override
@@ -192,7 +198,7 @@ class _OpponentSide extends StatelessWidget {
             children: [
               _OpponentRow(opponent: opponent),
               const SizedBox(height: 32),
-              const _RulesCard(),
+              _RulesCard(exercise: exercise),
               const SizedBox(height: 16),
               AccentButton(title: '자세 세팅 시작', onPressed: onStartSetup),
             ],
@@ -447,7 +453,9 @@ class _VsMark extends StatelessWidget {
 
 /// How a rep counts, and that each one beeps.
 class _RulesCard extends StatelessWidget {
-  const _RulesCard();
+  const _RulesCard({required this.exercise});
+
+  final ExerciseType exercise;
 
   static const _bold = TextStyle(fontWeight: FontWeight.w700);
 
@@ -469,18 +477,24 @@ class _RulesCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            const _RuleRow(
-              icon: Icons.check_rounded,
-              rule: TextSpan(
-                children: [
-                  TextSpan(text: '가슴을 '),
-                  TextSpan(text: '충분히 내렸다가', style: _bold),
-                  TextSpan(text: ' 팔을 '),
-                  TextSpan(text: '끝까지 펴야', style: _bold),
-                  TextSpan(text: ' 1회로 인정돼요.'),
-                ],
+            if (exercise == ExerciseType.squat)
+              const _RuleRow(
+                icon: Icons.check_rounded,
+                rule: TextSpan(text: '엉덩이를 무릎 가까이 내렸다가 일어서면 1회로 인정돼요.'),
+              )
+            else
+              const _RuleRow(
+                icon: Icons.check_rounded,
+                rule: TextSpan(
+                  children: [
+                    TextSpan(text: '가슴을 '),
+                    TextSpan(text: '충분히 내렸다가', style: _bold),
+                    TextSpan(text: ' 팔을 '),
+                    TextSpan(text: '끝까지 펴야', style: _bold),
+                    TextSpan(text: ' 1회로 인정돼요.'),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 12),
             const _RuleRow(
               icon: Icons.volume_up_outlined,

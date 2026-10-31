@@ -13,6 +13,7 @@ import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
 import '../services/pose/pose_metrics.dart';
 import '../services/pose/rep_judge.dart';
+import '../services/pose/squat_demo_judge.dart';
 
 /// What the rep counter is doing with the camera.
 enum CounterPhase {
@@ -437,6 +438,8 @@ class RepCounterViewModel extends ChangeNotifier {
     final update = _judge.update(frame);
     final event = update.event == null
         ? null
+        : _judge is SquatDemoJudge
+        ? update.event
         : rejectIfPhoneMoved(update.event!, phoneMoved: _phoneTilt.isDisturbed);
     logPoseLive(
       'battle',

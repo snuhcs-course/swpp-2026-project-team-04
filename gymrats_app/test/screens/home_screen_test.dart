@@ -336,6 +336,16 @@ void main() {
     expect(find.text('matching ${ExerciseType.pushUp}'), findsOneWidget);
   });
 
+  testWidgets('squat demo opens matching with the squat exercise', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.scrollUntilVisible(find.text('스쿼트 1v1 데모 · AI 대결'), 180);
+    await tester.tap(find.text('스쿼트 1v1 데모 · AI 대결'));
+    await tester.pumpAndSettle();
+    expect(find.text('matching ${ExerciseType.squat}'), findsOneWidget);
+  });
+
   testWidgets('coming back home loads the latest battle and best record', (
     tester,
   ) async {

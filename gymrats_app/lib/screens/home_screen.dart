@@ -203,6 +203,15 @@ class _HomeContent extends StatelessWidget {
           icon: const Icon(Icons.smart_toy_rounded),
           label: const Text('AI와 1v1 대결'),
         ),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.pushNamed(
+            context,
+            GymRatsApp.matchingRoute,
+            arguments: ExerciseType.squat,
+          ),
+          icon: const Icon(Icons.fitness_center),
+          label: const Text('스쿼트 1v1 데모 · AI 대결'),
+        ),
       ],
     );
   }
@@ -330,6 +339,7 @@ class _ExerciseCard extends StatelessWidget {
                   size: const Size(126, 70),
                   painter: switch (exercise) {
                     ExerciseType.pushUp => const _PushUpPainter(),
+                    ExerciseType.squat => const _PushUpPainter(),
                   },
                 ),
                 const SizedBox(width: 24),
