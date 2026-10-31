@@ -8,5 +8,6 @@ extension ExerciseTypeKorean on ExerciseType {
   /// Name shown on screen, e.g. "푸쉬업".
   String get koreanName => switch (this) {
     ExerciseType.pushUp => '푸쉬업',
+    ExerciseType.squat => '스쿼트',
   };
 }

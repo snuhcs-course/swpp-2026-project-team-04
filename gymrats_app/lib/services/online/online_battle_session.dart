@@ -430,6 +430,8 @@ class OnlineBattleSession extends ChangeNotifier {
       RejectReason.bellyDown => 'belly_down',
       RejectReason.notFloorPushUp => 'not_floor_push_up',
       RejectReason.phoneMoved => 'phone_moved',
+      RejectReason.shallowSquat => 'shallow_squat',
+      RejectReason.standUpFully => 'stand_up_fully',
       null => null,
     };
     final seq = ++_repSeq,

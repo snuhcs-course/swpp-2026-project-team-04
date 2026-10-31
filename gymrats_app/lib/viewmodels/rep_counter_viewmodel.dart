@@ -5,6 +5,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/battle_rules.dart';
+import '../models/exercise_type.dart';
 import '../models/form_report.dart';
 import '../models/pose_frame.dart';
 import '../models/rep_event.dart';
@@ -13,6 +14,8 @@ import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
 import '../services/pose/pose_metrics.dart';
 import '../services/pose/rep_judge.dart';
+import '../services/pose/exercise_judge.dart';
+import '../services/pose/push_up_judge_adapter.dart';
 
 /// What the rep counter is doing with the camera.
 enum CounterPhase {
@@ -117,6 +120,8 @@ class RepCounterViewModel extends ChangeNotifier {
     CameraService? camera,
     PoseEstimator? estimator,
     RepJudge? judge,
+    this.exercise = ExerciseType.pushUp,
+    ExerciseRepJudge? exerciseJudge,
     PhoneTiltMonitor? phoneTilt,
     RepClock? clock,
     this.roundLength = battleDuration,
@@ -127,14 +132,21 @@ class RepCounterViewModel extends ChangeNotifier {
        _estimator = estimator ?? PoseEstimator(),
        _phoneTilt = phoneTilt ?? PhoneTiltMonitor.platform(),
        _clock = clock ?? _stopwatchClock() {
+    assert(judge == null || exercise == ExerciseType.pushUp);
     // One clock drives both fps and judging, unless a judge is injected.
-    _judge = judge ?? RepJudge(clock: _clock);
+    _judge =
+        exerciseJudge ??
+        (judge == null
+            ? judgeFor(exercise, clock: _clock)
+            : PushUpJudgeAdapter(judge));
   }
 
   final CameraService _camera;
   final PoseEstimator _estimator;
   final PhoneTiltMonitor _phoneTilt;
-  late final RepJudge _judge;
+  late final ExerciseRepJudge _judge;
+  final ExerciseType exercise;
+  double get passDepth => _judge.passDepth;
   final RepClock _clock;
 
   /// How long a round lasts once the camera is running. Stop ends it sooner.
@@ -229,7 +241,7 @@ class RepCounterViewModel extends ChangeNotifier {
 
   /// Whether [keypoint] is reliable enough to draw as visible.
   bool isVisible(Keypoint keypoint) =>
-      keypoint.likelihood >= _judge.config.minLikelihood;
+      keypoint.likelihood >= _judge.minLikelihood;
 
   /// Asks for permission if needed, then starts the camera and judging.
   ///
@@ -499,7 +511,7 @@ class RepCounterViewModel extends ChangeNotifier {
     final last = _lastSampleAt;
     if (last != null && elapsed - last < sampleInterval) return;
     _lastSampleAt = elapsed;
-    final raw = measurePose(frame, minLikelihood: _judge.config.minLikelihood);
+    final raw = measurePose(frame, minLikelihood: _judge.minLikelihood);
     _samples.add(
       FormSample(
         at: elapsed,
@@ -531,7 +543,7 @@ class RepCounterViewModel extends ChangeNotifier {
       frame,
       at: elapsed,
       mirror: isFrontCamera,
-      minLikelihood: _judge.config.minLikelihood,
+      minLikelihood: _judge.minLikelihood,
     );
     final phase = snapshot.phase;
     final depth = snapshot.depth;
