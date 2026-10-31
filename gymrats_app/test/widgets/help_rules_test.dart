@@ -35,6 +35,7 @@ void main() {
     expect(HelpRules.feverSeconds, battleRules.feverLength.inSeconds);
     expect(HelpRules.baseSeconds, battleRules.feverStart.inSeconds);
     expect(HelpRules.feverMultiplier, battleRules.feverMultiplier);
+    expect(HelpRules.average, battleRules.averagePoints);
     expect(HelpRules.good, battleRules.goodPoints);
     expect(HelpRules.excellent, battleRules.excellentPoints);
     expect(HelpRules.comboBonus, battleRules.comboBonus);
@@ -52,6 +53,7 @@ void main() {
     expect(bar.points, ['KO ${HelpRules.koLead}점 차']);
     expect(HelpRules.barScore, '+${HelpRules.good}');
 
+    expect(score.body, contains('Average'));
     expect(score.body, contains('${HelpRules.comboSeconds}초 안에'));
     expect(score.body, contains('마지막 ${HelpRules.feverSeconds}초'));
     expect(score.body, contains('${HelpRules.feverMultiplier}배'));
@@ -59,6 +61,7 @@ void main() {
       '${HelpRules.baseSeconds}초부터 ×${HelpRules.feverMultiplier}',
     ]);
     expect(HelpRules.scores, [
+      ('+${HelpRules.average}', 'Average'),
       ('+${HelpRules.good}', 'Good'),
       ('+${HelpRules.excellent}', 'Excellent'),
       ('+${HelpRules.comboBonus}', '콤보'),
