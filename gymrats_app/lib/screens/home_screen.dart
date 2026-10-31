@@ -330,6 +330,7 @@ class _ExerciseCard extends StatelessWidget {
                   size: const Size(126, 70),
                   painter: switch (exercise) {
                     ExerciseType.pushUp => const _PushUpPainter(),
+                    ExerciseType.squat => const _PushUpPainter(),
                   },
                 ),
                 const SizedBox(width: 24),
