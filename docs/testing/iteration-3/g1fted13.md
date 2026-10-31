@@ -109,3 +109,52 @@ After a check on a phone, the pictogram drops the "×100" text and the repetitio
   - Phone, 2026-10-29, earlier picture: on a bot match found the warning shows, and back on the warning brings up the leave question.
   - Phone, reported 2026-10-30, simplified picture: checked, and the picture stays as it is.
   - Online match, phone and emulator, reported 2026-10-30: on the phone, left untouched, the warning closed by itself after 5 s; on the emulator, 확인 closed it. Both went on to the pose setup, and the match was not cancelled.
+
+#### 2026-10-31 · code at commit `d0f056b` · step W2 `feat/help_screen` (P10 rules screen and '?' on home)
+This step adds the battle rules screen, shown once before home after a sign-up and again from '?' on home:
+- `lib/screens/help_screen.dart`, three swipe pages, with `lib/widgets/help_pictures.dart` (one picture per page, drawn in code) and `lib/widgets/help_rules.dart` (all rule texts and numbers in one place).
+- `lib/services/user/rules_seen_store.dart` and `lib/viewmodels/help_viewmodel.dart`: a per-account flag in secure storage decides whether the rules show before home.
+- `lib/main.dart` (the gate and the `/help` route) and `lib/viewmodels/signup_viewmodel.dart` (a sign-up marks the new account).
+- A '?' button in the greeting header of `lib/screens/home_screen.dart`, which opens the same screen.
+
+The branch started from `main` at `fd8a76f`. `origin/main` at `9baf937`, with #13, #15, #16, #18 and #19, is merged in as `d9c9c80`, with no conflict. That merge opened the `feat/squat_judge` lock on `home_screen.dart`, so the '?' came last. I ran the commands from the Plan in `gymrats_app/` on Windows, on this code, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on the W2 PR | 10/31 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on the W2 PR |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W2 PR | 10/31 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W2 PR | 10/31 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on the W2 PR | 10/31 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: `server/` unchanged; see the CI comment on the W2 PR | 10/31 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 770 passed, 0 failed, 1 skipped.
+  - The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
+  - The nine test files in the table below alone: 101 passed.
+  - `flutter analyze` found no issues.
+  - Server `pytest` was not run locally because `server/` did not change.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers come from the CI comment on the W2 PR. Until the next W2 push, they are in that comment and in the PR body, not here.
+- **Mutation check of the '?' (review round 4):** the reviewer ran 19 mutations against six of these test files in a scratch copy, and 17 failed a test. They included a wrong route, a target shrunk below 48×48, a removed button, a removed `Expanded`, and a removed or first-login `/help` route. The two survivors made the `/help` route write the flag when it opens. The two `auth_flow_test.dart` tests with "saves nothing" in their names were added for them. I reran both mutations in the working tree: `auth_flow_test.dart` then fails exactly those two tests. The mutations were reverted, and `main.dart` is unchanged.
+- **Flaky test outside this step:** `test/services/online/battle_result_store_test.dart` "a forfeit is stored as a loss for the player who left" failed once in a full run in review on 2026-10-27 (expected `['win','loss']`, got `['loss','win']`), and passed alone 3 of 3. The full runs recorded since then passed. It is not a W2 file. W3's PR (#20, commit `d0ed8aa`) makes the players join in a fixed order in `playing`, the helper this test uses. That is the likely cause, not a proven one, and until W3 merges the test can still fail now and then on this branch.
+- **Shortfalls:** none known; the CI comment decides. The phone check is still open (see Manual check).
+- **Known limit, not fixed here:** the '?' takes 48 px from the greeting line. In the reviewer's scratch run with the real fonts, at 360 wide, names up to 4 characters stay on one line, and the 6- and 12-character names wrap to two lines, with no overflow. Only the 12-character name wraps at 412 wide.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/user/rules_seen_store_test.dart` (new) | An account without a saved flag counts as seen. The flag survives a new store and is kept per account. Only a saved "false" means not seen. `MemoryRulesSeenStore` behaves the same |
+| ViewModel | `test/viewmodels/help_viewmodel_test.dart` (new), fake in `test/support/help_fakes.dart` (new) | Checks until the flag is read. No account means home. Per-account decisions. An unreadable flag counts as seen. The same account logging in again keeps its decision, and a late read for an account that left is dropped. A sign-up shows the rules at once, before the flag is saved, and a failed save still shows them. A read that ended before the sign-up is overruled. `markSeen` goes home and saves, a failed save still goes home, and it does nothing while the rules are not showing. A read that ends after dispose changes nothing |
+| ViewModel | `test/viewmodels/signup_viewmodel_test.dart` (updated) | A new account sees the rules before home. A refused sign-up or invalid fields mark no account |
+| View | `test/screens/help_screen_test.dart` (new) | 다음 turns the three pages, with their texts, pictures and icon colors. Swiping turns them too. After sign-up: no back arrow, 건너뛰기 calls `onStart`, and the last page has 시작하기 and its hint. From home: no 건너뛰기, and back or 확인 returns home. Every page fits 412×915 and 360×740 with no overflow and one `AccentButton` |
+| View | `test/widgets/help_rules_test.dart` (new) | The base time and fever add up to the battle length. Three pages in order. Every number on the pages comes from the constants |
+| View | `test/screens/home_screen_test.dart` (updated) | '?' opens the real `HelpScreen` with no 건너뛰기, and back returns home. '?' is 48×48, left of the profile button, in the secondary text color. A long name wraps beside all three buttons at 360×640 with no overflow |
+| App flow | `test/auth_flow_test.dart` (updated) | Sign-up shows the rules before home, and 시작하기 opens home. The rules show again after a restart before 시작하기, never after it. A returning user logs in straight to home. Each new account sees the rules once. Slow storage: sign-up never shows home first, and a login waits, then opens home. '?' after a sign-up or a login saves nothing, by back or by 확인, and a restart stays on home |
+| App flow | `test/main_test.dart` (updated) | '?' on the real `GymRatsApp` opens the rules over home with no 건너뛰기, and back returns home |
+| Design | `test/design_tokens_test.dart` (updated) | `help_screen.dart`, `help_pictures.dart` and `help_rules.dart` use only design tokens |
+
+Acceptance criteria → tests:
+- **A new account, when sign-up succeeds, sees the rules before home, once:** `auth_flow_test.dart` "sign-up shows the rules before home; 시작하기 opens home", "the rules show once: again after a restart before 시작하기, never after it", "each new account on the phone sees the rules once", "with slow phone storage, sign-up never shows home before the rules".
+- **A returning user who logs in gets home directly:** `auth_flow_test.dart` "a returning user logs in straight to home", "with slow phone storage, a login waits, then opens home".
+- **On home, '?' opens the rules and back returns home:** `main_test.dart` "'?' on home opens the rules over home; back returns home", `home_screen_test.dart` "'?' opens the rules from the greeting; back returns home", "'?' has a 48×48 tap target and sits left of the profile", `auth_flow_test.dart` "'?' after sign-up saves nothing, and a restart stays on home", "'?' after a login saves nothing when 확인 returns home".
+
+**Manual check:** 아직 (not done yet). This step has not been checked on a phone.

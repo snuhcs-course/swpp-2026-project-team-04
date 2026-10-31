@@ -126,3 +126,67 @@ so they are quoted here from the session export.
 ### Takeaway
 - Two sessions should not share one working tree; use a separate `git worktree` per step.
 - A dialog's "closed by the user" and "removed by the app" need different answers.
+
+## W2 `feat/help_screen` – battle rules screen and '?' on home (P10), 2026-10-27 ~ 2026-10-31
+
+### a. Where AI was used
+- **The screen (commit `ec36e9d`):** Claude Code wrote `gymrats_app/lib/screens/help_screen.dart` (L1–240), `gymrats_app/lib/widgets/help_pictures.dart` (L1–266) and `gymrats_app/lib/widgets/help_rules.dart` (L1–123), with their tests and the three `design_tokens_test.dart` paths.
+- **The routing (commit `0d4828c`):** `gymrats_app/lib/services/user/rules_seen_store.dart` (L1–44), `gymrats_app/lib/viewmodels/help_viewmodel.dart` (L1–94), `gymrats_app/lib/viewmodels/signup_viewmodel.dart` (L83, L92, L139), and `gymrats_app/lib/main.dart` (the gate at L175–187, the `/help` route at L212–215), with their tests.
+- **The '?' button (commit `d0f056b`):** `gymrats_app/lib/screens/home_screen.dart` L234–240, seven added lines and no other change in that file, with tests in `home_screen_test.dart`, `main_test.dart` and `auth_flow_test.dart`. Merging `origin/main` first (`d9c9c80`, no conflict) was also done by the agent, at the user's request.
+- **Sketches:** Claude Design, three directions on a private canvas: A the card list already in code, B one screen, C three swipe pages. Internal only, as for W4. The agent also wrote the title options.
+- **Review:** the `reviewer` subagent reviewed the code in four rounds: CHANGES_REQUESTED, then APPROVE, then APPROVE after the rebuild as C, then APPROVE for the '?' and the merge. A later round checked these notes (`progress.md` Review log).
+- **Decided by the user:**
+  - the flag per account, the option the agent marked recommended and the default the user's own prompt had named;
+  - design sketches for this screen too (item e);
+  - layout C, asking for several copy options and rejecting "바를 끝까지 밀어요", then the three titles out of the agent's options;
+  - no push on 10-29, only local commits;
+  - on 10-31, the merge, removing the `home_screen.dart` exception, the PR's first line and reviewer, and "아직" in the Manual check.
+- **Proposed or decided by the agent, and reported to the user:**
+  - a sign-up saves "not seen", 시작하기 saves "seen", and no saved flag counts as seen. The behavior was written into the question the user answered, and the agent reported the result afterwards;
+  - 건너뛰기 on pages 1–2, part of sketch C;
+  - the page bodies and rule rows, kept from the sketch. The user asked for several copy options; the agent offered them for the titles only and said so on 10-27;
+  - the danger row's copy without a color (item c). The reviewer suggested the final wording.
+- **Decided by the agent, and told to the user only at the notes review on 10-31:**
+  - back on the first-login rules closes the app like any root screen. It was recorded in `progress.md` on 10-27, but no chat message said so;
+  - the '?' icon (`Icons.help_outline_rounded`), its tooltip "게임 규칙", and its place left of the profile button.
+- **Not done by AI:** the phone check. It is still open.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 10-27] "W2 feat/help_screen 시작해. W1(#13), W4(#15)는 PR 열려 있고 PM 리뷰 대기 중이야. […] home_screen.dart는 feat/squat_judge 머지 전까지 잠겨 있으니 건드리지 말고, '?' 버튼은 progress.md에 대기로 남겨." (shortened; full text in the log)
+- [Woohyun Song, 10-27] "Help Screen도 Claude Design을 통해 디자인 시안 뽑고 나한테 검토받아"
+- [Woohyun Song, 10-27] answer to the agent's question on the sketches (an answer, not a prompt, so it is not in the Prompt Log; from the session export): "C로 가되, 멘트 후보를 여러 개 뽑아서 가보자. '바를 끝까지 밀어요'는 특히 좀 별로야"
+- [Woohyun Song, 10-29] "매칭이 잡히고 pose setup까지 완료해야 규칙 창이 뜨는 건가?"
+- [Woohyun Song, 10-31] "W2(feat/help_screen)로 돌아가자. […] 2) '?' 버튼과 그 테스트를 넣어 줘. S2가 고친 home_screen.dart의 다른 줄은 건드리지 말고 꼭 필요한 줄만 바꿔." (shortened; full text in the log)
+
+### c. What AI did well
+- **Sign-up never flashes home:** `HelpViewModel.signedUp` (`help_viewmodel.dart` L61–69) switches to the rules before its first await, so the screen does not depend on how fast secure storage writes. A read that ends later is ignored. The reviewer asked for an app-level test of this in round 1, and "with slow phone storage, sign-up never shows home before the rules" now checks every frame.
+- **A clear answer to a device question:** when the user asked on 10-29 whether the rules wait for the pose setup, the agent separated the rules screen (W2, sign-up and '?') from the safety warning (W4, match found). It also said the checked-out branch was W4, which has no rules code.
+- **Design conflict brought up early (reviewer round 3):** the rules page said the screen flashes red, while wiki 2.5.2 has no red. The agent took the color out of the copy and told the user. The user settled the color in W3.
+- **The reviewer's mutation run (round 4) found a real gap:** of 19 mutations, 2 survived, both making the `/help` route write the flag. Nothing in the tests pinned that '?' saves nothing. The code was correct, and two tests now pin it.
+- **The lock checked, not assumed:** to see whether the `home_screen.dart` exception was still needed, the agent removed the line and then read the guard's `lock_state`, which was empty. The reviewer confirmed the check can fail: at `0d4828c`, before the merge, it reports the lock as closed.
+
+### d. Hallucinations / errors
+- **Font change on the score tags (reviewer round 1, Major):** the tags changed the font family, and wiki 2.5.1 allows only color and weight. Fixed on the same day. Cost: one review round.
+- **Other round 1 findings (Minor):** a pill where tags take `AppRadius.small`, a 12 px icon gap where wiki 2.5.5 says 8, copy that said 푸시업 though squat comes later, and a comment that hid how `SignupScreen`'s own default skips the rules. All fixed.
+- **Round 3 findings on the rebuilt screen (Minor):** spacing off the 2.5.5 table (20 and 12 where 16 and 8 belong), Korean tags on a style meant for the number font, no test of the icon colors, and an unbounded loop in a test helper. All fixed.
+- **Flaky test set aside too quickly:** in round 1 a full run failed once in `battle_result_store_test.dart`, the forfeit test, with the two players' outcomes swapped. The agent and the reviewer recorded it as outside W2, because it passed alone 3 of 3 and in the later full runs. In W3's round 9 another test in that file failed once, by the checklist a Critical, and its message was not captured. The likely cause, not a proven one, is in the helper both tests use: both players joining at once. The fix (`d0ed8aa`) is on W3's branch, so this branch still has the old helper.
+- **Replies back in English:** the user asked for Korean on 10-27, and the agent went back to English in later replies, so the user had to raise it again. It was then saved as a memory rule. Cost: two prompts.
+- **A test weaker than its name (caught by the agent before review, 10-31):** the first long-name test's assertion passed at half a button's height, with a comment that did not match it. It now checks for at least twice the font size.
+- **Hidden keys would have dropped prompts (caught by the agent before commit, 10-31):** the first plan hid W3's prompts in this Prompt Log, under the existing rule for prompts of another step. Three of them are not on W3's branch yet, so W3's next export would have skipped them. The W2 log now holds no W3 keys. The same rule had already hidden six W2 prompts during W4, and they moved back into W2's entries.
+- **Scratch probe faults (reviewer, round 4):** a first name-length probe did not change the name shown, because `InMemoryUserRepository` ignores the nickname, and one probe run hung. The reviewer reported both. The results come from a second probe, and the agent stopped the hung run. No effect on the branch.
+
+### e. Prompt revisions
+- **Before:** the 10-27 start prompt (item b) listed the files and rules but no design step. The agent built a card list, which passed review round 2.
+- **After:** "Help Screen도 Claude Design을 통해 디자인 시안 뽑고 나한테 검토받아"
+- **Why it worked:** the user saw three directions before settling on one, and chose a different layout from the one in the code. Cost: the card list was replaced, and round 3 reviewed the screen again. In W3 the agent offered sketches first as its recommended option, and the user accepted it.
+- **Before:** "한국어로 다시 적어."
+- **After:** "지금 이 세션에서 계속 응답이 영어로 오는 문제가 있어."
+- **Why it worked:** the first prompt fixed one reply. The second named the repeating problem, so the agent saved a rule that also covers later sessions.
+
+### f. Manual fixes and why
+- None by hand in this step. The user's decisions are listed in item a, and the agent applied every change. No code was edited by a person, so there is no manual-fix marker.
+
+### Takeaway
+- Ask for design sketches before the first build of a screen, not after its review.
+- Hide a prompt's key only when that prompt is already logged somewhere: a hidden key stops every later export.
+- Write "reported to the user" only for what a chat message said; a line in `progress.md` is not a report.
