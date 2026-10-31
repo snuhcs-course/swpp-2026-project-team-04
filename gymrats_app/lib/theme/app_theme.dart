@@ -29,6 +29,10 @@ abstract final class AppColors {
   /// Cyan, for fever time in the battle: the clock and the time bar until
   /// their last 5 seconds, and the fever chip.
   static const fever = Color(0xFF3DE8FF);
+
+  /// Red, only for the battle's danger edge: the user is about to lose. Every
+  /// other problem is [warning].
+  static const danger = Color(0xFFFF3B30);
 }
 
 /// Font families declared in pubspec.yaml.

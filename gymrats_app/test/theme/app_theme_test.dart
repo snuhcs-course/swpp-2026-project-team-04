@@ -30,6 +30,17 @@ void main() {
     }, hasLength(4));
   });
 
+  test('danger has its own color, apart from the warning, the opponent, and '
+      'fever', () {
+    expect(AppColors.danger, const Color(0xFFFF3B30));
+    expect({
+      AppColors.danger,
+      AppColors.warning,
+      AppColors.opponent,
+      AppColors.fever,
+    }, hasLength(4));
+  });
+
   test('text uses the primary text color', () {
     expect(theme.textTheme.bodyMedium!.color, AppColors.textPrimary);
     expect(theme.textTheme.displayLarge!.color, AppColors.textPrimary);
