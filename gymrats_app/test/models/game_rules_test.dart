@@ -11,7 +11,7 @@ void main() {
     expect(battleRules.feverLength, const Duration(seconds: 10));
     expect(battleRules.feverMultiplier, 2);
     expect(battleRules.averagePoints, 5);
-    expect(battleRules.averageMaxElbowAngle, 105);
+    expect(battleRules.averageMaxElbowAngle, 120);
     expect(battleRules.goodPoints, 10);
     expect(battleRules.excellentPoints, 15);
     expect(battleRules.excellentDepthRatio, 1.6);
@@ -65,16 +65,16 @@ void main() {
   });
 
   group('average', () {
-    test('an elbow angle up to 105 degrees is average', () {
+    test('an elbow angle up to 120 degrees is average', () {
       expect(rules.isAverage(90), isTrue);
-      expect(rules.isAverage(91), isTrue);
-      expect(rules.isAverage(105), isTrue);
+      expect(rules.isAverage(110), isTrue);
+      expect(rules.isAverage(120), isTrue);
     });
 
-    test('the recorded cheats are not: above 105, or no angle', () {
-      expect(rules.isAverage(105.01), isFalse);
-      expect(rules.isAverage(109), isFalse);
-      expect(rules.isAverage(135), isFalse);
+    test('a larger angle is not, nor is no angle', () {
+      expect(rules.isAverage(120.01), isFalse);
+      expect(rules.isAverage(126), isFalse);
+      expect(rules.isAverage(127.8), isFalse);
       expect(rules.isAverage(169), isFalse);
       expect(rules.isAverage(null), isFalse);
     });
@@ -84,8 +84,9 @@ void main() {
     });
 
     test('its numbers come from the config', () {
-      const tuned = BattleRules(averagePoints: 7, averageMaxElbowAngle: 120);
-      expect(tuned.isAverage(120), isTrue);
+      const tuned = BattleRules(averagePoints: 7, averageMaxElbowAngle: 100);
+      expect(tuned.isAverage(100), isTrue);
+      expect(tuned.isAverage(101), isFalse);
       expect(tuned.pointsFor(GameGrade.average, combo: false, fever: false), 7);
     });
   });

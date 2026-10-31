@@ -10,7 +10,7 @@
 |---|---|---|
 | 경기 길이 | 30초 = 기본 20초 + 피버 10초 | 제안 |
 | 점수를 받는 rep | 판정기가 유효로 센 rep와 Average rep. 그 밖의 거절 rep는 0점 | 확정 (rep 판정 변경 없음) |
-| Average | 5점. Go lower(`insufficientDepth`)로 거절된 rep 중 `minElbowAngle ≤ 105°`. 유효 횟수에는 안 들어감 | 확정 (2026-11-01, 3.6) |
+| Average | 5점. Go lower(`insufficientDepth`)로 거절된 rep 중 `minElbowAngle ≤ 120°`. 유효 횟수에는 안 들어감 | 확정 (2026-11-01, 3.6) |
 | Good | 10점 | 제안 |
 | Excellent | 15점. `maxDepth ≥ 1.6 × passDepth` (푸시업 1.76) | 제안 (실측 필요, 3.2) |
 | 콤보 | +5점. 직전 유효 rep 뒤 1.5초 안에 끝난 유효 rep. 사이에 거절 rep가 있으면 끊김 | 제안 |
@@ -101,18 +101,21 @@ rep 점수 = (라벨 점수 + 콤보 보너스) × 피버 배수
 
 | 라벨 | 조건 | 기본 점수 |
 |---|---|---|
-| Average | Go lower(`RejectReason.insufficientDepth`)로 거절, `RepEvent.minElbowAngle ≤ 105°` | 5 |
-| 없음 | 그 밖의 거절 사유, 105° 초과, 또는 `minElbowAngle`이 없음 | 0 |
+| Average | Go lower(`RejectReason.insufficientDepth`)로 거절, `RepEvent.minElbowAngle ≤ 120°` | 5 |
+| 없음 | 그 밖의 거절 사유, 120° 초과, 또는 `minElbowAngle`이 없음 | 0 |
 
-- **105°의 근거 (송우현의 녹화):**
+- **120°의 근거:** 처음 기준은 105°였는데, 2026-11-01 송우현이 폰(release, AI 대결)에서 해 보니 Average가 거의 나오지 않아 120°로 올렸다.
 
-  | 동작 | `minElbowAngle` | 결과 |
+  | 동작 | `minElbowAngle` | 120° 기준 결과 |
   |---|---|---|
-  | 정상으로 내려갔는데 거절된 rep | 90~91° | Average |
-  | 반만 내려가고 고개를 숙이는 꼼수 | 109~135° | 0점 |
-  | 팔을 편 채 고개만 숙이기 | 169~175° | 0점 |
+  | 정상으로 내려갔는데 거절된 rep (송우현 녹화) | 90~91° | Average |
+  | 정직하지만 지쳐서 얕아진 rep (송우현 녹화) | 110~126° | 120° 이하만 Average |
+  | 반만 내려가고 고개를 숙이는 꼼수 (송우현 녹화) | 109~135° | 120° 이하만 Average |
+  | 반만 내려가고 고개를 숙이는 꼼수 (팀 녹화 1개의 Go lower rep 3개) | 127.8~145.2° | 0점 |
+  | 팔을 편 채 고개만 숙이기 (송우현 녹화) | 169~175° | 0점 |
 
-  105°는 90~91°와 109° 사이에 있어서 위 세 경우를 나눈다. 숫자는 `BattleRules.averageMaxElbowAngle`과 `averagePoints` 한 곳에 있다. 표본이 한 사람의 녹화뿐이므로 팀 테스트로 다시 확인한다.
+  두 번째와 세 번째 줄이 겹치므로 각도 하나로 둘을 완전히 나눌 수는 없다. 120°는 지친 rep 일부(121~126°)를 놓치고 꼼수 일부(109~120°)에 점수를 주는 절충이다. 넷째 줄의 팀 녹화(`20261027-142000_halfRepHeadNod`)에는 꼼수가 2개 더 있다. 112.5°와 129.8°인데, 지금은 `kneesDown`으로 거절되어 0점이다(`pushup_error_cases_test.dart`의 알려진 오류). 이 오류가 고쳐져 Go lower가 되면 112.5° rep는 Average를 받는다. 숫자는 `BattleRules.averageMaxElbowAngle`과 `averagePoints` 한 곳에 있다. 녹화 표본이 적으므로 팀 테스트로 다시 확인한다.
+- **고개 숙이기와 점수:** Go lower로 닫힌 rep의 Average 여부는 팔꿈치 각도만 본다. 다만 깊이는 코 높이로 재므로 고개를 숙이면 점수가 달라질 수 있다. 판정 없이 버려지던 시도(`maxDepth` < 0.8)가 Go lower로 닫혀 Average를 받을 수 있고, 어깨도 충분히 내려갔다면 유효 rep(Good, 코가 더 깊으면 Excellent)가 될 수도 있다.
 - 점수는 거절 사유와 `RepEvent.minElbowAngle`을 읽어서 매긴다. `rep_judge.dart`와 판정 설정값은 바꾸지 않으므로, 유효 여부와 거절 이유는 그대로다. 따라서 Average rep는 `invalid_reps`와 "무효" 횟수에 들어가고, 배너도 거절 이유를 그대로 보여 준다.
 - 피버 때 2배가 되고, 콤보 보너스는 없으며, 콤보를 끊는다. 유효 횟수에 들어가지 않으므로 동점일 때 유효 횟수 비교에도 들어가지 않는다. 바와 KO에는 다른 점수와 똑같이 들어간다.
 - 봇의 거절 rep에는 `minElbowAngle`이 없어서 0점이다. 봇 조정은 W5에서 한다.
@@ -187,7 +190,7 @@ KO 100점 차에서는 유효 5회 정도 하는 초보도 KO되지 않는다. �
 | 1 | 3.0 | 나 | 유효, 1.45 → 1.32 | Good | 10 | 10 | 0 | +10 | 55% |
 | 2 | 4.2 | 나 | 유효, 1.80 → 1.64, 직전 유효 뒤 1.2초 | Excellent 콤보 2 | 15+5 = 20 | 30 | 0 | +30 | 65% |
 | 3 | 4.5 | 봇 | 유효 | Good | 10 | 30 | 10 | +20 | 60% |
-| 4 | 5.0 | 나 | 거절 (Go lower, 팔꿈치 120°라 Average 아님) | – | 0, 내 콤보 끊김 | 30 | 10 | +20 | 60% |
+| 4 | 5.0 | 나 | 거절 (Go lower, 팔꿈치 130°라 Average 아님) | – | 0, 내 콤보 끊김 | 30 | 10 | +20 | 60% |
 | 5 | 5.6 | 나 | 유효, 1.50 → 1.36. 직전 유효(4.2초) 뒤 1.4초지만 사이에 거절 | Good (콤보 아님) | 10 | 40 | 10 | +30 | 65% |
 | 6 | 6.8 | 봇 | 유효, 직전 유효 뒤 2.3초 | Good | 10 | 40 | 20 | +20 | 60% |
 | 7 | 9.1 | 봇 | 유효, 2.3초 | Good | 10 | 40 | 30 | +10 | 55% |
@@ -259,7 +262,7 @@ B → 서버  rep.submit     {rep_seq: 12, elapsed_ms: 22500, valid: true, reaso
 | `battleDuration` | 30초 | 이미 있음 |
 | `feverStart` | 20초 | 피버 길이 = `battleDuration − feverStart` |
 | `feverMultiplier` | 2 | |
-| `averagePoints` / `averageMaxElbowAngle` | 5 / 105° | 3.6. `averagePoints`가 0이면 Average가 꺼진다 |
+| `averagePoints` / `averageMaxElbowAngle` | 5 / 120° | 3.6. `averagePoints`가 0이면 Average가 꺼진다 |
 | `goodPoints` / `excellentPoints` | 10 / 15 | |
 | `excellentDepthRatio` | 1.6 | `maxDepth / passDepth` |
 | `comboWindow` / `comboBonus` | 1.5초 / 5 | |

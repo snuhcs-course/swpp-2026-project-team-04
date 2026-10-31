@@ -89,7 +89,7 @@ void main() {
   group('average', () {
     const goLower = RejectReason.insufficientDepth;
 
-    for (final angle in const [90.0, 91.0, 105.0]) {
+    for (final angle in const [90.0, 110.0, 120.0]) {
       test('a Go lower rep with the elbows at $angle earns 5, as no valid rep '
           'and no combo', () {
         final game = _game();
@@ -106,7 +106,7 @@ void main() {
       });
     }
 
-    for (final angle in const [105.1, 109.0, 135.0, 169.0, 175.0]) {
+    for (final angle in const [120.1, 126.0, 127.8, 145.2, 169.0, 175.0]) {
       test('a Go lower rep with the elbows at $angle earns nothing', () {
         final game = _game();
         expect(
@@ -292,7 +292,7 @@ void main() {
       me(4.2, 1.80, 30, 0, 0.65);
       bot(4.5, 30, 10, 0.60);
       game.addMyRep(
-        gameRep(5, reason: RejectReason.insufficientDepth, minElbowAngle: 120),
+        gameRep(5, reason: RejectReason.insufficientDepth, minElbowAngle: 130),
       );
       expect(game.me.points, 30);
       me(5.6, 1.50, 40, 10, 0.65);

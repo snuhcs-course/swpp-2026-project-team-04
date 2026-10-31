@@ -46,10 +46,10 @@ void main() {
 
     test('Go lower with bent elbows is average; without them, nothing', () {
       expect(
-        grade(gameRep(3, reason: _goLower, minElbowAngle: 105)),
+        grade(gameRep(3, reason: _goLower, minElbowAngle: 120)),
         GameGrade.average,
       );
-      expect(grade(gameRep(3, reason: _goLower, minElbowAngle: 106)), isNull);
+      expect(grade(gameRep(3, reason: _goLower, minElbowAngle: 121)), isNull);
       expect(grade(gameRep(3, reason: _goLower)), isNull);
     });
 
@@ -104,7 +104,7 @@ void main() {
         _record(),
         _record(maxDepth: 1.4),
         _record(reason: _goLower, minElbowAngle: 90),
-        _record(reason: _goLower, minElbowAngle: 120),
+        _record(reason: _goLower, minElbowAngle: 130),
         _record(reason: _goLower),
         _record(reason: RejectReason.kneesDown, minElbowAngle: 90),
       ], passDepth: 1.1);

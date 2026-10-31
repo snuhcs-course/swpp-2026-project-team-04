@@ -297,14 +297,17 @@ void main() {
       final judge = DepthRepJudge();
       await open(tester, judge: judge);
       await play(tester);
-      judge.closeRep(reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      judge.closeRep(
+        reason: RejectReason.insufficientDepth,
+        minElbowAngle: 120,
+      );
       await closeRep(tester);
       expect(find.text('가슴을 더 내려요 · +5 AVERAGE'), findsOneWidget);
 
       // The latest score is still the average one.
       judge.closeRep(
         reason: RejectReason.insufficientDepth,
-        minElbowAngle: 120,
+        minElbowAngle: 121,
       );
       await closeRep(tester);
       expect(find.text('가슴을 더 내려요'), findsOneWidget);

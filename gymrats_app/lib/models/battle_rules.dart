@@ -17,7 +17,7 @@ class BattleRules {
     this.feverStart = const Duration(seconds: 20),
     this.feverMultiplier = 2,
     this.averagePoints = 5,
-    this.averageMaxElbowAngle = 105,
+    this.averageMaxElbowAngle = 120,
     this.goodPoints = 10,
     this.excellentPoints = 15,
     this.excellentDepthRatio = 1.6,
@@ -38,9 +38,9 @@ class BattleRules {
   final int averagePoints;
 
   /// The most a rep rejected as too shallow may keep of its elbow angle, in
-  /// degrees, and still be average. Recorded reps: 90-91 for a normal rep
-  /// rejected anyway, 109-135 for going halfway and dropping the head, 169-175
-  /// for dropping the head with straight arms (battle-rules.md 3.6).
+  /// degrees, and still be average. Honest reps gone shallow with tiredness and
+  /// half-rep head nods overlap in angle, so this is a trade-off: the recorded
+  /// angles are in battle-rules.md 3.6.
   final double averageMaxElbowAngle;
 
   /// Points for a [GameGrade.good] rep.

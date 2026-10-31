@@ -36,6 +36,11 @@ void main() {
     expect(HelpRules.baseSeconds, battleRules.feverStart.inSeconds);
     expect(HelpRules.feverMultiplier, battleRules.feverMultiplier);
     expect(HelpRules.average, battleRules.averagePoints);
+    expect(
+      HelpRules.averageElbowAngle,
+      HelpRules.degreesText(battleRules.averageMaxElbowAngle),
+    );
+    expect(double.parse(HelpRules.averageElbowAngle), 120);
     expect(HelpRules.good, battleRules.goodPoints);
     expect(HelpRules.excellent, battleRules.excellentPoints);
     expect(HelpRules.comboBonus, battleRules.comboBonus);
@@ -47,13 +52,21 @@ void main() {
     expect(HelpRules.dangerLead, battleRules.dangerLead);
   });
 
+  test('an angle shows exactly, and a whole one has no decimals', () {
+    expect(HelpRules.degreesText(120), '120');
+    expect(HelpRules.degreesText(120.5), '120.5');
+  });
+
   test('every number on the pages comes from the constants', () {
     final [bar, score, safety] = HelpRules.pages;
     expect(bar.body, contains('${HelpRules.koLead}점 차이'));
     expect(bar.points, ['KO ${HelpRules.koLead}점 차']);
     expect(HelpRules.barScore, '+${HelpRules.good}');
 
-    expect(score.body, contains('Average'));
+    expect(
+      score.body,
+      contains('팔꿈치 각도가 ${HelpRules.averageElbowAngle}° 이하면 Average'),
+    );
     expect(score.body, contains('${HelpRules.comboSeconds}초 안에'));
     expect(score.body, contains('마지막 ${HelpRules.feverSeconds}초'));
     expect(score.body, contains('${HelpRules.feverMultiplier}배'));

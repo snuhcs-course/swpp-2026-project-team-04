@@ -365,7 +365,7 @@ flutter test test/services/online/online_battle_integration_test.dart test/widge
 | `match.finished`의 `players[]`, `match.snapshot`의 `scores` | `game_score` | 최종 또는 현재 게임 점수 |
 
 - **종료 사유 `ko`:** `rep.submit`을 수락한 직후 점수 차가 `ko_lead` 이상이면 서버는 `rep.accepted`와 `rep.updated`를 보낸 다음 `match.finished`(`reason: "ko"`)로 경기를 끝낸다. 그 뒤의 새 `rep.submit`은 종료 후 이벤트이므로 `INVALID_STATE`다.
-- **Average rep:** `valid: false`이므로 `invalid_reps`에 들어가고 `valid_reps`에는 들어가지 않는다. 서버는 같은 코드(`PlayerGameScore.addRep`)로 `average_points`를 더하고, 피버 때 배수를 적용하며, 콤보 보너스 없이 콤보를 끊는다. KO 판정은 다른 rep와 같다. 기준(거절 사유 `insufficient_depth`, `minElbowAngle` 105° 이하)은 폰이 판단하고 각도는 보내지 않는다. 서버가 폰의 판정을 믿는 것은 `valid`, `grade`와 같다.
+- **Average rep:** `valid: false`이므로 `invalid_reps`에 들어가고 `valid_reps`에는 들어가지 않는다. 서버는 같은 코드(`PlayerGameScore.addRep`)로 `average_points`를 더하고, 피버 때 배수를 적용하며, 콤보 보너스 없이 콤보를 끊는다. KO 판정은 다른 rep와 같다. 기준(거절 사유 `insufficient_depth`, `minElbowAngle` 120° 이하)은 폰이 판단하고 각도는 보내지 않는다. 서버가 폰의 판정을 믿는 것은 `valid`, `grade`와 같다.
 - **옛 앱, 옛 서버와 섞일 때:** 옛 앱은 거절 rep에 `grade`를 보내지 않으므로 그 rep는 지금처럼 0점이다. 옛 앱은 `rep.updated`의 `grade: "average"`로 +N을 띄우지 않지만 `game_score`를 그대로 쓰므로 점수와 바는 같다. 새 앱은 `match.found`와 `match.snapshot`에 `average_points`가 있을 때만 `"average"`를 보낸다. W3 서버는 거절 rep에 `grade`가 있으면 `INVALID_PAYLOAD`를 주기 때문이다. W3 서버에 붙으면 Average는 꺼지고 그 rep는 0점이다.
 - **승자:** `time_up`과 `ko`는 게임 점수가 높은 쪽 → 유효 횟수가 많은 쪽 → 무승부(`winner_id: null`) 순서로 정한다. `forfeit`와 `disconnect_timeout`은 지금처럼 나간 쪽이 패배한다.
 - **저장:** 결과 저장(`BattleResultStore.finished`)에는 게임 점수를 넣지 않는다(배틀 규칙 문서 10장 9번). `reason`에 `ko`가 올 수 있다.

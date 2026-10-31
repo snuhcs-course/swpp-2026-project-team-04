@@ -398,7 +398,7 @@ void main() {
       expect(find.text('+5 AVERAGE'), findsOneWidget);
 
       // Above the angle, and the latest score is still the average one.
-      deep.closeRep(reason: goLower, minElbowAngle: 120);
+      deep.closeRep(reason: goLower, minElbowAngle: 130);
       await frame(tester, 5);
       expect(find.text('가슴을 더 내려요'), findsOneWidget);
       expect(find.text('+5 AVERAGE'), findsNothing);

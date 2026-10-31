@@ -1041,7 +1041,8 @@ void main() {
       valid: false,
       at: Duration.zero,
       reason: RejectReason.insufficientDepth,
-      minElbowAngle: 90,
+      // Exactly the line: an online rep plays by the same one.
+      minElbowAngle: 120,
     );
 
     test('an average rep shows the same score and bar on both phones, and '
@@ -1073,8 +1074,8 @@ void main() {
       expect(b.outcome, 'loss');
     });
 
-    test('a shallow rep with straight arms, or another reason, sends no grade '
-        'and earns nothing', () async {
+    test('a shallow rep just above the line, or with straight arms, or another '
+        'reason, sends no grade and earns nothing', () async {
       final s = await server(duration: 5000);
       final (a, b) = await playing(s);
       a.submitRep(
@@ -1083,7 +1084,7 @@ void main() {
           valid: false,
           at: Duration.zero,
           reason: RejectReason.insufficientDepth,
-          minElbowAngle: 170,
+          minElbowAngle: 121,
         ),
       );
       a.submitRep(
@@ -1091,11 +1092,20 @@ void main() {
           index: 2,
           valid: false,
           at: Duration.zero,
+          reason: RejectReason.insufficientDepth,
+          minElbowAngle: 170,
+        ),
+      );
+      a.submitRep(
+        const RepEvent(
+          index: 3,
+          valid: false,
+          at: Duration.zero,
           reason: RejectReason.kneesDown,
           minElbowAngle: 90,
         ),
       );
-      await until(() => a.myInvalidReps == 2);
+      await until(() => a.myInvalidReps == 3);
       expect(a.error, isNull);
       expect(a.myScore, 0);
       expect(a.myLastScore, isNull);

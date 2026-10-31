@@ -529,7 +529,7 @@ void main() {
         await myRep(
           3,
           reason: RejectReason.insufficientDepth,
-          minElbowAngle: 109,
+          minElbowAngle: 130,
         );
         await myRep(5, reason: RejectReason.insufficientDepth);
         expect(battle.state.myScore, 0);
