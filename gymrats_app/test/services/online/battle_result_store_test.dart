@@ -77,6 +77,8 @@ void main() {
     addTearDown(a.close);
     addTearDown(b.close);
     a.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'avatar_01'});
+    // Two sockets race: only alpha joining first makes the player order fixed.
+    await a.next('queue.joined');
     b.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'avatar_02'});
     final found = await a.next('match.found');
     await b.next('match.found');
