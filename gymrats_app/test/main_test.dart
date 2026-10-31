@@ -5,6 +5,7 @@ import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
+import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
@@ -63,6 +64,22 @@ void main() {
     await tester.pumpAndSettle();
     // Home keeps its scroll position; the greeting is at the top.
     await tester.scrollUntilVisible(find.text('안녕하세요, 우현님'), -180);
+    expect(find.text('안녕하세요, 우현님'), findsOneWidget);
+  });
+
+  testWidgets("'?' on home opens the rules over home; back returns home", (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('게임 규칙'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HelpScreen), findsOneWidget);
+    expect(find.text('건너뛰기'), findsNothing);
+
+    await tester.tap(find.byTooltip('뒤로'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HelpScreen), findsNothing);
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
   });
 

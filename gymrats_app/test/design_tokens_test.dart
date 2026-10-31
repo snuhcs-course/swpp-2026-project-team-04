@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 const _checked = [
   'lib/screens/login_screen.dart',
   'lib/screens/signup_screen.dart',
+  'lib/screens/help_screen.dart',
   'lib/screens/history_screen.dart',
   'lib/screens/home_shell_screen.dart',
   'lib/screens/match_feedback_screen.dart',
@@ -15,6 +16,8 @@ const _checked = [
   'lib/widgets/game_danger_edge.dart',
   'lib/widgets/game_fever_chip.dart',
   'lib/widgets/game_health_bar.dart',
+  'lib/widgets/help_pictures.dart',
+  'lib/widgets/help_rules.dart',
   'lib/widgets/match_record_card.dart',
   'lib/widgets/safe_warning_dialog.dart',
 ];

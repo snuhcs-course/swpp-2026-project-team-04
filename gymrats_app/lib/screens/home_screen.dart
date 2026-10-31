@@ -233,6 +233,13 @@ class _Greeting extends StatelessWidget {
             ),
             IconButton(
               onPressed: () =>
+                  Navigator.pushNamed(context, GymRatsApp.helpRoute),
+              tooltip: '게임 규칙',
+              color: AppColors.textSecondary,
+              icon: const Icon(Icons.help_outline_rounded),
+            ),
+            IconButton(
+              onPressed: () =>
                   Navigator.pushNamed(context, GymRatsApp.profileRoute),
               tooltip: '프로필',
               color: AppColors.textSecondary,
@@ -330,6 +337,7 @@ class _ExerciseCard extends StatelessWidget {
                   size: const Size(126, 70),
                   painter: switch (exercise) {
                     ExerciseType.pushUp => const _PushUpPainter(),
+                    ExerciseType.squat => const _PushUpPainter(),
                   },
                 ),
                 const SizedBox(width: 24),

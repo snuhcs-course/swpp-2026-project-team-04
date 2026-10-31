@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../services/api/api_client.dart';
 import '../services/auth/auth_repository.dart';
 import 'auth_viewmodel.dart';
+import 'help_viewmodel.dart';
 import 'login_viewmodel.dart';
 
 /// What the sign-up form shows besides the typed text.
@@ -76,13 +77,19 @@ abstract final class SignupRules {
 }
 
 /// Checks the sign-up form and creates the account through
-/// [AuthViewModel]. On success the user is logged in.
+/// [AuthViewModel]. On success the user is logged in, and [HelpViewModel]
+/// shows the new account the battle rules before home.
 class SignupViewModel extends ChangeNotifier {
-  SignupViewModel({required this._auth});
+  SignupViewModel({required this._auth, this._help});
 
   static const takenMessage = '이미 사용 중인 아이디예요.';
 
   final AuthViewModel _auth;
+
+  /// GymRatsApp's sign-up route passes it through SignupScreen's
+  /// createViewModel. Null (SignupScreen's own default, form-only tests):
+  /// the new account goes straight home.
+  final HelpViewModel? _help;
   SignupState _state = const SignupState();
   bool _disposed = false;
 
@@ -128,6 +135,9 @@ class SignupViewModel extends ChangeNotifier {
         loginId: loginId,
         password: password,
       );
+      if (_auth.account case final account?) {
+        await _help?.signedUp(account.id);
+      }
       _set(const SignupState());
       return true;
     } on LoginIdTakenException {

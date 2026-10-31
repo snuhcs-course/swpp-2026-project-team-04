@@ -180,12 +180,44 @@ git stash pop
 <!-- 36318d41 2026-10-25T17:43:02.814Z -->
 <!-- 36318d41 2026-10-26T14:26:00.051Z -->
 <!-- 97027bac 2026-10-26T15:55:10.707Z -->
+
+## 2026-10-31 · Woohyun Song · feat/help_screen
 <!-- d262aa69 2026-10-27T00:56:08.786Z -->
+[Woohyun Song, 10-27 09:56] "<pasted_content id=\"dd1a\">
+W2 feat/help_screen 시작해. W1(#13), W4(#15)는 PR 열려 있고 PM 리뷰 대기 중이야.
+- git fetch origin 후 origin/main 최신에서 feat/help_screen 새로 만들고 git branch --unset-upstream. docs/battle_rules나 feat/safe_warning 위에서 만들지 마.
+- progress.md Current status를 W2로 바꾸고 시작해.
+- 코딩 전에 OPEN 항목(rules seen 플래그: 계정별 vs 기기별, 기본값 계정별)을 나한테 물어봐.
+- home_screen.dart는 feat/squat_judge 머지 전까지 잠겨 있으니 건드리지 말고, '?' 버튼은 progress.md에 대기로 남겨. help_screen, help_viewmodel, rules_seen_store, main.dart/signup_viewmodel 라우팅, 테스트부터 해.
+- 규칙 문구는 docs/iteration-3/battle-rules.md 기준 placeholder로 한 곳에 모아서 W3가 나중에 바꾸기 쉽게 해.
+- 로컬에서는 flutter test와 flutter analyze만. 커버리지 숫자는 PR CI 코멘트 값을 써.
+- 커밋·푸시·PR은 내가 말할 때만.
+</pasted_content id=\"dd1a\">"
+
 <!-- d262aa69 2026-10-27T01:38:25.996Z -->
+[Woohyun Song, 10-27 10:38] "한국어로 다시 적어."
+
 <!-- d262aa69 2026-10-27T02:04:53.769Z -->
+[Woohyun Song, 10-27 11:04] "Help Screen도 Claude Design을 통해 디자인 시안 뽑고 나한테 검토받아"
+
 <!-- d262aa69 2026-10-27T02:45:10.588Z -->
+[Woohyun Song, 10-27 11:45] "지금 이 세션에서 계속 응답이 영어로 오는 문제가 있어."
+
 <!-- d262aa69 2026-10-29T01:20:49.698Z -->
+[Woohyun Song, 10-29 10:20] "지금까지 W2 작업을 로컬에 커밋만 해줘. push는 하지 마."
+
 <!-- d262aa69 2026-10-29T01:45:39.102Z -->
+[Woohyun Song, 10-29 10:45] "매칭이 잡히고 pose setup까지 완료해야 규칙 창이 뜨는 건가?"
+
+<!-- b767061b 2026-10-31T12:13:47.857Z -->
+[Woohyun Song, 10-31 21:13] "<pasted_content id=\"3bae\">
+W2(feat/help_screen)로 돌아가자. 상황: 상우의 #18(S1)과 #19(S2)가 오늘 저녁 main에 머지됐고, 진영이형 순서표에서 지금 필요한 PR이 W2야. W2가 머지돼야 W3(PR #20)가 머지될 수 있어.
+1) feat/help_screen으로 바꾸고 origin/main을 merge해 줘. S2가 들어왔으니 home_screen.dart 잠금은 정상적으로 풀려. 예전에 넣은 home_screen.dart 예외가 더는 필요 없으면 지우고, 이유를 progress.md에 적어 줘.
+2) '?' 버튼과 그 테스트를 넣어 줘. S2가 고친 home_screen.dart의 다른 줄은 건드리지 말고 꼭 필요한 줄만 바꿔.
+3) flutter analyze, flutter test, 리뷰어 APPROVE, check-diff, 노트(테스트 노트, AI 노트, Prompt Log export)와 노트 리뷰까지 해 줘.
+4) push와 push 후 점검을 하고 PR을 열어 줘. 본문 첫 줄은 \"Merge order: #5 (team plan); merge after: #4 feat/squat_judge (merged)\"로 하고, 리뷰어는 진영이형으로 해 줘. 실기기 확인은 Manual check에 \"아직\"으로 적어 줘.
+5) feat/fever_score는 건드리지 마. 중간에 내 결정이 필요한 것만 물어봐.
+</pasted_content id=\"3bae\">"
 
 ## 2026-10-31 · Woohyun Song · feat/fever_score
 <!-- 876b6a24 2026-10-30T13:13:30.966Z -->

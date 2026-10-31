@@ -227,10 +227,12 @@ class ServerUserRepository implements UserRepository {
 
   static String _exerciseCode(ExerciseType exercise) => switch (exercise) {
     ExerciseType.pushUp => 'push_up',
+    ExerciseType.squat => 'squat',
   };
 
   static ExerciseType _exercise(String code) => switch (code) {
     'push_up' => ExerciseType.pushUp,
+    'squat' => ExerciseType.squat,
     _ => throw FormatException('Unknown exercise $code'),
   };
 

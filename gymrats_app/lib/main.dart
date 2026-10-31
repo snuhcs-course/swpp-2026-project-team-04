@@ -8,6 +8,7 @@ import 'models/form_report.dart';
 import 'models/matchup.dart';
 import 'screens/battle_screen.dart';
 import 'screens/feedback_screen.dart';
+import 'screens/help_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_shell_screen.dart';
 import 'screens/login_screen.dart';
@@ -25,11 +26,14 @@ import 'services/auth/token_store.dart';
 import 'services/feedback/form_report_store.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
+import 'services/user/rules_seen_store.dart';
 import 'services/user/server_user_repository.dart';
 import 'services/user/user_repository.dart';
 import 'services/user/avatar_store.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
+import 'viewmodels/help_viewmodel.dart';
+import 'viewmodels/signup_viewmodel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,11 +46,14 @@ Future<void> main() async {
       authRepository: auth,
       userRepository: ServerUserRepository(api: api, auth: auth),
       avatarStore: SecureAvatarStore(),
+      rulesSeenStore: SecureRulesSeenStore(),
     ),
   );
 }
 
 /// The app: the login screen while logged out, home while logged in.
+/// An account that signed up on this phone sees the battle rules once
+/// before its first home.
 ///
 /// The repositories come in from outside, so tests and demos can run it
 /// on in-memory ones without a server.
@@ -58,6 +65,7 @@ class GymRatsApp extends StatefulWidget {
     this.createMatchmaker,
     this.avatarStore,
     this.createOnlineSession,
+    this.rulesSeenStore,
   });
 
   final AuthRepository authRepository;
@@ -68,10 +76,16 @@ class GymRatsApp extends StatefulWidget {
   final AvatarStore? avatarStore;
   final OnlineSessionFactory? createOnlineSession;
 
+  /// Defaults to [MemoryRulesSeenStore].
+  final RulesSeenStore? rulesSeenStore;
+
   static const signupRoute = '/signup';
   static const historyRoute = '/history';
   static const onlineBattleRoute = '/online-battle';
   static const profileRoute = '/profile';
+
+  /// The battle rules, from '?' on home; back returns there.
+  static const helpRoute = '/help';
 
   static const setupRoute = '/setup';
   static const matchingRoute = '/matching';
@@ -95,6 +109,7 @@ class GymRatsApp extends StatefulWidget {
 class _GymRatsAppState extends State<GymRatsApp> {
   final _navigator = GlobalKey<NavigatorState>();
   late final AuthViewModel _auth;
+  late final HelpViewModel _help;
   late final AvatarStore _avatars;
   AuthStatus? _shownStatus;
 
@@ -102,6 +117,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
   void initState() {
     super.initState();
     _avatars = widget.avatarStore ?? MemoryAvatarStore();
+    _help = HelpViewModel(
+      store: widget.rulesSeenStore ?? MemoryRulesSeenStore(),
+    );
     _auth = AuthViewModel(repository: widget.authRepository)
       ..addListener(_onAuthChanged)
       ..restore();
@@ -109,10 +127,15 @@ class _GymRatsAppState extends State<GymRatsApp> {
 
   /// Logging in or out swaps the first screen; anything opened on top of
   /// it (sign-up, a match, history) belongs to the old state and closes.
+  /// A login reads whether the account still has the rules to see.
   void _onAuthChanged() {
     if (_auth.status == _shownStatus) return;
     _shownStatus = _auth.status;
     _navigator.currentState?.popUntil((route) => route.isFirst);
+    final account = _auth.account;
+    if (_auth.status == AuthStatus.signedIn && account != null) {
+      _help.load(account.id);
+    }
   }
 
   @override
@@ -120,6 +143,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
     _auth
       ..removeListener(_onAuthChanged)
       ..dispose();
+    _help.dispose();
     super.dispose();
   }
 
@@ -134,6 +158,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
           create: (_) => widget.createMatchmaker?.call() ?? BotMatchmaker(),
         ),
         ChangeNotifierProvider<AuthViewModel>.value(value: _auth),
+        ChangeNotifierProvider<HelpViewModel>.value(value: _help),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
       ],
       child: MaterialApp(
@@ -141,19 +166,25 @@ class _GymRatsAppState extends State<GymRatsApp> {
         theme: AppTheme.dark,
         navigatorKey: _navigator,
         navigatorObservers: [GymRatsApp.routeObserver],
-        home: Consumer<AuthViewModel>(
-          builder: (context, auth, _) => switch (auth.status) {
+        home: Consumer2<AuthViewModel, HelpViewModel>(
+          builder: (context, auth, help, _) => switch (auth.status) {
             AuthStatus.restoring => const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             ),
             AuthStatus.signedOut => const LoginScreen(),
-            // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
-            // A new home shell per account, so nothing of the previous
-            // user's profile stays on screen.
-            AuthStatus.signedIn => HomeShellScreen(
-              key: ValueKey(auth.account?.id),
-              onLogOut: auth.logOut,
-            ),
+            AuthStatus.signedIn => switch (help.gateFor(auth.account?.id)) {
+              HelpGate.checking => const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              ),
+              HelpGate.rules => HelpScreen(onStart: help.markSeen),
+              // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
+              // A new home shell per account, so nothing of the previous
+              // user's profile stays on screen.
+              HelpGate.home => HomeShellScreen(
+                key: ValueKey(auth.account?.id),
+                onLogOut: auth.logOut,
+              ),
+            },
           },
         ),
         onGenerateRoute: (settings) => switch (settings.name) {
@@ -174,7 +205,13 @@ class _GymRatsAppState extends State<GymRatsApp> {
           ),
           GymRatsApp.signupRoute => MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) => const SignupScreen(),
+            builder: (_) => SignupScreen(
+              createViewModel: () => SignupViewModel(auth: _auth, help: _help),
+            ),
+          ),
+          GymRatsApp.helpRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const HelpScreen(),
           ),
           GymRatsApp.historyRoute => MaterialPageRoute<void>(
             settings: settings,
