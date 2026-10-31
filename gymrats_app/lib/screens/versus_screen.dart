@@ -11,13 +11,16 @@ import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/player_avatar.dart';
+import '../widgets/safe_warning_dialog.dart';
 
 /// Shows who battles whom, the rules, and the button to the pose setup.
 ///
 /// It has no view model: everything it shows comes from [matchup], and its
-/// only behavior is navigation. Back and the 게임 나가기 button at the top
-/// left both ask before going home. When setup finishes, the battle screen
-/// replaces this one, so going back from the battle leads home.
+/// only behavior is navigation. It opens with the safety warning, every
+/// match; the setup button works once the warning has closed. Back and the
+/// 게임 나가기 button at the top left both ask before going home. When setup
+/// finishes, the battle screen replaces this one, so going back from the
+/// battle leads home.
 class VersusScreen extends StatefulWidget {
   const VersusScreen({
     super.key,
@@ -25,6 +28,7 @@ class VersusScreen extends StatefulWidget {
     this.onStartSetup,
     this.onLeave,
     this.duration = battleDuration,
+    this.warningAutoClose,
   });
 
   final Matchup matchup;
@@ -34,6 +38,11 @@ class VersusScreen extends StatefulWidget {
   final Future<void> Function()? onLeave;
   final Duration duration;
 
+  /// Closes the safety warning by itself after this long. Online matches
+  /// set it, since the server's time to get ready keeps running; null waits
+  /// for 확인.
+  final Duration? warningAutoClose;
+
   @override
   State<VersusScreen> createState() => _VersusScreenState();
 }
@@ -42,11 +51,75 @@ class _VersusScreenState extends State<VersusScreen> {
   /// Set while the setup screen is open, so a second tap does nothing.
   bool _settingUp = false;
 
+  /// Set once the safety warning has closed; the setup waits for it.
+  bool _warned = false;
+
+  /// Set once the warning has been scheduled, so it opens once per screen.
+  bool _warningScheduled = false;
+
+  /// Opens the warning once this screen is on top. Online, a match can be
+  /// found while the lobby's "cancel matching?" dialog is open; the warning
+  /// then waits until that dialog has closed, and does not open at all if
+  /// the user cancels. Being on top again re-runs this method.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_warningScheduled || !(ModalRoute.isCurrentOf(context) ?? true)) {
+      return;
+    }
+    _warningScheduled = true;
+    // After the frame, so the warning opens over this screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _warn());
+  }
+
+  /// The open safety warning, so that closing this screen closes it too.
+  Route<bool>? _warning;
+
+  /// Shows the safety warning until it is seen. Back on it asks whether to
+  /// leave, as back on this screen does; staying shows it again. Removed
+  /// any other way (a logout closes every screen), it asks nothing.
+  Future<void> _warn() async {
+    while (true) {
+      if (!mounted) return;
+      final route = safeWarningRoute(
+        context,
+        autoClose: widget.warningAutoClose,
+      );
+      _warning = route;
+      final seen = await Navigator.of(context, rootNavigator: true).push(route);
+      _warning = null;
+      if (!mounted) return;
+      if (seen == true) {
+        _warned = true;
+        return;
+      }
+      if (seen == null || !(ModalRoute.of(context)?.isActive ?? false)) return;
+      // Leaving starts closing this screen, but it is still mounted until
+      // the route has gone, so stop here rather than check mounted.
+      if (await _askToLeave()) return;
+    }
+  }
+
+  /// Online, a cancelled match rebuilds the lobby without this screen while
+  /// the warning may still be open over it: close the warning too, after
+  /// the frame, since the navigator may not change during a build.
+  @override
+  void dispose() {
+    final warning = _warning;
+    final navigator = warning?.navigator;
+    if (warning != null && navigator != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (warning.isActive) navigator.removeRoute(warning);
+      });
+    }
+    super.dispose();
+  }
+
   /// Opens the pose setup. MatchSetupScreen returns the exercise when the
   /// user is ready, or null if it closes without one; then this screen
   /// stays. (Its 게임 나가기 closes this screen as well.)
   Future<void> _startSetup() async {
-    if (_settingUp) return;
+    if (_settingUp || !_warned) return;
     _settingUp = true;
     if (widget.onStartSetup case final start?) {
       try {
@@ -73,13 +146,14 @@ class _VersusScreenState extends State<VersusScreen> {
     );
   }
 
-  /// Asks before leaving, on a back attempt or the 게임 나가기 button.
-  Future<void> _askToLeave() async {
+  /// Asks before leaving, on a back attempt or the 게임 나가기 button. True
+  /// when the user chose to leave.
+  Future<bool> _askToLeave() async {
     final leave = await confirmExit(
       context,
       ExitDialog.game(opponentName: widget.matchup.opponent.name),
     );
-    if (!mounted) return;
+    if (!mounted) return leave;
     if (leave) {
       if (widget.onLeave case final leaveMatch?) {
         await leaveMatch();
@@ -87,6 +161,7 @@ class _VersusScreenState extends State<VersusScreen> {
         popToHome(context);
       }
     }
+    return leave;
   }
 
   @override

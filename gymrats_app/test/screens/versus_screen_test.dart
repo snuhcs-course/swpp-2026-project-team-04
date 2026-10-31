@@ -8,6 +8,7 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/exit_game_button.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
+import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
 
 import '../support/fakes.dart';
 
@@ -20,14 +21,23 @@ const _matchup = Matchup(
 void main() {
   late PushLog pushes;
 
-  /// Opens VersusScreen from a home page. The match setup route is a stub
-  /// that shows the matchup it received, with a "ready" button that returns
-  /// the exercise and a "back" button that returns null, like
+  /// The safety warning's 확인 button, with or without a countdown.
+  final warningButton = find.descendant(
+    of: find.byType(SafeWarningDialog),
+    matching: find.byType(FilledButton),
+  );
+
+  /// Opens VersusScreen from a home page and, unless [seeWarning] is false,
+  /// closes the safety warning it opens with. The match setup route is a
+  /// stub that shows the matchup it received, with a "ready" button that
+  /// returns the exercise and a "back" button that returns null, like
   /// MatchSetupScreen. The battle route shows its matchup.
   Future<void> open(
     WidgetTester tester, {
     Matchup matchup = _matchup,
     Size size = const Size(412, 915),
+    bool seeWarning = true,
+    Duration? warningAutoClose,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -43,7 +53,10 @@ void main() {
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(
-                  builder: (_) => VersusScreen(matchup: matchup),
+                  builder: (_) => VersusScreen(
+                    matchup: matchup,
+                    warningAutoClose: warningAutoClose,
+                  ),
                 ),
               ),
               child: const Text('home'),
@@ -91,6 +104,10 @@ void main() {
     );
     await tester.tap(find.text('home'));
     await tester.pumpAndSettle();
+    if (seeWarning) {
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+    }
   }
 
   int setupPushes() =>
@@ -305,7 +322,12 @@ void main() {
   });
 
   testWidgets('fits a small phone without overflow', (tester) async {
-    await open(tester, size: const Size(360, 640));
+    await open(tester, size: const Size(360, 640), seeWarning: false);
+    expect(find.byType(SafeWarningDialog), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(warningButton);
+    await tester.pumpAndSettle();
+
     expect(find.text('자세 세팅 시작'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -314,5 +336,160 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ExitDialog), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group('safety warning', () {
+    /// Calls the setup button directly: the warning's barrier would stop a
+    /// real tap.
+    void pressSetup(WidgetTester tester) => tester
+        .widget<FilledButton>(
+          find.ancestor(
+            of: find.text('자세 세팅 시작'),
+            matching: find.byType(FilledButton),
+          ),
+        )
+        .onPressed!();
+
+    testWidgets('opens over MATCH FOUND with the picture, the message and '
+        '확인', (tester) async {
+      await open(tester, seeWarning: false);
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+      expect(find.text('무리하지 마세요'), findsOneWidget);
+      expect(
+        find.text('무리해서 운동하면 몸을 다칠 수 있어요.\n몸 상태를 살피며 플레이해 주세요.'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(SafeWarningDialog.pictureLabel),
+        findsOneWidget,
+      );
+      expect(find.text('확인'), findsOneWidget);
+      expect(find.text('확인을 누르면 자세 세팅을 시작할 수 있어요'), findsOneWidget);
+      // The screen is underneath, not replaced.
+      expect(find.text('MATCH FOUND'), findsOneWidget);
+    });
+
+    testWidgets('the pose setup starts only after 확인', (tester) async {
+      await open(tester, seeWarning: false);
+      pressSetup(tester);
+      await tester.pumpAndSettle();
+      expect(setupPushes(), 0);
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsNothing);
+      await tester.tap(find.text('자세 세팅 시작'));
+      await tester.pumpAndSettle();
+      expect(find.text('setup pushUp vs RepBot'), findsOneWidget);
+    });
+
+    testWidgets('a tap outside keeps it open', (tester) async {
+      await open(tester, seeWarning: false);
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+      expect(find.byType(ExitDialog), findsNothing);
+    });
+
+    testWidgets('back on it asks whether to leave; 계속하기 shows it again', (
+      tester,
+    ) async {
+      await open(tester, seeWarning: false);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsNothing);
+      expect(find.text('게임에서 나갈까요?'), findsOneWidget);
+
+      await tester.tap(find.text('계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExitDialog), findsNothing);
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+      pressSetup(tester);
+      await tester.pumpAndSettle();
+      expect(setupPushes(), 0);
+    });
+
+    testWidgets('back on it, then 게임 나가기, goes home with no warning left', (
+      tester,
+    ) async {
+      await open(tester, seeWarning: false);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(dialogExit);
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(VersusScreen), findsNothing);
+      expect(find.byType(SafeWarningDialog), findsNothing);
+    });
+
+    testWidgets('closed by a logout, which closes every screen, it asks '
+        'nothing', (tester) async {
+      await open(tester, seeWarning: false);
+      // What GymRatsApp does when the login ends.
+      tester
+          .state<NavigatorState>(find.byType(Navigator).first)
+          .popUntil((route) => route.isFirst);
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+      expect(find.byType(VersusScreen), findsNothing);
+      expect(find.byType(SafeWarningDialog), findsNothing);
+      expect(find.byType(ExitDialog), findsNothing);
+    });
+
+    testWidgets('every match shows it again', (tester) async {
+      await open(tester);
+      await tester.tap(exitButton);
+      await tester.pumpAndSettle();
+      await tester.tap(dialogExit);
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+
+      await tester.tap(find.text('home'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+    });
+
+    testWidgets('online: counts down from 5 on the button and closes by '
+        'itself', (tester) async {
+      await open(
+        tester,
+        seeWarning: false,
+        warningAutoClose: const Duration(seconds: 5),
+      );
+      expect(find.text('확인 (5)'), findsOneWidget);
+      expect(find.text('5초 뒤 자동으로 닫혀요'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('확인 (4)'), findsOneWidget);
+      expect(find.text('4초 뒤 자동으로 닫혀요'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsNothing);
+      await tester.tap(find.text('자세 세팅 시작'));
+      await tester.pumpAndSettle();
+      expect(find.text('setup pushUp vs RepBot'), findsOneWidget);
+    });
+
+    testWidgets('online: 확인 closes it before the countdown ends', (
+      tester,
+    ) async {
+      await open(
+        tester,
+        seeWarning: false,
+        warningAutoClose: const Duration(seconds: 5),
+      );
+      await tester.pump(const Duration(seconds: 2));
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsNothing);
+
+      // The countdown is gone: running out later pops nothing.
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
+      expect(find.text('MATCH FOUND'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }
