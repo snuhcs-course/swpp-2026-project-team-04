@@ -92,6 +92,20 @@ void main() {
     );
   });
 
+  testWidgets('both popups fit a narrow phone on the largest system font', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpWidget(_bar(0.5, mine: _score(40), theirs: _score(40)));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('+40'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('the bar keeps its place when a popup appears', (tester) async {
     await tester.pumpWidget(_bar(0.5));
     final before = tester.getTopLeft(find.byKey(const Key('myBarShare')));

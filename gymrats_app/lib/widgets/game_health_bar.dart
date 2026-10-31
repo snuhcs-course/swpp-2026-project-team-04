@@ -42,28 +42,41 @@ class GameHealthBar extends StatelessWidget {
             height: _labelsHeight,
             child: Row(
               children: [
-                Text(
-                  '나 $percent%',
-                  style: labels?.copyWith(color: AppColors.accent),
+                Expanded(
+                  child: _BarSide(
+                    alignment: Alignment.centerLeft,
+                    children: [
+                      Text(
+                        '나 $percent%',
+                        style: labels?.copyWith(color: AppColors.accent),
+                      ),
+                      const SizedBox(width: AppSpacing.s8),
+                      if (my != null)
+                        _ScorePopup(
+                          key: ObjectKey(my),
+                          points: my.points,
+                          color: AppColors.accent,
+                        ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: AppSpacing.s8),
-                if (my != null)
-                  _ScorePopup(
-                    key: ObjectKey(my),
-                    points: my.points,
-                    color: AppColors.accent,
+                Expanded(
+                  child: _BarSide(
+                    alignment: Alignment.centerRight,
+                    children: [
+                      if (their != null)
+                        _ScorePopup(
+                          key: ObjectKey(their),
+                          points: their.points,
+                          color: AppColors.opponent,
+                        ),
+                      const SizedBox(width: AppSpacing.s8),
+                      Text(
+                        '상대 ${100 - percent}%',
+                        style: labels?.copyWith(color: AppColors.opponent),
+                      ),
+                    ],
                   ),
-                const Spacer(),
-                if (their != null)
-                  _ScorePopup(
-                    key: ObjectKey(their),
-                    points: their.points,
-                    color: AppColors.opponent,
-                  ),
-                const SizedBox(width: AppSpacing.s8),
-                Text(
-                  '상대 ${100 - percent}%',
-                  style: labels?.copyWith(color: AppColors.opponent),
                 ),
               ],
             ),
@@ -105,6 +118,24 @@ class GameHealthBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One player's half of the line over the bar. It shrinks rather than
+/// overflows on the largest system font.
+class _BarSide extends StatelessWidget {
+  const _BarSide({required this.alignment, required this.children});
+
+  final Alignment alignment;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: alignment,
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 }
