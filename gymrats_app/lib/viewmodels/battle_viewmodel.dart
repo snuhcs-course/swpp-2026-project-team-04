@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/battle_result.dart';
 import '../models/form_report.dart';
+import '../models/exercise_type.dart';
 import '../models/matchup.dart';
 import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
@@ -311,18 +312,20 @@ class BattleViewModel extends ChangeNotifier {
       opponentReps: _state.opponentReps,
       endedAt: endedAt,
       roundLength: counter.roundLength,
-      form: FormReport(
-        endedAt: endedAt,
-        opponentName: matchup.opponent.name,
-        roundLength: counter.roundLength,
-        reps: counter.repRecords,
-        samples: counter.formSamples,
-        poses: counter.formPoses,
-        leftFlarePose: counter.leftFlarePose,
-        rightFlarePose: counter.rightFlarePose,
-        handsPose: counter.handsPose,
-        headPose: counter.headPose,
-      ),
+      form: matchup.exercise == ExerciseType.squat
+          ? null
+          : FormReport(
+              endedAt: endedAt,
+              opponentName: matchup.opponent.name,
+              roundLength: counter.roundLength,
+              reps: counter.repRecords,
+              samples: counter.formSamples,
+              poses: counter.formPoses,
+              leftFlarePose: counter.leftFlarePose,
+              rightFlarePose: counter.rightFlarePose,
+              handsPose: counter.handsPose,
+              headPose: counter.headPose,
+            ),
     );
     _setState(
       _state.copyWith(
@@ -333,7 +336,8 @@ class BattleViewModel extends ChangeNotifier {
         result: result,
       ),
     );
-    unawaited(_save(result));
+    // Demo squat is not supported by the server history API yet.
+    if (matchup.exercise != ExerciseType.squat) unawaited(_save(result));
   }
 
   /// Keeps the battle, with its form report, for the home screen and the

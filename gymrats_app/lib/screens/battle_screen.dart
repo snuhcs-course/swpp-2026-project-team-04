@@ -7,10 +7,13 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
+import '../models/exercise_type.dart';
 import '../models/matchup.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/opponent/bot_opponent.dart';
+import '../services/pose/squat_demo_judge.dart';
+import '../services/pose/rep_judge.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/battle_viewmodel.dart';
@@ -60,7 +63,12 @@ class _BattleScreenState extends State<BattleScreen>
         widget.createViewModel?.call() ??
         BattleViewModel(
           matchup: widget.matchup,
-          counter: RepCounterViewModel(roundLength: battleDuration),
+          counter: RepCounterViewModel(
+            roundLength: battleDuration,
+            judge: widget.matchup.exercise == ExerciseType.squat
+                ? SquatDemoJudge()
+                : null,
+          ),
           opponent: BotOpponent(),
           repository: context.read<UserRepository>(),
           sound: const DeviceRepSound(),
@@ -280,13 +288,18 @@ class _CameraArea extends StatelessWidget {
     return Stack(
       children: [
         Center(
-          child: SizedBox.fromSize(size: cameraSize, child: const _CameraBox()),
+          child: SizedBox.fromSize(
+            size: cameraSize,
+            child: _CameraBox(exercise: matchup.exercise),
+          ),
         ),
         Positioned(
           left: 16,
           top: top,
           child: _NameChip(name: matchup.playerName),
         ),
+        if (matchup.exercise == ExerciseType.squat)
+          Positioned(left: 16, bottom: 12, child: _SquatGuide()),
         Positioned(
           right: 16,
           top: top,
@@ -294,6 +307,7 @@ class _CameraArea extends StatelessWidget {
             opponent: matchup.opponent,
             moves: moves,
             live: live,
+            exercise: matchup.exercise,
             // Smaller with a short camera, down to three quarters.
             scale: (cameraSize.height / _designHeight).clamp(0.75, 1.0),
           ),
@@ -303,10 +317,36 @@ class _CameraArea extends StatelessWidget {
   }
 }
 
+class _SquatGuide extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final phase = context.select<RepCounterViewModel, RepPhase>(
+      (counter) => counter.state.snapshot.phase,
+    );
+    final message = switch (phase) {
+      RepPhase.up || RepPhase.descending => '일어선 상태 · 무릎 가까이 앉아 주세요',
+      RepPhase.bottom => '앉은 상태 · 이제 일어서세요',
+      RepPhase.idle || RepPhase.lost => '정면에서 전신이 보이도록 서 주세요',
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black87,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Text(message, style: const TextStyle(color: Colors.white)),
+      ),
+    );
+  }
+}
+
 /// The preview with the landmark dots while the round runs, a spinner while
 /// the camera opens, or what went wrong.
 class _CameraBox extends StatelessWidget {
-  const _CameraBox();
+  const _CameraBox({required this.exercise});
+
+  final ExerciseType exercise;
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +366,12 @@ class _CameraBox extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           PoseAvatarToggleView(
-            chestSnapshot: state.snapshot,
+            chestSnapshot: exercise == ExerciseType.pushUp
+                ? state.snapshot
+                : null,
+            squatSnapshot: exercise == ExerciseType.squat
+                ? state.snapshot
+                : null,
             controller: counter.cameraController,
             frame: state.phase == CounterPhase.running ? frame : null,
             mirror: counter.isFrontCamera,
