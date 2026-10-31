@@ -873,6 +873,24 @@ void main() {
       expect(b.outcome, 'loss');
     });
 
+    test("a rep's grade goes by the pass depth it is given; with none, by the "
+        "push-up judge's", () async {
+      const rep = RepEvent(
+        index: 1,
+        valid: true,
+        at: Duration.zero,
+        maxDepth: 1.2,
+      );
+      final s = await server(duration: 3000);
+      final (a, b) = await playing(s);
+      a.submitRep(rep, passDepth: .75);
+      await until(() => a.myScore == 15 && b.opponentScore == 15);
+      expect(b.opponentLastScore!.grade.name, 'excellent');
+      b.submitRep(rep);
+      await until(() => b.myScore == 10 && a.opponentScore == 10);
+      expect(a.opponentLastScore!.grade.name, 'good');
+    });
+
     test('a combo reaches the phones; a rejected rep sends no grade and is '
         'accepted', () async {
       final s = await server(duration: 5000);

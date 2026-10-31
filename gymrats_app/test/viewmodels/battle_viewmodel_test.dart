@@ -11,6 +11,7 @@ import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
+import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 
@@ -401,6 +402,38 @@ void main() {
       opponent.emitAt(seconds, reason: reason);
       await pumpEventQueue();
     }
+
+    test("a rep's grade goes by its judge's pass depth", () async {
+      final shallowJudge = DepthRepJudge(
+        config: const RepJudgeConfig(bottomDepth: .75),
+      );
+      final other = BattleViewModel(
+        matchup: _matchup,
+        counter: RepCounterViewModel(
+          camera: camera,
+          estimator: estimator,
+          judge: shallowJudge,
+          clock: () => now,
+          roundLength: battleDuration,
+          phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
+        ),
+        opponent: TimedOpponentSource(),
+        repository: FakeUserRepository(),
+        sound: FakeRepSound(),
+        now: () => _endedAt,
+      );
+      addTearDown(other.dispose);
+      await other.start();
+
+      // 1.6 x 0.75: a push-up at this depth would only be good.
+      shallowJudge.closeRep(maxDepth: 1.2);
+      await frame(3);
+      expect(other.state.myLastScore!.grade, GameGrade.excellent);
+
+      shallowJudge.closeRep(maxDepth: 1.19);
+      await frame(9);
+      expect(other.state.myLastScore!.grade, GameGrade.good);
+    });
 
     test('a valid rep pushes the bar and scores by its depth', () async {
       await battle.start();

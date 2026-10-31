@@ -516,7 +516,9 @@ class OnlineBattleSession extends ChangeNotifier {
     }
   }
 
-  void submitRep(RepEvent rep) {
+  /// Sends a judged rep. [passDepth] is its judge's, for the rep's grade; a
+  /// caller with no judge gets the push-up judge's.
+  void submitRep(RepEvent rep, {double? passDepth}) {
     if (!roundRunning) return;
     final reason = switch (rep.reason) {
       RejectReason.insufficientDepth => 'insufficient_depth',
@@ -535,8 +537,7 @@ class OnlineBattleSession extends ChangeNotifier {
     final grade = rep.valid
         ? rules?.gradeFor(
             maxDepth: rep.maxDepth,
-            // The push-up judge's: no judge states its own pass depth yet.
-            passDepth: const RepJudgeConfig().bottomDepth,
+            passDepth: passDepth ?? const RepJudgeConfig().bottomDepth,
           )
         : null;
     final elapsed = elapsedMs;

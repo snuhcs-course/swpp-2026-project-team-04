@@ -60,7 +60,8 @@ class BotOpponent implements OpponentSource {
   static const _mostRejected = 3;
 
   /// How deep the bot's valid reps go, in top-pose shoulder widths: both are
-  /// inside what normal push-ups reach, and only the deep one is excellent.
+  /// inside what normal push-ups reach, and at the push-up pass depth only the
+  /// deep one is excellent.
   static const _normalDepth = 1.4;
   static const _deepDepth = 1.9;
 

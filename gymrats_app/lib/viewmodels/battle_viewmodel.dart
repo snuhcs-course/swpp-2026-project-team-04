@@ -12,7 +12,6 @@ import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/game/battle_game.dart';
 import '../services/opponent/opponent_source.dart';
-import '../services/pose/rep_judge.dart';
 import '../services/user/user_repository.dart';
 import 'rep_counter_viewmodel.dart';
 
@@ -221,11 +220,8 @@ class BattleViewModel extends ChangeNotifier {
   BattleState get state => _state;
 
   /// A game with nobody on the board.
-  BattleGame _newGame() => BattleGame(
-    rules: rules,
-    // The push-up judge's: no judge states its own pass depth yet.
-    passDepth: const RepJudgeConfig().bottomDepth,
-  );
+  BattleGame _newGame() =>
+      BattleGame(rules: rules, passDepth: counter.passDepth);
 
   bool get _roundOver =>
       _state.phase == BattlePhase.timeUp || _state.phase == BattlePhase.left;

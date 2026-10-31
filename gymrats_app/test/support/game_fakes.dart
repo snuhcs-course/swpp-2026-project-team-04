@@ -20,6 +20,8 @@ RepEvent gameRep(double seconds, {double? maxDepth, RejectReason? reason}) =>
 /// hour apart per rep, so a game fed the judge's time instead of round time
 /// gets no combo and is always in fever.
 class DepthRepJudge extends RepJudge {
+  DepthRepJudge({super.config});
+
   final Queue<RepEvent> _verdicts = Queue();
   int _index = 0;
 

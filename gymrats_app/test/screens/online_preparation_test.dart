@@ -292,6 +292,22 @@ void main() {
       await tester.pump();
     });
 
+    testWidgets("a rep's grade goes by the counter's pass depth", (
+      tester,
+    ) async {
+      final judge = DepthRepJudge(
+        config: const RepJudgeConfig(bottomDepth: .75),
+      );
+      await open(tester, judge: judge);
+      await play(tester);
+      // 1.6 x 0.75: a push-up at this depth would only be good.
+      judge.closeRep(maxDepth: 1.2);
+      await closeRep(tester);
+      expect(find.text('+15 EXCELLENT'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
     testWidgets('an older server has no words but +1', (tester) async {
       final judge = DepthRepJudge();
       await open(tester, judge: judge);

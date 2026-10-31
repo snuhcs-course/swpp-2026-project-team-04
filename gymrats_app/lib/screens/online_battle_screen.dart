@@ -160,7 +160,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _reps = _counter.reps.listen((rep) {
       if (_roundStarted && _counter.history.contains(rep)) {
         if (rep.valid) const DeviceRepSound().playRepCounted();
-        session.submitRep(rep);
+        session.submitRep(rep, passDepth: _counter.passDepth);
       }
     });
     unawaited(_counter.start());
