@@ -23,7 +23,7 @@ void main() {
       '승패',
       '안전하게',
     ]);
-    // Only the danger row is a warning (amber).
+    // Only the danger row is a warning (red).
     expect(HelpRules.reminders.map((rule) => rule.warning), [
       true,
       false,

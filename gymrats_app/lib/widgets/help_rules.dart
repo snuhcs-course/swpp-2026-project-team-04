@@ -30,7 +30,7 @@ class HelpRule {
   final String title;
   final String body;
 
-  /// Drawn in amber, like every warning in the app.
+  /// Drawn in red, like the battle's danger edge.
   final bool warning;
 }
 
@@ -105,7 +105,7 @@ abstract final class HelpRules {
     HelpRule(
       icon: Icons.warning_amber_rounded,
       title: '위험 신호',
-      // No color named: the edge's color is the game screen's to choose.
+      // No color in the words: the icon beside them is red.
       body: '$dangerLead점 이상 뒤지면 화면 가장자리가 깜빡여요',
       warning: true,
     ),

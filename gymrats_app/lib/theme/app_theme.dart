@@ -30,8 +30,8 @@ abstract final class AppColors {
   /// their last 5 seconds, and the fever chip.
   static const fever = Color(0xFF3DE8FF);
 
-  /// Red, only for the battle's danger edge: the user is about to lose. Every
-  /// other problem is [warning].
+  /// Red, only for the battle's danger edge and its icon on the rules screen:
+  /// the user is about to lose. Every other problem is [warning].
   static const danger = Color(0xFFFF3B30);
 }
 
