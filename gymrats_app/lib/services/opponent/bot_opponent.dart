@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../models/battle_rules.dart';
 import '../../models/rep_event.dart';
+import '../../models/exercise_type.dart';
 import '../pose/setup_checker.dart' show Clock;
 import 'opponent_source.dart';
 
@@ -91,7 +92,9 @@ class BotOpponent implements OpponentSource {
       final gap = span / count * ((1 - _slowdown) + 2 * _slowdown * slot);
       final jitter = (random.nextDouble() * 2 - 1) * _jitter * gap;
       final reason = rejected.contains(i)
-          ? RejectReason.values[random.nextInt(RejectReason.values.length)]
+          ? RejectReason.forExercise(ExerciseType.pushUp)[random.nextInt(
+              RejectReason.forExercise(ExerciseType.pushUp).length,
+            )]
           : null;
       plan.add(
         RepEvent(

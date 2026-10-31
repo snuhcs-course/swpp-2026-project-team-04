@@ -16,6 +16,7 @@ const _checked = [
   'lib/widgets/help_pictures.dart',
   'lib/widgets/help_rules.dart',
   'lib/widgets/match_record_card.dart',
+  'lib/widgets/safe_warning_dialog.dart',
 ];
 
 /// Pattern and what it catches.
