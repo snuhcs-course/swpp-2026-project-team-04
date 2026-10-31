@@ -2,9 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/auth/auth_repository.dart';
 import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/help_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/signup_viewmodel.dart';
 
 import '../support/auth_fakes.dart';
+import '../support/help_fakes.dart';
 
 void main() {
   late ScriptedAuthRepository repository;
@@ -122,5 +124,34 @@ void main() {
     gate.complete();
     expect(await first, isTrue);
     expect(repository.signUps, hasLength(1));
+  });
+
+  group('battle rules', () {
+    late ScriptedRulesSeenStore rules;
+    late HelpViewModel help;
+
+    setUp(() {
+      rules = ScriptedRulesSeenStore();
+      help = HelpViewModel(store: rules);
+      vm = SignupViewModel(auth: auth, help: help);
+    });
+
+    test('a new account sees the rules before home', () async {
+      expect(await submit(), isTrue);
+      expect(help.gateFor(1), HelpGate.rules);
+      expect(rules.writes, [(1, false)]);
+    });
+
+    test('a refused sign-up marks no account', () async {
+      repository.signUpError = const LoginIdTakenException();
+      expect(await submit(), isFalse);
+      expect(rules.writes, isEmpty);
+      expect(help.gateFor(1), HelpGate.checking);
+    });
+
+    test('invalid fields mark no account', () async {
+      expect(await submit(password: 'short'), isFalse);
+      expect(rules.writes, isEmpty);
+    });
   });
 }
