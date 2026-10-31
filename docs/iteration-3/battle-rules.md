@@ -1,6 +1,6 @@
 # GymRats Iteration 3 배틀 게임 규칙 (P4)
 
-상태: 제안 v0.1 / 작성일: 2026-10-25 / 결정: 2026-10-28 중간 체크인 / 작성: 송우현
+상태: 제안 v0.1 / 작성일: 2026-10-25 / 결정: 2026-10-28 중간 체크인 / Average 추가: 2026-11-01 / 작성: 송우현
 
 1v1 배틀을 게임으로 만드는 규칙을 정의한다. 체력 바 줄다리기, rep마다의 판정 라벨, 피버 타임(점수 2배), 위험 상태, KO가 들어간다. W3(`feat/fever_score`)는 이 문서대로 봇 대결과 온라인 대결을 구현한다. "제안"으로 표시한 숫자는 10-28 체크인에서 팀이 확정하고, 확정 전까지 W3는 이 제안값을 기본값으로 쓴다.
 
@@ -9,7 +9,8 @@
 | 항목 | 제안값 | 상태 |
 |---|---|---|
 | 경기 길이 | 30초 = 기본 20초 + 피버 10초 | 제안 |
-| 점수를 받는 rep | 판정기가 유효로 센 rep만. 거절 rep는 0점 | 확정 (rep 판정 변경 없음) |
+| 점수를 받는 rep | 판정기가 유효로 센 rep와 Average rep. 그 밖의 거절 rep는 0점 | 확정 (rep 판정 변경 없음) |
+| Average | 5점. Go lower(`insufficientDepth`)로 거절된 rep 중 `minElbowAngle ≤ 105°`. 유효 횟수에는 안 들어감 | 확정 (2026-11-01, 3.6) |
 | Good | 10점 | 제안 |
 | Excellent | 15점. `maxDepth ≥ 1.6 × passDepth` (푸시업 1.76) | 제안 (실측 필요, 3.2) |
 | 콤보 | +5점. 직전 유효 rep 뒤 1.5초 안에 끝난 유효 rep. 사이에 거절 rep가 있으면 끊김 | 제안 |
@@ -44,9 +45,9 @@
 
 ### 3.1 점수를 받는 rep
 
-- 판정기(`ExerciseRepJudge`, 푸시업은 `RepJudge`)가 `valid: true`로 판정한 rep만 점수를 받는다. 판정 기준은 바꾸지 않는다.
-- 거절 rep는 0점이고, 그 선수의 콤보를 끊는다. 거절 사유 배너는 지금처럼 바로 보여 준다.
-- 게임 점수에 들어가는 rep는 유효 횟수에 들어가는 rep와 정확히 같다. 봇 대결은 `RepCounterViewModel`이 센 rep, 온라인 대결은 서버가 수락한 rep(`elapsed_ms`가 `[0, 30000)` 안)다.
+- 판정기(`ExerciseRepJudge`, 푸시업은 `RepJudge`)가 `valid: true`로 판정한 rep와 Average rep(3.6)가 점수를 받는다. 판정 기준과 거절 이유는 바꾸지 않는다.
+- 그 밖의 거절 rep는 0점이다. 거절 rep는 Average여도 그 선수의 콤보를 끊는다. 거절 사유 배너는 지금처럼 바로 보여 준다.
+- 유효 횟수에 들어가는 rep는 모두 게임 점수를 받는다. 게임 점수만 받고 유효 횟수에 안 들어가는 rep는 Average뿐이다. 봇 대결은 `RepCounterViewModel`이 센 rep, 온라인 대결은 서버가 수락한 rep(`elapsed_ms`가 `[0, 30000)` 안)다.
 - 유효 횟수와 거절 횟수는 지금처럼 따로 세고 보여 준다. 경기 후 폼 피드백(`FormReport`, 피드백 화면)에는 게임 점수가 섞이지 않는다.
 
 ### 3.2 판정 라벨: Good / Excellent
@@ -59,13 +60,13 @@
 | Excellent | 유효 rep, `r ≥ 1.6` | 15 |
 
 - 푸시업의 `passDepth`는 `RepJudgeConfig.bottomDepth` = 1.1(어깨너비 단위)이다. 따라서 `maxDepth ≥ 1.76`이면 Excellent다.
-- 스쿼트는 S2의 `passDepth`에 같은 비율 1.6을 쓴다. 게임 계층은 `RepEvent`(`valid`, `at`, `maxDepth`)와 `passDepth`만 읽으므로 운동이 늘어도 바꿀 것이 없다(task.md 계약).
+- 스쿼트는 S2의 `passDepth`에 같은 비율 1.6을 쓴다. 게임 계층은 유효 rep를 `RepEvent`(`valid`, `at`, `maxDepth`)와 `passDepth`만으로 매기므로 운동이 늘어도 바꿀 것이 없다(task.md 계약). 거절 rep의 Average는 3.6을 본다.
 - **실측 필요:** 1.6은 제안값이다. `RepJudgeConfig` 주석(`rep_judge.dart`)에 따르면 테스트 녹화에서 정상 푸시업의 깊이는 약 1.4~1.9였다. 1.6배(1.76)는 이 범위의 위쪽이라 가장 깊은 rep만 Excellent가 된다. 처음 제안한 1.2배(1.32)였다면 거의 모든 정상 rep가 Excellent가 되어 라벨이 구분 역할을 못 했다. 10-28 전에 S22/S23에서 `rep_judge_demo`(rep마다 `maxDepth`를 출력)로 보통 rep와 일부러 깊게 한 rep를 잰다. 목표는 보통 rep는 대부분 Good이고, 초보도 일부러 깊게 하면 Excellent가 나오는 것이다. Excellent가 거의 나오지 않으면 비율을 낮춘다(대안 1.5배 = 1.65). 6장 예시의 깊이 값은 규칙을 보여 주기 위해 고른 값이다.
 
 ### 3.3 콤보
 
 - 같은 선수의 유효 rep가 직전 유효 rep보다 1.5초 이내에 끝나면(경기 시각 차이 ≤ 1.5초, 2장의 시간 기준) 콤보다. 콤보 rep는 +5점을 더 받는다.
-- 두 rep 사이에 그 선수의 거절 rep가 있으면 콤보가 끊긴다. 상대의 rep는 내 콤보에 영향이 없다.
+- 두 rep 사이에 그 선수의 거절 rep가 있으면(Average 포함) 콤보가 끊긴다. 상대의 rep는 내 콤보에 영향이 없다.
 - 콤보 수 = 1.5초 간격으로 이어진 유효 rep 수(첫 rep 포함). 콤보 수가 2 이상인 rep가 보너스를 받는다. 보너스는 콤보가 길어져도 +5로 고정해 계산을 단순하게 둔다.
 - 1.5초 간격은 30초에 20회 페이스다. 봇의 평균 간격(약 2.2초)보다 빨라야 콤보가 난다.
 
@@ -78,20 +79,45 @@
 
 ```
 rep 점수 = (라벨 점수 + 콤보 보너스) × 피버 배수
-  라벨 점수   = Good 10 | Excellent 15
-  콤보 보너스 = 콤보 수 ≥ 2 이면 5, 아니면 0
+  라벨 점수   = Average 5 | Good 10 | Excellent 15
+  콤보 보너스 = 유효 rep이고 콤보 수 ≥ 2 이면 5, 아니면 0
   피버 배수   = 경기 시각 ≥ 20초 이면 2, 아니면 1
 게임 점수 = 그 선수의 rep 점수 합
 ```
 
 | | 기본 | 피버 |
 |---|---|---|
+| Average | 5 | 10 |
 | Good | 10 | 20 |
 | Good + 콤보 | 15 | 30 |
 | Excellent | 15 | 30 |
 | Excellent + 콤보 | 20 | 40 |
 
-판정 라벨은 rep마다 체력 바 옆에 "+N"과 함께 뜬다(예: "Excellent +15", "Good 콤보 3 +30"). 요구사항의 응답 지연 기준(내 rep 결과 300ms 안)은 라벨과 "+N"에도 적용한다.
+판정 라벨은 rep마다 체력 바 옆에 "+N"과 함께 뜬다(예: "Excellent +15", "Good 콤보 3 +30"). Average rep는 앰버 거절 배너에 거절 이유와 함께 "+5 AVERAGE"가 뜨고, 점수판과 체력 바도 움직인다. 요구사항의 응답 지연 기준(내 rep 결과 300ms 안)은 라벨과 "+N"에도 적용한다.
+
+### 3.6 판정 라벨: Average
+
+2026-11-01 PM(박진영)과 송우현이 정한 규칙이다. 거의 내려갔는데 인정받지 못한 rep에 작은 점수를 줘서, 사용자가 "거절됐는데 점수가 오른다"를 알아볼 수 있게 한다.
+
+| 라벨 | 조건 | 기본 점수 |
+|---|---|---|
+| Average | Go lower(`RejectReason.insufficientDepth`)로 거절, `RepEvent.minElbowAngle ≤ 105°` | 5 |
+| 없음 | 그 밖의 거절 사유, 105° 초과, 또는 `minElbowAngle`이 없음 | 0 |
+
+- **105°의 근거 (송우현의 녹화):**
+
+  | 동작 | `minElbowAngle` | 결과 |
+  |---|---|---|
+  | 정상으로 내려갔는데 거절된 rep | 90~91° | Average |
+  | 반만 내려가고 고개를 숙이는 꼼수 | 109~135° | 0점 |
+  | 팔을 편 채 고개만 숙이기 | 169~175° | 0점 |
+
+  105°는 90~91°와 109° 사이에 있어서 위 세 경우를 나눈다. 숫자는 `BattleRules.averageMaxElbowAngle`과 `averagePoints` 한 곳에 있다. 표본이 한 사람의 녹화뿐이므로 팀 테스트로 다시 확인한다.
+- 점수는 거절 사유와 `RepEvent.minElbowAngle`을 읽어서 매긴다. `rep_judge.dart`와 판정 설정값은 바꾸지 않으므로, 유효 여부와 거절 이유는 그대로다. 따라서 Average rep는 `invalid_reps`와 "무효" 횟수에 들어가고, 배너도 거절 이유를 그대로 보여 준다.
+- 피버 때 2배가 되고, 콤보 보너스는 없으며, 콤보를 끊는다. 유효 횟수에 들어가지 않으므로 동점일 때 유효 횟수 비교에도 들어가지 않는다. 바와 KO에는 다른 점수와 똑같이 들어간다.
+- 봇의 거절 rep에는 `minElbowAngle`이 없어서 0점이다. 봇 조정은 W5에서 한다.
+- 스쿼트의 거절 사유(`shallowSquat`, `standUpFully`)는 Go lower가 아니므로 스쿼트에는 Average가 나오지 않는다.
+- 결과 화면의 등급별 횟수는 그 폰이 기록한 내 rep(`RepRecord`)로 센다. 온라인에서 서버가 받지 못한 rep(라운드 마지막 순간에 끝난 rep, 끊긴 동안 보내지 못한 rep)는 등급별 횟수에는 있고 점수에는 없을 수 있다. 반대로 경기 중 앱을 다시 켜면 그 전의 rep는 점수에는 있고 등급별 횟수에는 없을 수 있다. 드문 경우라 그대로 둔다. 점수와 승자의 기준은 서버 값이다.
 
 ## 4. 체력 바와 KO, 위험 상태
 
@@ -147,7 +173,7 @@ KO 100점 차에서는 유효 5회 정도 하는 초보도 KO되지 않는다. �
 
 양쪽이 모두 끊기거나 서버가 재시작한 경우의 `void`는 지금과 같다. 게임 점수로 승자를 정하는 이유는 선수가 경기 내내 보는 체력 바와 결과가 항상 일치하게 하기 위해서다. 깊게 한 rep가 더 많은 점수를 받으므로, 횟수가 적어도 자세가 좋으면 이길 수 있다(6장 예시 1).
 
-결과 화면에는 승패, 종료 사유(KO / 시간 종료), 양쪽 게임 점수를 크게 보여 주고, 양쪽 유효 횟수와 내 거절 횟수를 함께 보여 준다. 폼 피드백 버튼과 내용은 그대로다.
+결과 화면에는 승패, 종료 사유(KO / 시간 종료), 양쪽 게임 점수를 크게 보여 주고, 양쪽 유효 횟수, 내 거절 횟수, 내 rep의 등급별 횟수(Excellent / Good / Average)를 함께 보여 준다. 폼 피드백 버튼과 내용은 그대로다.
 
 ## 6. 예시
 
@@ -161,7 +187,7 @@ KO 100점 차에서는 유효 5회 정도 하는 초보도 KO되지 않는다. �
 | 1 | 3.0 | 나 | 유효, 1.45 → 1.32 | Good | 10 | 10 | 0 | +10 | 55% |
 | 2 | 4.2 | 나 | 유효, 1.80 → 1.64, 직전 유효 뒤 1.2초 | Excellent 콤보 2 | 15+5 = 20 | 30 | 0 | +30 | 65% |
 | 3 | 4.5 | 봇 | 유효 | Good | 10 | 30 | 10 | +20 | 60% |
-| 4 | 5.0 | 나 | 거절 (Go lower) | – | 0, 내 콤보 끊김 | 30 | 10 | +20 | 60% |
+| 4 | 5.0 | 나 | 거절 (Go lower, 팔꿈치 120°라 Average 아님) | – | 0, 내 콤보 끊김 | 30 | 10 | +20 | 60% |
 | 5 | 5.6 | 나 | 유효, 1.50 → 1.36. 직전 유효(4.2초) 뒤 1.4초지만 사이에 거절 | Good (콤보 아님) | 10 | 40 | 10 | +30 | 65% |
 | 6 | 6.8 | 봇 | 유효, 직전 유효 뒤 2.3초 | Good | 10 | 40 | 20 | +20 | 60% |
 | 7 | 9.1 | 봇 | 유효, 2.3초 | Good | 10 | 40 | 30 | +10 | 55% |
@@ -208,7 +234,8 @@ B → 서버  rep.submit     {rep_seq: 12, elapsed_ms: 22500, valid: true, reaso
 
 | 무엇 | 지금 (Iteration 2) | 제안 (Iteration 3) |
 |---|---|---|
-| 판정 등급 | 없음 | `rep.submit`에 `grade: "good" \| "excellent"`(거절이면 `null`) 추가. `passDepth`는 폰에만 있으므로 깊이 비교는 폰이 하고, 서버는 `maxDepth`를 받지 않는다. 등급이 없는 옛 앱은 `good`으로 본다 |
+| 판정 등급 | 없음 | `rep.submit`에 `grade: "good" \| "excellent"`(거절이면 `null`, Average rep이면 `"average"`) 추가. `passDepth`와 팔꿈치 각도는 폰에만 있으므로 비교는 폰이 하고, 서버는 `maxDepth`와 각도를 받지 않는다. 등급이 없는 옛 앱의 유효 rep는 `good`, 거절 rep는 0점으로 본다 |
+| Average 점수 | 없음 | `match.found`와 `match.snapshot`에 `average_points: 5`를 추가한다. 앱은 이 값이 있을 때만 `"average"`를 보낸다. W3 서버는 거절 rep에 `grade`가 있으면 `INVALID_PAYLOAD`를 주기 때문이다 |
 | 콤보 | 없음 | 서버가 같은 선수의 수락된 유효 rep `elapsed_ms` 간격으로 계산 |
 | 피버 | 없음 | 서버가 `elapsed_ms ≥ 20000`으로 판단. `match.found`에 `fever_start_ms: 20000`을 추가해 폰이 숫자를 따로 두지 않게 한다 |
 | 점수 | `valid_reps`, `invalid_reps` | `rep.accepted`, `rep.updated`에 `combo`, `points`, `game_score`(누적) 추가. 폰은 지금 `valid_reps`처럼 서버 누적값으로 덮어써서 두 폰의 바가 같아진다 |
@@ -232,6 +259,7 @@ B → 서버  rep.submit     {rep_seq: 12, elapsed_ms: 22500, valid: true, reaso
 | `battleDuration` | 30초 | 이미 있음 |
 | `feverStart` | 20초 | 피버 길이 = `battleDuration − feverStart` |
 | `feverMultiplier` | 2 | |
+| `averagePoints` / `averageMaxElbowAngle` | 5 / 105° | 3.6. `averagePoints`가 0이면 Average가 꺼진다 |
 | `goodPoints` / `excellentPoints` | 10 / 15 | |
 | `excellentDepthRatio` | 1.6 | `maxDepth / passDepth` |
 | `comboWindow` / `comboBonus` | 1.5초 / 5 | |
@@ -249,7 +277,7 @@ B → 서버  rep.submit     {rep_seq: 12, elapsed_ms: 22500, valid: true, reaso
 
 - rep 판정기(`RepJudge`, `ExerciseRepJudge`)와 유효/거절 판정 기준.
 - 유효·거절 횟수를 세고 저장하는 방식, 경기 후 폼 피드백.
-- 안전: 속도 제한은 두지 않는다. 판정기의 기존 최소 시간 검사는 그대로 둔다. 100ms(`noiseFloor`)보다 짧은 시도는 버리고, 시작할 때 팔을 편 자세를 300ms(`topHold`) 유지해야 한다. 콤보는 유효 rep에만 붙으므로, 자세가 무너져 거절되면 콤보도 끊긴다. 무리하지 말라는 안내는 W4(매칭 시 경고 팝업)가 맡는다.
+- 안전: 속도 제한은 두지 않는다. 판정기의 기존 최소 시간 검사는 그대로 둔다. 100ms(`noiseFloor`)보다 짧은 시도는 버리고, 시작할 때 팔을 편 자세를 300ms(`topHold`) 유지해야 한다. 콤보는 유효 rep에만 붙으므로, 자세가 무너져 거절되면(Average 포함) 콤보도 끊긴다. 무리하지 말라는 안내는 W4(매칭 시 경고 팝업)가 맡는다.
 
 ## 10. 10-28 체크인에서 정할 것
 
@@ -269,6 +297,6 @@ B → 서버  rep.submit     {rep_seq: 12, elapsed_ms: 22500, valid: true, reaso
 
 ## 11. 위키에 반영할 것 (PM, 확정 후)
 
-- 요구사항 5.4 수락 기준 1 "my score goes up by one"을 라벨에 따른 점수 가산으로 바꾼다.
+- 요구사항 5.4 수락 기준 1 "my score goes up by one"을 라벨에 따른 점수 가산으로 바꾼다. Average rep는 거절이어도 점수가 오른다.
 - 요구사항 5.6 수락 기준 1: 30초 = 기본 20초 + 피버 10초, KO 조기 종료, 결과에 게임 점수를 추가한다.
-- 설계 문서 "Battle length" 행에 피버 구간을 추가한다. Results의 "`time_up` gives the win to more valid reps"를 5장 규칙과 `ko`로 바꾼다. `rep.submit` / `rep.updated` 필드를 7장 기준으로 갱신한다. 폼 피드백 절의 "online battle, only when it ends by `time_up`"에 `ko`를 추가한다.
+- 설계 문서 "Battle length" 행에 피버 구간을 추가한다. Results의 "`time_up` gives the win to more valid reps"를 5장 규칙과 `ko`로 바꾼다. `rep.submit` / `rep.updated` 필드와 `match.found`의 `average_points`를 7장 기준으로 갱신한다. 폼 피드백 절의 "online battle, only when it ends by `time_up`"에 `ko`를 추가한다.
