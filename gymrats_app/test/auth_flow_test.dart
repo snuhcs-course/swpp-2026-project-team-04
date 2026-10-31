@@ -151,6 +151,52 @@ void main() {
     expect(find.byType(HelpScreen), findsNothing);
   });
 
+  testWidgets("'?' after sign-up saves nothing, and a restart stays on home", (
+    tester,
+  ) async {
+    final tokens = MemoryTokenStore();
+    final rules = ScriptedRulesSeenStore();
+    await start(tester, InMemoryAuthRepository(store: tokens), rules: rules);
+    await signUp(tester);
+    await tapStart(tester);
+    final writes = [...rules.writes];
+
+    await tester.tap(find.byTooltip('게임 규칙'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HelpScreen), findsOneWidget);
+    await tester.tap(find.byTooltip('뒤로'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(rules.writes, writes);
+
+    await tester.pumpWidget(const SizedBox());
+    await start(tester, InMemoryAuthRepository(store: tokens), rules: rules);
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(HelpScreen), findsNothing);
+  });
+
+  testWidgets("'?' after a login saves nothing when 확인 returns home", (
+    tester,
+  ) async {
+    final rules = ScriptedRulesSeenStore();
+    final auth = InMemoryAuthRepository()
+      ..addAccount(loginId: 'woohyun', nickname: '우현', password: 'password1');
+    await start(tester, auth, rules: rules);
+    await logIn(tester, 'woohyun');
+
+    await tester.tap(find.byTooltip('게임 규칙'));
+    await tester.pumpAndSettle();
+    for (var page = 1; page < HelpRules.pages.length; page++) {
+      await tester.tap(find.text('다음'));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('확인'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HelpScreen), findsNothing);
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(rules.writes, isEmpty);
+  });
+
   testWidgets('with slow phone storage, sign-up never shows home before '
       'the rules', (tester) async {
     final rules = ScriptedRulesSeenStore();

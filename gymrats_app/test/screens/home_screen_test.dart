@@ -7,6 +7,7 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/user_profile.dart';
+import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -62,6 +63,7 @@ void main() {
               const Scaffold(body: Text('online matching')),
           GymRatsApp.profileRoute: (_) =>
               const Scaffold(body: Text('my profile')),
+          GymRatsApp.helpRoute: (_) => const HelpScreen(),
           GymRatsApp.matchingRoute: (context) => Scaffold(
             body: Text(
               'matching ${ModalRoute.of(context)!.settings.arguments}',
@@ -326,6 +328,63 @@ void main() {
     await tester.tap(find.byTooltip('프로필'));
     await tester.pumpAndSettle();
     expect(find.text('my profile'), findsOneWidget);
+  });
+
+  testWidgets("'?' opens the rules from the greeting; back returns home", (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.tap(find.byTooltip('게임 규칙'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HelpScreen), findsOneWidget);
+    expect(find.text('건너뛰기'), findsNothing);
+
+    await tester.tap(find.byTooltip('뒤로'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HelpScreen), findsNothing);
+    expect(find.text('안녕하세요, 우현님'), findsOneWidget);
+  });
+
+  testWidgets("'?' has a 48×48 tap target and sits left of the profile", (
+    tester,
+  ) async {
+    await open(tester);
+    final help = find.widgetWithIcon(IconButton, Icons.help_outline_rounded);
+    expect(tester.getSize(help), const Size(48, 48));
+    expect(
+      tester.getRect(help).right,
+      lessThanOrEqualTo(tester.getRect(find.byTooltip('프로필')).left),
+    );
+    expect(tester.widget<IconButton>(help).color, AppColors.textSecondary);
+  });
+
+  testWidgets('a long name wraps beside all three greeting buttons', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    repository.profile = const UserProfile(name: '아주아주아주아주아주아주아주긴이름의사용자');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: HomeScreen(
+          createViewModel: () => HomeViewModel(repository: repository),
+          onLogOut: () async {},
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byTooltip('프로필'), findsOneWidget);
+    expect(find.byTooltip('로그아웃'), findsOneWidget);
+    final name = find.textContaining('안녕하세요');
+    final greeting = tester.getRect(name);
+    final help = tester.getRect(find.byTooltip('게임 규칙'));
+    expect(greeting.right, lessThanOrEqualTo(help.left));
+    // Two lines at least: one line stays under twice the font size.
+    final fontSize = tester.widget<Text>(name).style!.fontSize!;
+    expect(greeting.height, greaterThanOrEqualTo(fontSize * 2));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('lower AI button opens matching for push-ups', (tester) async {

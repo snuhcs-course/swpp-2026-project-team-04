@@ -67,14 +67,12 @@ void main() {
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
   });
 
-  testWidgets('the help route opens the rules over home; back returns home', (
+  testWidgets("'?' on home opens the rules over home; back returns home", (
     tester,
   ) async {
     await tester.pumpWidget(testApp());
     await tester.pumpAndSettle();
-    tester
-        .state<NavigatorState>(find.byType(Navigator))
-        .pushNamed(GymRatsApp.helpRoute);
+    await tester.tap(find.byTooltip('게임 규칙'));
     await tester.pumpAndSettle();
     expect(find.byType(HelpScreen), findsOneWidget);
     expect(find.text('건너뛰기'), findsNothing);
