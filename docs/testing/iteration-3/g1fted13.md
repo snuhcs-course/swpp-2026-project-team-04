@@ -240,23 +240,24 @@ This push merges `origin/main` at `ea83fc1`, with S1 (#18), S2 (#19) and W2 (#21
 - The online button's hint on home says `30초가 끝나면 점수가 높은 쪽 승리`, in the rules screen's words. The old hint said more reps win.
 - The battle demo's long press gives only push-up reasons. S2's squat reasons had reached it through `RejectReason.values`, a side effect of the merge that review round 14 found.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on `65dfe2b`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `65dfe2b`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)", on `7de22f2`, the merged head: `65dfe2b` plus these notes. [Run 41210352997](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41210352997): 912 passed, 1 skipped.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | see the CI comment on PR #20 | 10/31 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #20 |
-| ViewModel | flutter_test, fakes | 90% | see the CI comment on PR #20 | 10/31 | same |
-| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on PR #20 | 10/31 | same |
-| View | flutter_test (widget) | 75% | see the CI comment on PR #20 | 10/31 | same |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: `server/` unchanged in this push; see the CI comment on PR #20 | 10/31 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 97.9% (237/242) | 10/31 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #20, commit `7de22f2`, run 41210352997 |
+| ViewModel | flutter_test, fakes | 90% | 94.9% (915/964) | 10/31 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.1% (1852/1969) | 10/31 | same |
+| View | flutter_test (widget) | 75% | 92.3% (3683/3989) | 10/31 | same |
+| Total, with Other at 91.4% (159/174) | | | 93.3% (6846/7338) | 10/31 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed); `server/` unchanged in this push | 10/31 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
 
 - **Tests:** `flutter test` 912 passed, 0 failed, 1 skipped.
   - The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
   - `flutter analyze` found no issues.
   - Server `pytest` was not run locally because this push does not change `server/`.
-- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers come from the CI comment on PR #20 for this push. Until my next push, they are in that comment and in the PR body, not here.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers above come from the CI comment on PR #20 and were filled in at the next push (W3b). All layers met their targets. As in earlier runs, `test/screens/setup_screen_test.dart` is left out of the coverage numbers by CI's 240 s limit; it still ran in `flutter test`.
 - **Mutation check (review round 14):** the reviewer ran 22 mutations in a scratch copy, and 19 failed a test. They included a hard-coded pass depth, the screen not handing the depth in, the session ignoring it, an amber icon, wrong help numbers, and the old hint. The three survivors: one help number equal to today's default, caught once the config changes; which reason a rejected bot rep carries, which nothing reads; and two squat wire codes swapped, which the server only validates.
-- **Shortfalls:** none known; the CI comment decides. Phone checks are still open (see Manual check).
+- **Shortfalls:** none: CI met every target. Phone checks were still open at this push (see Manual check). W2 and the W3 bot battle are done in the W3b entry below; online on real devices is still open.
 - **Known issues, not fixed here:**
   - A squat battle, once #17 brings one. `BattleGame` grades both players against one pass depth, so S2's 0.75 makes the threshold 1.2, and the bot's depths are 1.4 and 1.9. The reviewer's probe over 1000 seeded rounds, with a user at the bot's pace whose reps are all Good:
 
@@ -298,5 +299,80 @@ Acceptance criteria → tests:
     - The cyan clock with FEVER ×2 and the amber last 5 s were right.
     - Excellent never showed. Whether the cause is the user's form or the threshold (pass depth 1.1 × 1.6 = 1.76) is an open item the user is sharing with the team; it needs teammates' tests. The numbers are not changed.
     - Not reported: the bar's move on the user's own reps, the rejected banner's words, a time-up end.
-  - Not done yet: this push on a phone, including W2's whole check, the red icon and the new hint.
+  - Not done at this push: this push on a phone, including W2's whole check, the red icon and the new hint. Done on `0465943` on 2026-11-01, except the new hint's words: see the W3b entry below.
   - Not done yet: online on real devices, for the same reason as above.
+
+#### 2026-11-01 · code at commit `d5e9c54` · step W3b `feat/average_score` (team order #6b: Average +5, three score grades)
+This push adds the Average grade, as the user decided with the PM on 11-01, and an optional pass depth on the bot:
+- A rep rejected with Go lower whose `minElbowAngle` is 105° or less earns 5 points: 10 in fever, no combo bonus, the combo breaks, not a valid rep. Any other reason, a larger angle, or no angle earns 0. The judge's verdict and reason do not change.
+- Bot battle: the banner shows the reason with `+5 AVERAGE`; the scoreboard and the health bar move. Result screen: `Excellent N`, `Good N`, `Average N`.
+- Online: `rep.submit` carries `grade: "average"`, and the server scores it with the same code. The server announces `average_points`, and the app sends the grade only when it was announced.
+- `BotOpponent(passDepth:)` scales its depths; with the default 1.1 they stay exactly 1.4 and 1.9.
+- The rules screen's score table has a fourth tile.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `d5e9c54`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on the W3b PR | 11/01 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on the W3b PR |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W3b PR | 11/01 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W3b PR | 11/01 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on the W3b PR | 11/01 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: Django unchanged in this push; see the CI comment on the W3b PR | 11/01 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 1067 passed, 0 failed, 9 skipped. The count includes the Dart battle server's tests.
+  - One skip is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
+  - Eight skips are the `knownErrors` cases in `test/services/pose/pushup_error_cases_test.dart`, from H1 and H2 (#22). None is a W3b test.
+  - `flutter analyze` found no issues. `dart analyze` on `server/lib/battle_server.dart` and `server/bin/server.dart` found no issues.
+  - Server `pytest` was not run locally because this push does not change Django.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs. The numbers come from the CI comment on the W3b PR.
+- **Probes and mutations, in scratch copies, not committed:**
+  - Review round 17, against the real `0465943` code. A new app with a W3 server sent no grade and got 0 points, with no error. A W3 app with a new server showed the same score, bar and outcome, with no error. An Average rep held back and sent again after `REP_OUT_OF_ORDER` scored correctly.
+  - Review round 19: bot plans over 500 seeds at 30, 45 and 60 s were byte-identical to `origin/main`, by `cmp`.
+  - Review round 17: 16 mutations, 12 failed a test. The 4 survivors got tests (the result's pass depth, the online counts' rules and pass depth, another grade on Go lower), and round 18 confirmed each now fails.
+  - Review round 18: of 10 more mutations, 7 failed a test. The 3 survivors got checks, and round 19 confirmed each now fails.
+  - Review round 19: removing the rules page's points shrink left the test green, because it compared "+10" with "+15". The check now compares both with "+5".
+  - Review round 18: the plain reject banner was byte-identical to `origin/main` in 44 full-screen renders (11 reasons, 4 text scales, 360x780, real fonts).
+  - Replay of the team's recorded sets in `test/fixtures/pushup_cases` through today's judge, with a temporary test I then deleted: 95 judged reps, 6 of them Go lower. Half-rep head nods at 127.8°, 137.8° and 145.2°, a belly-down rep at 151.7° and a knee rep at 175.2° earn 0. The last rep of a normal set, at 43.9°, earns Average. No recorded rep is at 90–91°, so this checks only the side above 105°.
+- **Shortfalls:** none known; the CI comment decides. The phone check of W3b itself is open (see Manual check).
+- **Known issues, not fixed here:**
+  - 105° comes from one person's recordings. The rule has no lower limit, so an angle such as 43.9° also counts.
+  - The result's grade counts use this phone's records. Online they can differ from the server's score in rare cases: a rep closed in the round's last moment, or an app restarted mid-round. `battle-rules.md` 3.6 says so.
+  - The result screen reads the pass depth from `judgeFor(exercise)`, and the game reads `counter.passDepth`. They are the same today. #17 injects `SquatDemoJudge` through `judge:`, which gives the game 1.1 and the result 0.75; both grade Good only because that judge sets no `maxDepth`. In the PR's note for #17.
+  - Passing `passDepth` to a squat bot is #17's: until then, a squat bot still plays push-up depths.
+  - `BattleState.myLastScore`'s comment in `battle_viewmodel.dart` still says "latest valid rep": only one line of that file was approved.
+  - At text scale 1.5 on 360x640 and 360x740, and at 2.0 on 360x780, the panel overflows with any banner, as on `main` (round 18 measured the Average banner at the same pixels as the plain one).
+  - Shrunk words make the rules-page tiles uneven in height at larger text: slightly at 1.3 and 1.5, and from 88.6 to 116 at 2.0 on 360 wide.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/game_rules_test.dart` (updated) | The numbers 5 and 105; the angle's boundary; no angle; 0 points turn Average off; a tuned config; points with fever; the label |
+| Service | `test/services/game/battle_game_test.dart` (updated) | Angles that earn 5 and angles that earn 0, every other reason, a valid rep's angle ignored, fever, combo, the opponent, a KO on Average, the tie by valid reps |
+| Service | `test/services/game/rep_grade_test.dart` (new) | `gradeOf`, `earnsAverage`, `addRep`, and `GameGradeCounts` by pass depth and rules |
+| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | Default depths exactly 1.4 and 1.9; a squat pass depth scales them, keeps a fifth Excellent, and changes only the depths; rejected reps earn nothing |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | Server: score, combo, fever, KO, re-send, snapshot, refused combinations, an older app. Phones: same score and bar on both, no grade for a rep that earned nothing, the preview, a server with no Average |
+| Service | `test/support/game_fakes.dart` (updated) | Reps with an elbow angle |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | The angle reaches the game (fails without the approved line); above the angle or with none; the final score; the bot's rejected rep |
+| View | `test/screens/battle_screen_test.dart` (updated) | The banner with the reason and `+5 AVERAGE`, score and bar; `+10` in fever; no points on a later rejected rep; a valid rep's own banner after it |
+| View | `test/screens/result_screen_test.dart` (updated) | The three grades, zeros, a squat by its pass depth, hidden with no report or no game, 360 wide and text scale 2 |
+| View | `test/screens/online_preparation_test.dart` (updated) | The online words for an Average rep and for the rep after it; a server with no Average; the result's grades by the server's rules and the counter's pass depth |
+| View | `test/widgets/game_panel_fonts_test.dart` (updated) | Real fonts: the Average banner at 360x780, 360x640 and 412x915 and at larger text; four tiles at 360 wide up to text scale 2; the result's grades at 360 wide up to text scale 2 |
+| View | `test/widgets/help_rules_test.dart`, `test/screens/help_screen_test.dart` (updated) | Average's points from `BattleRules`; the fourth tile on the page |
+
+Acceptance criteria → tests:
+- **Go lower at 105° or less earns +5 (+10 in fever), breaks the combo, is not a valid rep:** `battle_game_test.dart` group "average"; `battle_viewmodel_test.dart` "a Go lower rep with bent elbows reaches the game with its angle: the score and the bar move, and it stays rejected".
+- **Above 105°, no angle, or another reason earns 0:** `battle_game_test.dart` "a Go lower rep with no elbow angle earns nothing", "every other reject reason earns nothing, however bent the elbows"; `battle_viewmodel_test.dart` "a Go lower rep above the angle, or with none, scores nothing".
+- **The banner shows the reason and +5 AVERAGE, and the score and bar move:** `battle_screen_test.dart` "shows the reason with +5 AVERAGE, and the score and the bar move while the valid reps stay".
+- **The result shows all three grades:** `result_screen_test.dart` "all three show how many of my reps got them"; `online_preparation_test.dart` "the result counts the user's grades".
+- **Both phones get the same score:** `online_battle_integration_test.dart` "an average rep shows the same score and bar on both phones, and stays rejected".
+- **Old server or old app, nothing breaks:** `online_battle_integration_test.dart` "a server with the game but no Average gets no grade on a rejected rep, which it would refuse", "an older app sends no grade for the same rep, and it earns nothing"; review round 1's probes against the real `0465943` code above.
+- **The bot's depths scale, and stay exact by default:** `bot_opponent_test.dart` "with no pass depth, its reps go exactly 1.4 or 1.9 deep", "its depths scale by the same multiples".
+
+- **Manual check:**
+  - W2, on the user's phone, `origin/main` `0465943` (reported 2026-11-01): pass. Right after a sign-up, the three rules pages (skip on pages 1 and 2, 시작하기 on page 3). Killing the app without pressing anything shows the rules again on the next start; after 건너뛰기 or 시작하기 it goes straight home. An existing account's login goes straight home. '?' on home opens the rules with no skip; back and 확인 both return. The danger icon is red.
+  - W3 bot battle, same phone and commit (reported 2026-11-01): pass. +N and the bar's move; a rejected rep shows the amber banner with its Korean reason; after 30 s the result shows the scores, valid reps and why it was decided; a deliberately deep rep shows `+15 EXCELLENT`. Excellent did show on this build, which has H2; round 2 had not seen it. Whether H2 or the rep's depth made the difference is unknown, and the team's check of the threshold stays open.
+  - Not reported: W3's new home hint's words.
+  - Not done yet: W3b on a phone, including a real Go lower rep showing `+5 AVERAGE`.
+  - Not done yet: online on real devices. It needs the battle server rebuilt, or the temporary local patch.

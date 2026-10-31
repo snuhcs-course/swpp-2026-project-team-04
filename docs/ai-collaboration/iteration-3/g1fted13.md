@@ -271,3 +271,48 @@ so they are quoted here from the session export.
 - Reread your own spec before coding against it.
 - An approval covers what it names: ask before adding a file it only implies.
 - Read a run's output, not only its exit code.
+
+## W3b `feat/average_score` – Average +5, three score grades (team order #6b), 2026-11-01
+
+### a. Where AI was used
+- **Rules and game layer (`2421242`):** Claude Code wrote `BattleRules.averagePoints`, `averageMaxElbowAngle`, `isAverage` (`battle_rules.dart` L19–20, L87), `PlayerGameScore.addAverage`, `addRep` (`player_game_score.dart` L45, L67), and the new `lib/services/game/rep_grade.dart`.
+- **Bot battle screens (`2421242`):** the Average banner (`battle_score_panel.dart` L323, L432), the result's grade line (`result_screen.dart` L438–L500). `battle_viewmodel.dart` L307 is the one approved line.
+- **Online (`3fd242d`):** `online_battle_session.dart` (`_readRules` L422, `_repScore` L433, `submitRep` L548–L566), `online_battle_screen.dart` (`_lastRepWords` L284, `_gradeWords` L309), `server/lib/battle_server.dart` (`_grade` L469, `average_points` L507, L522), the protocol section.
+- **Bot depths (`867312e`):** `bot_opponent.dart` L68, L96–L99, L136. **Help (`c8d42c5`):** the fourth tile and the shrink in `help_pictures.dart`. **Rules doc (`28e6ba8`):** `battle-rules.md` 3.6.
+- **Tests:** all the test files listed in `docs/testing/iteration-3/g1fted13.md`, W3b entry; a later check in `d5e9c54`.
+- **Review:** the `reviewer` subagent ran code rounds 17 and 18, CHANGES_REQUESTED then APPROVE with 3 Minor, and notes rounds from 19 on, which asked for changes twice (item d). Round 19 also rechecked those 3 Minor fixes in code.
+- **Decided by the user (with the PM, as the user reported):** the three grades and their points; the 105° line and its evidence; Go lower only; fever, combo and valid-rep behavior; the bot's rejected reps staying 0; the `passDepth` design for the bot, with #17 passing it; the condition not to touch the judge and the #17 files; the PR's first line and reviewer. When the agent asked: the one line in `battle_viewmodel.dart`, and adding `battle_score_panel.dart`.
+- **Decided by the agent, without asking the user:** the `average_points` handshake; the banner's two lines at a fixed 60 height; the result's one-line card and the online text line; counting grades from the phone's records and accepting the gap; `judgeFor(exercise)` for the result's pass depth; the help sentence; putting Average in section 3.6 to keep the numbers; leaving the view model's stale comment. A squat never earns Average: this follows from the user's Go lower rule. The session record holds no chat message listing these; only the move to section 3.6 has a chat line (item d). They are for this step's closing message, after this push.
+- **Not done by AI:** the phone checks of W2 and W3 (the user). Telling the PM about the view model's line (the user). Server deployment (the PM).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-01] "S4(#17)가 고치는 battle_viewmodel.dart, rep_counter_viewmodel.dart, pose_avatar_toggle_view.dart는 건드리지 마. 거절된 rep도 BattleGame._add로 들어오니 점수 계층에서 처리해. 세 파일 중 하나라도 필요해 보이면 고치기 전에 멈추고 물어봐." (one item of a pasted prompt)
+- [Woohyun Song, 11-01] answers to the agent's two questions (answers, not prompts, so not in the Prompt Log; from the session export): "한 줄 추가 (Recommended)" and "목록에 추가 (Recommended)".
+
+### c. What AI did well
+- **Followed the value instead of the prompt's premise:** the prompt was right that rejected reps reach `BattleGame._add`, but `_scoreMyNewReps` rebuilt each `RepEvent` without `minElbowAngle`, so a bot battle could never have given Average. The agent found this by reading the path before coding, stopped as the prompt asked, and asked with a merge preview against #17 at `d8ad424` (the same 2 conflict regions, no new one). Removing the line fails `battle_viewmodel_test.dart` and four `battle_screen_test.dart` tests.
+- **Old server checked in the code:** the W3 server's `_grade` refuses a rejected rep with a grade, so a simple new field would have broken new apps on a W3 server. The agent added `average_points` as a handshake, and the reviewer confirmed the mix against the real `0465943` session and server in both directions.
+- **Exact default:** `passDepth / 1.1` is exactly 1 at the default, so push-up depths keep their exact values. In round 19 the reviewer compared bot plans over 500 seeds at 30, 45 and 60 s with `origin/main` by `cmp`: byte-identical.
+- **Stale score handled before review:** `myLastScore` stays on the last scoring rep, so a later rejected rep could have shown `+5 AVERAGE`. The banner and the online line check the rep itself, with tests, and the reviewer's mutations of those guards failed.
+- **A check beyond the brief:** replaying the team's recorded sets showed the labelled head nods at 127.8–145.2° earning 0. It cannot confirm the 90–91° side, and the testing notes say so.
+
+### d. Hallucinations / errors
+- **A regression at large text (reviewer round 17, Major):** the fourth tile made `_ScoreTile` too narrow, so "Excellent" broke mid-word at text scale 1.3 on 360 wide. The agent's real-font test ran only at 1.0. The fix shrank the labels; round 18 then found the numbers break the same way at 2.0 ("+1/0"), which round 17 had also not measured.
+- **A named test not written (round 17, Major):** `task.md` asked for real fonts on the result widgets, in the agent's own wording, and the agent added none. Added.
+- **Tests that claimed more than they asserted (rounds 17 and 18, Minor):** "keeps the reason and the points whole" was only `find.text`; after the rewrite a reason cut to 40 wide still passed. "Stays the size of the others" had no size check. Mutants proved both, and the checks were added.
+- **Banner taller than the others (round 17, Minor):** the two-line banner overflowed by 7 px at 360x780 at text scale 1.5. It is now a fixed height that shrinks.
+- **Doc renumbering (caught by the agent):** Average first went in as section 3.3, which moved 3.5 to 3.6 and broke a test name's reference. A grep caught it, and Average moved to 3.6.
+- **Test mistakes (caught by the test runs):** a test opened the screen twice; a line check compared tops of cells that shrink by different amounts, and failed at scale 2.0 with nothing wrong on screen.
+- **A blocked command:** one command staged code and also called `.claude/hooks/ownership_guard.py`, so `guard_git.py` read it as staging harness files. No harness file was being staged; the agent split the command and did not touch the hook.
+- **A note claim with no record behind it (rounds 19 and 20, Major):** these notes first said the agent's decisions were "told to the user in chat on 11-01", and the agent told the reviewer the same. The agent believed it had told the user. The only record is a block stored as `thinking` (transcript 17:37:02Z, UTC), addressed to the user and naming the categories and the squat point; no assistant text block holds it. So nothing shows it reached the user, and the notes no longer claim it. The agent's first correction then said the record held nothing at all: its own check had required words that block does not contain, and round 20 found the block. This is the same class of finding as rounds 11, 12 and 15. Cost: two review rounds.
+- **A test check that compared two broken things (round 19, Minor):** the points check compared "+10" with "+15", so when both broke to two lines it still passed. It now compares both with "+5".
+
+### e. Prompt revisions
+- None in this step: one long prompt, plus two answers. Its stop condition did the work: "세 파일 중 하나라도 필요해 보이면 고치기 전에 멈추고 물어봐" turned the wrong premise into one question instead of an edit or a workaround.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- Follow a value from where it is made to where it is read before trusting that it arrives.
+- A test named for a limit must run at that limit; mutate it to see that it can fail.
