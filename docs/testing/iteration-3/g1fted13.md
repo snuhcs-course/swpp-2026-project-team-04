@@ -310,22 +310,24 @@ This push adds the Average grade, as the user decided with the PM on 11-01, and 
 - `BotOpponent(passDepth:)` scales its depths; with the default 1.1 they stay exactly 1.4 and 1.9.
 - The rules screen's score table has a fourth tile.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on `d5e9c54`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `d5e9c54`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)", on `5ddac4f`, the pushed head: `d5e9c54` plus these notes. [Run 41227896404](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41227896404): 1067 passed, 9 skipped.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | see the CI comment on the W3b PR | 11/01 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on the W3b PR |
-| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W3b PR | 11/01 | same |
-| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W3b PR | 11/01 | same |
-| View | flutter_test (widget) | 75% | see the CI comment on the W3b PR | 11/01 | same |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: Django unchanged in this push; see the CI comment on the W3b PR | 11/01 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 98.4% (242/246) | 11/01 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #23, commit `5ddac4f`, run 41227896404 |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (927/965) | 11/01 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (1942/2060) | 11/01 | same |
+| View | flutter_test (widget) | 75% | 92.4% (3746/4052) | 11/01 | same |
+| Total, with Other at 70.1% (122/174) | | | 93.1% (6979/7497) | 11/01 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed); Django unchanged in this push | 11/01 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
 
 - **Tests:** `flutter test` 1067 passed, 0 failed, 9 skipped. The count includes the Dart battle server's tests.
   - One skip is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
   - Eight skips are the `knownErrors` cases in `test/services/pose/pushup_error_cases_test.dart`, from H1 and H2 (#22). None is a W3b test.
   - `flutter analyze` found no issues. `dart analyze` on `server/lib/battle_server.dart` and `server/bin/server.dart` found no issues.
   - Server `pytest` was not run locally because this push does not change Django.
-- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs. The numbers come from the CI comment on the W3b PR.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs. The numbers above come from the CI comment on PR #23 and were filled in at the next push. All layers met their targets. As in earlier runs, `test/screens/setup_screen_test.dart` is left out of the coverage numbers by CI's 240 s limit; it still ran in `flutter test`.
+- **Other fell from 91.4% on #20 to 70.1%; cause not found.** All of it is `shared/battle_protocol.dart` (41/42 to 4/42), which this step does not change. `online_battle_integration_test.dart` passed all its tests, but in the CI artifacts its coverage report lists 14 source files, against 101 on #20's run. Other has no target.
 - **Probes and mutations, in scratch copies, not committed:**
   - Review round 17, against the real `0465943` code. A new app with a W3 server sent no grade and got 0 points, with no error. A W3 app with a new server showed the same score, bar and outcome, with no error. An Average rep held back and sent again after `REP_OUT_OF_ORDER` scored correctly.
   - Review round 19: bot plans over 500 seeds at 30, 45 and 60 s were byte-identical to `origin/main`, by `cmp`.
@@ -334,9 +336,9 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `d5e9c54`, wit
   - Review round 19: removing the rules page's points shrink left the test green, because it compared "+10" with "+15". The check now compares both with "+5".
   - Review round 18: the plain reject banner was byte-identical to `origin/main` in 44 full-screen renders (11 reasons, 4 text scales, 360x780, real fonts).
   - Replay of the team's recorded sets in `test/fixtures/pushup_cases` through today's judge, with a temporary test I then deleted: 95 judged reps, 6 of them Go lower. Half-rep head nods at 127.8°, 137.8° and 145.2°, a belly-down rep at 151.7° and a knee rep at 175.2° earn 0. The last rep of a normal set, at 43.9°, earns Average. No recorded rep is at 90–91°, so this checks only the side above 105°.
-- **Shortfalls:** none known; the CI comment decides. The phone check of W3b itself is open (see Manual check).
+- **Shortfalls:** none: CI met every target. The phone check of W3b itself was open at this push; see the next entry.
 - **Known issues, not fixed here:**
-  - 105° comes from one person's recordings. The rule has no lower limit, so an angle such as 43.9° also counts.
+  - 105° comes from one person's recordings; the next entry replaces it with 120°. The rule has no lower limit, so an angle such as 43.9° also counts.
   - The result's grade counts use this phone's records. Online they can differ from the server's score in rare cases: a rep closed in the round's last moment, or an app restarted mid-round. `battle-rules.md` 3.6 says so.
   - The result screen reads the pass depth from `judgeFor(exercise)`, and the game reads `counter.passDepth`. They are the same today. #17 injects `SquatDemoJudge` through `judge:`, which gives the game 1.1 and the result 0.75; both grade Good only because that judge sets no `maxDepth`. In the PR's note for #17.
   - Passing `passDepth` to a squat bot is #17's: until then, a squat bot still plays push-up depths.
@@ -374,5 +376,54 @@ Acceptance criteria → tests:
   - W2, on the user's phone, `origin/main` `0465943` (reported 2026-11-01): pass. Right after a sign-up, the three rules pages (skip on pages 1 and 2, 시작하기 on page 3). Killing the app without pressing anything shows the rules again on the next start; after 건너뛰기 or 시작하기 it goes straight home. An existing account's login goes straight home. '?' on home opens the rules with no skip; back and 확인 both return. The danger icon is red.
   - W3 bot battle, same phone and commit (reported 2026-11-01): pass. +N and the bar's move; a rejected rep shows the amber banner with its Korean reason; after 30 s the result shows the scores, valid reps and why it was decided; a deliberately deep rep shows `+15 EXCELLENT`. Excellent did show on this build, which has H2; round 2 had not seen it. Whether H2 or the rep's depth made the difference is unknown, and the team's check of the threshold stays open.
   - Not reported: W3's new home hint's words.
-  - Not done yet: W3b on a phone, including a real Go lower rep showing `+5 AVERAGE`.
+  - Not done at this push: W3b on a phone, including a real Go lower rep showing `+5 AVERAGE`. See the next entry.
   - Not done yet: online on real devices. It needs the battle server rebuilt, or the temporary local patch.
+
+#### 2026-11-01 · code at commit `5c47a3e` · step W3b `feat/average_score`: the Average line moves from 105° to 120°
+The user played the release build of `5ddac4f` on a phone: at 105°, Average almost never showed. So the line moves to 120°:
+- `BattleRules.averageMaxElbowAngle` is 120. Nothing else in the rule changes.
+- The rules page now states the angle, read from `BattleRules`: "팔꿈치 각도가 120° 이하면 Average 점수를 받아요".
+- `battle-rules.md` 3.6 has the new evidence, and `docs/iteration-2-protocol.md` the new number.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `5c47a3e`, without coverage. Coverage comes from the PR's CI comment.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on PR #23 | 11/01 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #23 |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on PR #23 | 11/01 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on PR #23 | 11/01 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on PR #23 | 11/01 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: Django unchanged in this push; see the CI comment on PR #23 | 11/01 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 1069 passed, 0 failed, 9 skipped, the same 9 as above. `flutter analyze` found no issues. Server `pytest` was not run locally because this push does not change Django.
+- **Coverage:** not collected on this PC. The numbers for this head are in the CI comment on PR #23 and the PR body; they go here at the next push.
+- **Replay:** another temporary test, since deleted, printed each rep's reason and angle for the team's head-nod recording `20261027-142000_halfRepHeadNod`. Reps 1, 2 and 5 are Go lower at 127.8°, 137.8° and 145.2°; reps 3 and 4 are `kneesDown` at 112.5° and 129.8°. By the rule, all five earn 0. The `kneesDown` rejection is a known error in `pushup_error_cases_test.dart`: if the 112.5° rep ever closes as Go lower, it earns +5.
+- **Shortfalls:** none known; the CI comment decides. The phone recheck at 120° is open (see Manual check).
+- **Known issues, not fixed here:**
+  - No single angle separates honest reps from cheats: the user's recordings have tired reps at 110–126° and head nods at 109–135°. At 120°, nods at 109–120° earn +5, and tired reps at 121–126° do not. `battle-rules.md` 3.6 says so.
+  - Among reps closed as Go lower, Average reads only the angle. Depth is the nose's, so dropping the head can still close an attempt as Go lower, which a shallower nose would leave with no verdict, or as a valid rep.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/game_rules_test.dart` (updated) | The default 120; 120 is average, just above is not; a tuned line of 100 |
+| Service | `test/services/game/battle_game_test.dart` (updated) | 90, 110 and 120 earn 5; 120.1, 126, 127.8, 145.2, 169 and 175 earn nothing; example 1's rejected rep at 130 |
+| Service | `test/services/game/rep_grade_test.dart` (updated) | 120 is average, 121 is not; the counts with a rep at 130 |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | An online rep at exactly 120 scores on both phones; a rep at 121 sends no grade and earns nothing |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | A rep at 130 scores nothing |
+| View | `test/screens/battle_screen_test.dart` (updated) | No points on a later rep at 130 |
+| View | `test/screens/online_preparation_test.dart` (updated) | The online words at 120, and none at 121 |
+| View | `test/widgets/help_rules_test.dart` (updated) | The page's sentence and its angle; `degreesText` for 120 and 120.5 |
+
+Acceptance criteria → tests:
+- **Go lower at 120° or less earns +5:** `game_rules_test.dart` "an elbow angle up to 120 degrees is average"; `battle_game_test.dart` group "average"; `online_battle_integration_test.dart` "an average rep shows the same score and bar on both phones, and stays rejected".
+- **Above 120° earns 0:** `game_rules_test.dart` "a larger angle is not, nor is no angle"; `online_battle_integration_test.dart` "a shallow rep just above the line, or with straight arms, or another reason, sends no grade and earns nothing".
+- **The rules page states the line from the config:** `help_rules_test.dart` "every number on the pages comes from the constants", "an angle shows exactly, and a whole one has no decimals".
+
+- **Manual check:**
+  - W3b at 105°, on the user's phone, release build of `5ddac4f`, AI battle (reported 2026-11-01): done. Average almost never showed when the user played, which is why the line moved. The user reported this as an interim result.
+  - Not done yet: the recheck at 120° on a real device.
+  - Not done yet: online on real devices. It needs the battle server rebuilt.
+  - Seen by the user at a very large system text size, not from W3b and not fixed here: the match-found title, the battle screen's name chips and the reject banner's reason are cut, and the pose guide chip sits behind the opponent's card.
+  - For the team to discuss, not changed here: Good, the bar for a counted rep, also felt strict to the user. It is the judge's setting.

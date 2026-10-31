@@ -380,3 +380,20 @@ W2(#21)가 22:12에 main에 머지됐어(ea83fc1). 진영이형이 #21 댓글에
 8) flutter analyze, flutter test, 리뷰어 APPROVE, check-diff, 노트(테스트 노트, AI 노트, Prompt Log export)와 노트 리뷰, push와 push 후 점검, PR 열기까지 해 줘. 본문 첫 줄은 \"Merge order: #6b (team plan); merge after: #6 feat/fever_score (merged); before #9 S3\"이고 리뷰어는 진영이형. How to test, 바뀐 파일 목록, 배틀 서버 재빌드 필요, 105° 근거를 넣어 줘.
 중간에 내 결정이 필요한 것만 물어봐.
 </pasted_content id=\"564d\">"
+
+
+<!-- 5a8e078b 2026-10-31T19:03:40.054Z -->
+[Woohyun Song, 11-01 04:03] "<pasted_content id=\"564d\">
+폰 확인 중간 결과와 수정 요청이야. (다른 세션은 닫았어. 이 세션만 쓸게.)
+1) 폰 확인(release, 5ddac4f, 내 폰, AI 대결): 직접 해 보니 105° 기준으로는 Average가 거의 안 나와. 이 내용을 progress.md와 테스트 노트의 W3b 수동 확인에 적어 줘.
+2) Average 기준을 105°에서 120°로 바꿔 줘(BattleRules 상수). 근거: 내 녹화에서 정직하지만 지쳐서 얕아진 rep이 110~126°, 팀 녹화의 꼼수 3개는 127.8~145.2°. 점수는 팔꿈치만 보니 고개 숙이기는 점수에 영향 없음. battle-rules.md 3.6, 도움말 설명, 관련 테스트, PR 본문의 105° 근거도 같이 고쳐 줘.
+3) 큰 글자(폰 설정 최대 근처)에서 본 문제는 고치지 말고 progress.md에 \"나중에 고칠 목록\"으로 적어 줘: 매칭 완료 제목 \"MATCH F...\" 잘림, 대결 화면 이름표 \"나 · hellw...\"와 \"RepB...\" 잘림, 자세 안내 칩이 상대 카드 뒤에 가려짐, 거절 배너 사유 잘림. 원래 화면들의 문제이고 W3b가 만든 게 아니라는 것도 적어 줘. W6(ui_polish)는 10/31 회의에서 빠지고 W5 봇 난이도로 바뀌었으니 W6에 넣지 마.
+4) Good(정자세 인정 기준)도 빡빡하게 느꼈지만, 판정기 설정이라 이 PR에서는 건드리지 마. 팀 논의 항목으로만 적어 줘.
+5) 리뷰 방식이 바뀌었어. CLAUDE.md Workflow 3단계와 .claude/agents/reviewer.md의 \"Parallel review: your lens\" 절을 다시 읽고 그대로 해 줘. flutter analyze와 flutter test는 네가 한 번만 돌려서 결과를 스크래치 파일에 저장하고, 리뷰어는 한 메시지에서 spec, tests, design, hygiene 네 렌즈를 동시에 띄워. 각 리뷰어 프롬프트에 렌즈 이름, 비교 기준 커밋(5ddac4f), 저장한 테스트 결과 파일 경로, reviewer.md의 그 절 전문을 넣어 줘. 다시 리뷰할 때는 수정을 요청한 렌즈만, 고친 부분만 보게 해.
+6) 리뷰가 모두 APPROVE면 노트 갱신(W3b 커버리지 칸도 이번에 채우기), push와 push 후 점검, PR #23 본문 갱신까지 해 줘. 끝나면 폰에서 다시 확인할 수 있게 release 빌드 명령과 확인 항목을 짧게 정리해 줘.
+</pasted_content id=\"564d\">"
+
+<!-- 5a8e078b 2026-10-31T19:15:31.354Z -->
+[Woohyun Song, 11-01 04:15] "나 이제 잘 거라 아침까지 답을 못 해. 리뷰 결과에 따라 고칠 게 있으면 네 판단으로 고치고, 해당 렌즈만 재리뷰한 뒤 노트, push, push 후 점검, CI 확인, PR #23 본문 갱신까지 끝내 줘. PR 본문의 Manual check에는 \"105° 버전 폰 확인 완료, 120° 실기기 재확인은 아직\"이라고 적어 줘.
+내 결정이 꼭 필요한 일이 생기면 그 단계에서 멈추고 progress.md에 질문을 적어 둬. push와 PR 본문 수정 말고는 GitHub에 아무것도 하지 마(댓글, 머지 금지).
+끝나면 아침에 내가 볼 수 있게 결과를 짧게 정리해 줘."
