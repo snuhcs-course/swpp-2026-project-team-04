@@ -305,7 +305,7 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('the largest system font fits the valid reps beside the chip', (
+    testWidgets('on the largest system font the fever row does not overflow', (
       tester,
     ) async {
       tester.platformDispatcher.textScaleFactorTestValue = 2;
