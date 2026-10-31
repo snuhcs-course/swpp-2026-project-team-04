@@ -129,7 +129,7 @@ void main() {
     await pumpEventQueue();
     expect(vm.state.opponentReps, 2);
     expect(vm.state.opponentMoves, 3);
-    expect(vm.state.lead, -2);
+    expect(vm.state.lead, -20);
   });
 
   test('the opponent is held while the app is away, and goes on while the '

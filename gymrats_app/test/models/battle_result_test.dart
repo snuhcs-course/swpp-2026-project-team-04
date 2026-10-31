@@ -56,6 +56,30 @@ void main() {
     expect(result.opponentScore, 90);
   });
 
+  test('with a game the big numbers and the margin are the points; without '
+      'one they are the reps', () {
+    final withGame = BattleResult(
+      matchup: _matchup,
+      myReps: 5,
+      myInvalidReps: 1,
+      opponentReps: 6,
+      myScore: 110,
+      opponentScore: 90,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    );
+    expect(withGame.hasGame, isTrue);
+    expect(withGame.myDisplayScore, 110);
+    expect(withGame.opponentDisplayScore, 90);
+    expect(withGame.margin, 20);
+
+    final without = _result(mine: 5, theirs: 6);
+    expect(without.hasGame, isFalse);
+    expect(without.myDisplayScore, 5);
+    expect(without.opponentDisplayScore, 6);
+    expect(without.margin, 1);
+  });
+
   test('a battle ends by time unless told otherwise', () {
     expect(_result().end, GameEnd.timeUp);
     expect(_result().myScore, 0);

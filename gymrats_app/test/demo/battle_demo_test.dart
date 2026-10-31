@@ -38,7 +38,7 @@ void main() {
     final camera = tester.getCenter(find.byType(PoseCameraView));
     await tester.tapAt(camera);
     await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('+1 GOOD'), findsOneWidget);
+    expect(find.text('+10 GOOD'), findsOneWidget);
 
     // The reasons take turns.
     for (final reason in ['가슴을 더 내려요', '팔을 끝까지 펴요']) {
@@ -52,7 +52,7 @@ void main() {
     await tester.tapAt(tester.getCenter(find.text('남은 시간')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('팔을 끝까지 펴요'), findsOneWidget);
-    expect(find.text('+1 GOOD'), findsNothing);
+    expect(find.text('+10 GOOD'), findsNothing);
   });
 
   testWidgets('leaving the battle comes back to the demo home', (tester) async {

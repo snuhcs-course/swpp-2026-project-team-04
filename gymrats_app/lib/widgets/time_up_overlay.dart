@@ -3,11 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../models/battle_result.dart';
+import '../models/game_score.dart';
 import '../models/match_record.dart';
 import '../theme/app_theme.dart';
 
-/// Covers the battle when time is up: the final score, who won, and the way
-/// to the result screen.
+/// Covers the battle when time is up or a KO lands: the final score, who won,
+/// and the way to the result screen.
 class TimeUpOverlay extends StatelessWidget {
   const TimeUpOverlay({
     super.key,
@@ -43,10 +44,21 @@ class TimeUpOverlay extends StatelessWidget {
               Transform(
                 transform: _slant,
                 alignment: Alignment.center,
-                child: Text(
-                  'TIME UP',
-                  style: text.displayLarge?.copyWith(fontSize: 60, height: 1),
-                ),
+                child: result.end == GameEnd.ko
+                    ? Text(
+                        'K.O.',
+                        style: text.displayLarge?.copyWith(
+                          fontSize: 96,
+                          height: 1,
+                        ),
+                      )
+                    : Text(
+                        'TIME UP',
+                        style: text.displayLarge?.copyWith(
+                          fontSize: 60,
+                          height: 1,
+                        ),
+                      ),
               ),
               const SizedBox(height: 14),
               Row(
@@ -55,7 +67,7 @@ class TimeUpOverlay extends StatelessWidget {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(
-                    '${result.myReps}',
+                    '${result.myDisplayScore}',
                     style: score?.copyWith(color: AppColors.accent),
                   ),
                   const SizedBox(width: 18),
@@ -68,7 +80,7 @@ class TimeUpOverlay extends StatelessWidget {
                   ),
                   const SizedBox(width: 18),
                   Text(
-                    '${result.opponentReps}',
+                    '${result.opponentDisplayScore}',
                     style: score?.copyWith(color: AppColors.opponent),
                   ),
                 ],

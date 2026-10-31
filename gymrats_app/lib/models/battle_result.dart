@@ -25,13 +25,13 @@ class BattleResult {
 
   final Matchup matchup;
 
-  /// The user's valid reps: their score.
+  /// The user's valid reps.
   final int myReps;
 
   /// The user's reps that did not count.
   final int myInvalidReps;
 
-  /// The opponent's valid reps: their score.
+  /// The opponent's valid reps.
   final int opponentReps;
 
   /// The user's game score.
@@ -69,8 +69,18 @@ class BattleResult {
 
   MatchOutcome get outcome => record.outcome;
 
-  /// How many reps apart the two scores are.
-  int get margin => (myReps - opponentReps).abs();
+  /// Whether the battle was played with the game, as every battle now is.
+  bool get hasGame => decidedOutcome != null;
+
+  /// The number shown big for the user: the game score, or the valid reps
+  /// for a battle built without a game.
+  int get myDisplayScore => hasGame ? myScore : myReps;
+
+  /// The same for the opponent.
+  int get opponentDisplayScore => hasGame ? opponentScore : opponentReps;
+
+  /// How far apart the two big numbers are.
+  int get margin => (myDisplayScore - opponentDisplayScore).abs();
 
   /// Share of the user's judged reps that counted, from 0 to 1. Null when
   /// none was judged.

@@ -111,8 +111,8 @@ class BattleState {
   int get secondsLeft =>
       (remaining.inMicroseconds / Duration.microsecondsPerSecond).ceil();
 
-  /// The user's lead; negative while behind.
-  int get lead => myReps - opponentReps;
+  /// The user's lead in points; negative while behind.
+  int get lead => myScore - opponentScore;
 
   BattleState copyWith({
     BattlePhase? phase,
@@ -172,7 +172,7 @@ class BattleViewModel extends ChangeNotifier {
     required this._repository,
     required this._sound,
     this._formReports,
-    this._rules = battleRules,
+    this.rules = battleRules,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now {
     _game = _newGame();
@@ -192,7 +192,10 @@ class BattleViewModel extends ChangeNotifier {
   final UserRepository _repository;
   final RepSound _sound;
   final FormReportStore? _formReports;
-  final BattleRules _rules;
+
+  /// The numbers of this battle's game, also for what the screen says.
+  final BattleRules rules;
+
   final DateTime Function() _now;
   late final StreamSubscription<RepEvent> _myRepSubscription;
   late final StreamSubscription<RepEvent> _opponentRepSubscription;
@@ -219,7 +222,7 @@ class BattleViewModel extends ChangeNotifier {
 
   /// A game with nobody on the board.
   BattleGame _newGame() => BattleGame(
-    rules: _rules,
+    rules: rules,
     // Becomes counter.passDepth when feat/squat_judge merges.
     passDepth: const RepJudgeConfig().bottomDepth,
   );
@@ -337,7 +340,7 @@ class BattleViewModel extends ChangeNotifier {
         myReps: counterState.validReps,
         myInvalidReps: counterState.invalidReps,
         remaining: counterState.remaining,
-        fever: _rules.isFever(counter.roundLength - counterState.remaining),
+        fever: rules.isFever(counter.roundLength - counterState.remaining),
       ),
     );
   }

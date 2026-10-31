@@ -12,6 +12,9 @@ const _checked = [
   'lib/screens/home_shell_screen.dart',
   'lib/screens/match_feedback_screen.dart',
   'lib/widgets/auth_form.dart',
+  'lib/widgets/game_danger_edge.dart',
+  'lib/widgets/game_fever_chip.dart',
+  'lib/widgets/game_health_bar.dart',
   'lib/widgets/match_record_card.dart',
   'lib/widgets/safe_warning_dialog.dart',
 ];
