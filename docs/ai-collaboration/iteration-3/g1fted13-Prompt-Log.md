@@ -355,3 +355,45 @@ W2(#21)가 22:12에 main에 머지됐어(ea83fc1). 진영이형이 #21 댓글에
 
 <!-- 876b6a24 2026-10-31T13:48:23.530Z -->
 [Woohyun Song, 10-31 22:48] "지금 PR 들어간 거 conflict 생긴 거 같은데 그것도 확인해봐"
+
+## 2026-11-01 · Woohyun Song · feat/average_score
+<!-- 5a8e078b 2026-10-31T16:28:03.109Z -->
+[Woohyun Song, 11-01 01:28] "<pasted_content id=\"564d\">
+새 작업 W3b를 시작하자. W3(#20)와 현우 #22가 main에 머지됐고, 지금 체크아웃은 origin/main(0465943) detached야.
+
+먼저 폰 확인 결과(origin/main 0465943, 내 폰)를 progress.md의 Manual check에 기록해 줘. 이 결과는 이번 PR의 테스트 노트에도 W2·W3 실기기 확인 항목으로 반영하고, W3 테스트 노트의 커버리지 칸(\"see the CI comment on PR #20\")도 PR #20의 CI 숫자로 채워 줘.
+- W2: 가입 직후 규칙 3장(1~2장 건너뛰기, 3장 시작하기) 정상. 아무것도 누르지 않고 앱을 완전히 껐다 켜면 규칙이 다시 뜨고, 건너뛰기나 시작하기를 누른 뒤에는 홈으로 바로 감(정상). 기존 계정 로그인 시 바로 홈 정상. 홈 '?'로 건너뛰기 없는 규칙 화면이 뜨고 뒤로·확인으로 복귀 정상. 위험 아이콘 빨강 정상.
+- W3 봇 대결: +N과 바 이동, 거절 시 앰버 배너의 한국어 이유, 30초 후 결과 화면(점수, 유효 횟수, 승부 이유), 깊게 했을 때 +15 EXCELLENT 모두 정상.
+
+작업 내용: 11/1 진영이형과 결정한 대로 점수 등급을 Average +5 / Good +10 / Excellent +15 세 단계로 바꾼다. 진영이형 순서표의 #6b \"W3b 평균 점수(Average +5)\", 브랜치 feat/average_score, merge after #6 W3(merged), S3(#9) 앞. 11-02 안에 머지돼야 그날 서버 재배포와 11-03 APK에 들어가니 오늘 PR을 올린다.
+0) 팀 규칙 파일: task.md, progress.md, .claude 소유 설정에 W3b 단계(팀 순서 #6b)를 내가 승인하는 변경으로 추가해 줘. 소유 파일: battle_rules.dart, services/game/*, models/game_*, widgets/game_*, battle_screen.dart(꼭 필요한 줄만), result_screen.dart, online_battle_screen.dart, online_battle_session.dart, battle_protocol.dart, server/lib/battle_server.dart, bot_opponent.dart, docs/iteration-3/battle-rules.md, docs/iteration-2-protocol.md, help_rules.dart, help_pictures.dart와 각 테스트. 그다음 origin/main에서 feat/average_score를 만들어.
+1) 진영이형 조건 (꼭 지켜):
+ - rep_judge.dart와 판정 설정값은 건드리지 마. 점수는 RepEvent의 minElbowAngle만 읽어서 매기고, 인정 여부와 거절 이유는 그대로.
+ - S4(#17)가 고치는 battle_viewmodel.dart, rep_counter_viewmodel.dart, pose_avatar_toggle_view.dart는 건드리지 마. 거절된 rep도 BattleGame._add로 들어오니 점수 계층에서 처리해. 세 파일 중 하나라도 필요해 보이면 고치기 전에 멈추고 물어봐. battle_screen.dart도 #17이 고치는 파일이라 꼭 필요한 줄만.
+ - battle_protocol.dart와 server/가 바뀌면 PR 본문에 \"배틀 서버도 재빌드 필요\"로 분명히 적어.
+2) Average 기준: Go lower(insufficientDepth)로 거절된 rep 중 minElbowAngle이 105° 이하인 것만 +5. 근거(내 녹화): 정상인데 거절된 rep은 90~91°, 반만 내려가고 고개 숙이는 꼼수는 109~135°, 팔 편 채 고개 숙이기는 169~175°. 다른 거절 사유는 0점. minElbowAngle이 없으면 0점. 105°와 5점은 BattleRules 한 곳에.
+3) Average는 피버 때 2배, 콤보 보너스 없음, 콤보는 끊김, 유효 횟수에 안 들어감. 봇의 거절 rep은 0점 그대로(봇 조정은 W5).
+4) 스쿼트 봇 Excellent 문제: bot_opponent.dart와 그 테스트만 고쳐. BotOpponent가 passDepth를 선택 인자로 받고(기본 1.1), 봇 깊이를 그 배수(1.4/1.1, 1.9/1.1)로 낸다. 기존 호출부는 바꾸지 말고, 푸시업 결과는 지금과 같아야 해. 스쿼트 봇 생성 때 passDepth를 넘기는 건 #17 몫이라고 PR 본문에 적어.
+5) 온라인: Average rep에 grade \"average\"를 보내고 서버가 같은 계산으로 점수를 매기게. 옛 서버나 옛 앱과 섞여도 깨지지 않게. docs/iteration-2-protocol.md의 Iteration 3 절도 갱신.
+6) 화면: HE 평가자가 \"거절됐는데 점수가 오른다\"를 알아볼 수 있게, Average rep에는 거절 이유 배너와 함께 \"+5 AVERAGE\"가 뜨고 점수판과 체력 바에도 반영돼야 해. 결과 화면에도 세 등급이 보이게. 디자인 토큰 규칙을 지켜.
+7) 문서: docs/iteration-3/battle-rules.md(W1)에 Average +5 규칙과 105° 근거, 도움말 점수표(help_rules.dart, help_pictures.dart)에 Average +5 추가.
+8) flutter analyze, flutter test, 리뷰어 APPROVE, check-diff, 노트(테스트 노트, AI 노트, Prompt Log export)와 노트 리뷰, push와 push 후 점검, PR 열기까지 해 줘. 본문 첫 줄은 \"Merge order: #6b (team plan); merge after: #6 feat/fever_score (merged); before #9 S3\"이고 리뷰어는 진영이형. How to test, 바뀐 파일 목록, 배틀 서버 재빌드 필요, 105° 근거를 넣어 줘.
+중간에 내 결정이 필요한 것만 물어봐.
+</pasted_content id=\"564d\">"
+
+
+<!-- 5a8e078b 2026-10-31T19:03:40.054Z -->
+[Woohyun Song, 11-01 04:03] "<pasted_content id=\"564d\">
+폰 확인 중간 결과와 수정 요청이야. (다른 세션은 닫았어. 이 세션만 쓸게.)
+1) 폰 확인(release, 5ddac4f, 내 폰, AI 대결): 직접 해 보니 105° 기준으로는 Average가 거의 안 나와. 이 내용을 progress.md와 테스트 노트의 W3b 수동 확인에 적어 줘.
+2) Average 기준을 105°에서 120°로 바꿔 줘(BattleRules 상수). 근거: 내 녹화에서 정직하지만 지쳐서 얕아진 rep이 110~126°, 팀 녹화의 꼼수 3개는 127.8~145.2°. 점수는 팔꿈치만 보니 고개 숙이기는 점수에 영향 없음. battle-rules.md 3.6, 도움말 설명, 관련 테스트, PR 본문의 105° 근거도 같이 고쳐 줘.
+3) 큰 글자(폰 설정 최대 근처)에서 본 문제는 고치지 말고 progress.md에 \"나중에 고칠 목록\"으로 적어 줘: 매칭 완료 제목 \"MATCH F...\" 잘림, 대결 화면 이름표 \"나 · hellw...\"와 \"RepB...\" 잘림, 자세 안내 칩이 상대 카드 뒤에 가려짐, 거절 배너 사유 잘림. 원래 화면들의 문제이고 W3b가 만든 게 아니라는 것도 적어 줘. W6(ui_polish)는 10/31 회의에서 빠지고 W5 봇 난이도로 바뀌었으니 W6에 넣지 마.
+4) Good(정자세 인정 기준)도 빡빡하게 느꼈지만, 판정기 설정이라 이 PR에서는 건드리지 마. 팀 논의 항목으로만 적어 줘.
+5) 리뷰 방식이 바뀌었어. CLAUDE.md Workflow 3단계와 .claude/agents/reviewer.md의 \"Parallel review: your lens\" 절을 다시 읽고 그대로 해 줘. flutter analyze와 flutter test는 네가 한 번만 돌려서 결과를 스크래치 파일에 저장하고, 리뷰어는 한 메시지에서 spec, tests, design, hygiene 네 렌즈를 동시에 띄워. 각 리뷰어 프롬프트에 렌즈 이름, 비교 기준 커밋(5ddac4f), 저장한 테스트 결과 파일 경로, reviewer.md의 그 절 전문을 넣어 줘. 다시 리뷰할 때는 수정을 요청한 렌즈만, 고친 부분만 보게 해.
+6) 리뷰가 모두 APPROVE면 노트 갱신(W3b 커버리지 칸도 이번에 채우기), push와 push 후 점검, PR #23 본문 갱신까지 해 줘. 끝나면 폰에서 다시 확인할 수 있게 release 빌드 명령과 확인 항목을 짧게 정리해 줘.
+</pasted_content id=\"564d\">"
+
+<!-- 5a8e078b 2026-10-31T19:15:31.354Z -->
+[Woohyun Song, 11-01 04:15] "나 이제 잘 거라 아침까지 답을 못 해. 리뷰 결과에 따라 고칠 게 있으면 네 판단으로 고치고, 해당 렌즈만 재리뷰한 뒤 노트, push, push 후 점검, CI 확인, PR #23 본문 갱신까지 끝내 줘. PR 본문의 Manual check에는 \"105° 버전 폰 확인 완료, 120° 실기기 재확인은 아직\"이라고 적어 줘.
+내 결정이 꼭 필요한 일이 생기면 그 단계에서 멈추고 progress.md에 질문을 적어 둬. push와 PR 본문 수정 말고는 GitHub에 아무것도 하지 마(댓글, 머지 금지).
+끝나면 아침에 내가 볼 수 있게 결과를 짧게 정리해 줘."

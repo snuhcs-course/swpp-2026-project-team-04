@@ -3,9 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 
@@ -195,6 +197,133 @@ void main() {
     testWidgets('fits a 360x640 phone', (tester) async {
       await open(tester, game(), size: const Size(360, 640));
       expect(tester.takeException(), isNull);
+    });
+
+    group('the grades', () {
+      RepRecord rep({
+        RejectReason? reason,
+        double? maxDepth,
+        double? minElbowAngle,
+      }) => RepRecord(
+        index: 1,
+        valid: reason == null,
+        at: const Duration(seconds: 3),
+        reason: reason,
+        maxDepth: maxDepth,
+        minElbowAngle: minElbowAngle,
+      );
+
+      BattleResult graded(List<RepRecord> reps) => BattleResult(
+        matchup: _matchup,
+        myReps: 3,
+        myInvalidReps: 2,
+        opponentReps: 6,
+        myScore: 110,
+        opponentScore: 90,
+        decidedOutcome: MatchOutcome.win,
+        endedAt: DateTime(2026, 10, 4, 14, 32),
+        form: FormReport(
+          endedAt: DateTime(2026, 10, 4, 14, 32),
+          opponentName: 'RepBot',
+          roundLength: const Duration(seconds: 30),
+          reps: reps,
+          samples: const [],
+        ),
+      );
+
+      final reps = [
+        rep(maxDepth: 1.9),
+        rep(maxDepth: 1.4),
+        rep(maxDepth: 1.4),
+        rep(reason: RejectReason.insufficientDepth, minElbowAngle: 90),
+        rep(reason: RejectReason.kneesDown, minElbowAngle: 90),
+      ];
+
+      testWidgets('all three show how many of my reps got them', (
+        tester,
+      ) async {
+        await open(tester, graded(reps));
+        expect(find.text('Excellent 1'), findsOneWidget);
+        expect(find.text('Good 2'), findsOneWidget);
+        expect(find.text('Average 1'), findsOneWidget);
+        // An average rep is still rejected.
+        expect(find.text('2회'), findsOneWidget);
+        expect(find.text('3회'), findsOneWidget);
+      });
+
+      testWidgets('a squat is counted by the squat judge\'s pass depth', (
+        tester,
+      ) async {
+        // 1.6 x 0.75: a push-up at this depth would only be good.
+        final squat = graded([rep(maxDepth: 1.2)]);
+        await open(
+          tester,
+          BattleResult(
+            matchup: const Matchup(
+              exercise: ExerciseType.squat,
+              playerName: '우현',
+              opponent: Opponent(name: 'RepBot', isBot: true),
+            ),
+            myReps: squat.myReps,
+            myInvalidReps: squat.myInvalidReps,
+            opponentReps: squat.opponentReps,
+            decidedOutcome: MatchOutcome.win,
+            endedAt: squat.endedAt,
+            form: squat.form,
+          ),
+        );
+        expect(find.text('Excellent 1'), findsOneWidget);
+        expect(find.text('Good 0'), findsOneWidget);
+      });
+
+      testWidgets('a battle with no reps shows zeros', (tester) async {
+        await open(tester, graded(const []));
+        expect(find.text('Excellent 0'), findsOneWidget);
+        expect(find.text('Good 0'), findsOneWidget);
+        expect(find.text('Average 0'), findsOneWidget);
+      });
+
+      testWidgets('with no report they do not show', (tester) async {
+        await open(tester, game());
+        expect(find.textContaining('Excellent'), findsNothing);
+      });
+
+      testWidgets('a battle built without a game does not show them', (
+        tester,
+      ) async {
+        await open(
+          tester,
+          BattleResult(
+            matchup: _matchup,
+            myReps: 3,
+            myInvalidReps: 2,
+            opponentReps: 6,
+            endedAt: DateTime(2026, 10, 4, 14, 32),
+            form: graded(reps).form,
+          ),
+        );
+        expect(find.textContaining('Excellent'), findsNothing);
+      });
+
+      for (final size in const [Size(360, 640), Size(360, 740)]) {
+        testWidgets('they fit ${size.width.toInt()}x${size.height.toInt()}', (
+          tester,
+        ) async {
+          await open(tester, graded(reps), size: size);
+          expect(find.text('Average 1'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      }
+
+      testWidgets('on the largest system font the line does not overflow', (
+        tester,
+      ) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await open(tester, graded(reps), size: const Size(360, 740));
+        expect(find.text('Average 1'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
     });
   });
 

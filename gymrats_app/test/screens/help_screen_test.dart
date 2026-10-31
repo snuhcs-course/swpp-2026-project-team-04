@@ -61,10 +61,14 @@ void main() {
     await tapNext(tester);
     expect(find.text(score.title), findsOneWidget);
     expect(find.text(score.body), findsOneWidget);
-    for (final (points, label) in HelpRules.scores) {
-      expect(find.text(points), findsOneWidget);
-      expect(find.text(label), findsOneWidget);
-    }
+    // +5 is on two tiles: Average and the combo.
+    expect(find.text('+5'), findsNWidgets(2));
+    expect(find.text('Average'), findsOneWidget);
+    expect(find.text('+10'), findsOneWidget);
+    expect(find.text('Good'), findsOneWidget);
+    expect(find.text('+15'), findsOneWidget);
+    expect(find.text('Excellent'), findsOneWidget);
+    expect(find.text('콤보'), findsOneWidget);
     expect(find.text(HelpRules.baseLabel), findsOneWidget);
     expect(find.text(HelpRules.feverLabel), findsOneWidget);
     expect(find.text('20초부터 ×2'), findsOneWidget);

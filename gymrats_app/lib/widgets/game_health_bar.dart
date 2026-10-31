@@ -16,7 +16,7 @@ class GameHealthBar extends StatelessWidget {
   /// The user's share of the bar, from 0 to 1.
   final double myShare;
 
-  /// What the latest valid reps earned. A new one pops up over the bar.
+  /// What the latest scoring reps earned. A new one pops up over the bar.
   final GameRepScore? myLastScore;
   final GameRepScore? opponentLastScore;
 

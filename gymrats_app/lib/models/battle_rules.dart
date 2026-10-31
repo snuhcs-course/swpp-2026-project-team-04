@@ -16,6 +16,8 @@ class BattleRules {
   const BattleRules({
     this.feverStart = const Duration(seconds: 20),
     this.feverMultiplier = 2,
+    this.averagePoints = 5,
+    this.averageMaxElbowAngle = 120,
     this.goodPoints = 10,
     this.excellentPoints = 15,
     this.excellentDepthRatio = 1.6,
@@ -30,6 +32,16 @@ class BattleRules {
 
   /// What fever multiplies a rep's points by.
   final int feverMultiplier;
+
+  /// Points for a [GameGrade.average] rep. 0 turns Average off: an older
+  /// server does not know it.
+  final int averagePoints;
+
+  /// The most a rep rejected as too shallow may keep of its elbow angle, in
+  /// degrees, and still be average. Honest reps gone shallow with tiredness and
+  /// half-rep head nods overlap in angle, so this is a trade-off: the recorded
+  /// angles are in battle-rules.md 3.6.
+  final double averageMaxElbowAngle;
 
   /// Points for a [GameGrade.good] rep.
   final int goodPoints;
@@ -70,12 +82,20 @@ class BattleRules {
         : GameGrade.good;
   }
 
+  /// Whether a rep rejected as too shallow is average, by the smallest elbow
+  /// angle it reached. An attempt with no measured angle is not.
+  bool isAverage(double? minElbowAngle) =>
+      averagePoints > 0 &&
+      minElbowAngle != null &&
+      minElbowAngle <= averageMaxElbowAngle;
+
   /// Whether a valid rep [gap] after the last valid one is a combo.
   bool isCombo(Duration gap) => gap <= comboWindow;
 
-  /// Points of a valid rep.
+  /// Points of a rep with a grade.
   int pointsFor(GameGrade grade, {required bool combo, required bool fever}) {
     final base = switch (grade) {
+      GameGrade.average => averagePoints,
       GameGrade.good => goodPoints,
       GameGrade.excellent => excellentPoints,
     };
