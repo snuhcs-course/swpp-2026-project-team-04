@@ -126,3 +126,64 @@ so they are quoted here from the session export.
 ### Takeaway
 - Two sessions should not share one working tree; use a separate `git worktree` per step.
 - A dialog's "closed by the user" and "removed by the app" need different answers.
+
+## W3 `feat/fever_score` – game layer: bar, judgments, fever, danger, KO (P8), 2026-10-30 ~ 2026-10-31
+
+### a. Where AI was used
+- **Rules and game layer:** Claude Code wrote `gymrats_app/lib/models/battle_rules.dart` (`BattleRules` L15–104), `game_score.dart`, `lib/services/game/battle_game.dart` and `player_game_score.dart` (`b9adb50`).
+- **Bot battle:** `battle_viewmodel.dart`, `battle_result.dart` (`30a5450`); the bot's depths in `bot_opponent.dart` (L61–67, L113–117, `562f706`).
+- **Battle server:** scoring, the grade check (`_grade`, L470) and the KO end (L427) in `server/lib/battle_server.dart` (`facac22`); the protocol section (`2b84d5f`).
+- **Screens:** the health bar, fever chip and danger edge widgets, the panel and result screens (`8507790`, `3cfc477`, `32f38dc`, `532cfdc`). Claude Design: three internal sketches on a private canvas.
+- **Online on the phone (`fb9fc34`):** `online_battle_session.dart` (`rules` L95, `_myPreview` L106, `_readRules` L412, `submitRep` L519) and `online_battle_screen.dart` (`_clockColor` L275, `_lastRepWords` L282, the danger edge L667).
+- **Other people's files, under the user's exceptions, only the lines needed:** Django `server/matches/` and `server/tests/` (`d98d219`); `server_user_repository.dart` and `match_record.dart` (`80f7e43`).
+- **Tests:** all of the test files listed in `docs/testing/iteration-3/g1fted13.md`, W3 entry.
+- **Review:** the `reviewer` subagent ran ten rounds: 1–3 logic, 4–6 UI and Django, 7–8 the red edge, 9–10 online and the bot upload. Rounds 1, 2, 4, 5, 7 and 9 asked for changes.
+- **Decided by the user:**
+  - The numbers stay the v0.1 values in one config, tuned by playing after H2 merges. The user settles the bar's rule details.
+  - "젼부 추천대로 해줘": the eight open questions, each answered with the option the agent had marked as recommended: score-lead bar and KO at 100, danger 60+ behind, a new red token for the danger edge (answer 3), the winner order, server-side KO, Django left to its owner (answer 6), help numbers from the config, sketches first. The user later changed answers 3 and 6 (below).
+  - Layout A, out of the agent's three sketches.
+  - The danger edge: red (answer 3), then amber at the sketch review, then red again after talking with the team. The clock's last 5 s stay amber.
+  - Django done in W3 with the user's conditions, instead of asking the owner first. The user tells the owner afterwards.
+  - The bot upload's app side after S2 (answer A), then now (answer B), when S2 stopped being a separate PR.
+  - Keeping `RepJudgeConfig().bottomDepth` instead of waiting for `counter.passDepth`.
+- **Proposed or decided by the agent, and reported to the user:** the color values (`#3DE8FF`, `#FF3B30`: the sketch's defaults, the user named no other); rounding the KO round length up; the temporary local-check patch, not committed; combo and fever in the online words (the reviewer called this the user's call, and the agent decided it).
+- **Decided by the agent, and told to the user only on 10-31, after the notes review asked:** the bot's depths 1.4 and 1.9; the words "K.O.로 끝났어요.".
+- **Not done by AI:** the phone check of the bot battle (the user); server deployment (the PM).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 10-30] "젼부 추천대로 해줘"
+- [Woohyun Song, 10-30] "Django 두 가지는 상우(S4)에게 묻지 않고 W3에서 처리하고, 끝나면 내가 상우에게 알릴게." and "필요한 줄만 최소로 고쳐. 리팩터링이나 정리는 하지 마." (two lines of one pasted prompt)
+- [Woohyun Song, 10-31] "위험 테두리 색은 앰버가 아니라 빨강으로 바꿔 줘." (one line of a pasted prompt)
+- [Woohyun Song, 10-31] "상황이 바뀌었어. 상우가 S2를 따로 올리지 않고 S2·S4를 합친 실험용 PR #17(feat/squat_battle)을 올렸고, 진영이형이 #17은 W3가 머지된 뒤에 main을 받아서 머지하겠다고 리뷰에 남겼어." (first lines of a pasted prompt)
+
+### c. What AI did well
+- **One scoring code for phone and server:** it kept `player_game_score.dart` free of Flutter so the battle server imports the same class. In review round 10, a temporary probe through a relay (deleted after the round) found preview and server equal over 8 reps with mixed gaps.
+- **Order on the wire:** a KO's `match.finished` goes out in a microtask (`battle_server.dart` L427), after the ACK, so both phones read the last score before the end. A test covers it.
+- **Stayed inside W3's files:** the KO rep could drop from the pace chart in `feedback_screen.dart`, which W3 does not own. Rounding the KO round length up keeps it in the chart with no edit there.
+- **Found a side effect before it happened:** Django's `PUT /matches/feedback/<id>` stores a report even with no match row (`server/matches/views.py` L121). So the local-check patch turns off that upload, and a local battle leaves no orphan row in the team's database.
+- **Review probes:** the reviewer cut sockets through a relay against the real server: re-send, offline combo, an unseen KO. All passed, so the online code was tested beyond its unit tests.
+
+### d. Hallucinations / errors
+- **A claim made without reading the code:** the agent told the user online could be checked "with a local battle server". The user asked for the commands, and only then did the agent read the code. The app's address is a constant, the lobby does not allow a loopback `ws://`, Django login for the battle server takes only a loopback URL, and `server/bin/server.dart` crashes on Windows at `ProcessSignal.sigterm.watch()`. Reading the code found the address and the loopback rule; a trial run found the crash. The agent first noted the correction in `progress.md`; the notes review found no chat message that said it plainly, so the agent told the user on 10-31. Cost: a temporary patch for the check.
+- **Own spec missed (reviewer round 9, Major):** `battle-rules.md` L219, written by the agent in W1, says the phone shows the label and +N at once from a local sum. The first online version waited for the ACK and showed the previous rep's score until then.
+- **Clock kept counting after a KO (round 9, Major):** the result screen showed a live countdown beside "승리", turning cyan and amber. Fixed: the clock stops at `ended_at_ms`.
+- **Assumed CSS behavior (round 5, Major):** `BoxShadow(blurStyle: BlurStyle.inner)` was used as an inset shadow. It filled the whole screen with amber. Widget tests disable shadows, so they passed; the reviewer's real render caught it. Fixed with four gradients and a pixel test.
+- **KO numbers (rounds 1 and 2, Major):** a KO reported the full 30 s as the round length, giving a false pace. The first fix then dropped the KO rep from the pace chart.
+- **Too big for real fonts (round 4, Major):** the score at 92 px and a speaker icon cut text at 360 wide. The test font had hidden it. A real-font test was added.
+- **Tests that could not fail, caught by the agent:** a "reconnect" test only checked a replaced socket; a re-sent-ack test could not see a bug. Both were rewritten with a scripted server. A 5 s round was also waited on with a 5 s limit.
+- **Flaky test (round 9):** one failure in four full runs in `battle_result_store_test.dart`. Likely two players joining at once on two sockets; the message was not captured. It is older than W3.
+- **Reviewer guessed wrong too:** round 9 guessed the valid-reps row as the overflow at text scale 2.0, without identifying it. Round 10 found the real one, the health bar's label line.
+- **Prompt Log extraction:** `extract_prompts.py` took a session summary and browser notices as prompts and missed two prompts typed while the agent was working. The agent corrected the entries by script against the export, and the notes review compared them with it.
+- **An instruction skipped:** in the Django prompt the user asked to see the list of files before any edit. The agent said it would pull the list, then edited the files with no list shown (10-30). The notes review caught it in the export, and the agent told the user on 10-31. The same request on 10-31 was followed: list first, then edits.
+
+### e. Prompt revisions
+- **Before:** "Django의 ko와 봇 업로드 승패·종료 사유는 상우와 얘기해서 결과를 알려 줄게."
+- **After:** the Django prompt in item b, with its conditions: only the needed lines, and stop to ask before touching anyone else's file outside `server/matches` and `server/tests`.
+- **Why it worked:** the owner question became a bounded edit with a stop condition. The agent changed five of S4's files by minimal lines, asked before touching the app-side files, and handed back a summary for the owner. One condition was not kept: see "An instruction skipped" in item d.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- Before saying a check is possible, read the code path it needs and run it.
+- Reread your own spec before coding against it.

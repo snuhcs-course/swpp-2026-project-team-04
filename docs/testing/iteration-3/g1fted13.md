@@ -109,3 +109,70 @@ After a check on a phone, the pictogram drops the "×100" text and the repetitio
   - Phone, 2026-10-29, earlier picture: on a bot match found the warning shows, and back on the warning brings up the leave question.
   - Phone, reported 2026-10-30, simplified picture: checked, and the picture stays as it is.
   - Online match, phone and emulator, reported 2026-10-30: on the phone, left untouched, the warning closed by itself after 5 s; on the emulator, 확인 closed it. Both went on to the pose setup, and the match was not cancelled.
+
+#### 2026-10-31 · code at commit `b9f9195` · step W3 `feat/fever_score` (P8 game layer: bar, judgments, fever, danger, KO)
+This step turns the battle into the game of `docs/iteration-3/battle-rules.md`, for bot and online battles:
+- The rules in one config, `lib/models/battle_rules.dart`, and the pure-Dart game layer in `lib/services/game/`, which the battle server also imports.
+- The battle server scores each rep from the grade the phone sends, and ends the match on a KO.
+- The battle and result screens, with new widgets `game_health_bar`, `game_fever_chip`, `game_danger_edge`, and tokens `AppColors.fever` and `AppColors.danger`.
+- `POST /matches` accepts an optional `outcome` and `reason`, and the app sends them for a bot battle.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `b9f9195`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on the W3 PR | 10/31 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on the W3 PR |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W3 PR | 10/31 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W3 PR | 10/31 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on the W3 PR | 10/31 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | see the CI comment on the W3 PR | 10/31 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 851 passed, 0 failed, 1 skipped.
+  - The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
+  - `flutter analyze` found no issues.
+  - `server/` changed, so CI's `pytest` is the result for these notes. For information, the 5 new Django tests also passed in a local scratch environment on Python 3.12 before `d98d219` was committed (81 passed in all), and `makemigrations --check` found no changes.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers come from the CI comment on the W3 PR. Until the next W3 push, they are in that comment and in the PR body, not here.
+- **Flaky test found and fixed:** `battle_result_store_test.dart` "a started battle is recorded with both players" failed in 1 of 4 full runs in review. Its message was not captured. The likely cause is both players joining the queue at once on two sockets while the test expects a fixed player order, so the test now waits for the first join. After the fix: 6 of 6 alone, and clean in the full runs.
+- **Shortfalls:** none known; the CI comment decides. Phone checks are still open (see Manual check).
+- **Known issues on the largest system fonts, not fixed here (found in review with real fonts; the default font size is clean):**
+  - The bot battle's panel overflows on a 360 wide phone at text scale 1.7 and up (360×780: clean up to 1.5). At 360×640 and scale 2.0 the verdict banner is pushed off the panel. 412×915 is clean up to 2.0.
+  - Above scale 1.0 a health bar label shrinks when its side's first popup appears, for example from 28 to 16 px high at scale 2.0.
+  - The online words line ends in an ellipsis from about scale 1.5.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/game_rules_test.dart` (new) | The v0.1 numbers. Fever's start. Grades at the 1.6× depth and for a rep with no depth. The combo window. The points table. Bar movement and its ends. KO on either side. Danger. A KO round length rounded up and capped. Another config |
+| Model | `test/models/battle_result_test.dart` (updated) | The game's outcome wins over the reps. Big numbers and margin with and without a game. The record says how the game stopped |
+| Model | `test/models/match_record_test.dart` (updated) | The record keeps how the game stopped; a record from elsewhere has none |
+| Service | `test/services/game/battle_game_test.dart` (new) | Combo, fever, the time-up winner, KO, the two worked examples of `battle-rules.md` section 6, and its 4.4 table against a bot |
+| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | About a fifth of the valid reps are excellent at the push-up pass depth; rejected reps have no depth; the same seed plans the same depths |
+| Service | `test/services/user/server_user_repository_test.dart` (updated) | A game's outcome and reason go in the upload (`win`/`ko`, `loss`/`time_up`, `draw`/`time_up`); a record without a game sends neither |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | On the server, over real sockets: rules in `match.found`, points, combo, grade, a bad grade refused, fever, the winner by game score, KO after the ACK, a re-sent KO rep, the snapshot. On the phones: the same score and a mirrored bar, the rules from the server, +N and label at once, the answer correcting it, no second popup, a stale answer ignored, final scores, the frozen clock, an older server gets no grade |
+| Service | `test/services/online/battle_result_store_test.dart` (updated) | A KO is stored with its reason, without the game score; the join order no longer races |
+| Service | `test/support/game_fakes.dart` (new) | Fakes: `gameRep`, `DepthRepJudge` (its clock is an hour per rep, so a game fed the wrong clock fails), `TimedOpponentSource` |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | Each rep's score and bar, combo by round time, fever, danger, my KO and the opponent's, the KO round length, the last-frame rep, retry from zero |
+| View | `test/screens/battle_screen_test.dart` (updated) | +N and the banner words, clock colors, the fever chip, the danger edge, K.O., fits 360×640 |
+| View | `test/screens/result_screen_test.dart` (updated) | Points big and reps under them, the KO and level-points lines, fits 360×640, no reps line without a game |
+| View | `test/screens/online_preparation_test.dart` (updated) | The online screen with the game: scores, valid reps, bar, words at once, Korean reject reason, combo and fever words, clock colors, the chip gone at the end, danger edge on and off, KO text and report with the time played, a frozen plain clock, the largest font. An older server keeps the reps screen |
+| View | `test/widgets/game_health_bar_test.dart` (new) | Share, labels and semantics, each +N in its side's color, fade, a new rep pops again, both popups at the largest font, the bar keeps its place |
+| View | `test/widgets/game_fever_chip_test.dart` (new) | The multiplier in dark letters on cyan |
+| View | `test/widgets/game_danger_edge_test.dart` (new) | Off when not active, red flash slower than once a second, pixel check that only the edge lights, taps pass through, steady with animations off, screen reader label |
+| View | `test/widgets/game_panel_fonts_test.dart` (new) | With real fonts: the banner never cuts its words, and three digits stay the size of two |
+| Design | `test/theme/app_theme_test.dart`, `test/design_tokens_test.dart` (updated) | The two new tokens; the new widgets use only design tokens |
+| View | `test/demo/battle_demo_test.dart` (updated) | The demo with the game's scores |
+| Server | `server/tests/test_matches.py` (updated) | A bot upload keeps the game's outcome and reason; without them it goes by the reps and `time_up`; other values refused; a retry keeps the first outcome |
+| Server | `server/tests/test_results.py` (updated) | A KO is stored with its reason whatever the reps |
+
+Acceptance criteria → tests:
+- **Bot battle, valid reps move the bar and show +N with the right label:** `battle_viewmodel_test.dart` "a valid rep pushes the bar and scores by its depth"; `battle_screen_test.dart` "a deep rep says EXCELLENT, and the banner names a combo and fever".
+- **In fever a valid rep scores double:** `battle_viewmodel_test.dart` "fever turns on at its start and doubles the points"; `online_battle_integration_test.dart` "fever doubles the points on both phones".
+- **A fully pushed bar ends the match early with that winner:** `battle_viewmodel_test.dart` "my KO ends the round at once, and the battle is saved" and "the opponent's KO ends the round; later reps count for nothing"; `online_battle_integration_test.dart` "a KO ends the match at once, after the ACK, for both".
+- **A player close to losing sees the danger edge:** `battle_viewmodel_test.dart` "the opponent's reps push the bar back and bring danger"; `online_preparation_test.dart` "the danger edge is on 60 points behind, off once it ends".
+- **Online, both phones show the same bar and winner:** `online_battle_integration_test.dart` "both phones show the same score, the bar mirrored, and +N with its grade; a deep rep goes as excellent". Checked over real sockets, not yet on two devices.
+
+- **Manual check:**
+  - Bot battle, round 1, the user staying still, on the user's phone (reported 2026-10-31, code at `d98d219`): pass. +N and the bar moved, the red edge showed, the clock turned cyan with FEVER ×2, then the K.O. screen and a result with game scores and valid reps. The reps were the bot's.
+  - Not done yet: bot round 2 (own +N and the Good/Excellent banner, the amber last 5 s, a time-up end).
+  - Not done yet: online on real devices. The team server runs the old battle server until it is redeployed, so online needs that redeploy or a temporary local patch.
