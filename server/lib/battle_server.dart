@@ -4,6 +4,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import '../../gymrats_app/lib/models/battle_rules.dart';
+import '../../gymrats_app/lib/models/game_score.dart';
+import '../../gymrats_app/lib/services/game/player_game_score.dart';
 import '../../gymrats_app/lib/shared/battle_protocol.dart';
 import 'result_store.dart';
 
@@ -55,6 +58,7 @@ class _Match {
   final int created, readyDeadline;
   final ready = <String>{};
   final scores = <String, List<int>>{};
+  final games = <String, PlayerGameScore>{};
   final reps = <String, Map<int, Map<String, dynamic>>>{};
   final poseSeq = <String, int>{},
       lastRepElapsed = <String, int>{},
@@ -70,14 +74,18 @@ class _Match {
 class BattleServer {
   BattleServer({
     required this.authenticate,
-    this.durationMs = 30000,
+    int? durationMs,
     this.countdownMs = 3000,
     this.readyTimeoutMs = 60000,
     this.reconnectMs = 10000,
     this.heartbeatTimeoutMs = 15000,
     this.results,
-  });
+    this.rules = battleRules,
+  }) : durationMs = durationMs ?? battleDuration.inMilliseconds;
   final BattleAuthenticator authenticate;
+
+  /// The game the server scores: the same code and numbers as the app.
+  final BattleRules rules;
 
   /// P11 storage; null keeps results in memory only (local tests, dev).
   final BattleResultStore? results;
@@ -367,7 +375,7 @@ class BattleServer {
         }
         return reply('request.accepted', {});
       case 'rep.submit':
-        fields(payload, {'rep_seq', 'elapsed_ms', 'valid', 'reason'});
+        fields(payload, {'rep_seq', 'elapsed_ms', 'valid', 'reason', 'grade'});
         final m = _activeMatch(p, message), id = p.identity.id;
         final seq = integer(payload['rep_seq'], 1, 10000),
             elapsed = integer(payload['elapsed_ms'], 0, durationMs - 1);
@@ -376,6 +384,7 @@ class BattleServer {
                 ? payload['reason'] != null
                 : !battleReasons.contains(payload['reason'])))
           invalid();
+        final grade = _grade(payload);
         final accepted = m.reps[id]!;
         if (accepted[seq] case final previous?) {
           if (_signature(previous['submitted']) != _signature(payload))
@@ -390,10 +399,18 @@ class BattleServer {
         final scores = m.scores[id]!;
         scores[payload['valid'] == true ? 0 : 1]++;
         m.lastRepElapsed[id] = elapsed;
+        final game = m.games[id]!;
+        final earned = grade == null
+            ? 0
+            : game.addValid(grade, Duration(milliseconds: elapsed)).points;
+        if (grade == null) game.addRejected();
         final ack = {
           'rep_seq': seq,
           'valid_reps': scores[0],
           'invalid_reps': scores[1],
+          'combo': game.combo,
+          'points': earned,
+          'game_score': game.points,
         };
         accepted[seq] = {
           'submitted': Map<String, dynamic>.from(payload),
@@ -404,6 +421,11 @@ class BattleServer {
           ...payload,
           ...ack,
         }, matchId: m.id);
+        final other = m.games[m.players.firstWhere((o) => o != p).identity.id]!;
+        // ACK is queued before match.finished, like match.found after the join.
+        if (rules.isKo(game.points - other.points)) {
+          scheduleMicrotask(() => _finish(m, 'ko'));
+        }
         return reply('rep.accepted', ack);
       case 'match.leave':
         fields(payload, {'reason'});
@@ -442,6 +464,21 @@ class BattleServer {
     }
   }
 
+  /// The grade of a submitted rep; null when it was rejected. The depth stays
+  /// on the phone, which knows the pass depth. An app that sends no grade is
+  /// scored as good.
+  GameGrade? _grade(Map<String, dynamic> payload) {
+    final grade = payload['grade'];
+    if (payload['valid'] != true) {
+      return grade == null ? null : invalid();
+    }
+    if (grade == null) return GameGrade.good;
+    return GameGrade.values.firstWhere(
+      (g) => g.name == grade,
+      orElse: () => invalid(),
+    );
+  }
+
   List<Map<String, dynamic>> _roster(_Match m) => m.roster;
   void _pair() {
     _queue.removeWhere(
@@ -455,12 +492,15 @@ class BattleServer {
         p.queued = false;
         p.match = m;
         m.scores[p.identity.id] = [0, 0];
+        m.games[p.identity.id] = PlayerGameScore(rules);
         m.reps[p.identity.id] = {};
       }
       _broadcast(m, 'match.found', {
         'players': _roster(m),
         'duration_ms': durationMs,
         'ready_deadline_ms': m.readyDeadline,
+        'fever_start_ms': rules.feverStart.inMilliseconds,
+        'ko_lead': rules.koLead,
       });
     }
   }
@@ -473,10 +513,13 @@ class BattleServer {
     'start_at_ms': m.start,
     'end_at_ms': m.end,
     'ready_deadline_ms': m.readyDeadline,
+    'fever_start_ms': rules.feverStart.inMilliseconds,
+    'ko_lead': rules.koLead,
     'scores': m.scores.map(
       (id, s) => MapEntry(id, {
         'valid_reps': s[0],
         'invalid_reps': s[1],
+        'game_score': m.games[id]!.points,
         'last_rep_seq': m.reps[id]!.length,
         'last_pose_seq': m.poseSeq[id] ?? 0,
       }),
@@ -517,11 +560,10 @@ class BattleServer {
     m.status = 'finished';
     m.ended = now;
     final a = m.players[0].identity.id, b = m.players[1].identity.id;
+    final order = m.games[a]!.compareTo(m.games[b]!);
     final winner = loser != null
         ? (loser == a ? b : a)
-        : (m.scores[a]![0] == m.scores[b]![0]
-              ? null
-              : (m.scores[a]![0] > m.scores[b]![0] ? a : b));
+        : (order == 0 ? null : (order > 0 ? a : b));
     m.result = {
       'result_id': _id(),
       'reason': reason,
@@ -534,6 +576,7 @@ class BattleServer {
               'avatar_id': p.avatar,
               'valid_reps': m.scores[p.identity.id]![0],
               'invalid_reps': m.scores[p.identity.id]![1],
+              'game_score': m.games[p.identity.id]!.points,
               'outcome': winner == null
                   ? 'draw'
                   : winner == p.identity.id

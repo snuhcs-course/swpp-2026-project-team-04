@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../models/battle_rules.dart';
 import '../../models/rep_event.dart';
+import '../../models/exercise_type.dart';
 import '../pose/setup_checker.dart' show Clock;
 import 'opponent_source.dart';
 
@@ -58,6 +59,15 @@ class BotOpponent implements OpponentSource {
   static const _mostValid = 28;
   static const _mostRejected = 3;
 
+  /// How deep the bot's valid reps go, in top-pose shoulder widths: both are
+  /// inside what normal push-ups reach, and at the push-up pass depth only the
+  /// deep one is excellent.
+  static const _normalDepth = 1.4;
+  static const _deepDepth = 1.9;
+
+  /// About this share of the valid reps go deep.
+  static const _deepShare = 0.2;
+
   static Clock _stopwatchClock() {
     final stopwatch = Stopwatch()..start();
     return () => stopwatch.elapsed;
@@ -68,7 +78,8 @@ class BotOpponent implements OpponentSource {
   /// The valid count is drawn first, so every round lands in the bot's
   /// pace: 10 to 14 in a 30-second round, 20 to 28 in a 60-second one. A few
   /// rejected reps are mixed in. Gaps widen towards the end, and each rep
-  /// moves a little off its slot. Reps stay in order inside the round.
+  /// moves a little off its slot. Reps stay in order inside the round. Some
+  /// valid reps go deep, so the game grades them higher.
   static List<RepEvent> planRound(math.Random random, Duration roundLength) {
     int atPace(int perMinute) =>
         (perMinute * roundLength.inMicroseconds / _paceLength.inMicroseconds)
@@ -91,7 +102,9 @@ class BotOpponent implements OpponentSource {
       final gap = span / count * ((1 - _slowdown) + 2 * _slowdown * slot);
       final jitter = (random.nextDouble() * 2 - 1) * _jitter * gap;
       final reason = rejected.contains(i)
-          ? RejectReason.values[random.nextInt(RejectReason.values.length)]
+          ? RejectReason.forExercise(ExerciseType.pushUp)[random.nextInt(
+              RejectReason.forExercise(ExerciseType.pushUp).length,
+            )]
           : null;
       plan.add(
         RepEvent(
@@ -101,6 +114,11 @@ class BotOpponent implements OpponentSource {
           at:
               _startDelay +
               Duration(microseconds: (span * progress + jitter).round()),
+          maxDepth: reason != null
+              ? null
+              : random.nextDouble() < _deepShare
+              ? _deepDepth
+              : _normalDepth,
         ),
       );
     }

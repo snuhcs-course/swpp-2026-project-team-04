@@ -5,13 +5,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
+import 'package:gymrats_app/services/pose/camera_service.dart';
+import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 
 import '../support/fakes.dart';
+import '../support/game_fakes.dart';
 import '../support/pose_fixtures.dart';
 
 const _matchup = Matchup(
@@ -125,7 +130,7 @@ void main() {
     await pumpEventQueue();
     expect(vm.state.opponentReps, 2);
     expect(vm.state.opponentMoves, 3);
-    expect(vm.state.lead, -2);
+    expect(vm.state.lead, -20);
   });
 
   test('the opponent is held while the app is away, and goes on while the '
@@ -211,10 +216,10 @@ void main() {
     final form = vm.state.result!.form!;
     expect(form.endedAt, _endedAt);
     expect(form.opponentName, 'RepBot');
-    expect([for (final r in form.reps) r.at], const [
-      Duration(seconds: 5),
-      Duration(seconds: 9),
-    ]);
+    expect(
+      [for (final r in form.reps) r.at],
+      const [Duration(seconds: 5), Duration(seconds: 9)],
+    );
     expect(form.reps.last.reason, RejectReason.tooFast);
     expect(form.samples, isNotEmpty);
     expect(await reports.list(), [same(form)]);
@@ -338,5 +343,375 @@ void main() {
       battle.dispose();
       async.flushMicrotasks();
     });
+  });
+
+  group('the game', () {
+    late FakeCameraService camera;
+    late FakePoseEstimator estimator;
+    late DepthRepJudge judge;
+    late TimedOpponentSource opponent;
+    late FakeUserRepository repository;
+    late Duration now;
+    late BattleViewModel battle;
+
+    setUp(() {
+      camera = FakeCameraService();
+      estimator = FakePoseEstimator();
+      judge = DepthRepJudge();
+      opponent = TimedOpponentSource();
+      repository = FakeUserRepository();
+      now = Duration.zero;
+      battle = BattleViewModel(
+        matchup: _matchup,
+        counter: RepCounterViewModel(
+          camera: camera,
+          estimator: estimator,
+          judge: judge,
+          clock: () => now,
+          roundLength: battleDuration,
+          phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
+        ),
+        opponent: opponent,
+        repository: repository,
+        sound: FakeRepSound(),
+        now: () => _endedAt,
+      );
+    });
+
+    tearDown(() => battle.dispose());
+
+    /// One camera frame [seconds] into the clock.
+    Future<void> frame(double seconds) async {
+      now = Duration(milliseconds: (seconds * 1000).round());
+      estimator.frames.add(emptyFrame());
+      camera.emit();
+      await pumpEventQueue();
+    }
+
+    /// A frame at [seconds] that closes my rep.
+    Future<void> myRep(
+      double seconds, {
+      double? maxDepth,
+      RejectReason? reason,
+    }) async {
+      judge.closeRep(maxDepth: maxDepth, reason: reason);
+      await frame(seconds);
+    }
+
+    Future<void> theirRep(double seconds, {RejectReason? reason}) async {
+      opponent.emitAt(seconds, reason: reason);
+      await pumpEventQueue();
+    }
+
+    test("a rep's grade goes by its judge's pass depth", () async {
+      final shallowJudge = DepthRepJudge(
+        config: const RepJudgeConfig(bottomDepth: .75),
+      );
+      final other = BattleViewModel(
+        matchup: _matchup,
+        counter: RepCounterViewModel(
+          camera: camera,
+          estimator: estimator,
+          judge: shallowJudge,
+          clock: () => now,
+          roundLength: battleDuration,
+          phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
+        ),
+        opponent: TimedOpponentSource(),
+        repository: FakeUserRepository(),
+        sound: FakeRepSound(),
+        now: () => _endedAt,
+      );
+      addTearDown(other.dispose);
+      await other.start();
+
+      // 1.6 x 0.75: a push-up at this depth would only be good.
+      shallowJudge.closeRep(maxDepth: 1.2);
+      await frame(3);
+      expect(other.state.myLastScore!.grade, GameGrade.excellent);
+
+      shallowJudge.closeRep(maxDepth: 1.19);
+      await frame(9);
+      expect(other.state.myLastScore!.grade, GameGrade.good);
+    });
+
+    test('a valid rep pushes the bar and scores by its depth', () async {
+      await battle.start();
+      expect(battle.state.myBarShare, 0.5);
+
+      await myRep(3, maxDepth: 1.45);
+      expect(battle.state.myScore, 10);
+      expect(battle.state.myLastScore!.grade, GameGrade.good);
+      expect(battle.state.myBarShare, closeTo(0.55, 1e-9));
+
+      await myRep(9, maxDepth: 1.8);
+      expect(battle.state.myScore, 25);
+      expect(battle.state.myLastScore!.grade, GameGrade.excellent);
+      expect(battle.state.myLastScore!.points, 15);
+    });
+
+    test('a rep with no depth is good', () async {
+      await battle.start();
+      await myRep(3);
+      expect(battle.state.myLastScore!.grade, GameGrade.good);
+    });
+
+    test('the combo goes by round time, not by the judge clock', () async {
+      await battle.start();
+      await myRep(3);
+      await myRep(4.2);
+      expect(battle.state.myScore, 25);
+      expect(battle.state.myLastScore!.combo, 2);
+
+      await myRep(10);
+      expect(battle.state.myLastScore!.combo, 1);
+    });
+
+    test(
+      'a camera permission lost and back does not lose later reps',
+      () async {
+        await battle.start();
+        await myRep(3);
+
+        camera.permission = CameraPermission.denied;
+        await battle.pause();
+        await battle.resume();
+        await pumpEventQueue();
+        expect(battle.state.phase, BattlePhase.failed);
+
+        camera.permission = CameraPermission.granted;
+        await battle.pause();
+        await battle.resume();
+        await pumpEventQueue();
+        expect(battle.state.phase, BattlePhase.playing);
+
+        await myRep(8);
+        expect(battle.state.myScore, 20);
+      },
+    );
+
+    test('a rejected rep scores nothing, breaks the combo, and keeps the '
+        'last score', () async {
+      await battle.start();
+      await myRep(3);
+      await myRep(3.5, reason: RejectReason.insufficientDepth);
+      expect(battle.state.myScore, 10);
+      expect(battle.state.myInvalidReps, 1);
+      expect(battle.state.myLastScore!.points, 10);
+
+      await myRep(4);
+      expect(battle.state.myScore, 20);
+      expect(battle.state.myLastScore!.combo, 1);
+    });
+
+    test('fever turns on at its start and doubles the points', () async {
+      await battle.start();
+      await frame(19.9);
+      expect(battle.state.fever, isFalse);
+
+      await myRep(20);
+      expect(battle.state.fever, isTrue);
+      expect(battle.state.myScore, 20);
+      expect(battle.state.myLastScore!.fever, isTrue);
+    });
+
+    test('time in the background does not bring fever closer', () async {
+      await battle.start();
+      await frame(10);
+      await battle.pause();
+      now = const Duration(seconds: 25);
+      await battle.resume();
+      await pumpEventQueue();
+
+      await myRep(27);
+      expect(battle.state.remaining, const Duration(seconds: 28 - 10));
+      expect(battle.state.fever, isFalse);
+      expect(battle.state.myScore, 10);
+    });
+
+    test("the opponent's reps push the bar back and bring danger", () async {
+      await battle.start();
+      for (final seconds in [3.0, 6.0, 9.0, 12.0, 15.0]) {
+        await theirRep(seconds);
+      }
+      expect(battle.state.opponentScore, 50);
+      expect(battle.state.opponentLastScore!.points, 10);
+      expect(battle.state.danger, isFalse);
+
+      await theirRep(18);
+      expect(battle.state.opponentScore, 60);
+      expect(battle.state.myBarShare, closeTo(0.2, 1e-9));
+      expect(battle.state.danger, isTrue);
+
+      await myRep(19);
+      expect(battle.state.danger, isFalse);
+    });
+
+    test(
+      'a rejected opponent rep moves the mannequin and scores nothing',
+      () async {
+        await battle.start();
+        await theirRep(3, reason: RejectReason.bellyDown);
+        expect(battle.state.opponentMoves, 1);
+        expect(battle.state.opponentScore, 0);
+        expect(battle.state.opponentLastScore, isNull);
+      },
+    );
+
+    test('my KO ends the round at once, and the battle is saved', () async {
+      await battle.start();
+      await myRep(21, maxDepth: 1.8);
+      await myRep(22, maxDepth: 1.8);
+      expect(battle.state.phase, BattlePhase.playing);
+
+      await myRep(23, maxDepth: 1.8);
+      expect(battle.state.phase, BattlePhase.timeUp);
+      final result = battle.state.result!;
+      expect(result.end, GameEnd.ko);
+      expect(result.myScore, 110);
+      expect(result.opponentScore, 0);
+      expect(result.myReps, 3);
+      expect(result.outcome, MatchOutcome.win);
+      expect(battle.state.myBarShare, 1);
+      expect(battle.state.remaining, const Duration(seconds: 7));
+      expect(opponent.stopped, isTrue);
+      expect(battle.counter.state.roundEnd, RoundEnd.timeUp);
+      await pumpEventQueue();
+      expect(camera.isStreaming, isFalse);
+      expect(repository.saved, hasLength(1));
+    });
+
+    test(
+      'a KO on the last frame keeps the round length to the full round',
+      () async {
+        await battle.start();
+        await myRep(28, maxDepth: 1.8);
+        await myRep(29, maxDepth: 1.8);
+        await myRep(30, maxDepth: 1.8);
+        final ko = battle.state.result!;
+        expect(ko.end, GameEnd.ko);
+        expect(ko.roundLength, battleDuration);
+      },
+    );
+
+    test('after a KO the round length is the time played in whole seconds, '
+        'rounded up so the KO rep stays inside it; a full round keeps its '
+        'full length', () async {
+      await battle.start();
+      await myRep(21, maxDepth: 1.8);
+      await myRep(22, maxDepth: 1.8);
+      await myRep(23, maxDepth: 1.8);
+      final ko = battle.state.result!;
+      expect(ko.roundLength, const Duration(seconds: 24));
+      expect(ko.form!.roundLength, const Duration(seconds: 24));
+      expect(ko.form!.reps.last.at, lessThan(ko.form!.roundLength));
+
+      final other = BattleViewModel(
+        matchup: _matchup,
+        counter: RepCounterViewModel(
+          camera: camera,
+          estimator: estimator,
+          judge: judge,
+          clock: () => now,
+          roundLength: battleDuration,
+          phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
+        ),
+        opponent: TimedOpponentSource(),
+        repository: FakeUserRepository(),
+        sound: FakeRepSound(),
+        now: () => _endedAt,
+      );
+      addTearDown(other.dispose);
+      now = Duration.zero;
+      await other.start();
+      await frame(30);
+      final full = other.state.result!;
+      expect(full.end, GameEnd.timeUp);
+      expect(full.roundLength, battleDuration);
+      expect(full.form!.roundLength, battleDuration);
+    });
+
+    test(
+      "the opponent's KO ends the round; later reps count for nothing",
+      () async {
+        await battle.start();
+        await myRep(5);
+        await frame(24);
+        for (final seconds in [21.0, 22.0, 23.0]) {
+          await theirRep(seconds);
+        }
+        expect(battle.state.phase, BattlePhase.playing);
+
+        await theirRep(24);
+        expect(battle.state.phase, BattlePhase.timeUp);
+        final result = battle.state.result!;
+        expect(result.end, GameEnd.ko);
+        expect(result.myScore, 10);
+        expect(result.opponentScore, 110);
+        expect(result.opponentReps, 4);
+        expect(result.outcome, MatchOutcome.lose);
+        expect(result.record.outcome, MatchOutcome.lose);
+        expect(opponent.stopped, isTrue);
+
+        await theirRep(25);
+        expect(battle.state.opponentScore, 110);
+        expect(battle.state.opponentReps, 4);
+        await pumpEventQueue();
+        expect(repository.saved, hasLength(1));
+      },
+    );
+
+    test('at time up the game score decides, not the reps', () async {
+      await battle.start();
+      await myRep(21, maxDepth: 1.8);
+      await theirRep(5);
+      await theirRep(10);
+      await frame(30);
+      final result = battle.state.result!;
+      expect(result.end, GameEnd.timeUp);
+      expect(result.myReps, lessThan(result.opponentReps));
+      expect(result.outcome, MatchOutcome.win);
+      expect(result.record.outcome, MatchOutcome.win);
+    });
+
+    test('the rep closed by the last frame is in the final score', () async {
+      await battle.start();
+      await myRep(30);
+      final result = battle.state.result!;
+      expect(result.myReps, 1);
+      expect(result.myScore, 20);
+      expect(result.end, GameEnd.timeUp);
+    });
+
+    test(
+      'a failed counter does not score again; retry starts from zero',
+      () async {
+        await battle.start();
+        await myRep(3);
+        await theirRep(4);
+        now = const Duration(seconds: 5);
+        estimator.frames.add(null);
+        camera.emit();
+        await pumpEventQueue();
+        now = const Duration(seconds: 9);
+        estimator.frames.add(null);
+        camera.emit();
+        await pumpEventQueue();
+        expect(battle.state.phase, BattlePhase.failed);
+        expect(battle.state.myScore, 10);
+
+        await battle.retry();
+        now = const Duration(seconds: 10);
+        expect(battle.state.myScore, 0);
+        expect(battle.state.opponentScore, 0);
+        expect(battle.state.myBarShare, 0.5);
+        expect(battle.state.myLastScore, isNull);
+        expect(battle.state.opponentLastScore, isNull);
+
+        await myRep(12);
+        expect(battle.state.myScore, 10);
+        expect(battle.state.myLastScore!.combo, 1);
+      },
+    );
   });
 }

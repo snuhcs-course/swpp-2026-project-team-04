@@ -25,6 +25,14 @@ abstract final class AppColors {
   /// - the "needs improvement" posture label
   /// - the battle timer during its last 5 seconds
   static const warning = Color(0xFFFFB547);
+
+  /// Cyan, for fever time in the battle: the clock and the time bar until
+  /// their last 5 seconds, and the fever chip.
+  static const fever = Color(0xFF3DE8FF);
+
+  /// Red, only for the battle's danger edge and its icon on the rules screen:
+  /// the user is about to lose. Every other problem is [warning].
+  static const danger = Color(0xFFFF3B30);
 }
 
 /// Font families declared in pubspec.yaml.

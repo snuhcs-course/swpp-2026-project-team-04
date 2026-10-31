@@ -70,6 +70,20 @@ void main() {
     tilt.release();
   });
 
+  test('the latest raw sample is kept for the screen-plane roll', () {
+    final samples = StreamController<GravitySample>(sync: true);
+    addTearDown(samples.close);
+    final tilt = PhoneTiltMonitor(samples: samples.stream);
+    expect(tilt.lastSample, isNull);
+    tilt.retain();
+
+    samples.add(_upright());
+    const rolled = GravitySample(2.5, 9.4, 0.3);
+    samples.add(rolled);
+    expect(tilt.lastSample, same(rolled));
+    tilt.release();
+  });
+
   test('lean or shake after the start is disturbed', () {
     var now = Duration.zero;
     final samples = StreamController<GravitySample>(sync: true);

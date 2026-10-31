@@ -1,3 +1,5 @@
+import 'exercise_type.dart';
+
 /// Why a repetition was rejected.
 enum RejectReason {
   insufficientDepth('Go lower'),
@@ -22,12 +24,30 @@ enum RejectReason {
   notFloorPushUp('Floor push-up'),
 
   /// The phone leaned or shook after the round started.
-  phoneMoved('Hold the phone still');
+  phoneMoved('Hold the phone still'),
+  shallowSquat('Sit lower'),
+  standUpFully('Stand up tall');
 
   const RejectReason(this.message);
 
   /// Short text shown to the user while the match is running.
   final String message;
+
+  static List<RejectReason> forExercise(ExerciseType exercise) =>
+      switch (exercise) {
+        ExerciseType.pushUp => const [
+          insufficientDepth,
+          incompleteExtension,
+          shouldersNotLevel,
+          tooFast,
+          kneesDown,
+          armsStraight,
+          bellyDown,
+          notFloorPushUp,
+          phoneMoved,
+        ],
+        ExerciseType.squat => const [shallowSquat, standUpFully, phoneMoved],
+      };
 }
 
 /// One judged repetition, valid or not.

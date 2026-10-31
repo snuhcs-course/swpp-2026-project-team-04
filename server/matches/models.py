@@ -6,8 +6,8 @@ from django.db import models
 
 # AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
 OUTCOMES = ["win", "loss", "draw"]
-# Why a battle ended (protocol §8). Bot battles always run to time_up.
-REASONS = ["time_up", "forfeit", "disconnect_timeout"]
+# Why a battle ended (protocol §8). Bot battles end by time_up or ko.
+REASONS = ["time_up", "forfeit", "disconnect_timeout", "ko"]
 
 
 class Match(models.Model):

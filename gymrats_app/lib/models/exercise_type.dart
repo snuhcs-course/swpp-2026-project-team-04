@@ -2,7 +2,8 @@
 ///
 /// Only push-up is supported for now. Other exercises come in later versions.
 enum ExerciseType {
-  pushUp('Push-up');
+  pushUp('Push-up'),
+  squat('Squat');
 
   const ExerciseType(this.label);
 

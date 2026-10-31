@@ -20,7 +20,7 @@ class SetupConfig {
     this.maxNoseOffsetRatio = 0.5,
     this.autoStartDelay = const Duration(seconds: 3),
     this.pushUpArmAngle = 155,
-    this.maxPushUpTorsoDrop = 1.0,
+    this.maxPushUpTorsoDrop = 1.5,
   });
 
   /// Minimum ML Kit likelihood for a landmark to count as visible.
@@ -61,7 +61,10 @@ class SetupConfig {
   final double pushUpArmAngle;
 
   /// With the hips visible, a torso drop above this, in shoulder widths,
-  /// means the user is upright, not in a plank. See [torsoDropOf].
+  /// means the user is upright, not in a plank. See [torsoDropOf]. An
+  /// upright body reads over 2. On the H2 recordings the top of a plank
+  /// read 1.05 to 1.22 (one rep 1.54), so the old line of 1.0 turned a
+  /// good plank away and let a kneel with the hips pushed back pass.
   final double maxPushUpTorsoDrop;
 }
 
@@ -73,6 +76,7 @@ enum SetupReason {
   notFacingForward,
   missingParts,
   notInPushUp,
+  notStanding,
 
   // AI-assisted: Cursor, Grok 4.7, 2026-10-16, 송현우
   phoneTooFlat,
@@ -85,7 +89,10 @@ enum BodyPart {
   head('head'),
   shoulders('shoulders'),
   elbows('elbows'),
-  hands('hands');
+  hands('hands'),
+  hips('hips'),
+  knees('knees'),
+  ankles('ankles');
 
   const BodyPart(this.label);
 
@@ -136,6 +143,8 @@ class SetupStatus {
         return '${_capitalize(_joinParts(missingParts))} not visible.';
       case SetupReason.notInPushUp:
         return 'Get into a push-up with straight arms.';
+      case SetupReason.notStanding:
+        return '정면을 보고 똑바로 서 주세요.';
       case SetupReason.phoneTooFlat:
         return '폰을 더 세워 주세요.';
       case SetupReason.phoneShaky:
@@ -176,6 +185,21 @@ const _hands = (
   left: BodyLandmark.leftWrist,
   right: BodyLandmark.rightWrist,
 );
+const _hips = (
+  part: BodyPart.hips,
+  left: BodyLandmark.leftHip,
+  right: BodyLandmark.rightHip,
+);
+const _knees = (
+  part: BodyPart.knees,
+  left: BodyLandmark.leftKnee,
+  right: BodyLandmark.rightKnee,
+);
+const _ankles = (
+  part: BodyPart.ankles,
+  left: BodyLandmark.leftAnkle,
+  right: BodyLandmark.rightAnkle,
+);
 
 /// Required parts per exercise, besides the nose. All exercises use a front
 /// view, so both the left and the right landmark of each part must be visible.
@@ -183,6 +207,7 @@ const _hands = (
 /// body, so they are not required.
 const Map<ExerciseType, List<_PartLandmarks>> _requiredParts = {
   ExerciseType.pushUp: [_shoulders, _elbows, _hands],
+  ExerciseType.squat: [_shoulders, _hips, _knees, _ankles],
 };
 
 /// Decides whether the user is placed well enough to start [exercise].
@@ -299,7 +324,39 @@ class SetupChecker {
     if (exercise == ExerciseType.pushUp && !_isInPushUp(frame)) {
       return (SetupReason.notInPushUp, const []);
     }
+    if (exercise == ExerciseType.squat && !_isStanding(frame)) {
+      return (SetupReason.notStanding, const []);
+    }
     return (SetupReason.ready, const []);
+  }
+
+  bool _isStanding(PoseFrame frame) {
+    for (final side in [
+      (
+        BodyLandmark.leftShoulder,
+        BodyLandmark.leftHip,
+        BodyLandmark.leftKnee,
+        BodyLandmark.leftAnkle,
+      ),
+      (
+        BodyLandmark.rightShoulder,
+        BodyLandmark.rightHip,
+        BodyLandmark.rightKnee,
+        BodyLandmark.rightAnkle,
+      ),
+    ]) {
+      final shoulder = frame[side.$1]!;
+      final hip = frame[side.$2]!;
+      final knee = frame[side.$3]!;
+      final ankle = frame[side.$4]!;
+      final lowerLeg = ankle.y - knee.y;
+      if (lowerLeg <= 0 ||
+          hip.y - shoulder.y <= 0 ||
+          knee.y - hip.y < lowerLeg * .25) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Whether the user holds the top of a push-up: both arms straight and,

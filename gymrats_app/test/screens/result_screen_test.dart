@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -126,6 +128,80 @@ void main() {
       expect(find.text(line), findsOneWidget);
     });
   }
+
+  group('a battle played with the game', () {
+    BattleResult game({
+      int mine = 110,
+      int theirs = 90,
+      MatchOutcome outcome = MatchOutcome.win,
+      GameEnd end = GameEnd.timeUp,
+      Duration roundLength = const Duration(seconds: 30),
+    }) => BattleResult(
+      matchup: _matchup,
+      myReps: 5,
+      myInvalidReps: 1,
+      opponentReps: 6,
+      myScore: mine,
+      opponentScore: theirs,
+      end: end,
+      decidedOutcome: outcome,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+      roundLength: roundLength,
+    );
+
+    testWidgets('shows the points big and the reps under them, even when '
+        'fewer reps won', (tester) async {
+      await open(tester, game());
+      expect(find.text('WIN'), findsOneWidget);
+      expect(find.text('20점 차이로 이겼어요!'), findsOneWidget);
+      expect(colorOf(tester, '110'), AppColors.accent);
+      expect(colorOf(tester, '90'), AppColors.opponent);
+      expect(find.text('유효 5회'), findsOneWidget);
+      expect(find.text('유효 6회'), findsOneWidget);
+      expect(find.text('5회'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final (outcome, word, line) in const [
+      (MatchOutcome.win, 'WIN', 'KO로 이겼어요!'),
+      (MatchOutcome.lose, 'LOSE', 'KO로 졌어요'),
+    ]) {
+      testWidgets('a KO says "$line" and the time played', (tester) async {
+        await open(
+          tester,
+          game(
+            outcome: outcome,
+            end: GameEnd.ko,
+            roundLength: const Duration(seconds: 24),
+          ),
+        );
+        expect(find.text(word), findsOneWidget);
+        expect(find.text(line), findsOneWidget);
+        expect(find.text('푸쉬업 · 24초 · 오늘 14:32'), findsOneWidget);
+      });
+    }
+
+    for (final (outcome, line) in const [
+      (MatchOutcome.win, '유효 횟수로 이겼어요!'),
+      (MatchOutcome.lose, '유효 횟수로 졌어요'),
+      (MatchOutcome.draw, '비겼어요!'),
+    ]) {
+      testWidgets('level points say "$line"', (tester) async {
+        await open(tester, game(mine: 100, theirs: 100, outcome: outcome));
+        expect(find.text(line), findsOneWidget);
+      });
+    }
+
+    testWidgets('fits a 360x640 phone', (tester) async {
+      await open(tester, game(), size: const Size(360, 640));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets('a battle built without a game has no reps line', (tester) async {
+    await open(tester, _result());
+    expect(find.textContaining('유효'), findsNothing);
+  });
 
   testWidgets('without a judged rep, accuracy is a dash', (tester) async {
     await open(tester, _result(mine: 0, invalid: 0, theirs: 21));

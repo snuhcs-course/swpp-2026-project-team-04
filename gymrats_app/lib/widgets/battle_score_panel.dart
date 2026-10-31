@@ -1,21 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/game_score.dart';
 import '../models/reject_reason_korean.dart';
 import '../models/rep_event.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/battle_viewmodel.dart';
+import 'game_fever_chip.dart';
+import 'game_health_bar.dart';
 import 'grid_background.dart';
-import 'battle_score_balance.dart';
 
 /// The clock and the time bar turn amber once this many seconds are left.
 const _warningSeconds = 5;
 
 bool _isLastSeconds(BattleState state) => state.secondsLeft <= _warningSeconds;
 
-/// The battle's bottom panel: the time bar, both scores with the clock
-/// between them, the share of reps, and the verdict on the user's latest
-/// rep.
+/// The clock's and the time bar's color: amber at the very end, cyan in
+/// fever, and lime before that.
+Color _timeColor(BattleState state) {
+  if (_isLastSeconds(state)) return AppColors.warning;
+  return state.fever ? AppColors.fever : AppColors.accent;
+}
+
+/// The battle's bottom panel: the time bar, both game scores with the clock
+/// between them, the health bar, and the verdict on the user's latest rep.
 ///
 /// It reads the battle from the [BattleViewModel] provided above it. Each
 /// part watches only its own values; the time left changes every frame.
@@ -37,7 +45,7 @@ class BattleScorePanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _Scoreboard(opponentName: opponentName),
-                const _ShareBar(),
+                const _HealthBar(),
                 const _FeedbackBanner(),
               ],
             ),
@@ -55,11 +63,11 @@ class _TimeBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (left, warn) = context.select<BattleViewModel, (double, bool)>(
+    final (left, color) = context.select<BattleViewModel, (double, Color)>(
       (vm) => (
         vm.state.remaining.inMicroseconds /
             vm.counter.roundLength.inMicroseconds,
-        _isLastSeconds(vm.state),
+        _timeColor(vm.state),
       ),
     );
     return SizedBox(
@@ -71,9 +79,7 @@ class _TimeBar extends StatelessWidget {
           child: FractionallySizedBox(
             widthFactor: left.clamp(0.0, 1.0),
             heightFactor: 1,
-            child: ColoredBox(
-              color: warn ? AppColors.warning : AppColors.accent,
-            ),
+            child: ColoredBox(color: color),
           ),
         ),
       ),
@@ -89,9 +95,15 @@ class _Scoreboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (mine, theirs) = context.select<BattleViewModel, (int, int)>(
-      (vm) => (vm.state.myReps, vm.state.opponentReps),
-    );
+    final (mine, theirs, myReps, theirReps) = context
+        .select<BattleViewModel, (int, int, int, int)>(
+          (vm) => (
+            vm.state.myScore,
+            vm.state.opponentScore,
+            vm.state.myReps,
+            vm.state.opponentReps,
+          ),
+        );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -99,6 +111,7 @@ class _Scoreboard extends StatelessWidget {
           child: _Score(
             label: '나',
             score: mine,
+            reps: myReps,
             color: AppColors.accent,
             alignment: CrossAxisAlignment.start,
           ),
@@ -108,6 +121,7 @@ class _Scoreboard extends StatelessWidget {
           child: _Score(
             label: opponentName,
             score: theirs,
+            reps: theirReps,
             color: AppColors.opponent,
             alignment: CrossAxisAlignment.end,
           ),
@@ -117,17 +131,20 @@ class _Scoreboard extends StatelessWidget {
   }
 }
 
-/// A player's label over their score in big numbers.
+/// A player's label over their game score in big numbers, over their valid
+/// reps.
 class _Score extends StatelessWidget {
   const _Score({
     required this.label,
     required this.score,
+    required this.reps,
     required this.color,
     required this.alignment,
   });
 
   final String label;
   final int score;
+  final int reps;
   final Color color;
 
   /// Which side of the panel the score stands on.
@@ -150,35 +167,46 @@ class _Score extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        // Two digits fill a column on a narrow phone; shrink rather than
-        // overflow.
+        // Three digits about fill a column on a narrow phone; shrink rather
+        // than overflow.
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
             '$score',
             style: text.displayLarge?.copyWith(
-              fontSize: 92,
-              height: 0.9,
-              letterSpacing: -2.8,
+              fontSize: 64,
+              height: 0.95,
+              letterSpacing: -2,
               color: color,
             ),
           ),
+        ),
+        const SizedBox(height: AppSpacing.s4),
+        Text(
+          '유효 $reps회',
+          maxLines: 1,
+          style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
         ),
       ],
     );
   }
 }
 
-/// Time left over "남은 시간", then who leads by how much.
+/// Time left over "남은 시간" or, in fever, the fever chip; then who leads by
+/// how much.
 class _Clock extends StatelessWidget {
   const _Clock();
 
   @override
   Widget build(BuildContext context) {
-    final (seconds, warn, lead) = context
-        .select<BattleViewModel, (int, bool, int)>(
-          (vm) =>
-              (vm.state.secondsLeft, _isLastSeconds(vm.state), vm.state.lead),
+    final (seconds, color, lead, fever) = context
+        .select<BattleViewModel, (int, Color, int, bool)>(
+          (vm) => (
+            vm.state.secondsLeft,
+            _timeColor(vm.state),
+            vm.state.lead,
+            vm.state.fever,
+          ),
         );
     final text = Theme.of(context).textTheme;
     return Padding(
@@ -190,18 +218,23 @@ class _Clock extends StatelessWidget {
             style: text.displaySmall?.copyWith(
               fontSize: 34,
               height: 1,
-              color: warn ? AppColors.warning : AppColors.accent,
+              color: color,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            '남은 시간',
-            style: text.bodySmall?.copyWith(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
+          if (fever)
+            GameFeverChip(
+              multiplier: context.read<BattleViewModel>().rules.feverMultiplier,
+            )
+          else
+            Text(
+              '남은 시간',
+              style: text.bodySmall?.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
           const SizedBox(height: 8),
           _LeadPill(lead: lead),
         ],
@@ -244,17 +277,25 @@ class _LeadPill extends StatelessWidget {
   }
 }
 
-/// The user's share of all valid reps: lime from the left, pink for the
-/// rest. Half and half before anyone scores.
-class _ShareBar extends StatelessWidget {
-  const _ShareBar();
+/// The health bar, from the game.
+class _HealthBar extends StatelessWidget {
+  const _HealthBar();
 
   @override
   Widget build(BuildContext context) {
-    final (mine, theirs) = context.select<BattleViewModel, (int, int)>(
-      (vm) => (vm.state.myReps, vm.state.opponentReps),
+    final (share, mine, theirs) = context
+        .select<BattleViewModel, (double, GameRepScore?, GameRepScore?)>(
+          (vm) => (
+            vm.state.myBarShare,
+            vm.state.myLastScore,
+            vm.state.opponentLastScore,
+          ),
+        );
+    return GameHealthBar(
+      myShare: share,
+      myLastScore: mine,
+      opponentLastScore: theirs,
     );
-    return BattleScoreBalance(mine: mine, theirs: theirs);
   }
 }
 
@@ -267,15 +308,20 @@ class _FeedbackBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (rep, count) = context.select<BattleViewModel, (RepEvent?, int)>(
-      (vm) => (vm.state.feedback, vm.state.feedbackCount),
-    );
+    final (rep, count, score) = context
+        .select<BattleViewModel, (RepEvent?, int, GameRepScore?)>(
+          (vm) =>
+              (vm.state.feedback, vm.state.feedbackCount, vm.state.myLastScore),
+        );
     if (rep == null) return const SizedBox(height: _height);
     final reason = rep.reason;
+    if (reason == null && score == null) {
+      return const SizedBox(height: _height);
+    }
     return _PopIn(
       key: ValueKey(count),
       child: reason == null
-          ? const _GoodBanner()
+          ? _GoodBanner(score: score!)
           : _RejectedBanner(reason: reason),
     );
   }
@@ -306,13 +352,33 @@ class _PopIn extends StatelessWidget {
   }
 }
 
-/// "+1 GOOD 좋아요, 그 깊이 그대로!" on a lime tint.
+/// "+15 EXCELLENT 깊게 잘 내려갔어요!" or "+40 EXCELLENT 콤보 2 · 점수 2배" on a
+/// lime tint.
 class _GoodBanner extends StatelessWidget {
-  const _GoodBanner();
+  const _GoodBanner({required this.score});
+
+  final GameRepScore score;
+
+  /// The combo and fever when there are any, else a word on the depth.
+  String _words(int feverMultiplier) {
+    final extras = [
+      if (score.combo > 1) '콤보 ${score.combo}',
+      if (score.fever) '점수 $feverMultiplier배',
+    ];
+    if (extras.isNotEmpty) return extras.join(' · ');
+    return switch (score.grade) {
+      GameGrade.good => '좋아요, 그 깊이 그대로!',
+      GameGrade.excellent => '깊게 잘 내려갔어요!',
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final feverMultiplier = context
+        .read<BattleViewModel>()
+        .rules
+        .feverMultiplier;
     return Container(
       constraints: const BoxConstraints(minHeight: _FeedbackBanner._height),
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -323,14 +389,8 @@ class _GoodBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.volume_up_outlined,
-            size: 22,
-            color: AppColors.accent,
-          ),
-          const SizedBox(width: 12),
           Text(
-            '+1 GOOD',
+            '+${score.points} ${score.grade.label.toUpperCase()}',
             style: text.displaySmall?.copyWith(
               fontSize: 20,
               color: AppColors.accent,
@@ -339,7 +399,7 @@ class _GoodBanner extends StatelessWidget {
           const SizedBox(width: 12),
           Flexible(
             child: Text(
-              '좋아요, 그 깊이 그대로!',
+              _words(feverMultiplier),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: text.bodyMedium?.copyWith(

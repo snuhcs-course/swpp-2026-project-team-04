@@ -27,16 +27,14 @@ void main() {
     });
 
     test('a flat or shaky phone is not ready', () {
-      final flat = checker(
-        ExerciseType.pushUp,
-      ).update(pushUpFrontFrame(), phonePropped: false);
+      final flat = checker(ExerciseType.pushUp)
+          .update(pushUpFrontFrame(), phonePropped: false);
       expect(flat.reason, SetupReason.phoneTooFlat);
       expect(flat.message, '폰을 더 세워 주세요.');
       expect(flat.isReady, isFalse);
 
-      final shaky = checker(
-        ExerciseType.pushUp,
-      ).update(pushUpFrontFrame(), phoneStill: false);
+      final shaky = checker(ExerciseType.pushUp)
+          .update(pushUpFrontFrame(), phoneStill: false);
       expect(shaky.reason, SetupReason.phoneShaky);
       expect(shaky.isReady, isFalse);
     });
@@ -271,8 +269,8 @@ void main() {
   });
 
   group('required landmarks (front-view push-up)', () {
-    test('push-up is the only exercise for now', () {
-      expect(ExerciseType.values, [ExerciseType.pushUp]);
+    test('push-up and the squat demo are available', () {
+      expect(ExerciseType.values, [ExerciseType.pushUp, ExerciseType.squat]);
     });
 
     test('both arms are required', () {
@@ -308,11 +306,49 @@ void main() {
     });
   });
 
+  group('squat setup', () {
+    test('requires a standing front-facing full body', () {
+      expect(
+        checker(ExerciseType.squat)
+            .update(standingFrame(showHips: true))
+            .reason,
+        SetupReason.ready,
+      );
+      expect(
+        checker(ExerciseType.squat)
+            .update(
+              standingFrame(showHips: true, hide: {BodyLandmark.leftKnee}),
+            )
+            .reason,
+        SetupReason.missingParts,
+      );
+      expect(
+        checker(ExerciseType.squat)
+            .update(standingFrame(showHips: true, hide: {BodyLandmark.leftEye}))
+            .reason,
+        SetupReason.notFacingForward,
+      );
+      expect(
+        checker(ExerciseType.squat)
+            .update(
+              standingFrame(
+                showHips: true,
+                move: {
+                  BodyLandmark.leftHip: (530, 690),
+                  BodyLandmark.rightHip: (470, 690),
+                },
+              ),
+            )
+            .reason,
+        SetupReason.notStanding,
+      );
+    });
+  });
+
   group('push-up pose', () {
     test('an upright body with the hips in view is not a push-up', () {
-      final status = checker(
-        ExerciseType.pushUp,
-      ).update(standingFrame(showHips: true));
+      final status = checker(ExerciseType.pushUp)
+          .update(standingFrame(showHips: true));
       expect(status.reason, SetupReason.notInPushUp);
       expect(status.message, 'Get into a push-up with straight arms.');
     });
@@ -321,6 +357,35 @@ void main() {
       final c = checker(ExerciseType.pushUp);
       at(c, 0, standingFrame(showHips: true));
       expect(at(c, 3000, standingFrame(showHips: true)).isReady, isFalse);
+    });
+
+    test('a plank with the hips 1.2 shoulder widths down is ready', () {
+      // Shoulders 120 apart at y 250: hips at 394 drop 1.2 widths.
+      final frame = standingFrame(
+        showHips: true,
+        move: {
+          BodyLandmark.leftHip: (530, 394),
+          BodyLandmark.rightHip: (470, 394),
+        },
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.ready,
+      );
+    });
+
+    test('hips 1.6 shoulder widths down are upright', () {
+      final frame = standingFrame(
+        showHips: true,
+        move: {
+          BodyLandmark.leftHip: (530, 442),
+          BodyLandmark.rightHip: (470, 442),
+        },
+      );
+      expect(
+        checker(ExerciseType.pushUp).update(frame).reason,
+        SetupReason.notInPushUp,
+      );
     });
 
     test('bent arms are not the top of a push-up', () {
@@ -338,9 +403,9 @@ void main() {
 
     test('a plank with the hips just behind the shoulders is ready', () {
       expect(
-        checker(
-          ExerciseType.pushUp,
-        ).update(pushUpFrontFrame(showHips: true)).reason,
+        checker(ExerciseType.pushUp)
+            .update(pushUpFrontFrame(showHips: true))
+            .reason,
         SetupReason.ready,
       );
     });
