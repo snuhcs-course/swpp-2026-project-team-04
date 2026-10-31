@@ -77,11 +77,11 @@ void main() {
       expect(find.text(rule.title), findsOneWidget);
       expect(find.text(rule.body), findsOneWidget);
     }
-    // The danger row is amber like every warning; the others are lime.
+    // The danger row is red like the danger edge; the others are lime.
     Color? iconColor(IconData icon) =>
         tester.widget<Icon>(find.byIcon(icon)).color;
     final [danger, ...others] = HelpRules.reminders;
-    expect(iconColor(danger.icon), AppColors.warning);
+    expect(iconColor(danger.icon), AppColors.danger);
     for (final rule in others) {
       expect(iconColor(rule.icon), AppColors.accent);
     }

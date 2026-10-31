@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/avatar_model.dart';
+import 'package:gymrats_app/models/battle_rules.dart';
+import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
+import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
+import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
@@ -14,9 +18,13 @@ import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/pose_avatar_toggle_view.dart';
 import 'package:gymrats_app/widgets/battle_score_balance.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
+import 'package:gymrats_app/widgets/game_danger_edge.dart';
+import 'package:gymrats_app/widgets/game_fever_chip.dart';
+import 'package:gymrats_app/widgets/game_health_bar.dart';
 
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
+import '../support/game_fakes.dart';
 import '../support/pose_fixtures.dart';
 import '../support/placed_phone.dart';
 
@@ -66,7 +74,11 @@ void main() {
   late InMemoryFormReportStore reports;
   late FakeUserRepository repository;
 
-  Future<void> open(WidgetTester tester, {bool denied = false}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    bool denied = false,
+    RepJudge? judge,
+  }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
@@ -82,7 +94,7 @@ void main() {
     counter = RepCounterViewModel(
       camera: camera,
       estimator: estimator,
-      judge: FakeRepJudge(),
+      judge: judge ?? FakeRepJudge(),
       phoneTilt: phone,
       roundLength: const Duration(days: 1),
     );
@@ -101,6 +113,34 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+  }
+
+  /// Plays a short online round and ends it with the server's [result],
+  /// [endedAfterMs] into the round if given.
+  Future<void> finishRound(
+    WidgetTester tester,
+    Map<String, dynamic> result, {
+    int? endedAfterMs,
+  }) async {
+    session.durationMs = 30000;
+    session.startAtMs = session.serverNow - 100;
+    session.endAtMs = session.serverNow + 29900;
+    session.phase = OnlinePhase.playing;
+    session.notifyListeners();
+    await tester.pump();
+    estimator.frames.add(standingFrame());
+    camera.emit();
+    await tester.pump();
+    session.phase = OnlinePhase.finished;
+    session.result = {
+      ...result,
+      if (endedAfterMs != null)
+        'ended_at_ms': session.startAtMs! + endedAfterMs,
+    };
+    session.notifyListeners();
+    await tester.pumpAndSettle();
+    session.notifyListeners();
     await tester.pumpAndSettle();
   }
 
@@ -124,10 +164,254 @@ void main() {
     expect(balance.mine, 3);
     expect(balance.theirs, 2);
     expect(find.text('나 60%'), findsOneWidget);
+    // An older server has no game: the reps are the score.
+    expect(find.text('나  3'), findsOneWidget);
+    expect(find.byType(GameHealthBar), findsNothing);
+    expect(find.byType(GameFeverChip), findsNothing);
     expect(tester.takeException(), isNull);
     await captureFlowSnapshot('online-battle-live-indicators');
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
+  });
+
+  group('with the game', () {
+    Color? clockColor(WidgetTester tester, int seconds) =>
+        tester.widget<Text>(find.text('$seconds초')).style?.color;
+
+    bool edgeActive(WidgetTester tester) =>
+        tester.widget<GameDangerEdge>(find.byType(GameDangerEdge)).active;
+
+    /// A round running for [elapsedMs], with [leftMs] left.
+    Future<void> play(
+      WidgetTester tester, {
+      int elapsedMs = 100,
+      int leftMs = 15000,
+    }) async {
+      session.rules = battleRules;
+      session.startAtMs = session.serverNow - elapsedMs;
+      session.endAtMs = session.serverNow + leftMs;
+      session.phase = OnlinePhase.playing;
+      session.notifyListeners();
+      await tester.pump();
+    }
+
+    testWidgets('scores, valid reps, the bar, and +N come from the session', (
+      tester,
+    ) async {
+      await open(tester);
+      await play(tester);
+      session.myReps = 3;
+      session.opponentReps = 2;
+      session.myScore = 45;
+      session.opponentScore = 20;
+      session.myLastScore = const GameRepScore(
+        grade: GameGrade.excellent,
+        combo: 1,
+        fever: false,
+        points: 15,
+      );
+      session.notifyListeners();
+      estimator.frames.add(standingFrame());
+      camera.emit();
+      await tester.pumpAndSettle();
+      expect(find.text('나  45'), findsOneWidget);
+      expect(find.text('20  상대'), findsOneWidget);
+      expect(find.text('유효 3회'), findsOneWidget);
+      expect(find.text('유효 2회'), findsOneWidget);
+      expect(find.byType(BattleScoreBalance), findsNothing);
+      final bar = tester.widget<GameHealthBar>(find.byType(GameHealthBar));
+      expect(bar.myShare, closeTo(.625, 1e-9));
+      expect(bar.myLastScore, same(session.myLastScore));
+      expect(find.text('나 63%'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('the clock is lime, cyan with the chip in fever, then amber', (
+      tester,
+    ) async {
+      await open(tester);
+      await play(tester, elapsedMs: 15000, leftMs: 14500);
+      expect(clockColor(tester, 15), AppColors.accent);
+      expect(find.byType(GameFeverChip), findsNothing);
+      await play(tester, elapsedMs: 21000, leftMs: 8500);
+      expect(clockColor(tester, 9), AppColors.fever);
+      expect(find.text('FEVER ×2'), findsOneWidget);
+      await play(tester, elapsedMs: 26000, leftMs: 3500);
+      expect(clockColor(tester, 4), AppColors.warning);
+      expect(find.byType(GameFeverChip), findsOneWidget);
+      // Over in fever time: the chip goes with the round.
+      session.phase = OnlinePhase.finished;
+      session.result = {'reason': 'ko', 'ended_at_ms': session.serverNow};
+      session.notifyListeners();
+      await tester.pump();
+      expect(find.byType(GameFeverChip), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    /// Lets the judge's queued rep close on the next frame.
+    Future<void> closeRep(WidgetTester tester) async {
+      estimator.frames.add(standingFrame());
+      camera.emit();
+      await tester.pump();
+      await tester.pump();
+    }
+
+    testWidgets('each rep says its words at once, without the server: the '
+        'grade and +N, or the reason in Korean', (tester) async {
+      final judge = DepthRepJudge();
+      await open(tester, judge: judge);
+      await play(tester);
+      judge.closeRep(maxDepth: 1.9);
+      await closeRep(tester);
+      expect(find.text('+15 EXCELLENT'), findsOneWidget);
+      judge.closeRep(reason: RejectReason.insufficientDepth);
+      await closeRep(tester);
+      expect(find.text('가슴을 더 내려요'), findsOneWidget);
+      expect(find.text('+15 EXCELLENT'), findsNothing);
+      judge.closeRep(maxDepth: 1.4);
+      await closeRep(tester);
+      expect(find.text('+10 GOOD'), findsOneWidget);
+      // Nothing was answered: the score still waits for the server.
+      expect(session.myScore, 0);
+      expect(find.text('나  0'), findsOneWidget);
+      session.myLastScore = const GameRepScore(
+        grade: GameGrade.excellent,
+        combo: 3,
+        fever: true,
+        points: 40,
+      );
+      session.notifyListeners();
+      await tester.pump();
+      expect(find.text('+40 EXCELLENT · 콤보 3 · 점수 2배'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets("a rep's grade goes by the counter's pass depth", (
+      tester,
+    ) async {
+      final judge = DepthRepJudge(
+        config: const RepJudgeConfig(bottomDepth: .75),
+      );
+      await open(tester, judge: judge);
+      await play(tester);
+      // 1.6 x 0.75: a push-up at this depth would only be good.
+      judge.closeRep(maxDepth: 1.2);
+      await closeRep(tester);
+      expect(find.text('+15 EXCELLENT'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('an older server has no words but +1', (tester) async {
+      final judge = DepthRepJudge();
+      await open(tester, judge: judge);
+      await play(tester);
+      session.rules = null;
+      judge.closeRep(maxDepth: 1.9);
+      await closeRep(tester);
+      expect(find.text('+1'), findsOneWidget);
+      expect(session.myLastScore, isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('on the largest system font the fever row does not overflow', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await open(tester);
+      await play(tester, elapsedMs: 21000, leftMs: 8500);
+      session.myReps = 12;
+      session.opponentReps = 14;
+      session.notifyListeners();
+      await tester.pump();
+      expect(find.text('FEVER ×2'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('the danger edge is on 60 points behind, off once it ends', (
+      tester,
+    ) async {
+      await open(tester);
+      await play(tester);
+      session.opponentScore = 59;
+      session.notifyListeners();
+      await tester.pump();
+      expect(edgeActive(tester), isFalse);
+      session.opponentScore = 60;
+      session.notifyListeners();
+      await tester.pump();
+      expect(edgeActive(tester), isTrue);
+      session.phase = OnlinePhase.finished;
+      session.result = {'reason': 'time_up', 'ended_at_ms': session.serverNow};
+      session.notifyListeners();
+      await tester.pump();
+      expect(edgeActive(tester), isFalse);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('the danger edge is off while the camera has failed', (
+      tester,
+    ) async {
+      await open(tester, denied: true);
+      await play(tester);
+      session.opponentScore = 60;
+      session.notifyListeners();
+      await tester.pump();
+      expect(edgeActive(tester), isFalse);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a KO says so, shows the scores, and keeps the report with '
+        'the time played rounded up', (tester) async {
+      await open(tester);
+      session.rules = battleRules;
+      session.myScore = 120;
+      session.opponentScore = 20;
+      session.myReps = 6;
+      session.opponentReps = 2;
+      await finishRound(tester, {
+        'result_id': 'r' * 32,
+        'reason': 'ko',
+        'players': [
+          {'player_id': 'me', 'outcome': 'win'},
+          {'player_id': 'opponent', 'outcome': 'loss'},
+        ],
+      }, endedAfterMs: 23400);
+      expect(find.text('승리'), findsOneWidget);
+      expect(find.text('K.O.로 끝났어요.'), findsOneWidget);
+      expect(find.text('점수 120 : 20 · 유효 6 : 2'), findsOneWidget);
+      final report = (await reports.list()).single;
+      expect(report.roundLength, const Duration(seconds: 24));
+      expect(repository.savedFeedback.single.$1, 'r' * 32);
+      expect(find.text('자세 피드백 보기'), findsOneWidget);
+      // 6.6 s were left at the KO. The clock stays there, in a plain color.
+      Text clock() => tester.widget<Text>(find.text('7초'));
+      expect(
+        clock().style?.color,
+        isNot(anyOf(AppColors.accent, AppColors.fever, AppColors.warning)),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 1100)),
+      );
+      session.notifyListeners();
+      await tester.pump();
+      expect(find.text('7초'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
   });
 
   testWidgets('online setup requires a propped and still phone', (
@@ -166,28 +450,6 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
-
-  /// Plays a short online round and ends it with the server's [result].
-  Future<void> finishRound(
-    WidgetTester tester,
-    Map<String, dynamic> result,
-  ) async {
-    session.durationMs = 30000;
-    session.startAtMs = session.serverNow - 100;
-    session.endAtMs = session.serverNow + 29900;
-    session.phase = OnlinePhase.playing;
-    session.notifyListeners();
-    await tester.pump();
-    estimator.frames.add(standingFrame());
-    camera.emit();
-    await tester.pump();
-    session.phase = OnlinePhase.finished;
-    session.result = result;
-    session.notifyListeners();
-    await tester.pumpAndSettle();
-    session.notifyListeners();
-    await tester.pumpAndSettle();
-  }
 
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   testWidgets('a failed feedback upload still shows the result and feedback', (

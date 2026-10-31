@@ -14,14 +14,17 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
+import 'package:gymrats_app/widgets/game_danger_edge.dart';
+import 'package:gymrats_app/widgets/game_fever_chip.dart';
+import 'package:gymrats_app/widgets/game_health_bar.dart';
 import 'package:gymrats_app/widgets/landmark_overlay.dart';
 import 'package:gymrats_app/widgets/opponent_mannequin.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
-import 'package:gymrats_app/widgets/battle_score_balance.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 
 import '../support/fakes.dart';
+import '../support/game_fakes.dart';
 import '../support/pose_fixtures.dart';
 import '../support/flow_snapshot.dart';
 import '../support/placed_phone.dart';
@@ -46,6 +49,7 @@ void main() {
     WidgetTester tester, {
     Size size = const Size(412, 915),
     CameraPermission permission = CameraPermission.granted,
+    RepJudge? repJudge,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -61,7 +65,7 @@ void main() {
       counter: RepCounterViewModel(
         camera: camera,
         estimator: estimator,
-        judge: judge,
+        judge: repJudge ?? judge,
         phoneTilt: placedPhone(),
         clock: () => now,
         roundLength: battleDuration,
@@ -149,8 +153,8 @@ void main() {
     expect(find.byType(ChestHeightOverlay), findsOneWidget);
     expect(find.text('하강 50% · 어깨 너비 기준'), findsOneWidget);
     expect(
-      tester.widget<BattleScoreBalance>(find.byType(BattleScoreBalance)).mine,
-      1,
+      tester.widget<GameHealthBar>(find.byType(GameHealthBar)).myShare,
+      closeTo(0.55, 1e-9),
     );
     expect(tester.takeException(), isNull);
     await captureFlowSnapshot('ai-battle-live-indicators');
@@ -175,7 +179,7 @@ void main() {
       [AppColors.accent, AppColors.opponent],
     );
     // No verdict before the first rep, and no demo button.
-    expect(find.text('+1 GOOD'), findsNothing);
+    expect(find.text('+10 GOOD'), findsNothing);
     expect(find.text('다시 시뮬레이션'), findsNothing);
     expect(opponent.running, isTrue);
   });
@@ -184,7 +188,7 @@ void main() {
     (const Size(390, 844), const Rect.fromLTWH(0, 0, 390, 520)),
     (const Size(412, 915), const Rect.fromLTWH(0, 0, 412, 412 * 4 / 3)),
     // Short: the panel keeps its room and the camera narrows.
-    (const Size(360, 640), const Rect.fromLTWH(37.5, 0, 285, 380)),
+    (const Size(360, 640), const Rect.fromLTWH(45, 0, 270, 360)),
   ]) {
     testWidgets('a ${size.width.toInt()}x${size.height.toInt()} phone shows '
         'the whole 3:4 camera, without overflow', (tester) async {
@@ -217,18 +221,19 @@ void main() {
     );
   });
 
-  testWidgets('a counted rep shows +1 GOOD; a rejected one says why, on '
+  testWidgets('a counted rep shows +10 GOOD; a rejected one says why, on '
       'amber', (tester) async {
     await open(tester);
     judge.closeRep();
     await frame(tester, 2);
-    expect(find.text('+1 GOOD'), findsOneWidget);
+    expect(find.text('+10 GOOD'), findsOneWidget);
     expect(find.text('좋아요, 그 깊이 그대로!'), findsOneWidget);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('10'), findsOneWidget);
+    expect(find.text('유효 1회'), findsOneWidget);
 
     judge.closeRep(reason: RejectReason.shouldersNotLevel);
     await frame(tester, 4);
-    expect(find.text('+1 GOOD'), findsNothing);
+    expect(find.text('+10 GOOD'), findsNothing);
     expect(find.text('카운트 안 됨'), findsOneWidget);
     expect(find.text('어깨를 수평으로 맞춰요'), findsOneWidget);
     final banner = tester.widget<Container>(
@@ -243,9 +248,9 @@ void main() {
     await open(tester);
     opponent.emit();
     await tester.pump();
-    expect(find.text('−1 추격 중'), findsOneWidget);
+    expect(find.text('−10 추격 중'), findsOneWidget);
     expect(
-      tester.widget<Text>(find.text('−1 추격 중')).style!.color,
+      tester.widget<Text>(find.text('−10 추격 중')).style!.color,
       AppColors.opponent,
     );
     expect(
@@ -257,25 +262,192 @@ void main() {
     await frame(tester, 2);
     judge.closeRep();
     await frame(tester, 4);
-    expect(find.text('+1 리드'), findsOneWidget);
+    expect(find.text('+10 리드'), findsOneWidget);
     expect(
-      tester.widget<Text>(find.text('+1 리드')).style!.color,
+      tester.widget<Text>(find.text('+10 리드')).style!.color,
       AppColors.accent,
     );
   });
 
-  testWidgets('the clock turns amber for the last 5 seconds', (tester) async {
+  testWidgets('the clock is lime, cyan in fever, and amber for the last 5 '
+      'seconds', (tester) async {
     await open(tester);
+    await frame(tester, 19.5);
+    expect(
+      tester.widget<Text>(find.text('0:11')).style!.color,
+      AppColors.accent,
+    );
     await frame(tester, 24.5);
     expect(
       tester.widget<Text>(find.text('0:06')).style!.color,
-      AppColors.accent,
+      AppColors.fever,
     );
     await frame(tester, 25);
     expect(
       tester.widget<Text>(find.text('0:05')).style!.color,
       AppColors.warning,
     );
+  });
+
+  testWidgets('fever swaps "남은 시간" for the fever chip', (tester) async {
+    await open(tester);
+    await frame(tester, 19.9);
+    expect(find.byType(GameFeverChip), findsNothing);
+    expect(find.text('남은 시간'), findsOneWidget);
+
+    await frame(tester, 20);
+    expect(find.text('FEVER ×2'), findsOneWidget);
+    expect(find.text('남은 시간'), findsNothing);
+  });
+
+  testWidgets('each side\'s valid rep moves the bar and pops its +N', (
+    tester,
+  ) async {
+    await open(tester);
+    expect(
+      tester.widget<GameHealthBar>(find.byType(GameHealthBar)).myShare,
+      0.5,
+    );
+
+    judge.closeRep();
+    await frame(tester, 2);
+    var bar = tester.widget<GameHealthBar>(find.byType(GameHealthBar));
+    expect(bar.myShare, closeTo(0.55, 1e-9));
+    expect(bar.myLastScore!.points, 10);
+    expect(bar.opponentLastScore, isNull);
+    expect(find.text('+10'), findsOneWidget);
+
+    opponent.emit();
+    await tester.pump();
+    bar = tester.widget<GameHealthBar>(find.byType(GameHealthBar));
+    expect(bar.myShare, 0.5);
+    expect(bar.opponentLastScore!.points, 10);
+    expect(find.text('+10'), findsNWidgets(2));
+  });
+
+  testWidgets('a deep rep says EXCELLENT, and the banner names a combo and '
+      'fever', (tester) async {
+    final deep = DepthRepJudge();
+    await open(tester, repJudge: deep);
+    deep.closeRep(maxDepth: 1.8);
+    await frame(tester, 3);
+    expect(find.text('+15 EXCELLENT'), findsOneWidget);
+    expect(find.text('깊게 잘 내려갔어요!'), findsOneWidget);
+
+    deep.closeRep();
+    await frame(tester, 4);
+    expect(find.text('+15 GOOD'), findsOneWidget);
+    expect(find.text('콤보 2'), findsOneWidget);
+
+    deep.closeRep();
+    await frame(tester, 21);
+    expect(find.text('+20 GOOD'), findsOneWidget);
+    expect(find.text('점수 2배'), findsOneWidget);
+
+    deep.closeRep(maxDepth: 1.8);
+    await frame(tester, 22);
+    expect(find.text('+40 EXCELLENT'), findsOneWidget);
+    expect(find.text('콤보 2 · 점수 2배'), findsOneWidget);
+  });
+
+  testWidgets('the fullest panel fits a 360x640 phone', (tester) async {
+    await open(tester, size: const Size(360, 640));
+    for (var i = 0; i < 7; i++) {
+      judge.closeRep();
+      await frame(tester, 21.0 + i);
+      opponent
+        ..emit()
+        ..emit();
+      await tester.pump();
+    }
+    expect(viewModel.state.phase, BattlePhase.playing);
+    expect(viewModel.state.myScore, greaterThan(100));
+    expect(viewModel.state.opponentScore, greaterThan(100));
+    expect(find.text('FEVER ×2'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the screen edge flashes while 60 points behind, and takes no '
+      'taps', (tester) async {
+    await open(tester);
+    GameDangerEdge edge() =>
+        tester.widget<GameDangerEdge>(find.byType(GameDangerEdge));
+    expect(edge().active, isFalse);
+
+    // Sent at once, so each after the first is a combo: 10, 25, 40, 55, 70.
+    for (var i = 0; i < 5; i++) {
+      opponent.emit();
+    }
+    await tester.pump();
+    expect(viewModel.state.danger, isTrue);
+    expect(edge().active, isTrue);
+    expect(
+      find.descendant(
+        of: find.byType(GameDangerEdge),
+        matching: find.byType(IgnorePointer),
+      ),
+      findsOneWidget,
+    );
+
+    judge.closeRep();
+    await frame(tester, 5);
+    judge.closeRep();
+    await frame(tester, 10);
+    expect(viewModel.state.danger, isFalse);
+    expect(edge().active, isFalse);
+  });
+
+  testWidgets('a camera failure stops the edge while the round is held', (
+    tester,
+  ) async {
+    await open(tester);
+    for (var i = 0; i < 5; i++) {
+      opponent.emit();
+    }
+    await tester.pump();
+    expect(
+      tester.widget<GameDangerEdge>(find.byType(GameDangerEdge)).active,
+      isTrue,
+    );
+
+    // Pose detection keeps failing for 3 seconds.
+    for (final seconds in const [1, 5]) {
+      now = Duration(seconds: seconds);
+      estimator.frames.add(null);
+      camera.emit();
+      await tester.pump();
+      await tester.pump();
+    }
+    expect(viewModel.state.phase, BattlePhase.failed);
+    expect(viewModel.state.danger, isTrue);
+    expect(
+      tester.widget<GameDangerEdge>(find.byType(GameDangerEdge)).active,
+      isFalse,
+    );
+  });
+
+  testWidgets('a KO shows K.O. with the game scores, stops the edge, and '
+      'leads to the result', (tester) async {
+    await open(tester);
+    judge.closeRep();
+    await frame(tester, 2);
+    // 10, 25, 40, 55, 70, 85, 100, 115: a 105-point lead.
+    for (var i = 0; i < 8; i++) {
+      opponent.emit();
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('K.O.'), findsOneWidget);
+    expect(find.text('TIME UP'), findsNothing);
+    expect(find.text('아쉽게 졌어요'), findsOneWidget);
+    expect(find.text('115'), findsWidgets);
+    expect(
+      tester.widget<GameDangerEdge>(find.byType(GameDangerEdge)).active,
+      isFalse,
+    );
+
+    await tester.tap(find.text('결과 보기'));
+    await transition(tester);
+    expect(find.text('result 1:8'), findsOneWidget);
   });
 
   for (final (mine, theirs, verdict) in const [

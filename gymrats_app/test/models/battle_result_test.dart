@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 
@@ -35,6 +36,67 @@ void main() {
     expect(_result(mine: 20, theirs: 23).margin, 3);
     expect(_result(mine: 22, theirs: 22).outcome, MatchOutcome.draw);
     expect(_result(mine: 22, theirs: 22).margin, 0);
+  });
+
+  test('the outcome from the game wins over the reps, also in the record', () {
+    final result = BattleResult(
+      matchup: _matchup,
+      myReps: 5,
+      myInvalidReps: 1,
+      opponentReps: 6,
+      myScore: 110,
+      opponentScore: 90,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    );
+    expect(result.outcome, MatchOutcome.win);
+    expect(result.record.outcome, MatchOutcome.win);
+    expect(result.record.myReps, 5);
+    expect(result.myScore, 110);
+    expect(result.opponentScore, 90);
+  });
+
+  test('the record says how the game stopped, for the upload', () {
+    expect(_result().record.gameEnd, GameEnd.timeUp);
+    final ko = BattleResult(
+      matchup: _matchup,
+      myReps: 5,
+      myInvalidReps: 0,
+      opponentReps: 1,
+      end: GameEnd.ko,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    );
+    expect(ko.record.gameEnd, GameEnd.ko);
+  });
+
+  test('with a game the big numbers and the margin are the points; without '
+      'one they are the reps', () {
+    final withGame = BattleResult(
+      matchup: _matchup,
+      myReps: 5,
+      myInvalidReps: 1,
+      opponentReps: 6,
+      myScore: 110,
+      opponentScore: 90,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    );
+    expect(withGame.hasGame, isTrue);
+    expect(withGame.myDisplayScore, 110);
+    expect(withGame.opponentDisplayScore, 90);
+    expect(withGame.margin, 20);
+
+    final without = _result(mine: 5, theirs: 6);
+    expect(without.hasGame, isFalse);
+    expect(without.myDisplayScore, 5);
+    expect(without.opponentDisplayScore, 6);
+    expect(without.margin, 1);
+  });
+
+  test('a battle ends by time unless told otherwise', () {
+    expect(_result().end, GameEnd.timeUp);
+    expect(_result().myScore, 0);
+    expect(_result().opponentScore, 0);
   });
 
   test('accuracy is counted reps over judged reps', () {

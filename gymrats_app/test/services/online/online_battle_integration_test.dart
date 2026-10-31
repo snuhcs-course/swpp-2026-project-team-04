@@ -13,6 +13,10 @@ import 'package:gymrats_app/services/online/pose_wire.dart';
 // ignore: avoid_relative_lib_imports
 import '../../../../server/lib/battle_server.dart';
 
+// The same library the server imports: by package: it would be another type.
+// ignore: avoid_relative_lib_imports
+import '../../../lib/models/battle_rules.dart';
+
 import 'package:gymrats_app/shared/battle_protocol.dart';
 
 Future<void> until(bool Function() condition) async {
@@ -93,6 +97,7 @@ void main() {
     int duration = 1500,
     int reconnect = 300,
     int ready = 1000,
+    BattleRules rules = battleRules,
   }) async {
     final s = BattleServer(
       authenticate: (token) => switch (token) {
@@ -106,6 +111,7 @@ void main() {
       countdownMs: 80,
       readyTimeoutMs: ready,
       reconnectMs: reconnect,
+      rules: rules,
     );
     await s.start();
     addTearDown(s.close);
@@ -160,6 +166,238 @@ void main() {
       (found['payload']['players'] as List)
           .map((p) => p['player_id'] as String)
           .toList();
+
+  group('the game on the server', () {
+    Map<String, dynamic> rep(
+      int seq,
+      int elapsed, {
+      String? grade,
+      String? reason,
+    }) => {
+      'rep_seq': seq,
+      'elapsed_ms': elapsed,
+      'valid': reason == null,
+      'reason': reason,
+      'grade': ?grade,
+    };
+
+    Map<String, dynamic> player(Map<String, dynamic> finished, String id) =>
+        (finished['payload']['players'] as List)
+            .cast<Map<String, dynamic>>()
+            .firstWhere((p) => p['player_id'] == id);
+
+    test('match.found names the fever start and the KO lead', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      for (final wire in [a, b]) {
+        final found = wire.events.firstWhere((e) => e['type'] == 'match.found');
+        expect(found['payload']['fever_start_ms'], 20000);
+        expect(found['payload']['ko_lead'], 100);
+      }
+    });
+
+    test('points, combo, and the grade reach both players', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'good'));
+      final first = (await a.next('rep.accepted'))['payload'];
+      expect(first['points'], 10);
+      expect(first['combo'], 1);
+      expect(first['game_score'], 10);
+
+      a.send('rep.submit', rep(2, 20, grade: 'excellent'));
+      final second = (await a.next('rep.accepted'))['payload'];
+      expect(second['points'], 20);
+      expect(second['combo'], 2);
+      expect(second['game_score'], 30);
+
+      await b.next('rep.updated');
+      final seen = (await b.next('rep.updated'))['payload'];
+      expect(seen['player_id'], 'a');
+      expect(seen['grade'], 'excellent');
+      expect(seen['combo'], 2);
+      expect(seen['points'], 20);
+      expect(seen['game_score'], 30);
+      expect(seen['valid_reps'], 2);
+    });
+
+    test('no grade counts as good; a rejected rep breaks the combo', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10));
+      expect((await a.next('rep.accepted'))['payload']['game_score'], 10);
+
+      a.send('rep.submit', rep(2, 20, reason: 'insufficient_depth'));
+      final rejected = (await a.next('rep.accepted'))['payload'];
+      expect(rejected['points'], 0);
+      expect(rejected['combo'], 0);
+      expect(rejected['game_score'], 10);
+
+      a.send('rep.submit', rep(3, 30));
+      final next = (await a.next('rep.accepted'))['payload'];
+      expect(next['points'], 10);
+      expect(next['combo'], 1);
+    });
+
+    test('a bad grade, or a grade on a rejected rep, is refused', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'perfect'));
+      expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
+      a.send('rep.submit', rep(1, 10, grade: 'good', reason: 'too_fast'));
+      expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
+      a.send('rep.submit', rep(1, 10, grade: 'good'));
+      expect((await a.next('rep.accepted'))['payload']['valid_reps'], 1);
+    });
+
+    test('a rep from the fever start on scores double', () async {
+      final s = await server(
+        rules: const BattleRules(feverStart: Duration(milliseconds: 100)),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 99));
+      expect((await a.next('rep.accepted'))['payload']['points'], 10);
+      b.send('rep.submit', rep(1, 100));
+      expect((await b.next('rep.accepted'))['payload']['points'], 20);
+    });
+
+    test('a sent-again rep does not score twice', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10), rid: 'first');
+      expect((await a.next('rep.accepted'))['payload']['game_score'], 10);
+      a.send('rep.submit', rep(1, 10), rid: 'again');
+      expect((await a.next('rep.accepted'))['payload']['game_score'], 10);
+    });
+
+    test('at time up the game score decides, not the reps', () async {
+      final s = await server(
+        duration: 400,
+        rules: const BattleRules(excellentPoints: 50),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'excellent'));
+      await a.next('rep.accepted');
+      b.send('rep.submit', rep(1, 10));
+      await b.next('rep.accepted');
+      b.send('rep.submit', rep(2, 20));
+      await b.next('rep.accepted');
+
+      final finished = await a.next('match.finished');
+      expect(finished['payload']['reason'], 'time_up');
+      expect(finished['payload']['winner_id'], 'a');
+      expect(player(finished, 'a')['game_score'], 50);
+      expect(player(finished, 'a')['valid_reps'], 1);
+      expect(player(finished, 'b')['game_score'], 25);
+      expect(player(finished, 'b')['outcome'], 'loss');
+    });
+
+    test('the same game score goes to more valid reps', () async {
+      final s = await server(
+        duration: 400,
+        rules: const BattleRules(excellentPoints: 25),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'excellent'));
+      await a.next('rep.accepted');
+      b.send('rep.submit', rep(1, 10));
+      await b.next('rep.accepted');
+      b.send('rep.submit', rep(2, 20));
+      await b.next('rep.accepted');
+      final finished = await a.next('match.finished');
+      expect(player(finished, 'a')['game_score'], 25);
+      expect(player(finished, 'b')['game_score'], 25);
+      expect(finished['payload']['winner_id'], 'b');
+    });
+
+    test('the same game score and reps are a draw', () async {
+      final s = await server(duration: 400);
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10));
+      await a.next('rep.accepted');
+      b.send('rep.submit', rep(1, 10));
+      await b.next('rep.accepted');
+      final finished = await a.next('match.finished');
+      expect(finished['payload']['winner_id'], isNull);
+      expect(player(finished, 'a')['outcome'], 'draw');
+    });
+
+    test('a KO ends the match at once, after the ACK, for both', () async {
+      final s = await server(
+        duration: 5000,
+        rules: const BattleRules(koLead: 20),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10));
+      await a.next('rep.accepted');
+      a.send('rep.submit', rep(2, 20));
+      expect((await a.next('rep.accepted'))['payload']['game_score'], 25);
+
+      final finished = await a.next('match.finished');
+      expect(finished['payload']['reason'], 'ko');
+      expect(finished['payload']['winner_id'], 'a');
+      expect(player(finished, 'a')['game_score'], 25);
+      expect(player(finished, 'b')['outcome'], 'loss');
+      await b.next('rep.updated');
+      await b.next('rep.updated');
+      expect((await b.next('match.finished'))['payload']['reason'], 'ko');
+
+      b.send('rep.submit', rep(1, 30));
+      expect((await b.next('error'))['payload']['code'], 'INVALID_STATE');
+    });
+
+    test('the KO rep sent again after the end gets its first ACK', () async {
+      final s = await server(
+        duration: 5000,
+        rules: const BattleRules(koLead: 10),
+      );
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10));
+      final first = (await a.next('rep.accepted'))['payload'];
+      await a.next('match.finished');
+
+      a.send('rep.submit', rep(1, 10));
+      expect((await a.next('rep.accepted'))['payload'], first);
+      expect(
+        a.events.where((e) => e['type'] == 'match.finished'),
+        hasLength(1),
+      );
+    });
+
+    test('the same rep with another grade is a conflict', () async {
+      final s = await server();
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'good'));
+      await a.next('rep.accepted');
+      a.send('rep.submit', rep(1, 10, grade: 'excellent'));
+      expect((await a.next('error'))['payload']['code'], 'REP_CONFLICT');
+    });
+
+    test('the snapshot restores the game score', () async {
+      final s = await server(duration: 3000);
+      final (a, b) = await paired(s);
+      await ready(a, b);
+      a.send('rep.submit', rep(1, 10, grade: 'excellent'));
+      await a.next('rep.accepted');
+      a.send('match.resume', {});
+      final snapshot = (await a.next('match.snapshot'))['payload'];
+      expect(snapshot['scores']['a']['game_score'], 15);
+      expect(snapshot['scores']['b']['game_score'], 0);
+      expect(snapshot['fever_start_ms'], 20000);
+      expect(snapshot['ko_lead'], 100);
+    });
+  });
 
   test(
     'all catalog avatars can match and appear on the opponent client',
@@ -548,6 +786,489 @@ void main() {
     expect(a.outcome, 'win');
     expect(b.outcome, 'loss');
     expect(a.result!['result_id'], b.result!['result_id']);
+  });
+  group('the game on the phones', () {
+    const deep = RepEvent(
+      index: 1,
+      valid: true,
+      at: Duration.zero,
+      maxDepth: 1.9,
+    );
+    const normal = RepEvent(
+      index: 2,
+      valid: true,
+      at: Duration.zero,
+      maxDepth: 1.4,
+    );
+
+    Future<(OnlineBattleSession, OnlineBattleSession)> playing(
+      BattleServer s,
+    ) async {
+      OnlineBattleSession open(String token) {
+        final session = OnlineBattleSession(
+          endpoint: Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle'),
+          accessToken: token,
+          avatar: AvatarModel.robot,
+          allowInsecureLoopback: true,
+        );
+        addTearDown(session.dispose);
+        return session;
+      }
+
+      final a = open('alpha'), b = open('beta');
+      await a.connect();
+      await b.connect();
+      await until(
+        () =>
+            a.phase == OnlinePhase.preparing &&
+            b.phase == OnlinePhase.preparing,
+      );
+      a.ready(true);
+      b.ready(true);
+      await until(() => a.roundRunning && b.roundRunning);
+      return (a, b);
+    }
+
+    test('the phones read the rules from the server', () async {
+      final s = await server(
+        duration: 5000,
+        rules: const BattleRules(feverStart: Duration(seconds: 3), koLead: 70),
+      );
+      final (a, b) = await playing(s);
+      for (final session in [a, b]) {
+        expect(session.rules!.feverStart, const Duration(seconds: 3));
+        expect(session.rules!.koLead, 70);
+        expect(session.fever, isFalse);
+        expect(session.myBarShare, .5);
+      }
+    });
+
+    test('both phones show the same score, the bar mirrored, and +N with its '
+        'grade; a deep rep goes as excellent', () async {
+      final s = await server(duration: 3000);
+      final (a, b) = await playing(s);
+      a.submitRep(deep);
+      await until(() => a.myScore == 15 && b.opponentScore == 15);
+      expect(a.myLastScore!.grade.name, 'excellent');
+      expect(a.myLastScore!.points, 15);
+      expect(a.myLastScore!.combo, 1);
+      expect(a.myLastScore!.fever, isFalse);
+      expect(b.opponentLastScore!.grade.name, 'excellent');
+      expect(b.opponentLastScore!.points, 15);
+      b.submitRep(normal);
+      await until(() => b.myScore == 10 && a.opponentScore == 10);
+      expect(b.myLastScore!.grade.name, 'good');
+      expect(a.opponentLastScore!.grade.name, 'good');
+      expect(a.myBarShare, closeTo(.525, 1e-9));
+      expect(b.myBarShare, closeTo(.475, 1e-9));
+      await until(
+        () =>
+            a.phase == OnlinePhase.finished && b.phase == OnlinePhase.finished,
+      );
+      expect(a.myScore, 15);
+      expect(a.opponentScore, 10);
+      expect(b.myScore, 10);
+      expect(b.opponentScore, 15);
+      expect(a.outcome, 'win');
+      expect(b.outcome, 'loss');
+    });
+
+    test("a rep's grade goes by the pass depth it is given; with none, by the "
+        "push-up judge's", () async {
+      const rep = RepEvent(
+        index: 1,
+        valid: true,
+        at: Duration.zero,
+        maxDepth: 1.2,
+      );
+      final s = await server(duration: 3000);
+      final (a, b) = await playing(s);
+      a.submitRep(rep, passDepth: .75);
+      await until(() => a.myScore == 15 && b.opponentScore == 15);
+      expect(b.opponentLastScore!.grade.name, 'excellent');
+      b.submitRep(rep);
+      await until(() => b.myScore == 10 && a.opponentScore == 10);
+      expect(a.opponentLastScore!.grade.name, 'good');
+    });
+
+    test('a combo reaches the phones; a rejected rep sends no grade and is '
+        'accepted', () async {
+      final s = await server(duration: 5000);
+      final (a, b) = await playing(s);
+      a.submitRep(normal);
+      a.submitRep(normal);
+      await until(() => a.myScore == 25 && b.opponentScore == 25);
+      expect(a.myLastScore!.combo, 2);
+      expect(a.myLastScore!.points, 15);
+      final last = a.myLastScore;
+      a.submitRep(
+        const RepEvent(
+          index: 3,
+          valid: false,
+          at: Duration.zero,
+          reason: RejectReason.insufficientDepth,
+        ),
+      );
+      await until(() => a.myInvalidReps == 1);
+      expect(a.error, isNull);
+      expect(a.myScore, 25);
+      expect(a.myLastScore, same(last));
+    });
+
+    test('fever doubles the points on both phones', () async {
+      final s = await server(
+        duration: 5000,
+        rules: const BattleRules(feverStart: Duration.zero),
+      );
+      final (a, b) = await playing(s);
+      expect(a.fever, isTrue);
+      a.submitRep(normal);
+      await until(() => a.myScore == 20 && b.opponentScore == 20);
+      expect(a.myLastScore!.fever, isTrue);
+      expect(b.opponentLastScore!.fever, isTrue);
+    });
+
+    test('danger is on for the one far behind, and the same score on both '
+        'phones ends in a KO with the same winner', () async {
+      final s = await server(
+        duration: 5000,
+        rules: const BattleRules(excellentPoints: 60, koLead: 100),
+      );
+      final (a, b) = await playing(s);
+      a.submitRep(deep);
+      await until(() => a.myScore == 60 && b.opponentScore == 60);
+      expect(b.inDanger, isTrue);
+      expect(a.inDanger, isFalse);
+      a.submitRep(deep);
+      await until(
+        () =>
+            a.phase == OnlinePhase.finished && b.phase == OnlinePhase.finished,
+      );
+      expect(a.result!['reason'], 'ko');
+      expect(b.result!['reason'], 'ko');
+      expect(a.result!['result_id'], b.result!['result_id']);
+      expect(a.outcome, 'win');
+      expect(b.outcome, 'loss');
+      // 120 or 125: whether the second rep made the combo depends on timing.
+      expect(a.myScore, greaterThanOrEqualTo(120));
+      expect(b.opponentScore, a.myScore);
+      expect(a.myBarShare, 1);
+      expect(b.myBarShare, 0);
+      expect(a.error, isNull);
+    });
+
+    /// A phone on a hand-written server: [answer] replies to each of its
+    /// messages. The phone is player a; every message carries match m.
+    Future<OnlineBattleSession> scripted(
+      void Function(
+        String type,
+        Map<String, dynamic> payload,
+        void Function(String type, Map<String, dynamic> payload) send,
+      )
+      answer,
+    ) async {
+      final http = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => http.close(force: true));
+      http.listen((request) async {
+        final socket = await WebSocketTransformer.upgrade(request);
+        addTearDown(socket.close);
+        void send(String type, Map<String, dynamic> payload) => socket.add(
+          jsonEncode({
+            'v': 1,
+            'type': type,
+            'server_time_ms': DateTime.now().millisecondsSinceEpoch,
+            if (type != 'session.welcome') 'match_id': 'm',
+            'payload': payload,
+          }),
+        );
+        send('session.welcome', {'player_id': 'a'});
+        socket.listen((raw) {
+          final message = jsonDecode(raw as String) as Map<String, dynamic>;
+          answer(
+            message['type'] as String,
+            message['payload'] as Map<String, dynamic>,
+            send,
+          );
+        });
+      });
+      final session = OnlineBattleSession(
+        endpoint: Uri.parse('ws://127.0.0.1:${http.port}/ws/v1/battle'),
+        accessToken: 'alpha',
+        avatar: AvatarModel.robot,
+        allowInsecureLoopback: true,
+      );
+      addTearDown(session.dispose);
+      await session.connect();
+      return session;
+    }
+
+    const players = [
+      {'player_id': 'a', 'display_name': 'A', 'avatar_id': 'avatar_01'},
+      {'player_id': 'b', 'display_name': 'B', 'avatar_id': 'avatar_02'},
+    ];
+
+    /// Times for a round that began a moment ago.
+    Map<String, int> running() {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      return {'start_at_ms': now - 100, 'end_at_ms': now + 29900};
+    }
+
+    test('the snapshot restores the rules and both scores', () async {
+      final session = await scripted((type, _, send) {
+        if (type != 'queue.join') return;
+        // Without the rules, so they can come only from the snapshot.
+        send('match.found', {'players': players, 'duration_ms': 30000});
+        send('match.snapshot', {
+          ...running(),
+          'status': 'playing',
+          'players': players,
+          'duration_ms': 30000,
+          'ready_player_ids': <String>[],
+          'disconnected_player_ids': <String>[],
+          'fever_start_ms': 20000,
+          'ko_lead': 80,
+          'scores': {
+            'a': {
+              'valid_reps': 1,
+              'invalid_reps': 0,
+              'game_score': 15,
+              'last_rep_seq': 1,
+            },
+            'b': {
+              'valid_reps': 4,
+              'invalid_reps': 1,
+              'game_score': 55,
+              'last_rep_seq': 5,
+            },
+          },
+        });
+      });
+      await until(() => session.phase == OnlinePhase.playing);
+      expect(session.rules!.koLead, 80);
+      expect(session.myScore, 15);
+      expect(session.opponentScore, 55);
+      expect(session.myBarShare, closeTo(.25, 1e-9));
+      expect(session.error, isNull);
+    });
+
+    /// The opening a scripted server sends for a match with the game.
+    void openGame(void Function(String, Map<String, dynamic>) send) {
+      send('match.found', {
+        'players': players,
+        'duration_ms': 30000,
+        'fever_start_ms': 20000,
+        'ko_lead': 100,
+      });
+      send('match.start', running());
+    }
+
+    test('+N and its label show at once, before the server answers; the score '
+        'and the bar wait for it', () async {
+      final session = await scripted((type, _, send) {
+        if (type == 'queue.join') openGame(send);
+      });
+      await until(() => session.roundRunning);
+      session.submitRep(deep);
+      final shown = session.myLastScore!;
+      expect(shown.points, 15);
+      expect(shown.grade.name, 'excellent');
+      expect(shown.combo, 1);
+      expect(session.myScore, 0);
+      expect(session.myBarShare, .5);
+      session.submitRep(normal);
+      expect(session.myLastScore!.points, 15, reason: '10 + combo 5');
+      expect(session.myLastScore!.combo, 2);
+      session.submitRep(
+        const RepEvent(
+          index: 3,
+          valid: false,
+          at: Duration.zero,
+          reason: RejectReason.insufficientDepth,
+        ),
+      );
+      session.submitRep(normal);
+      expect(
+        session.myLastScore!.combo,
+        1,
+        reason: 'the rejected rep broke the combo',
+      );
+    });
+
+    test(
+      "the server's answer corrects the +N when the numbers differ",
+      () async {
+        final session = await scripted((type, payload, send) {
+          if (type == 'queue.join') {
+            openGame(send);
+          } else if (type == 'rep.submit') {
+            send('rep.accepted', {
+              'rep_seq': payload['rep_seq'],
+              'valid_reps': 1,
+              'invalid_reps': 0,
+              'combo': 3,
+              'points': 30,
+              'game_score': 30,
+            });
+          }
+        });
+        await until(() => session.roundRunning);
+        session.submitRep(deep);
+        expect(session.myLastScore!.points, 15);
+        await until(() => session.myScore == 30);
+        expect(session.myLastScore!.points, 30);
+        expect(session.myLastScore!.combo, 3);
+      },
+    );
+
+    test(
+      'an answer with the same numbers keeps the +N, so it pops up once',
+      () async {
+        final session = await scripted((type, payload, send) {
+          if (type == 'queue.join') {
+            openGame(send);
+          } else if (type == 'rep.submit') {
+            send('rep.accepted', {
+              'rep_seq': payload['rep_seq'],
+              'valid_reps': 1,
+              'invalid_reps': 0,
+              'combo': 1,
+              'points': 15,
+              'game_score': 15,
+            });
+          }
+        });
+        await until(() => session.roundRunning);
+        session.submitRep(deep);
+        final shown = session.myLastScore;
+        await until(() => session.myScore == 15);
+        expect(session.myLastScore, same(shown));
+      },
+    );
+
+    test(
+      "an answer to an older rep leaves the latest rep's +N alone",
+      () async {
+        final session = await scripted((type, payload, send) {
+          if (type == 'queue.join') {
+            openGame(send);
+          } else if (type == 'rep.submit' && payload['rep_seq'] == 2) {
+            send('rep.accepted', {
+              'rep_seq': 1,
+              'valid_reps': 1,
+              'invalid_reps': 0,
+              'combo': 1,
+              'points': 99,
+              'game_score': 99,
+            });
+          }
+        });
+        await until(() => session.roundRunning);
+        session.submitRep(deep);
+        session.submitRep(normal);
+        final shown = session.myLastScore;
+        await until(() => session.myScore == 99);
+        expect(session.myLastScore, same(shown));
+      },
+    );
+
+    test('the final scores are the ones in the result; the clock stops at the '
+        'end', () async {
+      final session = await scripted((type, _, send) {
+        if (type != 'queue.join') return;
+        openGame(send);
+        send('match.finished', {
+          'reason': 'ko',
+          'ended_at_ms': DateTime.now().millisecondsSinceEpoch + 5000,
+          'players': [
+            {
+              'player_id': 'a',
+              'valid_reps': 3,
+              'invalid_reps': 1,
+              'game_score': 70,
+              'outcome': 'win',
+            },
+            {
+              'player_id': 'b',
+              'valid_reps': 2,
+              'invalid_reps': 0,
+              'game_score': 40,
+              'outcome': 'loss',
+            },
+          ],
+        });
+      });
+      await until(() => session.phase == OnlinePhase.finished);
+      expect(session.myScore, 70);
+      expect(session.opponentScore, 40);
+      final left = session.remainingMs;
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(session.remainingMs, left);
+    });
+
+    test('a second answer to a rep sent again is no new +N', () async {
+      final session = await scripted((type, payload, send) {
+        if (type == 'queue.join') {
+          send('match.found', {
+            'players': players,
+            'duration_ms': 30000,
+            'fever_start_ms': 20000,
+            'ko_lead': 100,
+          });
+          send('match.start', running());
+        } else if (type == 'rep.submit') {
+          final answer = {
+            'rep_seq': payload['rep_seq'],
+            'valid_reps': 1,
+            'invalid_reps': 0,
+            'combo': 1,
+            'points': 15,
+            'game_score': 15,
+          };
+          send('rep.accepted', answer);
+          // Other numbers, so reading this one as news would show.
+          send('rep.accepted', {...answer, 'points': 99, 'game_score': 0});
+        }
+      });
+      await until(() => session.roundRunning);
+      session.submitRep(deep);
+      await until(() => session.myReps == 1);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(session.myLastScore!.points, 15);
+      expect(session.myScore, 15);
+      expect(session.error, isNull);
+    });
+
+    test(
+      'an older server gets no grade, and the session plays no game',
+      () async {
+        final submitted = <Map<String, dynamic>>[];
+        final session = await scripted((type, payload, send) {
+          if (type == 'queue.join') {
+            send('match.found', {'players': players, 'duration_ms': 30000});
+            send('match.start', running());
+          } else if (type == 'rep.submit') {
+            submitted.add(payload);
+            send('rep.accepted', {
+              'rep_seq': payload['rep_seq'],
+              'valid_reps': 1,
+              'invalid_reps': 0,
+            });
+            send('rep.updated', {'player_id': 'b', 'valid_reps': 2});
+          }
+        });
+        await until(() => session.roundRunning);
+        session.submitRep(deep);
+        await until(() => session.myReps == 1 && session.opponentReps == 2);
+        expect(submitted.single.containsKey('grade'), isFalse);
+        expect(session.rules, isNull);
+        expect(session.myScore, 0);
+        expect(session.myLastScore, isNull);
+        expect(session.fever, isFalse);
+        expect(session.inDanger, isFalse);
+        expect(session.myBarShare, .5);
+        expect(session.error, isNull);
+      },
+    );
   });
   test(
     'client refuses insecure public endpoint without attempting a socket',

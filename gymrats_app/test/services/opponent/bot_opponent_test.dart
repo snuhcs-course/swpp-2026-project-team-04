@@ -4,7 +4,9 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/services/opponent/bot_opponent.dart';
+import 'package:gymrats_app/services/pose/rep_judge.dart';
 
 void main() {
   group('planRound', () {
@@ -57,10 +59,32 @@ void main() {
       }
     });
 
+    test('about a fifth of the valid reps are excellent at the push-up pass '
+        'depth; the rest are good, and rejected reps have no depth', () {
+      final valid = [
+        for (final plan in plans) ...plan.where((rep) => rep.valid),
+      ];
+      final grades = [
+        for (final rep in valid)
+          battleRules.gradeFor(
+            maxDepth: rep.maxDepth,
+            passDepth: const RepJudgeConfig().bottomDepth,
+          ),
+      ];
+      final excellent = grades.where((g) => g == GameGrade.excellent).length;
+      expect(excellent / valid.length, closeTo(0.2, 0.05));
+      expect(valid.every((rep) => rep.maxDepth != null), isTrue);
+      for (final plan in plans) {
+        for (final rep in plan.where((rep) => !rep.valid)) {
+          expect(rep.maxDepth, isNull);
+        }
+      }
+    });
+
     test('the same seed plans the same round', () {
-      List<(int, bool, RejectReason?, Duration)> plan(int seed) => [
+      List<(int, bool, RejectReason?, Duration, double?)> plan(int seed) => [
         for (final rep in BotOpponent.planRound(Random(seed), battleDuration))
-          (rep.index, rep.valid, rep.reason, rep.at),
+          (rep.index, rep.valid, rep.reason, rep.at, rep.maxDepth),
       ];
       expect(plan(7), plan(7));
       expect(plan(7), isNot(plan(8)));

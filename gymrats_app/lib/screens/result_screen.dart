@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/battle_result.dart';
 import '../models/exercise_type_korean.dart';
+import '../models/game_score.dart';
 import '../models/match_record.dart';
 import '../theme/app_theme.dart';
 import '../widgets/exit_dialog.dart';
@@ -185,20 +186,20 @@ class _Verdict extends StatelessWidget {
   /// The slant of the design's verdict, as a skew.
   static final _slant = Matrix4.skewX(-8 * math.pi / 180);
 
+  /// How it was decided: by a KO, by points, by reps when the points were
+  /// level, or by reps for a battle built without a game.
+  String get _how {
+    if (!result.hasGame) return '${result.margin}개 차이로';
+    if (result.end == GameEnd.ko) return 'KO로';
+    return result.margin == 0 ? '유효 횟수로' : '${result.margin}점 차이로';
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final (word, color, message) = switch (result.outcome) {
-      MatchOutcome.win => (
-        'WIN',
-        AppColors.accent,
-        '${result.margin}개 차이로 이겼어요!',
-      ),
-      MatchOutcome.lose => (
-        'LOSE',
-        AppColors.opponent,
-        '${result.margin}개 차이로 졌어요',
-      ),
+      MatchOutcome.win => ('WIN', AppColors.accent, '$_how 이겼어요!'),
+      MatchOutcome.lose => ('LOSE', AppColors.opponent, '$_how 졌어요'),
       MatchOutcome.draw => ('DRAW', AppColors.textPrimary, '비겼어요!'),
     };
     return Column(
@@ -282,7 +283,8 @@ class _ScoreCard extends StatelessWidget {
           Expanded(
             child: _Score(
               name: playerName,
-              score: result.myReps,
+              score: result.myDisplayScore,
+              reps: result.hasGame ? result.myReps : null,
               color: AppColors.accent,
               avatar: myAvatar,
             ),
@@ -297,7 +299,8 @@ class _ScoreCard extends StatelessWidget {
           Expanded(
             child: _Score(
               name: opponent.name,
-              score: result.opponentReps,
+              score: result.opponentDisplayScore,
+              reps: result.hasGame ? result.opponentReps : null,
               color: AppColors.opponent,
               avatar: opponentAvatar,
             ),
@@ -308,17 +311,22 @@ class _ScoreCard extends StatelessWidget {
   }
 }
 
-/// One side of the score card: the avatar over the name and the score.
+/// One side of the score card: the avatar over the name, the score, and the
+/// valid reps.
 class _Score extends StatelessWidget {
   const _Score({
     required this.name,
     required this.score,
+    this.reps,
     required this.color,
     required this.avatar,
   });
 
   final String name;
   final int score;
+
+  /// Null hides the line: the score already is the reps.
+  final int? reps;
   final Color color;
   final Widget avatar;
 
@@ -347,6 +355,13 @@ class _Score extends StatelessWidget {
             color: color,
           ),
         ),
+        if (reps case final reps?) ...[
+          const SizedBox(height: AppSpacing.s4),
+          Text(
+            '유효 $reps회',
+            style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
       ],
     );
   }

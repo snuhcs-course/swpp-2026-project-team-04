@@ -5,6 +5,8 @@ import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/models/reject_reason_korean.dart';
+import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
@@ -38,7 +40,7 @@ void main() {
     final camera = tester.getCenter(find.byType(PoseCameraView));
     await tester.tapAt(camera);
     await tester.pump(const Duration(milliseconds: 200));
-    expect(find.text('+1 GOOD'), findsOneWidget);
+    expect(find.text('+10 GOOD'), findsOneWidget);
 
     // The reasons take turns.
     for (final reason in ['가슴을 더 내려요', '팔을 끝까지 펴요']) {
@@ -52,7 +54,26 @@ void main() {
     await tester.tapAt(tester.getCenter(find.text('남은 시간')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('팔을 끝까지 펴요'), findsOneWidget);
-    expect(find.text('+1 GOOD'), findsNothing);
+    expect(find.text('+10 GOOD'), findsNothing);
+  });
+
+  testWidgets('long presses take turns over the push-up reasons only', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const BattleDemoApp());
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final camera = tester.getCenter(find.byType(PoseCameraView));
+    final reasons = RejectReason.forExercise(ExerciseType.pushUp);
+    for (final reason in [...reasons, reasons.first]) {
+      await tester.longPressAt(camera);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text(reason.koreanMessage), findsOneWidget);
+    }
   });
 
   testWidgets('leaving the battle comes back to the demo home', (tester) async {

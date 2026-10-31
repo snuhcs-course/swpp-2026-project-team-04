@@ -30,40 +30,40 @@ class HelpRule {
   final String title;
   final String body;
 
-  /// Drawn in amber, like every warning in the app.
+  /// Drawn in red, like the battle's danger edge.
   final bool warning;
 }
 
 /// Everything the rules screen says about the battle, in one place.
 ///
-/// The numbers are the proposal in docs/iteration-3/battle-rules.md (v0.1)
-/// until the team settles them; change them here and the screen follows.
-/// The battle length comes from [battleDuration].
+/// The numbers are the game's, from [battleRules] and [battleDuration]; change
+/// them there and the screen follows.
 abstract final class HelpRules {
-  /// The last part of the battle, where every score counts double.
-  static const feverSeconds = 10;
-  static const feverMultiplier = 2;
+  /// The last part of the battle, where every score is multiplied.
+  static int get feverSeconds => battleRules.feverLength.inSeconds;
+  static int get feverMultiplier => battleRules.feverMultiplier;
 
   /// Points for a valid rep, by judgment.
-  static const good = 10;
-  static const excellent = 15;
+  static int get good => battleRules.goodPoints;
+  static int get excellent => battleRules.excellentPoints;
 
   /// Extra points for a valid rep within [comboSeconds] of the last one.
-  static const comboBonus = 5;
-  static const comboSeconds = 1.5;
+  static int get comboBonus => battleRules.comboBonus;
+  static double get comboSeconds =>
+      battleRules.comboWindow.inMilliseconds / Duration.millisecondsPerSecond;
 
   /// A score lead that ends the battle at once.
-  static const koLead = 100;
+  static int get koLead => battleRules.koLead;
 
   /// A score deficit at which the screen edge flashes red.
-  static const dangerLead = 60;
+  static int get dangerLead => battleRules.dangerLead;
 
   static int get totalSeconds => battleDuration.inSeconds;
   static int get baseSeconds => totalSeconds - feverSeconds;
 
   /// The pages in order: the health bar, scoring, then winning safely.
   static List<HelpPage> get pages => [
-    const HelpPage(
+    HelpPage(
       title: '체력 바 줄다리기',
       body:
           '바 하나가 50:50에서 시작해요. 바른 자세로 한 동작마다 바가 상대 '
@@ -87,10 +87,10 @@ abstract final class HelpRules {
   ];
 
   /// The first page's picture: the score that pushes the bar.
-  static const barScore = '+$good';
+  static String get barScore => '+$good';
 
   /// The second page's tiles: the points over the judgment.
-  static const scores = [
+  static List<(String, String)> get scores => [
     ('+$good', 'Good'),
     ('+$excellent', 'Excellent'),
     ('+$comboBonus', '콤보'),
@@ -98,14 +98,14 @@ abstract final class HelpRules {
 
   /// The second page's timeline: the base part, then fever.
   static String get baseLabel => '기본 $baseSeconds초';
-  static const feverLabel = 'FEVER ×$feverMultiplier';
+  static String get feverLabel => 'FEVER ×$feverMultiplier';
 
   /// The last page's picture.
   static List<HelpRule> get reminders => [
-    const HelpRule(
+    HelpRule(
       icon: Icons.warning_amber_rounded,
       title: '위험 신호',
-      // No color named: the edge's color is the game screen's to choose.
+      // No color in the words: the icon beside them is red.
       body: '$dangerLead점 이상 뒤지면 화면 가장자리가 깜빡여요',
       warning: true,
     ),

@@ -90,7 +90,7 @@ void main() {
     expect(find.text('개인 최고 32회'), findsOneWidget);
     expect(find.text('온라인 1v1 대결'), findsOneWidget);
     expect(find.text('AI와 1v1 대결'), findsOneWidget);
-    expect(find.text('30초 안에 더 많이 하면 승리'), findsOneWidget);
+    expect(find.text('30초가 끝나면 점수가 높은 쪽 승리'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(FilledButton),

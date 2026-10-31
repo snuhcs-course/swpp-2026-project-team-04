@@ -243,10 +243,12 @@ class _TouchJudge extends RepJudge {
   /// A counted rep, closed on the next frame.
   void countRep() => _touches.add(null);
 
-  /// A rejected rep, closed on the next frame. The reasons take turns.
-  void rejectRep() => _touches.add(
-    RejectReason.values[_rejected++ % RejectReason.values.length],
-  );
+  /// A rejected rep, closed on the next frame. The exercise's reasons take
+  /// turns.
+  void rejectRep() {
+    final reasons = RejectReason.forExercise(_matchup.exercise);
+    _touches.add(reasons[_rejected++ % reasons.length]);
+  }
 
   @override
   RepUpdate update(PoseFrame frame) {

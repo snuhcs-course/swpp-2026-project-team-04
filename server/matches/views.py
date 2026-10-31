@@ -52,8 +52,10 @@ class MatchListView(APIView):
         mine = Match.objects.filter(user=request.user)
         client_id = body.validated_data["client_id"]
         data = body.validated_data
-        # Bot battles always run the whole round.
-        outcome = outcome_from_reps(data["my_reps"], data["opponent_reps"])
+        # An app that sends no result goes by the reps and time_up.
+        outcome = data.get("outcome") or outcome_from_reps(
+            data["my_reps"], data["opponent_reps"]
+        )
 
         if OnlineBattle.objects.filter(result_id=client_id).exists():
             # Online results come only from the battle server (P11).
@@ -65,7 +67,9 @@ class MatchListView(APIView):
             try:
                 with transaction.atomic():
                     match = body.save(
-                        user=request.user, outcome=outcome, reason="time_up"
+                        user=request.user,
+                        outcome=outcome,
+                        reason=data.get("reason", "time_up"),
                     )
                     created = True
             except IntegrityError:

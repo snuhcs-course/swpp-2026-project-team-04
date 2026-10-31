@@ -7,8 +7,12 @@ import 'package:flutter/foundation.dart';
 
 import '../../shared/battle_protocol.dart';
 import '../../models/avatar_model.dart';
+import '../../models/battle_rules.dart';
+import '../../models/game_score.dart';
 import '../../models/pose_frame.dart';
 import '../../models/rep_event.dart';
+import '../game/player_game_score.dart';
+import '../pose/rep_judge.dart';
 import 'pose_wire.dart';
 
 enum OnlinePhase {
@@ -56,6 +60,9 @@ class OnlineBattleSession extends ChangeNotifier {
   final String accessToken;
   final AvatarModel avatar;
   final bool allowInsecureLoopback;
+
+  /// Far above any real score; a larger number on the wire is invalid.
+  static const _maxGameScore = 1 << 30;
   final _clock = Stopwatch()..start();
   final _nonce = Random.secure().nextInt(0x7fffffff).toRadixString(16);
   final _pending = <int, Map<String, dynamic>>{};
@@ -82,6 +89,21 @@ class OnlineBattleSession extends ChangeNotifier {
   int durationMs = 30000;
   int? startAtMs, endAtMs;
   int myReps = 0, myInvalidReps = 0, opponentReps = 0;
+
+  /// The game's numbers, from the server. Null with an older server, which
+  /// has no game: the reps then decide and no grade may be sent.
+  BattleRules? rules;
+
+  /// Game scores as the server accepted them, the same on both phones.
+  int myScore = 0, opponentScore = 0;
+
+  /// What each side's latest valid rep earned; null before the first. The
+  /// user's shows at once from [_myPreview]; the server's answer then decides.
+  GameRepScore? myLastScore, opponentLastScore;
+
+  /// The user's combo as the phone counts it, by the code and the time the
+  /// server scores with, so the two normally agree.
+  PlayerGameScore? _myPreview;
   bool connected = false, opponentConnected = true;
   bool authenticationRejected = false;
   Set<String> readyPlayers = {};
@@ -91,9 +113,14 @@ class OnlineBattleSession extends ChangeNotifier {
       _serverAnchor + _clock.elapsedMilliseconds - _localAnchor;
   int get elapsedMs =>
       startAtMs == null ? 0 : (serverNow - startAtMs!).clamp(0, durationMs);
+
+  /// Stops counting when the server ends the match, which a KO does early.
   int get remainingMs => endAtMs == null
       ? durationMs
-      : (endAtMs! - serverNow).clamp(0, durationMs);
+      : (endAtMs! - ((result?['ended_at_ms'] as int?) ?? serverNow)).clamp(
+          0,
+          durationMs,
+        );
   int get countdownSeconds => startAtMs == null
       ? 0
       : ((startAtMs! - serverNow) / 1000).ceil().clamp(0, 60);
@@ -109,6 +136,15 @@ class OnlineBattleSession extends ChangeNotifier {
       remainingMs > 0 &&
       !terminal;
   bool get canReady => connected && phase == OnlinePhase.preparing;
+
+  /// The user's share of the health bar, from 0 to 1.
+  double get myBarShare => rules?.barShare(myScore - opponentScore) ?? .5;
+
+  /// Whether the user is about to lose.
+  bool get inDanger => rules?.inDanger(myScore - opponentScore) ?? false;
+
+  /// Whether the round is in fever time.
+  bool get fever => rules?.isFever(Duration(milliseconds: elapsedMs)) ?? false;
 
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   /// The battle server lost this battle (restart, protocol §8): it ended
@@ -268,6 +304,7 @@ class OnlineBattleSession extends ChangeNotifier {
         durationMs = integer(p['duration_ms'], 1, 60000);
         _readPlayers(p['players']);
         phase = OnlinePhase.preparing;
+        _readRules(p);
       } else if (m['match_id'] == matchId && matchId != null) {
         switch (type) {
           case 'match.ready_state':
@@ -294,10 +331,29 @@ class OnlineBattleSession extends ChangeNotifier {
               integer(p['invalid_reps'], 0, 10000),
             );
             final seq = integer(p['rep_seq'], 1, 10000);
+            if (rules != null) {
+              myScore = max(myScore, _gameScore(p));
+              // Only the latest rep's first answer can change the words: a
+              // rep sent again is no longer pending when its second one comes.
+              if (_pending[seq]?['payload'] case final Map<String, dynamic> rep
+                  when seq == _repSeq) {
+                final answer = _repScore(rep, p), shown = myLastScore;
+                // The same numbers keep the same object: no second popup.
+                if (answer != null &&
+                    (answer.points != shown?.points ||
+                        answer.combo != shown?.combo)) {
+                  myLastScore = answer;
+                }
+              }
+            }
             _pending.removeWhere((key, _) => key <= seq);
           case 'rep.updated':
             if (p['player_id'] == opponent?.id) {
               opponentReps = integer(p['valid_reps'], 0, 10000);
+              if (rules != null) {
+                opponentScore = _gameScore(p);
+                opponentLastScore = _repScore(p, p) ?? opponentLastScore;
+              }
             }
           case 'match.connection_state':
             if (p['player_id'] == opponent?.id) {
@@ -352,19 +408,57 @@ class OnlineBattleSession extends ChangeNotifier {
     opponent = players.firstWhere((p) => p.id != playerId);
   }
 
+  /// The game's numbers in a match message; an older server sends none.
+  void _readRules(Map<String, dynamic> p) {
+    if (p['fever_start_ms'] == null) return;
+    rules = BattleRules(
+      feverStart: Duration(
+        milliseconds: integer(p['fever_start_ms'], 0, 60000),
+      ),
+      koLead: integer(p['ko_lead'], 1, _maxGameScore),
+    );
+  }
+
+  int _gameScore(Map<String, dynamic> p) =>
+      integer(p['game_score'], 0, _maxGameScore);
+
+  /// What a rep earned, from what was [submitted] and the server's [answer]
+  /// to it. Null for a rejected rep.
+  GameRepScore? _repScore(
+    Map<String, dynamic> submitted,
+    Map<String, dynamic> answer,
+  ) {
+    if (submitted['valid'] != true) return null;
+    return GameRepScore(
+      grade: submitted['grade'] == GameGrade.excellent.name
+          ? GameGrade.excellent
+          : GameGrade.good,
+      combo: integer(answer['combo'], 0, 10000),
+      fever: rules!.isFever(
+        Duration(milliseconds: integer(submitted['elapsed_ms'], 0, 60000)),
+      ),
+      points: integer(answer['points'], 0, _maxGameScore),
+    );
+  }
+
   void _readFinalScores(Map<String, dynamic> p) {
     for (final player in p['players'] as List) {
       if (player['player_id'] == playerId) {
         myReps = integer(player['valid_reps'], 0, 10000);
         myInvalidReps = integer(player['invalid_reps'], 0, 10000);
+        if (rules != null) myScore = _gameScore(player as Map<String, dynamic>);
       } else {
         opponentReps = integer(player['valid_reps'], 0, 10000);
+        if (rules != null) {
+          opponentScore = _gameScore(player as Map<String, dynamic>);
+        }
       }
     }
   }
 
   void _snapshot(Map<String, dynamic> p) {
     _readPlayers(p['players']);
+    _readRules(p);
     durationMs = integer(p['duration_ms'], 1, 60000);
     startAtMs = p['start_at_ms'] as int?;
     endAtMs = p['end_at_ms'] as int?;
@@ -375,6 +469,10 @@ class OnlineBattleSession extends ChangeNotifier {
     myReps = integer(mine['valid_reps'], 0, 10000);
     myInvalidReps = integer(mine['invalid_reps'], 0, 10000);
     opponentReps = integer(other['valid_reps'], 0, 10000);
+    if (rules != null) {
+      myScore = _gameScore(mine);
+      opponentScore = _gameScore(other);
+    }
     final accepted = integer(mine['last_rep_seq'], 0, 10000);
     _frameSeq = max(
       _frameSeq,
@@ -418,7 +516,9 @@ class OnlineBattleSession extends ChangeNotifier {
     }
   }
 
-  void submitRep(RepEvent rep) {
+  /// Sends a judged rep. [passDepth] is its judge's, for the rep's grade; a
+  /// caller with no judge gets the push-up judge's.
+  void submitRep(RepEvent rep, {double? passDepth}) {
     if (!roundRunning) return;
     final reason = switch (rep.reason) {
       RejectReason.insufficientDepth => 'insufficient_depth',
@@ -434,15 +534,32 @@ class OnlineBattleSession extends ChangeNotifier {
       RejectReason.standUpFully => 'stand_up_fully',
       null => null,
     };
+    final grade = rep.valid
+        ? rules?.gradeFor(
+            maxDepth: rep.maxDepth,
+            passDepth: passDepth ?? const RepJudgeConfig().bottomDepth,
+          )
+        : null;
+    final elapsed = elapsedMs;
     final seq = ++_repSeq,
         message = _message('rep.submit', {
           'rep_seq': seq,
-          'elapsed_ms': elapsedMs,
+          'elapsed_ms': elapsed,
           'valid': rep.valid,
           'reason': rep.valid ? null : reason,
+          'grade': ?grade?.name,
         }, requestId: '$_nonce-rep-$seq');
     _pending[seq] = message;
     _send(message);
+    if (rules case final rules?) {
+      final preview = _myPreview ??= PlayerGameScore(rules);
+      if (grade == null) {
+        preview.addRejected();
+      } else {
+        myLastScore = preview.addValid(grade, Duration(milliseconds: elapsed));
+      }
+      _notify();
+    }
   }
 
   void _tick() {

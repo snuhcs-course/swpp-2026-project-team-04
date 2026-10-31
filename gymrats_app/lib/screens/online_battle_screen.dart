@@ -2,20 +2,27 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/form_report.dart';
 import '../models/pose_frame.dart';
+import '../models/reject_reason_korean.dart';
+import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
+import '../theme/app_theme.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../widgets/opponent_avatar_panel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
 import '../widgets/battle_score_balance.dart';
+import '../widgets/game_danger_edge.dart';
+import '../widgets/game_fever_chip.dart';
+import '../widgets/game_health_bar.dart';
 import 'setup_screen.dart';
 import 'feedback_screen.dart';
 
@@ -69,6 +76,9 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   /// Ready was sent and the server has not confirmed it yet, so it is not
   /// sent again while the confirmation is on its way.
   bool _readySent = false;
+
+  /// The clock turns amber once this little of the round is left.
+  static const _clockWarningMs = 5000;
 
   OnlineBattleSession get session => widget.session;
   bool get _iAmReady => session.readyPlayers.contains(session.playerId);
@@ -150,7 +160,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _reps = _counter.reps.listen((rep) {
       if (_roundStarted && _counter.history.contains(rep)) {
         if (rep.valid) const DeviceRepSound().playRepCounted();
-        session.submitRep(rep);
+        session.submitRep(rep, passDepth: _counter.passDepth);
       }
     });
     unawaited(_counter.start());
@@ -166,17 +176,24 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       _stopping = true;
       unawaited(_counter.finish(stoppedByUser: session.terminal));
     }
+    final reason = session.result?['reason'];
     if (!_reportCreated &&
         _roundStarted &&
         session.phase == OnlinePhase.finished &&
-        session.result?['reason'] == 'time_up') {
+        (reason == 'time_up' || reason == 'ko')) {
       _reportCreated = true;
+      final endedAt =
+          (session.result?['ended_at_ms'] as int?) ?? session.serverNow;
+      final fullRound = Duration(milliseconds: session.durationMs);
       final report = FormReport(
-        endedAt: DateTime.fromMillisecondsSinceEpoch(
-          (session.result?['ended_at_ms'] as int?) ?? session.serverNow,
-        ),
+        endedAt: DateTime.fromMillisecondsSinceEpoch(endedAt),
         opponentName: session.opponent!.name,
-        roundLength: Duration(milliseconds: session.durationMs),
+        roundLength: reason == 'ko'
+            ? BattleRules.koRoundLength(
+                Duration(milliseconds: endedAt - session.startAtMs!),
+                fullRound,
+              )
+            : fullRound,
         reps: _counter.repRecords,
         samples: _counter.formSamples,
         poses: _counter.formPoses,
@@ -253,6 +270,28 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     }
   }
 
+  /// The clock's color in a game, like the bot battle's: amber for the last
+  /// seconds, cyan in fever, and lime before that. Plain once it has ended.
+  Color? get _clockColor {
+    if (session.rules == null || session.terminal) return null;
+    if (session.remainingMs <= _clockWarningMs) return AppColors.warning;
+    return session.fever ? AppColors.fever : AppColors.accent;
+  }
+
+  /// What the user's latest rep gets on the line under the health bar.
+  String _lastRepWords(RepEvent rep) {
+    if (!rep.valid) return rep.reason?.koreanMessage ?? '';
+    final rules = session.rules;
+    if (rules == null) return '+1';
+    final score = session.myLastScore;
+    if (score == null) return '';
+    return [
+      '+${score.points} ${score.grade.label.toUpperCase()}',
+      if (score.combo > 1) '콤보 ${score.combo}',
+      if (score.fever) '점수 ${rules.feverMultiplier}배',
+    ].join(' · ');
+  }
+
   Future<void> _exit() async {
     if (_asking) return;
     if (session.terminal) {
@@ -292,6 +331,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   Widget build(BuildContext context) {
     final opponent = session.opponent!, counter = _counter.state;
     final terminal = session.terminal;
+    final rules = session.rules;
     final ready = session.readyPlayers.contains(session.playerId);
     final cameraFailed = {
       CounterPhase.permissionDenied,
@@ -398,185 +438,281 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) unawaited(_exit());
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('온라인 1v1'),
-          leading: IconButton(
-            onPressed: _exit,
-            icon: const Icon(Icons.arrow_back),
-          ),
-        ),
-        body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 4,
-                child: OpponentAvatarPanel(
-                  name: opponent.name,
-                  model: opponent.avatar,
-                  frame: session.opponentFrame,
-                  connected: session.connected && session.opponentConnected,
-                ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Scaffold(
+            appBar: AppBar(
+              title: const Text('온라인 1v1'),
+              leading: IconButton(
+                onPressed: _exit,
+                icon: const Icon(Icons.arrow_back),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '나  ${session.myReps}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '${(session.remainingMs / 1000).ceil()}초',
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                    Text(
-                      '${session.opponentReps}  상대',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (terminal)
-                Expanded(
-                  flex: 4,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            session.matchUnconfirmed
-                                ? '경기를 확인할 수 없어요'
-                                : switch (session.phase) {
-                                    OnlinePhase.finished =>
-                                      switch (session.outcome) {
-                                        'win' => '승리',
-                                        'loss' => '패배',
-                                        'draw' => '무승부',
-                                        _ => '서버 결과 확인 중',
-                                      },
-                                    OnlinePhase.voided => '경기 무효',
-                                    OnlinePhase.cancelled => '경기 취소',
-                                    _ => '연결 오류',
-                                  },
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            session.serverRestarted
-                                ? '서버가 다시 시작되어 이 경기는 기록되지 않았어요.'
-                                : session.matchNotFound
-                                ? '서버에서 이 경기를 찾을 수 없어요.'
-                                : session.error ??
-                                      '종료 사유: ${session.result?['reason'] ?? '알 수 없음'}',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          if (_formReport case final report?)
-                            TextButton(
-                              onPressed: () => Navigator.push<void>(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      FeedbackScreen(report: report),
-                                ),
-                              ),
-                              child: const Text('자세 피드백 보기'),
-                            ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('홈으로 돌아가기'),
-                          ),
-                        ],
-                      ),
+            ),
+            body: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: OpponentAvatarPanel(
+                      name: opponent.name,
+                      model: opponent.avatar,
+                      frame: session.opponentFrame,
+                      connected: session.connected && session.opponentConnected,
                     ),
                   ),
-                )
-              else
-                Expanded(
-                  flex: 4,
-                  child: cameraFailed
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _SideScore(
+                                '나  ${rules == null ? session.myReps : session.myScore}',
+                                alignment: Alignment.centerLeft,
+                              ),
+                            ),
+                            Text(
+                              '${(session.remainingMs / 1000).ceil()}초',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(color: _clockColor),
+                            ),
+                            Expanded(
+                              child: _SideScore(
+                                '${rules == null ? session.opponentReps : session.opponentScore}  상대',
+                                alignment: Alignment.centerRight,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (rules != null)
+                          Row(
                             children: [
-                              const Text('카메라 권한 또는 자세 인식을 확인해주세요.'),
-                              TextButton(
-                                onPressed:
-                                    counter.phase ==
-                                        CounterPhase.permissionDenied
-                                    ? _counter.openSettings
-                                    : _counter.retry,
-                                child: const Text('카메라 다시 준비'),
+                              Expanded(
+                                child: _ValidReps(
+                                  session.myReps,
+                                  alignment: Alignment.centerLeft,
+                                ),
+                              ),
+                              if (session.fever && !terminal)
+                                GameFeverChip(
+                                  multiplier: rules.feverMultiplier,
+                                ),
+                              Expanded(
+                                child: _ValidReps(
+                                  session.opponentReps,
+                                  alignment: Alignment.centerRight,
+                                ),
                               ),
                             ],
                           ),
-                        )
-                      : PoseAvatarToggleView(
-                          chestSnapshot: counter.snapshot,
-                          initialModel: session.avatar,
-                          allowAvatarSelection: false,
-                          controller: _counter.cameraController,
-                          frame: counter.phase == CounterPhase.running
-                              ? counter.lastFrame
-                              : null,
-                          mirror: _counter.isFrontCamera,
-                          showLandmarks: true,
-                        ),
-                ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    BattleScoreBalance(
-                      mine: session.myReps,
-                      theirs: session.opponentReps,
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    if (!session.connected && !terminal)
-                      const Text(
-                        '재연결 중 · 경기 시간은 계속 진행됩니다.',
-                        style: TextStyle(color: Colors.amber),
+                  ),
+                  if (terminal)
+                    Expanded(
+                      flex: 4,
+                      child: Center(
+                        // The result fits a phone; a short window scrolls.
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  session.matchUnconfirmed
+                                      ? '경기를 확인할 수 없어요'
+                                      : switch (session.phase) {
+                                          OnlinePhase.finished =>
+                                            switch (session.outcome) {
+                                              'win' => '승리',
+                                              'loss' => '패배',
+                                              'draw' => '무승부',
+                                              _ => '서버 결과 확인 중',
+                                            },
+                                          OnlinePhase.voided => '경기 무효',
+                                          OnlinePhase.cancelled => '경기 취소',
+                                          _ => '연결 오류',
+                                        },
+                                  style: const TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  session.serverRestarted
+                                      ? '서버가 다시 시작되어 이 경기는 기록되지 않았어요.'
+                                      : session.matchNotFound
+                                      ? '서버에서 이 경기를 찾을 수 없어요.'
+                                      : session.error ??
+                                            (session.result?['reason'] == 'ko'
+                                                ? 'K.O.로 끝났어요.'
+                                                : '종료 사유: ${session.result?['reason'] ?? '알 수 없음'}'),
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (rules != null &&
+                                    session.phase == OnlinePhase.finished) ...[
+                                  const SizedBox(height: AppSpacing.s8),
+                                  Text(
+                                    '점수 ${session.myScore} : ${session.opponentScore}'
+                                    ' · 유효 ${session.myReps} : ${session.opponentReps}',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                                const SizedBox(height: 16),
+                                if (_formReport case final report?)
+                                  TextButton(
+                                    onPressed: () => Navigator.push<void>(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            FeedbackScreen(report: report),
+                                      ),
+                                    ),
+                                    child: const Text('자세 피드백 보기'),
+                                  ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('홈으로 돌아가기'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    if (session.phase == OnlinePhase.awaitingResult)
-                      const Text('서버의 최종 결과를 기다리는 중…'),
-                    if (session.roundRunning && counter.lastEvent != null)
-                      Text(
-                        counter.lastEvent!.valid
-                            ? '+1'
-                            : counter.lastEvent!.reason?.message ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    if (session.error != null && !terminal)
-                      Text(
-                        session.error!,
-                        maxLines: 2,
-                        style: const TextStyle(color: Colors.amber),
-                      ),
-                  ],
-                ),
+                    )
+                  else
+                    Expanded(
+                      flex: 4,
+                      child: cameraFailed
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('카메라 권한 또는 자세 인식을 확인해주세요.'),
+                                  TextButton(
+                                    onPressed:
+                                        counter.phase ==
+                                            CounterPhase.permissionDenied
+                                        ? _counter.openSettings
+                                        : _counter.retry,
+                                    child: const Text('카메라 다시 준비'),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : PoseAvatarToggleView(
+                              chestSnapshot: counter.snapshot,
+                              initialModel: session.avatar,
+                              allowAvatarSelection: false,
+                              controller: _counter.cameraController,
+                              frame: counter.phase == CounterPhase.running
+                                  ? counter.lastFrame
+                                  : null,
+                              mirror: _counter.isFrontCamera,
+                              showLandmarks: true,
+                            ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (rules == null)
+                          BattleScoreBalance(
+                            mine: session.myReps,
+                            theirs: session.opponentReps,
+                          )
+                        else
+                          GameHealthBar(
+                            myShare: session.myBarShare,
+                            myLastScore: session.myLastScore,
+                            opponentLastScore: session.opponentLastScore,
+                          ),
+                        const SizedBox(height: 8),
+                        if (!session.connected && !terminal)
+                          const Text(
+                            '재연결 중 · 경기 시간은 계속 진행됩니다.',
+                            style: TextStyle(color: Colors.amber),
+                          ),
+                        if (session.phase == OnlinePhase.awaitingResult)
+                          const Text('서버의 최종 결과를 기다리는 중…'),
+                        if (session.roundRunning && counter.lastEvent != null)
+                          Text(
+                            _lastRepWords(counter.lastEvent!),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        if (session.error != null && !terminal)
+                          Text(
+                            session.error!,
+                            maxLines: 2,
+                            style: const TextStyle(color: Colors.amber),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          GameDangerEdge(
+            active: session.inDanger && !terminal && !cameraFailed,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A player's label and number beside the clock. A wide one shrinks rather
+/// than overflows.
+class _SideScore extends StatelessWidget {
+  const _SideScore(this.words, {required this.alignment});
+
+  final String words;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: alignment,
+      child: Text(
+        words,
+        maxLines: 1,
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+    );
+  }
+}
+
+/// "유효 N회" under a player's game score. It shrinks rather than overflows
+/// beside the fever chip on the largest system font.
+class _ValidReps extends StatelessWidget {
+  const _ValidReps(this.reps, {required this.alignment});
+
+  final int reps;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: alignment,
+      child: Text(
+        '유효 $reps회',
+        maxLines: 1,
+        style: Theme.of(context).textTheme.bodySmall
+            ?.copyWith(color: AppColors.textSecondary),
       ),
     );
   }

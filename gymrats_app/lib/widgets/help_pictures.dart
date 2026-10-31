@@ -242,7 +242,7 @@ class HelpReminderPicture extends StatelessWidget {
   }
 }
 
-/// An icon on a faint box of its own color: amber for a warning, else lime.
+/// An icon on a faint box of its own color: red for a warning, else lime.
 class _IconBox extends StatelessWidget {
   const _IconBox({required this.icon, required this.warning});
 
@@ -251,7 +251,7 @@ class _IconBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = warning ? AppColors.warning : AppColors.accent;
+    final color = warning ? AppColors.danger : AppColors.accent;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),

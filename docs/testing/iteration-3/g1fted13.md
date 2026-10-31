@@ -121,21 +121,24 @@ The branch started from `main` at `fd8a76f`. `origin/main` at `9baf937`, with #1
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | see the CI comment on the W2 PR | 10/31 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on the W2 PR |
-| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W2 PR | 10/31 | same |
-| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W2 PR | 10/31 | same |
-| View | flutter_test (widget) | 75% | see the CI comment on the W2 PR | 10/31 | same |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: `server/` unchanged; see the CI comment on the W2 PR | 10/31 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 97.7% (215/220 lines) | 10/31 | CI comment "Tests and coverage (GitHub Actions)" on PR #21, commit `b029ff8`, [run 41204004041](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41204004041) |
+| ViewModel | flutter_test, fakes | 90% | 94.5% (868/919) | 10/31 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 92.3% (1727/1872) | 10/31 | same CI comment |
+| View | flutter_test (widget) | 75% | 91.5% (3418/3736) | 10/31 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (76 passed); `server/` unchanged | 10/31 | same CI comment, `pytest --cov=accounts --cov=matches --cov=gymrats` |
 
 - **Tests:** `flutter test` 770 passed, 0 failed, 1 skipped.
   - The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
   - The nine test files in the table below alone: 101 passed.
   - `flutter analyze` found no issues.
   - Server `pytest` was not run locally because `server/` did not change.
-- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers come from the CI comment on the W2 PR. Until the next W2 push, they are in that comment and in the PR body, not here.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers above come from the CI comment on PR #21 for commit `b029ff8` (2026-10-31 22:11 KST), filled in after that PR merged.
+  - The app total is 92.3% (6387/6921 lines, with "Other" 91.4%).
+  - The CI also reports `flutter analyze` with no issues and `flutter test` 770 passed, 1 skipped, 0 failed.
+- **Left out of the coverage numbers:** `test/screens/setup_screen_test.dart`, which hit the 240 s per-file limit in the coverage run, as before. It still passed in `flutter test`, and it is not a W2 file.
 - **Mutation check of the '?' (review round 4):** the reviewer ran 19 mutations against six of these test files in a scratch copy, and 17 failed a test. They included a wrong route, a target shrunk below 48×48, a removed button, a removed `Expanded`, and a removed or first-login `/help` route. The two survivors made the `/help` route write the flag when it opens. The two `auth_flow_test.dart` tests with "saves nothing" in their names were added for them. I reran both mutations in the working tree: `auth_flow_test.dart` then fails exactly those two tests. The mutations were reverted, and `main.dart` is unchanged.
 - **Flaky test outside this step:** `test/services/online/battle_result_store_test.dart` "a forfeit is stored as a loss for the player who left" failed once in a full run in review on 2026-10-27 (expected `['win','loss']`, got `['loss','win']`), and passed alone 3 of 3. The full runs recorded since then passed. It is not a W2 file. W3's PR (#20, commit `d0ed8aa`) makes the players join in a fixed order in `playing`, the helper this test uses. That is the likely cause, not a proven one, and until W3 merges the test can still fail now and then on this branch.
-- **Shortfalls:** none known; the CI comment decides. The phone check is still open (see Manual check).
+- **Shortfalls:** none. Every layer is above its target. The phone check is still open (see Manual check).
 - **Known limit, not fixed here:** the '?' takes 48 px from the greeting line. In the reviewer's scratch run with the real fonts, at 360 wide, names up to 4 characters stay on one line, and the 6- and 12-character names wrap to two lines, with no overflow. Only the 12-character name wraps at 412 wide.
 
 Test cases added or changed in this step:
@@ -158,3 +161,142 @@ Acceptance criteria → tests:
 - **On home, '?' opens the rules and back returns home:** `main_test.dart` "'?' on home opens the rules over home; back returns home", `home_screen_test.dart` "'?' opens the rules from the greeting; back returns home", "'?' has a 48×48 tap target and sits left of the profile", `auth_flow_test.dart` "'?' after sign-up saves nothing, and a restart stays on home", "'?' after a login saves nothing when 확인 returns home".
 
 **Manual check:** 아직 (not done yet). This step has not been checked on a phone.
+
+#### 2026-10-31 · code at commit `b9f9195` · step W3 `feat/fever_score` (P8 game layer: bar, judgments, fever, danger, KO)
+This step turns the battle into the game of `docs/iteration-3/battle-rules.md`, for bot and online battles:
+- The rules in one config, `lib/models/battle_rules.dart`, and the pure-Dart game layer in `lib/services/game/`, which the battle server also imports.
+- The battle server scores each rep from the grade the phone sends, and ends the match on a KO.
+- The battle and result screens, with new widgets `game_health_bar`, `game_fever_chip`, `game_danger_edge`, and tokens `AppColors.fever` and `AppColors.danger`.
+- `POST /matches` accepts an optional `outcome` and `reason`, and the app sends them for a bot battle.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `b9f9195`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 98.3% (232/236 lines) | 10/31 | CI comment "Tests and coverage (GitHub Actions)" on PR #20, commit `e863b51` (the same code, with the notes), [run 41185365660](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41185365660) |
+| ViewModel | flutter_test, fakes | 90% | 94.7% (884/933) | 10/31 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 93.9% (1717/1828) | 10/31 | same CI comment |
+| View | flutter_test (widget) | 75% | 91.9% (3458/3763) | 10/31 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed) | 10/31 | same CI comment, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 851 passed, 0 failed, 1 skipped.
+  - The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
+  - `flutter analyze` found no issues.
+  - `server/` changed, so CI's `pytest` is the result for these notes. For information, the 5 new Django tests also passed in a local scratch environment on Python 3.12 before `d98d219` was committed (81 passed in all), and `makemigrations --check` found no changes.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers above come from the CI comment on PR #20 for commit `e863b51` (2026-10-31 17:43 KST).
+  - The app total is 93.0% (6437/6920 lines, with "Other" 91.2%).
+  - The CI also reports `flutter analyze` with no issues and `flutter test` 851 passed, 1 skipped, 0 failed.
+- **Left out of the coverage numbers:** `test/screens/setup_screen_test.dart`, which hit the 240 s per-file limit in the coverage run, as before. It still passed in `flutter test`, and it is not a W3 file.
+- **Flaky test found and fixed:** `battle_result_store_test.dart` "a started battle is recorded with both players" failed in 1 of 4 full runs in review. Its message was not captured. The likely cause is both players joining the queue at once on two sockets while the test expects a fixed player order, so the test now waits for the first join. After the fix: 6 of 6 alone, and clean in the full runs.
+- **Shortfalls:** none. Every layer is above its target. Phone checks are still open (see Manual check).
+- **Known issues on the largest system fonts, not fixed here (found in review with real fonts; the default font size is clean):**
+  - The bot battle's panel overflows on a 360 wide phone at text scale 1.7 and up (360×780: clean up to 1.5). At 360×640 and scale 2.0 the verdict banner is pushed off the panel. 412×915 is clean up to 2.0.
+  - Above scale 1.0 a health bar label shrinks when its side's first popup appears, for example from 28 to 16 px high at scale 2.0.
+  - The online words line ends in an ellipsis from about scale 1.5.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/game_rules_test.dart` (new) | The v0.1 numbers. Fever's start. Grades at the 1.6× depth and for a rep with no depth. The combo window. The points table. Bar movement and its ends. KO on either side. Danger. A KO round length rounded up and capped. Another config |
+| Model | `test/models/battle_result_test.dart` (updated) | The game's outcome wins over the reps. Big numbers and margin with and without a game. The record says how the game stopped |
+| Model | `test/models/match_record_test.dart` (updated) | The record keeps how the game stopped; a record from elsewhere has none |
+| Service | `test/services/game/battle_game_test.dart` (new) | Combo, fever, the time-up winner, KO, the two worked examples of `battle-rules.md` section 6, and its 4.4 table against a bot |
+| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | About a fifth of the valid reps are excellent at the push-up pass depth; rejected reps have no depth; the same seed plans the same depths |
+| Service | `test/services/user/server_user_repository_test.dart` (updated) | A game's outcome and reason go in the upload (`win`/`ko`, `loss`/`time_up`, `draw`/`time_up`); a record without a game sends neither |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | On the server, over real sockets: rules in `match.found`, points, combo, grade, a bad grade refused, fever, the winner by game score, KO after the ACK, a re-sent KO rep, the snapshot. On the phones: the same score and a mirrored bar, the rules from the server, +N and label at once, the answer correcting it, no second popup, a stale answer ignored, final scores, the frozen clock, an older server gets no grade |
+| Service | `test/services/online/battle_result_store_test.dart` (updated) | A KO is stored with its reason, without the game score; the join order no longer races |
+| Service | `test/support/game_fakes.dart` (new) | Fakes: `gameRep`, `DepthRepJudge` (its clock is an hour per rep, so a game fed the wrong clock fails), `TimedOpponentSource` |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | Each rep's score and bar, combo by round time, fever, danger, my KO and the opponent's, the KO round length, the last-frame rep, retry from zero |
+| View | `test/screens/battle_screen_test.dart` (updated) | +N and the banner words, clock colors, the fever chip, the danger edge, K.O., fits 360×640 |
+| View | `test/screens/result_screen_test.dart` (updated) | Points big and reps under them, the KO and level-points lines, fits 360×640, no reps line without a game |
+| View | `test/screens/online_preparation_test.dart` (updated) | The online screen with the game: scores, valid reps, bar, words at once, Korean reject reason, combo and fever words, clock colors, the chip gone at the end, danger edge on and off, KO text and report with the time played, a frozen plain clock, the largest font. An older server keeps the reps screen |
+| View | `test/widgets/game_health_bar_test.dart` (new) | Share, labels and semantics, each +N in its side's color, fade, a new rep pops again, both popups at the largest font, the bar keeps its place |
+| View | `test/widgets/game_fever_chip_test.dart` (new) | The multiplier in dark letters on cyan |
+| View | `test/widgets/game_danger_edge_test.dart` (new) | Off when not active, red flash slower than once a second, pixel check that only the edge lights, taps pass through, steady with animations off, screen reader label |
+| View | `test/widgets/game_panel_fonts_test.dart` (new) | With real fonts: the banner never cuts its words, and three digits stay the size of two |
+| Design | `test/theme/app_theme_test.dart`, `test/design_tokens_test.dart` (updated) | The two new tokens; the new widgets use only design tokens |
+| View | `test/demo/battle_demo_test.dart` (updated) | The demo with the game's scores |
+| Server | `server/tests/test_matches.py` (updated) | A bot upload keeps the game's outcome and reason; without them it goes by the reps and `time_up`; other values refused; a retry keeps the first outcome |
+| Server | `server/tests/test_results.py` (updated) | A KO is stored with its reason whatever the reps |
+
+Acceptance criteria → tests:
+- **Bot battle, valid reps move the bar and show +N with the right label:** `battle_viewmodel_test.dart` "a valid rep pushes the bar and scores by its depth"; `battle_screen_test.dart` "a deep rep says EXCELLENT, and the banner names a combo and fever".
+- **In fever a valid rep scores double:** `battle_viewmodel_test.dart` "fever turns on at its start and doubles the points"; `online_battle_integration_test.dart` "fever doubles the points on both phones".
+- **A fully pushed bar ends the match early with that winner:** `battle_viewmodel_test.dart` "my KO ends the round at once, and the battle is saved" and "the opponent's KO ends the round; later reps count for nothing"; `online_battle_integration_test.dart` "a KO ends the match at once, after the ACK, for both".
+- **A player close to losing sees the danger edge:** `battle_viewmodel_test.dart` "the opponent's reps push the bar back and bring danger"; `online_preparation_test.dart` "the danger edge is on 60 points behind, off once it ends".
+- **Online, both phones show the same bar and winner:** `online_battle_integration_test.dart` "both phones show the same score, the bar mirrored, and +N with its grade; a deep rep goes as excellent". Checked over real sockets, not yet on two devices.
+
+- **Manual check:**
+  - Bot battle, round 1, the user staying still, on the user's phone (reported 2026-10-31, code at `d98d219`): pass. +N and the bar moved, the red edge showed, the clock turned cyan with FEVER ×2, then the K.O. screen and a result with game scores and valid reps. The reps were the bot's.
+  - Not done yet: bot round 2 (own +N and the Good/Excellent banner, the amber last 5 s, a time-up end).
+  - Not done yet: online on real devices. The team server runs the old battle server until it is redeployed, so online needs that redeploy or a temporary local patch.
+
+#### 2026-10-31 · code at commit `65dfe2b` · step W3 `feat/fever_score` (after W2 merged: the judge's pass depth, help numbers, red icon, home hint)
+This push merges `origin/main` at `ea83fc1`, with S1 (#18), S2 (#19) and W2 (#21), as `2e373ca`, and then changes:
+- The game grades a rep by its judge's pass depth, not the push-up judge's constant: `BattleViewModel` reads `counter.passDepth`, and `OnlineBattleScreen` hands `_counter.passDepth` to `OnlineBattleSession.submitRep`. For push-ups it is the same 1.1.
+- `lib/widgets/help_rules.dart` reads its numbers from `BattleRules`. The words on the rules screen stay the same; a probe in review compared them with W2's file.
+- The rules page's danger icon is red, like the danger edge.
+- The online button's hint on home says `30초가 끝나면 점수가 높은 쪽 승리`, in the rules screen's words. The old hint said more reps win.
+- The battle demo's long press gives only push-up reasons. S2's squat reasons had reached it through `RejectReason.values`, a side effect of the merge that review round 14 found.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `65dfe2b`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on PR #20 | 10/31 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #20 |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on PR #20 | 10/31 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on PR #20 | 10/31 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on PR #20 | 10/31 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: `server/` unchanged in this push; see the CI comment on PR #20 | 10/31 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 912 passed, 0 failed, 1 skipped.
+  - The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
+  - `flutter analyze` found no issues.
+  - Server `pytest` was not run locally because this push does not change `server/`.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers come from the CI comment on PR #20 for this push. Until my next push, they are in that comment and in the PR body, not here.
+- **Mutation check (review round 14):** the reviewer ran 22 mutations in a scratch copy, and 19 failed a test. They included a hard-coded pass depth, the screen not handing the depth in, the session ignoring it, an amber icon, wrong help numbers, and the old hint. The three survivors: one help number equal to today's default, caught once the config changes; which reason a rejected bot rep carries, which nothing reads; and two squat wire codes swapped, which the server only validates.
+- **Shortfalls:** none known; the CI comment decides. Phone checks are still open (see Manual check).
+- **Known issues, not fixed here:**
+  - A squat battle, once #17 brings one. `BattleGame` grades both players against one pass depth, so S2's 0.75 makes the threshold 1.2, and the bot's depths are 1.4 and 1.9. The reviewer's probe over 1000 seeded rounds, with a user at the bot's pace whose reps are all Good:
+
+    | Battle | Threshold | Bot Excellent | User loses | Danger edge shows |
+    |---|---|---|---|---|
+    | Push-up | 1.76 | 19.8% | 93.9% | 0.1% |
+    | Squat | 1.20 | 100% | 100% | 99.7% |
+
+    W3 builds cannot reach this: home and the online screen play push-ups only. It goes in the PR's note for #17 after this push's CI.
+  - The hint fits one line on a 360 wide phone with the real fonts up to text scale 1.15 and wraps to two lines from 1.2, with no overflow up to 2.0. It also wraps at 320 wide.
+  - When the numbers are tuned, `test/models/game_rules_test.dart` and the literals `KO 100점 차` and `20초부터 ×2` in `test/screens/help_screen_test.dart` change with them: they pin today's values.
+  - The largest-font issues in the W3 entry above still stand.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | A rep's grade goes by its judge's pass depth: at 0.75, a depth of 1.2 is excellent and 1.19 is good |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | Over real sockets, a rep's grade goes by the pass depth it is given; with none, by the push-up judge's. From S2: the `RejectReason.values` loop covers the two squat reasons |
+| Service | `test/support/game_fakes.dart` (updated) | `DepthRepJudge` takes a judge config |
+| View | `test/screens/online_preparation_test.dart` (updated) | The screen hands its counter's pass depth: at 0.75, a depth of 1.2 says `+15 EXCELLENT` |
+| View | `test/widgets/help_rules_test.dart` (updated) | The help numbers are `battleRules`' numbers |
+| View | `test/screens/help_screen_test.dart` (updated) | The danger row's icon is red, the others lime |
+| View | `test/screens/home_screen_test.dart` (updated) | The new hint on the online button |
+| View | `test/demo/battle_demo_test.dart` (updated) | Long presses take turns over the push-up reasons only, and start over after the last |
+| Design | `test/design_tokens_test.dart` (merge, both sides kept) | The `game_*` and `help_*` widgets use only design tokens |
+
+Acceptance criteria → tests:
+- **The game grades by the judge's pass depth:** `battle_viewmodel_test.dart` "a rep's grade goes by its judge's pass depth"; `online_preparation_test.dart` "a rep's grade goes by the counter's pass depth"; `online_battle_integration_test.dart` "a rep's grade goes by the pass depth it is given; with none, by the push-up judge's".
+- **The rules screen's numbers come from `BattleRules`:** `help_rules_test.dart` "the numbers are the game's", "every number on the pages comes from the constants".
+- **The rules page's danger icon is red:** `help_screen_test.dart` "다음 turns through the three pages with their pictures".
+- **The home hint says the higher score wins:** `home_screen_test.dart` "shows the greeting, exercise card and start button".
+- **A push-up battle never shows a squat reason in the demo:** `battle_demo_test.dart` "long presses take turns over the push-up reasons only".
+
+- **Manual check:**
+  - Bot battle, round 2, the user doing push-ups, on the user's phone (reported 2026-10-31, on the committed W3 code as the user had planned, commit not stated; `main`'s judge, before H2's 0.68 fix, so H2 may change depth judging). This predates this push's changes.
+    - Try 1, hands about shoulder width: the user could not go low enough, and almost no rep counted.
+    - Try 2, hands a little wider than the shoulders, going deep: most reps counted, and +N and the Good banner were right.
+    - The cyan clock with FEVER ×2 and the amber last 5 s were right.
+    - Excellent never showed. Whether the cause is the user's form or the threshold (pass depth 1.1 × 1.6 = 1.76) is an open item the user is sharing with the team; it needs teammates' tests. The numbers are not changed.
+    - Not reported: the bar's move on the user's own reps, the rejected banner's words, a time-up end.
+  - Not done yet: this push on a phone, including W2's whole check, the red icon and the new hint.
+  - Not done yet: online on real devices, for the same reason as above.
