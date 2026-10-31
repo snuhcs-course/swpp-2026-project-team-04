@@ -31,6 +31,21 @@ void main() {
     ]);
   });
 
+  test("the numbers are the game's", () {
+    expect(HelpRules.feverSeconds, battleRules.feverLength.inSeconds);
+    expect(HelpRules.baseSeconds, battleRules.feverStart.inSeconds);
+    expect(HelpRules.feverMultiplier, battleRules.feverMultiplier);
+    expect(HelpRules.good, battleRules.goodPoints);
+    expect(HelpRules.excellent, battleRules.excellentPoints);
+    expect(HelpRules.comboBonus, battleRules.comboBonus);
+    expect(
+      Duration(milliseconds: (HelpRules.comboSeconds * 1000).round()),
+      battleRules.comboWindow,
+    );
+    expect(HelpRules.koLead, battleRules.koLead);
+    expect(HelpRules.dangerLead, battleRules.dangerLead);
+  });
+
   test('every number on the pages comes from the constants', () {
     final [bar, score, safety] = HelpRules.pages;
     expect(bar.body, contains('${HelpRules.koLead}점 차이'));
