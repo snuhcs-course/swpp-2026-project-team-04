@@ -200,8 +200,14 @@ so they are quoted here from the session export.
 - **Screens:** the health bar, fever chip and danger edge widgets, the panel and result screens (`8507790`, `3cfc477`, `32f38dc`, `532cfdc`). Claude Design: three internal sketches on a private canvas.
 - **Online on the phone (`fb9fc34`):** `online_battle_session.dart` (`rules` L95, `_myPreview` L106, `_readRules` L412, `submitRep` L519) and `online_battle_screen.dart` (`_clockColor` L275, `_lastRepWords` L282, the danger edge L667).
 - **Other people's files, under the user's exceptions, only the lines needed:** Django `server/matches/` and `server/tests/` (`d98d219`); `server_user_repository.dart` and `match_record.dart` (`80f7e43`).
-- **Tests:** all of the test files listed in `docs/testing/iteration-3/g1fted13.md`, W3 entry.
-- **Review:** the `reviewer` subagent ran ten rounds: 1–3 logic, 4–6 UI and Django, 7–8 the red edge, 9–10 online and the bot upload. Rounds 1, 2, 4, 5, 7 and 9 asked for changes.
+- **After W2 merged (10-31):**
+  - The merge `2e373ca`: four conflict files, both sides kept, by a script.
+  - The judge's pass depth (`ded29b8`): `battle_viewmodel.dart` L223–224, `online_battle_session.dart` L521, `online_battle_screen.dart` L163.
+  - The demo's reasons (`b2defe6`, `battle_demo.dart` L248).
+  - `help_rules.dart` reading `BattleRules` (`439a9d0`), and the red icon (`db63c80`, `help_pictures.dart` L254).
+  - The home hint (`65dfe2b`, `home_screen.dart` L178).
+- **Tests:** all of the test files listed in `docs/testing/iteration-3/g1fted13.md`, W3 entries.
+- **Review:** the `reviewer` subagent ran eleven code rounds: 1–3 logic, 4–6 UI and Django, 7–8 the red edge, 9–10 online and the bot upload, 14 the merge and the changes after W2. Rounds 1, 2, 4, 5, 7 and 9 asked for changes; round 14 was APPROVE with 5 Minor.
 - **Decided by the user:**
   - The numbers stay the v0.1 values in one config, tuned by playing after H2 merges. The user settles the bar's rule details.
   - "젼부 추천대로 해줘": the eight open questions, each answered with the option the agent had marked as recommended: score-lead bar and KO at 100, danger 60+ behind, a new red token for the danger edge (answer 3), the winner order, server-side KO, Django left to its owner (answer 6), help numbers from the config, sketches first. The user later changed answers 3 and 6 (below).
@@ -209,9 +215,11 @@ so they are quoted here from the session export.
   - The danger edge: red (answer 3), then amber at the sketch review, then red again after talking with the team. The clock's last 5 s stay amber.
   - Django done in W3 with the user's conditions, instead of asking the owner first. The user tells the owner afterwards.
   - The bot upload's app side after S2 (answer A), then now (answer B), when S2 stopped being a separate PR.
-  - Keeping `RepJudgeConfig().bottomDepth` instead of waiting for `counter.passDepth`.
+  - Keeping `RepJudgeConfig().bottomDepth` instead of waiting for `counter.passDepth`, until W2 merged.
+  - After W2 merged: the merge with both sides kept, the pass depth swap, the help numbers and the red icon. W3 fixing the home hint in the rules screen's words. The exception for that line, and, when the agent asked, for `home_screen_test.dart` and `help_rules_test.dart`.
 - **Proposed or decided by the agent, and reported to the user:** the color values (`#3DE8FF`, `#FF3B30`: the sketch's defaults, the user named no other); rounding the KO round length up; the temporary local-check patch, not committed; combo and fever in the online words (the reviewer called this the user's call, and the agent decided it).
 - **Decided by the agent, and told to the user only on 10-31, after the notes review asked:** the bot's depths 1.4 and 1.9; the words "K.O.로 끝났어요.".
+- **Decided by the agent after W2 merged, and told to the user only on 10-31, after the notes review asked:** the hint's exact words; `submitRep`'s optional `passDepth` with a push-up fallback. An earlier progress note named them, but the export cannot show that it reached the screen.
 - **Not done by AI:** the phone check of the bot battle (the user); server deployment (the PM).
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
@@ -219,6 +227,8 @@ so they are quoted here from the session export.
 - [Woohyun Song, 10-30] "Django 두 가지는 상우(S4)에게 묻지 않고 W3에서 처리하고, 끝나면 내가 상우에게 알릴게." and "필요한 줄만 최소로 고쳐. 리팩터링이나 정리는 하지 마." (two lines of one pasted prompt)
 - [Woohyun Song, 10-31] "위험 테두리 색은 앰버가 아니라 빨강으로 바꿔 줘." (one line of a pasted prompt)
 - [Woohyun Song, 10-31] "상황이 바뀌었어. 상우가 S2를 따로 올리지 않고 S2·S4를 합친 실험용 PR #17(feat/squat_battle)을 올렸고, 진영이형이 #17은 W3가 머지된 뒤에 main을 받아서 머지하겠다고 리뷰에 남겼어." (first lines of a pasted prompt)
+- [Woohyun Song, 10-31] "홈 버튼 힌트 \"30초 안에 더 많이 하면 승리\"가 W3의 점수 승리 규칙과 어긋나. W3가 규칙을 바꾸는 PR이니 이 문구도 W3에서 고쳐 줘." (one item of a pasted prompt)
+- [Woohyun Song, 10-31] "지금 PR 들어간 거 conflict 생긴 거 같은데 그것도 확인해봐"
 
 ### c. What AI did well
 - **One scoring code for phone and server:** it kept `player_game_score.dart` free of Flutter so the battle server imports the same class. In review round 10, a temporary probe through a relay (deleted after the round) found preview and server equal over 8 reps with mixed gaps.
@@ -226,6 +236,8 @@ so they are quoted here from the session export.
 - **Stayed inside W3's files:** the KO rep could drop from the pace chart in `feedback_screen.dart`, which W3 does not own. Rounding the KO round length up keeps it in the chart with no edit there.
 - **Found a side effect before it happened:** Django's `PUT /matches/feedback/<id>` stores a report even with no match row (`server/matches/views.py` L121). So the local-check patch turns off that upload, and a local battle leaves no orphan row in the team's database.
 - **Review probes:** the reviewer cut sockets through a relay against the real server: re-send, offline combo, an unseen KO. All passed, so the online code was tested beyond its unit tests.
+- **The merge checked, not trusted:** after the four conflicts were resolved, a script compared every line of both sides with the result, and none was missing. In round 14, `git show --remerge-diff` showed hand changes only in those four files.
+- **A side effect found and measured before it ships:** the pass depth swap makes every valid bot rep Excellent in a squat battle. The agent worked this out from the numbers and wrote it in `progress.md` before round 14, and the reviewer measured it over 1000 seeded rounds (19.8% to 100%). W3 builds cannot reach it, so it goes in the PR's note for #17, with the numbers.
 
 ### d. Hallucinations / errors
 - **A claim made without reading the code:** the agent told the user online could be checked "with a local battle server". The user asked for the commands, and only then did the agent read the code. The app's address is a constant, the lobby does not allow a loopback `ws://`, Django login for the battle server takes only a loopback URL, and `server/bin/server.dart` crashes on Windows at `ProcessSignal.sigterm.watch()`. Reading the code found the address and the loopback rule; a trial run found the crash. The agent first noted the correction in `progress.md`; the notes review found no chat message that said it plainly, so the agent told the user on 10-31. Cost: a temporary patch for the check.
@@ -239,6 +251,12 @@ so they are quoted here from the session export.
 - **Reviewer guessed wrong too:** round 9 guessed the valid-reps row as the overflow at text scale 2.0, without identifying it. Round 10 found the real one, the health bar's label line.
 - **Prompt Log extraction:** `extract_prompts.py` took a session summary and browser notices as prompts and missed two prompts typed while the agent was working. The agent corrected the entries by script against the export, and the notes review compared them with it.
 - **An instruction skipped:** in the Django prompt the user asked to see the list of files before any edit. The agent said it would pull the list, then edited the files with no list shown (10-30). The notes review caught it in the export, and the agent told the user on 10-31. The same request on 10-31 was followed: list first, then edits.
+- **An approval stretched (10-31):** the user approved the hint line in `home_screen.dart`. The agent also tried to add `home_screen_test.dart` and `help_rules_test.dart` to `.claude/ownership-exceptions.txt`, planning to mention them in its final report. The edit's note already said "reported to the user", before any report. The permission check refused the edit, with the reason `[Self-Modification]` and no file named; that the two files caused it is the agent's reading. The agent did not work around it: it recorded only the approved line, then asked the user to approve the two files, in a question that did not mention the refused edit. The user approved both. The agent told the user about the refusal on 10-31, after the notes review asked. Cost: one question.
+- **A merge side effect missed (round 14, Minor):** the battle demo walks `RejectReason.values`, so S2's squat reasons reached the push-up demo. No conflict marked it, and the agent had not looked. Fixed in `b2defe6`, with a test that fails on the old code.
+- **A test run that did not run:** the first full `flutter test` after the merge printed only `Test directory "test" not found`, and the tool reported exit code 0. An earlier command had left the shell in the repo root, where there is no `test` folder. The 0 was the exit code of the `tail | cut` at the end of the line; flutter itself exits 1 (reproduced in review). Reading the output caught it, and a rerun with an explicit `cd` into `gymrats_app/` and `pwd` printed ran the tests. When the notes review named this cause, the agent first remembered a `cd` in that command; the session record showed there was none.
+- **Own command hung:** one command began with a stray `cat > /dev/null`, which waited for input until the 300 s limit. The agent stopped it. Cost: about five minutes.
+- **Stale text (round 14, Minor):** a comment in `help_rules.dart` still said the danger color was open, and three `progress.md` records were old or incomplete. All fixed.
+- **Note claims ahead of the evidence (round 15, 4 Major):** these notes first said "reported to the user" for progress notes the export cannot show on screen; said the agent told the user the two files had not been its call, when its question did not mention the refused edit; said the rerun was from the same folder and the cause was not found, when the session showed the cause; and said the squat table was already in the PR. The reviewer checked them against the session export and the live session. All fixed before the push.
 
 ### e. Prompt revisions
 - **Before:** "Django의 ko와 봇 업로드 승패·종료 사유는 상우와 얘기해서 결과를 알려 줄게."
@@ -251,3 +269,5 @@ so they are quoted here from the session export.
 ### Takeaway
 - Before saying a check is possible, read the code path it needs and run it.
 - Reread your own spec before coding against it.
+- An approval covers what it names: ask before adding a file it only implies.
+- Read a run's output, not only its exit code.

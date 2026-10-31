@@ -173,7 +173,7 @@ git stash pop
 온라인 확인 통과: 폰은 손대지 않았더니 5초 뒤 자동으로 닫혔고, 에뮬레이터는 확인을 눌러 닫았어. 둘 다 자세 세팅으로 넘어갔고 매칭이 취소되지 않았어.
 이 결과를 progress.md, 테스트 노트, PR #15 본문에 적어 줘. 테스트 노트 커버리지 칸에는 8bc26b3 CI 숫자를 같은 커밋에 넣고 push해 줘."
 
-<!-- Left out on purpose: prompts of another step or session that live in that step's entries, answers to the agent's questions (quoted in the AI notes), and prompts that are not about development (user, 2026-10-26). The keys stay so a later export does not add them again. -->
+<!-- Left out on purpose: prompts of another step or session that live in that step's entries, answers to the agent's questions (quoted in the AI notes), session summaries, and prompts that are not about development (user, 2026-10-26). The keys stay so a later export does not add them again. -->
 <!-- 36318d41 2026-10-25T06:28:56.571Z -->
 <!-- 36318d41 2026-10-25T06:33:45.306Z -->
 <!-- 36318d41 2026-10-25T06:42:29.879Z -->
@@ -218,6 +218,9 @@ W2(feat/help_screen)로 돌아가자. 상황: 상우의 #18(S1)과 #19(S2)가 �
 4) push와 push 후 점검을 하고 PR을 열어 줘. 본문 첫 줄은 \"Merge order: #5 (team plan); merge after: #4 feat/squat_judge (merged)\"로 하고, 리뷰어는 진영이형으로 해 줘. 실기기 확인은 Manual check에 \"아직\"으로 적어 줘.
 5) feat/fever_score는 건드리지 마. 중간에 내 결정이 필요한 것만 물어봐.
 </pasted_content id=\"3bae\">"
+
+<!-- b767061b 2026-10-31T13:13:02.101Z -->
+[Woohyun Song, 10-31 22:13] "지금 다시 확인해봐"
 
 ## 2026-10-31 · Woohyun Song · feat/fever_score
 <!-- 876b6a24 2026-10-30T13:13:30.966Z -->
@@ -303,3 +306,52 @@ Django 두 가지는 상우(S4)에게 묻지 않고 W3에서 처리하고, 끝�
 </pasted_content id=\"76b6\">"
 
 <!-- 876b6a24 2026-10-31T06:02:16.488Z -->
+
+## 2026-10-31 · Woohyun Song · feat/fever_score
+<!-- 876b6a24 2026-10-31T12:04:17.683Z -->
+[Woohyun Song, 10-31 21:04] "<pasted_content id=\"76b6\">
+판 2(봇 대결, 직접 동작) 결과를 progress.md의 Manual check에 기록해 줘. 다음 W3 push 때 테스트 노트와 PR #20 본문에도 반영하고, 지금 push는 하지 마.
+- 1차: 손을 어깨너비 정도로 좁게 짚었더니 충분히 내려가지 못해 거의 인정되지 않음.
+- 2차: 어깨너비보다 조금 넓게 짚고 깊게 내려가니 대부분 인정되고 +N과 Good 배너가 정상으로 뜸. Excellent는 한 번도 나오지 않음.
+- 이 빌드는 main의 판정기(현우 H2의 0.68 수정 전)라서, H2가 머지되면 깊이 판정이 달라질 수 있음.
+- Excellent가 안 나온 게 내 자세 때문인지 기준(통과 깊이 1.1의 1.6배 = 1.76)이 너무 높아서인지는 모르겠음. 팀원 테스트가 필요해서 오늘 회의에 공유할 거야. 숫자는 지금 바꾸지 말고, progress.md에 팀 확인이 필요한 열린 항목으로 남겨 줘.
+그리고 진영이형 merge 순서상 W3는 상우의 #18(S1), #19(S2)가 머지된 뒤에 머지돼. #19가 머지되면 내가 알려 줄게. 그때 할 일(origin/main merge, passDepth 교체, 테스트, push, PR 본문 갱신)을 progress.md에 적어 둬.
+기록이 끝나면 멈춰 줘. 이 폴더에서 W2 세션을 바로 시작할 거야.
+</pasted_content id=\"76b6\">"
+
+<!-- 876b6a24 2026-10-31T12:06:00.588Z -->
+[Woohyun Song, 10-31 21:06] "<pasted_content id=\"76b6\">
+판 2(봇 대결, 직접 동작) 결과를 progress.md의 Manual check에 기록해 줘. 다음 W3 push 때 테스트 노트와 PR #20 본문에도 반영하고, 지금 push는 하지 마.
+- 1차: 손을 어깨너비 정도로 좁게 짚었더니 충분히 내려가지 못해 거의 인정되지 않음.
+- 2차: 어깨너비보다 조금 넓게 짚고 깊게 내려가니 대부분 인정되고 +N과 Good 배너가 정상으로 뜸. Excellent는 한 번도 나오지 않음.
+- 피버 시안 시계와 FEVER ×2, 마지막 5초 앰버 시계 정상
+- 이 빌드는 main의 판정기(현우 H2의 0.68 수정 전)라서, H2가 머지되면 깊이 판정이 달라질 수 있음.
+- Excellent가 안 나온 게 내 자세 때문인지 기준(통과 깊이 1.1의 1.6배 = 1.76)이 너무 높아서인지는 모르겠음. 팀원 테스트가 필요해서 오늘 회의에 공유할 거야. 숫자는 지금 바꾸지 말고, progress.md에 팀 확인이 필요한 열린 항목으로 남겨 줘.
+그리고 진영이형 merge 순서상 W3는 상우의 #18(S1), #19(S2)가 머지된 뒤에 머지돼. #19가 머지되면 내가 알려 줄게. 그때 할 일(origin/main merge, passDepth 교체, 테스트, push, PR 본문 갱신)을 progress.md에 적어 둬.
+기록이 끝나면 멈춰 줘. 이 폴더에서 W2 세션을 바로 시작할 거야.
+</pasted_content id=\"76b6\">"
+
+<!-- 876b6a24 2026-10-31T12:11:32.769Z -->
+[Woohyun Song, 10-31 21:11] "<pasted_content id=\"76b6\">
+#18(S1)과 #19(S2)가 오늘 저녁 main에 머지됐어. 진영이형 새 순서표 기준으로 W3(#20)는 이제 W2(#5)가 머지된 뒤에 머지돼.
+1) 지금 PR #20 본문만 고쳐 줘. push는 하지 마. 첫 줄은 \"Merge order: #6 (team plan); merge after: #1 docs/battle_rules (merged), #4 feat/squat_judge (merged), #5 feat/help_screen (PR 예정)\"으로 하고, 그 바로 아래에 \"W2가 머지되면 origin/main을 합쳐 passDepth 교체와 도움말 숫자 연결, 빨간 아이콘을 반영해 다시 push한 뒤 머지를 요청할 예정\"이라는 줄을 넣어 줘.
+2) 그 밖의 작업은 하지 마. 이 폴더에서 W2 세션을 바로 시작할 거야. 본문 수정이 끝나면 멈춰 줘.
+3) W2가 머지되면 내가 알려 줄게. 그때 할 일을 progress.md에 이 순서로 고쳐 적어 둬: origin/main merge(S1, S2, W2 포함), passDepth 교체, help_rules.dart 숫자 연결과 빨간 아이콘(예외 기록됨), 테스트와 리뷰, 노트, push, PR 본문 갱신.
+</pasted_content id=\"76b6\">"
+
+<!-- 876b6a24 2026-10-31T13:08:33.430Z -->
+
+<!-- 876b6a24 2026-10-31T13:17:46.468Z -->
+[Woohyun Song, 10-31 22:17] "<pasted_content id=\"76b6\">
+W2(#21)가 22:12에 main에 머지됐어(ea83fc1). 진영이형이 #21 댓글에서 main을 feat/fever_score에 merge하고 CI가 통과하면 #20을 리뷰하겠다고 했어. 이제 W3를 재개해 줘. W2 세션은 끝났고, 지금 체크아웃은 feat/help_screen이야.
+1) feat/fever_score로 바꾸고 origin/main(S1, S2, W2 포함)을 merge해 줘. design_tokens_test.dart와 노트 파일 3개 충돌은 양쪽을 모두 살리는 방식으로 풀어 줘.
+2) progress.md의 \"When W2 merges\" 순서대로 해 줘: passDepth 교체, help_rules.dart 숫자를 BattleRules에서 읽게 하기, 위험 아이콘 빨강(help_pictures.dart, help_screen_test.dart, 예외 기록됨).
+3) 홈 버튼 힌트 \"30초 안에 더 많이 하면 승리\"가 W3의 점수 승리 규칙과 어긋나. W3가 규칙을 바꾸는 PR이니 이 문구도 W3에서 고쳐 줘. home_screen.dart는 내가 승인하는 예외로 그 문구 줄만 바꾸고, 예외 파일과 progress.md에 기록해 줘. 새 문구는 규칙 화면의 표현과 맞춰 줘.
+4) flutter analyze, flutter test, 리뷰어 APPROVE, check-diff, 노트(테스트 노트에 판 2 결과와 W2 커버리지 칸 채우기 포함, AI 노트, Prompt Log export)와 노트 리뷰까지 해 줘.
+5) push와 push 후 점검을 하고, CI 통과를 확인한 뒤 PR #20 본문을 갱신해 줘. merge after에는 #5 merged를 넣고, Manual check에는 봇 판 1·판 2 결과와 \"온라인, W2 폰 확인은 아직\"을 적어 줘. 그다음 PR #20에 진영이형에게 \"main 반영 완료, CI 통과\" 댓글을 남겨 줘.
+6) 끝나면 멈추고, 이 브랜치 하나로 W2와 W3를 폰에서 같이 확인할 수 있게 확인 항목을 정리해 줘.
+중간에 내 결정이 필요한 것만 물어봐.
+</pasted_content id=\"76b6\">"
+
+<!-- 876b6a24 2026-10-31T13:48:23.530Z -->
+[Woohyun Song, 10-31 22:48] "지금 PR 들어간 거 conflict 생긴 거 같은데 그것도 확인해봐"
