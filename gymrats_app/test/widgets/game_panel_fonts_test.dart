@@ -236,7 +236,9 @@ void main() {
         );
         expect(truncated(tester, label), isFalse, reason: label);
       }
-      final pointsHeight = tester.getSize(find.text('+10')).height;
+      // +5 is short enough never to break: the others must match it.
+      final pointsHeight = tester.getSize(find.text('+5').first).height;
+      expect(tester.getSize(find.text('+10')).height, pointsHeight);
       expect(tester.getSize(find.text('+15')).height, pointsHeight);
       expect(truncated(tester, '+10'), isFalse);
       expect(truncated(tester, '+15'), isFalse);
