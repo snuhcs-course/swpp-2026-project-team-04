@@ -91,6 +91,16 @@ class BattleRules {
 
   /// Whether a player leading by [lead] is about to lose.
   bool inDanger(int lead) => lead <= -dangerLead;
+
+  /// How long a round of [roundLength] lasted when a KO ended it after
+  /// [played], for the pace in the form report.
+  ///
+  /// In whole seconds, rounded up past [played]: the KO rep closes at the very
+  /// end, and the pace chart only takes reps from before the end.
+  static Duration koRoundLength(Duration played, Duration roundLength) {
+    final roundedUp = Duration(seconds: played.inSeconds + 1);
+    return roundedUp < roundLength ? roundedUp : roundLength;
+  }
 }
 
 /// The rules every battle plays by.

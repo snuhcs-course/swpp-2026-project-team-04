@@ -223,7 +223,7 @@ class BattleViewModel extends ChangeNotifier {
   /// A game with nobody on the board.
   BattleGame _newGame() => BattleGame(
     rules: rules,
-    // Becomes counter.passDepth when feat/squat_judge merges.
+    // The push-up judge's: no judge states its own pass depth yet.
     passDepth: const RepJudgeConfig().bottomDepth,
   );
 
@@ -417,7 +417,12 @@ class BattleViewModel extends ChangeNotifier {
     }
     final endedAt = _now();
     final ko = _game.isKo;
-    final played = ko ? _timePlayedToKo(counterState) : counter.roundLength;
+    final played = ko
+        ? BattleRules.koRoundLength(
+            counter.roundLength - counterState.remaining,
+            counter.roundLength,
+          )
+        : counter.roundLength;
     final result = BattleResult(
       matchup: matchup,
       myReps: counterState.validReps,
@@ -452,16 +457,6 @@ class BattleViewModel extends ChangeNotifier {
       ),
     );
     unawaited(_save(result));
-  }
-
-  /// How long a round ended by a KO lasted, for the pace in the form report.
-  ///
-  /// In whole seconds, rounded up past the time played: the KO rep closes at
-  /// the very end, and the pace chart only takes reps from before the end.
-  Duration _timePlayedToKo(RepCounterState counterState) {
-    final played = counter.roundLength - counterState.remaining;
-    final roundedUp = Duration(seconds: played.inSeconds + 1);
-    return roundedUp < counter.roundLength ? roundedUp : counter.roundLength;
   }
 
   /// Keeps the battle, with its form report, for the home screen and the

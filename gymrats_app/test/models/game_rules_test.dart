@@ -19,6 +19,21 @@ void main() {
     expect(battleRules.dangerLead, 60);
   });
 
+  test(
+    'a KO round length is the time played rounded up, at most the round',
+    () {
+      Duration length(int playedMs) => BattleRules.koRoundLength(
+        Duration(milliseconds: playedMs),
+        battleDuration,
+      );
+      expect(length(23400), const Duration(seconds: 24));
+      // Exactly on a second still moves past it: the KO rep closed there.
+      expect(length(23000), const Duration(seconds: 24));
+      expect(length(29500), battleDuration);
+      expect(length(30000), battleDuration);
+    },
+  );
+
   test('fever begins exactly at its start time', () {
     expect(rules.isFever(const Duration(milliseconds: 19999)), isFalse);
     expect(rules.isFever(const Duration(seconds: 20)), isTrue);
