@@ -393,8 +393,13 @@ void main() {
       double seconds, {
       double? maxDepth,
       RejectReason? reason,
+      double? minElbowAngle,
     }) async {
-      judge.closeRep(maxDepth: maxDepth, reason: reason);
+      judge.closeRep(
+        maxDepth: maxDepth,
+        reason: reason,
+        minElbowAngle: minElbowAngle,
+      );
       await frame(seconds);
     }
 
@@ -503,6 +508,62 @@ void main() {
       expect(battle.state.myScore, 20);
       expect(battle.state.myLastScore!.combo, 1);
     });
+
+    test('a Go lower rep with bent elbows reaches the game with its angle: '
+        'the score and the bar move, and it stays rejected', () async {
+      await battle.start();
+      await myRep(3, reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      expect(battle.state.myScore, 5);
+      expect(battle.state.myBarShare, closeTo(0.525, 1e-9));
+      expect(battle.state.myLastScore!.grade, GameGrade.average);
+      expect(battle.state.myLastScore!.points, 5);
+      expect(battle.state.myReps, 0);
+      expect(battle.state.myInvalidReps, 1);
+      expect(battle.state.feedback!.reason, RejectReason.insufficientDepth);
+    });
+
+    test(
+      'a Go lower rep above the angle, or with none, scores nothing',
+      () async {
+        await battle.start();
+        await myRep(
+          3,
+          reason: RejectReason.insufficientDepth,
+          minElbowAngle: 109,
+        );
+        await myRep(5, reason: RejectReason.insufficientDepth);
+        expect(battle.state.myScore, 0);
+        expect(battle.state.myLastScore, isNull);
+        expect(battle.state.myInvalidReps, 2);
+      },
+    );
+
+    test(
+      "an average rep is in the final score and not in the valid reps",
+      () async {
+        await battle.start();
+        await myRep(
+          21,
+          reason: RejectReason.insufficientDepth,
+          minElbowAngle: 90,
+        );
+        await frame(30);
+        final result = battle.state.result!;
+        expect(result.myScore, 10);
+        expect(result.myReps, 0);
+        expect(result.myInvalidReps, 1);
+      },
+    );
+
+    test(
+      "the opponent's rejected rep has no angle and scores nothing",
+      () async {
+        await battle.start();
+        await theirRep(3, reason: RejectReason.insufficientDepth);
+        expect(battle.state.opponentScore, 0);
+        expect(battle.state.opponentLastScore, isNull);
+      },
+    );
 
     test('fever turns on at its start and doubles the points', () async {
       await battle.start();

@@ -10,6 +10,8 @@ void main() {
     expect(battleRules.feverStart, const Duration(seconds: 20));
     expect(battleRules.feverLength, const Duration(seconds: 10));
     expect(battleRules.feverMultiplier, 2);
+    expect(battleRules.averagePoints, 5);
+    expect(battleRules.averageMaxElbowAngle, 105);
     expect(battleRules.goodPoints, 10);
     expect(battleRules.excellentPoints, 15);
     expect(battleRules.excellentDepthRatio, 1.6);
@@ -62,6 +64,32 @@ void main() {
     });
   });
 
+  group('average', () {
+    test('an elbow angle up to 105 degrees is average', () {
+      expect(rules.isAverage(90), isTrue);
+      expect(rules.isAverage(91), isTrue);
+      expect(rules.isAverage(105), isTrue);
+    });
+
+    test('the recorded cheats are not: above 105, or no angle', () {
+      expect(rules.isAverage(105.01), isFalse);
+      expect(rules.isAverage(109), isFalse);
+      expect(rules.isAverage(135), isFalse);
+      expect(rules.isAverage(169), isFalse);
+      expect(rules.isAverage(null), isFalse);
+    });
+
+    test('no points turn it off', () {
+      expect(const BattleRules(averagePoints: 0).isAverage(90), isFalse);
+    });
+
+    test('its numbers come from the config', () {
+      const tuned = BattleRules(averagePoints: 7, averageMaxElbowAngle: 120);
+      expect(tuned.isAverage(120), isTrue);
+      expect(tuned.pointsFor(GameGrade.average, combo: false, fever: false), 7);
+    });
+  });
+
   test('a combo gap includes the window itself', () {
     expect(rules.isCombo(const Duration(milliseconds: 1500)), isTrue);
     expect(rules.isCombo(const Duration(milliseconds: 1501)), isFalse);
@@ -70,6 +98,8 @@ void main() {
   test('points follow the table in battle-rules.md 3.5', () {
     int points(GameGrade grade, bool combo, bool fever) =>
         rules.pointsFor(grade, combo: combo, fever: fever);
+    expect(points(GameGrade.average, false, false), 5);
+    expect(points(GameGrade.average, false, true), 10);
     expect(points(GameGrade.good, false, false), 10);
     expect(points(GameGrade.good, true, false), 15);
     expect(points(GameGrade.excellent, false, false), 15);
@@ -116,6 +146,7 @@ void main() {
   });
 
   test('grades have the labels the battle shows', () {
+    expect(GameGrade.average.label, 'Average');
     expect(GameGrade.good.label, 'Good');
     expect(GameGrade.excellent.label, 'Excellent');
   });

@@ -304,6 +304,7 @@ class BattleViewModel extends ChangeNotifier {
           at: record.at,
           reason: record.reason,
           maxDepth: record.maxDepth,
+          minElbowAngle: record.minElbowAngle,
         ),
       );
       if (score != null) _state = _state.copyWith(myLastScore: score);
