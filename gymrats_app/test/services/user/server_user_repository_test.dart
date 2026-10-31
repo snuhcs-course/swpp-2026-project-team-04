@@ -241,7 +241,7 @@ void main() {
   test('an unknown exercise in history is a server error', () async {
     answer = (_) => _json({
       'items': [
-        {..._match, 'exercise': 'squat'},
+        {..._match, 'exercise': 'plank'},
       ],
       'next_before': null,
     });

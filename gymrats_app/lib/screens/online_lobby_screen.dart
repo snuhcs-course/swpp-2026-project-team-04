@@ -54,6 +54,11 @@ class OnlineLobbyScreen extends StatefulWidget {
 
 class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     with SingleTickerProviderStateMixin {
+  /// The server cancels a match whose players are not ready within 60 s of
+  /// `match.found` (protocol §5, `ready_deadline_ms`). The safety warning
+  /// takes at most this much of that time.
+  static const _warningAutoClose = Duration(seconds: 5);
+
   AvatarModel _avatar = AvatarModel.astronaut;
   OnlineBattleSession? _session;
   StreamSubscription<void>? _expiry;
@@ -237,6 +242,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
         duration: Duration(milliseconds: session.durationMs),
         onStartSetup: () => _openBattle(session),
         onLeave: _cancelSearch,
+        warningAutoClose: _warningAutoClose,
       );
     }
     if (busy) {

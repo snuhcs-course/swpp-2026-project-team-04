@@ -14,10 +14,14 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
+import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/user/avatar_store.dart';
 
+// The battle server's own default ready limit, read from the sibling server.
+// ignore: avoid_relative_lib_imports
+import '../../../server/lib/battle_server.dart';
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
 
@@ -125,6 +129,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       session.found();
+      await tester.pumpAndSettle();
+      // The safety warning comes first; 확인 closes it before its countdown.
+      expect(find.text('확인 (5)'), findsOneWidget);
+      await tester.tap(find.text('확인 (5)'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('자세 세팅 시작'));
       await tester.pumpAndSettle();
@@ -265,6 +273,24 @@ void main() {
       expect(find.byType(OnlineBattleScreen), findsNothing);
       expect(camera.startCount, 0);
       await captureFlowSnapshot('online-versus');
+      // The safety warning opens over it and closes by itself after 5 s,
+      // well inside the server's 60 s to get ready.
+      await tester.pump();
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+      expect(find.text('확인 (5)'), findsOneWidget);
+      final autoClose = tester
+          .widget<VersusScreen>(find.byType(VersusScreen))
+          .warningAutoClose!;
+      final readyLimit = Duration(
+        milliseconds: BattleServer(authenticate: (_) => null).readyTimeoutMs,
+      );
+      // The warning closes by itself well before the server would cancel
+      // the match for not being ready.
+      expect(autoClose, const Duration(seconds: 5));
+      expect(autoClose, lessThan(readyLimit));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsNothing);
       await tester.tap(find.text('자세 세팅 시작'));
       await tester.pumpAndSettle();
       expect(find.byType(OnlineBattleScreen), findsOneWidget);
@@ -317,7 +343,80 @@ void main() {
       expect(session.left, isTrue);
       expect(session.wasDisposed, isTrue);
       expect(find.byType(VersusScreen), findsNothing);
+      expect(find.byType(SafeWarningDialog), findsNothing);
       expect(find.text('온라인 상대 찾기'), findsOneWidget);
+    },
+  );
+
+  testWidgets('a match cancelled while the safety warning is open closes it '
+      'with the versus screen', (tester) async {
+    final auth = await loggedIn();
+    late _Session session;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: OnlineLobbyScreen(
+          autoJoin: false,
+          auth: auth,
+          createSession: (u, t, a) => session = _Session(u, t, a),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('온라인 상대 찾기'));
+    await tester.pump();
+    session.found();
+    await tester.pumpAndSettle();
+    expect(find.byType(SafeWarningDialog), findsOneWidget);
+
+    // The opponent left before anyone was ready.
+    session.phase = OnlinePhase.cancelled;
+    session.notifyListeners();
+    await tester.pumpAndSettle();
+    expect(find.byType(VersusScreen), findsNothing);
+    expect(find.byType(SafeWarningDialog), findsNothing);
+    expect(find.text('매칭이 종료됐어요. 다시 상대를 찾아주세요.'), findsOneWidget);
+    // Its countdown went with it.
+    await tester.pump(const Duration(seconds: 10));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'a match found while the cancel dialog is open shows the safety warning '
+    'only after 계속하기',
+    (tester) async {
+      final auth = await loggedIn();
+      late _Session session;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: OnlineLobbyScreen(
+            autoJoin: false,
+            auth: auth,
+            createSession: (u, t, a) => session = _Session(u, t, a),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('온라인 상대 찾기'));
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      session.found();
+      await tester.pumpAndSettle();
+      // Not over the cancel dialog.
+      expect(find.byType(ExitDialog), findsOneWidget);
+      expect(find.byType(SafeWarningDialog), findsNothing);
+
+      await tester.tap(find.text('계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(VersusScreen), findsOneWidget);
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+      expect(find.text('확인 (5)'), findsOneWidget);
+      await tester.tap(find.text('확인 (5)'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsNothing);
+      expect(session.left, isFalse);
     },
   );
 

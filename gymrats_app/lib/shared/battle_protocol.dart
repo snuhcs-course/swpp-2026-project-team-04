@@ -30,6 +30,8 @@ const battleReasons = {
   'insufficient_depth',
   'incomplete_extension',
   'shoulders_not_level',
+  'shallow_squat',
+  'stand_up_fully',
   'too_fast',
   'knees_down',
   'arms_straight',
