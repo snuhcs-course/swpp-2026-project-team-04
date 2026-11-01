@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
@@ -75,9 +76,11 @@ void main() {
       estimator: demoEstimator,
       clock: () => demoNow,
       phoneTilt: tilt,
-      judge: SquatDemoJudge(clock: () => demoNow),
+      exercise: ExerciseType.squat,
+      exerciseJudge: SquatDemoJudge(clock: () => demoNow),
     );
     addTearDown(demo.dispose);
+    expect(demo.passDepth, .75);
     await demo.start();
     tilt.isDisturbed = true;
     for (final frame in [

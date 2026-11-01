@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/auth_session.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
@@ -126,7 +127,32 @@ void main() {
     expect(body['opponent_reps'], 10);
     expect(body['played_at'], '2026-10-15T03:24:00.000Z');
     expect(body['client_id'], matches(RegExp(r'^[0-9a-f]{32}$')));
+    // A record without a game leaves both to the server.
+    expect(body.containsKey('outcome'), isFalse);
+    expect(body.containsKey('reason'), isFalse);
   });
+
+  for (final (outcome, end, outcomeCode, reasonCode) in const [
+    (MatchOutcome.win, GameEnd.ko, 'win', 'ko'),
+    (MatchOutcome.lose, GameEnd.timeUp, 'loss', 'time_up'),
+    (MatchOutcome.draw, GameEnd.timeUp, 'draw', 'time_up'),
+  ]) {
+    test('a game ending $outcomeCode by $reasonCode sends both', () async {
+      await repository.saveMatch(
+        MatchRecord(
+          exercise: ExerciseType.pushUp,
+          opponentName: 'RepBot',
+          myReps: 5,
+          opponentReps: 6,
+          decidedOutcome: outcome,
+          gameEnd: end,
+        ),
+      );
+      final body = posted().single;
+      expect(body['outcome'], outcomeCode);
+      expect(body['reason'], reasonCode);
+    });
+  }
 
   test('a failed save is kept and sent again, with the same id', () async {
     answer = (_) => throw const SocketException('down');

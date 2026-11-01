@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
+import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 
 void main() {
@@ -27,6 +28,18 @@ void main() {
       decidedOutcome: MatchOutcome.lose,
     );
     expect(forfeit.outcome, MatchOutcome.lose);
+  });
+
+  test('how the game stopped is kept; a record from elsewhere has none', () {
+    expect(record(1, 2).gameEnd, isNull);
+    const ko = MatchRecord(
+      exercise: ExerciseType.pushUp,
+      opponentName: 'RepBot',
+      myReps: 5,
+      opponentReps: 1,
+      gameEnd: GameEnd.ko,
+    );
+    expect(ko.gameEnd, GameEnd.ko);
   });
 
   test('a battle has feedback only with a summary', () {

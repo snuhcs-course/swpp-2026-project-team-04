@@ -5,13 +5,16 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/battle_result.dart';
 import '../models/exercise_type_korean.dart';
+import '../models/game_score.dart';
 import '../models/match_record.dart';
+import '../services/game/rep_grade.dart';
+import '../services/pose/exercise_judge.dart';
 import '../theme/app_theme.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 
-/// How a battle ended: who won and by how much, both scores, and the user's
-/// counted and rejected reps.
+/// How a battle ended: who won and by how much, both scores, the user's
+/// counted and rejected reps, and their grades.
 ///
 /// Like the versus screen it has no view model: everything it shows comes
 /// from [result], and its only behavior is navigation. The battle was saved
@@ -113,6 +116,10 @@ class _ResultContent extends StatelessWidget {
                 _ScoreCard(result: result),
                 const SizedBox(height: 18),
                 _MyStats(result: result),
+                if (result.hasGame && result.form != null) ...[
+                  const SizedBox(height: AppSpacing.s8),
+                  _GradeCounts(result: result),
+                ],
                 if (onOpenFeedback case final open?) ...[
                   const SizedBox(height: 12),
                   _FeedbackButton(onPressed: open),
@@ -185,20 +192,20 @@ class _Verdict extends StatelessWidget {
   /// The slant of the design's verdict, as a skew.
   static final _slant = Matrix4.skewX(-8 * math.pi / 180);
 
+  /// How it was decided: by a KO, by points, by reps when the points were
+  /// level, or by reps for a battle built without a game.
+  String get _how {
+    if (!result.hasGame) return '${result.margin}개 차이로';
+    if (result.end == GameEnd.ko) return 'KO로';
+    return result.margin == 0 ? '유효 횟수로' : '${result.margin}점 차이로';
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final (word, color, message) = switch (result.outcome) {
-      MatchOutcome.win => (
-        'WIN',
-        AppColors.accent,
-        '${result.margin}개 차이로 이겼어요!',
-      ),
-      MatchOutcome.lose => (
-        'LOSE',
-        AppColors.opponent,
-        '${result.margin}개 차이로 졌어요',
-      ),
+      MatchOutcome.win => ('WIN', AppColors.accent, '$_how 이겼어요!'),
+      MatchOutcome.lose => ('LOSE', AppColors.opponent, '$_how 졌어요'),
       MatchOutcome.draw => ('DRAW', AppColors.textPrimary, '비겼어요!'),
     };
     return Column(
@@ -282,7 +289,8 @@ class _ScoreCard extends StatelessWidget {
           Expanded(
             child: _Score(
               name: playerName,
-              score: result.myReps,
+              score: result.myDisplayScore,
+              reps: result.hasGame ? result.myReps : null,
               color: AppColors.accent,
               avatar: myAvatar,
             ),
@@ -297,7 +305,8 @@ class _ScoreCard extends StatelessWidget {
           Expanded(
             child: _Score(
               name: opponent.name,
-              score: result.opponentReps,
+              score: result.opponentDisplayScore,
+              reps: result.hasGame ? result.opponentReps : null,
               color: AppColors.opponent,
               avatar: opponentAvatar,
             ),
@@ -308,17 +317,22 @@ class _ScoreCard extends StatelessWidget {
   }
 }
 
-/// One side of the score card: the avatar over the name and the score.
+/// One side of the score card: the avatar over the name, the score, and the
+/// valid reps.
 class _Score extends StatelessWidget {
   const _Score({
     required this.name,
     required this.score,
+    this.reps,
     required this.color,
     required this.avatar,
   });
 
   final String name;
   final int score;
+
+  /// Null hides the line: the score already is the reps.
+  final int? reps;
   final Color color;
   final Widget avatar;
 
@@ -347,6 +361,13 @@ class _Score extends StatelessWidget {
             color: color,
           ),
         ),
+        if (reps case final reps?) ...[
+          const SizedBox(height: AppSpacing.s4),
+          Text(
+            '유효 $reps회',
+            style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
       ],
     );
   }
@@ -408,6 +429,72 @@ class _MyStats extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// How many of the user's reps got each grade, in one line on a card. Average
+/// reps are also in 무효: they did not count, yet they scored.
+class _GradeCounts extends StatelessWidget {
+  const _GradeCounts({required this.result});
+
+  final BattleResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final counts = GameGradeCounts.ofReps(
+      result.form!.reps,
+      passDepth: judgeFor(result.matchup.exercise).passDepth,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s12,
+        vertical: AppSpacing.s8,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _GradeCount(grade: GameGrade.excellent, count: counts.excellent),
+          _GradeCount(grade: GameGrade.good, count: counts.good),
+          _GradeCount(grade: GameGrade.average, count: counts.average),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Good 8", the name in gray. It shrinks rather than overflows on the largest
+/// system font.
+class _GradeCount extends StatelessWidget {
+  const _GradeCount({required this.grade, required this.count});
+
+  final GameGrade grade;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodySmall;
+    return Flexible(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text.rich(
+          TextSpan(
+            text: '${grade.label} ',
+            style: style?.copyWith(color: AppColors.textSecondary),
+            children: [
+              TextSpan(
+                text: '$count',
+                style: style?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

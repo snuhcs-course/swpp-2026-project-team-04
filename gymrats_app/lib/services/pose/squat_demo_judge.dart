@@ -1,13 +1,21 @@
 import '../../models/pose_frame.dart';
 import '../../models/rep_event.dart';
 import 'rep_judge.dart';
+import 'exercise_judge.dart';
+import 'squat_rep_judge.dart';
 
 import 'package:flutter/foundation.dart';
 
 /// Lenient prototype: one standing → lowered hips → standing cycle.
 /// This intentionally does not claim to check squat form or calibrated accuracy.
-class SquatDemoJudge extends RepJudge {
+class SquatDemoJudge extends RepJudge implements ExerciseRepJudge {
   SquatDemoJudge({super.clock}) : _clock = clock ?? _newClock();
+
+  @override
+  double get minLikelihood => config.minLikelihood;
+
+  @override
+  double get passDepth => SquatRepJudge().passDepth;
 
   final RepClock _clock;
   RepPhase _phase = RepPhase.idle;

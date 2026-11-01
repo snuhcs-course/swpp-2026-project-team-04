@@ -80,6 +80,16 @@ def test_same_result_twice_is_stored_once(client, players):
     assert Match.objects.count() == 2
 
 
+def test_ko_is_stored_with_its_reason_whatever_the_reps(client, players):
+    a, b = players
+    body = result(a, b, reason="ko", reps=(9, 12), outcomes=("win", "loss"))
+    assert internal(client, "results", body).status_code == 201
+    [mine] = history(client, a)
+    [theirs] = history(client, b)
+    assert (mine["outcome"], mine["reason"], mine["my_reps"]) == ("win", "ko", 9)
+    assert (theirs["outcome"], theirs["reason"]) == ("loss", "ko")
+
+
 def test_forfeit_is_a_loss_whatever_the_reps(client, players):
     a, b = players
     body = result(a, b, reason="forfeit", reps=(20, 3), outcomes=("loss", "win"))

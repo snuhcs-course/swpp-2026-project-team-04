@@ -55,6 +55,9 @@ class MatchInSerializer(serializers.ModelSerializer):
     my_reps = serializers.IntegerField(min_value=0, max_value=1000)
     opponent_reps = serializers.IntegerField(min_value=0, max_value=1000)
     played_at = AwareDateTimeField()
+    # Optional: the game's result. An app that sends none goes by the reps.
+    outcome = serializers.ChoiceField(choices=OUTCOMES, required=False)
+    reason = serializers.ChoiceField(choices=["time_up", "ko"], required=False)
     # Optional: the battle's form report, stored next to the match.
     feedback = FeedbackInSerializer(required=False)
 
@@ -67,6 +70,8 @@ class MatchInSerializer(serializers.ModelSerializer):
             "my_reps",
             "opponent_reps",
             "played_at",
+            "outcome",
+            "reason",
             "feedback",
         ]
         # The (user, client_id) rule is handled by the view: a repeat

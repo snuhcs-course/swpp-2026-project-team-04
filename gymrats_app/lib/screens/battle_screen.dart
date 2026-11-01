@@ -20,6 +20,7 @@ import '../viewmodels/battle_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../widgets/battle_score_panel.dart';
 import '../widgets/exit_dialog.dart';
+import '../widgets/game_danger_edge.dart';
 import '../widgets/landmark_overlay.dart';
 import '../widgets/opponent_window.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
@@ -29,9 +30,9 @@ import '../widgets/time_up_overlay.dart';
 /// window, and the scores below.
 ///
 /// The round starts once the camera runs in portrait. Back asks before
-/// leaving, and leaving keeps nothing. When time is up, a TIME UP overlay
-/// leads to the result screen, which replaces this one; back then goes
-/// home.
+/// leaving, and leaving keeps nothing. When time is up or a KO lands, an
+/// overlay leads to the result screen, which replaces this one; back then
+/// goes home. While the user is about to lose, the screen edge flashes.
 class BattleScreen extends StatefulWidget {
   const BattleScreen({super.key, required this.matchup, this.createViewModel});
 
@@ -59,21 +60,26 @@ class _BattleScreenState extends State<BattleScreen>
   @override
   void initState() {
     super.initState();
-    _viewModel =
-        widget.createViewModel?.call() ??
-        BattleViewModel(
-          matchup: widget.matchup,
-          counter: RepCounterViewModel(
-            roundLength: battleDuration,
-            judge: widget.matchup.exercise == ExerciseType.squat
-                ? SquatDemoJudge()
-                : null,
-          ),
-          opponent: BotOpponent(),
-          repository: context.read<UserRepository>(),
-          sound: const DeviceRepSound(),
-          formReports: context.read<FormReportStore>(),
-        );
+    final createViewModel = widget.createViewModel;
+    if (createViewModel != null) {
+      _viewModel = createViewModel();
+    } else {
+      final counter = RepCounterViewModel(
+        roundLength: battleDuration,
+        exercise: widget.matchup.exercise,
+        exerciseJudge: widget.matchup.exercise == ExerciseType.squat
+            ? SquatDemoJudge()
+            : null,
+      );
+      _viewModel = BattleViewModel(
+        matchup: widget.matchup,
+        counter: counter,
+        opponent: BotOpponent(passDepth: counter.passDepth),
+        repository: context.read<UserRepository>(),
+        sound: const DeviceRepSound(),
+        formReports: context.read<FormReportStore>(),
+      );
+    }
     _viewModel.addListener(_onViewModelChanged);
     WidgetsBinding.instance.addObserver(this);
     // Setup may have turned the screen sideways, and it restores portrait
@@ -181,6 +187,7 @@ class _BattleScreenState extends State<BattleScreen>
               fit: StackFit.expand,
               children: [
                 _BattleLayout(matchup: widget.matchup),
+                const _DangerEdge(),
                 if (timeUp)
                   TimeUpOverlay(
                     result: _viewModel.state.result!,
@@ -192,6 +199,24 @@ class _BattleScreenState extends State<BattleScreen>
         ),
       ),
     );
+  }
+}
+
+/// Flashes the screen edge while the user is about to lose, until the battle
+/// is over. A camera failure holds it too: retrying starts from zero.
+class _DangerEdge extends StatelessWidget {
+  const _DangerEdge();
+
+  @override
+  Widget build(BuildContext context) {
+    final active = context.select<BattleViewModel, bool>(
+      (vm) =>
+          vm.state.danger &&
+          vm.state.phase != BattlePhase.timeUp &&
+          vm.state.phase != BattlePhase.left &&
+          vm.state.phase != BattlePhase.failed,
+    );
+    return GameDangerEdge(active: active);
   }
 }
 
@@ -215,7 +240,7 @@ class _BattleLayoutState extends State<_BattleLayout> {
   double _aspectRatio = 3 / 4;
 
   /// The least height the panel needs, besides the bottom inset.
-  static const _minPanelHeight = 260.0;
+  static const _minPanelHeight = 280.0;
 
   @override
   Widget build(BuildContext context) {

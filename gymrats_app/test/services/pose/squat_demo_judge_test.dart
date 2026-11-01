@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/pose/squat_demo_judge.dart';
+import 'package:gymrats_app/services/pose/squat_rep_judge.dart';
 
 PoseFrame pose(double hip, {double knee = 300, double ankle = 400}) {
   final points = <BodyLandmark, Keypoint>{};
@@ -23,6 +24,10 @@ PoseFrame pose(double hip, {double knee = 300, double ankle = 400}) {
 }
 
 void main() {
+  test('demo uses the same scoring threshold as the squat judge', () {
+    expect(SquatDemoJudge().passDepth, SquatRepJudge().passDepth);
+    expect(SquatDemoJudge().passDepth, .75);
+  });
   test('one full squat counts once only after standing up', () {
     var now = Duration.zero;
     final judge = SquatDemoJudge(clock: () => now);

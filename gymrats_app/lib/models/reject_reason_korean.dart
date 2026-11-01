@@ -16,5 +16,7 @@ extension RejectReasonKorean on RejectReason {
     RejectReason.bellyDown => '배를 바닥에서 떼요',
     RejectReason.notFloorPushUp => '바닥에서 푸시업해요',
     RejectReason.phoneMoved => '폰을 고정해 주세요',
+    RejectReason.shallowSquat => '엉덩이를 무릎 높이까지 내려요',
+    RejectReason.standUpFully => '끝까지 일어나요',
   };
 }

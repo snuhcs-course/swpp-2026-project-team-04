@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../../models/exercise_type.dart';
 import '../../models/feedback_summary.dart';
 import '../../models/form_report.dart';
+import '../../models/game_score.dart';
 import '../../models/match_page.dart';
 import '../../models/match_record.dart';
 import '../../models/user_profile.dart';
@@ -182,6 +183,20 @@ class ServerUserRepository implements UserRepository {
     'my_reps': record.myReps,
     'opponent_reps': record.opponentReps,
     'played_at': (record.playedAt ?? DateTime.now()).toUtc().toIso8601String(),
+    if (record.decidedOutcome case final outcome?)
+      'outcome': _outcomeCode(outcome),
+    if (record.gameEnd case final end?) 'reason': _reasonCode(end),
+  };
+
+  static String _outcomeCode(MatchOutcome outcome) => switch (outcome) {
+    MatchOutcome.win => 'win',
+    MatchOutcome.lose => 'loss',
+    MatchOutcome.draw => 'draw',
+  };
+
+  static String _reasonCode(GameEnd end) => switch (end) {
+    GameEnd.timeUp => 'time_up',
+    GameEnd.ko => 'ko',
   };
 
   static MatchRecord _match(Map<String, Object?> json) {

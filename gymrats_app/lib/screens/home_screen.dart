@@ -175,7 +175,7 @@ class _HomeContent extends StatelessWidget {
         const SizedBox(height: 20),
         AccentButton(
           title: '온라인 1v1 대결',
-          hint: '${battleDuration.inSeconds}초 안에 더 많이 하면 승리',
+          hint: '${battleDuration.inSeconds}초가 끝나면 점수가 높은 쪽 승리',
           onPressed: () =>
               Navigator.pushNamed(context, GymRatsApp.onlineBattleRoute),
         ),
@@ -239,6 +239,13 @@ class _Greeting extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
+            ),
+            IconButton(
+              onPressed: () =>
+                  Navigator.pushNamed(context, GymRatsApp.helpRoute),
+              tooltip: '게임 규칙',
+              color: AppColors.textSecondary,
+              icon: const Icon(Icons.help_outline_rounded),
             ),
             IconButton(
               onPressed: () =>

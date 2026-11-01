@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../models/battle_rules.dart';
 import '../../models/rep_event.dart';
+import '../../models/exercise_type.dart';
 import '../pose/setup_checker.dart' show Clock;
 import 'opponent_source.dart';
 
@@ -16,11 +17,16 @@ class BotOpponent implements OpponentSource {
     math.Random? random,
     Clock? clock,
     this.roundLength = battleDuration,
+    this.passDepth = _pushUpPassDepth,
   }) : _random = random ?? math.Random(),
        _clock = clock ?? _stopwatchClock();
 
   /// Every planned rep falls inside this.
   final Duration roundLength;
+
+  /// The pass depth of the exercise the bot plays. Its reps go that many times
+  /// as deep, so they get the same grades in every exercise.
+  final double passDepth;
 
   final math.Random _random;
   final Clock _clock;
@@ -58,6 +64,18 @@ class BotOpponent implements OpponentSource {
   static const _mostValid = 28;
   static const _mostRejected = 3;
 
+  /// The depth a push-up must reach: `RepJudgeConfig.bottomDepth`.
+  static const _pushUpPassDepth = 1.1;
+
+  /// How deep the bot's valid push-ups go, in top-pose shoulder widths: both
+  /// are inside what normal push-ups reach, and only the deep one is excellent.
+  /// Another exercise scales them by its pass depth.
+  static const _normalDepth = 1.4;
+  static const _deepDepth = 1.9;
+
+  /// About this share of the valid reps go deep.
+  static const _deepShare = 0.2;
+
   static Clock _stopwatchClock() {
     final stopwatch = Stopwatch()..start();
     return () => stopwatch.elapsed;
@@ -68,8 +86,17 @@ class BotOpponent implements OpponentSource {
   /// The valid count is drawn first, so every round lands in the bot's
   /// pace: 10 to 14 in a 30-second round, 20 to 28 in a 60-second one. A few
   /// rejected reps are mixed in. Gaps widen towards the end, and each rep
-  /// moves a little off its slot. Reps stay in order inside the round.
-  static List<RepEvent> planRound(math.Random random, Duration roundLength) {
+  /// moves a little off its slot. Reps stay in order inside the round. Some
+  /// valid reps go deep, so the game grades them higher; [passDepth] scales
+  /// how deep. Rejected reps have no depth and no elbow angle, so they earn
+  /// nothing.
+  static List<RepEvent> planRound(
+    math.Random random,
+    Duration roundLength, {
+    double passDepth = _pushUpPassDepth,
+  }) {
+    // Exactly 1 at the default, so push-up depths stay exactly as they are.
+    final depthScale = passDepth / _pushUpPassDepth;
     int atPace(int perMinute) =>
         (perMinute * roundLength.inMicroseconds / _paceLength.inMicroseconds)
             .round();
@@ -91,7 +118,9 @@ class BotOpponent implements OpponentSource {
       final gap = span / count * ((1 - _slowdown) + 2 * _slowdown * slot);
       final jitter = (random.nextDouble() * 2 - 1) * _jitter * gap;
       final reason = rejected.contains(i)
-          ? RejectReason.values[random.nextInt(RejectReason.values.length)]
+          ? RejectReason.forExercise(ExerciseType.pushUp)[random.nextInt(
+              RejectReason.forExercise(ExerciseType.pushUp).length,
+            )]
           : null;
       plan.add(
         RepEvent(
@@ -101,6 +130,10 @@ class BotOpponent implements OpponentSource {
           at:
               _startDelay +
               Duration(microseconds: (span * progress + jitter).round()),
+          maxDepth: reason != null
+              ? null
+              : (random.nextDouble() < _deepShare ? _deepDepth : _normalDepth) *
+                    depthScale,
         ),
       );
     }
@@ -113,7 +146,7 @@ class BotOpponent implements OpponentSource {
   @override
   void start() {
     _timer?.cancel();
-    _plan = planRound(_random, roundLength);
+    _plan = planRound(_random, roundLength, passDepth: passDepth);
     _nextRep = 0;
     _stopped = false;
     _elapsedBeforeResume = Duration.zero;

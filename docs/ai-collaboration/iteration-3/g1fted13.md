@@ -126,3 +126,203 @@ so they are quoted here from the session export.
 ### Takeaway
 - Two sessions should not share one working tree; use a separate `git worktree` per step.
 - A dialog's "closed by the user" and "removed by the app" need different answers.
+
+## W2 `feat/help_screen` – battle rules screen and '?' on home (P10), 2026-10-27 ~ 2026-10-31
+
+### a. Where AI was used
+- **The screen (commit `ec36e9d`):** Claude Code wrote `gymrats_app/lib/screens/help_screen.dart` (L1–240), `gymrats_app/lib/widgets/help_pictures.dart` (L1–266) and `gymrats_app/lib/widgets/help_rules.dart` (L1–123), with their tests and the three `design_tokens_test.dart` paths.
+- **The routing (commit `0d4828c`):** `gymrats_app/lib/services/user/rules_seen_store.dart` (L1–44), `gymrats_app/lib/viewmodels/help_viewmodel.dart` (L1–94), `gymrats_app/lib/viewmodels/signup_viewmodel.dart` (L83, L92, L139), and `gymrats_app/lib/main.dart` (the gate at L175–187, the `/help` route at L212–215), with their tests.
+- **The '?' button (commit `d0f056b`):** `gymrats_app/lib/screens/home_screen.dart` L234–240, seven added lines and no other change in that file, with tests in `home_screen_test.dart`, `main_test.dart` and `auth_flow_test.dart`. Merging `origin/main` first (`d9c9c80`, no conflict) was also done by the agent, at the user's request.
+- **Sketches:** Claude Design, three directions on a private canvas: A the card list already in code, B one screen, C three swipe pages. Internal only, as for W4. The agent also wrote the title options.
+- **Review:** the `reviewer` subagent reviewed the code in four rounds: CHANGES_REQUESTED, then APPROVE, then APPROVE after the rebuild as C, then APPROVE for the '?' and the merge. A later round checked these notes (`progress.md` Review log).
+- **Decided by the user:**
+  - the flag per account, the option the agent marked recommended and the default the user's own prompt had named;
+  - design sketches for this screen too (item e);
+  - layout C, asking for several copy options and rejecting "바를 끝까지 밀어요", then the three titles out of the agent's options;
+  - no push on 10-29, only local commits;
+  - on 10-31, the merge, removing the `home_screen.dart` exception, the PR's first line and reviewer, and "아직" in the Manual check.
+- **Proposed or decided by the agent, and reported to the user:**
+  - a sign-up saves "not seen", 시작하기 saves "seen", and no saved flag counts as seen. The behavior was written into the question the user answered, and the agent reported the result afterwards;
+  - 건너뛰기 on pages 1–2, part of sketch C;
+  - the page bodies and rule rows, kept from the sketch. The user asked for several copy options; the agent offered them for the titles only and said so on 10-27;
+  - the danger row's copy without a color (item c). The reviewer suggested the final wording.
+- **Decided by the agent, and told to the user only at the notes review on 10-31:**
+  - back on the first-login rules closes the app like any root screen. It was recorded in `progress.md` on 10-27, but no chat message said so;
+  - the '?' icon (`Icons.help_outline_rounded`), its tooltip "게임 규칙", and its place left of the profile button.
+- **Not done by AI:** the phone check. It is still open.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 10-27] "W2 feat/help_screen 시작해. W1(#13), W4(#15)는 PR 열려 있고 PM 리뷰 대기 중이야. […] home_screen.dart는 feat/squat_judge 머지 전까지 잠겨 있으니 건드리지 말고, '?' 버튼은 progress.md에 대기로 남겨." (shortened; full text in the log)
+- [Woohyun Song, 10-27] "Help Screen도 Claude Design을 통해 디자인 시안 뽑고 나한테 검토받아"
+- [Woohyun Song, 10-27] answer to the agent's question on the sketches (an answer, not a prompt, so it is not in the Prompt Log; from the session export): "C로 가되, 멘트 후보를 여러 개 뽑아서 가보자. '바를 끝까지 밀어요'는 특히 좀 별로야"
+- [Woohyun Song, 10-29] "매칭이 잡히고 pose setup까지 완료해야 규칙 창이 뜨는 건가?"
+- [Woohyun Song, 10-31] "W2(feat/help_screen)로 돌아가자. […] 2) '?' 버튼과 그 테스트를 넣어 줘. S2가 고친 home_screen.dart의 다른 줄은 건드리지 말고 꼭 필요한 줄만 바꿔." (shortened; full text in the log)
+
+### c. What AI did well
+- **Sign-up never flashes home:** `HelpViewModel.signedUp` (`help_viewmodel.dart` L61–69) switches to the rules before its first await, so the screen does not depend on how fast secure storage writes. A read that ends later is ignored. The reviewer asked for an app-level test of this in round 1, and "with slow phone storage, sign-up never shows home before the rules" now checks every frame.
+- **A clear answer to a device question:** when the user asked on 10-29 whether the rules wait for the pose setup, the agent separated the rules screen (W2, sign-up and '?') from the safety warning (W4, match found). It also said the checked-out branch was W4, which has no rules code.
+- **Design conflict brought up early (reviewer round 3):** the rules page said the screen flashes red, while wiki 2.5.2 has no red. The agent took the color out of the copy and told the user. The user settled the color in W3.
+- **The reviewer's mutation run (round 4) found a real gap:** of 19 mutations, 2 survived, both making the `/help` route write the flag. Nothing in the tests pinned that '?' saves nothing. The code was correct, and two tests now pin it.
+- **The lock checked, not assumed:** to see whether the `home_screen.dart` exception was still needed, the agent removed the line and then read the guard's `lock_state`, which was empty. The reviewer confirmed the check can fail: at `0d4828c`, before the merge, it reports the lock as closed.
+
+### d. Hallucinations / errors
+- **Font change on the score tags (reviewer round 1, Major):** the tags changed the font family, and wiki 2.5.1 allows only color and weight. Fixed on the same day. Cost: one review round.
+- **Other round 1 findings (Minor):** a pill where tags take `AppRadius.small`, a 12 px icon gap where wiki 2.5.5 says 8, copy that said 푸시업 though squat comes later, and a comment that hid how `SignupScreen`'s own default skips the rules. All fixed.
+- **Round 3 findings on the rebuilt screen (Minor):** spacing off the 2.5.5 table (20 and 12 where 16 and 8 belong), Korean tags on a style meant for the number font, no test of the icon colors, and an unbounded loop in a test helper. All fixed.
+- **Flaky test set aside too quickly:** in round 1 a full run failed once in `battle_result_store_test.dart`, the forfeit test, with the two players' outcomes swapped. The agent and the reviewer recorded it as outside W2, because it passed alone 3 of 3 and in the later full runs. In W3's round 9 another test in that file failed once, by the checklist a Critical, and its message was not captured. The likely cause, not a proven one, is in the helper both tests use: both players joining at once. The fix (`d0ed8aa`) is on W3's branch, so this branch still has the old helper.
+- **Replies back in English:** the user asked for Korean on 10-27, and the agent went back to English in later replies, so the user had to raise it again. It was then saved as a memory rule. Cost: two prompts.
+- **A test weaker than its name (caught by the agent before review, 10-31):** the first long-name test's assertion passed at half a button's height, with a comment that did not match it. It now checks for at least twice the font size.
+- **Hidden keys would have dropped prompts (caught by the agent before commit, 10-31):** the first plan hid W3's prompts in this Prompt Log, under the existing rule for prompts of another step. Three of them are not on W3's branch yet, so W3's next export would have skipped them. The W2 log now holds no W3 keys. The same rule had already hidden six W2 prompts during W4, and they moved back into W2's entries.
+- **Scratch probe faults (reviewer, round 4):** a first name-length probe did not change the name shown, because `InMemoryUserRepository` ignores the nickname, and one probe run hung. The reviewer reported both. The results come from a second probe, and the agent stopped the hung run. No effect on the branch.
+
+### e. Prompt revisions
+- **Before:** the 10-27 start prompt (item b) listed the files and rules but no design step. The agent built a card list, which passed review round 2.
+- **After:** "Help Screen도 Claude Design을 통해 디자인 시안 뽑고 나한테 검토받아"
+- **Why it worked:** the user saw three directions before settling on one, and chose a different layout from the one in the code. Cost: the card list was replaced, and round 3 reviewed the screen again. In W3 the agent offered sketches first as its recommended option, and the user accepted it.
+- **Before:** "한국어로 다시 적어."
+- **After:** "지금 이 세션에서 계속 응답이 영어로 오는 문제가 있어."
+- **Why it worked:** the first prompt fixed one reply. The second named the repeating problem, so the agent saved a rule that also covers later sessions.
+
+### f. Manual fixes and why
+- None by hand in this step. The user's decisions are listed in item a, and the agent applied every change. No code was edited by a person, so there is no manual-fix marker.
+
+### Takeaway
+- Ask for design sketches before the first build of a screen, not after its review.
+- Hide a prompt's key only when that prompt is already logged somewhere: a hidden key stops every later export.
+- Write "reported to the user" only for what a chat message said; a line in `progress.md` is not a report.
+
+## W3 `feat/fever_score` – game layer: bar, judgments, fever, danger, KO (P8), 2026-10-30 ~ 2026-10-31
+
+### a. Where AI was used
+- **Rules and game layer:** Claude Code wrote `gymrats_app/lib/models/battle_rules.dart` (`BattleRules` L15–104), `game_score.dart`, `lib/services/game/battle_game.dart` and `player_game_score.dart` (`b9adb50`).
+- **Bot battle:** `battle_viewmodel.dart`, `battle_result.dart` (`30a5450`); the bot's depths in `bot_opponent.dart` (L61–67, L113–117, `562f706`).
+- **Battle server:** scoring, the grade check (`_grade`, L470) and the KO end (L427) in `server/lib/battle_server.dart` (`facac22`); the protocol section (`2b84d5f`).
+- **Screens:** the health bar, fever chip and danger edge widgets, the panel and result screens (`8507790`, `3cfc477`, `32f38dc`, `532cfdc`). Claude Design: three internal sketches on a private canvas.
+- **Online on the phone (`fb9fc34`):** `online_battle_session.dart` (`rules` L95, `_myPreview` L106, `_readRules` L412, `submitRep` L519) and `online_battle_screen.dart` (`_clockColor` L275, `_lastRepWords` L282, the danger edge L667).
+- **Other people's files, under the user's exceptions, only the lines needed:** Django `server/matches/` and `server/tests/` (`d98d219`); `server_user_repository.dart` and `match_record.dart` (`80f7e43`).
+- **After W2 merged (10-31):**
+  - The merge `2e373ca`: four conflict files, both sides kept, by a script.
+  - The judge's pass depth (`ded29b8`): `battle_viewmodel.dart` L223–224, `online_battle_session.dart` L521, `online_battle_screen.dart` L163.
+  - The demo's reasons (`b2defe6`, `battle_demo.dart` L248).
+  - `help_rules.dart` reading `BattleRules` (`439a9d0`), and the red icon (`db63c80`, `help_pictures.dart` L254).
+  - The home hint (`65dfe2b`, `home_screen.dart` L178).
+- **Tests:** all of the test files listed in `docs/testing/iteration-3/g1fted13.md`, W3 entries.
+- **Review:** the `reviewer` subagent ran eleven code rounds: 1–3 logic, 4–6 UI and Django, 7–8 the red edge, 9–10 online and the bot upload, 14 the merge and the changes after W2. Rounds 1, 2, 4, 5, 7 and 9 asked for changes; round 14 was APPROVE with 5 Minor.
+- **Decided by the user:**
+  - The numbers stay the v0.1 values in one config, tuned by playing after H2 merges. The user settles the bar's rule details.
+  - "젼부 추천대로 해줘": the eight open questions, each answered with the option the agent had marked as recommended: score-lead bar and KO at 100, danger 60+ behind, a new red token for the danger edge (answer 3), the winner order, server-side KO, Django left to its owner (answer 6), help numbers from the config, sketches first. The user later changed answers 3 and 6 (below).
+  - Layout A, out of the agent's three sketches.
+  - The danger edge: red (answer 3), then amber at the sketch review, then red again after talking with the team. The clock's last 5 s stay amber.
+  - Django done in W3 with the user's conditions, instead of asking the owner first. The user tells the owner afterwards.
+  - The bot upload's app side after S2 (answer A), then now (answer B), when S2 stopped being a separate PR.
+  - Keeping `RepJudgeConfig().bottomDepth` instead of waiting for `counter.passDepth`, until W2 merged.
+  - After W2 merged: the merge with both sides kept, the pass depth swap, the help numbers and the red icon. W3 fixing the home hint in the rules screen's words. The exception for that line, and, when the agent asked, for `home_screen_test.dart` and `help_rules_test.dart`.
+- **Proposed or decided by the agent, and reported to the user:** the color values (`#3DE8FF`, `#FF3B30`: the sketch's defaults, the user named no other); rounding the KO round length up; the temporary local-check patch, not committed; combo and fever in the online words (the reviewer called this the user's call, and the agent decided it).
+- **Decided by the agent, and told to the user only on 10-31, after the notes review asked:** the bot's depths 1.4 and 1.9; the words "K.O.로 끝났어요.".
+- **Decided by the agent after W2 merged, and told to the user only on 10-31, after the notes review asked:** the hint's exact words; `submitRep`'s optional `passDepth` with a push-up fallback. An earlier progress note named them, but the export cannot show that it reached the screen.
+- **Not done by AI:** the phone check of the bot battle (the user); server deployment (the PM).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 10-30] "젼부 추천대로 해줘"
+- [Woohyun Song, 10-30] "Django 두 가지는 상우(S4)에게 묻지 않고 W3에서 처리하고, 끝나면 내가 상우에게 알릴게." and "필요한 줄만 최소로 고쳐. 리팩터링이나 정리는 하지 마." (two lines of one pasted prompt)
+- [Woohyun Song, 10-31] "위험 테두리 색은 앰버가 아니라 빨강으로 바꿔 줘." (one line of a pasted prompt)
+- [Woohyun Song, 10-31] "상황이 바뀌었어. 상우가 S2를 따로 올리지 않고 S2·S4를 합친 실험용 PR #17(feat/squat_battle)을 올렸고, 진영이형이 #17은 W3가 머지된 뒤에 main을 받아서 머지하겠다고 리뷰에 남겼어." (first lines of a pasted prompt)
+- [Woohyun Song, 10-31] "홈 버튼 힌트 \"30초 안에 더 많이 하면 승리\"가 W3의 점수 승리 규칙과 어긋나. W3가 규칙을 바꾸는 PR이니 이 문구도 W3에서 고쳐 줘." (one item of a pasted prompt)
+- [Woohyun Song, 10-31] "지금 PR 들어간 거 conflict 생긴 거 같은데 그것도 확인해봐"
+
+### c. What AI did well
+- **One scoring code for phone and server:** it kept `player_game_score.dart` free of Flutter so the battle server imports the same class. In review round 10, a temporary probe through a relay (deleted after the round) found preview and server equal over 8 reps with mixed gaps.
+- **Order on the wire:** a KO's `match.finished` goes out in a microtask (`battle_server.dart` L427), after the ACK, so both phones read the last score before the end. A test covers it.
+- **Stayed inside W3's files:** the KO rep could drop from the pace chart in `feedback_screen.dart`, which W3 does not own. Rounding the KO round length up keeps it in the chart with no edit there.
+- **Found a side effect before it happened:** Django's `PUT /matches/feedback/<id>` stores a report even with no match row (`server/matches/views.py` L121). So the local-check patch turns off that upload, and a local battle leaves no orphan row in the team's database.
+- **Review probes:** the reviewer cut sockets through a relay against the real server: re-send, offline combo, an unseen KO. All passed, so the online code was tested beyond its unit tests.
+- **The merge checked, not trusted:** after the four conflicts were resolved, a script compared every line of both sides with the result, and none was missing. In round 14, `git show --remerge-diff` showed hand changes only in those four files.
+- **A side effect found and measured before it ships:** the pass depth swap makes every valid bot rep Excellent in a squat battle. The agent worked this out from the numbers and wrote it in `progress.md` before round 14, and the reviewer measured it over 1000 seeded rounds (19.8% to 100%). W3 builds cannot reach it, so it goes in the PR's note for #17, with the numbers.
+
+### d. Hallucinations / errors
+- **A claim made without reading the code:** the agent told the user online could be checked "with a local battle server". The user asked for the commands, and only then did the agent read the code. The app's address is a constant, the lobby does not allow a loopback `ws://`, Django login for the battle server takes only a loopback URL, and `server/bin/server.dart` crashes on Windows at `ProcessSignal.sigterm.watch()`. Reading the code found the address and the loopback rule; a trial run found the crash. The agent first noted the correction in `progress.md`; the notes review found no chat message that said it plainly, so the agent told the user on 10-31. Cost: a temporary patch for the check.
+- **Own spec missed (reviewer round 9, Major):** `battle-rules.md` L219, written by the agent in W1, says the phone shows the label and +N at once from a local sum. The first online version waited for the ACK and showed the previous rep's score until then.
+- **Clock kept counting after a KO (round 9, Major):** the result screen showed a live countdown beside "승리", turning cyan and amber. Fixed: the clock stops at `ended_at_ms`.
+- **Assumed CSS behavior (round 5, Major):** `BoxShadow(blurStyle: BlurStyle.inner)` was used as an inset shadow. It filled the whole screen with amber. Widget tests disable shadows, so they passed; the reviewer's real render caught it. Fixed with four gradients and a pixel test.
+- **KO numbers (rounds 1 and 2, Major):** a KO reported the full 30 s as the round length, giving a false pace. The first fix then dropped the KO rep from the pace chart.
+- **Too big for real fonts (round 4, Major):** the score at 92 px and a speaker icon cut text at 360 wide. The test font had hidden it. A real-font test was added.
+- **Tests that could not fail, caught by the agent:** a "reconnect" test only checked a replaced socket; a re-sent-ack test could not see a bug. Both were rewritten with a scripted server. A 5 s round was also waited on with a 5 s limit.
+- **Flaky test (round 9):** one failure in four full runs in `battle_result_store_test.dart`. Likely two players joining at once on two sockets; the message was not captured. It is older than W3.
+- **Reviewer guessed wrong too:** round 9 guessed the valid-reps row as the overflow at text scale 2.0, without identifying it. Round 10 found the real one, the health bar's label line.
+- **Prompt Log extraction:** `extract_prompts.py` took a session summary and browser notices as prompts and missed two prompts typed while the agent was working. The agent corrected the entries by script against the export, and the notes review compared them with it.
+- **An instruction skipped:** in the Django prompt the user asked to see the list of files before any edit. The agent said it would pull the list, then edited the files with no list shown (10-30). The notes review caught it in the export, and the agent told the user on 10-31. The same request on 10-31 was followed: list first, then edits.
+- **An approval stretched (10-31):** the user approved the hint line in `home_screen.dart`. The agent also tried to add `home_screen_test.dart` and `help_rules_test.dart` to `.claude/ownership-exceptions.txt`, planning to mention them in its final report. The edit's note already said "reported to the user", before any report. The permission check refused the edit, with the reason `[Self-Modification]` and no file named; that the two files caused it is the agent's reading. The agent did not work around it: it recorded only the approved line, then asked the user to approve the two files, in a question that did not mention the refused edit. The user approved both. The agent told the user about the refusal on 10-31, after the notes review asked. Cost: one question.
+- **A merge side effect missed (round 14, Minor):** the battle demo walks `RejectReason.values`, so S2's squat reasons reached the push-up demo. No conflict marked it, and the agent had not looked. Fixed in `b2defe6`, with a test that fails on the old code.
+- **A test run that did not run:** the first full `flutter test` after the merge printed only `Test directory "test" not found`, and the tool reported exit code 0. An earlier command had left the shell in the repo root, where there is no `test` folder. The 0 was the exit code of the `tail | cut` at the end of the line; flutter itself exits 1 (reproduced in review). Reading the output caught it, and a rerun with an explicit `cd` into `gymrats_app/` and `pwd` printed ran the tests. When the notes review named this cause, the agent first remembered a `cd` in that command; the session record showed there was none.
+- **Own command hung:** one command began with a stray `cat > /dev/null`, which waited for input until the 300 s limit. The agent stopped it. Cost: about five minutes.
+- **Stale text (round 14, Minor):** a comment in `help_rules.dart` still said the danger color was open, and three `progress.md` records were old or incomplete. All fixed.
+- **Note claims ahead of the evidence (round 15, 4 Major):** these notes first said "reported to the user" for progress notes the export cannot show on screen; said the agent told the user the two files had not been its call, when its question did not mention the refused edit; said the rerun was from the same folder and the cause was not found, when the session showed the cause; and said the squat table was already in the PR. The reviewer checked them against the session export and the live session. All fixed before the push.
+
+### e. Prompt revisions
+- **Before:** "Django의 ko와 봇 업로드 승패·종료 사유는 상우와 얘기해서 결과를 알려 줄게."
+- **After:** the Django prompt in item b, with its conditions: only the needed lines, and stop to ask before touching anyone else's file outside `server/matches` and `server/tests`.
+- **Why it worked:** the owner question became a bounded edit with a stop condition. The agent changed five of S4's files by minimal lines, asked before touching the app-side files, and handed back a summary for the owner. One condition was not kept: see "An instruction skipped" in item d.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- Before saying a check is possible, read the code path it needs and run it.
+- Reread your own spec before coding against it.
+- An approval covers what it names: ask before adding a file it only implies.
+- Read a run's output, not only its exit code.
+
+## W3b `feat/average_score` – Average +5, three score grades (team order #6b), 2026-11-01
+
+### a. Where AI was used
+- **Rules and game layer (`2421242`):** Claude Code wrote `BattleRules.averagePoints`, `averageMaxElbowAngle`, `isAverage` (`battle_rules.dart` L19–20, L87), `PlayerGameScore.addAverage`, `addRep` (`player_game_score.dart` L45, L67), and the new `lib/services/game/rep_grade.dart`.
+- **Bot battle screens (`2421242`):** the Average banner (`battle_score_panel.dart` L323, L432), the result's grade line (`result_screen.dart` L438–L500). `battle_viewmodel.dart` L307 is the one approved line.
+- **Online (`3fd242d`):** `online_battle_session.dart` (`_readRules` L422, `_repScore` L433, `submitRep` L548–L566), `online_battle_screen.dart` (`_lastRepWords` L284, `_gradeWords` L309), `server/lib/battle_server.dart` (`_grade` L469, `average_points` L507, L522), the protocol section.
+- **Bot depths (`867312e`):** `bot_opponent.dart` L68, L96–L99, L136. **Help (`c8d42c5`):** the fourth tile and the shrink in `help_pictures.dart`. **Rules doc (`28e6ba8`):** `battle-rules.md` 3.6.
+- **The line moved to 120° after the user's phone check (`5c47a3e`):** Claude Code changed `BattleRules`, the rules page's sentence (`help_rules.dart`), `battle-rules.md` 3.6, the protocol's number, and eight test files.
+- **Tests:** all the test files listed in `docs/testing/iteration-3/g1fted13.md`, W3b entry; a later check in `d5e9c54`.
+- **Review:** the `reviewer` subagent ran code rounds 17 and 18, CHANGES_REQUESTED then APPROVE with 3 Minor, and notes rounds 19 to 21, which asked for changes twice (item d). Round 19 also rechecked those 3 Minor fixes in code. For the 120° change the user asked for the new parallel review, four lenses in one message (round 22): spec asked for changes, tests, design and hygiene approved, and only spec reran, on the fix diff (round 23). The notes and the PR draft then went to the hygiene lens alone.
+- **Decided by the user (with the PM, as the user reported):** the three grades and their points; the 105° line and its evidence; Go lower only; fever, combo and valid-rep behavior; the bot's rejected reps staying 0; the `passDepth` design for the bot, with #17 passing it; the condition not to touch the judge and the #17 files; the PR's first line and reviewer. When the agent asked: the one line in `battle_viewmodel.dart`, and adding `battle_score_panel.dart`.
+- **Decided by the agent, without asking the user:** the `average_points` handshake; the banner's two lines at a fixed 60 height; the result's one-line card and the online text line; counting grades from the phone's records and accepting the gap; `judgeFor(exercise)` for the result's pass depth; the help sentence; putting Average in section 3.6 to keep the numbers; leaving the view model's stale comment. A squat never earns Average: this follows from the user's Go lower rule. Before the first push, the session record held no chat message listing these; only the move to section 3.6 had a chat line (item d). The first push's closing message listed them all (transcript 18:18:44Z, UTC, a text block).
+- **After the phone check, decided by the user:** the line at 120° and its evidence; not fixing the large-text problems here; Good's strictness as a team item only; the parallel review. **Decided by the agent:** stating the number on the rules page, as its reading of "도움말 설명 ... 같이 고쳐 줘". **Then, under the user's "네 판단으로 고치고":** the design lens's wording for it; narrowing the user's stated reason about dropping the head in `battle-rules.md`; naming the recording's 2 extra nods (both in item d).
+- **Not done by AI:** the phone checks of W2, W3 and W3b (the user). Telling the PM about the view model's line (the user). Server deployment (the PM).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-01] "Average 기준을 105°에서 120°로 바꿔 줘(BattleRules 상수). 근거: 내 녹화에서 정직하지만 지쳐서 얕아진 rep이 110~126°, 팀 녹화의 꼼수 3개는 127.8~145.2°. 점수는 팔꿈치만 보니 고개 숙이기는 점수에 영향 없음." (one item of a pasted prompt)
+- [Woohyun Song, 11-01] "S4(#17)가 고치는 battle_viewmodel.dart, rep_counter_viewmodel.dart, pose_avatar_toggle_view.dart는 건드리지 마. 거절된 rep도 BattleGame._add로 들어오니 점수 계층에서 처리해. 세 파일 중 하나라도 필요해 보이면 고치기 전에 멈추고 물어봐." (one item of a pasted prompt)
+- [Woohyun Song, 11-01] answers to the agent's two questions (answers, not prompts, so not in the Prompt Log; from the session export): "한 줄 추가 (Recommended)" and "목록에 추가 (Recommended)".
+
+### c. What AI did well
+- **Followed the value instead of the prompt's premise:** the prompt was right that rejected reps reach `BattleGame._add`, but `_scoreMyNewReps` rebuilt each `RepEvent` without `minElbowAngle`, so a bot battle could never have given Average. The agent found this by reading the path before coding, stopped as the prompt asked, and asked with a merge preview against #17 at `d8ad424` (the same 2 conflict regions, no new one). Removing the line fails `battle_viewmodel_test.dart` and four `battle_screen_test.dart` tests.
+- **Old server checked in the code:** the W3 server's `_grade` refuses a rejected rep with a grade, so a simple new field would have broken new apps on a W3 server. The agent added `average_points` as a handshake, and the reviewer confirmed the mix against the real `0465943` session and server in both directions.
+- **Exact default:** `passDepth / 1.1` is exactly 1 at the default, so push-up depths keep their exact values. In round 19 the reviewer compared bot plans over 500 seeds at 30, 45 and 60 s with `origin/main` by `cmp`: byte-identical.
+- **Stale score handled before review:** `myLastScore` stays on the last scoring rep, so a later rejected rep could have shown `+5 AVERAGE`. The banner and the online line check the rep itself, with tests, and the reviewer's mutations of those guards failed.
+- **A check beyond the brief:** replaying the team's recorded sets showed the recording's 3 Go lower head nods, at 127.8–145.2°, earning 0. It cannot confirm the 90–91° side, and the testing notes say so.
+- **The trade-off written down:** moving to 120° makes the user's older range for head nods (109–135°) overlap the new range for tired reps (110–126°). The agent wrote that into `battle-rules.md` 3.6 and the PR instead of listing only the two ranges that separate.
+
+### d. Hallucinations / errors
+- **A regression at large text (reviewer round 17, Major):** the fourth tile made `_ScoreTile` too narrow, so "Excellent" broke mid-word at text scale 1.3 on 360 wide. The agent's real-font test ran only at 1.0. The fix shrank the labels; round 18 then found the numbers break the same way at 2.0 ("+1/0"), which round 17 had also not measured.
+- **A named test not written (round 17, Major):** `task.md` asked for real fonts on the result widgets, in the agent's own wording, and the agent added none. Added.
+- **Tests that claimed more than they asserted (rounds 17 and 18, Minor):** "keeps the reason and the points whole" was only `find.text`; after the rewrite a reason cut to 40 wide still passed. "Stays the size of the others" had no size check. Mutants proved both, and the checks were added.
+- **Banner taller than the others (round 17, Minor):** the two-line banner overflowed by 7 px at 360x780 at text scale 1.5. It is now a fixed height that shrinks.
+- **Doc renumbering (caught by the agent):** Average first went in as section 3.3, which moved 3.5 to 3.6 and broke a test name's reference. A grep caught it, and Average moved to 3.6.
+- **Test mistakes (caught by the test runs):** a test opened the screen twice; a line check compared tops of cells that shrink by different amounts, and failed at scale 2.0 with nothing wrong on screen.
+- **A blocked command:** one command staged code and also called `.claude/hooks/ownership_guard.py`, so `guard_git.py` read it as staging harness files. No harness file was being staged; the agent split the command and did not touch the hook.
+- **A note claim with no record behind it (rounds 19 and 20, Major):** these notes first said the agent's decisions were "told to the user in chat on 11-01", and the agent told the reviewer the same. The agent believed it had told the user. The only record is a block stored as `thinking` (transcript 17:37:02Z, UTC), addressed to the user and naming the categories and the squat point; no assistant text block holds it. So nothing shows it reached the user, and the notes no longer claim it. The agent's first correction then said the record held nothing at all: its own check had required words that block does not contain, and round 20 found the block. This is the same class of finding as rounds 11, 12 and 15. Cost: two review rounds.
+- **A reason from the prompt written down as fact (round 22, Major):** the prompt said "고개 숙이기는 점수에 영향 없음", and the agent put that into `battle-rules.md`, `task.md`, `progress.md` and the body of commit `a5889ef` (never pushed, amended into `5c47a3e`) without checking it. The spec lens found it too wide: among reps closed as Go lower, Average reads only the angle, but depth is the nose's (`rep_judge.dart` `_depth`), so dropping the head can close a rep as Go lower or valid. Fixed before the push: the doc says the narrower thing, the number stays the user's. In the first W3b prompt the agent had checked the premise; this time it did not.
+- **"Team recording, 3 cheats" taken at face value (round 22, Minor):** the three are the Go lower reps of one recording. Its other two nods, at 112.5° and 129.8°, are rejected as `kneesDown` by a known error. The earlier replay printed only Go lower reps, so it had hidden them. The doc now names them.
+- **A test check that compared two broken things (round 19, Minor):** the points check compared "+10" with "+15", so when both broke to two lines it still passed. It now compares both with "+5".
+
+### e. Prompt revisions
+- **Before:** "Go lower(insufficientDepth)로 거절된 rep 중 minElbowAngle이 105° 이하인 것만 +5."
+- **After:** "Average 기준을 105°에서 120°로 바꿔 줘(BattleRules 상수)." (item b)
+- **Why it worked:** the first number came from recordings, and playing it on a phone showed Average almost never appearing, which the tests could not show. The number lived in one place, so the change stayed small.
+- **What did the work in the first prompt:** its stop condition. "세 파일 중 하나라도 필요해 보이면 고치기 전에 멈추고 물어봐" turned the wrong premise into one question instead of an edit or a workaround.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- Follow a value from where it is made to where it is read before trusting that it arrives.
+- A test named for a limit must run at that limit; mutate it to see that it can fail.
+- A reason in a prompt is a claim too: check it against the code before writing it down as fact.

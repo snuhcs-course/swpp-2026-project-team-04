@@ -3,7 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/form_report.dart';
+import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 
@@ -126,6 +130,207 @@ void main() {
       expect(find.text(line), findsOneWidget);
     });
   }
+
+  group('a battle played with the game', () {
+    BattleResult game({
+      int mine = 110,
+      int theirs = 90,
+      MatchOutcome outcome = MatchOutcome.win,
+      GameEnd end = GameEnd.timeUp,
+      Duration roundLength = const Duration(seconds: 30),
+    }) => BattleResult(
+      matchup: _matchup,
+      myReps: 5,
+      myInvalidReps: 1,
+      opponentReps: 6,
+      myScore: mine,
+      opponentScore: theirs,
+      end: end,
+      decidedOutcome: outcome,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+      roundLength: roundLength,
+    );
+
+    testWidgets('shows the points big and the reps under them, even when '
+        'fewer reps won', (tester) async {
+      await open(tester, game());
+      expect(find.text('WIN'), findsOneWidget);
+      expect(find.text('20점 차이로 이겼어요!'), findsOneWidget);
+      expect(colorOf(tester, '110'), AppColors.accent);
+      expect(colorOf(tester, '90'), AppColors.opponent);
+      expect(find.text('유효 5회'), findsOneWidget);
+      expect(find.text('유효 6회'), findsOneWidget);
+      expect(find.text('5회'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final (outcome, word, line) in const [
+      (MatchOutcome.win, 'WIN', 'KO로 이겼어요!'),
+      (MatchOutcome.lose, 'LOSE', 'KO로 졌어요'),
+    ]) {
+      testWidgets('a KO says "$line" and the time played', (tester) async {
+        await open(
+          tester,
+          game(
+            outcome: outcome,
+            end: GameEnd.ko,
+            roundLength: const Duration(seconds: 24),
+          ),
+        );
+        expect(find.text(word), findsOneWidget);
+        expect(find.text(line), findsOneWidget);
+        expect(find.text('푸쉬업 · 24초 · 오늘 14:32'), findsOneWidget);
+      });
+    }
+
+    for (final (outcome, line) in const [
+      (MatchOutcome.win, '유효 횟수로 이겼어요!'),
+      (MatchOutcome.lose, '유효 횟수로 졌어요'),
+      (MatchOutcome.draw, '비겼어요!'),
+    ]) {
+      testWidgets('level points say "$line"', (tester) async {
+        await open(tester, game(mine: 100, theirs: 100, outcome: outcome));
+        expect(find.text(line), findsOneWidget);
+      });
+    }
+
+    testWidgets('fits a 360x640 phone', (tester) async {
+      await open(tester, game(), size: const Size(360, 640));
+      expect(tester.takeException(), isNull);
+    });
+
+    group('the grades', () {
+      RepRecord rep({
+        RejectReason? reason,
+        double? maxDepth,
+        double? minElbowAngle,
+      }) => RepRecord(
+        index: 1,
+        valid: reason == null,
+        at: const Duration(seconds: 3),
+        reason: reason,
+        maxDepth: maxDepth,
+        minElbowAngle: minElbowAngle,
+      );
+
+      BattleResult graded(List<RepRecord> reps) => BattleResult(
+        matchup: _matchup,
+        myReps: 3,
+        myInvalidReps: 2,
+        opponentReps: 6,
+        myScore: 110,
+        opponentScore: 90,
+        decidedOutcome: MatchOutcome.win,
+        endedAt: DateTime(2026, 10, 4, 14, 32),
+        form: FormReport(
+          endedAt: DateTime(2026, 10, 4, 14, 32),
+          opponentName: 'RepBot',
+          roundLength: const Duration(seconds: 30),
+          reps: reps,
+          samples: const [],
+        ),
+      );
+
+      final reps = [
+        rep(maxDepth: 1.9),
+        rep(maxDepth: 1.4),
+        rep(maxDepth: 1.4),
+        rep(reason: RejectReason.insufficientDepth, minElbowAngle: 90),
+        rep(reason: RejectReason.kneesDown, minElbowAngle: 90),
+      ];
+
+      testWidgets('all three show how many of my reps got them', (
+        tester,
+      ) async {
+        await open(tester, graded(reps));
+        expect(find.text('Excellent 1'), findsOneWidget);
+        expect(find.text('Good 2'), findsOneWidget);
+        expect(find.text('Average 1'), findsOneWidget);
+        // An average rep is still rejected.
+        expect(find.text('2회'), findsOneWidget);
+        expect(find.text('3회'), findsOneWidget);
+      });
+
+      testWidgets('a squat is counted by the squat judge\'s pass depth', (
+        tester,
+      ) async {
+        // 1.6 x 0.75: a push-up at this depth would only be good.
+        final squat = graded([rep(maxDepth: 1.2)]);
+        await open(
+          tester,
+          BattleResult(
+            matchup: const Matchup(
+              exercise: ExerciseType.squat,
+              playerName: '우현',
+              opponent: Opponent(name: 'RepBot', isBot: true),
+            ),
+            myReps: squat.myReps,
+            myInvalidReps: squat.myInvalidReps,
+            opponentReps: squat.opponentReps,
+            decidedOutcome: MatchOutcome.win,
+            endedAt: squat.endedAt,
+            form: squat.form,
+          ),
+        );
+        expect(find.text('Excellent 1'), findsOneWidget);
+        expect(find.text('Good 0'), findsOneWidget);
+      });
+
+      testWidgets('a battle with no reps shows zeros', (tester) async {
+        await open(tester, graded(const []));
+        expect(find.text('Excellent 0'), findsOneWidget);
+        expect(find.text('Good 0'), findsOneWidget);
+        expect(find.text('Average 0'), findsOneWidget);
+      });
+
+      testWidgets('with no report they do not show', (tester) async {
+        await open(tester, game());
+        expect(find.textContaining('Excellent'), findsNothing);
+      });
+
+      testWidgets('a battle built without a game does not show them', (
+        tester,
+      ) async {
+        await open(
+          tester,
+          BattleResult(
+            matchup: _matchup,
+            myReps: 3,
+            myInvalidReps: 2,
+            opponentReps: 6,
+            endedAt: DateTime(2026, 10, 4, 14, 32),
+            form: graded(reps).form,
+          ),
+        );
+        expect(find.textContaining('Excellent'), findsNothing);
+      });
+
+      for (final size in const [Size(360, 640), Size(360, 740)]) {
+        testWidgets('they fit ${size.width.toInt()}x${size.height.toInt()}', (
+          tester,
+        ) async {
+          await open(tester, graded(reps), size: size);
+          expect(find.text('Average 1'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      }
+
+      testWidgets('on the largest system font the line does not overflow', (
+        tester,
+      ) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await open(tester, graded(reps), size: const Size(360, 740));
+        expect(find.text('Average 1'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    });
+  });
+
+  testWidgets('a battle built without a game has no reps line', (tester) async {
+    await open(tester, _result());
+    expect(find.textContaining('유효'), findsNothing);
+  });
 
   testWidgets('without a judged rep, accuracy is a dash', (tester) async {
     await open(tester, _result(mine: 0, invalid: 0, theirs: 21));

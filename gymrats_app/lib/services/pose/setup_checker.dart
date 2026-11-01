@@ -20,7 +20,7 @@ class SetupConfig {
     this.maxNoseOffsetRatio = 0.5,
     this.autoStartDelay = const Duration(seconds: 3),
     this.pushUpArmAngle = 155,
-    this.maxPushUpTorsoDrop = 1.0,
+    this.maxPushUpTorsoDrop = 1.5,
   });
 
   /// Minimum ML Kit likelihood for a landmark to count as visible.
@@ -61,7 +61,10 @@ class SetupConfig {
   final double pushUpArmAngle;
 
   /// With the hips visible, a torso drop above this, in shoulder widths,
-  /// means the user is upright, not in a plank. See [torsoDropOf].
+  /// means the user is upright, not in a plank. See [torsoDropOf]. An
+  /// upright body reads over 2. On the H2 recordings the top of a plank
+  /// read 1.05 to 1.22 (one rep 1.54), so the old line of 1.0 turned a
+  /// good plank away and let a kneel with the hips pushed back pass.
   final double maxPushUpTorsoDrop;
 }
 

@@ -109,6 +109,47 @@ def test_match_body_is_validated(client):
         assert response.status_code == 422, change
 
 
+def test_bot_upload_keeps_the_game_outcome_and_reason(client):
+    token = sign_up(client)["token"]
+    body = match_body(1, my_reps=5, opponent_reps=6) | {
+        "outcome": "win",
+        "reason": "ko",
+    }
+    saved = post_match(client, token, body)
+    assert saved.status_code == 201
+    assert (saved.json()["outcome"], saved.json()["reason"]) == ("win", "ko")
+    [listed] = get(client, token, "/matches").json()["items"]
+    assert (listed["outcome"], listed["reason"]) == ("win", "ko")
+    assert get(client, token, "/users/me").json()["last_match"]["outcome"] == "win"
+
+
+def test_bot_upload_without_them_goes_by_the_reps_and_time_up(client):
+    token = sign_up(client)["token"]
+    saved = post_match(client, token, match_body(1, my_reps=5, opponent_reps=6))
+    assert (saved.json()["outcome"], saved.json()["reason"]) == ("loss", "time_up")
+
+
+def test_bot_upload_refuses_other_outcomes_and_reasons(client):
+    token = sign_up(client)["token"]
+    for change in [
+        {"outcome": "victory"},
+        {"reason": "unknown"},
+        {"reason": "forfeit"},
+        {"reason": "disconnect_timeout"},
+    ]:
+        response = post_match(client, token, match_body() | change)
+        assert response.status_code == 422, change
+
+
+def test_retried_bot_upload_keeps_the_first_outcome(client):
+    token = sign_up(client)["token"]
+    body = match_body(1, my_reps=5, opponent_reps=6)
+    post_match(client, token, body | {"outcome": "win", "reason": "ko"})
+    again = post_match(client, token, body | {"outcome": "loss", "reason": "time_up"})
+    assert again.status_code == 200
+    assert (again.json()["outcome"], again.json()["reason"]) == ("win", "ko")
+
+
 def test_limit_is_bounded(client):
     token = sign_up(client)["token"]
     assert get(client, token, "/matches?limit=0").status_code == 422
