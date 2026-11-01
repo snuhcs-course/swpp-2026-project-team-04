@@ -23,7 +23,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  AvatarModel _selected = AvatarModel.astronaut;
+  AvatarModel _selected = AvatarModel.somaTraining;
   bool _loading = true, _saving = false;
   bool _loadFailed = false;
   String? _error;
@@ -50,7 +50,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _loadFailed = false;
     });
     try {
-      final avatar = await widget.avatars.read(account.id);
+      final savedAvatar = await widget.avatars.read(account.id);
+      final avatar = savedAvatar.isSomaOutfit
+          ? savedAvatar
+          : AvatarModel.somaTraining;
+      if (!savedAvatar.isSomaOutfit) {
+        await widget.avatars.write(account.id, avatar);
+      }
       if (!mounted || widget.auth.session?.account.id != account.id) return;
       setState(() {
         _selected = avatar;
@@ -101,11 +107,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final account = widget.auth.session?.account;
+    final selectableAvatars = AvatarModel.values
+        .where((a) => a.isSomaOutfit)
+        .toList();
     final categories = [
       '전체',
-      ...AvatarModel.values.map((a) => a.category).toSet(),
+      ...selectableAvatars.map((a) => a.category).toSet(),
     ];
-    final matches = AvatarModel.values
+    final matches = selectableAvatars
         .where(
           (a) =>
               (_category == '전체' || a.category == _category) &&
@@ -158,7 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '총 ${AvatarModel.values.length}종 · 선택: ${_selected.label}',
+                      '총 ${selectableAvatars.length}종 · 선택: ${_selected.label}',
                       style: const TextStyle(color: AppColors.accent),
                     ),
                     const SizedBox(height: 12),

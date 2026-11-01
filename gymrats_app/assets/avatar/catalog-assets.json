@@ -123,5 +123,20 @@
     "asset": "kaykit_skeleton_warrior",
     "bytes": 375176,
     "sha256": "65d943859ae1859faaa9975d9203b4ebd76ab99c0e4d0993ed249a1922f5f42d"
+  },
+  {
+    "asset": "soma_training",
+    "bytes": 2285556,
+    "sha256": "b7491f1ac3188c577b9721d764b686ebd5aa8395d4d94e6ac65a19409513d9dd"
+  },
+  {
+    "asset": "soma_active",
+    "bytes": 2243524,
+    "sha256": "d852e8a0a742a17c881a7264b86e63b3f90773ed2703458d117d8f09fa253c8b"
+  },
+  {
+    "asset": "soma_studio",
+    "bytes": 2285580,
+    "sha256": "8ef709a72fc7807665d311d13f0fa806c197ce5123a0c092f15677698070d398"
   }
 ]

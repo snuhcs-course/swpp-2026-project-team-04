@@ -20,8 +20,8 @@ export class PoseRetargeter {
     const find=(...names)=>names.map(n=>byName.get(clean(n))).find(Boolean);
     const point=b=>b?.getWorldPosition(new THREE.Vector3());
     model.updateMatrixWorld(true);
-    const leftArm=find('upperarm_l','UpperArm.L'),rightArm=find('upperarm_r','UpperArm.R');
-    const leftLeg=find('thigh_l','UpperLeg.L','Thigh.L'),rightLeg=find('thigh_r','UpperLeg.R','Thigh.R');
+    const leftArm=find('upperarm_l','UpperArm.L','LeftArm'),rightArm=find('upperarm_r','UpperArm.R','RightArm');
+    const leftLeg=find('thigh_l','UpperLeg.L','Thigh.L','LeftLeg'),rightLeg=find('thigh_r','UpperLeg.R','Thigh.R','RightLeg');
     this.hips=find('Hips','pelvis');
     // Robot's torso and pelvis are siblings under Root, so rotate their common parent.
     if(byName.has('torso'))this.hips=find('Root');
@@ -36,12 +36,13 @@ export class PoseRetargeter {
       this.entries.push({bone,local,start,end,last:0});
     };
     for(const [side,shoulder,elbow,wrist,hip,knee,ankle,toe] of [['l',11,13,15,23,25,27,31],['r',12,14,16,24,26,28,32]]){
-      const upper=find(`upperarm_${side}`,`UpperArm.${side}`),lower=find(`lowerarm_${side}`,`LowerArm.${side}`),hand=find(`hand_${side}`,`Hand.${side}`);
-      const thigh=find(`thigh_${side}`,`UpperLeg.${side}`,`Thigh.${side}`),calf=find(`calf_${side}`,`LowerLeg.${side}`,`Leg.${side}`),foot=find(`foot_${side}`,`Foot.${side}`),ball=find(`ball_${side}`,`Toes.${side}`);
+      const prefix=side==='l'?'Left':'Right';
+      const upper=find(`upperarm_${side}`,`UpperArm.${side}`,`${prefix}Arm`),lower=find(`lowerarm_${side}`,`LowerArm.${side}`,`${prefix}ForeArm`),hand=find(`hand_${side}`,`Hand.${side}`,`${prefix}Hand`);
+      const thigh=find(`thigh_${side}`,`UpperLeg.${side}`,`Thigh.${side}`,`${prefix}Leg`),calf=find(`calf_${side}`,`LowerLeg.${side}`,`Leg.${side}`,`${prefix}Shin`),foot=find(`foot_${side}`,`Foot.${side}`,`${prefix}Foot`),ball=find(`ball_${side}`,`Toes.${side}`,`${prefix}ToeBase`);
       add(upper,lower,[shoulder],[elbow]);add(lower,hand,[elbow],[wrist]);
       add(thigh,calf,[hip],[knee]);add(calf,foot,[knee],[ankle]);add(foot,ball,[ankle],[toe]);
     }
-    add(find('neck_01','Neck'),find('head','Head'),[11,12],[7,8]);
+    add(find('neck_01','Neck','Neck2'),find('head','Head'),[11,12],[7,8]);
     // Parents must be solved before children, independently of exported bone order.
     const depth=b=>{let n=0;while(b.parent){b=b.parent;n++;}return n;};
     this.entries.sort((a,b)=>depth(a.bone)-depth(b.bone));

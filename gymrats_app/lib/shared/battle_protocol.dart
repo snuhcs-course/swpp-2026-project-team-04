@@ -25,6 +25,9 @@ const battleAvatarIds = {
   'avatar_23',
   'avatar_24',
   'avatar_25',
+  'soma_training',
+  'soma_active',
+  'soma_studio',
 };
 const battleReasons = {
   'insufficient_depth',

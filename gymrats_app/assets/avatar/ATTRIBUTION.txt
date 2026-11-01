@@ -44,3 +44,15 @@ convert to embedded GLB, resize large textures to 512 px, render thumbnails.
 Models are driven by the user's live pose rather than the original clips.
 Catalog file hashes and model sizes are in catalog-assets.json.
 Original downloads stay in the ignored tools/avatar-preview/source-assets cache.
+
+SOMA sportswear variants: derived from NVIDIA MotionBricks SOMA rig,
+https://github.com/NVlabs/motionbricks (commit 54fc563aeaaf819a753d72cc9fdc6713989cdd43).
+Copyright NVIDIA Corporation & Affiliates. Source assets: CC BY 4.0;
+see SOMA-LICENSE.txt. Changes: converted to GLB, added skinned sportswear,
+removed skin hidden under clothing, and generated three color variants.
+The MotionBricks model weights and sample motion clips are not included.
+
+SOMA rig source: https://github.com/NVlabs/motionbricks/blob/54fc563aeaaf819a753d72cc9fdc6713989cdd43/motionbricks/assets/human/soma_base_skel_minimal_no_root.usd
+Source USD SHA-256: 4ab93d78a0f1c06d3bcbedee5ceebb5d9d5b002fd0a88638e9399ed80b61871d.
+To regenerate, convert the original USD to an embedded GLB using Blender 4.5,
+then run Blender with `--background --python tools/avatar-preview/create_soma_sportswear.py -- <converted.glb> <output-directory>`.
