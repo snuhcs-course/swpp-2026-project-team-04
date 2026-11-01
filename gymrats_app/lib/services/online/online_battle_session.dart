@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../shared/battle_protocol.dart';
 import '../../models/avatar_model.dart';
+import '../../models/exercise_type.dart';
 import '../../models/battle_rules.dart';
 import '../../models/game_score.dart';
 import '../../models/pose_frame.dart';
@@ -55,11 +56,13 @@ class OnlineBattleSession extends ChangeNotifier {
     required this.endpoint,
     required this.accessToken,
     required this.avatar,
+    this.exercise = ExerciseType.pushUp,
     this.allowInsecureLoopback = false,
   });
   final Uri endpoint;
   final String accessToken;
   final AvatarModel avatar;
+  final ExerciseType exercise;
   final bool allowInsecureLoopback;
 
   /// Far above any real score; a larger number on the wire is invalid.
@@ -281,7 +284,7 @@ class OnlineBattleSession extends ChangeNotifier {
         } else {
           _send(
             _message('queue.join', {
-              'exercise': 'push_up',
+              'exercise': exercise == ExerciseType.squat ? 'squat' : 'push_up',
               'avatar_id': avatar.protocolId,
             }),
           );

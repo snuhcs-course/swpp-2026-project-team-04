@@ -5,6 +5,15 @@ Per-push Results for my Iteration 3 steps, in the Testing Documentation format. 
 
 ## Results
 
+#### 2026-11-01 · S4 online squat battle
+
+- `flutter analyze --no-pub lib test`: no issues.
+- `flutter test --no-pub --concurrency=1`: 1,079 passed and 9 skipped.
+- Focused Flutter tests for home, lobby, online preparation and matching, profile, app flow, and squat judging: 138 passed.
+- Django: `python -m pytest -q --cov=accounts --cov=matches --cov=gymrats --cov-report=term-missing`: 82 passed, 96% total line coverage.
+- Local Flutter coverage was not obtained: the concurrent coverage run reported test-process/coverage collection errors and was stopped. See PR CI for the coverage run on the submitted commit.
+- The combined app was installed on one Android phone. A complete two-device online squat battle and squat judge accuracy were not verified.
+
 #### 2026-10-28 · code at commit `94956b5` (`origin/main`) · step S1 `docs/squat_judge_design` (P5 squat rep judge design)
 This step adds one design document, `docs/iteration-3/squat-judge-design.md`, and one diagram,
 `docs/iteration-3/images/squat-setup-and-depth.svg`. It changes no code or tests. `task.md` says "Tests: None (design

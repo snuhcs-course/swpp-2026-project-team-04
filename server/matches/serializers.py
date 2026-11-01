@@ -50,7 +50,7 @@ class FeedbackInSerializer(serializers.Serializer):
 
 class MatchInSerializer(serializers.ModelSerializer):
     client_id = serializers.CharField(min_length=8, max_length=36)
-    exercise = serializers.ChoiceField(choices=["push_up"])
+    exercise = serializers.ChoiceField(choices=["push_up", "squat"])
     opponent_name = serializers.CharField(min_length=1, max_length=40)
     my_reps = serializers.IntegerField(min_value=0, max_value=1000)
     opponent_reps = serializers.IntegerField(min_value=0, max_value=1000)
@@ -109,6 +109,7 @@ class OnlineResultSerializer(serializers.Serializer):
 
     match_id = serializers.CharField(min_length=1, max_length=64)
     result_id = serializers.CharField(min_length=8, max_length=36)
+    exercise = serializers.ChoiceField(choices=["push_up", "squat"], default="push_up")
     reason = serializers.ChoiceField(choices=REASONS)
     ended_at_ms = serializers.IntegerField(min_value=0, max_value=2**53)
     players = OnlinePlayerSerializer(many=True)

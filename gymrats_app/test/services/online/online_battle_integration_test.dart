@@ -567,6 +567,32 @@ void main() {
     },
   );
 
+  test('exercise queues stay separate and each preserves FIFO', () async {
+    final s = await server(ready: 10000);
+    final a = await Wire.open(s, 'alpha');
+    final b = await Wire.open(s, 'beta');
+    final c = await Wire.open(s, 'third');
+    final d = await Wire.open(s, 'fourth');
+    for (final wire in [a, b, c, d]) {
+      addTearDown(wire.close);
+    }
+    a.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'avatar_01'});
+    await a.next('queue.joined');
+    b.send('queue.join', {'exercise': 'squat', 'avatar_id': 'avatar_01'});
+    await b.next('queue.joined');
+    c.send('queue.join', {'exercise': 'squat', 'avatar_id': 'avatar_01'});
+    await c.next('queue.joined');
+    final squat = await b.next('match.found');
+    expect(rosterIds(squat), ['b', 'c']);
+    expect((await c.next('match.found'))['match_id'], squat['match_id']);
+    expect(a.events.where((e) => e['type'] == 'match.found'), isEmpty);
+    d.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'avatar_01'});
+    await d.next('queue.joined');
+    final pushUp = await a.next('match.found');
+    expect(rosterIds(pushUp), ['a', 'd']);
+    expect((await d.next('match.found'))['match_id'], pushUp['match_id']);
+  });
+
   test('FIFO pairs by queue arrival, not connection order', () async {
     final s = await server(ready: 10000);
     final a = await Wire.open(s, 'alpha');

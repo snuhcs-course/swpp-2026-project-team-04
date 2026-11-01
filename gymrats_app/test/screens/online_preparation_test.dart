@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
@@ -29,7 +30,7 @@ import '../support/pose_fixtures.dart';
 import '../support/placed_phone.dart';
 
 class _Session extends OnlineBattleSession {
-  _Session()
+  _Session({super.exercise})
     : super(
         endpoint: Uri.parse('wss://example.com/ws/v1/battle'),
         accessToken: 'test-only',
@@ -78,12 +79,13 @@ void main() {
     WidgetTester tester, {
     bool denied = false,
     RepJudge? judge,
+    ExerciseType exercise = ExerciseType.pushUp,
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    session = _Session();
+    session = _Session(exercise: exercise);
     addTearDown(session.dispose);
     camera = FakeCameraService();
     if (denied) camera.permission = CameraPermission.denied;
@@ -572,6 +574,22 @@ void main() {
     });
     expect(await reports.list(), hasLength(1));
     expect(repository.savedFeedback, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('squat result does not save or show push-up form feedback', (
+    tester,
+  ) async {
+    await open(tester, exercise: ExerciseType.squat);
+    await finishRound(tester, {
+      'result_id': 's' * 32,
+      'reason': 'time_up',
+      'ended_at_ms': 1792400000000,
+    });
+    expect(await reports.list(), isEmpty);
+    expect(repository.savedFeedback, isEmpty);
+    expect(find.text('자세 피드백 보기'), findsNothing);
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
