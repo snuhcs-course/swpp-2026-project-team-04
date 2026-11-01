@@ -15,10 +15,10 @@ class ExitDialog extends StatelessWidget {
   });
 
   /// For leaving a found match, on the versus and setup screens.
-  const ExitDialog.game({super.key, required String opponentName})
+  ExitDialog.game({super.key, required String opponentName})
     : title = '게임에서 나갈까요?',
-      // Fixed 과: RepBot is the only opponent until real users can match.
-      message = '$opponentName과의 대결이 취소되고\n홈으로 돌아가요.',
+      message =
+          '$opponentName${_withParticle(opponentName)}의 대결이 취소되고\n홈으로 돌아가요.',
       leaveLabel = '게임 나가기';
 
   /// For leaving the search, on the matching screen.
@@ -34,6 +34,26 @@ class ExitDialog extends StatelessWidget {
   final String message;
 
   final String leaveLabel;
+
+  /// The first and last Hangul syllables in Unicode.
+  static const _firstSyllable = 0xAC00;
+  static const _lastSyllable = 0xD7A3;
+
+  /// Syllables per first and middle letter: one with no final letter, then
+  /// one for each final letter.
+  static const _finalLetters = 28;
+
+  /// "와" after a Hangul syllable with no final letter, "과" after any other
+  /// ending, such as "RepBot" or "진영".
+  static String _withParticle(String name) {
+    if (name.isEmpty) return '과';
+    final last = name.codeUnitAt(name.length - 1);
+    final endsOpen =
+        last >= _firstSyllable &&
+        last <= _lastSyllable &&
+        (last - _firstSyllable) % _finalLetters == 0;
+    return endsOpen ? '와' : '과';
+  }
 
   @override
   Widget build(BuildContext context) {

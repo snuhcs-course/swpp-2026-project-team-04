@@ -37,10 +37,7 @@ void main() {
   }
 
   /// Opens the dialog, answers it with [reply], and returns the answer.
-  Future<bool?> ask(
-    WidgetTester tester,
-    Future<void> Function() reply,
-  ) async {
+  Future<bool?> ask(WidgetTester tester, Future<void> Function() reply) async {
     answer = null;
     await tester.tap(find.text('ask'));
     await tester.pumpAndSettle();
@@ -104,14 +101,8 @@ void main() {
     expect(await ask(tester, () => tester.tap(find.text('leave'))), isTrue);
     expect(await ask(tester, () => tester.tap(find.text('계속하기'))), isFalse);
     // Outside the dialog, on the barrier.
-    expect(
-      await ask(tester, () => tester.tapAt(const Offset(5, 5))),
-      isFalse,
-    );
-    expect(
-      await ask(tester, () => tester.binding.handlePopRoute()),
-      isFalse,
-    );
+    expect(await ask(tester, () => tester.tapAt(const Offset(5, 5))), isFalse);
+    expect(await ask(tester, () => tester.binding.handlePopRoute()), isFalse);
   });
 
   testWidgets('the game and matching words', (tester) async {
@@ -122,7 +113,7 @@ void main() {
       ),
     );
 
-    await show(const ExitDialog.game(opponentName: 'RepBot'));
+    await show(ExitDialog.game(opponentName: 'RepBot'));
     expect(find.text('게임에서 나갈까요?'), findsOneWidget);
     expect(find.text('RepBot과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
     expect(find.text('계속하기'), findsOneWidget);
@@ -133,6 +124,34 @@ void main() {
     expect(find.text('상대 찾기를 멈추고\n홈으로 돌아가요.'), findsOneWidget);
     expect(find.text('계속하기'), findsOneWidget);
     expect(find.text('매칭 취소'), findsOneWidget);
+  });
+
+  group('the game message follows the name with', () {
+    String message(String name) =>
+        ExitDialog.game(opponentName: name).message.split('의 대결').first;
+
+    test('와 after a Hangul syllable with no final letter', () {
+      expect(message('AI 봇 · 초보'), 'AI 봇 · 초보와');
+      expect(message('AI 봇 · 중수'), 'AI 봇 · 중수와');
+      expect(message('AI 봇 · 고수'), 'AI 봇 · 고수와');
+      // The first and the last plain syllables in Unicode.
+      expect(message('가'), '가와');
+      expect(message('하'), '하와');
+    });
+
+    test('과 after a Hangul syllable with a final letter', () {
+      expect(message('진영'), '진영과');
+      expect(message('우현'), '우현과');
+      // The first and the last syllables with a final letter.
+      expect(message('각'), '각과');
+      expect(message('힣'), '힣과');
+    });
+
+    test('과 after any other ending, and with no name', () {
+      expect(message('RepBot'), 'RepBot과');
+      expect(message('rat7'), 'rat7과');
+      expect(message(''), '과');
+    });
   });
 
   for (final size in const [Size(360, 640), Size(640, 360)]) {
