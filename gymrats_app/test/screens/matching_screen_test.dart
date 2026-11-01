@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
@@ -97,6 +98,27 @@ void main() {
     matching: find.text('매칭 취소'),
   );
 
+  testWidgets('the title says how hard the bot it looks for is', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: MatchingScreen(
+          exercise: ExerciseType.pushUp,
+          difficulty: BotDifficulty.beginner,
+          createViewModel: () => MatchingViewModel(
+            matchmaker: matchmaker..gate = Completer(),
+            repository: repository,
+            exercise: ExerciseType.pushUp,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('초보 AI 상대를 찾는 중'), findsOneWidget);
+  });
+
   testWidgets('shows the chip, title, guide card and the user\'s initial', (
     tester,
   ) async {
@@ -105,12 +127,9 @@ void main() {
     // No close button at the top; 매칭 취소 at the bottom is the way out.
     expect(find.byIcon(Icons.close_rounded), findsNothing);
     expect(find.text('푸쉬업 · 30초 · 1v1'), findsOneWidget);
-    expect(find.text('AI 상대를 찾는 중'), findsOneWidget);
+    expect(find.text('고수 AI 상대를 찾는 중'), findsOneWidget);
     expect(find.text('기다리는 동안 자리를 준비해 두세요'), findsOneWidget);
-    expect(
-      find.text('휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.'),
-      findsOneWidget,
-    );
+    expect(find.text('휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.'), findsOneWidget);
     expect(find.text('우'), findsOneWidget);
     expect(find.text('매칭 취소'), findsOneWidget);
     expect(find.textContaining('티어'), findsNothing);
@@ -148,7 +167,7 @@ void main() {
     await open(tester);
     matchmaker.gate!.complete();
     await transition(tester);
-    expect(find.text('versus 우현 vs RepBot'), findsOneWidget);
+    expect(find.text('versus 우현 vs AI 봇 · 고수'), findsOneWidget);
     expect(find.byType(MatchingScreen), findsNothing);
 
     // Replaced, not pushed: going back skips the matching screen.
@@ -196,12 +215,12 @@ void main() {
     await tester.tap(find.text('계속하기'));
     await transition(tester);
     expect(find.byType(ExitDialog), findsNothing);
-    expect(find.text('AI 상대를 찾는 중'), findsOneWidget);
+    expect(find.text('고수 AI 상대를 찾는 중'), findsOneWidget);
     expect(tester.hasRunningAnimations, isTrue);
 
     matchmaker.gate!.complete();
     await transition(tester);
-    expect(find.text('versus 우현 vs RepBot'), findsOneWidget);
+    expect(find.text('versus 우현 vs AI 봇 · 고수'), findsOneWidget);
   });
 
   testWidgets('an opponent found while asking waits; 계속하기 then moves on', (
@@ -217,7 +236,7 @@ void main() {
 
     await tester.tap(find.text('계속하기'));
     await transition(tester);
-    expect(find.text('versus 우현 vs RepBot'), findsOneWidget);
+    expect(find.text('versus 우현 vs AI 봇 · 고수'), findsOneWidget);
     expect(find.byType(MatchingScreen), findsNothing);
 
     // Replaced, not pushed: going back skips the matching screen.
@@ -254,7 +273,7 @@ void main() {
     matchmaker.error = null;
     await tester.tap(find.text('다시 시도'));
     await transition(tester);
-    expect(find.text('versus 우현 vs RepBot'), findsOneWidget);
+    expect(find.text('versus 우현 vs AI 봇 · 고수'), findsOneWidget);
     expect(matchmaker.requests, hasLength(2));
   });
 

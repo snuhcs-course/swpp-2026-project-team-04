@@ -57,7 +57,7 @@ class _ResultScreenState extends State<ResultScreen> {
     Navigator.pushReplacementNamed(
       context,
       GymRatsApp.matchingRoute,
-      arguments: widget.result.matchup.exercise,
+      arguments: widget.result.matchup.rematch,
     );
   });
 

@@ -3,15 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/match_record.dart';
+import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
+import 'package:gymrats_app/widgets/bot_difficulty_sheet.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/match_record_card.dart';
 
@@ -64,11 +67,13 @@ void main() {
           GymRatsApp.profileRoute: (_) =>
               const Scaffold(body: Text('my profile')),
           GymRatsApp.helpRoute: (_) => const HelpScreen(),
-          GymRatsApp.matchingRoute: (context) => Scaffold(
-            body: Text(
-              'matching ${ModalRoute.of(context)!.settings.arguments}',
-            ),
-          ),
+          GymRatsApp.matchingRoute: (context) {
+            final request =
+                ModalRoute.of(context)!.settings.arguments! as BotMatchRequest;
+            return Scaffold(
+              body: Text('matching ${request.exercise} ${request.difficulty}'),
+            );
+          },
         },
       ),
     );
@@ -387,12 +392,52 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('lower AI button opens matching for push-ups', (tester) async {
+  testWidgets('lower AI button asks how hard, then opens matching for it', (
+    tester,
+  ) async {
     await open(tester);
     await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pumpAndSettle();
-    expect(find.text('matching ${ExerciseType.pushUp}'), findsOneWidget);
+    expect(find.byType(BotDifficultySheet), findsOneWidget);
+    expect(find.textContaining('matching'), findsNothing);
+
+    await tester.tap(find.text('중수'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BotDifficultySheet), findsNothing);
+    expect(
+      find.text(
+        'matching ${ExerciseType.pushUp} ${BotDifficulty.intermediate}',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('closing the difficulty sheet stays on home with no search', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
+    await tester.tap(find.text('AI와 1v1 대결'));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(BotDifficultySheet), findsNothing);
+    expect(find.textContaining('matching'), findsNothing);
+    expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('leaving home while the sheet is open starts no search', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
+    await tester.tap(find.text('AI와 1v1 대결'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    expect(find.textContaining('matching'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('coming back home loads the latest battle and best record', (
@@ -419,6 +464,8 @@ void main() {
     await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('고수'));
+    await tester.pumpAndSettle();
     // The battle was saved meanwhile.
     repository.profile = const UserProfile(
       name: '우현',
@@ -438,6 +485,31 @@ void main() {
     expect(find.text('40'), findsOneWidget);
     expect(find.text('30'), findsOneWidget);
     expect(find.text('24'), findsNothing);
+  });
+
+  testWidgets('closing the difficulty sheet does not load home again', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        navigatorObservers: [GymRatsApp.routeObserver],
+        home: HomeScreen(
+          createViewModel: () => HomeViewModel(repository: repository),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(repository.fetchCount, 1);
+
+    for (var turn = 0; turn < 2; turn++) {
+      await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
+      await tester.tap(find.text('AI와 1v1 대결'));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    }
+    expect(repository.fetchCount, 1);
   });
 
   testWidgets('fits a small phone without overflow', (tester) async {

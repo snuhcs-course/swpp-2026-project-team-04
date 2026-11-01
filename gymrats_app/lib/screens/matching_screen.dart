@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
+import '../models/bot_difficulty.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../services/matching/matchmaker.dart';
@@ -24,10 +25,14 @@ class MatchingScreen extends StatefulWidget {
   const MatchingScreen({
     super.key,
     required this.exercise,
+    this.difficulty = BotDifficulty.expert,
     this.createViewModel,
   });
 
   final ExerciseType exercise;
+
+  /// How hard the bot will play, as chosen before the search.
+  final BotDifficulty difficulty;
 
   /// Builds the view model; replaces the default one in tests.
   final MatchingViewModel Function()? createViewModel;
@@ -59,6 +64,7 @@ class _MatchingScreenState extends State<MatchingScreen>
           matchmaker: context.read<Matchmaker>(),
           repository: context.read<UserRepository>(),
           exercise: widget.exercise,
+          difficulty: widget.difficulty,
         );
     _viewModel.addListener(_onViewModelChanged);
     _radar = AnimationController(vsync: this, duration: _radarPeriod)..repeat();
@@ -130,7 +136,7 @@ class _MatchingScreenState extends State<MatchingScreen>
             child: SafeArea(
               child: BattleSearchView(
                 exercise: widget.exercise,
-                title: 'AI 상대를 찾는 중',
+                title: '${widget.difficulty.label} AI 상대를 찾는 중',
                 searchArea: _SearchArea(radar: _radar),
                 onCancel: _leave,
               ),

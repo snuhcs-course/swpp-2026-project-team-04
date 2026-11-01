@@ -21,11 +21,13 @@ import 'package:provider/provider.dart';
 import 'support/fakes.dart';
 
 void main() {
-  /// Taps start and lets the matching page slide in. The radar keeps
-  /// turning, so pumpAndSettle would only return after the bot is found.
+  /// Taps start, chooses 초보 and lets the matching page slide in. The radar
+  /// keeps turning, so pumpAndSettle would only return after the bot is found.
   Future<void> startMatching(WidgetTester tester) async {
     await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
     await tester.tap(find.text('AI와 1v1 대결'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('초보'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
   }
@@ -38,7 +40,7 @@ void main() {
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
 
     await startMatching(tester);
-    expect(find.text('AI 상대를 찾는 중'), findsOneWidget);
+    expect(find.text('초보 AI 상대를 찾는 중'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsNothing);
 
     // The bot answers 3 seconds after the search started.
@@ -46,14 +48,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('MATCH FOUND'), findsOneWidget);
     expect(find.text('우현'), findsOneWidget);
-    expect(find.text('RepBot'), findsOneWidget);
+    expect(find.text('AI 봇 · 초보'), findsOneWidget);
     expect(find.text('AI'), findsOneWidget);
 
     // System back only asks; 게임 나가기 in the dialog goes home.
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('게임에서 나갈까요?'), findsOneWidget);
-    expect(find.text('RepBot과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
+    expect(find.text('AI 봇 · 초보와의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsOneWidget);
     await tester.tap(
       find.descendant(

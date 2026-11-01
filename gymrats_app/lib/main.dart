@@ -224,8 +224,13 @@ class _GymRatsAppState extends State<GymRatsApp> {
           ),
           GymRatsApp.matchingRoute => MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) =>
-                MatchingScreen(exercise: settings.arguments! as ExerciseType),
+            builder: (_) {
+              final request = settings.arguments! as BotMatchRequest;
+              return MatchingScreen(
+                exercise: request.exercise,
+                difficulty: request.difficulty,
+              );
+            },
           ),
           GymRatsApp.versusRoute => MaterialPageRoute<void>(
             settings: settings,
