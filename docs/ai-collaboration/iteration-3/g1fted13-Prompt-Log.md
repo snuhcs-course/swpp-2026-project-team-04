@@ -442,3 +442,43 @@ opponent: BotOpponent(passDepth: counter.passDepth),
 
 #17 머지 후 이 줄의 충돌을 풀 때, 봇의 통과 깊이는 사용자를 실제로 판정하는 counter.passDepth를 기준으로 하고, 난이도는 matchup에서 가져와 줘. judgeFor(exercise).passDepth와 값이 다르면 counter 쪽을 따르자. 상우 파일 수정 사실은 W5 PR을 올린 뒤에 내가 상우에게 따로 알릴 거야.
 </pasted_content id=\"5639\">"
+<!-- 471b69be 2026-11-01T08:54:13.531Z -->
+[Woohyun Song, 11-01 17:54] "<pasted_content id=\"5639\">
+PR 잘 봤어. 남겨 둔 두 가지를 정할게.
+
+1. 리뷰어는 지난 PR들처럼 진영이형(ishlove77)으로 지정해 줘.
+2. 긴 이름의 줄바꿈은 고치자. 단어 중간에서 끊기면 안 되니까, 첫 줄이 넘칠 만큼 긴 이름일 때만 세 줄로 나눠 줘: \"NightRunner7 님과의\" / \"대결이 취소되고\" / \"홈으로 돌아가요.\" 짧은 이름과 봇 이름은 지금 그대로 둬. 기준 길이는 네가 계산한 값으로 넉넉하게 잡고, 12자 영어 이름과 8자 이상 한글 이름이 360x640, 640x360에서 넘치지 않는지 확인해 줘. 커밋은 로컬에만 해 두고, 오늘 밤 폰 확인 결과와 테스트 노트의 W5 커버리지 칸을 채울 때 한 번에 push하자.
+3. 상우에게는 지금 내가 알릴게.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T12:30:32.805Z -->
+[Woohyun Song, 11-01 21:30] "<pasted_content id=\"5639\">
+상우가 #17 충돌을 풀어서 3801f7d로 push했어. 아직 main에는 안 들어갔고, 진영이형이 머지하면 그때 origin/main을 merge하자. 지금은 준비만 해 줘.
+
+1. origin/feat/squat_battle(3801f7d)을 fetch해서, 작업 폴더 파일은 바꾸지 않는 방법으로 W5와 합칠 때의 충돌과 고칠 곳을 미리 정리해 둬. 지금 이 폴더로 폰 확인을 할 거라 파일이 바뀌면 안 돼.
+2. 참고: 3801f7d의 battle_screen.dart는 RepCounterViewModel에 exercise와 exerciseJudge(스쿼트면 SquatDemoJudge)를 넘기고, 봇을 BotOpponent(passDepth: counter.passDepth)로 만들어. SquatDemoJudge는 ExerciseRepJudge를 구현하고 passDepth로 SquatRepJudge().passDepth를 돌려줘서 _judge is SquatDemoJudge 검사도 맞게 동작해. 홈의 스쿼트 버튼은 matchingRoute에 arguments: ExerciseType.squat을 넘겨.
+3. 폰 확인 결과를 보내면 말한 순서대로 기록하고 push해 줘. 그때 #17이 아직 main에 없으면 #17 연결 작업 없이 push하고, #17이 머지된 뒤에 따로 한 번 더 하자.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T16:58:04.243Z -->
+[Woohyun Song, 11-02 01:58] "<pasted_content id=\"5639\">
+오늘 밤 폰 확인 결과야(로컬 2962f7b, Galaxy S947N).
+
+됨:
+- 난이도 시트: 그림 세 가지와 글자 모두 정상
+- 세 레벨 대결과 상대 이름(\"AI 봇 · 초보/중수/고수\")
+- 결과 화면에서 다시 매칭하면 시트 없이 같은 난이도로 다시 찾음
+- 세로 나가기 문구: \"AI 봇 · 초보와의 대결이 취소되고 / 홈으로 돌아가요.\"
+- 가로 자세 세팅의 나가기 창: 두 버튼이 스크롤 없이 다 보임. 온라인 긴 닉네임은 상대가 없어서 미확인
+- W3b Average 120°: 기준대로 동작함. 이와 별개로 판정기의 측정 문제가 있어서 판정기 담당에게 따로 보고했어. W3b와 W5 범위는 아니야.
+
+안 됨:
+- 기록 탭과 홈의 최근 경기 카드에서 상대 이름이 \"푸쉬업 · vs AI 봇 · ...\"로 잘려서 난이도가 안 보여. 결과 화면에서는 다 보여. 폭 360에서도 레벨까지 보이게 고쳐 줘. 고칠 파일이 W5 파일이 아니면 먼저 물어봐. 12자 온라인 닉네임으로도 같이 확인해 줘.
+
+참고(W5 범위 아님): 홈 카드, 기록 탭, 개인 최고가 아직 점수가 아니라 유효 횟수 기준이야. 서버에 점수 칸이 없어서 진영이형에게 새 작업으로 보고할 거야. 테스트 노트에는 발견 사항으로만 적어 줘.
+
+origin/main에는 아직 #17이 없어(main은 5e0be5e). 이름 잘림까지 고치면 push 전에 알려 줘. 폰으로 기록 탭만 다시 보고, 괜찮으면 말한 순서대로 기록, merge, 검사, push를 진행하자.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T18:11:00.665Z -->
+[Woohyun Song, 11-02 03:11] "괜찮아"
