@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 
@@ -190,25 +191,63 @@ void main() {
     });
   });
 
-  for (final size in const [Size(360, 640), Size(640, 360)]) {
-    testWidgets('a 12-letter English name fits without overflow '
-        '(${size.width.toInt()}x${size.height.toInt()})', (tester) async {
-      await open(
-        tester,
-        size: size,
-        dialog: ExitDialog.game(opponentName: 'NightRunner7'),
-      );
-      await tester.tap(find.text('ask'));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      expect(find.text('NightRunner7 님과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
-      // Still reachable on the short landscape screen.
-      await tester.ensureVisible(find.text('게임 나가기'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('게임 나가기'));
-      await tester.pumpAndSettle();
-      expect(answer, isTrue);
+  group('the game message', () {
+    String words(String name) => ExitDialog.game(opponentName: name).message;
+    String twoLines(String named) => '$named의 대결이 취소되고\n홈으로 돌아가요.';
+    String threeLines(String named) => '$named의\n대결이 취소되고\n홈으로 돌아가요.';
+
+    test('stays on two lines for a short name', () {
+      expect(words('Mike'), twoLines('Mike 님과'));
+      expect(words('rat7'), twoLines('rat7 님과'));
+      expect(words('RepBot'), twoLines('RepBot 님과'));
+      expect(words('IronBot'), twoLines('IronBot 님과'));
+      expect(words('진영'), twoLines('진영과'));
+      expect(words('상대사용자'), twoLines('상대사용자와'));
+      expect(words('가나다라마바'), twoLines('가나다라마바와'));
+      expect(words(''), twoLines('상대와'));
     });
+
+    test('stays on two lines for every bot', () {
+      for (final level in BotDifficulty.values) {
+        expect(words(level.opponentName), twoLines('${level.opponentName}와'));
+      }
+    });
+
+    test('gives a long English name a line of its own', () {
+      expect(words('NightRunner7'), threeLines('NightRunner7 님과'));
+      expect(words('Christopher'), threeLines('Christopher 님과'));
+      expect(words('Woohyun12'), threeLines('Woohyun12 님과'));
+      expect(words('WWWWWWW'), threeLines('WWWWWWW 님과'));
+    });
+
+    test('gives a long Hangul name a line of its own', () {
+      expect(words('가나다라마바사'), threeLines('가나다라마바사와'));
+      expect(words('가나다라마바사아'), threeLines('가나다라마바사아와'));
+      expect(words('가나다라마바사아자차카타'), threeLines('가나다라마바사아자차카타와'));
+    });
+  });
+
+  for (final name in const ['NightRunner7', '가나다라마바사아', '가나다라마바사아자차카타']) {
+    for (final size in const [Size(360, 640), Size(640, 360)]) {
+      testWidgets('$name fits without overflow '
+          '(${size.width.toInt()}x${size.height.toInt()})', (tester) async {
+        await open(
+          tester,
+          size: size,
+          dialog: ExitDialog.game(opponentName: name),
+        );
+        await tester.tap(find.text('ask'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text(ExitDialog.gameMessage(name)), findsOneWidget);
+        // Still reachable on the short landscape screen.
+        await tester.ensureVisible(find.text('게임 나가기'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('게임 나가기'));
+        await tester.pumpAndSettle();
+        expect(answer, isTrue);
+      });
+    }
   }
 
   for (final size in const [Size(360, 640), Size(640, 360)]) {

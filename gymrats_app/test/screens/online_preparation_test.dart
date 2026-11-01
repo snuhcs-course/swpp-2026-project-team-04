@@ -551,6 +551,7 @@ void main() {
       ('상대사용자', '상대사용자와의 대결이 취소되고\n홈으로 돌아가요.'),
       ('진영', '진영과의 대결이 취소되고\n홈으로 돌아가요.'),
       ('Mike', 'Mike 님과의 대결이 취소되고\n홈으로 돌아가요.'),
+      ('NightRunner7', 'NightRunner7 님과의\n대결이 취소되고\n홈으로 돌아가요.'),
     ]) {
       testWidgets(name, (tester) async {
         await open(tester);

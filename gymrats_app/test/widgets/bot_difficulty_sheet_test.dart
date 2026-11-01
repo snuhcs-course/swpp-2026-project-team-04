@@ -92,6 +92,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// How many lines [text] takes at text scale 1, from its height and style.
+  double linesOf(WidgetTester tester, Finder text) {
+    final style = tester.renderObject<RenderParagraph>(text).text.style!;
+    final lineHeight = style.fontSize! * (style.height ?? 1.5);
+    return tester.getSize(text).height / lineHeight;
+  }
+
   bool truncated(WidgetTester tester, Finder text) =>
       tester.renderObject<RenderParagraph>(text).didExceedMaxLines;
 
@@ -365,21 +372,76 @@ void main() {
     });
   });
 
-  for (final size in const [Size(360, 640), Size(640, 360)]) {
-    testWidgets('a 12-letter English name fits the leave dialog at '
-        '${size.width.toInt()}x${size.height.toInt()}', (tester) async {
+  group('the leave dialog with the real fonts', () {
+    Future<Finder> openDialog(
+      WidgetTester tester,
+      String name,
+      Size size,
+    ) async {
       await _loadAppFonts(tester);
       setWindow(tester, size);
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
-          home: Scaffold(body: ExitDialog.game(opponentName: 'NightRunner7')),
+          home: Scaffold(body: ExitDialog.game(opponentName: name)),
         ),
       );
-      expect(tester.takeException(), isNull);
-      expect(find.text('NightRunner7 님과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
+      return find.text(ExitDialog.gameMessage(name));
+    }
+
+    for (final name in const ['NightRunner7', '가나다라마바사아', '가나다라마바사아자차카타']) {
+      for (final size in const [Size(360, 640), Size(640, 360)]) {
+        testWidgets(
+          '$name fits at '
+          '${size.width.toInt()}x${size.height.toInt()}, on its three lines',
+          (tester) async {
+            final message = await openDialog(tester, name, size);
+            expect(tester.takeException(), isNull);
+            expect(linesOf(tester, message), closeTo(3, 0.2));
+          },
+        );
+      }
+    }
+
+    testWidgets('no line breaks by itself at 360 wide, whatever the name', (
+      tester,
+    ) async {
+      final names = [
+        for (final letter in const [
+          'W',
+          'm',
+          'M',
+          'w',
+          '@',
+          'A',
+          'a',
+          'i',
+          '0',
+        ])
+          for (var count = 1; count <= 12; count++) letter * count,
+        for (var count = 1; count <= 12; count++) '가' * count,
+        for (var count = 1; count <= 12; count++) '힣' * count,
+        for (final level in BotDifficulty.values) level.opponentName,
+        'Mike',
+        'rat7',
+        'RepBot',
+        'IronBot',
+        'Jennifer',
+        'Alexander',
+        'Christopher',
+        'Woohyun12',
+        'NightRunner7',
+        '상대사용자',
+        '',
+      ];
+      for (final name in names) {
+        final message = await openDialog(tester, name, const Size(360, 640));
+        final written =
+            '\n'.allMatches(ExitDialog.gameMessage(name)).length + 1;
+        expect(linesOf(tester, message), closeTo(written, 0.2), reason: name);
+      }
     });
-  }
+  });
 
   group("the level's name with the real fonts, at 360 wide", () {
     final matchup = Matchup(
@@ -458,13 +520,6 @@ void main() {
       expect(truncated(tester, nameIn(BattleScorePanel)), isFalse);
       expect(tester.takeException(), isNull);
     });
-
-    /// How many lines [text] takes, from its height and its style.
-    double linesOf(WidgetTester tester, Finder text) {
-      final style = tester.renderObject<RenderParagraph>(text).text.style!;
-      final lineHeight = style.fontSize! * (style.height ?? 1.5);
-      return tester.getSize(text).height / lineHeight;
-    }
 
     testWidgets('the matching title stays on one line', (tester) async {
       await _loadAppFonts(tester);

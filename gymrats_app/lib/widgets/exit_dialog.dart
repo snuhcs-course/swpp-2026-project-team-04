@@ -29,8 +29,7 @@ class ExitDialog extends StatelessWidget {
   final String title;
 
   /// Line breaks are written into it: Korean would otherwise break inside
-  /// a word. A long name can still wrap a line of [gameMessage] on a narrow
-  /// phone.
+  /// a word.
   final String message;
 
   final String leaveLabel;
@@ -43,9 +42,38 @@ class ExitDialog extends StatelessWidget {
   /// one for each final letter.
   static const _finalLetters = 28;
 
+  /// The most [_lineWidth] may read for a line to stay whole. The dialog has
+  /// 248 for its text on a 360 wide phone: this keeps a margin.
+  static const _lineRoom = 240.0;
+
   /// What leaving a found match does, for an opponent called [opponentName].
-  static String gameMessage(String opponentName) =>
-      '${_withParticle(opponentName)}의 대결이 취소되고\n홈으로 돌아가요.';
+  /// A name that would push the first line past the dialog's width gets a line
+  /// of its own, so the line does not break inside a word.
+  static String gameMessage(String opponentName) {
+    final named = '${_withParticle(opponentName)}의';
+    const cancelled = '대결이 취소되고';
+    const home = '홈으로 돌아가요.';
+    return _lineWidth('$named $cancelled') <= _lineRoom
+        ? '$named $cancelled\n$home'
+        : '$named\n$cancelled\n$home';
+  }
+
+  /// About how wide [line] is in the message's text style.
+  static double _lineWidth(String line) =>
+      line.runes.fold(0, (width, letter) => width + _letterWidth(letter));
+
+  /// The widest letter of [letter]'s group, measured in the app's font, so a
+  /// line reads a little wider than it is. An emoji's width depends on the
+  /// phone: the last number is a guess on the wide side.
+  static double _letterWidth(int letter) {
+    final text = String.fromCharCode(letter);
+    if (" !',.ijl".contains(text)) return 5.1;
+    if ('()-:;[]{}|/\\ftrI·'.contains(text)) return 7.5;
+    if ('mwMW@%'.contains(text)) return 15.5;
+    if (letter >= 0x61 && letter <= 0x7A) return 9.7;
+    if (letter < 0x7F) return 12;
+    return letter >= _firstSyllable && letter <= _lastSyllable ? 14.8 : 21;
+  }
 
   /// [name] with its particle. Only a Hangul syllable tells which one fits:
   /// 초보와, 진영과. Any other ending takes 님, which always fits 과: Mike 님과.
