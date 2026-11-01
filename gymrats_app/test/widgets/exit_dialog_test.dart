@@ -191,6 +191,28 @@ void main() {
     });
   });
 
+  group('the exit icon', () {
+    Finder icon() => find.byIcon(Icons.logout_rounded);
+
+    testWidgets('shows on an upright screen', (tester) async {
+      await open(tester, size: const Size(360, 640));
+      await tester.tap(find.text('ask'));
+      await tester.pumpAndSettle();
+      expect(icon(), findsOneWidget);
+    });
+
+    testWidgets('does not show on a sideways screen, so the answers fit', (
+      tester,
+    ) async {
+      await open(tester, size: const Size(640, 360));
+      await tester.tap(find.text('ask'));
+      await tester.pumpAndSettle();
+      expect(icon(), findsNothing);
+      expect(find.text('title'), findsOneWidget);
+      expect(find.text('계속하기'), findsOneWidget);
+    });
+  });
+
   group('the game message', () {
     String words(String name) => ExitDialog.game(opponentName: name).message;
     String twoLines(String named) => '$named의 대결이 취소되고\n홈으로 돌아가요.';
@@ -218,6 +240,11 @@ void main() {
       expect(words('Christopher'), threeLines('Christopher 님과'));
       expect(words('Woohyun12'), threeLines('Woohyun12 님과'));
       expect(words('WWWWWWW'), threeLines('WWWWWWW 님과'));
+    });
+
+    test('digits read their own width, so they do not break a line early', () {
+      expect(words('Player12'), twoLines('Player12 님과'));
+      expect(words('1234567'), twoLines('1234567 님과'));
     });
 
     test('gives a long Hangul name a line of its own', () {

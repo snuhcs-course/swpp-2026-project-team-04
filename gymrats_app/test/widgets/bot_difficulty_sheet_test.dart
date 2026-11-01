@@ -373,39 +373,77 @@ void main() {
   });
 
   group('the leave dialog with the real fonts', () {
-    Future<Finder> openDialog(
-      WidgetTester tester,
-      String name,
-      Size size,
-    ) async {
-      await _loadAppFonts(tester);
-      setWindow(tester, size);
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: Scaffold(body: ExitDialog.game(opponentName: name)),
-        ),
-      );
-      return find.text(ExitDialog.gameMessage(name));
-    }
+    Future<void> showName(WidgetTester tester, String name) =>
+        tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark,
+            home: Scaffold(body: ExitDialog.game(opponentName: name)),
+          ),
+        );
 
-    for (final name in const ['NightRunner7', '가나다라마바사아', '가나다라마바사아자차카타']) {
+    for (final (name, words) in const [
+      ('NightRunner7', 'NightRunner7 님과의\n대결이 취소되고\n홈으로 돌아가요.'),
+      ('가나다라마바사아', '가나다라마바사아와의\n대결이 취소되고\n홈으로 돌아가요.'),
+      ('가나다라마바사아자차카타', '가나다라마바사아자차카타와의\n대결이 취소되고\n홈으로 돌아가요.'),
+    ]) {
       for (final size in const [Size(360, 640), Size(640, 360)]) {
         testWidgets(
           '$name fits at '
           '${size.width.toInt()}x${size.height.toInt()}, on its three lines',
           (tester) async {
-            final message = await openDialog(tester, name, size);
+            await _loadAppFonts(tester);
+            setWindow(tester, size);
+            await showName(tester, name);
             expect(tester.takeException(), isNull);
-            expect(linesOf(tester, message), closeTo(3, 0.2));
+            expect(linesOf(tester, find.text(words)), closeTo(3, 0.2));
           },
         );
       }
+
+      testWidgets('on a sideways phone with a status bar, both of $name\'s '
+          'answers show with no scrolling', (tester) async {
+        await _loadAppFonts(tester);
+        setWindow(tester, const Size(640, 360));
+        tester.view.padding = const FakeViewPadding(top: 24);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () =>
+                      confirmExit(context, ExitDialog.game(opponentName: name)),
+                  child: const Text('ask'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('ask'));
+        await tester.pumpAndSettle();
+        expect(find.text(words), findsOneWidget);
+        final card = find
+            .descendant(
+              of: find.byType(Dialog),
+              matching: find.byType(SingleChildScrollView),
+            )
+            .first;
+        final bottom = tester.getBottomLeft(card).dy;
+        expect(
+          tester.getBottomLeft(find.text('계속하기')).dy,
+          lessThanOrEqualTo(bottom),
+        );
+        expect(
+          tester.getBottomLeft(find.text('게임 나가기')).dy,
+          lessThanOrEqualTo(bottom),
+        );
+      });
     }
 
-    testWidgets('no line breaks by itself at 360 wide, whatever the name', (
-      tester,
-    ) async {
+    testWidgets('no line breaks by itself at 360 wide, over ASCII and Hangul '
+        'names', (tester) async {
+      await _loadAppFonts(tester);
+      setWindow(tester, const Size(360, 640));
       final names = [
         for (final letter in const [
           'W',
@@ -413,8 +451,11 @@ void main() {
           'M',
           'w',
           '@',
+          '%',
           'A',
+          'Q',
           'a',
+          'b',
           'i',
           '0',
         ])
@@ -435,7 +476,8 @@ void main() {
         '',
       ];
       for (final name in names) {
-        final message = await openDialog(tester, name, const Size(360, 640));
+        await showName(tester, name);
+        final message = find.text(ExitDialog.gameMessage(name));
         final written =
             '\n'.allMatches(ExitDialog.gameMessage(name)).length + 1;
         expect(linesOf(tester, message), closeTo(written, 0.2), reason: name);

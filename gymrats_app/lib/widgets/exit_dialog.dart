@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Asks before leaving the match flow: a pink exit icon, [title] over
-/// [message], a big lime 계속하기 button and a pink [leaveLabel] one.
+/// Asks before leaving the match flow: a pink exit icon when upright, [title]
+/// over [message], a big lime 계속하기 button and a pink [leaveLabel] one.
 ///
 /// Pops true for [leaveLabel], false for 계속하기.
 class ExitDialog extends StatelessWidget {
@@ -48,7 +48,10 @@ class ExitDialog extends StatelessWidget {
 
   /// What leaving a found match does, for an opponent called [opponentName].
   /// A name that would push the first line past the dialog's width gets a line
-  /// of its own, so the line does not break inside a word.
+  /// of its own, so the line does not break inside a word. That holds for an
+  /// ASCII or Hangul name of up to 12 letters, on a phone at least 360 wide at
+  /// the default text size: with larger text, on a narrower phone, or with a
+  /// name of many emoji, a line can still wrap.
   static String gameMessage(String opponentName) {
     final named = '${_withParticle(opponentName)}의';
     const cancelled = '대결이 취소되고';
@@ -70,7 +73,8 @@ class ExitDialog extends StatelessWidget {
     if (" !',.ijl".contains(text)) return 5.1;
     if ('()-:;[]{}|/\\ftrI·'.contains(text)) return 7.5;
     if ('mwMW@%'.contains(text)) return 15.5;
-    if (letter >= 0x61 && letter <= 0x7A) return 9.7;
+    if (letter >= 0x61 && letter <= 0x7A) return 9.8;
+    if (letter >= 0x30 && letter <= 0x39) return 10.2;
     if (letter < 0x7F) return 12;
     return letter >= _firstSyllable && letter <= _lastSyllable ? 14.8 : 21;
   }
@@ -105,8 +109,13 @@ class ExitDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const _ExitIcon(),
-              const SizedBox(height: 18),
+              // A sideways screen is short: without the icon, both answers
+              // show at once.
+              if (MediaQuery.orientationOf(context) ==
+                  Orientation.portrait) ...[
+                const _ExitIcon(),
+                const SizedBox(height: 18),
+              ],
               Text(
                 title,
                 textAlign: TextAlign.center,
