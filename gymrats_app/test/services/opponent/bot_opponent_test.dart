@@ -140,10 +140,14 @@ void main() {
                 ) ==
                 GameGrade.excellent,
           );
-          expect(
-            excellent.length / valid.length,
-            closeTo(level.deepShare, 0.04),
-          );
+          if (level.deepShare == 0) {
+            expect(excellent, isEmpty);
+          } else {
+            expect(
+              excellent.length / valid.length,
+              closeTo(level.deepShare, 0.04),
+            );
+          }
         });
 
         test('its mistakes earn nothing', () {
@@ -182,6 +186,52 @@ void main() {
         });
       });
     }
+
+    group('the combo chance', () {
+      // Only this rule puts reps exactly this far apart: the rest of the plan
+      // moves each rep by a random number of microseconds.
+      const comboGap = Duration(milliseconds: 1200);
+
+      List<(RepEvent, RepEvent)> pairsAtGap(BotDifficulty level) => [
+        for (final round in roundsOf(level, count: 300))
+          for (var i = 1; i < round.length; i++)
+            if (round[i].at - round[i - 1].at == comboGap)
+              (round[i - 1], round[i]),
+      ];
+
+      test('closes a valid rep right behind a valid one', () {
+        final pairs = pairsAtGap(BotDifficulty.intermediate);
+        expect(pairs.length, greaterThan(100));
+        for (final (before, rep) in pairs) {
+          expect(before.valid, isTrue);
+          expect(rep.valid, isTrue);
+        }
+      });
+
+      test('is inside the combo window of the game', () {
+        expect(battleRules.isCombo(comboGap), isTrue);
+      });
+
+      test('does nothing in the levels that have none', () {
+        expect(pairsAtGap(BotDifficulty.beginner), isEmpty);
+        expect(pairsAtGap(BotDifficulty.expert), isEmpty);
+      });
+    });
+
+    test('a round of another length scales all of its counts', () {
+      const long = Duration(seconds: 60);
+      for (var seed = 0; seed < 200; seed++) {
+        final round = BotOpponent.planRound(
+          Random(seed),
+          long,
+          difficulty: BotDifficulty.beginner,
+        );
+        final valid = round.where((rep) => rep.valid).length;
+        expect(valid, inInclusiveRange(10, 14), reason: 'seed $seed');
+        expect(round.length - valid, inInclusiveRange(2, 6));
+        expect(round.last.at, lessThan(long));
+      }
+    });
 
     group('the numbers in battle-rules.md 4.5', () {
       final beginner = roundsOf(BotDifficulty.beginner);
@@ -305,7 +355,7 @@ void main() {
     // Shown, the battle would open the real camera, so no widget test reaches
     // its default view model. W5 merges #17, whose edit is on the line before:
     // this fails if that merge brings back a bot with no level.
-    test('the battle screen builds the bot of its matchup', () {
+    test('battle_screen.dart still calls BotOpponent.forMatchup', () {
       expect(
         File('lib/screens/battle_screen.dart').readAsStringSync(),
         contains('opponent: BotOpponent.forMatchup(widget.matchup),'),

@@ -397,6 +397,7 @@ void main() {
         ),
       ),
     );
+    expect(find.text('AI 봇 · 초보'), findsOneWidget);
     await tester.tap(find.text('다시 매칭'));
     await tester.pumpAndSettle();
     expect(

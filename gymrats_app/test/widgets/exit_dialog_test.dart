@@ -151,6 +151,9 @@ void main() {
       expect(message('RepBot'), 'RepBot과');
       expect(message('rat7'), 'rat7과');
       expect(message(''), '과');
+      // Right past the last syllable, where the count would read as no final
+      // letter.
+      expect(message('\u{D7A4}'), '\u{D7A4}과');
     });
   });
 

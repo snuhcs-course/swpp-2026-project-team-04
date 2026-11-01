@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -8,12 +10,17 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
+import 'package:gymrats_app/screens/matching_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/matching_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
+import 'package:gymrats_app/widgets/battle_score_panel.dart';
 import 'package:gymrats_app/widgets/bot_difficulty_sheet.dart';
+import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/match_record_card.dart';
+import 'package:gymrats_app/widgets/opponent_window.dart';
 
 import '../support/fakes.dart';
 import '../support/game_fakes.dart';
@@ -307,6 +314,16 @@ void main() {
       expect(expert, 255);
     });
 
+    testWidgets("the robot's color is the opponent's pink", (tester) async {
+      final rgba = await pixels(tester, BotDifficulty.expert);
+      final at = (47 * BotDifficultyPicture.designSize.width.toInt() + 36) * 4;
+      expect(rgba.sublist(at, at + 3), [
+        (AppColors.opponent.r * 255).round(),
+        (AppColors.opponent.g * 255).round(),
+        (AppColors.opponent.b * 255).round(),
+      ]);
+    });
+
     testWidgets('only the upper levels have lines at the sides', (
       tester,
     ) async {
@@ -364,11 +381,12 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('fits on the scoreboard and in the opponent window', (
-      tester,
-    ) async {
+    /// Opens the battle, at a text scale of [scale].
+    Future<void> openBattle(WidgetTester tester, double scale) async {
       await _loadAppFonts(tester);
       setWindow(tester, const Size(360, 780));
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,
@@ -394,12 +412,72 @@ void main() {
       );
       await tester.pump();
       await tester.pump();
-      final names = find.text(name);
-      expect(names, findsNWidgets(2));
-      for (final element in names.evaluate()) {
-        expect(truncated(tester, find.byWidget(element.widget).first), isFalse);
-      }
+    }
+
+    Finder nameIn(Type place) =>
+        find.descendant(of: find.byType(place), matching: find.text(name));
+
+    testWidgets('fits on the scoreboard and in the opponent window', (
+      tester,
+    ) async {
+      await openBattle(tester, 1);
+      expect(truncated(tester, nameIn(BattleScorePanel)), isFalse);
+      expect(truncated(tester, nameIn(OpponentWindow)), isFalse);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the scoreboard still shows it whole at text scale 1.3', (
+      tester,
+    ) async {
+      await openBattle(tester, 1.3);
+      expect(truncated(tester, nameIn(BattleScorePanel)), isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    /// How many lines [text] takes, from its height and its style.
+    double linesOf(WidgetTester tester, Finder text) {
+      final style = tester.renderObject<RenderParagraph>(text).text.style!;
+      final lineHeight = style.fontSize! * (style.height ?? 1.5);
+      return tester.getSize(text).height / lineHeight;
+    }
+
+    testWidgets('the matching title stays on one line', (tester) async {
+      await _loadAppFonts(tester);
+      setWindow(tester, const Size(360, 780));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: MatchingScreen(
+            exercise: ExerciseType.pushUp,
+            difficulty: BotDifficulty.beginner,
+            createViewModel: () => MatchingViewModel(
+              matchmaker: FakeMatchmaker()..gate = Completer(),
+              repository: FakeUserRepository(),
+              exercise: ExerciseType.pushUp,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(linesOf(tester, find.text('초보 AI 상대를 찾는 중')), lessThan(1.2));
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets("the leave dialog keeps its message's two lines", (
+      tester,
+    ) async {
+      await _loadAppFonts(tester);
+      setWindow(tester, const Size(360, 780));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(body: ExitDialog.game(opponentName: name)),
+        ),
+      );
+      expect(
+        linesOf(tester, find.text('$name와의 대결이 취소되고\n홈으로 돌아가요.')),
+        lessThan(2.2),
+      );
     });
 
     testWidgets('shows whole in the history card', (tester) async {

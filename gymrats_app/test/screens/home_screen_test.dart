@@ -427,16 +427,46 @@ void main() {
     expect(find.byType(HomeScreen), findsOneWidget);
   });
 
-  testWidgets('leaving home while the sheet is open starts no search', (
+  testWidgets('a level chosen after home has gone starts no search', (
     tester,
   ) async {
-    await open(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => HomeScreen(
+                    createViewModel: () =>
+                        HomeViewModel(repository: repository),
+                  ),
+                ),
+              ),
+              child: const Text('below home'),
+            ),
+          ),
+        ),
+        routes: {GymRatsApp.matchingRoute: (_) => const Text('matching')},
+      ),
+    );
+    await tester.tap(find.text('below home'));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pumpAndSettle();
-    await tester.pumpWidget(const SizedBox());
+
+    final home = ModalRoute.of(tester.element(find.byType(HomeScreen)))!;
+    home.navigator!.removeRoute(home);
     await tester.pumpAndSettle();
-    expect(find.textContaining('matching'), findsNothing);
+    expect(find.byType(HomeScreen), findsNothing);
+    expect(find.byType(BotDifficultySheet), findsOneWidget);
+
+    await tester.tap(find.text('중수'));
+    await tester.pumpAndSettle();
+    expect(find.text('matching'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
