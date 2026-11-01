@@ -2,12 +2,16 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import '../../models/battle_rules.dart';
+import '../../models/bot_difficulty.dart';
+import '../../models/matchup.dart';
 import '../../models/rep_event.dart';
 import '../../models/exercise_type.dart';
+import '../pose/exercise_judge.dart';
 import '../pose/setup_checker.dart' show Clock;
 import 'opponent_source.dart';
 
-/// The AI opponent: 20 to 28 valid reps a minute, with a few rejected ones.
+/// The AI opponent: valid reps and a few rejected ones, at the pace of its
+/// [difficulty].
 ///
 /// [start] plans the whole round with [planRound]. The reps then arrive at
 /// their planned times on the injected clock, leaving out paused time.
@@ -18,11 +22,21 @@ class BotOpponent implements OpponentSource {
     Clock? clock,
     this.roundLength = battleDuration,
     this.passDepth = _pushUpPassDepth,
+    this.difficulty = BotDifficulty.expert,
   }) : _random = random ?? math.Random(),
        _clock = clock ?? _stopwatchClock();
 
+  /// The bot of [matchup]: its difficulty, at the pass depth of its exercise.
+  factory BotOpponent.forMatchup(Matchup matchup) => BotOpponent(
+    passDepth: judgeFor(matchup.exercise).passDepth,
+    difficulty: matchup.opponent.difficulty ?? BotDifficulty.expert,
+  );
+
   /// Every planned rep falls inside this.
   final Duration roundLength;
+
+  /// How many reps it makes, and how well.
+  final BotDifficulty difficulty;
 
   /// The pass depth of the exercise the bot plays. Its reps go that many times
   /// as deep, so they get the same grades in every exercise.
@@ -58,11 +72,9 @@ class BotOpponent implements OpponentSource {
   /// How far a rep may move off its slot, as a share of the gap there.
   static const _jitter = 0.15;
 
-  /// The bot's pace: 20 to 28 valid and up to 3 rejected reps in a minute.
-  static const _paceLength = Duration(seconds: 60);
-  static const _fewestValid = 20;
-  static const _mostValid = 28;
-  static const _mostRejected = 3;
+  /// A rep that closes right behind the last one comes this long after it,
+  /// inside the game's combo window.
+  static final _comboGap = battleRules.comboWindow * 0.8;
 
   /// The depth a push-up must reach: `RepJudgeConfig.bottomDepth`.
   static const _pushUpPassDepth = 1.1;
@@ -73,9 +85,6 @@ class BotOpponent implements OpponentSource {
   static const _normalDepth = 1.4;
   static const _deepDepth = 1.9;
 
-  /// About this share of the valid reps go deep.
-  static const _deepShare = 0.2;
-
   static Clock _stopwatchClock() {
     final stopwatch = Stopwatch()..start();
     return () => stopwatch.elapsed;
@@ -83,27 +92,29 @@ class BotOpponent implements OpponentSource {
 
   /// Plans one round: when each rep ends, and which ones are rejected.
   ///
-  /// The valid count is drawn first, so every round lands in the bot's
-  /// pace: 10 to 14 in a 30-second round, 20 to 28 in a 60-second one. A few
-  /// rejected reps are mixed in. Gaps widen towards the end, and each rep
-  /// moves a little off its slot. Reps stay in order inside the round. Some
-  /// valid reps go deep, so the game grades them higher; [passDepth] scales
-  /// how deep. Rejected reps have no depth and no elbow angle, so they earn
-  /// nothing.
+  /// The valid count is drawn first, so every round lands in the pace of
+  /// [difficulty]. A few rejected reps are mixed in. Gaps widen towards the
+  /// end, and each rep moves a little off its slot. Reps stay in order inside
+  /// the round. Some valid reps go deep, so the game grades them higher;
+  /// [passDepth] scales how deep. Rejected reps have no depth and no elbow
+  /// angle, so they earn nothing.
   static List<RepEvent> planRound(
     math.Random random,
     Duration roundLength, {
     double passDepth = _pushUpPassDepth,
+    BotDifficulty difficulty = BotDifficulty.expert,
   }) {
     // Exactly 1 at the default, so push-up depths stay exactly as they are.
     final depthScale = passDepth / _pushUpPassDepth;
-    int atPace(int perMinute) =>
-        (perMinute * roundLength.inMicroseconds / _paceLength.inMicroseconds)
-            .round();
-    final fewestValid = atPace(_fewestValid);
+    int atPace(int count) => BotDifficulty.atPace(count, roundLength);
+    final fewestValid = atPace(difficulty.fewestValid);
     final validCount =
-        fewestValid + random.nextInt(atPace(_mostValid) - fewestValid + 1);
-    final rejectedCount = random.nextInt(atPace(_mostRejected) + 1);
+        fewestValid +
+        random.nextInt(atPace(difficulty.mostValid) - fewestValid + 1);
+    final fewestRejected = atPace(difficulty.fewestRejected);
+    final rejectedCount =
+        fewestRejected +
+        random.nextInt(atPace(difficulty.mostRejected) - fewestRejected + 1);
     final count = validCount + rejectedCount;
     final slots = List.generate(count, (i) => i)..shuffle(random);
     final rejected = slots.take(rejectedCount).toSet();
@@ -122,18 +133,31 @@ class BotOpponent implements OpponentSource {
               RejectReason.forExercise(ExerciseType.pushUp).length,
             )]
           : null;
+      var at =
+          _startDelay +
+          Duration(microseconds: (span * progress + jitter).round());
+      final maxDepth = reason != null
+          ? null
+          : (random.nextDouble() < difficulty.deepShare
+                    ? _deepDepth
+                    : _normalDepth) *
+                depthScale;
+      // No draw at a chance of 0, so that level's rounds stay the same.
+      if (difficulty.comboChance > 0 &&
+          reason == null &&
+          plan.isNotEmpty &&
+          plan.last.valid &&
+          random.nextDouble() < difficulty.comboChance) {
+        final behindLast = plan.last.at + _comboGap;
+        if (behindLast < at) at = behindLast;
+      }
       plan.add(
         RepEvent(
           index: i + 1,
           valid: reason == null,
           reason: reason,
-          at:
-              _startDelay +
-              Duration(microseconds: (span * progress + jitter).round()),
-          maxDepth: reason != null
-              ? null
-              : (random.nextDouble() < _deepShare ? _deepDepth : _normalDepth) *
-                    depthScale,
+          at: at,
+          maxDepth: maxDepth,
         ),
       );
     }
@@ -146,7 +170,12 @@ class BotOpponent implements OpponentSource {
   @override
   void start() {
     _timer?.cancel();
-    _plan = planRound(_random, roundLength, passDepth: passDepth);
+    _plan = planRound(
+      _random,
+      roundLength,
+      passDepth: passDepth,
+      difficulty: difficulty,
+    );
     _nextRep = 0;
     _stopped = false;
     _elapsedBeforeResume = Duration.zero;

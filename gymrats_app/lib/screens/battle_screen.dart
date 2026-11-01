@@ -62,7 +62,7 @@ class _BattleScreenState extends State<BattleScreen>
         BattleViewModel(
           matchup: widget.matchup,
           counter: RepCounterViewModel(roundLength: battleDuration),
-          opponent: BotOpponent(),
+          opponent: BotOpponent.forMatchup(widget.matchup),
           repository: context.read<UserRepository>(),
           sound: const DeviceRepSound(),
           formReports: context.read<FormReportStore>(),
