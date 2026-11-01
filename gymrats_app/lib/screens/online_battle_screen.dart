@@ -328,7 +328,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       builder: (context) => ExitDialog(
         title: '게임에서 나갈까요?',
         message: session.startAtMs == null
-            ? '${session.opponent!.name}과의 대결이 취소되고\n홈으로 돌아가요.'
+            ? ExitDialog.gameMessage(session.opponent!.name)
             : '시작 후 나가면 서버 규칙에 따라\n기권 처리됩니다.',
         leaveLabel: '게임 나가기',
       ),

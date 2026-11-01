@@ -263,7 +263,7 @@ void main() {
     await tester.tap(exitButton);
     await tester.pumpAndSettle();
     expect(
-      find.text('IronBot과의 대결이 취소되고\n홈으로 돌아가요.'),
+      find.text('IronBot 님과의 대결이 취소되고\n홈으로 돌아가요.'),
       findsOneWidget,
     );
   });

@@ -489,6 +489,25 @@ void main() {
       );
     });
 
+    for (final size in const [Size(360, 640), Size(640, 360)]) {
+      testWidgets('a 12-letter English name fits the leave dialog at '
+          '${size.width.toInt()}x${size.height.toInt()}', (tester) async {
+        await _loadAppFonts(tester);
+        setWindow(tester, size);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark,
+            home: Scaffold(body: ExitDialog.game(opponentName: 'NightRunner7')),
+          ),
+        );
+        expect(tester.takeException(), isNull);
+        expect(
+          find.text('NightRunner7 님과의 대결이 취소되고\n홈으로 돌아가요.'),
+          findsOneWidget,
+        );
+      });
+    }
+
     testWidgets('shows whole in the history card', (tester) async {
       await _loadAppFonts(tester);
       setWindow(tester, const Size(360, 780));

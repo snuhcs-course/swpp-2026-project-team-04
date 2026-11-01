@@ -17,8 +17,7 @@ class ExitDialog extends StatelessWidget {
   /// For leaving a found match, on the versus and setup screens.
   ExitDialog.game({super.key, required String opponentName})
     : title = '게임에서 나갈까요?',
-      message =
-          '$opponentName${_withParticle(opponentName)}의 대결이 취소되고\n홈으로 돌아가요.',
+      message = gameMessage(opponentName),
       leaveLabel = '게임 나가기';
 
   /// For leaving the search, on the matching screen.
@@ -43,16 +42,18 @@ class ExitDialog extends StatelessWidget {
   /// one for each final letter.
   static const _finalLetters = 28;
 
-  /// "와" after a Hangul syllable with no final letter, "과" after any other
-  /// ending, such as "RepBot" or "진영".
+  /// What leaving a found match does, for an opponent called [opponentName].
+  static String gameMessage(String opponentName) =>
+      '${_withParticle(opponentName)}의 대결이 취소되고\n홈으로 돌아가요.';
+
+  /// [name] with its particle. Only a Hangul syllable tells which one fits:
+  /// 초보와, 진영과. Any other ending takes 님, which always fits 과: Mike 님과.
+  /// No name is the opponent: 상대와.
   static String _withParticle(String name) {
-    if (name.isEmpty) return '과';
+    if (name.isEmpty) return '상대와';
     final last = name.codeUnitAt(name.length - 1);
-    final endsOpen =
-        last >= _firstSyllable &&
-        last <= _lastSyllable &&
-        (last - _firstSyllable) % _finalLetters == 0;
-    return endsOpen ? '와' : '과';
+    if (last < _firstSyllable || last > _lastSyllable) return '$name 님과';
+    return (last - _firstSyllable) % _finalLetters == 0 ? '$name와' : '$name과';
   }
 
   @override
