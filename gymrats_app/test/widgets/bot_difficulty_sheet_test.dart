@@ -314,14 +314,23 @@ void main() {
       expect(expert, 255);
     });
 
-    testWidgets("the robot's color is the opponent's pink", (tester) async {
-      final rgba = await pixels(tester, BotDifficulty.expert);
+    testWidgets("the robot's color is the opponent's pink at every level", (
+      tester,
+    ) async {
+      const pink = AppColors.opponent;
       final at = (47 * BotDifficultyPicture.designSize.width.toInt() + 36) * 4;
-      expect(rgba.sublist(at, at + 3), [
-        (AppColors.opponent.r * 255).round(),
-        (AppColors.opponent.g * 255).round(),
-        (AppColors.opponent.b * 255).round(),
-      ]);
+      for (final level in BotDifficulty.values) {
+        final rgba = await pixels(tester, level);
+        // The bytes are multiplied by alpha, so undo that to read the color.
+        final alpha = rgba[at + 3];
+        for (final (channel, value) in [pink.r, pink.g, pink.b].indexed) {
+          expect(
+            rgba[at + channel] * 255 / alpha,
+            closeTo(value * 255, 3),
+            reason: '${level.label}, channel $channel',
+          );
+        }
+      }
     });
 
     testWidgets('only the upper levels have lines at the sides', (
