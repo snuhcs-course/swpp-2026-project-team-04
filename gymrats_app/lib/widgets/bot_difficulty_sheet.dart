@@ -41,7 +41,7 @@ class BotDifficultySheet extends StatelessWidget {
           AppSpacing.s20,
           0,
           AppSpacing.s20,
-          AppSpacing.s32,
+          AppSpacing.s24,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -53,14 +53,14 @@ class BotDifficultySheet extends StatelessWidget {
               '${exercise.koreanName} · ${battleDuration.inSeconds}초 · 1v1',
               style: text.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: AppSpacing.s20),
+            const SizedBox(height: AppSpacing.s24),
             IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final (index, level)
                       in BotDifficulty.values.indexed) ...[
-                    if (index > 0) const SizedBox(width: AppSpacing.s8),
+                    if (index > 0) const SizedBox(width: AppSpacing.s12),
                     Expanded(child: _LevelCard(level)),
                   ],
                 ],
