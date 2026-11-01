@@ -412,3 +412,33 @@ W2(#21)가 22:12에 main에 머지됐어(ea83fc1). 진영이형이 #21 댓글에
  - 스쿼트 봇에도 같은 세 레벨 적용. 스쿼트 봇에는 스쿼트 통과 깊이가 넘어가야 함(W3b에서 BotOpponent가 passDepth를 받게 됨). 온라인은 건드리지 않음.
 2) 결정이 끝나면 구현, flutter analyze와 flutter test, 병렬 리뷰(CLAUDE.md Workflow 3단계와 reviewer.md의 \"Parallel review: your lens\" 절대로), 노트까지 하고 push 전에 멈춰 줘. PR은 #23 머지와 S4 진행을 보고 내가 말하면 열어.
 </pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T07:39:58.774Z -->
+[Woohyun Song, 11-01 16:39] "<pasted_content id=\"5639\">
+보고 잘 받았어. 확인 질문에 답하고, 나가기 문구를 하나 더 고치자.
+
+1. 와/과 수정은 온라인 이름에도 적용해. 다만 이름이 한글로 끝나지 않으면 맞는 조사를 고를 수 없으니, exit_dialog.dart의 규칙을 이렇게 바꿔 줘.
+- 이름이 한글 음절로 끝나면 지금처럼 받침에 따라 '와'나 '과'를 붙인다. 예: \"AI 봇 · 초보와의 대결이 취소되고\", \"진영과의 대결이 취소되고\".
+- 영어, 숫자, 기호, 이모지처럼 한글 음절이 아닌 글자로 끝나면 이름 뒤에 \" 님\"을 넣고 '과'를 붙인다. 예: \"Mike 님과의 대결이 취소되고\", \"rat7 님과의 대결이 취소되고\". '님'은 받침이 있어서 '과'가 항상 맞다.
+- 이름이 비어 있으면 \"상대와의 대결이 취소되고\"로 쓴다.
+- exit_dialog.dart 안에서만 처리하고, versus_screen.dart 같은 화면 파일은 건드리지 마.
+- 테스트는 새 규칙에 맞게 고쳐 줘. 경계 테스트(가, 하, 각, 힣, \u{D7A4}, David)는 유지하되 기대값을 바꾸고(\"David\"는 \"David 님과\"), 12자 영어 닉네임으로 360x640과 640x360에서 넘치지 않는지 확인해 줘. 노트에도 이 규칙을 반영해 줘.
+
+2. 상우에게는 내가 직접 알릴게. 세션에서 따로 할 일은 없어.
+3. battle-rules.md 11장에 추가한 줄은 그대로 둬.
+4. 오버워치 레퍼런스는 괜찮아. D3 그대로 가자.
+5. 이 수정이 리뷰까지 끝나면, 말한 대로 origin/main을 다시 merge하고 테스트, 소유권 검사, 세션 내보내기를 돌린 뒤 push하고 PR을 열어 줘. 커버리지 숫자는 CI가 끝나면 넣자. 폰 확인은 오늘 밤에 내가 하고 결과를 알려 줄게.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T07:48:44.131Z -->
+[Woohyun Song, 11-01 16:48] "<pasted_content id=\"5639\">
+하나 더 알려 둘게. 상우에게 #17에서 battle_screen.dart의 봇 생성 부분을 아래처럼 바꾸라고 이미 보냈어. 스쿼트일 때 counter는 SquatDemoJudge를 쓴다.
+
+final counter = RepCounterViewModel(
+  roundLength: battleDuration,
+  judge: widget.matchup.exercise == ExerciseType.squat ? SquatDemoJudge() : null,
+);
+opponent: BotOpponent(passDepth: counter.passDepth),
+
+#17 머지 후 이 줄의 충돌을 풀 때, 봇의 통과 깊이는 사용자를 실제로 판정하는 counter.passDepth를 기준으로 하고, 난이도는 matchup에서 가져와 줘. judgeFor(exercise).passDepth와 값이 다르면 counter 쪽을 따르자. 상우 파일 수정 사실은 W5 PR을 올린 뒤에 내가 상우에게 따로 알릴 거야.
+</pasted_content id=\"5639\">"
