@@ -326,3 +326,54 @@ so they are quoted here from the session export.
 - Follow a value from where it is made to where it is read before trusting that it arrives.
 - A test named for a limit must run at that limit; mutate it to see that it can fail.
 - A reason in a prompt is a claim too: check it against the code before writing it down as fact.
+
+## W5 `feat/bot_difficulty` – the bot's difficulty, 초보, 중수, 고수 (team order #12), 2026-11-01
+
+### a. Where AI was used
+- **Levels and bot (`1207c85`):** Claude Code wrote `lib/models/bot_difficulty.dart` (all numbers), `Opponent.at`, `BotMatchRequest`, `Matchup.rematch` (`matchup.dart` L20, L31, L58), `BotOpponent.difficulty`, `forMatchup` and the plan's counts and combo chance (`bot_opponent.dart` L30, L77, L110–L117), and `battle_screen.dart`'s one line.
+- **Picker (`661614f`, `ffbcb91`):** `lib/widgets/bot_difficulty_sheet.dart`, the painter included; `_startMatching` and the reload guard (`home_screen.dart` L71, L83); the level through `matching_viewmodel.dart`, `matching_screen.dart`, `main.dart`, `result_screen.dart`.
+- **Leave dialog (`706e5a2`):** `_withParticle` (`exit_dialog.dart` L48). **Rules doc (`674228b`):** `battle-rules.md` 4.5.
+- **Sketches:** three rounds on a private Design canvas, internal only: A, B, C; then C1, C2, C3; then D1, D2, D3, which were the agent's readings of the user's instructions.
+- **Tests:** the files listed in `docs/testing/iteration-3/g1fted13.md`, W5 entry; `0700310` and `f50d660` after the review.
+- **Review:** four lenses in one message on the code of `674228b`, reviewed before that commit's message was rewrapped. spec and design approved with Minor findings. tests asked for changes (a criterion's result leg had no test), and hygiene asked for changes (#23 had merged, item d). The fixes and the notes then went to those two lenses: tests approved, and hygiene asked for changes again (item d); on that fix, hygiene approved (round 28).
+- **Decided by the user:** the step's scope, branch and order; the numbers; layout C with level-specific pictures, then the minimal style and D3; the name "AI 봇 · 초보"; the same three levels for the squat bot; and the approval of every file beyond the first list, including 다시 매칭 keeping the level and the 와/과 fix, both proposed in the agent's question. That question named the fix only as 초보과의 to 초보와의.
+- **Proposed by the agent, chosen by the user:** one more number for 중수's combos (`comboChance` 0.08), from its measurement.
+- **Decided by the agent, without asking the user:** the sheet's title and the cards' words as sketched; "초보 AI 상대를 찾는 중"; keeping `Matchmaker.findOpponent`'s signature (its fake is in PM-only `fakes.dart`) by putting the level on the found bot; `BotMatchRequest`; the 30 s basis, which changes a 60 s round's most mistakes from 3 to 4; the combo gap of 0.8 of the window; the pink steps in D3 (70, 85, 100%; outer lines 70%); leaving `versus_screen.dart` and `opponent_window.dart` as they are; the reload guard; a bullet in `battle-rules.md` section 11; letting the 와/과 fix cover online names too, which the prompt's "온라인은 건드리지 않음" did not allow for. This step's closing message lists them.
+- **Not done by AI:** the phone check (open). Telling 상우 about the S4 files W5 edits (two whole, and `matching_screen.dart` by region) is the user's to decide.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-01] "지금 봇이 고수에 가까워서, 지금 값을 고수로 두고 중수와 초보를 만든다." (one line of a pasted prompt)
+- [Woohyun Song, 11-01] answer to the agent's question (an answer, not a prompt, so not in the Prompt Log; from the session export): "C1~C3 다 별로야. 기존 C와 같은 미니멀한 디자인에서 별과 같은 아이콘을 통해서 난이도를 나타내. 픽토그램이나 C같은 미니멀한 스타일을 선호하는 거야. 단지 난이도에 따라 그림이 달랐으면 좋겠는 거고. 내가 참고하라고 한 overwatch reference도 다시 한 번 참고해"
+
+### c. What AI did well
+- **Measured a word in the prompt:** "가끔" for 중수's combos looked like it would follow from the pace. A probe with the real scoring showed 5.5% of rounds, against 62% for 고수, so the agent asked with the numbers and the option of one more setting. Reviewer round 26 reproduced 5.3% with its own simulation.
+- **Followed the name to where it reads badly:** "AI 봇 · 초보" reaches `ExitDialog.game`, whose fixed 과 would read "초보과의". The agent found this while reading the path, and asked for the file with the reason, before any edit. The same reading found `battle_screen.dart` (it builds the bot) and 다시 매칭, neither on the first list.
+- **Pinned the old behavior before changing it:** the agent printed the old bot's plans first, so "고수 is today's bot" is a test. Round 26 confirmed it over 50,000 seeds against the old source.
+- **Its tests found two real problems:** `excludeSemantics` had removed the card's tap for a screen reader, and closing the sheet reloaded home through `didPopNext`. For the second, the agent fixed the code, not the pinned `fetchCount`.
+- **A check that can fail:** 14 mutations of the changed code, each failing its test file, after the reviews named the ones that might survive.
+
+### d. Hallucinations / errors
+- **Sketches the user rejected (user):** the first request asked for the same cute RepBot growing stronger and gave props, faces and badges as examples. The agent drew those literally. "C1~C3 다 별로야" (item b): the user wanted C's minimal pictogram. Cost: one sketch round.
+- **A reference not opened, then not reachable:** the user's link was only for an idea, so the agent drew C1–C3 without opening it. Asked to look again, it got a Cloudflare challenge (403) from both WebFetch and curl, and the Chrome tools were disconnected. It did not try to get past the challenge, and search found no description of the icons. D1–D3 rest on the user's words, and the agent told the user so with the sketches.
+- **A stale premise (round 26, hygiene, Major):** #23 merged at 14:48 KST, during this session, and the agent never fetched again. `task.md` and `progress.md` still said it was not merged, and the checks ran against the old guard result. The merge changed no file, so nothing was lost, but "#23이 머지되면 origin/main을 merge해" was the user's own instruction.
+- **A criterion with no test (round 26, tests, Major):** nothing checked the level's name on the result screen; the code was right.
+- **A test that could not fail (round 26, tests, Minor):** "leaving home while the sheet is open" pumped an empty widget, so the awaited sheet never returned. Rewritten with a home removed under the sheet; removing `!mounted` now fails it.
+- **A meaningless test, caught by the agent:** one test, named for 중수 needing its combo chance, asserted almost nothing and said so in its own comment. Deleted before its first run.
+- **Weak checks (round 26, tests, Minor):** 초보's 0% Excellent had a 4% tolerance; the combo rule was only statistical, and three mutations would have survived; a pixel test read alpha only; a source-line test claimed behavior in its name.
+- **An approval read too widely (round 27, hygiene, Major):** these notes first called the online 와/과 change approved. The question named only the bot's 초보과의, and no message before it mentioned online names, while the prompt fenced online off. The agent's own commit message, written after the answer, says the fix covers online names such as 철수, and it still did not ask. The fix stays, since the Korean is right and the change is unpushed; the closing message tells the user, who can limit it to bots.
+- **Spacing off the table (round 26, design, Minor):** the sheet kept the sketch's 8, 20 and 32, where wiki 2.5.5 gives 12 and 24.
+- **The doc's source not recorded (round 26, spec, Minor):** `battle-rules.md` 4.5 says the real `planRound`, and the temporary test that ran it was in no record, which named only the earlier scratch copy. Recorded now.
+- **Sketch drawn from memory:** the sketches' robot path was the agent's recollection of the app's icon, and the design canvas's rules say not to render it, so it was not compared. D3 uses C's simpler robot instead, and the shipped picture is drawn in code.
+
+### e. Prompt revisions
+- **Before** (an answer to the agent's question, from the session export): "지금의 귀여운 RepBot 디자인(얼굴, 몸 형태, 색감)은 세 레벨 모두 그대로 유지하고 ... 표정, 소품, 몸집, 배지 같은 요소로 차이를 줘."
+- **After:** "기존 C와 같은 미니멀한 디자인에서 별과 같은 아이콘을 통해서 난이도를 나타내." (item b)
+- **Why it worked:** the first listed elements, and the agent drew each one. The second named the style to keep and one icon to use, which left little to guess, and the user chose from the next three.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- Fetch again before trusting what a branch's state was at the start of a long session.
+- Measure a vague word in a spec before building to it.
+- A test that passes on an empty widget proves nothing: mutate the line it claims to guard.

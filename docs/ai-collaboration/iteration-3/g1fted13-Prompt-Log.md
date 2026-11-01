@@ -397,3 +397,18 @@ W2(#21)가 22:12에 main에 머지됐어(ea83fc1). 진영이형이 #21 댓글에
 [Woohyun Song, 11-01 04:15] "나 이제 잘 거라 아침까지 답을 못 해. 리뷰 결과에 따라 고칠 게 있으면 네 판단으로 고치고, 해당 렌즈만 재리뷰한 뒤 노트, push, push 후 점검, CI 확인, PR #23 본문 갱신까지 끝내 줘. PR 본문의 Manual check에는 \"105° 버전 폰 확인 완료, 120° 실기기 재확인은 아직\"이라고 적어 줘.
 내 결정이 꼭 필요한 일이 생기면 그 단계에서 멈추고 progress.md에 질문을 적어 둬. push와 PR 본문 수정 말고는 GitHub에 아무것도 하지 마(댓글, 머지 금지).
 끝나면 아침에 내가 볼 수 있게 결과를 짧게 정리해 줘."
+
+## 2026-11-01 · Woohyun Song · feat/bot_difficulty
+<!-- 471b69be 2026-11-01T05:25:46.401Z -->
+[Woohyun Song, 11-01 14:25] "<pasted_content id=\"5639\">
+새 작업 W5를 시작하자. 10/31 회의에서 W5가 \"봇 난이도 설정(초보·중수·고수)\"으로 바뀌었고 W6는 빠졌어. 진영이형 순서표 기준으로 브랜치는 feat/bot_difficulty, 팀 순서 #12, 먼저 들어갈 것은 #11 S4(feat/squat_battle, 마지막 순서)야.
+지금 W3b(PR #23, feat/average_score)가 아직 머지 전이고, 봇 파일(bot_opponent.dart)을 W3b가 고쳤어. 그래서 W5는 origin/feat/average_score에서 갈라져 시작하고, PR을 열 때 \"depends on feat/average_score\"라고 적어. #23이 머지되면 origin/main을 merge해.
+내용: 홈에서 \"AI와 1v1 대결\"을 누르면 난이도(초보·중수·고수)를 고르고, 고른 봇과 대결한다. 지금 봇이 고수에 가까워서, 지금 값을 고수로 두고 중수와 초보를 만든다.
+0) 팀 규칙 파일: task.md와 progress.md의 W5를 새 내용으로 바꾸고, .claude 소유 설정에 W5의 브랜치와 소유 파일(봇 난이도 모델·설정, 난이도 선택 위젯, bot_opponent.dart의 난이도 파라미터, 홈의 AI 대결 버튼 동작, 매칭·versus의 봇 이름 표시, 관련 테스트)을 내가 승인하는 변경으로 넣어 줘. 진영이형이 피하라고 한 S4 파일(battle_viewmodel.dart, rep_counter_viewmodel.dart, pose_avatar_toggle_view.dart)이 필요하면 고치기 전에 물어봐.
+1) 아래 추천안을 OPEN 결정으로 task.md에 적고 나에게 한 번에 물어봐.
+ - 난이도 숫자(30초 기준): 초보 인정 5~7회·실수 1~3회·Excellent 0%·콤보 거의 없음 / 중수 8~10회·0~2회·10%·가끔 / 고수 = 지금 값(10~14회·0~2회·20%). 숫자는 설정 한 곳에 모아 나중에 바꾸기 쉽게.
+ - 고르는 화면: 홈 버튼을 누르면 아래에서 올라오는 시트에 카드 3장(이름, 한 줄 설명), 누르면 바로 매칭. W2·W4처럼 Claude Design 스케치 2~3안을 먼저 보여 줘(내부용).
+ - 기록: 상대 이름을 \"AI 봇 · 초보\"처럼 저장해서 기록 탭에서 구분.
+ - 스쿼트 봇에도 같은 세 레벨 적용. 스쿼트 봇에는 스쿼트 통과 깊이가 넘어가야 함(W3b에서 BotOpponent가 passDepth를 받게 됨). 온라인은 건드리지 않음.
+2) 결정이 끝나면 구현, flutter analyze와 flutter test, 병렬 리뷰(CLAUDE.md Workflow 3단계와 reviewer.md의 \"Parallel review: your lens\" 절대로), 노트까지 하고 push 전에 멈춰 줘. PR은 #23 머지와 S4 진행을 보고 내가 말하면 열어.
+</pasted_content id=\"5639\">"
