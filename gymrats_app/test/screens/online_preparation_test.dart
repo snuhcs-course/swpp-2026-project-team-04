@@ -546,7 +546,6 @@ void main() {
     await tester.pump();
   });
 
-  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   group('back before the start names the opponent in the leave dialog', () {
     for (final (name, words) in const [
       ('상대사용자', '상대사용자와의 대결이 취소되고\n홈으로 돌아가요.'),
@@ -564,6 +563,7 @@ void main() {
     }
   });
 
+  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   testWidgets('a failed feedback upload still shows the result and feedback', (
     tester,
   ) async {

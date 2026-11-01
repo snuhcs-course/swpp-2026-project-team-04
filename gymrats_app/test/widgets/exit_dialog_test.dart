@@ -18,6 +18,7 @@ void main() {
     Size size = const Size(412, 915),
     ExitDialog dialog = _dialog,
   }) async {
+    answer = null;
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -155,9 +156,10 @@ void main() {
       expect(message('AI 봇 · 초보'), 'AI 봇 · 초보와');
       expect(message('AI 봇 · 중수'), 'AI 봇 · 중수와');
       expect(message('AI 봇 · 고수'), 'AI 봇 · 고수와');
-      // The first and the last plain syllables in Unicode.
+      // The first syllable with no final letter, another, and the last.
       expect(message('가'), '가와');
       expect(message('하'), '하와');
+      expect(message('히'), '히와');
     });
 
     test('과 after a Hangul syllable with a final letter', () {

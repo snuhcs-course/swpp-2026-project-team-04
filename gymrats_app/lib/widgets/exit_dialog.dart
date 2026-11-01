@@ -29,7 +29,8 @@ class ExitDialog extends StatelessWidget {
   final String title;
 
   /// Line breaks are written into it: Korean would otherwise break inside
-  /// a word.
+  /// a word. A long name can still wrap a line of [gameMessage] on a narrow
+  /// phone.
   final String message;
 
   final String leaveLabel;
