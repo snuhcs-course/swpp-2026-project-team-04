@@ -193,7 +193,128 @@ void main() {
         final found = wire.events.firstWhere((e) => e['type'] == 'match.found');
         expect(found['payload']['fever_start_ms'], 20000);
         expect(found['payload']['ko_lead'], 100);
+        expect(found['payload']['average_points'], 5);
       }
+    });
+
+    group('an average rep', () {
+      Map<String, dynamic> average(int seq, int elapsed) =>
+          rep(seq, elapsed, grade: 'average', reason: 'insufficient_depth');
+
+      test('earns its points on both phones, stays rejected, and sends no '
+          'combo', () async {
+        final s = await server();
+        final (a, b) = await paired(s);
+        await ready(a, b);
+        a.send('rep.submit', average(1, 10));
+        final answer = (await a.next('rep.accepted'))['payload'];
+        expect(answer['points'], 5);
+        expect(answer['combo'], 0);
+        expect(answer['game_score'], 5);
+        expect(answer['valid_reps'], 0);
+        expect(answer['invalid_reps'], 1);
+
+        final seen = (await b.next('rep.updated'))['payload'];
+        expect(seen['grade'], 'average');
+        expect(seen['valid'], isFalse);
+        expect(seen['reason'], 'insufficient_depth');
+        expect(seen['points'], 5);
+        expect(seen['game_score'], 5);
+      });
+
+      test(
+        'doubles in fever, with no combo bonus, and breaks the combo',
+        () async {
+          final s = await server(
+            rules: const BattleRules(feverStart: Duration(milliseconds: 100)),
+          );
+          final (a, b) = await paired(s);
+          await ready(a, b);
+          a.send('rep.submit', rep(1, 99));
+          expect((await a.next('rep.accepted'))['payload']['points'], 10);
+          a.send('rep.submit', average(2, 100));
+          final answer = (await a.next('rep.accepted'))['payload'];
+          expect(answer['points'], 10);
+          expect(answer['combo'], 0);
+          a.send('rep.submit', rep(3, 200));
+          final next = (await a.next('rep.accepted'))['payload'];
+          expect(next['points'], 20);
+          expect(next['combo'], 1);
+          expect(next['game_score'], 40);
+        },
+      );
+
+      test('can land the KO', () async {
+        final s = await server(rules: const BattleRules(koLead: 5));
+        final (a, b) = await paired(s);
+        await ready(a, b);
+        a.send('rep.submit', average(1, 10));
+        await a.next('rep.accepted');
+        final finished = await a.next('match.finished');
+        expect(finished['payload']['reason'], 'ko');
+        expect(player(finished, 'a')['game_score'], 5);
+        expect(player(finished, 'a')['valid_reps'], 0);
+        expect(player(finished, 'a')['outcome'], 'win');
+      });
+
+      test('is refused on a valid rep and on any other reason', () async {
+        final s = await server();
+        final (a, b) = await paired(s);
+        await ready(a, b);
+        a.send('rep.submit', rep(1, 10, grade: 'average'));
+        expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
+        a.send('rep.submit', rep(1, 10, grade: 'average', reason: 'too_fast'));
+        expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
+        // Go lower takes no other grade.
+        for (final grade in const ['good', 'excellent', 'perfect']) {
+          a.send(
+            'rep.submit',
+            rep(1, 10, grade: grade, reason: 'insufficient_depth'),
+          );
+          expect(
+            (await a.next('error'))['payload']['code'],
+            'INVALID_PAYLOAD',
+            reason: grade,
+          );
+        }
+        a.send('rep.submit', average(1, 10));
+        expect((await a.next('rep.accepted'))['payload']['game_score'], 5);
+      });
+
+      test('sent again gets the same answer, not more points', () async {
+        final s = await server();
+        final (a, b) = await paired(s);
+        await ready(a, b);
+        a.send('rep.submit', average(1, 10));
+        expect((await a.next('rep.accepted'))['payload']['game_score'], 5);
+        a.send('rep.submit', average(1, 10));
+        expect((await a.next('rep.accepted'))['payload']['game_score'], 5);
+      });
+
+      test('the snapshot has the number and the score', () async {
+        final s = await server();
+        final (a, b) = await paired(s);
+        await ready(a, b);
+        a.send('rep.submit', average(1, 10));
+        await a.next('rep.accepted');
+        a.send('match.resume', {});
+        final snapshot = (await a.next('match.snapshot'))['payload'];
+        expect(snapshot['average_points'], 5);
+        expect(snapshot['scores']['a']['game_score'], 5);
+      });
+
+      test(
+        'an older app sends no grade for the same rep, and it earns nothing',
+        () async {
+          final s = await server();
+          final (a, b) = await paired(s);
+          await ready(a, b);
+          a.send('rep.submit', rep(1, 10, reason: 'insufficient_depth'));
+          final answer = (await a.next('rep.accepted'))['payload'];
+          expect(answer['points'], 0);
+          expect(answer['game_score'], 0);
+        },
+      );
     });
 
     test('points, combo, and the grade reach both players', () async {
@@ -915,6 +1036,82 @@ void main() {
       expect(a.myLastScore, same(last));
     });
 
+    const averageRep = RepEvent(
+      index: 3,
+      valid: false,
+      at: Duration.zero,
+      reason: RejectReason.insufficientDepth,
+      // Exactly the line: an online rep plays by the same one.
+      minElbowAngle: 120,
+    );
+
+    test('an average rep shows the same score and bar on both phones, and '
+        'stays rejected', () async {
+      final s = await server(duration: 3000);
+      final (a, b) = await playing(s);
+      for (final session in [a, b]) {
+        expect(session.rules!.averagePoints, 5);
+      }
+      a.submitRep(averageRep);
+      await until(() => a.myScore == 5 && b.opponentScore == 5);
+      expect(a.myLastScore!.grade.name, 'average');
+      expect(a.myLastScore!.points, 5);
+      expect(a.myLastScore!.combo, 0);
+      expect(b.opponentLastScore!.grade.name, 'average');
+      expect(b.opponentLastScore!.points, 5);
+      expect(a.myReps, 0);
+      expect(a.myInvalidReps, 1);
+      expect(b.opponentReps, 0);
+      expect(a.myBarShare, closeTo(.525, 1e-9));
+      expect(b.myBarShare, closeTo(.475, 1e-9));
+      expect(a.error, isNull);
+      await until(
+        () =>
+            a.phase == OnlinePhase.finished && b.phase == OnlinePhase.finished,
+      );
+      expect(a.myScore, 5);
+      expect(a.outcome, 'win');
+      expect(b.outcome, 'loss');
+    });
+
+    test('a shallow rep just above the line, or with straight arms, or another '
+        'reason, sends no grade and earns nothing', () async {
+      final s = await server(duration: 5000);
+      final (a, b) = await playing(s);
+      a.submitRep(
+        const RepEvent(
+          index: 1,
+          valid: false,
+          at: Duration.zero,
+          reason: RejectReason.insufficientDepth,
+          minElbowAngle: 121,
+        ),
+      );
+      a.submitRep(
+        const RepEvent(
+          index: 2,
+          valid: false,
+          at: Duration.zero,
+          reason: RejectReason.insufficientDepth,
+          minElbowAngle: 170,
+        ),
+      );
+      a.submitRep(
+        const RepEvent(
+          index: 3,
+          valid: false,
+          at: Duration.zero,
+          reason: RejectReason.kneesDown,
+          minElbowAngle: 90,
+        ),
+      );
+      await until(() => a.myInvalidReps == 3);
+      expect(a.error, isNull);
+      expect(a.myScore, 0);
+      expect(a.myLastScore, isNull);
+      expect(b.opponentLastScore, isNull);
+    });
+
     test('fever doubles the points on both phones', () async {
       final s = await server(
         duration: 5000,
@@ -1027,6 +1224,7 @@ void main() {
           'disconnected_player_ids': <String>[],
           'fever_start_ms': 20000,
           'ko_lead': 80,
+          'average_points': 7,
           'scores': {
             'a': {
               'valid_reps': 1,
@@ -1045,6 +1243,7 @@ void main() {
       });
       await until(() => session.phase == OnlinePhase.playing);
       expect(session.rules!.koLead, 80);
+      expect(session.rules!.averagePoints, 7);
       expect(session.myScore, 15);
       expect(session.opponentScore, 55);
       expect(session.myBarShare, closeTo(.25, 1e-9));
@@ -1235,6 +1434,87 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(session.myLastScore!.points, 15);
       expect(session.myScore, 15);
+      expect(session.error, isNull);
+    });
+
+    test('+5 AVERAGE shows at once; the same answer keeps it, and a third '
+        "phone's average rep reads as average", () async {
+      final answers = <Map<String, dynamic>>[];
+      final session = await scripted((type, payload, send) {
+        if (type == 'queue.join') {
+          send('match.found', {
+            'players': players,
+            'duration_ms': 30000,
+            'fever_start_ms': 20000,
+            'ko_lead': 100,
+            'average_points': 5,
+          });
+          send('match.start', running());
+        } else if (type == 'rep.submit') {
+          answers.add(payload);
+          send('rep.accepted', {
+            'rep_seq': payload['rep_seq'],
+            'valid_reps': 0,
+            'invalid_reps': 1,
+            'combo': 0,
+            'points': 5,
+            'game_score': 5,
+          });
+          send('rep.updated', {
+            'player_id': 'b',
+            'valid': false,
+            'reason': 'insufficient_depth',
+            'grade': 'average',
+            'elapsed_ms': 50,
+            'valid_reps': 0,
+            'combo': 0,
+            'points': 5,
+            'game_score': 5,
+          });
+        }
+      });
+      await until(() => session.roundRunning);
+      session.submitRep(averageRep);
+      final shown = session.myLastScore!;
+      expect(shown.grade.name, 'average');
+      expect(shown.points, 5);
+      expect(session.myScore, 0);
+      await until(() => session.myScore == 5);
+      expect(session.myLastScore, same(shown));
+      expect(answers.single['grade'], 'average');
+      expect(answers.single['valid'], isFalse);
+      expect(answers.single['reason'], 'insufficient_depth');
+      expect(session.opponentScore, 5);
+      expect(session.opponentLastScore!.grade.name, 'average');
+      expect(session.opponentLastScore!.fever, isFalse);
+      expect(session.error, isNull);
+    });
+
+    test('a server with the game but no Average gets no grade on a rejected '
+        'rep, which it would refuse', () async {
+      final submitted = <Map<String, dynamic>>[];
+      final session = await scripted((type, payload, send) {
+        if (type == 'queue.join') {
+          openGame(send);
+        } else if (type == 'rep.submit') {
+          submitted.add(payload);
+          send('rep.accepted', {
+            'rep_seq': payload['rep_seq'],
+            'valid_reps': 0,
+            'invalid_reps': 1,
+            'combo': 0,
+            'points': 0,
+            'game_score': 0,
+          });
+        }
+      });
+      await until(() => session.roundRunning);
+      expect(session.rules!.averagePoints, 0);
+      session.submitRep(averageRep);
+      await until(() => session.myInvalidReps == 1);
+      expect(submitted.single.containsKey('grade'), isFalse);
+      expect(session.myLastScore, isNull);
+      expect(session.myScore, 0);
       expect(session.error, isNull);
     });
 

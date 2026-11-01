@@ -43,9 +43,18 @@ abstract final class HelpRules {
   static int get feverSeconds => battleRules.feverLength.inSeconds;
   static int get feverMultiplier => battleRules.feverMultiplier;
 
-  /// Points for a valid rep, by judgment.
+  /// Points for a rep, by judgment.
+  static int get average => battleRules.averagePoints;
   static int get good => battleRules.goodPoints;
   static int get excellent => battleRules.excellentPoints;
+
+  /// The largest elbow angle at which a too-shallow rep earns [average].
+  static String get averageElbowAngle =>
+      degreesText(battleRules.averageMaxElbowAngle);
+
+  /// [degrees] as the page writes it: "120", or "120.5" if not whole.
+  static String degreesText(double degrees) =>
+      degrees == degrees.truncateToDouble() ? '${degrees.toInt()}' : '$degrees';
 
   /// Extra points for a valid rep within [comboSeconds] of the last one.
   static int get comboBonus => battleRules.comboBonus;
@@ -74,8 +83,9 @@ abstract final class HelpRules {
       title: '점수는 이렇게 쌓여요',
       body:
           '기준보다 훨씬 깊이 내려가면 Excellent, $comboSeconds초 안에 이어서 '
-          '하면 콤보 보너스가 붙어요. 마지막 $feverSeconds초 피버 타임에는 '
-          '모든 점수가 $feverMultiplier배!',
+          '하면 콤보 보너스가 붙어요. 조금 덜 내려가 세지 않은 동작도 팔꿈치 '
+          '각도가 $averageElbowAngle° 이하면 Average 점수를 받아요. 마지막 '
+          '$feverSeconds초 피버 타임에는 모든 점수가 $feverMultiplier배!',
       points: ['$baseSeconds초부터 ×$feverMultiplier'],
     ),
     HelpPage(
@@ -91,6 +101,7 @@ abstract final class HelpRules {
 
   /// The second page's tiles: the points over the judgment.
   static List<(String, String)> get scores => [
+    ('+$average', 'Average'),
     ('+$good', 'Good'),
     ('+$excellent', 'Excellent'),
     ('+$comboBonus', '콤보'),

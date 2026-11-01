@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/services/game/rep_grade.dart';
 import 'package:gymrats_app/services/opponent/bot_opponent.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 
@@ -81,6 +82,81 @@ void main() {
       }
     });
 
+    test('with no pass depth, its reps go exactly 1.4 or 1.9 deep', () {
+      for (final plan in plans) {
+        for (final rep in plan.where((rep) => rep.valid)) {
+          expect(rep.maxDepth, anyOf(1.4, 1.9));
+        }
+      }
+    });
+
+    test('its rejected reps have no elbow angle, so they earn nothing', () {
+      for (final plan in plans) {
+        for (final rep in plan.where((rep) => !rep.valid)) {
+          expect(rep.minElbowAngle, isNull);
+          expect(
+            battleRules.gradeOf(
+              rep,
+              passDepth: const RepJudgeConfig().bottomDepth,
+            ),
+            isNull,
+          );
+        }
+      }
+    });
+
+    group('with a squat pass depth of 0.75', () {
+      const squatDepth = 0.75;
+
+      List<RepEvent> squatPlan(int seed) => BotOpponent.planRound(
+        Random(seed),
+        battleDuration,
+        passDepth: squatDepth,
+      );
+
+      test('its depths scale by the same multiples', () {
+        for (var seed = 0; seed < 200; seed++) {
+          final squat = squatPlan(seed);
+          final pushUp = plans[seed];
+          for (var i = 0; i < squat.length; i++) {
+            if (!squat[i].valid) continue;
+            expect(
+              squat[i].maxDepth! / squatDepth,
+              closeTo(pushUp[i].maxDepth! / 1.1, 1e-9),
+            );
+          }
+        }
+      });
+
+      test('about a fifth of the valid reps are excellent, not all', () {
+        final valid = [
+          for (var seed = 0; seed < 200; seed++)
+            ...squatPlan(seed).where((rep) => rep.valid),
+        ];
+        final excellent = valid.where(
+          (rep) =>
+              battleRules.gradeFor(
+                maxDepth: rep.maxDepth,
+                passDepth: squatDepth,
+              ) ==
+              GameGrade.excellent,
+        );
+        expect(excellent.length / valid.length, closeTo(0.2, 0.05));
+      });
+
+      test('only the depths change: the same times and reasons', () {
+        for (var seed = 0; seed < 200; seed++) {
+          final squat = squatPlan(seed);
+          final pushUp = plans[seed];
+          expect(squat.length, pushUp.length);
+          for (var i = 0; i < squat.length; i++) {
+            expect(squat[i].at, pushUp[i].at);
+            expect(squat[i].reason, pushUp[i].reason);
+          }
+        }
+      });
+    });
+
     test('the same seed plans the same round', () {
       List<(int, bool, RejectReason?, Duration, double?)> plan(int seed) => [
         for (final rep in BotOpponent.planRound(Random(seed), battleDuration))
@@ -109,6 +185,38 @@ void main() {
     /// The plan BotOpponent makes with Random(seed), for comparison.
     List<RepEvent> planFor(int seed) =>
         BotOpponent.planRound(Random(seed), battleDuration);
+
+    test('plays its own pass depth; by default, the push-up one', () {
+      fakeAsync((async) {
+        final squat = BotOpponent(
+          random: Random(1),
+          clock: () => async.elapsed,
+          passDepth: .75,
+        );
+        final pushUp = BotOpponent(
+          random: Random(1),
+          clock: () => async.elapsed,
+        );
+        final squatDepths = <double?>[], pushUpDepths = <double?>[];
+        squat.reps.listen((rep) => squatDepths.add(rep.maxDepth));
+        pushUp.reps.listen((rep) => pushUpDepths.add(rep.maxDepth));
+        squat.start();
+        pushUp.start();
+        async.elapse(battleDuration);
+        expect(pushUpDepths, [for (final rep in planFor(1)) rep.maxDepth]);
+        expect(squatDepths, [
+          for (final rep in BotOpponent.planRound(
+            Random(1),
+            battleDuration,
+            passDepth: .75,
+          ))
+            rep.maxDepth,
+        ]);
+        expect(squatDepths, isNot(pushUpDepths));
+        squat.dispose();
+        pushUp.dispose();
+      });
+    });
 
     test('sends each rep at its planned time', () {
       fakeAsync((async) {

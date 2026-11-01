@@ -400,10 +400,8 @@ class BattleServer {
         scores[payload['valid'] == true ? 0 : 1]++;
         m.lastRepElapsed[id] = elapsed;
         final game = m.games[id]!;
-        final earned = grade == null
-            ? 0
-            : game.addValid(grade, Duration(milliseconds: elapsed)).points;
-        if (grade == null) game.addRejected();
+        final earned =
+            game.addRep(grade, Duration(milliseconds: elapsed))?.points ?? 0;
         final ack = {
           'rep_seq': seq,
           'valid_reps': scores[0],
@@ -464,17 +462,22 @@ class BattleServer {
     }
   }
 
-  /// The grade of a submitted rep; null when it was rejected. The depth stays
-  /// on the phone, which knows the pass depth. An app that sends no grade is
-  /// scored as good.
+  /// The grade of a submitted rep; null when it was rejected and earned
+  /// nothing. The depth and the elbow angle stay on the phone, which judges
+  /// them. An app that sends no grade is scored as good, and its rejected reps
+  /// as nothing. Only a rep rejected as too shallow can be average.
   GameGrade? _grade(Map<String, dynamic> payload) {
     final grade = payload['grade'];
     if (payload['valid'] != true) {
-      return grade == null ? null : invalid();
+      if (grade == null) return null;
+      return grade == GameGrade.average.name &&
+              payload['reason'] == 'insufficient_depth'
+          ? GameGrade.average
+          : invalid();
     }
     if (grade == null) return GameGrade.good;
     return GameGrade.values.firstWhere(
-      (g) => g.name == grade,
+      (g) => g != GameGrade.average && g.name == grade,
       orElse: () => invalid(),
     );
   }
@@ -501,6 +504,7 @@ class BattleServer {
         'ready_deadline_ms': m.readyDeadline,
         'fever_start_ms': rules.feverStart.inMilliseconds,
         'ko_lead': rules.koLead,
+        'average_points': rules.averagePoints,
       });
     }
   }
@@ -515,6 +519,7 @@ class BattleServer {
     'ready_deadline_ms': m.readyDeadline,
     'fever_start_ms': rules.feverStart.inMilliseconds,
     'ko_lead': rules.koLead,
+    'average_points': rules.averagePoints,
     'scores': m.scores.map(
       (id, s) => MapEntry(id, {
         'valid_reps': s[0],

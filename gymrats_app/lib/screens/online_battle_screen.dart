@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/form_report.dart';
+import '../models/game_score.dart';
 import '../models/pose_frame.dart';
 import '../models/reject_reason_korean.dart';
 import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
+import '../services/game/rep_grade.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
@@ -280,16 +282,38 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   /// What the user's latest rep gets on the line under the health bar.
   String _lastRepWords(RepEvent rep) {
-    if (!rep.valid) return rep.reason?.koreanMessage ?? '';
     final rules = session.rules;
-    if (rules == null) return '+1';
     final score = session.myLastScore;
+    if (!rep.valid) {
+      final reason = rep.reason?.koreanMessage ?? '';
+      // The latest score may be an earlier rep's: this one must have earned it.
+      return rules != null &&
+              rules.earnsAverage(rep) &&
+              score?.grade == GameGrade.average
+          ? '$reason · +${score!.points} ${score.grade.label.toUpperCase()}'
+          : reason;
+    }
+    if (rules == null) return '+1';
     if (score == null) return '';
     return [
       '+${score.points} ${score.grade.label.toUpperCase()}',
       if (score.combo > 1) '콤보 ${score.combo}',
       if (score.fever) '점수 ${rules.feverMultiplier}배',
     ].join(' · ');
+  }
+
+  /// How many of the user's reps got each grade, for the result. It counts
+  /// this phone's records, so it can differ from the score in rare cases: a
+  /// rep closed in the round's last moment reaches no server, and an app
+  /// restarted mid-round no longer has its earlier reps.
+  String _gradeWords(BattleRules rules) {
+    final counts = GameGradeCounts.ofReps(
+      _counter.repRecords,
+      passDepth: _counter.passDepth,
+      rules: rules,
+    );
+    return 'Excellent ${counts.excellent} · Good ${counts.good} · '
+        'Average ${counts.average}';
   }
 
   Future<void> _exit() async {
@@ -564,6 +588,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                                   Text(
                                     '점수 ${session.myScore} : ${session.opponentScore}'
                                     ' · 유효 ${session.myReps} : ${session.opponentReps}',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: AppSpacing.s4),
+                                  Text(
+                                    _gradeWords(rules),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],

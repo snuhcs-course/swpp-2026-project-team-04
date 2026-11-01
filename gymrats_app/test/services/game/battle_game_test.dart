@@ -86,6 +86,124 @@ void main() {
     });
   });
 
+  group('average', () {
+    const goLower = RejectReason.insufficientDepth;
+
+    for (final angle in const [90.0, 110.0, 120.0]) {
+      test('a Go lower rep with the elbows at $angle earns 5, as no valid rep '
+          'and no combo', () {
+        final game = _game();
+        final rep = game.addMyRep(
+          gameRep(3, reason: goLower, minElbowAngle: angle),
+        )!;
+        expect(rep.grade, GameGrade.average);
+        expect(rep.points, 5);
+        expect(rep.combo, 0);
+        expect(rep.fever, isFalse);
+        expect(game.me.points, 5);
+        expect(game.me.validReps, 0);
+        expect(game.myBarShare, closeTo(0.525, 1e-9));
+      });
+    }
+
+    for (final angle in const [120.1, 126.0, 127.8, 145.2, 169.0, 175.0]) {
+      test('a Go lower rep with the elbows at $angle earns nothing', () {
+        final game = _game();
+        expect(
+          game.addMyRep(gameRep(3, reason: goLower, minElbowAngle: angle)),
+          isNull,
+        );
+        expect(game.me.points, 0);
+      });
+    }
+
+    test('a Go lower rep with no elbow angle earns nothing', () {
+      final game = _game();
+      expect(game.addMyRep(gameRep(3, reason: goLower)), isNull);
+      expect(game.me.points, 0);
+    });
+
+    test(
+      'every other reject reason earns nothing, however bent the elbows',
+      () {
+        final others = RejectReason.values.where((r) => r != goLower);
+        for (final reason in others) {
+          final game = _game();
+          expect(
+            game.addMyRep(gameRep(3, reason: reason, minElbowAngle: 90)),
+            isNull,
+            reason: '$reason',
+          );
+          expect(game.me.points, 0, reason: '$reason');
+        }
+      },
+    );
+
+    test('a valid rep is graded by its depth, whatever its elbow angle', () {
+      final rep = _game().addMyRep(
+        gameRep(3, maxDepth: 1.2, minElbowAngle: 90),
+      )!;
+      expect(rep.grade, GameGrade.good);
+      expect(rep.points, 10);
+    });
+
+    test('fever doubles it', () {
+      final rep = _game().addMyRep(
+        gameRep(20, reason: goLower, minElbowAngle: 90),
+      )!;
+      expect(rep.fever, isTrue);
+      expect(rep.points, 10);
+    });
+
+    test('it gets no combo bonus and breaks the combo', () {
+      final game = _game();
+      game.addMyRep(gameRep(3));
+      final average = game.addMyRep(
+        gameRep(3.5, reason: goLower, minElbowAngle: 90),
+      )!;
+      expect(average.points, 5);
+      expect(game.me.combo, 0);
+      final next = game.addMyRep(gameRep(4))!;
+      expect(next.combo, 1);
+      expect(next.points, 10);
+      expect(game.me.points, 25);
+      expect(game.me.validReps, 2);
+    });
+
+    test('the opponent earns it the same way', () {
+      final game = _game();
+      final rep = game.addOpponentRep(
+        gameRep(3, reason: goLower, minElbowAngle: 90),
+      )!;
+      expect(rep.points, 5);
+      expect(game.lead, -5);
+    });
+
+    test('it can land the KO, and the game then takes no more', () {
+      final game = _game();
+      for (var i = 0; i < 10; i++) {
+        game.addMyRep(gameRep(20.0 + i, reason: goLower, minElbowAngle: 90));
+      }
+      expect(game.me.points, 100);
+      expect(game.isKo, isTrue);
+      expect(game.outcome, MatchOutcome.win);
+      expect(
+        game.addMyRep(gameRep(29.5, reason: goLower, minElbowAngle: 90)),
+        isNull,
+      );
+      expect(game.me.points, 100);
+    });
+
+    test('the same points go to more valid reps, which it is not', () {
+      final game = _game();
+      game.addMyRep(gameRep(3, reason: goLower, minElbowAngle: 90));
+      game.addMyRep(gameRep(8, reason: goLower, minElbowAngle: 90));
+      game.addOpponentRep(gameRep(5));
+      expect(game.lead, 0);
+      expect(game.outcome, MatchOutcome.lose);
+    });
+  });
+
   group('the winner when time is up', () {
     test('more points win, even with fewer reps', () {
       final game = _game();
@@ -173,7 +291,9 @@ void main() {
       me(3, 1.45, 10, 0, 0.55);
       me(4.2, 1.80, 30, 0, 0.65);
       bot(4.5, 30, 10, 0.60);
-      game.addMyRep(gameRep(5, reason: RejectReason.insufficientDepth));
+      game.addMyRep(
+        gameRep(5, reason: RejectReason.insufficientDepth, minElbowAngle: 130),
+      );
       expect(game.me.points, 30);
       me(5.6, 1.50, 40, 10, 0.65);
       bot(6.8, 40, 20, 0.60);

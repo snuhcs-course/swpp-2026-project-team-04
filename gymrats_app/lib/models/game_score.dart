@@ -1,5 +1,7 @@
-/// How a valid rep is judged, by its depth.
+/// How a rep is judged: by its depth when valid; a rep rejected as too shallow
+/// with well-bent elbows is average.
 enum GameGrade {
+  average('Average'),
   good('Good'),
   excellent('Excellent');
 
@@ -12,7 +14,7 @@ enum GameGrade {
 /// Why a battle stopped, when it ran until someone won.
 enum GameEnd { timeUp, ko }
 
-/// What one valid rep earned.
+/// What one rep earned.
 class GameRepScore {
   const GameRepScore({
     required this.grade,
@@ -23,7 +25,8 @@ class GameRepScore {
 
   final GameGrade grade;
 
-  /// Valid reps in a row, this one included. 1 when it is not a combo.
+  /// Valid reps in a row, this one included. 1 when it is not a combo, and 0
+  /// for an average rep, which breaks the combo.
   final int combo;
 
   /// Whether it landed in fever time.

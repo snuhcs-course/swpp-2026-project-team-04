@@ -3,6 +3,7 @@ import '../../models/game_score.dart';
 import '../../models/match_record.dart';
 import '../../models/rep_event.dart';
 import 'player_game_score.dart';
+import 'rep_grade.dart';
 
 /// The game of one battle: the score on each side, the health bar, the KO,
 /// and the danger state.
@@ -30,12 +31,7 @@ class BattleGame {
 
   GameRepScore? _add(PlayerGameScore player, RepEvent rep) {
     if (isKo) return null;
-    if (!rep.valid) {
-      player.addRejected();
-      return null;
-    }
-    final grade = rules.gradeFor(maxDepth: rep.maxDepth, passDepth: passDepth);
-    return player.addValid(grade, rep.at);
+    return player.addRep(rules.gradeOf(rep, passDepth: passDepth), rep.at);
   }
 
   /// The user's lead in points; negative while behind.

@@ -350,6 +350,82 @@ void main() {
     expect(find.text('콤보 2 · 점수 2배'), findsOneWidget);
   });
 
+  group('an average rep', () {
+    const goLower = RejectReason.insufficientDepth;
+
+    testWidgets('shows the reason with +5 AVERAGE, and the score and the bar '
+        'move while the valid reps stay', (tester) async {
+      final deep = DepthRepJudge();
+      await open(tester, repJudge: deep);
+      deep.closeRep(reason: goLower, minElbowAngle: 90);
+      await frame(tester, 3);
+      expect(find.text('카운트 안 됨'), findsOneWidget);
+      expect(find.text('가슴을 더 내려요'), findsOneWidget);
+      expect(find.text('+5 AVERAGE'), findsOneWidget);
+      final banner = tester.widget<Container>(
+        find
+            .ancestor(
+              of: find.text('+5 AVERAGE'),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      expect((banner.decoration! as BoxDecoration).color, AppColors.warning);
+
+      expect(find.text('5'), findsOneWidget);
+      expect(find.text('유효 0회'), findsNWidgets(2));
+      final bar = tester.widget<GameHealthBar>(find.byType(GameHealthBar));
+      expect(bar.myShare, closeTo(0.525, 1e-9));
+      expect(bar.myLastScore!.points, 5);
+      expect(find.text('+5'), findsOneWidget);
+      expect(find.text('+5 리드'), findsOneWidget);
+    });
+
+    testWidgets('says +10 in fever', (tester) async {
+      final deep = DepthRepJudge();
+      await open(tester, repJudge: deep);
+      deep.closeRep(reason: goLower, minElbowAngle: 90);
+      await frame(tester, 21);
+      expect(find.text('+10 AVERAGE'), findsOneWidget);
+    });
+
+    testWidgets('a rejected rep with nothing earned shows no points, even '
+        'right after one', (tester) async {
+      final deep = DepthRepJudge();
+      await open(tester, repJudge: deep);
+      deep.closeRep(reason: goLower, minElbowAngle: 90);
+      await frame(tester, 3);
+      expect(find.text('+5 AVERAGE'), findsOneWidget);
+
+      // Above the angle, and the latest score is still the average one.
+      deep.closeRep(reason: goLower, minElbowAngle: 130);
+      await frame(tester, 5);
+      expect(find.text('가슴을 더 내려요'), findsOneWidget);
+      expect(find.text('+5 AVERAGE'), findsNothing);
+
+      deep.closeRep(reason: RejectReason.kneesDown, minElbowAngle: 90);
+      await frame(tester, 7);
+      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
+      expect(find.text('+5 AVERAGE'), findsNothing);
+      expect(find.text('5'), findsOneWidget);
+    });
+
+    testWidgets('a valid rep after it gets its own banner again', (
+      tester,
+    ) async {
+      final deep = DepthRepJudge();
+      await open(tester, repJudge: deep);
+      deep.closeRep(reason: goLower, minElbowAngle: 90);
+      await frame(tester, 3);
+      deep.closeRep();
+      await frame(tester, 4);
+      expect(find.text('+10 GOOD'), findsOneWidget);
+      expect(find.text('좋아요, 그 깊이 그대로!'), findsOneWidget);
+      expect(find.text('+5 AVERAGE'), findsNothing);
+      expect(find.text('15'), findsOneWidget);
+    });
+  });
+
   testWidgets('the fullest panel fits a 360x640 phone', (tester) async {
     await open(tester, size: const Size(360, 640));
     for (var i = 0; i < 7; i++) {

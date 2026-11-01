@@ -12,6 +12,7 @@ import '../../models/game_score.dart';
 import '../../models/pose_frame.dart';
 import '../../models/rep_event.dart';
 import '../game/player_game_score.dart';
+import '../game/rep_grade.dart';
 import '../pose/rep_judge.dart';
 import 'pose_wire.dart';
 
@@ -97,7 +98,7 @@ class OnlineBattleSession extends ChangeNotifier {
   /// Game scores as the server accepted them, the same on both phones.
   int myScore = 0, opponentScore = 0;
 
-  /// What each side's latest valid rep earned; null before the first. The
+  /// What each side's latest scoring rep earned; null before the first. The
   /// user's shows at once from [_myPreview]; the server's answer then decides.
   GameRepScore? myLastScore, opponentLastScore;
 
@@ -416,6 +417,11 @@ class OnlineBattleSession extends ChangeNotifier {
         milliseconds: integer(p['fever_start_ms'], 0, 60000),
       ),
       koLead: integer(p['ko_lead'], 1, _maxGameScore),
+      // An older server does not announce Average, and refuses a rejected rep
+      // that has a grade, so Average stays off with it.
+      averagePoints: p['average_points'] == null
+          ? 0
+          : integer(p['average_points'], 0, _maxGameScore),
     );
   }
 
@@ -423,16 +429,21 @@ class OnlineBattleSession extends ChangeNotifier {
       integer(p['game_score'], 0, _maxGameScore);
 
   /// What a rep earned, from what was [submitted] and the server's [answer]
-  /// to it. Null for a rejected rep.
+  /// to it. Null for a rejected rep that earned nothing.
   GameRepScore? _repScore(
     Map<String, dynamic> submitted,
     Map<String, dynamic> answer,
   ) {
-    if (submitted['valid'] != true) return null;
+    final grade = submitted['valid'] == true
+        ? (submitted['grade'] == GameGrade.excellent.name
+              ? GameGrade.excellent
+              : GameGrade.good)
+        : (submitted['grade'] == GameGrade.average.name
+              ? GameGrade.average
+              : null);
+    if (grade == null) return null;
     return GameRepScore(
-      grade: submitted['grade'] == GameGrade.excellent.name
-          ? GameGrade.excellent
-          : GameGrade.good,
+      grade: grade,
       combo: integer(answer['combo'], 0, 10000),
       fever: rules!.isFever(
         Duration(milliseconds: integer(submitted['elapsed_ms'], 0, 60000)),
@@ -534,12 +545,10 @@ class OnlineBattleSession extends ChangeNotifier {
       RejectReason.standUpFully => 'stand_up_fully',
       null => null,
     };
-    final grade = rep.valid
-        ? rules?.gradeFor(
-            maxDepth: rep.maxDepth,
-            passDepth: passDepth ?? const RepJudgeConfig().bottomDepth,
-          )
-        : null;
+    final grade = rules?.gradeOf(
+      rep,
+      passDepth: passDepth ?? const RepJudgeConfig().bottomDepth,
+    );
     final elapsed = elapsedMs;
     final seq = ++_repSeq,
         message = _message('rep.submit', {
@@ -553,11 +562,8 @@ class OnlineBattleSession extends ChangeNotifier {
     _send(message);
     if (rules case final rules?) {
       final preview = _myPreview ??= PlayerGameScore(rules);
-      if (grade == null) {
-        preview.addRejected();
-      } else {
-        myLastScore = preview.addValid(grade, Duration(milliseconds: elapsed));
-      }
+      myLastScore =
+          preview.addRep(grade, Duration(milliseconds: elapsed)) ?? myLastScore;
       _notify();
     }
   }

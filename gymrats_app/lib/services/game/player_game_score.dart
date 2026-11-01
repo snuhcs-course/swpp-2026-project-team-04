@@ -40,8 +40,37 @@ class PlayerGameScore implements Comparable<PlayerGameScore> {
     );
   }
 
-  /// A rejected rep scores nothing and breaks the combo.
+  /// Scores an average rep closed at round time [at]: it doubles in fever, but
+  /// gets no combo bonus, breaks the combo, and is not a valid rep.
+  GameRepScore addAverage(Duration at) {
+    combo = 0;
+    final fever = _rules.isFever(at);
+    final earned = _rules.pointsFor(
+      GameGrade.average,
+      combo: false,
+      fever: fever,
+    );
+    points += earned;
+    return GameRepScore(
+      grade: GameGrade.average,
+      combo: 0,
+      fever: fever,
+      points: earned,
+    );
+  }
+
+  /// A rejected rep that is not average scores nothing and breaks the combo.
   void addRejected() => combo = 0;
+
+  /// Scores a judged rep of [grade] closed at round time [at]. A null [grade]
+  /// is a rejected rep that earned nothing, and so is its null result.
+  GameRepScore? addRep(GameGrade? grade, Duration at) {
+    if (grade == null) {
+      addRejected();
+      return null;
+    }
+    return grade == GameGrade.average ? addAverage(at) : addValid(grade, at);
+  }
 
   /// Who wins when time is up: more points, then more valid reps. Zero is a
   /// draw.
