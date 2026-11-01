@@ -32,6 +32,12 @@ final _drawing = find.byWidgetPredicate(
   (widget) => widget is CustomPaint && widget.size == const Size(126, 70),
 );
 
+/// The exercise card's name: a match card below it can say 푸쉬업 as well.
+final _exerciseName = find.descendant(
+  of: find.ancestor(of: _drawing, matching: find.byType(Card)),
+  matching: find.text('푸쉬업'),
+);
+
 void main() {
   late FakeUserRepository repository;
 
@@ -90,7 +96,7 @@ void main() {
     expect(find.text('오늘도 한 판,\n붙어볼까요?'), findsOneWidget);
     expect(find.text('종목 선택'), findsOneWidget);
     expect(find.text('30초 · 1v1'), findsOneWidget);
-    expect(find.text('푸쉬업'), findsOneWidget);
+    expect(_exerciseName, findsOneWidget);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     expect(find.text('개인 최고 32회'), findsOneWidget);
     expect(find.text('온라인 1v1 대결'), findsOneWidget);
@@ -110,10 +116,10 @@ void main() {
   ) async {
     await open(tester);
     final card = tester.getRect(
-      find.ancestor(of: find.text('푸쉬업'), matching: find.byType(Card)),
+      find.ancestor(of: _exerciseName, matching: find.byType(Card)),
     );
     final drawing = tester.getRect(_drawing);
-    final title = tester.getRect(find.text('푸쉬업'));
+    final title = tester.getRect(_exerciseName);
     final best = tester.getRect(find.text('개인 최고 32회'));
     final check = tester.getRect(find.byIcon(Icons.check_rounded));
 
@@ -134,7 +140,7 @@ void main() {
     tester,
   ) async {
     await open(tester);
-    final name = tester.widget<Text>(find.text('푸쉬업')).style!;
+    final name = tester.widget<Text>(_exerciseName).style!;
     expect(name.fontFamily, AppFonts.headline);
     expect(name.fontSize, 36);
 
@@ -185,21 +191,21 @@ void main() {
     await open(tester);
     expect(find.text('최근 경기'), findsOneWidget);
     final card = find.ancestor(
-      of: find.text('푸쉬업 · vs RepBot'),
+      of: find.text('vs RepBot'),
       matching: find.byType(Card),
     );
-    for (final text in ['승', '24', ':', '19', '나', '상대']) {
+    for (final text in ['승', '푸쉬업', '24', ':', '19', '나', '상대']) {
       expect(
         find.descendant(of: card, matching: find.text(text)),
         findsOneWidget,
       );
     }
-    // One row: 16 padding (2.5.7) around the tallest item, the scores.
+    // One row: 16 padding (2.5.7) around the tallest item, the text.
     expect(tester.getSize(card).height, lessThan(100));
 
     // Badge, names, my score, ':' and their score from left to right.
     final badge = tester.getRect(find.text('승'));
-    final names = tester.getRect(find.text('푸쉬업 · vs RepBot'));
+    final names = tester.getRect(find.text('vs RepBot'));
     final mine = tester.getRect(find.text('24'));
     final colon = tester.getRect(find.text(':'));
     final theirs = tester.getRect(find.text('19'));
@@ -626,11 +632,11 @@ void main() {
       await open(tester);
       await tester.scrollUntilVisible(find.text('피드백 없음'), 180);
       expect(find.byType(MatchRecordCard), findsNWidgets(3));
-      expect(find.text('푸쉬업 · vs Rival5'), findsOneWidget);
-      expect(find.text('푸쉬업 · vs Rival3'), findsOneWidget);
-      expect(find.text('푸쉬업 · vs Rival2'), findsNothing);
+      expect(find.text('vs Rival5'), findsOneWidget);
+      expect(find.text('vs Rival3'), findsOneWidget);
+      expect(find.text('vs Rival2'), findsNothing);
       expect(find.text('깊이 부족 1회'), findsOneWidget);
-      expect(find.text('10월 21일 09:05'), findsOneWidget);
+      expect(find.text('푸쉬업 · 10월 21일 09:05'), findsOneWidget);
     });
 
     testWidgets('"전체 기록" calls the tab switch when given', (tester) async {
@@ -659,7 +665,7 @@ void main() {
     ) async {
       repository.recentError = Exception('offline');
       await open(tester);
-      await tester.scrollUntilVisible(find.text('푸쉬업 · vs RepBot'), 180);
+      await tester.scrollUntilVisible(find.text('vs RepBot'), 180);
       expect(find.text('피드백 없음'), findsNothing);
     });
 
@@ -669,7 +675,7 @@ void main() {
       await tester.scrollUntilVisible(find.text('피드백 없음'), 180);
       final ink = tester.widget<InkWell>(
         find.ancestor(
-          of: find.text('푸쉬업 · vs Rival3'),
+          of: find.text('vs Rival3'),
           matching: find.byType(InkWell),
         ),
       );

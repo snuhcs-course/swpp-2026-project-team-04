@@ -1,5 +1,6 @@
 // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
@@ -80,7 +81,72 @@ void main() {
       ),
     );
     expect(find.text('패'), findsOneWidget);
-    expect(find.text('10월 21일 09:05'), findsOneWidget);
+    expect(find.text('푸쉬업 · 10월 21일 09:05'), findsOneWidget);
+  });
+
+  testWidgets('the opponent stands over the exercise and the date', (
+    tester,
+  ) async {
+    await show(tester, MatchRecordCard(match: _match(), showDate: true));
+    final opponent = tester.getRect(find.text('vs 진영'));
+    final played = tester.getRect(find.text('푸쉬업 · 10월 21일 09:05'));
+    expect(opponent.bottom, lessThanOrEqualTo(played.top));
+    expect(opponent.left, played.left);
+    expect(
+      tester.widget<Text>(find.text('푸쉬업 · 10월 21일 09:05')).style?.color,
+      AppColors.textSecondary,
+    );
+  });
+
+  testWidgets('a name takes up to three lines, then ends in an ellipsis', (
+    tester,
+  ) async {
+    final name = 'r' * 60;
+    await show(
+      tester,
+      MatchRecordCard(
+        match: MatchRecord(
+          exercise: ExerciseType.pushUp,
+          opponentName: name,
+          myReps: 20,
+          opponentReps: 3,
+        ),
+      ),
+    );
+    final line = find.text('vs $name');
+    final style = tester.widget<Text>(line).style;
+    expect(
+      tester.getSize(line).height,
+      moreOrLessEquals(3 * style!.fontSize! * style.height!, epsilon: 1),
+    );
+    expect(
+      tester.renderObject<RenderParagraph>(line).didExceedMaxLines,
+      isTrue,
+    );
+    expect(tester.widget<Text>(line).overflow, TextOverflow.ellipsis);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the exercise shows alone without the date', (tester) async {
+    await show(tester, MatchRecordCard(match: _match()));
+    expect(find.text('푸쉬업'), findsOneWidget);
+    expect(find.textContaining('10월'), findsNothing);
+  });
+
+  testWidgets('a battle with no time shows the exercise alone', (tester) async {
+    await show(
+      tester,
+      const MatchRecordCard(
+        match: MatchRecord(
+          exercise: ExerciseType.squat,
+          opponentName: '진영',
+          myReps: 20,
+          opponentReps: 3,
+        ),
+        showDate: true,
+      ),
+    );
+    expect(find.text('스쿼트'), findsOneWidget);
   });
 
   testWidgets('a long feedback line stays on one line without overflow', (

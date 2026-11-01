@@ -10,10 +10,14 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
+import 'package:gymrats_app/screens/history_screen.dart';
+import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
+import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/matching_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_score_panel.dart';
@@ -21,6 +25,7 @@ import 'package:gymrats_app/widgets/bot_difficulty_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/match_record_card.dart';
 import 'package:gymrats_app/widgets/opponent_window.dart';
+import 'package:provider/provider.dart';
 
 import '../support/fakes.dart';
 import '../support/game_fakes.dart';
@@ -601,28 +606,113 @@ void main() {
         lessThan(2.2),
       );
     });
+  });
 
-    testWidgets('shows whole in the history card', (tester) async {
-      await _loadAppFonts(tester);
-      setWindow(tester, const Size(360, 780));
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: const Scaffold(
-            body: MatchRecordCard(
-              match: MatchRecord(
-                exercise: ExerciseType.pushUp,
-                opponentName: name,
-                myReps: 12,
-                opponentReps: 6,
-              ),
+  group("the opponent's name in a match card with the real fonts, at 360 wide", () {
+    /// The three levels, then 12 letters: ordinary, capitals, the widest ASCII
+    /// letters, and Hangul.
+    const names = [
+      'AI 봇 · 초보',
+      'AI 봇 · 중수',
+      'AI 봇 · 고수',
+      'NightRunner7',
+      'NIGHTRUNNER7',
+      'Mmmmmmmmmmmm',
+      'WWWWWWWWWWWW',
+      '가나다라마바사아자차카타',
+      '힣힣힣힣힣힣힣힣힣힣힣힣',
+    ];
+
+    MatchRecord record(String name, {int reps = 12}) => MatchRecord(
+      exercise: ExerciseType.pushUp,
+      opponentName: name,
+      myReps: reps,
+      opponentReps: reps,
+      playedAt: DateTime(2026, 12, 31, 23, 59),
+    );
+
+    /// The real screens, so the card has the room it has on a phone: a card
+    /// alone on the page would have their side margins as well.
+    final screens = <String, Future<void> Function(WidgetTester, MatchRecord)>{
+      'the history tab': (tester, match) async {
+        await tester.pumpWidget(
+          Provider<UserRepository>.value(
+            value: FakeUserRepository()
+              ..historyPages = [
+                [match],
+              ],
+            child: MaterialApp(
+              theme: AppTheme.dark,
+              home: const HistoryScreen(),
             ),
           ),
-        ),
-      );
-      final line = find.text('푸쉬업 · vs $name');
-      expect(line, findsOneWidget);
-      expect(truncated(tester, line), isFalse);
-    });
+        );
+        await tester.pumpAndSettle();
+      },
+      'home': (tester, match) async {
+        final repository = FakeUserRepository()..recent = [match];
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark,
+            home: HomeScreen(
+              createViewModel: () => HomeViewModel(repository: repository),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.scrollUntilVisible(
+          find.textContaining(match.opponentName),
+          180,
+        );
+      },
+    };
+
+    Finder inCard(String text) => find.descendant(
+      of: find.byType(MatchRecordCard),
+      matching: find.textContaining(text),
+    );
+
+    Future<void> open(
+      WidgetTester tester,
+      String screen,
+      MatchRecord match,
+    ) async {
+      await _loadAppFonts(tester);
+      setWindow(tester, const Size(360, 780));
+      await screens[screen]!(tester, match);
+    }
+
+    for (final screen in screens.keys) {
+      for (final name in names) {
+        testWidgets('$name shows whole on $screen', (tester) async {
+          await open(tester, screen, record(name));
+          expect(truncated(tester, inCard(name)), isFalse);
+          expect(tester.takeException(), isNull);
+        });
+
+        testWidgets('$name shows whole on $screen beside three digits', (
+          tester,
+        ) async {
+          await open(tester, screen, record(name, reps: 100));
+          expect(truncated(tester, inCard(name)), isFalse);
+          expect(tester.takeException(), isNull);
+        });
+      }
+
+      testWidgets("a level's name and an ordinary 12 letters take one line "
+          'on $screen, and so do the exercise and the date', (tester) async {
+        for (final name in [
+          'AI 봇 · 초보',
+          'AI 봇 · 중수',
+          'AI 봇 · 고수',
+          'NightRunner7',
+        ]) {
+          await open(tester, screen, record(name));
+          expect(linesOf(tester, inCard(name)), lessThan(1.2), reason: name);
+          expect(linesOf(tester, inCard('12월 31일 23:59')), lessThan(1.2));
+          await tester.pumpWidget(const SizedBox());
+        }
+      });
+    }
   });
 }
