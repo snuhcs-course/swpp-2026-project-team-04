@@ -69,3 +69,8 @@ prompts, so they are quoted here from the session export.
 - Codex integrated the 45-degree opponent view, a push-up visual rig driven by the remote pose's shoulder depth and knee estimates, and the existing SOMA joint mapping. The rig is a visual approximation, not a motion-capture reconstruction.
 - The separate prototype was used as the starting point for fixed hand/foot placement; tests exercise calibration, loss of tracking, knee estimates and the rig for seven avatar variants. No real two-device manual test of the branch was performed.
 - No manual code fixes by the user were reported. Independent review was not performed. The visible task prompt is in the personal prompt log; a full iteration history export was not repeated for this PR.
+
+## S4 follow-up — Squat demo depth (2026-11-02)
+- Codex helped trace missing `maxDepth` in the demo judge and add standing-relative peak depth with unit tests for Good/Excellent, reset and scale invariance.
+- The human user's reported symptom motivated the change. The depth score remains an estimate and requires real-phone validation; no manual code fixes were reported.
+- The visible request is recorded in the personal prompt log. Full iteration prompt history was not exported in this follow-up.

@@ -37,3 +37,8 @@ Representative prompts visible in this conversation; a full session export has n
 [Sangwoo Hahn] "버튼 위치를 푸쉬업 1대1 바로 아래로 해주고, 푸쉬업도 푸쉬업 이름을 붙여줘."
 ## S3b — Opponent avatar view (2026-11-02; prompt visible in this session)
 - “엥 그럼 S3b까지 전부 PR 올려줘.”
+
+## S4 follow-up — Squat demo depth (2026-11-02; visible prompts)
+- “스쿼트 AI 대결에서 사람 rep은 Excellent가 안 나와. 폰에서 최대한 깊게 해도 Good만 나왔어. squat_demo_judge.dart가 rep을 보낼 때 깊이를 안 넣어서 그래. 봇은 중수 10%, 고수 20%가 Excellent라서 같은 횟수면 봇이 점수로 앞서. 사람 쪽 기준을 맞추는 게 맞아 보여서, (가) 상우가 SquatDemoJudge rep에 깊이를 넣는 걸 제안해. 급하면 (나) 내가 스쿼트 봇의 Excellent를 0%로 끄는 임시 방법도 있어(W5 파일만 수정). 어느 쪽으로 할지 정해 줘.”
+- “그럼 나(한상우)가 작업 시작하면 될 듯해.”
+- “커밋과 푸쉬해줘. PR도 수정해야해?”

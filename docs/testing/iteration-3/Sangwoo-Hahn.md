@@ -72,3 +72,9 @@ of the document has two rep timelines (a valid rep and a rejected half squat). Â
 - After S4 merged, the selected exercise is forwarded to the opponent avatar; the squat screen regression passed.
 - On latest main (`757a6e2`), `flutter analyze --no-pub` and the Android arm64 debug APK build passed. A targeted squat-screen test verifies the exercise forwarded to the opponent panel.
 - On latest main, `flutter test --no-pub --concurrency 2 --reporter expanded`: 1,088 passed, 9 skipped, 0 failed. Skips include existing documented push-up recognition errors.
+
+## 2026-11-02 â€” S4 follow-up: squat demo depth
+- For each counted squat, `SquatDemoJudge` reports the largest observed standing-relative hip/knee displacement as `maxDepth`; detection and count thresholds are unchanged.
+- `flutter test --no-pub test/services/pose/squat_demo_judge_test.dart test/services/game/battle_game_test.dart test/services/game/rep_grade_test.dart`: 55 passed.
+- `flutter analyze --no-pub`: passed. Local layer coverage was not measured; no real-person phone validation has been performed for this scoring change.
+- The depth is an estimate using the shin-normalized hip/knee gap, not a verified physical measurement. Follow-up: test real front-camera squat recordings and calibrate scoring if needed.
