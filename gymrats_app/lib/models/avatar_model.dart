@@ -23,7 +23,10 @@ enum AvatarModel {
   skeletonMage('avatar_22', 'kaykit_skeleton_mage', '스켈레톤 메이지', '스켈레톤'),
   skeletonMinion('avatar_23', 'kaykit_skeleton_minion', '스켈레톤 미니언', '스켈레톤'),
   skeletonRogue('avatar_24', 'kaykit_skeleton_rogue', '스켈레톤 로그', '스켈레톤'),
-  skeletonWarrior('avatar_25', 'kaykit_skeleton_warrior', '스켈레톤 워리어', '스켈레톤');
+  skeletonWarrior('avatar_25', 'kaykit_skeleton_warrior', '스켈레톤 워리어', '스켈레톤'),
+  somaTraining('soma_training', 'soma_training', 'SOMA 네이비 트레이닝', '운동복'),
+  somaActive('soma_active', 'soma_active', 'SOMA 코랄 액티브', '운동복'),
+  somaStudio('soma_studio', 'soma_studio', 'SOMA 세이지 스튜디오', '운동복');
 
   const AvatarModel(
     this.protocolId,
@@ -37,7 +40,10 @@ enum AvatarModel {
   final String category;
   String get assetPath => 'assets/avatar/models/$assetName.glb';
   String get thumbnailPath => 'assets/avatar/thumbnails/$assetName.png';
-  String get credit => assetName.startsWith('kenney_')
+  bool get isSomaOutfit => assetName.startsWith('soma_');
+  String get credit => isSomaOutfit
+      ? 'SOMA · NVIDIA · CC BY 4.0'
+      : assetName.startsWith('kenney_')
       ? 'Kenney · CC0'
       : assetName.startsWith('kaykit_')
       ? 'Kay Lousberg · CC0'
