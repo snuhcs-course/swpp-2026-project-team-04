@@ -399,3 +399,54 @@ so they are quoted here from the session export.
 - A test that passes on an empty widget proves nothing: mutate the line it claims to guard.
 - A width test belongs on the real screen: a widget alone has room the phone does not.
 - A tap followed by a negative check proves nothing until the test knows the tap landed.
+
+## W6 `feat/score_history` – game points in the records, and the squat guide text (team order #13), 2026-11-02
+
+### a. Where AI was used
+- **Server (`b36a3e0`):** Claude Code wrote `Match.my_score`, `opponent_score` and migration `0003_match_scores`, the serializers (`serializers.py` L12, L61, L91), `internal.py` L180, L196, and `bests` in `/users/me` (`accounts/views.py` L77).
+- **Online (`8a3fed1`):** one line of `battle_server.dart`, and the Iteration 3 section of `docs/iteration-2-protocol.md`.
+- **App (`e704c3a`):** `MatchRecord`'s scores, `PersonalBest`, `UserProfile.bestOf` (`user_profile.dart` L5, L51), both repositories, the card's numbers (`match_record_card.dart` L132), `_BestRecord` (`home_screen.dart` L403).
+- **Guide text (`acf8a49`):** `_GuideCard` by exercise (`matching_screen.dart` L484).
+- **Squat bot battles and the dash (`0644fe0`, `46ee9b3`, `69cef1e`):** one line of `battle_viewmodel.dart`, `PersonalBest.isEmpty` in `bestOf` (`user_profile.dart`), and a test of the squat upload. **Outcome pins (`784bc00`):** after the user's question.
+- **Sketches:** plans A and B and the squat pictogram on a private Design canvas, internal only. They are for the next PR, `feat/home_layout`.
+- **Tests:** the files listed in `docs/testing/iteration-3/g1fted13.md`, W6 entry.
+- **Review:** four lenses in one message on the uncommitted code (round 39): design and hygiene approved with Minor findings; spec and tests asked for changes (item d). The fixes went to those two (round 40): both approved, with Minor findings, all fixed. The squat save and the dash went to the same two (round 41): both approved with Minor findings, and the missing squat upload test was added. The commits, these notes and the PR draft went to hygiene (round 42), which asked for changes (item d); its fixes and the phone result went back to it (round 43), which approved with Minor findings, all fixed.
+- **Decided by the user:** the scope and the order; home plan B, from the sketches; two PRs; "3회 : 5회" for old records; the squat text as the agent proposed it, to be checked on the phone; starting from W5's head before its merge, then merging `main`; the `accounts` files and `battle_server.dart`, on 진영's OK as the user reports it; the protocol doc and two test files, in answer to the agent's question, and the lobby's test in another; keeping the files the agent had added to the step's list (below); the date taking two lines, and the 12 letter name wrapping; the feedback line staying one line; pinning the largest scores in a test; saving squat bot battles and keeping 2~3 m, on 상우's answers, as the user reports them; "—" for a user who has not played.
+- **Decided by the agent, without asking the user:** adding the display, guide, doc and test files to the step's list, beyond the user's words (item d), and saying so in its next message; the personal best's order, in which a first low score replaces a reps best; keeping `best_reps`; the deploy order; widening that "—" to a battle with no points and no reps; nullable fields, both scores or neither on POST (a 422); `MAX_SCORE` 100000, generous because the app drops a refused upload; `bests`' shape, with points and reps possibly from different battles; a server with no `bests` reading as push-up reps; `internal.py` storing points only when both players have them, since a refusal would lose the result; a best of 0 points reading as reps, so one such battle does not turn "32회" into "0점"; 2000 as the largest score tested, from the judge's limit; the guide's four lines, the words unchanged; two test lines pinning the game's outcome, after the user asked only to check it and note the result; the commit split; rewrapping the unpushed commit messages; the next branch's name. The closing message lists them.
+- **Not done by AI:** asking 진영 for the `accounts` files and `battle_server.dart`, and getting 상우's two answers: the user, with 진영. The phone check (round 1), and spotting the cards in item d: the user. The redeploy: the PM.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-02] "할 일: Django Match에 점수 필드와 마이그레이션, 앱의 저장·불러오기, 홈 카드·기록 탭·개인 최고를 점수로 표시, 온라인 결과 저장에도 점수 포함. 점수가 없는 예전 기록은 횟수로 표시. 개인 최고는 종목별(푸쉬업, 스쿼트)로." (one part of a pasted message)
+- [Woohyun Song, 11-02] "W5(#24)는 30bccb9에서 CI가 녹색이고 진영이형 merge만 남았어. 시간을 아끼려고, merge를 기다리지 말고 지금 feat/bot_difficulty(30bccb9)에서 feat/score_history를 만들어 시작해 줘." (one part of a pasted message)
+- [Woohyun Song, 11-02] "하나 확인해 줘: 데모 카드 중 90 : 100과 164 : 206이 "승"으로 나와(내 점수가 더 낮은데 승). 임시 패치가 점수만 넣고 승패는 예전 횟수 기준으로 남아서 그런 건지, 아니면 실제 기록에서도 점수와 승패가 어긋날 수 있는지 확인해 줘." (one part of a pasted message)
+- [Woohyun Song, 11-02] answer to the agent's question (an answer, not a prompt, so not in the Prompt Log; from the session export): "그대로 두자. 대신 하나만 확인해 줘. 이번 판에서 나올 수 있는 가장 큰 점수(예: 양쪽 다 세 자리 최댓값, KO 판 포함)를 넣어도 점수 숫자 자체와 "vs 상대 이름" 줄은 폭 360에서 안 잘리는지 테스트로 고정해 줘."
+
+### c. What AI did well
+- **Read the path before planning:** the prompt named Django and the app. Reading the code first showed that the battle server left `game_score` out of what it posts to Django, and that the best is in `server/accounts/`, outside the permission given. Both went to the user before any file changed, and the user got 진영's OK for both.
+- **Corrected the prompt's place for the sentence:** the prompt put "머리 앞 약 1m" after a match is found. A search showed it only on the search screen, shared by bot and online, so one card fixes both.
+- **Looked at the render, not only the tests:** the guide's tests passed, and a real-font picture showed it breaking inside "두세요" and "머리부터". Measuring gave the last line 229.3 of 230, so the agent set four lines by hand instead of three.
+
+### d. Hallucinations / errors
+- **A list wider than the user's words:** the user said to put only "server/matches/와 기록 저장 파일" on the step's list. The agent also added the display, the guide text, the rules doc and their tests, because the task needed them, and told the user in its next message. The user kept them, but the agent had decided first.
+- **A list edit with no approval (the guard, then the permission check):** the guard blocked the first edit of `bot_difficulty_sheet_test.dart`, and adding that file and a new font test file to the list, with no approval, was refused. It was not worked around: the new tests went into files already on the list, and the user was then asked about the one file still needed.
+- **A temporary patch that read wrong (the user's phone check):** the agent's sample scores for the demo had no stored outcome, so the cards "90 : 100" and "164 : 206" read 승. The user asked whether real records could do the same. The agent traced both paths: no, as a real battle always stores the game's outcome, and it pinned that in two tests. The patch was never committed.
+- **Credit and promises that were not so (round 42, hygiene, Major):** these notes first listed every file beyond the first list as the user's decision, and said the prompts were followed as written. The PR draft said a first low score replaces reps "as the task says", though that order is the agent's, and said the user tells 상우 about his files, which the user did not say in this step. All corrected before the push.
+- **A file's owner half told (round 39, hygiene, Minor):** the question to the user called all three files the user's own. `docs/iteration-2-protocol.md` is also on S4's list whole. The closing message corrects it.
+- **A criterion half tested (round 39, spec and tests, Major):** the guide's criterion names bot and online, and only bot had a test. Hard-coding the lobby to push-up passed everything. The code was right, and a new test now fails on that mutation.
+- **A width test that left out a line (round 39, tests, Major):** the real-font group's rows read "피드백 없음", so no test saw the feedback line narrowed by the points. Testing every title found `바닥 푸시업 아님 12회` cut, which went to the user, who accepted it.
+- **A test measuring one number twice (round 40, spec and tests, Minor):** with equal scores, `.first` found my number both times, so the opponent's, nearest the edge, was never measured.
+- **A test whose first half checked nothing (round 40, spec and tests, Minor):** "the scores survive a refused report and a retry" cleared the requests before reading the body sent without the report.
+- **A spec number from memory, caught by the agent:** `task.md` said one score alone is a 400. This server answers bad bodies with 422, which the agent saw while writing the test.
+- **A clock read wrongly, caught by the agent:** `TZ=Asia/Seoul date` printed UTC labelled KST on this PC. The agent compared it with the last commit's time before telling the user the hour.
+- **Records behind the code (rounds 39 and 40, Minor):** rows above a table's separator, a file cited for two results it did not hold, and `task.md` and `progress.md` lagging behind the 0 point rule.
+
+### e. Prompt revisions
+- None in this step: no prompt was rewritten. Later messages brought new decisions, as in item a.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- Read a change's whole path before planning it: the file that drops the value may be outside the permission asked for.
+- A criterion that names two cases needs a test for each, even when they share a widget.
+- A width test must have every line a real row has.

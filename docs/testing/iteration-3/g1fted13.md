@@ -544,3 +544,67 @@ Acceptance criteria → tests:
   - Found: the user's squat reps never read Excellent (above).
   - Not checked on a phone: an online squat battle, which needs an opponent.
   - The match card's two lines: PM OK (11-02), as the user reports (the PM's merge order table).
+- **CI on the head that merged, `30bccb9`:** [run 41391728513](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41391728513), all jobs success, 1264 passed, 9 skipped. Model 97.3% (253/260), ViewModel 96.1% (931/969), Service 93.9% (2174/2315), View 90.8% (3937/4335), total 92.1% (7421/8057), Other 70.8% (126/178), server 82 passed, 96%. All targets met. `setup_screen_test` left out by the 240 s limit, as before.
+
+#### 2026-11-02 · code at commit `784bc00` · step W6 `feat/score_history` (team order #13): game points in the records, and the squat guide text
+Home's recent matches, the history tab and the personal best counted valid reps, so a battle won on points could read as a win with fewer reps. `Match` now keeps both game scores, bot uploads and online results send them, `/users/me` adds each exercise's best, and the card shows points. A record with no points reads "3회 : 5회", and a best with nothing to show reads "—". Squat bot battles are now saved. The squat search screen says where the phone goes for a squat.
+
+I ran the commands from the Plan on Windows, on `784bc00`, with the temporary demo patch reverted, without coverage: the client's in `gymrats_app/`, and Django's in `server/`, in a scratch venv on Python 3.12 with the pinned requirements. Coverage for the client comes from the CI comment on this step's PR.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on the W6 PR | 11/02 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W6 PR | 11/02 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W6 PR | 11/02 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on the W6 PR | 11/02 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed) | 11/02 | `pytest --cov=accounts --cov=matches --cov=gymrats`, local |
+
+- **Tests:** `flutter test` 1389 passed, 0 failed, 9 skipped, the same 9 as above. It includes the Dart battle server's tests. No missed tap in the full output. `flutter analyze` found no issues, and `dart analyze lib bin` in `server/` too. `makemigrations --check` found no changes.
+- **Coverage:** not collected on this PC for the client.
+- **Mutations (temporary, each restored; run on the commits before `784bc00`):** the lobby's search hard-coded to push-up fails `searching for a squat says where the phone goes for a squat`; `me["game_score"] or None` in `internal.py` fails `test_zero_and_the_most_points_are_kept`; the name's `maxLines: 1` fails the largest-score tests; the squat skip put back fails `a squat bot battle is saved too, with no form report`; `bestOf` without its empty check fails `reads a dash for <case>, not 0점 or 0회`; the squat code sent as `push_up` fails `saves a squat battle as squat, with its scores and no report`.
+- **Shortfalls:** none in the numbers above. The client's are not in yet.
+- **Accepted by the user, in answer to questions:**
+  - At 360 wide, beside "12회 : 12회" or three-digit points, the date takes two lines and a 12 letter nickname wraps after "vs". Nothing is cut, and a bot's level stays on one line. `bot_difficulty_sheet_test.dart`'s card test pinned one line and now allows two.
+  - The feedback line stays one line, as Requirements 5.7 says, so `바닥 푸시업 아님` ends in "…" from 10회 beside three-digit points at 360. Every other title fits, with 12회.
+- **Not covered by a test:**
+  - `개인 최고 150점` with the real fonts: by the font's widths it has about 2 of room, and the next PR takes it off home. A wrap would cut nothing.
+  - A real round's score reaching a real server: the app's address is a constant and Android blocks plain HTTP, so points cannot reach a phone before the redeploy. Round 2 below.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Server | `server/tests/test_matches.py` (updated) | Points beside the reps, with the game's outcome, in POST, GET and `last_match`; an old app's upload; 0 points; both or neither, the range, 100000 accepted; a retry keeps the first points; each exercise's best, from different battles, with no points, only my own; none for a new user |
+| Server | `server/tests/test_results.py` (updated) | Each row with its player's points and the other's; online points in the best; an older battle server; one player's points alone; 0 and 100000; out of range; a forfeit keeps its points; points an app posted are overwritten, or cleared by an older battle server |
+| Service | `test/services/online/battle_result_store_test.dart` (updated) | The result posted to Django has `game_score`, for time up and KO |
+| Model | `test/models/match_record_test.dart` (updated) | `hasScores` only with both, and 0 counts |
+| Model | `test/models/battle_result_test.dart` (updated) | The record keeps the scores beside the reps; a result built without a game keeps none |
+| Model | `test/models/user_profile_test.dart` (new) | Each exercise's own best; none for one not played; `best_reps` alone stands for push-ups; points only above 0; no best before the first battle, or with no points and no reps |
+| Service | `test/services/user/server_user_repository_test.dart` (updated) | Reads `bests`; none from an older server; no best for a new user on either server; an unknown exercise is a server error; sends both scores, or neither with one; a squat battle goes up as squat; reads a row's scores, a null, or none; scores survive a refused report and a retry |
+| Service | `test/services/user/in_memory_user_repository_test.dart` (updated) | A saved battle keeps its scores; the best per exercise; none for a new user or for one not played |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | The saved record has the result's points and outcome; a squat bot battle is saved with its points and no form report |
+| View | `test/widgets/match_record_card_test.dart` (updated) | Points, not reps; "3회" with its small unit; one score alone shows reps. Real fonts on the real history tab and home at 360: names beside 135 : 220 and 12회 : 18회, with the stored outcome; 999 : 999, a KO at 999 : 899, and 2000 : 2000; every feedback title |
+| View | `test/widgets/bot_difficulty_sheet_test.dart` (updated) | A level's name on one line; a 12 letter name and the date within two |
+| View | `test/screens/home_screen_test.dart` (updated) | The best in points, in reps, reps at 0 points, none from another exercise; a dash for a new user and for no points and no reps, never 0점 or 0회; reps cards read "24회" |
+| View | `test/screens/matching_screen_test.dart` (updated) | The squat text and not the push-up one; four lines with the real fonts at 360x640, 360x780, 412x915 |
+| View | `test/screens/online_lobby_screen_test.dart` (updated) | The online search screen's text, for squat and push-up |
+| App flow | `test/main_test.dart` (updated) | After a game's result, home shows its points, its best and the stored outcome, not its reps |
+
+Acceptance criteria → tests:
+- **A bot battle of 150 : 90 with 7 and 9 reps shows on home and history, and the row keeps both:** `main_test.dart` "after a game's result, home shows its points, not its reps"; `match_record_card_test.dart` "a battle with game scores shows them, not its reps", "<name> stays whole beside 135 : 220 on <screen>"; `battle_viewmodel_test.dart` "a battle that runs its full time is saved once"; `test_upload_keeps_the_points_beside_the_reps`.
+- **A record with no points reads "3회 : 5회":** `match_record_card_test.dart` "a battle with no game scores shows its reps with a unit".
+- **An old app's upload, one score alone, a retry:** `test_old_app_upload_has_no_points`, `test_points_come_together_and_in_range`, `test_retried_upload_keeps_the_first_points`.
+- **A battle server result with or without `game_score`:** `test_each_row_has_its_players_points_and_the_others`, `test_result_from_an_older_battle_server_saves_without_points`; `battle_result_store_test.dart` "the final result is stored once with names and outcomes", "a KO is stored with its reason and the game score".
+- **Each exercise has its own best:** `test_each_exercise_has_its_own_best`, `test_battles_with_no_points_still_count_their_reps`; `user_profile_test.dart` "each exercise has its own best"; `home_screen_test.dart` group "the personal best".
+- **A user who has not played, or a battle with no points and no reps, reads "—":** `home_screen_test.dart` "reads a dash for <case>, not 0점 or 0회"; `user_profile_test.dart` "before the first battle there is no best", "no points and no reps are no best, from either kind of server"; `server_user_repository_test.dart` "a new user on the new server has no best either".
+- **A finished squat bot battle is saved:** `battle_viewmodel_test.dart` "a squat bot battle is saved too, with no form report"; `server_user_repository_test.dart` "saves a squat battle as squat, with its scores and no report".
+- **The new app on an old server:** `server_user_repository_test.dart` "a server with no bests leaves best_reps for push-ups", "reads a battle's game scores, and none from an old row".
+- **Three-digit points at 360, nothing cut:** `match_record_card_test.dart` "<mine> : <theirs> and <name> stay whole on <screen>", ""<title>" stays whole beside 135 : 220 on <screen>", with the exception above.
+- **The search screen's text:** `matching_screen_test.dart` "the guide card tells where the phone goes for a squat", "the squat guide keeps its four lines at <size> with the real fonts", "shows the chip, title, guide card and the user's initial"; `online_lobby_screen_test.dart` "searching for a squat says where the phone goes for a squat", "live flow uses AI radar then real-player VS before camera setup".
+
+- **Manual check, round 1** (the user's Galaxy S947N, a build of this code from the working folder, reported 2026-11-02):
+  - Real app, on the team server before its redeploy, all pass as the user reports: the squat search text is not cut; with the phone at 2~3 m the squat setup passes; push-up's text is unchanged; old records read like "1회 : 7회"; no error on home, the history tab or a push-up bot battle.
+  - A squat bot battle on that server: the report left both choices in ("기록이 남음 / 기록이 안 남음"), so which one happened is not recorded. Either was expected before the redeploy.
+  - Demo app (`auth_history_demo`, in memory, with temporary sample scores that were never committed), all pass as the user reports: home's card reads "개인 최고 240점"; "164 : 206", "90 : 100" and "22회 : 19회" are not cut; the date takes two lines, as decided; a squat bot battle leaves a points card reading "피드백 없음", and tapping it goes nowhere.
+  - Found, in the demo's data, not in the app: "90 : 100" and "164 : 206" read 승. The temporary scores came with no stored outcome, so those samples went by their reps. A real battle always stores the game's outcome: `battle_viewmodel.dart` L432 for a bot, `battle_server.dart` L587-589 online, both by points, then reps. `a battle that runs its full time is saved once` and `test_upload_keeps_the_points_beside_the_reps` now pin it, and `at time up the game score decides, not the reps` already does online. By the rules, a card can still read so: a forfeit or a disconnect loses whatever the points, and equal points go by reps.
+- **Manual check, round 2:** not yet. After the PM's redeploy: a bot battle's card and best, and an online battle's row on both phones.
