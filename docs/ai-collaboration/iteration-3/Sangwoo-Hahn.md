@@ -65,3 +65,7 @@ prompts, so they are quoted here from the session export.
 ### f. Manual fixes and limitations
 - No manual code changes were reported. The integrated app was installed, but an end-to-end two-device squat battle and squat accuracy were not independently verified.
 - A separate 45-degree avatar implementation was tested locally and is not included in S4.
+## S3b — Opponent avatar view (2026-11-02)
+- Codex integrated the 45-degree opponent view, a push-up visual rig driven by the remote pose's shoulder depth and knee estimates, and the existing SOMA joint mapping. The rig is a visual approximation, not a motion-capture reconstruction.
+- The separate prototype was used as the starting point for fixed hand/foot placement; tests exercise calibration, loss of tracking, knee estimates and the rig for seven avatar variants. No real two-device manual test of the branch was performed.
+- No manual code fixes by the user were reported. Independent review was not performed. The visible task prompt is in the personal prompt log; a full iteration history export was not repeated for this PR.

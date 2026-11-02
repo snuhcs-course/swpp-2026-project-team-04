@@ -3,6 +3,25 @@ const clean=name=>name.toLowerCase().replace(/[^a-z0-9]/g,'');
 const v=(p)=>new THREE.Vector3(p.x,-p.y,-p.z);
 const midpoint=(a,b)=>a.clone().add(b).multiplyScalar(.5);
 const valid=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.z)&&(p.visibility??1)>=.55&&(p.presence??1)>=.5;
+// A modest depth prior, not a reconstruction of unseen joints. Keep every
+// observed x/y and confidence unchanged; missing/low-confidence joints stay missing.
+export function applyExercisePosePrior(world,exercise){
+  if(!world)return world;
+  const points=world.map(p=>p?{...p}:p);
+  const ls=points[11],rs=points[12],lh=points[23],rh=points[24];
+  if(![ls,rs,lh,rh].every(valid))return points;
+  const width=Math.hypot(ls.x-rs.x,ls.y-rs.y);
+  if(width<1e-4)return points;
+  const hipZ=(lh.z+rh.z)/2,shoulderZ=(ls.z+rs.z)/2;
+  const limit=width*(exercise==='squat'?1.0:1.5);
+  // Clamp implausible relative depth; for a prone push-up add a small depth
+  // hint where foreshortening makes torso orientation ambiguous.
+  const dy=Math.abs((ls.y+rs.y-lh.y-rh.y)/2);
+  const hint=exercise==='push_up'?width*.2*Math.max(0,1-dy/width):0;
+  const shift=Math.max(-limit,Math.min(limit,shoulderZ-hipZ+hint))-(shoulderZ-hipZ);
+  for(const i of [11,12,13,14,15,16,7,8])if(valid(points[i]))points[i].z+=shift;
+  return points;
+}
 function frame(side,up){
   if(side.lengthSq()<1e-6||up.lengthSq()<1e-6)return null;
   up.normalize();side.addScaledVector(up,-side.dot(up)).normalize();
@@ -33,7 +52,7 @@ export class PoseRetargeter {
       if(!bone||!child)return;
       const q=bone.getWorldQuaternion(new THREE.Quaternion());
       const local=point(child).sub(point(bone)).normalize().applyQuaternion(q.clone().invert());
-      this.entries.push({bone,local,start,end,last:0});
+      this.entries.push({bone,child,local,start,end,last:0});
     };
     for(const [side,shoulder,elbow,wrist,hip,knee,ankle,toe] of [['l',11,13,15,23,25,27,31],['r',12,14,16,24,26,28,32]]){
       const prefix=side==='l'?'Left':'Right';

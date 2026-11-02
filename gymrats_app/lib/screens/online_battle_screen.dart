@@ -486,6 +486,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                     child: OpponentAvatarPanel(
                       name: opponent.name,
                       model: opponent.avatar,
+                      exercise: session.exercise,
                       frame: session.opponentFrame,
                       connected: session.connected && session.opponentConnected,
                     ),

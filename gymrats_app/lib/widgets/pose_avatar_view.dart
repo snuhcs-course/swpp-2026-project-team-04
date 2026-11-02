@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../models/avatar_model.dart';
+import '../models/exercise_type.dart';
 import '../models/pose_frame.dart';
 import '../services/pose/avatar_pose_payload.dart';
 
@@ -18,10 +19,14 @@ class PoseAvatarView extends StatefulWidget {
     this.frame,
     required this.mirror,
     required this.model,
+    this.exercise = ExerciseType.pushUp,
+    this.opponentView = false,
   });
   final PoseFrame? frame;
   final bool mirror;
   final AvatarModel model;
+  final ExerciseType exercise;
+  final bool opponentView;
 
   @override
   State<PoseAvatarView> createState() => _PoseAvatarViewState();
@@ -39,6 +44,19 @@ class _PoseAvatarViewState extends State<PoseAvatarView>
   bool _dirty = true;
   int _generation = 0;
   DateTime _lastFrameAt = DateTime.now();
+  final _depthTracker = ShoulderDepthTracker();
+  final _kneeTracker = LiveKneeTracker();
+  final _poseClock = Stopwatch()..start();
+  PoseFrame? _trackedFrame;
+  double? _pushUpDepth;
+
+  void _resetPushUp() {
+    _depthTracker.reset();
+    _kneeTracker.reset();
+    _trackedFrame = null;
+    _pushUpDepth = null;
+  }
+
   String? _error;
 
   @override
@@ -168,6 +186,26 @@ class _PoseAvatarViewState extends State<PoseAvatarView>
         stale ? null : widget.frame,
         mirror: widget.mirror,
       );
+      payload['exercise'] = widget.exercise == ExerciseType.squat
+          ? 'squat'
+          : 'push_up';
+      payload['opponentView'] = widget.opponentView;
+      final frame = stale ? null : widget.frame;
+      if (!identical(_trackedFrame, frame)) {
+        _trackedFrame = frame;
+        _pushUpDepth = _depthTracker.update(frame, _poseClock.elapsed);
+        _kneeTracker.update(
+          frame,
+          _poseClock.elapsed,
+          readyForBaseline:
+              _depthTracker.isCalibrated &&
+              _pushUpDepth != null &&
+              _pushUpDepth! < .06,
+        );
+      }
+      payload['pushUpDepth'] = stale ? null : _pushUpDepth;
+      payload['pushUpKneeLeft'] = _kneeTracker.left;
+      payload['pushUpKneeRight'] = _kneeTracker.right;
       await _controller!.runJavaScript(
         'AvatarBridge.pose(${jsonEncode(payload)})',
       );
@@ -186,12 +224,18 @@ class _PoseAvatarViewState extends State<PoseAvatarView>
       _dirty = true;
     }
     if (widget.mirror != oldWidget.mirror) _dirty = true;
+    if (widget.exercise != oldWidget.exercise ||
+        widget.opponentView != oldWidget.opponentView) {
+      _resetPushUp();
+      _dirty = true;
+    }
     if (widget.model != oldWidget.model && _pageReady) unawaited(_loadModel());
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _active = state == AppLifecycleState.resumed;
+    if (!_active) _resetPushUp();
     if (_pageReady) unawaited(_setActive());
   }
 

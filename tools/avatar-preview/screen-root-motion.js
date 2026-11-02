@@ -26,11 +26,13 @@ export class ScreenRootMotion {
     const current=this.anchor.getWorldPosition(new THREE.Vector3());
     const cameraPosition=camera.getWorldPosition(new THREE.Vector3());
     const ray=new THREE.Vector3(2*u-1,1-2*v,.5).unproject(camera).sub(cameraPosition).normalize();
-    if(Math.abs(ray.z)<1e-6)return false;
-    const distance=(current.z-cameraPosition.z)/ray.z;
+    const normal=camera.getWorldDirection(new THREE.Vector3());
+    const denominator=ray.dot(normal);
+    if(Math.abs(denominator)<1e-6)return false;
+    const distance=current.clone().sub(cameraPosition).dot(normal)/denominator;
     if(!Number.isFinite(distance)||distance<=0)return false;
     const target=cameraPosition.addScaledVector(ray,distance);
-    const desired=this.group.position.clone().add(target.sub(current));desired.z=this.origin.z;
+    const desired=this.group.position.clone().add(target.sub(current));
     this.group.position.lerp(desired,alpha);this.group.updateMatrixWorld(true);this.lastSeen=now;
     return true;
   }
