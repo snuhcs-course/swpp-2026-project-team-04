@@ -14,9 +14,9 @@ abstract interface class UserRepository {
   /// Throws an [Exception] when the profile cannot be loaded.
   Future<UserProfile> fetchProfile();
 
-  /// Keeps a finished battle: it becomes the latest one, and its reps
-  /// become the best record if they beat it. [report], when given, is the
-  /// battle's form feedback and is kept with it.
+  /// Keeps a finished battle: it becomes the latest one, and its score and
+  /// reps become its exercise's best if they beat it. [report], when given, is
+  /// the battle's form feedback and is kept with it.
   ///
   /// Throws an [Exception] when the battle cannot be saved.
   Future<void> saveMatch(MatchRecord record, {FormReport? report});

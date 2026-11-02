@@ -21,6 +21,8 @@ class MatchRecord {
     required this.opponentName,
     required this.myReps,
     required this.opponentReps,
+    this.myScore,
+    this.opponentScore,
     this.playedAt,
     this.id,
     this.decidedOutcome,
@@ -38,6 +40,12 @@ class MatchRecord {
 
   /// Reps counted for the opponent.
   final int opponentReps;
+
+  /// The user's game score; null for a battle saved before scores were kept.
+  final int? myScore;
+
+  /// The opponent's game score; null like [myScore].
+  final int? opponentScore;
 
   /// When the battle ended; null for sample data that has no time.
   final DateTime? playedAt;
@@ -59,6 +67,9 @@ class MatchRecord {
   final FeedbackSummary? feedbackSummary;
 
   bool get hasFeedback => feedbackSummary != null;
+
+  /// Whether the battle kept both game scores; otherwise it shows its reps.
+  bool get hasScores => myScore != null && opponentScore != null;
 
   /// The stored outcome; otherwise more reps wins and the same count is a
   /// draw.

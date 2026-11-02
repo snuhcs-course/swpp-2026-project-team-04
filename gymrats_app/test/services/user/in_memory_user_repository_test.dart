@@ -43,6 +43,70 @@ void main() {
     },
   );
 
+  test('a saved battle keeps its game scores', () async {
+    final repository = InMemoryUserRepository(matches: []);
+    await repository.saveMatch(
+      const MatchRecord(
+        exercise: ExerciseType.pushUp,
+        opponentName: 'RepBot',
+        myReps: 7,
+        opponentReps: 9,
+        myScore: 150,
+        opponentScore: 90,
+      ),
+    );
+    final [saved] = await repository.fetchRecent();
+    expect(saved.myScore, 150);
+    expect(saved.opponentScore, 90);
+  });
+
+  test('each exercise has its own best, in points when it has them', () async {
+    MatchRecord battle(ExerciseType exercise, int reps, [int? score]) =>
+        MatchRecord(
+          exercise: exercise,
+          opponentName: 'RepBot',
+          myReps: reps,
+          opponentReps: 1,
+          myScore: score,
+          opponentScore: score == null ? null : 0,
+        );
+    final repository = InMemoryUserRepository(
+      matches: [
+        battle(ExerciseType.pushUp, 14, 150),
+        battle(ExerciseType.pushUp, 20),
+        battle(ExerciseType.pushUp, 9, 90),
+        battle(ExerciseType.squat, 12),
+      ],
+    );
+    final profile = await repository.fetchProfile();
+    expect(profile.bestOf(ExerciseType.pushUp)!.score, 150);
+    expect(profile.bestOf(ExerciseType.pushUp)!.reps, 20);
+    expect(profile.bestOf(ExerciseType.squat)!.score, isNull);
+    expect(profile.bestOf(ExerciseType.squat)!.reps, 12);
+    expect(profile.bestReps, 20);
+  });
+
+  test('a new user has no best', () async {
+    final profile = await InMemoryUserRepository(matches: []).fetchProfile();
+    expect(profile.bestOf(ExerciseType.pushUp), isNull);
+    expect(profile.bestOf(ExerciseType.squat), isNull);
+  });
+
+  test('an exercise not played has no best', () async {
+    final repository = InMemoryUserRepository(
+      matches: const [
+        MatchRecord(
+          exercise: ExerciseType.squat,
+          opponentName: 'RepBot',
+          myReps: 12,
+          opponentReps: 1,
+        ),
+      ],
+    );
+    final profile = await repository.fetchProfile();
+    expect(profile.bestOf(ExerciseType.pushUp), isNull);
+  });
+
   test('each repository keeps its own battles', () async {
     await InMemoryUserRepository().saveMatch(_record(40, 30));
     expect((await InMemoryUserRepository().fetchProfile()).bestReps, 32);

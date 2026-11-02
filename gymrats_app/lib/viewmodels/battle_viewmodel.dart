@@ -456,8 +456,7 @@ class BattleViewModel extends ChangeNotifier {
         result: result,
       ),
     );
-    // Demo squat is not supported by the server history API yet.
-    if (matchup.exercise != ExerciseType.squat) unawaited(_save(result));
+    unawaited(_save(result));
   }
 
   /// Keeps the battle, with its form report, for the home screen and the

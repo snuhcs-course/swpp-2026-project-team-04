@@ -42,8 +42,22 @@ class InMemoryUserRepository implements UserRepository {
     bestReps: _matches.isEmpty
         ? null
         : _matches.map((m) => m.myReps).reduce(math.max),
+    bests: _bests,
     lastMatch: _matches.firstOrNull,
   );
+
+  Map<ExerciseType, PersonalBest> get _bests => {
+    for (final exercise in ExerciseType.values)
+      if (_matches.where((m) => m.exercise == exercise) case final played
+          when played.isNotEmpty)
+        exercise: PersonalBest(
+          reps: played.map((m) => m.myReps).reduce(math.max),
+          score: played
+              .where((m) => m.hasScores)
+              .map((m) => m.myScore!)
+              .fold<int?>(null, (best, score) => math.max(best ?? 0, score)),
+        ),
+  };
 
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   /// Saved reports by battle id, and online reports by result id.
@@ -65,6 +79,8 @@ class InMemoryUserRepository implements UserRepository {
         opponentName: record.opponentName,
         myReps: record.myReps,
         opponentReps: record.opponentReps,
+        myScore: record.myScore,
+        opponentScore: record.opponentScore,
         playedAt: record.playedAt,
         decidedOutcome: record.decidedOutcome,
         feedbackSummary: report == null ? null : summarizeForm(report),

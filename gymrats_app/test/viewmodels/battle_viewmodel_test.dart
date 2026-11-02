@@ -185,6 +185,45 @@ void main() {
     expect(vm.state.result, same(result));
   });
 
+  test('a squat bot battle is saved too, with no form report', () async {
+    final squat = BattleViewModel(
+      matchup: const Matchup(
+        exercise: ExerciseType.squat,
+        playerName: '우현',
+        opponent: Opponent(name: 'AI 봇 · 고수', isBot: true),
+      ),
+      counter: RepCounterViewModel(
+        camera: camera,
+        estimator: estimator,
+        judge: judge,
+        clock: () => now,
+        roundLength: battleDuration,
+        phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
+      ),
+      opponent: opponent,
+      repository: repository,
+      sound: sound,
+      formReports: reports,
+      now: () => _endedAt,
+    );
+    addTearDown(squat.dispose);
+    await squat.start();
+    judge.closeRep();
+    await frame(5);
+    opponent.emit();
+    await pumpEventQueue();
+    await frame(60);
+    await pumpEventQueue();
+    final record = repository.saved.single;
+    expect(record.exercise, ExerciseType.squat);
+    expect(record.opponentName, 'AI 봇 · 고수');
+    expect(record.myReps, 1);
+    expect(record.opponentReps, 1);
+    expect(record.myScore, greaterThan(0));
+    expect(record.opponentScore, greaterThan(0));
+    expect(repository.savedReports.single, isNull);
+  });
+
   test('a battle that runs its full time is saved once', () async {
     await vm.start();
     judge.closeRep();
@@ -199,6 +238,13 @@ void main() {
     expect(record.opponentName, 'RepBot');
     expect(record.myReps, 1);
     expect(record.opponentReps, 1);
+    // The game's points go up with the reps, as the result shows them.
+    expect(record.myScore, greaterThan(0));
+    expect(record.myScore, vm.state.result!.myScore);
+    expect(record.opponentScore, vm.state.result!.opponentScore);
+    // So is the game's outcome: a saved battle never falls back on its reps.
+    expect(record.decidedOutcome, isNotNull);
+    expect(record.decidedOutcome, vm.state.result!.outcome);
     expect(vm.state.result!.roundLength, battleDuration);
     // The form report goes up with the battle.
     expect(repository.savedReports.single, same(vm.state.result!.form));

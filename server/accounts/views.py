@@ -73,6 +73,13 @@ class MeView(APIView):
             "login_id": user.login_id,
             "nickname": user.nickname,
             "best_reps": mine.aggregate(best=Max("my_reps"))["best"],
+            # Max skips battles saved before points were kept.
+            "bests": {
+                row["exercise"]: {"score": row["score"], "reps": row["reps"]}
+                for row in mine.values("exercise").annotate(
+                    score=Max("my_score"), reps=Max("my_reps")
+                )
+            },
             "last_match": mine.order_by("-played_at", "-id").first(),
         }
         return Response(ProfileSerializer(profile).data)

@@ -56,6 +56,31 @@ void main() {
     expect(result.opponentScore, 90);
   });
 
+  test('the record keeps the game scores beside the reps', () {
+    final record = BattleResult(
+      matchup: _matchup,
+      myReps: 7,
+      myInvalidReps: 1,
+      opponentReps: 9,
+      myScore: 150,
+      opponentScore: 90,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    ).record;
+    expect(record.myScore, 150);
+    expect(record.opponentScore, 90);
+    expect(record.myReps, 7);
+    expect(record.opponentReps, 9);
+    expect(record.hasScores, isTrue);
+  });
+
+  test('a result built without a game keeps no scores in its record', () {
+    final record = _result(mine: 26, theirs: 24).record;
+    expect(record.myScore, isNull);
+    expect(record.opponentScore, isNull);
+    expect(record.hasScores, isFalse);
+  });
+
   test('the record says how the game stopped, for the upload', () {
     expect(_result().record.gameEnd, GameEnd.timeUp);
     final ko = BattleResult(

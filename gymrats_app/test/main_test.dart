@@ -4,6 +4,7 @@ import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
@@ -18,6 +19,7 @@ import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
+import 'package:gymrats_app/widgets/match_record_card.dart';
 import 'package:provider/provider.dart';
 
 import 'support/fakes.dart';
@@ -261,8 +263,57 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('개인 최고 40회'), findsOneWidget);
     // The recent battles sit below the start buttons.
-    await tester.scrollUntilVisible(find.text('40'), 180);
-    expect(find.text('40'), findsOneWidget);
-    expect(find.text('30'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('40회'), 180);
+    expect(find.text('40회'), findsOneWidget);
+    expect(find.text('30회'), findsOneWidget);
+  });
+
+  testWidgets("after a game's result, home shows its points, not its reps", (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+    final result = BattleResult(
+      matchup: const Matchup(
+        exercise: ExerciseType.pushUp,
+        playerName: '우현',
+        opponent: BotMatchmaker.bot,
+      ),
+      myReps: 7,
+      myInvalidReps: 2,
+      opponentReps: 9,
+      myScore: 150,
+      opponentScore: 90,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: DateTime(2026, 10, 4, 14, 32),
+    );
+    await tester
+        .element(find.byType(HomeScreen))
+        .read<UserRepository>()
+        .saveMatch(result.record);
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .pushNamed(GymRatsApp.resultRoute, arguments: result);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('홈으로'));
+    await tester.pumpAndSettle();
+    expect(find.text('개인 최고 150점'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('150'), 180);
+    expect(find.text('150'), findsOneWidget);
+    expect(find.text('90'), findsOneWidget);
+    expect(find.text('7회'), findsNothing);
+    expect(find.text('9회'), findsNothing);
+    // Its reps alone would read as a loss: the stored outcome stands.
+    expect(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('150'),
+          matching: find.byType(MatchRecordCard),
+        ),
+        matching: find.text('승'),
+      ),
+      findsOneWidget,
+    );
   });
 }
