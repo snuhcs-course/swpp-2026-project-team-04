@@ -33,7 +33,7 @@ class RepJudgeConfig {
     this.maxTorsoDrop = 1.2,
     this.kneeBentAngle = 0,
     this.adoptHipAngle = 160,
-    this.defaultKneeHip = 155,
+    this.defaultKneeHip = 0,
     this.hipFoldWide = 25,
     this.baselineFrames = 3,
     this.hipFoldFromSetup = 20,
@@ -44,7 +44,9 @@ class RepJudgeConfig {
     this.minHipOnFloorGap = -0.08,
     this.minBellyTorsoDrop = 1.1,
     this.minShoulderDrop = 0.68,
-    this.bowHipHandGap = -0.6,
+    this.deepElbowAngle = 100,
+    this.lockoutArmAngle = 172,
+    this.bowHipHandGap = -0.9,
     this.bowTorsoDrop = 0.3,
     this.maxShinLiftGap = -0.2,
     this.bowHipRise = -1.5,
@@ -82,6 +84,29 @@ class RepJudgeConfig {
   /// caught here (0.65) is 0.03 under the line. Without a shoulder
   /// measurement the nose depth decides alone.
   final double minShoulderDrop;
+
+  /// Elbows bent to this or less, in degrees, with the head at least
+  /// [shallowDepth] down, also reach the bottom, whatever [bottomDepth] and
+  /// [minShoulderDrop] say. Both lines are in shoulder widths, and on the
+  /// AI evaluation set (2026-11-02) one tester's normal reps bent the
+  /// elbows to 68–89° while the head went down only 1.03–1.34 and the
+  /// shoulders stayed under the line. Head-nod half reps read 103° or more
+  /// on every set, so they stay shallow. 0 turns the check off.
+  final double deepElbowAngle;
+
+  /// The less extended arm must reach this, in degrees, in the frame that
+  /// closes a rep at the top (raw, not smoothed). The
+  /// average of both arms ([topAngle]) let one bent arm hide behind the
+  /// other, so reps that came up short counted. On the evaluation set the
+  /// tops of the deliberately short set read 143–171° on most reps, and
+  /// every counted normal rep before the evaluation reached 174° or more.
+  /// A frame without both elbows skips the check. The top pose still
+  /// follows the user on [topAngle] alone: stopping it there let more
+  /// head-nod reps through. Even so the check has a cost on the earlier
+  /// fixtures: with it, head-nod reps 3 and 4 of one set count instead of
+  /// closing as knees, and three knee reps close as belly. 0 turns the
+  /// check off.
+  final double lockoutArmAngle;
 
   /// Rising above this depth after the bottom, then going down again
   /// without a lockout, is an incomplete lockout.
@@ -137,6 +162,11 @@ class RepJudgeConfig {
 
   /// With no personal baseline yet, a straight-arm top below this is knees.
   /// Someone who kneels from the first frame never produces [adoptHipAngle].
+  /// 0 turns the check off, the default: one frame is enough to latch, and
+  /// on the AI evaluation set (2026-11-02) planks read a median hip angle
+  /// of 160–162° on one tester, so normal reps latched. Turning it off
+  /// let no labelled knee rep through; the fold from a personal baseline
+  /// ([hipFoldFromSetup]) still applies.
   final double defaultKneeHip;
 
   /// Degrees more folded than the personal baseline that count as knees
@@ -187,7 +217,11 @@ class RepJudgeConfig {
   /// -0.74 with a torso drop of 0.0 or less; the other 4 read -0.52 to
   /// -0.37. Normal reps read -0.54 at most with a torso drop under 0.3
   /// (-0.79 only with 0.75), reps far from the phone -0.13 to -0.16, and
-  /// knee push-ups -0.14 to -0.32.
+  /// knee push-ups -0.14 to -0.32. The line was -0.6 until the AI
+  /// evaluation set (2026-11-02): with the phone at 79–85° one tester's
+  /// normal reps read a median of -0.74, so they closed as knees. At -0.9
+  /// [bowHipRise] still catches the bows of the evaluation set; one bow
+  /// rep of an earlier recording now counts.
   final double bowHipHandGap;
   final double bowTorsoDrop;
 
@@ -341,6 +375,7 @@ class RepJudge {
   double _maxTorsoDrop = double.negativeInfinity;
   double? _deepHipHandGap;
   double? _deepTorsoDrop;
+  double? _lessArm;
 
   /// Time from the start of the attempt until the head first reached the
   /// bottom. Null until then.
@@ -364,6 +399,7 @@ class RepJudge {
     _straightHipSince = null;
     _baselineHip = null;
     _baselineHips.clear();
+    _lessArm = null;
     _nextIndex = 1;
     _smoother.reset();
   }
@@ -382,6 +418,7 @@ class RepJudge {
     _straightHipSince = null;
     _baselineHip = null;
     _baselineHips.clear();
+    _lessArm = null;
     _smoother.reset();
   }
 
@@ -459,6 +496,7 @@ class RepJudge {
     // A hidden shoulder keeps its last smoothed value; it must not hold the
     // rep above the bottom.
     final shoulderDrop = raw.shoulderY == null ? null : _shoulderDrop(smoothed);
+    _watchLessArm(raw);
     final event = _advance(now, depth, shoulderDrop, elbow);
     return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt), event: event);
   }
@@ -472,7 +510,12 @@ class RepJudge {
     if (_phase == RepPhase.descending) {
       final shouldersDown =
           shoulderDrop == null || shoulderDrop >= config.minShoulderDrop;
-      if (depth >= config.bottomDepth && shouldersDown) {
+      final elbowsDeep =
+          config.deepElbowAngle > 0 &&
+          elbow != null &&
+          elbow <= config.deepElbowAngle &&
+          depth >= config.shallowDepth;
+      if ((depth >= config.bottomDepth && shouldersDown) || elbowsDeep) {
         _phase = RepPhase.bottom;
         _highestSinceBottom = depth;
         _descent ??= now - _attemptStarted!;
@@ -487,7 +530,8 @@ class RepJudge {
 
     if (_phase == RepPhase.bottom) {
       _highestSinceBottom = math.min(_highestSinceBottom, depth);
-      final armsExtended = elbow == null || elbow >= config.topAngle;
+      final armsExtended =
+          (elbow == null || elbow >= config.topAngle) && _lessArmLockedOut();
       if (depth <= config.topDepth && armsExtended) {
         final event = _tooBrief(now) ? null : _complete(now);
         _finishAtTop();
@@ -514,6 +558,19 @@ class RepJudge {
       }
     }
     return null;
+  }
+
+  /// The less extended arm in this frame, or null without both elbows.
+  void _watchLessArm(PoseMetrics raw) {
+    final left = raw.leftElbowAngle, right = raw.rightElbowAngle;
+    _lessArm = left == null || right == null ? null : math.min(left, right);
+  }
+
+  bool _lessArmLockedOut() {
+    final arm = _lessArm;
+    return config.lockoutArmAngle == 0 ||
+        arm == null ||
+        arm >= config.lockoutArmAngle;
   }
 
   void _holdTop(Duration now, double? elbow, PoseMetrics smoothed) {

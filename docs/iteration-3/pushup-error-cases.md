@@ -255,6 +255,53 @@ and no knee was seen, so `armsStraight` did not apply. Reps 3 and 5 (slightly sh
   this line does not count them. The highest labelled head nod still caught as `insufficientDepth` (0.65) is 0.03 under
   the line.
 
+## Fix after the AI evaluation (2026-11-02, `fix/pushup_judge_eval`)
+A provisional run of the frozen scorer on `main` `e975cba` with the 32 evaluation recordings (labels as uploaded, before
+the PM made them final) gave M1 46.0% (29/63), M2 91.3% (189/207), M3 57.0% (118/207). M1 by person: HS 88%, HSW 82%,
+JP 14%, SWH 20%. The causes, found by replaying each rep:
+
+| Cause | Effect | Change |
+|---|---|---|
+| The depth lines are in shoulder widths. One tester's normal reps bent the elbows to 68–89° while the head went down only 1.03–1.34 and the shoulders stayed under 0.68 | normal reps rejected as `insufficientDepth` | `deepElbowAngle` 100: elbows at or under 100° with the head 0.8 down also complete the bottom. Head-nod reps read 103° or more on every set |
+| The kneel-before-any-plank check latches on one frame under 155°; that tester's planks read 160–162° | normal reps rejected as `kneesDown` | `defaultKneeHip` 155 → 0 (off). The fold from a personal baseline stays |
+| `bowHipHandGap` -0.6: with the phone at 79–85° the same tester's normal reps read a median of -0.74 | normal reps rejected as `kneesDown` | -0.6 → -0.9; `bowHipRise` still catches the evaluation bows |
+| The top check used the average of both arms, so one bent arm hid behind the other | reps that came up short counted, and the short set never showed `incompleteExtension` | `lockoutArmAngle` 172: the less extended arm must reach it in the closing frame. Counted normal reps before the evaluation all read 174° or more |
+
+`test/support/pose_fixtures.dart` now builds synthetic tops at 178° (recorded planks read 174–179°), so synthetic reps
+pass the lockout line.
+
+**Effect on the evaluation recordings** (same provisional labels, so tuned on the set it is scored on): M1 79.4%
+(50/63), M2 90.8% (188/207), M3 59.9%. Normal reps by person: HS 88%, HSW 82%, JP 90%, SWH 53%. Cheats counted: 19,
+one more than before; 13 of them are belly reps.
+
+**Effect on the earlier fixtures** (each change turned on and off alone): normal rep 1 of `20261026-000418_normal`
+now counts (kneel check off). Kneeling-bow rep 2 of `20261027-145535_knees`, `armsStraight` before, now closes as
+`kneesDown` (lockout check), which fixes that known error. Three cheat reps now count: head-nod reps 3 and 4 of
+`20261027-142000_halfRepHeadNod` and kneeling-bow rep 1 of `145535`. The head-nod reps come from the lockout check: with
+`lockoutArmAngle` 0 both close as `kneesDown` (rep 3 also needs the -0.9 bow line). The bow rep comes from the -0.9 bow
+line alone. The lockout check also turns knee reps 8 and 9 of `20261027-142240_knees` and rep 12 of
+`20261027-222907_knees` into `bellyDown`: still rejected, wrong reason, so `142240` joined the known errors. Rep 5 of
+`20261027-142432_normal` no longer closes at all: the elbows complete the bottom, but back at the top the elbow average
+is still 44°, under `topAngle`, and then the body leaves the frame.
+
+On the evaluation recordings the lockout check is worth keeping despite that cost: without it the other three changes
+give M1 81.0%, M2 86.5%, M3 57.5%; with it 79.4%, 90.8%, 59.9%. It catches the deliberately short reps of set 4
+(right reason 3 → 11 of 32).
+
+**Not adopted:**
+- The knee latch from a personal baseline, off: +3 normal reps on the evaluation set, but 5 knee reps of the earlier
+  fixtures counted. It stays on, so SWH's set 7 (plank hip readings of 66–130°) is still rejected as knees.
+- Holding the top pose until the less extended arm locks out, as well as checking the closing frame: with the other
+  three changes off, it let 3 head-nod reps of `142000` count, against 1 for the closing-frame check alone (2 with the
+  adopted set).
+- A wider knee line for belly reps: at -0.35 it caught 34 of 35 belly reps but rejected 10 more normal reps.
+- Belly reps are left for later. From the front, the hips at the bottom read close to normal; the difference is at
+  the top (the hips do not come back up), but no single line works across people and phone angles. Belly reps were
+  caught 20/20 at 66° or less and 1/10 above 78°, but no normal set was recorded at those low angles.
+
+These numbers are in-sample: the same 32 recordings chose the changes. A re-run of the evaluation should be reported
+beside the first run, marked as tuned on the same set, and new recordings are needed to check it.
+
 ## Limitations
 - One person and one phone (SM-S741N), floor placement at the usual distance plus one farther position. The user
   could not record other devices or placements for H1 (2026-10-27); the device and placement fields of session 2 were
