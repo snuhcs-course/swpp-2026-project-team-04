@@ -14,6 +14,7 @@ import 'package:gymrats_app/services/game/rep_grade.dart';
 import 'package:gymrats_app/services/opponent/bot_opponent.dart';
 import 'package:gymrats_app/services/pose/exercise_judge.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/services/pose/squat_demo_judge.dart';
 
 /// The rounds the bot planned before there were levels, printed from that code
 /// at `8fc6cb3`: when each rep ends in microseconds, and its depth or the
@@ -326,6 +327,7 @@ void main() {
         test('a push-up bot plays ${level.label} at the push-up depth', () {
           final opponent = BotOpponent.forMatchup(
             matchup(ExerciseType.pushUp, bot.at(level)),
+            passDepth: judgeFor(ExerciseType.pushUp).passDepth,
           );
           expect(opponent.difficulty, level);
           expect(opponent.passDepth, const RepJudgeConfig().bottomDepth);
@@ -333,10 +335,13 @@ void main() {
         });
 
         test('a squat bot plays ${level.label} at the squat depth', () {
+          // The judge the battle's counter uses for squat.
           final opponent = BotOpponent.forMatchup(
             matchup(ExerciseType.squat, bot.at(level)),
+            passDepth: SquatDemoJudge().passDepth,
           );
           expect(opponent.difficulty, level);
+          // The depth the result screen reads, so the two agree on grades.
           expect(opponent.passDepth, judgeFor(ExerciseType.squat).passDepth);
           expect(opponent.passDepth, isNot(const RepJudgeConfig().bottomDepth));
           opponent.dispose();
@@ -346,6 +351,7 @@ void main() {
       test('a bot with no level chosen plays as an expert', () {
         final opponent = BotOpponent.forMatchup(
           matchup(ExerciseType.pushUp, bot),
+          passDepth: judgeFor(ExerciseType.pushUp).passDepth,
         );
         expect(opponent.difficulty, BotDifficulty.expert);
         opponent.dispose();
@@ -353,12 +359,18 @@ void main() {
     });
 
     // Shown, the battle would open the real camera, so no widget test reaches
-    // its default view model. W5 merges #17, whose edit is on the line before:
-    // this fails if that merge brings back a bot with no level.
-    test('battle_screen.dart still calls BotOpponent.forMatchup', () {
+    // its default view model: this fails if a later change brings back a bot
+    // with no level, or one at a depth other than the counter's.
+    test('battle_screen.dart gives forMatchup the counter\'s depth', () {
+      final source = File('lib/screens/battle_screen.dart')
+          .readAsStringSync()
+          .replaceAll(RegExp(r'\s+'), ' ');
       expect(
-        File('lib/screens/battle_screen.dart').readAsStringSync(),
-        contains('opponent: BotOpponent.forMatchup(widget.matchup),'),
+        source,
+        contains(
+          'opponent: BotOpponent.forMatchup( widget.matchup, '
+          'passDepth: counter.passDepth, ),',
+        ),
       );
     });
   });

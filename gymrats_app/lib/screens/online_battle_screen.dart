@@ -147,7 +147,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   void initState() {
     super.initState();
     _setup = SetupChecker(
-      exercise: ExerciseType.pushUp,
+      exercise: session.exercise,
       config: widget.setupConfig,
     );
     WidgetsBinding.instance.addObserver(this);
@@ -156,7 +156,10 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     // must not start/finish a different round during camera preparation.
     _counter =
         widget.createCounter?.call() ??
-        RepCounterViewModel(roundLength: const Duration(days: 1));
+        RepCounterViewModel(
+          roundLength: const Duration(days: 1),
+          exercise: session.exercise,
+        );
     _counter.addListener(_onCounter);
     session.addListener(_onSession);
     _reps = _counter.reps.listen((rep) {
@@ -179,7 +182,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       unawaited(_counter.finish(stoppedByUser: session.terminal));
     }
     final reason = session.result?['reason'];
-    if (!_reportCreated &&
+    if (session.exercise == ExerciseType.pushUp &&
+        !_reportCreated &&
         _roundStarted &&
         session.phase == OnlinePhase.finished &&
         (reason == 'time_up' || reason == 'ko')) {
@@ -482,6 +486,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                     child: OpponentAvatarPanel(
                       name: opponent.name,
                       model: opponent.avatar,
+                      exercise: session.exercise,
                       frame: session.opponentFrame,
                       connected: session.connected && session.opponentConnected,
                     ),
@@ -639,7 +644,14 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                               ),
                             )
                           : PoseAvatarToggleView(
-                              chestSnapshot: counter.snapshot,
+                              chestSnapshot:
+                                  session.exercise == ExerciseType.pushUp
+                                  ? counter.snapshot
+                                  : null,
+                              squatSnapshot:
+                                  session.exercise == ExerciseType.squat
+                                  ? counter.snapshot
+                                  : null,
                               initialModel: session.avatar,
                               allowAvatarSelection: false,
                               controller: _counter.cameraController,

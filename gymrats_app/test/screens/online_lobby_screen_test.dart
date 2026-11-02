@@ -519,7 +519,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final button = find.text('온라인 1v1 대결');
+      final button = find.text('푸쉬업 온라인 1v1 대결');
       await tester.scrollUntilVisible(button, 180);
       await tester.tap(button);
       await tester.pump();

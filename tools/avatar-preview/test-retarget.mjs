@@ -3,7 +3,8 @@ import {readFileSync} from 'node:fs';
 import * as THREE from './vendor/three/build/three.module.js';
 import {PoseRetargeter} from './retarget.js';
 function rig(id){
-  const bytes=readFileSync(new URL(`./models/${id}.glb`,import.meta.url));
+  const path=id.startsWith('soma_') ? `../../gymrats_app/assets/avatar/models/${id}.glb` : `./models/${id}.glb`;
+  const bytes=readFileSync(new URL(path,import.meta.url));
   const data=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)).toString());
   const joints=new Set(data.skins.flatMap(s=>s.joints));
   const nodes=data.nodes.map((n,i)=>{
@@ -22,6 +23,7 @@ Object.assign(pose,{7:p(.07,-.7),8:p(-.07,-.7),11:p(.2,-.5),12:p(-.2,-.5),13:p(.
 const catalog=JSON.parse(readFileSync(new URL('../../gymrats_app/assets/avatar/catalog-assets.json',import.meta.url)));
 for(const {asset:id} of catalog){
   const {model,bones}=rig(id),target=new PoseRetargeter(model,bones);
+  if(id.startsWith('soma_')) assert.equal(target.hips?.name,'Hips',`${id}: root joint mapping`);
   assert.ok(target.entries.length>=10,`${id}: expected arms, legs and feet`);assert.ok(target.restFrame,`${id}: torso mapping`);
   for(let i=0;i<90;i++)assert.equal(target.update(pose,1000+i*50,.05),target.entries.length+1);
   for(const entry of target.entries){

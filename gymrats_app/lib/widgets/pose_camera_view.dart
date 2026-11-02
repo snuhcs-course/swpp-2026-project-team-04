@@ -16,6 +16,7 @@ class PoseCameraView extends StatelessWidget {
     this.frame,
     this.mirror = false,
     this.showLandmarks = false,
+    this.fit = BoxFit.cover,
     this.isVisible,
   });
 
@@ -25,6 +26,7 @@ class PoseCameraView extends StatelessWidget {
   /// The front camera preview is mirrored, ML Kit coordinates are not.
   final bool mirror;
   final bool showLandmarks;
+  final BoxFit fit;
 
   /// Paints a landmark green when this returns true. Defaults to a
   /// likelihood of at least 0.6.
@@ -48,7 +50,7 @@ class PoseCameraView extends StatelessWidget {
         MediaQuery.orientationOf(context) == Orientation.landscape;
     return ClipRect(
       child: FittedBox(
-        fit: BoxFit.cover,
+        fit: fit,
         child: SizedBox(
           width: landscape ? previewSize.width : previewSize.height,
           height: landscape ? previewSize.height : previewSize.width,

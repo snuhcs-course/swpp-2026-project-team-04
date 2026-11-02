@@ -6,7 +6,6 @@ import '../../models/bot_difficulty.dart';
 import '../../models/matchup.dart';
 import '../../models/rep_event.dart';
 import '../../models/exercise_type.dart';
-import '../pose/exercise_judge.dart';
 import '../pose/setup_checker.dart' show Clock;
 import 'opponent_source.dart';
 
@@ -26,9 +25,13 @@ class BotOpponent implements OpponentSource {
   }) : _random = random ?? math.Random(),
        _clock = clock ?? _stopwatchClock();
 
-  /// The bot of [matchup]: its difficulty, at the pass depth of its exercise.
-  factory BotOpponent.forMatchup(Matchup matchup) => BotOpponent(
-    passDepth: judgeFor(matchup.exercise).passDepth,
+  /// The bot of [matchup], at its difficulty. [passDepth] is the depth of the
+  /// judge that really judges the user, the depth the game grades by.
+  factory BotOpponent.forMatchup(
+    Matchup matchup, {
+    required double passDepth,
+  }) => BotOpponent(
+    passDepth: passDepth,
     difficulty: matchup.opponent.difficulty ?? BotDifficulty.expert,
   );
 

@@ -99,15 +99,15 @@ void main() {
     expect(_exerciseName, findsOneWidget);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     expect(find.text('개인 최고 32회'), findsOneWidget);
-    expect(find.text('온라인 1v1 대결'), findsOneWidget);
+    expect(find.text('푸쉬업 온라인 1v1 대결'), findsOneWidget);
     expect(find.text('AI와 1v1 대결'), findsOneWidget);
-    expect(find.text('30초가 끝나면 점수가 높은 쪽 승리'), findsOneWidget);
+    expect(find.text('30초가 끝나면 점수가 높은 쪽 승리'), findsNWidgets(2));
     expect(
       find.descendant(
         of: find.byType(FilledButton),
         matching: find.byIcon(Icons.arrow_forward_rounded),
       ),
-      findsOneWidget,
+      findsNWidgets(2),
     );
   });
 
@@ -299,11 +299,11 @@ void main() {
     repository.gate = Completer();
     await open(tester);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('온라인 1v1 대결'), findsNothing);
+    expect(find.text('푸쉬업 온라인 1v1 대결'), findsNothing);
     repository.gate!.complete();
     await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('온라인 1v1 대결'), findsOneWidget);
+    expect(find.text('푸쉬업 온라인 1v1 대결'), findsOneWidget);
   });
 
   testWidgets('a failed load shows a retry button that loads again', (
@@ -323,14 +323,20 @@ void main() {
     'primary accent button opens online; AI stays in the lower outline button',
     (tester) async {
       await open(tester);
-      expect(find.widgetWithText(FilledButton, '온라인 1v1 대결'), findsOneWidget);
-      await tester.tap(find.text('온라인 1v1 대결'));
+      expect(
+        find.widgetWithText(FilledButton, '푸쉬업 온라인 1v1 대결'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('푸쉬업 온라인 1v1 대결'));
       await tester.pumpAndSettle();
       expect(find.text('online matching'), findsOneWidget);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
-      expect(find.widgetWithText(OutlinedButton, 'AI와 1v1 대결'), findsOneWidget);
+      expect(
+        find.widgetWithText(OutlinedButton, 'AI와 1v1 대결'),
+        findsOneWidget,
+      );
     },
   );
 
@@ -403,6 +409,7 @@ void main() {
   ) async {
     await open(tester);
     await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
+    await tester.ensureVisible(find.text('AI와 1v1 대결'));
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pumpAndSettle();
     expect(find.byType(BotDifficultySheet), findsOneWidget);
@@ -476,6 +483,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('squat demo opens matching with the squat exercise', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.scrollUntilVisible(find.text('스쿼트 1v1 데모 · AI 대결'), 180);
+    await tester.tap(find.text('스쿼트 1v1 데모 · AI 대결'));
+    await tester.pumpAndSettle();
+    expect(find.text('matching ${ExerciseType.squat}'), findsOneWidget);
+  });
+
+  testWidgets('online squat opens the live lobby with squat selected', (
+    tester,
+  ) async {
+    await open(tester);
+    expect(
+      tester.getTopLeft(find.text('스쿼트 온라인 1v1 대결')).dy,
+      greaterThan(tester.getTopLeft(find.text('푸쉬업 온라인 1v1 대결')).dy),
+    );
+    await tester.scrollUntilVisible(find.text('스쿼트 온라인 1v1 대결'), 180);
+    expect(find.widgetWithText(FilledButton, '스쿼트 온라인 1v1 대결'), findsOneWidget);
+    await tester.tap(find.text('스쿼트 온라인 1v1 대결'));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.text('online matching'));
+    expect(ModalRoute.of(context)!.settings.arguments, ExerciseType.squat);
+  });
+
   testWidgets('coming back home loads the latest battle and best record', (
     tester,
   ) async {
@@ -495,9 +528,12 @@ void main() {
     );
     await tester.pump();
     expect(find.text('개인 최고 32회'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('24'), 180);
     expect(find.text('24'), findsOneWidget);
 
     await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -150));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('AI와 1v1 대결'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('고수'));
@@ -517,7 +553,9 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(repository.fetchCount, 2);
+    await tester.scrollUntilVisible(find.text('개인 최고 40회'), -180);
     expect(find.text('개인 최고 40회'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('40'), 180);
     expect(find.text('40'), findsOneWidget);
     expect(find.text('30'), findsOneWidget);
     expect(find.text('24'), findsNothing);

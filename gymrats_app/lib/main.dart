@@ -192,6 +192,8 @@ class _GymRatsAppState extends State<GymRatsApp> {
             settings: settings,
             builder: (_) => OnlineLobbyScreen(
               auth: widget.authRepository,
+              exercise:
+                  (settings.arguments as ExerciseType?) ?? ExerciseType.pushUp,
               onAuthenticationFailed: _auth.logOut,
               avatarStore: _avatars,
               createSession: widget.createOnlineSession,

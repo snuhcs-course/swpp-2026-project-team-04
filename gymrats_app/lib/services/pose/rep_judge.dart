@@ -247,6 +247,8 @@ class JudgeSnapshot {
     this.tilt,
     this.shoulderDrop,
     this.topShoulderY,
+    this.squatHipY,
+    this.squatKneeY,
   });
 
   static const initial = JudgeSnapshot(phase: RepPhase.idle);
@@ -269,6 +271,10 @@ class JudgeSnapshot {
 
   /// Calibrated shoulder midpoint in upright image pixels, for visual guidance.
   final double? topShoulderY;
+
+  /// Mean heights of the usable sides in the current squat frame.
+  final double? squatHipY;
+  final double? squatKneeY;
 }
 
 /// The result of feeding one frame to [RepJudge].

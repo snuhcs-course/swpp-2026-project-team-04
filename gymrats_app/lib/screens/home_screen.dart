@@ -192,10 +192,20 @@ class _HomeContent extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         AccentButton(
-          title: '온라인 1v1 대결',
+          title: '푸쉬업 온라인 1v1 대결',
           hint: '${battleDuration.inSeconds}초가 끝나면 점수가 높은 쪽 승리',
           onPressed: () =>
               Navigator.pushNamed(context, GymRatsApp.onlineBattleRoute),
+        ),
+        const SizedBox(height: 12),
+        AccentButton(
+          title: '스쿼트 온라인 1v1 대결',
+          hint: '${battleDuration.inSeconds}초가 끝나면 점수가 높은 쪽 승리',
+          onPressed: () => Navigator.pushNamed(
+            context,
+            GymRatsApp.onlineBattleRoute,
+            arguments: ExerciseType.squat,
+          ),
         ),
         const SizedBox(height: AppSpacing.s32),
         _SectionHeader('최근 경기', detail: '전체 기록', onDetail: onOpenHistory),
@@ -220,6 +230,15 @@ class _HomeContent extends StatelessWidget {
           onPressed: onStart,
           icon: const Icon(Icons.smart_toy_rounded),
           label: const Text('AI와 1v1 대결'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.pushNamed(
+            context,
+            GymRatsApp.matchingRoute,
+            arguments: ExerciseType.squat,
+          ),
+          icon: const Icon(Icons.fitness_center),
+          label: const Text('스쿼트 1v1 데모 · AI 대결'),
         ),
       ],
     );

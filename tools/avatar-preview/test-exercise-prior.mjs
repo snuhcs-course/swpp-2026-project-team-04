@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {applyExercisePosePrior} from './retarget.js';
+const p=(x,y,z=0)=>({x,y,z,visibility:1});
+const frame=Array(33).fill(null);
+frame[11]=p(-.2,.1);frame[12]=p(.2,.1);
+frame[23]=p(-.15,.15);frame[24]=p(.15,.15);
+frame[13]=p(-.3,.2);frame[14]=p(.3,.2);
+const squat=applyExercisePosePrior(frame,'squat');
+const pushup=applyExercisePosePrior(frame,'push_up');
+assert.equal(squat[11].z,0);
+assert.ok(pushup[11].z>0);
+assert.equal(frame[11].z,0);
+assert.equal(pushup[11].x,frame[11].x);
+assert.equal(pushup[15],null);
+const missing=frame.slice();missing[11]=null;
+assert.deepEqual(applyExercisePosePrior(missing,'push_up'),missing);
+assert.equal(applyExercisePosePrior(null,'squat'),null);
+console.log('PASS exercise prior: mode, unchanged input and missing landmarks');

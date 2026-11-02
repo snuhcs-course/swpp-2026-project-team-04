@@ -13,7 +13,7 @@ void main() {
   test(
     'catalog IDs are unique, preserve originals and match server allowlist',
     () {
-      expect(AvatarModel.values, hasLength(25));
+      expect(AvatarModel.values, hasLength(28));
       expect(AvatarModel.astronaut.protocolId, 'avatar_01');
       expect(AvatarModel.robot.protocolId, 'avatar_02');
       expect(AvatarModel.mannequiny.protocolId, 'avatar_03');
@@ -22,7 +22,7 @@ void main() {
         AvatarModel.values.map((a) => a.protocolId).toSet(),
         battleAvatarIds,
       );
-      expect(AvatarModel.values.map((a) => a.assetName).toSet(), hasLength(25));
+      expect(AvatarModel.values.map((a) => a.assetName).toSet(), hasLength(28));
     },
   );
   test(

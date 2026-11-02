@@ -80,6 +80,14 @@ def test_same_result_twice_is_stored_once(client, players):
     assert Match.objects.count() == 2
 
 
+def test_squat_result_keeps_exercise_for_both_players(client, players):
+    a, b = players
+    body = result(a, b)
+    body["exercise"] = "squat"
+    assert internal(client, "results", body).status_code == 201
+    assert [history(client, p)[0]["exercise"] for p in players] == ["squat", "squat"]
+
+
 def test_ko_is_stored_with_its_reason_whatever_the_reps(client, players):
     a, b = players
     body = result(a, b, reason="ko", reps=(9, 12), outcomes=("win", "loss"))
