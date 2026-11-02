@@ -181,7 +181,7 @@ class BattleSearchView extends StatelessWidget {
           const SizedBox(height: 12),
           Expanded(child: searchArea),
           const SizedBox(height: 24),
-          const _GuideCard(),
+          _GuideCard(exercise: exercise),
           const SizedBox(height: 16),
           _CancelButton(onPressed: onCancel),
         ],
@@ -428,9 +428,11 @@ class _SearchFailed extends StatelessWidget {
   }
 }
 
-/// What to do while waiting: set up the phone.
+/// What to do while waiting: set up the phone for [exercise].
 class _GuideCard extends StatelessWidget {
-  const _GuideCard();
+  const _GuideCard({required this.exercise});
+
+  final ExerciseType exercise;
 
   @override
   Widget build(BuildContext context) {
@@ -474,7 +476,17 @@ class _GuideCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.',
+                    switch (exercise) {
+                      ExerciseType.pushUp => '휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.',
+                      // squat-judge-design.md section 3, the placement. Line
+                      // breaks set by hand: Flutter may break Korean inside a
+                      // word.
+                      ExerciseType.squat =>
+                        '휴대폰을 세로로 세워 내 앞 2~3m에\n'
+                            '두세요. 의자나 선반 위면 더 좋아요.\n'
+                            '머리부터 발목까지\n'
+                            '화면에 들어와야 해요.',
+                    },
                     style: text.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
                     ),
