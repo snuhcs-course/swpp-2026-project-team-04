@@ -553,16 +553,16 @@ I ran the commands from the Plan on Windows, on `784bc00`, with the temporary de
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | see the CI comment on the W6 PR | 11/02 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" |
-| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W6 PR | 11/02 | same |
-| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W6 PR | 11/02 | same |
-| View | flutter_test (widget) | 75% | see the CI comment on the W6 PR | 11/02 | same |
+| Model | flutter_test | 90% | 97.4% (266/273) | 11/02 | CI comment "Tests and coverage (GitHub Actions)" on PR #28, commit `d04b8c1`, [run 41412433404](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41412433404) |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (931/969) | 11/02 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (2219/2354) | 11/02 | same CI comment |
+| View | flutter_test (widget) | 75% | 90.8% (3949/4347) | 11/02 | same CI comment |
 | API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed) | 11/02 | `pytest --cov=accounts --cov=matches --cov=gymrats`, local |
 
 - **Tests:** `flutter test` 1389 passed, 0 failed, 9 skipped, the same 9 as above. It includes the Dart battle server's tests. No missed tap in the full output. `flutter analyze` found no issues, and `dart analyze lib bin` in `server/` too. `makemigrations --check` found no changes.
-- **Coverage:** not collected on this PC for the client.
+- **Coverage:** not collected on this PC for the client. From the CI comment above (all jobs success, 1389 passed, 9 skipped): total 92.2% (7491/8121), Other 70.8% (126/178); server 101 passed, 96%. `setup_screen_test` was left out by CI's 240 s limit. `d04b8c1` adds only course notes to `784bc00`.
 - **Mutations (temporary, each restored; run on the commits before `784bc00`):** the lobby's search hard-coded to push-up fails `searching for a squat says where the phone goes for a squat`; `me["game_score"] or None` in `internal.py` fails `test_zero_and_the_most_points_are_kept`; the name's `maxLines: 1` fails the largest-score tests; the squat skip put back fails `a squat bot battle is saved too, with no form report`; `bestOf` without its empty check fails `reads a dash for <case>, not 0점 or 0회`; the squat code sent as `push_up` fails `saves a squat battle as squat, with its scores and no report`.
-- **Shortfalls:** none in the numbers above. The client's are not in yet.
+- **Shortfalls:** none; every layer and the server meet their targets.
 - **Accepted by the user, in answer to questions:**
   - At 360 wide, beside "12회 : 12회" or three-digit points, the date takes two lines and a 12 letter nickname wraps after "vs". Nothing is cut, and a bot's level stays on one line. `bot_difficulty_sheet_test.dart`'s card test pinned one line and now allows two.
   - The feedback line stays one line, as Requirements 5.7 says, so `바닥 푸시업 아님` ends in "…" from 10회 beside three-digit points at 360. Every other title fits, with 12회.
@@ -604,7 +604,57 @@ Acceptance criteria → tests:
 
 - **Manual check, round 1** (the user's Galaxy S947N, a build of this code from the working folder, reported 2026-11-02):
   - Real app, on the team server before its redeploy, all pass as the user reports: the squat search text is not cut; with the phone at 2~3 m the squat setup passes; push-up's text is unchanged; old records read like "1회 : 7회"; no error on home, the history tab or a push-up bot battle.
-  - A squat bot battle on that server: the report left both choices in ("기록이 남음 / 기록이 안 남음"), so which one happened is not recorded. Either was expected before the redeploy.
+  - A squat bot battle on that server left a row, as the user reports, so that server takes `squat`. Until the redeploy that row shows in reps and can raise the push-up best, as an old server's `best_reps` does not tell exercises apart.
   - Demo app (`auth_history_demo`, in memory, with temporary sample scores that were never committed), all pass as the user reports: home's card reads "개인 최고 240점"; "164 : 206", "90 : 100" and "22회 : 19회" are not cut; the date takes two lines, as decided; a squat bot battle leaves a points card reading "피드백 없음", and tapping it goes nowhere.
   - Found, in the demo's data, not in the app: "90 : 100" and "164 : 206" read 승. The temporary scores came with no stored outcome, so those samples went by their reps. A real battle always stores the game's outcome: `battle_viewmodel.dart` L432 for a bot, `battle_server.dart` L587-589 online, both by points, then reps. `a battle that runs its full time is saved once` and `test_upload_keeps_the_points_beside_the_reps` now pin it, and `at time up the game score decides, not the reps` already does online. By the rules, a card can still read so: a forfeit or a disconnect loses whatever the points, and equal points go by reps.
 - **Manual check, round 2:** not yet. After the PM's redeploy: a bot battle's card and best, and an online battle's row on both phones.
+
+#### 2026-11-02 · code at commit `ceb51c0` · step W6b `feat/home_layout` (team order #13b): home leads with the two battle modes
+Home had a push-up card with the personal best and four start buttons on one page, two of them lime. It now has two cards, 온라인 1v1 and AI 1v1, and no `AccentButton` of its own. A card opens a sheet for the exercise, with each exercise's drawing and best. Online then goes to the lobby; AI goes through W5's level sheet, then matching. The squat has a new drawing, in code.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on the code at `ceb51c0`, without coverage. Coverage comes from the CI comment on this step's PR. The branch sits on `feat/score_history` `d04b8c1`, as #28 is not merged yet. `server/` does not change in this step's commits.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on the W6b PR | 11/02 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W6b PR | 11/02 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W6b PR | 11/02 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on the W6b PR | 11/02 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: no change in this step | 11/02 | – |
+
+- **Tests:** `flutter test` 1456 passed, 0 failed, 9 skipped, the same 9 as above. No missed tap in the full output. `flutter analyze` found no issues.
+- **Coverage:** not collected on this PC.
+- **Mutations (temporary, each restored; run before the commits):**
+  - `_inSheet = false` deleted after the online sheet fails `after the online lobby` and `after a page, once the online sheet was closed`.
+  - The reset moved below the early return after the AI sheets fails `after a page, once the AI exercise sheet was closed` and `after a page, once the difficulty sheet was closed`.
+  - The two cards' pictures swapped fails `has no second main button, and no exercise or best of its own`.
+  - The user's figure not mirrored fails `online pits the user in lime against a person in pink` and `AI pits the user, facing it, against RepBot in pink`.
+  - RepBot's floor at 36 fails `AI pits the user, facing it, against RepBot in pink`.
+  - The online sheet's `!mounted` check removed fails `an exercise chosen online after home has gone opens no lobby`.
+  - The squat's ankle and toe swapped fails `the squat stands on the same floor, in the same lines`.
+  - RepBot's body 6 above its floor fails `AI pits the user, facing it, against RepBot in pink`.
+  - The strut on the best's line removed: at first no test failed. A throwaway sweep of 4 widths, 8 text scales and 4 bests found 38 of 128 overflowing without it and 0 with it, by up to 20 px. `does not overflow at <width> wide, text scale <scale>, with <best>` now fails on it, 11 of its 24 cases.
+- **Shortfalls:** the client's numbers are not in yet.
+- **Accepted by the agent, not asked:** the sheet reads the best once, when it opens, so during a reload after a battle it can show the old best until it is opened again.
+- **Not covered by a test:** the ripple over the card's band, by reading the code only: `Ink` paints on the card's `Material`.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/exercise_sheet_test.dart` (new) | Both exercises, each with its drawing, name and best, in that order; tapping or a screen reader chooses each; closing answers nothing; each exercise's own best, reps at 0 points, an old server's reps, a dash, never 0점 or 0회; the number's font and weight; the drawings' floor, lines and color, with the squat's leg; real fonts at 360x780 and 360x640 with 150, 999, 2000 and 32회; no overflow at 320 and 360 wide, text scale 1 to 2, with no best, 150 and 100000 |
+| View | `test/widgets/battle_mode_card_test.dart` (new) | Picture over title over line; a tap anywhere; same size, at least 48 tall; the main card's lime edge; a screen reader's sentence and tap; online's lime user against a pink person, AI's against a pink RepBot, facing each other; "VS" level on both; RepBot on the figure's floor; real fonts on the real home at 360, every text at full size, and at text scale 2 |
+| View | `test/screens/home_screen_test.dart` (updated) | Two modes above the recent battles, each with its own picture; no second main button, no exercise or best of its own; the online card to the lobby for each exercise, and it never asks how hard; the AI card through both sheets to matching for each exercise; closing any sheet stays on home with no reload; an answer after home has gone does nothing; each exercise's best on the sheet, a dash for a new user; home reloads after the lobby, and after a page once each sheet was closed |
+| View | `test/screens/online_lobby_screen_test.dart`, `test/screens/profile_screen_test.dart` (updated) | Reach the lobby through the card and the sheet instead of a button |
+| Design | `test/design_tokens_test.dart` (updated) | The two new widgets are on the list |
+| App flow | `test/main_test.dart` (updated) | On the real routes: the online card to a lobby for each exercise; the AI card through both sheets to a squat bot at that level; closing each sheet stays on home |
+
+Acceptance criteria → tests:
+- **Home has one online card, one AI card, no second main button, and the recent matches:** `home_screen_test.dart` "shows the greeting, the two modes and the recent battles", "has no second main button, and no exercise or best of its own", "the two modes stand side by side above the recent battles".
+- **The online card opens the lobby for the chosen exercise; closing the sheet stays on home:** `main_test.dart` "the online card leads through its sheet to a lobby for <name>", "closing a sheet on the real app stays on home"; `home_screen_test.dart` "the online card asks for the exercise, then opens the lobby for <name>", "the online card never asks how hard", "closing the online sheet stays on home with no lobby".
+- **The AI card starts matching for both choices; closing either sheet stays on home:** `main_test.dart` "the AI card leads through both sheets to a squat bot at that level", "closing a sheet on the real app stays on home"; `home_screen_test.dart` "the AI card asks for the exercise and how hard, then opens matching for <name>", "closing the AI exercise sheet stays on home with no search", "closing the difficulty sheet stays on home with no search".
+- **Each exercise shows its own best:** `exercise_sheet_test.dart` "each exercise shows its own"; `home_screen_test.dart` "the exercise sheet shows each exercise's own best".
+- **The cards' and the sheet's text fits at 360 with real fonts:** `battle_mode_card_test.dart` "every text fits at its full size on home at 360 wide"; `exercise_sheet_test.dart` "<label> fits at full size at <size>", "does not overflow at <width> wide, text scale <scale>, with <best>".
+- **Home still reloads when it shows again (not a listed criterion; the sheets' guard could have broken it):** `home_screen_test.dart` group "coming back to home loads it again", "closing any sheet does not load home again".
+
+- **Manual check:** not yet. The user's phone check comes before the push.

@@ -595,3 +595,10 @@ B. 데모 앱: 모두 됨.
 
 확인되면 임시 데모 패치를 되돌리고, 말한 순서대로 push와 PR까지 진행해 줘. 그다음 바로 W6b(홈 B안)를 시작하자.
 </pasted_content id=\"1ea8\">"
+
+<!-- 65f60b4a 2026-11-02T08:39:21.745Z -->
+[Woohyun Song, 11-02 17:39] "스쿼트 봇 판은 기록이 남았어."
+
+## 2026-11-02 · Woohyun Song · feat/home_layout
+<!-- 65f60b4a 2026-11-02T08:52:14.650Z -->
+No input prompt of its own so far: the prompts that started this step are above, under `feat/score_history`.

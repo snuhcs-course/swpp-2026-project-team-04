@@ -450,3 +450,49 @@ so they are quoted here from the session export.
 - Read a change's whole path before planning it: the file that drops the value may be outside the permission asked for.
 - A criterion that names two cases needs a test for each, even when they share a widget.
 - A width test must have every line a real row has.
+
+## W6b `feat/home_layout` – home leads with the two battle modes (team order #13b), 2026-11-02
+
+### a. Where AI was used
+- **The sheet (`8185c70`):** Claude Code wrote `showExerciseSheet`, `ExerciseSheet`, `ExercisePictogram` and the squat's drawing (`exercise_sheet.dart`).
+- **The cards and home (`57e845e`):** `BattleModeCard`, `BattleModePicture`, `_RepBotPainter` (`battle_mode_card.dart`); `_startOnline`, `_startBot`, the `_inSheet` guard and the new layout (`home_screen.dart` L51, L89-L116).
+- **The rules doc (`ceb51c0`):** one line, the home card's name (`battle-rules.md` section 4.5).
+- **Sketches:** board B1 and the Picto board on a private Design canvas, internal only, made during W6.
+- **Tests:** the files listed in `docs/testing/iteration-3/g1fted13.md`, W6b entry.
+- **Review:** four lenses in one message on the uncommitted code (round 44): spec and hygiene approved; design and tests asked for changes (item d). The fixes went to those two (round 45): both approved, with Minor findings, all fixed. These notes and the PR draft went to hygiene (round 46), which asked for changes (item d); its fixes went back to it (round 47), which approved with Minor findings, all fixed.
+- **Decided by the user:** plan B on board B1, not B′, from the agent's sketches; two PRs, with this one second; Requirements 5.7 criterion 1 and the screens table's Home row on the "PM 확인" list; starting this step right after W6's PR; registering the step, and keeping the files the agent had added to its list (below). Home and the squat button's parts of 상우's files are on 진영's OK, as the user reports it.
+- **Decided by the agent, without asking the user:** adding home, the new widgets, their tests and the tap's lines in two test files to the step's list, beyond the user's words, and saying so in its next message, without naming those tests, where it called the tap's lines one line each, though they are 3 lines and 1 line changed to 3; branching from `d04b8c1`, since #28 is not merged, so this PR cannot go up until it is; leaving "depends on feat/score_history" out of the PR, against `task.md`'s first words, as nothing is left to depend on once #28 has merged (`task.md` updated); `titleLarge` for the sheet's number and "VS", larger than on the board, as the wiki allows only color and weight to change; card padding 16, not the board's 12; sections 24 apart and titles 8 above their content, including the "최근 경기" title's gap that this step would not otherwise touch; RepBot's own painter, in full pink on the figure's floor, instead of W5's picture at 0.7 from a file not on this step's list; "…" on home's section note at a very large text size; 100000 as the largest best in the overflow test, from the server's limit; accepting that the sheet reads the best once when it opens; keeping `.last` in the two test files outside this step's own, to keep those diffs small; the longer "PM 확인" list; the commit split.
+- **Not done by AI:** the phone check: the user. The wiki edits, the merge and the redeploy: the PM.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-02] "1. 홈은 B로 갈게." (one part of a pasted message)
+- [Woohyun Song, 11-02] "2. 홈은 B안으로 확정. 요구사항 5.7 기준 1과 화면 표의 홈 행은 W6b PR의 PM 확인 항목으로 두자." (one part of a pasted message)
+- [Woohyun Song, 11-02] "3. 홈 개편(B안)과 스쿼트 매칭 안내 문구도 W6에 넣으래. 홈과 스쿼트 버튼 쪽 상우 파일은 PM이 허용했어." (one part of a pasted message)
+- [Woohyun Song, 11-02] "확인되면 임시 데모 패치를 되돌리고, 말한 순서대로 push와 PR까지 진행해 줘. 그다음 바로 W6b(홈 B안)를 시작하자." (one part of a pasted message)
+
+### c. What AI did well
+- **Did not delete what looked unneeded:** the tests lens asked whether removing the strut fails a test, and the agent's fix list said to keep it only if a mutation showed it was needed. Removing it failed no test. Before deleting it, the agent swept 128 sizes: 38 overflowed without it and 0 with it. The strut stayed, and 24 of those cases became a test that fails without it.
+- **Kept a guard working over two sheets:** home reloads when a page closes above it, and a sheet is a page. `_inSheet` stays set from the first sheet through the second, and the tests pin both directions: no reload on closing, a reload after a later page.
+
+### d. Hallucinations / errors
+- **Credit that was not so, again (round 46, hygiene, Major):** item a credited the user with registering the step and left out that the agent had widened its list, the error round 42 found in W6. Item c credited the review with the agent's own rule. Notes and the PR draft said home had two start buttons, where it had four. The AI notes called two test files other people's, which the ownership data does not say. All corrected before the push.
+- **A sketch followed past the wiki (round 44, design, Major):** the sheet's number and "VS" changed `fontFamily` on a title style, which wiki 2.5.1 rule 3 does not allow, and the cards had padding 12, not 2.5.7's 16. Both came from the agent's own board. Fixed, so both numbers are larger than on the board.
+- **A criterion half tested on the real app (round 44, tests, Major):** the task's real routes test covered AI only, so a broken online route would have passed `main_test`. Fixed, for both exercises.
+- **A guard with nothing pinning its release (round 44, tests, Major):** no test failed if `_inSheet` was never reset, which would leave home stale after every later battle. The new tests fail on both mutations.
+- **A short list for the PM (round 44, design, Major):** the list named 5.7 and the screens table but not 5.2's old labels, 2.5.7's and 2.5.2's lines, or the README's other rows. Round 45 added one more README row.
+- **A comment that was not so (round 44, design, Minor):** the code said RepBot stands on the figure's floor, using a picture that did not, and drew it at W5's 0.7. It got its own painter and a test of the floor.
+- **A wrong reason recorded (round 45, tests, Minor):** `progress.md` said a descendant finder needed an import outside the permitted lines. `BottomSheet` comes from `material.dart`, already imported. The reason was corrected, and `.last` stays because the checks after it would fail if it hit the wrong text.
+- **Pins that let a wrong shape through (round 45, tests, Minor):** the squat's ankle and toe swapped, and RepBot's body floating, passed. Each has a pin now, and each mutation now fails.
+- **A tap that missed, caught by a test setting:** the card test tapped the picture's center, which is empty. `hitTestWarningShouldBeFatal` failed it rather than letting it pass with nothing done.
+- **An overflow by 2.8 px, caught by a real-font test:** at text scale 2 the best's line measured short, because its number is bigger than the words around it. That is why the strut went in.
+
+### e. Prompt revisions
+- None in this step: no prompt was rewritten.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- A sketch is not the design system: check its sizes and styles against the wiki before coding them.
+- When a mutation of a line passes, find out what the line is for before deleting it or adding a test.
+- A guard needs a test of what it stops and of what it lets through again.
