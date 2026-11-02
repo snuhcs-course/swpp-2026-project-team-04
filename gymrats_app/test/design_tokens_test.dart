@@ -13,6 +13,7 @@ const _checked = [
   'lib/screens/home_shell_screen.dart',
   'lib/screens/match_feedback_screen.dart',
   'lib/widgets/auth_form.dart',
+  'lib/widgets/battle_mode_card.dart',
   'lib/widgets/bot_difficulty_sheet.dart',
   'lib/widgets/exercise_sheet.dart',
   'lib/widgets/game_danger_edge.dart',

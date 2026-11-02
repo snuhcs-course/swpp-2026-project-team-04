@@ -544,9 +544,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final button = find.text('푸쉬업 온라인 1v1 대결');
-      await tester.scrollUntilVisible(button, 180);
-      await tester.tap(button);
+      await tester.tap(find.text('온라인 1v1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('푸쉬업').last);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(
