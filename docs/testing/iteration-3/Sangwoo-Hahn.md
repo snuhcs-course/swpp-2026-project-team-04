@@ -59,3 +59,16 @@ of the document has two rep timelines (a valid rep and a rejected half squat). Â
 - Full non-coverage suite (`flutter test --no-pub --concurrency 2 --reporter expanded`): 1,069 passed, 9 skipped, 0 failed. Skipped cases include existing documented push-up recognition errors; inspect the test output for the individual reasons.
 - `flutter analyze --no-pub`: clean after the final implementation changes.
 - `flutter build apk --debug --target-platform android-arm64 --no-pub`: passed for this main-based worktree.
+
+## 2026-11-02 â€” S3b opponent avatar view
+- Base: `origin/main` at `757a6e2`, after S3 PR #25 and S4 PR #17 merged. This branch preserves the previously uncommitted S3b prototype and adds the fixed push-up renderer and remote-pose depth/knee estimation.
+- `flutter analyze --no-pub`: clean.
+- `flutter test --no-pub test/services/pose/avatar_pose_payload_test.dart test/widgets/opponent_avatar_panel_test.dart test/widgets/pose_avatar_toggle_view_test.dart --reporter expanded`: 18 passed.
+- `node tools/avatar-preview/test-retarget.mjs`: 28 avatars passed. `test-fixed-pushup.mjs`: seven avatar rigs passed. `test-exercise-prior.mjs` and `test-screen-root-motion.mjs` passed.
+- Coverage was not measured locally in this run. Independent review and a real two-device manual test of this branch were not performed.
+- Cases: pose payload tests cover stable calibration, rejected standing baselines, noisy/missing data and independent knee estimates; panel tests cover opponent-view and exercise propagation; JS tests cover pose mapping, fixed contacts, priors, and screen-root behavior.
+- Before the S4 main update, `flutter test --no-pub --concurrency 2 --reporter expanded`: 1,078 passed, 9 skipped, 0 failed. Skips include existing documented push-up judge cases.
+- Before the S4 main update, `flutter build apk --debug --target-platform android-arm64 --no-pub`: passed.
+- After S4 merged, the selected exercise is forwarded to the opponent avatar; the squat screen regression passed.
+- On latest main (`757a6e2`), `flutter analyze --no-pub` and the Android arm64 debug APK build passed. A targeted squat-screen test verifies the exercise forwarded to the opponent panel.
+- On latest main, `flutter test --no-pub --concurrency 2 --reporter expanded`: 1,088 passed, 9 skipped, 0 failed. Skips include existing documented push-up recognition errors.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/avatar_model.dart';
+import '../models/exercise_type.dart';
 import '../models/pose_frame.dart';
 import 'pose_avatar_view.dart';
 
@@ -12,12 +13,14 @@ class OpponentAvatarPanel extends StatefulWidget {
     required this.model,
     this.frame,
     this.connected = true,
+    this.exercise = ExerciseType.pushUp,
     this.avatarBuilder,
   });
   final String name;
   final AvatarModel model;
   final PoseFrame? frame;
   final bool connected;
+  final ExerciseType exercise;
   final Widget Function(PoseFrame? frame, AvatarModel model)? avatarBuilder;
   @override
   State<OpponentAvatarPanel> createState() => _OpponentAvatarPanelState();
@@ -45,6 +48,8 @@ class _OpponentAvatarPanelState extends State<OpponentAvatarPanel> {
                     frame: frame,
                     mirror: false,
                     model: widget.model,
+                    exercise: widget.exercise,
+                    opponentView: true,
                   ),
             ),
           ),

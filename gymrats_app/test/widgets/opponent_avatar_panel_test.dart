@@ -1,12 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/avatar_model.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/widgets/pose_avatar_view.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/widgets/opponent_avatar_panel.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
 
 void main() {
+  testWidgets(
+    'opponent view forwards the exercise and enables the 45 degree renderer',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: OpponentAvatarPanel(
+              name: 'Other',
+              model: AvatarModel.somaTraining,
+              exercise: ExerciseType.squat,
+            ),
+          ),
+        ),
+      );
+      final view = tester.widget<PoseAvatarView>(find.byType(PoseAvatarView));
+      expect(view.opponentView, isTrue);
+      expect(view.exercise, ExerciseType.squat);
+      expect(view.model, AvatarModel.somaTraining);
+    },
+  );
   testWidgets(
     'remote panel uses received avatar and coordinates, never a camera',
     (tester) async {

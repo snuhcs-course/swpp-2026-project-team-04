@@ -35,3 +35,5 @@ Representative prompts visible in this conversation; a full session export has n
 [Sangwoo Hahn] "스쿼트 온라인도 데모가 아니라 지금 온라인 푸쉬업 1대1 대결과 같은 템플릿으로 제작해줘."
 
 [Sangwoo Hahn] "버튼 위치를 푸쉬업 1대1 바로 아래로 해주고, 푸쉬업도 푸쉬업 이름을 붙여줘."
+## S3b — Opponent avatar view (2026-11-02; prompt visible in this session)
+- “엥 그럼 S3b까지 전부 PR 올려줘.”
