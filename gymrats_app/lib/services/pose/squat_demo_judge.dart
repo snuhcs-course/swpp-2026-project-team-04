@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../models/pose_frame.dart';
 import '../../models/rep_event.dart';
 import 'rep_judge.dart';
@@ -21,6 +23,8 @@ class SquatDemoJudge extends RepJudge implements ExerciseRepJudge {
   RepPhase _phase = RepPhase.idle;
   Duration? _lastAt;
   Duration? _lastLogAt;
+  double? _standingGap;
+  double _maxDepth = 0;
   int _index = 1;
   static const _trackingGrace = Duration(milliseconds: 1200);
 
@@ -34,6 +38,8 @@ class SquatDemoJudge extends RepJudge implements ExerciseRepJudge {
     _phase = RepPhase.idle;
     _lastAt = null;
     _lastLogAt = null;
+    _standingGap = null;
+    _maxDepth = 0;
     _index = 1;
   }
 
@@ -41,6 +47,8 @@ class SquatDemoJudge extends RepJudge implements ExerciseRepJudge {
   void abandon() {
     _phase = RepPhase.lost;
     _lastAt = null;
+    _standingGap = null;
+    _maxDepth = 0;
   }
 
   @override
@@ -85,12 +93,33 @@ class SquatDemoJudge extends RepJudge implements ExerciseRepJudge {
     final bottom = gap >= -.25;
     RepEvent? event;
     if (_phase == RepPhase.idle || _phase == RepPhase.lost) {
-      if (standing) _phase = RepPhase.up;
-    } else if (_phase == RepPhase.up && bottom) {
-      _phase = RepPhase.bottom;
-    } else if (_phase == RepPhase.bottom && standing) {
-      _phase = RepPhase.up;
-      event = RepEvent(index: _index++, valid: true, at: now);
+      if (standing) {
+        _standingGap = gap;
+        _maxDepth = 0;
+        _phase = RepPhase.up;
+      }
+    } else {
+      // Approximate SquatRepJudge's standing-relative depth using the
+      // hip-to-knee gap already normalized by visible shin length.
+      final top = _standingGap!;
+      final depth = (gap - top) / -top;
+      _maxDepth = math.max(_maxDepth, depth);
+      if (_phase == RepPhase.up && bottom) {
+        _phase = RepPhase.bottom;
+      } else if (_phase == RepPhase.bottom && standing) {
+        event = RepEvent(
+          index: _index++,
+          valid: true,
+          at: now,
+          maxDepth: _maxDepth,
+        );
+        _phase = RepPhase.up;
+        _standingGap = gap;
+        _maxDepth = 0;
+      } else if (_phase == RepPhase.up && standing) {
+        _standingGap = gap;
+        _maxDepth = 0;
+      }
     }
     _log(
       now,
