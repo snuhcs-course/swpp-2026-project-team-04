@@ -160,8 +160,11 @@ def test_upload_keeps_the_points_beside_the_reps(client):
     saved = post_match(client, token, body).json()
     assert (saved["my_score"], saved["opponent_score"]) == (150, 90)
     assert (saved["my_reps"], saved["opponent_reps"]) == (7, 9)
+    # Fewer reps, more points: the game's outcome stands.
+    assert saved["outcome"] == "win"
     [listed] = get(client, token, "/matches").json()["items"]
     assert (listed["my_score"], listed["opponent_score"]) == (150, 90)
+    assert listed["outcome"] == "win"
     last = get(client, token, "/users/me").json()["last_match"]
     assert (last["my_score"], last["opponent_score"]) == (150, 90)
 

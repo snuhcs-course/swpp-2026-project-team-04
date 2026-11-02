@@ -242,6 +242,9 @@ void main() {
     expect(record.myScore, greaterThan(0));
     expect(record.myScore, vm.state.result!.myScore);
     expect(record.opponentScore, vm.state.result!.opponentScore);
+    // So is the game's outcome: a saved battle never falls back on its reps.
+    expect(record.decidedOutcome, isNotNull);
+    expect(record.decidedOutcome, vm.state.result!.outcome);
     expect(vm.state.result!.roundLength, battleDuration);
     // The form report goes up with the battle.
     expect(repository.savedReports.single, same(vm.state.result!.form));
