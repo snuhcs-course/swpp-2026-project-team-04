@@ -78,10 +78,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     super.dispose();
   }
 
-  /// Asks how hard the bot should play, then starts the search. Closing the
-  /// sheet stays here.
-  Future<void> _startMatching() async {
-    const exercise = ExerciseType.pushUp;
+  /// Asks how hard the bot should play [exercise], then starts the search.
+  /// Closing the sheet stays here.
+  Future<void> _startMatching(ExerciseType exercise) async {
     _choosingDifficulty = true;
     final difficulty = await showBotDifficultySheet(
       context,
@@ -166,7 +165,7 @@ class _HomeContent extends StatelessWidget {
   });
 
   final UserProfile profile;
-  final VoidCallback onStart;
+  final ValueChanged<ExerciseType> onStart;
   final VoidCallback onOpenHistory;
   final VoidCallback? onLogOut;
 
@@ -227,16 +226,12 @@ class _HomeContent extends StatelessWidget {
         ],
         const SizedBox(height: 12),
         OutlinedButton.icon(
-          onPressed: onStart,
+          onPressed: () => onStart(ExerciseType.pushUp),
           icon: const Icon(Icons.smart_toy_rounded),
           label: const Text('AI와 1v1 대결'),
         ),
         OutlinedButton.icon(
-          onPressed: () => Navigator.pushNamed(
-            context,
-            GymRatsApp.matchingRoute,
-            arguments: ExerciseType.squat,
-          ),
+          onPressed: () => onStart(ExerciseType.squat),
           icon: const Icon(Icons.fitness_center),
           label: const Text('스쿼트 1v1 데모 · AI 대결'),
         ),

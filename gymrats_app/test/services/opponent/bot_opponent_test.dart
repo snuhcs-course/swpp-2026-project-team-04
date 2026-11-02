@@ -9,6 +9,7 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/services/game/battle_game.dart';
 import 'package:gymrats_app/services/game/player_game_score.dart';
 import 'package:gymrats_app/services/game/rep_grade.dart';
 import 'package:gymrats_app/services/opponent/bot_opponent.dart';
@@ -520,6 +521,28 @@ void main() {
           }
         }
       });
+
+      for (final level in BotDifficulty.values) {
+        test('${level.label} scores the same in a game at the squat depth', () {
+          int points(int seed, double depth) {
+            final game = BattleGame(passDepth: depth);
+            BotOpponent.planRound(
+              Random(seed),
+              battleDuration,
+              passDepth: depth,
+              difficulty: level,
+            ).forEach(game.addOpponentRep);
+            return game.opponent.points;
+          }
+
+          for (var seed = 0; seed < 100; seed++) {
+            expect(
+              points(seed, SquatDemoJudge().passDepth),
+              points(seed, const RepJudgeConfig().bottomDepth),
+            );
+          }
+        });
+      }
     });
 
     test('the same seed plans the same round', () {
