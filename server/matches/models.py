@@ -23,6 +23,10 @@ class Match(models.Model):
     opponent_name = models.CharField(max_length=40)
     my_reps = models.PositiveIntegerField()
     opponent_reps = models.PositiveIntegerField()
+    # The game's points. Null for a battle saved before they were kept, which
+    # the app shows by its reps.
+    my_score = models.PositiveIntegerField(null=True)
+    opponent_score = models.PositiveIntegerField(null=True)
     played_at = models.DateTimeField()
     # A forfeit or disconnect is a loss whatever the reps, so the outcome is
     # stored instead of derived from them.

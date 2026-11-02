@@ -31,7 +31,9 @@ def auth_response(user: User) -> dict:
 
 class ProfileSerializer(UserSerializer):
     best_reps = serializers.IntegerField(allow_null=True)
+    # {exercise: {score, reps}}, for each exercise played.
+    bests = serializers.DictField()
     last_match = MatchSerializer(allow_null=True)
 
     class Meta(UserSerializer.Meta):
-        fields = UserSerializer.Meta.fields + ["best_reps", "last_match"]
+        fields = UserSerializer.Meta.fields + ["best_reps", "bests", "last_match"]
