@@ -212,6 +212,25 @@ void main() {
     expect(body['opponent_reps'], 9);
   });
 
+  test('saves a squat battle as squat, with its scores and no report', () async {
+    await repository.saveMatch(
+      const MatchRecord(
+        exercise: ExerciseType.squat,
+        opponentName: 'AI 봇 · 고수',
+        myReps: 7,
+        opponentReps: 9,
+        myScore: 150,
+        opponentScore: 90,
+      ),
+    );
+    final body = posted().single;
+    expect(body['exercise'], 'squat');
+    expect(body['opponent_name'], 'AI 봇 · 고수');
+    expect(body['my_score'], 150);
+    expect(body['opponent_score'], 90);
+    expect(body.containsKey('feedback'), isFalse);
+  });
+
   test('one score alone is not sent: the server would refuse it', () async {
     await repository.saveMatch(
       const MatchRecord(
