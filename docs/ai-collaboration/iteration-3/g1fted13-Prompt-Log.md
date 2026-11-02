@@ -601,4 +601,8 @@ B. 데모 앱: 모두 됨.
 
 ## 2026-11-02 · Woohyun Song · feat/home_layout
 <!-- 65f60b4a 2026-11-02T08:52:14.650Z -->
-No input prompt of its own so far: the prompts that started this step are above, under `feat/score_history`.
+The prompts that started this step are above, under `feat/score_history`.
+
+<!-- 65f60b4a 2026-11-02T15:54:10.707Z -->
+[Woohyun Song, 11-03 00:54] "#28이 머지됐어(main 8b6ffad, 20:45). W6b 폰 확인 결과야(작업 폴더 빌드, Galaxy S947N): 1~9번 모두 됨. 10번(데모 앱에서 시트의 개인 최고 \"N점\")은 재배포 뒤 2차 확인 때 실서버로 보기로 했어. 노트에는 그렇게 적어 줘.
+이제 origin/main을 merge하고 검사를 다시 돌린 뒤 push하고 PR을 열어 줘. 리뷰는 진영이형(ishlove77)에게 요청해 줘. 11-03 오전 APK에 들어가야 하니까 PR을 열면 바로 알려 줘."

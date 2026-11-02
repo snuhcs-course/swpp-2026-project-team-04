@@ -609,20 +609,20 @@ Acceptance criteria → tests:
   - Found, in the demo's data, not in the app: "90 : 100" and "164 : 206" read 승. The temporary scores came with no stored outcome, so those samples went by their reps. A real battle always stores the game's outcome: `battle_viewmodel.dart` L432 for a bot, `battle_server.dart` L587-589 online, both by points, then reps. `a battle that runs its full time is saved once` and `test_upload_keeps_the_points_beside_the_reps` now pin it, and `at time up the game score decides, not the reps` already does online. By the rules, a card can still read so: a forfeit or a disconnect loses whatever the points, and equal points go by reps.
 - **Manual check, round 2:** not yet. After the PM's redeploy: a bot battle's card and best, and an online battle's row on both phones.
 
-#### 2026-11-02 · code at commit `ceb51c0` · step W6b `feat/home_layout` (team order #13b): home leads with the two battle modes
+#### 2026-11-03 · code at commit `f9cecbb` · step W6b `feat/home_layout` (team order #13b): home leads with the two battle modes
 Home had a push-up card with the personal best and four start buttons on one page, two of them lime. It now has two cards, 온라인 1v1 and AI 1v1, and no `AccentButton` of its own. A card opens a sheet for the exercise, with each exercise's drawing and best. Online then goes to the lobby; AI goes through W5's level sheet, then matching. The squat has a new drawing, in code.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on the code at `ceb51c0`, without coverage. Coverage comes from the CI comment on this step's PR. The branch sits on `feat/score_history` `d04b8c1`, as #28 is not merged yet. `server/` does not change in this step's commits.
+I ran the commands from the Plan in `gymrats_app/` on Windows, on the code at `ceb51c0` and again on `f9cecbb`, without coverage. Coverage comes from the CI comment on this step's PR. The branch started from `feat/score_history` `d04b8c1`, as #28 was not merged then. `f9cecbb` merges `origin/main` `8b6ffad`, #28's merge, which changes no file here. `server/` does not change in this step's commits.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | see the CI comment on the W6b PR | 11/02 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" |
-| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W6b PR | 11/02 | same |
-| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W6b PR | 11/02 | same |
-| View | flutter_test (widget) | 75% | see the CI comment on the W6b PR | 11/02 | same |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run: no change in this step | 11/02 | – |
+| Model | flutter_test | 90% | see the CI comment on the W6b PR | 11/03 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W6b PR | 11/03 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W6b PR | 11/03 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on the W6b PR | 11/03 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: no change in this step | 11/03 | – |
 
-- **Tests:** `flutter test` 1456 passed, 0 failed, 9 skipped, the same 9 as above. No missed tap in the full output. `flutter analyze` found no issues.
+- **Tests:** `flutter test` 1456 passed, 0 failed, 9 skipped, on both commits, the same 9 as above. No missed tap in the full output. `flutter analyze` found no issues. `ownership_guard.py --check-diff` on `f9cecbb`: ok, 14 files.
 - **Coverage:** not collected on this PC.
 - **Mutations (temporary, each restored; run before the commits):**
   - `_inSheet = false` deleted after the online sheet fails `after the online lobby` and `after a page, once the online sheet was closed`.
@@ -636,7 +636,7 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on the code at `c
   - The strut on the best's line removed: at first no test failed. A throwaway sweep of 4 widths, 8 text scales and 4 bests found 38 of 128 overflowing without it and 0 with it, by up to 20 px. `does not overflow at <width> wide, text scale <scale>, with <best>` now fails on it, 11 of its 24 cases.
 - **Shortfalls:** the client's numbers are not in yet.
 - **Accepted by the agent, not asked:** the sheet reads the best once, when it opens, so during a reload after a battle it can show the old best until it is opened again.
-- **Not covered by a test:** the ripple over the card's band, by reading the code only: `Ink` paints on the card's `Material`.
+- **Not covered by a test:** the ripple over the card's band: `Ink` paints on the card's `Material`, and the user's phone check saw it (below).
 
 Test cases added or changed in this step:
 
@@ -657,4 +657,14 @@ Acceptance criteria → tests:
 - **The cards' and the sheet's text fits at 360 with real fonts:** `battle_mode_card_test.dart` "every text fits at its full size on home at 360 wide"; `exercise_sheet_test.dart` "<label> fits at full size at <size>", "does not overflow at <width> wide, text scale <scale>, with <best>".
 - **Home still reloads when it shows again (not a listed criterion; the sheets' guard could have broken it):** `home_screen_test.dart` group "coming back to home loads it again", "closing any sheet does not load home again".
 
-- **Manual check:** not yet. The user's phone check comes before the push.
+- **Manual check, round 1** (the user's Galaxy S947N, a build from the working folder, reported 2026-11-03): items 1 to 9 of the list given to the user, all pass as the user reports:
+  1. Home: the online card with its lime edge beside the AI card, the four old buttons gone, no text cut.
+  2. "전체 기록 ›": the arrow does not show as a box.
+  3. The pictures: two people facing each other online; the user and a pink RepBot on one floor line for AI.
+  4. A tap's ripple shows over the picture's band too.
+  5. Online: card, exercise sheet, then at once the lobby; back goes home; for push-up and squat.
+  6. AI: card, exercise sheet, then the level sheet with no break, then matching; for push-up and squat.
+  7. Closing each of the three sheets, by a tap outside, a drag down or back, stays on home with no loading.
+  8. The squat's drawing reads as a squat. On a server before its redeploy, "N회" for push-up's best and "—" for squat's are normal, as the list said.
+  9. After a battle, home's recent matches update.
+- **Manual check, round 2:** not yet. Item 10, the sheet's best in points ("N점"), was first listed for the demo app. The user moved it to this round, to be seen on the real server after the PM's redeploy.
