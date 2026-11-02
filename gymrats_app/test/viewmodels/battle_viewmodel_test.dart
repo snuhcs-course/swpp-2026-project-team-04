@@ -199,6 +199,10 @@ void main() {
     expect(record.opponentName, 'RepBot');
     expect(record.myReps, 1);
     expect(record.opponentReps, 1);
+    // The game's points go up with the reps, as the result shows them.
+    expect(record.myScore, greaterThan(0));
+    expect(record.myScore, vm.state.result!.myScore);
+    expect(record.opponentScore, vm.state.result!.opponentScore);
     expect(vm.state.result!.roundLength, battleDuration);
     // The form report goes up with the battle.
     expect(repository.savedReports.single, same(vm.state.result!.form));

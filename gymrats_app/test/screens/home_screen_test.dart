@@ -203,6 +203,16 @@ void main() {
   });
 
   testWidgets('shows the latest match in one card row', (tester) async {
+    repository.recent = [
+      const MatchRecord(
+        exercise: ExerciseType.pushUp,
+        opponentName: 'RepBot',
+        myReps: 2,
+        opponentReps: 1,
+        myScore: 24,
+        opponentScore: 19,
+      ),
+    ];
     await open(tester);
     expect(find.text('최근 경기'), findsOneWidget);
     final card = find.ancestor(
@@ -242,14 +252,14 @@ void main() {
     'recent match: my score is white, theirs gray, both in the number font',
     (tester) async {
       await open(tester);
-      final mine = tester.widget<Text>(find.text('24')).style!;
+      final mine = tester.widget<Text>(find.text('24회')).style!;
       expect(mine.fontFamily, AppFonts.number);
       expect(mine.fontWeight, FontWeight.w700);
-      final theme = Theme.of(tester.element(find.text('24'))).textTheme;
+      final theme = Theme.of(tester.element(find.text('24회'))).textTheme;
       final titleLarge = theme.titleLarge!;
       expect(mine.fontSize, titleLarge.fontSize);
       expect(mine.color, AppColors.textPrimary);
-      final theirs = tester.widget<Text>(find.text('19')).style!;
+      final theirs = tester.widget<Text>(find.text('19회')).style!;
       expect(theirs.fontFamily, AppFonts.number);
       expect(theirs.fontWeight, FontWeight.w700);
       expect(theirs.fontSize, titleLarge.fontSize);
@@ -287,15 +297,66 @@ void main() {
     repository.recent = [repository.profile.lastMatch!];
     await open(tester);
     expect(find.text('패'), findsOneWidget);
-    final mine = tester.widget<Text>(find.text('19')).style!;
+    final mine = tester.widget<Text>(find.text('19회')).style!;
     expect(mine.color, AppColors.textPrimary);
-    final theirs = tester.widget<Text>(find.text('24')).style!;
+    final theirs = tester.widget<Text>(find.text('24회')).style!;
     expect(theirs.color, AppColors.textSecondary);
     // 나 stays under my score.
     expect(
       tester.getRect(find.text('나')).center.dx,
-      moreOrLessEquals(tester.getRect(find.text('19')).center.dx, epsilon: 0.5),
+      moreOrLessEquals(
+        tester.getRect(find.text('19회')).center.dx,
+        epsilon: 0.5,
+      ),
     );
+  });
+
+  group('the personal best', () {
+    testWidgets('reads points when the exercise has them', (tester) async {
+      repository.profile = const UserProfile(
+        name: '우현',
+        bestReps: 14,
+        bests: {ExerciseType.pushUp: PersonalBest(reps: 14, score: 150)},
+      );
+      await open(tester);
+      expect(find.text('개인 최고 150점'), findsOneWidget);
+      final best =
+          tester.widget<Text>(find.text('개인 최고 150점')).textSpan! as TextSpan;
+      final number = best.children![1] as TextSpan;
+      expect(number.text, '150');
+      expect(number.style!.fontFamily, AppFonts.number);
+    });
+
+    testWidgets('reads reps when only old battles are kept', (tester) async {
+      repository.profile = const UserProfile(
+        name: '우현',
+        bestReps: 14,
+        bests: {ExerciseType.pushUp: PersonalBest(reps: 14)},
+      );
+      await open(tester);
+      expect(find.text('개인 최고 14회'), findsOneWidget);
+    });
+
+    testWidgets('keeps its reps when the best points are zero', (tester) async {
+      repository.profile = const UserProfile(
+        name: '우현',
+        bests: {ExerciseType.pushUp: PersonalBest(reps: 32, score: 0)},
+      );
+      await open(tester);
+      expect(find.text('개인 최고 32회'), findsOneWidget);
+    });
+
+    testWidgets('of another exercise does not show on the push-up card', (
+      tester,
+    ) async {
+      repository.profile = const UserProfile(
+        name: '우현',
+        bestReps: 20,
+        bests: {ExerciseType.squat: PersonalBest(reps: 20, score: 90)},
+      );
+      await open(tester);
+      expect(find.text('개인 최고 —'), findsOneWidget);
+    });
   });
 
   testWidgets('says there is no match yet before the first battle', (
@@ -555,8 +616,8 @@ void main() {
     );
     await tester.pump();
     expect(find.text('개인 최고 32회'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('24'), 180);
-    expect(find.text('24'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('24회'), 180);
+    expect(find.text('24회'), findsOneWidget);
 
     await openSheetWith(tester, 'AI와 1v1 대결');
     await tester.tap(find.text('고수'));
@@ -578,10 +639,10 @@ void main() {
     expect(repository.fetchCount, 2);
     await tester.scrollUntilVisible(find.text('개인 최고 40회'), -180);
     expect(find.text('개인 최고 40회'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('40'), 180);
-    expect(find.text('40'), findsOneWidget);
-    expect(find.text('30'), findsOneWidget);
-    expect(find.text('24'), findsNothing);
+    await tester.scrollUntilVisible(find.text('40회'), 180);
+    expect(find.text('40회'), findsOneWidget);
+    expect(find.text('30회'), findsOneWidget);
+    expect(find.text('24회'), findsNothing);
   });
 
   testWidgets('closing the difficulty sheet does not load home again', (
@@ -621,7 +682,7 @@ void main() {
     repository.recent = [repository.profile.lastMatch!];
     await open(tester, size: const Size(360, 640));
     // The row was laid out, so an overflow in it would have been reported.
-    expect(find.text('99', skipOffstage: false), findsOneWidget);
+    expect(find.text('99회', skipOffstage: false), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

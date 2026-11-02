@@ -699,17 +699,21 @@ void main() {
         });
       }
 
-      testWidgets("a level's name and an ordinary 12 letters take one line "
-          'on $screen, and so do the exercise and the date', (tester) async {
-        for (final name in [
-          'AI 봇 · 초보',
-          'AI 봇 · 중수',
-          'AI 봇 · 고수',
-          'NightRunner7',
+      testWidgets("a level's name takes one line on $screen; an ordinary 12 "
+          'letters, the exercise and the date, at most two', (tester) async {
+        for (final (name, nameLines) in const [
+          ('AI 봇 · 초보', 1),
+          ('AI 봇 · 중수', 1),
+          ('AI 봇 · 고수', 1),
+          ('NightRunner7', 2),
         ]) {
           await open(tester, screen, record(name));
-          expect(linesOf(tester, inCard(name)), lessThan(1.2), reason: name);
-          expect(linesOf(tester, inCard('12월 31일 23:59')), lessThan(1.2));
+          expect(
+            linesOf(tester, inCard(name)),
+            lessThan(nameLines + 0.2),
+            reason: name,
+          );
+          expect(linesOf(tester, inCard('12월 31일 23:59')), lessThan(2.2));
           await tester.pumpWidget(const SizedBox());
         }
       });

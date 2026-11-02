@@ -117,7 +117,8 @@ class MatchOutcomeBadge extends StatelessWidget {
 }
 
 /// My score and the opponent's, each with a label underneath. Mine always
-/// stands out, whoever won.
+/// stands out, whoever won. A battle saved before scores were kept shows its
+/// reps, with a unit so they do not read as points.
 class _Scores extends StatelessWidget {
   const _Scores({required this.match});
 
@@ -128,6 +129,22 @@ class _Scores extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final number = text.titleLarge;
     final label = text.bodySmall;
+    final (mine, theirs, unit) = match.hasScores
+        ? (match.myScore!, match.opponentScore!, '')
+        : (match.myReps, match.opponentReps, '회');
+    Widget amount(int value, Color color) => Text.rich(
+      TextSpan(
+        text: '$value',
+        children: [
+          if (unit.isNotEmpty)
+            TextSpan(
+              text: unit,
+              style: label?.copyWith(color: color),
+            ),
+        ],
+      ),
+      style: number?.copyWith(color: color),
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,10 +152,7 @@ class _Scores extends StatelessWidget {
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${match.myReps}',
-              style: number?.copyWith(color: AppColors.textPrimary),
-            ),
+            amount(mine, AppColors.textPrimary),
             const SizedBox(height: AppSpacing.s4),
             DecoratedBox(
               decoration: const ShapeDecoration(
@@ -166,10 +180,7 @@ class _Scores extends StatelessWidget {
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${match.opponentReps}',
-              style: number?.copyWith(color: AppColors.textSecondary),
-            ),
+            amount(theirs, AppColors.textSecondary),
             const SizedBox(height: AppSpacing.s4),
             Text('상대', style: label?.copyWith(color: AppColors.textSecondary)),
           ],

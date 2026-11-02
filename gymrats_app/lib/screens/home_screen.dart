@@ -187,7 +187,7 @@ class _HomeContent extends StatelessWidget {
         const SizedBox(height: 12),
         _ExerciseCard(
           exercise: ExerciseType.pushUp,
-          bestReps: profile.bestReps,
+          best: profile.bestOf(ExerciseType.pushUp),
         ),
         const SizedBox(height: 20),
         AccentButton(
@@ -338,12 +338,12 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// The chosen exercise, drawn as selected: the drawing on the left, and the
-/// name and the user's best count centered on the right.
+/// name and the user's best centered on the right.
 class _ExerciseCard extends StatelessWidget {
-  const _ExerciseCard({required this.exercise, required this.bestReps});
+  const _ExerciseCard({required this.exercise, required this.best});
 
   final ExerciseType exercise;
-  final int? bestReps;
+  final PersonalBest? best;
 
   /// Padding around the content, and the check's distance from the corner.
   static const _inset = 18.0;
@@ -383,7 +383,7 @@ class _ExerciseCard extends StatelessWidget {
                         style: text.headlineLarge?.copyWith(fontSize: 36),
                       ),
                       const SizedBox(height: 8),
-                      _BestRecord(reps: bestReps),
+                      _BestRecord(best: best),
                     ],
                   ),
                 ),
@@ -397,12 +397,13 @@ class _ExerciseCard extends StatelessWidget {
   }
 }
 
-/// The user's best count, e.g. "개인 최고 32회", with the number in the
-/// number font. Shows "—" before the first battle.
+/// The user's best, e.g. "개인 최고 150점", with the number in the number font.
+/// With no points above 0 it counts reps, "개인 최고 32회", and it shows "—"
+/// before the first battle.
 class _BestRecord extends StatelessWidget {
-  const _BestRecord({required this.reps});
+  const _BestRecord({required this.best});
 
-  final int? reps;
+  final PersonalBest? best;
 
   @override
   Widget build(BuildContext context) {
@@ -411,20 +412,24 @@ class _BestRecord extends StatelessWidget {
       fontSize: 18,
       color: AppColors.textSecondary,
     );
-    final reps = this.reps;
+    final (value, unit) = switch (best) {
+      null => ('—', ''),
+      final best when best.readsInPoints => ('${best.score}', '점'),
+      final best => ('${best.reps}', '회'),
+    };
     return Text.rich(
       TextSpan(
         style: style,
         children: [
           const TextSpan(text: '개인 최고 '),
           TextSpan(
-            text: reps == null ? '—' : '$reps',
+            text: value,
             style: _inNumberFont(
               text,
               style,
             )?.copyWith(fontSize: 22, color: AppColors.textPrimary),
           ),
-          if (reps != null) const TextSpan(text: '회'),
+          TextSpan(text: unit),
         ],
       ),
     );

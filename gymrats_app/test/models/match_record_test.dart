@@ -42,6 +42,44 @@ void main() {
     expect(ko.gameEnd, GameEnd.ko);
   });
 
+  test('a battle has scores only when it kept both', () {
+    expect(record(1, 2).hasScores, isFalse);
+    const both = MatchRecord(
+      exercise: ExerciseType.pushUp,
+      opponentName: 'RepBot',
+      myReps: 7,
+      opponentReps: 9,
+      myScore: 150,
+      opponentScore: 90,
+    );
+    expect(both.hasScores, isTrue);
+    const zero = MatchRecord(
+      exercise: ExerciseType.pushUp,
+      opponentName: 'RepBot',
+      myReps: 0,
+      opponentReps: 0,
+      myScore: 0,
+      opponentScore: 0,
+    );
+    expect(zero.hasScores, isTrue);
+    const onlyMine = MatchRecord(
+      exercise: ExerciseType.pushUp,
+      opponentName: 'RepBot',
+      myReps: 7,
+      opponentReps: 9,
+      myScore: 150,
+    );
+    expect(onlyMine.hasScores, isFalse);
+    const onlyTheirs = MatchRecord(
+      exercise: ExerciseType.pushUp,
+      opponentName: 'RepBot',
+      myReps: 7,
+      opponentReps: 9,
+      opponentScore: 90,
+    );
+    expect(onlyTheirs.hasScores, isFalse);
+  });
+
   test('a battle has feedback only with a summary', () {
     expect(record(1, 2).hasFeedback, isFalse);
     expect(record(1, 2).id, isNull);
