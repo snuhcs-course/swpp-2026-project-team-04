@@ -399,7 +399,7 @@ class _ExerciseCard extends StatelessWidget {
 
 /// The user's best, e.g. "개인 최고 150점", with the number in the number font.
 /// With no points above 0 it counts reps, "개인 최고 32회", and it shows "—"
-/// before the first battle.
+/// with nothing to show, as before the first battle.
 class _BestRecord extends StatelessWidget {
   const _BestRecord({required this.best});
 

@@ -86,6 +86,12 @@ void main() {
     expect(profile.bestReps, 20);
   });
 
+  test('a new user has no best', () async {
+    final profile = await InMemoryUserRepository(matches: []).fetchProfile();
+    expect(profile.bestOf(ExerciseType.pushUp), isNull);
+    expect(profile.bestOf(ExerciseType.squat), isNull);
+  });
+
   test('an exercise not played has no best', () async {
     final repository = InMemoryUserRepository(
       matches: const [

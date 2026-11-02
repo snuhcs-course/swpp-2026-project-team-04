@@ -346,6 +346,31 @@ void main() {
       expect(find.text('개인 최고 32회'), findsOneWidget);
     });
 
+    for (final (name, profile) in const [
+      ('a new user', UserProfile(name: '우현')),
+      ('a new user on the new server', UserProfile(name: '우현', bests: {})),
+      (
+        'a battle with no points and no reps',
+        UserProfile(
+          name: '우현',
+          bestReps: 0,
+          bests: {ExerciseType.pushUp: PersonalBest(reps: 0, score: 0)},
+        ),
+      ),
+      (
+        'no reps from a server with no bests',
+        UserProfile(name: '우현', bestReps: 0),
+      ),
+    ]) {
+      testWidgets('reads a dash for $name, not 0점 or 0회', (tester) async {
+        repository.profile = profile;
+        await open(tester);
+        expect(find.text('개인 최고 —'), findsOneWidget);
+        expect(find.textContaining('0점'), findsNothing);
+        expect(find.textContaining('0회'), findsNothing);
+      });
+    }
+
     testWidgets('of another exercise does not show on the push-up card', (
       tester,
     ) async {

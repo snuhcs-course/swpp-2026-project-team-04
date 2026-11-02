@@ -14,6 +14,9 @@ class PersonalBest {
   /// Whether the best reads in points. A battle that scored nothing says less
   /// than the reps of an older one.
   bool get readsInPoints => (score ?? 0) > 0;
+
+  /// No points and no reps: it says no more than no battle at all.
+  bool get isEmpty => reps == 0 && !readsInPoints;
 }
 
 /// What the home screen shows about the user.
@@ -45,14 +48,16 @@ class UserProfile {
   /// then.
   final int unsentMatches;
 
-  /// The best of [exercise]; null before its first battle. A server that sends
-  /// only [bestReps] kept nothing per exercise, so that number stands for
-  /// push-ups, the exercise it was made for.
+  /// The best of [exercise]; null with nothing to show, as before its first
+  /// battle. A server that sends only [bestReps] kept nothing per exercise, so
+  /// that number stands for push-ups, the exercise it was made for.
   PersonalBest? bestOf(ExerciseType exercise) {
-    if (bests.isNotEmpty) return bests[exercise];
     final reps = bestReps;
-    return exercise == ExerciseType.pushUp && reps != null
+    final best = bests.isNotEmpty
+        ? bests[exercise]
+        : exercise == ExerciseType.pushUp && reps != null
         ? PersonalBest(reps: reps)
         : null;
+    return best == null || best.isEmpty ? null : best;
   }
 }

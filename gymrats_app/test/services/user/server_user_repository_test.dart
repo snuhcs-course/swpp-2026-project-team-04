@@ -105,6 +105,20 @@ void main() {
     final profile = await repository.fetchProfile();
     expect(profile.bestReps, isNull);
     expect(profile.lastMatch, isNull);
+    expect(profile.bestOf(ExerciseType.pushUp), isNull);
+    expect(profile.bestOf(ExerciseType.squat), isNull);
+  });
+
+  test('a new user on the new server has no best either', () async {
+    answer = (_) => _json({
+      'nickname': '우현',
+      'best_reps': null,
+      'bests': <String, Object?>{},
+      'last_match': null,
+    });
+    final profile = await repository.fetchProfile();
+    expect(profile.bestOf(ExerciseType.pushUp), isNull);
+    expect(profile.bestOf(ExerciseType.squat), isNull);
   });
 
   test("reads each exercise's best", () async {

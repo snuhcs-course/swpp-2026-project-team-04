@@ -45,5 +45,40 @@ void main() {
     const profile = UserProfile(name: '우현');
     expect(profile.bestOf(ExerciseType.pushUp), isNull);
     expect(profile.bestOf(ExerciseType.squat), isNull);
+    // The new server's answer for a new user.
+    const fromServer = UserProfile(name: '우현', bests: {});
+    expect(fromServer.bestOf(ExerciseType.pushUp), isNull);
+    expect(fromServer.bestOf(ExerciseType.squat), isNull);
+  });
+
+  test('no points and no reps are no best, from either kind of server', () {
+    const zero = UserProfile(
+      name: '우현',
+      bestReps: 0,
+      bests: {ExerciseType.pushUp: PersonalBest(reps: 0, score: 0)},
+    );
+    expect(zero.bestOf(ExerciseType.pushUp), isNull);
+    const noPoints = UserProfile(
+      name: '우현',
+      bestReps: 0,
+      bests: {ExerciseType.pushUp: PersonalBest(reps: 0)},
+    );
+    expect(noPoints.bestOf(ExerciseType.pushUp), isNull);
+    const oldServer = UserProfile(name: '우현', bestReps: 0);
+    expect(oldServer.bestOf(ExerciseType.pushUp), isNull);
+  });
+
+  test('reps alone or points alone are a best', () {
+    const repsOnly = UserProfile(
+      name: '우현',
+      bests: {ExerciseType.pushUp: PersonalBest(reps: 3, score: 0)},
+    );
+    expect(repsOnly.bestOf(ExerciseType.pushUp)!.reps, 3);
+    // An Average rep earns points without counting as a rep.
+    const pointsOnly = UserProfile(
+      name: '우현',
+      bests: {ExerciseType.pushUp: PersonalBest(reps: 0, score: 5)},
+    );
+    expect(pointsOnly.bestOf(ExerciseType.pushUp)!.score, 5);
   });
 }
