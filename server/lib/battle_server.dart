@@ -627,6 +627,7 @@ class BattleServer {
               )['display_name'],
               'valid_reps': player['valid_reps'],
               'invalid_reps': player['invalid_reps'],
+              'game_score': player['game_score'],
               'outcome': player['outcome'],
             },
         ],

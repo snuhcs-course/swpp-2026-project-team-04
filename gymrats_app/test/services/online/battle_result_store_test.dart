@@ -129,6 +129,7 @@ void main() {
           'display_name': 'Alpha',
           'valid_reps': 1,
           'invalid_reps': 0,
+          'game_score': 10,
           'outcome': 'win',
         },
         {
@@ -136,12 +137,13 @@ void main() {
           'display_name': 'Beta',
           'valid_reps': 0,
           'invalid_reps': 0,
+          'game_score': 0,
           'outcome': 'loss',
         },
       ]);
     });
 
-    test('a KO is stored with its reason, without the game score', () async {
+    test('a KO is stored with its reason and the game score', () async {
       final store = FakeResultStore();
       final s = await server(
         store,
@@ -166,6 +168,7 @@ void main() {
           'display_name': 'Alpha',
           'valid_reps': 1,
           'invalid_reps': 0,
+          'game_score': 10,
           'outcome': 'win',
         },
         {
@@ -173,6 +176,7 @@ void main() {
           'display_name': 'Beta',
           'valid_reps': 0,
           'invalid_reps': 0,
+          'game_score': 0,
           'outcome': 'loss',
         },
       ]);
