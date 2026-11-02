@@ -99,7 +99,7 @@ def test_match_body_is_validated(client):
     bad = [
         {"my_reps": -1},
         {"my_reps": 1001},
-        {"exercise": "squat"},
+        {"exercise": "plank"},
         {"opponent_name": ""},
         {"played_at": "2026-10-15T12:00:00"},  # no time zone
         {"client_id": "x"},

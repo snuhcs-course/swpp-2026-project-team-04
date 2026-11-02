@@ -186,7 +186,7 @@ class ResultSaveView(_InternalView):
                 user=user,
                 client_id=result_id,
                 defaults={
-                    "exercise": "push_up",
+                    "exercise": data["exercise"],
                     "opponent_name": other["display_name"][:40],
                     "my_reps": me["valid_reps"],
                     "opponent_reps": other["valid_reps"],

@@ -36,6 +36,7 @@ class _Player {
   WebSocket? socket;
   _Match? match;
   String avatar = 'avatar_01';
+  String exercise = 'push_up';
   bool queued = false;
   int lastHeartbeat = 0, rateAt = 0, controls = 0, poseAt = -1000;
   final requests =
@@ -324,7 +325,7 @@ class BattleServer {
         });
       case 'queue.join':
         fields(payload, {'exercise', 'avatar_id'});
-        if (payload['exercise'] != 'push_up') invalid();
+        if (!{'push_up', 'squat'}.contains(payload['exercise'])) invalid();
         if (!battleAvatarIds.contains(payload['avatar_id']))
           invalid('INVALID_AVATAR');
         if (p.queued) invalid('ALREADY_QUEUED');
@@ -333,6 +334,7 @@ class BattleServer {
             .clear(); // Prior match is terminal; retain all IDs of the new one.
         p.match = null;
         p.avatar = payload['avatar_id'] as String;
+        p.exercise = payload['exercise'] as String;
         p.queued = true;
         _queue.addLast(p);
         final response = reply('queue.joined', {'queue_id': p.identity.id});
@@ -488,7 +490,23 @@ class BattleServer {
       (p) => !p.queued || p.socket?.readyState != WebSocket.open,
     );
     while (_queue.length >= 2) {
-      final pair = [_queue.removeFirst(), _queue.removeFirst()];
+      _Player? first;
+      _Player? second;
+      for (final candidate in _queue) {
+        for (final other in _queue) {
+          if (!identical(candidate, other) &&
+              candidate.exercise == other.exercise) {
+            first = candidate;
+            second = other;
+            break;
+          }
+        }
+        if (first != null) break;
+      }
+      if (first == null || second == null) break;
+      final pair = [first, second];
+      _queue.remove(first);
+      _queue.remove(second);
       final m = _Match(_id(), pair, now, now + readyTimeoutMs);
       _matches[m.id] = m;
       for (final p in pair) {
@@ -598,6 +616,7 @@ class BattleServer {
         'match_id': m.id,
         'result_id': m.result!['result_id'],
         'reason': reason,
+        'exercise': m.players.first.exercise,
         'ended_at_ms': m.ended,
         'players': [
           for (final player in m.result!['players'] as List)

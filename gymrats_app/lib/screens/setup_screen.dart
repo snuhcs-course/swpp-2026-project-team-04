@@ -190,6 +190,9 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                 if (running)
                   PoseAvatarToggleView(
                     controller: vm.cameraController,
+                    cameraFit: widget.exercise == ExerciseType.squat
+                        ? BoxFit.contain
+                        : BoxFit.cover,
                     frame: state.lastFrame,
                     mirror: vm.isFrontCamera,
                     showLandmarks: showDebug,
@@ -209,6 +212,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                       if (running)
                         _BottomPanel(
                           state: state,
+                          exercise: widget.exercise,
                           autoStartDelay: vm.config.autoStartDelay,
                           onStart: state.canStart ? _finish : null,
                         ),
@@ -292,11 +296,13 @@ class PoseSetupTopButtons extends StatelessWidget {
 class _BottomPanel extends StatelessWidget {
   const _BottomPanel({
     required this.state,
+    required this.exercise,
     required this.autoStartDelay,
     required this.onStart,
   });
 
   final SetupState state;
+  final ExerciseType exercise;
   final Duration autoStartDelay;
   final VoidCallback? onStart;
 
@@ -309,7 +315,9 @@ class _BottomPanel extends StatelessWidget {
         ? status.readyProgress
         : 1 - left.inMicroseconds / autoStartDelay.inMicroseconds;
     return PoseSetupPanel(
-      message: state.message,
+      message: exercise == ExerciseType.squat
+          ? '정면을 보고 전신이 보이도록 서 주세요.\n${state.message}'
+          : state.message,
       ready: status.isReady,
       progress: progress,
       onStart: onStart,

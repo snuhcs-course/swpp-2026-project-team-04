@@ -42,3 +42,26 @@ prompts, so they are quoted here from the session export.
 - The first generated outfits looked like painted skin, and a later export renamed the root joint, producing an unnatural pose. The user noticed both; the geometry and root name were corrected and the rig regression check was extended.
 - Prompt revision: the user asked that clothes look like clothes and then pointed out the incorrect pose, leading to mesh and joint-mapping changes. No user manual code edits were reported. An independent reviewer was not available for this run.
 - Prompts visible in this session are recorded in the accompanying prompt log; the complete iteration history was not re-exported as part of this PR.
+
+## S4 `feat/squat_battle` – online squat battle, 2026-11-01
+
+### a. Where AI was used
+- Codex implemented exercise-specific matchmaking, squat setup and counting, online result storage, and home navigation, and adapted related tests.
+- Codex used the existing squat judge and battle protocol; the user confirmed permission for the specified feedback and profile-test changes.
+
+### b. Prompt history
+- Representative user requests are recorded in [Sangwoo-Hahn-Prompt-Log.md](Sangwoo-Hahn-Prompt-Log.md).
+
+### c. What AI did well
+- Added regression checks for separate exercise queues, squat result storage, and withholding push-up feedback after a squat.
+
+### d. Errors and corrections
+- The initial online squat implementation used the earlier demo judge; after the user clarified the intended regular battle, Codex switched it to the shared squat judge.
+- A home layout change moved the recent-match card and a button below the visible area in widget tests; Codex updated the tests to scroll to the controls.
+
+### e. Prompt revisions
+- The user refined the home button order and labels and requested that app changes be installed on the connected phone.
+
+### f. Manual fixes and limitations
+- No manual code changes were reported. The integrated app was installed, but an end-to-end two-device squat battle and squat accuracy were not independently verified.
+- A separate 45-degree avatar implementation was tested locally and is not included in S4.
