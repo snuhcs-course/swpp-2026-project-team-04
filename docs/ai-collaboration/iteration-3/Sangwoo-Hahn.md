@@ -37,6 +37,12 @@ prompts, so they are quoted here from the session export.
 ### f. Manual fixes and why
 - None this step. The user did not edit the doc by hand. No code changed, so there are no markers.
 
+## S3 — SOMA sportswear (2026-11-02)
+- Codex assisted with the three SOMA-derived outfits, their rig mapping, the profile picker and the battle avatar identifiers. Source rig: NVIDIA MotionBricks; license and modification notice are bundled with the assets.
+- The first generated outfits looked like painted skin, and a later export renamed the root joint, producing an unnatural pose. The user noticed both; the geometry and root name were corrected and the rig regression check was extended.
+- Prompt revision: the user asked that clothes look like clothes and then pointed out the incorrect pose, leading to mesh and joint-mapping changes. No user manual code edits were reported. An independent reviewer was not available for this run.
+- Prompts visible in this session are recorded in the accompanying prompt log; the complete iteration history was not re-exported as part of this PR.
+
 ## S4 `feat/squat_battle` – online squat battle, 2026-11-01
 
 ### a. Where AI was used

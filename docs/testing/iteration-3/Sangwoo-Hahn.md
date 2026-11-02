@@ -47,3 +47,15 @@ of the document has two rep timelines (a valid rep and a rejected half squat). Â
 | Service | `SetupChecker` squat parts and `notStanding`; `ExerciseType.values` test updated | setup |
 | Model | `RejectReason.forExercise` keeps push-up and squat reasons apart; Korean text for every value | reasons |
 | ViewModel | `RepCounterViewModel` defaults to push-up; `exercise: squat` uses the squat judge; `passDepth` follows the judge | wiring |
+
+## 2026-11-02 â€” S3 SOMA sportswear
+- Base: `origin/main` at `5e0be5e`. The profile picker and its tests were included with owner/PM agreement relayed by the user.
+- `flutter analyze --no-pub`: passed before the final test-only additions; rerun before PR.
+- `flutter test --no-pub test/models/avatar_catalog_test.dart test/screens/profile_screen_test.dart test/services/online/online_battle_integration_test.dart --reporter expanded`: 58 passed on this worktree before adding a profile search regression; profile test separately rerun with 4 passing.
+- `node tools/avatar-preview/test-retarget.mjs`: all 28 avatar rigs passed, including SOMA root-joint lookup and directional pose mapping.
+- Full `flutter test --coverage` was interrupted after the Flutter coverage service repeatedly disconnected (`getSourceReport: Service has disappeared`); layer coverage is not available from that run. Full non-coverage suite result to be recorded after completion.
+- Manual: earlier prototype installed on a Galaxy S22; SOMA fixed push-up starting pose visually checked after root-joint fix. A real two-device SOMA battle and the final main-based PR build have not been manually verified.
+- Test map: `avatar_catalog_test.dart` checks assets, IDs and persistence; `profile_screen_test.dart` checks picker, search, restoration, failure and online-session selection; `online_battle_integration_test.dart` checks the matched avatar roster and session flow; `test-retarget.mjs` checks rig mapping.
+- Full non-coverage suite (`flutter test --no-pub --concurrency 2 --reporter expanded`): 1,069 passed, 9 skipped, 0 failed. Skipped cases include existing documented push-up recognition errors; inspect the test output for the individual reasons.
+- `flutter analyze --no-pub`: clean after the final implementation changes.
+- `flutter build apk --debug --target-platform android-arm64 --no-pub`: passed for this main-based worktree.
