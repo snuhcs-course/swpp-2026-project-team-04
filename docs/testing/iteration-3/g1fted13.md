@@ -499,3 +499,48 @@ Acceptance criteria → tests:
   - Not checked on a phone: a long online nickname in the sideways dialog or the card, as there was no opponent (the tests above cover both with the real fonts); home's card after the fix, since the user rechecked the history tab only (the same widget); the squat bot, which needs #17.
   - W3b, Average at 120°: pass, by the rule. Apart from it, the user found a measuring problem in the judge and reported it to the judge's owner: outside W3b and W5.
   - Still open from W3b: online on real devices.
+
+#### 2026-11-02 · code at commit `ae8f010` · step W5 `feat/bot_difficulty`: `main` merged, and #17's squat button connected
+#17 merged, with #25 and #26, so `main` `e975cba` is merged here (`19b62ed`). The squat bot takes its level from the matchup and its pass depth from the counter, and #17's squat demo button opens the same sheet (`12042d8`).
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `ae8f010`, without coverage. Coverage comes from the CI comment "Tests and coverage (GitHub Actions)" on PR #24, on `3010207`, the head before this push. [Run 41337121225](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41337121225), all jobs success. `ae8f010` is `3010207` plus the merge of `main` and the squat button, which these numbers do not measure.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 98.4% (254/258) | 11/02 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #24, commit `3010207`, run 41337121225 |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (928/966) | 11/02 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (1958/2076) | 11/02 | same |
+| View | flutter_test (widget) | 75% | 92.7% (3892/4200) | 11/02 | same |
+| Total, with Other at 70.6% (125/177) | | | 93.2% (7157/7677) | 11/02 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed) | 11/02 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 1264 passed, 0 failed, 9 skipped, the same 9 as above. `flutter analyze` found no issues. The last full run on this code, before its commit, has no missed tap in its full output; the run on `ae8f010` kept the tail, and `main_test.dart` and `home_screen_test.dart` show none. Server `pytest` was not run locally: W5 changes nothing under `server/`, and CI runs what `main` changed there.
+- **Coverage:** not collected on this PC. The numbers above come from the CI comment on PR #24, on `3010207`. All layers met their targets. Not in the coverage numbers: `test/screens/setup_screen_test.dart`, by CI's 240 s limit, as before.
+- **A false pass found at the merge:** #17 made home longer, and the full output warned of two missed taps. `a level chosen after home has gone starts no search` failed. `closing the difficulty sheet does not load home again` passed with its tap missed: the sheet never opened, so home never had a reason to reload. The tests now open the sheet through `openSheetWith`, which checks that it opened, and a missed tap fails in `home_screen_test.dart`. Removing the reload guard now fails that test.
+- **Mutations (temporary, each restored byte for byte):** 13 small code changes, all caught. The squat button back to the bare exercise (the crash); the squat button starting a push-up bot; the push-up button starting a squat bot; home reloading when a sheet closes; the sheet always saying push-up; the sheet always saying squat; the search always asking for push-ups; #17's side of the conflict, a bot with no level; the bot at 1.1 whatever the counter; `forMatchup` ignoring the depth; `forMatchup` ignoring the level; the bot not scaling its depths; the online route casting to a bot request.
+- **Shortfalls:** none in these numbers. The merged code is not in them; the push runs CI on it.
+- **Findings, not W5's:**
+  - Reported by the user, who tells 진영 and 상우; #17's code, not fixed in W5: on the phone, the user's squat reps never read Excellent, however deep. `squat_demo_judge.dart` L93 sends a valid rep with no `maxDepth`, and `battle_rules.dart` L79 grades a rep with no depth as Good. The squat bot sends depths and can earn Excellent, so its score can run ahead of the same count. `SquatRepJudge` does send `maxDepth`, but the battle does not use it.
+  - From the code (review round 36), not seen on the phone; #17's, not fixed in W5: a squat bot battle saves nothing (`battle_viewmodel.dart` L460): no history row, home card or best record, no feedback button or grade row. So a level's name reaches no record for squat.
+  - From the code (review round 36), not seen on the phone, not fixed in W5: an older line that #17's squat path now reaches, "휴대폰을 머리 앞 약 1m 바닥에" (`matching_screen.dart` L477).
+- **Not covered by a test:** a squat battle's no-save, and `battle_viewmodel.dart` L225 grading at a depth other than the push-up's: `battle_viewmodel_test.dart` is outside W5's files. The phone check below saw the reps count and the bot's pace; it reported nothing on records or on the bot's grades. The source line in `battle_screen.dart` is pinned by a test, since a widget test cannot reach it without the real camera.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | `forMatchup` takes the depth it is given and the matchup's level; the squat bot at `SquatDemoJudge`'s depth, which equals `judgeFor`'s; each level scoring the same in a real `BattleGame` at the squat depth; the source line pinning `passDepth: counter.passDepth` |
+| View | `test/screens/home_screen_test.dart` (updated) | The squat demo button asks, then opens matching for squat at that level; closing its sheet stays on home; the push-up sheet's words; every test that opens a sheet checks that it opened; a missed tap fails |
+| App flow | `test/main_test.dart` (updated) | On the real routes: the squat button, its sheet, matching, versus, with a squat matchup at the chosen level; the online route takes the exercise, and no argument means push-up |
+
+Acceptance criteria → tests:
+- **Home's squat demo button opens the same sheet; choosing starts a squat search at that level; closing stays on home:** `home_screen_test.dart` "squat demo asks how hard, then opens matching for squat", "closing the squat demo sheet stays on home with no search"; `main_test.dart` "the squat button leads through its sheet to a squat bot at that level".
+- **The online squat button is not broken by the bot's route argument:** `main_test.dart` "the online route takes the exercise, not a bot request"; `home_screen_test.dart` "online squat opens the live lobby with squat selected".
+- **A squat bot plays the same level at the counter's depth:** `bot_opponent_test.dart` "a squat bot plays 초보 at the squat depth", "초보 scores the same in a game at the squat depth", and the same for 중수 and 고수; "battle_screen.dart gives forMatchup the counter's depth".
+- **The other criteria:** as in the entry above; those tests pass on `main`'s code too.
+
+- **Manual check** (the user's Galaxy S947N, a build of this code from the working folder, reported 2026-11-02):
+  - Pass: the squat demo button's sheet; closing it stays on home; choosing a level leads to matching and the squat setup; squat reps count, and the bot plays at its level; 다시 매칭 searches the same level with no sheet; "AI와 1v1 대결" opens the push-up sheet; the online squat button opens the lobby.
+  - Found: the user's squat reps never read Excellent (above).
+  - Not checked on a phone: an online squat battle, which needs an opponent.
+  - The match card's two lines: PM OK (11-02), as the user reports (the PM's merge order table).

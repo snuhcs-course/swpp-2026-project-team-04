@@ -482,3 +482,26 @@ origin/main에는 아직 #17이 없어(main은 5e0be5e). 이름 잘림까지 고
 
 <!-- 471b69be 2026-11-01T18:11:00.665Z -->
 [Woohyun Song, 11-02 03:11] "괜찮아"
+
+<!-- 471b69be 2026-11-02T03:02:04.867Z -->
+[Woohyun Song, 11-02 12:02] "<pasted_content id=\"5639\">
+#17이 머지됐어. 지금 main은 e975cba야(#25 아바타 스킨, #17 스쿼트, #26 S3b 상대 아바타가 차례로 들어감). 진영이형이 PR #24에 댓글을 달았어. main(e975cba)을 merge하고, battle_screen.dart 충돌을 풀고, #17의 스쿼트 버튼을 난이도 시트로 연결하면 CI 녹색 확인 후 바로 머지한대. #24가 재배포 전 마지막 PR이야.
+
+준비해 둔 계획대로 진행해 줘.
+1. origin/main을 merge해. 내가 e975cba로 시험해 보니 텍스트 충돌은 battle_screen.dart 한 곳이야.
+2. 봇은 BotOpponent.forMatchup(widget.matchup, passDepth: counter.passDepth)로 정리하고, forMatchup의 passDepth를 필수로 바꿔.
+3. 홈의 \"스쿼트 1v1 데모 · AI 대결\" 버튼이 같은 난이도 시트를 열고 BotMatchRequest를 넘기게 고치고, 관련 테스트와 문서를 고쳐.
+4. main에 스쿼트 온라인 버튼(onlineBattleRoute에 ExerciseType.squat)도 새로 생겼어. W5의 라우트 변경 때문에 이 버튼이 깨지지 않는지 확인해 줘.
+5. ownership.json의 online_battle_screen.dart 메모를 실제 내용으로 고쳐.
+6. 전체 테스트와 리뷰를 돌린 뒤 push 전에 멈추고, 폰으로 확인할 것을 알려 줘. 스쿼트 버튼을 폰으로 본 뒤에 push하자.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-02T04:26:15.533Z -->
+[Woohyun Song, 11-02 13:26] "<pasted_content id=\"5639\">
+폰 확인 결과야(작업 폴더 빌드, Galaxy S947N).
+- 1~3번: 됨 (스쿼트 시트, 시트 닫기, 레벨 선택 후 매칭과 세팅 진입)
+- 4번: 스쿼트 횟수는 잘 세지고 봇도 레벨대로 움직여. 다만 최대한 깊게 해도 내 rep은 Excellent가 한 번도 안 나와. 네가 말한 squat_demo_judge.dart가 깊이를 안 보내는 문제로 보여. #17 쪽이라 W5에서는 고치지 말고 노트에 발견 사항으로 적어 줘. 진영이형과 상우에게는 내가 보고할게.
+- 5~7번: 됨
+진영이형이 11-02에 기록 카드 두 줄 변경을 OK했어(PM 머지 순서표에 기록됨). 노트의 \"사용자가 알림\"을 \"PM OK(11-02)\"로 고쳐 줘.
+말한 순서대로 커밋부터 push까지 진행하고, CI 결과까지 알려 줘.
+</pasted_content id=\"5639\">"
