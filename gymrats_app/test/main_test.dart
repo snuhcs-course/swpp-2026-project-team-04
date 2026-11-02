@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
+import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
@@ -9,6 +10,7 @@ import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
+import 'package:gymrats_app/screens/online_lobby_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
@@ -21,13 +23,15 @@ import 'package:provider/provider.dart';
 import 'support/fakes.dart';
 
 void main() {
-  /// Taps start and lets the matching page slide in. The radar keeps
-  /// turning, so pumpAndSettle would only return after the bot is found.
+  /// Taps start, chooses 초보 and lets the matching page slide in. The radar
+  /// keeps turning, so pumpAndSettle would only return after the bot is found.
   Future<void> startMatching(WidgetTester tester) async {
     await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
     await tester.drag(find.byType(ListView).first, const Offset(0, -150));
     await tester.pumpAndSettle();
     await tester.tap(find.text('AI와 1v1 대결'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('초보'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
   }
@@ -40,7 +44,7 @@ void main() {
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
 
     await startMatching(tester);
-    expect(find.text('AI 상대를 찾는 중'), findsOneWidget);
+    expect(find.text('초보 AI 상대를 찾는 중'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsNothing);
 
     // The bot answers 3 seconds after the search started.
@@ -48,14 +52,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('MATCH FOUND'), findsOneWidget);
     expect(find.text('우현'), findsOneWidget);
-    expect(find.text('RepBot'), findsOneWidget);
+    expect(find.text('AI 봇 · 초보'), findsOneWidget);
     expect(find.text('AI'), findsOneWidget);
 
     // System back only asks; 게임 나가기 in the dialog goes home.
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('게임에서 나갈까요?'), findsOneWidget);
-    expect(find.text('RepBot과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
+    expect(find.text('AI 봇 · 초보와의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
     expect(find.text('MATCH FOUND'), findsOneWidget);
     await tester.tap(
       find.descendant(
@@ -67,6 +71,60 @@ void main() {
     // Home keeps its scroll position; the greeting is at the top.
     await tester.scrollUntilVisible(find.text('안녕하세요, 우현님'), -180);
     expect(find.text('안녕하세요, 우현님'), findsOneWidget);
+  });
+
+  testWidgets('the squat button leads through its sheet to a squat bot at that '
+      'level', (tester) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('스쿼트 1v1 데모 · AI 대결'), 180);
+    await tester.ensureVisible(find.text('스쿼트 1v1 데모 · AI 대결'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('스쿼트 1v1 데모 · AI 대결'));
+    await tester.pumpAndSettle();
+    expect(find.text('스쿼트 · 30초 · 1v1'), findsOneWidget);
+
+    await tester.tap(find.text('고수'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('고수 AI 상대를 찾는 중'), findsOneWidget);
+    expect(
+      tester.widget<MatchingScreen>(find.byType(MatchingScreen)).exercise,
+      ExerciseType.squat,
+    );
+
+    // The bot answers 3 seconds after the search started.
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    final matchup = tester
+        .widget<VersusScreen>(find.byType(VersusScreen))
+        .matchup;
+    expect(matchup.exercise, ExerciseType.squat);
+    expect(matchup.opponent.name, 'AI 봇 · 고수');
+    expect(matchup.opponent.difficulty, BotDifficulty.expert);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the online route takes the exercise, not a bot request', (
+    tester,
+  ) async {
+    await tester.pumpWidget(testApp());
+    await tester.pumpAndSettle();
+    final generate = tester
+        .widget<MaterialApp>(find.byType(MaterialApp))
+        .onGenerateRoute!;
+    // Built without showing it: shown, it would connect to the server.
+    ExerciseType exerciseOf(Object? arguments) {
+      final route = generate(
+        RouteSettings(name: GymRatsApp.onlineBattleRoute, arguments: arguments),
+      );
+      return ((route! as MaterialPageRoute<void>).builder(
+        tester.element(find.byType(HomeScreen)),
+      ) as OnlineLobbyScreen).exercise;
+    }
+
+    expect(exerciseOf(ExerciseType.squat), ExerciseType.squat);
+    expect(exerciseOf(null), ExerciseType.pushUp);
   });
 
   testWidgets("'?' on home opens the rules over home; back returns home", (

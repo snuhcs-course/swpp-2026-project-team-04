@@ -157,7 +157,7 @@ void main() {
       await open(tester);
       await ask(tester);
       expect(find.text('게임에서 나갈까요?'), findsOneWidget);
-      expect(find.text('RepBot과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
+      expect(find.text('RepBot 님과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
       expect(find.byType(MatchSetupScreen), findsOneWidget);
       // Setup goes on under the dialog.
       expect(camera.isStreaming, isTrue);

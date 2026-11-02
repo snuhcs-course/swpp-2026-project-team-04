@@ -6,11 +6,13 @@ import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../models/match_record.dart';
+import '../models/matchup.dart';
 import '../models/user_profile.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/accent_button.dart';
+import '../widgets/bot_difficulty_sheet.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/match_record_card.dart';
@@ -43,6 +45,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
   late final HomeViewModel _viewModel;
 
+  /// True while the difficulty sheet is open: closing it brings nothing new
+  /// to load.
+  bool _choosingDifficulty = false;
+
   @override
   void initState() {
     super.initState();
@@ -61,7 +67,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   /// Home shows again after a battle or a cancelled match: the latest
   /// battle and the best record may have changed.
   @override
-  void didPopNext() => _viewModel.load();
+  void didPopNext() {
+    if (!_choosingDifficulty) _viewModel.load();
+  }
 
   @override
   void dispose() {
@@ -70,11 +78,20 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     super.dispose();
   }
 
-  void _startMatching() {
+  /// Asks how hard the bot should play [exercise], then starts the search.
+  /// Closing the sheet stays here.
+  Future<void> _startMatching(ExerciseType exercise) async {
+    _choosingDifficulty = true;
+    final difficulty = await showBotDifficultySheet(
+      context,
+      exercise: exercise,
+    );
+    _choosingDifficulty = false;
+    if (difficulty == null || !mounted) return;
     Navigator.pushNamed(
       context,
       GymRatsApp.matchingRoute,
-      arguments: ExerciseType.pushUp,
+      arguments: BotMatchRequest(exercise: exercise, difficulty: difficulty),
     );
   }
 
@@ -148,7 +165,7 @@ class _HomeContent extends StatelessWidget {
   });
 
   final UserProfile profile;
-  final VoidCallback onStart;
+  final ValueChanged<ExerciseType> onStart;
   final VoidCallback onOpenHistory;
   final VoidCallback? onLogOut;
 
@@ -209,16 +226,12 @@ class _HomeContent extends StatelessWidget {
         ],
         const SizedBox(height: 12),
         OutlinedButton.icon(
-          onPressed: onStart,
+          onPressed: () => onStart(ExerciseType.pushUp),
           icon: const Icon(Icons.smart_toy_rounded),
           label: const Text('AI와 1v1 대결'),
         ),
         OutlinedButton.icon(
-          onPressed: () => Navigator.pushNamed(
-            context,
-            GymRatsApp.matchingRoute,
-            arguments: ExerciseType.squat,
-          ),
+          onPressed: () => onStart(ExerciseType.squat),
           icon: const Icon(Icons.fitness_center),
           label: const Text('스쿼트 1v1 데모 · AI 대결'),
         ),

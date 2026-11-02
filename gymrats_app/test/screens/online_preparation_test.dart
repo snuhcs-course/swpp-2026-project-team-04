@@ -549,6 +549,24 @@ void main() {
     await tester.pump();
   });
 
+  group('back before the start names the opponent in the leave dialog', () {
+    for (final (name, words) in const [
+      ('상대사용자', '상대사용자와의 대결이 취소되고\n홈으로 돌아가요.'),
+      ('진영', '진영과의 대결이 취소되고\n홈으로 돌아가요.'),
+      ('Mike', 'Mike 님과의 대결이 취소되고\n홈으로 돌아가요.'),
+      ('NightRunner7', 'NightRunner7 님과의\n대결이 취소되고\n홈으로 돌아가요.'),
+    ]) {
+      testWidgets(name, (tester) async {
+        await open(tester);
+        session.opponent = OnlinePlayer('opponent', name, AvatarModel.robot);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text('게임에서 나갈까요?'), findsOneWidget);
+        expect(find.text(words), findsOneWidget);
+      });
+    }
+  });
+
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   testWidgets('a failed feedback upload still shows the result and feedback', (
     tester,

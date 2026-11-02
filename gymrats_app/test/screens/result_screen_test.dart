@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
+import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/game_score.dart';
@@ -68,8 +69,14 @@ void main() {
         onGenerateRoute: (settings) => switch (settings.name) {
           GymRatsApp.matchingRoute => MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) =>
-                Scaffold(body: Text('matching ${settings.arguments}')),
+            builder: (_) {
+              final request = settings.arguments! as BotMatchRequest;
+              return Scaffold(
+                body: Text(
+                  'matching ${request.exercise} ${request.difficulty}',
+                ),
+              );
+            },
           ),
           _ => null,
         },
@@ -374,13 +381,29 @@ void main() {
     expect(find.text('home'), findsOneWidget);
   });
 
-  testWidgets('다시 매칭 replaces the result with a search for push-ups', (
+  testWidgets('다시 매칭 replaces the result with a search for the same battle', (
     tester,
   ) async {
-    await open(tester, _result());
+    await open(
+      tester,
+      _result(
+        matchup: Matchup(
+          exercise: ExerciseType.pushUp,
+          playerName: '우현',
+          opponent: const Opponent(
+            name: 'RepBot',
+            isBot: true,
+          ).at(BotDifficulty.beginner),
+        ),
+      ),
+    );
+    expect(find.text('AI 봇 · 초보'), findsOneWidget);
     await tester.tap(find.text('다시 매칭'));
     await tester.pumpAndSettle();
-    expect(find.text('matching ${ExerciseType.pushUp}'), findsOneWidget);
+    expect(
+      find.text('matching ${ExerciseType.pushUp} ${BotDifficulty.beginner}'),
+      findsOneWidget,
+    );
     expect(find.byType(ResultScreen), findsNothing);
 
     // Replaced, not pushed: back from the search goes home.

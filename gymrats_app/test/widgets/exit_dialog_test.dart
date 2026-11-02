@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 
@@ -12,11 +13,13 @@ const _dialog = ExitDialog(
 void main() {
   bool? answer;
 
-  /// A page whose 'ask' button shows [_dialog] and keeps the answer.
+  /// A page whose 'ask' button shows [dialog] and keeps the answer.
   Future<void> open(
     WidgetTester tester, {
     Size size = const Size(412, 915),
+    ExitDialog dialog = _dialog,
   }) async {
+    answer = null;
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -27,7 +30,7 @@ void main() {
           builder: (context) => Scaffold(
             body: TextButton(
               onPressed: () async =>
-                  answer = await confirmExit(context, _dialog),
+                  answer = await confirmExit(context, dialog),
               child: const Text('ask'),
             ),
           ),
@@ -37,10 +40,7 @@ void main() {
   }
 
   /// Opens the dialog, answers it with [reply], and returns the answer.
-  Future<bool?> ask(
-    WidgetTester tester,
-    Future<void> Function() reply,
-  ) async {
+  Future<bool?> ask(WidgetTester tester, Future<void> Function() reply) async {
     answer = null;
     await tester.tap(find.text('ask'));
     await tester.pumpAndSettle();
@@ -104,14 +104,8 @@ void main() {
     expect(await ask(tester, () => tester.tap(find.text('leave'))), isTrue);
     expect(await ask(tester, () => tester.tap(find.text('계속하기'))), isFalse);
     // Outside the dialog, on the barrier.
-    expect(
-      await ask(tester, () => tester.tapAt(const Offset(5, 5))),
-      isFalse,
-    );
-    expect(
-      await ask(tester, () => tester.binding.handlePopRoute()),
-      isFalse,
-    );
+    expect(await ask(tester, () => tester.tapAt(const Offset(5, 5))), isFalse);
+    expect(await ask(tester, () => tester.binding.handlePopRoute()), isFalse);
   });
 
   testWidgets('the game and matching words', (tester) async {
@@ -122,9 +116,9 @@ void main() {
       ),
     );
 
-    await show(const ExitDialog.game(opponentName: 'RepBot'));
+    await show(ExitDialog.game(opponentName: 'RepBot'));
     expect(find.text('게임에서 나갈까요?'), findsOneWidget);
-    expect(find.text('RepBot과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
+    expect(find.text('RepBot 님과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
     expect(find.text('계속하기'), findsOneWidget);
     expect(find.text('게임 나가기'), findsOneWidget);
 
@@ -134,6 +128,154 @@ void main() {
     expect(find.text('계속하기'), findsOneWidget);
     expect(find.text('매칭 취소'), findsOneWidget);
   });
+
+  group('the game message writes the name with', () {
+    String message(String name) =>
+        ExitDialog.game(opponentName: name).message.split('의 대결').first;
+
+    test('the rest of the sentence after it', () {
+      expect(
+        ExitDialog.game(opponentName: 'Mike').message,
+        'Mike 님과의 대결이 취소되고\n홈으로 돌아가요.',
+      );
+      expect(
+        ExitDialog.game(opponentName: '진영').message,
+        '진영과의 대결이 취소되고\n홈으로 돌아가요.',
+      );
+    });
+
+    test('the same words for a screen that builds its own dialog', () {
+      for (final name in const ['진영', '초보', 'Mike', '']) {
+        expect(
+          ExitDialog.gameMessage(name),
+          ExitDialog.game(opponentName: name).message,
+        );
+      }
+    });
+
+    test('와 after a Hangul syllable with no final letter', () {
+      expect(message('AI 봇 · 초보'), 'AI 봇 · 초보와');
+      expect(message('AI 봇 · 중수'), 'AI 봇 · 중수와');
+      expect(message('AI 봇 · 고수'), 'AI 봇 · 고수와');
+      // The first syllable with no final letter, another, and the last.
+      expect(message('가'), '가와');
+      expect(message('하'), '하와');
+      expect(message('히'), '히와');
+    });
+
+    test('과 after a Hangul syllable with a final letter', () {
+      expect(message('진영'), '진영과');
+      expect(message('우현'), '우현과');
+      // The first and the last syllables with a final letter.
+      expect(message('각'), '각과');
+      expect(message('힣'), '힣과');
+    });
+
+    test('" 님과" after anything that is not a Hangul syllable', () {
+      expect(message('RepBot'), 'RepBot 님과');
+      expect(message('Mike'), 'Mike 님과');
+      expect(message('rat7'), 'rat7 님과');
+      expect(message('rat!'), 'rat! 님과');
+      expect(message('rat🐀'), 'rat🐀 님과');
+      // A Hangul letter alone is not a syllable.
+      expect(message('ㅋ'), 'ㅋ 님과');
+      // Below the syllables, where the count would read as no final letter.
+      expect(message('David'), 'David 님과');
+      expect(message('Fred'), 'Fred 님과');
+      // Right past the last syllable, where it would read the same.
+      expect(message('\u{D7A4}'), '\u{D7A4} 님과');
+    });
+
+    test('상대와 for no name', () {
+      expect(message(''), '상대와');
+    });
+  });
+
+  group('the exit icon', () {
+    Finder icon() => find.byIcon(Icons.logout_rounded);
+
+    testWidgets('shows on an upright screen', (tester) async {
+      await open(tester, size: const Size(360, 640));
+      await tester.tap(find.text('ask'));
+      await tester.pumpAndSettle();
+      expect(icon(), findsOneWidget);
+    });
+
+    testWidgets('does not show on a sideways screen, so the answers fit', (
+      tester,
+    ) async {
+      await open(tester, size: const Size(640, 360));
+      await tester.tap(find.text('ask'));
+      await tester.pumpAndSettle();
+      expect(icon(), findsNothing);
+      expect(find.text('title'), findsOneWidget);
+      expect(find.text('계속하기'), findsOneWidget);
+    });
+  });
+
+  group('the game message', () {
+    String words(String name) => ExitDialog.game(opponentName: name).message;
+    String twoLines(String named) => '$named의 대결이 취소되고\n홈으로 돌아가요.';
+    String threeLines(String named) => '$named의\n대결이 취소되고\n홈으로 돌아가요.';
+
+    test('stays on two lines for a short name', () {
+      expect(words('Mike'), twoLines('Mike 님과'));
+      expect(words('rat7'), twoLines('rat7 님과'));
+      expect(words('RepBot'), twoLines('RepBot 님과'));
+      expect(words('IronBot'), twoLines('IronBot 님과'));
+      expect(words('진영'), twoLines('진영과'));
+      expect(words('상대사용자'), twoLines('상대사용자와'));
+      expect(words('가나다라마바'), twoLines('가나다라마바와'));
+      expect(words(''), twoLines('상대와'));
+    });
+
+    test('stays on two lines for every bot', () {
+      for (final level in BotDifficulty.values) {
+        expect(words(level.opponentName), twoLines('${level.opponentName}와'));
+      }
+    });
+
+    test('gives a long English name a line of its own', () {
+      expect(words('NightRunner7'), threeLines('NightRunner7 님과'));
+      expect(words('Christopher'), threeLines('Christopher 님과'));
+      expect(words('Woohyun12'), threeLines('Woohyun12 님과'));
+      expect(words('WWWWWWW'), threeLines('WWWWWWW 님과'));
+    });
+
+    test('digits read their own width, so they do not break a line early', () {
+      expect(words('Player12'), twoLines('Player12 님과'));
+      expect(words('1234567'), twoLines('1234567 님과'));
+    });
+
+    test('gives a long Hangul name a line of its own', () {
+      expect(words('가나다라마바사'), threeLines('가나다라마바사와'));
+      expect(words('가나다라마바사아'), threeLines('가나다라마바사아와'));
+      expect(words('가나다라마바사아자차카타'), threeLines('가나다라마바사아자차카타와'));
+    });
+  });
+
+  for (final name in const ['NightRunner7', '가나다라마바사아', '가나다라마바사아자차카타']) {
+    for (final size in const [Size(360, 640), Size(640, 360)]) {
+      testWidgets('$name fits without overflow '
+          '(${size.width.toInt()}x${size.height.toInt()})', (tester) async {
+        await open(
+          tester,
+          size: size,
+          dialog: ExitDialog.game(opponentName: name),
+        );
+        await tester.tap(find.text('ask'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text(ExitDialog.gameMessage(name)), findsOneWidget);
+        // Still reachable on the short landscape screen.
+        await tester.ensureVisible(find.text('게임 나가기'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('게임 나가기'));
+        await tester.pumpAndSettle();
+        expect(answer, isTrue);
+      });
+    }
+  }
 
   for (final size in const [Size(360, 640), Size(640, 360)]) {
     testWidgets('fits without overflow '

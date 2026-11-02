@@ -397,3 +397,111 @@ W2(#21)가 22:12에 main에 머지됐어(ea83fc1). 진영이형이 #21 댓글에
 [Woohyun Song, 11-01 04:15] "나 이제 잘 거라 아침까지 답을 못 해. 리뷰 결과에 따라 고칠 게 있으면 네 판단으로 고치고, 해당 렌즈만 재리뷰한 뒤 노트, push, push 후 점검, CI 확인, PR #23 본문 갱신까지 끝내 줘. PR 본문의 Manual check에는 \"105° 버전 폰 확인 완료, 120° 실기기 재확인은 아직\"이라고 적어 줘.
 내 결정이 꼭 필요한 일이 생기면 그 단계에서 멈추고 progress.md에 질문을 적어 둬. push와 PR 본문 수정 말고는 GitHub에 아무것도 하지 마(댓글, 머지 금지).
 끝나면 아침에 내가 볼 수 있게 결과를 짧게 정리해 줘."
+
+## 2026-11-01 · Woohyun Song · feat/bot_difficulty
+<!-- 471b69be 2026-11-01T05:25:46.401Z -->
+[Woohyun Song, 11-01 14:25] "<pasted_content id=\"5639\">
+새 작업 W5를 시작하자. 10/31 회의에서 W5가 \"봇 난이도 설정(초보·중수·고수)\"으로 바뀌었고 W6는 빠졌어. 진영이형 순서표 기준으로 브랜치는 feat/bot_difficulty, 팀 순서 #12, 먼저 들어갈 것은 #11 S4(feat/squat_battle, 마지막 순서)야.
+지금 W3b(PR #23, feat/average_score)가 아직 머지 전이고, 봇 파일(bot_opponent.dart)을 W3b가 고쳤어. 그래서 W5는 origin/feat/average_score에서 갈라져 시작하고, PR을 열 때 \"depends on feat/average_score\"라고 적어. #23이 머지되면 origin/main을 merge해.
+내용: 홈에서 \"AI와 1v1 대결\"을 누르면 난이도(초보·중수·고수)를 고르고, 고른 봇과 대결한다. 지금 봇이 고수에 가까워서, 지금 값을 고수로 두고 중수와 초보를 만든다.
+0) 팀 규칙 파일: task.md와 progress.md의 W5를 새 내용으로 바꾸고, .claude 소유 설정에 W5의 브랜치와 소유 파일(봇 난이도 모델·설정, 난이도 선택 위젯, bot_opponent.dart의 난이도 파라미터, 홈의 AI 대결 버튼 동작, 매칭·versus의 봇 이름 표시, 관련 테스트)을 내가 승인하는 변경으로 넣어 줘. 진영이형이 피하라고 한 S4 파일(battle_viewmodel.dart, rep_counter_viewmodel.dart, pose_avatar_toggle_view.dart)이 필요하면 고치기 전에 물어봐.
+1) 아래 추천안을 OPEN 결정으로 task.md에 적고 나에게 한 번에 물어봐.
+ - 난이도 숫자(30초 기준): 초보 인정 5~7회·실수 1~3회·Excellent 0%·콤보 거의 없음 / 중수 8~10회·0~2회·10%·가끔 / 고수 = 지금 값(10~14회·0~2회·20%). 숫자는 설정 한 곳에 모아 나중에 바꾸기 쉽게.
+ - 고르는 화면: 홈 버튼을 누르면 아래에서 올라오는 시트에 카드 3장(이름, 한 줄 설명), 누르면 바로 매칭. W2·W4처럼 Claude Design 스케치 2~3안을 먼저 보여 줘(내부용).
+ - 기록: 상대 이름을 \"AI 봇 · 초보\"처럼 저장해서 기록 탭에서 구분.
+ - 스쿼트 봇에도 같은 세 레벨 적용. 스쿼트 봇에는 스쿼트 통과 깊이가 넘어가야 함(W3b에서 BotOpponent가 passDepth를 받게 됨). 온라인은 건드리지 않음.
+2) 결정이 끝나면 구현, flutter analyze와 flutter test, 병렬 리뷰(CLAUDE.md Workflow 3단계와 reviewer.md의 \"Parallel review: your lens\" 절대로), 노트까지 하고 push 전에 멈춰 줘. PR은 #23 머지와 S4 진행을 보고 내가 말하면 열어.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T07:39:58.774Z -->
+[Woohyun Song, 11-01 16:39] "<pasted_content id=\"5639\">
+보고 잘 받았어. 확인 질문에 답하고, 나가기 문구를 하나 더 고치자.
+
+1. 와/과 수정은 온라인 이름에도 적용해. 다만 이름이 한글로 끝나지 않으면 맞는 조사를 고를 수 없으니, exit_dialog.dart의 규칙을 이렇게 바꿔 줘.
+- 이름이 한글 음절로 끝나면 지금처럼 받침에 따라 '와'나 '과'를 붙인다. 예: \"AI 봇 · 초보와의 대결이 취소되고\", \"진영과의 대결이 취소되고\".
+- 영어, 숫자, 기호, 이모지처럼 한글 음절이 아닌 글자로 끝나면 이름 뒤에 \" 님\"을 넣고 '과'를 붙인다. 예: \"Mike 님과의 대결이 취소되고\", \"rat7 님과의 대결이 취소되고\". '님'은 받침이 있어서 '과'가 항상 맞다.
+- 이름이 비어 있으면 \"상대와의 대결이 취소되고\"로 쓴다.
+- exit_dialog.dart 안에서만 처리하고, versus_screen.dart 같은 화면 파일은 건드리지 마.
+- 테스트는 새 규칙에 맞게 고쳐 줘. 경계 테스트(가, 하, 각, 힣, \u{D7A4}, David)는 유지하되 기대값을 바꾸고(\"David\"는 \"David 님과\"), 12자 영어 닉네임으로 360x640과 640x360에서 넘치지 않는지 확인해 줘. 노트에도 이 규칙을 반영해 줘.
+
+2. 상우에게는 내가 직접 알릴게. 세션에서 따로 할 일은 없어.
+3. battle-rules.md 11장에 추가한 줄은 그대로 둬.
+4. 오버워치 레퍼런스는 괜찮아. D3 그대로 가자.
+5. 이 수정이 리뷰까지 끝나면, 말한 대로 origin/main을 다시 merge하고 테스트, 소유권 검사, 세션 내보내기를 돌린 뒤 push하고 PR을 열어 줘. 커버리지 숫자는 CI가 끝나면 넣자. 폰 확인은 오늘 밤에 내가 하고 결과를 알려 줄게.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T07:48:44.131Z -->
+[Woohyun Song, 11-01 16:48] "<pasted_content id=\"5639\">
+하나 더 알려 둘게. 상우에게 #17에서 battle_screen.dart의 봇 생성 부분을 아래처럼 바꾸라고 이미 보냈어. 스쿼트일 때 counter는 SquatDemoJudge를 쓴다.
+
+final counter = RepCounterViewModel(
+  roundLength: battleDuration,
+  judge: widget.matchup.exercise == ExerciseType.squat ? SquatDemoJudge() : null,
+);
+opponent: BotOpponent(passDepth: counter.passDepth),
+
+#17 머지 후 이 줄의 충돌을 풀 때, 봇의 통과 깊이는 사용자를 실제로 판정하는 counter.passDepth를 기준으로 하고, 난이도는 matchup에서 가져와 줘. judgeFor(exercise).passDepth와 값이 다르면 counter 쪽을 따르자. 상우 파일 수정 사실은 W5 PR을 올린 뒤에 내가 상우에게 따로 알릴 거야.
+</pasted_content id=\"5639\">"
+<!-- 471b69be 2026-11-01T08:54:13.531Z -->
+[Woohyun Song, 11-01 17:54] "<pasted_content id=\"5639\">
+PR 잘 봤어. 남겨 둔 두 가지를 정할게.
+
+1. 리뷰어는 지난 PR들처럼 진영이형(ishlove77)으로 지정해 줘.
+2. 긴 이름의 줄바꿈은 고치자. 단어 중간에서 끊기면 안 되니까, 첫 줄이 넘칠 만큼 긴 이름일 때만 세 줄로 나눠 줘: \"NightRunner7 님과의\" / \"대결이 취소되고\" / \"홈으로 돌아가요.\" 짧은 이름과 봇 이름은 지금 그대로 둬. 기준 길이는 네가 계산한 값으로 넉넉하게 잡고, 12자 영어 이름과 8자 이상 한글 이름이 360x640, 640x360에서 넘치지 않는지 확인해 줘. 커밋은 로컬에만 해 두고, 오늘 밤 폰 확인 결과와 테스트 노트의 W5 커버리지 칸을 채울 때 한 번에 push하자.
+3. 상우에게는 지금 내가 알릴게.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T12:30:32.805Z -->
+[Woohyun Song, 11-01 21:30] "<pasted_content id=\"5639\">
+상우가 #17 충돌을 풀어서 3801f7d로 push했어. 아직 main에는 안 들어갔고, 진영이형이 머지하면 그때 origin/main을 merge하자. 지금은 준비만 해 줘.
+
+1. origin/feat/squat_battle(3801f7d)을 fetch해서, 작업 폴더 파일은 바꾸지 않는 방법으로 W5와 합칠 때의 충돌과 고칠 곳을 미리 정리해 둬. 지금 이 폴더로 폰 확인을 할 거라 파일이 바뀌면 안 돼.
+2. 참고: 3801f7d의 battle_screen.dart는 RepCounterViewModel에 exercise와 exerciseJudge(스쿼트면 SquatDemoJudge)를 넘기고, 봇을 BotOpponent(passDepth: counter.passDepth)로 만들어. SquatDemoJudge는 ExerciseRepJudge를 구현하고 passDepth로 SquatRepJudge().passDepth를 돌려줘서 _judge is SquatDemoJudge 검사도 맞게 동작해. 홈의 스쿼트 버튼은 matchingRoute에 arguments: ExerciseType.squat을 넘겨.
+3. 폰 확인 결과를 보내면 말한 순서대로 기록하고 push해 줘. 그때 #17이 아직 main에 없으면 #17 연결 작업 없이 push하고, #17이 머지된 뒤에 따로 한 번 더 하자.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T16:58:04.243Z -->
+[Woohyun Song, 11-02 01:58] "<pasted_content id=\"5639\">
+오늘 밤 폰 확인 결과야(로컬 2962f7b, Galaxy S947N).
+
+됨:
+- 난이도 시트: 그림 세 가지와 글자 모두 정상
+- 세 레벨 대결과 상대 이름(\"AI 봇 · 초보/중수/고수\")
+- 결과 화면에서 다시 매칭하면 시트 없이 같은 난이도로 다시 찾음
+- 세로 나가기 문구: \"AI 봇 · 초보와의 대결이 취소되고 / 홈으로 돌아가요.\"
+- 가로 자세 세팅의 나가기 창: 두 버튼이 스크롤 없이 다 보임. 온라인 긴 닉네임은 상대가 없어서 미확인
+- W3b Average 120°: 기준대로 동작함. 이와 별개로 판정기의 측정 문제가 있어서 판정기 담당에게 따로 보고했어. W3b와 W5 범위는 아니야.
+
+안 됨:
+- 기록 탭과 홈의 최근 경기 카드에서 상대 이름이 \"푸쉬업 · vs AI 봇 · ...\"로 잘려서 난이도가 안 보여. 결과 화면에서는 다 보여. 폭 360에서도 레벨까지 보이게 고쳐 줘. 고칠 파일이 W5 파일이 아니면 먼저 물어봐. 12자 온라인 닉네임으로도 같이 확인해 줘.
+
+참고(W5 범위 아님): 홈 카드, 기록 탭, 개인 최고가 아직 점수가 아니라 유효 횟수 기준이야. 서버에 점수 칸이 없어서 진영이형에게 새 작업으로 보고할 거야. 테스트 노트에는 발견 사항으로만 적어 줘.
+
+origin/main에는 아직 #17이 없어(main은 5e0be5e). 이름 잘림까지 고치면 push 전에 알려 줘. 폰으로 기록 탭만 다시 보고, 괜찮으면 말한 순서대로 기록, merge, 검사, push를 진행하자.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-01T18:11:00.665Z -->
+[Woohyun Song, 11-02 03:11] "괜찮아"
+
+<!-- 471b69be 2026-11-02T03:02:04.867Z -->
+[Woohyun Song, 11-02 12:02] "<pasted_content id=\"5639\">
+#17이 머지됐어. 지금 main은 e975cba야(#25 아바타 스킨, #17 스쿼트, #26 S3b 상대 아바타가 차례로 들어감). 진영이형이 PR #24에 댓글을 달았어. main(e975cba)을 merge하고, battle_screen.dart 충돌을 풀고, #17의 스쿼트 버튼을 난이도 시트로 연결하면 CI 녹색 확인 후 바로 머지한대. #24가 재배포 전 마지막 PR이야.
+
+준비해 둔 계획대로 진행해 줘.
+1. origin/main을 merge해. 내가 e975cba로 시험해 보니 텍스트 충돌은 battle_screen.dart 한 곳이야.
+2. 봇은 BotOpponent.forMatchup(widget.matchup, passDepth: counter.passDepth)로 정리하고, forMatchup의 passDepth를 필수로 바꿔.
+3. 홈의 \"스쿼트 1v1 데모 · AI 대결\" 버튼이 같은 난이도 시트를 열고 BotMatchRequest를 넘기게 고치고, 관련 테스트와 문서를 고쳐.
+4. main에 스쿼트 온라인 버튼(onlineBattleRoute에 ExerciseType.squat)도 새로 생겼어. W5의 라우트 변경 때문에 이 버튼이 깨지지 않는지 확인해 줘.
+5. ownership.json의 online_battle_screen.dart 메모를 실제 내용으로 고쳐.
+6. 전체 테스트와 리뷰를 돌린 뒤 push 전에 멈추고, 폰으로 확인할 것을 알려 줘. 스쿼트 버튼을 폰으로 본 뒤에 push하자.
+</pasted_content id=\"5639\">"
+
+<!-- 471b69be 2026-11-02T04:26:15.533Z -->
+[Woohyun Song, 11-02 13:26] "<pasted_content id=\"5639\">
+폰 확인 결과야(작업 폴더 빌드, Galaxy S947N).
+- 1~3번: 됨 (스쿼트 시트, 시트 닫기, 레벨 선택 후 매칭과 세팅 진입)
+- 4번: 스쿼트 횟수는 잘 세지고 봇도 레벨대로 움직여. 다만 최대한 깊게 해도 내 rep은 Excellent가 한 번도 안 나와. 네가 말한 squat_demo_judge.dart가 깊이를 안 보내는 문제로 보여. #17 쪽이라 W5에서는 고치지 말고 노트에 발견 사항으로 적어 줘. 진영이형과 상우에게는 내가 보고할게.
+- 5~7번: 됨
+진영이형이 11-02에 기록 카드 두 줄 변경을 OK했어(PM 머지 순서표에 기록됨). 노트의 \"사용자가 알림\"을 \"PM OK(11-02)\"로 고쳐 줘.
+말한 순서대로 커밋부터 push까지 진행하고, CI 결과까지 알려 줘.
+</pasted_content id=\"5639\">"

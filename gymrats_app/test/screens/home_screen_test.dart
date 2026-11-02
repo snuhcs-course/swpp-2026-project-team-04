@@ -3,15 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/match_record.dart';
+import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
+import 'package:gymrats_app/widgets/bot_difficulty_sheet.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/match_record_card.dart';
 
@@ -29,8 +32,18 @@ final _drawing = find.byWidgetPredicate(
   (widget) => widget is CustomPaint && widget.size == const Size(126, 70),
 );
 
+/// The exercise card's name: a match card below it can say 푸쉬업 as well.
+final _exerciseName = find.descendant(
+  of: find.ancestor(of: _drawing, matching: find.byType(Card)),
+  matching: find.text('푸쉬업'),
+);
+
 void main() {
   late FakeUserRepository repository;
+
+  // Home grows with each feature: a tap that misses its button must fail
+  // here, not pass with nothing opened.
+  setUpAll(() => WidgetController.hitTestWarningShouldBeFatal = true);
 
   setUp(() {
     repository = FakeUserRepository()
@@ -64,16 +77,29 @@ void main() {
           GymRatsApp.profileRoute: (_) =>
               const Scaffold(body: Text('my profile')),
           GymRatsApp.helpRoute: (_) => const HelpScreen(),
-          GymRatsApp.matchingRoute: (context) => Scaffold(
-            body: Text(
-              'matching ${ModalRoute.of(context)!.settings.arguments}',
-            ),
-          ),
+          GymRatsApp.matchingRoute: (context) {
+            final request =
+                ModalRoute.of(context)!.settings.arguments! as BotMatchRequest;
+            return Scaffold(
+              body: Text('matching ${request.exercise} ${request.difficulty}'),
+            );
+          },
         },
       ),
     );
     // The first frame shows loading; this one shows what the load returned.
     await tester.pump();
+  }
+
+  /// Brings the button called [label] into view, taps it, and checks that
+  /// the difficulty sheet opened.
+  Future<void> openSheetWith(WidgetTester tester, String label) async {
+    await tester.scrollUntilVisible(find.text(label), 180);
+    await tester.ensureVisible(find.text(label));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
+    expect(find.byType(BotDifficultySheet), findsOneWidget);
   }
 
   testWidgets('shows the greeting, exercise card and start button', (
@@ -85,7 +111,7 @@ void main() {
     expect(find.text('오늘도 한 판,\n붙어볼까요?'), findsOneWidget);
     expect(find.text('종목 선택'), findsOneWidget);
     expect(find.text('30초 · 1v1'), findsOneWidget);
-    expect(find.text('푸쉬업'), findsOneWidget);
+    expect(_exerciseName, findsOneWidget);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     expect(find.text('개인 최고 32회'), findsOneWidget);
     expect(find.text('푸쉬업 온라인 1v1 대결'), findsOneWidget);
@@ -105,10 +131,10 @@ void main() {
   ) async {
     await open(tester);
     final card = tester.getRect(
-      find.ancestor(of: find.text('푸쉬업'), matching: find.byType(Card)),
+      find.ancestor(of: _exerciseName, matching: find.byType(Card)),
     );
     final drawing = tester.getRect(_drawing);
-    final title = tester.getRect(find.text('푸쉬업'));
+    final title = tester.getRect(_exerciseName);
     final best = tester.getRect(find.text('개인 최고 32회'));
     final check = tester.getRect(find.byIcon(Icons.check_rounded));
 
@@ -129,7 +155,7 @@ void main() {
     tester,
   ) async {
     await open(tester);
-    final name = tester.widget<Text>(find.text('푸쉬업')).style!;
+    final name = tester.widget<Text>(_exerciseName).style!;
     expect(name.fontFamily, AppFonts.headline);
     expect(name.fontSize, 36);
 
@@ -180,21 +206,21 @@ void main() {
     await open(tester);
     expect(find.text('최근 경기'), findsOneWidget);
     final card = find.ancestor(
-      of: find.text('푸쉬업 · vs RepBot'),
+      of: find.text('vs RepBot'),
       matching: find.byType(Card),
     );
-    for (final text in ['승', '24', ':', '19', '나', '상대']) {
+    for (final text in ['승', '푸쉬업', '24', ':', '19', '나', '상대']) {
       expect(
         find.descendant(of: card, matching: find.text(text)),
         findsOneWidget,
       );
     }
-    // One row: 16 padding (2.5.7) around the tallest item, the scores.
+    // One row: 16 padding (2.5.7) around the tallest item, the text.
     expect(tester.getSize(card).height, lessThan(100));
 
     // Badge, names, my score, ':' and their score from left to right.
     final badge = tester.getRect(find.text('승'));
-    final names = tester.getRect(find.text('푸쉬업 · vs RepBot'));
+    final names = tester.getRect(find.text('vs RepBot'));
     final mine = tester.getRect(find.text('24'));
     final colon = tester.getRect(find.text(':'));
     final theirs = tester.getRect(find.text('19'));
@@ -393,23 +419,105 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('lower AI button opens matching for push-ups', (tester) async {
-    await open(tester);
-    await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
-    await tester.ensureVisible(find.text('AI와 1v1 대결'));
-    await tester.tap(find.text('AI와 1v1 대결'));
-    await tester.pumpAndSettle();
-    expect(find.text('matching ${ExerciseType.pushUp}'), findsOneWidget);
-  });
-
-  testWidgets('squat demo opens matching with the squat exercise', (
+  testWidgets('lower AI button asks how hard, then opens matching for it', (
     tester,
   ) async {
     await open(tester);
-    await tester.scrollUntilVisible(find.text('스쿼트 1v1 데모 · AI 대결'), 180);
-    await tester.tap(find.text('스쿼트 1v1 데모 · AI 대결'));
+    await openSheetWith(tester, 'AI와 1v1 대결');
+    expect(find.text('푸쉬업 · 30초 · 1v1'), findsOneWidget);
+    expect(find.textContaining('matching'), findsNothing);
+
+    await tester.tap(find.text('중수'));
     await tester.pumpAndSettle();
-    expect(find.text('matching ${ExerciseType.squat}'), findsOneWidget);
+    expect(find.byType(BotDifficultySheet), findsNothing);
+    expect(
+      find.text(
+        'matching ${ExerciseType.pushUp} ${BotDifficulty.intermediate}',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('closing the difficulty sheet stays on home with no search', (
+    tester,
+  ) async {
+    await open(tester);
+    await openSheetWith(tester, 'AI와 1v1 대결');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(BotDifficultySheet), findsNothing);
+    expect(find.textContaining('matching'), findsNothing);
+    expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('a level chosen after home has gone starts no search', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => HomeScreen(
+                    createViewModel: () =>
+                        HomeViewModel(repository: repository),
+                  ),
+                ),
+              ),
+              child: const Text('below home'),
+            ),
+          ),
+        ),
+        routes: {GymRatsApp.matchingRoute: (_) => const Text('matching')},
+      ),
+    );
+    await tester.tap(find.text('below home'));
+    await tester.pumpAndSettle();
+    await openSheetWith(tester, 'AI와 1v1 대결');
+
+    final home = ModalRoute.of(tester.element(find.byType(HomeScreen)))!;
+    home.navigator!.removeRoute(home);
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeScreen), findsNothing);
+    expect(find.byType(BotDifficultySheet), findsOneWidget);
+
+    await tester.tap(find.text('중수'));
+    await tester.pumpAndSettle();
+    expect(find.text('matching'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('squat demo asks how hard, then opens matching for squat', (
+    tester,
+  ) async {
+    await open(tester);
+    await openSheetWith(tester, '스쿼트 1v1 데모 · AI 대결');
+    expect(find.text('스쿼트 · 30초 · 1v1'), findsOneWidget);
+    expect(find.textContaining('matching'), findsNothing);
+
+    await tester.tap(find.text('중수'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BotDifficultySheet), findsNothing);
+    expect(
+      find.text('matching ${ExerciseType.squat} ${BotDifficulty.intermediate}'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('closing the squat demo sheet stays on home with no search', (
+    tester,
+  ) async {
+    await open(tester);
+    await openSheetWith(tester, '스쿼트 1v1 데모 · AI 대결');
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(BotDifficultySheet), findsNothing);
+    expect(find.textContaining('matching'), findsNothing);
+    expect(find.byType(HomeScreen), findsOneWidget);
   });
 
   testWidgets('online squat opens the live lobby with squat selected', (
@@ -450,10 +558,8 @@ void main() {
     await tester.scrollUntilVisible(find.text('24'), 180);
     expect(find.text('24'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('AI와 1v1 대결'), 180);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -150));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('AI와 1v1 대결'));
+    await openSheetWith(tester, 'AI와 1v1 대결');
+    await tester.tap(find.text('고수'));
     await tester.pumpAndSettle();
     // The battle was saved meanwhile.
     repository.profile = const UserProfile(
@@ -476,6 +582,29 @@ void main() {
     expect(find.text('40'), findsOneWidget);
     expect(find.text('30'), findsOneWidget);
     expect(find.text('24'), findsNothing);
+  });
+
+  testWidgets('closing the difficulty sheet does not load home again', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        navigatorObservers: [GymRatsApp.routeObserver],
+        home: HomeScreen(
+          createViewModel: () => HomeViewModel(repository: repository),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(repository.fetchCount, 1);
+
+    for (var turn = 0; turn < 2; turn++) {
+      await openSheetWith(tester, 'AI와 1v1 대결');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    }
+    expect(repository.fetchCount, 1);
   });
 
   testWidgets('fits a small phone without overflow', (tester) async {
@@ -562,11 +691,11 @@ void main() {
       await open(tester);
       await tester.scrollUntilVisible(find.text('피드백 없음'), 180);
       expect(find.byType(MatchRecordCard), findsNWidgets(3));
-      expect(find.text('푸쉬업 · vs Rival5'), findsOneWidget);
-      expect(find.text('푸쉬업 · vs Rival3'), findsOneWidget);
-      expect(find.text('푸쉬업 · vs Rival2'), findsNothing);
+      expect(find.text('vs Rival5'), findsOneWidget);
+      expect(find.text('vs Rival3'), findsOneWidget);
+      expect(find.text('vs Rival2'), findsNothing);
       expect(find.text('깊이 부족 1회'), findsOneWidget);
-      expect(find.text('10월 21일 09:05'), findsOneWidget);
+      expect(find.text('푸쉬업 · 10월 21일 09:05'), findsOneWidget);
     });
 
     testWidgets('"전체 기록" calls the tab switch when given', (tester) async {
@@ -595,7 +724,7 @@ void main() {
     ) async {
       repository.recentError = Exception('offline');
       await open(tester);
-      await tester.scrollUntilVisible(find.text('푸쉬업 · vs RepBot'), 180);
+      await tester.scrollUntilVisible(find.text('vs RepBot'), 180);
       expect(find.text('피드백 없음'), findsNothing);
     });
 
@@ -605,7 +734,7 @@ void main() {
       await tester.scrollUntilVisible(find.text('피드백 없음'), 180);
       final ink = tester.widget<InkWell>(
         find.ancestor(
-          of: find.text('푸쉬업 · vs Rival3'),
+          of: find.text('vs Rival3'),
           matching: find.byType(InkWell),
         ),
       );
