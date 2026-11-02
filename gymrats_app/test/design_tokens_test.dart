@@ -14,6 +14,7 @@ const _checked = [
   'lib/screens/match_feedback_screen.dart',
   'lib/widgets/auth_form.dart',
   'lib/widgets/bot_difficulty_sheet.dart',
+  'lib/widgets/exercise_sheet.dart',
   'lib/widgets/game_danger_edge.dart',
   'lib/widgets/game_fever_chip.dart',
   'lib/widgets/game_health_bar.dart',
