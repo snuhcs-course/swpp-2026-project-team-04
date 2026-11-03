@@ -2,7 +2,7 @@
 
 GymRats is an Android app that turns push-ups and squats into a 30-second, real-time 1v1 battle. The phone stands on the floor in front of you, and its camera counts your reps with an on-device pose model, so video never leaves the phone. You are matched with another player online, or play against the AI rival RepBot at a level you choose, and you see your opponent as a 3D avatar that copies their real movement. Every rep is graded and scored, a fever time doubles the points, and a big enough lead ends the round by KO. After each push-up battle, a form report tells you what to fix.
 
-This branch, `iteration-3-demo`, holds the code shown in the **Iteration 3 demo** (pull requests #13 to #36 merged, `main` at `59865fa`). The team server runs the server code of this commit (unchanged since `e6b16fe`, deployed 2026-11-03), so you only need to install the app.
+This branch, `iteration-3-demo`, holds the code shown in the **Iteration 3 demo** (pull requests #13 to #37 merged, `main` at `6fbc533`). The team server runs the server code of this commit (unchanged since `e6b16fe`, deployed 2026-11-03), so you only need to install the app.
 
 ## Demo video
 
@@ -94,7 +94,7 @@ Grant camera access when asked. For an APK instead, run `flutter build apk --rel
 
 ## Tests and checks
 
-| Part | From | Command | Last result (2026-11-03, `59865fa`, app code unchanged since `f03a460`) |
+| Part | From | Command | Last result (2026-11-03, `6fbc533`, app code unchanged since `f03a460`) |
 |---|---|---|---|
 | App | `gymrats_app/` | `flutter analyze` and `flutter test` | no issues; 1476 passed, 10 skipped |
 | AI module test | `gymrats_app/` | `flutter test test/ai_eval` (report in `build/ai_eval/report.md`) | M1 79.4 %, M2 90.8 %, M3 59.9 % on the frozen 32-case set (thresholds 90 / 90 / 80 %; tuned on the same set, see the Testing Documentation 5) |
