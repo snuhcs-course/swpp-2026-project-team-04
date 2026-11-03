@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/battle_result.dart';
 import '../models/battle_rules.dart';
 import '../models/form_report.dart';
+import '../models/exercise_type.dart';
 import '../models/game_score.dart';
 import '../models/matchup.dart';
 import '../models/rep_event.dart';
@@ -304,6 +305,7 @@ class BattleViewModel extends ChangeNotifier {
           at: record.at,
           reason: record.reason,
           maxDepth: record.maxDepth,
+          minElbowAngle: record.minElbowAngle,
         ),
       );
       if (score != null) _state = _state.copyWith(myLastScore: score);
@@ -430,18 +432,20 @@ class BattleViewModel extends ChangeNotifier {
       decidedOutcome: _game.outcome,
       endedAt: endedAt,
       roundLength: played,
-      form: FormReport(
-        endedAt: endedAt,
-        opponentName: matchup.opponent.name,
-        roundLength: played,
-        reps: counter.repRecords,
-        samples: counter.formSamples,
-        poses: counter.formPoses,
-        leftFlarePose: counter.leftFlarePose,
-        rightFlarePose: counter.rightFlarePose,
-        handsPose: counter.handsPose,
-        headPose: counter.headPose,
-      ),
+      form: matchup.exercise == ExerciseType.squat
+          ? null
+          : FormReport(
+              endedAt: endedAt,
+              opponentName: matchup.opponent.name,
+              roundLength: played,
+              reps: counter.repRecords,
+              samples: counter.formSamples,
+              poses: counter.formPoses,
+              leftFlarePose: counter.leftFlarePose,
+              rightFlarePose: counter.rightFlarePose,
+              handsPose: counter.handsPose,
+              headPose: counter.headPose,
+            ),
     );
     _setState(
       _state.copyWith(

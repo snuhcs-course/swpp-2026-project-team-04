@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../models/bot_difficulty.dart';
 import '../models/exercise_type.dart';
 import '../models/matchup.dart';
 import '../services/matching/matchmaker.dart';
@@ -62,12 +63,16 @@ class MatchingViewModel extends ChangeNotifier {
     required this._matchmaker,
     required this._repository,
     required this.exercise,
+    this.difficulty = BotDifficulty.expert,
     Clock? clock,
   }) : _clock = clock ?? _stopwatchClock();
 
   final Matchmaker _matchmaker;
   final UserRepository _repository;
   final ExerciseType exercise;
+
+  /// How hard the bot that is found will play.
+  final BotDifficulty difficulty;
   final Clock _clock;
 
   MatchingState _state = const MatchingState();
@@ -106,7 +111,7 @@ class MatchingViewModel extends ChangeNotifier {
           matchup: Matchup(
             exercise: exercise,
             playerName: profile.name,
-            opponent: opponent,
+            opponent: opponent.at(difficulty),
           ),
         ),
       );

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/game_score.dart';
 import '../models/reject_reason_korean.dart';
 import '../models/rep_event.dart';
+import '../services/game/rep_grade.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import 'game_fever_chip.dart';
@@ -318,11 +319,20 @@ class _FeedbackBanner extends StatelessWidget {
     if (reason == null && score == null) {
       return const SizedBox(height: _height);
     }
+    // The latest score may be an earlier rep's: this one must have earned it.
+    final earnsAverage = context.read<BattleViewModel>().rules.earnsAverage(
+      rep,
+    );
     return _PopIn(
       key: ValueKey(count),
       child: reason == null
           ? _GoodBanner(score: score!)
-          : _RejectedBanner(reason: reason),
+          : _RejectedBanner(
+              reason: reason,
+              average: earnsAverage && score?.grade == GameGrade.average
+                  ? score
+                  : null,
+            ),
     );
   }
 }
@@ -367,6 +377,8 @@ class _GoodBanner extends StatelessWidget {
     ];
     if (extras.isNotEmpty) return extras.join(' · ');
     return switch (score.grade) {
+      // An average rep has its own banner, with the reason it was rejected.
+      GameGrade.average => '',
       GameGrade.good => '좋아요, 그 깊이 그대로!',
       GameGrade.excellent => '깊게 잘 내려갔어요!',
     };
@@ -413,15 +425,36 @@ class _GoodBanner extends StatelessWidget {
   }
 }
 
-/// "카운트 안 됨" and what to fix, in dark letters on amber.
+/// "카운트 안 됨" and what to fix, in dark letters on amber. An [average] rep
+/// adds what it still earned under them, e.g. "+5 AVERAGE": it did not count,
+/// and yet the score went up. The two lines shrink rather than make the banner
+/// taller on a large system font.
 class _RejectedBanner extends StatelessWidget {
-  const _RejectedBanner({required this.reason});
+  const _RejectedBanner({required this.reason, this.average});
 
   final RejectReason reason;
+  final GameRepScore? average;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final average = this.average;
+    final title = Text(
+      '카운트 안 됨',
+      style: text.bodyLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: AppColors.background,
+      ),
+    );
+    final fix = Text(
+      reason.koreanMessage,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: text.bodyMedium?.copyWith(
+        fontWeight: FontWeight.w500,
+        color: AppColors.background,
+      ),
+    );
     return Container(
       constraints: const BoxConstraints(minHeight: _FeedbackBanner._height),
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -436,26 +469,42 @@ class _RejectedBanner extends StatelessWidget {
             size: 20,
             color: AppColors.background,
           ),
-          const SizedBox(width: 12),
-          Text(
-            '카운트 안 됨',
-            style: text.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.background,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              reason.koreanMessage,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: text.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-                color: AppColors.background,
+          const SizedBox(width: AppSpacing.s12),
+          if (average == null) ...[
+            title,
+            const SizedBox(width: AppSpacing.s12),
+            Flexible(child: fix),
+          ] else
+            Flexible(
+              child: SizedBox(
+                height: _FeedbackBanner._height,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          title,
+                          const SizedBox(width: AppSpacing.s12),
+                          fix,
+                        ],
+                      ),
+                      Text(
+                        '+${average.points} '
+                        '${average.grade.label.toUpperCase()}',
+                        style: text.titleLarge?.copyWith(
+                          color: AppColors.background,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

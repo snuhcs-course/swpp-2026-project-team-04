@@ -245,7 +245,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('푸쉬업 · vs RepBot'));
+    await tester.tap(find.text('vs RepBot'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(FeedbackScreen), findsOneWidget);

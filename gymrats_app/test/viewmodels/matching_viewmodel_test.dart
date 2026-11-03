@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/viewmodels/matching_viewmodel.dart';
 
 import '../support/fakes.dart';
@@ -64,10 +66,55 @@ void main() {
       final matchup = vm.state.matchup!;
       expect(matchup.exercise, ExerciseType.pushUp);
       expect(matchup.playerName, '우현');
-      expect(matchup.opponent, same(matchmaker.opponent));
+      expect(matchup.opponent.isBot, isTrue);
       // The clock stops.
       expect(async.periodicTimerCount, 0);
       vm.dispose();
+    });
+  });
+
+  group('the difficulty', () {
+    Matchup find(FakeAsync async, BotDifficulty difficulty) {
+      final vm = MatchingViewModel(
+        matchmaker: matchmaker,
+        repository: repository,
+        exercise: ExerciseType.pushUp,
+        difficulty: difficulty,
+        clock: () => async.elapsed,
+      )..start();
+      async.flushMicrotasks();
+      final matchup = vm.state.matchup!;
+      vm.dispose();
+      return matchup;
+    }
+
+    for (final level in BotDifficulty.values) {
+      test('a bot found for ${level.label} plays it, under its name', () {
+        fakeAsync((async) {
+          final opponent = find(async, level).opponent;
+          expect(opponent.difficulty, level);
+          expect(opponent.name, level.opponentName);
+          expect(opponent.isBot, isTrue);
+        });
+      });
+    }
+
+    test('with none chosen, the bot found plays as an expert', () {
+      fakeAsync((async) {
+        final vm = create(async)..start();
+        async.flushMicrotasks();
+        expect(vm.state.matchup!.opponent.difficulty, BotDifficulty.expert);
+        vm.dispose();
+      });
+    });
+
+    test('a person found stays as they are', () {
+      fakeAsync((async) {
+        matchmaker.opponent = const Opponent(name: '진영', isBot: false);
+        final opponent = find(async, BotDifficulty.beginner).opponent;
+        expect(opponent, same(matchmaker.opponent));
+        expect(opponent.difficulty, isNull);
+      });
     });
   });
 

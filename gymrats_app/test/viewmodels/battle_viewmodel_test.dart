@@ -185,6 +185,45 @@ void main() {
     expect(vm.state.result, same(result));
   });
 
+  test('a squat bot battle is saved too, with no form report', () async {
+    final squat = BattleViewModel(
+      matchup: const Matchup(
+        exercise: ExerciseType.squat,
+        playerName: '우현',
+        opponent: Opponent(name: 'AI 봇 · 고수', isBot: true),
+      ),
+      counter: RepCounterViewModel(
+        camera: camera,
+        estimator: estimator,
+        judge: judge,
+        clock: () => now,
+        roundLength: battleDuration,
+        phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
+      ),
+      opponent: opponent,
+      repository: repository,
+      sound: sound,
+      formReports: reports,
+      now: () => _endedAt,
+    );
+    addTearDown(squat.dispose);
+    await squat.start();
+    judge.closeRep();
+    await frame(5);
+    opponent.emit();
+    await pumpEventQueue();
+    await frame(60);
+    await pumpEventQueue();
+    final record = repository.saved.single;
+    expect(record.exercise, ExerciseType.squat);
+    expect(record.opponentName, 'AI 봇 · 고수');
+    expect(record.myReps, 1);
+    expect(record.opponentReps, 1);
+    expect(record.myScore, greaterThan(0));
+    expect(record.opponentScore, greaterThan(0));
+    expect(repository.savedReports.single, isNull);
+  });
+
   test('a battle that runs its full time is saved once', () async {
     await vm.start();
     judge.closeRep();
@@ -199,6 +238,13 @@ void main() {
     expect(record.opponentName, 'RepBot');
     expect(record.myReps, 1);
     expect(record.opponentReps, 1);
+    // The game's points go up with the reps, as the result shows them.
+    expect(record.myScore, greaterThan(0));
+    expect(record.myScore, vm.state.result!.myScore);
+    expect(record.opponentScore, vm.state.result!.opponentScore);
+    // So is the game's outcome: a saved battle never falls back on its reps.
+    expect(record.decidedOutcome, isNotNull);
+    expect(record.decidedOutcome, vm.state.result!.outcome);
     expect(vm.state.result!.roundLength, battleDuration);
     // The form report goes up with the battle.
     expect(repository.savedReports.single, same(vm.state.result!.form));
@@ -393,8 +439,13 @@ void main() {
       double seconds, {
       double? maxDepth,
       RejectReason? reason,
+      double? minElbowAngle,
     }) async {
-      judge.closeRep(maxDepth: maxDepth, reason: reason);
+      judge.closeRep(
+        maxDepth: maxDepth,
+        reason: reason,
+        minElbowAngle: minElbowAngle,
+      );
       await frame(seconds);
     }
 
@@ -503,6 +554,62 @@ void main() {
       expect(battle.state.myScore, 20);
       expect(battle.state.myLastScore!.combo, 1);
     });
+
+    test('a Go lower rep with bent elbows reaches the game with its angle: '
+        'the score and the bar move, and it stays rejected', () async {
+      await battle.start();
+      await myRep(3, reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      expect(battle.state.myScore, 5);
+      expect(battle.state.myBarShare, closeTo(0.525, 1e-9));
+      expect(battle.state.myLastScore!.grade, GameGrade.average);
+      expect(battle.state.myLastScore!.points, 5);
+      expect(battle.state.myReps, 0);
+      expect(battle.state.myInvalidReps, 1);
+      expect(battle.state.feedback!.reason, RejectReason.insufficientDepth);
+    });
+
+    test(
+      'a Go lower rep above the angle, or with none, scores nothing',
+      () async {
+        await battle.start();
+        await myRep(
+          3,
+          reason: RejectReason.insufficientDepth,
+          minElbowAngle: 130,
+        );
+        await myRep(5, reason: RejectReason.insufficientDepth);
+        expect(battle.state.myScore, 0);
+        expect(battle.state.myLastScore, isNull);
+        expect(battle.state.myInvalidReps, 2);
+      },
+    );
+
+    test(
+      "an average rep is in the final score and not in the valid reps",
+      () async {
+        await battle.start();
+        await myRep(
+          21,
+          reason: RejectReason.insufficientDepth,
+          minElbowAngle: 90,
+        );
+        await frame(30);
+        final result = battle.state.result!;
+        expect(result.myScore, 10);
+        expect(result.myReps, 0);
+        expect(result.myInvalidReps, 1);
+      },
+    );
+
+    test(
+      "the opponent's rejected rep has no angle and scores nothing",
+      () async {
+        await battle.start();
+        await theirRep(3, reason: RejectReason.insufficientDepth);
+        expect(battle.state.opponentScore, 0);
+        expect(battle.state.opponentLastScore, isNull);
+      },
+    );
 
     test('fever turns on at its start and doubles the points', () async {
       await battle.start();

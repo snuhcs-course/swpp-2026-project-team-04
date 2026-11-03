@@ -99,7 +99,7 @@ def test_match_body_is_validated(client):
     bad = [
         {"my_reps": -1},
         {"my_reps": 1001},
-        {"exercise": "squat"},
+        {"exercise": "plank"},
         {"opponent_name": ""},
         {"played_at": "2026-10-15T12:00:00"},  # no time zone
         {"client_id": "x"},
@@ -148,6 +148,112 @@ def test_retried_bot_upload_keeps_the_first_outcome(client):
     again = post_match(client, token, body | {"outcome": "loss", "reason": "time_up"})
     assert again.status_code == 200
     assert (again.json()["outcome"], again.json()["reason"]) == ("win", "ko")
+
+
+def test_upload_keeps_the_points_beside_the_reps(client):
+    token = sign_up(client)["token"]
+    body = match_body(1, my_reps=7, opponent_reps=9) | {
+        "my_score": 150,
+        "opponent_score": 90,
+        "outcome": "win",
+    }
+    saved = post_match(client, token, body).json()
+    assert (saved["my_score"], saved["opponent_score"]) == (150, 90)
+    assert (saved["my_reps"], saved["opponent_reps"]) == (7, 9)
+    # Fewer reps, more points: the game's outcome stands.
+    assert saved["outcome"] == "win"
+    [listed] = get(client, token, "/matches").json()["items"]
+    assert (listed["my_score"], listed["opponent_score"]) == (150, 90)
+    assert listed["outcome"] == "win"
+    last = get(client, token, "/users/me").json()["last_match"]
+    assert (last["my_score"], last["opponent_score"]) == (150, 90)
+
+
+def test_old_app_upload_has_no_points(client):
+    token = sign_up(client)["token"]
+    saved = post_match(client, token, match_body(1))
+    assert saved.status_code == 201
+    assert (saved.json()["my_score"], saved.json()["opponent_score"]) == (None, None)
+    [listed] = get(client, token, "/matches").json()["items"]
+    assert (listed["my_score"], listed["opponent_score"]) == (None, None)
+
+
+def test_zero_points_are_points(client):
+    token = sign_up(client)["token"]
+    body = match_body(1) | {"my_score": 0, "opponent_score": 0}
+    saved = post_match(client, token, body).json()
+    assert (saved["my_score"], saved["opponent_score"]) == (0, 0)
+
+
+def test_the_most_points_are_accepted(client):
+    token = sign_up(client)["token"]
+    body = match_body(1) | {"my_score": 100_000, "opponent_score": 100_000}
+    assert post_match(client, token, body).status_code == 201
+
+
+def test_points_come_together_and_in_range(client):
+    token = sign_up(client)["token"]
+    for change in [
+        {"my_score": 150},
+        {"opponent_score": 90},
+        {"my_score": None, "opponent_score": None},
+        {"my_score": -1, "opponent_score": 90},
+        {"my_score": 150, "opponent_score": 100_001},
+    ]:
+        response = post_match(client, token, match_body() | change)
+        assert response.status_code == 422, change
+    assert get(client, token, "/matches").json()["items"] == []
+
+
+def test_retried_upload_keeps_the_first_points(client):
+    token = sign_up(client)["token"]
+    post_match(client, token, match_body(1) | {"my_score": 150, "opponent_score": 90})
+    again = post_match(client, token, match_body(1) | {"my_score": 1, "opponent_score": 2})
+    assert again.status_code == 200
+    assert (again.json()["my_score"], again.json()["opponent_score"]) == (150, 90)
+
+
+def test_new_user_has_no_bests(client):
+    token = sign_up(client)["token"]
+    assert get(client, token, "/users/me").json()["bests"] == {}
+
+
+def test_each_exercise_has_its_own_best(client):
+    token = sign_up(client)["token"]
+    squat = {"exercise": "squat"}
+    points = lambda mine: {"my_score": mine, "opponent_score": 0}
+    # The most reps and the most points need not be the same battle.
+    post_match(client, token, match_body(1, my_reps=14) | points(150))
+    post_match(client, token, match_body(2, my_reps=20) | points(90))
+    post_match(client, token, match_body(3, my_reps=9) | points(60) | squat)
+    me = get(client, token, "/users/me").json()
+    assert me["bests"] == {
+        "push_up": {"score": 150, "reps": 20},
+        "squat": {"score": 60, "reps": 9},
+    }
+    assert me["best_reps"] == 20
+
+
+def test_battles_with_no_points_still_count_their_reps(client):
+    token = sign_up(client)["token"]
+    post_match(client, token, match_body(1, my_reps=32))
+    post_match(client, token, match_body(2, my_reps=5) | {"exercise": "squat"})
+    post_match(
+        client,
+        token,
+        match_body(3, my_reps=5) | {"exercise": "squat", "my_score": 60, "opponent_score": 0},
+    )
+    assert get(client, token, "/users/me").json()["bests"] == {
+        "push_up": {"score": None, "reps": 32},
+        "squat": {"score": 60, "reps": 5},
+    }
+
+
+def test_bests_are_only_my_own(client):
+    mine = sign_up(client, login_id="woohyun")["token"]
+    theirs = sign_up(client, login_id="jinyoung", nickname="진영")["token"]
+    post_match(client, theirs, match_body(1) | {"my_score": 150, "opponent_score": 0})
+    assert get(client, mine, "/users/me").json()["bests"] == {}
 
 
 def test_limit_is_bounded(client):

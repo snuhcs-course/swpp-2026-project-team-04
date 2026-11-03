@@ -175,6 +175,9 @@ class ResultSaveView(_InternalView):
         battle.save()
 
         users = User.objects.in_bulk([int(p["player_id"]) for p in players])
+        # Points need both players, as in POST /matches. Refusing would lose
+        # the result, since the battle server does not retry a refusal.
+        scored = all("game_score" in p for p in players)
         saved = 0
         for me, other in ((players[0], players[1]), (players[1], players[0])):
             user = users.get(int(me["player_id"]))
@@ -186,10 +189,12 @@ class ResultSaveView(_InternalView):
                 user=user,
                 client_id=result_id,
                 defaults={
-                    "exercise": "push_up",
+                    "exercise": data["exercise"],
                     "opponent_name": other["display_name"][:40],
                     "my_reps": me["valid_reps"],
                     "opponent_reps": other["valid_reps"],
+                    "my_score": me["game_score"] if scored else None,
+                    "opponent_score": other["game_score"] if scored else None,
                     "played_at": ended_at,
                     "outcome": me["outcome"],
                     "reason": data["reason"],

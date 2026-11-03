@@ -240,23 +240,24 @@ This push merges `origin/main` at `ea83fc1`, with S1 (#18), S2 (#19) and W2 (#21
 - The online button's hint on home says `30초가 끝나면 점수가 높은 쪽 승리`, in the rules screen's words. The old hint said more reps win.
 - The battle demo's long press gives only push-up reasons. S2's squat reasons had reached it through `RejectReason.values`, a side effect of the merge that review round 14 found.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on `65dfe2b`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `65dfe2b`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)", on `7de22f2`, the merged head: `65dfe2b` plus these notes. [Run 41210352997](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41210352997): 912 passed, 1 skipped.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | see the CI comment on PR #20 | 10/31 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #20 |
-| ViewModel | flutter_test, fakes | 90% | see the CI comment on PR #20 | 10/31 | same |
-| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on PR #20 | 10/31 | same |
-| View | flutter_test (widget) | 75% | see the CI comment on PR #20 | 10/31 | same |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run locally: `server/` unchanged in this push; see the CI comment on PR #20 | 10/31 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 97.9% (237/242) | 10/31 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #20, commit `7de22f2`, run 41210352997 |
+| ViewModel | flutter_test, fakes | 90% | 94.9% (915/964) | 10/31 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.1% (1852/1969) | 10/31 | same |
+| View | flutter_test (widget) | 75% | 92.3% (3683/3989) | 10/31 | same |
+| Total, with Other at 91.4% (159/174) | | | 93.3% (6846/7338) | 10/31 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed); `server/` unchanged in this push | 10/31 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
 
 - **Tests:** `flutter test` 912 passed, 0 failed, 1 skipped.
   - The skipped test is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
   - `flutter analyze` found no issues.
   - Server `pytest` was not run locally because this push does not change `server/`.
-- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers come from the CI comment on PR #20 for this push. Until my next push, they are in that comment and in the PR body, not here.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs with "getSourceReport: Service has disappeared". The numbers above come from the CI comment on PR #20 and were filled in at the next push (W3b). All layers met their targets. As in earlier runs, `test/screens/setup_screen_test.dart` is left out of the coverage numbers by CI's 240 s limit; it still ran in `flutter test`.
 - **Mutation check (review round 14):** the reviewer ran 22 mutations in a scratch copy, and 19 failed a test. They included a hard-coded pass depth, the screen not handing the depth in, the session ignoring it, an amber icon, wrong help numbers, and the old hint. The three survivors: one help number equal to today's default, caught once the config changes; which reason a rejected bot rep carries, which nothing reads; and two squat wire codes swapped, which the server only validates.
-- **Shortfalls:** none known; the CI comment decides. Phone checks are still open (see Manual check).
+- **Shortfalls:** none: CI met every target. Phone checks were still open at this push (see Manual check). W2 and the W3 bot battle are done in the W3b entry below; online on real devices is still open.
 - **Known issues, not fixed here:**
   - A squat battle, once #17 brings one. `BattleGame` grades both players against one pass depth, so S2's 0.75 makes the threshold 1.2, and the bot's depths are 1.4 and 1.9. The reviewer's probe over 1000 seeded rounds, with a user at the bot's pace whose reps are all Good:
 
@@ -298,5 +299,372 @@ Acceptance criteria → tests:
     - The cyan clock with FEVER ×2 and the amber last 5 s were right.
     - Excellent never showed. Whether the cause is the user's form or the threshold (pass depth 1.1 × 1.6 = 1.76) is an open item the user is sharing with the team; it needs teammates' tests. The numbers are not changed.
     - Not reported: the bar's move on the user's own reps, the rejected banner's words, a time-up end.
-  - Not done yet: this push on a phone, including W2's whole check, the red icon and the new hint.
+  - Not done at this push: this push on a phone, including W2's whole check, the red icon and the new hint. Done on `0465943` on 2026-11-01, except the new hint's words: see the W3b entry below.
   - Not done yet: online on real devices, for the same reason as above.
+
+#### 2026-11-01 · code at commit `d5e9c54` · step W3b `feat/average_score` (team order #6b: Average +5, three score grades)
+This push adds the Average grade, as the user decided with the PM on 11-01, and an optional pass depth on the bot:
+- A rep rejected with Go lower whose `minElbowAngle` is 105° or less earns 5 points: 10 in fever, no combo bonus, the combo breaks, not a valid rep. Any other reason, a larger angle, or no angle earns 0. The judge's verdict and reason do not change.
+- Bot battle: the banner shows the reason with `+5 AVERAGE`; the scoreboard and the health bar move. Result screen: `Excellent N`, `Good N`, `Average N`.
+- Online: `rep.submit` carries `grade: "average"`, and the server scores it with the same code. The server announces `average_points`, and the app sends the grade only when it was announced.
+- `BotOpponent(passDepth:)` scales its depths; with the default 1.1 they stay exactly 1.4 and 1.9.
+- The rules screen's score table has a fourth tile.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `d5e9c54`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)", on `5ddac4f`, the pushed head: `d5e9c54` plus these notes. [Run 41227896404](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41227896404): 1067 passed, 9 skipped.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 98.4% (242/246) | 11/01 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #23, commit `5ddac4f`, run 41227896404 |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (927/965) | 11/01 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (1942/2060) | 11/01 | same |
+| View | flutter_test (widget) | 75% | 92.4% (3746/4052) | 11/01 | same |
+| Total, with Other at 70.1% (122/174) | | | 93.1% (6979/7497) | 11/01 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed); Django unchanged in this push | 11/01 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 1067 passed, 0 failed, 9 skipped. The count includes the Dart battle server's tests.
+  - One skip is `test/services/online/public_wss_smoke_test.dart`, a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
+  - Eight skips are the `knownErrors` cases in `test/services/pose/pushup_error_cases_test.dart`, from H1 and H2 (#22). None is a W3b test.
+  - `flutter analyze` found no issues. `dart analyze` on `server/lib/battle_server.dart` and `server/bin/server.dart` found no issues.
+  - Server `pytest` was not run locally because this push does not change Django.
+- **Coverage:** not collected on this PC, because `flutter test --coverage` hangs. The numbers above come from the CI comment on PR #23 and were filled in at the next push. All layers met their targets. As in earlier runs, `test/screens/setup_screen_test.dart` is left out of the coverage numbers by CI's 240 s limit; it still ran in `flutter test`.
+- **Other fell from 91.4% on #20 to 70.1%; cause not found.** All of it is `shared/battle_protocol.dart` (41/42 to 4/42), which this step does not change. `online_battle_integration_test.dart` passed all its tests, but in the CI artifacts its coverage report lists 14 source files, against 101 on #20's run. Other has no target.
+- **Probes and mutations, in scratch copies, not committed:**
+  - Review round 17, against the real `0465943` code. A new app with a W3 server sent no grade and got 0 points, with no error. A W3 app with a new server showed the same score, bar and outcome, with no error. An Average rep held back and sent again after `REP_OUT_OF_ORDER` scored correctly.
+  - Review round 19: bot plans over 500 seeds at 30, 45 and 60 s were byte-identical to `origin/main`, by `cmp`.
+  - Review round 17: 16 mutations, 12 failed a test. The 4 survivors got tests (the result's pass depth, the online counts' rules and pass depth, another grade on Go lower), and round 18 confirmed each now fails.
+  - Review round 18: of 10 more mutations, 7 failed a test. The 3 survivors got checks, and round 19 confirmed each now fails.
+  - Review round 19: removing the rules page's points shrink left the test green, because it compared "+10" with "+15". The check now compares both with "+5".
+  - Review round 18: the plain reject banner was byte-identical to `origin/main` in 44 full-screen renders (11 reasons, 4 text scales, 360x780, real fonts).
+  - Replay of the team's recorded sets in `test/fixtures/pushup_cases` through today's judge, with a temporary test I then deleted: 95 judged reps, 6 of them Go lower. Half-rep head nods at 127.8°, 137.8° and 145.2°, a belly-down rep at 151.7° and a knee rep at 175.2° earn 0. The last rep of a normal set, at 43.9°, earns Average. No recorded rep is at 90–91°, so this checks only the side above 105°.
+- **Shortfalls:** none: CI met every target. The phone check of W3b itself was open at this push; see the next entry.
+- **Known issues, not fixed here:**
+  - 105° comes from one person's recordings; the next entry replaces it with 120°. The rule has no lower limit, so an angle such as 43.9° also counts.
+  - The result's grade counts use this phone's records. Online they can differ from the server's score in rare cases: a rep closed in the round's last moment, or an app restarted mid-round. `battle-rules.md` 3.6 says so.
+  - The result screen reads the pass depth from `judgeFor(exercise)`, and the game reads `counter.passDepth`. They are the same today. #17 injects `SquatDemoJudge` through `judge:`, which gives the game 1.1 and the result 0.75; both grade Good only because that judge sets no `maxDepth`. In the PR's note for #17.
+  - Passing `passDepth` to a squat bot is #17's: until then, a squat bot still plays push-up depths.
+  - `BattleState.myLastScore`'s comment in `battle_viewmodel.dart` still says "latest valid rep": only one line of that file was approved.
+  - At text scale 1.5 on 360x640 and 360x740, and at 2.0 on 360x780, the panel overflows with any banner, as on `main` (round 18 measured the Average banner at the same pixels as the plain one).
+  - Shrunk words make the rules-page tiles uneven in height at larger text: slightly at 1.3 and 1.5, and from 88.6 to 116 at 2.0 on 360 wide.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/game_rules_test.dart` (updated) | The numbers 5 and 105; the angle's boundary; no angle; 0 points turn Average off; a tuned config; points with fever; the label |
+| Service | `test/services/game/battle_game_test.dart` (updated) | Angles that earn 5 and angles that earn 0, every other reason, a valid rep's angle ignored, fever, combo, the opponent, a KO on Average, the tie by valid reps |
+| Service | `test/services/game/rep_grade_test.dart` (new) | `gradeOf`, `earnsAverage`, `addRep`, and `GameGradeCounts` by pass depth and rules |
+| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | Default depths exactly 1.4 and 1.9; a squat pass depth scales them, keeps a fifth Excellent, and changes only the depths; rejected reps earn nothing |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | Server: score, combo, fever, KO, re-send, snapshot, refused combinations, an older app. Phones: same score and bar on both, no grade for a rep that earned nothing, the preview, a server with no Average |
+| Service | `test/support/game_fakes.dart` (updated) | Reps with an elbow angle |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | The angle reaches the game (fails without the approved line); above the angle or with none; the final score; the bot's rejected rep |
+| View | `test/screens/battle_screen_test.dart` (updated) | The banner with the reason and `+5 AVERAGE`, score and bar; `+10` in fever; no points on a later rejected rep; a valid rep's own banner after it |
+| View | `test/screens/result_screen_test.dart` (updated) | The three grades, zeros, a squat by its pass depth, hidden with no report or no game, 360 wide and text scale 2 |
+| View | `test/screens/online_preparation_test.dart` (updated) | The online words for an Average rep and for the rep after it; a server with no Average; the result's grades by the server's rules and the counter's pass depth |
+| View | `test/widgets/game_panel_fonts_test.dart` (updated) | Real fonts: the Average banner at 360x780, 360x640 and 412x915 and at larger text; four tiles at 360 wide up to text scale 2; the result's grades at 360 wide up to text scale 2 |
+| View | `test/widgets/help_rules_test.dart`, `test/screens/help_screen_test.dart` (updated) | Average's points from `BattleRules`; the fourth tile on the page |
+
+Acceptance criteria → tests:
+- **Go lower at 105° or less earns +5 (+10 in fever), breaks the combo, is not a valid rep:** `battle_game_test.dart` group "average"; `battle_viewmodel_test.dart` "a Go lower rep with bent elbows reaches the game with its angle: the score and the bar move, and it stays rejected".
+- **Above 105°, no angle, or another reason earns 0:** `battle_game_test.dart` "a Go lower rep with no elbow angle earns nothing", "every other reject reason earns nothing, however bent the elbows"; `battle_viewmodel_test.dart` "a Go lower rep above the angle, or with none, scores nothing".
+- **The banner shows the reason and +5 AVERAGE, and the score and bar move:** `battle_screen_test.dart` "shows the reason with +5 AVERAGE, and the score and the bar move while the valid reps stay".
+- **The result shows all three grades:** `result_screen_test.dart` "all three show how many of my reps got them"; `online_preparation_test.dart` "the result counts the user's grades".
+- **Both phones get the same score:** `online_battle_integration_test.dart` "an average rep shows the same score and bar on both phones, and stays rejected".
+- **Old server or old app, nothing breaks:** `online_battle_integration_test.dart` "a server with the game but no Average gets no grade on a rejected rep, which it would refuse", "an older app sends no grade for the same rep, and it earns nothing"; review round 1's probes against the real `0465943` code above.
+- **The bot's depths scale, and stay exact by default:** `bot_opponent_test.dart` "with no pass depth, its reps go exactly 1.4 or 1.9 deep", "its depths scale by the same multiples".
+
+- **Manual check:**
+  - W2, on the user's phone, `origin/main` `0465943` (reported 2026-11-01): pass. Right after a sign-up, the three rules pages (skip on pages 1 and 2, 시작하기 on page 3). Killing the app without pressing anything shows the rules again on the next start; after 건너뛰기 or 시작하기 it goes straight home. An existing account's login goes straight home. '?' on home opens the rules with no skip; back and 확인 both return. The danger icon is red.
+  - W3 bot battle, same phone and commit (reported 2026-11-01): pass. +N and the bar's move; a rejected rep shows the amber banner with its Korean reason; after 30 s the result shows the scores, valid reps and why it was decided; a deliberately deep rep shows `+15 EXCELLENT`. Excellent did show on this build, which has H2; round 2 had not seen it. Whether H2 or the rep's depth made the difference is unknown, and the team's check of the threshold stays open.
+  - Not reported: W3's new home hint's words.
+  - Not done at this push: W3b on a phone, including a real Go lower rep showing `+5 AVERAGE`. See the next entry.
+  - Not done yet: online on real devices. It needs the battle server rebuilt, or the temporary local patch.
+
+#### 2026-11-01 · code at commit `5c47a3e` · step W3b `feat/average_score`: the Average line moves from 105° to 120°
+The user played the release build of `5ddac4f` on a phone: at 105°, Average almost never showed. So the line moves to 120°:
+- `BattleRules.averageMaxElbowAngle` is 120. Nothing else in the rule changes.
+- The rules page now states the angle, read from `BattleRules`: "팔꿈치 각도가 120° 이하면 Average 점수를 받아요".
+- `battle-rules.md` 3.6 has the new evidence, and `docs/iteration-2-protocol.md` the new number.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `5c47a3e`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)", on `8fc6cb3`, the pushed head: `5c47a3e` plus these notes. [Run 41235027498](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41235027498), all jobs success.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 98.4% (242/246) | 11/01 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #23, commit `8fc6cb3`, run 41235027498 |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (927/965) | 11/01 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (1942/2060) | 11/01 | same |
+| View | flutter_test (widget) | 75% | 92.5% (3750/4056) | 11/01 | same |
+| Total, with Other at 70.1% (122/174) | | | 93.1% (6983/7501) | 11/01 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed); Django unchanged in this push | 11/01 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 1069 passed, 0 failed, 9 skipped, the same 9 as above. `flutter analyze` found no issues. Server `pytest` was not run locally because this push does not change Django.
+- **Coverage:** not collected on this PC. The numbers above come from the CI comment on PR #23 and were filled in at W5's notes. All layers met their targets. Not in the coverage numbers: `test/screens/setup_screen_test.dart`, by CI's 240 s limit, as before. Other stays at 70.1%, cause not found, as in the entry above.
+- **Replay:** another temporary test, since deleted, printed each rep's reason and angle for the team's head-nod recording `20261027-142000_halfRepHeadNod`. Reps 1, 2 and 5 are Go lower at 127.8°, 137.8° and 145.2°; reps 3 and 4 are `kneesDown` at 112.5° and 129.8°. By the rule, all five earn 0. The `kneesDown` rejection is a known error in `pushup_error_cases_test.dart`: if the 112.5° rep ever closes as Go lower, it earns +5.
+- **Shortfalls:** none. The phone recheck at 120° is open (see Manual check).
+- **Known issues, not fixed here:**
+  - No single angle separates honest reps from cheats: the user's recordings have tired reps at 110–126° and head nods at 109–135°. At 120°, nods at 109–120° earn +5, and tired reps at 121–126° do not. `battle-rules.md` 3.6 says so.
+  - Among reps closed as Go lower, Average reads only the angle. Depth is the nose's, so dropping the head can still close an attempt as Go lower, which a shallower nose would leave with no verdict, or as a valid rep.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/game_rules_test.dart` (updated) | The default 120; 120 is average, just above is not; a tuned line of 100 |
+| Service | `test/services/game/battle_game_test.dart` (updated) | 90, 110 and 120 earn 5; 120.1, 126, 127.8, 145.2, 169 and 175 earn nothing; example 1's rejected rep at 130 |
+| Service | `test/services/game/rep_grade_test.dart` (updated) | 120 is average, 121 is not; the counts with a rep at 130 |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | An online rep at exactly 120 scores on both phones; a rep at 121 sends no grade and earns nothing |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | A rep at 130 scores nothing |
+| View | `test/screens/battle_screen_test.dart` (updated) | No points on a later rep at 130 |
+| View | `test/screens/online_preparation_test.dart` (updated) | The online words at 120, and none at 121 |
+| View | `test/widgets/help_rules_test.dart` (updated) | The page's sentence and its angle; `degreesText` for 120 and 120.5 |
+
+Acceptance criteria → tests:
+- **Go lower at 120° or less earns +5:** `game_rules_test.dart` "an elbow angle up to 120 degrees is average"; `battle_game_test.dart` group "average"; `online_battle_integration_test.dart` "an average rep shows the same score and bar on both phones, and stays rejected".
+- **Above 120° earns 0:** `game_rules_test.dart` "a larger angle is not, nor is no angle"; `online_battle_integration_test.dart` "a shallow rep just above the line, or with straight arms, or another reason, sends no grade and earns nothing".
+- **The rules page states the line from the config:** `help_rules_test.dart` "every number on the pages comes from the constants", "an angle shows exactly, and a whole one has no decimals".
+
+- **Manual check:**
+  - W3b at 105°, on the user's phone, release build of `5ddac4f`, AI battle (reported 2026-11-01): done. Average almost never showed when the user played, which is why the line moved. The user reported this as an interim result.
+  - Not done yet: the recheck at 120° on a real device.
+  - Not done yet: online on real devices. It needs the battle server rebuilt.
+  - Seen by the user at a very large system text size, not from W3b and not fixed here: the match-found title, the battle screen's name chips and the reject banner's reason are cut, and the pose guide chip sits behind the opponent's card.
+  - For the team to discuss, not changed here: Good, the bar for a counted rep, also felt strict to the user. It is the judge's setting.
+
+#### 2026-11-02 · code at commit `a7cfbde` · step W5 `feat/bot_difficulty`: the bot's difficulty, 초보, 중수, 고수
+Home's "AI와 1v1 대결" opens a sheet with three cards, and the chosen bot plays the whole battle at that level. Today's bot became 고수.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `a7cfbde`, without coverage. Coverage comes from the CI comment "Tests and coverage (GitHub Actions)" on PR #24, on `1956401`, the head before this push. [Run 41289495485](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41289495485), all jobs success. `a7cfbde` is `1956401` plus three code commits, the long name's line and the sideways icon in the leave dialog, and the match card's lines, with their tests, which these numbers do not measure.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 98.4% (254/258) | 11/01 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #24, commit `1956401`, run 41289495485 |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (928/966) | 11/01 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (1958/2076) | 11/01 | same |
+| View | flutter_test (widget) | 75% | 92.6% (3871/4179) | 11/01 | same |
+| Total, with Other at 70.6% (125/177) | | | 93.2% (7136/7656) | 11/01 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed); `server/` unchanged | 11/01 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 1239 passed, 0 failed, 9 skipped, the same 9 as above. `flutter analyze` found no issues. Server `pytest` was not run locally because `server/` is unchanged.
+- **Coverage:** not collected on this PC. The numbers above come from the CI comment on PR #24, on `1956401`. All layers met their targets. Not in the coverage numbers: `test/screens/setup_screen_test.dart`, by CI's 240 s limit, as before.
+- **Mutations (temporary, each restored byte for byte):** 14 small code changes, each run against the test file that should catch it, and all 14 failed it. No mounted check on home; home reloading when the sheet closes; a combo behind a rejected rep; a combo on a rejected rep; a wrong combo gap; `start` ignoring the level; a squat bot at the push-up depth; a battle's bot with no level; 다시 매칭 losing the level, once as a compile error and again at run time; the view model or the matching screen dropping the level; no upper or lower bound on Hangul syllables; a screen reader with no tap. Six more on the leave dialog's final rule, all caught: no lower bound, no upper bound, no name, no 님, 와 and 과 swapped, the online battle screen keeping its own words. A last one removes the scroll to the leave button in the 12-letter test, which then fails at 640x360; the older size test passes that removal, since its short words fit that screen. Seven more on the long name's line, all caught: never three lines, always three lines, a room too small for the bots, a room too big, wide letters counted as plain, Hangul counted as narrow, a long name with no written lines. Four more, all caught: the icon always showing, the icon never showing, digits read as other signs, lowercase counted as narrow. Five more on the match card, all caught: one line for the name, two lines for the name, the exercise back on the name's line, the date dropped, no ellipsis. On the card as it was before the fix, 36 of the new real-font tests failed, all from the cut.
+- **The level table in `battle-rules.md` 4.5:** a temporary test ran the real `BotOpponent.planRound` and `PlayerGameScore` over 20,000 seeds per level: 초보 mean 75.7, 5-95% 60-90, combos in 0.1% of rounds; 중수 122.8, 100-150, 47.6%, 0.62 a round; 고수 173.6, 135-220, 61.7%, 1.30 a round. Reviewer round 26 reached the same within sampling noise with its own simulation. `bot_opponent_test.dart` pins the means and the combo shares over 2,000 seeds.
+- **고수 is the old bot:** `bot_opponent_test.dart` pins seeds 1 and 7 as printed from the code at `8fc6cb3`. Reviewer round 26 ran the old and new source text over 50,000 seeds at 30 s: no plan differs. At 20 s, 0 of 5,000 differ. At 60 s, 3,998 of 5,000 differ, because the most mistakes goes from 3 to 4: the counts moved to a 30 s basis. Only `battle_demo` with `BATTLE_SECONDS=60` reaches that.
+- **Shortfalls:** none in these numbers. The newest lines of `exit_dialog.dart` and `match_record_card.dart` are not in them; the push runs CI on those.
+- **Known issues, not fixed here:**
+  - The name in the battle's small opponent window: it fits at the normal size up to text scale 1.3. A window shrunk to 0.75 by a short camera cuts it to "AI 봇 · ..." at any text size. The scoreboard shows the whole name at 1.0 and 1.3.
+  - The longer name wraps sooner. Measured from the font files' widths by review round 26, not in a Flutter render: the matching title above text scale 1.27 (1.62 before), the leave dialog's first line above 1.12 (1.25 before). Both are one line at 1.0 on 360 wide, with tests.
+  - The squat bot's depths are tested, but no battle can reach them until #17 merges, so the game's own squat pass depth is untested end to end. #17's squat button pushes `/matching` with the old argument and would crash at the cast: W5 fixes that when it merges #17, as the PR's notes say.
+  - At #17's merge the bot's pass depth changes to `counter.passDepth`, the judge that really judges the user, as the user decided. Until then `forMatchup` reads `judgeFor(exercise).passDepth`.
+  - The leave dialog's long-name line is decided at text scale 1 and reads on the wide side. `Alexander` and 7 Hangul syllables take three lines though they would just fit (238 and 245 of the 248 available), as the user asked for a generous limit. Above text scale 1, or on a phone narrower than 360, a line can still break inside a word: computed by review round 31, not rendered, the bots' first line wraps above 1.12, `RepBot`'s above 1.145, `Mike`'s above 1.26. An emoji's width depends on the phone: the rule guesses on the wide side, and no render checked it, since the tests have no emoji font. By that guess, 10 to 12 emoji wrap even on their own line, between emoji, with no overflow.
+  - On a sideways screen, the leave dialog leaves out its icon, for every name and message, as the user chose: with three lines, the leave button had gone below the fold with nothing to show it could scroll.
+  - In a squat round the bot's rejected reps keep push-up reasons. No screen shows them: the battle reads whether the rep was valid, and they have no elbow angle, so they earn nothing.
+  - Sighted users see "5~7" with no unit, as in the sketch the user chose. A screen reader hears "회".
+  - The match card at 360 wide: the date's line has 3.8 to spare (137.5 of 141.3). Rendered on the real history tab at text scale 1.0, 1.1, 1.3 and 1.5: no name cut and no overflow, for a level's name, `NightRunner7`, `NIGHTRUNNER7`, 12 Hangul syllables and 12 W's. From 1.1 the time takes its own line, and at 1.3 `NightRunner7` reads "vs / NightRunner / 7". Those renders were temporary; the pinned tests run at 1.0. No emoji name was rendered, since the tests have no emoji font.
+  - The feedback screen's header (not changed) is one line, ending in the date. Computed, not rendered: a level's name fits, and a wide 12-letter name can cut the date's end.
+- **Finding, not W5's (the user, on the phone):** home's card, the history tab and the personal best still count valid reps, not points, as the server has no score column. The user reports it to 진영 as a new task. When points replace reps, three digits become common: the card's room falls from 141.3 to 125.6 at 360 wide, and the time takes its own line, with nothing cut.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/bot_difficulty_test.dart` (new) | Each level's numbers, their order, the scale to another round, the range text, the name and its 40-character limit, the name in the saved record, `Opponent.at`, `Matchup.rematch` |
+| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | Each level's counts, both ends reached, order, Excellent share, mistakes earn nothing; a squat depth changes only depths; means and combos of 4.5; the combo gap, only behind and on valid reps; a 60 s beginner; 고수 pinned to the old plans; `start` plays the level; `forMatchup`; the battle screen's source line |
+| ViewModel | `test/viewmodels/matching_viewmodel_test.dart` (updated) | A found bot takes the level and its name; none chosen is the expert; a person stays as they are |
+| View | `test/widgets/bot_difficulty_sheet_test.dart` (new) | Real fonts. Cards, order, the exercise, tapping each, outside and back; a screen reader hears each card and can choose it; one line at full size at 360 wide; no overflow at 320 and 360 wide up to text scale 2; pictures: more drawn with each level, stronger pink, the opponent's color, side lines, the star; the name on versus, the scoreboard (also at 1.3), the opponent window, the matching title, the leave dialog; the three levels and 12 letters (ordinary, capitals, the widest ASCII, Hangul) whole in the match card, on the real history tab and home, beside two and three digits, and one line for a level's name, an ordinary 12 letters, and the exercise and the date; the leave dialog's three lines for a 12-letter English name and 8 and 12 Hangul syllables at 360x640 and 640x360; no line of it breaking by itself at 360 wide, over 182 names; on a sideways phone under a status bar, both answers showing with no scrolling |
+| View | `test/widgets/exit_dialog_test.dart` (updated) | 와 and 과 at the syllable table's ends; " 님과" after English, digits, symbols, an emoji, a Hangul letter alone, below the syllables (David, Fred), and just past the last one; 상대와 for no name; the whole sentence; `gameMessage` equals the dialog's words; two lines for short names and every bot, three for long ones; digits' own width; a 12-letter English name and 8 and 12 Hangul syllables at 360x640 and 640x360, with the leave button reached; the icon on an upright screen, and none on a sideways one |
+| View | `test/screens/online_preparation_test.dart` (updated) | The online battle screen's leave dialog before the start, for four names, one on three lines, on the real screen |
+| View | `test/screens/battle_screen_test.dart`, `match_setup_screen_test.dart`, `versus_screen_test.dart` (updated) | One expected line each: an English name now reads "RepBot 님과의", "IronBot 님과의" |
+| View | `test/widgets/match_record_card_test.dart` (updated) | The opponent over the exercise and the date; the exercise alone without the date or a time; a name takes up to three lines, then ends in an ellipsis |
+| View | `test/screens/history_screen_test.dart`, `feedback_screen_test.dart` (updated) | The card's new lines, the same checks as before, with each row's exercise and date pinned |
+| View | `test/screens/home_screen_test.dart` (updated) | The button asks, then opens matching for that level; closing stays on home and does not load again; a level chosen after home has gone starts no search; the card's new lines; the exercise card's name found inside that card, as a match card with no date reads 푸쉬업 too |
+| View | `test/screens/matching_screen_test.dart` (updated) | The title names the level; the found bot's name |
+| View | `test/screens/result_screen_test.dart` (updated) | The result names the level; 다시 매칭 searches for the same battle |
+| App flow | `test/main_test.dart` (updated) | Home, sheet, 초보, matching, versus, the leave dialog's words, on the real routes |
+| Design | `test/design_tokens_test.dart` (updated) | The sheet joins the checked files |
+
+Acceptance criteria → tests:
+- **The button shows three levels; choosing starts matching; closing stays on home:** `home_screen_test.dart` "lower AI button asks how hard, then opens matching for it", "closing the difficulty sheet stays on home with no search"; `bot_difficulty_sheet_test.dart` "shows a card for each level: name, reps and one line", "tapping outside closes the sheet with no answer".
+- **The bot's reps, mistakes and Excellent share are the level's:** `bot_opponent_test.dart` "stays inside its counts, and in order inside the round", "reaches both ends of its counts", "its share of excellent reps is about its deep share", "plays the plan of its level".
+- **고수 plans exactly today's round:** `bot_opponent_test.dart` "seed 1 plans exactly the same round", "seed 7 plans exactly the same round", "and is what a plan or a bot with no level plays".
+- **Versus, the battle, the result and history name the level, and the record keeps it:** `main_test.dart` "start leads through matching to versus; cancelling goes home"; `bot_difficulty_sheet_test.dart` "fits on the versus screen", "fits on the scoreboard and in the opponent window", "AI 봇 · 초보 shows whole on the history tab", "AI 봇 · 초보 shows whole on home", and the same for 중수 and 고수; `result_screen_test.dart` "다시 매칭 replaces the result with a search for the same battle"; `bot_difficulty_test.dart` "goes into the saved record".
+- **A match card at 360 wide shows a level and a 12 letter nickname whole:** `bot_difficulty_sheet_test.dart` group "the opponent's name in a match card with the real fonts, at 360 wide"; `match_record_card_test.dart` "the opponent stands over the exercise and the date", "a name takes up to three lines, then ends in an ellipsis".
+- **A squat bot plays the same level at scaled depths:** `bot_opponent_test.dart` "at a squat pass depth, only its depths change", "a squat bot plays 초보 at the squat depth", and the same for 중수 and 고수.
+- **다시 매칭 keeps the difficulty:** `result_screen_test.dart` "다시 매칭 replaces the result with a search for the same battle"; `bot_difficulty_test.dart` "asks for the same exercise and the same level".
+- **Online does not change, but for the leave dialog's words and the match card's layout, which online records share:** nothing under `lib/services/online/` or `server/` is in the diff, and the online tests pass. The prompt said "온라인은 건드리지 않음". After being told that the 와/과 fix reaches online names, the user chose to apply it there, with the rule for names that are not Hangul, and approved the one line in `online_battle_screen.dart` (`exit_dialog_test.dart` group "the game message writes the name with"; `online_preparation_test.dart` group "back before the start names the opponent in the leave dialog").
+- **The leave dialog's rule:** `exit_dialog_test.dart` tests "와 after a Hangul syllable with no final letter", "과 after a Hangul syllable with a final letter", '" 님과" after anything that is not a Hangul syllable', "상대와 for no name", "stays on two lines for a short name", "stays on two lines for every bot", "gives a long English name a line of its own", "gives a long Hangul name a line of its own", "NightRunner7 fits without overflow (360x640)" and the same at 640x360, and for 8 and 12 Hangul syllables; `bot_difficulty_sheet_test.dart` "no line breaks by itself at 360 wide, over ASCII and Hangul names".
+- **Both answers show on a sideways phone:** `bot_difficulty_sheet_test.dart` "on a sideways phone with a status bar, both of NightRunner7's answers show with no scrolling", and the same for 8 and 12 Hangul syllables; `exit_dialog_test.dart` group "the exit icon".
+
+- **Manual check** (the user's Galaxy S947N, local `2962f7b`, reported 2026-11-02):
+  - Pass: the sheet's three pictures and words; a battle at each level, with the opponent named "AI 봇 · 초보/중수/고수"; 다시 매칭 searching the same level with no sheet; the upright leave dialog, "AI 봇 · 초보와의 대결이 취소되고 / 홈으로 돌아가요."; the sideways leave dialog in pose setup, both buttons showing with no scrolling.
+  - Fail, then fixed: the history tab and home's recent match card cut the name to "푸쉬업 · vs AI 봇 · ...", so the level did not show. The result screen showed it whole. Fixed in `a7cfbde`. The user rechecked the history tab on that code: fine (reported 2026-11-02).
+  - Not checked on a phone: a long online nickname in the sideways dialog or the card, as there was no opponent (the tests above cover both with the real fonts); home's card after the fix, since the user rechecked the history tab only (the same widget); the squat bot, which needs #17.
+  - W3b, Average at 120°: pass, by the rule. Apart from it, the user found a measuring problem in the judge and reported it to the judge's owner: outside W3b and W5.
+  - Still open from W3b: online on real devices.
+
+#### 2026-11-02 · code at commit `ae8f010` · step W5 `feat/bot_difficulty`: `main` merged, and #17's squat button connected
+#17 merged, with #25 and #26, so `main` `e975cba` is merged here (`19b62ed`). The squat bot takes its level from the matchup and its pass depth from the counter, and #17's squat demo button opens the same sheet (`12042d8`).
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `ae8f010`, without coverage. Coverage comes from the CI comment "Tests and coverage (GitHub Actions)" on PR #24, on `3010207`, the head before this push. [Run 41337121225](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41337121225), all jobs success. `ae8f010` is `3010207` plus the merge of `main` and the squat button, which these numbers do not measure.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 98.4% (254/258) | 11/02 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on PR #24, commit `3010207`, run 41337121225 |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (928/966) | 11/02 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (1958/2076) | 11/02 | same |
+| View | flutter_test (widget) | 75% | 92.7% (3892/4200) | 11/02 | same |
+| Total, with Other at 70.6% (125/177) | | | 93.2% (7157/7677) | 11/02 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (81 passed) | 11/02 | same, `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` 1264 passed, 0 failed, 9 skipped, the same 9 as above. `flutter analyze` found no issues. The last full run on this code, before its commit, has no missed tap in its full output; the run on `ae8f010` kept the tail, and `main_test.dart` and `home_screen_test.dart` show none. Server `pytest` was not run locally: W5 changes nothing under `server/`, and CI runs what `main` changed there.
+- **Coverage:** not collected on this PC. The numbers above come from the CI comment on PR #24, on `3010207`. All layers met their targets. Not in the coverage numbers: `test/screens/setup_screen_test.dart`, by CI's 240 s limit, as before.
+- **A false pass found at the merge:** #17 made home longer, and the full output warned of two missed taps. `a level chosen after home has gone starts no search` failed. `closing the difficulty sheet does not load home again` passed with its tap missed: the sheet never opened, so home never had a reason to reload. The tests now open the sheet through `openSheetWith`, which checks that it opened, and a missed tap fails in `home_screen_test.dart`. Removing the reload guard now fails that test.
+- **Mutations (temporary, each restored byte for byte):** 13 small code changes, all caught. The squat button back to the bare exercise (the crash); the squat button starting a push-up bot; the push-up button starting a squat bot; home reloading when a sheet closes; the sheet always saying push-up; the sheet always saying squat; the search always asking for push-ups; #17's side of the conflict, a bot with no level; the bot at 1.1 whatever the counter; `forMatchup` ignoring the depth; `forMatchup` ignoring the level; the bot not scaling its depths; the online route casting to a bot request.
+- **Shortfalls:** none in these numbers. The merged code is not in them; the push runs CI on it.
+- **Findings, not W5's:**
+  - Reported by the user, who tells 진영 and 상우; #17's code, not fixed in W5: on the phone, the user's squat reps never read Excellent, however deep. `squat_demo_judge.dart` L93 sends a valid rep with no `maxDepth`, and `battle_rules.dart` L79 grades a rep with no depth as Good. The squat bot sends depths and can earn Excellent, so its score can run ahead of the same count. `SquatRepJudge` does send `maxDepth`, but the battle does not use it.
+  - From the code (review round 36), not seen on the phone; #17's, not fixed in W5: a squat bot battle saves nothing (`battle_viewmodel.dart` L460): no history row, home card or best record, no feedback button or grade row. So a level's name reaches no record for squat.
+  - From the code (review round 36), not seen on the phone, not fixed in W5: an older line that #17's squat path now reaches, "휴대폰을 머리 앞 약 1m 바닥에" (`matching_screen.dart` L477).
+- **Not covered by a test:** a squat battle's no-save, and `battle_viewmodel.dart` L225 grading at a depth other than the push-up's: `battle_viewmodel_test.dart` is outside W5's files. The phone check below saw the reps count and the bot's pace; it reported nothing on records or on the bot's grades. The source line in `battle_screen.dart` is pinned by a test, since a widget test cannot reach it without the real camera.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | `forMatchup` takes the depth it is given and the matchup's level; the squat bot at `SquatDemoJudge`'s depth, which equals `judgeFor`'s; each level scoring the same in a real `BattleGame` at the squat depth; the source line pinning `passDepth: counter.passDepth` |
+| View | `test/screens/home_screen_test.dart` (updated) | The squat demo button asks, then opens matching for squat at that level; closing its sheet stays on home; the push-up sheet's words; every test that opens a sheet checks that it opened; a missed tap fails |
+| App flow | `test/main_test.dart` (updated) | On the real routes: the squat button, its sheet, matching, versus, with a squat matchup at the chosen level; the online route takes the exercise, and no argument means push-up |
+
+Acceptance criteria → tests:
+- **Home's squat demo button opens the same sheet; choosing starts a squat search at that level; closing stays on home:** `home_screen_test.dart` "squat demo asks how hard, then opens matching for squat", "closing the squat demo sheet stays on home with no search"; `main_test.dart` "the squat button leads through its sheet to a squat bot at that level".
+- **The online squat button is not broken by the bot's route argument:** `main_test.dart` "the online route takes the exercise, not a bot request"; `home_screen_test.dart` "online squat opens the live lobby with squat selected".
+- **A squat bot plays the same level at the counter's depth:** `bot_opponent_test.dart` "a squat bot plays 초보 at the squat depth", "초보 scores the same in a game at the squat depth", and the same for 중수 and 고수; "battle_screen.dart gives forMatchup the counter's depth".
+- **The other criteria:** as in the entry above; those tests pass on `main`'s code too.
+
+- **Manual check** (the user's Galaxy S947N, a build of this code from the working folder, reported 2026-11-02):
+  - Pass: the squat demo button's sheet; closing it stays on home; choosing a level leads to matching and the squat setup; squat reps count, and the bot plays at its level; 다시 매칭 searches the same level with no sheet; "AI와 1v1 대결" opens the push-up sheet; the online squat button opens the lobby.
+  - Found: the user's squat reps never read Excellent (above).
+  - Not checked on a phone: an online squat battle, which needs an opponent.
+  - The match card's two lines: PM OK (11-02), as the user reports (the PM's merge order table).
+- **CI on the head that merged, `30bccb9`:** [run 41391728513](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41391728513), all jobs success, 1264 passed, 9 skipped. Model 97.3% (253/260), ViewModel 96.1% (931/969), Service 93.9% (2174/2315), View 90.8% (3937/4335), total 92.1% (7421/8057), Other 70.8% (126/178), server 82 passed, 96%. All targets met. `setup_screen_test` left out by the 240 s limit, as before.
+
+#### 2026-11-02 · code at commit `784bc00` · step W6 `feat/score_history` (team order #13): game points in the records, and the squat guide text
+Home's recent matches, the history tab and the personal best counted valid reps, so a battle won on points could read as a win with fewer reps. `Match` now keeps both game scores, bot uploads and online results send them, `/users/me` adds each exercise's best, and the card shows points. A record with no points reads "3회 : 5회", and a best with nothing to show reads "—". Squat bot battles are now saved. The squat search screen says where the phone goes for a squat.
+
+I ran the commands from the Plan on Windows, on `784bc00`, with the temporary demo patch reverted, without coverage: the client's in `gymrats_app/`, and Django's in `server/`, in a scratch venv on Python 3.12 with the pinned requirements. Coverage for the client comes from the CI comment on this step's PR.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 97.4% (266/273) | 11/02 | CI comment "Tests and coverage (GitHub Actions)" on PR #28, commit `d04b8c1`, [run 41412433404](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/41412433404) |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (931/969) | 11/02 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (2219/2354) | 11/02 | same CI comment |
+| View | flutter_test (widget) | 75% | 90.8% (3949/4347) | 11/02 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed) | 11/02 | `pytest --cov=accounts --cov=matches --cov=gymrats`, local |
+
+- **Tests:** `flutter test` 1389 passed, 0 failed, 9 skipped, the same 9 as above. It includes the Dart battle server's tests. No missed tap in the full output. `flutter analyze` found no issues, and `dart analyze lib bin` in `server/` too. `makemigrations --check` found no changes.
+- **Coverage:** not collected on this PC for the client. From the CI comment above (all jobs success, 1389 passed, 9 skipped): total 92.2% (7491/8121), Other 70.8% (126/178); server 101 passed, 96%. `setup_screen_test` was left out by CI's 240 s limit. `d04b8c1` adds only course notes to `784bc00`.
+- **Mutations (temporary, each restored; run on the commits before `784bc00`):** the lobby's search hard-coded to push-up fails `searching for a squat says where the phone goes for a squat`; `me["game_score"] or None` in `internal.py` fails `test_zero_and_the_most_points_are_kept`; the name's `maxLines: 1` fails the largest-score tests; the squat skip put back fails `a squat bot battle is saved too, with no form report`; `bestOf` without its empty check fails `reads a dash for <case>, not 0점 or 0회`; the squat code sent as `push_up` fails `saves a squat battle as squat, with its scores and no report`.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Accepted by the user, in answer to questions:**
+  - At 360 wide, beside "12회 : 12회" or three-digit points, the date takes two lines and a 12 letter nickname wraps after "vs". Nothing is cut, and a bot's level stays on one line. `bot_difficulty_sheet_test.dart`'s card test pinned one line and now allows two.
+  - The feedback line stays one line, as Requirements 5.7 says, so `바닥 푸시업 아님` ends in "…" from 10회 beside three-digit points at 360. Every other title fits, with 12회.
+- **Not covered by a test:**
+  - `개인 최고 150점` with the real fonts: by the font's widths it has about 2 of room, and the next PR takes it off home. A wrap would cut nothing.
+  - A real round's score reaching a real server: the app's address is a constant and Android blocks plain HTTP, so points cannot reach a phone before the redeploy. Round 2 below.
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Server | `server/tests/test_matches.py` (updated) | Points beside the reps, with the game's outcome, in POST, GET and `last_match`; an old app's upload; 0 points; both or neither, the range, 100000 accepted; a retry keeps the first points; each exercise's best, from different battles, with no points, only my own; none for a new user |
+| Server | `server/tests/test_results.py` (updated) | Each row with its player's points and the other's; online points in the best; an older battle server; one player's points alone; 0 and 100000; out of range; a forfeit keeps its points; points an app posted are overwritten, or cleared by an older battle server |
+| Service | `test/services/online/battle_result_store_test.dart` (updated) | The result posted to Django has `game_score`, for time up and KO |
+| Model | `test/models/match_record_test.dart` (updated) | `hasScores` only with both, and 0 counts |
+| Model | `test/models/battle_result_test.dart` (updated) | The record keeps the scores beside the reps; a result built without a game keeps none |
+| Model | `test/models/user_profile_test.dart` (new) | Each exercise's own best; none for one not played; `best_reps` alone stands for push-ups; points only above 0; no best before the first battle, or with no points and no reps |
+| Service | `test/services/user/server_user_repository_test.dart` (updated) | Reads `bests`; none from an older server; no best for a new user on either server; an unknown exercise is a server error; sends both scores, or neither with one; a squat battle goes up as squat; reads a row's scores, a null, or none; scores survive a refused report and a retry |
+| Service | `test/services/user/in_memory_user_repository_test.dart` (updated) | A saved battle keeps its scores; the best per exercise; none for a new user or for one not played |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | The saved record has the result's points and outcome; a squat bot battle is saved with its points and no form report |
+| View | `test/widgets/match_record_card_test.dart` (updated) | Points, not reps; "3회" with its small unit; one score alone shows reps. Real fonts on the real history tab and home at 360: names beside 135 : 220 and 12회 : 18회, with the stored outcome; 999 : 999, a KO at 999 : 899, and 2000 : 2000; every feedback title |
+| View | `test/widgets/bot_difficulty_sheet_test.dart` (updated) | A level's name on one line; a 12 letter name and the date within two |
+| View | `test/screens/home_screen_test.dart` (updated) | The best in points, in reps, reps at 0 points, none from another exercise; a dash for a new user and for no points and no reps, never 0점 or 0회; reps cards read "24회" |
+| View | `test/screens/matching_screen_test.dart` (updated) | The squat text and not the push-up one; four lines with the real fonts at 360x640, 360x780, 412x915 |
+| View | `test/screens/online_lobby_screen_test.dart` (updated) | The online search screen's text, for squat and push-up |
+| App flow | `test/main_test.dart` (updated) | After a game's result, home shows its points, its best and the stored outcome, not its reps |
+
+Acceptance criteria → tests:
+- **A bot battle of 150 : 90 with 7 and 9 reps shows on home and history, and the row keeps both:** `main_test.dart` "after a game's result, home shows its points, not its reps"; `match_record_card_test.dart` "a battle with game scores shows them, not its reps", "<name> stays whole beside 135 : 220 on <screen>"; `battle_viewmodel_test.dart` "a battle that runs its full time is saved once"; `test_upload_keeps_the_points_beside_the_reps`.
+- **A record with no points reads "3회 : 5회":** `match_record_card_test.dart` "a battle with no game scores shows its reps with a unit".
+- **An old app's upload, one score alone, a retry:** `test_old_app_upload_has_no_points`, `test_points_come_together_and_in_range`, `test_retried_upload_keeps_the_first_points`.
+- **A battle server result with or without `game_score`:** `test_each_row_has_its_players_points_and_the_others`, `test_result_from_an_older_battle_server_saves_without_points`; `battle_result_store_test.dart` "the final result is stored once with names and outcomes", "a KO is stored with its reason and the game score".
+- **Each exercise has its own best:** `test_each_exercise_has_its_own_best`, `test_battles_with_no_points_still_count_their_reps`; `user_profile_test.dart` "each exercise has its own best"; `home_screen_test.dart` group "the personal best".
+- **A user who has not played, or a battle with no points and no reps, reads "—":** `home_screen_test.dart` "reads a dash for <case>, not 0점 or 0회"; `user_profile_test.dart` "before the first battle there is no best", "no points and no reps are no best, from either kind of server"; `server_user_repository_test.dart` "a new user on the new server has no best either".
+- **A finished squat bot battle is saved:** `battle_viewmodel_test.dart` "a squat bot battle is saved too, with no form report"; `server_user_repository_test.dart` "saves a squat battle as squat, with its scores and no report".
+- **The new app on an old server:** `server_user_repository_test.dart` "a server with no bests leaves best_reps for push-ups", "reads a battle's game scores, and none from an old row".
+- **Three-digit points at 360, nothing cut:** `match_record_card_test.dart` "<mine> : <theirs> and <name> stay whole on <screen>", ""<title>" stays whole beside 135 : 220 on <screen>", with the exception above.
+- **The search screen's text:** `matching_screen_test.dart` "the guide card tells where the phone goes for a squat", "the squat guide keeps its four lines at <size> with the real fonts", "shows the chip, title, guide card and the user's initial"; `online_lobby_screen_test.dart` "searching for a squat says where the phone goes for a squat", "live flow uses AI radar then real-player VS before camera setup".
+
+- **Manual check, round 1** (the user's Galaxy S947N, a build of this code from the working folder, reported 2026-11-02):
+  - Real app, on the team server before its redeploy, all pass as the user reports: the squat search text is not cut; with the phone at 2~3 m the squat setup passes; push-up's text is unchanged; old records read like "1회 : 7회"; no error on home, the history tab or a push-up bot battle.
+  - A squat bot battle on that server left a row, as the user reports, so that server takes `squat`. Until the redeploy that row shows in reps and can raise the push-up best, as an old server's `best_reps` does not tell exercises apart.
+  - Demo app (`auth_history_demo`, in memory, with temporary sample scores that were never committed), all pass as the user reports: home's card reads "개인 최고 240점"; "164 : 206", "90 : 100" and "22회 : 19회" are not cut; the date takes two lines, as decided; a squat bot battle leaves a points card reading "피드백 없음", and tapping it goes nowhere.
+  - Found, in the demo's data, not in the app: "90 : 100" and "164 : 206" read 승. The temporary scores came with no stored outcome, so those samples went by their reps. A real battle always stores the game's outcome: `battle_viewmodel.dart` L432 for a bot, `battle_server.dart` L587-589 online, both by points, then reps. `a battle that runs its full time is saved once` and `test_upload_keeps_the_points_beside_the_reps` now pin it, and `at time up the game score decides, not the reps` already does online. By the rules, a card can still read so: a forfeit or a disconnect loses whatever the points, and equal points go by reps.
+- **Manual check, round 2:** not yet. After the PM's redeploy: a bot battle's card and best, and an online battle's row on both phones.
+
+#### 2026-11-03 · code at commit `f9cecbb` · step W6b `feat/home_layout` (team order #13b): home leads with the two battle modes
+Home had a push-up card with the personal best and four start buttons on one page, two of them lime. It now has two cards, 온라인 1v1 and AI 1v1, and no `AccentButton` of its own. A card opens a sheet for the exercise, with each exercise's drawing and best. Online then goes to the lobby; AI goes through W5's level sheet, then matching. The squat has a new drawing, in code.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on the code at `ceb51c0` and again on `f9cecbb`, without coverage. Coverage comes from the CI comment on this step's PR. The branch started from `feat/score_history` `d04b8c1`, as #28 was not merged then. `f9cecbb` merges `origin/main` `8b6ffad`, #28's merge, which changes no file here. `server/` does not change in this step's commits.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | see the CI comment on the W6b PR | 11/03 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | see the CI comment on the W6b PR | 11/03 | same |
+| Service | flutter_test, MockClient, fakes | 85% | see the CI comment on the W6b PR | 11/03 | same |
+| View | flutter_test (widget) | 75% | see the CI comment on the W6b PR | 11/03 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: no change in this step | 11/03 | – |
+
+- **Tests:** `flutter test` 1456 passed, 0 failed, 9 skipped, on both commits, the same 9 as above. No missed tap in the full output. `flutter analyze` found no issues. `ownership_guard.py --check-diff` on `f9cecbb`: ok, 14 files.
+- **Coverage:** not collected on this PC.
+- **Mutations (temporary, each restored; run before the commits):**
+  - `_inSheet = false` deleted after the online sheet fails `after the online lobby` and `after a page, once the online sheet was closed`.
+  - The reset moved below the early return after the AI sheets fails `after a page, once the AI exercise sheet was closed` and `after a page, once the difficulty sheet was closed`.
+  - The two cards' pictures swapped fails `has no second main button, and no exercise or best of its own`.
+  - The user's figure not mirrored fails `online pits the user in lime against a person in pink` and `AI pits the user, facing it, against RepBot in pink`.
+  - RepBot's floor at 36 fails `AI pits the user, facing it, against RepBot in pink`.
+  - The online sheet's `!mounted` check removed fails `an exercise chosen online after home has gone opens no lobby`.
+  - The squat's ankle and toe swapped fails `the squat stands on the same floor, in the same lines`.
+  - RepBot's body 6 above its floor fails `AI pits the user, facing it, against RepBot in pink`.
+  - The strut on the best's line removed: at first no test failed. A throwaway sweep of 4 widths, 8 text scales and 4 bests found 38 of 128 overflowing without it and 0 with it, by up to 20 px. `does not overflow at <width> wide, text scale <scale>, with <best>` now fails on it, 11 of its 24 cases.
+- **Shortfalls:** the client's numbers are not in yet.
+- **Accepted by the agent, not asked:** the sheet reads the best once, when it opens, so during a reload after a battle it can show the old best until it is opened again.
+- **Not covered by a test:** the ripple over the card's band: `Ink` paints on the card's `Material`, and the user's phone check saw it (below).
+
+Test cases added or changed in this step:
+
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/exercise_sheet_test.dart` (new) | Both exercises, each with its drawing, name and best, in that order; tapping or a screen reader chooses each; closing answers nothing; each exercise's own best, reps at 0 points, an old server's reps, a dash, never 0점 or 0회; the number's font and weight; the drawings' floor, lines and color, with the squat's leg; real fonts at 360x780 and 360x640 with 150, 999, 2000 and 32회; no overflow at 320 and 360 wide, text scale 1 to 2, with no best, 150 and 100000 |
+| View | `test/widgets/battle_mode_card_test.dart` (new) | Picture over title over line; a tap anywhere; same size, at least 48 tall; the main card's lime edge; a screen reader's sentence and tap; online's lime user against a pink person, AI's against a pink RepBot, facing each other; "VS" level on both; RepBot on the figure's floor; real fonts on the real home at 360, every text at full size, and at text scale 2 |
+| View | `test/screens/home_screen_test.dart` (updated) | Two modes above the recent battles, each with its own picture; no second main button, no exercise or best of its own; the online card to the lobby for each exercise, and it never asks how hard; the AI card through both sheets to matching for each exercise; closing any sheet stays on home with no reload; an answer after home has gone does nothing; each exercise's best on the sheet, a dash for a new user; home reloads after the lobby, and after a page once each sheet was closed |
+| View | `test/screens/online_lobby_screen_test.dart`, `test/screens/profile_screen_test.dart` (updated) | Reach the lobby through the card and the sheet instead of a button |
+| Design | `test/design_tokens_test.dart` (updated) | The two new widgets are on the list |
+| App flow | `test/main_test.dart` (updated) | On the real routes: the online card to a lobby for each exercise; the AI card through both sheets to a squat bot at that level; closing each sheet stays on home |
+
+Acceptance criteria → tests:
+- **Home has one online card, one AI card, no second main button, and the recent matches:** `home_screen_test.dart` "shows the greeting, the two modes and the recent battles", "has no second main button, and no exercise or best of its own", "the two modes stand side by side above the recent battles".
+- **The online card opens the lobby for the chosen exercise; closing the sheet stays on home:** `main_test.dart` "the online card leads through its sheet to a lobby for <name>", "closing a sheet on the real app stays on home"; `home_screen_test.dart` "the online card asks for the exercise, then opens the lobby for <name>", "the online card never asks how hard", "closing the online sheet stays on home with no lobby".
+- **The AI card starts matching for both choices; closing either sheet stays on home:** `main_test.dart` "the AI card leads through both sheets to a squat bot at that level", "closing a sheet on the real app stays on home"; `home_screen_test.dart` "the AI card asks for the exercise and how hard, then opens matching for <name>", "closing the AI exercise sheet stays on home with no search", "closing the difficulty sheet stays on home with no search".
+- **Each exercise shows its own best:** `exercise_sheet_test.dart` "each exercise shows its own"; `home_screen_test.dart` "the exercise sheet shows each exercise's own best".
+- **The cards' and the sheet's text fits at 360 with real fonts:** `battle_mode_card_test.dart` "every text fits at its full size on home at 360 wide"; `exercise_sheet_test.dart` "<label> fits at full size at <size>", "does not overflow at <width> wide, text scale <scale>, with <best>".
+- **Home still reloads when it shows again (not a listed criterion; the sheets' guard could have broken it):** `home_screen_test.dart` group "coming back to home loads it again", "closing any sheet does not load home again".
+
+- **Manual check, round 1** (the user's Galaxy S947N, a build from the working folder, reported 2026-11-03): items 1 to 9 of the list given to the user, all pass as the user reports:
+  1. Home: the online card with its lime edge beside the AI card, the four old buttons gone, no text cut.
+  2. "전체 기록 ›": the arrow does not show as a box.
+  3. The pictures: two people facing each other online; the user and a pink RepBot on one floor line for AI.
+  4. A tap's ripple shows over the picture's band too.
+  5. Online: card, exercise sheet, then at once the lobby; back goes home; for push-up and squat.
+  6. AI: card, exercise sheet, then the level sheet with no break, then matching; for push-up and squat.
+  7. Closing each of the three sheets, by a tap outside, a drag down or back, stays on home with no loading.
+  8. The squat's drawing reads as a squat. On a server before its redeploy, "N회" for push-up's best and "—" for squat's are normal, as the list said.
+  9. After a battle, home's recent matches update.
+- **Manual check, round 2:** not yet. Item 10, the sheet's best in points ("N점"), was first listed for the demo app. The user moved it to this round, to be seen on the real server after the PM's redeploy.

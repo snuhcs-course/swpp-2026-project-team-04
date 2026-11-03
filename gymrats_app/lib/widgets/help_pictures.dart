@@ -164,7 +164,8 @@ class HelpScorePicture extends StatelessWidget {
   }
 }
 
-/// "+10" over "Good" on a box a step lighter than the card.
+/// "+10" over "Good" on a box a step lighter than the card. Both shrink rather
+/// than break on a large system font: four tiles share the line.
 class _ScoreTile extends StatelessWidget {
   const _ScoreTile({required this.points, required this.label});
 
@@ -183,14 +184,30 @@ class _ScoreTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
         child: Column(
           children: [
-            Text(
-              points,
-              style: text.titleLarge?.copyWith(color: AppColors.accent),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  points,
+                  maxLines: 1,
+                  style: text.titleLarge?.copyWith(color: AppColors.accent),
+                ),
+              ),
             ),
             const SizedBox(height: AppSpacing.s4),
-            Text(
-              label,
-              style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: text.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

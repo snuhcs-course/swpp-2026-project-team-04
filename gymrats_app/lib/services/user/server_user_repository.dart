@@ -42,6 +42,7 @@ class ServerUserRepository implements UserRepository {
       return UserProfile(
         name: json['nickname']! as String,
         bestReps: json['best_reps'] as int?,
+        bests: _bests(json['bests'] as Map<String, Object?>?),
         lastMatch: last == null ? null : _match(last as Map<String, Object?>),
         unsentMatches: _queuedForMe.where((q) => q.record != null).length,
       );
@@ -182,6 +183,10 @@ class ServerUserRepository implements UserRepository {
     'opponent_name': record.opponentName,
     'my_reps': record.myReps,
     'opponent_reps': record.opponentReps,
+    if (record.hasScores) ...{
+      'my_score': record.myScore,
+      'opponent_score': record.opponentScore,
+    },
     'played_at': (record.playedAt ?? DateTime.now()).toUtc().toIso8601String(),
     if (record.decidedOutcome case final outcome?)
       'outcome': _outcomeCode(outcome),
@@ -207,6 +212,8 @@ class ServerUserRepository implements UserRepository {
       opponentName: json['opponent_name']! as String,
       myReps: json['my_reps']! as int,
       opponentReps: json['opponent_reps']! as int,
+      myScore: json['my_score'] as int?,
+      opponentScore: json['opponent_score'] as int?,
       playedAt: DateTime.parse(json['played_at']! as String).toLocal(),
       decidedOutcome: _outcome(json['outcome'] as String?),
       feedbackSummary: summary == null
@@ -214,6 +221,16 @@ class ServerUserRepository implements UserRepository {
           : FeedbackSummary.fromJson((summary as Map).cast<String, Object?>()),
     );
   }
+
+  /// Each exercise's best, e.g. `{"push_up": {"score": 150, "reps": 14}}`;
+  /// empty for a server that does not send them yet.
+  static Map<ExerciseType, PersonalBest> _bests(Map<String, Object?>? json) => {
+    for (final MapEntry(:key, :value) in (json ?? const {}).entries)
+      _exercise(key): PersonalBest(
+        reps: (value! as Map)['reps']! as int,
+        score: (value as Map)['score'] as int?,
+      ),
+  };
 
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   /// Null for a server that does not send it yet; the reps decide then.

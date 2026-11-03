@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
+import '../models/bot_difficulty.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../services/matching/matchmaker.dart';
@@ -24,10 +25,14 @@ class MatchingScreen extends StatefulWidget {
   const MatchingScreen({
     super.key,
     required this.exercise,
+    this.difficulty = BotDifficulty.expert,
     this.createViewModel,
   });
 
   final ExerciseType exercise;
+
+  /// How hard the bot will play, as chosen before the search.
+  final BotDifficulty difficulty;
 
   /// Builds the view model; replaces the default one in tests.
   final MatchingViewModel Function()? createViewModel;
@@ -59,6 +64,7 @@ class _MatchingScreenState extends State<MatchingScreen>
           matchmaker: context.read<Matchmaker>(),
           repository: context.read<UserRepository>(),
           exercise: widget.exercise,
+          difficulty: widget.difficulty,
         );
     _viewModel.addListener(_onViewModelChanged);
     _radar = AnimationController(vsync: this, duration: _radarPeriod)..repeat();
@@ -130,7 +136,7 @@ class _MatchingScreenState extends State<MatchingScreen>
             child: SafeArea(
               child: BattleSearchView(
                 exercise: widget.exercise,
-                title: 'AI 상대를 찾는 중',
+                title: '${widget.difficulty.label} AI 상대를 찾는 중',
                 searchArea: _SearchArea(radar: _radar),
                 onCancel: _leave,
               ),
@@ -175,7 +181,7 @@ class BattleSearchView extends StatelessWidget {
           const SizedBox(height: 12),
           Expanded(child: searchArea),
           const SizedBox(height: 24),
-          const _GuideCard(),
+          _GuideCard(exercise: exercise),
           const SizedBox(height: 16),
           _CancelButton(onPressed: onCancel),
         ],
@@ -422,9 +428,11 @@ class _SearchFailed extends StatelessWidget {
   }
 }
 
-/// What to do while waiting: set up the phone.
+/// What to do while waiting: set up the phone for [exercise].
 class _GuideCard extends StatelessWidget {
-  const _GuideCard();
+  const _GuideCard({required this.exercise});
+
+  final ExerciseType exercise;
 
   @override
   Widget build(BuildContext context) {
@@ -468,7 +476,17 @@ class _GuideCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.',
+                    switch (exercise) {
+                      ExerciseType.pushUp => '휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.',
+                      // squat-judge-design.md section 3, the placement. Line
+                      // breaks set by hand: Flutter may break Korean inside a
+                      // word.
+                      ExerciseType.squat =>
+                        '휴대폰을 세로로 세워 내 앞 2~3m에\n'
+                            '두세요. 의자나 선반 위면 더 좋아요.\n'
+                            '머리부터 발목까지\n'
+                            '화면에 들어와야 해요.',
+                    },
                     style: text.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
                     ),

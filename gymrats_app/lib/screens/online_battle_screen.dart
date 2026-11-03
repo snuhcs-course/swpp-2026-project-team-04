@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/form_report.dart';
+import '../models/game_score.dart';
 import '../models/pose_frame.dart';
 import '../models/reject_reason_korean.dart';
 import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
+import '../services/game/rep_grade.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
@@ -145,7 +147,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   void initState() {
     super.initState();
     _setup = SetupChecker(
-      exercise: ExerciseType.pushUp,
+      exercise: session.exercise,
       config: widget.setupConfig,
     );
     WidgetsBinding.instance.addObserver(this);
@@ -154,7 +156,10 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     // must not start/finish a different round during camera preparation.
     _counter =
         widget.createCounter?.call() ??
-        RepCounterViewModel(roundLength: const Duration(days: 1));
+        RepCounterViewModel(
+          roundLength: const Duration(days: 1),
+          exercise: session.exercise,
+        );
     _counter.addListener(_onCounter);
     session.addListener(_onSession);
     _reps = _counter.reps.listen((rep) {
@@ -177,7 +182,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       unawaited(_counter.finish(stoppedByUser: session.terminal));
     }
     final reason = session.result?['reason'];
-    if (!_reportCreated &&
+    if (session.exercise == ExerciseType.pushUp &&
+        !_reportCreated &&
         _roundStarted &&
         session.phase == OnlinePhase.finished &&
         (reason == 'time_up' || reason == 'ko')) {
@@ -280,16 +286,38 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   /// What the user's latest rep gets on the line under the health bar.
   String _lastRepWords(RepEvent rep) {
-    if (!rep.valid) return rep.reason?.koreanMessage ?? '';
     final rules = session.rules;
-    if (rules == null) return '+1';
     final score = session.myLastScore;
+    if (!rep.valid) {
+      final reason = rep.reason?.koreanMessage ?? '';
+      // The latest score may be an earlier rep's: this one must have earned it.
+      return rules != null &&
+              rules.earnsAverage(rep) &&
+              score?.grade == GameGrade.average
+          ? '$reason · +${score!.points} ${score.grade.label.toUpperCase()}'
+          : reason;
+    }
+    if (rules == null) return '+1';
     if (score == null) return '';
     return [
       '+${score.points} ${score.grade.label.toUpperCase()}',
       if (score.combo > 1) '콤보 ${score.combo}',
       if (score.fever) '점수 ${rules.feverMultiplier}배',
     ].join(' · ');
+  }
+
+  /// How many of the user's reps got each grade, for the result. It counts
+  /// this phone's records, so it can differ from the score in rare cases: a
+  /// rep closed in the round's last moment reaches no server, and an app
+  /// restarted mid-round no longer has its earlier reps.
+  String _gradeWords(BattleRules rules) {
+    final counts = GameGradeCounts.ofReps(
+      _counter.repRecords,
+      passDepth: _counter.passDepth,
+      rules: rules,
+    );
+    return 'Excellent ${counts.excellent} · Good ${counts.good} · '
+        'Average ${counts.average}';
   }
 
   Future<void> _exit() async {
@@ -304,7 +332,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       builder: (context) => ExitDialog(
         title: '게임에서 나갈까요?',
         message: session.startAtMs == null
-            ? '${session.opponent!.name}과의 대결이 취소되고\n홈으로 돌아가요.'
+            ? ExitDialog.gameMessage(session.opponent!.name)
             : '시작 후 나가면 서버 규칙에 따라\n기권 처리됩니다.',
         leaveLabel: '게임 나가기',
       ),
@@ -458,6 +486,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                     child: OpponentAvatarPanel(
                       name: opponent.name,
                       model: opponent.avatar,
+                      exercise: session.exercise,
                       frame: session.opponentFrame,
                       connected: session.connected && session.opponentConnected,
                     ),
@@ -566,6 +595,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                                     ' · 유효 ${session.myReps} : ${session.opponentReps}',
                                     textAlign: TextAlign.center,
                                   ),
+                                  const SizedBox(height: AppSpacing.s4),
+                                  Text(
+                                    _gradeWords(rules),
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ],
                                 const SizedBox(height: 16),
                                 if (_formReport case final report?)
@@ -610,7 +644,14 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                               ),
                             )
                           : PoseAvatarToggleView(
-                              chestSnapshot: counter.snapshot,
+                              chestSnapshot:
+                                  session.exercise == ExerciseType.pushUp
+                                  ? counter.snapshot
+                                  : null,
+                              squatSnapshot:
+                                  session.exercise == ExerciseType.squat
+                                  ? counter.snapshot
+                                  : null,
                               initialModel: session.avatar,
                               allowAvatarSelection: false,
                               controller: _counter.cameraController,

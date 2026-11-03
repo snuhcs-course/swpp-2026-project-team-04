@@ -7,6 +7,7 @@ import 'pose_avatar_view.dart';
 import 'pose_camera_view.dart';
 import '../services/pose/rep_judge.dart';
 import 'chest_height_overlay.dart';
+import 'squat_height_overlay.dart';
 
 /// Changes presentation only. Never starts/stops the camera or the detector.
 class PoseAvatarToggleView extends StatefulWidget {
@@ -16,23 +17,27 @@ class PoseAvatarToggleView extends StatefulWidget {
     this.frame,
     this.mirror = false,
     this.showLandmarks = false,
+    this.cameraFit = BoxFit.cover,
     this.isVisible,
     this.cameraOverlay,
     this.avatarBuilder,
     this.initialModel = AvatarModel.astronaut,
     this.allowAvatarSelection = true,
     this.chestSnapshot,
+    this.squatSnapshot,
   });
 
   final CameraController? controller;
   final PoseFrame? frame;
   final bool mirror;
   final bool showLandmarks;
+  final BoxFit cameraFit;
   final bool Function(Keypoint keypoint, PoseFrame frame)? isVisible;
   final Widget? cameraOverlay;
   final AvatarModel initialModel;
   final bool allowAvatarSelection;
   final JudgeSnapshot? chestSnapshot;
+  final JudgeSnapshot? squatSnapshot;
 
   /// Allows widget tests to exercise the toggle without a platform WebView.
   final Widget Function(PoseFrame? frame, bool mirror, AvatarModel model)?
@@ -102,6 +107,7 @@ class _PoseAvatarToggleViewState extends State<PoseAvatarToggleView> {
           frame: widget.frame,
           mirror: widget.mirror,
           showLandmarks: widget.showLandmarks,
+          fit: widget.cameraFit,
           isVisible: widget.isVisible,
         ),
         ?widget.cameraOverlay,
@@ -112,6 +118,11 @@ class _PoseAvatarToggleViewState extends State<PoseAvatarToggleView> {
           snapshot: snapshot,
           mirror: widget.mirror,
           drawGuide: !_avatar,
+        ),
+      if (!_avatar && widget.squatSnapshot != null)
+        SquatHeightOverlay(
+          frame: widget.frame,
+          snapshot: widget.squatSnapshot!,
         ),
       Align(
         alignment: Alignment.centerRight,

@@ -192,6 +192,8 @@ class _GymRatsAppState extends State<GymRatsApp> {
             settings: settings,
             builder: (_) => OnlineLobbyScreen(
               auth: widget.authRepository,
+              exercise:
+                  (settings.arguments as ExerciseType?) ?? ExerciseType.pushUp,
               onAuthenticationFailed: _auth.logOut,
               avatarStore: _avatars,
               createSession: widget.createOnlineSession,
@@ -224,8 +226,13 @@ class _GymRatsAppState extends State<GymRatsApp> {
           ),
           GymRatsApp.matchingRoute => MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) =>
-                MatchingScreen(exercise: settings.arguments! as ExerciseType),
+            builder: (_) {
+              final request = settings.arguments! as BotMatchRequest;
+              return MatchingScreen(
+                exercise: request.exercise,
+                difficulty: request.difficulty,
+              );
+            },
           ),
           GymRatsApp.versusRoute => MaterialPageRoute<void>(
             settings: settings,

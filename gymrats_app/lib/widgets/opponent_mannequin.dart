@@ -4,6 +4,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../models/exercise_type.dart';
 
 /// The opponent as a glossy side-view mannequin doing push-ups on a pink
 /// stage, as in the battle design.
@@ -11,10 +12,15 @@ import '../theme/app_theme.dart';
 /// It dips down and back up once each time [moves] goes up. Give it a box
 /// of [designSize]'s shape.
 class OpponentMannequin extends StatefulWidget {
-  const OpponentMannequin({super.key, required this.moves});
+  const OpponentMannequin({
+    super.key,
+    required this.moves,
+    this.exercise = ExerciseType.pushUp,
+  });
 
   /// How many reps the opponent has made so far, valid or not.
   final int moves;
+  final ExerciseType exercise;
 
   /// The design's canvas; the painters scale it to their size.
   static const designSize = Size(142, 128);
@@ -70,7 +76,9 @@ class _OpponentMannequinState extends State<OpponentMannequin>
       fit: StackFit.expand,
       children: [
         const RepaintBoundary(child: CustomPaint(painter: _StagePainter())),
-        RepaintBoundary(child: CustomPaint(painter: _FigurePainter(_depth))),
+        RepaintBoundary(
+          child: CustomPaint(painter: _FigurePainter(_depth, widget.exercise)),
+        ),
       ],
     );
   }
@@ -209,10 +217,74 @@ class _Segment {
 /// The figure: a pink glow, gray body parts with a highlight, the head, and
 /// the visor. It lerps between the design's two poses.
 class _FigurePainter extends CustomPainter {
-  _FigurePainter(this.depth) : super(repaint: depth);
+  _FigurePainter(this.depth, this.exercise) : super(repaint: depth);
 
   /// 0 with the arms extended, 1 at the bottom.
   final Animation<double> depth;
+  final ExerciseType exercise;
+
+  static const _squatSegments = [
+    _Segment(
+      (Offset(65, 72), Offset(62, 103)),
+      (Offset(66, 81), Offset(59, 103)),
+      7,
+      .2,
+    ),
+    _Segment(
+      (Offset(66, 43), Offset(65, 72)),
+      (Offset(68, 68), Offset(66, 81)),
+      9,
+      .3,
+    ),
+    _Segment(
+      (Offset(67, 31), Offset(64, 49)),
+      (Offset(70, 56), Offset(60, 65)),
+      6,
+      .35,
+    ),
+    _Segment(
+      (Offset(64, 49), Offset(76, 52)),
+      (Offset(60, 65), Offset(72, 61)),
+      5,
+      .4,
+    ),
+    _Segment(
+      (Offset(67, 30), Offset(67, 58)),
+      (Offset(70, 55), Offset(66, 80)),
+      17,
+      .7,
+    ),
+    _Segment(
+      (Offset(67, 58), Offset(79, 72)),
+      (Offset(66, 80), Offset(85, 80)),
+      10,
+      .75,
+    ),
+    _Segment(
+      (Offset(79, 72), Offset(82, 103)),
+      (Offset(85, 80), Offset(82, 103)),
+      7,
+      .8,
+    ),
+    _Segment(
+      (Offset(82, 103), Offset(91, 103)),
+      (Offset(82, 103), Offset(91, 103)),
+      5,
+      .85,
+    ),
+    _Segment(
+      (Offset(69, 31), Offset(75, 46)),
+      (Offset(72, 56), Offset(83, 60)),
+      7,
+      .9,
+    ),
+    _Segment(
+      (Offset(75, 46), Offset(85, 46)),
+      (Offset(83, 60), Offset(93, 55)),
+      5,
+      1,
+    ),
+  ];
 
   /// Back to front, as the design draws them; each as up pose, down pose.
   static const _segments = [
@@ -332,9 +404,12 @@ class _FigurePainter extends CustomPainter {
         size.width / OpponentMannequin.designSize.width,
         size.height / OpponentMannequin.designSize.height,
       );
-    final head = Offset.lerp(_headUp, _headDown, t)!;
+    final squat = exercise == ExerciseType.squat;
+    final head = squat
+        ? Offset.lerp(const Offset(68, 19), const Offset(72, 43), t)!
+        : Offset.lerp(_headUp, _headDown, t)!;
     final parts = [
-      for (final segment in _segments)
+      for (final segment in squat ? _squatSegments : _segments)
         (
           Offset.lerp(segment.up.$1, segment.down.$1, t)!,
           Offset.lerp(segment.up.$2, segment.down.$2, t)!,
@@ -403,8 +478,12 @@ class _FigurePainter extends CustomPainter {
           ).createShader(headBox),
       )
       ..drawLine(
-        Offset.lerp(_visorUp.$1, _visorDown.$1, t)!,
-        Offset.lerp(_visorUp.$2, _visorDown.$2, t)!,
+        squat
+            ? head + const Offset(2, -1)
+            : Offset.lerp(_visorUp.$1, _visorDown.$1, t)!,
+        squat
+            ? head + const Offset(7, -1)
+            : Offset.lerp(_visorUp.$2, _visorDown.$2, t)!,
         _stroke(AppColors.opponent, 2.8),
       );
   }
@@ -416,5 +495,6 @@ class _FigurePainter extends CustomPainter {
     ..strokeCap = StrokeCap.round;
 
   @override
-  bool shouldRepaint(_FigurePainter oldDelegate) => oldDelegate.depth != depth;
+  bool shouldRepaint(_FigurePainter oldDelegate) =>
+      oldDelegate.depth != depth || oldDelegate.exercise != exercise;
 }

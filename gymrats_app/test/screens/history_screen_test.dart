@@ -67,9 +67,10 @@ void main() {
     expect(find.text('승'), findsOneWidget);
     expect(find.text('패'), findsOneWidget);
     expect(find.text('무'), findsOneWidget);
-    expect(find.text('10월 15일 21:05'), findsOneWidget);
-    expect(find.text('10월 14일 21:05'), findsOneWidget);
-    expect(find.text('푸쉬업 · vs RepBot'), findsNWidgets(3));
+    expect(find.text('푸쉬업 · 10월 15일 21:05'), findsOneWidget);
+    expect(find.text('푸쉬업 · 10월 14일 21:05'), findsOneWidget);
+    expect(find.text('푸쉬업 · 10월 13일 21:05'), findsOneWidget);
+    expect(find.text('vs RepBot'), findsNWidgets(3));
   });
 
   testWidgets('a new user sees the empty state', (tester) async {

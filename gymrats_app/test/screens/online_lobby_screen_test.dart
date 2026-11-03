@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/config/server_config.dart';
 import 'package:gymrats_app/models/avatar_model.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/screens/online_lobby_screen.dart';
 import 'package:gymrats_app/screens/login_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
@@ -258,6 +259,7 @@ void main() {
       expect(find.byType(GridBackground), findsOneWidget);
       expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
       expect(find.text('기다리는 동안 자리를 준비해 두세요'), findsOneWidget);
+      expect(find.text('휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.'), findsOneWidget);
       expect(camera.startCount, 0);
       await captureFlowSnapshot('online-search');
       session.found(duration: 30000);
@@ -309,6 +311,29 @@ void main() {
       await tester.pump();
     },
   );
+
+  testWidgets('searching for a squat says where the phone goes for a squat', (
+    tester,
+  ) async {
+    final auth = await loggedIn();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: OnlineLobbyScreen(
+          autoJoin: false,
+          auth: auth,
+          exercise: ExerciseType.squat,
+          createSession: _Session.new,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('온라인 상대 찾기'));
+    await tester.pump();
+    expect(find.text('스쿼트 · 30초 · 1v1'), findsOneWidget);
+    expect(find.textContaining('내 앞 2~3m에'), findsOneWidget);
+    expect(find.textContaining('머리 앞'), findsNothing);
+  });
 
   testWidgets(
     'back confirmation can cancel a match found while the dialog is open',
@@ -519,9 +544,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final button = find.text('온라인 1v1 대결');
-      await tester.scrollUntilVisible(button, 180);
-      await tester.tap(button);
+      await tester.tap(find.text('온라인 1v1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('푸쉬업').last);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(

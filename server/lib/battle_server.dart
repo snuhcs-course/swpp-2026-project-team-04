@@ -36,6 +36,7 @@ class _Player {
   WebSocket? socket;
   _Match? match;
   String avatar = 'avatar_01';
+  String exercise = 'push_up';
   bool queued = false;
   int lastHeartbeat = 0, rateAt = 0, controls = 0, poseAt = -1000;
   final requests =
@@ -324,7 +325,7 @@ class BattleServer {
         });
       case 'queue.join':
         fields(payload, {'exercise', 'avatar_id'});
-        if (payload['exercise'] != 'push_up') invalid();
+        if (!{'push_up', 'squat'}.contains(payload['exercise'])) invalid();
         if (!battleAvatarIds.contains(payload['avatar_id']))
           invalid('INVALID_AVATAR');
         if (p.queued) invalid('ALREADY_QUEUED');
@@ -333,6 +334,7 @@ class BattleServer {
             .clear(); // Prior match is terminal; retain all IDs of the new one.
         p.match = null;
         p.avatar = payload['avatar_id'] as String;
+        p.exercise = payload['exercise'] as String;
         p.queued = true;
         _queue.addLast(p);
         final response = reply('queue.joined', {'queue_id': p.identity.id});
@@ -400,10 +402,8 @@ class BattleServer {
         scores[payload['valid'] == true ? 0 : 1]++;
         m.lastRepElapsed[id] = elapsed;
         final game = m.games[id]!;
-        final earned = grade == null
-            ? 0
-            : game.addValid(grade, Duration(milliseconds: elapsed)).points;
-        if (grade == null) game.addRejected();
+        final earned =
+            game.addRep(grade, Duration(milliseconds: elapsed))?.points ?? 0;
         final ack = {
           'rep_seq': seq,
           'valid_reps': scores[0],
@@ -464,17 +464,22 @@ class BattleServer {
     }
   }
 
-  /// The grade of a submitted rep; null when it was rejected. The depth stays
-  /// on the phone, which knows the pass depth. An app that sends no grade is
-  /// scored as good.
+  /// The grade of a submitted rep; null when it was rejected and earned
+  /// nothing. The depth and the elbow angle stay on the phone, which judges
+  /// them. An app that sends no grade is scored as good, and its rejected reps
+  /// as nothing. Only a rep rejected as too shallow can be average.
   GameGrade? _grade(Map<String, dynamic> payload) {
     final grade = payload['grade'];
     if (payload['valid'] != true) {
-      return grade == null ? null : invalid();
+      if (grade == null) return null;
+      return grade == GameGrade.average.name &&
+              payload['reason'] == 'insufficient_depth'
+          ? GameGrade.average
+          : invalid();
     }
     if (grade == null) return GameGrade.good;
     return GameGrade.values.firstWhere(
-      (g) => g.name == grade,
+      (g) => g != GameGrade.average && g.name == grade,
       orElse: () => invalid(),
     );
   }
@@ -485,7 +490,23 @@ class BattleServer {
       (p) => !p.queued || p.socket?.readyState != WebSocket.open,
     );
     while (_queue.length >= 2) {
-      final pair = [_queue.removeFirst(), _queue.removeFirst()];
+      _Player? first;
+      _Player? second;
+      for (final candidate in _queue) {
+        for (final other in _queue) {
+          if (!identical(candidate, other) &&
+              candidate.exercise == other.exercise) {
+            first = candidate;
+            second = other;
+            break;
+          }
+        }
+        if (first != null) break;
+      }
+      if (first == null || second == null) break;
+      final pair = [first, second];
+      _queue.remove(first);
+      _queue.remove(second);
       final m = _Match(_id(), pair, now, now + readyTimeoutMs);
       _matches[m.id] = m;
       for (final p in pair) {
@@ -501,6 +522,7 @@ class BattleServer {
         'ready_deadline_ms': m.readyDeadline,
         'fever_start_ms': rules.feverStart.inMilliseconds,
         'ko_lead': rules.koLead,
+        'average_points': rules.averagePoints,
       });
     }
   }
@@ -515,6 +537,7 @@ class BattleServer {
     'ready_deadline_ms': m.readyDeadline,
     'fever_start_ms': rules.feverStart.inMilliseconds,
     'ko_lead': rules.koLead,
+    'average_points': rules.averagePoints,
     'scores': m.scores.map(
       (id, s) => MapEntry(id, {
         'valid_reps': s[0],
@@ -593,6 +616,7 @@ class BattleServer {
         'match_id': m.id,
         'result_id': m.result!['result_id'],
         'reason': reason,
+        'exercise': m.players.first.exercise,
         'ended_at_ms': m.ended,
         'players': [
           for (final player in m.result!['players'] as List)
@@ -603,6 +627,7 @@ class BattleServer {
               )['display_name'],
               'valid_reps': player['valid_reps'],
               'invalid_reps': player['invalid_reps'],
+              'game_score': player['game_score'],
               'outcome': player['outcome'],
             },
         ],

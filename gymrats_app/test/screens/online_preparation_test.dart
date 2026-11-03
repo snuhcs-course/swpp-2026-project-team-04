@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
@@ -16,6 +17,7 @@ import 'package:gymrats_app/screens/feedback_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/pose_avatar_toggle_view.dart';
+import 'package:gymrats_app/widgets/opponent_avatar_panel.dart';
 import 'package:gymrats_app/widgets/battle_score_balance.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/game_danger_edge.dart';
@@ -29,7 +31,7 @@ import '../support/pose_fixtures.dart';
 import '../support/placed_phone.dart';
 
 class _Session extends OnlineBattleSession {
-  _Session()
+  _Session({super.exercise})
     : super(
         endpoint: Uri.parse('wss://example.com/ws/v1/battle'),
         accessToken: 'test-only',
@@ -78,12 +80,13 @@ void main() {
     WidgetTester tester, {
     bool denied = false,
     RepJudge? judge,
+    ExerciseType exercise = ExerciseType.pushUp,
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    session = _Session();
+    session = _Session(exercise: exercise);
     addTearDown(session.dispose);
     camera = FakeCameraService();
     if (denied) camera.permission = CameraPermission.denied;
@@ -292,6 +295,101 @@ void main() {
       await tester.pump();
     });
 
+    testWidgets('an average rep says its reason and its points, and only that '
+        'rep does', (tester) async {
+      final judge = DepthRepJudge();
+      await open(tester, judge: judge);
+      await play(tester);
+      judge.closeRep(
+        reason: RejectReason.insufficientDepth,
+        minElbowAngle: 120,
+      );
+      await closeRep(tester);
+      expect(find.text('가슴을 더 내려요 · +5 AVERAGE'), findsOneWidget);
+
+      // The latest score is still the average one.
+      judge.closeRep(
+        reason: RejectReason.insufficientDepth,
+        minElbowAngle: 121,
+      );
+      await closeRep(tester);
+      expect(find.text('가슴을 더 내려요'), findsOneWidget);
+      judge.closeRep(reason: RejectReason.kneesDown, minElbowAngle: 90);
+      await closeRep(tester);
+      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
+      expect(find.textContaining('AVERAGE'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a server without Average has no points for that rep', (
+      tester,
+    ) async {
+      final judge = DepthRepJudge();
+      await open(tester, judge: judge);
+      await play(tester);
+      session.rules = const BattleRules(averagePoints: 0);
+      judge.closeRep(reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      await closeRep(tester);
+      expect(find.text('가슴을 더 내려요'), findsOneWidget);
+      expect(session.myLastScore, isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets("the result counts the user's grades", (tester) async {
+      final judge = DepthRepJudge();
+      await open(tester, judge: judge);
+      await play(tester);
+      judge.closeRep(maxDepth: 1.9);
+      await closeRep(tester);
+      judge.closeRep(maxDepth: 1.4);
+      await closeRep(tester);
+      judge.closeRep(reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      await closeRep(tester);
+      judge.closeRep(reason: RejectReason.kneesDown, minElbowAngle: 90);
+      await closeRep(tester);
+      await finishRound(tester, {
+        'result_id': 'r' * 32,
+        'reason': 'time_up',
+        'players': [
+          {'player_id': 'me', 'outcome': 'win'},
+          {'player_id': 'opponent', 'outcome': 'loss'},
+        ],
+      });
+      expect(find.text('Excellent 1 · Good 1 · Average 1'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets("the result's grades go by the server's rules and the "
+        "counter's pass depth", (tester) async {
+      final judge = DepthRepJudge(
+        config: const RepJudgeConfig(bottomDepth: .75),
+      );
+      await open(tester, judge: judge);
+      await play(tester);
+      // A server without Average: this rep earned nothing.
+      session.rules = const BattleRules(averagePoints: 0);
+      judge.closeRep(reason: RejectReason.insufficientDepth, minElbowAngle: 90);
+      await closeRep(tester);
+      // 1.6 x 0.75: a push-up at this depth would only be good.
+      judge.closeRep(maxDepth: 1.2);
+      await closeRep(tester);
+      await finishRound(tester, {
+        'result_id': 'r' * 32,
+        'reason': 'time_up',
+        'players': [
+          {'player_id': 'me', 'outcome': 'win'},
+          {'player_id': 'opponent', 'outcome': 'loss'},
+        ],
+      });
+      expect(find.text('Excellent 1 · Good 0 · Average 0'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
     testWidgets("a rep's grade goes by the counter's pass depth", (
       tester,
     ) async {
@@ -451,6 +549,24 @@ void main() {
     await tester.pump();
   });
 
+  group('back before the start names the opponent in the leave dialog', () {
+    for (final (name, words) in const [
+      ('상대사용자', '상대사용자와의 대결이 취소되고\n홈으로 돌아가요.'),
+      ('진영', '진영과의 대결이 취소되고\n홈으로 돌아가요.'),
+      ('Mike', 'Mike 님과의 대결이 취소되고\n홈으로 돌아가요.'),
+      ('NightRunner7', 'NightRunner7 님과의\n대결이 취소되고\n홈으로 돌아가요.'),
+    ]) {
+      testWidgets(name, (tester) async {
+        await open(tester);
+        session.opponent = OnlinePlayer('opponent', name, AvatarModel.robot);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text('게임에서 나갈까요?'), findsOneWidget);
+        expect(find.text(words), findsOneWidget);
+      });
+    }
+  });
+
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   testWidgets('a failed feedback upload still shows the result and feedback', (
     tester,
@@ -477,6 +593,31 @@ void main() {
     });
     expect(await reports.list(), hasLength(1));
     expect(repository.savedFeedback, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('squat result does not save or show push-up form feedback', (
+    tester,
+  ) async {
+    await open(tester, exercise: ExerciseType.squat);
+    session.phase = OnlinePhase.playing;
+    session.notifyListeners();
+    await tester.pump();
+    expect(
+      tester
+          .widget<OpponentAvatarPanel>(find.byType(OpponentAvatarPanel))
+          .exercise,
+      ExerciseType.squat,
+    );
+    await finishRound(tester, {
+      'result_id': 's' * 32,
+      'reason': 'time_up',
+      'ended_at_ms': 1792400000000,
+    });
+    expect(await reports.list(), isEmpty);
+    expect(repository.savedFeedback, isEmpty);
+    expect(find.text('자세 피드백 보기'), findsNothing);
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });

@@ -63,6 +63,8 @@ class BattleResult {
     opponentName: matchup.opponent.name,
     myReps: myReps,
     opponentReps: opponentReps,
+    myScore: hasGame ? myScore : null,
+    opponentScore: hasGame ? opponentScore : null,
     playedAt: endedAt,
     decidedOutcome: decidedOutcome,
     gameEnd: end,

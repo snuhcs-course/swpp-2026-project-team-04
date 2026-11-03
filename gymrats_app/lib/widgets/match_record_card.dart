@@ -4,10 +4,10 @@ import '../models/exercise_type_korean.dart';
 import '../models/match_record.dart';
 import '../theme/app_theme.dart';
 
-/// One battle in a card: result badge, exercise and opponent (and the date
-/// when [showDate], the one-line form feedback when [showFeedback]), and
-/// both scores. Used by home's "최근 경기" and the history list. Tappable
-/// when [onTap] is set.
+/// One battle in a card: result badge, the opponent over the exercise (with
+/// the date when [showDate], and the one-line form feedback when
+/// [showFeedback]), and both scores. Used by home's "최근 경기" and the
+/// history list. Tappable when [onTap] is set.
 class MatchRecordCard extends StatelessWidget {
   const MatchRecordCard({
     super.key,
@@ -40,21 +40,24 @@ class MatchRecordCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // A 12 letter name stays whole on a 360 wide phone, even
+                    // beside wide scores. A bot's level is the end of its name.
                     Text(
-                      '${match.exercise.koreanName} · vs ${match.opponentName}',
-                      maxLines: 1,
+                      'vs ${match.opponentName}',
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: text.bodyLarge,
                     ),
-                    if (showDate && playedAt != null) ...[
-                      const SizedBox(height: AppSpacing.s4),
-                      Text(
-                        formatPlayedAt(playedAt),
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                    const SizedBox(height: AppSpacing.s4),
+                    Text(
+                      showDate && playedAt != null
+                          ? '${match.exercise.koreanName} · '
+                                '${formatPlayedAt(playedAt)}'
+                          : match.exercise.koreanName,
+                      style: text.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
                       ),
-                    ],
+                    ),
                     if (showFeedback) ...[
                       const SizedBox(height: AppSpacing.s4),
                       FeedbackLine(match: match),
@@ -114,7 +117,8 @@ class MatchOutcomeBadge extends StatelessWidget {
 }
 
 /// My score and the opponent's, each with a label underneath. Mine always
-/// stands out, whoever won.
+/// stands out, whoever won. A battle saved before scores were kept shows its
+/// reps, with a unit so they do not read as points.
 class _Scores extends StatelessWidget {
   const _Scores({required this.match});
 
@@ -125,6 +129,22 @@ class _Scores extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final number = text.titleLarge;
     final label = text.bodySmall;
+    final (mine, theirs, unit) = match.hasScores
+        ? (match.myScore!, match.opponentScore!, '')
+        : (match.myReps, match.opponentReps, '회');
+    Widget amount(int value, Color color) => Text.rich(
+      TextSpan(
+        text: '$value',
+        children: [
+          if (unit.isNotEmpty)
+            TextSpan(
+              text: unit,
+              style: label?.copyWith(color: color),
+            ),
+        ],
+      ),
+      style: number?.copyWith(color: color),
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,10 +152,7 @@ class _Scores extends StatelessWidget {
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${match.myReps}',
-              style: number?.copyWith(color: AppColors.textPrimary),
-            ),
+            amount(mine, AppColors.textPrimary),
             const SizedBox(height: AppSpacing.s4),
             DecoratedBox(
               decoration: const ShapeDecoration(
@@ -163,10 +180,7 @@ class _Scores extends StatelessWidget {
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              '${match.opponentReps}',
-              style: number?.copyWith(color: AppColors.textSecondary),
-            ),
+            amount(theirs, AppColors.textSecondary),
             const SizedBox(height: AppSpacing.s4),
             Text('상대', style: label?.copyWith(color: AppColors.textSecondary)),
           ],

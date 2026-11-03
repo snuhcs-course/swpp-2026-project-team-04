@@ -30,6 +30,7 @@ class OnlineLobbyScreen extends StatefulWidget {
   const OnlineLobbyScreen({
     super.key,
     required this.auth,
+    this.exercise = ExerciseType.pushUp,
     this.createSession,
     this.onAuthenticationFailed,
     this.createCounter,
@@ -38,6 +39,7 @@ class OnlineLobbyScreen extends StatefulWidget {
     this.userRepository,
   });
   final AuthRepository auth;
+  final ExerciseType exercise;
   final OnlineSessionFactory? createSession;
   final Future<void> Function()? onAuthenticationFailed;
   final RepCounterViewModel Function()? createCounter;
@@ -137,6 +139,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
           endpoint: endpoint,
           accessToken: login.token,
           avatar: _avatar,
+          exercise: widget.exercise,
         );
     _session = session;
     _searchClock
@@ -235,7 +238,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     if (busy && session.opponent != null) {
       return VersusScreen(
         matchup: Matchup(
-          exercise: ExerciseType.pushUp,
+          exercise: widget.exercise,
           playerName: login?.account.nickname ?? '나',
           opponent: Opponent(name: session.opponent!.name, isBot: false),
         ),
@@ -255,7 +258,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
           body: GridBackground(
             child: SafeArea(
               child: BattleSearchView(
-                exercise: ExerciseType.pushUp,
+                exercise: widget.exercise,
                 title: '실시간 상대를 찾는 중',
                 duration: Duration(milliseconds: session.durationMs),
                 searchArea: BattleSearchRadar(
