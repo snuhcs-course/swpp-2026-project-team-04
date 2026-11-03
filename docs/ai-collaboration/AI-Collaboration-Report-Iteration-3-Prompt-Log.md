@@ -395,3 +395,49 @@ PM에게 보낼 메시지
 
 <!-- 973c7412 2026-11-03T10:25:34.768Z -->
 [Jinyoung Park, 11-03 19:25] "머지해 그리고 연결함"
+
+## 2026-11-03 · Jinyoung Park · docs/testing_rev23 (Testing Documentation Rev.2.3)
+<!-- 973c7412 2026-11-03T10:32:50.425Z -->
+[Jinyoung Park, 11-03 19:32] "위키에 어쨌든 ai testing으로 증가한거 올렸음?"
+
+<!-- 973c7412 2026-11-03T10:33:55.875Z -->
+[Jinyoung Park, 11-03 19:33] "어쨋든 아까 현우가 한걸로 지금 다시 재배포 했다는 겆?"
+
+<!-- 973c7412 2026-11-03T10:35:33.742Z -->
+[Jinyoung Park, 11-03 19:35] "~/Downloads/app.apk 이거 같은건지 확인좀"
+
+<!-- 973c7412 2026-11-03T10:40:00.864Z -->
+[Jinyoung Park, 11-03 19:40] "~/Desktop/gymrats-HE-apk-pr32/submission.zip 이거 맞지?"
+
+<!-- 973c7412 2026-11-03T10:41:56.392Z -->
+[Jinyoung Park, 11-03 19:41] "~/Downloads/app.apk 이것도 맞고?"
+
+<!-- 973c7412 2026-11-03T10:43:22.035Z -->
+[Jinyoung Park, 11-03 19:43] "한번 핸폰에 설치 해봐"
+
+<!-- 973c7412 2026-11-03T10:46:42.421Z -->
+[Jinyoung Park, 11-03 19:46] "지금 PR 그냥 나 스스로 merge 하면 안됨?"
+
+<!-- 973c7412 2026-11-03T10:46:58.045Z -->
+[Jinyoung Park, 11-03 19:46] "ㄱㄱㄱ"
+
+<!-- 973c7412 2026-11-03T10:49:31.314Z -->
+[Jinyoung Park, 11-03 19:49] "demo branch도 다시 main에 맞게 바꿨음? 그리고 위키도 다 반영해줘 폰은 내가 확ㅇ니했음"
+
+<!-- 973c7412 2026-11-03T10:54:51.874Z -->
+[Jinyoung Park, 11-03 19:54] "~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf 그리고이거 맞게 잘 되어있는지도 확인"
+
+## 2026-11-03 · Jinyoung Park · docs/testing_rev23 (PM testing notes, revision tables)
+<!-- 973c7412 2026-11-03T10:59:54.144Z -->
+[Jinyoung Park, 11-03 19:59] "UAT key story (UAT-6, criteria 1–3): chosen for acceptance testing in Iteration 3 and frozen from 2026-11-06. The test plan is in Testing Documentation 6. 이런 양식이 정해져 있는겨?"
+
+<!-- 973c7412 2026-11-03T11:01:14.733Z -->
+[Jinyoung Park, 11-03 20:01] "예시로 보여준 만큼만 하고 Rev.2.1    2026-11-01    Added 5.8 Squat battle and 5.9 Fever time; marked the six UAT key stories (5.3, 5.4, 5.5, 5.6, 5.8, 5.9) chosen for acceptance testing, frozen from 2026-11-06; 5.6 criterion 1 also ends a battle by KO; 5.4 notes the Average game points of a nearly deep enough push-up
+Rev.2.3    2026-11-03    5.4 note: the judge changes of PR #32 (bottom by bent elbows, lock-out by the less extended arm)
+Rev.2.2    2026-11-03 이거 순서 틀렸음 Rev 번호 정렬좀 또한 iteration 3이라는 문구를 그냥 requirments 파트에서는 빼주삼"
+
+<!-- 973c7412 2026-11-03T11:06:16.337Z -->
+[Jinyoung Park, 11-03 20:06] "design document도 순서 맞추고 iteration3말 본문에서 싹다 제거"
+
+<!-- 973c7412 2026-11-03T11:08:41.404Z -->
+[Jinyoung Park, 11-03 20:08] "PR 올려"
