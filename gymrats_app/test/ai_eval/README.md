@@ -61,5 +61,31 @@ an incorrect rep is one that should be rejected.
    `main`) replays every case through the current `RepJudge` and prints `EvalReport.toMarkdown()`. The results,
    date, and commit go to `test/ai_eval_results` and the wiki Testing Documentation.
 
+## The set as recorded (2026-10-30 ~ 2026-11-02)
+The 32 recordings were pushed to `test/ai_eval_cases` by each recorder between 10-30 and 11-02 (HS 10-31, JP 10-31
+~ 11-01, SWH 10-30 ~ 11-02 with sets 4 and 7 recorded on 11-02, HSW 11-01), checked by Hyunwoo on 11-02 (all open,
+kinds and counts as on the record sheets, 17–26 fps), and labelled rep by rep from the record sheets on 11-01 ~
+11-03 (HS, JP, SWH by the PM; HSW by the recorder, confirmed by the PM), all before the first replay run. Differences from the protocol, kept as recorded and written on the
+sheets:
+- `HSW` (Sangwoo, Galaxy S22): 5 reps per set in 30 s rounds instead of 10 reps in 60 s. Included as is (PM,
+  2026-11-03): the metrics are per rep, so the sets only weigh less.
+- `HS` (Hyunwoo, S26 FE, 30 s rounds): set 4 has 11 descents, labelled reps 1–10 `incompleteExtension` and rep 11
+  counted (PM, from the frames and the sheet); set 7 has 5 reps (tired).
+- `SWH` (Woohyun, S947N): set 1 has 5 reps, set 5 has 9; set 7 has one rep the sheet marks `insufficientDepth`.
+- `JP` (Jinyoung, S23 Ultra): distances not measured (positions by angle only); sets 2 and 6 are cut at the end.
+- Set 4 files carry `kind: unlabelled` because the recorder has no kind for it; the set is read from the kind and
+  the position letter (`eval_cases.dart`).
+
+## Running
+From `gymrats_app/`, on the commit under test:
+```sh
+flutter test test/ai_eval                                     # loader checks + the run; prints the report
+flutter test test/ai_eval/ai_eval_test.dart --dart-define=AI_EVAL_STRICT=true   # the thresholds as assertions
+```
+The run writes `build/ai_eval/report.md` (git-ignored): M1–M3 against the thresholds, per position and per
+person, per set, and one row per case with the labelled reps, the replay of the current judge, the verdicts
+recorded while filming (`live`), and the error types. The results, date, and commit go to `test/ai_eval_results`
+and the wiki Testing Documentation.
+
 ## Additions after freezing
 None yet.
