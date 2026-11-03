@@ -27,8 +27,8 @@
 |Rev.1.3|2026-10-23|App coverage measured on the final Iteration 2 `main` (`62f6a9d`) with the report as evidence; PR #12 (demo README and video)|
 |Rev.2.0|2026-11-01|Added 6. Acceptance Testing plan: how the UAT is run, six UAT stories (UAT-1 to UAT-6) with acceptance criteria and test procedures, frozen from 2026-11-06; results follow in Iteration 4|
 |Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2)|
-|Rev.2.3|2026-11-03|3.2: the CI revision of PR #14 noted; 4.2 Iteration 3 results moved to the final Iteration 3 `main` (`f03a460`, CI on `a643088`) with the coverage screenshot; 5.1: no additions since freezing|
 |Rev.2.2|2026-11-03|5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged) and the re-run after the judge tuning of PR #32 (tuned on the same set); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the four judge changes of #32 from the evaluation, the HE clothing advice) and what it leaves to Iteration 4|
+|Rev.2.3|2026-11-03|3.2: the CI revision of PR #14 noted; 4.2 Iteration 3 results moved to the final Iteration 3 `main` (`f03a460`, CI on `a643088`) with the coverage screenshot; 5.1: no additions since freezing|
 
 # 2. Overview
 
@@ -221,14 +221,14 @@ REST API coverage and test output on `bf141af`:
 
 `main` after the last Iteration 3 PR (#32, the push-up judge tuning; its app code is the PR head `a643088`, which CI measured). The branch `iteration-3-demo` and the APK for the heuristic evaluation (`submission.zip` → `app.apk`, `flutter build apk --release`) are built from this app code, and the team server was redeployed on 2026-11-03 from `e6b16fe`, whose server code is unchanged since (Django with migration `matches.0003_match_scores`, battle server release `20261102T174257Z-main-e6b16fe`).
 
-Commands as in 4.1, run on a clean checkout (macOS, Flutter 3.47.5 / Dart 3.13.4, Python 3.12) and by CI on `a643088` (ubuntu-latest, same versions):
+Commands as in 4.1, run on a clean checkout of `f03a460` (macOS, Flutter 3.47.5 / Dart 3.13.4, Python 3.12) and by CI on `a643088` (ubuntu-latest, same versions; same counts):
 
 - `flutter analyze`: no issues.
 - `flutter test`: **1476 passed, 0 failed, 10 skipped**. The skipped tests are the 9 recorded push-up cases the judge still gets wrong (`test/services/pose/pushup_error_cases_test.dart`, each skipped with its reason in code and listed in `docs/iteration-3/pushup-error-cases.md`; 8 before PR #32, 9 after) and the live team-server check in `test/services/online/public_wss_smoke_test.dart`, skipped unless `RUN_PUBLIC_BATTLE_SMOKE` is set.
 - Server `.venv/bin/python -m pytest`: **101 passed, 0 failed**.
 - Per PR, GitHub Actions (PR #14) ran the same commands plus the per-layer coverage on every head commit; each PR body has its own results table (date, head commit, counts, coverage).
 
-**Summary** (coverage from the CI run on `a643088`, 2026-11-03 16:03 KST, 1476 tests; the app code of `main` `f03a460`; screenshot below)
+**Summary** (coverage from the CI run on `a643088`, 2026-11-03 16:03 KST, 1476 passed and 10 skipped; the app code of `main` `f03a460`; screenshot below)
 
 | Component | Frameworks | Target | Actual | Date | Commit | Command / Report |
 |---|---|---|---|---|---|---|
@@ -247,7 +247,8 @@ Commands as in 4.1, run on a clean checkout (macOS, Flutter 3.47.5 / Dart 3.13.4
 <p align="center">
 <img width="800" alt="GitHub Actions coverage comment on PR #32 (a643088): per-layer table and Django coverage" src="images/testing/iter3-ci-coverage-a643088.png" />
 </p>
-- Test cases added or changed in Iteration 3 are listed per PR in the PR bodies (#15, #17, #19–#29) and in each member's `docs/testing/iteration-3/<github-id>.md`. The AI evaluation branch adds `gymrats_app/test/ai_eval/eval_cases_test.dart` (loader: set from kind and position, every placement format, unknown pairs rejected, 4 people × 8 sets, every case labelled rep by rep, set 4 ends counted, scoring, case and set tables, error column) and `ai_eval_test.dart` (the run), 27 tests in `test/ai_eval` with the scorer's; no change under `lib/`.
+
+- Test cases added or changed in Iteration 3 are listed per PR in the PR bodies (#14–#17, #19–#32) and per push in each member's `docs/testing/iteration-3/<github-id>.md` (`g1fted13.md`, `hyun-1210.md`, `Sangwoo-Hahn.md`, `ishlove77.md` for the PM's CI and AI-evaluation steps). The AI evaluation branch adds `gymrats_app/test/ai_eval/eval_cases_test.dart` (loader: set from kind and position, every placement format, unknown pairs rejected, 4 people × 8 sets, every case labelled rep by rep, set 4 ends counted, scoring, case and set tables, error column) and `ai_eval_test.dart` (the run), 27 tests in `test/ai_eval` with the scorer's; no change under `lib/`.
 
 # 5. AI Module Testing
 
