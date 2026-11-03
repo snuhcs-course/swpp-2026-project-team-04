@@ -395,3 +395,34 @@ PM에게 보낼 메시지
 
 <!-- 973c7412 2026-11-03T10:25:34.768Z -->
 [Jinyoung Park, 11-03 19:25] "머지해 그리고 연결함"
+
+## 2026-11-03 · Jinyoung Park · docs/testing_rev23 (Testing Documentation Rev.2.3)
+<!-- 973c7412 2026-11-03T10:32:50.425Z -->
+[Jinyoung Park, 11-03 19:32] "위키에 어쨌든 ai testing으로 증가한거 올렸음?"
+
+<!-- 973c7412 2026-11-03T10:33:55.875Z -->
+[Jinyoung Park, 11-03 19:33] "어쨋든 아까 현우가 한걸로 지금 다시 재배포 했다는 겆?"
+
+<!-- 973c7412 2026-11-03T10:35:33.742Z -->
+[Jinyoung Park, 11-03 19:35] "~/Downloads/app.apk 이거 같은건지 확인좀"
+
+<!-- 973c7412 2026-11-03T10:40:00.864Z -->
+[Jinyoung Park, 11-03 19:40] "~/Desktop/gymrats-HE-apk-pr32/submission.zip 이거 맞지?"
+
+<!-- 973c7412 2026-11-03T10:41:56.392Z -->
+[Jinyoung Park, 11-03 19:41] "~/Downloads/app.apk 이것도 맞고?"
+
+<!-- 973c7412 2026-11-03T10:43:22.035Z -->
+[Jinyoung Park, 11-03 19:43] "한번 핸폰에 설치 해봐"
+
+<!-- 973c7412 2026-11-03T10:46:42.421Z -->
+[Jinyoung Park, 11-03 19:46] "지금 PR 그냥 나 스스로 merge 하면 안됨?"
+
+<!-- 973c7412 2026-11-03T10:46:58.045Z -->
+[Jinyoung Park, 11-03 19:46] "ㄱㄱㄱ"
+
+<!-- 973c7412 2026-11-03T10:49:31.314Z -->
+[Jinyoung Park, 11-03 19:49] "demo branch도 다시 main에 맞게 바꿨음? 그리고 위키도 다 반영해줘 폰은 내가 확ㅇ니했음"
+
+<!-- 973c7412 2026-11-03T10:54:51.874Z -->
+[Jinyoung Park, 11-03 19:54] "~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf 그리고이거 맞게 잘 되어있는지도 확인"
