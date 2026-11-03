@@ -33,7 +33,7 @@ void main() {
   PoseFrame pose({
     double depth = 0,
     double? shoulderDrop,
-    double elbow = 170,
+    double elbow = 178,
     double tilt = 0,
     Set<BodyLandmark> hide = const {},
     bool mirror = false,
@@ -62,7 +62,7 @@ void main() {
     int start, {
     double bottom = 1.5,
     double bottomElbow = 150,
-    double topElbow = 170,
+    double topElbow = 178,
     double tilt = 0,
     bool mirror = false,
     Set<BodyLandmark> bottomHide = const {},
@@ -115,7 +115,7 @@ void main() {
   test('elbows that barely bend, as seen from the front, still count', () {
     final c = judge();
     calibrate(c);
-    final update = perform(c, 400, bottomElbow: 160, topElbow: 165);
+    final update = perform(c, 400, bottomElbow: 160);
     expect(update.event!.valid, isTrue);
   });
 
@@ -201,6 +201,135 @@ void main() {
     final update = at(c, 800, pose());
     expect(update.event, isNull);
     expect(update.snapshot.phase, RepPhase.up);
+  });
+
+  test('elbows bent to 100 degrees reach the bottom with a shallow head', () {
+    RepUpdate bottom(double elbow) {
+      final c = judge();
+      calibrate(c);
+      at(c, 400, pose(depth: 0.6, shoulderDrop: 0.3));
+      return at(c, 800, pose(depth: 0.9, shoulderDrop: 0.3, elbow: elbow));
+    }
+
+    // Head 0.9 and shoulders 0.3 down: short of both lines, so only the
+    // elbows can complete the bottom.
+    expect(bottom(100).snapshot.phase, RepPhase.bottom);
+    expect(bottom(101).snapshot.phase, RepPhase.descending);
+  });
+
+  test('bent elbows still need the head 0.8 down', () {
+    final c = judge();
+    calibrate(c);
+    at(c, 400, pose(depth: 0.6, shoulderDrop: 0.3));
+    final low = at(c, 800, pose(depth: 0.75, shoulderDrop: 0.3, elbow: 80));
+    expect(low.snapshot.phase, RepPhase.descending);
+  });
+
+  /// A straight-arm top whose left arm alone is bent to [leftElbow].
+  PoseFrame lopsided(double leftElbow) {
+    final straight = pose();
+    final bent = pose(elbow: leftElbow);
+    return PoseFrame(
+      imageWidth: straight.imageWidth,
+      imageHeight: straight.imageHeight,
+      keypoints: {
+        ...straight.keypoints,
+        BodyLandmark.leftElbow: bent.keypoints[BodyLandmark.leftElbow]!,
+        BodyLandmark.leftWrist: bent.keypoints[BodyLandmark.leftWrist]!,
+      },
+    );
+  }
+
+  test('the less extended arm must lock out before the rep closes', () {
+    final c = judge();
+    calibrate(c);
+    at(c, 400, pose(depth: 0.6));
+    at(c, 800, pose(depth: 1.5, elbow: 120));
+    // Both arms average 171.5°, past topAngle, but the left arm is short.
+    final short = at(c, 1200, lopsided(165));
+    expect(short.event, isNull);
+    expect(short.snapshot.phase, RepPhase.bottom);
+    expect(at(c, 1400, pose()).event!.valid, isTrue);
+  });
+
+  test('the lockout line sits at 172 degrees for the less extended arm', () {
+    RepUpdate top(double leftElbow) {
+      final c = judge();
+      calibrate(c);
+      at(c, 400, pose(depth: 0.6));
+      at(c, 800, pose(depth: 1.5, elbow: 120));
+      return at(c, 1200, lopsided(leftElbow));
+    }
+
+    expect(top(171).event, isNull);
+    expect(top(173).event!.valid, isTrue);
+  });
+
+  test(
+    'coming up short of lockout and going down again is a missed lockout',
+    () {
+      final c = judge();
+      calibrate(c);
+      at(c, 400, pose(depth: 0.6));
+      at(c, 800, pose(depth: 1.5, elbow: 120));
+      expect(at(c, 1200, lopsided(160)).event, isNull);
+      final again = at(c, 1500, pose(depth: 1.0, elbow: 120));
+      expect(again.event!.reason, RejectReason.incompleteExtension);
+    },
+  );
+
+  test('a frame without both elbows skips the lockout line', () {
+    final c = judge();
+    calibrate(c);
+    at(c, 400, pose(depth: 0.6));
+    at(c, 800, pose(depth: 1.5, elbow: 120));
+    // Only the left arm is seen, at 165°: past topAngle, short of 172°.
+    final frame = lopsided(165);
+    final right = frame.keypoints[BodyLandmark.rightElbow]!;
+    final top = at(
+      c,
+      1200,
+      PoseFrame(
+        imageWidth: frame.imageWidth,
+        imageHeight: frame.imageHeight,
+        keypoints: {
+          ...frame.keypoints,
+          BodyLandmark.rightElbow: kp(
+            BodyLandmark.rightElbow,
+            right.x,
+            right.y,
+            likelihood: 0.1,
+          ),
+        },
+      ),
+    );
+    expect(top.event!.valid, isTrue);
+  });
+
+  test('a lockout line of 0 lets the arm average decide alone', () {
+    final c = judge(
+      config: const RepJudgeConfig(
+        smoothingTau: Duration.zero,
+        lockoutArmAngle: 0,
+      ),
+    );
+    calibrate(c);
+    at(c, 400, pose(depth: 0.6));
+    at(c, 800, pose(depth: 1.5, elbow: 120));
+    expect(at(c, 1200, lopsided(165)).event!.valid, isTrue);
+  });
+
+  test('a deep elbow angle of 0 turns the elbow bottom off', () {
+    final c = judge(
+      config: const RepJudgeConfig(
+        smoothingTau: Duration.zero,
+        deepElbowAngle: 0,
+      ),
+    );
+    calibrate(c);
+    at(c, 400, pose(depth: 0.6, shoulderDrop: 0.3));
+    final low = at(c, 800, pose(depth: 0.9, shoulderDrop: 0.3, elbow: 60));
+    expect(low.snapshot.phase, RepPhase.descending);
   });
 
   test('bent arms at the top wait until they extend', () {
@@ -392,6 +521,15 @@ void main() {
       bowHipRise: double.negativeInfinity,
     );
 
+    /// [noBow] with the kneel-before-any-plank check on. It is off by
+    /// default; these tests keep the rule itself covered.
+    const firstKneel = RepJudgeConfig(
+      smoothingTau: Duration.zero,
+      bowHipHandGap: double.negativeInfinity,
+      bowHipRise: double.negativeInfinity,
+      defaultKneeHip: 155,
+    );
+
     /// Only the hip rise of the two bow checks.
     const riseOnly = RepJudgeConfig(
       smoothingTau: Duration.zero,
@@ -411,7 +549,7 @@ void main() {
         final y = hipY(depth);
         return pushUpFrame(
           depth: depth,
-          elbowAngle: bendArms && depth >= 0.8 ? 120 : 170,
+          elbowAngle: bendArms && depth >= 0.8 ? 120 : 178,
           lowerBody: showHips
               ? {
                   BodyLandmark.leftHip: (leftX, y),
@@ -474,7 +612,7 @@ void main() {
     /// from the knees, far behind the hands, at [depth].
     PoseFrame shinFrame(double shin, {double depth = 0}) => pushUpFrame(
       depth: depth,
-      elbowAngle: depth >= 0.8 ? 120 : 170,
+      elbowAngle: depth >= 0.8 ? 120 : 178,
       lowerBody: {
         BodyLandmark.leftKnee: (leftX, 450),
         BodyLandmark.rightKnee: (rightX, 450),
@@ -520,7 +658,7 @@ void main() {
       final c = judge();
       PoseFrame frame({double depth = 0}) => pushUpFrame(
         depth: depth,
-        elbowAngle: depth >= 0.8 ? 120 : 170,
+        elbowAngle: depth >= 0.8 ? 120 : 178,
         hide: {BodyLandmark.leftAnkle, BodyLandmark.rightAnkle},
         lowerBody: {
           BodyLandmark.leftKnee: (leftX, 450),
@@ -561,7 +699,7 @@ void main() {
       final c = judge();
       PoseFrame hidden({double depth = 0}) => pushUpFrame(
         depth: depth,
-        elbowAngle: depth >= 0.8 ? 120 : 170,
+        elbowAngle: depth >= 0.8 ? 120 : 178,
         hide: {BodyLandmark.leftAnkle, BodyLandmark.rightAnkle},
         lowerBody: {
           BodyLandmark.leftKnee: (leftX, 450),
@@ -606,7 +744,7 @@ void main() {
       final c = judge();
       PoseFrame frame(double depth) => pushUpFrame(
         depth: depth,
-        elbowAngle: depth >= 0.8 ? 120 : 170,
+        elbowAngle: depth >= 0.8 ? 120 : 178,
         lowerBody: {
           BodyLandmark.leftHip: (leftX, 610),
           BodyLandmark.rightHip: (rightX, 610),
@@ -630,7 +768,7 @@ void main() {
     /// the deepest frame.
     PoseFrame hipAt(double depth, double hipY) => pushUpFrame(
       depth: depth,
-      elbowAngle: depth >= 0.8 ? 120 : 170,
+      elbowAngle: depth >= 0.8 ? 120 : 178,
       lowerBody: {
         BodyLandmark.leftHip: (leftX, hipY),
         BodyLandmark.rightHip: (rightX, hipY),
@@ -740,7 +878,7 @@ void main() {
           return pushUpFrame(
             depth: depth,
             spanRatio: 1.25,
-            elbowAngle: depth >= 0.8 ? 120 : 170,
+            elbowAngle: depth >= 0.8 ? 120 : 178,
             lowerBody: {
               BodyLandmark.leftHip: (leftX, y),
               BodyLandmark.rightHip: (rightX, y),
@@ -768,7 +906,7 @@ void main() {
         final y = belly ? wristY(depth) : 430 + 0.6 * depth * 200;
         return pushUpFrame(
           depth: depth,
-          elbowAngle: depth >= 0.8 ? 120 : 170,
+          elbowAngle: depth >= 0.8 ? 120 : 178,
           lowerBody: {
             BodyLandmark.leftHip: (leftX, y),
             BodyLandmark.rightHip: (rightX, y),
@@ -795,7 +933,7 @@ void main() {
       PoseFrame atHands(double depth) => pushUpFrame(
         depth: depth,
         spanRatio: 0.9,
-        elbowAngle: depth >= 0.8 ? 120 : 170,
+        elbowAngle: depth >= 0.8 ? 120 : 178,
         lowerBody: {
           BodyLandmark.leftHip: (leftX, 400 + 0.6 * depth * 200 + 180),
           BodyLandmark.rightHip: (rightX, 400 + 0.6 * depth * 200 + 180),
@@ -817,7 +955,7 @@ void main() {
         return pushUpFrame(
           depth: depth,
           spanRatio: 0.9,
-          elbowAngle: depth >= 0.8 ? 120 : 170,
+          elbowAngle: depth >= 0.8 ? 120 : 178,
           lowerBody: {
             BodyLandmark.leftHip: (leftX, y),
             BodyLandmark.rightHip: (rightX, y),
@@ -872,7 +1010,7 @@ void main() {
 
     test('knees bent under the hips are a knee push-up', () {
       final update = repWithHips(
-        judge(config: noBow),
+        judge(config: firstKneel),
         (d) => 430 + 0.5 * d * 200,
         knee: (80, 10),
       );
@@ -881,14 +1019,14 @@ void main() {
     });
 
     test('knees folded at the top stay folded after the angle opens', () {
-      final c = judge(config: noBow);
+      final c = judge(config: firstKneel);
       PoseFrame frame(double depth, {required bool bent}) {
         final y = 430 + 0.5 * depth * 200;
         final kneeY = bent ? y + 10 : y + 80;
         final kneeX = bent ? 80.0 : 0.0;
         return pushUpFrame(
           depth: depth,
-          elbowAngle: depth >= 0.8 ? 120 : 170,
+          elbowAngle: depth >= 0.8 ? 120 : 178,
           lowerBody: {
             BodyLandmark.leftHip: (leftX, y),
             BodyLandmark.rightHip: (rightX, y),
@@ -909,7 +1047,7 @@ void main() {
 
     test('a deep rep with straight arms is not a push-up', () {
       final update = repWithHips(
-        judge(config: noBow),
+        judge(config: firstKneel),
         (d) => 430 + 0.5 * d * 200,
         knee: (80, 10),
         bendArms: false,
@@ -962,7 +1100,7 @@ void main() {
         final kneeX = bent ? 80.0 : 0.0;
         return pushUpFrame(
           depth: depth,
-          elbowAngle: depth >= 0.8 ? 120 : 170,
+          elbowAngle: depth >= 0.8 ? 120 : 178,
           lowerBody: {
             BodyLandmark.leftHip: (leftX, y),
             BodyLandmark.rightHip: (rightX, y),
@@ -996,7 +1134,7 @@ void main() {
         final y = 430 + 0.5 * depth * 200;
         return pushUpFrame(
           depth: depth,
-          elbowAngle: depth >= 0.8 ? 120 : 170,
+          elbowAngle: depth >= 0.8 ? 120 : 178,
           lowerBody: {
             BodyLandmark.leftHip: (leftX, y),
             BodyLandmark.rightHip: (rightX, y),
@@ -1023,7 +1161,7 @@ void main() {
         final folded = depth >= 1.2;
         return pushUpFrame(
           depth: depth,
-          elbowAngle: depth >= 0.8 ? 120 : 170,
+          elbowAngle: depth >= 0.8 ? 120 : 178,
           lowerBody: {
             BodyLandmark.leftHip: (leftX, y),
             BodyLandmark.rightHip: (rightX, y),
@@ -1061,7 +1199,7 @@ void main() {
     });
 
     /// Shoulder–hip–knee angle [hipDeg], with the knee kept behind the hands.
-    PoseFrame hipFrame(double hipDeg, {double depth = 0, double elbow = 170}) {
+    PoseFrame hipFrame(double hipDeg, {double depth = 0, double elbow = 178}) {
       Offset kneeOf(Offset hip, double turn) {
         final rad = turn * hipDeg * math.pi / 180;
         final vx = 0.0;
@@ -1089,13 +1227,25 @@ void main() {
     }
 
     test('a kneel from the first frame is knees without a normal plank', () {
-      final c = judge(config: noBow);
+      final c = judge(config: firstKneel);
       at(c, 0, hipFrame(130));
       at(c, 300, hipFrame(130));
       at(c, 500, hipFrame(140, depth: 0.6, elbow: 140));
       at(c, 800, hipFrame(140, depth: 1.4, elbow: 120));
       final update = at(c, 1200, hipFrame(130));
       expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('by default a kneel before any plank top does not latch', () {
+      // The same frames as above with the check off: no other knee rule
+      // sees these hips, so the rep counts.
+      final c = judge(config: noBow);
+      at(c, 0, hipFrame(130));
+      at(c, 300, hipFrame(130));
+      at(c, 500, hipFrame(140, depth: 0.6, elbow: 140));
+      at(c, 800, hipFrame(140, depth: 1.4, elbow: 120));
+      final update = at(c, 1200, hipFrame(130));
+      expect(update.event!.valid, isTrue);
     });
 
     test('one normal top uses the wider knee line', () {
@@ -1134,7 +1284,7 @@ void main() {
     });
 
     test('a plank after a kneel can count again', () {
-      final c = judge(config: noBow);
+      final c = judge(config: firstKneel);
       at(c, 0, hipFrame(130));
       at(c, 300, hipFrame(130));
       at(c, 500, hipFrame(140, depth: 1.4, elbow: 120));
