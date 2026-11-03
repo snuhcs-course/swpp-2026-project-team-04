@@ -441,3 +441,23 @@ Rev.2.2    2026-11-03 이거 순서 틀렸음 Rev 번호 정렬좀 또한 iterat
 
 <!-- 973c7412 2026-11-03T11:08:41.404Z -->
 [Jinyoung Park, 11-03 20:08] "PR 올려"
+
+## 2026-11-03 · Jinyoung Park · docs/testing_tidy (Testing Documentation Rev.2.4)
+<!-- 973c7412 2026-11-03T11:27:36.787Z -->
+[Jinyoung Park, 11-03 20:27] "걍 내가 merge 할래"
+
+<!-- 973c7412 2026-11-03T11:29:27.263Z -->
+[Jinyoung Park, 11-03 20:29] "너가 해줘 그리고 testing wiki 지금 우현꺼랑 안똑같고 main commit · 2026-11-03 · main dccd84a (PR #30 merged) 이런식으로 commit 번호나 branch이런것들이 들어가고날자 드렁가고 이러는데 이거 양식에 있는거임?"
+
+<!-- 973c7412 2026-11-03T11:34:36.170Z -->
+[Jinyoung Park, 11-03 20:34] "Test cases added or changed in Iteration 3 are listed per PR in the PR bodies (#14–#17, #19–#32) and per push in each member's docs/testing/iteration-3/<github-id>.md (g1fted13.md, hyun-1210.md, Sangwoo-Hahn.md, ishlove77.md for the PM's CI and AI-evaluation steps). The AI evaluation branch adds gymrats_app/test/ai_eval/eval_cases_test.dart (loader: set from kind and position, every placement format, unknown pairs rejected, 4 people × 8 sets, every case labelled rep by rep, set 4 ends counted, scoring, case and set tables, error column) and ai_eval_test.dart (the run), 27 tests in test/ai_eval with the scorer's; no change under 이런게 꼭 필요함?"
+
+<!-- 973c7412 2026-11-03T11:35:34.561Z -->
+[Jinyoung Park, 11-03 20:35] "ㅇㅇㅇ ㄱㄱㄱ"
+
+## 2026-11-03 · Jinyoung Park · docs/testing_tidy (guideline audit, 3.1/4.1 revisions)
+<!-- 973c7412 2026-11-03T11:36:42.335Z -->
+[Jinyoung Park, 11-03 20:36] "그리고 set당 몇개인지도 해야되고 pdf에서 명시하라는거는 다 명시함?"
+
+<!-- 973c7412 2026-11-03T11:40:51.319Z -->
+[Jinyoung Park, 11-03 20:40] "~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf 여기에 있는거 다 명시도 했는지도 검토좀"
