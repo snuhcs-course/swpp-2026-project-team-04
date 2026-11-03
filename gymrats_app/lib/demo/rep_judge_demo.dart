@@ -766,6 +766,8 @@ Map<String, Object?> describeJudge(RepJudgeConfig c) => {
     'minHipOnFloorGap': c.minHipOnFloorGap,
     'minBellyTorsoDrop': c.minBellyTorsoDrop,
     'minShoulderDrop': c.minShoulderDrop,
+    'deepElbowAngle': c.deepElbowAngle,
+    'lockoutArmAngle': c.lockoutArmAngle,
     'bowHipHandGap': c.bowHipHandGap,
     'bowTorsoDrop': c.bowTorsoDrop,
     'maxShinLiftGap': c.maxShinLiftGap,

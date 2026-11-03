@@ -184,11 +184,12 @@ const double pushUpShoulderWidth = 200;
 /// width. [tiltDeg] rotates the whole pose so the shoulder line leaves
 /// horizontal by that many degrees. [lowerBody] adds hips, knees, or feet
 /// at the given points; without it the lower body is absent, as usual from
-/// the front.
+/// the front. [elbowAngle] defaults to 178°, a locked-out arm as recorded
+/// planks read it (174–179°), above the judge's lockout line.
 PoseFrame pushUpFrame({
   double depth = 0,
   double? shoulderDrop,
-  double elbowAngle = 170,
+  double elbowAngle = 178,
   double spanRatio = 1.2,
   double tiltDeg = 0,
   double likelihood = 0.95,
