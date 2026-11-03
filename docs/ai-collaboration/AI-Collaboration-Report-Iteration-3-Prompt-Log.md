@@ -1,6 +1,474 @@
 # AI Collaboration Report – Iteration 3 – Prompt Log
 Input prompts only, quoted verbatim (no agent responses), from the course Session Exporter. Context-continuation summaries written by the tool itself are left out.
 
+
+## 2026-10-25 ~ 2026-11-01 · Jinyoung Park · iteration-3 PM, first session (kick-off, team plan, merge order, HE plan; started in the home folder)
+<!-- ccaf0a52 2026-10-24T16:06:54.194Z -->
+[Jinyoung Park, 10-25 01:06] "이제 iter3이 시작했어. ~/Downloads/iteration3-kickoff-2026-10-24-agent-brief.md가 우리가 회의한 내용이고, ~/Downloads/\[SWPP-2026\]\ Team\ 4\ Project\ Schedule-2.xlsx 여기에 schedule 표가 존재해. 여기서 system design, progamming을 이제 수행할거야. 이떄 중요한 점은 송우현, 송현우, 한상우 이 세명이 각각 코드를 고칠건데 저번 iter때 branch를 각각 PR올리고 merge 할떄 conflict가 자주 일어났고, PR 순서가 명확하지 않아서 문제가 발생했어. 그래서 코드에서 merge가 안나도록 어느 코드 어느 파트를 수정해야 되는지 harness task에 좀더 명시를 해주고, 어느 순서로 진행해야 되는지 역시 알려주고 싶어. 현재 main이 우리가 iter3을 시작할 코드임. 그래서 merge conflict나 PR순서를 잘 지키도록 각 사람마다 specific한 harness를 만들어서 zip파일로 줘봐. 마지막으로 어느 branch 순서로 PR을 해야 되는지도 알려주고, 어떤 brnach를 파야 되는지 까지 각각 특화되게 만들어줘"
+
+<!-- ccaf0a52 2026-10-24T16:29:31.543Z -->
+[Jinyoung Park, 10-25 01:29] "그니까 저 순서대로 merge 하라고 알려주면 되는거?"
+
+<!-- ccaf0a52 2026-10-24T16:29:58.722Z -->
+[Jinyoung Park, 10-25 01:29] "아 그니까 PR순서는 상관 없고 내가 merge 하면 된다고?"
+
+<!-- ccaf0a52 2026-10-24T16:30:20.001Z -->
+[Jinyoung Park, 10-25 01:30] "어떤 md에 그게 나와있노?"
+
+<!-- ccaf0a52 2026-10-24T16:31:32.913Z -->
+[Jinyoung Park, 10-25 01:31] "그러면 각자 알아서 설정하고 진행하고 내가 최종적으로 어떤 Md로 하면됨? 한국어로 설명해줘"
+
+<!-- ccaf0a52 2026-10-24T16:34:57.609Z -->
+[Jinyoung Park, 10-25 01:34] "그리고 내가 PM으로써 진행해야할 Md도 따로 만들어줘 ~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf ~/Downloads/5\ -\ AI\ Collaboration\ Report\ Guidelines\ v1.1.pdf ~/Downloads/3\ -\ Design\ Documentation\ Guidelines.pdf ~/Downloads/2\ -\ Requirements\ \&\ Specifications\ Guidelines.pdf 그리고 지금은 iter3임"
+
+<!-- ccaf0a52 2026-10-24T16:35:34.870Z -->
+[Jinyoung Park, 10-25 01:35] "뭐 unit test나, ai doccument는 그 사람들이 알아서 harness쓰면 branch에 올릴거니까 나는 그걸 합치면 되는거 아닌가?"
+
+<!-- ccaf0a52 2026-10-24T16:35:50.160Z -->
+[Jinyoung Park, 10-25 01:35] "뭐 unit test나, ai doccument는 그 사람들이내가 준 harness쓰면자동으로  branch에 올라가니까 나는 그걸 합치면 되는거 아닌가?"
+
+<!-- ccaf0a52 2026-10-24T16:41:05.613Z -->
+[Jinyoung Park, 10-25 01:41] "한국어로 설명좀 해줘봐"
+
+<!-- ccaf0a52 2026-10-24T16:41:51.339Z -->
+[Jinyoung Park, 10-25 01:41] "md는 영어로 만들면 됨"
+
+<!-- ccaf0a52 2026-10-25T05:54:27.881Z -->
+[Jinyoung Park, 10-25 14:54] "[Image #1]@박진영 이거 보니까 하네스에서 PR 넣을 때 testing doucmentation에 들어가야하는 testing coverage 포함하도록 하는 거 같은데iter2 때처럼 내 pc에서 테스트 안 돌아가는 문제 생기니까 얘가 github 서버에서 테스트랑 커버리지 자동으로 돌게 하는 방법 제안하거든 저거 3번으로 되게 설정 한 번 하면 될듯? 이거 해줈 ㅜ있음?"
+
+<!-- ccaf0a52 2026-10-25T05:59:12.251Z -->
+[Jinyoung Park, 10-25 14:59] "해줘"
+
+<!-- ccaf0a52 2026-10-26T08:46:23.985Z -->
+[Jinyoung Park, 10-26 17:46] "웹으로 할래"
+
+<!-- ccaf0a52 2026-10-26T08:50:20.146Z -->
+[Jinyoung Park, 10-26 17:50] "내가 어캐 하면 된다고? 한국어로 좀 설며"
+
+<!-- ccaf0a52 2026-10-26T08:51:34.672Z -->
+[Jinyoung Park, 10-26 17:51] "3번 이상한데"
+
+<!-- ccaf0a52 2026-10-26T08:52:24.491Z -->
+[Jinyoung Park, 10-26 17:52] "됐어"
+
+<!-- ccaf0a52 2026-10-26T08:54:12.306Z -->
+[Jinyoung Park, 10-26 17:54] "지금 이게 뭐한느 거지? 한ㄱ구어로 설명좀"
+
+<!-- ccaf0a52 2026-10-26T08:55:00.888Z -->
+[Jinyoung Park, 10-26 17:55] "한국어로 설명을 해달라고요"
+
+<!-- ccaf0a52 2026-10-26T08:55:43.896Z -->
+[Jinyoung Park, 10-26 17:55] "결과 나오면 알려줘"
+
+<!-- ccaf0a52 2026-10-26T09:04:49.733Z -->
+[Jinyoung Park, 10-26 18:04] "2027년 2월 졸업시이긴 함"
+
+<!-- ccaf0a52 2026-10-26T09:10:01.166Z -->
+[Jinyoung Park, 10-26 18:10] "어캐됨?"
+
+<!-- ccaf0a52 2026-10-26T09:26:11.267Z -->
+[Jinyoung Park, 10-26 18:26] "어캐됨?"
+
+<!-- ccaf0a52 2026-10-26T09:51:43.264Z -->
+[Jinyoung Park, 10-26 18:51] "ㅇㅇ됐어"
+
+<!-- ccaf0a52 2026-10-26T11:40:19.920Z -->
+[Jinyoung Park, 10-26 20:40] "댓글달았음?"
+
+<!-- ccaf0a52 2026-10-26T11:40:48.266Z -->
+[Jinyoung Park, 10-26 20:40] "그니까 어캐 하면 되는겨?"
+
+<!-- ccaf0a52 2026-10-26T11:41:19.785Z -->
+[Jinyoung Park, 10-26 20:41] "add commnet에 그냥 내가 PM으로써 PR 승인 하며 안되나"
+
+<!-- ccaf0a52 2026-10-27T15:07:47.276Z -->
+[Jinyoung Park, 10-28 00:07] "~/Downloads/gymrats-iter3-PM-tasks.md 이거보고 pull request 13댓글달고, merge 해줘"
+
+<!-- ccaf0a52 2026-10-27T15:10:55.847Z -->
+[Jinyoung Park, 10-28 00:10] "<pasted_content id=\"39ef\">
+PM review (Iteration 3, merge order #1, no dependencies): approved for merge.
+
+Checked against the PM merge rules:
+
+Body starts with Merge order: #1; commands, test-case table, and results are in the body.
+The diff stays in W1's files: docs/iteration-3/battle-rules.md plus the personal course notes (docs/testing/iteration-3/g1fted13.md, docs/ai-collaboration/iteration-3/g1fted13.md, g1fted13-Prompt-Log.md). No code and no shared course documents changed.
+CI on the head commit af51796 is green: analyze clean, 675 passed / 1 skipped / 0 failed, all layer targets met, Django 76 passed at 96%.
+On the content: the proposed numbers in §1 are fine as W3's defaults. The 11 open items in §10 (#1–#10 plus #4a) will be settled at today's 10-28 check-in, and I will post the decisions in the team chat. The changes outside W3 listed in §8 (server ko reason, bot-match outcome upload) will be assigned after the check-in.
+
+Merging with a merge commit. Everyone: run git fetch origin && git merge origin/main on your branch.
+</pasted_content id=\"39ef\">
+
+ 이게 근데 PM이 날릴만한 댓글이 맞음?"
+
+<!-- ccaf0a52 2026-10-27T15:11:18.867Z -->
+[Jinyoung Park, 10-28 00:11] "그거 md도 수정하고 너가 올려"
+
+<!-- ccaf0a52 2026-10-27T15:26:02.026Z -->
+[Jinyoung Park, 10-28 00:26] "그리고 CI는 지금 unit test도 포함되는거? 그러면 pull request 답변이 unit test 포함 전체 test 결과?"
+
+<!-- ccaf0a52 2026-10-27T15:26:45.867Z -->
+[Jinyoung Park, 10-28 00:26] "아 ㅇㅋㅇㅋ"
+
+<!-- ccaf0a52 2026-10-27T15:26:55.566Z -->
+[Jinyoung Park, 10-28 00:26] "ai 모듈 테스트는 어캐 하면 되는거노?"
+
+<!-- ccaf0a52 2026-10-28T14:21:47.761Z -->
+[Jinyoung Park, 10-28 23:21] "현우 한테 md보내줘야 할것 같은데 만들어줘. 그리고 testing 자동으로 지금 git에서 되는거 계속 cumlative하게 새로운 branch pR 날릴때마다 그 brnach에서 만든 test가 계속 추가되서 마지막 vbrnach의경우 이전 PR한 branch가 모두 합쳐져서 되느걱?"
+
+<!-- ccaf0a52 2026-10-28T14:25:30.946Z -->
+[Jinyoung Park, 10-28 23:25] "그니까 merge가 되면 그떄 모든 test 다 돌리는거?"
+
+<!-- ccaf0a52 2026-10-28T14:25:55.259Z -->
+[Jinyoung Park, 10-28 23:25] "pr을 올리면 그 거랑 main을 합친 test를 돌린다?"
+
+<!-- ccaf0a52 2026-10-28T14:26:34.530Z -->
+[Jinyoung Park, 10-28 23:26] "일단은 그러면다른 사람이 영상 찍어서 현우한테 줄려고 하는데 현우는 뭘 하면 좋고 영상 찍는 사람은 어떻게 하면 됨?"
+
+<!-- ccaf0a52 2026-10-28T14:27:42.868Z -->
+[Jinyoung Park, 10-28 23:27] "폰 2개가 필요?"
+
+<!-- ccaf0a52 2026-10-28T14:27:59.802Z -->
+[Jinyoung Park, 10-28 23:27] "B번으로 할려고"
+
+<!-- ccaf0a52 2026-10-28T14:28:39.913Z -->
+[Jinyoung Park, 10-28 23:28] "영어로 주고, 영상 찍을 사람도 영어로 md는 줘"
+
+<!-- ccaf0a52 2026-10-28T14:30:27.806Z -->
+[Jinyoung Park, 10-28 23:30] "html로 만들어줘 그리고 md도 각각 주고"
+
+<!-- ccaf0a52 2026-10-28T14:40:13.408Z -->
+[Jinyoung Park, 10-28 23:40] "그리고 user story랑 UAT뽑아줈 ㅜ있나 ~/Desktop/학교/2026-2학기/소개원실/lectures/Week\ 4-1.\ Requirements\ and\ Specifications.pdf 이거는 github wiki에 안올려도 되느건가"
+
+<!-- ccaf0a52 2026-10-28T14:54:37.531Z -->
+[Jinyoung Park, 10-28 23:54] "PM md에도 추가했지?"
+
+<!-- ccaf0a52 2026-10-28T14:56:23.016Z -->
+[Jinyoung Park, 10-28 23:56] "meeting log도 이 세션에서 올렸나?"
+
+<!-- ccaf0a52 2026-10-28T14:58:17.399Z -->
+[Jinyoung Park, 10-28 23:58] "그 세션좀 찾아줘"
+
+<!-- ccaf0a52 2026-10-29T10:31:26.872Z -->
+[Jinyoung Park, 10-29 19:31] "~/Downloads/푸시업_녹화_테스트_기준서.pdf 현우가 제시한 기준대로 다시 ai평가를 세팅해줘. 녹음해야 하는 사람 현우가 해야하는거 각각 순서도 주고, 각각 md도줘봐"
+
+<!-- ccaf0a52 2026-10-29T17:00:25.270Z -->
+[Jinyoung Park, 10-30 02:00] "~/Downloads/푸시업_녹화_테스트_기준서\ \(1\).pdf Q1. 세트 4 (Lock out your arms)의 기대 결과
+- 기대 결과는 {\"valid\": 1, \"rejected\": {\"incompleteExtension\": 9}}이고, perRep은 incompleteExtension 9개 다음에 valid 1개입니다.
+- 판정기는 반쯤 올라왔다가 다시 내려갈 때마다 그 회를 거절 1건으로 닫습니다. 그래서 1~9번째 하강이 9번 거절됩니다.
+- 10번째는 팔을 끝까지 펴고 끝나므로 정상 1회로 셉니다.
+- 조건이 하나 있습니다. 반쯤 올라올 때 머리가 꼭대기에서 0.6 어깨너비 안까지는 와야 합니다. 덜 올라오면 그 하강은 아무 메시지 없이 묻힙니다.
+
+Q2. 세트 2(세배)와 세트 5(무릎 푸시업)
+- 둘 다 앱 항목은 \"Knees on the floor\"이고, 매 회 kneesDown 거절 1건이 기대 결과입니다. 맞습니다.
+
+Q3. 세트 8
+- 위 0번 수정을 반영한다는 전제로, 매 회 armsStraight 거절 1건이고 인정되는 회는 없습니다.
+- 다만 팔이 160° 아래로 굽으면 kneesDown으로 나올 수 있습니다. 이 경우 판정 횟수는 맞지만 M3(이유 일치)에서는 틀린 것으로 셉니다.
+
+Q4. 정상 10회를 못 할 때
+- 네, 녹화 앱은 시작 전 \"Reps you will do\"에 넣은 숫자를 label.reps로 저장하고, 기대 결과도 그 숫자로 만듭니다.
+- 넣은 숫자와 실제 횟수가 다르면 기록지 값으로 PM이 고칩니다.
+
+2. 지표(§4) 확인
+
+M1~M3 정의는 판정기가 할 수 있는 범위와 맞습니다. 다만 두 가지를 PM에게 알려야 합니다.
+- 세트 4의 마지막 1회는 정상 동작입니다. 그래서 M2 분모(잘못된 동작)에서 빼야 합니다. M1에 넣을지 뺄지도 PM이 정해야 합니다.
+- 세트 8을 바꾸지 않으면 \"Bend your arms\" 이유가 한 번도 나오지 않습니다. 그러면 M3가 32세트 중 4세트에서 0%가 됩니다.PM에게 추가로 보낼 내용 (복사해서 쓰세요)
+
+▎ Q3에서 말한 \"0번 수정\"을 빠뜨려서 보충합니다. 세트 8을 바꿨습니다.
+▎ - 판정 코드상 \"Bend your arms\"(armsStraight)는 무릎이 바닥에 닿았을 때만 뜹니다. 발끝 플랭크에서 팔을 편 채 고개만 숙이면 어깨가 기준만큼 내려가지 않아서 \"Go lower\"가 뜨거나 아무것도 안 뜹니다.
+▎ - 그래서 세트 8을 **\"세배, 팔 편 채\"**로 바꿉니다. 무릎을 바닥에 대고, 팔을 끝까지 편 채, 엉덩이만 발뒤꿈치 쪽으로 빼며 머리를 깊게 숙이는 동작입니다. 앱 항목(Straight arms, head dips)과 기대 메시지(Bend your arms)는 그대로이고, Note만 Bend your arms - 세배 팔 편 채로 바뀝니다. 시작 자세는 세트 2·5처럼 팔을 편 무릎 자세입니다.
+▎ - PDF는 고쳐서 다시 보냅니다. recording guide의 8번 행도 고쳐 주세요.
+▎   - \"Do this\"를 Kneeling, arms straight: knees down, hips back toward the heels, head down to the floor; arms never bend로 바꿔 주세요.
+▎   - \"Each set\" 3번은 sets 2, 5 and 8: on the knees with straight arms로 바꿔 주세요."
+
+<!-- ccaf0a52 2026-10-29T17:02:47.366Z -->
+[Jinyoung Park, 10-30 02:02] "내가 recording-guid.me보내주면 되는건가"
+
+<!-- ccaf0a52 2026-10-29T17:03:16.337Z -->
+[Jinyoung Park, 10-30 02:03] "저 2개맍 보면 되는거지? 그리고 내가 할거 진행"
+
+<!-- ccaf0a52 2026-10-29T17:06:16.608Z -->
+[Jinyoung Park, 10-30 02:06] "그대로 올려줘 PR 열어"
+
+<!-- ccaf0a52 2026-10-29T17:10:04.626Z -->
+[Jinyoung Park, 10-30 02:10] "그러면 이제 merge하면 그 이후로는 guide.md랑 기준서 2개로 녹화 진행하면 되는거고?"
+
+<!-- ccaf0a52 2026-10-30T13:11:24.257Z -->
+[Jinyoung Park, 10-30 22:11] "PR 15 리뷰후 merge"
+
+<!-- ccaf0a52 2026-10-30T13:13:24.668Z -->
+[Jinyoung Park, 10-30 22:13] "위키 Design Documentation 업데이트도 해줘"
+
+<!-- ccaf0a52 2026-10-30T13:24:48.736Z -->
+[Jinyoung Park, 10-30 22:24] "ishlove77롷 ㄱㄱ"
+
+<!-- ccaf0a52 2026-10-30T13:35:09.930Z -->
+[Jinyoung Park, 10-30 22:35] "그 ai testing 각자 몇개씩 하는걸로 되어있음?"
+
+<!-- ccaf0a52 2026-10-30T13:35:30.072Z -->
+[Jinyoung Park, 10-30 22:35] "그리고 회의록 저번꺼 안올라감?"
+
+<!-- ccaf0a52 2026-10-30T13:36:04.943Z -->
+[Jinyoung Park, 10-30 22:36] "ㄱㄱ"
+
+<!-- ccaf0a52 2026-10-30T13:36:56.372Z -->
+[Jinyoung Park, 10-30 22:36] "했음"
+
+<!-- ccaf0a52 2026-10-30T13:37:21.495Z -->
+[Jinyoung Park, 10-30 22:37] "<pasted_content id=\"39ef\">
+rce-with-lease=master:239e377 origin master
+(base) [REDACTED:custom_term][REDACTED:custom_term]ui-MacBookPro wiki % ! cd /private/tmp/claude-501/~/ccaf0a52-30f2-48ec-93fb-1e94daeb4c36/scratchpad/wiki && git push --force-with-lease=master:239e377 origin master
+(base) [REDACTED:custom_term][REDACTED:custom_term]ui-MacBookPro wiki % ! cd /private/tmp/claude-501/~/ccaf0a52-30f2-48ec-93fb-1e94daeb4c36/scratchpad/wiki && git push --force-with-lease=master:239e377 origin master
+</pasted_content id=\"39ef\">"
+
+<!-- ccaf0a52 2026-10-30T13:37:43.517Z -->
+[Jinyoung Park, 10-30 22:37] "ㅇㅇ 됬음"
+
+<!-- ccaf0a52 2026-10-30T13:51:06.424Z -->
+[Jinyoung Park, 10-30 22:51] "현우가 brnach에 정상 기준만 0.68로 바꿔서 다시 Push해놓을거라는데 내가 딱히 수정할건 없는거지?"
+
+<!-- ccaf0a52 2026-10-30T13:54:26.281Z -->
+[Jinyoung Park, 10-30 22:54] "<pasted_content id=\"39ef\">
+오후 10:27 박진영 양식을 맞추는게 중요한것 같아서
+오후 10:27 송현우 걸러질건 다 걸러진거??
+오후 10:30 송현우 이런 것들 다 깃허브에 모아서 내가 한번에 받고 분석하는게 나을듯??
+오후 10:31 송우현 ㅇㅋㅇㅋ
+오후 10:31 송현우 땡큐땡큐
+오후 10:31 송현우 요것도 같이 ㄱㄱ
+오후 10:31 송현우 지금 정상 깊이 기준이
+오후 10:32 송현우 좀빡세긴한가보다
+오후 10:32 송우현 ㅇㅇ ㅋㅋㅋㅋ ㅜㅜ
+오후 10:32 송우현 나같은 GymNoob에게 희망을 줘
+오후 10:33 한상우 0, 1이 아니라 정확한 모션에 가까울수록 큰 데미지?를 주는 방식이 나으려나
+오후 10:33 송현우 ㅋㅋㅋㅋㅋㅋ
+오후 10:34 송현우 0.68로 가야겠다
+오후 10:34 송현우 그러면 할만할듯
+오후 10:36 송현우 나머지 분들은 제가 브랜치에 0.68로 수정해서 올려놓을게요 그걸로 ㄱㄱ
+오후 10:36 박진영 ㅇㅋㅇㅋ
+오후 10:36 박진영 그리고 모두가 다 해야
+오후 10:36 박진영 32개 됨 ㅠㅠ
+오후 10:36 박진영 내일 회의전까지 각자 하는걸로 하시죵
+오후 10:36 송현우 ㄱㄱ
+오후 10:36 한상우 ㅇㅋㅇㅋ
+오후 10:37 박진영 현우도 포함 ㅋㅋ
+오후 10:40 송우현 이거 지금 올려놓은 건가?
+오후 10:40 박진영 올려 놓아용
+오후 10:41 박진영 아직 아닌듯
+오후 10:41 박진영 PR로 올리고
+오후 10:41 박진영 합쳐야 되서
+오후 10:42 송현우 ㄹㅇ ㅋㅋ
+오후 10:42 송현우 나는 기존테스트 셋도 있음
+오후 10:43 송현우 지금 브랜치에 푸시중
+오후 10:43 박진영 Pr 까지 ㄱㄱ
+오후 10:43 박진영 그래야 main에 합침 
+오후 10:43 송현우 근데 애초에 저거는 내 브랜치 코드만 수정하는거라
+오후 10:43 송현우 메인에 원래없었을텐디
+오후 10:44 송현우 팀원들 결과까지 보고
+오후 10:44 박진영 근데 저번에 합쳤는데 
+오후 10:44 박진영 이모티콘
+오후 10:44 송현우 고친다음에 합치는거 아녔나??
+오후 10:44 송현우 아 그래?
+오후 10:44 송현우 잠만
+오후 10:44 박진영 아 근데
+오후 10:44 박진영 잠만
+오후 10:44 박진영 내가 다시 올려야함
+오후 10:44 박진영 합격 기준을 0.68로 바꾸면 되는거지?
+오후 10:45 박진영 다시 좀 수정 내용을 pdf로 보내주삼 
+오후 10:48 송현우 형 내 브랜치 코드
+오후 10:48 송현우 아직 메인에 안합쳐졌다는데?
+오후 10:49 박진영 ㅇㅇ
+오후 10:49 박진영 그래서 채점 기준만
+오후 10:49 송현우 문서 수정할거 없이 문서에는 0.68같은 기준 안들어가서
+오후 10:49 박진영 아 너만
+오후 10:49 박진영 수정하면 되는건가
+오후 10:49 송현우 코드만 수정하고 그대로 하면되지않나?
+오후 10:49 박진영 그러면
+오후 10:49 박진영 지금 구조가
+오후 10:49 박진영 내가 testing 기준을
+오후 10:49 박진영 올리고
+오후 10:49 박진영 merge 해놧음
+오후 10:49 송현우 얍얍
+오후 10:49 박진영 딱히 그러면
+오후 10:50 박진영 그거 수정할 필요는 없는거지?
+오후 10:50 송현우 어어
+오후 10:50 박진영 ㅇㅋㅇㅋ
+오후 10:50 송현우 그냥 브랜치코드만 받아서
+오후 10:50 송현우 해보면될듯
+오후 10:53 송우현 그러면 나 기존에 한 거 무시하고 다시 8개 찍으면 되나?
+오후 10:54 송현우 표시할 수 없는 메시지입니다.
+</pasted_content id=\"39ef\">"
+
+<!-- ccaf0a52 2026-10-30T14:10:45.874Z -->
+[Jinyoung Park, 10-30 23:10] "현우 push했대 확인해줘"
+
+<!-- ccaf0a52 2026-10-30T14:13:30.273Z -->
+[Jinyoung Park, 10-30 23:13] "그러면 뭘 해야하는거? 내가 따로 할거는 없는거?"
+
+<!-- ccaf0a52 2026-10-30T14:13:54.408Z -->
+[Jinyoung Park, 10-30 23:13] "그러면 녹화 md랑 기준표도 바꿀 필요없는거제?"
+
+<!-- ccaf0a52 2026-10-30T14:14:29.590Z -->
+[Jinyoung Park, 10-30 23:14] "공통 브랜치 하나 파서 거기에 각자 이름으로 라벨링된 데이터+올려야하는 문서 이렇게 하고 싶은데 md수정 가능? branch는 내가 파고"
+
+<!-- ccaf0a52 2026-10-30T14:16:27.235Z -->
+[Jinyoung Park, 10-30 23:16] "그러면 다시 3개다 올리면 되는건가?"
+
+<!-- ccaf0a52 2026-10-30T14:16:52.162Z -->
+[Jinyoung Park, 10-30 23:16] "branch 그리고 너가 내 계정 ishlove77로 만들어서 올리랄고"
+
+<!-- ccaf0a52 2026-10-30T14:19:38.298Z -->
+[Jinyoung Park, 10-30 23:19] "내가 보내야 하는 파일 다시 올려줘"
+
+<!-- ccaf0a52 2026-10-30T14:20:14.382Z -->
+[Jinyoung Park, 10-30 23:20] "artifact도 다시 링크 줘봐"
+
+<!-- ccaf0a52 2026-10-30T14:20:49.568Z -->
+[Jinyoung Park, 10-30 23:20] "내가 merge가지 했으니까 이제 8세트 녹화 스텝으로 넘어가게 반영되어야 하는거 아니노"
+
+<!-- ccaf0a52 2026-10-30T14:21:20.346Z -->
+[Jinyoung Park, 10-30 23:21] "branch 너가 팠음?"
+
+<!-- ccaf0a52 2026-10-30T14:21:31.465Z -->
+[Jinyoung Park, 10-30 23:21] "md에도 적혀있지?"
+
+<!-- ccaf0a52 2026-10-30T14:22:13.458Z -->
+[Jinyoung Park, 10-30 23:22] "오쨋든 모든 md에 다 반영이 되어있는거지?"
+
+<!-- ccaf0a52 2026-10-30T14:22:53.721Z -->
+[Jinyoung Park, 10-30 23:22] "내말은 지금 공통 브랜치에 올리도록 반영 되엉 있는지"
+
+<!-- ccaf0a52 2026-10-31T06:16:57.478Z -->
+[Jinyoung Park, 10-31 15:16] "한상우가 pr 올렸다는데 댓글달고 merge좀 해줘봐"
+
+<!-- ccaf0a52 2026-10-31T07:04:39.459Z -->
+[Jinyoung Park, 10-31 16:04] "다시 올린것 같은데 한번 봐봐"
+
+<!-- ccaf0a52 2026-10-31T07:05:50.301Z -->
+[Jinyoung Park, 10-31 16:05] "상우랑 우현한테 보낼 메시지 써줘"
+
+<!-- ccaf0a52 2026-10-31T07:19:58.789Z -->
+[Jinyoung Park, 10-31 16:19] "누가먼저 올려야함?"
+
+<!-- ccaf0a52 2026-10-31T07:20:29.275Z -->
+[Jinyoung Park, 10-31 16:20] "아니 누가 merge를 먼저 해야하는건ㄱ지"
+
+<!-- ccaf0a52 2026-10-31T07:20:51.473Z -->
+[Jinyoung Park, 10-31 16:20] "그니까 지금 상우가 S1, S2를 올려야 한다 이건가?"
+
+<!-- ccaf0a52 2026-10-31T07:21:09.074Z -->
+[Jinyoung Park, 10-31 16:21] "지금 상우가 올린건 뭔디"
+
+<!-- ccaf0a52 2026-10-31T07:22:13.665Z -->
+[Jinyoung Park, 10-31 16:22] "artifact로 만들어서 올려줘봐"
+
+<!-- ccaf0a52 2026-10-31T10:30:26.620Z -->
+[Jinyoung Park, 10-31 19:30] "상우가 했다는데 한번 확인해보고 merge rr"
+
+<!-- ccaf0a52 2026-10-31T10:32:16.994Z -->
+[Jinyoung Park, 10-31 19:32] "S2지금 Draft를 풀어야 한다고?"
+
+<!-- ccaf0a52 2026-10-31T11:01:35.004Z -->
+[Jinyoung Park, 10-31 20:01] "했대 한번 해보자"
+
+<!-- ccaf0a52 2026-10-31T11:19:05.404Z -->
+[Jinyoung Park, 10-31 20:19] "artifact 바꿔서 해봐"
+
+<!-- ccaf0a52 2026-10-31T11:19:56.737Z -->
+[Jinyoung Park, 10-31 20:19] "ㅇㅇ 했음"
+
+<!-- ccaf0a52 2026-10-31T13:10:57.799Z -->
+[Jinyoung Park, 10-31 22:10] "지금 pull request 한거 다시 좀 처리좀 해봐"
+
+<!-- ccaf0a52 2026-10-31T13:14:08.857Z -->
+[Jinyoung Park, 10-31 22:14] "지금 Heruistic evalaution도 준비해야 하자나"
+
+<!-- ccaf0a52 2026-10-31T13:15:00.341Z -->
+[Jinyoung Park, 10-31 22:15] "<pasted_content id=\"39ef\">
+11월 4일 수업 시간에 Heuristic Evaluation(HE)을 진행합니다.
+각 팀은 평가자 4~5명에게 usability heuristics에 따라 앱을 평가받게 됩니다. HE 템플릿도 함께 공유드리니 참고하여 앱을 개선해 주세요 :slightly_smiling_face:
+원활한 평가를 위해 아래 사항을 준비해 주세요!
+
+APK 제출 및 설치: 기기에 설치하여 실행할 수 있는 APK 파일을 ZIP 형식으로 압축해 11월 3일 23:59까지 eTL에 제출해 주세요. 팀별로 배부된 기기에는 제출한 APK 파일로 앱을 설치하고, 정상적으로 실행되는지 미리 확인해 주세요.
+평가 환경 준비: 팀별로 노트북 2대를 준비해 주세요. 평가자들이 앱의 컨셉과 주요 사용 흐름을 확인할 수 있도록 더미 데이터와 필요한 테스트 계정도 준비해 주세요. 서버가 필요한 앱은 평가 시간 동안 서버를 실행해 두고, 평가용 기기에서 정상적으로 접속되는지 미리 확인해 주세요.
+TA와 교수님도 평가에 참여하실 예정입니다. 가능하다면 개인 Android 기기에도 앱을 설치해 오셔서 평가 인원이 늘어나는 경우에도 원활히 진행할 수 있도록 준비해 주세요!
+배부된 기기에 문제가 있거나 갤럭시 기기 외의 기기가 필요한 경우 별도로 문의해 주세요. 추가 기기는 여분이 있는 경우에만 대여할 수 있으니, 추가로 필요한 기기는 개인 기기 지참을 기본으로 준비해 주세요.
+</pasted_content id=\"39ef\">
+
+~/Downloads/Week\ 10.\ HE\ Template.xlsx 이거 참고해서 md만들고 거기서 시작해"
+
+<!-- ccaf0a52 2026-10-31T13:17:21.176Z -->
+[Jinyoung Park, 10-31 22:17] "~/Downloads/Week\ 8-2.\ Usability.pdf d이것도 같이 참고해서 해야해"
+
+<!-- ccaf0a52 2026-10-31T13:20:32.686Z -->
+[Jinyoung Park, 10-31 22:20] "평가자 안내문 PDF부터 만들어줘"
+
+<!-- ccaf0a52 2026-10-31T13:25:56.025Z -->
+[Jinyoung Park, 10-31 22:25] "템픞릿싯트는왜 그대로이지?"
+
+<!-- ccaf0a52 2026-10-31T13:26:21.979Z -->
+[Jinyoung Park, 10-31 22:26] "criteria는 바꿔야 하는게 아닌강"
+
+<!-- ccaf0a52 2026-10-31T13:33:19.819Z -->
+[Jinyoung Park, 10-31 22:33] "흠 근데 내가 template을 작성할 필요는 없는것 같고나중에 apk만들어지면 그떄 더미데이터랑 계정만 준비해가면 되는거 아님?"
+
+<!-- ccaf0a52 2026-10-31T13:33:44.733Z -->
+[Jinyoung Park, 10-31 22:33] "ㅇㅋ md에도 그렇게 반영해줘 그리고 더미데이터는 구라로 걍 만들어도 ㄱㅊ음"
+
+<!-- ccaf0a52 2026-10-31T13:38:05.041Z -->
+[Jinyoung Park, 10-31 22:38] "<pasted_content id=\"39ef\">
+박시은 (TA)  [오후 8:19]
+네 맞습니다.
+
+Web app
+ deployment.zip
+ → deployment_url.txt
+ → 내용: https://...
+Android app
+ submission.zip
+ → app.apk
+
+위와 같이 제출해주세요 (편집됨)
+</pasted_content id=\"39ef\">
+
+ 이걸로 제출양식도 좀 적어줘"
+
+<!-- ccaf0a52 2026-10-31T13:51:31.228Z -->
+[Jinyoung Park, 10-31 22:51] "https://claude.ai/artifact/H2x7os2v1acba8xdFJD7R9 여기서 
+
+<pasted_content id=\"39ef\">
+#12
+W5 아바타 갤러리 (PM 확인 시)우현
+아직 없음
+feat/avatar_gallery
+먼저 들어갈 것: #9 S3
+#13
+W6 UI 통일 (PM 확인 시)우현
+</pasted_content id=\"39ef\">
+
+ 를 그냥 봇난이도 설정 (초보,중수,고수) 이거 3가지를 만드는 하나의 task로 변경하자.. 어짜피 마지막이니까 상관 없을것 간기도 하고"
+
+<!-- ccaf0a52 2026-10-31T13:53:33.776Z -->
+[Jinyoung Park, 10-31 22:53] "말로는 이미 정했고, 걍 내껏만 바꾸자 어짜피 마지막이니"
+
+<!-- ccaf0a52 2026-10-31T14:31:09.814Z -->
+[Jinyoung Park, 10-31 23:31] "지금 현우가 올린거 Pr 확인해봐"
+
+<!-- ccaf0a52 2026-10-31T15:38:51.908Z -->
+[Jinyoung Park, 11-01 00:38] "이제 남은게 뭐지?"
+
+<!-- ccaf0a52 2026-10-31T15:47:39.452Z -->
+[Jinyoung Park, 11-01 00:47] "지금 ai평가 merge는 별개로 진행해도 되는거지? 상우랑 우현이랑"
+
+<!-- ccaf0a52 2026-10-31T15:48:16.182Z -->
+[Jinyoung Park, 11-01 00:48] "그리고 장고랑 서버쪽 고쳐줘야함 이거 알고 있지?"
+
+<!-- ccaf0a52 2026-10-31T15:52:06.041Z -->
+[Jinyoung Park, 11-01 00:52] "각각 ai-testing, merging, Herustic evaluation등 여러가지 기능들이 각각 잘 정리 되어 있는지도 확ㅇ니하고"
+
+<!-- ccaf0a52 2026-10-31T15:55:16.260Z -->
+[Jinyoung Park, 11-01 00:55] "어떻게새 세션 열면 되는거지?"
+
 ## 2026-11-03 · Jinyoung Park · iteration-3 PM (merges, redeploy, HE, demo)
 <!-- 973c7412 2026-10-31T15:56:02.001Z -->
 [Jinyoung Park, 11-01 00:56] "iteration.md, progress.md, task.md 읽고 PM 작업 이어서 하자"
@@ -475,3 +943,50 @@ Rev.2.2    2026-11-03 이거 순서 틀렸음 Rev 번호 정렬좀 또한 iterat
 
 <!-- 973c7412 2026-11-03T12:18:28.917Z -->
 [Jinyoung Park, 11-03 21:18] "~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf ~/Downloads/5\ -\ AI\ Collaboration\ Report\ Guidelines\ v1.1.pdf 이거 2개다 양식 맞는지 최종적으로 검토"
+
+## 2026-11-03 · Jinyoung Park · docs/prompt_log_home (eTL PDFs, the earlier session's prompts)
+<!-- 973c7412 2026-11-03T12:46:59.679Z -->
+[Jinyoung Park, 11-03 21:46] "어쨌든 다 한거지? 이제"
+
+<!-- 973c7412 2026-11-03T12:47:19.172Z -->
+[Jinyoung Park, 11-03 21:47] "본문 단어수는 그래도 좀 맞추면 좋겠다"
+
+<!-- 973c7412 2026-11-03T13:08:45.936Z -->
+[Jinyoung Park, 11-03 22:08] "Run AI module evaluation and write failure analysis 이거 commit id"
+
+<!-- 973c7412 2026-11-03T13:13:30.802Z -->
+[Jinyoung Park, 11-03 22:13] "남은일 알려줘"
+
+<!-- 973c7412 2026-11-03T13:13:43.188Z -->
+[Jinyoung Park, 11-03 22:13] "1번은 했음"
+
+<!-- 973c7412 2026-11-03T13:15:09.795Z -->
+[Jinyoung Park, 11-03 22:15] "pdf 4종 
+
+<pasted_content id=\"f036\">
+Requirements & Specifications (PDF)
+Filename: team{X}-iter3-reqspec.pdf
+Example: team7-iter3-reqspec.pdf
+
+Design Documents (PDF)
+Filename: team{X}-iter3-design.pdf
+Example: team7-iter3-design.pdf
+
+Testing Documentation (PDF)
+Filename: team{X}-iter3-testing.pdf
+Example: team7-iter3-testing.pdf
+
+Heuristic Evaluation (XLSX)
+Filename: team{X}-iter3-he.xlsx 
+Example: team7-iter3-he.xlsx 
+
+Project Schedule (XLSX)
+Filename: team{X}-iter3-schedule.xlsx
+Example: team7-iter3-schedule.xlsx
+
+AI Collaboration Report (PDF)
+Filename: team{X}-iter3-AI-collaboration-report.pdf
+Example: team7-iter3-AI-collaboration-report.pdf
+</pasted_content id=\"f036\">
+
+ 양식 맞춰서 만들어주고 (싹다 Download밑 PM폴더 만들고 거기에) 만든후 각 문서 양식 맞는지 ~/Downloads/3\ -\ Design\ Documentation\ Guidelines.pdf ~/Downloads/2\ -\ Requirements\ \&\ Specifications\ Guidelines.pdf ~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf ~/Downloads/5\ -\ AI\ Collaboration\ Report\ Guidelines\ v1.1.pdf 여거랑 비교해서 확인"
