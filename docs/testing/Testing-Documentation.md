@@ -29,7 +29,7 @@
 |Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2)|
 |Rev.2.2|2026-11-03|5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged) and the re-run after the judge tuning of PR #32 (tuned on the same set); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the four judge changes of #32 from the evaluation, the HE clothing advice) and what it leaves to Iteration 4|
 |Rev.2.3|2026-11-03|3.2: the CI revision of PR #14 noted; 4.2 Iteration 3 results moved to the final Iteration 3 `main` (`f03a460`, CI on `a643088`) with the coverage screenshot; 5.1: no additions since freezing|
-|Rev.2.4|2026-11-03|4.2: the test-case bullet shortened to a pointer; 5.1: per-set table (cases and labelled reps), the assertion per case and the threshold commit stated in the page, deterministic replay noted; 5.2: the two run headings in the per-push format of the members' notes|
+|Rev.2.4|2026-11-03|3.1 and 4.1: Iteration 3 revisions (PM and new areas' owners; the coverage script and versions); 4.2: who ran the suite, the plan change noted, the test-case bullet shortened to a pointer; 5.1: per-set table (cases and labelled reps), the assertion per case and the threshold commit stated in the page, deterministic replay noted; 5.2: the two run headings in the per-push format of the members' notes|
 
 # 2. Overview
 
@@ -63,6 +63,8 @@ Each component has one owner who writes and maintains its tests. The areas match
 * Whoever changes a file updates its tests in the same pull request, even in another owner's area.
 * Tests never use the real network, the team server, the camera, ML Kit, or secure storage. They use the fakes in `gymrats_app/test/support/`.
 * The PM runs the full suite with coverage on the submitted commit at the end of each iteration and updates 4.2.
+
+*Revision (Iteration 3, 2026-11-03):* the PM role passed to Jinyoung Park for Iteration 3 (the end-of-iteration run in 4.2 and the AI module evaluation in 5 are his). Areas added in Iteration 3 and their test owners, as merged ([Design Documentation 2.3.11](Design-Documentation#2311-who-owns-what)): battle game rules, fever, KO and bot levels (`lib/services/game/`, `test/services/game/`, `bot_difficulty_test`), the rules screen and the safety warning (`help_*`, `safe_warning_*` tests), score history and the new Home: Woohyun Song; squat judge and setup, squat battles and matching per exercise, SOMA avatars and the opponent view (`squat_*`, `matching_*`, `avatar_catalog_test`, the online tests): Sangwoo Hahn; push-up recordings and judge accuracy (`test/fixtures/pushup_cases/`, `pushup_error_cases_test`): Hyunwoo Song; the CI workflow (`.github/`, `tools/`) and the AI evaluation set and runner (`test/ai_eval/`): Jinyoung Park. The rows above stay as planned; cross-owner edits were agreed in the PRs.
 
 ## 3.2 When
 
@@ -151,6 +153,8 @@ python3.12 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 
 `tools/coverage_by_layer.py` merges one or more lcov files and prints the per-layer table used in 4.2 (a line counts as covered when any test hit it).
 
+*Revision (2026-10-26, PR #14):* `bash ../tools/coverage_per_file.sh` (from `gymrats_app/`) runs the per-file loop above with a 240 s limit per file and is what CI runs in four shards; the merge step is unchanged. Versions used for every Iteration 3 number: Flutter 3.47.5 / Dart 3.13.4, Python 3.12.
+
 ## 4.2 Results
 
 ### Iteration 2
@@ -222,7 +226,7 @@ REST API coverage and test output on `bf141af`:
 
 `main` after the last Iteration 3 PR (#32, the push-up judge tuning; its app code is the PR head `a643088`, which CI measured). The branch `iteration-3-demo` and the APK for the heuristic evaluation (`submission.zip` → `app.apk`, `flutter build apk --release`) are built from this app code, and the team server was redeployed on 2026-11-03 from `e6b16fe`, whose server code is unchanged since (Django with migration `matches.0003_match_scores`, battle server release `20261102T174257Z-main-e6b16fe`).
 
-Commands as in 4.1, run on a clean checkout of `f03a460` (macOS, Flutter 3.47.5 / Dart 3.13.4, Python 3.12) and by CI on `a643088` (ubuntu-latest, same versions; same counts):
+Commands as in 4.1, run by Jinyoung Park (PM) on a clean checkout of `f03a460` (macOS, Flutter 3.47.5 / Dart 3.13.4, Python 3.12) and by CI on `a643088` (ubuntu-latest, same versions; same counts). Plan change this iteration: CI added (3.2 and 4.1 revisions), so the coverage numbers come from the CI run rather than a developer's machine; the targets are unchanged.
 
 - `flutter analyze`: no issues.
 - `flutter test`: **1476 passed, 0 failed, 10 skipped**. The skipped tests are the 9 recorded push-up cases the judge still gets wrong (`test/services/pose/pushup_error_cases_test.dart`, each skipped with its reason in code and listed in `docs/iteration-3/pushup-error-cases.md`; 8 before PR #32, 9 after) and the live team-server check in `test/services/online/public_wss_smoke_test.dart`, skipped unless `RUN_PUBLIC_BATTLE_SMOKE` is set.
