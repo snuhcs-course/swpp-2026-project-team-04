@@ -26,7 +26,7 @@
 |Rev.1.2|2026-10-23|App tests re-run on the final Iteration 2 `main` (`9e9a911`); second app coverage attempt on Windows; PR #11 (coverage script)|
 |Rev.1.3|2026-10-23|App coverage measured on the final Iteration 2 `main` (`62f6a9d`) with the report as evidence; PR #12 (demo README and video)|
 |Rev.2.0|2026-11-01|Added 6. Acceptance Testing plan: how the UAT is run, six UAT stories (UAT-1 to UAT-6) with acceptance criteria and test procedures, frozen from 2026-11-06; results follow in Iteration 4|
-|Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing now points to the committed evaluation plan and thresholds; results follow after the run|
+|Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2)|
 
 # 2. Overview
 
@@ -239,11 +239,39 @@ Commands as in 4.1, run on a clean checkout of `e6b16fe` (macOS, Flutter 3.47.5 
 
 - Left out of the client coverage numbers: `test/screens/setup_screen_test.dart` (240 s timeout in the per-file run; its tests pass in `flutter test`). Files no test loads are interfaces or constant-only files, as in Iteration 2.
 - Shortfalls: none against the targets. Gaps carried over: no line coverage for the Dart battle server (same reason and plan as Iteration 2); the per-layer numbers lag `main` by one PR because of the hung runner job. Plan: re-run the coverage shards on `e6b16fe` (or the next `main`) and replace this table.
-- Test cases added or changed in Iteration 3 are listed per PR in the PR bodies (#15, #17, #19–#29) and in each member's `docs/testing/iteration-3/<github-id>.md`; this push changes only `README.md` and the documents, no tests.
+- Test cases added or changed in Iteration 3 are listed per PR in the PR bodies (#15, #17, #19–#29) and in each member's `docs/testing/iteration-3/<github-id>.md`. The AI evaluation branch adds `gymrats_app/test/ai_eval/eval_cases_test.dart` (loader: set from kind and position, every placement format, unknown pairs rejected, 4 people × 8 sets, every case labelled rep by rep, set 4 ends counted, scoring, case and set tables, error column) and `ai_eval_test.dart` (the run), 27 tests in `test/ai_eval` with the scorer's; no change under `lib/`.
 
 # 5. AI Module Testing
 
 Plan committed before the first run: `gymrats_app/test/ai_eval/README.md` and `eval_plan.dart` (PR #16, 2026-10-29) declare the protocol, the 32 cases (four members × 8 sets, positions A–D, in `gymrats_app/test/ai_eval/cases/`, complete on 2026-11-02), the expected labels, the per-case assertion and the thresholds M1 count accuracy ≥ 90%, M2 rejection rate ≥ 90%, M3 right reason ≥ 80%. Results follow in this section after the run on a pinned `main` commit (Iteration 3). The module under test is the on-device rep judging ([Design Documentation 2.3.2](Design-Documentation#232-rep-judging-on-device-ai-module)).
+
+## 5.1 Set, labels and runner (frozen 2026-11-03)
+- Cases: `gymrats_app/test/ai_eval/cases/{HS,JP,SWH,HSW}/` — 4 recorders × 8 sets = 32 recordings (landmarks and phone sensors only, no video), 270 labelled reps. Labels (`label.perRep`) come from the record sheets; each recorder's sheet is in the folder. Deviations from the protocol (Sangwoo's sets 5 reps / 30 s, Hyunwoo's set 4 with 11 descents and set 7 with 5 reps, Woohyun's set 1 with 5 and set 5 with 9 reps, Jinyoung's distances not measured) are listed in `gymrats_app/test/ai_eval/README.md` and kept as recorded.
+- Ground truth: the motion the recorder actually did, written on the sheet during the recording; the PM transferred it to the files (10-31 ~ 11-03). Hyunwoo checked all 32 files on 11-02 (open, kinds and counts as on the sheets, 17–26 fps).
+- Runner: `gymrats_app/test/ai_eval/ai_eval_test.dart` replays every recording through the current `RepJudge` (default `RepJudgeConfig`, `test/support/pushup_case_loader.dart`) and scores it with `eval_scorer.dart` (reps aligned by the fewest edits). Command, from `gymrats_app/`: `flutter test test/ai_eval` (report printed and written to `build/ai_eval/report.md`); `--dart-define=AI_EVAL_STRICT=true` turns the thresholds into assertions.
+- Settings under test: ML Kit pose detection 0.16.1, `accurate` model, `RepJudgeConfig` defaults of the commit (minLikelihood 0.6, bottomDepth 1.1, minShoulderDrop 0.68, maxTorsoDrop 1.2).
+
+## 5.2 Results
+
+### First run · 2026-11-03 · branch `test/ai_eval_cases` (labels `08bd2e9`, judge code = `main` `e6b16fe`)
+The judge code on the branch is identical to `main` `e6b16fe`; the run on the pinned `main` commit after the merge is recorded below it when done.
+
+| Metric | Value | Threshold | Result |
+|---|---|---|---|
+| M1 Count accuracy | 46.0% (29/63) | ≥ 90% | **fail** |
+| M2 Rejection rate | 91.3% (189/207) | ≥ 90% | pass |
+| M3 Right reason | 57.0% (118/207) | ≥ 80% | **fail** |
+
+32 cases; 1 judged rep without a labelled partner (rejected). Per position: A 63.3 / 100 / 100 %, B 0 / 94.0 / 56.7 %, C – / 79.7 / 53.6 %, D 34.5 / 100 / 22.2 % (M1 / M2 / M3). Per person: HS 87.5 / 91.7 / 53.3 %, HSW 81.8 / 82.8 / 55.2 %, JP 14.3 / 86.4 / 50.8 %, SWH 20.0 / 100 / 67.8 %. Per set: set 1 M1 63.3 %, set 7 M1 34.5 %; set 2 and 3 M2 = M3 = 100 %; set 4 M1 0 %, M2 87.5 %, M3 9.4 %; set 5 M2 97.1 %, M3 79.4 %; set 6 M2 62.9 %, M3 28.6 %; set 8 M2 100 %, M3 20.0 %.
+
+**Verdict: the judge does not pass the plan** (M1 and M3 below threshold). The replay verdicts equal the verdicts recorded on the phones for every case made with the current judge (`live` column of the report), so these are the numbers users get.
+
+**Failure analysis (first pass, PM 2026-11-03; the judge is Hyunwoo's, changes follow in Iteration 4):**
+1. Normal push-ups missed (M1): Jinyoung's and Woohyun's normal sets are rejected as `insufficientDepth` or `kneesDown` (JP set 1: 2/10 counted, set 7: 1/10; SWH set 7: 0/10, set 1: 3/5), while Hyunwoo's and Sangwoo's are counted (HS 15/15, HSW 9/10). Jinyoung's phone stood at 79–85°, outside the 60–65° of positions A and D. The `kneesDown` part is explained by Woohyun's analysis of 11-03 (shoulder–hip–knee angle at the top below the 155° default with the knees hidden behind the torso and reported at likelihood 1.0; loose clothes in the floor's colour make it worse).
+2. Set 4, no lock-out (M1 0 %, M3 9.4 %): the judge almost never produces `incompleteExtension`; partial lock-outs are read as `insufficientDepth` (JP) or `kneesDown` (SWH, HSW), and the final locked-out rep is not counted in any of the four recordings.
+3. Set 8, kneeling with straight arms (M3 20 %): rejected, but as `kneesDown` or `insufficientDepth` instead of `armsStraight` for JP, SWH and HSW; Hyunwoo's own set gets `armsStraight` 7/10.
+4. Set 6, belly down (M2 62.9 %): Sangwoo's and Jinyoung's belly reps are mostly counted (false counts), Hyunwoo's are rejected as `kneesDown`; only Woohyun's are `bellyDown`.
+5. Sets 2, 3 and 5 are right for everyone (M2 ≥ 97 %, M3 ≥ 79 %).
 
 # 6. Acceptance Testing
 
