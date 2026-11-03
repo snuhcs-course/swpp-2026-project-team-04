@@ -28,6 +28,7 @@
 |Rev.2.0|2026-11-01|Added 6. Acceptance Testing plan: how the UAT is run, six UAT stories (UAT-1 to UAT-6) with acceptance criteria and test procedures, frozen from 2026-11-06; results follow in Iteration 4|
 |Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2)|
 |Rev.2.2|2026-11-03|5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged) and the re-run after the judge tuning of PR #32 (tuned on the same set); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the four judge changes of #32 from the evaluation, the HE clothing advice) and what it leaves to Iteration 4|
+|Rev.2.3|2026-11-03|3.2: the CI revision of PR #14 noted; 4.2 Iteration 3 results moved to the final Iteration 3 `main` (`f03a460`, CI on `a643088`) with the coverage screenshot; 5.1: no additions since freezing|
 
 # 2. Overview
 
@@ -72,6 +73,8 @@ Each component has one owner who writes and maintains its tests. The areas match
 | End of each iteration | Full suite with coverage on the submitted commit; results recorded in 4.2 | PM | – |
 
 There is no CI (GitHub Actions) yet; all tests run on the developers' machines.
+
+*Revision (2026-10-26, PR #14):* GitHub Actions now runs on every pull request: `flutter analyze` and `flutter test`, the per-layer coverage in four shards (`tools/coverage_per_file.sh` + `tools/coverage_by_layer.py`), and `pytest --cov` for `server/`, and posts the numbers as a sticky comment on the PR (`tools/ci_test_report.py`). The rows above still hold: the author runs the tests before opening the PR, and the PM merges only with the CI comment green.
 
 # 4. Unit & Integration Testing
 
@@ -214,33 +217,38 @@ REST API coverage and test output on `bf141af`:
 
 ### Iteration 3
 
-#### 2026-11-03 · commit `e6b16fe` · every team-plan PR merged (#13–#29); heuristic-evaluation build
+#### 2026-11-03 · commit `f03a460` · every Iteration 3 PR merged (#13–#32); heuristic-evaluation build
 
-`main` after the last Iteration 3 feature PR (#29 `feat/home_layout`). The branch `iteration-3-demo` and the APK for the heuristic evaluation (`submission.zip` → `app.apk`, `flutter build apk --release`) are built from this commit, and the team server was redeployed from it on 2026-11-03 (Django with migration `matches.0003_match_scores`, battle server release `20261102T174257Z-main-e6b16fe`).
+`main` after the last Iteration 3 PR (#32, the push-up judge tuning; its app code is the PR head `a643088`, which CI measured). The branch `iteration-3-demo` and the APK for the heuristic evaluation (`submission.zip` → `app.apk`, `flutter build apk --release`) are built from this app code, and the team server was redeployed on 2026-11-03 from `e6b16fe`, whose server code is unchanged since (Django with migration `matches.0003_match_scores`, battle server release `20261102T174257Z-main-e6b16fe`).
 
-Commands as in 4.1, run on a clean checkout of `e6b16fe` (macOS, Flutter 3.47.5 / Dart 3.13.4, Python 3.12):
+Commands as in 4.1, run on a clean checkout of `f03a460` (macOS, Flutter 3.47.5 / Dart 3.13.4, Python 3.12) and by CI on `a643088` (ubuntu-latest, same versions; same counts):
 
 - `flutter analyze`: no issues.
-- `flutter test`: **1456 passed, 0 failed, 9 skipped**. The 9 skipped tests are the same as on the previous `main`: the live team-server checks (`public_wss_smoke_test` and the other `skip:` tests that need the real server or a device); each has its reason in code.
+- `flutter test`: **1476 passed, 0 failed, 10 skipped**. The skipped tests are the 9 recorded push-up cases the judge still gets wrong (`test/services/pose/pushup_error_cases_test.dart`, each skipped with its reason in code and listed in `docs/iteration-3/pushup-error-cases.md`; 8 before PR #32, 9 after) and the live team-server check in `test/services/online/public_wss_smoke_test.dart`, skipped unless `RUN_PUBLIC_BATTLE_SMOKE` is set.
 - Server `.venv/bin/python -m pytest`: **101 passed, 0 failed**.
 - Per PR, GitHub Actions (PR #14) ran the same commands plus the per-layer coverage on every head commit; each PR body has its own results table (date, head commit, counts, coverage).
 
-**Summary** (coverage is the last complete CI measurement on `main`'s history, PR #28 head `d04b8c1`, 2026-11-02 17:27 KST, 1389 tests; the coverage shard for #29's head `66e9849` hung on the runner, so the two Home widgets of #29 are not in these numbers)
+**Summary** (coverage from the CI run on `a643088`, 2026-11-03 16:03 KST, 1476 passed and 10 skipped; the app code of `main` `f03a460`; screenshot below)
 
 | Component | Frameworks | Target | Actual | Date | Commit | Command / Report |
 |---|---|---|---|---|---|---|
-| Model | flutter_test | 90% | 97.4% (266 / 273 lines) | 11/02 | `d04b8c1` | CI `Flutter coverage` shards (`tools/coverage_per_file.sh`, merged by `tools/coverage_by_layer.py`) |
-| ViewModel | flutter_test, fakes | 90% | 96.1% (931 / 969) | 11/02 | `d04b8c1` | same |
-| Service | flutter_test, MockClient, fakes | 85% | 94.3% (2219 / 2354) | 11/02 | `d04b8c1` | same |
-| View | flutter_test (widget) | 75% | 90.8% (3949 / 4347) | 11/02 | `d04b8c1` | same |
-| App, other (`main.dart`, `shared/`, `theme/`) | flutter_test | – | 70.8% (126 / 178) | 11/02 | `d04b8c1` | same |
-| Total (app) | | – | 92.2% (7491 / 8121) | 11/02 | `d04b8c1` | same |
-| API server | pytest, pytest-django, pytest-cov | 90% | 96% | 11/02 | `d04b8c1` | CI `Django API` job: `pytest --cov=accounts --cov=matches --cov=gymrats` |
-| Battle server (Dart) | flutter_test, loopback sockets | – | not measured | 11/03 | `e6b16fe` | behavior tests in `gymrats_app/test/services/online/` (run inside `flutter test`) |
+| Model | flutter_test | 90% | 97.4% (266 / 273 lines) | 11/03 | `a643088` | CI `Flutter coverage` shards (`tools/coverage_per_file.sh`, merged by `tools/coverage_by_layer.py`) |
+| ViewModel | flutter_test, fakes | 90% | 96.1% (931 / 969) | 11/03 | `a643088` | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (2232 / 2367) | 11/03 | `a643088` | same |
+| View | flutter_test (widget) | 75% | 91.0% (4053 / 4452) | 11/03 | `a643088` | same |
+| App, other (`main.dart`, `shared/`, `theme/`) | flutter_test | – | 69.7% (124 / 178) | 11/03 | `a643088` | same |
+| Total (app) | | – | 92.3% (7606 / 8239) | 11/03 | `a643088` | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% | 11/03 | `a643088` | CI `Django API` job: `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Battle server (Dart) | flutter_test, loopback sockets | – | not measured | 11/03 | `f03a460` | behavior tests in `gymrats_app/test/services/online/` (run inside `flutter test`) |
 
 - Left out of the client coverage numbers: `test/screens/setup_screen_test.dart` (240 s timeout in the per-file run; its tests pass in `flutter test`). Files no test loads are interfaces or constant-only files, as in Iteration 2.
-- Shortfalls: none against the targets. Gaps carried over: no line coverage for the Dart battle server (same reason and plan as Iteration 2); the per-layer numbers lag `main` by one PR because of the hung runner job. Plan: re-run the coverage shards on `e6b16fe` (or the next `main`) and replace this table.
-- Test cases added or changed in Iteration 3 are listed per PR in the PR bodies (#15, #17, #19–#29) and in each member's `docs/testing/iteration-3/<github-id>.md`. The AI evaluation branch adds `gymrats_app/test/ai_eval/eval_cases_test.dart` (loader: set from kind and position, every placement format, unknown pairs rejected, 4 people × 8 sets, every case labelled rep by rep, set 4 ends counted, scoring, case and set tables, error column) and `ai_eval_test.dart` (the run), 27 tests in `test/ai_eval` with the scorer's; no change under `lib/`.
+- Shortfalls: none against the targets. Gap carried over: no line coverage for the Dart battle server (same reason and plan as Iteration 2).
+
+<p align="center">
+<img width="800" alt="GitHub Actions coverage comment on PR #32 (a643088): per-layer table and Django coverage" src="images/testing/iter3-ci-coverage-a643088.png" />
+</p>
+
+- Test cases added or changed in Iteration 3 are listed per PR in the PR bodies (#14–#17, #19–#32) and per push in each member's `docs/testing/iteration-3/<github-id>.md` (`g1fted13.md`, `hyun-1210.md`, `Sangwoo-Hahn.md`, `ishlove77.md` for the PM's CI and AI-evaluation steps). The AI evaluation branch adds `gymrats_app/test/ai_eval/eval_cases_test.dart` (loader: set from kind and position, every placement format, unknown pairs rejected, 4 people × 8 sets, every case labelled rep by rep, set 4 ends counted, scoring, case and set tables, error column) and `ai_eval_test.dart` (the run), 27 tests in `test/ai_eval` with the scorer's; no change under `lib/`.
 
 # 5. AI Module Testing
 
@@ -248,7 +256,7 @@ Plan committed before the first run: `gymrats_app/test/ai_eval/README.md` and `e
 
 ## 5.1 Set, labels and runner (frozen 2026-11-03)
 - Cases: `gymrats_app/test/ai_eval/cases/{HS,JP,SWH,HSW}/` — 4 recorders × 8 sets = 32 recordings (landmarks and phone sensors only, no video), 270 labelled reps. Labels (`label.perRep`) come from the record sheets; each recorder's sheet is in the folder. Deviations from the protocol (Sangwoo's sets 5 reps / 30 s, Hyunwoo's set 4 with 11 descents and set 7 with 5 reps, Woohyun's set 1 with 5 and set 5 with 9 reps, Jinyoung's distances not measured) are listed in `gymrats_app/test/ai_eval/README.md` and kept as recorded.
-- Ground truth: the motion the recorder actually did, written on the sheet during the recording; the PM transferred it to the files (10-31 ~ 11-03). Hyunwoo checked all 32 files on 11-02 (open, kinds and counts as on the sheets, 17–26 fps).
+- Ground truth: the motion the recorder actually did, written on the sheet during the recording; the PM transferred it to the files (10-31 ~ 11-03). Hyunwoo checked all 32 files on 11-02 (open, kinds and counts as on the sheets, 17–26 fps). No case has been added, edited or removed since the set was frozen in PR #30 (`dccd84a`); an addition would be listed in the README with its date and reason.
 - Runner: `gymrats_app/test/ai_eval/ai_eval_test.dart` replays every recording through the current `RepJudge` (default `RepJudgeConfig`, `test/support/pushup_case_loader.dart`) and scores it with `eval_scorer.dart` (reps aligned by the fewest edits). Command, from `gymrats_app/`: `flutter test test/ai_eval` (report printed and written to `build/ai_eval/report.md`); `--dart-define=AI_EVAL_STRICT=true` turns the thresholds into assertions.
 - Settings under test: ML Kit pose detection 0.16.1, `accurate` model, `RepJudgeConfig` defaults of the commit (minLikelihood 0.6, bottomDepth 1.1, minShoulderDrop 0.68, maxTorsoDrop 1.2).
 
