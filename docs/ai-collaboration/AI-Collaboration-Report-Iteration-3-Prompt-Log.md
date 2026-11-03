@@ -461,3 +461,10 @@ Rev.2.2    2026-11-03 이거 순서 틀렸음 Rev 번호 정렬좀 또한 iterat
 
 <!-- 973c7412 2026-11-03T11:40:51.319Z -->
 [Jinyoung Park, 11-03 20:40] "~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf 여기에 있는거 다 명시도 했는지도 검토좀"
+
+## 2026-11-03 · Jinyoung Park · docs/ai_report_iter3 (team AI report)
+<!-- 973c7412 2026-11-03T11:44:24.066Z -->
+[Jinyoung Park, 11-03 20:44] "너가해"
+
+<!-- 973c7412 2026-11-03T11:48:18.483Z -->
+[Jinyoung Park, 11-03 20:48] "머지됐으면 progress.md랑 demo branch도 맞춰줘 그리고 마지막으로 ai-collaboration도 작성 시작하자 ~/Downloads/5\ -\ AI\ Collaboration\ Report\ Guidelines\ v1.1.pdf 이걸 지켜야 하고, 우현이가 만든양식을 그대로 쓰고 싶어. 이미 알다시피 팀원들이 자기 로그나 기타 등등을 다 올려줬을거라 (각 brnach docs안에) 그걸 잘 추합하면 됨 내꺼랑"
