@@ -19,28 +19,32 @@ const knownErrors = <String, String>{
       'sag and is rejected as kneesDown by a 2-frame hip fold at the top',
   '20261026-000418_normal':
       'known error: the base model reads the plank hip at 127-139°, so '
-      'every normal rep latches kneesDown at the top',
+      'normal reps 2-6 latch kneesDown at the top',
   '20261026-000522_normal':
       'known error: normal rep 2 is rejected as kneesDown by a 2-frame hip '
       'dip at the top (141° against the 162° baseline); a 3-frame rule '
       'would also miss knee reps 2 and 3 of 20261026-000615_knees',
   '20261027-142000_halfRepHeadNod':
       'known error: half reps 3 and 4 dropped the shoulders 0.90 and 0.78, '
-      'past the 0.68 line, and are rejected as kneesDown, not '
-      'insufficientDepth',
+      'past the 0.68 line, and count with the lockoutArmAngle check; with it '
+      'off both close as kneesDown (rep 3 also needs the -0.9 bow line)',
   '20261027-142116_bellyDown':
       'known error: belly rep 1 never reached the bottom and is '
       'insufficientDepth, not bellyDown',
+  '20261027-142240_knees':
+      'known error: wrong reason: knee reps 8 and 9 close as bellyDown with '
+      'the lockoutArmAngle check, kneesDown without it',
   '20261027-142432_normal':
-      'known error: farther from the phone, normal rep 5 is '
-      'insufficientDepth: the shoulders dropped 0.27 although the elbows '
-      'reached 44°',
+      'known error: farther from the phone, normal rep 5 never closes: the '
+      'bent elbows (44°) complete the bottom, but back at the top the elbow '
+      'average is still 44°, under topAngle, and then the body leaves the '
+      'frame',
   '20261027-145535_knees':
-      'known error: kneeling-bow rep 2 kept the elbows straight through '
-      'the bottom and is armsStraight, not kneesDown',
+      'known error: kneeling-bow rep 1 passes the -0.9 bow line and counts',
   '20261027-222907_knees':
-      'known error: an extra rejected event (the rock back after rep 19 '
-      'closes as insufficientDepth)',
+      'known error: wrong reason (knee rep 12 closes as bellyDown with the '
+      'lockoutArmAngle check) and an extra rejected event (the rock back '
+      'after rep 19 closes as insufficientDepth)',
 };
 
 /// What today's judge closes, rep by rep, for each known error: `valid` or
@@ -49,7 +53,7 @@ const knownErrors = <String, String>{
 const knownVerdicts = <String, List<String>>{
   '20261026-000317_normal': ['valid', 'valid', 'valid', 'valid', 'kneesDown'],
   '20261026-000418_normal': [
-    'kneesDown',
+    'valid',
     'kneesDown',
     'kneesDown',
     'kneesDown',
@@ -68,8 +72,8 @@ const knownVerdicts = <String, List<String>>{
   '20261027-142000_halfRepHeadNod': [
     'insufficientDepth',
     'insufficientDepth',
-    'kneesDown',
-    'kneesDown',
+    'valid',
+    'valid',
     'insufficientDepth',
   ],
   '20261027-142116_bellyDown': [
@@ -79,16 +83,21 @@ const knownVerdicts = <String, List<String>>{
     'bellyDown',
     'bellyDown',
   ],
-  '20261027-142432_normal': [
+  '20261027-142240_knees': [
     'valid',
     'valid',
     'valid',
     'valid',
-    'insufficientDepth',
-  ],
-  '20261027-145535_knees': [
+    'valid',
     'kneesDown',
-    'armsStraight',
+    'kneesDown',
+    'bellyDown',
+    'bellyDown',
+  ],
+  '20261027-142432_normal': ['valid', 'valid', 'valid', 'valid'],
+  '20261027-145535_knees': [
+    'valid',
+    'kneesDown',
     'kneesDown',
     'kneesDown',
     'kneesDown',
@@ -109,7 +118,7 @@ const knownVerdicts = <String, List<String>>{
     'kneesDown',
     'kneesDown',
     'kneesDown',
-    'kneesDown',
+    'bellyDown',
     'kneesDown',
     'kneesDown',
     'kneesDown',
@@ -337,7 +346,7 @@ void main() {
       final config = copy.judge['config']! as Map<String, Object?>;
       expect(config['bottomDepth'], 1.1);
       expect(config['topHoldMs'], 300);
-      expect(config, hasLength(34));
+      expect(config, hasLength(36));
       expect(copy.judge['commit'], isNull);
       expect(copy.setup.device, 'test');
       expect(copy.setup.model, PoseDetectionModel.accurate);
