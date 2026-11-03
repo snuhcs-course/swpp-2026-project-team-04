@@ -12,6 +12,18 @@
         "kneesDown": 10
       }
     },
+    "perRep": [
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown"
+    ],
     "note": "Knees up - 세배 펴다 접기 (Note was typed as '+1 - 정상' by mistake while recording; the set kind and the motion are right)"
   },
   "setup": {

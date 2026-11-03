@@ -12,6 +12,18 @@
         "kneesDown": 10
       }
     },
+    "perRep": [
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown"
+    ],
     "note": "Knees up - 무릎 푸시업. Label set by hand on 2026-10-31: the form was left at its defaults while recording."
   },
   "setup": {

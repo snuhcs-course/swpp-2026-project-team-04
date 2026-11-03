@@ -12,6 +12,18 @@
         "kneesDown": 10
       }
     },
+    "perRep": [
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown"
+    ],
     "note": "Knees up - 세배 펴다 접기. Label set by hand on 2026-10-31: the form was left at its defaults while recording. The 11th event at 26.5 s is read as getting up, not a rep."
   },
   "setup": {

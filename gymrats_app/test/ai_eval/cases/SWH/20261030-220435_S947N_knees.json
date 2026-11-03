@@ -12,6 +12,17 @@
         "kneesDown": 9
       }
     },
+    "perRep": [
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown",
+      "kneesDown"
+    ],
     "note": "Knees up - 무릎 푸쉬업. Only 9 reps: the 60 s round ran out (Reps was set to 10). All 9 were knee push-ups; one showed Go lower (knees down and shallow)."
   },
   "setup": {

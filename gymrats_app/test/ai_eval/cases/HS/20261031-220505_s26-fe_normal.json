@@ -12,6 +12,18 @@
         "insufficientDepth": 10
       }
     },
+    "perRep": [
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth"
+    ],
     "note": "Go lower - 반만 고개. Label set by hand on 2026-10-31: the form was left at its defaults while recording. Replaces 20261031-220356 (8 reps), left out by the performer."
   },
   "setup": {

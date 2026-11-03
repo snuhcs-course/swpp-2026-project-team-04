@@ -12,6 +12,18 @@
         "bellyDown": 10
       }
     },
+    "perRep": [
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown"
+    ],
     "note": "Hips up - 배 대기"
   },
   "setup": {

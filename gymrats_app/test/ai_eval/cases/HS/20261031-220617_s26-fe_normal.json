@@ -6,8 +6,26 @@
   "label": {
     "kind": "unlabelled",
     "reps": 11,
-    "expected": null,
-    "note": "Lock out your arms - 팔 덜 펴기. Label set by hand on 2026-10-31: the form was left at its defaults while recording. 11 descents counted from the head trace; rep 6 came up much less, and the tops at 14.8 s and 21.6 s read nearly full. The PM makes this label final."
+    "expected": {
+      "valid": 1,
+      "rejected": {
+        "incompleteExtension": 10
+      }
+    },
+    "note": "Lock out your arms - 팔 덜 펴기. Label set by hand on 2026-10-31: the form was left at its defaults while recording. 11 descents counted from the head trace; rep 6 came up much less, and the tops at 14.8 s and 21.6 s read nearly full. The PM makes this label final. Final label (PM, 2026-11-03, from the frames and the record sheet): set 4 pattern as in the JP, SWH and HSW sets, reps 1-10 incompleteExtension, rep 11 valid. The head and shoulders return highest after the last descent (28.4 s, above the setup baseline) and at 14.8 s; the elbows cannot be read from the front camera. kind stays unlabelled because the app has no kind for this set.",
+    "perRep": [
+      "incompleteExtension",
+      "incompleteExtension",
+      "incompleteExtension",
+      "incompleteExtension",
+      "incompleteExtension",
+      "incompleteExtension",
+      "incompleteExtension",
+      "incompleteExtension",
+      "incompleteExtension",
+      "incompleteExtension",
+      "valid"
+    ]
   },
   "setup": {
     "person": "HS",

@@ -10,6 +10,13 @@
       "valid": 5,
       "rejected": {}
     },
+    "perRep": [
+      "valid",
+      "valid",
+      "valid",
+      "valid",
+      "valid"
+    ],
     "note": "+1 - 정상"
   },
   "setup": {

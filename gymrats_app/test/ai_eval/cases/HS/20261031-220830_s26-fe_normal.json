@@ -12,6 +12,18 @@
         "bellyDown": 10
       }
     },
+    "perRep": [
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown",
+      "bellyDown"
+    ],
     "note": "Hips up - 배 대기. Label set by hand on 2026-10-31: the form was left at its defaults while recording."
   },
   "setup": {

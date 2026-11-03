@@ -12,6 +12,18 @@
         "insufficientDepth": 10
       }
     },
+    "perRep": [
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth",
+      "insufficientDepth"
+    ],
     "note": "Go lower - 반만 고개"
   },
   "setup": {

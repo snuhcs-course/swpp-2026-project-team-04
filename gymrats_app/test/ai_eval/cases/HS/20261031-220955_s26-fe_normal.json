@@ -12,6 +12,18 @@
         "armsStraight": 10
       }
     },
+    "perRep": [
+      "armsStraight",
+      "armsStraight",
+      "armsStraight",
+      "armsStraight",
+      "armsStraight",
+      "armsStraight",
+      "armsStraight",
+      "armsStraight",
+      "armsStraight",
+      "armsStraight"
+    ],
     "note": "Bend your arms - 세배 팔 편 채. Label set by hand on 2026-10-31: the form was left at its defaults while recording."
   },
   "setup": {
