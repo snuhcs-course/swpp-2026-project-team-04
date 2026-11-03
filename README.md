@@ -2,7 +2,7 @@
 
 GymRats is an Android app that turns push-ups and squats into a 30-second, real-time 1v1 battle. The phone stands on the floor in front of you, and its camera counts your reps with an on-device pose model, so video never leaves the phone. You are matched with another player online, or play against the AI rival RepBot at a level you choose, and you see your opponent as a 3D avatar that copies their real movement. Every rep is graded and scored, a fever time doubles the points, and a big enough lead ends the round by KO. After each push-up battle, a form report tells you what to fix.
 
-This branch, `iteration-3-demo`, holds the code shown in the **Iteration 3 demo** (pull requests #13 to #29 merged, `main` at `e6b16fe`). The team server runs this same commit, so you only need to install the app.
+This branch, `iteration-3-demo`, holds the code shown in the **Iteration 3 demo** (pull requests #13 to #32 merged, `main` at `f03a460`). The team server runs the server code of this commit (unchanged since `e6b16fe`, deployed 2026-11-03), so you only need to install the app.
 
 ## Demo video
 
@@ -17,7 +17,7 @@ Earlier demos: [Iteration 2 (1 min 47 s)](demo-videos/iteration-2-demo-video.mp4
 | **Battle game** | Every battle is a tug of war on a health bar that starts at 50:50. A counted rep is **Good +10** or **Excellent +15** (deep enough), a rep rejected for depth but with the elbows at 120° or less is **Average +5**, and a rep within 1.5 s of the previous one adds a **combo +5**. From 20 s to the end every point counts **×2 (fever)**. Falling 60 points behind flashes the edge of the screen red, and a 100-point gap ends the round at once by **KO**. At time-up the higher score wins, then the higher rep count, else a draw. Same rules against RepBot and online; online, the server keeps the clock and the score. | #20, #23 |
 | **Bot difficulty** | Before an AI battle, choose **초보 · 중수 · 고수** (beginner, intermediate, expert). "다시 매칭" on the result screen keeps the level. | #24 |
 | **Squats** | A second exercise with its own rep judge (hip and knee depth, with Excellent for a deep squat), against RepBot or online. Players are matched per exercise, and the setup screen tells you to stand 2 to 3 m from the phone. | #19, #17, #27 |
-| **Push-up judge accuracy** | The judge was re-tuned on recorded push-up sets (knee, belly, half-rep and wall cases), and 32 labelled recordings from the four of us now form the AI module test set. | #22, #16 |
+| **Push-up judge accuracy** | The judge was re-tuned on recorded push-up sets (knee, belly, half-rep and wall cases), and 32 labelled recordings from the four of us form the frozen AI module test set with its replay runner. The first run on it (count accuracy 46 %, rejection 91 %, right reason 57 %) led to four more judge rules; on the same set they bring count accuracy to 79 % (rejection 91 %, right reason 60 %). | #22, #16, #30, #31, #32 |
 | **SOMA avatars** | Three sportswear avatars (navy training, coral active, sage studio) in Profile. The opponent's avatar is shown from a 45° side view on a push-up rig, so depth is visible. | #25, #26 |
 | **Rules and safety** | The game rules open as pages right after sign-up and from **?** on Home. A safety reminder appears when a match is found. | #21, #15 |
 | **Score history** | The recent-battle card on Home, the **기록** (history) tab and the personal best now show game points, with the reps beside them. Squat battles against RepBot are saved too. | #28 |
@@ -81,7 +81,7 @@ flutter devices
 flutter run -d <device-id>
 ```
 
-Grant camera access when asked. For an APK instead, run `flutter build apk --release`; it is written to `gymrats_app/build/app/outputs/flutter-apk/app-release.apk`. The heuristic-evaluation APK was built this way from this commit.
+Grant camera access when asked. For an APK instead, run `flutter build apk --release`; it is written to `gymrats_app/build/app/outputs/flutter-apk/app-release.apk`. The heuristic-evaluation APK was built this way from the app code of this commit.
 
 ### 3. Try the flows
 
@@ -94,9 +94,10 @@ Grant camera access when asked. For an APK instead, run `flutter build apk --rel
 
 ## Tests and checks
 
-| Part | From | Command | Last result (2026-11-03, `e6b16fe`) |
+| Part | From | Command | Last result (2026-11-03, `f03a460`) |
 |---|---|---|---|
-| App | `gymrats_app/` | `flutter analyze` and `flutter test` | no issues; 1456 passed, 9 skipped |
+| App | `gymrats_app/` | `flutter analyze` and `flutter test` | no issues; 1476 passed, 10 skipped |
+| AI module test | `gymrats_app/` | `flutter test test/ai_eval` (report in `build/ai_eval/report.md`) | M1 79.4 %, M2 90.8 %, M3 59.9 % on the frozen 32-case set (thresholds 90 / 90 / 80 %; tuned on the same set, see the Testing Documentation 5) |
 | REST API | `server/` | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` | 101 passed |
 | Battle server | `gymrats_app/` | `flutter test test/services/online/` (part of the app run) | included above |
 | Coverage by layer | CI | GitHub Actions on each pull request (`Flutter coverage` shards, `Django API`) | per-layer table in the [Testing Documentation](https://github.com/snuhcs-course/swpp-2026-project-team-04/wiki/Testing-Documentation) |
@@ -107,6 +108,7 @@ Setup, commands, the AI module test on the recorded push-up sets, and the full r
 
 - Form feedback exists for push-ups only; a squat battle has no feedback screen.
 - The Excellent depth (1.6 × the pass depth) and the three bot levels are first values, to be tuned after the heuristic evaluation.
+- The push-up judge misses the targets of the AI module test (count accuracy 79 % against 90 %); belly-down reps and some far placements are still misjudged, and the latest rules were tuned on the same recordings they are measured on.
 - The phone judges its own reps, and the server trusts that judgment.
 - Judging from the front: when the hips are out of view, belly and wall push-ups cannot be told apart, and the rep is judged on head depth alone.
 - The exercise sheet reads your personal best when it opens, so right after a battle it can show the previous best until it is opened again.
