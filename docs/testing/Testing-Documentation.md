@@ -29,6 +29,7 @@
 |Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2)|
 |Rev.2.2|2026-11-03|5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged) and the re-run after the judge tuning of PR #32 (tuned on the same set); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the four judge changes of #32 from the evaluation, the HE clothing advice) and what it leaves to Iteration 4|
 |Rev.2.3|2026-11-03|3.2: the CI revision of PR #14 noted; 4.2 Iteration 3 results moved to the final Iteration 3 `main` (`f03a460`, CI on `a643088`) with the coverage screenshot; 5.1: no additions since freezing|
+|Rev.2.4|2026-11-03|3.1 and 4.1: Iteration 3 revisions (PM and new areas' owners; the coverage script and versions); 4.2: who ran the suite, the plan change noted, the test-case bullet shortened to a pointer; 5.1: per-set table (cases and labelled reps), the assertion per case and the threshold commit stated in the page, deterministic replay noted; 5.2: the two run headings in the per-push format of the members' notes|
 
 # 2. Overview
 
@@ -62,6 +63,8 @@ Each component has one owner who writes and maintains its tests. The areas match
 * Whoever changes a file updates its tests in the same pull request, even in another owner's area.
 * Tests never use the real network, the team server, the camera, ML Kit, or secure storage. They use the fakes in `gymrats_app/test/support/`.
 * The PM runs the full suite with coverage on the submitted commit at the end of each iteration and updates 4.2.
+
+*Revision (Iteration 3, 2026-11-03):* the PM role passed to Jinyoung Park for Iteration 3 (the end-of-iteration run in 4.2 and the AI module evaluation in 5 are his). Areas added in Iteration 3 and their test owners, as merged ([Design Documentation 2.3.11](Design-Documentation#2311-who-owns-what)): battle game rules, fever, KO and bot levels (`lib/services/game/`, `test/services/game/`, `bot_difficulty_test`), the rules screen and the safety warning (`help_*`, `safe_warning_*` tests), score history and the new Home: Woohyun Song; squat judge and setup, squat battles and matching per exercise, SOMA avatars and the opponent view (`squat_*`, `matching_*`, `avatar_catalog_test`, the online tests): Sangwoo Hahn; push-up recordings and judge accuracy (`test/fixtures/pushup_cases/`, `pushup_error_cases_test`): Hyunwoo Song; the CI workflow (`.github/`, `tools/`) and the AI evaluation set and runner (`test/ai_eval/`): Jinyoung Park. The rows above stay as planned; cross-owner edits were agreed in the PRs.
 
 ## 3.2 When
 
@@ -150,6 +153,8 @@ python3.12 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 
 `tools/coverage_by_layer.py` merges one or more lcov files and prints the per-layer table used in 4.2 (a line counts as covered when any test hit it).
 
+*Revision (2026-10-26, PR #14):* `bash ../tools/coverage_per_file.sh` (from `gymrats_app/`) runs the per-file loop above with a 240 s limit per file and is what CI runs in four shards; the merge step is unchanged. Versions used for every Iteration 3 number: Flutter 3.47.5 / Dart 3.13.4, Python 3.12.
+
 ## 4.2 Results
 
 ### Iteration 2
@@ -221,7 +226,7 @@ REST API coverage and test output on `bf141af`:
 
 `main` after the last Iteration 3 PR (#32, the push-up judge tuning; its app code is the PR head `a643088`, which CI measured). The branch `iteration-3-demo` and the APK for the heuristic evaluation (`submission.zip` → `app.apk`, `flutter build apk --release`) are built from this app code, and the team server was redeployed on 2026-11-03 from `e6b16fe`, whose server code is unchanged since (Django with migration `matches.0003_match_scores`, battle server release `20261102T174257Z-main-e6b16fe`).
 
-Commands as in 4.1, run on a clean checkout of `f03a460` (macOS, Flutter 3.47.5 / Dart 3.13.4, Python 3.12) and by CI on `a643088` (ubuntu-latest, same versions; same counts):
+Commands as in 4.1, run by Jinyoung Park (PM) on a clean checkout of `f03a460` (macOS, Flutter 3.47.5 / Dart 3.13.4, Python 3.12) and by CI on `a643088` (ubuntu-latest, same versions; same counts). Plan change this iteration: CI added (3.2 and 4.1 revisions), so the coverage numbers come from the CI run rather than a developer's machine; the targets are unchanged.
 
 - `flutter analyze`: no issues.
 - `flutter test`: **1476 passed, 0 failed, 10 skipped**. The skipped tests are the 9 recorded push-up cases the judge still gets wrong (`test/services/pose/pushup_error_cases_test.dart`, each skipped with its reason in code and listed in `docs/iteration-3/pushup-error-cases.md`; 8 before PR #32, 9 after) and the live team-server check in `test/services/online/public_wss_smoke_test.dart`, skipped unless `RUN_PUBLIC_BATTLE_SMOKE` is set.
@@ -248,7 +253,7 @@ Commands as in 4.1, run on a clean checkout of `f03a460` (macOS, Flutter 3.47.5 
 <img width="800" alt="GitHub Actions coverage comment on PR #32 (a643088): per-layer table and Django coverage" src="images/testing/iter3-ci-coverage-a643088.png" />
 </p>
 
-- Test cases added or changed in Iteration 3 are listed per PR in the PR bodies (#14–#17, #19–#32) and per push in each member's `docs/testing/iteration-3/<github-id>.md` (`g1fted13.md`, `hyun-1210.md`, `Sangwoo-Hahn.md`, `ishlove77.md` for the PM's CI and AI-evaluation steps). The AI evaluation branch adds `gymrats_app/test/ai_eval/eval_cases_test.dart` (loader: set from kind and position, every placement format, unknown pairs rejected, 4 people × 8 sets, every case labelled rep by rep, set 4 ends counted, scoring, case and set tables, error column) and `ai_eval_test.dart` (the run), 27 tests in `test/ai_eval` with the scorer's; no change under `lib/`.
+- Test cases added or changed in Iteration 3 are listed per PR in the PR bodies and per push in each member's notes under `docs/testing/iteration-3/`.
 
 # 5. AI Module Testing
 
@@ -257,12 +262,28 @@ Plan committed before the first run: `gymrats_app/test/ai_eval/README.md` and `e
 ## 5.1 Set, labels and runner (frozen 2026-11-03)
 - Cases: `gymrats_app/test/ai_eval/cases/{HS,JP,SWH,HSW}/` — 4 recorders × 8 sets = 32 recordings (landmarks and phone sensors only, no video), 270 labelled reps. Labels (`label.perRep`) come from the record sheets; each recorder's sheet is in the folder. Deviations from the protocol (Sangwoo's sets 5 reps / 30 s, Hyunwoo's set 4 with 11 descents and set 7 with 5 reps, Woohyun's set 1 with 5 and set 5 with 9 reps, Jinyoung's distances not measured) are listed in `gymrats_app/test/ai_eval/README.md` and kept as recorded.
 - Ground truth: the motion the recorder actually did, written on the sheet during the recording; the PM transferred it to the files (10-31 ~ 11-03). Hyunwoo checked all 32 files on 11-02 (open, kinds and counts as on the sheets, 17–26 fps). No case has been added, edited or removed since the set was frozen in PR #30 (`dccd84a`); an addition would be listed in the README with its date and reason.
+- Per set (the recording standard, Hyunwoo's 기준서 of 2026-10-29/30): one case per recorder and set, 10 reps planned per case (Sangwoo's cases 5), 60-second round, lighting `bright`, phone at A/B = 50 cm and C/D = 100 cm from the fingertip line, A/C at 60–65° and B/D at 75–80°.
+
+| Set | Position | Motion | Expected per rep | Cases | Labelled reps (correct / incorrect) |
+|---|---|---|---|---|---|
+| 1 | A | Normal push-ups | counted | 4 | 30 (30 / 0) |
+| 2 | A | Kneeling bow | `kneesDown` | 4 | 35 (0 / 35) |
+| 3 | B | Elbows only to ~120°, then a head nod | `insufficientDepth` | 4 | 35 (0 / 35) |
+| 4 | B | Full depth, no lock-out until the last rep | `incompleteExtension` × (reps − 1), then counted | 4 | 36 (4 / 32) |
+| 5 | C | Knee push-ups | `kneesDown` | 4 | 34 (0 / 34) |
+| 6 | C | Belly and hips touch the floor first | `bellyDown` | 4 | 35 (0 / 35) |
+| 7 | D | Normal push-ups | counted | 4 | 30 (29 / 1) |
+| 8 | D | Kneeling, arms straight, head to the floor | `armsStraight` | 4 | 35 (0 / 35) |
+| **All** | A–D | | | **32** | **270** (63 / 207) |
+
+- Assertion per case: the labelled reps and the reps the judge closed in the replay are aligned by the fewest edits (`align` in `eval_scorer.dart`); each aligned pair is compared on counted / rejected and on the reject reason. M1 = correct reps counted ÷ correct reps done; M2 = incorrect reps not counted ÷ incorrect reps done; M3 = incorrect reps rejected with the labelled reason ÷ incorrect reps done. An incorrect rep the judge never closed counts as not counted (M2) and wrong (M3); judged reps with no labelled partner are reported apart. No string matching: the comparison is on the verdict enum per rep.
+- Thresholds, declared before any run and committed with the plan in PR #16 (`a3576ce`, 2026-10-29; `eval_plan.dart`): M1 ≥ 90%, M2 ≥ 90%, M3 ≥ 80%, all three over the 32 cases; per position and per person the metrics are reported without a threshold.
 - Runner: `gymrats_app/test/ai_eval/ai_eval_test.dart` replays every recording through the current `RepJudge` (default `RepJudgeConfig`, `test/support/pushup_case_loader.dart`) and scores it with `eval_scorer.dart` (reps aligned by the fewest edits). Command, from `gymrats_app/`: `flutter test test/ai_eval` (report printed and written to `build/ai_eval/report.md`); `--dart-define=AI_EVAL_STRICT=true` turns the thresholds into assertions.
-- Settings under test: ML Kit pose detection 0.16.1, `accurate` model, `RepJudgeConfig` defaults of the commit (minLikelihood 0.6, bottomDepth 1.1, minShoulderDrop 0.68, maxTorsoDrop 1.2).
+- Settings under test: ML Kit pose detection 0.16.1, `accurate` model, `RepJudgeConfig` defaults of the commit (minLikelihood 0.6, bottomDepth 1.1, minShoulderDrop 0.68, maxTorsoDrop 1.2). The replay is deterministic: no model sampling, seed or prompt is involved, so two runs on the same commit give the same numbers.
 
 ## 5.2 Results
 
-### Re-run after the judge tuning of PR #32 · 2026-11-03 · `main` `269eba7` — tuned on the same set
+#### 2026-11-03 · code at commit `269eba7` · AI module evaluation, re-run after the judge tuning of PR #32 (tuned on the same set)
 The four judge changes of PR #32 (5.3) were chosen from these same 32 recordings, so this run is **in-sample**; it is reported beside the first run, not instead of it, and a check on new recordings at other phone angles is Iteration 4 work. Full report: `gymrats_app/test/ai_eval/results/2026-11-03_main-269eba7_after-pr32.md`; Hyunwoo's own run on the branch gave the same numbers.
 
 | Metric | First run (`dccd84a`) | After #32 (`269eba7`) | Threshold | Result |
@@ -273,7 +294,7 @@ The four judge changes of PR #32 (5.3) were chosen from these same 32 recordings
 
 Per person M1: JP 14.3 → 90 %, SWH 20 → 53 %, HS 87.5 → 88 %, HSW 81.8 → 82 %. Per set: set 1 M1 63.3 → 86.7 %, set 7 34.5 → 75.9 %, set 4 M1 0 → 50 % and M3 9.4 → 34.4 %, sets 2, 3 and 5 unchanged (set 2 M3 100 → 94.3 %), set 6 (belly down) unchanged at M2 62.9 %. Cost on the 12 earlier fixtures: 3 cheat reps now count (two head nods, one bow). Still open: belly-down reps (13 of 35 counted, phone angle suspected), the lower-body jitter of SWH set 7, the set 4 and set 8 reasons.
 
-### Run on the pinned `main` commit · 2026-11-03 · `main` `dccd84a` (PR #30 merged)
+#### 2026-11-03 · code at commit `dccd84a` · AI module evaluation, first run on `main` (PR #30 merged)
 Re-run on `main` right after the merge, on the branch `test/ai_eval_results` (full report with the per-set and per-case tables: `gymrats_app/test/ai_eval/results/2026-11-03_main-dccd84a.md`). The numbers are identical to the first run below, as the judge code did not change between `e6b16fe` and `dccd84a`, and to Hyunwoo's independent run during the review of PR #30.
 
 ### First run · 2026-11-03 · branch `test/ai_eval_cases` (labels `08bd2e9`, judge code = `main` `e6b16fe`)
