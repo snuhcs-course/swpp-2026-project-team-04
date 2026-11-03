@@ -27,6 +27,7 @@
 |Rev.1.3|2026-10-23|App coverage measured on the final Iteration 2 `main` (`62f6a9d`) with the report as evidence; PR #12 (demo README and video)|
 |Rev.2.0|2026-11-01|Added 6. Acceptance Testing plan: how the UAT is run, six UAT stories (UAT-1 to UAT-6) with acceptance criteria and test procedures, frozen from 2026-11-06; results follow in Iteration 4|
 |Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2)|
+|Rev.2.2|2026-11-03|5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the move-closer notice, the HE clothing advice) and what it leaves to Iteration 4|
 
 # 2. Overview
 
@@ -274,6 +275,23 @@ Re-run on `main` right after the merge, on the branch `test/ai_eval_results` (fu
 3. Set 8, kneeling with straight arms (M3 20 %): rejected, but as `kneesDown` or `insufficientDepth` instead of `armsStraight` for JP, SWH and HSW; Hyunwoo's own set gets `armsStraight` 7/10.
 4. Set 6, belly down (M2 62.9 %): Sangwoo's and Jinyoung's belly reps are mostly counted (false counts); Hyunwoo's are rejected as `kneesDown` (5) or `insufficientDepth` (4) with 1 counted; only Woohyun's are `bellyDown`.
 5. Sets 2, 3 and 5 are right for everyone (M2 ≥ 97 %, M3 ≥ 79 %).
+
+## 5.3 What the AI testing changed
+
+The recordings were used twice: the first 12 sets (10-26 ~ 10-27, `gymrats_app/test/fixtures/pushup_cases/`, replayed by `test/services/pose/pushup_error_cases_test.dart`) drove the judge fix of PR #22 before the set was frozen, and the frozen 32-case set (5.1) measured the result and set the thresholds of the battle game. Changes made from the recordings, in order:
+
+| Date / PR | What the recordings showed | What changed in the app |
+|---|---|---|
+| 10-31 · #22 (Hyunwoo) | The `base` pose model read a straight plank's hip at 127–139°, so normal reps were rejected as knees down | Pose model `base` → `accurate` (`lib/services/pose/pose_estimator.dart`); 23–25 fps instead of 27 on the test phone, above the 15 fps requirement |
+| 10-31 · #22 | A head nod with the shoulders still up reached the depth line | A bottom now also needs the shoulders at least 0.68 shoulder widths below the top pose (`RepJudgeConfig.minShoulderDrop`); a nod alone is "Go lower" |
+| 10-31 · #22 | The "hip angle below 110°" rule fired on normal reps and missed a kneeling bow | That rule removed; new knee rules for a kneeling bow (hips behind the hands, `bowHipHandGap`, `bowTorsoDrop`, `bowHipRise`) and for shins lifted at the top (`maxShinLiftGap`) |
+| 10-31 · #22 | Belly-down reps were caught only by the hip height, which a shallow normal rep also hits | `bellyDown` now also needs the torso sagged at least 1.1 (`minBellyTorsoDrop`) |
+| 10-31 · #22 | At 100 cm (positions C and D) the setup refused a good plank: the top of a plank read 1.05–1.22 (one rep 1.54) against the 1.0 line | Setup `maxPushUpTorsoDrop` 1.0 → 1.5 (`lib/services/pose/setup_checker.dart`), so a far placement can start; 8 cases the judge still gets wrong are kept as `knownErrors` in the replay test and listed in `docs/iteration-3/pushup-error-cases.md` |
+| 10-31 · #20 (Woohyun) | Normal push-ups in the test recordings reached a depth of about 1.4–1.9 shoulder widths (`RepJudgeConfig` notes) | Excellent needs `maxDepth ≥ 1.6 × passDepth` (push-up 1.76), so only the deepest reps earn 15 points; the first proposal of 1.2 × would have made almost every normal rep Excellent. Good stays 10 |
+| 11-01 · #23 (Woohyun) | Elbow angles measured on the recordings: a normal rep that was rejected for depth 90–91°; honest but tired shallow reps 110–126°; the half-rep-with-head-nod cheat 109–135° (team recording `20261027-142000_halfRepHeadNod` 127.8–145.2°); straight arms with a head dip 169–175° | A rep rejected only for depth earns Average +5 when `minElbowAngle ≤ 120°`; the line was raised from 105° after a phone test showed almost no Average at 105°. 120° is a compromise that misses some tired reps (121–126°) and pays some cheats (109–120°) |
+| 11-03 · from 5.2 and Woohyun's analysis | At 100 cm the judge fails most (position C M2 79.7 %, D M3 22.2 %; JP's phone at 79–85° outside the standard; hidden knees reported at likelihood 1.0; loose clothes in the floor's colour) | Decided: the app tells the player to move closer when the body reads too small during setup and the battle (notice text and threshold to be set; Iteration 4, owner TODO(team)); for the heuristic evaluation and the demo, players wear clothes that show the knees and contrast with the floor |
+
+What the AI testing leaves to Iteration 4 (judge owner Hyunwoo), from 5.2: the lock-out rule (`incompleteExtension` recognized in 3 of 33 partial reps; 4 false counts), the `armsStraight` reason (set 8 read as `kneesDown` / `insufficientDepth` for three recorders), belly reps counted for two recorders, and normal reps rejected as `insufficientDepth` / `kneesDown` on the S23 Ultra and S947N recordings. The set is frozen; a judge change is measured by re-running `flutter test test/ai_eval` on the new `main` commit and adding the run to 5.2.
 
 # 6. Acceptance Testing
 
