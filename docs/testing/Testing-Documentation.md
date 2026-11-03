@@ -253,8 +253,10 @@ Plan committed before the first run: `gymrats_app/test/ai_eval/README.md` and `e
 
 ## 5.2 Results
 
+### Run on the pinned `main` commit · 2026-11-03 · `main` `dccd84a` (PR #30 merged)
+Re-run on `main` right after the merge, on the branch `test/ai_eval_results` (full report with the per-set and per-case tables: `gymrats_app/test/ai_eval/results/2026-11-03_main-dccd84a.md`). The numbers are identical to the first run below, as the judge code did not change between `e6b16fe` and `dccd84a`, and to Hyunwoo's independent run during the review of PR #30.
+
 ### First run · 2026-11-03 · branch `test/ai_eval_cases` (labels `08bd2e9`, judge code = `main` `e6b16fe`)
-The judge code on the branch is identical to `main` `e6b16fe`; the run on the pinned `main` commit after the merge is recorded below it when done.
 
 | Metric | Value | Threshold | Result |
 |---|---|---|---|

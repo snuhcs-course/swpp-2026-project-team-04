@@ -249,3 +249,51 @@ PM이 채점 러너와 결과 PR을 올리면, 판정기 담당인 형이 검토
 ## 2026-11-03 · Jinyoung Park · test/ai_eval_cases (AI evaluation runner)
 <!-- 973c7412 2026-11-03T04:47:22.717Z -->
 [Jinyoung Park, 11-03 13:47] "Build frozen AI eval set , Run AI module evaluation and write failure analysis에 대해 FINAL COMMIT ID 이거 알려줘"
+
+## 2026-11-03 · Jinyoung Park · test/ai_eval_results (run on pinned main)
+<!-- 973c7412 2026-11-03T05:03:27.007Z -->
+[Jinyoung Park, 11-03 14:03] "PR 올려"
+
+<!-- 973c7412 2026-11-03T05:04:02.526Z -->
+[Jinyoung Park, 11-03 14:04] "artifact에도 반영도 해줘 ai-testing artifact"
+
+<!-- 973c7412 2026-11-03T05:08:05.439Z -->
+[Jinyoung Park, 11-03 14:08] "Requirements and Specifications, Design Documentation 이것도 이제 지금까지 merge 한 코드들을 바탕으로 update해줘"
+
+<!-- 973c7412 2026-11-03T05:10:49.791Z -->
+[Jinyoung Park, 11-03 14:10] "skills.md나 관련된 md보고 하는거 맞지?"
+
+<!-- 973c7412 2026-11-03T05:11:59.964Z -->
+[Jinyoung Park, 11-03 14:11] "바뀐 wireframe 이미지는 그려줘야지"
+
+<!-- 973c7412 2026-11-03T05:36:19.901Z -->
+[Jinyoung Park, 11-03 14:36] "~/Downloads/KakaoTalk_Video_2026-11-03-14-18-35.mp4 ~/Downloads/KakaoTalk_Video_2026-11-03-14-18-27.mp4 밑에께 푸쉬업, 위에께 팔굽혀피기임 mathcing은 이거 참조해도 ㄱㅊ을듯?"
+
+<!-- 973c7412 2026-11-03T05:46:06.609Z -->
+[Jinyoung Park, 11-03 14:46] "<pasted_content id=\"f036\">
+▎ PR #30 봤습니다. 라벨 32개와 러너 모두 이상 없고, 첫 평가 수치(M1 46.0 / M2 91.3 / M3 57.0)도 제가 따로 돌린 값과 같습니다. Testing Documentation §5.2 실패 분석에서 바로잡을 수치만 몇 개 있어요.
+▎ 1. 현우 정상 \"15/15\" → 14/15입니다. 세트 1의 6번째 회가 insufficientDepth로 거절됐어요.
+▎ 2. 우현 세트 7 \"0/10\" → 0/9입니다. 4번째 회는 라벨이 insufficientDepth라 정상은 9회예요.
+▎ 3. 세트 4 설명에 **현우 세트에서 덜 편 회 4회가 인정된 것(false count)**이 빠져 있어요. 그리고 상우 세트는 incompleteExtension을 3회 맞혔습니다.
+▎ 4. 현우 배 대기 \"kneesDown으로 거절\" → 정확히는 kneesDown 5, insufficientDepth 4, 1회 인정입니다.
+▎
+▎ 이것만 고쳐 주시면 승인하겠습니다
+</pasted_content id=\"f036\">"
+
+<!-- 973c7412 2026-11-03T05:48:37.393Z -->
+[Jinyoung Park, 11-03 14:48] "~/Downloads/3\ -\ Design\ Documentation\ Guidelines.pdf ~/Downloads/2\ -\ Requirements\ \&\ Specifications\ Guidelines.pdf 이거 보고 잘 맞게 되어있는지 검토"
+
+<!-- 973c7412 2026-11-03T05:54:29.181Z -->
+[Jinyoung Park, 11-03 14:54] "한문단 ~200단어면 200단어로 맞춰야 하는거 아님?"
+
+<!-- 973c7412 2026-11-03T06:06:43.842Z -->
+[Jinyoung Park, 11-03 15:06] "design document 원래 있던 system architecutre 그림 그거 살려...."
+
+<!-- 973c7412 2026-11-03T06:07:52.380Z -->
+[Jinyoung Park, 11-03 15:07] "저 그림 형식 그대로 맞추면 안되나 그리고 iter3라고 따로 표시하지 말고 내말은 원래 형식대로 지키되 거기에 추가하는거지 갑자기 너가 새로운 양식으로 그림을 그리지마라"
+
+<!-- 973c7412 2026-11-03T06:12:47.859Z -->
+[Jinyoung Park, 11-03 15:12] "Run AI module evaluation and write failure analysis commit final id 알려줘"
+
+<!-- 973c7412 2026-11-03T06:13:34.851Z -->
+[Jinyoung Park, 11-03 15:13] "머지해"
