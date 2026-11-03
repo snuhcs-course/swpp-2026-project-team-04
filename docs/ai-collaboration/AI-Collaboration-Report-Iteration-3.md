@@ -6,10 +6,10 @@
 - **Full input prompts:** [Prompt Log](AI-Collaboration-Report-–-Iteration-3-–-Prompt-Log) (repo: `docs/ai-collaboration/*-Prompt-Log.md`); each member's notes: `docs/ai-collaboration/iteration-3/`
 
 ## 1. Where AI Was Used
-- **Battle game, rules screen, safety warning, bot levels, score history, Home** (Woohyun, Claude Code): `lib/services/game/`, `help_screen.dart`, `safe_warning_dialog.dart`, `bot_difficulty.dart`; PRs #13–#15, #20–#24, #28–#29.
-- **Push-up recordings and judge accuracy** (Hyunwoo, Claude Code): the recorder and replay test (`pushup_error_cases_test.dart`), the judge rules in `rep_judge.dart` (#22, #32).
-- **Squat judge, squat battles, matching per exercise, avatars** (Sangwoo; Claude Code for the design doc, Codex for the code): `docs/iteration-3/squat-judge-design.md`, `squat_rep_judge.dart`, `services/matching/`; PRs #17–#19, #25–#27.
-- **PM work** (Jinyoung, Claude Code): CI (#14), the AI evaluation plan, set and runner (`test/ai_eval/`, #16, #30, #31), trial merges of every PR, the redeploy, the HE data, the wiki.
+- **Battle game, rules screen, safety warning, bot levels, score history, Home** (Woohyun, Claude Code): `lib/services/game/`, `help_screen.dart`, `safe_warning_dialog.dart`; PRs #13–#15, #20–#24, #28–#29.
+- **Push-up recordings and judge accuracy** (Hyunwoo, Claude Code): the recorder and replay test, the judge rules in `rep_judge.dart` (#22, #32).
+- **Squat judge, squat battles, matching per exercise, avatars** (Sangwoo; Claude Code for the design doc, Codex for the code): `squat-judge-design.md`, `squat_rep_judge.dart`; PRs #17–#19, #25–#27.
+- **PM work** (Jinyoung, Claude Code): CI (#14), the AI evaluation plan, set and runner (`test/ai_eval/`, #16, #30, #31), trial merges, the redeploy, the HE data, the wiki.
 - **Not used, or limited on purpose:** the 32 evaluation recordings and their labels (people, record sheets); every rule and threshold (agents proposed, people chose); merging and the wiki (PM only); phone checks.
 
 ## 2. Prompt History (one per member; all in the Prompt Log)
@@ -27,18 +27,18 @@
 ## 4. Hallucinations / Errors
 - **Recording standard from memory** (Hyunwoo): set 8 was written as a straight-arm dip on the toes, which the judge cannot label `armsStraight`; caught while answering the PM, changed before recording. Set 4's "about 140°" is a top for the judge; caught only when bent-arm reps counted. Cost: set 4 lock-outs misread in the evaluation.
 - **CSS assumed in Flutter** (Woohyun): `BlurStyle.inner` as an inset shadow filled the screen with amber; widget tests disable shadows, so only the reviewer's render saw it. Cost: one review round.
-- **"W3 needs no change"** (Sangwoo): `battle_viewmodel.dart` always saved a push-up `FormReport` (the squat guard is now at L437), so squat needed three W3 edits. Caught by the reviewer; two rounds.
+- **"W3 needs no change"** (Sangwoo): `battle_viewmodel.dart` always saved a push-up `FormReport` (squat guard now at L437), so squat needed three W3 edits. Caught by the reviewer; two rounds.
 - **A label re-serialized** (Jinyoung): the JSON writer re-indented a case file, so one label edit became a 142,749-line diff; caught by `git diff --stat`, redone as +20/−2. Cost: ~3 min.
 
 ## 5. Prompt Revisions
-- Hyunwoo: "팔 덜펴기는 빠군 기준 적용하면? 배대기는 어떻게 적용해야 고쳐질까?" → "근데 배를 대면 엉덩이나 무릎 관절 값이 유의미하게 이상하게 달라져야하지 않나". Naming the joints turned a search for one line into a per-person comparison, which found the difference at the top of the rep, not the bottom.
-- Woohyun: "Go lower(insufficientDepth)로 거절된 rep 중 minElbowAngle이 105° 이하인 것만 +5." → "Average 기준을 105°에서 120°로 바꿔 줘(BattleRules 상수)." A phone check showed Average almost never appearing; one constant made the change small.
+- Hyunwoo: "팔 덜펴기는 빠군 기준 적용하면? 배대기는 어떻게 적용해야 고쳐질까?" → "근데 배를 대면 엉덩이나 무릎 관절 값이 유의미하게 이상하게 달라져야하지 않나". Naming the joints turned a search for one line into a per-person comparison, which found the difference at the top of the rep.
+- Woohyun: "Go lower(insufficientDepth)로 거절된 rep 중 minElbowAngle이 105° 이하인 것만 +5." → "Average 기준을 105°에서 120°로 바꿔 줘(BattleRules 상수)." A phone check showed Average almost never appearing; one constant kept the change small.
 - Jinyoung: "지금꺼 확인해서 반영" → "머지해". "확인" produced only a review; the explicit verb made the tool act.
 
 ## 6. Manual Fixes and Why
 - No hand edits to app or server code, so no manual-fix marker was added: every change went through an agent after the user's decision. The Claude Code steps had the reviewer subagent; Sangwoo's Codex steps (#17, #25–#27) had no independent review, as his notes say.
-- The manual work was recording and labelling the evaluation set, the phone checks, and the PM's merges and server steps.
+- Manual work: recording and labelling the evaluation set, the phone checks, the PM's merges and server steps.
 
 ## 7. Takeaway for Iteration 4
 - Check a judge change on recordings it was not tuned on before merging it; #32 is in-sample.
-- Read the code path a claim needs before stating it, and name the clock, file or constant behind every rule.
+- Read the code path a claim needs before stating it; name the file or constant behind every rule.
