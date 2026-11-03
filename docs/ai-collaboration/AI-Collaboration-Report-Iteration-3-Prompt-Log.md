@@ -454,3 +454,10 @@ Rev.2.2    2026-11-03 이거 순서 틀렸음 Rev 번호 정렬좀 또한 iterat
 
 <!-- 973c7412 2026-11-03T11:35:34.561Z -->
 [Jinyoung Park, 11-03 20:35] "ㅇㅇㅇ ㄱㄱㄱ"
+
+## 2026-11-03 · Jinyoung Park · docs/testing_tidy (guideline audit, 3.1/4.1 revisions)
+<!-- 973c7412 2026-11-03T11:36:42.335Z -->
+[Jinyoung Park, 11-03 20:36] "그리고 set당 몇개인지도 해야되고 pdf에서 명시하라는거는 다 명시함?"
+
+<!-- 973c7412 2026-11-03T11:40:51.319Z -->
+[Jinyoung Park, 11-03 20:40] "~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf 여기에 있는거 다 명시도 했는지도 검토좀"
