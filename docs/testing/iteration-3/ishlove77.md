@@ -84,8 +84,9 @@ Plan in `gymrats_app/`, on macOS, on `55429f5`; coverage from the CI comment on 
   M3 57.0% (118/207) fail. Failure analysis in Testing Documentation 5.2.
 - **Shortfalls:** none against the coverage targets. M1 and M3 are below their thresholds; the judge work goes to the
   judge owner (Hyunwoo).
-- **Reviewer subagent:** APPROVE after four Minor fixes (the position letter must stand alone; a case without
-  `label.perRep` is an error, not a fallback; the per-case error column; README wording).
+- **Reviewer subagent:** APPROVE; four of five Minor findings fixed (the position letter must stand alone; a case
+  without `label.perRep` is an error, not a fallback; the per-case error column; README wording), the fifth (a stray
+  untracked `tools/__pycache__`) skipped.
 
 Test cases added or changed in this step:
 
@@ -127,7 +128,7 @@ PR #32), plus Testing Documentation 4.2 and 5 and the AI collaboration report. C
 - **Merge:** documents only; merged by the PM on the user's decision without a teammate's approval, merge commit
   `f03a460`.
 
-#### 2026-11-03 · code at commit `00aead4` · step `docs/testing_rev23`: Testing Documentation Rev.2.3 and these notes
+#### 2026-11-03 · code at commit `00aead4` (these notes in the following commits) · step `docs/testing_rev23`: Testing Documentation Rev.2.3 and these notes
 Documents only: 3.2 keeps the "no CI" plan and adds the PR #14 revision next to it; 4.2 moves the Iteration 3 results
 to `main` `f03a460` (CI on `a643088`, the head of #32: 1476 passed, 10 skipped; Model 97.4%, ViewModel 96.1%, Service
 94.3%, View 91.0%, server 96%, screenshot `docs/images/testing/iter3-ci-coverage-a643088.png`); 5.1 states that no

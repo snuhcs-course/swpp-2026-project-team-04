@@ -16,6 +16,7 @@ This page covers the PM's work. Each member's own notes for their tasks are in `
 - Server redeploy of 2026-11-03 from `main` `e6b16fe` (Django `migrate` 0003, battle server release `20261102T174257Z-main-e6b16fe`): commands prepared and run by Claude Code step by step with the user's OK.
 - Heuristic-evaluation data: the seven `hr01`–`hr07` accounts and 28 dummy battles were created through the public API by a one-off script Claude Code wrote (kept outside the repo).
 - `README.md` on this branch (`iteration-3-demo`), this report and the Testing Documentation results entry: Claude Code.
+- Guideline check of the three wiki pages (11-03, user: "guidelines PDF 보고 잘 맞게 되어있는지 검토"): Claude Code read the course PDFs and fixed the gaps: Testing Documentation Rev.2.3 (3.2 CI revision kept beside the original plan, 4.2 results on the final `main` with the CI coverage screenshot `docs/images/testing/iter3-ci-coverage-a643088.png`, 5.1 "no case changed since freezing"), the PM's per-push notes `docs/testing/iteration-3/ishlove77.md` in the format of the other members' notes, and the Requirements / Design pages' revision tables and wording (branch `docs/testing_rev23`).
 - Not used: recording the 32 push-up evaluation sets (people on real phones, labels by the recorder), the heuristic evaluation itself (evaluators in class), and the teammates' feature code (their own reports).
 
 ## 2. Prompt History
@@ -39,6 +40,8 @@ This page covers the PM's work. Each member's own notes for their tasks are in `
 - Claude assumed the battle server could be compiled on the server with `sudo -u sangwoo` using 상우's Dart SDK; it failed twice (`Exists failed, path = '/home/jinyoung/bin/'`). Caught by the command output; the binary was cross-compiled on the Mac instead (`--target-os=linux --target-arch=x64`), as for the 10-21 release. Cost: ~5 min.
 - A page-edit script asserted on a sentence that an earlier edit had already changed (11-02). Caught by the assertion; re-run with the actual text. Cost: ~2 min.
 - Writing the final label into Hyunwoo's set 4 file, Claude re-serialized the whole JSON with an indent, turning a 2-line change into a 142,749-line diff (11-03). Caught by `git diff --stat` right after; the file was restored and only the `label` block replaced (+20/−2). Cost: ~3 min.
+
+- New revision rows were inserted above the previous row in all three wiki pages (Rev.2.3 above Rev.2.2 in Requirements and Testing, Rev.2.4 above Rev.2.3 in Design; 11-03). Caught by the user reading the Requirements history ("이거 순서 틀렸음 Rev 번호 정렬좀"); all three tables re-sorted the same hour. Cost: ~5 min.
 
 ## 5. Prompt Revisions
 - Before: "지금꺼 확인해서 반영" (11-02, PR #28). After: "머지해". Why it worked: the first prompt only asked to check and reflect, so the merge was held; the explicit verb was what the tool needed to act.
