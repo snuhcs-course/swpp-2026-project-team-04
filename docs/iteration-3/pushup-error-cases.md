@@ -270,8 +270,10 @@ JP 14%, SWH 20%. The causes, found by replaying each rep:
 `test/support/pose_fixtures.dart` now builds synthetic tops at 178° (recorded planks read 174–179°), so synthetic reps
 pass the lockout line.
 
-**Effect on the evaluation recordings** (same provisional labels, so tuned on the set it is scored on): M1 79.4%
-(50/63), M2 90.8% (188/207), M3 59.9%. Normal reps by person: HS 88%, HSW 82%, JP 90%, SWH 53%. Cheats counted: 19,
+**Effect on the evaluation recordings** (tuned on the set it is scored on): M1 79.4% (50/63), M2 90.8% (188/207), M3
+59.9% (124/207). The official runner of PR #30 (`flutter test test/ai_eval`, final labels) gives the same figures on
+this branch after merging `main` `dccd84a`, against 46.0% / 91.3% / 57.0% for the official first run on `dccd84a`
+(`test/ai_eval/results/2026-11-03_main-dccd84a.md` on `test/ai_eval_results`). Normal reps by person: HS 88%, HSW 82%, JP 90%, SWH 53%. Cheats counted: 19,
 one more than before; 13 of them are belly reps.
 
 **Effect on the earlier fixtures** (each change turned on and off alone): normal rep 1 of `20261026-000418_normal`
