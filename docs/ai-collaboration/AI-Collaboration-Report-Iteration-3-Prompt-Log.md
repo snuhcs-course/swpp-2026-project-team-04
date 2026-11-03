@@ -313,3 +313,10 @@ PM이 채점 러너와 결과 PR을 올리면, 판정기 담당인 형이 검토
 
 <!-- 973c7412 2026-11-03T06:38:33.720Z -->
 [Jinyoung Park, 11-03 15:38] "그런걸 다 반영해서 testing documentation적어주고, 이름 wiki에 올라간거 다 지금 Park Jinyoung인데 ishlove77로 바꾸는 것도 해줘"
+
+## 2026-11-03 · Jinyoung Park · test/ai_eval_results (run on pinned main)
+<!-- 973c7412 2026-11-03T06:59:53.708Z -->
+[Jinyoung Park, 11-03 15:59] "가까이 오라는 알림은 걍 빼자"
+
+<!-- 973c7412 2026-11-03T07:03:19.053Z -->
+[Jinyoung Park, 11-03 16:03] "어캐됨?"
