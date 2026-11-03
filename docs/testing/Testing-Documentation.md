@@ -27,6 +27,7 @@
 |Rev.1.3|2026-10-23|App coverage measured on the final Iteration 2 `main` (`62f6a9d`) with the report as evidence; PR #12 (demo README and video)|
 |Rev.2.0|2026-11-01|Added 6. Acceptance Testing plan: how the UAT is run, six UAT stories (UAT-1 to UAT-6) with acceptance criteria and test procedures, frozen from 2026-11-06; results follow in Iteration 4|
 |Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2)|
+|Rev.2.2|2026-11-03|5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged) and the re-run after the judge tuning of PR #32 (tuned on the same set); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the four judge changes of #32 from the evaluation, the HE clothing advice) and what it leaves to Iteration 4|
 
 # 2. Overview
 
@@ -253,8 +254,21 @@ Plan committed before the first run: `gymrats_app/test/ai_eval/README.md` and `e
 
 ## 5.2 Results
 
+### Re-run after the judge tuning of PR #32 · 2026-11-03 · `main` `269eba7` — tuned on the same set
+The four judge changes of PR #32 (5.3) were chosen from these same 32 recordings, so this run is **in-sample**; it is reported beside the first run, not instead of it, and a check on new recordings at other phone angles is Iteration 4 work. Full report: `gymrats_app/test/ai_eval/results/2026-11-03_main-269eba7_after-pr32.md`; Hyunwoo's own run on the branch gave the same numbers.
+
+| Metric | First run (`dccd84a`) | After #32 (`269eba7`) | Threshold | Result |
+|---|---|---|---|---|
+| M1 Count accuracy | 46.0 % (29/63) | 79.4 % (50/63) | ≥ 90 % | **fail** |
+| M2 Rejection rate | 91.3 % (189/207) | 90.8 % (188/207) | ≥ 90 % | pass |
+| M3 Right reason | 57.0 % (118/207) | 59.9 % (124/207) | ≥ 80 % | **fail** |
+
+Per person M1: JP 14.3 → 90 %, SWH 20 → 53 %, HS 87.5 → 88 %, HSW 81.8 → 82 %. Per set: set 1 M1 63.3 → 86.7 %, set 7 34.5 → 75.9 %, set 4 M1 0 → 50 % and M3 9.4 → 34.4 %, sets 2, 3 and 5 unchanged (set 2 M3 100 → 94.3 %), set 6 (belly down) unchanged at M2 62.9 %. Cost on the 12 earlier fixtures: 3 cheat reps now count (two head nods, one bow). Still open: belly-down reps (13 of 35 counted, phone angle suspected), the lower-body jitter of SWH set 7, the set 4 and set 8 reasons.
+
+### Run on the pinned `main` commit · 2026-11-03 · `main` `dccd84a` (PR #30 merged)
+Re-run on `main` right after the merge, on the branch `test/ai_eval_results` (full report with the per-set and per-case tables: `gymrats_app/test/ai_eval/results/2026-11-03_main-dccd84a.md`). The numbers are identical to the first run below, as the judge code did not change between `e6b16fe` and `dccd84a`, and to Hyunwoo's independent run during the review of PR #30.
+
 ### First run · 2026-11-03 · branch `test/ai_eval_cases` (labels `08bd2e9`, judge code = `main` `e6b16fe`)
-The judge code on the branch is identical to `main` `e6b16fe`; the run on the pinned `main` commit after the merge is recorded below it when done.
 
 | Metric | Value | Threshold | Result |
 |---|---|---|---|
@@ -272,6 +286,24 @@ The judge code on the branch is identical to `main` `e6b16fe`; the run on the pi
 3. Set 8, kneeling with straight arms (M3 20 %): rejected, but as `kneesDown` or `insufficientDepth` instead of `armsStraight` for JP, SWH and HSW; Hyunwoo's own set gets `armsStraight` 7/10.
 4. Set 6, belly down (M2 62.9 %): Sangwoo's and Jinyoung's belly reps are mostly counted (false counts); Hyunwoo's are rejected as `kneesDown` (5) or `insufficientDepth` (4) with 1 counted; only Woohyun's are `bellyDown`.
 5. Sets 2, 3 and 5 are right for everyone (M2 ≥ 97 %, M3 ≥ 79 %).
+
+## 5.3 What the AI testing changed
+
+The recordings were used twice: the first 12 sets (10-26 ~ 10-27, `gymrats_app/test/fixtures/pushup_cases/`, replayed by `test/services/pose/pushup_error_cases_test.dart`) drove the judge fix of PR #22 before the set was frozen, and the frozen 32-case set (5.1) measured the result and set the thresholds of the battle game. Changes made from the recordings, in order:
+
+| Date / PR | What the recordings showed | What changed in the app |
+|---|---|---|
+| 10-31 · #22 (Hyunwoo) | The `base` pose model read a straight plank's hip at 127–139°, so normal reps were rejected as knees down | Pose model `base` → `accurate` (`lib/services/pose/pose_estimator.dart`); 23–25 fps instead of 27 on the test phone, above the 15 fps requirement |
+| 10-31 · #22 | A head nod with the shoulders still up reached the depth line | A bottom now also needs the shoulders at least 0.68 shoulder widths below the top pose (`RepJudgeConfig.minShoulderDrop`); a nod alone is "Go lower" |
+| 10-31 · #22 | The "hip angle below 110°" rule fired on normal reps and missed a kneeling bow | That rule removed; new knee rules for a kneeling bow (hips behind the hands, `bowHipHandGap`, `bowTorsoDrop`, `bowHipRise`) and for shins lifted at the top (`maxShinLiftGap`) |
+| 10-31 · #22 | Belly-down reps were caught only by the hip height, which a shallow normal rep also hits | `bellyDown` now also needs the torso sagged at least 1.1 (`minBellyTorsoDrop`) |
+| 10-31 · #22 | At 100 cm (positions C and D) the setup refused a good plank: the top of a plank read 1.05–1.22 (one rep 1.54) against the 1.0 line | Setup `maxPushUpTorsoDrop` 1.0 → 1.5 (`lib/services/pose/setup_checker.dart`), so a far placement can start; 8 cases the judge still gets wrong are kept as `knownErrors` in the replay test and listed in `docs/iteration-3/pushup-error-cases.md` |
+| 10-31 · #20 (Woohyun) | Normal push-ups in the test recordings reached a depth of about 1.4–1.9 shoulder widths (`RepJudgeConfig` notes) | Excellent needs `maxDepth ≥ 1.6 × passDepth` (push-up 1.76), so only the deepest reps earn 15 points; the first proposal of 1.2 × would have made almost every normal rep Excellent. Good stays 10 |
+| 11-01 · #23 (Woohyun) | Elbow angles measured on the recordings: a normal rep that was rejected for depth 90–91°; honest but tired shallow reps 110–126°; the half-rep-with-head-nod cheat 109–135° (team recording `20261027-142000_halfRepHeadNod` 127.8–145.2°); straight arms with a head dip 169–175° | A rep rejected only for depth earns Average +5 when `minElbowAngle ≤ 120°`; the line was raised from 105° after a phone test showed almost no Average at 105°. 120° is a compromise that misses some tired reps (121–126°) and pays some cheats (109–120°) |
+| 11-03 · #32 (Hyunwoo) | From 5.2: one tester's normal reps bent the elbows to 68–89° while the head went down only 1.03–1.34 and the shoulders stayed under the 0.68 line; a single frame under the 155° default latched knees on planks that read 160–162°; with the phone at 79–85° normal reps read a bow gap of −0.74 against the −0.6 line; the arm average let one bent arm hide, so short reps counted | Four judge changes, tuned on the same 32 recordings (`rep_judge.dart`): a bottom is also reached with the elbows at 100° or less and the head 0.8 down (`deepElbowAngle`); the kneel check before the first plank is off (`defaultKneeHip` 155 → 0; the fold from the personal baseline stays); the bow line moves to −0.9 (`bowHipHandGap`); a rep closes only when the less extended arm reaches 172° (`lockoutArmAngle`). Result on the set: M1 46.0 → 79.4 %, M2 91.3 → 90.8 % (still a pass), M3 57.0 → 59.9 %; per person JP 14 → 90 %, SWH 20 → 53 %, HS 88 %, HSW 82 %; set 4 right reason 9 → 34 %. Cost on the earlier 12 fixtures: 3 cheat reps now count (two head nods, one bow). Not addressed: belly-down reps (13 of 35 still counted, phone angle suspected) and the lower-body jitter of SWH set 7 |
+| 11-03 · from 5.2 and Woohyun's analysis | At 100 cm the judge fails most (position C M2 79.7 %, D M3 22.2 %; JP's phone at 79–85° outside the standard; hidden knees reported at likelihood 1.0; loose clothes in the floor's colour) | For the heuristic evaluation and the demo, players wear clothes that show the knees and contrast with the floor, and keep the phone within the standard's 50–100 cm and 60–80° |
+
+What the AI testing leaves to Iteration 4 (judge owner Hyunwoo), after #32: the set 4 lock-out reason (34 % right), the `armsStraight` reason of set 8 (20 %), belly-down reps counted for two recorders (set 6 M2 62.9 %), the remaining normal reps of SWH set 7 (lower-body coordinates jitter), and a check of the #32 tuning on new recordings at other phone angles, since it was fitted on the same 32 cases. The set is frozen; a judge change is measured by re-running `flutter test test/ai_eval` on the new `main` commit and adding the run to 5.2.
 
 # 6. Acceptance Testing
 
