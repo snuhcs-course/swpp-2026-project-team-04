@@ -4,21 +4,23 @@ import 'package:provider/provider.dart';
 import '../main.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
-import '../models/exercise_type_korean.dart';
 import '../models/match_record.dart';
 import '../models/matchup.dart';
 import '../models/user_profile.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
-import '../widgets/accent_button.dart';
+import '../widgets/battle_mode_card.dart';
 import '../widgets/bot_difficulty_sheet.dart';
+import '../widgets/exercise_sheet.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/match_record_card.dart';
 import 'match_feedback_screen.dart';
 
-/// First screen after login: online is primary; AI practice stays below history.
+/// First screen after login: one card for each kind of battle, then the
+/// recent battles. A card asks for the exercise, and the bot's also for the
+/// level.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -45,9 +47,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
   late final HomeViewModel _viewModel;
 
-  /// True while the difficulty sheet is open: closing it brings nothing new
-  /// to load.
-  bool _choosingDifficulty = false;
+  /// True while a sheet is open: closing it brings nothing new to load.
+  bool _inSheet = false;
 
   @override
   void initState() {
@@ -68,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   /// battle and the best record may have changed.
   @override
   void didPopNext() {
-    if (!_choosingDifficulty) _viewModel.load();
+    if (!_inSheet) _viewModel.load();
   }
 
   @override
@@ -78,16 +79,35 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     super.dispose();
   }
 
-  /// Asks how hard the bot should play [exercise], then starts the search.
-  /// Closing the sheet stays here.
-  Future<void> _startMatching(ExerciseType exercise) async {
-    _choosingDifficulty = true;
-    final difficulty = await showBotDifficultySheet(
+  Future<ExerciseType?> _chooseExercise(String mode) => showExerciseSheet(
+    context,
+    subtitle: '$mode · ${battleDuration.inSeconds}초',
+    profile: _viewModel.state.profile!,
+  );
+
+  /// Asks for the exercise, then opens the lobby. Closing the sheet stays here.
+  Future<void> _startOnline() async {
+    _inSheet = true;
+    final exercise = await _chooseExercise('온라인 1v1');
+    _inSheet = false;
+    if (exercise == null || !mounted) return;
+    Navigator.pushNamed(
       context,
-      exercise: exercise,
+      GymRatsApp.onlineBattleRoute,
+      arguments: exercise,
     );
-    _choosingDifficulty = false;
-    if (difficulty == null || !mounted) return;
+  }
+
+  /// Asks for the exercise and how hard the bot should play it, then starts
+  /// the search. Closing either sheet stays here.
+  Future<void> _startBot() async {
+    _inSheet = true;
+    final exercise = await _chooseExercise('AI 1v1');
+    final difficulty = exercise == null || !mounted
+        ? null
+        : await showBotDifficultySheet(context, exercise: exercise);
+    _inSheet = false;
+    if (exercise == null || difficulty == null || !mounted) return;
     Navigator.pushNamed(
       context,
       GymRatsApp.matchingRoute,
@@ -141,7 +161,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                   profile: vm.state.profile!,
                   recent: vm.state.recent,
                   recentIsFallback: vm.state.recentIsFallback,
-                  onStart: _startMatching,
+                  onOnline: _startOnline,
+                  onBot: _startBot,
                   onOpenHistory: _openHistory,
                   onLogOut: widget.onLogOut == null ? null : _confirmLogOut,
                 ),
@@ -157,7 +178,8 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 class _HomeContent extends StatelessWidget {
   const _HomeContent({
     required this.profile,
-    required this.onStart,
+    required this.onOnline,
+    required this.onBot,
     required this.onOpenHistory,
     this.onLogOut,
     this.recent = const [],
@@ -165,7 +187,8 @@ class _HomeContent extends StatelessWidget {
   });
 
   final UserProfile profile;
-  final ValueChanged<ExerciseType> onStart;
+  final VoidCallback onOnline;
+  final VoidCallback onBot;
   final VoidCallback onOpenHistory;
   final VoidCallback? onLogOut;
 
@@ -182,33 +205,40 @@ class _HomeContent extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       children: [
         _Greeting(name: profile.name, onLogOut: onLogOut),
-        const SizedBox(height: 32),
-        _SectionHeader('종목 선택', detail: '${battleDuration.inSeconds}초 · 1v1'),
-        const SizedBox(height: 12),
-        _ExerciseCard(
-          exercise: ExerciseType.pushUp,
-          bestReps: profile.bestReps,
+        const SizedBox(height: AppSpacing.s24),
+        _SectionHeader(
+          '대결 모드',
+          detail: '${battleDuration.inSeconds}초 · 점수 높은 쪽 승리',
         ),
-        const SizedBox(height: 20),
-        AccentButton(
-          title: '푸쉬업 온라인 1v1 대결',
-          hint: '${battleDuration.inSeconds}초가 끝나면 점수가 높은 쪽 승리',
-          onPressed: () =>
-              Navigator.pushNamed(context, GymRatsApp.onlineBattleRoute),
-        ),
-        const SizedBox(height: 12),
-        AccentButton(
-          title: '스쿼트 온라인 1v1 대결',
-          hint: '${battleDuration.inSeconds}초가 끝나면 점수가 높은 쪽 승리',
-          onPressed: () => Navigator.pushNamed(
-            context,
-            GymRatsApp.onlineBattleRoute,
-            arguments: ExerciseType.squat,
+        const SizedBox(height: AppSpacing.s8),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: BattleModeCard(
+                  title: '온라인 1v1',
+                  line: '사람과 실시간 대결',
+                  picture: const BattleModePicture.online(),
+                  main: true,
+                  onTap: onOnline,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s12),
+              Expanded(
+                child: BattleModeCard(
+                  title: 'AI 1v1',
+                  line: '봇과 난이도별 대결',
+                  picture: const BattleModePicture.bot(),
+                  onTap: onBot,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: AppSpacing.s32),
+        const SizedBox(height: AppSpacing.s24),
         _SectionHeader('최근 경기', detail: '전체 기록', onDetail: onOpenHistory),
-        const SizedBox(height: AppSpacing.s12),
+        const SizedBox(height: AppSpacing.s8),
         // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
         if (recent.isEmpty) _NoMatchYet(onTap: onOpenHistory),
         for (final (index, match) in recent.indexed) ...[
@@ -224,17 +254,6 @@ class _HomeContent extends StatelessWidget {
           const SizedBox(height: AppSpacing.s8),
           _UnsentNote(count: profile.unsentMatches),
         ],
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () => onStart(ExerciseType.pushUp),
-          icon: const Icon(Icons.smart_toy_rounded),
-          label: const Text('AI와 1v1 대결'),
-        ),
-        OutlinedButton.icon(
-          onPressed: () => onStart(ExerciseType.squat),
-          icon: const Icon(Icons.fitness_center),
-          label: const Text('스쿼트 1v1 데모 · AI 대결'),
-        ),
       ],
     );
   }
@@ -308,6 +327,7 @@ class _SectionHeader extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final detail = this.detail;
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
@@ -318,7 +338,6 @@ class _SectionHeader extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const Spacer(),
         if (detail != null && onDetail != null)
           TextButton(
             onPressed: onDetail,
@@ -328,156 +347,18 @@ class _SectionHeader extends StatelessWidget {
             ),
           )
         else if (detail != null)
-          Text(
-            detail,
-            style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
+          // With a large system text size it ends in "…" rather than overflow.
+          Flexible(
+            child: Text(
+              detail,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
+            ),
           ),
       ],
     );
   }
-}
-
-/// The chosen exercise, drawn as selected: the drawing on the left, and the
-/// name and the user's best count centered on the right.
-class _ExerciseCard extends StatelessWidget {
-  const _ExerciseCard({required this.exercise, required this.bestReps});
-
-  final ExerciseType exercise;
-  final int? bestReps;
-
-  /// Padding around the content, and the check's distance from the corner.
-  static const _inset = 18.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Card(
-      // Push-up is the only exercise, so it is always the selected one.
-      color: AppColors.accent.withValues(alpha: 0.08),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(AppTheme.cardRadius)),
-        side: BorderSide(color: AppColors.accent, width: 2),
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(_inset),
-            child: Row(
-              children: [
-                CustomPaint(
-                  // 1.75 times the 72×40 design.
-                  size: const Size(126, 70),
-                  painter: switch (exercise) {
-                    ExerciseType.pushUp => const _PushUpPainter(),
-                    ExerciseType.squat => const _PushUpPainter(),
-                  },
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        exercise.koreanName,
-                        style: text.headlineLarge?.copyWith(fontSize: 36),
-                      ),
-                      const SizedBox(height: 8),
-                      _BestRecord(reps: bestReps),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Positioned(top: _inset, right: _inset, child: _SelectedCheck()),
-        ],
-      ),
-    );
-  }
-}
-
-/// The user's best count, e.g. "개인 최고 32회", with the number in the
-/// number font. Shows "—" before the first battle.
-class _BestRecord extends StatelessWidget {
-  const _BestRecord({required this.reps});
-
-  final int? reps;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final style = text.bodyLarge?.copyWith(
-      fontSize: 18,
-      color: AppColors.textSecondary,
-    );
-    final reps = this.reps;
-    return Text.rich(
-      TextSpan(
-        style: style,
-        children: [
-          const TextSpan(text: '개인 최고 '),
-          TextSpan(
-            text: reps == null ? '—' : '$reps',
-            style: _inNumberFont(
-              text,
-              style,
-            )?.copyWith(fontSize: 22, color: AppColors.textPrimary),
-          ),
-          if (reps != null) const TextSpan(text: '회'),
-        ],
-      ),
-    );
-  }
-}
-
-/// Lime circle with a check, marking the card as selected.
-class _SelectedCheck extends StatelessWidget {
-  const _SelectedCheck();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox.square(
-      dimension: 24,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.accent,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(Icons.check_rounded, size: 16, color: AppColors.background),
-      ),
-    );
-  }
-}
-
-/// Push-up line drawing, designed on a 72×40 box and stretched to the
-/// canvas. Only the points scale; line widths stay the same.
-class _PushUpPainter extends CustomPainter {
-  const _PushUpPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sx = size.width / 72;
-    final sy = size.height / 40;
-    Offset at(double x, double y) => Offset(x * sx, y * sy);
-    final floor = Paint()
-      ..color = AppColors.accent.withValues(alpha: 0.5)
-      ..strokeWidth = 1.5;
-    final figure = Paint()
-      ..color = AppColors.accent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    canvas
-      ..drawLine(at(4, 36), at(70, 36), floor)
-      ..drawCircle(at(10, 15), 4.5 * sx, figure) // head
-      ..drawLine(at(16, 18), at(64, 30), figure) // body
-      ..drawLine(at(18, 18), at(18, 34), figure) // arm
-      ..drawLine(at(64, 30), at(66, 34), figure); // feet
-  }
-
-  @override
-  bool shouldRepaint(_PushUpPainter oldDelegate) => false;
 }
 
 /// The "최근 경기" card before the first battle.
@@ -563,10 +444,3 @@ class _LoadFailed extends StatelessWidget {
     );
   }
 }
-
-/// [style] in the number font, taken from the theme's display styles
-/// (Oxanium bold).
-TextStyle? _inNumberFont(TextTheme text, TextStyle? style) => style?.copyWith(
-  fontFamily: text.displayLarge?.fontFamily,
-  fontWeight: text.displayLarge?.fontWeight,
-);

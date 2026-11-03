@@ -399,3 +399,101 @@ so they are quoted here from the session export.
 - A test that passes on an empty widget proves nothing: mutate the line it claims to guard.
 - A width test belongs on the real screen: a widget alone has room the phone does not.
 - A tap followed by a negative check proves nothing until the test knows the tap landed.
+
+## W6 `feat/score_history` – game points in the records, and the squat guide text (team order #13), 2026-11-02
+
+### a. Where AI was used
+- **Server (`b36a3e0`):** Claude Code wrote `Match.my_score`, `opponent_score` and migration `0003_match_scores`, the serializers (`serializers.py` L12, L61, L91), `internal.py` L180, L196, and `bests` in `/users/me` (`accounts/views.py` L77).
+- **Online (`8a3fed1`):** one line of `battle_server.dart`, and the Iteration 3 section of `docs/iteration-2-protocol.md`.
+- **App (`e704c3a`):** `MatchRecord`'s scores, `PersonalBest`, `UserProfile.bestOf` (`user_profile.dart` L5, L51), both repositories, the card's numbers (`match_record_card.dart` L132), `_BestRecord` (`home_screen.dart` L403).
+- **Guide text (`acf8a49`):** `_GuideCard` by exercise (`matching_screen.dart` L484).
+- **Squat bot battles and the dash (`0644fe0`, `46ee9b3`, `69cef1e`):** one line of `battle_viewmodel.dart`, `PersonalBest.isEmpty` in `bestOf` (`user_profile.dart`), and a test of the squat upload. **Outcome pins (`784bc00`):** after the user's question.
+- **Sketches:** plans A and B and the squat pictogram on a private Design canvas, internal only. They are for the next PR, `feat/home_layout`.
+- **Tests:** the files listed in `docs/testing/iteration-3/g1fted13.md`, W6 entry.
+- **Review:** four lenses in one message on the uncommitted code (round 39): design and hygiene approved with Minor findings; spec and tests asked for changes (item d). The fixes went to those two (round 40): both approved, with Minor findings, all fixed. The squat save and the dash went to the same two (round 41): both approved with Minor findings, and the missing squat upload test was added. The commits, these notes and the PR draft went to hygiene (round 42), which asked for changes (item d); its fixes and the phone result went back to it (round 43), which approved with Minor findings, all fixed.
+- **Decided by the user:** the scope and the order; home plan B, from the sketches; two PRs; "3회 : 5회" for old records; the squat text as the agent proposed it, to be checked on the phone; starting from W5's head before its merge, then merging `main`; the `accounts` files and `battle_server.dart`, on 진영's OK as the user reports it; the protocol doc and two test files, in answer to the agent's question, and the lobby's test in another; keeping the files the agent had added to the step's list (below); the date taking two lines, and the 12 letter name wrapping; the feedback line staying one line; pinning the largest scores in a test; saving squat bot battles and keeping 2~3 m, on 상우's answers, as the user reports them; "—" for a user who has not played.
+- **Decided by the agent, without asking the user:** adding the display, guide, doc and test files to the step's list, beyond the user's words (item d), and saying so in its next message; the personal best's order, in which a first low score replaces a reps best; keeping `best_reps`; the deploy order; widening that "—" to a battle with no points and no reps; nullable fields, both scores or neither on POST (a 422); `MAX_SCORE` 100000, generous because the app drops a refused upload; `bests`' shape, with points and reps possibly from different battles; a server with no `bests` reading as push-up reps; `internal.py` storing points only when both players have them, since a refusal would lose the result; a best of 0 points reading as reps, so one such battle does not turn "32회" into "0점"; 2000 as the largest score tested, from the judge's limit; the guide's four lines, the words unchanged; two test lines pinning the game's outcome, after the user asked only to check it and note the result; the commit split; rewrapping the unpushed commit messages; the next branch's name. The closing message lists them.
+- **Not done by AI:** asking 진영 for the `accounts` files and `battle_server.dart`, and getting 상우's two answers: the user, with 진영. The phone check (round 1), and spotting the cards in item d: the user. The redeploy: the PM.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-02] "할 일: Django Match에 점수 필드와 마이그레이션, 앱의 저장·불러오기, 홈 카드·기록 탭·개인 최고를 점수로 표시, 온라인 결과 저장에도 점수 포함. 점수가 없는 예전 기록은 횟수로 표시. 개인 최고는 종목별(푸쉬업, 스쿼트)로." (one part of a pasted message)
+- [Woohyun Song, 11-02] "W5(#24)는 30bccb9에서 CI가 녹색이고 진영이형 merge만 남았어. 시간을 아끼려고, merge를 기다리지 말고 지금 feat/bot_difficulty(30bccb9)에서 feat/score_history를 만들어 시작해 줘." (one part of a pasted message)
+- [Woohyun Song, 11-02] "하나 확인해 줘: 데모 카드 중 90 : 100과 164 : 206이 "승"으로 나와(내 점수가 더 낮은데 승). 임시 패치가 점수만 넣고 승패는 예전 횟수 기준으로 남아서 그런 건지, 아니면 실제 기록에서도 점수와 승패가 어긋날 수 있는지 확인해 줘." (one part of a pasted message)
+- [Woohyun Song, 11-02] answer to the agent's question (an answer, not a prompt, so not in the Prompt Log; from the session export): "그대로 두자. 대신 하나만 확인해 줘. 이번 판에서 나올 수 있는 가장 큰 점수(예: 양쪽 다 세 자리 최댓값, KO 판 포함)를 넣어도 점수 숫자 자체와 "vs 상대 이름" 줄은 폭 360에서 안 잘리는지 테스트로 고정해 줘."
+
+### c. What AI did well
+- **Read the path before planning:** the prompt named Django and the app. Reading the code first showed that the battle server left `game_score` out of what it posts to Django, and that the best is in `server/accounts/`, outside the permission given. Both went to the user before any file changed, and the user got 진영's OK for both.
+- **Corrected the prompt's place for the sentence:** the prompt put "머리 앞 약 1m" after a match is found. A search showed it only on the search screen, shared by bot and online, so one card fixes both.
+- **Looked at the render, not only the tests:** the guide's tests passed, and a real-font picture showed it breaking inside "두세요" and "머리부터". Measuring gave the last line 229.3 of 230, so the agent set four lines by hand instead of three.
+
+### d. Hallucinations / errors
+- **A list wider than the user's words:** the user said to put only "server/matches/와 기록 저장 파일" on the step's list. The agent also added the display, the guide text, the rules doc and their tests, because the task needed them, and told the user in its next message. The user kept them, but the agent had decided first.
+- **A list edit with no approval (the guard, then the permission check):** the guard blocked the first edit of `bot_difficulty_sheet_test.dart`, and adding that file and a new font test file to the list, with no approval, was refused. It was not worked around: the new tests went into files already on the list, and the user was then asked about the one file still needed.
+- **A temporary patch that read wrong (the user's phone check):** the agent's sample scores for the demo had no stored outcome, so the cards "90 : 100" and "164 : 206" read 승. The user asked whether real records could do the same. The agent traced both paths: no, as a real battle always stores the game's outcome, and it pinned that in two tests. The patch was never committed.
+- **Credit and promises that were not so (round 42, hygiene, Major):** these notes first listed every file beyond the first list as the user's decision, and said the prompts were followed as written. The PR draft said a first low score replaces reps "as the task says", though that order is the agent's, and said the user tells 상우 about his files, which the user did not say in this step. All corrected before the push.
+- **A file's owner half told (round 39, hygiene, Minor):** the question to the user called all three files the user's own. `docs/iteration-2-protocol.md` is also on S4's list whole. The closing message corrects it.
+- **A criterion half tested (round 39, spec and tests, Major):** the guide's criterion names bot and online, and only bot had a test. Hard-coding the lobby to push-up passed everything. The code was right, and a new test now fails on that mutation.
+- **A width test that left out a line (round 39, tests, Major):** the real-font group's rows read "피드백 없음", so no test saw the feedback line narrowed by the points. Testing every title found `바닥 푸시업 아님 12회` cut, which went to the user, who accepted it.
+- **A test measuring one number twice (round 40, spec and tests, Minor):** with equal scores, `.first` found my number both times, so the opponent's, nearest the edge, was never measured.
+- **A test whose first half checked nothing (round 40, spec and tests, Minor):** "the scores survive a refused report and a retry" cleared the requests before reading the body sent without the report.
+- **A spec number from memory, caught by the agent:** `task.md` said one score alone is a 400. This server answers bad bodies with 422, which the agent saw while writing the test.
+- **A clock read wrongly, caught by the agent:** `TZ=Asia/Seoul date` printed UTC labelled KST on this PC. The agent compared it with the last commit's time before telling the user the hour.
+- **Records behind the code (rounds 39 and 40, Minor):** rows above a table's separator, a file cited for two results it did not hold, and `task.md` and `progress.md` lagging behind the 0 point rule.
+
+### e. Prompt revisions
+- None in this step: no prompt was rewritten. Later messages brought new decisions, as in item a.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- Read a change's whole path before planning it: the file that drops the value may be outside the permission asked for.
+- A criterion that names two cases needs a test for each, even when they share a widget.
+- A width test must have every line a real row has.
+
+## W6b `feat/home_layout` – home leads with the two battle modes (team order #13b), 2026-11-02 to 11-03
+
+### a. Where AI was used
+- **The sheet (`8185c70`):** Claude Code wrote `showExerciseSheet`, `ExerciseSheet`, `ExercisePictogram` and the squat's drawing (`exercise_sheet.dart`).
+- **The cards and home (`57e845e`):** `BattleModeCard`, `BattleModePicture`, `_RepBotPainter` (`battle_mode_card.dart`); `_startOnline`, `_startBot`, the `_inSheet` guard and the new layout (`home_screen.dart` L51, L89-L116).
+- **The rules doc (`ceb51c0`):** one line, the home card's name (`battle-rules.md` section 4.5).
+- **Sketches:** board B1 and the Picto board on a private Design canvas, internal only, made during W6.
+- **Tests:** the files listed in `docs/testing/iteration-3/g1fted13.md`, W6b entry.
+- **Review:** four lenses in one message on the uncommitted code (round 44): spec and hygiene approved; design and tests asked for changes (item d). The fixes went to those two (round 45): both approved, with Minor findings, all fixed. These notes and the PR draft went to hygiene (round 46), which asked for changes (item d); its fixes went back to it (round 47), which approved with Minor findings, all fixed. The phone result and the merge went to it last (round 48), which approved with one Minor finding, fixed.
+- **Decided by the user:** plan B on board B1, not B′, from the agent's sketches; two PRs, with this one second; Requirements 5.7 criterion 1 and the screens table's Home row on the "PM 확인" list; starting this step right after W6's PR; registering the step, and keeping the files the agent had added to its list (below); moving the sheet's best in points to the phone check after the redeploy; the review request to 진영. Home and the squat button's parts of 상우's files are on 진영's OK, as the user reports it.
+- **Decided by the agent, without asking the user:** adding home, the new widgets, their tests and the tap's lines in two test files to the step's list, beyond the user's words, and saying so in its next message, without naming those tests, where it called the tap's lines one line each, though they are 3 lines and 1 line changed to 3; branching from `d04b8c1`, since #28 was not merged, so this PR could not go up until it was; leaving "depends on feat/score_history" out of the PR, against `task.md`'s first words, as nothing is left to depend on once #28 has merged (`task.md` updated); `titleLarge` for the sheet's number and "VS", larger than on the board, as the wiki allows only color and weight to change; card padding 16, not the board's 12; sections 24 apart and titles 8 above their content, including the "최근 경기" title's gap that this step would not otherwise touch; RepBot's own painter, in full pink on the figure's floor, instead of W5's picture at 0.7 from a file not on this step's list; "…" on home's section note at a very large text size; 100000 as the largest best in the overflow test, from the server's limit; accepting that the sheet reads the best once when it opens; keeping `.last` in the two test files outside this step's own, to keep those diffs small; the longer "PM 확인" list; the commit split.
+- **Not done by AI:** the phone check (round 1, items 1 to 9 pass as the user reports): the user. The wiki edits, the merge and the redeploy: the PM.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-02] "1. 홈은 B로 갈게." (one part of a pasted message)
+- [Woohyun Song, 11-02] "2. 홈은 B안으로 확정. 요구사항 5.7 기준 1과 화면 표의 홈 행은 W6b PR의 PM 확인 항목으로 두자." (one part of a pasted message)
+- [Woohyun Song, 11-02] "3. 홈 개편(B안)과 스쿼트 매칭 안내 문구도 W6에 넣으래. 홈과 스쿼트 버튼 쪽 상우 파일은 PM이 허용했어." (one part of a pasted message)
+- [Woohyun Song, 11-02] "확인되면 임시 데모 패치를 되돌리고, 말한 순서대로 push와 PR까지 진행해 줘. 그다음 바로 W6b(홈 B안)를 시작하자." (one part of a pasted message)
+- [Woohyun Song, 11-03] "W6b 폰 확인 결과야(작업 폴더 빌드, Galaxy S947N): 1~9번 모두 됨. 10번(데모 앱에서 시트의 개인 최고 "N점")은 재배포 뒤 2차 확인 때 실서버로 보기로 했어. 노트에는 그렇게 적어 줘." (one part of a message)
+
+### c. What AI did well
+- **Did not delete what looked unneeded:** the tests lens asked whether removing the strut fails a test, and the agent's fix list said to keep it only if a mutation showed it was needed. Removing it failed no test. Before deleting it, the agent swept 128 sizes: 38 overflowed without it and 0 with it. The strut stayed, and 24 of those cases became a test that fails without it.
+- **Kept a guard working over two sheets:** home reloads when a page closes above it, and a sheet is a page. `_inSheet` stays set from the first sheet through the second, and the tests pin both directions: no reload on closing, a reload after a later page.
+
+### d. Hallucinations / errors
+- **Credit that was not so, again (round 46, hygiene, Major):** item a credited the user with registering the step and left out that the agent had widened its list, the error round 42 found in W6. Item c credited the review with the agent's own rule. Notes and the PR draft said home had two start buttons, where it had four. The AI notes called two test files other people's, which the ownership data does not say. All corrected before the push.
+- **A sketch followed past the wiki (round 44, design, Major):** the sheet's number and "VS" changed `fontFamily` on a title style, which wiki 2.5.1 rule 3 does not allow, and the cards had padding 12, not 2.5.7's 16. Both came from the agent's own board. Fixed, so both numbers are larger than on the board.
+- **A criterion half tested on the real app (round 44, tests, Major):** the task's real routes test covered AI only, so a broken online route would have passed `main_test`. Fixed, for both exercises.
+- **A guard with nothing pinning its release (round 44, tests, Major):** no test failed if `_inSheet` was never reset, which would leave home stale after every later battle. The new tests fail on both mutations.
+- **A short list for the PM (round 44, design, Major):** the list named 5.7 and the screens table but not 5.2's old labels, 2.5.7's and 2.5.2's lines, or the README's other rows. Round 45 added one more README row.
+- **A comment that was not so (round 44, design, Minor):** the code said RepBot stands on the figure's floor, using a picture that did not, and drew it at W5's 0.7. It got its own painter and a test of the floor.
+- **A wrong reason recorded (round 45, tests, Minor):** `progress.md` said a descendant finder needed an import outside the permitted lines. `BottomSheet` comes from `material.dart`, already imported. The reason was corrected, and `.last` stays because the checks after it would fail if it hit the wrong text.
+- **Pins that let a wrong shape through (round 45, tests, Minor):** the squat's ankle and toe swapped, and RepBot's body floating, passed. Each has a pin now, and each mutation now fails.
+- **A tap that missed, caught by a test setting:** the card test tapped the picture's center, which is empty. `hitTestWarningShouldBeFatal` failed it rather than letting it pass with nothing done.
+- **An overflow by 2.8 px, caught by a real-font test:** at text scale 2 the best's line measured short, because its number is bigger than the words around it. That is why the strut went in.
+
+### e. Prompt revisions
+- None in this step: no prompt was rewritten.
+
+### f. Manual fixes and why
+- None by hand in this step. The user decided (item a), and the agent applied every change, so there is no manual-fix marker.
+
+### Takeaway
+- A sketch is not the design system: check its sizes and styles against the wiki before coding them.
+- When a mutation of a line passes, find out what the line is for before deleting it or adding a test.
+- A guard needs a test of what it stops and of what it lets through again.

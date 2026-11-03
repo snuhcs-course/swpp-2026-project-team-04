@@ -71,6 +71,107 @@ def test_result_stores_one_row_per_player(client, players):
     assert set(Match.objects.values_list("client_id", flat=True)) == {"result-0001"}
 
 
+def with_points(body, mine=150, theirs=90):
+    body["players"][0]["game_score"] = mine
+    body["players"][1]["game_score"] = theirs
+    return body
+
+
+def test_each_row_has_its_players_points_and_the_others(client, players):
+    a, b = players
+    assert internal(client, "results", with_points(result(a, b))).status_code == 201
+    [mine] = history(client, a)
+    [theirs] = history(client, b)
+    assert (mine["my_score"], mine["opponent_score"]) == (150, 90)
+    assert (theirs["my_score"], theirs["opponent_score"]) == (90, 150)
+
+
+def test_online_points_reach_each_players_best(client, players):
+    a, b = players
+    body = with_points(result(a, b))
+    body["exercise"] = "squat"
+    internal(client, "results", body)
+    me = client.get("/users/me", **auth(a["token"])).json()
+    them = client.get("/users/me", **auth(b["token"])).json()
+    assert me["bests"] == {"squat": {"score": 150, "reps": 12}}
+    assert them["bests"] == {"squat": {"score": 90, "reps": 10}}
+
+
+def test_result_from_an_older_battle_server_saves_without_points(client, players):
+    a, b = players
+    assert internal(client, "results", result(a, b)).status_code == 201
+    [mine] = history(client, a)
+    assert (mine["my_score"], mine["opponent_score"]) == (None, None)
+    assert mine["my_reps"] == 12
+
+
+def test_one_players_points_alone_save_the_result_without_points(client, players):
+    a, b = players
+    body = result(a, b)
+    body["players"][0]["game_score"] = 150
+    assert internal(client, "results", body).status_code == 201
+    [mine] = history(client, a)
+    [theirs] = history(client, b)
+    assert (mine["my_score"], mine["opponent_score"]) == (None, None)
+    assert (theirs["my_score"], theirs["opponent_score"]) == (None, None)
+    assert mine["my_reps"] == 12
+
+
+def test_zero_and_the_most_points_are_kept(client, players):
+    a, b = players
+    assert internal(client, "results", with_points(result(a, b), 0, 100_000)).status_code == 201
+    [mine] = history(client, a)
+    assert (mine["my_score"], mine["opponent_score"]) == (0, 100_000)
+
+
+def test_forfeit_keeps_the_points_whatever_the_outcome(client, players):
+    a, b = players
+    body = with_points(result(a, b, reason="forfeit", outcomes=("loss", "win")))
+    internal(client, "results", body)
+    [mine] = history(client, a)
+    assert (mine["outcome"], mine["my_score"], mine["opponent_score"]) == ("loss", 150, 90)
+
+
+def test_older_battle_server_clears_points_an_app_posted(client, players):
+    a, b = players
+    from .conftest import match_body
+
+    forged = {
+        **match_body(1),
+        "client_id": "result-0001",
+        "my_score": 99_999,
+        "opponent_score": 0,
+    }
+    assert client.post("/matches", forged, format="json", **auth(b["token"])).status_code == 201
+    internal(client, "results", result(a, b))
+    [theirs] = history(client, b)
+    assert (theirs["my_score"], theirs["opponent_score"]) == (None, None)
+
+
+def test_result_with_points_out_of_range_is_refused(client, players):
+    a, b = players
+    for bad in [-1, 100_001]:
+        body = with_points(result(a, b), mine=bad)
+        assert internal(client, "results", body).status_code == 422, bad
+    assert Match.objects.count() == 0
+
+
+def test_points_an_app_posted_under_a_result_id_are_overwritten(client, players):
+    a, b = players
+    from .conftest import match_body
+
+    forged = {
+        **match_body(1, my_reps=50, opponent_reps=0),
+        "client_id": "result-0001",
+        "my_score": 99_999,
+        "opponent_score": 0,
+    }
+    assert client.post("/matches", forged, format="json", **auth(b["token"])).status_code == 201
+    internal(client, "results", with_points(result(a, b)))
+    [theirs] = history(client, b)
+    assert (theirs["my_score"], theirs["opponent_score"]) == (90, 150)
+
+
 def test_same_result_twice_is_stored_once(client, players):
     a, b = players
     internal(client, "results", result(a, b))

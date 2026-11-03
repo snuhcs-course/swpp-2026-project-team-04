@@ -188,7 +188,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      await tester.tap(find.text('푸쉬업 온라인 1v1 대결'));
+      await tester.tap(find.text('온라인 1v1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('푸쉬업').last);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       expect(joined!.avatar, AvatarModel.somaActive);

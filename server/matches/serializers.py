@@ -7,6 +7,9 @@ from .models import OUTCOMES, REASONS, Match
 # AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
 # A 30 s round at 10 Hz is well under 100 KiB; nginx lets 1 MiB through.
 MAX_REPORT_BYTES = 512 * 1024
+# Far above what a round can earn, because the game's numbers may be tuned and
+# the app drops an upload the server refuses.
+MAX_SCORE = 100_000
 
 
 class AwareDateTimeField(serializers.DateTimeField):
@@ -54,6 +57,11 @@ class MatchInSerializer(serializers.ModelSerializer):
     opponent_name = serializers.CharField(min_length=1, max_length=40)
     my_reps = serializers.IntegerField(min_value=0, max_value=1000)
     opponent_reps = serializers.IntegerField(min_value=0, max_value=1000)
+    # Optional, both or neither: the game's points.
+    my_score = serializers.IntegerField(min_value=0, max_value=MAX_SCORE, required=False)
+    opponent_score = serializers.IntegerField(
+        min_value=0, max_value=MAX_SCORE, required=False
+    )
     played_at = AwareDateTimeField()
     # Optional: the game's result. An app that sends none goes by the reps.
     outcome = serializers.ChoiceField(choices=OUTCOMES, required=False)
@@ -69,6 +77,8 @@ class MatchInSerializer(serializers.ModelSerializer):
             "opponent_name",
             "my_reps",
             "opponent_reps",
+            "my_score",
+            "opponent_score",
             "played_at",
             "outcome",
             "reason",
@@ -77,6 +87,11 @@ class MatchInSerializer(serializers.ModelSerializer):
         # The (user, client_id) rule is handled by the view: a repeat
         # returns the stored battle instead of an error.
         validators = []
+
+    def validate(self, attrs):
+        if ("my_score" in attrs) != ("opponent_score" in attrs):
+            raise serializers.ValidationError("both scores or neither")
+        return attrs
 
 
 class MatchSerializer(serializers.ModelSerializer):
@@ -88,6 +103,8 @@ class MatchSerializer(serializers.ModelSerializer):
             "opponent_name",
             "my_reps",
             "opponent_reps",
+            "my_score",
+            "opponent_score",
             "played_at",
             "outcome",
             "reason",
@@ -100,6 +117,8 @@ class OnlinePlayerSerializer(serializers.Serializer):
     display_name = serializers.CharField(min_length=1, max_length=80)
     valid_reps = serializers.IntegerField(min_value=0, max_value=1000)
     invalid_reps = serializers.IntegerField(min_value=0, max_value=1000)
+    # Optional: a battle server from before the game's points were kept sends none.
+    game_score = serializers.IntegerField(min_value=0, max_value=MAX_SCORE, required=False)
     outcome = serializers.ChoiceField(choices=OUTCOMES)
 
 

@@ -105,6 +105,66 @@ void main() {
     final profile = await repository.fetchProfile();
     expect(profile.bestReps, isNull);
     expect(profile.lastMatch, isNull);
+    expect(profile.bestOf(ExerciseType.pushUp), isNull);
+    expect(profile.bestOf(ExerciseType.squat), isNull);
+  });
+
+  test('a new user on the new server has no best either', () async {
+    answer = (_) => _json({
+      'nickname': '우현',
+      'best_reps': null,
+      'bests': <String, Object?>{},
+      'last_match': null,
+    });
+    final profile = await repository.fetchProfile();
+    expect(profile.bestOf(ExerciseType.pushUp), isNull);
+    expect(profile.bestOf(ExerciseType.squat), isNull);
+  });
+
+  test("reads each exercise's best", () async {
+    answer = (_) => _json({
+      'nickname': '우현',
+      'best_reps': 20,
+      'bests': {
+        'push_up': {'score': 150, 'reps': 14},
+        'squat': {'score': null, 'reps': 20},
+      },
+      'last_match': _match,
+    });
+    final profile = await repository.fetchProfile();
+    expect(profile.bestOf(ExerciseType.pushUp)!.score, 150);
+    expect(profile.bestOf(ExerciseType.pushUp)!.reps, 14);
+    expect(profile.bestOf(ExerciseType.squat)!.score, isNull);
+    expect(profile.bestOf(ExerciseType.squat)!.reps, 20);
+  });
+
+  test('a server with no bests leaves best_reps for push-ups', () async {
+    answer = (_) => _json({
+      'nickname': '우현',
+      'best_reps': 32,
+      'last_match': null,
+    });
+    final profile = await repository.fetchProfile();
+    expect(profile.bests, isEmpty);
+    expect(profile.bestOf(ExerciseType.pushUp)!.reps, 32);
+    expect(profile.bestOf(ExerciseType.squat), isNull);
+  });
+
+  test('an unknown exercise in the bests is a server error', () async {
+    answer = (_) => _json({
+      'nickname': '우현',
+      'best_reps': 1,
+      'bests': {
+        'plank': {'score': 1, 'reps': 1},
+      },
+      'last_match': null,
+    });
+    await expectLater(
+      repository.fetchProfile(),
+      throwsA(
+        isA<ApiException>().having((e) => e.kind, 'kind', ApiErrorKind.server),
+      ),
+    );
   });
 
   test('an unreadable profile is a server error', () async {
@@ -130,6 +190,77 @@ void main() {
     // A record without a game leaves both to the server.
     expect(body.containsKey('outcome'), isFalse);
     expect(body.containsKey('reason'), isFalse);
+    expect(body.containsKey('my_score'), isFalse);
+    expect(body.containsKey('opponent_score'), isFalse);
+  });
+
+  test('saves both game scores with the reps', () async {
+    await repository.saveMatch(
+      const MatchRecord(
+        exercise: ExerciseType.pushUp,
+        opponentName: 'RepBot',
+        myReps: 7,
+        opponentReps: 9,
+        myScore: 150,
+        opponentScore: 90,
+      ),
+    );
+    final body = posted().single;
+    expect(body['my_score'], 150);
+    expect(body['opponent_score'], 90);
+    expect(body['my_reps'], 7);
+    expect(body['opponent_reps'], 9);
+  });
+
+  test('saves a squat battle as squat, with its scores and no report', () async {
+    await repository.saveMatch(
+      const MatchRecord(
+        exercise: ExerciseType.squat,
+        opponentName: 'AI 봇 · 고수',
+        myReps: 7,
+        opponentReps: 9,
+        myScore: 150,
+        opponentScore: 90,
+      ),
+    );
+    final body = posted().single;
+    expect(body['exercise'], 'squat');
+    expect(body['opponent_name'], 'AI 봇 · 고수');
+    expect(body['my_score'], 150);
+    expect(body['opponent_score'], 90);
+    expect(body.containsKey('feedback'), isFalse);
+  });
+
+  test('one score alone is not sent: the server would refuse it', () async {
+    await repository.saveMatch(
+      const MatchRecord(
+        exercise: ExerciseType.pushUp,
+        opponentName: 'RepBot',
+        myReps: 7,
+        opponentReps: 9,
+        myScore: 150,
+      ),
+    );
+    final body = posted().single;
+    expect(body.containsKey('my_score'), isFalse);
+    expect(body.containsKey('opponent_score'), isFalse);
+  });
+
+  test("reads a battle's game scores, and none from an old row", () async {
+    answer = (_) => _json({
+      'items': [
+        {..._match, 'my_score': 150, 'opponent_score': 90},
+        {..._match, 'id': 8, 'my_score': null, 'opponent_score': null},
+        {..._match, 'id': 7},
+      ],
+      'next_before': null,
+    });
+    final [scored, oldRow, oldServer] = (await repository.fetchHistory()).items;
+    expect(scored.myScore, 150);
+    expect(scored.opponentScore, 90);
+    expect(scored.myReps, 24);
+    expect(oldRow.hasScores, isFalse);
+    expect(oldServer.hasScores, isFalse);
   });
 
   for (final (outcome, end, outcomeCode, reasonCode) in const [
@@ -358,6 +489,43 @@ void main() {
       final retried = posted().single;
       expect(retried['client_id'], firstId);
       expect(retried['feedback'], isNotNull);
+    });
+
+    test('the scores survive a refused report and a retry', () async {
+      const scored = MatchRecord(
+        exercise: ExerciseType.pushUp,
+        opponentName: 'RepBot',
+        myReps: 7,
+        opponentReps: 9,
+        myScore: 150,
+        opponentScore: 90,
+      );
+      answer = (request) {
+        final body = jsonDecode(request.body) as Map<String, Object?>;
+        return body.containsKey('feedback')
+            ? http.Response('<html>413 Request Entity Too Large</html>', 413)
+            : throw const SocketException('down');
+      };
+      await expectLater(
+        repository.saveMatch(scored, report: sampleReport()),
+        throwsA(isA<ApiException>()),
+      );
+      // Refused with its report, then sent without it.
+      expect(posted(), hasLength(2));
+      expect(posted().last.containsKey('feedback'), isFalse);
+      expect(posted().last['my_score'], 150);
+      expect(posted().last['opponent_score'], 90);
+      // Sent again from the queue, once the server answers.
+      answer = (request) => request.method == 'POST'
+          ? _json(_match, 201)
+          : _json({'nickname': '우현', 'best_reps': 7, 'last_match': _match});
+      requests.clear();
+      await repository.fetchProfile();
+      for (final body in posted()) {
+        expect(body['my_score'], 150);
+        expect(body['opponent_score'], 90);
+      }
+      expect(posted(), isNotEmpty);
     });
 
     test('a refused report is dropped but the battle is still saved', () async {
