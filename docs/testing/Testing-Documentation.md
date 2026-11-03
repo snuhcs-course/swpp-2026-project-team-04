@@ -30,6 +30,7 @@
 |Rev.2.2|2026-11-03|5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged) and the re-run after the judge tuning of PR #32 (tuned on the same set); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the four judge changes of #32 from the evaluation, the HE clothing advice) and what it leaves to Iteration 4|
 |Rev.2.3|2026-11-03|3.2: the CI revision of PR #14 noted; 4.2 Iteration 3 results moved to the final Iteration 3 `main` (`f03a460`, CI on `a643088`) with the coverage screenshot; 5.1: no additions since freezing|
 |Rev.2.4|2026-11-03|3.1 and 4.1: Iteration 3 revisions (PM and new areas' owners; the coverage script and versions); 4.2: who ran the suite, the plan change noted, the test-case bullet shortened to a pointer; 5.1: per-set table (cases and labelled reps), the assertion per case and the threshold commit stated in the page, deterministic replay noted; 5.2: the two run headings in the per-push format of the members' notes|
+|Rev.2.5|2026-11-03|Final guideline audit: the required iteration stated under each section heading, the threshold commit date in KST, one Korean word translated|
 
 # 2. Overview
 
@@ -80,6 +81,8 @@ There is no CI (GitHub Actions) yet; all tests run on the developers' machines.
 *Revision (2026-10-26, PR #14):* GitHub Actions now runs on every pull request: `flutter analyze` and `flutter test`, the per-layer coverage in four shards (`tools/coverage_per_file.sh` + `tools/coverage_by_layer.py`), and `pytest --cov` for `server/`, and posts the numbers as a sticky comment on the PR (`tools/ci_test_report.py`). The rows above still hold: the author runs the tests before opening the PR, and the PM merges only with the CI comment green.
 
 # 4. Unit & Integration Testing
+
+*Required from Iteration 2; kept up to date every iteration.*
 
 ## 4.1 Plan
 
@@ -257,12 +260,14 @@ Commands as in 4.1, run by Jinyoung Park (PM) on a clean checkout of `f03a460` (
 
 # 5. AI Module Testing
 
-Plan committed before the first run: `gymrats_app/test/ai_eval/README.md` and `eval_plan.dart` (PR #16, 2026-10-29) declare the protocol, the 32 cases (four members × 8 sets, positions A–D, in `gymrats_app/test/ai_eval/cases/`, complete on 2026-11-02), the expected labels, the per-case assertion and the thresholds M1 count accuracy ≥ 90%, M2 rejection rate ≥ 90%, M3 right reason ≥ 80%. Results follow in this section after the run on a pinned `main` commit (Iteration 3). The module under test is the on-device rep judging ([Design Documentation 2.3.2](Design-Documentation#232-rep-judging-on-device-ai-module)).
+*Required from Iteration 3 (thresholds declared and first results); kept up to date from Iteration 4.*
+
+Plan committed before the first run: `gymrats_app/test/ai_eval/README.md` and `eval_plan.dart` (PR #16, merged 2026-10-30 KST) declare the protocol, the 32 cases (four members × 8 sets, positions A–D, in `gymrats_app/test/ai_eval/cases/`, complete on 2026-11-02), the expected labels, the per-case assertion and the thresholds M1 count accuracy ≥ 90%, M2 rejection rate ≥ 90%, M3 right reason ≥ 80%. Results follow in this section after the run on a pinned `main` commit (Iteration 3). The module under test is the on-device rep judging ([Design Documentation 2.3.2](Design-Documentation#232-rep-judging-on-device-ai-module)).
 
 ## 5.1 Set, labels and runner (frozen 2026-11-03)
 - Cases: `gymrats_app/test/ai_eval/cases/{HS,JP,SWH,HSW}/` — 4 recorders × 8 sets = 32 recordings (landmarks and phone sensors only, no video), 270 labelled reps. Labels (`label.perRep`) come from the record sheets; each recorder's sheet is in the folder. Deviations from the protocol (Sangwoo's sets 5 reps / 30 s, Hyunwoo's set 4 with 11 descents and set 7 with 5 reps, Woohyun's set 1 with 5 and set 5 with 9 reps, Jinyoung's distances not measured) are listed in `gymrats_app/test/ai_eval/README.md` and kept as recorded.
 - Ground truth: the motion the recorder actually did, written on the sheet during the recording; the PM transferred it to the files (10-31 ~ 11-03). Hyunwoo checked all 32 files on 11-02 (open, kinds and counts as on the sheets, 17–26 fps). No case has been added, edited or removed since the set was frozen in PR #30 (`dccd84a`); an addition would be listed in the README with its date and reason.
-- Per set (the recording standard, Hyunwoo's 기준서 of 2026-10-29/30): one case per recorder and set, 10 reps planned per case (Sangwoo's cases 5), 60-second round, lighting `bright`, phone at A/B = 50 cm and C/D = 100 cm from the fingertip line, A/C at 60–65° and B/D at 75–80°.
+- Per set (the recording standard, Hyunwoo's recording standard sheet of 2026-10-29/30): one case per recorder and set, 10 reps planned per case (Sangwoo's cases 5), 60-second round, lighting `bright`, phone at A/B = 50 cm and C/D = 100 cm from the fingertip line, A/C at 60–65° and B/D at 75–80°.
 
 | Set | Position | Motion | Expected per rep | Cases | Labelled reps (correct / incorrect) |
 |---|---|---|---|---|---|
@@ -277,7 +282,7 @@ Plan committed before the first run: `gymrats_app/test/ai_eval/README.md` and `e
 | **All** | A–D | | | **32** | **270** (63 / 207) |
 
 - Assertion per case: the labelled reps and the reps the judge closed in the replay are aligned by the fewest edits (`align` in `eval_scorer.dart`); each aligned pair is compared on counted / rejected and on the reject reason. M1 = correct reps counted ÷ correct reps done; M2 = incorrect reps not counted ÷ incorrect reps done; M3 = incorrect reps rejected with the labelled reason ÷ incorrect reps done. An incorrect rep the judge never closed counts as not counted (M2) and wrong (M3); judged reps with no labelled partner are reported apart. No string matching: the comparison is on the verdict enum per rep.
-- Thresholds, declared before any run and committed with the plan in PR #16 (`a3576ce`, 2026-10-29; `eval_plan.dart`): M1 ≥ 90%, M2 ≥ 90%, M3 ≥ 80%, all three over the 32 cases; per position and per person the metrics are reported without a threshold.
+- Thresholds, declared before any run and committed with the plan in PR #16 (`a3576ce`, 2026-10-30 02:38 KST; `eval_plan.dart`): M1 ≥ 90%, M2 ≥ 90%, M3 ≥ 80%, all three over the 32 cases; per position and per person the metrics are reported without a threshold.
 - Runner: `gymrats_app/test/ai_eval/ai_eval_test.dart` replays every recording through the current `RepJudge` (default `RepJudgeConfig`, `test/support/pushup_case_loader.dart`) and scores it with `eval_scorer.dart` (reps aligned by the fewest edits). Command, from `gymrats_app/`: `flutter test test/ai_eval` (report printed and written to `build/ai_eval/report.md`); `--dart-define=AI_EVAL_STRICT=true` turns the thresholds into assertions.
 - Settings under test: ML Kit pose detection 0.16.1, `accurate` model, `RepJudgeConfig` defaults of the commit (minLikelihood 0.6, bottomDepth 1.1, minShoulderDrop 0.68, maxTorsoDrop 1.2). The replay is deterministic: no model sampling, seed or prompt is involved, so two runs on the same commit give the same numbers.
 
@@ -335,6 +340,8 @@ The recordings were used twice: the first 12 sets (10-26 ~ 10-27, `gymrats_app/t
 What the AI testing leaves to Iteration 4 (judge owner Hyunwoo), after #32: the set 4 lock-out reason (34 % right), the `armsStraight` reason of set 8 (20 %), belly-down reps counted for two recorders (set 6 M2 62.9 %), the remaining normal reps of SWH set 7 (lower-body coordinates jitter), and a check of the #32 tuning on new recordings at other phone angles, since it was fitted on the same 32 cases. The set is frozen; a judge change is measured by re-running `flutter test test/ai_eval` on the new `main` commit and adding the run to 5.2.
 
 # 6. Acceptance Testing
+
+*Plan required in Iteration 3; results in Iteration 4.*
 
 Plan written in Iteration 3 (PM, 2026-11-01). The six stories below are marked "UAT key story" in [Requirements & Specifications 5](Requirements-and-Specifications#5-functional-requirements) and are **frozen from 2026-11-06**, the end of Iteration 3 (Requirements guideline: once chosen, they cannot be altered afterwards). Results (pass/fail, date, tester, deviations) are reported in Iteration 4 in 6.4.
 
@@ -451,5 +458,7 @@ Not in the UAT, and free to change: 5.1 account, 5.7 match history, the help and
 To be completed in Iteration 4.
 
 # 7. Alpha & Beta Testing
+
+*Required in Iteration 5 (plan, execution and results).*
 
 To be completed in Iteration 5.
