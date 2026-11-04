@@ -1166,3 +1166,6 @@ Show the key functionalities of your implementation.
 
 <!-- 973c7412 2026-11-04T12:16:55.940Z -->
 [Jinyoung Park, 11-04 21:16] "모든 UAT는 squat도 포함해야함"
+
+<!-- 973c7412 2026-11-04T12:30:18.532Z -->
+[Jinyoung Park, 11-04 21:30] "날짜 같으면 rev 번호 같게 해 testing, requiremtnes"
