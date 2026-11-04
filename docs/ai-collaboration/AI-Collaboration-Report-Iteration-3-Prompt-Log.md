@@ -1094,3 +1094,54 @@ Example: team7-iter3-AI-collaboration-report.pdf
 
 <!-- 973c7412 2026-11-04T10:35:57.709Z -->
 [Jinyoung Park, 11-04 19:35] "~/Downloads/KakaoTalk_Video_2026-11-04-17-53-36.mp4 README에 넣을 720p넣어서 이제 최종적으로 demo branch정리하자"
+
+## 2026-11-04 · Jinyoung Park · docs/readme_next (wiki Flow 5 from the demo video, Note paragraphs, README next list)
+<!-- 973c7412 2026-11-04T10:42:03.647Z -->
+[Jinyoung Park, 11-04 19:42] "<pasted_content id=\"f036\">
+Create a separate branch named iteration-3-demo and push your working demo code to this branch.
+Include a README.md file in the root of the branch containing:
+
+How to run your demo
+Clear setup and execution instructions
+The development/execution environment you used
+
+What your demo demonstrates
+Features implemented
+Major progress made during Iteration 3
+
+A short demo video
+Show the key functionalities of your implementation.
+</pasted_content id=\"f036\">"
+
+<!-- 973c7412 2026-11-04T10:54:07.040Z -->
+[Jinyoung Park, 11-04 19:54] "그리고 추가적으로 [Image #2] 이런거 promopt log에 싹다 제거좀 해줘"
+
+<!-- 973c7412 2026-11-04T10:57:23.033Z -->
+[Jinyoung Park, 11-04 19:57] "걍 너가 merge해줘"
+
+<!-- 973c7412 2026-11-04T11:10:23.670Z -->
+[Jinyoung Park, 11-04 20:10] "ishlove77로 force push 해"
+
+<!-- 973c7412 2026-11-04T11:27:58.549Z -->
+[Jinyoung Park, 11-04 20:27] "다 된거지?"
+
+<!-- 973c7412 2026-11-04T11:29:17.036Z -->
+[Jinyoung Park, 11-04 20:29] "ㅇㅇ 고마워"
+
+<!-- 973c7412 2026-11-04T11:31:12.158Z -->
+[Jinyoung Park, 11-04 20:31] "그 pushup 하는거 Online battle 이거를 바꿔 달라는 거임 아까 내가 올린 영상으로 모자이크 해서 둘다"
+
+<!-- 973c7412 2026-11-04T11:38:36.652Z -->
+[Jinyoung Park, 11-04 20:38] "demo brnach commit id 알려줘"
+
+<!-- 973c7412 2026-11-04T11:42:59.814Z -->
+[Jinyoung Park, 11-04 20:42] "requiremtnes의 Note 이런거는 싹다 세줘"
+
+<!-- 973c7412 2026-11-04T11:44:28.662Z -->
+[Jinyoung Park, 11-04 20:44] "ㅇㅇ 빼줘"
+
+<!-- 973c7412 2026-11-04T11:45:22.427Z -->
+[Jinyoung Park, 11-04 20:45] "그리고 Maind readme에서 A tier system and tier-based matching 이거 뺴고 UI수정을 추가좀 해줘"
+
+<!-- 973c7412 2026-11-04T10:55:29.078Z -->
+[Jinyoung Park, 11-04 19:55] "노 이런게 좀 그렇다는 거임"
