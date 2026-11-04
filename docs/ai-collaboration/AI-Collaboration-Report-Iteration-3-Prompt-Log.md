@@ -1169,3 +1169,19 @@ Show the key functionalities of your implementation.
 
 <!-- 973c7412 2026-11-04T12:30:18.532Z -->
 [Jinyoung Park, 11-04 21:30] "날짜 같으면 rev 번호 같게 해 testing, requiremtnes"
+
+## 2026-11-05 · Jinyoung Park · docs/readable_docs
+<!-- 973c7412 2026-11-04T12:53:30.518Z -->
+[Jinyoung Park, 11-04 21:53] "머지해"
+
+<!-- 973c7412 2026-11-04T13:01:28.370Z -->
+[Jinyoung Park, 11-04 22:01] "상우꺼 PR 댓글 달아줘"
+
+<!-- 973c7412 2026-11-04T13:08:10.888Z -->
+[Jinyoung Park, 11-04 22:08] "파일명 이런거 넣는거 document 양식에 있나?"
+
+<!-- 973c7412 2026-11-04T13:09:26.397Z -->
+[Jinyoung Park, 11-04 22:09] "requiements, design, testing document에서 file, branch명 이런게 들어간게 조금 가독성이 매우 안좋다. 지금 특히 design, testing이 이런것들 때문에 가독성이 좋지 않다는 말이 있으셔서 조교님이 만약 양식 규정에 없으면 싹다 제거하는게 낫지 않나 ~/Downloads/3\ -\ Design\ Documentation\ Guidelines.pdf ~/Downloads/2\ -\ Requirements\ \&\ Specifications\ Guidelines.pdf ~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf"
+
+<!-- 973c7412 2026-11-04T14:50:31.215Z -->
+[Jinyoung Park, 11-04 23:50] "ㅇㅇㅇ"
