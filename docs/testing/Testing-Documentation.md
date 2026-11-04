@@ -32,6 +32,7 @@
 |Rev.2.4|2026-11-03|3.1 and 4.1: Iteration 3 revisions (PM and new areas' owners; the coverage script and versions); 4.2: who ran the suite, the plan change noted, the test-case bullet shortened to a pointer; 5.1: per-set table (cases and labelled reps), the assertion per case and the threshold commit stated in the page, deterministic replay noted; 5.2: the two run headings in the per-push format of the members' notes|
 |Rev.2.5|2026-11-03|Final guideline audit: the required iteration stated under each section heading, the threshold commit date in KST, one Korean word translated|
 |Rev.2.6|2026-11-04|6. Acceptance Testing revised with Requirements Rev.2.8 after the heuristic evaluation: UAT-1 adds the pose guide (silhouette) criterion; UAT-3 adds "both set up before the start" and "game elements with a live opponent"; UAT-4 "Result and feedback" adds feedback over time; UAT-5 is now game points, the health bar and fever time (5.9); UAT-6 is the tutorial story (5.12); the squat battle left the UAT|
+|Rev.2.7|2026-11-04|6. Acceptance Testing: every UAT story is run with push-ups and with squats (Requirements Rev.2.9); a squat run step added to each procedure|
 
 # 2. Overview
 
@@ -351,21 +352,22 @@ Plan written in Iteration 3 (PM, 2026-11-01). The six stories below are marked "
 - **Build:** release APK built from `main` at the commit given in the results. The same build is used for every story.
 - **Devices:** Samsung Galaxy S22 and Galaxy S23, the phone on the floor as the setup screen asks, indoors with normal room light. Online stories use both phones on the team server.
 - **Accounts:** two test accounts made for the session (one per phone). No personal accounts.
+- **Both exercises:** every story is run twice, once with push-ups and once with squats, and passes only if both runs pass (Requirements Rev.2.9). The procedures below are written for push-ups; the squat run uses the squat setup (standing 2 to 3 m away, whole body in view), squat reps (sit low enough and stand back up) and the squat rejection reasons (e.g., "Sit lower").
 - **Pass rule:** a story passes only if every acceptance criterion passes. Each criterion is recorded as pass or fail with a note. A failure gets a GitHub issue linked from the results.
 - **Results table (Iteration 4):** story, criterion, pass/fail, test date, tester, build commit, deviation and issue.
 
 ## 6.2 UAT stories
 
-| ID | Story | Requirements section | Criteria under test |
+| ID | Story | Requirements section | Criteria under test (push-ups and squats) |
 |---|---|---|---|
 | UAT-1 | Setting up the phone and pose | 5.3 | 1–3 |
-| UAT-2 | Counting only fair push-ups | 5.4 | 1–3 |
+| UAT-2 | Counting only fair reps | 5.4 | 1–3 |
 | UAT-3 | Battling an online opponent in real time | 5.2, 5.5 | 5.2-1; 5.5-1, 2, 3, 5, 6 |
 | UAT-4 | Result and feedback | 5.6 | 1–3 |
 | UAT-5 | Game points, the health bar and fever time | 5.9 | 2, 4–6 |
 | UAT-6 | Understanding the game through the tutorial | 5.12 (planned for Iteration 4) | 1–3 |
 
-Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.8): the squat battle (5.8) left the UAT, fever time was merged into 5.9 with the game points and the health bar, and the tutorial story (5.12) came in. Not in the UAT, and free to change: 5.1 account, 5.7 match history, 5.8 squat battle, the rules pages, the safety warning, avatar skins, bot difficulty, and the danger edge (5.9 criterion 3).
+Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.8): the squat battle (5.8) left the UAT, fever time was merged into 5.9 with the game points and the health bar, and the tutorial story (5.12) came in. Not in the UAT, and free to change: 5.1 account, 5.7 match history, the squat-only story 5.8 (squats are tested inside UAT-1 to UAT-6 instead), the rules pages, the safety warning, avatar skins, bot difficulty, and the danger edge (5.9 criterion 3).
 
 ## 6.3 Stories, acceptance criteria, and test procedures
 
@@ -382,8 +384,9 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.8): the sq
 2. (AC1) Lay the phone almost flat → check the guide message. Stand it up, then step so the left wrist is out of the frame → check the message names the missing part. Check that no countdown starts in either case.
 3. (AC2) Place the phone correctly → check that the silhouette is drawn on the camera view; move to one side → check the hint tells you how to get back into the silhouette.
 4. (AC3) Match the silhouette and hold a straight-arm push-up position → check that a countdown runs and the battle starts without any tap.
+5. Squat run: repeat steps 2–4 with squat chosen; in step 2 the message names the missing feet or asks to step back, in step 3 the silhouette is a standing figure, in step 4 standing still starts the countdown.
 
-### UAT-2. Counting only fair push-ups
+### UAT-2. Counting only fair reps
 **User story:** As a beginner, I want only correct push-ups to count and to be told right away why a rep did not count, so that the score is fair and I can fix my form during the battle.
 
 **Acceptance criteria**
@@ -396,6 +399,7 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.8): the sq
 2. (AC1) Do 5 full push-ups at a normal pace → the count shows 5. A second team member counts by eye at the same time.
 3. (AC2) In the next battle do 3 half reps (elbows barely bent), then 3 push-ups with the knees on the floor → the count does not change and a reason appears within about a second of each rep. (A half rep may still add Average game points; the count must not change.)
 4. (AC3) In the next battle, have the second person tap the phone so it tilts while you do 2 reps → those reps do not count and the "hold the phone still" message appears.
+5. Squat run: repeat steps 2–4 with squat chosen; 5 full squats count 5, 3 quarter squats and 3 reps without standing back up are rejected with a reason each, and a tilted phone drops the reps done meanwhile.
 
 ### UAT-3. Battling an online opponent in real time
 **User story:** As a user in an online battle, I want to see my opponent move and score live, so that it feels like working out against a real person.
@@ -416,6 +420,7 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.8): the sq
 5. (AC4) A does one Excellent rep and one knee rep → both phones show the same scores and the same health-bar position, A's label reads Excellent then the rejection reason; after 20 s both phones show FEVER ×2.
 6. (AC5) In a new match, turn on airplane mode on phone 1 for 5 seconds, then off → phone 1 shows reconnecting and the battle continues. Next match: keep airplane mode on for 15 seconds → phone 1 loses by disconnection.
 7. (AC6) In a new match, press Back on phone 1 and confirm → phone 1's history shows a loss; phone 2 shows a win.
+8. Squat run: repeat steps 2–7 with squat chosen on both phones; both are matched in the squat queue, B's live standing pose moves on phone 1, and the rest behaves the same.
 
 ### UAT-4. Result and feedback
 **User story:** As a beginner, I want to see who won and what to fix in my form after each battle, so that I improve next time instead of only counting reps.
@@ -430,6 +435,7 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.8): the sq
 2. (AC1) Check the result screen shows win, loss, or draw and both scores, and that the count no longer changes when you keep moving.
 3. (AC2) Open the form feedback → check it shows 4 counted and 2 rejected reps (with the knee reason), at least one form issue with a tip, and one row per rep.
 4. (AC3) Play two more battles on another day if possible; open the statistics from the History tab → "all records" lists the three battles in the graph, "this week" and "this month" narrow it to the battles in that period, and the issue counts match the feedback screens.
+5. Squat run: repeat steps 1–4 with a squat battle (4 full squats and 2 shallow ones) → the feedback shows the squat issues with tips and the statistics are listed per exercise.
 
 ### UAT-5. Game points, the health bar and fever time
 **User story:** As a player, I want every rep to move a shared health bar, a big enough lead to end the battle, and a fever time near the end where my reps score double, so that the battle feels like a game and stays exciting until the last second.
@@ -446,6 +452,7 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.8): the sq
 3. (AC3) Wait for 20 s → "FEVER ×2" replaces the timer label and stays until the round ends.
 4. (AC4) During fever do one normal rep and one knee rep → the score rises by 20 for the normal rep and does not change for the knee rep; the health bar moves toward me once.
 5. (AC2) In a new battle at the 초보 level, do fast deep reps until 100 points ahead → the battle ends at once with "K.O." and the result shows a win; in another battle, stop early and wait for time-up → the higher score wins, and the result names the reason.
+6. Squat run: repeat steps 1–5 with squat chosen; a deep squat earns Excellent, fever and the KO behave the same.
 
 ### UAT-6. Understanding the game through the tutorial
 **User story:** As a new user, I want a tutorial that shows me the correct form and how a battle works before my first match, so that I understand what counts as a rep and what the screen is telling me.
@@ -460,6 +467,7 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.8): the sq
 2. (AC1) Choose push-up → the animation plays one correct rep and lists the rejection reasons (knees, depth, lock-out, belly, straight arms); choose squat → the squat animation plays.
 3. (AC2) Go through the next pages → each of the health bar, the points and combo, the fever time and the KO is explained with an example screen, in that order.
 4. (AC3) In the practice step, place the phone as in UAT-1 and do one deep rep, then one knee rep → the label reads Excellent, then the knee rejection reason; "다시" repeats the step and "완료" returns to Home.
+5. Squat run: repeat steps 2–4 with squat chosen; the animation and the rejection reasons are the squat ones, and a shallow squat in the practice step shows "Sit lower".
 
 ## 6.4 Results
 
