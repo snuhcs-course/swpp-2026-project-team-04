@@ -1145,3 +1145,21 @@ Show the key functionalities of your implementation.
 
 <!-- 973c7412 2026-11-04T10:55:29.078Z -->
 [Jinyoung Park, 11-04 19:55] "노 이런게 좀 그렇다는 거임"
+
+## 2026-11-04 · Jinyoung Park · docs/uat_revision (README next list merged, UAT stories revised)
+<!-- 973c7412 2026-11-04T11:55:20.249Z -->
+[Jinyoung Park, 11-04 20:55] "머지해"
+
+<!-- 973c7412 2026-11-04T12:03:10.668Z -->
+[Jinyoung Park, 11-04 21:03] "UAT 수정좀 할게 
+
+<pasted_content id=\"f036\">
+5.3 -> acccepment guide 1번은 제목만 phone placment guide, 2번에 post guide를 추가해서 세팅 가이드라인 요소 (누끼) 
+5.5 -> live opponent gamification 요소+ 둘사 셋업 잘되야 시작을 이거를 추가(새로)
+5.6 -> 그냥 이름 Result and Feedback으로 바꾸고 전체 기록 혹은 월간 주간으로 피드백 볼수 잇께
+5.8 -> squat 제거
+5.9 -> 5.10으로 합치기
+5.12 를 새 UAT로 해줘 
+</pasted_content id=\"f036\">
+
+ 5.12는 Tutorial을 통해 이해하기"
