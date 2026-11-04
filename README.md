@@ -45,7 +45,7 @@ Still from Iterations 1 and 2: accounts, the online lobby and matching, camera p
 
 - Form feedback for squats
 - Tuning the Excellent depth and the bot levels from the heuristic evaluation and user tests
-- A tier system and tier-based matching
+- UI fixes from the heuristic evaluation: bigger cues on the setup and battle screens for a phone 50–100 cm away, a body silhouette on the camera view, shorter rules with a form tutorial, one header style and standard dialog buttons
 
 ## How it works
 
