@@ -1163,3 +1163,6 @@ Show the key functionalities of your implementation.
 </pasted_content id=\"f036\">
 
  5.12는 Tutorial을 통해 이해하기"
+
+<!-- 973c7412 2026-11-04T12:16:55.940Z -->
+[Jinyoung Park, 11-04 21:16] "모든 UAT는 squat도 포함해야함"
