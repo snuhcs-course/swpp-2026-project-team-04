@@ -6,7 +6,22 @@ This branch, `iteration-3-demo`, holds the code shown in the **Iteration 3 demo*
 
 ## Demo video
 
-The Iteration 3 demo video is recorded on 2026-11-05 and will be added here as `demo-videos/iteration-3-demo-video.mp4`.
+[Watch or download the Iteration 3 demo (2 min 1 s, 720p)](demo-videos/iteration-3-demo-video.mp4)
+
+Recorded on 2026-11-04: a push-up battle against RepBot on one phone, then an online squat battle on two phones.
+
+| Time (approx.) | What you see |
+|---|---|
+| 0:00 | Sign-up, then the rules pages (how points, combo and fever work) |
+| 0:12 | Home → **AI 1v1** → push-up → bot level **초보** (beginner) |
+| 0:16 | Matching with RepBot, the versus screen and the safety reminder |
+| 0:22 | Pose setup, then the push-up battle: health bar, **Good / Excellent +N**, combo, **FEVER ×2** |
+| 0:58 | **TIME UP**, 100 : 80, win |
+| 1:03 | Form feedback with side-view examples, then the result screen |
+| 1:12 | Home → **온라인 1v1** → squat on two phones: match found, versus screen |
+| 1:20 | Squat pose setup on both phones ("Hold still…") |
+| 1:25 | The online squat battle: your camera below, the opponent's SOMA avatar above |
+| 1:58 | Result on both phones: 승리 (win) 490 : 470 and 패배 (loss) |
 
 Earlier demos: [Iteration 2 (1 min 47 s)](demo-videos/iteration-2-demo-video.mp4), [Iteration 1](demo-videos/iteration-1-demo-video.mp4).
 

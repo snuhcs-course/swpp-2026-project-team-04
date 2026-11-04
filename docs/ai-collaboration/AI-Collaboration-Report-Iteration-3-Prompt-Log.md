@@ -990,3 +990,116 @@ Example: team7-iter3-AI-collaboration-report.pdf
 </pasted_content id=\"f036\">
 
  양식 맞춰서 만들어주고 (싹다 Download밑 PM폴더 만들고 거기에) 만든후 각 문서 양식 맞는지 ~/Downloads/3\ -\ Design\ Documentation\ Guidelines.pdf ~/Downloads/2\ -\ Requirements\ \&\ Specifications\ Guidelines.pdf ~/Downloads/4\ -\ Testing\ Documentation\ Guidelines.pdf ~/Downloads/5\ -\ AI\ Collaboration\ Report\ Guidelines\ v1.1.pdf 여거랑 비교해서 확인"
+
+## 2026-11-03 ~ 2026-11-04 · Jinyoung Park · docs/iteration-3-demo (TA-meeting deck, HE slide, demo video and README)
+<!-- 973c7412 2026-11-03T13:42:58.760Z -->
+[Jinyoung Park, 11-03 22:42] "머지해"
+
+<!-- 973c7412 2026-11-03T13:44:31.294Z -->
+[Jinyoung Park, 11-03 22:44] "demo도 지금 현우가 올린 마지막 merge 포함하고 있는거지?"
+
+<!-- 973c7412 2026-11-04T04:50:16.199Z -->
+[Jinyoung Park, 11-04 13:50] "~/Downloads/TA\ Meeting\ Template\ -\ Iteration\ 3\ \(1\).pptx 이거 발표자료 만들어줘 ~/Downloads/Team4_Iter2_TA_Meeting\ \(1\).pptx 이거 양식으로 똑같이 해줘"
+
+<!-- 973c7412 2026-11-04T05:18:19.119Z -->
+[Jinyoung Park, 11-04 14:18] "좀 글을 줄이고 그림 위주로 넣어주고 schedule 표도 좀 캡쳐해서 해줘 https://docs.google.com/spreadsheets/d/1Wcic9Ur8xMsGW7HyeSZBjIloLLPkRzdOUL-LrrMfOBs/edit?gid=1533464390#gid=1533464390 이거 링크 줘봐"
+
+<!-- 973c7412 2026-11-04T05:37:01.328Z -->
+[Jinyoung Park, 11-04 14:37] "캡쳐 화질이 별로인데 약간 밑에꺼위주로 캡쳐해서 줘봐"
+
+<!-- 973c7412 2026-11-04T05:42:51.389Z -->
+[Jinyoung Park, 11-04 14:42] "demo는 오늘 이따가 할거라 일단 Completed로 놔둬 지금 수정했으니 다시 반영좀. 그릭 ㅗHR이후에 발표 하는거라 그것도 반영 좀"
+
+<!-- 973c7412 2026-11-04T05:47:56.236Z -->
+[Jinyoung Park, 11-04 14:47] "그리고 scheudle link 클릭이 안되는데, documents 내용은 각각 1-2줄로 정리해주고 UAT를 좀 크게 키워서 그림을 배치하주면 좋을듯. 또한 git 구현에 harness를 PM이 만들고 그걸 다른 사람들이 각자 쓰고, artifact로 merge 순서 관리하는 기능 이거 그림으로 좀 보여주면 좋을듯"
+
+<!-- 973c7412 2026-11-04T05:54:06.256Z -->
+[Jinyoung Park, 11-04 14:54] "testing, a collaboration report는 없어도 됨"
+
+<!-- 973c7412 2026-11-04T05:55:39.826Z -->
+[Jinyoung Park, 11-04 14:55] "1) 2) 3) 이렇게 한줄씩 각각해주고 간단하게 최대한 최대 다 합쳐서 3개 이하로"
+
+<!-- 973c7412 2026-11-04T06:05:28.630Z -->
+[Jinyoung Park, 11-04 15:05] "testing 글을 좀더 적고, organized 되게 적을수 있나? 그리고 feature tesiting 개수가 1476보다 훨 많고 거의 7000개로 아는데 흠"
+
+<!-- 973c7412 2026-11-04T06:08:34.781Z -->
+[Jinyoung Park, 11-04 15:08] "그냥 test case수만 적고 마지막으로 글이 너무 많음. 좀 잘 정리되게 축약해서 써달라니까 testing, ai testsing 파트"
+
+<!-- 973c7412 2026-11-04T07:45:54.755Z -->
+[Jinyoung Park, 11-04 16:45] "feature testing에 github에내가 추가해서 자동으로 testing해주고, testing 계속 합쳐지는 구조 이거를 그림으로 정리해주는걸 강조"
+
+<!-- 973c7412 2026-11-04T07:52:45.862Z -->
+[Jinyoung Park, 11-04 16:52] "왼족 그래프 대신 차라리 이 기능을 좀 Loop같은 느낌으로 그려줘서 추가좀"
+
+<!-- 973c7412 2026-11-04T07:57:37.726Z -->
+[Jinyoung Park, 11-04 16:57] "조금만 좀더 직관적으로 ppt그림 말고 아예 draw io로 새로 그려서 그림을 넣어봐"
+
+<!-- 973c7412 2026-11-04T08:16:24.549Z -->
+[Jinyoung Park, 11-04 17:16] "ㄱㄱ"
+
+<!-- 973c7412 2026-11-04T08:21:34.389Z -->
+[Jinyoung Park, 11-04 17:21] "M1, M2, M3 설명좀"
+
+<!-- 973c7412 2026-11-04T08:25:12.283Z -->
+[Jinyoung Park, 11-04 17:25] "Normal reps rejected when the phone is steep or far; set 4 lock-out and set 8 reason missed; belly-down reps counted
+#32 fixed the normal reps (M1 46 → 79 %) but was tuned on the same set: in-sample
+맨위에꺼는 빼고 대신에 2번째 줄을 첫줄로 옮기고, 2번째에 이제 counting을 아예 0점 주긴 대신에 5/10/15 이걸로 했다고 말해줘"
+
+<!-- 973c7412 2026-11-04T08:33:12.047Z -->
+[Jinyoung Park, 11-04 17:33] "Acceptance testing plan (Iteration 4): 6 frozen stories with Given-When-Then criteria and a procedure · tester ≠ author · release APK on Galaxy S22/S23 · pass only if every criterion passes; each failure becomes an issue
+ 이거는 뭔말임"
+
+<!-- 973c7412 2026-11-04T08:35:49.310Z -->
+[Jinyoung Park, 11-04 17:35] "https://docs.google.com/spreadsheets/d/17_r1URbeKeXZT-jpjYwnS7njlMlactL98hTMsf-mbnM/edit?gid=299633433#gid=299633433 이거 보고 오늘 수업시간에 진행될 HE 후기도 1장 정도로 담아주시면 좋겠습니다! 이거 하나 추가좀"
+
+<!-- 973c7412 2026-11-04T08:40:05.749Z -->
+[Jinyoung Park, 11-04 17:40] "ㅇㅇ ㄱㄱ"
+
+<!-- 973c7412 2026-11-04T08:45:22.228Z -->
+[Jinyoung Park, 11-04 17:45] "Acceptance testing plan (Iteration 4): 6 frozen stories with Given-When-Then criteria and a procedure · tester ≠ author · release APK on Galaxy S22/S23 · pass only if every criterion passes; each failure becomes an issue
+ 이거 간단하게 한줄로"
+
+<!-- 973c7412 2026-11-04T08:46:19.284Z -->
+[Jinyoung Park, 11-04 17:46] "ㅇㅇ 그렇게 하고"
+
+<!-- 973c7412 2026-11-04T08:48:53.942Z -->
+[Jinyoung Park, 11-04 17:48] "pros, cons로 해서 장단점 좀 간단하게 줄로 ㅇㅇ"
+
+<!-- 973c7412 2026-11-04T08:52:58.846Z -->
+[Jinyoung Park, 11-04 17:52] "1) 2) 3) 이렇게 작성하고 해결책은 discussion에 좀 옮기자"
+
+<!-- 973c7412 2026-11-04T08:56:20.562Z -->
+[Jinyoung Park, 11-04 17:56] "HR, dicsussion은 좀 크게 키워서 하고"
+
+<!-- 973c7412 2026-11-04T09:02:01.002Z -->
+[Jinyoung Park, 11-04 18:02] "Dicussion은 ui고치기, push up 정확도 인식 문제, 아바타를 아예 뺄건지, 음성으로 알려주는 기능 이렇게 4가지로 하자"
+
+<!-- 973c7412 2026-11-04T09:05:29.020Z -->
+[Jinyoung Park, 11-04 18:05] "TODO 글씨좀 약간 키우고 DIscussion 각 파트당 1-2줄로 간단하게 설명해주고, TODO도 1-2줄 각 파트당"
+
+<!-- 973c7412 2026-11-04T09:06:59.224Z -->
+[Jinyoung Park, 11-04 18:06] "~/Downloads/Team14_Iter3_TA_Meeting.pptx 이런 느낌으로 좀 작성해달라는 거였음. 이런 양식대로 HE->Discussion->ToDO 작성좀 마지막으로 ~/Downloads/KakaoTalk_Video_2026-11-04-17-53-31.mp4 demo video 이거 추가"
+
+<!-- 973c7412 2026-11-04T09:16:53.179Z -->
+[Jinyoung Park, 11-04 18:16] "HE,TODO는 바꿔야 겠는데 이거는 표절이자나"
+
+<!-- 973c7412 2026-11-04T09:31:47.432Z -->
+[Jinyoung Park, 11-04 18:31] "TODO만 그냥 표 말고 간단하게 1) 2) 3) 이런식으로 현재 iter 남은거랑 이후에 해야되는거 정리"
+
+<!-- 973c7412 2026-11-04T10:19:59.109Z -->
+[Jinyoung Park, 11-04 19:19] "feature testing 어떤 feature로 testing 했는지랑, ai module testing 발표 설명ppt 슬라이드밑에 발표문으로 적어줘"
+
+<!-- 973c7412 2026-11-04T10:22:43.870Z -->
+[Jinyoung Park, 11-04 19:22] "ㄱㄱㄱ"
+
+<!-- 973c7412 2026-11-04T10:24:58.643Z -->
+[Jinyoung Park, 11-04 19:24] "feature 설명좀"
+
+<!-- 973c7412 2026-11-04T10:31:05.883Z -->
+[Jinyoung Park, 11-04 19:31] "HR의 constistency 문제는 뭐야"
+
+<!-- 973c7412 2026-11-04T10:32:36.745Z -->
+[Jinyoung Park, 11-04 19:32] "좀 설명좀 해줘 간단하게"
+
+<!-- 973c7412 2026-11-04T10:35:57.709Z -->
+[Jinyoung Park, 11-04 19:35] "~/Downloads/KakaoTalk_Video_2026-11-04-17-53-36.mp4 README에 넣을 720p넣어서 이제 최종적으로 demo branch정리하자"
