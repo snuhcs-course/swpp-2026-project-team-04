@@ -12,9 +12,6 @@ Input prompts only, quoted verbatim (no agent responses), from the course Sessio
 <!-- ccaf0a52 2026-10-24T16:29:58.722Z -->
 [Jinyoung Park, 10-25 01:29] "아 그니까 PR순서는 상관 없고 내가 merge 하면 된다고?"
 
-<!-- ccaf0a52 2026-10-24T16:30:20.001Z -->
-[Jinyoung Park, 10-25 01:30] "어떤 md에 그게 나와있노?"
-
 <!-- ccaf0a52 2026-10-24T16:31:32.913Z -->
 [Jinyoung Park, 10-25 01:31] "그러면 각자 알아서 설정하고 진행하고 내가 최종적으로 어떤 Md로 하면됨? 한국어로 설명해줘"
 
@@ -108,9 +105,6 @@ Merging with a merge commit. Everyone: run git fetch origin && git merge origin/
 
 <!-- ccaf0a52 2026-10-27T15:26:45.867Z -->
 [Jinyoung Park, 10-28 00:26] "아 ㅇㅋㅇㅋ"
-
-<!-- ccaf0a52 2026-10-27T15:26:55.566Z -->
-[Jinyoung Park, 10-28 00:26] "ai 모듈 테스트는 어캐 하면 되는거노?"
 
 <!-- ccaf0a52 2026-10-28T14:21:47.761Z -->
 [Jinyoung Park, 10-28 23:21] "현우 한테 md보내줘야 할것 같은데 만들어줘. 그리고 testing 자동으로 지금 git에서 되는거 계속 cumlative하게 새로운 branch pR 날릴때마다 그 brnach에서 만든 test가 계속 추가되서 마지막 vbrnach의경우 이전 PR한 branch가 모두 합쳐져서 되느걱?"
@@ -322,9 +316,6 @@ rce-with-lease=master:239e377 origin master
 
 <!-- ccaf0a52 2026-10-30T14:20:14.382Z -->
 [Jinyoung Park, 10-30 23:20] "artifact도 다시 링크 줘봐"
-
-<!-- ccaf0a52 2026-10-30T14:20:49.568Z -->
-[Jinyoung Park, 10-30 23:20] "내가 merge가지 했으니까 이제 8세트 녹화 스텝으로 넘어가게 반영되어야 하는거 아니노"
 
 <!-- ccaf0a52 2026-10-30T14:21:20.346Z -->
 [Jinyoung Park, 10-30 23:21] "branch 너가 팠음?"
