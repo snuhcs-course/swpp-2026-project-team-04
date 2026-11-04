@@ -22,15 +22,10 @@
 |Version|Date|Description|
 |-------|----|-----------|
 |Rev.1.0|2026-10-22|Initial version: test responsibility and schedule; unit and integration test plan and the first results (Iteration 2)|
-|Rev.1.1|2026-10-23|Added the PR #10 results (phone tilt fix) to 4.2|
-|Rev.1.2|2026-10-23|App tests re-run on the final Iteration 2 `main` (`9e9a911`); second app coverage attempt on Windows; PR #11 (coverage script)|
-|Rev.1.3|2026-10-23|App coverage measured on the final Iteration 2 `main` (`62f6a9d`) with the report as evidence; PR #12 (demo README and video)|
+|Rev.1.1|2026-10-23|Added the PR #10 results (phone tilt fix) to 4.2; App tests re-run on the final Iteration 2 `main` (`9e9a911`); second app coverage attempt on Windows; PR #11 (coverage script); App coverage measured on the final Iteration 2 `main` (`62f6a9d`) with the report as evidence; PR #12 (demo README and video)|
 |Rev.2.0|2026-11-01|Added 6. Acceptance Testing plan: how the UAT is run, six UAT stories (UAT-1 to UAT-6) with acceptance criteria and test procedures, frozen from 2026-11-06; results follow in Iteration 4|
-|Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2)|
-|Rev.2.2|2026-11-03|5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged) and the re-run after the judge tuning of PR #32 (tuned on the same set); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the four judge changes of #32 from the evaluation, the HE clothing advice) and what it leaves to Iteration 4|
-|Rev.2.3|2026-11-03|3.2: the CI revision of PR #14 noted; 4.2 Iteration 3 results moved to the final Iteration 3 `main` (`f03a460`, CI on `a643088`) with the coverage screenshot; 5.1: no additions since freezing|
-|Rev.2.4|2026-11-03|3.1 and 4.1: Iteration 3 revisions (PM and new areas' owners; the coverage script and versions); 4.2: who ran the suite, the plan change noted, the test-case bullet shortened to a pointer; 5.1: per-set table (cases and labelled reps), the assertion per case and the threshold commit stated in the page, deterministic replay noted; 5.2: the two run headings in the per-push format of the members' notes|
-|Rev.2.5|2026-11-03|Final guideline audit: the required iteration stated under each section heading, the threshold commit date in KST, one Korean word translated|
+|Rev.2.1|2026-11-03|Added the Iteration 3 results so far to 4.2 (all team-plan PRs merged, `main` `e6b16fe`, the heuristic-evaluation build); 5. AI Module Testing: the frozen set, labels and runner (5.1) and the first run with its failure analysis (5.2); 5.2: the run on the pinned `main` commit `dccd84a` (PR #30 merged) and the re-run after the judge tuning of PR #32 (tuned on the same set); 5.3: what the AI testing changed in the app (judge rules and pose model from the first recordings, the Good / Excellent / Average points from the recorded depths and elbow angles, the setup relaxation for far placements, the four judge changes of #32 from the evaluation, the HE clothing advice) and what it leaves to Iteration 4; 3.2: the CI revision of PR #14 noted; 4.2 Iteration 3 results moved to the final Iteration 3 `main` (`f03a460`, CI on `a643088`) with the coverage screenshot; 5.1: no additions since freezing; 3.1 and 4.1: Iteration 3 revisions (PM and new areas' owners; the coverage script and versions); 4.2: who ran the suite, the plan change noted, the test-case bullet shortened to a pointer; 5.1: per-set table (cases and labelled reps), the assertion per case and the threshold commit stated in the page, deterministic replay noted; 5.2: the two run headings in the per-push format of the members' notes; Final guideline audit: the required iteration stated under each section heading, the threshold commit date in KST, one Korean word translated|
+|Rev.2.2|2026-11-04|6. Acceptance Testing revised with Requirements Rev.2.3 after the heuristic evaluation: UAT-1 adds the pose guide (silhouette) criterion; UAT-3 adds "both set up before the start" and "game elements with a live opponent"; UAT-4 "Result and feedback" adds feedback over time; UAT-5 is now game points, the health bar and fever time (5.9); UAT-6 is the tutorial story (5.12); the squat battle left the UAT; 6. Acceptance Testing: every UAT story is run with push-ups and with squats (Requirements Rev.2.3); a squat run step added to each procedure; UAT-3 follows 5.5 without the opponent avatar (criteria 1–4), UAT-5 is 5.8 and UAT-6 is 5.11 after the squat story was removed from Requirements, UAT-6 has the four tutorial pages|
 
 # 2. Overview
 
@@ -346,25 +341,26 @@ What the AI testing leaves to Iteration 4 (judge owner Hyunwoo), after #32: the 
 Plan written in Iteration 3 (PM, 2026-11-01). The six stories below are marked "UAT key story" in [Requirements & Specifications 5](Requirements-and-Specifications#5-functional-requirements) and are **frozen from 2026-11-06**, the end of Iteration 3 (Requirements guideline: once chosen, they cannot be altered afterwards). Results (pass/fail, date, tester, deviations) are reported in Iteration 4 in 6.4.
 
 ## 6.1 How the UAT is run
-- **Testers:** each story is run by a team member who did not build the feature under test. Iteration 4 adds one person from outside the team for UAT-3 and UAT-5 if available.
+- **Testers:** each story is run by a team member who did not build the feature under test. Iteration 4 adds one person from outside the team for UAT-3 and UAT-6 if available.
 - **Build:** release APK built from `main` at the commit given in the results. The same build is used for every story.
 - **Devices:** Samsung Galaxy S22 and Galaxy S23, the phone on the floor as the setup screen asks, indoors with normal room light. Online stories use both phones on the team server.
 - **Accounts:** two test accounts made for the session (one per phone). No personal accounts.
+- **Both exercises:** every story is run twice, once with push-ups and once with squats, and passes only if both runs pass (Requirements Rev.2.3). The procedures below are written for push-ups; the squat run uses the squat setup (standing 2 to 3 m away, whole body in view), squat reps (sit low enough and stand back up) and the squat rejection reasons (e.g., "Sit lower").
 - **Pass rule:** a story passes only if every acceptance criterion passes. Each criterion is recorded as pass or fail with a note. A failure gets a GitHub issue linked from the results.
 - **Results table (Iteration 4):** story, criterion, pass/fail, test date, tester, build commit, deviation and issue.
 
 ## 6.2 UAT stories
 
-| ID | Story | Requirements section | Criteria under test |
+| ID | Story | Requirements section | Criteria under test (push-ups and squats) |
 |---|---|---|---|
 | UAT-1 | Setting up the phone and pose | 5.3 | 1–3 |
-| UAT-2 | Counting only fair push-ups | 5.4 | 1–3 |
-| UAT-3 | Battling an online opponent in real time | 5.2, 5.5 | 5.2-1; 5.5-1, 3, 4 |
-| UAT-4 | Seeing the result and form feedback | 5.6 | 1–2 |
-| UAT-5 | Squat battle (vs AI) | 5.8 (new in Iteration 3) | 1–3 |
-| UAT-6 | Fever time | 5.9 (new in Iteration 3) | 1–3 |
+| UAT-2 | Counting only fair reps | 5.4 | 1–3 |
+| UAT-3 | Battling an online opponent in real time | 5.2, 5.5 | 5.2-1; 5.5-1–4 |
+| UAT-4 | Result and feedback | 5.6 | 1–3 |
+| UAT-5 | Game points, the health bar and fever time | 5.8 | 2, 4–6 |
+| UAT-6 | Understanding the game through the tutorial | 5.11 (planned for Iteration 4) | 1–4 |
 
-Not in the UAT, and free to change: 5.1 account, 5.7 match history, the help and rules screens, the safety warning, avatar skins, bot difficulty, and the game-point grades (Average, Good, Excellent) and KO.
+Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.3): the separate squat story was removed (squats are tested inside every story), fever time was merged into 5.8 with the game points and the health bar, the opponent avatar that copied the player's movement was dropped from 5.5, and the tutorial story (5.11) came in. Not in the UAT, and free to change: 5.1 account, 5.7 match history, the rules pages, the safety warning, avatar skins in Profile, bot difficulty, and the danger edge (5.8 criterion 3).
 
 ## 6.3 Stories, acceptance criteria, and test procedures
 
@@ -372,17 +368,18 @@ Not in the UAT, and free to change: 5.1 account, 5.7 match history, the help and
 **User story:** As a user exercising at home, I want the app to tell me how to place my phone and myself, so that my reps are counted correctly once the battle starts.
 
 **Acceptance criteria**
-1. **Placement guide.** Given the pose setup screen is open, when the phone lies too flat or my head, shoulders, elbows, and wrists are not all visible, then the app tells me what to fix (for example, to stand the phone up or which body part is not visible) and does not start.
-2. **Ready and start.** Given the phone is placed correctly, when I hold a push-up position with straight arms, then the app marks me ready by itself after a countdown, and the battle starts.
-3. **Camera permission denied.** Given camera access is not allowed, when the setup screen opens, then the app asks me to allow the camera and offers a button that opens the phone's settings.
+1. **Phone placement guide.** Given the pose setup screen is open, when the phone lies too flat or my head, shoulders, elbows, and wrists are not all visible, then the app tells me what to fix (for example, to stand the phone up or which body part is not visible) and does not start.
+2. **Pose guide.** Given the phone is placed correctly, when the setup screen shows my camera view, then a body silhouette shows where my head, shoulders and hands should be for the chosen exercise, and the hints tell me how to match it.
+3. **Ready and start.** Given the phone is placed correctly and I match the pose guide, when I hold a push-up position with straight arms, then the app marks me ready by itself after a countdown, and the battle starts.
 
 **Test procedure**
-1. Fresh install of the build; log in with test account A; tap "1v1 vs AI".
+1. Fresh install of the build; log in with test account A; tap "AI 1v1", push-up.
 2. (AC1) Lay the phone almost flat → check the guide message. Stand it up, then step so the left wrist is out of the frame → check the message names the missing part. Check that no countdown starts in either case.
-3. (AC2) Place the phone correctly and hold a straight-arm push-up position → check that a countdown runs and the battle starts without any tap.
-4. (AC3) Deny the camera permission in Android settings → open setup again → check the message and that the button opens the app's settings page.
+3. (AC2) Place the phone correctly → check that the silhouette is drawn on the camera view; move to one side → check the hint tells you how to get back into the silhouette.
+4. (AC3) Match the silhouette and hold a straight-arm push-up position → check that a countdown runs and the battle starts without any tap.
+5. Squat run: repeat steps 2–4 with squat chosen; in step 2 the message names the missing feet or asks to step back, in step 3 the silhouette is a standing figure, in step 4 standing still starts the countdown.
 
-### UAT-2. Counting only fair push-ups
+### UAT-2. Counting only fair reps
 **User story:** As a beginner, I want only correct push-ups to count and to be told right away why a rep did not count, so that the score is fair and I can fix my form during the battle.
 
 **Acceptance criteria**
@@ -395,63 +392,75 @@ Not in the UAT, and free to change: 5.1 account, 5.7 match history, the help and
 2. (AC1) Do 5 full push-ups at a normal pace → the count shows 5. A second team member counts by eye at the same time.
 3. (AC2) In the next battle do 3 half reps (elbows barely bent), then 3 push-ups with the knees on the floor → the count does not change and a reason appears within about a second of each rep. (A half rep may still add Average game points; the count must not change.)
 4. (AC3) In the next battle, have the second person tap the phone so it tilts while you do 2 reps → those reps do not count and the "hold the phone still" message appears.
+5. Squat run: repeat steps 2–4 with squat chosen; 5 full squats count 5, 3 quarter squats and 3 reps without standing back up are rejected with a reason each, and a tilted phone drops the reps done meanwhile.
 
 ### UAT-3. Battling an online opponent in real time
-**User story:** As a user in an online battle, I want to see my opponent move and score live, so that it feels like working out against a real person.
+**User story:** As a user in an online push-up or squat battle, I want to see my opponent's reps and score live on a shared health bar, so that it feels like competing against a real person.
 
-**Acceptance criteria**
-1. **Match found.** Given two users tap "Online 1v1 battle" at about the same time, when the app pairs them, then both phones show the match-found screen with both nicknames.
-2. **Live opponent.** Given an online battle is running, when my opponent moves or scores a rep, then I see their avatar follow their movement and their score go up, and no camera video is sent.
-3. **Short network drop.** Given an online battle is running, when my connection drops, then the app shows that it is reconnecting while the timer keeps running; if I am not back within 10 seconds, I lose by disconnection.
-4. **Leaving the battle.** Given an online battle has started, when I press Back and confirm leaving, then I forfeit and the match is recorded as my loss.
+**Acceptance criteria** (5.2 criterion 1; 5.5 criteria 1–4)
+1. **Match found.** Given two users tap "온라인 1v1" and choose the same exercise at about the same time, when the app pairs them, then both phones show the match-found screen with both nicknames.
+2. **Game elements with a live opponent.** Given an online battle is running, when either player's rep is counted or rejected, then the shared health bar, the grade labels, the fever time and the KO rule apply to both players on both phones within a second, with one clock and one score kept by the server, and no camera video is sent.
+3. **Both set up before the start.** Given a match has been found, when one player has not finished the pose setup, then the battle does not start and the ready player sees a waiting note; it starts 3 seconds after both are ready.
+4. **Short network drop.** Given an online battle is running, when my connection drops, then the app shows that it is reconnecting while the timer keeps running; if I am not back within 10 seconds, I lose by disconnection.
+5. **Leaving the battle.** Given an online battle has started, when I press Back and confirm leaving, then I forfeit and the match is recorded as my loss.
 
 **Test procedure**
 1. Phone 1 with test account A, phone 2 with test account B, both on Wi-Fi.
-2. (AC1) Both tap "Online 1v1 battle" within 5 seconds → both show the match-found screen with "A" and "B".
-3. (AC2) Complete setup on both. B does 3 push-ups → on phone 1, B's avatar moves down and up, and B's score reaches 3. (Video check: the protocol sends only joint coordinates; confirm in the battle server's log that no image data arrives.)
-4. (AC3) In a new match, turn on airplane mode on phone 1 for 5 seconds, then off → phone 1 shows reconnecting and the battle continues. Next match: keep airplane mode on for 15 seconds → phone 1 loses by disconnection.
-5. (AC4) In a new match, press Back on phone 1 and confirm → phone 1's history shows a loss; phone 2 shows a win.
+2. (AC1) Both tap "온라인 1v1", push-up, within 5 seconds → both show the match-found screen with "A" and "B".
+3. (AC3) Complete setup on phone 1 only → phone 1 shows "준비 완료" and waits; complete setup on phone 2 → both count down 3 seconds and start together.
+4. (AC2) B does 3 push-ups, then A does one Excellent rep and one knee rep → within a second both phones show the same scores and the same health-bar position, A's label reads Excellent then the rejection reason, and after 20 s both phones show FEVER ×2. (Privacy check: the protocol sends only rep events and scores; confirm in the battle server's log that no image data arrives.)
+5. (AC4) In a new match, turn on airplane mode on phone 1 for 5 seconds, then off → phone 1 shows reconnecting and the battle continues. Next match: keep airplane mode on for 15 seconds → phone 1 loses by disconnection.
+6. (AC5) In a new match, press Back on phone 1 and confirm → phone 1's history shows a loss; phone 2 shows a win.
+7. Squat run: repeat steps 2–6 with squat chosen on both phones; both are matched in the squat queue and the rest behaves the same.
 
-### UAT-4. Seeing the result and form feedback
+### UAT-4. Result and feedback
 **User story:** As a beginner, I want to see who won and what to fix in my form after each battle, so that I improve next time instead of only counting reps.
 
 **Acceptance criteria**
 1. **Result.** Given a battle is running, when the round ends (time up, or a KO), then the app stops counting and shows win, loss, or draw with both final scores.
 2. **Form feedback.** Given the result of a push-up battle is shown, when I open the form feedback, then I see my counted and rejected reps, my top form issues each with one tip to fix it, and a per-rep record.
+3. **Feedback over time.** Given I have played several battles, when I open the feedback statistics from the History tab and choose all records, this month or this week, then I see my average counted reps, a date–reps graph and how often each form issue occurred in that period.
 
 **Test procedure**
-1. Run a "1v1 vs AI" push-up battle with account A to the end of the 30-second round, mixing 4 valid reps and 2 knee reps.
+1. Run an "AI 1v1" push-up battle with account A to the end of the 30-second round, mixing 4 valid reps and 2 knee reps.
 2. (AC1) Check the result screen shows win, loss, or draw and both scores, and that the count no longer changes when you keep moving.
 3. (AC2) Open the form feedback → check it shows 4 counted and 2 rejected reps (with the knee reason), at least one form issue with a tip, and one row per rep.
+4. (AC3) Play two more battles on another day if possible; open the statistics from the History tab → "all records" lists the three battles in the graph, "this week" and "this month" narrow it to the battles in that period, and the issue counts match the feedback screens.
+5. Squat run: repeat steps 1–4 with a squat battle (4 full squats and 2 shallow ones) → the feedback shows the squat issues with tips and the statistics are listed per exercise.
 
-### UAT-5. Squat battle
-**User story:** As a beginner who cannot do many push-ups yet, I want to battle with squats too, so that I can compete with an exercise I am able to do.
+### UAT-5. Game points, the health bar and fever time
+**User story:** As a player, I want every rep to move a shared health bar, a big enough lead to end the battle, and a fever time near the end where my reps score double, so that the battle feels like a game and stays exciting until the last second.
 
-**Acceptance criteria**
-1. **Choosing squat.** Given I am on Home, when I choose squat and start a match against the AI rival, then the setup and the battle are for squats (the screens name the exercise).
-2. **Squat setup.** Given the squat setup screen is open, when my whole body is not visible or I am not standing, then the app tells me what to fix; when I stand fully in view, the battle starts as in UAT-1.
-3. **Fair squats.** Given a squat battle is running, when I squat low enough and stand back up, then my count goes up by one; when a squat is too shallow, it is not counted and the reason appears at once.
-
-**Test procedure**
-1. Log in with account A; on Home choose squat, then "1v1 vs AI".
-2. (AC1) Check the setup, battle, and result screens show squat, not push-up.
-3. (AC2) Stand so the feet are out of the frame → check the message; then stand fully in view → the battle starts.
-4. (AC3) Do 5 full squats → the count shows 5. Do 3 quarter squats → no count, and a reason appears for each.
-
-### UAT-6. Fever time
-**User story:** As a user who is behind near the end of a battle, I want a fever time where my reps score double, so that the battle stays exciting until the last second and I still have a chance to win.
-
-**Acceptance criteria**
-1. **Fever starts.** Given a battle is running, when the fever time begins near the end of the round (at 20 s of the 30-second round), then the screen clearly shows that fever is on until the round ends.
-2. **Double score.** Given fever is on, when I complete a valid rep, then it earns twice the points the same rep earns before fever, and the health bar moves toward me accordingly.
-3. **Rejected rep.** Given fever is on, when a rep is rejected with the knees on the floor, then it earns no points and my score does not change, the same as before fever.
+**Acceptance criteria** (5.8 criteria 2 and 4–6)
+1. **Graded reps and combo.** Given a battle is running, when I complete a counted rep, then it earns Good 10 points, or Excellent 15 when it went 1.6 times deeper than the pass depth, plus a combo bonus of 5 when it comes within 1.5 s of my previous counted rep, and the label appears at once.
+2. **KO.** Given a battle is running, when one player gets 100 points ahead, then the battle ends at once with "K.O." and the leader wins; otherwise the higher score wins at time-up, then the higher counted reps, else a draw.
+3. **Fever starts.** Given a battle is running, when the fever time begins at 20 s of the 30-second round, then the screen shows "FEVER ×2" in place of the timer label until the round ends.
+4. **Double score.** Given fever is on, when I complete a counted rep, then it earns twice the points the same rep earns before fever and the health bar moves toward me accordingly; a rejected rep still earns no points.
 
 **Test procedure**
-1. Run a "1v1 vs AI" push-up battle with account A.
-2. Before fever, do one valid rep and note the points it adds to my game score.
-3. (AC1) Wait for the fever time (20 s) → check the fever display appears and stays until the round ends.
-4. (AC2) During fever do one valid rep of the same kind → the score rises by twice the points from step 2, and the health bar moves toward me.
-5. (AC3) During fever do one knee rep → my score does not change.
+1. Run an "AI 1v1" push-up battle with account A at the 초보 level.
+2. (AC1) Do one normal rep, then one deep rep within 1.5 s → the labels read "+10 GOOD" and "+20 EXCELLENT · 콤보 2" and the score rises by 10 and 20.
+3. (AC3) Wait for 20 s → "FEVER ×2" replaces the timer label and stays until the round ends.
+4. (AC4) During fever do one normal rep and one knee rep → the score rises by 20 for the normal rep and does not change for the knee rep; the health bar moves toward me once.
+5. (AC2) In a new battle at the 초보 level, do fast deep reps until 100 points ahead → the battle ends at once with "K.O." and the result shows a win; in another battle, stop early and wait for time-up → the higher score wins, and the result names the reason.
+6. Squat run: repeat steps 1–5 with squat chosen; a deep squat earns Excellent, fever and the KO behave the same.
+
+### UAT-6. Understanding the game through the tutorial
+**User story:** As a new user, I want a tutorial that walks me through the game from choosing a mode to reading my feedback, so that I know what to do before my first battle.
+
+**Acceptance criteria** (5.11, planned for Iteration 4)
+1. **Game modes.** Given I open the tutorial after sign-up or from "?" on Home, when I read the first page, then it shows the kinds of game: online 1v1 or AI 1v1 at one of three levels, each with push-ups or squats, and what a 30-second battle is.
+2. **Phone and pose setup.** Given I go on to the setup page, when I choose push-up or squat, then it shows with pictures where to put the phone and how to stand or lie to match the pose guide, and what the setup messages mean.
+3. **Rules in the battle.** Given I go on to the rules pages, when I read them, then they explain with example screens what counts as a rep and the rejection reasons, the health bar, the points and the combo, the fever time and the KO, in the order they happen in a battle.
+4. **Feedback and records after the battle.** Given I go on to the last page, when I read it, then it shows where the result, the form feedback and the match history with its statistics are, and "완료" takes me to Home.
+
+**Test procedure**
+1. Fresh install of the build; sign up with a new test account; at the end of the rules pages open the tutorial (or tap "?" on Home and choose the tutorial).
+2. (AC1) Check the first page names online 1v1, AI 1v1 with the three levels, push-up and squat, and the 30-second round.
+3. (AC2) Choose push-up → the page shows the phone on the floor about 1 m ahead at 60° or steeper and the lying start position; choose squat → upright 2 to 3 m ahead and the standing position; the setup messages are listed with their meaning.
+4. (AC3) Go through the rules pages → each of the rep rules and rejection reasons, the health bar, the points and combo, the fever time and the KO is explained with an example screen, in that order.
+5. (AC4) On the last page check the result screen, "자세 피드백 보기" and the 기록 tab with its statistics are shown and explained; tap "완료" → Home.
+6. Squat run: repeat steps 3–5 with squat chosen; the pictures and rejection reasons are the squat ones.
 
 ## 6.4 Results
 
