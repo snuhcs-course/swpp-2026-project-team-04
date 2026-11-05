@@ -1185,3 +1185,71 @@ Show the key functionalities of your implementation.
 
 <!-- 973c7412 2026-11-04T14:50:31.215Z -->
 [Jinyoung Park, 11-04 23:50] "ㅇㅇㅇ"
+
+## 2026-11-05 · Jinyoung Park · docs/ai_report_prompts (PDFs, schedule sheet, report section 2)
+<!-- 973c7412 2026-11-04T15:06:41.558Z -->
+[Jinyoung Park, 11-05 00:06] "ㅇㅇ 다 되면 위키 올리고 testing PR도 머지해"
+
+<!-- 973c7412 2026-11-04T15:10:42.277Z -->
+[Jinyoung Park, 11-05 00:10] "그리고 requirements에서  
+
+<pasted_content id=\"f036\">
+Screens
+
+ID    Screen    What the user can do    Failure handling
+8-1 ~ 8-4    Log in, Sign up    Log in with ID and password, or create an account (logged in right after); a saved login skips this screen    8-3: wrong ID or password, or no connection; 8-4: a message under each invalid field or a taken ID; an expired login returns to 8-1
+11-1 ~ 11-3    Game rules (3 pages)    Read the health bar, the points and fever, and the safety page; \"건너뛰기\" / \"다음\" / \"시작하기\" after sign-up, \"확인\" from \"?\" on Home    Shown once per account after sign-up; always available from \"?\"
+1-1 ~ 1-3    Home (Home tab)    Open the \"온라인 1v1\" or \"AI 1v1\" card; see the 3 latest matches with game points; open the rules (\"?\"), Profile, or log out (1-3)    1-2: \"정보를 불러오지 못했어요\" with \"다시 시도\"; an unsent-match note when the server could not be reached
+1-4    Exercise sheet    Choose 푸쉬업 or 스쿼트, each with the personal best in points (\"개인 최고 220점\", \"32회\" or \"—\")    Closing the sheet stays on Home
+1-5    Bot level sheet    Choose 초보 (57), 중수 (810) or 고수 (10~14)    Closing the sheet stays on Home
+2-0    Online lobby    Searching starts at once for the chosen exercise; placement hint (push-up: phone on the floor about 1 m ahead; squat: upright 2–3 m ahead, whole body in view); cancel    2-2: connection lost, retry; 2-3: cancel dialog on Back
+2-1 ~ 2-3    Matching (AI)    Wait for the AI rival at the chosen level (\"초보 AI 상대를 찾는 중\"); cancel    2-3: cancel dialog on Back
+3-0    Safety reminder    Read \"무리하지 마세요\" and tap \"확인\" (online: closes by itself after 5 s)    Back asks whether to leave the game
+3-1, 3-2    Match found    See both names (\"AI 봇 · 초보\" or the opponent's nickname) and the rules; start pose setup    3-2: leaving before the start cancels the match for both players
+4-1 ~ 4-5    Pose setup    Follow placement hints (push-up: head, shoulders, elbows and wrists in view; squat: stand with the whole body in view); become ready automatically after holding the pose; wait for the opponent    4-3: camera access denied; 4-4: pose error (\"카메라 다시 준비\"); 4-5: match cancelled if a player leaves or is not ready in 60 s
+4-6 ~ 4-8    Pose setup, online    Push-up (4-6) or squat (4-7) ready: \"자세 확인! 3초 후 자동으로 준비해요\", then \"준비 완료\" while waiting for the opponent (4-8)    The hints keep running; leaving cancels the match
+5-1 ~ 5-7    Battle    Do push-ups or squats; see both game scores and counted reps, the timer, the health bar (\"나 57% / 상대 43%\"), the lead pill (\"+15 리드\", \"−60 추격 중\"), the grade label (\"+15 GOOD · 콤보 6\") or the rejection reason (\"카운트 안 됨 · 깊이 부족\"), the opponent's avatar; the danger edge when 60 points behind (5-3); \"FEVER ×2\" from 20 s (5-4); leave (5-7)    5-5: camera failed; 5-6: reconnecting, a loss if not back in 10 s; leaving after the start is a forfeit
+5-8, 5-9    Online battle    Same panel as 5-1 ~ 5-4 with the opponent's avatar above (push-up rig from the side, or the live squat pose), \"+5 AVERAGE\", \"+15 EXCELLENT\", \"+20 GOOD · 점수 2배\"    5-6: reconnecting; leaving after the start is a forfeit
+7-4    Online result    On the battle screen: 승리 / 패배 / 무승부, how it ended (\"K.O.로 끝났어요\", \"종료 사유: time_up\"), both scores and counted reps, Excellent / Good / Average; \"자세 피드백 보기\" (push-up only), \"홈으로 돌아가기\"    7-3: \"Match void\" when the battle server restarted
+6-1, 6-2    Time up, K.O.    See \"승리! / 아쉽게 졌어요 / 무승부\" with both scores, or \"K.O.\" when a 100-point lead ends the round; tap \"결과 보기\"    7-3: \"Match void\" when the battle server restarted
+7-1    Result    See WIN / LOSE / DRAW, how it ended (\"KO로 이겼어요!\"), both scores and counted reps, counted / rejected / accuracy, Excellent / Good / Average counts; open form feedback (push-up only); \"홈으로\"; \"다시 매칭\" with the same exercise and level    –
+7-2    Form feedback    See counted and rejected reps, average depth, top form issues with tips and an example animation, depth and elbow-angle charts, pace, and a per-rep record    9-4: \"Could not load feedback\" with \"Try again\" when opened from history
+9-1 ~ 9-4    History (History tab)    Scroll all matches with their game points and feedback summary; tap a push-up match to open its saved feedback (a squat row reads \"피드백 없음\")    9-2: \"Could not load records\" with \"Try again\"; 9-3: empty state before the first match
+10-1, 10-2    Profile    Choose 1 of the 3 SOMA sportswear avatars (search, 운동복 filter, 3D preview)    10-2: \"Could not save\" message, choose again
+</pasted_content id=\"f036\">
+
+ 이거 굳이 필요한가? 안 필요하면 그냥 빼버리자"
+
+<!-- 973c7412 2026-11-04T15:26:23.478Z -->
+[Jinyoung Park, 11-05 00:26] "그러면 최종적으로 남은거 다 merge하고 pdf만들어줘"
+
+<!-- 973c7412 2026-11-04T15:47:59.329Z -->
+[Jinyoung Park, 11-05 00:47] "오늘 추가한 Rev이거 모든 document에 대해서 좀 4줄 정도로 축약하고 그리고 pdf까지 다시 만들어"
+
+<!-- 973c7412 2026-11-04T16:42:38.038Z -->
+[Jinyoung Park, 11-05 01:42] "11월 이후의 rev는 날짜 같으면 그냥 하나의 날짜로, 그리고 전부 4줄 이하로 축약"
+
+<!-- 973c7412 2026-11-04T16:42:48.375Z -->
+[Jinyoung Park, 11-05 01:42] "11월 이후의 rev는 날짜 같으면 그냥 하나의 rev로 , 그리고 전부 4줄 이하로 축약"
+
+<!-- 973c7412 2026-11-04T16:53:29.887Z -->
+[Jinyoung Park, 11-05 01:53] "Add unit tests for new code 
+Test the full PvP flow with fever and squat
+Update unit & integration coverage results 이거는 commit 번호 없지?"
+
+<!-- 973c7412 2026-11-04T17:04:28.592Z -->
+[Jinyoung Park, 11-05 02:04] "Project Schedule (XLSX)
+Filename: team{X}-iter3-schedule.xlsx
+Example: team7-iter3-schedule.xlsx 이것도 해줘"
+
+<!-- 973c7412 2026-11-04T17:06:59.083Z -->
+[Jinyoung Park, 11-05 02:06] "xlsx이거 다 남게 해주면 안되나"
+
+<!-- 973c7412 2026-11-04T17:11:01.901Z -->
+[Jinyoung Park, 11-05 02:11] "아 어짜피 다 안되는 거임? 그거 다 적어서다시 다운로드"
+
+<!-- 7f20e861 2026-11-05T10:29:16.714Z -->
+[Jinyoung Park, 11-05 19:29] "~/Downloads/PM/team4-iter3-he.xlsx ~/Downloads/PM/team4-iter3-schedule.xlsx 중간에 선 없어지는 문제 이런거 싹다 좀 해결좀"
+
+<!-- 973c7412 2026-11-05T10:30:43.506Z -->
+[Jinyoung Park, 11-05 19:30] "[Image #3]이 부분은 우리 prompt log 중에 제일 괜찮게 한 부분 선정하는 게 나아보임어차피 교수님도 이 doc만 읽지 prompt log 전문을 잘 안 볼 거여서"
