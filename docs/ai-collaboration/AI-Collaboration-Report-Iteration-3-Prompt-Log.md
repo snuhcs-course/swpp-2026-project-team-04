@@ -1266,3 +1266,12 @@ Example: team7-iter3-schedule.xlsx 이것도 해줘"
 
 <!-- 973c7412 2026-11-05T11:54:50.725Z -->
 [Jinyoung Park, 11-05 20:54] "[Image #4] 이거대로 좀 수정좀 이거는 너무 ai한테 작성 맡긴 티나서 manual fix 없다고 쓰더라도No hand edits to app or server code this iteration 이게 더 나은듯"
+
+<!-- 973c7412 2026-11-05T12:30:16.274Z -->
+[Jinyoung Park, 11-05 21:30] "머지해"
+
+<!-- 973c7412 2026-11-05T12:30:24.137Z -->
+[Jinyoung Park, 11-05 21:30] "3.4번째 불릿 하나로"
+
+<!-- 973c7412 2026-11-05T12:30:33.079Z -->
+[Jinyoung Park, 11-05 21:30] "3.4번째 불릿 하나로"
