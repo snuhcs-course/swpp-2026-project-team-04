@@ -2,7 +2,7 @@
 
 GymRats is an Android app that turns push-ups and squats into a 30-second, real-time 1v1 battle. The phone stands on the floor in front of you, and its camera counts your reps with an on-device pose model, so video never leaves the phone. You are matched with another player online, or play against the AI rival RepBot at a level you choose, and you see your opponent as a 3D avatar that copies their real movement. Every rep is graded and scored, a fever time doubles the points, and a big enough lead ends the round by KO. After each push-up battle, a form report tells you what to fix.
 
-This branch, `iteration-3-demo`, holds the code shown in the **Iteration 3 demo** (pull requests #13 to #43 merged, `main` at `54f1bd0`). The team server runs the server code of this commit (unchanged since `e6b16fe`, deployed 2026-11-03), so you only need to install the app.
+This branch, `iteration-3-demo`, holds the code shown in the **Iteration 3 demo** (pull requests #13 to #44 merged, `main` at `998a6fd`). The team server runs the server code of this commit (unchanged since `e6b16fe`, deployed 2026-11-03), so you only need to install the app.
 
 ## Demo video
 
