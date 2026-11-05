@@ -36,8 +36,11 @@
 - Jinyoung: "지금꺼 확인해서 반영" → "머지해". "확인" produced only a review; the explicit verb made the tool act.
 
 ## 6. Manual Fixes and Why
-- No hand edits to app or server code, so no manual-fix marker was added: every change went through an agent after the user's decision; Sangwoo's Codex steps (#17, #25–#27) had no independent review, as his notes say.
-- Manual work: recording and labelling the evaluation set, the phone checks, the PM's merges and server steps.
+- No hand edits to app or server code this iteration, so no manual-fix marker was added.
+- The four members recorded the 32 evaluation sets themselves and wrote the labels from the record sheets by hand; Hyunwoo checked all 32 files on 11-02.
+- Every judge threshold was chosen by Hyunwoo after a phone check; the agent only proposed values.
+- Woohyun and Hyunwoo ran the phone checks of each PR on the Galaxy phones and wrote the results into the PR bodies.
+- The PM set the merge order and approved each merge and the server redeploy; Sangwoo's Codex steps (#17, #25–#27) had no independent review, as his notes say.
 
 ## 7. Takeaway for Iteration 4
 - Check a judge change on recordings it was not tuned on before merging it; #32 is in-sample.
