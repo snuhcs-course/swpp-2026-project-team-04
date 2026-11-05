@@ -38,8 +38,7 @@
 ## 6. Manual Fixes and Why
 - No hand edits to app or server code this iteration, so no manual-fix marker was added.
 - The four members recorded the 32 evaluation sets themselves and wrote the labels from the record sheets by hand; Hyunwoo checked all 32 files on 11-02.
-- Every judge threshold was chosen by Hyunwoo after a phone check; the agent only proposed values.
-- Woohyun and Hyunwoo ran the phone checks of each PR on the Galaxy phones and wrote the results into the PR bodies.
+- Woohyun and Hyunwoo ran the phone checks of each PR on the Galaxy phones and wrote the results into the PR bodies; every judge threshold was chosen by Hyunwoo after such a check, the agent only proposed values.
 - The PM set the merge order and approved each merge and the server redeploy; Sangwoo's Codex steps (#17, #25–#27) had no independent review, as his notes say.
 
 ## 7. Takeaway for Iteration 4
