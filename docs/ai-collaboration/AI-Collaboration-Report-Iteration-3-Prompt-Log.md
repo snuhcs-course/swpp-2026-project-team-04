@@ -1253,3 +1253,16 @@ Example: team7-iter3-schedule.xlsx 이것도 해줘"
 
 <!-- 973c7412 2026-11-05T10:30:43.506Z -->
 [Jinyoung Park, 11-05 19:30] "[Image #3]이 부분은 우리 prompt log 중에 제일 괜찮게 한 부분 선정하는 게 나아보임어차피 교수님도 이 doc만 읽지 prompt log 전문을 잘 안 볼 거여서"
+
+## 2026-11-05 · Jinyoung Park · docs/ai_report_manual
+<!-- 973c7412 2026-11-05T11:30:32.614Z -->
+[Jinyoung Park, 11-05 20:30] "약 700개가 기준인가?"
+
+<!-- 973c7412 2026-11-05T11:34:11.616Z -->
+[Jinyoung Park, 11-05 20:34] "promopt log는 여기에 넣을 필요 없는건가"
+
+<!-- 973c7412 2026-11-05T11:34:29.453Z -->
+[Jinyoung Park, 11-05 20:34] "그러면 merge하고 끝내"
+
+<!-- 973c7412 2026-11-05T11:54:50.725Z -->
+[Jinyoung Park, 11-05 20:54] "[Image #4] 이거대로 좀 수정좀 이거는 너무 ai한테 작성 맡긴 티나서 manual fix 없다고 쓰더라도No hand edits to app or server code this iteration 이게 더 나은듯"
