@@ -5,6 +5,7 @@ import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/login_screen.dart';
+import 'package:gymrats_app/screens/settings_screen.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/auth/token_store.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
@@ -26,6 +27,10 @@ void main() {
     tester.view.physicalSize = const Size(412, 915);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    // Reduced motion: home's RepBot holds still, so pumpAndSettle returns.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await tester.pumpWidget(
       GymRatsApp(
         authRepository: auth,
@@ -57,10 +62,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Logout is in 환경설정 now; the dialog's 로그아웃 is the last one.
   Future<void> logOut(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('로그아웃'));
+    await tester.tap(find.text('환경설정'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('로그아웃'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('로그아웃').last);
     await tester.pumpAndSettle();
   }
 
@@ -83,7 +91,8 @@ void main() {
   testWidgets('a saved session opens home without logging in', (tester) async {
     await start(tester, signedInAuth());
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.text('안녕하세요, 우현님'), findsOneWidget);
+    // The lobby's profile chip, where the greeting was.
+    expect(find.text('우현'), findsOneWidget);
   });
 
   // Updated for the rules screen (task: help screen): a new account now
@@ -270,16 +279,19 @@ void main() {
     await start(tester, auth);
     expect(find.byType(HomeScreen), findsOneWidget);
 
-    await tester.tap(find.byTooltip('로그아웃'));
+    // Logout is in 환경설정 now.
+    await tester.tap(find.text('환경설정'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('로그아웃'));
     await tester.pumpAndSettle();
     expect(find.text('로그아웃할까요?'), findsOneWidget);
     await tester.tap(find.text('계속하기'));
     await tester.pumpAndSettle();
-    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(SettingsScreen), findsOneWidget);
 
-    await tester.tap(find.byTooltip('로그아웃'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('로그아웃'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('로그아웃').last);
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(store.session, isNull);
@@ -295,7 +307,7 @@ void main() {
   ) async {
     final auth = signedInAuth();
     await start(tester, auth);
-    await tester.tap(find.text('전체 기록 ›'));
+    await tester.tap(find.text('기록보관소'));
     await tester.pumpAndSettle();
     expect(find.byType(HistoryScreen), findsOneWidget);
 
@@ -306,14 +318,14 @@ void main() {
     expect(find.text('로그인이 만료됐어요. 다시 로그인해 주세요.'), findsOneWidget);
   });
 
-  // Updated for the 홈 | 기록 tabs: "전체 기록" switches to the 기록 tab
-  // (task: match history with feedback); a battle card opens its feedback.
-  testWidgets('"전체 기록" switches to the 기록 tab', (tester) async {
+  // Updated for the game lobby (W1): the 홈 | 기록 tabs are gone, and the
+  // lobby's 기록보관소 opens the history as a page with a back button.
+  testWidgets('"기록보관소" opens the history as a page', (tester) async {
     await start(tester, signedInAuth());
-    await tester.tap(find.text('전체 기록 ›'));
+    await tester.tap(find.text('기록보관소'));
     await tester.pumpAndSettle();
     expect(find.byType(HistoryScreen), findsOneWidget);
     expect(find.text('경기 기록'), findsOneWidget);
-    expect(find.byTooltip('뒤로'), findsNothing);
+    expect(find.byTooltip('뒤로'), findsOneWidget);
   });
 }

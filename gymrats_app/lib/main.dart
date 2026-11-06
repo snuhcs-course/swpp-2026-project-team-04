@@ -33,6 +33,7 @@ import 'services/user/avatar_store.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/help_viewmodel.dart';
+import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/signup_viewmodel.dart';
 
 Future<void> main() async {
@@ -111,6 +112,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
   late final AuthViewModel _auth;
   late final HelpViewModel _help;
   late final AvatarStore _avatars;
+
+  /// The app's settings, the same on every screen and every visit.
+  final _settings = SettingsViewModel();
   AuthStatus? _shownStatus;
 
   @override
@@ -144,6 +148,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
       ..removeListener(_onAuthChanged)
       ..dispose();
     _help.dispose();
+    _settings.dispose();
     super.dispose();
   }
 
@@ -159,6 +164,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ),
         ChangeNotifierProvider<AuthViewModel>.value(value: _auth),
         ChangeNotifierProvider<HelpViewModel>.value(value: _help),
+        ChangeNotifierProvider<SettingsViewModel>.value(value: _settings),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
       ],
       child: MaterialApp(

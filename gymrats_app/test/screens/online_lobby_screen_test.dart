@@ -537,12 +537,21 @@ void main() {
       tester.view.physicalSize = const Size(412, 915);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
+      // Reduced motion: home's RepBot holds still, so pumpAndSettle returns.
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
       await tester.pumpWidget(
         testApp(
           auth: auth,
           createOnlineSession: (u, t, a) => _Session(u, t, a),
         ),
       );
+      await tester.pumpAndSettle();
+      // The lobby's 게임 시작, then the online card.
+      await tester.tap(find.text('게임 시작'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('온라인 1v1'));
       await tester.pumpAndSettle();

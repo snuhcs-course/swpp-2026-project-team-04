@@ -7,10 +7,8 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
-import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
-import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/widgets/match_record_card.dart';
 import 'package:provider/provider.dart';
 
@@ -309,8 +307,8 @@ void main() {
           ),
         );
 
-    /// The real screens, as a card alone on a page would have their side
-    /// margins as well.
+    /// The real screen that lists battles (home no longer does), as a card
+    /// alone on a page would have its side margins as well.
     final screens = <String, Future<void> Function(WidgetTester, MatchRecord)>{
       'the history tab': (tester, match) async {
         await tester.pumpWidget(
@@ -326,22 +324,6 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-      },
-      'home': (tester, match) async {
-        final repository = FakeUserRepository()..recent = [match];
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.dark,
-            home: HomeScreen(
-              createViewModel: () => HomeViewModel(repository: repository),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.scrollUntilVisible(
-          find.textContaining(match.opponentName),
-          180,
-        );
       },
     };
 
