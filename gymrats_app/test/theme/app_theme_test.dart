@@ -74,6 +74,86 @@ void main() {
     );
   });
 
+  test('the lobby facets sit one step either side of the background, and '
+      'the band shades are deeper than their colors', () {
+    double light(Color color) => color.computeLuminance();
+    expect(
+      light(AppColors.facetLight),
+      greaterThan(light(AppColors.background)),
+    );
+    expect(light(AppColors.facetDark), lessThan(light(AppColors.background)));
+    expect(light(AppColors.accentDeep), lessThan(light(AppColors.accent)));
+    expect(light(AppColors.opponentDeep), lessThan(light(AppColors.opponent)));
+    expect(light(AppColors.ink), lessThan(light(AppColors.textSecondary)));
+  });
+
+  test("RepBot's limbs go from the darkest far foot to the lightest neck", () {
+    const farToNear = [
+      RepBotColors.footL,
+      RepBotColors.footR,
+      RepBotColors.shinL,
+      RepBotColors.shinR,
+      RepBotColors.thighL,
+      RepBotColors.thighR,
+      RepBotColors.pelvis,
+      RepBotColors.handL,
+      RepBotColors.forearmL,
+      RepBotColors.torso,
+      RepBotColors.upperArmL,
+      RepBotColors.near,
+      RepBotColors.upperArmR,
+      RepBotColors.neck,
+    ];
+    final light = farToNear.map((color) => color.computeLuminance()).toList();
+    for (var i = 1; i < light.length; i++) {
+      expect(light[i], greaterThan(light[i - 1]), reason: 'limb $i');
+    }
+    expect(
+      RepBotColors.headLight.computeLuminance(),
+      greaterThan(RepBotColors.headDark.computeLuminance()),
+    );
+  });
+
+  testWidgets('the game-style text styles: tags in Oxanium, menu titles in '
+      'the headline font, the rest in the body font, big to small', (
+    tester,
+  ) async {
+    await tester.pumpWidget(MaterialApp(theme: theme, home: const Scaffold()));
+    // The theme's sizes come in when a context reads it.
+    final text = Theme.of(tester.element(find.byType(Scaffold))).textTheme;
+    for (final tag in [text.lobbyTag, text.lobbyMiniTag, text.lobbyBadge]) {
+      expect(tag.fontFamily, AppFonts.number);
+      expect(tag.fontWeight, FontWeight.w700);
+      expect(tag.letterSpacing, greaterThan(0));
+    }
+    expect(text.lobbyLogo.fontFamily, AppFonts.number);
+    expect(text.lobbyWatermark.fontFamily, AppFonts.number);
+    expect(text.lobbyMenuTitle.fontFamily, AppFonts.headline);
+    for (final body in [
+      text.lobbyPageTitle,
+      text.lobbyCardTitle,
+      text.lobbyCardLine,
+      text.lobbyRowTitle,
+      text.lobbyLink,
+    ]) {
+      expect(body.fontFamily, AppFonts.body);
+    }
+    expect(text.lobbyLink.decoration, TextDecoration.underline);
+    expect(text.lobbyCardLine.height, 1.5);
+    final sizes = [
+      text.lobbyMenuTitle,
+      text.lobbyLogo,
+      text.lobbyPageTitle,
+      text.lobbyCardTitle,
+      text.lobbyRowTitle,
+      text.lobbyTag,
+      text.lobbyMiniTag,
+    ].map((style) => style.fontSize!).toList();
+    for (var i = 1; i < sizes.length; i++) {
+      expect(sizes[i], lessThan(sizes[i - 1]), reason: 'style $i');
+    }
+  });
+
   testWidgets('GymRatsApp uses the dark theme', (tester) async {
     await tester.pumpWidget(testApp());
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));

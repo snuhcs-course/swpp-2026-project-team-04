@@ -33,6 +33,56 @@ abstract final class AppColors {
   /// Red, only for the battle's danger edge and its icon on the rules screen:
   /// the user is about to lose. Every other problem is [warning].
   static const danger = Color(0xFFFF3B30);
+
+  /// Near-black of the game-style screens: the chips that carry a lime or
+  /// pink icon, the 대결 시작 button, and drawings on a lime or pink band.
+  static const ink = Color(0xFF141A26);
+
+  /// A shade deeper than [accent] and [opponent], for the slanted half of
+  /// a lime or pink band.
+  static const accentDeep = Color(0xFFB4EC2C);
+  static const opponentDeep = Color(0xFFF23E72);
+
+  /// The lobby's backdrop: two large slanted facets over [background], one
+  /// a step lighter and one a step darker.
+  static const facetLight = Color(0xFF10131A);
+  static const facetDark = Color(0xFF06070B);
+}
+
+/// RepBot, the robot doing push-ups in the lobby, as designed: its own
+/// greys, the same in any theme. Its visor and glow are [AppColors.opponent].
+/// The limb names are the design's: L is the far side, R the near one.
+abstract final class RepBotColors {
+  static const footL = Color(0xFFABB2C0);
+  static const footR = Color(0xFFB0B7C4);
+  static const shinL = Color(0xFFB7BDC9);
+  static const shinR = Color(0xFFBCC2CE);
+  static const thighL = Color(0xFFC9CED8);
+  static const thighR = Color(0xFFCFD4DD);
+  static const pelvis = Color(0xFFD6DAE2);
+  static const handL = Color(0xFFDDE1E8);
+  static const forearmL = Color(0xFFDEE1E8);
+  static const torso = Color(0xFFE1E4EA);
+  static const upperArmL = Color(0xFFE3E6EC);
+
+  /// The near hand, forearm and the shoulders.
+  static const near = Color(0xFFEBEEF3);
+  static const upperArmR = Color(0xFFEFF1F6);
+  static const neck = Color(0xFFF3F5F9);
+
+  /// The streak of light along each limb, drawn see-through.
+  static const shine = Color(0xFFFFFFFF);
+
+  /// The head's shading, from its lit spot to its edge.
+  static const headLight = Color(0xFFFFFFFF);
+  static const headMid = Color(0xFFDDE2EA);
+  static const headDark = Color(0xFF99A1B2);
+
+  /// The thin line around the whole body.
+  static const outline = Color(0xFF8C95A7);
+
+  /// The soft shadow on the floor under the body.
+  static const shadow = Color(0xFF141A26);
 }
 
 /// Font families declared in pubspec.yaml.
@@ -45,6 +95,72 @@ abstract final class AppFonts {
 
   /// Body text. Also fills in glyphs the other two fonts lack.
   static const body = 'IBMPlexSansKR';
+}
+
+/// The text styles of the game-style screens (home lobby, 게임 시작, AI 1v1,
+/// 환경설정), made from the theme's styles. Screens change only their color
+/// or weight, so a font decision changes this one place.
+extension LobbyText on TextTheme {
+  /// "GYMRATS" on home.
+  TextStyle get lobbyLogo =>
+      displayMedium!.copyWith(letterSpacing: 1, height: 1);
+
+  /// "1V1" beside home's one-line pitch.
+  TextStyle get lobbyBadge => bodyMedium!.copyWith(
+    fontFamily: AppFonts.number,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 2,
+  );
+
+  /// "01 / PLAY": small spaced-out English capitals.
+  TextStyle get lobbyTag => labelMedium!.copyWith(
+    fontFamily: AppFonts.number,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 3,
+  );
+
+  /// The smaller tags on cards and sections, e.g. "ONLINE 1V1", "LEVEL".
+  TextStyle get lobbyMiniTag => labelSmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 2,
+  );
+
+  /// Home's menu titles, e.g. "게임 시작".
+  TextStyle get lobbyMenuTitle => displayLarge!.copyWith(
+    fontFamily: AppFonts.headline,
+    fontWeight: FontWeight.w400,
+    height: 1,
+  );
+
+  /// A page's name as a huge faint word behind it, e.g. "PLAY".
+  TextStyle get lobbyWatermark => displayLarge!.copyWith(height: 1);
+
+  /// A page's slanted title, e.g. "게임 시작" on its own page.
+  TextStyle get lobbyPageTitle => displaySmall!.copyWith(
+    fontFamily: AppFonts.body,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1,
+  );
+
+  /// A card's or an option's slanted name, e.g. "온라인 1v1", "푸쉬업".
+  TextStyle get lobbyCardTitle => headlineSmall!.copyWith(
+    fontFamily: AppFonts.body,
+    fontWeight: FontWeight.w700,
+  );
+
+  /// A card's short line, which may take two lines.
+  TextStyle get lobbyCardLine => bodySmall!.copyWith(height: 1.5);
+
+  /// A row's bold label, e.g. "최근 설정으로 다시 하기".
+  TextStyle get lobbyRowTitle =>
+      titleSmall!.copyWith(fontWeight: FontWeight.w700);
+
+  /// A text link, e.g. "규칙 보기".
+  TextStyle get lobbyLink => bodyMedium!.copyWith(
+    fontWeight: FontWeight.w700,
+    decoration: TextDecoration.underline,
+  );
 }
 
 /// Padding and gap steps (Design Documentation 2.5.5). Screens use only
