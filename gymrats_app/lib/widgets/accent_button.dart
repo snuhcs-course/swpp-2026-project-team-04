@@ -51,17 +51,13 @@ class AccentButton extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: text.headlineSmall?.copyWith(
-                      color: AppColors.background,
-                    ),
+                    style: text.headlineSmall?.copyWith(color: AppColors.ink),
                   ),
                   if (hint != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       hint,
-                      style: text.bodyMedium?.copyWith(
-                        color: AppColors.background,
-                      ),
+                      style: text.bodyMedium?.copyWith(color: AppColors.ink),
                     ),
                   ],
                 ],
@@ -71,7 +67,7 @@ class AccentButton extends StatelessWidget {
             const Icon(
               Icons.arrow_forward_rounded,
               size: 28,
-              color: AppColors.background,
+              color: AppColors.ink,
             ),
           ],
         ),

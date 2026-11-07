@@ -7,12 +7,15 @@ import '../support/fakes.dart';
 void main() {
   final theme = AppTheme.dark;
 
-  test('is dark and uses the design colors', () {
+  test('is light and uses the design colors (kickoff 2026-11-07)', () {
     final scheme = theme.colorScheme;
-    expect(theme.brightness, Brightness.dark);
+    expect(theme.brightness, Brightness.light);
+    expect(AppColors.background, const Color(0xFFE6E9F0));
+    expect(AppColors.card, const Color(0xFFFFFFFF));
+    expect(AppColors.textPrimary, const Color(0xFF141A26));
     expect(theme.scaffoldBackgroundColor, AppColors.background);
     expect(scheme.primary, AppColors.accent);
-    expect(scheme.onPrimary, AppColors.background);
+    expect(scheme.onPrimary, AppColors.ink);
     expect(scheme.surface, AppColors.background);
     expect(scheme.onSurface, AppColors.textPrimary);
     expect(scheme.onSurfaceVariant, AppColors.textSecondary);
@@ -115,9 +118,7 @@ void main() {
   });
 
   testWidgets('the game-style text styles: tags in Oxanium, menu titles in '
-      'the headline font, the rest in the body font, big to small', (
-    tester,
-  ) async {
+      'Do Hyeon, the rest in the body font, big to small', (tester) async {
     await tester.pumpWidget(MaterialApp(theme: theme, home: const Scaffold()));
     // The theme's sizes come in when a context reads it.
     final text = Theme.of(tester.element(find.byType(Scaffold))).textTheme;
@@ -128,7 +129,15 @@ void main() {
     }
     expect(text.lobbyLogo.fontFamily, AppFonts.number);
     expect(text.lobbyWatermark.fontFamily, AppFonts.number);
-    expect(text.lobbyMenuTitle.fontFamily, AppFonts.headline);
+    expect(text.lobbyMenuTitle.fontFamily, AppFonts.display);
+    expect(AppFonts.display, 'DoHyeon');
+    // The design's weights: Oxanium 800 for the logo and watermark, Plex
+    // 600 for page and card titles.
+    expect(text.lobbyLogo.fontWeight, FontWeight.w800);
+    expect(text.lobbyWatermark.fontWeight, FontWeight.w800);
+    expect(text.lobbyPageTitle.fontWeight, FontWeight.w600);
+    expect(text.lobbyCardTitle.fontWeight, FontWeight.w600);
+    expect(text.lobbyButton.fontFamily, AppFonts.body);
     for (final body in [
       text.lobbyPageTitle,
       text.lobbyCardTitle,
@@ -154,9 +163,132 @@ void main() {
     }
   });
 
-  testWidgets('GymRatsApp uses the dark theme', (tester) async {
+  test('every text color reads at 4.5:1 or more where it is meant to', () {
+    double contrast(Color a, Color b) {
+      final (light, dark) = a.computeLuminance() > b.computeLuminance()
+          ? (a.computeLuminance(), b.computeLuminance())
+          : (b.computeLuminance(), a.computeLuminance());
+      return (light + 0.05) / (dark + 0.05);
+    }
+
+    // Text on the light screen, a white card and a tile in a card.
+    for (final text in [
+      AppColors.textPrimary,
+      AppColors.textSecondary,
+      AppColors.textMuted,
+      AppColors.accentText,
+      AppColors.opponentText,
+      AppColors.warningText,
+    ]) {
+      for (final ground in [
+        AppColors.background,
+        AppColors.card,
+        AppColors.cardHigh,
+        AppColors.selectedFill,
+      ]) {
+        expect(contrast(text, ground), greaterThanOrEqualTo(4.5));
+      }
+    }
+    // Ink on lime and pink fills, and white or lime on ink.
+    expect(
+      contrast(AppColors.ink, AppColors.accent),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      contrast(AppColors.ink, AppColors.opponent),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(contrast(AppColors.onInk, AppColors.ink), greaterThanOrEqualTo(4.5));
+    expect(
+      contrast(AppColors.accent, AppColors.ink),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
+  group('Material defaults stay visible on the light screens', () {
+    double contrast(Color a, Color b) {
+      final (light, dark) = a.computeLuminance() > b.computeLuminance()
+          ? (a.computeLuminance(), b.computeLuminance())
+          : (b.computeLuminance(), a.computeLuminance());
+      return (light + 0.05) / (dark + 0.05);
+    }
+
+    /// At least [least] against the screen and a white card.
+    void readable(Color? color, double least) {
+      expect(color, isNotNull);
+      expect(
+        contrast(color!, AppColors.background),
+        greaterThanOrEqualTo(least),
+      );
+      expect(contrast(color, AppColors.card), greaterThanOrEqualTo(least));
+    }
+
+    const none = <WidgetState>{};
+    const chosen = {WidgetState.selected};
+
+    test('spinners and progress bars are ink, not lime', () {
+      expect(theme.progressIndicatorTheme.color, AppColors.ink);
+      readable(theme.progressIndicatorTheme.color, 3);
+    });
+
+    test('text and outlined buttons without a color read in ink', () {
+      final text = theme.textButtonTheme.style!.foregroundColor!.resolve(none);
+      final outlined = theme.outlinedButtonTheme.style!.foregroundColor!
+          .resolve(none);
+      expect(text, AppColors.textPrimary);
+      expect(outlined, AppColors.textPrimary);
+      readable(text, 4.5);
+    });
+
+    test('the text cursor and handles are ink', () {
+      expect(theme.textSelectionTheme.cursorColor, AppColors.ink);
+      expect(theme.textSelectionTheme.selectionHandleColor, AppColors.ink);
+      readable(theme.textSelectionTheme.cursorColor, 3);
+    });
+
+    test('a chosen radio is ink, an unchosen one muted', () {
+      final fill = theme.radioTheme.fillColor!;
+      expect(fill.resolve(chosen), AppColors.ink);
+      expect(fill.resolve(none), AppColors.textMuted);
+      readable(fill.resolve(none), 3);
+    });
+
+    test('a switch: ink and lime when on; edged gray and white when off', () {
+      final s = theme.switchTheme;
+      expect(s.trackColor!.resolve(chosen), AppColors.ink);
+      expect(s.thumbColor!.resolve(chosen), AppColors.accent);
+      expect(s.trackOutlineColor!.resolve(chosen), Colors.transparent);
+      expect(s.trackColor!.resolve(none), AppColors.border);
+      expect(s.thumbColor!.resolve(none), AppColors.card);
+      expect(s.trackOutlineColor!.resolve(none), AppColors.textMuted);
+      // The off edge and the on track stand out from a white card.
+      readable(s.trackOutlineColor!.resolve(none), 3);
+      readable(s.trackColor!.resolve(chosen), 3);
+    });
+
+    test('fields: an ink edge when focused, dark amber for errors', () {
+      final field = theme.inputDecorationTheme;
+      expect(
+        (field.focusedBorder! as OutlineInputBorder).borderSide.color,
+        AppColors.ink,
+      );
+      expect(
+        (field.errorBorder! as OutlineInputBorder).borderSide.color,
+        AppColors.warningText,
+      );
+      expect(field.errorStyle!.color, AppColors.warningText);
+      expect(field.floatingLabelStyle!.color, AppColors.textPrimary);
+      readable(field.errorStyle!.color, 4.5);
+    });
+  });
+
+  test('AppTheme.dark is the light theme, under its old name', () {
+    expect(AppTheme.dark, same(AppTheme.light));
+  });
+
+  testWidgets('GymRatsApp uses the light theme', (tester) async {
     await tester.pumpWidget(testApp());
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
-    expect(app.theme, same(AppTheme.dark));
+    expect(app.theme, same(AppTheme.light));
   });
 }

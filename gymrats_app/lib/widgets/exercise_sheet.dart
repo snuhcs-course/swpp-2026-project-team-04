@@ -178,7 +178,7 @@ class ExercisePictogram extends StatelessWidget {
   const ExercisePictogram(
     this.exercise, {
     super.key,
-    this.color = AppColors.accent,
+    this.color = AppColors.textPrimary,
     this.size = defaultSize,
   });
 

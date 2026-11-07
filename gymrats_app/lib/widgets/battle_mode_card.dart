@@ -195,7 +195,7 @@ class BattleModePicture extends StatelessWidget {
             child: Text(
               'VS',
               style: Theme.of(context).textTheme.titleLarge
-                  ?.copyWith(color: AppColors.ink),
+                  ?.copyWith(color: AppColors.ink, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(width: AppSpacing.s4),

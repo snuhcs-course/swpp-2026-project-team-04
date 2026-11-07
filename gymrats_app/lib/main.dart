@@ -40,6 +40,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Camera frames and the pose overlay assume portrait.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  // Dark status and navigation bar icons on the light screens.
+  SystemChrome.setSystemUIOverlayStyle(
+    SystemUiOverlayStyle.dark.copyWith(
+      systemNavigationBarColor: AppColors.background,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   final api = ApiClient();
   final auth = ServerAuthRepository(api: api, store: SecureTokenStore());
   runApp(
@@ -169,7 +176,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
       ],
       child: MaterialApp(
         title: 'GymRats',
-        theme: AppTheme.dark,
+        theme: AppTheme.light,
         navigatorKey: _navigator,
         navigatorObservers: [GymRatsApp.routeObserver],
         home: Consumer2<AuthViewModel, HelpViewModel>(

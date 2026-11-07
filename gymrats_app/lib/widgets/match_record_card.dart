@@ -94,17 +94,19 @@ class MatchOutcomeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (outcome) {
-      MatchOutcome.win => AppColors.accent,
-      MatchOutcome.lose => AppColors.opponent,
-      MatchOutcome.draw => AppColors.textSecondary,
+    // A light tint of the outcome's color behind its darker text version,
+    // readable on the light card.
+    final (tint, color) = switch (outcome) {
+      MatchOutcome.win => (AppColors.accent, AppColors.accentText),
+      MatchOutcome.lose => (AppColors.opponent, AppColors.opponentText),
+      MatchOutcome.draw => (AppColors.textSecondary, AppColors.textSecondary),
     };
     return Container(
       width: size,
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: tint.withValues(alpha: 0.14),
         borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
       ),
       child: Text(
@@ -165,10 +167,7 @@ class _Scores extends StatelessWidget {
                   horizontal: AppSpacing.s12,
                   vertical: AppSpacing.s4,
                 ),
-                child: Text(
-                  '나',
-                  style: label?.copyWith(color: AppColors.background),
-                ),
+                child: Text('나', style: label?.copyWith(color: AppColors.ink)),
               ),
             ),
           ],
@@ -191,9 +190,9 @@ class _Scores extends StatelessWidget {
 }
 
 // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
-/// The battle's form feedback in one line: the top thing to fix in amber,
-/// "좋은 자세" in lime when there was nothing to fix, or "피드백 없음" for a
-/// battle stored without feedback.
+/// The battle's form feedback in one line: the top thing to fix in dark
+/// amber, "좋은 자세" in dark lime when there was nothing to fix, or
+/// "피드백 없음" for a battle stored without feedback.
 class FeedbackLine extends StatelessWidget {
   const FeedbackLine({super.key, required this.match});
 
@@ -206,10 +205,14 @@ class FeedbackLine extends StatelessWidget {
       null => (Icons.remove_rounded, AppColors.textMuted, '피드백 없음'),
       _ when summary.topIssue != null => (
         Icons.error_outline_rounded,
-        AppColors.warning,
+        AppColors.warningText,
         summary.line,
       ),
-      _ => (Icons.check_circle_outline_rounded, AppColors.accent, summary.line),
+      _ => (
+        Icons.check_circle_outline_rounded,
+        AppColors.accentText,
+        summary.line,
+      ),
     };
     final text = Theme.of(context).textTheme;
     return Row(

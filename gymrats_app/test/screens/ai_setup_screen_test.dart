@@ -65,12 +65,14 @@ void main() {
   Finder optionOf(String text) =>
       find.ancestor(of: find.text(text), matching: find.byType(Material)).first;
 
-  /// Whether the option around [text] shows as chosen: a lime edge.
+  /// Whether the option around [text] shows as chosen: an ink edge on the
+  /// light lime fill, as designed.
   bool chosen(WidgetTester tester, String text) {
     final shape =
         tester.widget<Material>(optionOf(text)).shape!
             as RoundedRectangleBorder;
-    return shape.side.color == AppColors.accent;
+    return shape.side.color == AppColors.ink &&
+        tester.widget<Material>(optionOf(text)).color == AppColors.selectedFill;
   }
 
   testWidgets('shows the exercises, the levels and the start button', (
@@ -86,7 +88,22 @@ void main() {
       expect(find.text(level.label), findsOneWidget);
       expect(find.text(level.summary), findsOneWidget);
     }
-    expect(find.byType(AccentButton), findsOneWidget);
+    // The design's dark start button, not the lime AccentButton.
+    expect(find.byType(AccentButton), findsNothing);
+    final start = tester.widget<FilledButton>(
+      find.ancestor(
+        of: find.text('대결 시작'),
+        matching: find.byType(FilledButton),
+      ),
+    );
+    expect(
+      start.style!.backgroundColor!.resolve(const <WidgetState>{}),
+      AppColors.ink,
+    );
+    expect(
+      tester.widget<Text>(find.text('대결 시작')).style!.color,
+      AppColors.onInk,
+    );
     expect(find.text('대결 시작'), findsOneWidget);
   });
 
@@ -165,11 +182,13 @@ void main() {
     expect(BotDifficulty.values.map(pinkBars), [1, 2, 3]);
   });
 
-  testWidgets('the tag is pink, as the bot is', (tester) async {
+  testWidgets('the tag is dark pink, as the bot is, and readable', (
+    tester,
+  ) async {
     await open(tester);
     expect(
       tester.widget<LobbyTag>(find.byType(LobbyTag)).color,
-      AppColors.opponent,
+      AppColors.opponentText,
     );
   });
 

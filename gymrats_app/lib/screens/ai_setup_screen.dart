@@ -10,7 +10,6 @@ import '../models/matchup.dart';
 import '../models/user_profile.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
-import '../widgets/accent_button.dart';
 import '../widgets/exercise_sheet.dart';
 import '../widgets/lobby_parts.dart';
 
@@ -32,7 +31,7 @@ class AiSetupScreen extends StatelessWidget {
         const LobbyPageHeader(
           tag: 'PLAY / AI 1V1',
           title: 'AI 1v1',
-          tagColor: AppColors.opponent,
+          tagColor: AppColors.opponentText,
         ),
         const SizedBox(height: AppSpacing.s8),
         Text(
@@ -73,8 +72,7 @@ class AiSetupScreen extends StatelessWidget {
         ],
         const Spacer(),
         const SizedBox(height: AppSpacing.s24),
-        AccentButton(
-          title: '대결 시작',
+        _StartButton(
           onPressed: () => Navigator.pushNamed(
             context,
             GymRatsApp.matchingRoute,
@@ -92,6 +90,50 @@ class AiSetupScreen extends StatelessWidget {
           style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+}
+
+/// The design's dark start button: "대결 시작" with a lime arrow.
+class _StartButton extends StatelessWidget {
+  const _StartButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  static const _height = 58.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.ink,
+        foregroundColor: AppColors.onInk,
+        minimumSize: const Size.fromHeight(_height),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppRadius.card)),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: LobbySkew(
+              degrees: 10,
+              alignment: Alignment.center,
+              child: Text(
+                '대결 시작',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.lobbyButton
+                    .copyWith(color: AppColors.onInk),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s8),
+          const Icon(Icons.arrow_forward_rounded, color: AppColors.accent),
+        ],
+      ),
     );
   }
 }
@@ -126,7 +168,8 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-/// A choice on this page: a card with a thick edge, lime when chosen.
+/// A choice on this page: a card with a thick edge, ink on a light lime
+/// fill when chosen, as designed.
 class _Option extends StatelessWidget {
   const _Option({
     required this.label,
@@ -152,13 +195,11 @@ class _Option extends StatelessWidget {
       onTap: onTap,
       excludeSemantics: true,
       child: Material(
-        color: selected
-            ? AppColors.accent.withValues(alpha: 0.08)
-            : AppColors.card,
+        color: selected ? AppColors.selectedFill : AppColors.card,
         shape: RoundedRectangleBorder(
           borderRadius: const BorderRadius.all(Radius.circular(AppRadius.card)),
           side: BorderSide(
-            color: selected ? AppColors.accent : AppColors.border,
+            color: selected ? AppColors.ink : AppColors.border,
             width: _edge,
           ),
         ),

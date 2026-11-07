@@ -69,21 +69,39 @@ void main() {
   Color? colorOf(WidgetTester tester, String text) =>
       tester.widget<Text>(find.text(text)).style?.color;
 
-  testWidgets('a top issue reads in amber', (tester) async {
+  testWidgets('the outcome reads in its dark color on a light tint', (
+    tester,
+  ) async {
+    for (final (outcome, tint, text) in [
+      (MatchOutcome.win, AppColors.accent, AppColors.accentText),
+      (MatchOutcome.lose, AppColors.opponent, AppColors.opponentText),
+      (MatchOutcome.draw, AppColors.textSecondary, AppColors.textSecondary),
+    ]) {
+      await show(tester, MatchOutcomeBadge(outcome: outcome));
+      expect(colorOf(tester, outcome.label), text);
+      final box = tester.widget<Container>(find.byType(Container));
+      expect(
+        (box.decoration! as BoxDecoration).color,
+        tint.withValues(alpha: 0.14),
+      );
+    }
+  });
+
+  testWidgets('a top issue reads in dark amber', (tester) async {
     await show(
       tester,
       MatchRecordCard(match: _match(summary: _issue), showFeedback: true),
     );
     expect(find.text('팔꿈치가 벌어져요'), findsOneWidget);
-    expect(colorOf(tester, '팔꿈치가 벌어져요'), AppColors.warning);
+    expect(colorOf(tester, '팔꿈치가 벌어져요'), AppColors.warningText);
   });
 
-  testWidgets('nothing to fix reads 좋은 자세 in lime', (tester) async {
+  testWidgets('nothing to fix reads 좋은 자세 in dark lime', (tester) async {
     await show(
       tester,
       MatchRecordCard(match: _match(summary: _clean), showFeedback: true),
     );
-    expect(colorOf(tester, '좋은 자세'), AppColors.accent);
+    expect(colorOf(tester, '좋은 자세'), AppColors.accentText);
   });
 
   testWidgets('a battle without feedback reads 피드백 없음', (tester) async {
@@ -196,6 +214,8 @@ void main() {
     expect(find.text('90'), findsOneWidget);
     expect(find.textContaining('7'), findsNothing);
     expect(find.textContaining('회'), findsNothing);
+    // "나" sits on a lime pill: ink, readable in the light theme.
+    expect(colorOf(tester, '나'), AppColors.ink);
   });
 
   testWidgets('a battle with no game scores shows its reps with a unit', (

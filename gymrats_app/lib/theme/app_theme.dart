@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 
-/// Colors from the design prototype. Screens use these, never raw values.
+/// Colors from the design prototype, light since the 2026-11-07 kickoff.
+/// Screens use these, never raw values.
 abstract final class AppColors {
-  static const background = Color(0xFF0A0C11);
-  static const card = Color(0xFF141821);
+  /// The light gray ground of every screen.
+  static const background = Color(0xFFE6E9F0);
 
-  /// A step lighter than [card].
-  static const cardHigh = Color(0xFF1C212D);
-  static const border = Color(0xFF262D3C);
+  /// White cards, sheets and buttons on [background].
+  static const card = Color(0xFFFFFFFF);
 
-  static const textPrimary = Color(0xFFEEF1F6);
-  static const textSecondary = Color(0xFFA0A9BA);
-  static const textMuted = Color(0xFF5B6478);
+  /// A step off [card]: tiles and fields inside a white card or sheet.
+  static const cardHigh = Color(0xFFF3F5F9);
+  static const border = Color(0xFFD5DAE3);
+
+  static const textPrimary = Color(0xFF141A26);
+  static const textSecondary = Color(0xFF4A5366);
+
+  /// Tags and hints; still readable on [background] and [card].
+  static const textMuted = Color(0xFF586073);
 
   /// Lime. The main accent, also used for the player.
   static const accent = Color(0xFFC6FF3D);
@@ -44,9 +50,23 @@ abstract final class AppColors {
   static const opponentDeep = Color(0xFFF23E72);
 
   /// The lobby's backdrop: two large slanted facets over [background], one
-  /// a step lighter and one a step darker.
-  static const facetLight = Color(0xFF10131A);
-  static const facetDark = Color(0xFF06070B);
+  /// a step lighter and one a step darker. [facetDark] is also the color of
+  /// a page's faint name behind it.
+  static const facetLight = Color(0xFFEEF0F5);
+  static const facetDark = Color(0xFFDCE0E8);
+
+  /// [accent], [opponent] and [warning] are too light for text on a light
+  /// screen: these are the design's darker versions for text and thin
+  /// lines (4.5:1 or more on [background] and [card]).
+  static const accentText = Color(0xFF3F6A00);
+  static const opponentText = Color(0xFFC4134F);
+  static const warningText = Color(0xFF8A4D00);
+
+  /// Behind a chosen option, with an [ink] edge.
+  static const selectedFill = Color(0xFFF6FFE6);
+
+  /// Text on an [ink] button.
+  static const onInk = Color(0xFFFFFFFF);
 }
 
 /// RepBot, the robot doing push-ups in the lobby, as designed: its own
@@ -90,10 +110,15 @@ abstract final class AppFonts {
   /// Korean headings. The headline text styles use it.
   static const headline = 'BlackHanSans';
 
-  /// Numbers and English. Bold only, and it has no Korean glyphs.
+  /// Numbers and English, in bold (700) and extra bold (800). It has no
+  /// Korean glyphs.
   static const number = 'Oxanium';
 
-  /// Body text. Also fills in glyphs the other two fonts lack.
+  /// Home's big menu titles (Do Hyeon), as designed.
+  static const display = 'DoHyeon';
+
+  /// Body text, regular to bold (400, 500, 600, 700). Also fills in glyphs
+  /// the other fonts lack.
   static const body = 'IBMPlexSansKR';
 }
 
@@ -102,8 +127,11 @@ abstract final class AppFonts {
 /// or weight, so a font decision changes this one place.
 extension LobbyText on TextTheme {
   /// "GYMRATS" on home.
-  TextStyle get lobbyLogo =>
-      displayMedium!.copyWith(letterSpacing: 1, height: 1);
+  TextStyle get lobbyLogo => displayMedium!.copyWith(
+    fontWeight: FontWeight.w800,
+    letterSpacing: 1,
+    height: 1,
+  );
 
   /// "1V1" beside home's one-line pitch.
   TextStyle get lobbyBadge => bodyMedium!.copyWith(
@@ -128,25 +156,26 @@ extension LobbyText on TextTheme {
 
   /// Home's menu titles, e.g. "게임 시작".
   TextStyle get lobbyMenuTitle => displayLarge!.copyWith(
-    fontFamily: AppFonts.headline,
+    fontFamily: AppFonts.display,
     fontWeight: FontWeight.w400,
     height: 1,
   );
 
   /// A page's name as a huge faint word behind it, e.g. "PLAY".
-  TextStyle get lobbyWatermark => displayLarge!.copyWith(height: 1);
+  TextStyle get lobbyWatermark =>
+      displayLarge!.copyWith(fontWeight: FontWeight.w800, height: 1);
 
   /// A page's slanted title, e.g. "게임 시작" on its own page.
   TextStyle get lobbyPageTitle => displaySmall!.copyWith(
     fontFamily: AppFonts.body,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
     letterSpacing: -1,
   );
 
   /// A card's or an option's slanted name, e.g. "온라인 1v1", "푸쉬업".
   TextStyle get lobbyCardTitle => headlineSmall!.copyWith(
     fontFamily: AppFonts.body,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w600,
   );
 
   /// A card's short line, which may take two lines.
@@ -155,6 +184,12 @@ extension LobbyText on TextTheme {
   /// A row's bold label, e.g. "최근 설정으로 다시 하기".
   TextStyle get lobbyRowTitle =>
       titleSmall!.copyWith(fontWeight: FontWeight.w700);
+
+  /// The label of a page's start button, e.g. "대결 시작".
+  TextStyle get lobbyButton => titleLarge!.copyWith(
+    fontFamily: AppFonts.body,
+    fontWeight: FontWeight.w600,
+  );
 
   /// A text link, e.g. "규칙 보기".
   TextStyle get lobbyLink => bodyMedium!.copyWith(
@@ -192,10 +227,15 @@ abstract final class AppRadius {
 abstract final class AppTheme {
   static const double cardRadius = AppRadius.card;
 
-  /// The app's only theme: always dark, whatever the system setting.
-  static final ThemeData dark = _buildDark();
+  /// The app's only theme: always light, whatever the system setting
+  /// (team kickoff 2026-11-07).
+  static final ThemeData light = _build();
 
-  static ThemeData _buildDark() {
+  /// The name from before the app turned light; the same theme as [light],
+  /// kept so screens and tests that still say `dark` keep working.
+  static final ThemeData dark = light;
+
+  static ThemeData _build() {
     final base = ThemeData(
       colorScheme: _colorScheme(),
       scaffoldBackgroundColor: AppColors.background,
@@ -207,6 +247,31 @@ abstract final class AppTheme {
       textTheme: _textTheme(base.textTheme),
       cardTheme: _cardTheme,
       inputDecorationTheme: _inputTheme(base.textTheme),
+      switchTheme: _switchTheme,
+      // Material paints these in the primary lime by default, which all but
+      // disappears on the light screens.
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: AppColors.ink,
+        linearTrackColor: AppColors.border,
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: AppColors.textPrimary),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(foregroundColor: AppColors.textPrimary),
+      ),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: AppColors.ink,
+        selectionHandleColor: AppColors.ink,
+        selectionColor: AppColors.accent.withValues(alpha: 0.5),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppColors.ink
+              : AppColors.textMuted,
+        ),
+      ),
     );
   }
 
@@ -215,9 +280,9 @@ abstract final class AppTheme {
   /// Pink and amber stay out so default widgets never paint with them.
   static ColorScheme _colorScheme() => ColorScheme.fromSeed(
     seedColor: AppColors.accent,
-    brightness: Brightness.dark,
+    brightness: Brightness.light,
     primary: AppColors.accent,
-    onPrimary: AppColors.background,
+    onPrimary: AppColors.ink,
     surface: AppColors.background,
     onSurface: AppColors.textPrimary,
     onSurfaceVariant: AppColors.textSecondary,
@@ -254,9 +319,9 @@ abstract final class AppTheme {
     );
   }
 
-  /// Text fields: a card-colored box with radius [AppRadius.small], a lime
-  /// outline while focused, and amber for errors (2.5.2: every problem is
-  /// amber).
+  /// Text fields: a card-colored box with radius [AppRadius.small], an ink
+  /// outline while focused (as the design's fields), and dark amber for
+  /// errors (2.5.2: every problem is amber).
   static InputDecorationTheme _inputTheme(TextTheme text) {
     OutlineInputBorder outline(Color color, [double width = 1]) =>
         OutlineInputBorder(
@@ -271,16 +336,39 @@ abstract final class AppTheme {
       contentPadding: const EdgeInsets.all(AppSpacing.s16),
       hintStyle: text.bodyLarge?.copyWith(color: AppColors.textMuted),
       labelStyle: text.bodyLarge?.copyWith(color: AppColors.textSecondary),
-      floatingLabelStyle: text.bodyMedium?.copyWith(color: AppColors.accent),
-      errorStyle: text.bodyMedium?.copyWith(color: AppColors.warning),
+      floatingLabelStyle: text.bodyMedium?.copyWith(
+        color: AppColors.textPrimary,
+      ),
+      errorStyle: text.bodyMedium?.copyWith(color: AppColors.warningText),
       errorMaxLines: 2,
       border: outline(AppColors.border),
       enabledBorder: outline(AppColors.border),
-      focusedBorder: outline(AppColors.accent, 2),
-      errorBorder: outline(AppColors.warning),
-      focusedErrorBorder: outline(AppColors.warning, 2),
+      focusedBorder: outline(AppColors.ink, 2),
+      errorBorder: outline(AppColors.warningText),
+      focusedErrorBorder: outline(AppColors.warningText, 2),
     );
   }
+
+  /// The design's switch: an ink track with a lime knob when on, a gray
+  /// track with a white knob when off. The off track keeps a muted edge so
+  /// it stands out from a white card.
+  static final _switchTheme = SwitchThemeData(
+    thumbColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected)
+          ? AppColors.accent
+          : AppColors.card,
+    ),
+    trackColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected)
+          ? AppColors.ink
+          : AppColors.border,
+    ),
+    trackOutlineColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected)
+          ? Colors.transparent
+          : AppColors.textMuted,
+    ),
+  );
 
   static const _cardTheme = CardThemeData(
     color: AppColors.card,

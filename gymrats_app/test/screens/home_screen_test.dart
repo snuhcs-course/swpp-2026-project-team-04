@@ -298,7 +298,7 @@ void main() {
     });
   });
 
-  testWidgets('battles not saved yet show an amber note', (tester) async {
+  testWidgets('battles not saved yet show a dark amber note', (tester) async {
     repository.profile = const UserProfile(
       name: '우현',
       lastMatch: _lastMatch,
@@ -307,7 +307,7 @@ void main() {
     await open(tester);
     final note = find.text('저장하지 못한 경기 2개 · 연결되면 다시 저장해요');
     expect(note, findsOneWidget);
-    expect(tester.widget<Text>(note).style!.color, AppColors.warning);
+    expect(tester.widget<Text>(note).style!.color, AppColors.warningText);
   });
 
   testWidgets('no note when every battle is saved', (tester) async {

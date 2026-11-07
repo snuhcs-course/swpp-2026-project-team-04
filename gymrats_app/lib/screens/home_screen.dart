@@ -310,7 +310,7 @@ class _RepBotSlot extends StatelessWidget {
   }
 }
 
-/// Battles that are not on the server yet, in amber: they are retried on
+/// Battles that are not on the server yet, in dark amber: they are retried on
 /// the next load, so the user knows the record is not lost.
 class _UnsentNote extends StatelessWidget {
   const _UnsentNote({required this.count});
@@ -321,13 +321,13 @@ class _UnsentNote extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.cloud_off_rounded, color: AppColors.warning),
+        const Icon(Icons.cloud_off_rounded, color: AppColors.warningText),
         const SizedBox(width: AppSpacing.s8),
         Expanded(
           child: Text(
             '저장하지 못한 경기 $count개 · 연결되면 다시 저장해요',
             style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppColors.warning),
+                ?.copyWith(color: AppColors.warningText),
           ),
         ),
       ],
