@@ -27,6 +27,7 @@ import 'services/feedback/form_report_store.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
 import 'services/user/rules_seen_store.dart';
+import 'services/user/settings_store.dart';
 import 'services/user/server_user_repository.dart';
 import 'services/user/user_repository.dart';
 import 'services/user/avatar_store.dart';
@@ -55,6 +56,7 @@ Future<void> main() async {
       userRepository: ServerUserRepository(api: api, auth: auth),
       avatarStore: SecureAvatarStore(),
       rulesSeenStore: SecureRulesSeenStore(),
+      settingsStore: SecureSettingsStore(),
     ),
   );
 }
@@ -74,6 +76,7 @@ class GymRatsApp extends StatefulWidget {
     this.avatarStore,
     this.createOnlineSession,
     this.rulesSeenStore,
+    this.settingsStore,
   });
 
   final AuthRepository authRepository;
@@ -86,6 +89,10 @@ class GymRatsApp extends StatefulWidget {
 
   /// Defaults to [MemoryRulesSeenStore].
   final RulesSeenStore? rulesSeenStore;
+
+  /// Keeps the 환경설정 switches across restarts. Defaults to
+  /// [MemorySettingsStore].
+  final SettingsStore? settingsStore;
 
   static const signupRoute = '/signup';
   static const historyRoute = '/history';
@@ -121,7 +128,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
   late final AvatarStore _avatars;
 
   /// The app's settings, the same on every screen and every visit.
-  final _settings = SettingsViewModel();
+  late final SettingsViewModel _settings;
   AuthStatus? _shownStatus;
 
   @override
@@ -131,6 +138,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
     _help = HelpViewModel(
       store: widget.rulesSeenStore ?? MemoryRulesSeenStore(),
     );
+    _settings = SettingsViewModel(
+      store: widget.settingsStore ?? MemorySettingsStore(),
+    )..load();
     _auth = AuthViewModel(repository: widget.authRepository)
       ..addListener(_onAuthChanged)
       ..restore();

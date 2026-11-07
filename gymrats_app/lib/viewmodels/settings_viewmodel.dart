@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../services/user/settings_store.dart';
+
 /// Immutable state of the app's settings.
 @immutable
 class SettingsState {
@@ -25,26 +27,68 @@ class SettingsState {
 /// every screen), so 환경설정 shows the same values each time it opens and
 /// any screen can read them.
 ///
-/// The two sound switches only keep their state here. To make them work,
-/// read [state] (or listen) where sound plays, pass saved values to the
-/// constructor, and save in [setSoundEffects] and [setVoiceGuidance].
+/// The switches are saved in [SettingsStore] and read back by [load], so
+/// they stay after the app restarts. Read [state] (or listen) where sound
+/// plays; every setter call notifies.
 class SettingsViewModel extends ChangeNotifier {
-  SettingsViewModel({bool soundEffectsOn = true, bool voiceGuidanceOn = false})
-    : _state = SettingsState(
-        soundEffectsOn: soundEffectsOn,
-        voiceGuidanceOn: voiceGuidanceOn,
-      );
+  SettingsViewModel({
+    SettingsStore? store,
+    bool soundEffectsOn = true,
+    bool voiceGuidanceOn = false,
+  }) : _store = store ?? MemorySettingsStore(),
+       _state = SettingsState(
+         soundEffectsOn: soundEffectsOn,
+         voiceGuidanceOn: voiceGuidanceOn,
+       );
 
+  final SettingsStore _store;
   SettingsState _state;
   bool _disposed = false;
 
+  /// Switches the user turned while [load] was reading; theirs win.
+  bool _soundEffectsTurned = false;
+  bool _voiceGuidanceTurned = false;
+
   SettingsState get state => _state;
 
-  void setSoundEffects(bool on) =>
-      _setState(_state.copyWith(soundEffectsOn: on));
+  /// Shows the saved switches; one never saved keeps its default. Until it
+  /// finishes the defaults show. If reading fails the defaults stay.
+  Future<void> load() async {
+    final SavedSettings saved;
+    try {
+      saved = await _store.read();
+    } on Exception {
+      return;
+    }
+    _setState(
+      SettingsState(
+        soundEffectsOn: _soundEffectsTurned
+            ? _state.soundEffectsOn
+            : saved.soundEffectsOn ?? _state.soundEffectsOn,
+        voiceGuidanceOn: _voiceGuidanceTurned
+            ? _state.voiceGuidanceOn
+            : saved.voiceGuidanceOn ?? _state.voiceGuidanceOn,
+      ),
+    );
+  }
 
-  void setVoiceGuidance(bool on) =>
-      _setState(_state.copyWith(voiceGuidanceOn: on));
+  void setSoundEffects(bool on) {
+    if (_disposed) return;
+    _soundEffectsTurned = true;
+    _setState(_state.copyWith(soundEffectsOn: on));
+    _save(_store.writeSoundEffects(on));
+  }
+
+  void setVoiceGuidance(bool on) {
+    if (_disposed) return;
+    _voiceGuidanceTurned = true;
+    _setState(_state.copyWith(voiceGuidanceOn: on));
+    _save(_store.writeVoiceGuidance(on));
+  }
+
+  /// A save that fails keeps the switch as it is for this run; the next
+  /// start shows the last value that was saved.
+  void _save(Future<void> writing) => writing.catchError((Object _) {});
 
   void _setState(SettingsState state) {
     if (_disposed) return;

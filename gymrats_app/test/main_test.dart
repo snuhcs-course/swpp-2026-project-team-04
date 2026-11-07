@@ -20,6 +20,7 @@ import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
+import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
@@ -395,5 +396,40 @@ void main() {
     await openBotSetup(tester);
     expect(find.text('최고 150점'), findsOneWidget);
     expect(find.text('최고 7회'), findsNothing);
+  });
+
+  testWidgets('the sound switches keep what an earlier run saved, and save '
+      'a change', (tester) async {
+    // What the previous run of the app left on the phone.
+    final store = MemorySettingsStore()
+      ..soundEffectsOn = false
+      ..voiceGuidanceOn = true;
+    await _openApp(
+      tester,
+      GymRatsApp(
+        authRepository: signedInAuth(),
+        userRepository: InMemoryUserRepository(),
+        settingsStore: store,
+      ),
+    );
+    await tapAndSettle(tester, '환경설정');
+    bool switchOf(String title) => tester
+        .widget<Switch>(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text(title),
+              matching: find.byType(InkWell),
+            ),
+            matching: find.byType(Switch),
+          ),
+        )
+        .value;
+    expect(switchOf('효과음'), isFalse);
+    expect(switchOf('음성 안내'), isTrue);
+
+    await tester.tap(find.text('효과음'));
+    await tester.pumpAndSettle();
+    expect(switchOf('효과음'), isTrue);
+    expect(store.soundEffectsOn, isTrue);
   });
 }
