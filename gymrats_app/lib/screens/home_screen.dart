@@ -108,12 +108,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 _UnsentNote(count: vm.state.profile!.unsentMatches),
               ],
               const Expanded(child: _RepBotSlot()),
-              LobbyMenuItem(
-                tag: '01 / PLAY',
-                title: '게임 시작',
-                main: true,
-                onTap: _openPlay,
-              ),
+              LobbyMenuItem(tag: '01 / PLAY', title: '게임 시작', onTap: _openPlay),
               LobbyMenuItem(
                 tag: '02 / ARCHIVE',
                 title: '기록보관소',

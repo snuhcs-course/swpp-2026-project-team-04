@@ -31,7 +31,6 @@ void main() {
                 LobbyMenuItem(
                   tag: '01 / PLAY',
                   title: '게임 시작',
-                  main: true,
                   onTap: () => taps.add('play'),
                 ),
                 LobbyMenuItem(
@@ -61,42 +60,29 @@ void main() {
     matching: finder,
   );
 
-  testWidgets('the main entry has the lime block and the arrow chip', (
-    tester,
-  ) async {
+  testWidgets('every entry looks the same: gray tag, ink title, gray '
+      'chevron, no lime and no arrow chip (user, 2026-11-08)', (tester) async {
     await show(tester);
-    expect(
-      tester
-          .widgetList<ColoredBox>(inItem('게임 시작', find.byType(ColoredBox)))
-          .map((box) => box.color),
-      contains(AppColors.accent),
-    );
-    expect(inItem('게임 시작', find.byType(LobbyArrowChip)), findsOneWidget);
-    expect(tester.widget<Text>(find.text('게임 시작')).style!.color, AppColors.ink);
-    expect(
-      tester.widget<LobbyTag>(inItem('게임 시작', find.byType(LobbyTag))).color,
-      AppColors.textPrimary,
-    );
-  });
-
-  testWidgets('the others end in a chevron, with no block', (tester) async {
-    await show(tester);
-    for (final title in ['기록보관소', '환경설정']) {
+    for (final (tag, title) in [
+      ('01 / PLAY', '게임 시작'),
+      ('02 / ARCHIVE', '기록보관소'),
+      ('03 / SETTINGS', '환경설정'),
+    ]) {
       expect(
-        inItem(title, find.byIcon(Icons.chevron_right_rounded)),
-        findsOneWidget,
-      );
-      expect(inItem(title, find.byType(LobbyArrowChip)), findsNothing);
-      expect(
-        tester
-            .widgetList<ColoredBox>(inItem(title, find.byType(ColoredBox)))
-            .map((box) => box.color),
-        isNot(contains(AppColors.accent)),
+        tester.widget<LobbyTag>(inItem(title, find.byType(LobbyTag))).color,
+        AppColors.textSecondary,
+        reason: tag,
       );
       expect(
         tester.widget<Text>(find.text(title)).style!.color,
         AppColors.textPrimary,
       );
+      final chevron = tester.widget<Icon>(
+        inItem(title, find.byIcon(Icons.chevron_right_rounded)),
+      );
+      expect(chevron.color, AppColors.line);
+      expect(inItem(title, find.byType(LobbyArrowChip)), findsNothing);
+      expect(inItem(title, find.byType(ColoredBox)), findsNothing);
     }
   });
 

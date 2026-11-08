@@ -131,14 +131,16 @@ void main() {
     expect(find.byTooltip('로그아웃'), findsNothing);
   });
 
-  testWidgets('only 게임 시작 is the main entry', (tester) async {
+  testWidgets('the menu: 게임 시작, 기록보관소, 환경설정, all alike', (tester) async {
     await open(tester);
     final items = tester
         .widgetList<LobbyMenuItem>(find.byType(LobbyMenuItem))
         .toList();
     expect(items.map((item) => item.title), ['게임 시작', '기록보관소', '환경설정']);
-    expect(items.map((item) => item.main), [true, false, false]);
     expect(items.map((item) => item.last), [false, false, true]);
+    // The same gray chevron on each; no lime or arrow chip (2026-11-08).
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(3));
+    expect(find.byIcon(Icons.arrow_forward_rounded), findsNothing);
   });
 
   testWidgets('the profile mark is lime with an ink edge and an ink icon', (
