@@ -31,7 +31,7 @@ without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (
 - **Other checks:** `ownership_guard.py --check-diff` ok (48 files, all W1's or approved exceptions). Server `pytest` was not run because `server/` did not change.
 - **Checks after merging `origin/main`:** `git fetch origin && git merge origin/main` said "Already up to date": `main` is still `998a6fd`, which the branch already contains, so the code is still `38c44b1`. I reran the checks anyway on 2026-11-08: `flutter analyze` found no issues, and `flutter test` had 1490 passed, 0 failed and 10 skipped (the same tests). `ownership_guard.py --check-diff` is ok (48 files).
 - **Shortfalls:** coverage is not known until the PR's CI comment exists. The View files W1 adds or rewrites have widget tests for every state and tap, so I expect View to stay above 75%. This is an expectation, not a measurement.
-- **Manual check (2026-11-08, the user, on a phone):** the user checked these on a build of this branch and reported no problems ("폰 확인 끝났어. 문제없어."). TODO(Woohyun Song): which phone (S22 or S23) and its Android version.
+- **Manual check (2026-11-08, the user, on a Galaxy S26+ with Android 17 and One UI 9.0, the same phone as in my earlier test notes):** the user checked these on a build of this branch and reported no problems ("폰 확인 끝났어. 문제없어.").
   - Home does not scroll or stretch when swiped.
   - All three menu rows show above the navigation bar.
   - RepBot keeps its shape and its push-ups.

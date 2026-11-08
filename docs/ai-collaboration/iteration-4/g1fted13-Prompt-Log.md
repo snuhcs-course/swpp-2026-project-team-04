@@ -240,6 +240,11 @@ W1(feat/home_lobby) 추가 수정이에요. 메인 메뉴 화면이 폰 화면�
 그리고 앞으로 새 테스트를 예전 코드에 돌려 볼 때는 git checkout으로 파일을 되돌리지 말고, 커밋하지 않은 변경이 있으면 git stash를 쓰거나 별도 worktree에서 해 줘. 이 규칙을 progress.md 주의사항에 적어 둬.
 </pasted_content id=\"2de3\">"
 
+<!-- 6267d04a 2026-11-08T12:20:13.537Z -->
+[Woohyun Song, 11-08 21:20] "폰 확인 기기는 Galaxy S26+, Android 17, One UI 9.0이야. (GitHub에 송우현이 기존에 테스트하던 것과 동일한 폰) 노트의 TODO에 채워서 커밋하고 push한 다음 PR 올려 줘.
+Testing-Documentation.md 그 줄은 그대로 둬.
+PR이 열리면 링크를 알려 주고, CI 커버리지 코멘트가 달리면 노트의 커버리지 TODO도 채워서 커밋하고 push해 줘."
+
 <!-- Left out on purpose: session summaries written when a session ran out of context (not prompts). The keys stay so a later export does not add them again. Also cut: the client's injected browser notice in front of five prompts (11-06 18:23, 19:44; 11-08 03:21, 18:10, 19:20). -->
 <!-- 130a1a7c 2026-11-07T21:03:35.734Z -->
 <!-- 6267d04a 2026-11-08T11:45:18.079Z -->
