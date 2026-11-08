@@ -1,6 +1,17 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
-/// Colors from the design prototype, light since the 2026-11-07 kickoff.
+/// Colors from the design prototype, light since the 2026-11-07 kickoff,
+/// used as palette B ("형광펜", 2026-11-08):
+/// - text is always ink: [textPrimary], or [textSecondary] / [textMuted]
+///   for quieter lines, also on a color; the one exception is a dark fill
+///   such as [ink], which takes white text ([onInk]) and may take a lime
+///   icon;
+/// - lime, pink, amber, cyan and red only fill: backgrounds, buttons, bars,
+///   bands and chips, with ink text on them ([AppHighlight]);
+/// - lines, icons and outlines that are not text are [line] or [ink]; a
+///   mark told apart by its color is a colored fill with an ink edge.
 /// Screens use these, never raw values.
 abstract final class AppColors {
   /// The light gray ground of every screen.
@@ -19,29 +30,29 @@ abstract final class AppColors {
   /// Tags and hints; still readable on [background] and [card].
   static const textMuted = Color(0xFF586073);
 
-  /// Lime. The main accent, also used for the player.
+  /// Lime fill: the main accent and the player. Never a text color.
   static const accent = Color(0xFFC6FF3D);
 
-  /// Pink, for the opponent.
+  /// Pink fill: the opponent and the AI. Never a text color.
   static const opponent = Color(0xFFFF4F81);
 
-  /// Amber, for warnings:
+  /// Amber fill behind ink text, for warnings:
   /// - invalid reps: the "not counted" popup in the battle and the invalid
   ///   count on the result screen
   /// - the "needs improvement" posture label
   /// - the battle timer during its last 5 seconds
   static const warning = Color(0xFFFFB547);
 
-  /// Cyan, for fever time in the battle: the clock and the time bar until
-  /// their last 5 seconds, and the fever chip.
+  /// Cyan fill for fever time in the battle: behind the clock, the time bar
+  /// until its last 5 seconds, and the fever chip.
   static const fever = Color(0xFF3DE8FF);
 
-  /// Red, only for the battle's danger edge and its icon on the rules screen:
-  /// the user is about to lose. Every other problem is [warning].
+  /// Red fill, only for the battle's danger edge and its mark on the rules
+  /// screen: the user is about to lose. Every other problem is [warning].
   static const danger = Color(0xFFFF3B30);
 
-  /// Near-black of the game-style screens: the chips that carry a lime or
-  /// pink icon, the 대결 시작 button, and drawings on a lime or pink band.
+  /// Near-black of the game-style screens: edges and icons on a color fill,
+  /// the 대결 시작 button, and drawings on a lime or pink band.
   static const ink = Color(0xFF141A26);
 
   /// A shade deeper than [accent] and [opponent], for the slanted half of
@@ -55,17 +66,16 @@ abstract final class AppColors {
   static const facetLight = Color(0xFFEEF0F5);
   static const facetDark = Color(0xFFDCE0E8);
 
-  /// [accent], [opponent] and [warning] are too light for text on a light
-  /// screen: these are the design's darker versions for text and thin
-  /// lines (4.5:1 or more on [background] and [card]).
-  static const accentText = Color(0xFF3F6A00);
-  static const opponentText = Color(0xFFC4134F);
-  static const warningText = Color(0xFF8A4D00);
+  /// Lines, icons, rings and outlines that are not text: the radar's
+  /// circles, avatar rings, chevrons (3:1 or more on [background] and
+  /// [card]).
+  static const line = Color(0xFF586073);
 
   /// Behind a chosen option, with an [ink] edge.
   static const selectedFill = Color(0xFFF6FFE6);
 
-  /// Text on an [ink] button.
+  /// Text on an [ink] fill, such as the 대결 시작 button: the one exception
+  /// to ink text, since a dark fill needs light text (palette B).
   static const onInk = Color(0xFFFFFFFF);
 }
 
@@ -221,6 +231,75 @@ abstract final class AppRadius {
 
   /// Dialogs, bottom sheets, the top corners of a bottom panel.
   static const double sheet = 24;
+
+  /// Tiny color marks: [AppHighlight.swatch].
+  static const double mark = 3;
+}
+
+/// Palette B's highlighter: color never carries text. It sits behind ink
+/// text like a marker, or marks ink text as a small swatch. Screens take
+/// these as they are. WIN, for example:
+///
+/// ```dart
+/// Transform(
+///   transform: AppHighlight.slant,
+///   alignment: Alignment.center,
+///   child: DecoratedBox(
+///     decoration: AppHighlight.band(AppColors.accent),
+///     child: Padding(
+///       padding: AppHighlight.bandPadding,
+///       child: Text('WIN', style: style.copyWith(color: AppColors.ink)),
+///     ),
+///   ),
+/// )
+/// ```
+abstract final class AppHighlight {
+  /// A flat band of [color] behind ink text: WIN on lime, LOSE on pink, a
+  /// number or a word to stand out.
+  static BoxDecoration band(Color color) => BoxDecoration(color: color);
+
+  /// The room around the text on a [band].
+  static const bandPadding = EdgeInsets.symmetric(
+    horizontal: AppSpacing.s8,
+    vertical: AppSpacing.s4,
+  );
+
+  /// The marker's slant, as the design draws WIN and LOSE. A new matrix each
+  /// time, so no one changes another's.
+  static Matrix4 get slant => Matrix4.skewX(-10 * math.pi / 180);
+
+  /// A soft pill of [color] behind ink text, for chips: points (lime),
+  /// fever (cyan), warnings (amber), danger (red). [strength] is how much of
+  /// the color shows; the design uses 0.75 for lime, 0.6 for amber, 0.45 for
+  /// cyan and 0.35 for red. Ink text reads on any of them.
+  static ShapeDecoration chip(Color color, {double strength = 0.6}) =>
+      ShapeDecoration(
+        color: color.withValues(alpha: strength),
+        shape: const StadiumBorder(),
+      );
+
+  /// The room around the text on a [chip].
+  static const chipPadding = EdgeInsets.symmetric(
+    horizontal: AppSpacing.s8,
+    vertical: AppSpacing.s4,
+  );
+
+  /// A small square of [color] with an ink edge, beside the ink text it
+  /// marks, e.g. "나" with lime and "상대" with pink. Make it [swatchSize]
+  /// square.
+  static BoxDecoration swatch(Color color) => BoxDecoration(
+    color: color,
+    borderRadius: const BorderRadius.all(Radius.circular(AppRadius.mark)),
+    border: Border.all(color: AppColors.ink, width: _swatchEdge),
+  );
+
+  static const double swatchSize = 10;
+  static const _swatchEdge = 1.5;
+
+  /// [style] in ink with a band of [color] right behind the letters, for a
+  /// marked word inside a line of text.
+  static TextStyle marked(TextStyle style, Color color) =>
+      style.copyWith(color: AppColors.ink, backgroundColor: color);
 }
 
 /// Builds the app's [ThemeData] from [AppColors] and [AppFonts].
@@ -320,8 +399,9 @@ abstract final class AppTheme {
   }
 
   /// Text fields: a card-colored box with radius [AppRadius.small], an ink
-  /// outline while focused (as the design's fields), and dark amber for
-  /// errors (2.5.2: every problem is amber).
+  /// outline while focused or wrong (as the design's fields), and an error
+  /// line in ink on an amber band (2.5.2: every problem is amber; palette B:
+  /// the amber sits behind the text).
   static InputDecorationTheme _inputTheme(TextTheme text) {
     OutlineInputBorder outline(Color color, [double width = 1]) =>
         OutlineInputBorder(
@@ -339,13 +419,15 @@ abstract final class AppTheme {
       floatingLabelStyle: text.bodyMedium?.copyWith(
         color: AppColors.textPrimary,
       ),
-      errorStyle: text.bodyMedium?.copyWith(color: AppColors.warningText),
+      errorStyle: text.bodyMedium == null
+          ? null
+          : AppHighlight.marked(text.bodyMedium!, AppColors.warning),
       errorMaxLines: 2,
       border: outline(AppColors.border),
       enabledBorder: outline(AppColors.border),
       focusedBorder: outline(AppColors.ink, 2),
-      errorBorder: outline(AppColors.warningText),
-      focusedErrorBorder: outline(AppColors.warningText, 2),
+      errorBorder: outline(AppColors.ink),
+      focusedErrorBorder: outline(AppColors.ink, 2),
     );
   }
 

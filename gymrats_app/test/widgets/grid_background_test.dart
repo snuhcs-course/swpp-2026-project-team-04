@@ -4,7 +4,7 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 
 void main() {
-  testWidgets('draws faint lime lines every 28 px behind its child', (
+  testWidgets('draws faint gray lines every 28 px behind its child', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -29,7 +29,7 @@ void main() {
           )
           .first,
     );
-    final color = AppColors.accent.withValues(alpha: 0.035);
+    final color = AppColors.line.withValues(alpha: 0.06);
     expect(
       grid,
       paints

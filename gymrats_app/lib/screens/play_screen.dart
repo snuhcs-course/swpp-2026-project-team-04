@@ -191,10 +191,7 @@ class _PlayAgain extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.textSecondary,
-                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.line),
               ],
             ),
           ),

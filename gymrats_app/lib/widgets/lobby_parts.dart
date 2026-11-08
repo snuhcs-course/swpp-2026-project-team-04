@@ -177,7 +177,7 @@ class LobbySquareButton extends StatelessWidget {
     return IconButton(
       onPressed: onPressed,
       tooltip: tooltip,
-      color: AppColors.textSecondary,
+      color: AppColors.line,
       padding: EdgeInsets.zero,
       style: IconButton.styleFrom(
         fixedSize: const Size.square(size),
@@ -254,7 +254,8 @@ class LobbyPageHeader extends StatelessWidget {
   }
 }
 
-/// A dark rounded square with an arrow in [color]: "this starts something".
+/// A rounded square of [color] with an ink edge and an ink arrow: "this
+/// starts something". Color fills, the arrow stays ink (palette B).
 class LobbyArrowChip extends StatelessWidget {
   const LobbyArrowChip({
     super.key,
@@ -263,22 +264,25 @@ class LobbyArrowChip extends StatelessWidget {
     this.icon = Icons.arrow_forward_rounded,
   });
 
+  /// The fill: lime for the user's things, pink for the AI's.
   final Color color;
   final double size;
   final IconData icon;
 
   static const defaultSize = 32.0;
+  static const _edge = 1.5;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.all(Radius.circular(AppRadius.small)),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
+        border: Border.all(color: AppColors.ink, width: _edge),
       ),
-      child: Icon(icon, color: color, size: size / 2),
+      child: Icon(icon, color: AppColors.ink, size: size / 2),
     );
   }
 }

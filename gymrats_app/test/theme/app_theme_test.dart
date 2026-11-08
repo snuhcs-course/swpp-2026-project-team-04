@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -163,7 +165,7 @@ void main() {
     }
   });
 
-  test('every text color reads at 4.5:1 or more where it is meant to', () {
+  group('palette B (형광펜, 2026-11-08)', () {
     double contrast(Color a, Color b) {
       final (light, dark) = a.computeLuminance() > b.computeLuminance()
           ? (a.computeLuminance(), b.computeLuminance())
@@ -171,38 +173,100 @@ void main() {
       return (light + 0.05) / (dark + 0.05);
     }
 
-    // Text on the light screen, a white card and a tile in a card.
-    for (final text in [
-      AppColors.textPrimary,
-      AppColors.textSecondary,
-      AppColors.textMuted,
-      AppColors.accentText,
-      AppColors.opponentText,
-      AppColors.warningText,
-    ]) {
-      for (final ground in [
-        AppColors.background,
-        AppColors.card,
-        AppColors.cardHigh,
-        AppColors.selectedFill,
+    const fills = [
+      AppColors.accent,
+      AppColors.opponent,
+      AppColors.warning,
+      AppColors.fever,
+      AppColors.danger,
+    ];
+
+    test('the colors keep their values and only fill', () {
+      expect(fills, const [
+        Color(0xFFC6FF3D),
+        Color(0xFFFF4F81),
+        Color(0xFFFFB547),
+        Color(0xFF3DE8FF),
+        Color(0xFFFF3B30),
+      ]);
+    });
+
+    test('ink text reads at 4.5:1 on every surface and every color fill', () {
+      for (final text in [
+        AppColors.textPrimary,
+        AppColors.textSecondary,
+        AppColors.textMuted,
       ]) {
-        expect(contrast(text, ground), greaterThanOrEqualTo(4.5));
+        for (final ground in [
+          AppColors.background,
+          AppColors.card,
+          AppColors.cardHigh,
+          AppColors.selectedFill,
+        ]) {
+          expect(contrast(text, ground), greaterThanOrEqualTo(4.5));
+        }
       }
-    }
-    // Ink on lime and pink fills, and white or lime on ink.
-    expect(
-      contrast(AppColors.ink, AppColors.accent),
-      greaterThanOrEqualTo(4.5),
-    );
-    expect(
-      contrast(AppColors.ink, AppColors.opponent),
-      greaterThanOrEqualTo(4.5),
-    );
-    expect(contrast(AppColors.onInk, AppColors.ink), greaterThanOrEqualTo(4.5));
-    expect(
-      contrast(AppColors.accent, AppColors.ink),
-      greaterThanOrEqualTo(4.5),
-    );
+      expect(AppColors.ink, AppColors.textPrimary);
+      for (final fill in fills) {
+        expect(contrast(AppColors.ink, fill), greaterThanOrEqualTo(4.5));
+      }
+    });
+
+    test('a dark ink fill takes white text and a lime icon', () {
+      expect(AppColors.onInk, const Color(0xFFFFFFFF));
+      expect(
+        contrast(AppColors.onInk, AppColors.ink),
+        greaterThanOrEqualTo(4.5),
+      );
+      expect(
+        contrast(AppColors.accent, AppColors.ink),
+        greaterThanOrEqualTo(3),
+      );
+    });
+
+    test('lines and icons in gray read at 3:1 on the screen and a card', () {
+      expect(AppColors.line, const Color(0xFF586073));
+      expect(
+        contrast(AppColors.line, AppColors.background),
+        greaterThanOrEqualTo(3),
+      );
+      expect(contrast(AppColors.line, AppColors.card), greaterThanOrEqualTo(3));
+    });
+
+    test('AppHighlight: a band, a chip and a swatch of a color, ink text', () {
+      expect(
+        AppHighlight.band(AppColors.accent),
+        const BoxDecoration(color: AppColors.accent),
+      );
+      final chip = AppHighlight.chip(AppColors.warning);
+      expect(chip.color, AppColors.warning.withValues(alpha: 0.6));
+      expect(chip.shape, isA<StadiumBorder>());
+      expect(
+        AppHighlight.chip(AppColors.fever, strength: 0.45).color,
+        AppColors.fever.withValues(alpha: 0.45),
+      );
+      final swatch = AppHighlight.swatch(AppColors.opponent);
+      expect(swatch.color, AppColors.opponent);
+      expect((swatch.border! as Border).top.color, AppColors.ink);
+      expect(AppHighlight.swatchSize, 10);
+      expect(
+        swatch.borderRadius,
+        const BorderRadius.all(Radius.circular(AppRadius.mark)),
+      );
+      expect(AppHighlight.bandPadding.vertical, 2 * AppSpacing.s4);
+      final marked = AppHighlight.marked(
+        const TextStyle(color: AppColors.accent),
+        AppColors.accent,
+      );
+      expect(marked.color, AppColors.ink);
+      expect(marked.backgroundColor, AppColors.accent);
+    });
+
+    test('the marker slants like the design, and each call is its own', () {
+      final slant = AppHighlight.slant;
+      expect(slant.entry(0, 1), closeTo(math.tan(-10 * math.pi / 180), 1e-12));
+      expect(identical(slant, AppHighlight.slant), isFalse);
+    });
   });
 
   group('Material defaults stay visible on the light screens', () {
@@ -266,7 +330,8 @@ void main() {
       readable(s.trackColor!.resolve(chosen), 3);
     });
 
-    test('fields: an ink edge when focused, dark amber for errors', () {
+    test('fields: an ink edge when focused or wrong, the error in ink on an '
+        'amber band', () {
       final field = theme.inputDecorationTheme;
       expect(
         (field.focusedBorder! as OutlineInputBorder).borderSide.color,
@@ -274,9 +339,10 @@ void main() {
       );
       expect(
         (field.errorBorder! as OutlineInputBorder).borderSide.color,
-        AppColors.warningText,
+        AppColors.ink,
       );
-      expect(field.errorStyle!.color, AppColors.warningText);
+      expect(field.errorStyle!.color, AppColors.ink);
+      expect(field.errorStyle!.backgroundColor, AppColors.warning);
       expect(field.floatingLabelStyle!.color, AppColors.textPrimary);
       readable(field.errorStyle!.color, 4.5);
     });

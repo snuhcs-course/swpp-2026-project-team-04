@@ -88,7 +88,8 @@ void main() {
       expect(find.text(level.label), findsOneWidget);
       expect(find.text(level.summary), findsOneWidget);
     }
-    // The design's dark start button, not the lime AccentButton.
+    // As designed: an ink button, white text and a lime arrow (a dark fill
+    // takes light text, the exception in palette B).
     expect(find.byType(AccentButton), findsNothing);
     final start = tester.widget<FilledButton>(
       find.ancestor(
@@ -96,14 +97,22 @@ void main() {
         matching: find.byType(FilledButton),
       ),
     );
+    const none = <WidgetState>{};
+    expect(start.style!.backgroundColor!.resolve(none), AppColors.ink);
+    // No edge, unlike the lime AccentButton.
     expect(
-      start.style!.backgroundColor!.resolve(const <WidgetState>{}),
-      AppColors.ink,
+      (start.style!.shape!.resolve(none)! as RoundedRectangleBorder).side,
+      BorderSide.none,
     );
     expect(
       tester.widget<Text>(find.text('대결 시작')).style!.color,
       AppColors.onInk,
     );
+    final arrow = find.descendant(
+      of: find.byWidget(start),
+      matching: find.byIcon(Icons.arrow_forward_rounded),
+    );
+    expect(tester.widget<Icon>(arrow).color, AppColors.accent);
     expect(find.text('대결 시작'), findsOneWidget);
   });
 
@@ -168,27 +177,50 @@ void main() {
     );
   });
 
-  testWidgets('a stronger level shows more pink bars', (tester) async {
+  testWidgets('a stronger level lights more bars: pink with an ink edge, the '
+      'rest gray outlines', (tester) async {
     await open(tester);
-    int pinkBars(BotDifficulty level) => tester
-        .widgetList<ColoredBox>(
+    List<BoxDecoration> barsOf(BotDifficulty level) => tester
+        .widgetList<DecoratedBox>(
           find.descendant(
             of: optionOf(level.label),
-            matching: find.byType(ColoredBox),
+            matching: find.byType(DecoratedBox),
           ),
         )
-        .where((box) => box.color == AppColors.opponent)
-        .length;
-    expect(BotDifficulty.values.map(pinkBars), [1, 2, 3]);
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .where((d) => d.border != null && d.borderRadius == null)
+        .toList();
+    int lit(BotDifficulty level) =>
+        barsOf(level).where((d) => d.color == AppColors.opponent).length;
+    expect(BotDifficulty.values.map(lit), [1, 2, 3]);
+    for (final bar in barsOf(BotDifficulty.beginner)) {
+      final edge = (bar.border! as Border).top.color;
+      expect(
+        edge,
+        bar.color == AppColors.opponent ? AppColors.ink : AppColors.line,
+      );
+    }
   });
 
-  testWidgets('the tag is dark pink, as the bot is, and readable', (
-    tester,
-  ) async {
+  testWidgets('the tag is ink, as all text in palette B', (tester) async {
     await open(tester);
     expect(
       tester.widget<LobbyTag>(find.byType(LobbyTag)).color,
-      AppColors.opponentText,
+      AppColors.textPrimary,
+    );
+  });
+
+  testWidgets('the chosen exercise carries a lime check chip with an ink '
+      'check', (tester) async {
+    await open(tester);
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.check_rounded)).color,
+      AppColors.ink,
+    );
+    expect(
+      tester.widget<LobbyArrowChip>(find.byType(LobbyArrowChip)).color,
+      AppColors.accent,
     );
   });
 

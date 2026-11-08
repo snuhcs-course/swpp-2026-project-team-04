@@ -40,4 +40,15 @@ void main() {
     );
     expect(column.children, hasLength(1));
   });
+
+  testWidgets('lime with an ink edge, so it shows on the light screen', (
+    tester,
+  ) async {
+    await show(tester, AccentButton(title: 'Title', onPressed: () {}));
+    final style = tester.widget<FilledButton>(find.byType(FilledButton)).style!;
+    final shape =
+        style.shape!.resolve(const <WidgetState>{})! as RoundedRectangleBorder;
+    expect(shape.side.color, AppColors.ink);
+    expect(shape.side.width, 2);
+  });
 }

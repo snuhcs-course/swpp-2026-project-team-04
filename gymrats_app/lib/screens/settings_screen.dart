@@ -66,7 +66,7 @@ class SettingsScreen extends StatelessWidget {
                   Navigator.pushNamed(context, GymRatsApp.profileRoute),
               end: const Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
+                color: AppColors.line,
               ),
             ),
           ],
@@ -80,7 +80,7 @@ class SettingsScreen extends StatelessWidget {
               onTap: () => Navigator.pushNamed(context, GymRatsApp.helpRoute),
               end: const Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
+                color: AppColors.line,
               ),
             ),
           ],

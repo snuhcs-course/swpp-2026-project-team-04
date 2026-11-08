@@ -205,18 +205,40 @@ void main() {
     });
   });
 
-  testWidgets('LobbyArrowChip is an ink square with the icon in its color', (
-    tester,
-  ) async {
+  testWidgets('LobbyArrowChip is a square of its color with an ink edge and '
+      'an ink arrow', (tester) async {
     await show(
       tester,
       const Center(child: LobbyArrowChip(color: AppColors.opponent, size: 48)),
     );
     expect(tester.getSize(find.byType(LobbyArrowChip)), const Size(48, 48));
     final box = tester.widget<Container>(find.byType(Container));
-    expect((box.decoration! as BoxDecoration).color, AppColors.ink);
+    final decoration = box.decoration! as BoxDecoration;
+    expect(decoration.color, AppColors.opponent);
+    expect((decoration.border! as Border).top.color, AppColors.ink);
     final icon = tester.widget<Icon>(find.byIcon(Icons.arrow_forward_rounded));
-    expect(icon.color, AppColors.opponent);
+    expect(icon.color, AppColors.ink);
     expect(icon.size, 24);
+  });
+
+  testWidgets('LobbySquareButton draws its icon in the line gray', (
+    tester,
+  ) async {
+    await show(
+      tester,
+      Scaffold(
+        body: Center(
+          child: LobbySquareButton(
+            icon: Icons.help_outline_rounded,
+            tooltip: '게임 규칙',
+            onPressed: () {},
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.widget<IconButton>(find.byType(IconButton)).color,
+      AppColors.line,
+    );
   });
 }

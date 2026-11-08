@@ -31,7 +31,7 @@ class AiSetupScreen extends StatelessWidget {
         const LobbyPageHeader(
           tag: 'PLAY / AI 1V1',
           title: 'AI 1v1',
-          tagColor: AppColors.opponentText,
+          tagColor: AppColors.textPrimary,
         ),
         const SizedBox(height: AppSpacing.s8),
         Text(
@@ -94,7 +94,8 @@ class AiSetupScreen extends StatelessWidget {
   }
 }
 
-/// The design's dark start button: "대결 시작" with a lime arrow.
+/// The design's dark start button: "대결 시작" in white with a lime arrow
+/// (a dark fill takes light text, the exception in palette B).
 class _StartButton extends StatelessWidget {
   const _StartButton({required this.onPressed});
 
@@ -313,6 +314,7 @@ class _LevelOption extends StatelessWidget {
 
   static const _height = 64.0;
   static const _barSize = Size(10, 20);
+  static const _barEdge = 1.5;
 
   @override
   Widget build(BuildContext context) {
@@ -343,13 +345,21 @@ class _LevelOption extends StatelessWidget {
               ),
               for (var bar = 1; bar <= BotDifficulty.values.length; bar++) ...[
                 const SizedBox(width: AppSpacing.s4),
+                // Pink with an ink edge when lit, an empty gray outline when
+                // not: the count reads without the color.
                 LobbySkew(
                   degrees: 14,
                   alignment: Alignment.center,
-                  child: ColoredBox(
-                    color: bar <= strength
-                        ? AppColors.opponent
-                        : AppColors.border,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: bar <= strength
+                          ? AppColors.opponent
+                          : AppColors.card,
+                      border: Border.all(
+                        color: bar <= strength ? AppColors.ink : AppColors.line,
+                        width: _barEdge,
+                      ),
+                    ),
                     child: SizedBox.fromSize(size: _barSize),
                   ),
                 ),

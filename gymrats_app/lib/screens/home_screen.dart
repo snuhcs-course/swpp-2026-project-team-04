@@ -172,6 +172,7 @@ class _ProfileChip extends StatelessWidget {
   /// The design's 44, raised to the least tap height a finger needs.
   static const _height = 48.0;
   static const _markSize = 34.0;
+  static const _markEdge = 1.5;
 
   @override
   Widget build(BuildContext context) {
@@ -201,13 +202,18 @@ class _ProfileChip extends StatelessWidget {
                   Container(
                     width: _markSize,
                     height: _markSize,
-                    decoration: const BoxDecoration(
-                      color: AppColors.ink,
+                    // The user's lime with an ink edge, the icon in ink.
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.ink,
+                        width: _markEdge,
+                      ),
                     ),
                     child: const Icon(
                       Icons.person_outline_rounded,
-                      color: AppColors.accent,
+                      color: AppColors.ink,
                       size: _markSize / 2,
                     ),
                   ),
@@ -310,8 +316,9 @@ class _RepBotSlot extends StatelessWidget {
   }
 }
 
-/// Battles that are not on the server yet, in dark amber: they are retried on
-/// the next load, so the user knows the record is not lost.
+/// Battles that are not on the server yet, as an amber chip with ink text:
+/// they are retried on the next load, so the user knows the record is not
+/// lost.
 class _UnsentNote extends StatelessWidget {
   const _UnsentNote({required this.count});
 
@@ -319,18 +326,28 @@ class _UnsentNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.cloud_off_rounded, color: AppColors.warningText),
-        const SizedBox(width: AppSpacing.s8),
-        Expanded(
-          child: Text(
-            '저장하지 못한 경기 $count개 · 연결되면 다시 저장해요',
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppColors.warningText),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: DecoratedBox(
+        decoration: AppHighlight.chip(AppColors.warning),
+        child: Padding(
+          padding: AppHighlight.chipPadding,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_rounded, color: AppColors.ink),
+              const SizedBox(width: AppSpacing.s8),
+              Flexible(
+                child: Text(
+                  '저장하지 못한 경기 $count개 · 연결되면 다시 저장해요',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.ink),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

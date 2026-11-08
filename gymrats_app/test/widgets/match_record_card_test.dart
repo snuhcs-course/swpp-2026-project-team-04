@@ -69,44 +69,59 @@ void main() {
   Color? colorOf(WidgetTester tester, String text) =>
       tester.widget<Text>(find.text(text)).style?.color;
 
-  testWidgets('the outcome reads in its dark color on a light tint', (
+  testWidgets('the outcome is ink on its color, with an ink edge', (
     tester,
   ) async {
-    for (final (outcome, tint, text) in [
-      (MatchOutcome.win, AppColors.accent, AppColors.accentText),
-      (MatchOutcome.lose, AppColors.opponent, AppColors.opponentText),
-      (MatchOutcome.draw, AppColors.textSecondary, AppColors.textSecondary),
+    for (final (outcome, fill) in [
+      (MatchOutcome.win, AppColors.accent),
+      (MatchOutcome.lose, AppColors.opponent),
+      (MatchOutcome.draw, AppColors.cardHigh),
     ]) {
       await show(tester, MatchOutcomeBadge(outcome: outcome));
-      expect(colorOf(tester, outcome.label), text);
+      expect(colorOf(tester, outcome.label), AppColors.ink);
       final box = tester.widget<Container>(find.byType(Container));
-      expect(
-        (box.decoration! as BoxDecoration).color,
-        tint.withValues(alpha: 0.14),
-      );
+      final decoration = box.decoration! as BoxDecoration;
+      expect(decoration.color, fill);
+      expect((decoration.border! as Border).top.color, AppColors.ink);
     }
   });
 
-  testWidgets('a top issue reads in dark amber', (tester) async {
+  /// The band painted behind the text, if any.
+  Color? bandOf(WidgetTester tester, String text) =>
+      tester.widget<Text>(find.text(text)).style?.backgroundColor;
+
+  testWidgets('a top issue reads in ink on an amber band', (tester) async {
     await show(
       tester,
       MatchRecordCard(match: _match(summary: _issue), showFeedback: true),
     );
     expect(find.text('팔꿈치가 벌어져요'), findsOneWidget);
-    expect(colorOf(tester, '팔꿈치가 벌어져요'), AppColors.warningText);
+    expect(colorOf(tester, '팔꿈치가 벌어져요'), AppColors.ink);
+    expect(
+      bandOf(tester, '팔꿈치가 벌어져요'),
+      AppColors.warning.withValues(alpha: 0.6),
+    );
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.error_outline_rounded)).color,
+      AppColors.ink,
+    );
   });
 
-  testWidgets('nothing to fix reads 좋은 자세 in dark lime', (tester) async {
+  testWidgets('nothing to fix reads 좋은 자세 in ink on a lime band', (
+    tester,
+  ) async {
     await show(
       tester,
       MatchRecordCard(match: _match(summary: _clean), showFeedback: true),
     );
-    expect(colorOf(tester, '좋은 자세'), AppColors.accentText);
+    expect(colorOf(tester, '좋은 자세'), AppColors.ink);
+    expect(bandOf(tester, '좋은 자세'), AppColors.accent.withValues(alpha: 0.6));
   });
 
   testWidgets('a battle without feedback reads 피드백 없음', (tester) async {
     await show(tester, MatchRecordCard(match: _match(), showFeedback: true));
     expect(colorOf(tester, '피드백 없음'), AppColors.textMuted);
+    expect(bandOf(tester, '피드백 없음'), isNull);
   });
 
   testWidgets('the feedback line shows only when asked', (tester) async {

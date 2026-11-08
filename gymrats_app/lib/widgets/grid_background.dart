@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Faint lime grid behind a screen, as in the prototype.
+/// Faint gray grid behind a screen (palette B: lines are gray or ink).
 ///
 /// Wrap a Scaffold body with it. The grid stays still while [child] scrolls.
 class GridBackground extends StatelessWidget {
@@ -24,7 +24,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.accent.withValues(alpha: 0.035)
+      ..color = AppColors.line.withValues(alpha: 0.06)
       ..strokeWidth = 1;
     for (var x = 0.0; x <= size.width; x += _spacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);

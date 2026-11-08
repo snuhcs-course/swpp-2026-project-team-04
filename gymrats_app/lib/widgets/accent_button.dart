@@ -20,6 +20,7 @@ class AccentButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   static const _radius = BorderRadius.all(Radius.circular(AppTheme.cardRadius));
+  static const _edge = 2.0;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +41,12 @@ class AccentButton extends StatelessWidget {
         onPressed: onPressed,
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.fromLTRB(24, 18, 20, 18),
-          shape: const RoundedRectangleBorder(borderRadius: _radius),
+          // An ink edge so the lime shows against the light screen
+          // (palette B).
+          shape: const RoundedRectangleBorder(
+            borderRadius: _radius,
+            side: BorderSide(color: AppColors.ink, width: _edge),
+          ),
         ),
         child: Row(
           children: [
