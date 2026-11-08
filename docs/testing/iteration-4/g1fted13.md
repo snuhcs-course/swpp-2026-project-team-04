@@ -18,11 +18,11 @@ without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/08 | `flutter test`; coverage: CI comment "Tests and coverage (GitHub Actions)" on the W1 PR |
-| ViewModel | flutter_test, fakes | 90% | same as above | 11/08 | same as above |
-| Service | flutter_test, MockClient, fakes | 85% | same as above | 11/08 | same as above |
-| View | flutter_test (widget) | 75% | same as above | 11/08 | same as above |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/08 | – |
+| Model | flutter_test | 90% | 97.4% (266/273) | 11/08 | CI comment "Tests and coverage (GitHub Actions)" on PR #45, commit `f3f6b9f`, [run 42480145654](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/42480145654) |
+| ViewModel | flutter_test, fakes | 90% | 96.3% (986/1024) | 11/08 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (2249/2384) | 11/08 | same CI comment |
+| View | flutter_test (widget) | 75% | 92.4% (4484/4854) | 11/08 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/08 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `f3f6b9f` |
 
 - **Tests:** `flutter test` 1490 passed, 0 failed, 10 skipped. `flutter analyze` found no issues. The skipped tests were already skipped on `main`, and W1 does not touch them:
   - `test/services/online/public_wss_smoke_test.dart`: a live team-server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`.
@@ -30,7 +30,10 @@ without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (
 - **Count change:** `main` at `998a6fd` had 1476 passing tests. W1 deletes `test/widgets/bot_difficulty_sheet_test.dart` with its widget (the AI 1v1 page replaces the sheet), rewrites the home tests, and adds the files marked "(new)" below.
 - **Other checks:** `ownership_guard.py --check-diff` ok (48 files, all W1's or approved exceptions). Server `pytest` was not run because `server/` did not change.
 - **Checks after merging `origin/main`:** `git fetch origin && git merge origin/main` said "Already up to date": `main` is still `998a6fd`, which the branch already contains, so the code is still `38c44b1`. I reran the checks anyway on 2026-11-08: `flutter analyze` found no issues, and `flutter test` had 1490 passed, 0 failed and 10 skipped (the same tests). `ownership_guard.py --check-diff` is ok (48 files).
-- **Shortfalls:** coverage is not known until the PR's CI comment exists. The View files W1 adds or rewrites have widget tests for every state and tap, so I expect View to stay above 75%. This is an expectation, not a measurement.
+- **Coverage:** from the CI comment "Tests and coverage (GitHub Actions)" on PR #45, commit `f3f6b9f` (2026-11-08 21:31 KST; app and server jobs both succeeded; run link above). App total 93.5% (8196/8763), Other 92.5% (211/228).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (1490 passed, 10 skipped, 0 failed). This matches the local run. `f3f6b9f` changes only the notes on top of `38c44b1`.
+  - Left out of the coverage numbers by CI's 240 s per-file limit: `test/screens/result_screen_test.dart`, which is not a W1 file. Its tests still ran in `flutter test`.
+- **Shortfalls:** none. Every layer and the server meet their targets.
 - **Manual check (2026-11-08, the user, on a Galaxy S26+ with Android 17 and One UI 9.0, the same phone as in my earlier test notes):** the user checked these on a build of this branch and reported no problems ("폰 확인 끝났어. 문제없어.").
   - Home does not scroll or stretch when swiped.
   - All three menu rows show above the navigation bar.

@@ -245,6 +245,9 @@ W1(feat/home_lobby) 추가 수정이에요. 메인 메뉴 화면이 폰 화면�
 Testing-Documentation.md 그 줄은 그대로 둬.
 PR이 열리면 링크를 알려 주고, CI 커버리지 코멘트가 달리면 노트의 커버리지 TODO도 채워서 커밋하고 push해 줘."
 
+<!-- 6267d04a 2026-11-08T12:31:37.025Z -->
+[Woohyun Song, 11-08 21:31] "영어로 답변 그만하고 한국어로 답변해"
+
 <!-- Left out on purpose: session summaries written when a session ran out of context (not prompts). The keys stay so a later export does not add them again. Also cut: the client's injected browser notice in front of five prompts (11-06 18:23, 19:44; 11-08 03:21, 18:10, 19:20). -->
 <!-- 130a1a7c 2026-11-07T21:03:35.734Z -->
 <!-- 6267d04a 2026-11-08T11:45:18.079Z -->

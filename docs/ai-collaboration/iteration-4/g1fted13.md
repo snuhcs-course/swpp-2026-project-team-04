@@ -62,7 +62,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
 - **A tooling slip (11-08):** to run the new tests against the old layout, the agent ran `git checkout` on the test file. That also threw away its own uncommitted test edits.
   - It re-applied them from the conversation the same minute and reran the suite, so nothing was lost in the commit.
   - The user then made a rule, written into `progress.md`: use `git stash` or a separate worktree for this, never `git checkout`.
-- **Replies in the wrong language:** the standing rule is to reply in Korean. Still, the agent's replies switched to English three times, after long turns or a resumed session. Each time the user had to ask again: "한국어로 바꿔서 다시 처음부터 응답해" (11-06 22:01), "답변이 왜 갑자기 영어로 바뀌었어? 한국어로 다시 답변해" (11-08 03:43), "응답을 한국어로 해" (11-08 18:13). Cost: a re-sent answer each time; no code impact.
+- **Replies in the wrong language:** the standing rule is to reply in Korean. Still, the agent's replies switched to English four times, after long turns, a resumed session, or English-heavy work such as reviewer reports and the PR body. Each time the user had to ask again: "한국어로 바꿔서 다시 처음부터 응답해" (11-06 22:01), "답변이 왜 갑자기 영어로 바뀌었어? 한국어로 다시 답변해" (11-08 03:43), "응답을 한국어로 해" (11-08 18:13), "영어로 답변 그만하고 한국어로 답변해" (11-08 21:31, after the PR report). Cost: a re-sent answer each time; no code impact.
 - **Process slip:** the repo's `testing` skill should be loaded before writing tests. In the fit fix it was loaded only after the tests were written. The tests were then checked against it, and nothing had to change.
 
 ### e. Prompt revisions
