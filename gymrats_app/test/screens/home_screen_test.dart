@@ -66,19 +66,32 @@ void main() {
 
   /// Opens HomeScreen on a phone-sized screen with the app's route observer
   /// and stub pages for the routes it opens. RepBot holds still unless
-  /// [still] is false.
+  /// [still] is false. [bars] are the system bars' heights, [textScale] the
+  /// system text size, and [tabBar] the height of a bar under home (none
+  /// when 0).
   Future<void> open(
     WidgetTester tester, {
     Size size = const Size(412, 915),
+    FakeViewPadding bars = FakeViewPadding.zero,
+    double textScale = 1,
+    double tabBar = 0,
     bool still = true,
     Future<void> Function()? onLogOut,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
+    tester.view.padding = bars;
+    tester.view.viewPadding = bars;
     addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     if (still) _stillRepBot(tester);
     final settings = SettingsViewModel();
     addTearDown(settings.dispose);
+    final home = HomeScreen(
+      createViewModel: () => HomeViewModel(repository: repository),
+      onLogOut: onLogOut,
+    );
     await tester.pumpWidget(
       // The app's settings sit above the navigator, as in main.dart.
       ChangeNotifierProvider<SettingsViewModel>.value(
@@ -86,10 +99,15 @@ void main() {
         child: MaterialApp(
           theme: AppTheme.dark,
           navigatorObservers: [GymRatsApp.routeObserver],
-          home: HomeScreen(
-            createViewModel: () => HomeViewModel(repository: repository),
-            onLogOut: onLogOut,
-          ),
+          home: tabBar == 0
+              ? home
+              : Scaffold(
+                  body: home,
+                  bottomNavigationBar: SizedBox(
+                    key: const Key('tab bar'),
+                    height: tabBar,
+                  ),
+                ),
           routes: {
             GymRatsApp.helpRoute: (_) => const HelpScreen(),
             GymRatsApp.historyRoute: (_) =>
@@ -172,7 +190,6 @@ void main() {
     expect(repBot.top, lessThan(top(find.text('게임 시작'))));
     expect(top(find.text('게임 시작')), lessThan(top(find.text('기록보관소'))));
     expect(top(find.text('기록보관소')), lessThan(top(find.text('환경설정'))));
-    expect(repBot.size, LobbyRepBot.designSize);
   });
 
   testWidgets('RepBot keeps doing push-ups on home', (tester) async {
@@ -385,27 +402,169 @@ void main() {
     expect(name.overflow, TextOverflow.ellipsis);
   });
 
-  for (final (label, size, scale) in [
-    ('the design phone', const Size(360, 780), 1.0),
-    ('a short phone', const Size(360, 640), 1.0),
-    ('a large text size', const Size(360, 780), 2.0),
-  ]) {
-    testWidgets('fits $label without overflow, scrolling if it must', (
+  group('fits the screen: RepBot takes the height left', () {
+    // An Android phone's status bar and three-button navigation bar.
+    const systemBars = FakeViewPadding(top: 24, bottom: 48);
+    final least = LobbyRepBot.designSize * HomeScreen.repBotMinScale;
+    final most = LobbyRepBot.designSize * HomeScreen.repBotMaxScale;
+    const titles = ['게임 시작', '기록보관소', '환경설정'];
+
+    double scrollRoom(WidgetTester tester) => tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position
+        .maxScrollExtent;
+    Size repBot(WidgetTester tester) =>
+        tester.getSize(find.byType(LobbyRepBot));
+    Finder row(String title) => find.ancestor(
+      of: find.text(title),
+      matching: find.byType(LobbyMenuItem),
+    );
+
+    for (final (label, size, bars) in [
+      ('360×780', const Size(360, 780), FakeViewPadding.zero),
+      ('360×780 with system bars', const Size(360, 780), systemBars),
+      ('393×852', const Size(393, 852), FakeViewPadding.zero),
+      ('393×852 with system bars', const Size(393, 852), systemBars),
+    ]) {
+      testWidgets('a $label phone shows it all without scrolling', (
+        tester,
+      ) async {
+        await open(tester, size: size, bars: bars);
+        expect(tester.takeException(), isNull);
+        expect(scrollRoom(tester), 0);
+        for (final title in titles) {
+          expect(
+            tester.getRect(row(title)).bottom,
+            lessThanOrEqualTo(size.height - bars.bottom),
+          );
+          expect(find.text(title).hitTestable(), findsOneWidget);
+        }
+        expect(
+          repBot(tester).height,
+          inInclusiveRange(least.height, most.height),
+        );
+      });
+    }
+
+    testWidgets('a shorter screen shrinks RepBot, keeping its shape', (
       tester,
     ) async {
-      tester.platformDispatcher.textScaleFactorTestValue = scale;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await open(tester, size: size);
-      expect(tester.takeException(), isNull);
-      await tester.dragUntilVisible(
-        find.text('환경설정'),
-        find.byType(SingleChildScrollView),
-        const Offset(0, -200),
+      await open(tester, size: const Size(360, 780), bars: systemBars);
+      final size = repBot(tester);
+      expect(size.height, lessThan(LobbyRepBot.designSize.height));
+      expect(size.height, greaterThan(least.height));
+      expect(
+        size.aspectRatio,
+        closeTo(LobbyRepBot.designSize.aspectRatio, 0.01),
       );
-      await tapAndSettle(tester, find.text('환경설정'));
-      expect(find.byType(SettingsScreen), findsOneWidget);
+      expect(scrollRoom(tester), 0);
     });
-  }
+
+    testWidgets('a taller screen grows RepBot, up to 1.2 times its design', (
+      tester,
+    ) async {
+      await open(tester, size: const Size(393, 852), bars: systemBars);
+      expect(repBot(tester).height, greaterThan(LobbyRepBot.designSize.height));
+      await open(tester, size: const Size(800, 1280));
+      expect(repBot(tester).width, closeTo(most.width, 0.01));
+      expect(repBot(tester).height, closeTo(most.height, 0.01));
+    });
+
+    testWidgets('only RepBot changes: the chip and the menu rows stay', (
+      tester,
+    ) async {
+      final chip = find
+          .ancestor(of: find.text('우현'), matching: find.byType(Material))
+          .first;
+      List<Size> parts() => [
+        tester.getSize(chip),
+        for (final title in titles) tester.getSize(row(title)),
+      ];
+      await open(tester, size: const Size(360, 640));
+      final short = parts();
+      final shortRepBot = repBot(tester);
+      await open(tester, size: const Size(360, 1000));
+      expect(parts(), short);
+      expect(short.first.height, 48);
+      expect(repBot(tester).height, greaterThan(shortRepBot.height));
+    });
+
+    testWidgets('a tab bar under home is left out of the room', (tester) async {
+      await open(tester, size: const Size(393, 852), bars: systemBars);
+      final withoutBar = repBot(tester);
+      await open(
+        tester,
+        size: const Size(393, 852),
+        bars: systemBars,
+        tabBar: 80,
+      );
+      expect(tester.takeException(), isNull);
+      expect(scrollRoom(tester), 0);
+      final barTop = tester.getTopLeft(find.byKey(const Key('tab bar'))).dy;
+      expect(tester.getRect(row('환경설정')).bottom, lessThanOrEqualTo(barTop));
+      expect(repBot(tester).height, lessThan(withoutBar.height));
+    });
+
+    testWidgets('320×640 at 1.3× text scrolls, with RepBot at its least, '
+        'and every menu row can be scrolled to and tapped', (tester) async {
+      await open(tester, size: const Size(320, 640), textScale: 1.3);
+      expect(tester.takeException(), isNull);
+      expect(scrollRoom(tester), greaterThan(0));
+      expect(repBot(tester).height, closeTo(least.height, 0.01));
+      for (final (title, opened) in [
+        ('게임 시작', find.byType(PlayScreen)),
+        ('기록보관소', find.text('history page')),
+        ('환경설정', find.byType(SettingsScreen)),
+      ]) {
+        await tester.dragUntilVisible(
+          find.text(title),
+          find.byType(SingleChildScrollView),
+          const Offset(0, -100),
+        );
+        await tapAndSettle(tester, find.text(title));
+        expect(opened, findsOneWidget, reason: title);
+        await back(tester);
+      }
+    });
+
+    // Scrolling only ever starts once RepBot is as small as it goes.
+    for (final size in const [
+      Size(320, 568),
+      Size(320, 640),
+      Size(360, 640),
+      Size(360, 780),
+      Size(393, 852),
+      Size(412, 915),
+    ]) {
+      for (final textScale in const [1.0, 1.3, 2.0]) {
+        final label =
+            '${size.width.toInt()}×${size.height.toInt()} at $textScale× text';
+        testWidgets('$label: no overflow, no scroll while RepBot can shrink', (
+          tester,
+        ) async {
+          await open(
+            tester,
+            size: size,
+            bars: systemBars,
+            textScale: textScale,
+          );
+          expect(tester.takeException(), isNull);
+          final height = repBot(tester).height;
+          expect(height, inInclusiveRange(least.height - 0.01, most.height));
+          if (scrollRoom(tester) > 0) {
+            expect(height, closeTo(least.height, 0.01));
+          }
+          await tester.dragUntilVisible(
+            find.text('환경설정'),
+            find.byType(SingleChildScrollView),
+            const Offset(0, -200),
+          );
+          await tapAndSettle(tester, find.text('환경설정'));
+          expect(find.byType(SettingsScreen), findsOneWidget);
+        });
+      }
+    }
+  });
 
   testWidgets('every button is big enough and has a name', (tester) async {
     final semantics = tester.ensureSemantics();

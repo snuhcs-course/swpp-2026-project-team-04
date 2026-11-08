@@ -15,8 +15,19 @@ import 'settings_screen.dart';
 /// First screen after login: the game lobby. RepBot does push-ups over a
 /// menu of 게임 시작, 기록보관소 and 환경설정; '?' opens the rules and the
 /// profile chip opens 환경설정 too.
+///
+/// The lobby fits the screen: RepBot takes the height the rest leaves,
+/// between [repBotMinScale] and [repBotMaxScale] of its design size, and
+/// the page scrolls only when RepBot at its least still does not fit.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.createViewModel, this.onLogOut});
+
+  /// The least share of [LobbyRepBot.designSize] RepBot shrinks to on a
+  /// short screen or with a large text size, before the page scrolls.
+  static const repBotMinScale = 0.6;
+
+  /// The largest share RepBot grows to on a tall screen.
+  static const repBotMaxScale = 1.2;
 
   /// Builds the view model; replaces the default one in tests.
   final HomeViewModel Function()? createViewModel;
@@ -97,9 +108,9 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
           HomePhase.failed => Scaffold(
             body: _LoadFailed(message: vm.state.errorMessage, onRetry: vm.load),
           ),
-          HomePhase.ready => LobbyPage(
+          HomePhase.ready => LobbyPage.fill(
             behind: const LobbyBackdrop(),
-            children: [
+            above: [
               _TopBar(name: vm.state.profile!.name, onProfile: _openSettings),
               const SizedBox(height: AppSpacing.s16),
               const _Title(),
@@ -107,7 +118,11 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
                 const SizedBox(height: AppSpacing.s8),
                 _UnsentNote(count: vm.state.profile!.unsentMatches),
               ],
-              const Expanded(child: _RepBotSlot()),
+            ],
+            fill: const _RepBotSlot(),
+            fillMinHeight:
+                LobbyRepBot.designSize.height * HomeScreen.repBotMinScale,
+            below: [
               LobbyMenuItem(tag: '01 / PLAY', title: '게임 시작', onTap: _openPlay),
               LobbyMenuItem(
                 tag: '02 / ARCHIVE',
@@ -292,8 +307,9 @@ class _Title extends StatelessWidget {
   }
 }
 
-/// RepBot at the bottom left of the room above the menu, at the design's
-/// size or smaller, sinking a little behind the menu's top line.
+/// RepBot at the bottom left of the room above the menu, as large as that
+/// room allows but at most [HomeScreen.repBotMaxScale] of its design size,
+/// keeping its shape; it sinks a little behind the menu's top line.
 class _RepBotSlot extends StatelessWidget {
   const _RepBotSlot();
 
@@ -305,7 +321,15 @@ class _RepBotSlot extends StatelessWidget {
       alignment: Alignment.bottomLeft,
       child: Transform.translate(
         offset: const Offset(0, _sink),
-        child: const FittedBox(fit: BoxFit.scaleDown, child: LobbyRepBot()),
+        child: ConstrainedBox(
+          constraints: BoxConstraints.loose(
+            LobbyRepBot.designSize * HomeScreen.repBotMaxScale,
+          ),
+          child: AspectRatio(
+            aspectRatio: LobbyRepBot.designSize.aspectRatio,
+            child: const LobbyRepBot(),
+          ),
+        ),
       ),
     );
   }
