@@ -1,4 +1,4 @@
-# GymRats Iteration 3 스쿼트 판정기와 공통 판정기 인터페이스 설계 (P5)
+# GymMouse Iteration 3 스쿼트 판정기와 공통 판정기 인터페이스 설계 (P5)
 
 상태: 제안 v0.1 / 작성일: 2026-10-28 / 작성: 한상우 / 구현: S2 `feat/squat_judge`, 배틀 연결: S4 `feat/squat_battle`
 

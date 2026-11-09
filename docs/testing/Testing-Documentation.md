@@ -1,4 +1,4 @@
-# Project: GymRats — Real-Time 1v1 Exercise Battles
+# Project: GymMouse — Real-Time 1v1 Exercise Battles
 
 ## Table of contents
 * [1. Document Revision History](#1-document-revision-history)
@@ -26,6 +26,7 @@
 |Rev.2.0|2026-11-01|Added 6. Acceptance Testing plan: how the UAT is run, six UAT stories with criteria and procedures, frozen from 2026-11-06; results follow in Iteration 4|
 |Rev.2.1|2026-11-03|Iteration 3 results in 4.2 (final main, CI coverage screenshot, who ran the suite); 5. AI Module Testing: the frozen set with its per-set table, labels, assertion per case and threshold commit (5.1), the first run and the re-run after the judge tuning with failure analyses (5.2), what the testing changed and what it leaves to Iteration 4 (5.3); 3.1, 3.2 and 4.1 Iteration 3 revisions; final guideline audit|
 |Rev.2.2|2026-11-04|6. Acceptance Testing follows Requirements Rev.2.3: UAT-1 pose guide, UAT-3 both-ready and live-opponent game elements (no avatar), UAT-4 feedback over time, UAT-5 game points and fever, UAT-6 tutorial; every story run with push-ups and squats. Readability: file paths, branch names and narrative PR numbers taken out; commands, result commits, the evaluation set path and the threshold commit kept|
+|Rev.2.3|2026-11-09|Project renamed from GymRats to GymMouse|
 
 # 2. Overview
 
