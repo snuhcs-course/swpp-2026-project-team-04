@@ -92,37 +92,46 @@ team plan, one day before the iteration's official start. Its prompts from that 
   - P1: WIN/LOSE cannot be read on the light background (`app_theme.dart` L37);
   - P2: the replay setup guesses the mode from the opponent's name (`home_viewmodel.dart` L37); 송현우 filed issue #47 from it;
   - P2: a long nickname overflows the settings row (`settings_screen.dart` L60).
-- **Fixes and tests:** Claude Code (Opus 5.5) wrote both fixes and their tests:
-  - `5909acd`: `lib/screens/result_screen.dart` (`_Verdict` L186–, `_Score` L335–, `_FeedbackButton` L589) and `test/screens/result_screen_test.dart` (group 'readable on the light ground (palette B)' L216–);
-  - `15e0dcd`: `lib/screens/settings_screen.dart` (`_Nickname` L221–) and `test/screens/settings_screen_test.dart` (group 'the nickname row' L265–).
+- **Fixes and tests:** Claude Code (Opus 5.5) wrote both fixes and their tests, in two rounds (line numbers as of `cd88ab2`):
+  - `5909acd`: `lib/screens/result_screen.dart` (`_Verdict` L186–, `_Score` L335–, `_FeedbackButton` L585) and `test/screens/result_screen_test.dart` (group 'readable on the light ground (palette B)' L220–);
+  - `15e0dcd`: `lib/screens/settings_screen.dart` (`_Nickname`, a 40% screen-width cap; replaced in round 2) and `test/screens/settings_screen_test.dart` (group 'the nickname row' L265–);
+  - round 2, after the user's answers: `df2ff07`: `settings_screen.dart` (`_Row.value` L163–, L209–) and the 1.0× test (L279–); `cd88ab2`: `result_screen.dart` (`_StatCard` L510–, the 무효 count ink) and `result_screen_test.dart` (L171–, L267–).
   - It read the comments and the issue through the GitHub REST API, because `gh` is not installed on this PC.
-- **Review:** the `reviewer` subagent, run 9: APPROVE with 4 Minor findings (item d).
-- **Not done by AI:** the scope was the user's decision: text color only, a lime/pink band behind the verdict, no code for #47 (J3's files), and the one-off exception for W6's `result_screen.dart`.
+- **Review:** the `reviewer` subagent, run 9: APPROVE with 4 Minor findings; run 10 (round 2): APPROVE with 4 Minor findings, and its follow-up on these notes: APPROVE with 3 Minor wording points (item d).
+- **Not done by AI:** the scope was the user's decision: text color only, a lime/pink band behind the verdict, no code for #47 (J3's files), and the one-off exception for W6's `result_screen.dart`. In round 2 the user chose the nickname's width rule and added the amber 무효 count; the pink robot icon and the avatar rings stay for W6.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-11] (pasted; excerpt) "바꾸는 범위는 글자 색뿐이야. 승패 단어와 라임·분홍으로 칠해진 글자(버튼 글자 포함)를 잉크로 바꾸고, 승패 단어 뒤에 이기면 라임, 지면 분홍 기울인 띠를 깔아. 화면 구성, 문구, 레이아웃은 W6에서 새로 그리니 바꾸지 마. 승패 글자가 4.5:1 이상인지 테스트로 확인해."
+- [Woohyun Song, 11-11] (pasted; excerpt) "2. 결과 화면: 무효 횟수의 주황 글자도 글자 가독성 문제라 이번에 잉크로 바꿔(이미 받은 예외 범위 안). 상대 분홍 로봇 아이콘과 라임·분홍 아바타 테두리는 W6에서 고칠 거라 그대로 둬."
 
 ### c. What AI did well
 - **Codex found two real bugs that W1's checks had let through.**
   - The result screen: review run 3 (11-08) had flagged the same WIN/LOSE contrast. W1 only listed it for the file's owner, so PR #45 would have shipped a result screen whose outcome cannot be read after every match.
   - The nickname: W1's settings tests used only the 2-letter name '우현'. Home's chip had a 12-letter test; settings had none.
-- **Tests first, which reproduced the reported bug.** The new tests failed on `78351da` before the fix: 10 failures, including Codex's overflow ("A RenderFlex overflowed by 114 pixels on the right" at 2× text). The tests check the contrast itself (WCAG ratio of the text color on its band), not only color names. Another test walks every text on the screen for lime or pink, so it also caught the feedback button's lime label.
-- **A layout choice with its reasons.** The nickname cap is a share of the screen width, not a `LayoutBuilder` (`LobbyPage` measures intrinsic heights, which a `LayoutBuilder` cannot report) and not a `Flexible` (flex would cap the title at half the row even for a short name). The reviewer confirmed the intrinsic sizes still work.
+- **Tests first, which reproduced the reported bug.** The new tests failed on `78351da` before the fix: 10 failures, including Codex's overflow ("A RenderFlex overflowed by 114 pixels on the right" at 2× text). In round 2, 7 changed or new tests failed on `1bb8544` before the change, among them the 1.0× case the first fix had missed. The tests check the contrast itself (WCAG ratio of the text color on its band), not only color names. Another test walks every text on the screen for lime or pink, so it also caught the feedback button's lime label.
+- **The open question was raised, not hidden.** The round-1 cap passed every test the prompt asked for. The reviewer subagent (run 9) flagged that it cut a 12-letter name at 1.0× on a 360-dp phone; the agent measured it (8 letters + "…") and asked the user instead of shipping it. That question led to round 2.
+- **A check with the real fonts.** The tests use the test font, where each Hangul letter is 1 em wide. A temporary render with the app's fonts (not committed) showed the 1.0× name whole and the 1.3×/2× names cut, so the tests do not pass only because of the test font.
 
 ### d. Hallucinations / errors
 - **W1's tests missed the longest nickname on one screen** (see item c). The 11-08 checks did not test the longest valid input on every screen that shows a nickname.
+- **The first nickname fix met the prompt but not the need.** The prompt named 1.3× and 2× text only. The agent capped the name at 40% of the screen width, so a 12-letter name showed 8 letters and "…" even at the normal size. Cost: one more round (a new layout, 1 new test, 2 stricter tests, reviewer run 10).
 - **#47 is a limit W1 shipped knowingly.** Review run 1 (11-06) flagged that the replay setup reads a bot only from the opponent's name. W1 kept it as a documented name-only limit with a test, since the match record has no mode. Codex's P2 hit the same limit. It now goes through issue #47 to J3, whose files hold the record.
 - **Review run 9, 4 Minor findings:**
   - The fix removed the verdict's glow for DRAW too, outside the "lime/pink text" scope. DRAW's glow was put back, with a test.
   - A test comment said a screen reader reads the whole name, but the test only checked the widget's text. Fixed. The first fix then failed twice: the exact semantics label matched nothing, because the row merges its texts, and the semantics handle was disposed too late. Two quick reruns.
   - Two scope questions for the user: palette B leftovers (pink icon, lime/pink rings, amber count), and a 12-letter Korean name is cut even at 1.0× on a 360-dp phone.
+- **Review run 10, 4 Minor findings, all addressed:** three fixed: stale `progress.md` lines (still the 40% cap, 무효 "left for W6"), a test name that listed fewer colors than it checked ("lime, pink or amber" while it also bans cyan and red), and the `_Row` class comment, which did not mention the new value. The fourth went to W6 as a note: `AppColors.warning`'s comment still names the 무효 count as an amber fill. `app_theme.dart` is shared by W1, W2, W3 and W6, and it was not edited now because W2 has uncommitted changes to it.
+- **Run 10 follow-up (these notes), 3 Minor wording points, all fixed:** the file owner above; item c credited the agent with spotting the 1.0× cut, which the reviewer raised first (run 9); a test was cited by its later name.
 - **Tooling:** the temporary render check failed to load twice (run from outside the package, then missing imports). It is a scratch file, never committed.
 
 ### e. Prompt revisions
-- None in this follow-up: one prompt set the scope.
+- Before: "환경설정 닉네임 줄: settings_screen.dart에서 닉네임이 한 줄 줄임표(…)로 처리되게 하고, 12자 닉네임에 글자 크기 1.3배와 2배를 넣은 위젯 테스트를 추가해."
+- After: "닉네임: 화면 폭 40% 고정 말고, 줄의 남은 폭을 다 쓰고 그래도 넘칠 때만 "…"로 줄여 줘. 360dp 폰 기본 글자 크기에서 12자 한글 닉네임이 잘리지 않는 테스트와, 2배 글자에서 넘치지 않는 기존 테스트를 둘 다 통과시켜."
+- Why it worked: the first prompt set only the upper bound (no overflow at large text), so a cap that cut early still passed. The second named the width rule and the normal-size case on the narrowest phone, so a test fixes both ends.
 
 ### f. Manual fixes and why
 - None. No AI-generated line was edited by hand, so there are no markers.
 
 ### Takeaway
 - Test the longest valid input at the largest text size on every screen that shows it, not only on the screen the feature started on.
+- When a fix is tested only at the extreme, also test that the normal case is unchanged.
