@@ -84,3 +84,45 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - A precise spec with numbers (sizes to test, the 0.6–1.2 range, "scroll only at the least size") let the agent test the hint and reject it with measurements instead of guessing.
 - For the next steps: keep asking for tests that fail on the old code first, and run that check with `git stash` or a worktree.
+
+## W1 follow-up – the Codex review of PR #45, 2026-11-11
+
+### a. Where AI was used
+- **Code review:** the team's Codex GitHub review reviewed PR #45 at `78351da` on 2026-11-10 and left three comments:
+  - P1: WIN/LOSE cannot be read on the light background (`app_theme.dart` L37);
+  - P2: the replay setup guesses the mode from the opponent's name (`home_viewmodel.dart` L37); 송현우 filed issue #47 from it;
+  - P2: a long nickname overflows the settings row (`settings_screen.dart` L60).
+- **Fixes and tests:** Claude Code (Opus 5.5) wrote both fixes and their tests:
+  - `5909acd`: `lib/screens/result_screen.dart` (`_Verdict` L186–, `_Score` L335–, `_FeedbackButton` L589) and `test/screens/result_screen_test.dart` (group 'readable on the light ground (palette B)' L216–);
+  - `15e0dcd`: `lib/screens/settings_screen.dart` (`_Nickname` L221–) and `test/screens/settings_screen_test.dart` (group 'the nickname row' L265–).
+  - It read the comments and the issue through the GitHub REST API, because `gh` is not installed on this PC.
+- **Review:** the `reviewer` subagent, run 9: APPROVE with 4 Minor findings (item d).
+- **Not done by AI:** the scope was the user's decision: text color only, a lime/pink band behind the verdict, no code for #47 (J3's files), and the one-off exception for W6's `result_screen.dart`.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-11] (pasted; excerpt) "바꾸는 범위는 글자 색뿐이야. 승패 단어와 라임·분홍으로 칠해진 글자(버튼 글자 포함)를 잉크로 바꾸고, 승패 단어 뒤에 이기면 라임, 지면 분홍 기울인 띠를 깔아. 화면 구성, 문구, 레이아웃은 W6에서 새로 그리니 바꾸지 마. 승패 글자가 4.5:1 이상인지 테스트로 확인해."
+
+### c. What AI did well
+- **Codex found two real bugs that W1's checks had let through.**
+  - The result screen: review run 3 (11-08) had flagged the same WIN/LOSE contrast. W1 only listed it for the file's owner, so PR #45 would have shipped a result screen whose outcome cannot be read after every match.
+  - The nickname: W1's settings tests used only the 2-letter name '우현'. Home's chip had a 12-letter test; settings had none.
+- **Tests first, which reproduced the reported bug.** The new tests failed on `78351da` before the fix: 10 failures, including Codex's overflow ("A RenderFlex overflowed by 114 pixels on the right" at 2× text). The tests check the contrast itself (WCAG ratio of the text color on its band), not only color names. Another test walks every text on the screen for lime or pink, so it also caught the feedback button's lime label.
+- **A layout choice with its reasons.** The nickname cap is a share of the screen width, not a `LayoutBuilder` (`LobbyPage` measures intrinsic heights, which a `LayoutBuilder` cannot report) and not a `Flexible` (flex would cap the title at half the row even for a short name). The reviewer confirmed the intrinsic sizes still work.
+
+### d. Hallucinations / errors
+- **W1's tests missed the longest nickname on one screen** (see item c). The 11-08 checks did not test the longest valid input on every screen that shows a nickname.
+- **#47 is a limit W1 shipped knowingly.** Review run 1 (11-06) flagged that the replay setup reads a bot only from the opponent's name. W1 kept it as a documented name-only limit with a test, since the match record has no mode. Codex's P2 hit the same limit. It now goes through issue #47 to J3, whose files hold the record.
+- **Review run 9, 4 Minor findings:**
+  - The fix removed the verdict's glow for DRAW too, outside the "lime/pink text" scope. DRAW's glow was put back, with a test.
+  - A test comment said a screen reader reads the whole name, but the test only checked the widget's text. Fixed. The first fix then failed twice: the exact semantics label matched nothing, because the row merges its texts, and the semantics handle was disposed too late. Two quick reruns.
+  - Two scope questions for the user: palette B leftovers (pink icon, lime/pink rings, amber count), and a 12-letter Korean name is cut even at 1.0× on a 360-dp phone.
+- **Tooling:** the temporary render check failed to load twice (run from outside the package, then missing imports). It is a scratch file, never committed.
+
+### e. Prompt revisions
+- None in this follow-up: one prompt set the scope.
+
+### f. Manual fixes and why
+- None. No AI-generated line was edited by hand, so there are no markers.
+
+### Takeaway
+- Test the longest valid input at the largest text size on every screen that shows it, not only on the screen the feature started on.

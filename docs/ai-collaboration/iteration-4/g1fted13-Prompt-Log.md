@@ -251,3 +251,22 @@ PR이 열리면 링크를 알려 주고, CI 커버리지 코멘트가 달리면 
 <!-- Left out on purpose: session summaries written when a session ran out of context (not prompts). The keys stay so a later export does not add them again. Also cut: the client's injected browser notice in front of five prompts (11-06 18:23, 19:44; 11-08 03:21, 18:10, 19:20). -->
 <!-- 130a1a7c 2026-11-07T21:03:35.734Z -->
 <!-- 6267d04a 2026-11-08T11:45:18.079Z -->
+
+## 2026-11-11 · Woohyun Song · feat/home_lobby
+<!-- Cut: the client's injected browser notice in front of the 11-11 02:54 prompt (not the user's text). -->
+<!-- 46a635bf 2026-11-10T17:54:23.655Z -->
+[Woohyun Song, 11-11 02:54] "<pasted_content id=\"02af\">
+새 세션이야. 먼저 CLAUDE.md, task.md, progress.md를 읽고, 지금 브랜치와 git status를 확인해 줘. 그다음 gh로 PR #45에 달린 Codex 리뷰 코멘트 3건과 이슈 #47을 읽어.
+
+W1 PR #45에 Codex 리뷰 3건이 달렸고, 현우가 그중 하나로 이슈 #47을 열었어(머지를 막지는 않는다고 적혀 있어). W1에서 두 건을 고치자.
+
+0. 지금 브랜치(feat/battle_screen_revamp)의 커밋 안 한 W2 변경은 지우지 말고 git stash push -u -m \"W2 보류 (11-09)\"로 넣어 둔 뒤 feat/home_lobby로 바꿔. W1 작업이 끝나면 다시 feat/battle_screen_revamp로 돌아와서 그 stash를 꺼내고, feat/home_lobby를 W2에 머지해. 충돌이 나면 멈추고 알려 줘.
+
+1. (Codex P1) 결과 화면의 WIN/LOSE가 밝은 배경에서 안 보이는 문제야. lib/screens/result_screen.dart와 그 테스트는 W6(내 단계) 파일이니, ownership-exceptions.txt에 \"W1: 결과 화면 글자 가독성만, 승인 송우현(W6 주인)\"으로 예외를 추가해.
+   바꾸는 범위는 글자 색뿐이야. 승패 단어와 라임·분홍으로 칠해진 글자(버튼 글자 포함)를 잉크로 바꾸고, 승패 단어 뒤에 이기면 라임, 지면 분홍 기울인 띠를 깔아. 화면 구성, 문구, 레이아웃은 W6에서 새로 그리니 바꾸지 마. 승패 글자가 4.5:1 이상인지 테스트로 확인해.
+2. (Codex P2) 환경설정 닉네임 줄: settings_screen.dart에서 닉네임이 한 줄 줄임표(…)로 처리되게 하고, 12자 닉네임에 글자 크기 1.3배와 2배를 넣은 위젯 테스트를 추가해.
+3. (Codex P2, 이슈 #47) \"최근 설정으로 다시 하기\"가 봇 이름을 가진 온라인 상대를 봇으로 읽는 문제는 이번에 코드로 고치지 마. 경기 기록에 모드가 저장돼 있지 않아서, 제대로 고치려면 J3 파일(match_record, server_user_repository, server/matches)이 바뀌어야 해.
+
+평소처럼 테스트, 리뷰어 확인, 코스 노트까지 하고 커밋해. push는 내가 말하면 해.
+끝나면 PR #45의 Codex 지적 3건 각각에 달 답글 초안을 영어로 두세 문장씩 보여 줘. 3번은 이슈 #47로 이어지는 처리 경로(J3가 기록에 모드를 저장하면 홈이 그 값을 읽는다)를 적어 줘. 아직 올리지는 마.
+</pasted_content id=\"02af\">"

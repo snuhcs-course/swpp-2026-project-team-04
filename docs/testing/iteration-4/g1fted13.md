@@ -66,3 +66,47 @@ without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (
   - Tests: `"게임 시작 opens the play page on home's profile"`, `'shows both battles, the latest setup and the rules'`, `'the online card asks for the exercise, then opens the lobby'`, `'the AI 1v1 page leads to a squat bot at the level chosen'`, `'start leads through matching to versus; cancelling goes home'`.
 - Given I tap '?', then the rules/help open as before. Tests: `"'?' opens the rules; back returns home (UAT-6)"`, `"'?' on home opens the rules over home; back returns home"`.
 - Home fits the phone screen (user spec, 2026-11-08). Tests: `'a $label phone shows it all without scrolling'`, `'320×640 at 1.3× text scrolls, with RepBot at its least, and every menu row can be scrolled to and tapped'`, `'$label: no overflow, no scroll while RepBot can shrink'`.
+
+#### 2026-11-11 · code at commit `15e0dcd` · step W1 `feat/home_lobby`, follow-up to the Codex review of PR #45 (team order #2)
+The Codex review of PR #45 (on `78351da`, 2026-11-10) left three comments. This push fixes two of them on the same branch:
+- **Result screen (Codex P1), commit `5909acd`.** WIN and LOSE were lime and pink text on the light ground, about 1.03:1 and 2.58:1. Now:
+  - the verdict word is ink on a slanted band, lime for a win and pink for a loss;
+  - the scores and the 자세 피드백 보기 label are ink;
+  - DRAW, the layout and the wording are unchanged.
+  - `result_screen.dart` is W6's file. It was changed under a one-off exception: text readability only.
+- **환경설정 nickname (Codex P2), commit `15e0dcd`.** A 12-letter nickname at a large text size overflowed its row. It is now one line, at most 40% of the screen width, and ends in "…".
+- **Not fixed here (Codex P2, issue #47).** "최근 설정으로 다시 하기" guesses bot or online from the opponent's name. A fix needs the mode in the match record, which is in J3's files, so there is no code change.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `15e0dcd`, without coverage.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/11 | CI comment "Tests and coverage (GitHub Actions)" on PR #45 after the push |
+| ViewModel | flutter_test, fakes | 90% | not measured on this Windows PC; TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/11 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | not measured on this Windows PC; TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/11 | same CI comment |
+| View | flutter_test (widget) | 75% | not measured on this Windows PC; TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/11 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run (`server/` unchanged) | 11/11 | – |
+
+- **Tests:** `flutter test` had 1499 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same ones as on 11-08.
+  - The count grew from 1490 by the 9 new tests below. No test was removed.
+- **Tests before the fix:** I wrote the new and changed tests first and ran them on the code before the fix (`78351da`). 10 failed:
+  - In `result_screen_test.dart`, 8 failed: the three updated ink checks, WIN and LOSE on a band, and "no lime or pink text" for a win, a loss and a draw. The draw screen fails too, through its lime and pink scores and the feedback button's lime label.
+  - In `settings_screen_test.dart`, 2 failed: the 12-letter nickname at 1.3× (no ellipsis) and at 2× ("A RenderFlex overflowed by 114 pixels on the right"), the overflow Codex described.
+  - The DRAW test and the short-nickname test passed on the old code as well. They guard what must not change.
+- **Other checks:** `dart format --set-exit-if-changed` passes on the four changed files, and `ownership_guard.py --check-diff` is ok. Server `pytest` was not run because `server/` did not change.
+- **Coverage:** TODO(Woohyun Song): fill from the CI comment on PR #45 after the push (commit hash and run link).
+- **Shortfalls:** none known; coverage is pending.
+- **Manual check:** not checked on a phone for this push. The agent rendered the result screen (393×852; WIN, LOSE, DRAW) and 환경설정 (360×780 at 1.0×, 1.3× and 2.0× text) from `15e0dcd` to images for a look by eye. The images are not committed.
+
+### Test cases added or changed in this follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/result_screen_test.dart` (updated; W6's file, exception) | WIN and LOSE are ink on a slanted lime or pink band, 4.5:1 or more; DRAW stays ink with its glow and no band, 4.5:1 or more on the ground; a win, a loss and a draw paint no text in lime or pink, the feedback button included; the scores are ink |
+| View | `test/screens/settings_screen_test.dart` (updated) | a 12-letter nickname at 1.3× and 2× text is one line ending in "…", right of its title and inside the screen, and a screen reader gets the whole name; a short nickname shows whole at the right of its row |
+
+### Acceptance criteria → tests (this follow-up)
+- The verdict word is 4.5:1 or more (user spec 2026-11-11, Codex P1). Tests: `'$word is ink on a slanted band, 4.5:1 or more'` (WIN, LOSE), `'DRAW stays ink on the screen ground, with no band'`.
+- Lime and pink text become ink, button text included. Test: `'a ${outcome.name} paints no text in lime or pink, the feedback button included'` (win, lose, draw).
+- The nickname is one line ending in "…" with 12 letters at 1.3× and 2× text (Codex P2). Tests: `'a 12-letter nickname at ${scale}x text is one line that ends in …, beside its title'`, `'a short nickname shows whole, at the right of its row'`.
+- UAT-4 AC1 (win, loss or draw with both scores) still holds. Tests: `'a win: WIN, the margin, both players, and my stats'`, `'$mine:$theirs is a $word'`.
