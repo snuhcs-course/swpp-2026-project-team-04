@@ -53,11 +53,7 @@ class SettingsScreen extends StatelessWidget {
             _Row(
               title: '닉네임',
               line: '온라인 대결에서 상대에게 보여요',
-              end: Text(
-                nickname,
-                style: Theme.of(context).textTheme.bodyLarge
-                    ?.copyWith(color: AppColors.textPrimary),
-              ),
+              end: _Nickname(nickname),
             ),
             // Until the characters replace the avatars (W3).
             _Row(
@@ -214,6 +210,37 @@ class _Row extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The nickname at the right of its row, on one line. A long one at a large
+/// text size ends in "…" instead of pushing the row past the screen; a
+/// screen reader still reads it whole.
+class _Nickname extends StatelessWidget {
+  const _Nickname(this.nickname);
+
+  final String nickname;
+
+  /// The most of the screen's width the nickname takes, so the row's title
+  /// and line keep the rest. A share of the screen, not of the row: the
+  /// page measures its rows' heights, which a [LayoutBuilder] cannot give.
+  static const _widthShare = 0.4;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * _widthShare,
+      ),
+      child: Text(
+        nickname,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.bodyLarge
+            ?.copyWith(color: AppColors.textPrimary),
       ),
     );
   }

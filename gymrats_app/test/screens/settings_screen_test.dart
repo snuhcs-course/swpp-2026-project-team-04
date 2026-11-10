@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
@@ -28,6 +29,7 @@ void main() {
     WidgetTester tester, {
     Size size = const Size(412, 915),
     bool canLogOut = true,
+    String nickname = '우현',
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -47,7 +49,7 @@ void main() {
                   context,
                   MaterialPageRoute<void>(
                     builder: (_) => SettingsScreen(
-                      nickname: '우현',
+                      nickname: nickname,
                       onLogOut: canLogOut ? () async => loggedOut++ : null,
                     ),
                   ),
@@ -259,4 +261,60 @@ void main() {
       expect(find.text('로그아웃').hitTestable(), findsOneWidget);
     });
   }
+
+  group('the nickname row', () {
+    /// The longest nickname sign-up takes (12 letters), in wide Korean
+    /// letters.
+    const longest = '가나다라마바사아자차카타';
+
+    RenderParagraph paragraphOf(WidgetTester tester, String text) =>
+        tester.renderObject<RenderParagraph>(
+          find.descendant(of: find.text(text), matching: find.byType(RichText)),
+        );
+
+    for (final scale in const [1.3, 2.0]) {
+      testWidgets('a 12-letter nickname at ${scale}x text is one line that '
+          'ends in …, beside its title', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final semantics = tester.ensureSemantics();
+        await open(tester, size: const Size(360, 780), nickname: longest);
+        expect(tester.takeException(), isNull);
+
+        final paragraph = paragraphOf(tester, longest);
+        expect(paragraph.maxLines, 1);
+        expect(paragraph.overflow, TextOverflow.ellipsis);
+        expect(paragraph.didExceedMaxLines, isTrue);
+
+        // It stays right of the title and inside the screen.
+        final name = tester.getRect(find.text(longest));
+        expect(name.left, greaterThan(tester.getRect(find.text('닉네임')).right));
+        expect(name.right, lessThanOrEqualTo(360));
+        // A screen reader still reads the whole name.
+        expect(
+          tester.getSemantics(find.text(longest)).label,
+          contains(longest),
+        );
+        semantics.dispose();
+      });
+    }
+
+    testWidgets('a short nickname shows whole, at the right of its row', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await open(tester, size: const Size(360, 780));
+      expect(tester.takeException(), isNull);
+      expect(paragraphOf(tester, '우현').didExceedMaxLines, isFalse);
+      // Flush with the 아바타 row's chevron below it.
+      expect(
+        tester.getRect(find.text('우현')).right,
+        moreOrLessEquals(
+          tester.getRect(find.byIcon(Icons.chevron_right_rounded).first).right,
+          epsilon: 1,
+        ),
+      );
+    });
+  });
 }
