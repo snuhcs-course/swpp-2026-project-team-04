@@ -80,15 +80,15 @@ The Codex review of PR #45 (on `78351da`, 2026-11-10) left three comments. This 
   - Round 2: the nickname sits on its title's line and takes all the width the title leaves. The gray line under the title now runs under both. At 1.0× on a 360-dp phone the line and a 12-letter name do not fit side by side.
 - **Not fixed here (Codex P2, issue #47).** "최근 설정으로 다시 하기" guesses bot or online from the opponent's name. A fix needs the mode in the match record, which is in J3's files, so there is no code change.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on `cd88ab2`, without coverage.
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `cd88ab2`, without coverage. The coverage is from the PR's CI comment on the pushed head `57343fe` (the code of `cd88ab2` plus these notes), [run 42903634050](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/42903634050); app and server jobs succeeded.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/11 | CI comment "Tests and coverage (GitHub Actions)" on PR #45 after the push |
-| ViewModel | flutter_test, fakes | 90% | not measured on this Windows PC; TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/11 | same CI comment |
-| Service | flutter_test, MockClient, fakes | 85% | not measured on this Windows PC; TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/11 | same CI comment |
-| View | flutter_test (widget) | 75% | not measured on this Windows PC; TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/11 | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run (`server/` unchanged) | 11/11 | – |
+| Model | flutter_test | 90% | 97.4% (266/273) | 11/11 | CI comment "Tests and coverage (GitHub Actions)" on PR #45, `57343fe`, [run 42903634050](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/42903634050) |
+| ViewModel | flutter_test, fakes | 90% | 96.3% (986/1024) | 11/11 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 94.3% (2249/2384) | 11/11 | same CI comment |
+| View | flutter_test (widget) | 75% | 92.3% (4488/4860) | 11/11 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (CI: 101 passed; `server/` unchanged) | 11/11 | same CI comment |
 
 - **Tests:** `flutter test` had 1500 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same ones as on 11-08.
@@ -102,8 +102,9 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `cd88ab2`, wit
     - In `result_screen_test.dart`, 4 failed: the win test's 무효 count (amber), and "no text in lime, pink or amber" (its name then; now "a palette B fill color") for a win, a loss and a draw.
   - The DRAW test and the short-nickname test passed on the old code as well. They guard what must not change.
 - **Other checks:** `dart format --set-exit-if-changed` passes on the four changed files, and `ownership_guard.py --check-diff` is ok. Server `pytest` was not run because `server/` did not change.
-- **Coverage:** TODO(Woohyun Song): fill from the CI comment on PR #45 after the push (commit hash and run link).
-- **Shortfalls:** none known; coverage is pending.
+- **Coverage:** from the CI comment on `57343fe` ([run 42903634050](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/42903634050)): Model 97.4%, ViewModel 96.3%, Service 94.3%, View 92.3%; total 93.5% (8200/8769), other 92.5% (211/228); server 96%. CI's `flutter test` had 1500 passed, 10 skipped, 0 failed, the same as on this PC.
+  - Left out of the coverage numbers: `test/screens/result_screen_test.dart`, which hit CI's 240 s limit per file (as on 11-08). Its tests still ran and passed in `flutter test`. So the result screen's changed lines are not in the View number.
+- **Shortfalls:** none; every target is met.
 - **Manual check:** not checked on a phone for this push. The agent rendered the round-2 code with the app's fonts to images for a look by eye: the result screen (393×852; WIN, LOSE, DRAW) and 환경설정 (360×780 at 1.0×, 1.3× and 2.0× text). With the real fonts a 12-letter name is whole at 1.0× and ends in "…" at 1.3× and 2.0×. The images are not committed. To check on a phone: the nickname row with a long name, and the result screen's 무효 count.
 
 ### Test cases added or changed in this follow-up
