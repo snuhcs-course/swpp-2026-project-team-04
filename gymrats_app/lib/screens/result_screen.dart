@@ -424,12 +424,7 @@ class _MyStats extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _StatCard(
-            label: '무효',
-            value: result.myInvalidReps,
-            unit: '회',
-            color: AppColors.warning,
-          ),
+          child: _StatCard(label: '무효', value: result.myInvalidReps, unit: '회'),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -510,13 +505,13 @@ class _GradeCount extends StatelessWidget {
   }
 }
 
-/// A small card: a gray label over a number and its unit.
+/// A small card: a gray label over a number in ink and its unit. 무효 is ink
+/// too: amber is a fill, never a text color on the light ground.
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.label,
     required this.value,
     required this.unit,
-    this.color = AppColors.textPrimary,
   });
 
   final String label;
@@ -527,8 +522,6 @@ class _StatCard extends StatelessWidget {
 
   /// After the number in small gray letters, e.g. "회".
   final String unit;
-
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -552,7 +545,10 @@ class _StatCard extends StatelessWidget {
           Text.rich(
             TextSpan(
               text: value == null ? '—' : '$value',
-              style: text.displaySmall?.copyWith(fontSize: 24, color: color),
+              style: text.displaySmall?.copyWith(
+                fontSize: 24,
+                color: AppColors.ink,
+              ),
               children: [
                 if (value != null)
                   TextSpan(

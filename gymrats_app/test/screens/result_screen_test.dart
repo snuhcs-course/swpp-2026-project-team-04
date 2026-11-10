@@ -64,12 +64,16 @@ double _contrast(Color a, Color b) {
   return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
 }
 
-/// The lime and pink of palette B: fills only, never a text color.
+/// The fills of palette B: lime, pink, amber, cyan and red, never a text
+/// color.
 const _fillOnly = [
   AppColors.accent,
   AppColors.accentDeep,
   AppColors.opponent,
   AppColors.opponentDeep,
+  AppColors.warning,
+  AppColors.fever,
+  AppColors.danger,
 ];
 
 void main() {
@@ -187,7 +191,7 @@ void main() {
     expect(find.text('3회'), findsOneWidget);
     expect(
       tester.widget<Text>(find.text('3회')).textSpan!.style!.color,
-      AppColors.warning,
+      AppColors.ink,
     );
     // 26 of 29 judged reps.
     expect(find.text('정확도'), findsOneWidget);
@@ -260,8 +264,8 @@ void main() {
     });
 
     for (final outcome in MatchOutcome.values) {
-      testWidgets('a ${outcome.name} paints no text in lime or pink, '
-          'the feedback button included', (tester) async {
+      testWidgets('a ${outcome.name} paints no text in a palette B fill '
+          'color, the feedback button and 무효 included', (tester) async {
         await open(tester, _withForm(outcome));
         expect(find.text('자세 피드백 보기'), findsOneWidget);
         final colors = textColors(tester);
