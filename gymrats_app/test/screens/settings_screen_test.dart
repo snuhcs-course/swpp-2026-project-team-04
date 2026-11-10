@@ -272,6 +272,27 @@ void main() {
           find.descendant(of: find.text(text), matching: find.byType(RichText)),
         );
 
+    /// The right edge of the rows, at the 아바타 row's chevron.
+    double rowEnd(WidgetTester tester) =>
+        tester.getRect(find.byIcon(Icons.chevron_right_rounded).first).right;
+
+    testWidgets('a 12-letter nickname shows whole on a 360-wide phone at '
+        'the normal text size', (tester) async {
+      await open(tester, size: const Size(360, 780), nickname: longest);
+      expect(tester.takeException(), isNull);
+      expect(paragraphOf(tester, longest).didExceedMaxLines, isFalse);
+
+      // Right of its title, flush with the row's end; the line goes under
+      // both instead of beside the name.
+      final name = tester.getRect(find.text(longest));
+      expect(name.left, greaterThan(tester.getRect(find.text('닉네임')).right));
+      expect(name.right, moreOrLessEquals(rowEnd(tester), epsilon: 1));
+      expect(
+        tester.getRect(find.text('온라인 대결에서 상대에게 보여요')).top,
+        greaterThanOrEqualTo(name.bottom),
+      );
+    });
+
     for (final scale in const [1.3, 2.0]) {
       testWidgets('a 12-letter nickname at ${scale}x text is one line that '
           'ends in …, beside its title', (tester) async {
@@ -286,9 +307,16 @@ void main() {
         expect(paragraph.overflow, TextOverflow.ellipsis);
         expect(paragraph.didExceedMaxLines, isTrue);
 
-        // It stays right of the title and inside the screen.
+        // It takes all the room its title leaves, and no more.
         final name = tester.getRect(find.text(longest));
-        expect(name.left, greaterThan(tester.getRect(find.text('닉네임')).right));
+        expect(
+          name.left,
+          moreOrLessEquals(
+            tester.getRect(find.text('닉네임')).right + AppSpacing.s12,
+            epsilon: 1,
+          ),
+        );
+        expect(name.right, moreOrLessEquals(rowEnd(tester), epsilon: 1));
         expect(name.right, lessThanOrEqualTo(360));
         // A screen reader still reads the whole name.
         expect(
@@ -310,10 +338,7 @@ void main() {
       // Flush with the 아바타 row's chevron below it.
       expect(
         tester.getRect(find.text('우현')).right,
-        moreOrLessEquals(
-          tester.getRect(find.byIcon(Icons.chevron_right_rounded).first).right,
-          epsilon: 1,
-        ),
+        moreOrLessEquals(rowEnd(tester), epsilon: 1),
       );
     });
   });

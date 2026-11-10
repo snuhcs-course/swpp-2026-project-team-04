@@ -50,11 +50,7 @@ class SettingsScreen extends StatelessWidget {
         _Group(
           label: '프로필',
           rows: [
-            _Row(
-              title: '닉네임',
-              line: '온라인 대결에서 상대에게 보여요',
-              end: _Nickname(nickname),
-            ),
+            _Row(title: '닉네임', line: '온라인 대결에서 상대에게 보여요', value: nickname),
             // Until the characters replace the avatars (W3).
             _Row(
               title: '아바타',
@@ -161,13 +157,26 @@ class _Group extends StatelessWidget {
   }
 }
 
-/// A row's bold [title] and its gray [line] under it, then [end] at the
-/// right. Tappable when [onTap] is set.
+/// A row's bold [title], with an optional [value] at the right of it, and its
+/// gray [line] under both; then [end] at the right. Tappable when [onTap] is
+/// set.
 class _Row extends StatelessWidget {
-  const _Row({required this.title, this.line, this.end, this.onTap});
+  const _Row({
+    required this.title,
+    this.line,
+    this.value,
+    this.end,
+    this.onTap,
+  });
 
   final String title;
   final String? line;
+
+  /// Shown at the right of [title], on its line, e.g. the nickname. It takes
+  /// all the width the title leaves and ends in "…" only past that; [line]
+  /// goes under both. A screen reader still reads it whole.
+  final String? value;
+
   final Widget? end;
   final VoidCallback? onTap;
 
@@ -178,7 +187,9 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final line = this.line;
+    final value = this.value;
     final end = this.end;
+    final titleText = Text(title, style: text.lobbyRowTitle);
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(
@@ -195,7 +206,29 @@ class _Row extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: text.lobbyRowTitle),
+                    if (value == null)
+                      titleText
+                    else
+                      Row(
+                        children: [
+                          titleText,
+                          const SizedBox(width: AppSpacing.s12),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                value,
+                                maxLines: 1,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodyLarge?.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     if (line != null)
                       Text(
                         line,
@@ -210,37 +243,6 @@ class _Row extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// The nickname at the right of its row, on one line. A long one at a large
-/// text size ends in "…" instead of pushing the row past the screen; a
-/// screen reader still reads it whole.
-class _Nickname extends StatelessWidget {
-  const _Nickname(this.nickname);
-
-  final String nickname;
-
-  /// The most of the screen's width the nickname takes, so the row's title
-  /// and line keep the rest. A share of the screen, not of the row: the
-  /// page measures its rows' heights, which a [LayoutBuilder] cannot give.
-  static const _widthShare = 0.4;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.sizeOf(context).width * _widthShare,
-      ),
-      child: Text(
-        nickname,
-        maxLines: 1,
-        softWrap: false,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodyLarge
-            ?.copyWith(color: AppColors.textPrimary),
       ),
     );
   }
