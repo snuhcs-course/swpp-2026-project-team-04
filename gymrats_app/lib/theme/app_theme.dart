@@ -325,6 +325,42 @@ extension StageText on TextTheme {
   static const double stageBandSize = 100;
 }
 
+/// The text styles of the battle's camera area, under the stage: the hint
+/// line, the buttons and the reconnect band. Unlike [StageText] these follow
+/// the system text size, like the rest of the app.
+extension BattleCameraText on TextTheme {
+  /// The one-line hint under the camera, e.g. "폰을 더 세워 주세요."
+  TextStyle get cameraHint => bodyMedium!.copyWith(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    height: 1.35,
+    color: AppColors.ink,
+  );
+
+  /// A button's label on the camera, e.g. "준비".
+  TextStyle get cameraButton => bodyMedium!.copyWith(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
+  /// The reconnect band's line.
+  TextStyle get cameraNotice => bodySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
+  /// "결과 보기" on the button that ends the battle screen.
+  TextStyle get cameraResult => titleLarge!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 24,
+    fontWeight: FontWeight.w400,
+    height: 32 / 24,
+    color: AppColors.ink,
+  );
+}
+
 /// Padding and gap steps (Design Documentation 2.5.5). Screens use only
 /// these for padding and gaps.
 abstract final class AppSpacing {

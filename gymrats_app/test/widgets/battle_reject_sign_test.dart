@@ -327,12 +327,13 @@ void main() {
       );
     });
 
-    testWidgets('is announced when it comes up: a live region', (tester) async {
+    testWidgets('carries its sentence but does not say it by itself: the '
+        'stage announces it once', (tester) async {
       final handle = tester.ensureSemantics();
       await _pumpSign(tester, _sign(RejectReason.kneesDown));
       expect(
         tester.getSemantics(find.bySemanticsLabel('무릎을 바닥에서 떼요')),
-        matchesSemantics(label: '무릎을 바닥에서 떼요', isLiveRegion: true),
+        matchesSemantics(label: '무릎을 바닥에서 떼요'),
       );
       handle.dispose();
     });

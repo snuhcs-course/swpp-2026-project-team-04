@@ -266,7 +266,8 @@ class BattleRejectIconPainter extends CustomPainter {
 ///
 /// It is drawn in design points with its top left at the box the design
 /// gives it ([size]), and pops, wobbles and fades as [sign] says. A screen
-/// reader gets the full sentence of the reason.
+/// reader finds the full sentence of the reason on it; the stage says that
+/// sentence aloud when the sign comes up, so the sign itself does not.
 class BattleRejectSignView extends StatelessWidget {
   const BattleRejectSignView({super.key, required this.sign});
 
@@ -296,7 +297,6 @@ class BattleRejectSignView extends StatelessWidget {
     final icon = sign.reason.signIcon;
     return Semantics(
       container: true,
-      liveRegion: true,
       label: sign.average
           ? '${sign.reason.koreanMessage} · +${sign.points}점'
           : sign.reason.koreanMessage,

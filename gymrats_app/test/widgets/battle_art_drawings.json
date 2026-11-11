@@ -290,5 +290,37 @@
   "drawPath(path(rect(61.000, 14.000, 83.000, 30.000), length 60.8, 1 parts), fill #FF141A26)",
   "drawPath(path(rect(61.000, 14.000, 83.000, 30.000), length 60.8, 1 parts), stroke #FF141A26 3.000 round round)",
   "restore()"
+ ],
+ "puff": [
+  "save()",
+  "scale(1.000, 1.000)",
+  "drawCircle((28.000, 46.000), 18.000, fill #FFFFFFFF)",
+  "drawCircle((28.000, 46.000), 18.000, stroke #FF141A26 2.500 butt miter)",
+  "drawCircle((52.000, 50.000), 15.000, fill #FFFFFFFF)",
+  "drawCircle((52.000, 50.000), 15.000, stroke #FF141A26 2.500 butt miter)",
+  "drawCircle((42.000, 28.000), 14.000, fill #FFFFFFFF)",
+  "drawCircle((42.000, 28.000), 14.000, stroke #FF141A26 2.500 butt miter)",
+  "restore()"
+ ],
+ "reconnect arc": [
+  "save()",
+  "scale(1.000, 1.000)",
+  "drawArc(rect(2.000, 2.000, 14.000, 14.000), 0.000, 4.712, false, stroke #FF141A26 2.400 round miter)",
+  "restore()"
+ ],
+ "star": [
+  "save()",
+  "scale(1.000, 1.000)",
+  "drawPath(path(rect(4.000, 4.000, 116.000, 116.000), length 511.4, 1 parts), fill #FFFFB547)",
+  "drawPath(path(rect(4.000, 4.000, 116.000, 116.000), length 511.4, 1 parts), stroke #FF141A26 4.000 butt round)",
+  "drawPath(path(rect(32.000, 32.000, 88.000, 88.000), length 256.0, 1 parts), fill #FFFFFFFF)",
+  "restore()"
+ ],
+ "twinkle": [
+  "save()",
+  "scale(1.000, 1.000)",
+  "drawPath(path(rect(2.000, 2.000, 38.000, 38.000), length 111.4, 1 parts), fill #FFFFFFFF)",
+  "drawPath(path(rect(2.000, 2.000, 38.000, 38.000), length 111.4, 1 parts), stroke #FF141A26 2.500 butt round)",
+  "restore()"
  ]
 }

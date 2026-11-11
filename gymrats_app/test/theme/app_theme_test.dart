@@ -450,4 +450,31 @@ void main() {
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.theme, same(AppTheme.light));
   });
+
+  group('the battle\'s camera area', () {
+    final text = AppTheme.light.textTheme;
+
+    test('its texts are ink in the body font, the result button in the '
+        'display font', () {
+      expect(text.cameraHint.fontSize, 14);
+      expect(text.cameraHint.fontWeight, FontWeight.w500);
+      expect(text.cameraHint.height, 1.35);
+      expect(text.cameraButton.fontSize, 14);
+      expect(text.cameraButton.fontWeight, FontWeight.w700);
+      expect(text.cameraNotice.fontSize, 13);
+      expect(text.cameraNotice.fontWeight, FontWeight.w700);
+      expect(text.cameraResult.fontFamily, AppFonts.display);
+      expect(text.cameraResult.fontSize, 24);
+      expect(text.cameraResult.fontSize! * text.cameraResult.height!, 32);
+      for (final style in [
+        text.cameraHint,
+        text.cameraButton,
+        text.cameraNotice,
+        text.cameraResult,
+      ]) {
+        expect(style.color, AppColors.ink);
+      }
+      expect(text.cameraHint.fontFamily, AppFonts.body);
+    });
+  });
 }
