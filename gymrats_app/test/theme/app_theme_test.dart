@@ -348,6 +348,99 @@ void main() {
     });
   });
 
+  group('the battle stage', () {
+    final text = theme.textTheme;
+
+    test('every stage style is ink, spaced like the design\'s CSS, and in '
+        'the design\'s font, size and weight', () {
+      final styles = {
+        'name': (text.stageName, AppFonts.body, 14.0, FontWeight.w700),
+        'clock': (text.stageClock, AppFonts.number, 26.0, FontWeight.w700),
+        'chip': (text.stageChip, AppFonts.number, 12.0, FontWeight.w700),
+        'score': (text.stageScore, AppFonts.number, 80.0, FontWeight.w800),
+        'count': (text.stageCount, AppFonts.number, 18.0, FontWeight.w700),
+        'bar end': (text.stageBarEnd, AppFonts.number, 12.0, FontWeight.w700),
+        'tag': (text.stageTag, AppFonts.body, 13.0, FontWeight.w700),
+        'band': (text.stageBand, AppFonts.number, 100.0, FontWeight.w800),
+        'korean band': (
+          text.stageBandKorean,
+          AppFonts.display,
+          100.0,
+          FontWeight.w400,
+        ),
+        'sign label': (
+          text.stageSignLabel,
+          AppFonts.display,
+          40.0,
+          FontWeight.w400,
+        ),
+      };
+      for (final MapEntry(key: name, value: (style, family, size, weight))
+          in styles.entries) {
+        expect(style.fontFamily, family, reason: name);
+        expect(style.fontSize, size, reason: name);
+        expect(style.fontWeight, weight, reason: name);
+        expect(style.color, AppColors.ink, reason: name);
+        expect(
+          style.leadingDistribution,
+          TextLeadingDistribution.even,
+          reason: name,
+        );
+      }
+      expect(StageText.stageBandSize, text.stageBand.fontSize);
+    });
+
+    test('the label over the valid counts is the quieter secondary text', () {
+      expect(text.stageCountLabel.color, AppColors.textSecondary);
+      expect(text.stageCountLabel.fontSize, 11);
+      expect(text.stageCountLabel.fontWeight, FontWeight.w700);
+    });
+
+    test('line heights are the design\'s: the score sits tight, Korean '
+        'bands get room', () {
+      expect(text.stageScore.height, 0.92);
+      expect(text.stageScore.letterSpacing, -3);
+      expect(text.stageClock.height, 1);
+      expect(text.stageBand.height, 1);
+      expect(text.stageBand.letterSpacing, -1);
+      expect(text.stageBandKorean.height, 1.25);
+      expect(text.stageSignLabel.height, 1.2);
+      // Given in the design as a line height in points.
+      expect(text.stageCount.fontSize! * text.stageCount.height!, 20);
+      expect(
+        text.stageCountLabel.fontSize! * text.stageCountLabel.height!,
+        closeTo(14, 1e-9),
+      );
+      expect(
+        text.stageTag.fontSize! * text.stageTag.height!,
+        closeTo(16, 1e-9),
+      );
+    });
+
+    test('a band takes its own size from the base size', () {
+      final small = text.stageBand.apply(
+        fontSizeFactor: 44 / StageText.stageBandSize,
+      );
+      expect(small.fontSize, 44);
+      // The letters stay 1 closer whatever the size.
+      expect(small.letterSpacing, -1);
+    });
+
+    test('the pictograms\' floor is lighter than their gray figure', () {
+      expect(AppColors.pictogramFloor, const Color(0xFFB9C0CC));
+      expect(
+        AppColors.pictogramFloor.computeLuminance(),
+        greaterThan(AppColors.line.computeLuminance()),
+      );
+    });
+
+    test('the stage\'s bands slant 12 degrees, and each call is its own', () {
+      final slant = AppHighlight.battleSlant;
+      expect(slant.entry(0, 1), closeTo(math.tan(-12 * math.pi / 180), 1e-12));
+      expect(identical(slant, AppHighlight.battleSlant), isFalse);
+    });
+  });
+
   test('AppTheme.dark is the light theme, under its old name', () {
     expect(AppTheme.dark, same(AppTheme.light));
   });

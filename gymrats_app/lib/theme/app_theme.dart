@@ -74,6 +74,10 @@ abstract final class AppColors {
   /// Behind a chosen option, with an [ink] edge.
   static const selectedFill = Color(0xFFF6FFE6);
 
+  /// The floor line in the battle's reject pictograms: lighter than the
+  /// gray figure standing on it.
+  static const pictogramFloor = Color(0xFFB9C0CC);
+
   /// Text on an [ink] fill, such as the 대결 시작 button: the one exception
   /// to ink text, since a dark fill needs light text (palette B).
   static const onInk = Color(0xFFFFFFFF);
@@ -208,6 +212,119 @@ extension LobbyText on TextTheme {
   );
 }
 
+/// The text styles of the battle stage (the HUD, the bands, the tags and the
+/// reject sign), in the stage's own 360 x 390 design points: the stage is
+/// sized as a whole to fit the screen, so these do not follow the system
+/// text size. All ink, on a light ground or a color fill.
+///
+/// Lines are spaced like the design's CSS: the extra height is split evenly
+/// above and below the letters.
+extension StageText on TextTheme {
+  TextStyle _stage({
+    required String family,
+    required double size,
+    required FontWeight weight,
+    double? height,
+    double spacing = 0,
+    Color color = AppColors.ink,
+  }) => bodyMedium!.copyWith(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: spacing,
+    color: color,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// A player's nickname beside their color swatch.
+  TextStyle get stageName =>
+      _stage(family: AppFonts.body, size: 14, weight: FontWeight.w700);
+
+  /// The clock, e.g. "0:23".
+  TextStyle get stageClock => _stage(
+    family: AppFonts.number,
+    size: 26,
+    weight: FontWeight.w700,
+    height: 1,
+  );
+
+  /// The chip beside the clock, e.g. "+15 앞섬", "FEVER ×2".
+  TextStyle get stageChip =>
+      _stage(family: AppFonts.number, size: 12, weight: FontWeight.w700);
+
+  /// A player's game score.
+  TextStyle get stageScore => _stage(
+    family: AppFonts.number,
+    size: 80,
+    weight: FontWeight.w800,
+    height: 0.92,
+    spacing: -3,
+  );
+
+  /// "유효 횟수" over the two valid rep counts.
+  TextStyle get stageCountLabel => _stage(
+    family: AppFonts.body,
+    size: 11,
+    weight: FontWeight.w700,
+    height: 14 / 11,
+    color: AppColors.textSecondary,
+  );
+
+  /// A valid rep count, and the ":" between the two.
+  TextStyle get stageCount => _stage(
+    family: AppFonts.number,
+    size: 18,
+    weight: FontWeight.w700,
+    height: 20 / 18,
+  );
+
+  /// "KO" under each end of the bar.
+  TextStyle get stageBarEnd => _stage(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w700,
+    height: 1,
+  );
+
+  /// The pill over a fighter's head, e.g. "준비 완료".
+  TextStyle get stageTag => _stage(
+    family: AppFonts.body,
+    size: 13,
+    weight: FontWeight.w700,
+    height: 16 / 13,
+  );
+
+  /// A band of numbers or English, e.g. "MISS", "K.O.", at [stageBandSize].
+  /// A band takes its own size with `apply(fontSizeFactor:)`.
+  TextStyle get stageBand => _stage(
+    family: AppFonts.number,
+    size: stageBandSize,
+    weight: FontWeight.w800,
+    height: 1,
+    spacing: -1,
+  );
+
+  /// A band of Korean, e.g. "자세 세팅 중", at [stageBandSize].
+  TextStyle get stageBandKorean => _stage(
+    family: AppFonts.display,
+    size: stageBandSize,
+    weight: FontWeight.w400,
+    height: 1.25,
+  );
+
+  /// The short label under the reject sign's pictogram, e.g. "더 깊게".
+  TextStyle get stageSignLabel => _stage(
+    family: AppFonts.display,
+    size: 40,
+    weight: FontWeight.w400,
+    height: 1.2,
+  );
+
+  /// The size [stageBand] and [stageBandKorean] are given at.
+  static const double stageBandSize = 100;
+}
+
 /// Padding and gap steps (Design Documentation 2.5.5). Screens use only
 /// these for padding and gaps.
 abstract final class AppSpacing {
@@ -267,6 +384,10 @@ abstract final class AppHighlight {
   /// The marker's slant, as the design draws WIN and LOSE. A new matrix each
   /// time, so no one changes another's.
   static Matrix4 get slant => Matrix4.skewX(-10 * math.pi / 180);
+
+  /// The steeper slant of the battle stage's bands: behind the scores, the
+  /// band texts and the reject sign's label. A new matrix each time.
+  static Matrix4 get battleSlant => Matrix4.skewX(-12 * math.pi / 180);
 
   /// A soft pill of [color] behind ink text, for chips: points (lime),
   /// fever (cyan), warnings (amber), danger (red). [strength] is how much of
