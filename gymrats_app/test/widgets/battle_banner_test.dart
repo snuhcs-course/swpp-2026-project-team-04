@@ -490,6 +490,78 @@ void main() {
     BattleFxBanner only(BattleFxTimeline fx, double now, String text) =>
         fx.frame(now).banners.singleWhere((b) => b.text == text);
 
+    testWidgets('the grade words: EXCELLENT 144 to 238, GOOD 151 to 230, '
+        'AVERAGE 162 to 220', (tester) async {
+      for (final (grade, text, top, bottom) in [
+        (GameGrade.excellent, 'EXCELLENT', 144.0, 238.0),
+        (GameGrade.good, 'GOOD', 151.0, 230.0),
+        (GameGrade.average, 'AVERAGE', 162.0, 220.0),
+      ]) {
+        final fx = BattleFxTimeline()
+          ..rep(
+            BattleStageEvent(
+              side: BattleSide.me,
+              grade: grade,
+              points: 10,
+              combo: 1,
+            ),
+            0,
+          );
+        await expectSpan(tester, only(fx, 80 + 250, text), top, bottom);
+      }
+    });
+
+    testWidgets('the points: +N 144 to 252; an average rep\'s, as wide as a '
+        'fever +10, 159 to 236', (tester) async {
+      BattleFxTimeline scored(GameGrade grade, int points) => BattleFxTimeline()
+        ..rep(
+          BattleStageEvent(
+            side: BattleSide.me,
+            grade: grade,
+            points: points,
+            combo: 1,
+          ),
+          0,
+        );
+      for (final points in [10, 20, 40]) {
+        await expectSpan(
+          tester,
+          only(scored(GameGrade.good, points), 80 + 700, '+$points'),
+          144,
+          252,
+        );
+      }
+      await expectSpan(
+        tester,
+        only(scored(GameGrade.average, 10), 80 + 700, '+10'),
+        159,
+        236,
+      );
+      // A plain +5 is narrower: inside the same span.
+      await _pumpBanner(tester, only(scored(GameGrade.average, 5), 780, '+5'));
+      expect(_span(tester).top, greaterThan(159 - 1.5));
+      expect(_span(tester).bottom, lessThan(236 + 1.5));
+    });
+
+    testWidgets('a score band\'s bottom reaches at most 25 into the head top '
+        'at 227 to 234, never the headband from 256', (tester) async {
+      final fx = BattleFxTimeline()
+        ..rep(
+          const BattleStageEvent(
+            side: BattleSide.me,
+            grade: GameGrade.excellent,
+            points: 40,
+            combo: 3,
+          ),
+          0,
+        );
+      for (final now in [80 + 250.0, 80 + 700.0]) {
+        await _pumpBanner(tester, fx.frame(now).banners.single);
+        expect(_span(tester).top, greaterThan(136));
+        expect(_span(tester).bottom, lessThan(256));
+      }
+    });
+
     testWidgets('MISS from 144 to 242, under the time bar', (tester) async {
       final fx = BattleFxTimeline()
         ..rep(const BattleStageEvent(side: BattleSide.me, grade: null), 0);

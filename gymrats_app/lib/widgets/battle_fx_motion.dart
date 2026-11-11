@@ -94,6 +94,44 @@ abstract final class BattleFx {
     );
   }
 
+  /// The word of a rep's [grade] (the design's `wordOf`), shown as its blow
+  /// lands: where and how large, how long it stays, and how long after the
+  /// blow its points follow. Excellent is the largest and stays longest.
+  static ({
+    String text,
+    double top,
+    double size,
+    double scaleX,
+    double length,
+    double pointsAfter,
+  })
+  gradeWord(GameGrade grade) => switch (grade) {
+    GameGrade.excellent => (
+      text: 'EXCELLENT',
+      top: 153,
+      size: 84,
+      scaleX: 0.54,
+      length: 520,
+      pointsAfter: 470,
+    ),
+    GameGrade.good => (
+      text: 'GOOD',
+      top: 158,
+      size: 72,
+      scaleX: 0.8,
+      length: 400,
+      pointsAfter: 350,
+    ),
+    GameGrade.average => (
+      text: 'AVERAGE',
+      top: 168,
+      size: 48,
+      scaleX: 0.68,
+      length: 400,
+      pointsAfter: 350,
+    ),
+  };
+
   /// How hard a rep of [grade] hits; 0 for one that misses.
   static double powerOf(GameGrade? grade) => switch (grade) {
     GameGrade.excellent => 1.6,
@@ -478,8 +516,21 @@ class _SideFx {
   double comboAt = double.negativeInfinity;
   double repsBumpAt = double.negativeInfinity;
 
-  /// When this side's "MISS" pops up.
-  double missAt = double.negativeInfinity;
+  /// The bands of this side's latest rep; the next rep replaces them.
+  _Pop? pop;
+}
+
+/// The bands of one rep: "MISS" for a swing that missed, or the grade word
+/// and then the points for a blow that landed.
+class _Pop {
+  const _Pop(this.at, this.grade, this.points);
+
+  /// When the first band pops up: as the blow lands, or 110 ms into a miss.
+  final double at;
+
+  /// Null for a miss.
+  final GameGrade? grade;
+  final int points;
 }
 
 class _Sign {
@@ -641,7 +692,7 @@ class BattleFxTimeline {
       other.act = _Act(_ActKind.hit, impact, power);
       _hit = _Hit(event.side, impact, power, event.fever, _hits);
       side.scoreBumpAt = impact;
-      side.missAt = double.negativeInfinity;
+      side.pop = _Pop(impact, event.grade, event.points);
       if (cue) {
         _cues.add((
           impact,
@@ -654,7 +705,7 @@ class BattleFxTimeline {
       }
     } else {
       side.act = _Act(_ActKind.miss, now, power);
-      side.missAt = now + 110;
+      side.pop = _Pop(now + 110, null, 0);
       _cues.add((now, BattleStageCue(BattleCueKind.miss, side: event.side)));
     }
     // The sign is only for the user's own rep that did not count; the latest
@@ -1156,22 +1207,63 @@ class BattleFxTimeline {
     // opponent's bands come first, so the user's are drawn over them.
     final cleared = end?.kind == BattleEndKind.knockout && sinceEnd > 300;
     for (final who in const [BattleSide.opponent, BattleSide.me]) {
+      final rep = cleared ? null : _sides[who]!.pop;
+      if (rep == null) continue;
       final sign = who == BattleSide.me ? 1.0 : -1.0;
-      final miss = cleared
-          ? null
-          : BattleFx.pop(now - _sides[who]!.missAt, 760);
-      if (miss != null) {
+      final d = now - rep.at;
+      final grade = rep.grade;
+      if (grade == null) {
+        final miss = BattleFx.pop(d, 760);
+        if (miss != null) {
+          add(
+            BattleFxBanner(
+              text: 'MISS',
+              top: 155,
+              textSize: 84,
+              tone: BattleFxTone.plain,
+              opacity: miss.opacity,
+              dx: -sign * 56,
+              rotation: sign * 7,
+              scaleX: 0.78 * miss.scale,
+              scaleY: miss.scale,
+            ),
+          );
+        }
+        continue;
+      }
+      // The grade word as the blow lands, then the points, which come up
+      // while the word fades. Average's are amber and smaller.
+      final word = BattleFx.gradeWord(grade);
+      final average = grade == GameGrade.average;
+      final tone = average ? BattleFxTone.average : toneOf(who);
+      final shown = BattleFx.pop(d, word.length);
+      if (shown != null) {
         add(
           BattleFxBanner(
-            text: 'MISS',
-            top: 155,
-            textSize: 84,
-            tone: BattleFxTone.plain,
-            opacity: miss.opacity,
-            dx: -sign * 56,
-            rotation: sign * 7,
-            scaleX: 0.78 * miss.scale,
-            scaleY: miss.scale,
+            text: word.text,
+            top: word.top,
+            textSize: word.size,
+            tone: tone,
+            opacity: shown.opacity,
+            rotation: -4 * sign,
+            scaleX: word.scaleX * shown.scale,
+            scaleY: shown.scale,
+          ),
+        );
+      }
+      final points = BattleFx.pop(d - word.pointsAfter, average ? 720 : 880);
+      if (points != null) {
+        add(
+          BattleFxBanner(
+            text: '+${rep.points}',
+            top: average ? 165 : 152,
+            textSize: average ? 72 : 104,
+            tone: tone,
+            opacity: points.opacity,
+            dx: sign * 34,
+            rotation: -4 * sign,
+            scaleX: points.scale,
+            scaleY: points.scale,
           ),
         );
       }

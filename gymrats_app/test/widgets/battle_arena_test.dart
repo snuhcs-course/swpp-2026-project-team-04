@@ -373,6 +373,27 @@ void main() {
       expect(await markTop(true), closeTo(390 + 14 + 34, 0.5));
     });
 
+    testWidgets('a blow shows its grade word as it lands, then its points '
+        '(UAT-5 "the label appears at once")', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _wait(tester, 500);
+      controller.rep(_myGood);
+      await _pump(tester, controller, _state(me: 10, myReps: 1));
+      await _wait(tester, 60);
+      expect(find.text('GOOD'), findsNothing);
+      await _wait(tester, 40);
+      expect(find.text('GOOD'), findsOneWidget);
+      expect(find.text('+10'), findsNothing);
+      // The score is already up; the band repeats it.
+      expect(find.text('10'), findsOneWidget);
+      await _wait(tester, 400);
+      expect(find.text('+10'), findsOneWidget);
+      expect(find.text('GOOD'), findsNothing);
+      await _wait(tester, 1000);
+      expect(find.text('+10'), findsNothing);
+    });
+
     testWidgets('on a larger phone the combo mark is sized with the stage', (
       tester,
     ) async {

@@ -16,8 +16,8 @@ import 'package:gymrats_app/widgets/battle_stage_model.dart';
 /// shake and zoom, the star, twinkle, puff, sign, the bands (in the order
 /// they are drawn, with their band sizes), the combo marks, the bumps, the
 /// fever and danger opacities, the chip and the result button. Not compared:
-/// `hud.clock` and the time bar (the design's own demo values), and the
-/// bands of [_gradeBand]. The scores and rep counts are inputs: the game
+/// `hud.clock` and the time bar (the design's own demo values). The scores
+/// and rep counts are inputs: the game
 /// gives them to the stage, so here they pick the chip's words and whether a
 /// score has three digits. Each scenario's `after` is checked against how
 /// the scenario was played.
@@ -25,12 +25,6 @@ const _goldenPath = 'test/widgets/battle_fx_golden.json';
 
 /// The stage clock at a sample's `t = 0`.
 const _eventAt = 1000.0;
-
-/// The grade words and the points after them ("GOOD", then "+10") are not
-/// built yet; until they are, they are left out of the check.
-bool _gradeBand(String text) =>
-    text.startsWith('+') ||
-    const {'GOOD', 'EXCELLENT', 'AVERAGE'}.contains(text);
 
 /// One thing that happens in a scenario, [at] on the stage clock.
 typedef _Step = ({
@@ -409,8 +403,7 @@ class _Check {
     ];
     final wanted = [
       for (final g in golden.cast<Map<String, dynamic>>())
-        if (!_gradeBand(g['text'] as String) && (g['opacity'] as num) > opacity)
-          g,
+        if ((g['opacity'] as num) > opacity) g,
     ];
     same(
       'bands',
@@ -757,6 +750,166 @@ void main() {
         )!.text,
         'FEVER ×3',
       );
+    });
+  });
+
+  group('grade words and points (spec v2.1)', () {
+    List<String> texts(BattleFxTimeline fx, double now) =>
+        fx.frame(now).banners.map((b) => b.text).toList();
+
+    test('the word comes as the blow lands, its points follow and overlap '
+        'it for 50 ms', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
+      expect(texts(fx, 79), isEmpty);
+      expect(texts(fx, 80), ['GOOD']);
+      expect(texts(fx, 429), ['GOOD']);
+      expect(texts(fx, 460), ['GOOD', '+10']);
+      expect(texts(fx, 481), ['+10']);
+      // Faded out over its last 120 ms: gone at its very end.
+      expect(texts(fx, 80 + 350 + 870), ['+10']);
+      expect(texts(fx, 80 + 350 + 880), isEmpty);
+    });
+
+    test('Excellent is the largest and stays the longest', () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          _rep(BattleSide.me, GameGrade.excellent, points: 20, combo: 2),
+          0,
+        );
+      final word = fx.frame(300).banners.single;
+      expect((word.text, word.textSize, word.top), ('EXCELLENT', 84, 153));
+      expect(word.scaleX, closeTo(0.54, 1e-9));
+      expect(texts(fx, 80 + 469), ['EXCELLENT']);
+      expect(texts(fx, 80 + 500), ['EXCELLENT', '+20']);
+      expect(texts(fx, 80 + 521), ['+20']);
+      final points = fx.frame(80 + 700).banners.single;
+      expect((points.textSize, points.top, points.dx), (104, 152, 34));
+    });
+
+    test('an average rep: amber AVERAGE, then a smaller amber +5', () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          _rep(
+            BattleSide.me,
+            GameGrade.average,
+            points: 5,
+            reason: RejectReason.insufficientDepth,
+          ),
+          0,
+        );
+      final word = fx.frame(300).banners.single;
+      expect(
+        (word.text, word.tone, word.textSize),
+        ('AVERAGE', BattleFxTone.average, 48),
+      );
+      expect(word.scaleX, closeTo(0.68, 1e-9));
+      final points = fx.frame(800).banners.single;
+      expect(
+        (points.text, points.tone, points.textSize, points.top),
+        ('+5', BattleFxTone.average, 72, 165),
+      );
+      expect(texts(fx, 80 + 350 + 710), ['+5']);
+      expect(texts(fx, 80 + 350 + 720), isEmpty);
+    });
+
+    test('the opponent\'s are pink and lean and move the other way; '
+        'their average is amber too', () {
+      final good = BattleFxTimeline()..rep(_good(BattleSide.opponent), 0);
+      final word = good.frame(300).banners.single;
+      expect((word.tone, word.rotation), (BattleFxTone.opponent, 4));
+      final points = good.frame(700).banners.single;
+      expect(
+        (points.tone, points.rotation, points.dx),
+        (BattleFxTone.opponent, 4, -34),
+      );
+      final average = BattleFxTimeline()
+        ..rep(_rep(BattleSide.opponent, GameGrade.average, points: 5), 0);
+      expect(average.frame(300).banners.single.tone, BattleFxTone.average);
+      expect(average.frame(300).sign, isNull);
+    });
+
+    test('my word leans the other way from theirs and is drawn over it', () {
+      final fx = BattleFxTimeline()
+        ..rep(_good(BattleSide.opponent), 0)
+        ..rep(_good(BattleSide.me), 100);
+      final bands = fx.frame(300).banners;
+      expect(bands.map((b) => (b.text, b.tone)), [
+        ('GOOD', BattleFxTone.opponent),
+        ('GOOD', BattleFxTone.me),
+      ]);
+      expect(bands.map((b) => b.rotation), [4, -4]);
+    });
+
+    test('the points are the rep\'s own: combo and fever included', () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          _rep(
+            BattleSide.me,
+            GameGrade.good,
+            points: 30,
+            combo: 2,
+            fever: true,
+          ),
+          0,
+        );
+      expect(texts(fx, 700), ['+30']);
+    });
+
+    test('the next rep of the same side takes its bands down at once', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
+      expect(texts(fx, 499), ['+10']);
+      fx.rep(_good(BattleSide.me, combo: 2), 500);
+      expect(texts(fx, 500), isEmpty);
+      expect(texts(fx, 580), ['GOOD']);
+      // The other side's bands stay.
+      final both = BattleFxTimeline()
+        ..rep(_good(BattleSide.opponent), 0)
+        ..rep(_good(BattleSide.me), 500);
+      expect(texts(both, 520), ['+10']);
+    });
+
+    test('a miss takes the same side\'s word and points down at once and '
+        'shows its own MISS; a second miss replaces the first', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
+      expect(texts(fx, 599), ['+10']);
+      fx.rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 600);
+      expect(texts(fx, 600), isEmpty);
+      expect(texts(fx, 720), ['MISS']);
+      fx.rep(_rep(BattleSide.me, null, reason: RejectReason.phoneMoved), 1600);
+      expect(texts(fx, 1600), isEmpty);
+      expect(texts(fx, 1720), ['MISS']);
+      expect(fx.frame(1720).banners.single.scaleY, lessThan(1));
+    });
+
+    test('a time-up or a player leaving lets the bands play out; only a '
+        'knockout clears them', () {
+      final timeUp = BattleFxTimeline()
+        ..rep(_good(BattleSide.me), 0)
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+          500,
+        );
+      expect(texts(timeUp, 900), ['+10', 'TIME!']);
+      final left = BattleFxTimeline()
+        ..rep(_good(BattleSide.me), 0)
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+          500,
+        );
+      expect(texts(left, 1000), ['+10', '상대가 나가서 이겼어요']);
+    });
+
+    test('a knockout takes the blow\'s bands down 300 ms after it lands', () {
+      final fx = BattleFxTimeline()
+        ..rep(_good(BattleSide.me, knockout: true), 0);
+      expect(texts(fx, 80 + 300), ['GOOD']);
+      expect(texts(fx, 80 + 301), isEmpty);
     });
   });
 
@@ -1295,7 +1448,7 @@ void main() {
         500,
       );
       expect(fx.frame(600).combos, isEmpty);
-      expect(fx.frame(600).banners.map((b) => b.text), ['TIME!']);
+      expect(fx.frame(600).banners.map((b) => b.text), contains('TIME!'));
     });
 
     test('N HIT stays 1700 ms and fades over its last 200', () {
@@ -1324,7 +1477,9 @@ void main() {
         ..rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 0);
       expect(fx.frame(300).banners.map((b) => b.text), ['MISS']);
       fx.rep(_good(BattleSide.me), 300);
-      expect(fx.frame(400).banners, isEmpty);
+      // Gone at once, before the blow's own word comes up.
+      expect(fx.frame(301).banners, isEmpty);
+      expect(fx.frame(400).banners.map((b) => b.text), ['GOOD']);
     });
 
     test('two MISS bands show at once, one on each side, mine drawn last', () {
