@@ -79,6 +79,172 @@ class BattleStageEnd {
   final bool decided;
 }
 
+/// Where the battle is, as the stage shows it.
+enum BattleStagePhase {
+  /// Before the start: the players are placing their phones and themselves.
+  setup,
+
+  /// Both are ready: counting down to the start.
+  countdown,
+
+  /// The round is on.
+  playing,
+
+  /// The battle is over; [BattleStageState.end] says how.
+  ended,
+}
+
+/// Everything the stage shows that is not a one-time event: who plays, the
+/// game's standing, and where the battle is. A battle screen builds it from
+/// its own state on every change; the stage knows no view model.
+class BattleStageState {
+  const BattleStageState({
+    required this.phase,
+    required this.myName,
+    required this.opponentName,
+    required this.remaining,
+    required this.roundLength,
+    this.myScore = 0,
+    this.opponentScore = 0,
+    this.myReps = 0,
+    this.opponentReps = 0,
+    this.barShare = 0.5,
+    this.fever = false,
+    this.feverMultiplier = 2,
+    this.danger = false,
+    this.meReady = false,
+    this.opponentReady = false,
+    this.countdown,
+    this.reconnecting = false,
+    this.opponentDisconnected = false,
+    this.end,
+  });
+
+  final BattleStagePhase phase;
+  final String myName;
+  final String opponentName;
+
+  /// Time left in the round, and how long the round is.
+  final Duration remaining;
+  final Duration roundLength;
+
+  final int myScore;
+  final int opponentScore;
+
+  /// Valid reps.
+  final int myReps;
+  final int opponentReps;
+
+  /// The user's share of the health bar, from 0 to 1.
+  final double barShare;
+
+  final bool fever;
+
+  /// What fever multiplies points by, for the chip and the band.
+  final int feverMultiplier;
+
+  /// Whether the user is far enough behind to lose soon.
+  final bool danger;
+
+  /// In [BattleStagePhase.setup]: who has finished setting up.
+  final bool meReady;
+  final bool opponentReady;
+
+  /// In [BattleStagePhase.countdown]: the time left before the start, exact
+  /// to the millisecond.
+  final Duration? countdown;
+
+  /// Online: the user's own connection is down and is being restored.
+  final bool reconnecting;
+
+  /// Online: the opponent's connection is down, not yet long enough to
+  /// count as leaving.
+  final bool opponentDisconnected;
+
+  /// How the battle ended; null until it has.
+  final BattleStageEnd? end;
+
+  /// The user's lead in points; negative while behind.
+  int get lead => myScore - opponentScore;
+
+  /// Whole seconds left, rounded up.
+  int get secondsLeft =>
+      (remaining.inMicroseconds / Duration.microsecondsPerSecond).ceil();
+
+  /// How much of the round has passed, from 0 to 1.
+  double get elapsed {
+    if (roundLength <= Duration.zero) return 0;
+    final passed = 1 - remaining.inMicroseconds / roundLength.inMicroseconds;
+    return passed.clamp(0.0, 1.0);
+  }
+}
+
+/// What a [BattleStageCue] marks.
+enum BattleCueKind {
+  /// A blow lands.
+  hit,
+
+  /// A swing misses: a rep that earned nothing.
+  miss,
+
+  /// The blow that ends the battle by KO lands, or the server reports a KO.
+  knockout,
+
+  /// The clock runs out.
+  timeUp,
+
+  /// After a time-up, the verdict shows: WIN!, LOSE or DRAW.
+  verdict,
+
+  /// A number of the countdown shows: 3, 2, 1.
+  countdown,
+
+  /// The round starts: "GO!".
+  go,
+
+  /// A player left or stayed disconnected too long.
+  playerLeft,
+}
+
+/// A moment on the stage that a sound, or a screen reader, can follow. The
+/// stage gives each one once, at the moment it shows.
+class BattleStageCue {
+  const BattleStageCue(this.kind, {this.side, this.grade, this.number});
+
+  final BattleCueKind kind;
+
+  /// Who attacked ([BattleCueKind.hit], [BattleCueKind.miss]) or who won
+  /// ([BattleCueKind.knockout], [BattleCueKind.playerLeft],
+  /// [BattleCueKind.verdict], where null is a draw); null otherwise.
+  final BattleSide? side;
+
+  /// The grade of the rep that landed, for [BattleCueKind.hit], and for a
+  /// [BattleCueKind.knockout] that a blow caused.
+  final GameGrade? grade;
+
+  /// The number shown, for [BattleCueKind.countdown].
+  final int? number;
+
+  @override
+  bool operator ==(Object other) =>
+      other is BattleStageCue &&
+      other.kind == kind &&
+      other.side == side &&
+      other.grade == grade &&
+      other.number == number;
+
+  @override
+  int get hashCode => Object.hash(kind, side, grade, number);
+
+  @override
+  String toString() => [
+    kind.name,
+    if (side != null) side!.name,
+    if (grade != null) grade!.name,
+    if (number != null) '$number',
+  ].join(' ');
+}
+
 /// The reject sign of a [RejectReason]: its pictogram and its short label.
 extension BattleRejectSign on RejectReason {
   /// The pictogram's number in the design (FxIcon), or null when the reason

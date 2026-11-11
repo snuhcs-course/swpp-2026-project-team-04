@@ -472,10 +472,26 @@ class BattleFxTimeline {
   double _endAt = 0;
   double? _decidedAt;
 
+  /// Whether the knockout came with the blow that caused it.
+  bool _endByBlow = false;
+
+  /// How long after a knockout was reported its blow may still arrive and
+  /// be played as the ending blow.
+  static const _blowSlack = 250.0;
+
   bool _setup = false;
   bool _meReady = false;
   bool _opponentReady = false;
   double? _countEnd;
+
+  /// The cues still to come, each with its moment.
+  final _cues = <(double, BattleStageCue)>[];
+
+  /// The last countdown number given as a cue (4 before the first), and
+  /// whether the start was.
+  int _countSaid = 4;
+  bool _goSaid = false;
+  bool _verdictSaid = false;
 
   /// Whether the user is far enough behind to lose soon.
   bool danger = false;
@@ -502,9 +518,35 @@ class BattleFxTimeline {
   }
 
   /// Plays a rep: the attack and the blow that lands [BattleFx.impactDelay]
-  /// later, or a swing that misses. Nothing plays once the battle has ended.
-  void rep(BattleStageEvent event, double now) {
-    if (_end != null) return;
+  /// later, or a swing that misses. Nothing plays once the battle has ended,
+  /// and it then returns false.
+  ///
+  /// One rep is still played after the end: the blow of a knockout that was
+  /// reported just before it. The game ends the round the moment a KO lead is
+  /// reached, and the rep that reached it can be heard of a moment later.
+  bool rep(BattleStageEvent event, double now) {
+    final end = _end;
+    if (end != null) {
+      final itsBlow =
+          event.knockout &&
+          event.grade != null &&
+          end.kind == BattleEndKind.knockout &&
+          end.winner == event.side &&
+          !_endByBlow &&
+          now - _endAt <= _blowSlack;
+      if (!itsBlow) return false;
+      // The ring-out starts over from this blow; its cue replaces the one
+      // of the report, unless that was already given.
+      final pending = _cues.length;
+      _cues.removeWhere((cue) => cue.$2.kind == BattleCueKind.knockout);
+      _play(event, now, cue: _cues.length < pending);
+      return true;
+    }
+    _play(event, now, cue: true);
+    return true;
+  }
+
+  void _play(BattleStageEvent event, double now, {required bool cue}) {
     final side = _sides[event.side]!;
     final other = _sides[event.side.other]!;
     final impact = now + BattleFx.impactDelay;
@@ -523,9 +565,20 @@ class BattleFxTimeline {
       _hit = _Hit(event.side, impact, power, event.fever, _hits);
       side.scoreBumpAt = impact;
       side.missAt = double.negativeInfinity;
+      if (cue) {
+        _cues.add((
+          impact,
+          BattleStageCue(
+            event.knockout ? BattleCueKind.knockout : BattleCueKind.hit,
+            side: event.side,
+            grade: event.grade,
+          ),
+        ));
+      }
     } else {
       side.act = _Act(_ActKind.miss, now, power);
       side.missAt = now + 110;
+      _cues.add((now, BattleStageCue(BattleCueKind.miss, side: event.side)));
     }
     // The sign is only for the user's own rep that did not count; the latest
     // one replaces the one before, and one without a reason shows none.
@@ -541,6 +594,7 @@ class BattleFxTimeline {
       _end = BattleStageEnd(kind: BattleEndKind.knockout, winner: event.side);
       _endAt = impact;
       _decidedAt = impact;
+      _endByBlow = true;
     }
   }
 
@@ -562,8 +616,58 @@ class BattleFxTimeline {
     if (current != null && (current.decided || !end.decided)) return;
     final settles = current != null && end.kind == BattleEndKind.timeUp;
     _end = end;
-    if (!settles) _endAt = now;
+    if (!settles) {
+      _endAt = now;
+      _cues.add((
+        now,
+        switch (end.kind) {
+          BattleEndKind.knockout => BattleStageCue(
+            BattleCueKind.knockout,
+            side: end.winner,
+          ),
+          BattleEndKind.timeUp => const BattleStageCue(BattleCueKind.timeUp),
+          BattleEndKind.playerLeft => BattleStageCue(
+            BattleCueKind.playerLeft,
+            side: end.winner,
+          ),
+        },
+      ));
+    }
     _decidedAt = end.decided ? now : null;
+  }
+
+  /// The cues whose moment has come by [now], each given once, in order: a
+  /// blow landing, a miss, the countdown numbers, the start, the ending, and
+  /// after a time-up its verdict.
+  List<BattleStageCue> takeCues(double now) {
+    _cues.sort((a, b) => a.$1.compareTo(b.$1));
+    final due = <BattleStageCue>[];
+    while (_cues.isNotEmpty && _cues.first.$1 <= now) {
+      due.add(_cues.removeAt(0).$2);
+    }
+    final countEnd = _countEnd;
+    if (countEnd != null) {
+      if (now < countEnd) {
+        // The number on screen now; one that was skipped is not said late.
+        final number = ((countEnd - now) / 1000).ceil();
+        if (number <= 3 && number < _countSaid) {
+          _countSaid = number;
+          due.add(BattleStageCue(BattleCueKind.countdown, number: number));
+        }
+      } else if (!_goSaid) {
+        _goSaid = true;
+        due.add(const BattleStageCue(BattleCueKind.go));
+      }
+    }
+    final verdictAt = _verdictAt;
+    if (!_verdictSaid &&
+        _end?.kind == BattleEndKind.timeUp &&
+        verdictAt != null &&
+        now > verdictAt) {
+      _verdictSaid = true;
+      due.add(BattleStageCue(BattleCueKind.verdict, side: _end?.winner));
+    }
+    return due;
   }
 
   /// Before the round: who has finished setting up. Setting up again stops a
@@ -577,7 +681,11 @@ class BattleFxTimeline {
     _setup = active;
     _meReady = meReady;
     _opponentReady = opponentReady;
-    if (active) _countEnd = null;
+    if (active) {
+      _countEnd = null;
+      _countSaid = 4;
+      _goSaid = false;
+    }
   }
 
   /// Counts down to the start, [remaining] from [now], and ends the setup.

@@ -78,4 +78,116 @@ void main() {
       expect(icons.toSet(), {for (var i = 0; i < 10; i++) i});
     });
   });
+
+  group('BattleStageState', () {
+    const state = BattleStageState(
+      phase: BattleStagePhase.playing,
+      myName: 'A',
+      opponentName: 'B',
+      remaining: Duration(milliseconds: 7200),
+      roundLength: Duration(seconds: 30),
+      myScore: 40,
+      opponentScore: 55,
+    );
+
+    test('the lead is negative while behind', () {
+      expect(state.lead, -15);
+    });
+
+    test('the seconds left round up, as the clock shows them', () {
+      expect(state.secondsLeft, 8);
+      expect(
+        const BattleStageState(
+          phase: BattleStagePhase.playing,
+          myName: 'A',
+          opponentName: 'B',
+          remaining: Duration(seconds: 30),
+          roundLength: Duration(seconds: 30),
+        ).secondsLeft,
+        30,
+      );
+    });
+
+    test('elapsed runs from 0 to 1 and stays inside', () {
+      expect(state.elapsed, closeTo(22.8 / 30, 1e-9));
+      BattleStageState at(Duration remaining, Duration length) =>
+          BattleStageState(
+            phase: BattleStagePhase.playing,
+            myName: 'A',
+            opponentName: 'B',
+            remaining: remaining,
+            roundLength: length,
+          );
+      expect(
+        at(const Duration(seconds: 30), const Duration(seconds: 30)).elapsed,
+        0,
+      );
+      expect(at(Duration.zero, const Duration(seconds: 30)).elapsed, 1);
+      expect(
+        at(const Duration(seconds: 40), const Duration(seconds: 30)).elapsed,
+        0,
+      );
+      expect(at(Duration.zero, Duration.zero).elapsed, 0);
+    });
+
+    test('starts level, with nobody ready and no end', () {
+      expect(state.barShare, 0.5);
+      expect(state.fever, isFalse);
+      expect(state.feverMultiplier, 2);
+      expect(state.danger, isFalse);
+      expect(state.meReady, isFalse);
+      expect(state.opponentReady, isFalse);
+      expect(state.countdown, isNull);
+      expect(state.reconnecting, isFalse);
+      expect(state.opponentDisconnected, isFalse);
+      expect(state.end, isNull);
+    });
+  });
+
+  group('BattleStageCue', () {
+    test('two cues with the same parts are equal', () {
+      const a = BattleStageCue(
+        BattleCueKind.hit,
+        side: BattleSide.me,
+        grade: GameGrade.good,
+      );
+      const b = BattleStageCue(
+        BattleCueKind.hit,
+        side: BattleSide.me,
+        grade: GameGrade.good,
+      );
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+      expect(
+        a,
+        isNot(
+          const BattleStageCue(
+            BattleCueKind.hit,
+            side: BattleSide.opponent,
+            grade: GameGrade.good,
+          ),
+        ),
+      );
+      expect(
+        const BattleStageCue(BattleCueKind.countdown, number: 3),
+        isNot(const BattleStageCue(BattleCueKind.countdown, number: 2)),
+      );
+    });
+
+    test('reads as its parts', () {
+      expect(
+        const BattleStageCue(
+          BattleCueKind.hit,
+          side: BattleSide.me,
+          grade: GameGrade.excellent,
+        ).toString(),
+        'hit me excellent',
+      );
+      expect(
+        const BattleStageCue(BattleCueKind.countdown, number: 3).toString(),
+        'countdown 3',
+      );
+      expect(const BattleStageCue(BattleCueKind.go).toString(), 'go');
+    });
+  });
 }

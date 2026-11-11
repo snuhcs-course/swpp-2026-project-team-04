@@ -23,6 +23,7 @@ const _checked = [
   'lib/widgets/battle_fx_motion.dart',
   'lib/widgets/battle_mode_card.dart',
   'lib/widgets/battle_reject_sign.dart',
+  'lib/widgets/battle_stage_events.dart',
   'lib/widgets/battle_stage_hud.dart',
   'lib/widgets/battle_stage_model.dart',
   'lib/widgets/exercise_sheet.dart',

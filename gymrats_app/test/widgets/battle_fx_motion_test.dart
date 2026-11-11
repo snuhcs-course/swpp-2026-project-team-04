@@ -1298,4 +1298,317 @@ void main() {
       expect(fx.frame(220, reducedMotion: true).myScoreBump, greaterThan(1.1));
     });
   });
+
+  group('cues', () {
+    const left = BattleStageEnd(
+      kind: BattleEndKind.playerLeft,
+      winner: BattleSide.me,
+    );
+
+    test('a blow is one hit cue, when it lands and not before', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 1000);
+      expect(fx.takeCues(1079), isEmpty);
+      expect(fx.takeCues(1080), [
+        const BattleStageCue(
+          BattleCueKind.hit,
+          side: BattleSide.me,
+          grade: GameGrade.good,
+        ),
+      ]);
+      expect(fx.takeCues(5000), isEmpty, reason: 'each cue once');
+    });
+
+    test('a miss is a cue at once, with who swung', () {
+      final fx = BattleFxTimeline()..rep(_rep(BattleSide.opponent, null), 1000);
+      expect(fx.takeCues(1000), [
+        const BattleStageCue(BattleCueKind.miss, side: BattleSide.opponent),
+      ]);
+    });
+
+    test('the knockout blow is a knockout cue, not a hit, when it lands', () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          _rep(
+            BattleSide.me,
+            GameGrade.excellent,
+            points: 15,
+            combo: 1,
+            knockout: true,
+          ),
+          0,
+        );
+      expect(fx.takeCues(79), isEmpty);
+      expect(fx.takeCues(80), [
+        const BattleStageCue(
+          BattleCueKind.knockout,
+          side: BattleSide.me,
+          grade: GameGrade.excellent,
+        ),
+      ]);
+    });
+
+    test('a knockout the server reports is a cue with the winner', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.knockout,
+            winner: BattleSide.opponent,
+          ),
+          500,
+        );
+      expect(fx.takeCues(500), [
+        const BattleStageCue(BattleCueKind.knockout, side: BattleSide.opponent),
+      ]);
+    });
+
+    test('time-up is one cue, also when its result comes later', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        );
+      expect(fx.takeCues(0), [const BattleStageCue(BattleCueKind.timeUp)]);
+      fx.finish(
+        const BattleStageEnd(kind: BattleEndKind.timeUp, winner: BattleSide.me),
+        2000,
+      );
+      // No second time-up: only the verdict that the result brings.
+      expect(fx.takeCues(4000), [
+        const BattleStageCue(BattleCueKind.verdict, side: BattleSide.me),
+      ]);
+    });
+
+    test('a late result that a player left is its own cue after time-up', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        );
+      fx.takeCues(100);
+      fx.finish(left, 3000);
+      expect(fx.takeCues(3000), [
+        const BattleStageCue(BattleCueKind.playerLeft, side: BattleSide.me),
+      ]);
+    });
+
+    test('the countdown gives 3, 2, 1 and the start, each as it shows', () {
+      final fx = BattleFxTimeline()..countDown(5000, 0);
+      expect(fx.takeCues(1999), isEmpty, reason: 'more than 3 s left');
+      expect(fx.takeCues(2000), [
+        const BattleStageCue(BattleCueKind.countdown, number: 3),
+      ]);
+      expect(fx.takeCues(2900), isEmpty);
+      expect(fx.takeCues(3000), [
+        const BattleStageCue(BattleCueKind.countdown, number: 2),
+      ]);
+      expect(fx.takeCues(4001), [
+        const BattleStageCue(BattleCueKind.countdown, number: 1),
+      ]);
+      expect(fx.takeCues(5000), [const BattleStageCue(BattleCueKind.go)]);
+      expect(fx.takeCues(9000), isEmpty);
+    });
+
+    test('a number that was skipped is not said late', () {
+      final fx = BattleFxTimeline()..countDown(3000, 0);
+      expect(fx.takeCues(1500), [
+        const BattleStageCue(BattleCueKind.countdown, number: 2),
+      ]);
+      expect(fx.takeCues(3500), [const BattleStageCue(BattleCueKind.go)]);
+    });
+
+    test('a countdown that was stopped gives no start; the next one counts '
+        'from 3 again', () {
+      final fx = BattleFxTimeline()..countDown(3000, 0);
+      expect(fx.takeCues(1200).single.number, 2);
+      fx.setSetup(active: true);
+      expect(fx.takeCues(4000), isEmpty);
+      fx.countDown(3000, 5000);
+      expect(fx.takeCues(5000).single.number, 3);
+      expect(fx.takeCues(8000), [const BattleStageCue(BattleCueKind.go)]);
+    });
+
+    test('a small clock correction does not repeat a number', () {
+      final fx = BattleFxTimeline()..countDown(3000, 0);
+      expect(fx.takeCues(1100).single.number, 2);
+      fx.countDown(1950, 1100);
+      expect(fx.takeCues(1150), isEmpty);
+    });
+
+    test('cues come in the order of their moments', () {
+      final fx = BattleFxTimeline()
+        ..rep(_good(BattleSide.me), 0)
+        ..rep(_rep(BattleSide.opponent, null), 40);
+      expect(fx.takeCues(100).map((c) => c.kind), [
+        BattleCueKind.miss,
+        BattleCueKind.hit,
+      ]);
+    });
+
+    test('a rep after the end gives no cue', () {
+      final fx = BattleFxTimeline()..finish(left, 0);
+      fx.takeCues(0);
+      fx.rep(_good(BattleSide.opponent), 100);
+      expect(fx.takeCues(1000), isEmpty);
+    });
+  });
+
+  group('the verdict cue', () {
+    test('comes once, when WIN!, LOSE or DRAW shows after TIME!', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.opponent,
+          ),
+          0,
+        );
+      expect(fx.takeCues(1000), [const BattleStageCue(BattleCueKind.timeUp)]);
+      expect(fx.takeCues(1001), [
+        const BattleStageCue(BattleCueKind.verdict, side: BattleSide.opponent),
+      ]);
+      expect(fx.takeCues(9000), isEmpty);
+    });
+
+    test('a draw has no side', () {
+      final fx = BattleFxTimeline()
+        ..finish(const BattleStageEnd(kind: BattleEndKind.timeUp), 0);
+      expect(fx.takeCues(2000), [
+        const BattleStageCue(BattleCueKind.timeUp),
+        const BattleStageCue(BattleCueKind.verdict),
+      ]);
+    });
+
+    test('waits for a result that comes late', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        );
+      expect(fx.takeCues(5000), [const BattleStageCue(BattleCueKind.timeUp)]);
+      fx.finish(
+        const BattleStageEnd(kind: BattleEndKind.timeUp, winner: BattleSide.me),
+        6000,
+      );
+      expect(fx.takeCues(6000), isEmpty);
+      expect(fx.takeCues(6001), [
+        const BattleStageCue(BattleCueKind.verdict, side: BattleSide.me),
+      ]);
+    });
+
+    test('a knockout or a player leaving has no verdict cue of its own', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+          0,
+        );
+      expect(fx.takeCues(9000).map((c) => c.kind), [BattleCueKind.playerLeft]);
+    });
+  });
+
+  group('a knockout reported before its blow', () {
+    const reported = BattleStageEnd(
+      kind: BattleEndKind.knockout,
+      winner: BattleSide.me,
+    );
+
+    test('the blow still plays, and the ring-out starts when it lands', () {
+      final fx = BattleFxTimeline()..finish(reported, 1000);
+      expect(fx.rep(_good(BattleSide.me, knockout: true), 1000), isTrue);
+      final lunge = fx.frame(1040);
+      expect(lunge.me.pose, BattlePose.attack);
+      expect(lunge.opponent.pose, BattlePose.idle);
+      final landed = fx.frame(1090);
+      expect(landed.opponent.pose, BattlePose.hit);
+      expect(landed.star, isNotNull);
+      // 1250 after the blow lands at 1080, not after the report.
+      expect(fx.frame(1080 + 1249).banners, isEmpty);
+      expect(fx.frame(1080 + 1250).banners.single.text, 'K.O.');
+      expect(fx.resultButtonUp(1080 + 2199), isFalse);
+      expect(fx.resultButtonUp(1080 + 2200), isTrue);
+    });
+
+    test('gives one knockout cue, the blow\'s, when it lands', () {
+      final fx = BattleFxTimeline()
+        ..finish(reported, 1000)
+        ..rep(_good(BattleSide.me, knockout: true), 1000);
+      expect(fx.takeCues(1079), isEmpty);
+      expect(fx.takeCues(5000), [
+        const BattleStageCue(
+          BattleCueKind.knockout,
+          side: BattleSide.me,
+          grade: GameGrade.good,
+        ),
+      ]);
+    });
+
+    test('gives no second cue when the report\'s was already given', () {
+      final fx = BattleFxTimeline()..finish(reported, 1000);
+      expect(fx.takeCues(1010).single.kind, BattleCueKind.knockout);
+      fx.rep(_good(BattleSide.me, knockout: true), 1016);
+      expect(fx.takeCues(5000), isEmpty);
+    });
+
+    test('only that blow is played: not the loser\'s rep, not a rep that is '
+        'no knockout, not a miss, not one that comes much later', () {
+      BattleFxTimeline ended() => BattleFxTimeline()..finish(reported, 1000);
+      expect(
+        ended().rep(_good(BattleSide.opponent, knockout: true), 1000),
+        isFalse,
+      );
+      expect(ended().rep(_good(BattleSide.me), 1000), isFalse);
+      expect(
+        ended().rep(_rep(BattleSide.me, null, knockout: true), 1000),
+        isFalse,
+      );
+      expect(ended().rep(_good(BattleSide.me, knockout: true), 1300), isFalse);
+      // And never twice.
+      final fx = ended()..rep(_good(BattleSide.me, knockout: true), 1000);
+      expect(fx.rep(_good(BattleSide.me, knockout: true), 1010), isFalse);
+    });
+
+    test('the blow may come a little after the report, within a quarter '
+        'of a second', () {
+      final fx = BattleFxTimeline()..finish(reported, 1000);
+      expect(fx.rep(_good(BattleSide.me, knockout: true), 1100), isTrue);
+      expect(fx.frame(1140).me.pose, BattlePose.attack);
+      // The ring-out starts over from this blow, which lands at 1180.
+      expect(fx.frame(1180 + 1249).banners, isEmpty);
+      expect(fx.frame(1180 + 1250).banners.single.text, 'K.O.');
+      expect(
+        BattleFxTimeline()
+          ..finish(reported, 1000)
+          ..rep(_good(BattleSide.me, knockout: true), 1250),
+        isA<BattleFxTimeline>(),
+      );
+      final late = BattleFxTimeline()..finish(reported, 1000);
+      expect(late.rep(_good(BattleSide.me, knockout: true), 1250), isTrue);
+      final tooLate = BattleFxTimeline()..finish(reported, 1000);
+      expect(tooLate.rep(_good(BattleSide.me, knockout: true), 1251), isFalse);
+    });
+
+    test('a blow flagged as a knockout is dropped after any other ending', () {
+      for (final end in const [
+        BattleStageEnd(kind: BattleEndKind.timeUp, winner: BattleSide.me),
+        BattleStageEnd(kind: BattleEndKind.playerLeft, winner: BattleSide.me),
+      ]) {
+        final fx = BattleFxTimeline()..finish(end, 1000);
+        expect(
+          fx.rep(_good(BattleSide.me, knockout: true), 1000),
+          isFalse,
+          reason: '${end.kind}',
+        );
+        expect(fx.end!.kind, end.kind);
+      }
+    });
+
+    test('a rep says whether it was played', () {
+      final fx = BattleFxTimeline();
+      expect(fx.rep(_good(BattleSide.me), 0), isTrue);
+      fx.finish(const BattleStageEnd(kind: BattleEndKind.timeUp), 100);
+      expect(fx.rep(_good(BattleSide.me), 200), isFalse);
+    });
+  });
 }
