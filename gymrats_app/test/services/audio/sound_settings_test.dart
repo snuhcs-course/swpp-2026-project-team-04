@@ -44,6 +44,15 @@ void main() {
       expect(notified, 2);
     });
 
+    test('without a store the switch is saved securely and survives a '
+        'restart', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      await SoundSettings().setEnabled(false);
+      final restarted = SoundSettings();
+      await restarted.load();
+      expect(restarted.enabled, isFalse);
+    });
+
     test('a failing store keeps the default and still flips the switch for '
         'this run', () async {
       final settings = SoundSettings(store: _BrokenStore());

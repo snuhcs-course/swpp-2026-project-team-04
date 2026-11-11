@@ -53,7 +53,7 @@ void main() {
       calls.add(call.method);
       return null;
     });
-    final settings = SoundSettings();
+    final settings = SoundSettings(store: MemorySoundSettingsStore());
     final sound = DeviceRepSound(settings);
 
     sound.playRepCounted();

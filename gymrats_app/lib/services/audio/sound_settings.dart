@@ -44,11 +44,12 @@ class MemorySoundSettingsStore implements SoundSettingsStore {
 /// The one sound switch: voice guidance, BGM, and the rep beep all follow it.
 ///
 /// Starts on; [load] reads the saved value. Listeners (the audio services,
-/// a toggle) are notified on every change.
+/// a toggle) are notified on every change. Saved in [SecureSoundSettingsStore]
+/// unless another store is given; tests and demos pass a
+/// [MemorySoundSettingsStore].
 class SoundSettings extends ChangeNotifier {
-  SoundSettings({SoundSettingsStore? store, bool enabled = true})
-    : _store = store ?? MemorySoundSettingsStore(enabled: enabled),
-      _enabled = enabled;
+  SoundSettings({SoundSettingsStore? store, this._enabled = true})
+    : _store = store ?? SecureSoundSettingsStore();
 
   final SoundSettingsStore _store;
   bool _enabled;

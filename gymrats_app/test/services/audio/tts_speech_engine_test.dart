@@ -144,6 +144,76 @@ void main() {
       await first.timeout(const Duration(milliseconds: 50), onTimeout: () {});
     });
 
+    for (final callback in [
+      'speak.onComplete',
+      'speak.onError',
+      'speak.onCancel',
+    ]) {
+      test('a late $callback of the cut-off line after the new line started '
+          'does not end the new line', () async {
+        final first = engine.speak('카메라 앞에 서 주세요.');
+        await pumpEventQueue();
+        await platformSends('speak.onStart');
+        var secondEnded = false;
+        final second = engine.speak('준비 완료!').then((_) => secondEnded = true);
+        await pumpEventQueue();
+        await platformSends('speak.onStart');
+        // The cut-off line's end arrives only now.
+        await platformSends(
+          callback,
+          callback == 'speak.onError' ? 'interrupted' : null,
+        );
+        await pumpEventQueue();
+        expect(secondEnded, isFalse);
+        await first.timeout(
+          const Duration(milliseconds: 50),
+          onTimeout: () => fail('the cut-off line should have ended'),
+        );
+
+        await platformSends('speak.onComplete');
+        await second;
+        expect(secondEnded, isTrue);
+      });
+    }
+
+    test(
+      'a cut-off line whose end came before the new line owes nothing',
+      () async {
+        final first = engine.speak('카메라 앞에 서 주세요.');
+        await pumpEventQueue();
+        await platformSends('speak.onStart');
+        await engine.stop();
+        await platformSends('speak.onCancel');
+        await first.timeout(
+          const Duration(milliseconds: 50),
+          onTimeout: () => fail('the cancel should have ended it'),
+        );
+        var secondEnded = false;
+        final second = engine.speak('준비 완료!').then((_) => secondEnded = true);
+        await pumpEventQueue();
+        await platformSends('speak.onStart');
+        await platformSends('speak.onComplete');
+        await second;
+        expect(secondEnded, isTrue);
+      },
+    );
+
+    test('a line replaced before it started owes nothing, so the new '
+        "line's own end still ends it", () async {
+      unawaited(engine.speak('카메라 앞에 서 주세요.'));
+      await pumpEventQueue();
+      var secondEnded = false;
+      final second = engine.speak('준비 완료!').then((_) => secondEnded = true);
+      await pumpEventQueue();
+      await platformSends('speak.onStart');
+      await platformSends('speak.onComplete');
+      await second.timeout(
+        const Duration(milliseconds: 50),
+        onTimeout: () => fail('its own completion was swallowed'),
+      );
+      expect(secondEnded, isTrue);
+    });
+
     test('a callback before any line is harmless', () async {
       await engine
           .speak('셋')

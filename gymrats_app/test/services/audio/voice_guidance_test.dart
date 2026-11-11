@@ -16,7 +16,7 @@ void main() {
 
   VoiceGuidanceService build({bool manual = false, Duration? repeatAfter}) {
     engine = FakeSpeechEngine(manual: manual);
-    settings = SoundSettings();
+    settings = SoundSettings(store: MemorySoundSettingsStore());
     now = Duration.zero;
     return voice = VoiceGuidanceService(
       engine: engine,
@@ -334,7 +334,7 @@ void main() {
       'a line the engine never finishes gives way after maxUtterance',
       () async {
         engine = FakeSpeechEngine(manual: true);
-        settings = SoundSettings();
+        settings = SoundSettings(store: MemorySoundSettingsStore());
         voice = VoiceGuidanceService(
           engine: engine,
           settings: settings,
@@ -353,7 +353,7 @@ void main() {
 
     test('without a clock the service keeps its own time', () async {
       engine = FakeSpeechEngine();
-      settings = SoundSettings();
+      settings = SoundSettings(store: MemorySoundSettingsStore());
       voice = VoiceGuidanceService(
         engine: engine,
         settings: settings,
