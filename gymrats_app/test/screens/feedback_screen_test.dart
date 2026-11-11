@@ -9,15 +9,13 @@ import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/rep_event.dart';
-import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/screens/feedback_screen.dart';
-import 'package:gymrats_app/screens/home_screen.dart';
+import 'package:gymrats_app/screens/history_screen.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/feedback/form_summary.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
-import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 
 import '../support/fakes.dart';
 
@@ -213,22 +211,25 @@ void main() {
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   // Home no longer lists the phone's latest report on its own: each of its
   // recent battles carries its feedback (task: match history with feedback).
-  testWidgets('a recent battle on home opens the same feedback screen', (
+  // Updated for the game lobby (W1): home lists no battles now; they are in
+  // 기록보관소, the /history page.
+  testWidgets('a battle in 기록보관소 opens the same feedback screen', (
     tester,
   ) async {
     phone(tester);
     final repository = FakeUserRepository()
-      ..profile = const UserProfile(name: '우현')
-      ..recent = [
-        MatchRecord(
-          id: 5,
-          exercise: ExerciseType.pushUp,
-          opponentName: 'RepBot',
-          myReps: 1,
-          opponentReps: 0,
-          playedAt: _report.endedAt,
-          feedbackSummary: summarizeForm(_report),
-        ),
+      ..historyPages = [
+        [
+          MatchRecord(
+            id: 5,
+            exercise: ExerciseType.pushUp,
+            opponentName: 'RepBot',
+            myReps: 1,
+            opponentReps: 0,
+            playedAt: _report.endedAt,
+            feedbackSummary: summarizeForm(_report),
+          ),
+        ],
       ]
       ..reports = {5: _report};
     await tester.pumpWidget(
@@ -237,11 +238,8 @@ void main() {
           Provider<UserRepository>.value(value: repository),
           Provider<FormReportStore>.value(value: InMemoryFormReportStore()),
         ],
-        child: app(
-          HomeScreen(
-            createViewModel: () => HomeViewModel(repository: repository),
-          ),
-        ),
+        // What the /history route opens.
+        child: app(const HistoryScreen()),
       ),
     );
     await tester.pumpAndSettle();

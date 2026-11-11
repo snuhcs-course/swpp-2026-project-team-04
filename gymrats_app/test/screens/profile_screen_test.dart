@@ -163,6 +163,12 @@ void main() {
       tester.view.physicalSize = const Size(412, 915);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
+      // Reduced motion: home's RepBot holds still, so pumpAndSettle returns.
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
       final auth = await _auth();
       final avatars = MemoryAvatarStore();
       _Session? joined;
@@ -176,7 +182,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       await captureFlowSnapshot('home-online-primary');
-      await tester.tap(find.byTooltip('프로필'));
+      // The lobby's 환경설정, then its 아바타 row.
+      await tester.tap(find.text('환경설정'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('아바타'));
       await tester.pumpAndSettle();
       expect(find.byType(ProfileScreen), findsOneWidget);
       await tester.scrollUntilVisible(
@@ -186,7 +195,12 @@ void main() {
       );
       await tester.tap(find.text('SOMA 코랄 액티브'));
       await tester.pumpAndSettle();
+      // Back to 환경설정, back home, then 게임 시작.
       await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('게임 시작'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('온라인 1v1'));
       await tester.pumpAndSettle();

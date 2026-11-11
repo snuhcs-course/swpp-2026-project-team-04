@@ -1,4 +1,4 @@
-# GymRats AI 협업 프롬프트 전문
+# GymMouse AI 협업 프롬프트 전문
 
 - 작성: 송현우
 - 도구: Cursor 코딩 에이전트

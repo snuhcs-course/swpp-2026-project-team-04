@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
@@ -34,6 +37,44 @@ BattleResult _result({
   endedAt: DateTime(2026, 10, 4, 14, 32),
   roundLength: roundLength,
 );
+
+/// A battle played with the game and with a form report, so the screen also
+/// shows the grades and the 자세 피드백 보기 button.
+BattleResult _withForm(MatchOutcome outcome) => BattleResult(
+  matchup: _matchup,
+  myReps: 3,
+  myInvalidReps: 1,
+  opponentReps: 4,
+  myScore: 110,
+  opponentScore: 90,
+  decidedOutcome: outcome,
+  endedAt: DateTime(2026, 10, 4, 14, 32),
+  form: FormReport(
+    endedAt: DateTime(2026, 10, 4, 14, 32),
+    opponentName: 'RepBot',
+    roundLength: const Duration(seconds: 30),
+    reps: const [],
+    samples: const [],
+  ),
+);
+
+/// The WCAG contrast ratio of two opaque colors, from 1 to 21.
+double _contrast(Color a, Color b) {
+  final (la, lb) = (a.computeLuminance(), b.computeLuminance());
+  return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+}
+
+/// The fills of palette B: lime, pink, amber, cyan and red, never a text
+/// color.
+const _fillOnly = [
+  AppColors.accent,
+  AppColors.accentDeep,
+  AppColors.opponent,
+  AppColors.opponentDeep,
+  AppColors.warning,
+  AppColors.fever,
+  AppColors.danger,
+];
 
 void main() {
   late PushLog pushes;
@@ -89,6 +130,44 @@ void main() {
   Color? colorOf(WidgetTester tester, String text) =>
       tester.widget<Text>(find.text(text)).style!.color;
 
+  /// The nearest box painted behind [text], or null if nothing is painted
+  /// between it and the screen's ground.
+  BoxDecoration? bandBehind(WidgetTester tester, String text) {
+    final boxes = find.ancestor(
+      of: find.text(text),
+      matching: find.byType(DecoratedBox),
+    );
+    if (boxes.evaluate().isEmpty) return null;
+    return tester.widget<DecoratedBox>(boxes.first).decoration as BoxDecoration;
+  }
+
+  /// Every color text is painted in on the result screen, with what a span
+  /// takes from the span around it; icons left out.
+  Set<Color> textColors(WidgetTester tester) {
+    final colors = <Color>{};
+    void walk(InlineSpan span, Color? around) {
+      if (span is! TextSpan) return;
+      final color = span.style?.color ?? around;
+      final isIcon = span.style?.fontFamily == Icons.home.fontFamily;
+      if (!isIcon && (span.text ?? '').trim().isNotEmpty && color != null) {
+        colors.add(color);
+      }
+      for (final child in span.children ?? const <InlineSpan>[]) {
+        walk(child, color);
+      }
+    }
+
+    for (final paragraph in tester.renderObjectList<RenderParagraph>(
+      find.descendant(
+        of: find.byType(ResultScreen),
+        matching: find.byType(RichText),
+      ),
+    )) {
+      walk(paragraph.text, null);
+    }
+    return colors;
+  }
+
   testWidgets('a win: WIN, the margin, both players, and my stats', (
     tester,
   ) async {
@@ -96,15 +175,15 @@ void main() {
     expect(find.text('RESULT'), findsOneWidget);
     expect(find.text('푸쉬업 · 30초 · 오늘 14:32'), findsOneWidget);
     expect(find.text('WIN'), findsOneWidget);
-    expect(colorOf(tester, 'WIN'), AppColors.accent);
+    expect(colorOf(tester, 'WIN'), AppColors.ink);
     expect(find.text('2개 차이로 이겼어요!'), findsOneWidget);
 
     expect(find.text('우현'), findsOneWidget);
     expect(find.text('우'), findsOneWidget);
     expect(find.text('RepBot'), findsOneWidget);
     expect(find.byIcon(Icons.smart_toy_rounded), findsOneWidget);
-    expect(colorOf(tester, '26'), AppColors.accent);
-    expect(colorOf(tester, '24'), AppColors.opponent);
+    expect(colorOf(tester, '26'), AppColors.ink);
+    expect(colorOf(tester, '24'), AppColors.ink);
 
     expect(find.text('인정'), findsOneWidget);
     expect(find.text('26회'), findsOneWidget);
@@ -112,7 +191,7 @@ void main() {
     expect(find.text('3회'), findsOneWidget);
     expect(
       tester.widget<Text>(find.text('3회')).textSpan!.style!.color,
-      AppColors.warning,
+      AppColors.ink,
     );
     // 26 of 29 judged reps.
     expect(find.text('정확도'), findsOneWidget);
@@ -127,7 +206,7 @@ void main() {
   });
 
   for (final (mine, theirs, word, line, color) in [
-    (20, 23, 'LOSE', '3개 차이로 졌어요', AppColors.opponent),
+    (20, 23, 'LOSE', '3개 차이로 졌어요', AppColors.ink),
     (22, 22, 'DRAW', '비겼어요!', AppColors.textPrimary),
   ]) {
     testWidgets('$mine:$theirs is a $word', (tester) async {
@@ -137,6 +216,66 @@ void main() {
       expect(find.text(line), findsOneWidget);
     });
   }
+
+  group('readable on the light ground (palette B)', () {
+    for (final (mine, theirs, word, band) in const [
+      (26, 24, 'WIN', AppColors.accent),
+      (20, 23, 'LOSE', AppColors.opponent),
+    ]) {
+      testWidgets('$word is ink on a slanted band, 4.5:1 or more', (
+        tester,
+      ) async {
+        await open(tester, _result(mine: mine, theirs: theirs));
+        final ink = colorOf(tester, word)!;
+        final behind = bandBehind(tester, word);
+        expect(ink, AppColors.ink);
+        expect(behind?.color, band);
+        final ratio = _contrast(ink, behind!.color!);
+        expect(ratio, greaterThanOrEqualTo(4.5), reason: '$word $ratio:1');
+
+        // The band leans like a marker stroke, together with the word.
+        final slant = tester.widget<Transform>(
+          find
+              .ancestor(
+                of: find.byWidgetPredicate(
+                  (widget) =>
+                      widget is DecoratedBox && widget.decoration == behind,
+                ),
+                matching: find.byType(Transform),
+              )
+              .first,
+        );
+        expect(slant.transform.entry(0, 1), isNot(0));
+      });
+    }
+
+    testWidgets('DRAW stays ink on the screen ground, with no band', (
+      tester,
+    ) async {
+      await open(tester, _result(mine: 22, theirs: 22));
+      final ink = colorOf(tester, 'DRAW')!;
+      expect(_fillOnly, isNot(contains(bandBehind(tester, 'DRAW')?.color)));
+      expect(_contrast(ink, AppColors.background), greaterThanOrEqualTo(4.5));
+      // Its glow stays as it was; only WIN and LOSE changed.
+      expect(
+        tester.widget<Text>(find.text('DRAW')).style!.shadows,
+        hasLength(1),
+      );
+    });
+
+    for (final outcome in MatchOutcome.values) {
+      testWidgets('a ${outcome.name} paints no text in a palette B fill '
+          'color, the feedback button and 무효 included', (tester) async {
+        await open(tester, _withForm(outcome));
+        expect(find.text('자세 피드백 보기'), findsOneWidget);
+        final colors = textColors(tester);
+        expect(colors, isNotEmpty);
+        for (final fill in _fillOnly) {
+          expect(colors, isNot(contains(fill)));
+        }
+      });
+    }
+  });
 
   group('a battle played with the game', () {
     BattleResult game({
@@ -163,8 +302,8 @@ void main() {
       await open(tester, game());
       expect(find.text('WIN'), findsOneWidget);
       expect(find.text('20점 차이로 이겼어요!'), findsOneWidget);
-      expect(colorOf(tester, '110'), AppColors.accent);
-      expect(colorOf(tester, '90'), AppColors.opponent);
+      expect(colorOf(tester, '110'), AppColors.ink);
+      expect(colorOf(tester, '90'), AppColors.ink);
       expect(find.text('유효 5회'), findsOneWidget);
       expect(find.text('유효 6회'), findsOneWidget);
       expect(find.text('5회'), findsOneWidget);

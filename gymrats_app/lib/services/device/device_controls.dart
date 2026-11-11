@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
+import '../audio/sound_settings.dart';
+
 /// Answered by MainActivity.kt, so these features need no plugin.
 const _channel = MethodChannel('gymrats/device');
 
@@ -12,11 +14,17 @@ abstract interface class RepSound {
 }
 
 /// Beeps through MainActivity's ToneGenerator, at the media volume.
+/// With [settings], the beep follows the app's sound switch.
 class DeviceRepSound implements RepSound {
-  const DeviceRepSound();
+  const DeviceRepSound([this.settings]);
+
+  final SoundSettings? settings;
 
   @override
-  void playRepCounted() => unawaited(_send('beep'));
+  void playRepCounted() {
+    if (settings?.enabled == false) return;
+    unawaited(_send('beep'));
+  }
 }
 
 /// Keeps the screen from turning off while [on]. Nobody touches the phone

@@ -183,7 +183,9 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// WIN, LOSE, or DRAW, slanted and glowing, over how it went.
+/// WIN, LOSE, or DRAW, slanted, over how it went. WIN and LOSE are ink on a
+/// lime or pink band that leans with them (palette B: lime and pink only
+/// fill, so the word reads on the light ground); DRAW is ink with its glow.
 class _Verdict extends StatelessWidget {
   const _Verdict({required this.result});
 
@@ -203,11 +205,27 @@ class _Verdict extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final (word, color, message) = switch (result.outcome) {
+    final (word, band, message) = switch (result.outcome) {
       MatchOutcome.win => ('WIN', AppColors.accent, '$_how 이겼어요!'),
       MatchOutcome.lose => ('LOSE', AppColors.opponent, '$_how 졌어요'),
-      MatchOutcome.draw => ('DRAW', AppColors.textPrimary, '비겼어요!'),
+      MatchOutcome.draw => ('DRAW', null, '비겼어요!'),
     };
+    final verdict = Text(
+      word,
+      style: text.displayLarge?.copyWith(
+        fontSize: 108,
+        height: 1,
+        letterSpacing: 2.2,
+        color: AppColors.ink,
+        shadows: [
+          if (band == null)
+            Shadow(
+              color: AppColors.textPrimary.withValues(alpha: 0.35),
+              blurRadius: 40,
+            ),
+        ],
+      ),
+    );
     return Column(
       children: [
         Transform(
@@ -215,18 +233,15 @@ class _Verdict extends StatelessWidget {
           alignment: Alignment.center,
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
-              word,
-              style: text.displayLarge?.copyWith(
-                fontSize: 108,
-                height: 1,
-                letterSpacing: 2.2,
-                color: color,
-                shadows: [
-                  Shadow(color: color.withValues(alpha: 0.35), blurRadius: 40),
-                ],
-              ),
-            ),
+            child: band == null
+                ? verdict
+                : DecoratedBox(
+                    decoration: AppHighlight.band(band),
+                    child: Padding(
+                      padding: AppHighlight.bandPadding,
+                      child: verdict,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 4),
@@ -240,8 +255,8 @@ class _Verdict extends StatelessWidget {
   }
 }
 
-/// Both players with their scores: the user on the left in lime, the
-/// opponent on the right in pink.
+/// Both players with their scores in ink: the user on the left with a lime
+/// ring, the opponent on the right with a pink one.
 class _ScoreCard extends StatelessWidget {
   const _ScoreCard({required this.result});
 
@@ -291,7 +306,6 @@ class _ScoreCard extends StatelessWidget {
               name: playerName,
               score: result.myDisplayScore,
               reps: result.hasGame ? result.myReps : null,
-              color: AppColors.accent,
               avatar: myAvatar,
             ),
           ),
@@ -307,7 +321,6 @@ class _ScoreCard extends StatelessWidget {
               name: opponent.name,
               score: result.opponentDisplayScore,
               reps: result.hasGame ? result.opponentReps : null,
-              color: AppColors.opponent,
               avatar: opponentAvatar,
             ),
           ),
@@ -317,14 +330,13 @@ class _ScoreCard extends StatelessWidget {
   }
 }
 
-/// One side of the score card: the avatar over the name, the score, and the
-/// valid reps.
+/// One side of the score card: the avatar over the name, the score in ink,
+/// and the valid reps.
 class _Score extends StatelessWidget {
   const _Score({
     required this.name,
     required this.score,
     this.reps,
-    required this.color,
     required this.avatar,
   });
 
@@ -333,7 +345,6 @@ class _Score extends StatelessWidget {
 
   /// Null hides the line: the score already is the reps.
   final int? reps;
-  final Color color;
   final Widget avatar;
 
   @override
@@ -358,7 +369,7 @@ class _Score extends StatelessWidget {
           style: text.displayLarge?.copyWith(
             fontSize: 48,
             height: 1,
-            color: color,
+            color: AppColors.ink,
           ),
         ),
         if (reps case final reps?) ...[
@@ -413,12 +424,7 @@ class _MyStats extends StatelessWidget {
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: _StatCard(
-            label: '무효',
-            value: result.myInvalidReps,
-            unit: '회',
-            color: AppColors.warning,
-          ),
+          child: _StatCard(label: '무효', value: result.myInvalidReps, unit: '회'),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -499,13 +505,13 @@ class _GradeCount extends StatelessWidget {
   }
 }
 
-/// A small card: a gray label over a number and its unit.
+/// A small card: a gray label over a number in ink and its unit. 무효 is ink
+/// too: amber is a fill, never a text color on the light ground.
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.label,
     required this.value,
     required this.unit,
-    this.color = AppColors.textPrimary,
   });
 
   final String label;
@@ -516,8 +522,6 @@ class _StatCard extends StatelessWidget {
 
   /// After the number in small gray letters, e.g. "회".
   final String unit;
-
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -541,7 +545,10 @@ class _StatCard extends StatelessWidget {
           Text.rich(
             TextSpan(
               text: value == null ? '—' : '$value',
-              style: text.displaySmall?.copyWith(fontSize: 24, color: color),
+              style: text.displaySmall?.copyWith(
+                fontSize: 24,
+                color: AppColors.ink,
+              ),
               children: [
                 if (value != null)
                   TextSpan(
@@ -575,7 +582,7 @@ class _FeedbackButton extends StatelessWidget {
       label: const Text('자세 피드백 보기'),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(48),
-        foregroundColor: AppColors.accent,
+        foregroundColor: AppColors.ink,
         side: const BorderSide(color: AppColors.border, width: 1.5),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),

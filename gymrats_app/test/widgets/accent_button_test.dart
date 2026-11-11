@@ -26,7 +26,8 @@ void main() {
     // Dark text on lime, the title in the headline font.
     final title = tester.widget<Text>(find.text('Title')).style!;
     expect(title.fontFamily, AppFonts.headline);
-    expect(title.color, AppColors.background);
+    // Ink on lime, readable in the light theme.
+    expect(title.color, AppColors.ink);
 
     await tester.tap(find.text('Title'));
     expect(taps, 1);
@@ -38,5 +39,16 @@ void main() {
       find.ancestor(of: find.text('Title'), matching: find.byType(Column)),
     );
     expect(column.children, hasLength(1));
+  });
+
+  testWidgets('lime with an ink edge, so it shows on the light screen', (
+    tester,
+  ) async {
+    await show(tester, AccentButton(title: 'Title', onPressed: () {}));
+    final style = tester.widget<FilledButton>(find.byType(FilledButton)).style!;
+    final shape =
+        style.shape!.resolve(const <WidgetState>{})! as RoundedRectangleBorder;
+    expect(shape.side.color, AppColors.ink);
+    expect(shape.side.width, 2);
   });
 }

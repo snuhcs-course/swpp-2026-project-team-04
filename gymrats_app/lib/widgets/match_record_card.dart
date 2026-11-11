@@ -92,25 +92,30 @@ class MatchOutcomeBadge extends StatelessWidget {
   /// Badge width and height.
   static const size = 40.0;
 
+  static const _edge = 1.5;
+
   @override
   Widget build(BuildContext context) {
-    final color = switch (outcome) {
+    // Palette B: the outcome's color fills the badge, with an ink edge and
+    // the label in ink, like WIN on lime and LOSE on pink.
+    final fill = switch (outcome) {
       MatchOutcome.win => AppColors.accent,
       MatchOutcome.lose => AppColors.opponent,
-      MatchOutcome.draw => AppColors.textSecondary,
+      MatchOutcome.draw => AppColors.cardHigh,
     };
     return Container(
       width: size,
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: fill,
         borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
+        border: Border.all(color: AppColors.ink, width: _edge),
       ),
       child: Text(
         outcome.label,
         style: Theme.of(context).textTheme.headlineSmall
-            ?.copyWith(color: color),
+            ?.copyWith(color: AppColors.ink),
       ),
     );
   }
@@ -165,10 +170,7 @@ class _Scores extends StatelessWidget {
                   horizontal: AppSpacing.s12,
                   vertical: AppSpacing.s4,
                 ),
-                child: Text(
-                  '나',
-                  style: label?.copyWith(color: AppColors.background),
-                ),
+                child: Text('나', style: label?.copyWith(color: AppColors.ink)),
               ),
             ),
           ],
@@ -191,19 +193,24 @@ class _Scores extends StatelessWidget {
 }
 
 // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
-/// The battle's form feedback in one line: the top thing to fix in amber,
-/// "좋은 자세" in lime when there was nothing to fix, or "피드백 없음" for a
-/// battle stored without feedback.
+/// The battle's form feedback in one line: the top thing to fix on an amber
+/// band, "좋은 자세" on a lime band when there was nothing to fix, or
+/// "피드백 없음" in gray for a battle stored without feedback.
 class FeedbackLine extends StatelessWidget {
   const FeedbackLine({super.key, required this.match});
 
   final MatchRecord match;
 
+  /// How much of the band's color shows behind the text.
+  static const _bandStrength = 0.6;
+
   @override
   Widget build(BuildContext context) {
     final summary = match.feedbackSummary;
-    final (icon, color, label) = switch (summary) {
-      null => (Icons.remove_rounded, AppColors.textMuted, '피드백 없음'),
+    // The icon's shape says it, and an amber or lime band behind the ink
+    // text (palette B) shows it.
+    final (icon, band, label) = switch (summary) {
+      null => (Icons.remove_rounded, null, '피드백 없음'),
       _ when summary.topIssue != null => (
         Icons.error_outline_rounded,
         AppColors.warning,
@@ -212,16 +219,26 @@ class FeedbackLine extends StatelessWidget {
       _ => (Icons.check_circle_outline_rounded, AppColors.accent, summary.line),
     };
     final text = Theme.of(context).textTheme;
+    final style = text.bodySmall!;
     return Row(
       children: [
-        Icon(icon, color: color, size: text.bodyMedium?.fontSize),
+        Icon(
+          icon,
+          color: band == null ? AppColors.line : AppColors.ink,
+          size: text.bodyMedium?.fontSize,
+        ),
         const SizedBox(width: AppSpacing.s4),
         Expanded(
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: text.bodySmall?.copyWith(color: color),
+            style: band == null
+                ? style.copyWith(color: AppColors.textMuted)
+                : AppHighlight.marked(
+                    style,
+                    band.withValues(alpha: _bandStrength),
+                  ),
           ),
         ),
       ],

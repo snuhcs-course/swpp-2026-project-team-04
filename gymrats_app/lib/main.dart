@@ -27,18 +27,27 @@ import 'services/feedback/form_report_store.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
 import 'services/user/rules_seen_store.dart';
+import 'services/user/settings_store.dart';
 import 'services/user/server_user_repository.dart';
 import 'services/user/user_repository.dart';
 import 'services/user/avatar_store.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/help_viewmodel.dart';
+import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/signup_viewmodel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Camera frames and the pose overlay assume portrait.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  // Dark status and navigation bar icons on the light screens.
+  SystemChrome.setSystemUIOverlayStyle(
+    SystemUiOverlayStyle.dark.copyWith(
+      systemNavigationBarColor: AppColors.background,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   final api = ApiClient();
   final auth = ServerAuthRepository(api: api, store: SecureTokenStore());
   runApp(
@@ -47,6 +56,7 @@ Future<void> main() async {
       userRepository: ServerUserRepository(api: api, auth: auth),
       avatarStore: SecureAvatarStore(),
       rulesSeenStore: SecureRulesSeenStore(),
+      settingsStore: SecureSettingsStore(),
     ),
   );
 }
@@ -66,6 +76,7 @@ class GymRatsApp extends StatefulWidget {
     this.avatarStore,
     this.createOnlineSession,
     this.rulesSeenStore,
+    this.settingsStore,
   });
 
   final AuthRepository authRepository;
@@ -78,6 +89,10 @@ class GymRatsApp extends StatefulWidget {
 
   /// Defaults to [MemoryRulesSeenStore].
   final RulesSeenStore? rulesSeenStore;
+
+  /// Keeps the 환경설정 switches across restarts. Defaults to
+  /// [MemorySettingsStore].
+  final SettingsStore? settingsStore;
 
   static const signupRoute = '/signup';
   static const historyRoute = '/history';
@@ -111,6 +126,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
   late final AuthViewModel _auth;
   late final HelpViewModel _help;
   late final AvatarStore _avatars;
+
+  /// The app's settings, the same on every screen and every visit.
+  late final SettingsViewModel _settings;
   AuthStatus? _shownStatus;
 
   @override
@@ -120,6 +138,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
     _help = HelpViewModel(
       store: widget.rulesSeenStore ?? MemoryRulesSeenStore(),
     );
+    _settings = SettingsViewModel(
+      store: widget.settingsStore ?? MemorySettingsStore(),
+    )..load();
     _auth = AuthViewModel(repository: widget.authRepository)
       ..addListener(_onAuthChanged)
       ..restore();
@@ -144,6 +165,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
       ..removeListener(_onAuthChanged)
       ..dispose();
     _help.dispose();
+    _settings.dispose();
     super.dispose();
   }
 
@@ -159,11 +181,12 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ),
         ChangeNotifierProvider<AuthViewModel>.value(value: _auth),
         ChangeNotifierProvider<HelpViewModel>.value(value: _help),
+        ChangeNotifierProvider<SettingsViewModel>.value(value: _settings),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
       ],
       child: MaterialApp(
         title: 'GymRats',
-        theme: AppTheme.dark,
+        theme: AppTheme.light,
         navigatorKey: _navigator,
         navigatorObservers: [GymRatsApp.routeObserver],
         home: Consumer2<AuthViewModel, HelpViewModel>(

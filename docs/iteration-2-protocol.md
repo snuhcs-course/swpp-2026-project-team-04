@@ -1,4 +1,4 @@
-# GymRats Iteration 2 통신 프로토콜
+# GymMouse Iteration 2 통신 프로토콜
 
 상태: v0.1 계약 기반 구현 / 공유 서버 HTTPS·WSS 배포 완료 / 작성일: 2026-10-15 / 갱신일: 2026-10-17
 
