@@ -13,17 +13,17 @@ import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
 import 'package:gymrats_app/screens/online_lobby_screen.dart';
+import 'package:gymrats_app/screens/play_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
+import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
-import 'package:gymrats_app/widgets/bot_difficulty_sheet.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
-import 'package:gymrats_app/widgets/match_record_card.dart';
 import 'package:provider/provider.dart';
 
 import 'support/fakes.dart';
@@ -42,26 +42,45 @@ class _QueuedSession extends OnlineBattleSession {
   }
 }
 
+/// Turns on the system's reduced motion, so home's RepBot holds still and
+/// pumpAndSettle can settle.
+void _stillRepBot(WidgetTester tester) {
+  tester.platformDispatcher.accessibilityFeaturesTestValue =
+      const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+}
+
+/// The app at home on a phone-sized screen, with RepBot holding still.
+Future<void> _openApp(WidgetTester tester, [GymRatsApp? app]) async {
+  tester.view.physicalSize = const Size(412, 915);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  _stillRepBot(tester);
+  await tester.pumpWidget(app ?? testApp());
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  /// Taps [exercise] on the exercise sheet.
-  Future<void> choose(WidgetTester tester, String exercise) async {
-    await tester.tap(
-      find.descendant(
-        of: find.byType(ExerciseSheet),
-        matching: find.text(exercise),
-      ),
-    );
+  /// Taps [text] and lets what it opens slide in.
+  Future<void> tapAndSettle(WidgetTester tester, String text) async {
+    await tester.tap(find.text(text));
     await tester.pumpAndSettle();
   }
 
-  /// Taps the AI card, chooses push-ups and 초보, and lets the matching page
-  /// slide in. The radar keeps turning, so pumpAndSettle would only return
-  /// after the bot is found.
+  /// Opens 게임 시작, then the AI 1v1 page.
+  Future<void> openBotSetup(WidgetTester tester) async {
+    await tapAndSettle(tester, '게임 시작');
+    await tapAndSettle(tester, 'AI 1v1');
+  }
+
+  /// Chooses push-ups and 초보 on the AI 1v1 page, starts, and lets the
+  /// matching page slide in. The radar keeps turning, so pumpAndSettle would
+  /// only return after the bot is found.
   Future<void> startMatching(WidgetTester tester) async {
-    await tester.tap(find.text('AI 1v1'));
-    await tester.pumpAndSettle();
-    await choose(tester, '푸쉬업');
+    await openBotSetup(tester);
     await tester.tap(find.text('초보'));
+    await tester.pump();
+    await tester.tap(find.text('대결 시작'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
   }
@@ -69,9 +88,8 @@ void main() {
   testWidgets('start leads through matching to versus; cancelling goes home', (
     tester,
   ) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
-    expect(find.text('안녕하세요, 우현님'), findsOneWidget);
+    await _openApp(tester);
+    expect(find.text('GYMRATS'), findsOneWidget);
 
     await startMatching(tester);
     expect(find.text('초보 AI 상대를 찾는 중'), findsOneWidget);
@@ -98,21 +116,22 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // Home keeps its scroll position; the greeting is at the top.
-    await tester.scrollUntilVisible(find.text('안녕하세요, 우현님'), -180);
-    expect(find.text('안녕하세요, 우현님'), findsOneWidget);
+    // Past 게임 시작 and AI 1v1, straight to home.
+    expect(find.byType(PlayScreen), findsNothing);
+    expect(find.text('GYMRATS'), findsOneWidget);
   });
 
-  testWidgets('the AI card leads through both sheets to a squat bot at that '
-      'level', (tester) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('AI 1v1'));
-    await tester.pumpAndSettle();
-    await choose(tester, '스쿼트');
-    expect(find.text('스쿼트 · 30초 · 1v1'), findsOneWidget);
-
+  testWidgets('the AI 1v1 page leads to a squat bot at the level chosen', (
+    tester,
+  ) async {
+    await _openApp(tester);
+    await openBotSetup(tester);
+    await tester.tap(find.text('스쿼트'));
     await tester.tap(find.text('고수'));
+    await tester.pump();
+    expect(find.text('스쿼트 · RepBot 고수 · 30초 대결'), findsOneWidget);
+
+    await tester.tap(find.text('대결 시작'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('고수 AI 상대를 찾는 중'), findsOneWidget);
@@ -140,12 +159,12 @@ void main() {
     testWidgets(
       'the online card leads through its sheet to a lobby for $name',
       (tester) async {
-        await tester.pumpWidget(
+        await _openApp(
+          tester,
           testApp(createOnlineSession: _QueuedSession.new),
         );
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('온라인 1v1'));
-        await tester.pumpAndSettle();
+        await tapAndSettle(tester, '게임 시작');
+        await tapAndSettle(tester, '온라인 1v1');
         await tester.tap(
           find.descendant(
             of: find.byType(ExerciseSheet),
@@ -167,33 +186,33 @@ void main() {
     );
   }
 
-  testWidgets('closing a sheet on the real app stays on home', (tester) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
-    for (final mode in const ['온라인 1v1', 'AI 1v1']) {
-      await tester.tap(find.text(mode));
-      await tester.pumpAndSettle();
-      expect(find.byType(ExerciseSheet), findsOneWidget);
+  testWidgets('back steps out one page at a time to home', (tester) async {
+    await _openApp(tester);
+    Future<void> back() async {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.byType(ExerciseSheet), findsNothing);
-      expect(find.byType(HomeScreen), findsOneWidget);
     }
-    await tester.tap(find.text('AI 1v1'));
-    await tester.pumpAndSettle();
-    await choose(tester, '푸쉬업');
-    expect(find.byType(BotDifficultySheet), findsOneWidget);
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(find.byType(BotDifficultySheet), findsNothing);
-    expect(find.byType(HomeScreen), findsOneWidget);
+
+    await tapAndSettle(tester, '게임 시작');
+    await tapAndSettle(tester, '온라인 1v1');
+    expect(find.byType(ExerciseSheet), findsOneWidget);
+    await back();
+    expect(find.byType(ExerciseSheet), findsNothing);
+    expect(find.byType(PlayScreen), findsOneWidget);
+
+    await tapAndSettle(tester, 'AI 1v1');
+    expect(find.text('RepBot과 겨룰 종목과 난이도를 골라요'), findsOneWidget);
+    await back();
+    expect(find.byType(PlayScreen), findsOneWidget);
+    await back();
+    expect(find.byType(PlayScreen), findsNothing);
+    expect(find.text('GYMRATS'), findsOneWidget);
   });
 
   testWidgets('the online route takes the exercise, not a bot request', (
     tester,
   ) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
+    await _openApp(tester);
     final generate = tester
         .widget<MaterialApp>(find.byType(MaterialApp))
         .onGenerateRoute!;
@@ -214,8 +233,7 @@ void main() {
   testWidgets("'?' on home opens the rules over home; back returns home", (
     tester,
   ) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
+    await _openApp(tester);
     await tester.tap(find.byTooltip('게임 규칙'));
     await tester.pumpAndSettle();
     expect(find.byType(HelpScreen), findsOneWidget);
@@ -224,14 +242,13 @@ void main() {
     await tester.tap(find.byTooltip('뒤로'));
     await tester.pumpAndSettle();
     expect(find.byType(HelpScreen), findsNothing);
-    expect(find.text('안녕하세요, 우현님'), findsOneWidget);
+    expect(find.text('GYMRATS'), findsOneWidget);
   });
 
   testWidgets('every screen gets the same repository and matchmaker', (
     tester,
   ) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
+    await _openApp(tester);
     final home = tester.element(find.byType(HomeScreen));
     final repository = home.read<UserRepository>();
     final matchmaker = home.read<Matchmaker>();
@@ -251,8 +268,7 @@ void main() {
 
   testWidgets('the matching flow sets up in MatchSetupScreen; the setup '
       'route still opens SetupScreen', (tester) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
+    await _openApp(tester);
     final generate = tester
         .widget<MaterialApp>(find.byType(MaterialApp))
         .onGenerateRoute!;
@@ -287,8 +303,7 @@ void main() {
   testWidgets('the battle route builds the battle for the matchup', (
     tester,
   ) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
+    await _openApp(tester);
     final generate = tester
         .widget<MaterialApp>(find.byType(MaterialApp))
         .onGenerateRoute!;
@@ -315,8 +330,7 @@ void main() {
   });
 
   testWidgets('after the result, home shows the saved battle', (tester) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
+    await _openApp(tester);
     final result = BattleResult(
       matchup: const Matchup(
         exercise: ExerciseType.pushUp,
@@ -342,18 +356,18 @@ void main() {
 
     await tester.tap(find.text('홈으로'));
     await tester.pumpAndSettle();
-    expect(find.text('40회'), findsOneWidget);
-    expect(find.text('30회'), findsOneWidget);
-    await tester.tap(find.text('AI 1v1'));
-    await tester.pumpAndSettle();
-    expect(find.text('개인 최고 40회'), findsOneWidget);
+    // Home loaded again: 게임 시작 offers that battle again, and the AI 1v1
+    // page reads the new best.
+    await tapAndSettle(tester, '게임 시작');
+    expect(find.text('푸쉬업 · AI 1v1 · 고수'), findsOneWidget);
+    await tapAndSettle(tester, 'AI 1v1');
+    expect(find.text('최고 40회'), findsOneWidget);
   });
 
-  testWidgets("after a game's result, home shows its points, not its reps", (
+  testWidgets("after a game's result, the best reads in points, not reps", (
     tester,
   ) async {
-    await tester.pumpWidget(testApp());
-    await tester.pumpAndSettle();
+    await _openApp(tester);
     final result = BattleResult(
       matchup: const Matchup(
         exercise: ExerciseType.pushUp,
@@ -379,23 +393,43 @@ void main() {
 
     await tester.tap(find.text('홈으로'));
     await tester.pumpAndSettle();
-    expect(find.text('150'), findsOneWidget);
-    expect(find.text('90'), findsOneWidget);
-    expect(find.text('7회'), findsNothing);
-    expect(find.text('9회'), findsNothing);
-    // Its reps alone would read as a loss: the stored outcome stands.
-    expect(
-      find.descendant(
-        of: find.ancestor(
-          of: find.text('150'),
-          matching: find.byType(MatchRecordCard),
-        ),
-        matching: find.text('승'),
+    await openBotSetup(tester);
+    expect(find.text('최고 150점'), findsOneWidget);
+    expect(find.text('최고 7회'), findsNothing);
+  });
+
+  testWidgets('the sound switches keep what an earlier run saved, and save '
+      'a change', (tester) async {
+    // What the previous run of the app left on the phone.
+    final store = MemorySettingsStore()
+      ..soundEffectsOn = false
+      ..voiceGuidanceOn = true;
+    await _openApp(
+      tester,
+      GymRatsApp(
+        authRepository: signedInAuth(),
+        userRepository: InMemoryUserRepository(),
+        settingsStore: store,
       ),
-      findsOneWidget,
     );
-    await tester.tap(find.text('AI 1v1'));
+    await tapAndSettle(tester, '환경설정');
+    bool switchOf(String title) => tester
+        .widget<Switch>(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text(title),
+              matching: find.byType(InkWell),
+            ),
+            matching: find.byType(Switch),
+          ),
+        )
+        .value;
+    expect(switchOf('효과음'), isFalse);
+    expect(switchOf('음성 안내'), isTrue);
+
+    await tester.tap(find.text('효과음'));
     await tester.pumpAndSettle();
-    expect(find.text('개인 최고 150점'), findsOneWidget);
+    expect(switchOf('효과음'), isTrue);
+    expect(store.soundEffectsOn, isTrue);
   });
 }

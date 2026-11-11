@@ -12,6 +12,10 @@ void main() {
     tester.view.physicalSize = const Size(412, 915);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    // Reduced motion: home's RepBot holds still, so pumpAndSettle returns.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await tester.pumpWidget(authHistoryDemoApp());
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
@@ -22,7 +26,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
 
-    await tester.tap(find.text('전체 기록 ›'));
+    await tester.tap(find.text('기록보관소'));
     await tester.pumpAndSettle();
     expect(find.byType(HistoryScreen), findsOneWidget);
   });

@@ -7,10 +7,8 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
-import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
-import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/widgets/match_record_card.dart';
 import 'package:provider/provider.dart';
 
@@ -71,26 +69,59 @@ void main() {
   Color? colorOf(WidgetTester tester, String text) =>
       tester.widget<Text>(find.text(text)).style?.color;
 
-  testWidgets('a top issue reads in amber', (tester) async {
+  testWidgets('the outcome is ink on its color, with an ink edge', (
+    tester,
+  ) async {
+    for (final (outcome, fill) in [
+      (MatchOutcome.win, AppColors.accent),
+      (MatchOutcome.lose, AppColors.opponent),
+      (MatchOutcome.draw, AppColors.cardHigh),
+    ]) {
+      await show(tester, MatchOutcomeBadge(outcome: outcome));
+      expect(colorOf(tester, outcome.label), AppColors.ink);
+      final box = tester.widget<Container>(find.byType(Container));
+      final decoration = box.decoration! as BoxDecoration;
+      expect(decoration.color, fill);
+      expect((decoration.border! as Border).top.color, AppColors.ink);
+    }
+  });
+
+  /// The band painted behind the text, if any.
+  Color? bandOf(WidgetTester tester, String text) =>
+      tester.widget<Text>(find.text(text)).style?.backgroundColor;
+
+  testWidgets('a top issue reads in ink on an amber band', (tester) async {
     await show(
       tester,
       MatchRecordCard(match: _match(summary: _issue), showFeedback: true),
     );
     expect(find.text('팔꿈치가 벌어져요'), findsOneWidget);
-    expect(colorOf(tester, '팔꿈치가 벌어져요'), AppColors.warning);
+    expect(colorOf(tester, '팔꿈치가 벌어져요'), AppColors.ink);
+    expect(
+      bandOf(tester, '팔꿈치가 벌어져요'),
+      AppColors.warning.withValues(alpha: 0.6),
+    );
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.error_outline_rounded)).color,
+      AppColors.ink,
+    );
   });
 
-  testWidgets('nothing to fix reads 좋은 자세 in lime', (tester) async {
+  testWidgets('nothing to fix reads 좋은 자세 in ink on a lime band', (
+    tester,
+  ) async {
     await show(
       tester,
       MatchRecordCard(match: _match(summary: _clean), showFeedback: true),
     );
-    expect(colorOf(tester, '좋은 자세'), AppColors.accent);
+    expect(colorOf(tester, '좋은 자세'), AppColors.ink);
+    expect(bandOf(tester, '좋은 자세'), AppColors.accent.withValues(alpha: 0.6));
   });
 
   testWidgets('a battle without feedback reads 피드백 없음', (tester) async {
     await show(tester, MatchRecordCard(match: _match(), showFeedback: true));
     expect(colorOf(tester, '피드백 없음'), AppColors.textMuted);
+    expect(bandOf(tester, '피드백 없음'), isNull);
   });
 
   testWidgets('the feedback line shows only when asked', (tester) async {
@@ -198,6 +229,8 @@ void main() {
     expect(find.text('90'), findsOneWidget);
     expect(find.textContaining('7'), findsNothing);
     expect(find.textContaining('회'), findsNothing);
+    // "나" sits on a lime pill: ink, readable in the light theme.
+    expect(colorOf(tester, '나'), AppColors.ink);
   });
 
   testWidgets('a battle with no game scores shows its reps with a unit', (
@@ -309,8 +342,8 @@ void main() {
           ),
         );
 
-    /// The real screens, as a card alone on a page would have their side
-    /// margins as well.
+    /// The real screen that lists battles (home no longer does), as a card
+    /// alone on a page would have its side margins as well.
     final screens = <String, Future<void> Function(WidgetTester, MatchRecord)>{
       'the history tab': (tester, match) async {
         await tester.pumpWidget(
@@ -326,22 +359,6 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-      },
-      'home': (tester, match) async {
-        final repository = FakeUserRepository()..recent = [match];
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.dark,
-            home: HomeScreen(
-              createViewModel: () => HomeViewModel(repository: repository),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.scrollUntilVisible(
-          find.textContaining(match.opponentName),
-          180,
-        );
       },
     };
 

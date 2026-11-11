@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/bot_difficulty.dart';
+import '../models/exercise_type.dart';
 import '../models/match_record.dart';
 import '../models/user_profile.dart';
 import '../services/api/api_client.dart';
@@ -18,14 +20,58 @@ enum HomePhase {
   failed,
 }
 
-/// Immutable state rendered by the home screen.
+/// How a battle is set up: the exercise, and the bot's level for a battle
+/// with the bot.
+@immutable
+class BattleSetup {
+  const BattleSetup({required this.exercise, this.difficulty});
+
+  /// The setup of [match]: a battle with the bot when the opponent is one of
+  /// its levels, an online battle otherwise.
+  ///
+  /// A record keeps no mode, only the opponent's name, so a person who took
+  /// a bot's name (e.g. "RepBot") reads as that bot.
+  factory BattleSetup.of(MatchRecord match) => BattleSetup(
+    exercise: match.exercise,
+    difficulty: _botLevelNamed(match.opponentName),
+  );
+
+  /// The bot from before there were levels saved its battles under this
+  /// name; it played like [BotDifficulty.expert].
+  static const _oldBotName = 'RepBot';
+
+  static BotDifficulty? _botLevelNamed(String opponentName) =>
+      opponentName == _oldBotName
+      ? BotDifficulty.expert
+      : BotDifficulty.values
+            .where((level) => level.opponentName == opponentName)
+            .firstOrNull;
+
+  final ExerciseType exercise;
+
+  /// The bot's level; null for an online battle.
+  final BotDifficulty? difficulty;
+
+  bool get isOnline => difficulty == null;
+
+  @override
+  bool operator ==(Object other) =>
+      other is BattleSetup &&
+      other.exercise == exercise &&
+      other.difficulty == difficulty;
+
+  @override
+  int get hashCode => Object.hash(exercise, difficulty);
+}
+
+/// Immutable state rendered by the home lobby and the pages it opens.
 class HomeState {
   const HomeState({
     this.phase = HomePhase.loading,
     this.profile,
-    this.recent = const [],
-    this.recentIsFallback = false,
     this.errorMessage,
+    this.botExercise = ExerciseType.pushUp,
+    this.botLevel = BotDifficulty.intermediate,
   });
 
   final HomePhase phase;
@@ -33,40 +79,43 @@ class HomeState {
   /// The last loaded profile; null until a load succeeds.
   final UserProfile? profile;
 
-  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
-  /// Up to [HomeViewModel.recentCount] newest battles, newest first, each
-  /// with its one-line feedback.
-  final List<MatchRecord> recent;
-
-  /// [recent] is only the profile's latest battle, which carries no
-  /// feedback, because the recent battles could not be loaded. Its row then
-  /// shows no feedback line rather than a wrong "피드백 없음".
-  final bool recentIsFallback;
-
   /// Why the load failed, e.g. no network; null for the default message.
   final String? errorMessage;
+
+  /// What the AI 1v1 page has chosen so far: push-ups against 중수 at first.
+  final ExerciseType botExercise;
+  final BotDifficulty botLevel;
+
+  /// [botExercise] against [botLevel].
+  BattleSetup get botSetup =>
+      BattleSetup(exercise: botExercise, difficulty: botLevel);
+
+  /// The setup of the latest battle, to play it again; null before the
+  /// first battle.
+  BattleSetup? get lastSetup => switch (profile?.lastMatch) {
+    final match? => BattleSetup.of(match),
+    null => null,
+  };
 
   HomeState copyWith({
     HomePhase? phase,
     UserProfile? profile,
-    List<MatchRecord>? recent,
-    bool? recentIsFallback,
     String? errorMessage,
+    ExerciseType? botExercise,
+    BotDifficulty? botLevel,
   }) => HomeState(
     phase: phase ?? this.phase,
     profile: profile ?? this.profile,
-    recent: recent ?? this.recent,
-    recentIsFallback: recentIsFallback ?? this.recentIsFallback,
     errorMessage: errorMessage ?? this.errorMessage,
+    botExercise: botExercise ?? this.botExercise,
+    botLevel: botLevel ?? this.botLevel,
   );
 }
 
-/// Loads the user's profile and recent battles for the home screen.
+/// Loads the user's profile for the home lobby, and keeps what the AI 1v1
+/// page has chosen.
 class HomeViewModel extends ChangeNotifier {
   HomeViewModel({required this._repository});
-
-  /// How many battles "최근 경기" shows.
-  static const recentCount = 3;
 
   final UserRepository _repository;
 
@@ -81,8 +130,8 @@ class HomeViewModel extends ChangeNotifier {
   /// The first load shows the loading state, and the failed state on an
   /// [Exception] from the repository. A reload keeps the profile on screen
   /// until the new one arrives, and keeps it if the reload fails. The
-  /// profile load sends queued battles first, so the recent battles are
-  /// read after it and include them.
+  /// profile load sends queued battles first, so its latest battle and
+  /// bests include them.
   Future<void> load() async {
     if (_disposed || _fetching) return;
     _fetching = true;
@@ -90,15 +139,7 @@ class HomeViewModel extends ChangeNotifier {
     if (!reloading) _setState(_state.copyWith(phase: HomePhase.loading));
     try {
       final profile = await _repository.fetchProfile();
-      final (recent, fallback) = await _loadRecent(profile);
-      _setState(
-        _state.copyWith(
-          phase: HomePhase.ready,
-          profile: profile,
-          recent: recent,
-          recentIsFallback: fallback,
-        ),
-      );
+      _setState(_state.copyWith(phase: HomePhase.ready, profile: profile));
     } on Exception catch (e) {
       if (!reloading) {
         _setState(
@@ -113,16 +154,13 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
-  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
-  /// The recent battles; when they cannot be loaded, the profile's latest
-  /// battle, so home still shows something.
-  Future<(List<MatchRecord>, bool)> _loadRecent(UserProfile profile) async {
-    try {
-      return (await _repository.fetchRecent(limit: recentCount), false);
-    } on Exception {
-      return (<MatchRecord>[?profile.lastMatch], true);
-    }
-  }
+  /// The exercise for the battle with the bot.
+  void chooseBotExercise(ExerciseType exercise) =>
+      _setState(_state.copyWith(botExercise: exercise));
+
+  /// The bot's level.
+  void chooseBotLevel(BotDifficulty level) =>
+      _setState(_state.copyWith(botLevel: level));
 
   void _setState(HomeState state) {
     if (_disposed) return;
