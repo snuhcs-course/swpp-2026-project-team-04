@@ -8,6 +8,7 @@ import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
 
 import '../support/fakes.dart';
 import '../support/placed_phone.dart';
@@ -83,6 +84,20 @@ void main() {
   FilledButton startButton(WidgetTester tester) => tester.widget(
     find.ancestor(of: find.text('Start'), matching: find.byType(FilledButton)),
   );
+
+  testWidgets('push-up camera guide occupies the lower half in portrait', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await open(tester);
+    final guide = tester.getRect(find.byType(PoseSilhouetteGuide));
+    expect(guide.top, 400);
+    expect(guide.bottom, 800);
+    expect(tester.getBottomLeft(find.text('Start')).dy, lessThanOrEqualTo(400));
+  });
 
   testWidgets('no guide text bar, only floating back and switch buttons', (
     tester,
