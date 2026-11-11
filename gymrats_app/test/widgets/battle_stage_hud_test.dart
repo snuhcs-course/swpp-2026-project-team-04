@@ -212,6 +212,49 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('a cut name keeps to its swatch: mine from the left, the '
+        'opponent\'s from the right', (tester) async {
+      final picture = await paintPicture(
+        tester,
+        const SizedBox(
+          width: BattleFx.stageWidth,
+          height: BattleFx.stageHeight,
+          child: BattleStageHud(
+            myName: _longMe,
+            opponentName: _longOpponent,
+            secondsLeft: 18,
+            elapsed: 0.4,
+            chip: null,
+            myScore: 60,
+            opponentScore: 45,
+            myReps: 5,
+            opponentReps: 4,
+          ),
+        ),
+        size: const Size(BattleFx.stageWidth, BattleFx.stageHeight),
+      );
+      // The ink of the letters in the name row, between a swatch and the
+      // middle of the stage.
+      bool inked(int x) =>
+          [for (var y = 30; y < 50; y++) picture.at(x.toDouble(), y.toDouble())]
+              .any((c) => (c.r + c.g + c.b) / 3 < 0.5);
+      final mine = [
+        for (var x = 31; x < 150; x++)
+          if (inked(x)) x,
+      ];
+      final theirs = [
+        for (var x = 210; x < 330; x++)
+          if (inked(x)) x,
+      ];
+      // 12 + 12 + 6 = 30: where my name starts, and 360 - 30 where the
+      // opponent's ends.
+      expect(mine.first, closeTo(30, 2));
+      expect(theirs.last + 1, closeTo(330, 2));
+      // Both are "five letters and …", 75 wide.
+      expect(theirs.last + 1 - theirs.first, closeTo(75, 3));
+      expect(mine.last + 1 - mine.first, closeTo(75, 3));
+    });
+
     testWidgets('the cut is by width, not by letters: six Korean letters fit '
         'whole and a seventh is cut', (tester) async {
       bool cut(String name) => _paragraph(tester, name).didExceedMaxLines;

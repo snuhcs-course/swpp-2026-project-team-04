@@ -232,7 +232,9 @@ void main() {
       expect(find.text('더 깊게'), findsOneWidget);
       await press(tester, 'Average');
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('더 깊게 +5'), findsOneWidget);
+      // The sign gives the reason only; the stage's bands give the points.
+      expect(find.text('더 깊게'), findsOneWidget);
+      expect(find.text('더 깊게 +5'), findsNothing);
       expect(state(tester).myScore, 5);
       expect(state(tester).myReps, 0);
     });

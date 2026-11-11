@@ -5,6 +5,7 @@ import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/battle_arena.dart';
+import 'package:gymrats_app/widgets/battle_banner.dart';
 import 'package:gymrats_app/widgets/battle_camera_area.dart';
 import 'package:gymrats_app/widgets/battle_fighter.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
@@ -321,6 +322,105 @@ void main() {
       await _wait(tester, 16);
       await _wait(tester, 3000);
       expect(cues, ['hit me good', 'miss opponent']);
+    });
+
+    testWidgets('a combo shows "2 HIT" over the camera, 14 under the line on '
+        'the left, and under the reconnect band while it is up', (
+      tester,
+    ) async {
+      Future<double> markTop(bool reconnecting) async {
+        final controller = BattleStageController();
+        final state = _state(reconnecting: reconnecting);
+        await _pump(tester, controller, state);
+        await _wait(tester, 500);
+        controller.rep(_myGood);
+        await _wait(tester, 500);
+        controller.rep(
+          const BattleStageEvent(
+            side: BattleSide.me,
+            grade: GameGrade.good,
+            points: 15,
+            combo: 2,
+          ),
+        );
+        await _wait(tester, 400);
+        final mark = find.descendant(
+          of: find.byType(BattleCameraArea),
+          matching: find.text('2 HIT'),
+        );
+        expect(mark, findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byType(BattleStage),
+            matching: find.text('2 HIT'),
+          ),
+          findsNothing,
+        );
+        // Turned around its outer end, 6 from the left: the band's middle
+        // there stays at 14 + half its height under the line.
+        final band = find.ancestor(of: mark, matching: find.byType(BattleBand));
+        final outer = Offset.lerp(
+          tester.getTopLeft(band),
+          tester.getBottomLeft(band),
+          0.5,
+        )!;
+        expect(outer.dx, closeTo(6, 0.01));
+        return outer.dy - BattleFx.bandBox(44).height / 2;
+      }
+
+      // On the design's phone the line is at 390 and the stage at scale 1.
+      expect(await markTop(false), closeTo(390 + 14, 0.01));
+      expect(await markTop(true), closeTo(390 + 14 + 34, 0.5));
+    });
+
+    testWidgets('on a larger phone the combo mark is sized with the stage', (
+      tester,
+    ) async {
+      const size = Size(393, 852);
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(), size: size);
+      await _wait(tester, 500);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.good,
+          points: 15,
+          combo: 2,
+        ),
+      );
+      await _wait(tester, 400);
+      // The line is half way down; the stage is as large as the width lets
+      // it be here (393 / 360 < (426 - 26) / 364).
+      const line = 852 / 2;
+      const scale = 393 / 360;
+      final band = find.ancestor(
+        of: find.text('2 HIT'),
+        matching: find.byType(BattleBand),
+      );
+      final outer = Offset.lerp(
+        tester.getTopLeft(band),
+        tester.getBottomLeft(band),
+        0.5,
+      )!;
+      final height = BattleFx.bandBox(44).height * scale;
+      expect(outer.dx, closeTo(6 * scale, 0.01));
+      expect(outer.dy - height / 2, closeTo(line + 14 * scale, 0.01));
+      expect(
+        (tester.getBottomLeft(band) - tester.getTopLeft(band)).distance,
+        closeTo(height, 0.01),
+      );
+    });
+
+    testWidgets('a three-digit score shrinks when it bumps; a two-digit one '
+        'grows', (tester) async {
+      for (final (score, bump) in [(120, 0.9), (60, 1.2)]) {
+        final controller = BattleStageController();
+        await _pump(tester, controller, _state(me: score, op: 30));
+        await _wait(tester, 500);
+        controller.rep(_myGood);
+        await _wait(tester, 80 + 140);
+        expect(_frame(tester).myScoreBump, closeTo(bump, 0.01));
+      }
     });
 
     testWidgets('fever turns the ground cyan and puts an aura on both', (

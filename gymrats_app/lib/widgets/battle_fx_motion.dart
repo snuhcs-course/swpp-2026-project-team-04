@@ -25,9 +25,6 @@ enum BattleFxTone { me, opponent, plain, average, fever, danger }
 /// Korean.
 enum BattleFxFont { number, display }
 
-/// Where a band sits across the stage.
-enum BattleFxAlign { left, center, right }
-
 /// The numbers and curves of the battle stage's effects, ported from the
 /// design prototype (FxA). Lengths are in the stage's 360 x 390 design
 /// points, times in milliseconds, angles in degrees (clockwise positive).
@@ -41,8 +38,16 @@ abstract final class BattleFx {
   /// How far each fighter's feet are from the point where they meet.
   static const reach = 56.0;
 
-  /// The top of the band texts.
-  static const bandTop = 132.0;
+  /// The combo mark "N HIT": its text size, how far below the line between
+  /// the stage and the camera its band's top is, and how far its outer end
+  /// is from the screen's side.
+  static const comboTextSize = 44.0;
+  static const comboBelowLine = 14.0;
+  static const comboSide = 6.0;
+
+  /// The reconnect band's height in the design; the combo mark goes under
+  /// it while it is up.
+  static const reconnectBandHeight = 34.0;
 
   /// A rep lands this long after its event.
   static const impactDelay = 80.0;
@@ -111,6 +116,30 @@ abstract final class BattleFx {
 
   /// Where the fighters meet for a health-bar [share] from 0 to 1.
   static double meetX(double share) => 80 + 200 * share;
+
+  /// The size of a band of numbers or English for text [size] tall (the
+  /// design's `bandBox`): Oxanium's capitals are 0.69 of the size, and the
+  /// band leaves the same room above and below them, so they sit in its
+  /// middle and never stick out of it. [padX] is the room on each side of
+  /// the text, [baseline] how far down from the band's top the letters
+  /// stand. The 3 in each is the band's ink edge.
+  static ({double height, double padX, double baseline}) bandBox(double size) =>
+      (
+        height: 0.83 * size + 6,
+        padX: 0.15 * size + 3,
+        baseline: 0.76 * size + 3,
+      );
+
+  /// The size of a band of Korean: as tall as its 1.25 line, 16 beside the
+  /// text.
+  static ({double height, double padX}) koreanBandBox(double size) =>
+      (height: 1.25 * size, padX: 16);
+
+  /// Where the combo mark's band begins, in the design's 360 x 780 screen:
+  /// [comboBelowLine] under the line, and under the reconnect band while it
+  /// is up.
+  static double comboTop({required bool reconnecting}) =>
+      stageHeight + comboBelowLine + (reconnecting ? reconnectBandHeight : 0);
 
   /// The chip beside the clock; null while it is hidden, before the start.
   static ({String text, BattleFxTone tone})? chip({
@@ -239,7 +268,6 @@ class BattleFxSign {
   const BattleFxSign({
     required this.reason,
     required this.average,
-    required this.points,
     required this.scale,
     required this.rotation,
     required this.opacity,
@@ -247,22 +275,20 @@ class BattleFxSign {
 
   final RejectReason reason;
 
-  /// Whether the rep still earned average points: an amber band with the
-  /// points, instead of a red one.
+  /// Whether the rep still earned average points: an amber band instead of
+  /// a red one. The points themselves show on the stage's bands.
   final bool average;
-  final int points;
   final double scale;
   final double rotation;
   final double opacity;
 
-  /// The label, e.g. "무릎 떼기" or "더 깊게 +5".
-  String get text =>
-      average ? '${reason.signLabel} +$points' : reason.signLabel;
+  /// The label: the reason only, e.g. "무릎 떼기".
+  String get text => reason.signLabel;
 
   BattleFxTone get tone => average ? BattleFxTone.average : BattleFxTone.danger;
 }
 
-/// One slanted band of text over the stage.
+/// One slanted band of text over the stage, centered across it.
 class BattleFxBanner {
   const BattleFxBanner({
     required this.text,
@@ -271,7 +297,6 @@ class BattleFxBanner {
     required this.tone,
     required this.opacity,
     this.font = BattleFxFont.number,
-    this.align = BattleFxAlign.center,
     this.dx = 0,
     this.dy = 0,
     this.rotation = 0,
@@ -280,20 +305,55 @@ class BattleFxBanner {
   });
 
   final String text;
+
+  /// The top of the band before it is turned.
   final double top;
   final double textSize;
   final BattleFxTone tone;
   final double opacity;
   final BattleFxFont font;
-  final BattleFxAlign align;
 
   /// Moved by this much, then turned by [rotation] and sized by [scaleX] and
-  /// [scaleY] around the band's own anchor ([align]) at mid height.
+  /// [scaleY] around the band's middle.
   final double dx;
   final double dy;
   final double rotation;
   final double scaleX;
   final double scaleY;
+
+  /// How tall the band is, and the room on each side of its text.
+  double get bandHeight => font == BattleFxFont.number
+      ? BattleFx.bandBox(textSize).height
+      : BattleFx.koreanBandBox(textSize).height;
+  double get padX => font == BattleFxFont.number
+      ? BattleFx.bandBox(textSize).padX
+      : BattleFx.koreanBandBox(textSize).padX;
+}
+
+/// The combo mark of one side, "N HIT", in the camera area's top corner on
+/// that side: a white band of [BattleFx.comboTextSize] numbers.
+class BattleFxCombo {
+  const BattleFxCombo({
+    required this.side,
+    required this.count,
+    required this.opacity,
+    required this.rotation,
+    required this.scaleX,
+    required this.scaleY,
+  });
+
+  final BattleSide side;
+
+  /// Valid reps in a row.
+  final int count;
+  final double opacity;
+
+  /// Turned and sized around the band's outer end at mid height.
+  final double rotation;
+  final double scaleX;
+  final double scaleY;
+
+  String get text => '$count HIT';
 }
 
 /// 결과 보기 coming up over the camera once the ending has played.
@@ -327,6 +387,7 @@ class BattleFxFrame {
     required this.puff,
     required this.sign,
     required this.banners,
+    required this.combos,
     required this.myScoreBump,
     required this.opponentScoreBump,
     required this.myRepsBump,
@@ -358,7 +419,13 @@ class BattleFxFrame {
   final BattleFxTwinkle? twinkle;
   final BattleFxPuff? puff;
   final BattleFxSign? sign;
+
+  /// The bands over the stage, in the order they are drawn: a later one
+  /// over an earlier one, so the user's over the opponent's.
   final List<BattleFxBanner> banners;
+
+  /// The combo marks over the camera, the opponent's first.
+  final List<BattleFxCombo> combos;
 
   /// What the big scores and the valid rep counts are sized by.
   final double myScoreBump;
@@ -416,12 +483,11 @@ class _SideFx {
 }
 
 class _Sign {
-  const _Sign(this.at, this.reason, this.average, this.points);
+  const _Sign(this.at, this.reason, this.average);
 
   final double at;
   final RejectReason reason;
   final bool average;
-  final int points;
 }
 
 class _Motion {
@@ -499,8 +565,19 @@ class BattleFxTimeline {
   /// Whether the opponent's connection is down, before it counts as leaving.
   bool opponentGone = false;
 
+  /// The scores on screen: a score of three digits has no room to grow when
+  /// it bumps, so it shrinks instead.
+  int _myScore = 0;
+  int _opponentScore = 0;
+
   /// The ending being played, if any.
   BattleStageEnd? get end => _end;
+
+  /// Takes the scores the HUD shows now.
+  void setScores(int mine, int theirs) {
+    _myScore = mine;
+    _opponentScore = theirs;
+  }
 
   /// Moves the meeting point toward a new health-bar [share].
   void setShare(double share, double now) {
@@ -586,7 +663,7 @@ class BattleFxTimeline {
       final reason = event.reason;
       _sign = reason == null
           ? null
-          : _Sign(now, reason, event.grade == GameGrade.average, event.points);
+          : _Sign(now, reason, event.grade == GameGrade.average);
     }
     // Only a blow that lands can knock out.
     if (event.knockout && power > 0) {
@@ -896,8 +973,9 @@ class BattleFxTimeline {
       puff: puff,
       sign: _signAt(now),
       banners: _banners(now, counting, reducedMotion),
-      myScoreBump: _bump(now - mine.scoreBumpAt, 280, 0.2),
-      opponentScoreBump: _bump(now - theirs.scoreBumpAt, 280, 0.2),
+      combos: _combos(now),
+      myScoreBump: _scoreBump(now - mine.scoreBumpAt, _myScore),
+      opponentScoreBump: _scoreBump(now - theirs.scoreBumpAt, _opponentScore),
       myRepsBump: reducedMotion ? 1 : _bump(now - mine.repsBumpAt, 260, 0.3),
       opponentRepsBump: reducedMotion
           ? 1
@@ -914,6 +992,12 @@ class BattleFxTimeline {
   /// A number growing by [extra] and back over [length].
   static double _bump(double d, double length, double extra) =>
       d >= 0 && d < length ? 1 + extra * math.sin(d / length * math.pi) : 1;
+
+  /// A [score] bumping [d] after its blow: up by a fifth and back over
+  /// 280 ms, or, from 100 on, down by a tenth and back, since three digits
+  /// already fill the room beside the valid counts and under the clock.
+  static double _scoreBump(double d, int score) =>
+      score >= 100 ? 2 - _bump(d, 280, 0.1) : _bump(d, 280, 0.2);
 
   /// A fighter's pose and how far through each move they are.
   _Motion _motion(BattleSide who, double now, bool noHitStop) {
@@ -1048,7 +1132,6 @@ class BattleFxTimeline {
     return BattleFxSign(
       reason: sign.reason,
       average: sign.average,
-      points: sign.points,
       scale: d < 130 ? 0.6 + 0.4 * BattleFx.back(d / 130) : 1,
       rotation: d < 280 ? math.sin(d / 40) * 3 * (1 - d / 280) : 0,
       opacity: d > 1150 ? (1300 - d) / 150 : math.min(1, 0.5 + d / 80),
@@ -1056,7 +1139,6 @@ class BattleFxTimeline {
   }
 
   List<BattleFxBanner> _banners(double now, bool counting, bool reducedMotion) {
-    const top = BattleFx.bandTop;
     final end = _end;
     final sinceEnd = now - _endAt;
     final out = <BattleFxBanner>[];
@@ -1070,48 +1152,26 @@ class BattleFxTimeline {
       null => BattleFxTone.plain,
     };
 
-    // A knockout clears the bands of the blow that caused it.
+    // A knockout clears the bands of the blow that caused it. The
+    // opponent's bands come first, so the user's are drawn over them.
     final cleared = end?.kind == BattleEndKind.knockout && sinceEnd > 300;
-    for (final who in BattleSide.values) {
+    for (final who in const [BattleSide.opponent, BattleSide.me]) {
       final sign = who == BattleSide.me ? 1.0 : -1.0;
-      final side = _sides[who]!;
-      final missed = now - side.missAt;
-      final miss = cleared ? null : BattleFx.pop(missed, 760);
+      final miss = cleared
+          ? null
+          : BattleFx.pop(now - _sides[who]!.missAt, 760);
       if (miss != null) {
         add(
           BattleFxBanner(
             text: 'MISS',
-            top: top + 14,
+            top: 155,
             textSize: 84,
             tone: BattleFxTone.plain,
             opacity: miss.opacity,
             dx: -sign * 56,
-            dy: -missed * 0.02,
             rotation: sign * 7,
             scaleX: 0.78 * miss.scale,
             scaleY: miss.scale,
-          ),
-        );
-      }
-      // The points and the grade words of a blow follow spec v2.1.
-      final combo = now - side.comboAt;
-      if (end == null && side.combo >= 2 && combo >= 0 && combo < 1700) {
-        final scale = combo < 120
-            ? 0.6 + 0.4 * BattleFx.back(combo / 120)
-            : 1.0;
-        add(
-          BattleFxBanner(
-            text: '${side.combo} HIT',
-            top: top + 4,
-            textSize: 44,
-            tone: BattleFxTone.plain,
-            opacity: combo > 1500 ? (1700 - combo) / 200 : 1,
-            align: who == BattleSide.me
-                ? BattleFxAlign.left
-                : BattleFxAlign.right,
-            rotation: -6 * sign,
-            scaleX: 0.72 * scale,
-            scaleY: scale,
           ),
         );
       }
@@ -1122,17 +1182,17 @@ class BattleFxTimeline {
       add(
         BattleFxBanner(
           text: BattleFx.feverText(feverMultiplier),
-          top: top + 62,
+          top: 263,
           textSize: 80,
-          tone: BattleFxTone.fever,
+          tone: BattleFxTone.plain,
           opacity: 1,
-          // In from the left, out to the right.
+          // In from the left, out to the right, over both fighters.
           dx: fever < 160
               ? -400 * (1 - BattleFx.easeOut(fever / 160))
               : (fever > 1100
                     ? 400 * BattleFx.easeOut((fever - 1100) / 200)
                     : 0),
-          rotation: -5,
+          rotation: -4,
           scaleX: 0.7,
         ),
       );
@@ -1142,7 +1202,7 @@ class BattleFxTimeline {
       add(
         BattleFxBanner(
           text: _meReady ? '상대를 기다리는 중' : '자세 세팅 중',
-          top: top + 16,
+          top: 148,
           textSize: 34,
           tone: BattleFxTone.plain,
           opacity: 1,
@@ -1164,8 +1224,8 @@ class BattleFxTimeline {
         add(
           BattleFxBanner(
             text: '$number',
-            top: top + 10,
-            textSize: 190,
+            top: 141,
+            textSize: 160,
             tone: BattleFxTone.plain,
             opacity: 1,
             scaleX: scale,
@@ -1178,8 +1238,8 @@ class BattleFxTimeline {
         add(
           BattleFxBanner(
             text: 'GO!',
-            top: top + 10,
-            textSize: 150,
+            top: 153,
+            textSize: 130,
             tone: BattleFxTone.plain,
             opacity: go.opacity,
             rotation: -5,
@@ -1198,16 +1258,21 @@ class BattleFxTimeline {
       case BattleEndKind.knockout:
         final d = sinceEnd - BattleFx.knockoutBandAt;
         if (d >= 0) {
+          // On the half the winner left empty: the loser was pushed to
+          // their end of the bar, so the winner stands toward it. The
+          // winner's end of the band is the higher one.
+          final winner = end.winner == BattleSide.opponent ? -1.0 : 1.0;
           final scale = landing(d, 2.4, 180);
           add(
             BattleFxBanner(
               text: 'K.O.',
-              top: top - 4,
-              textSize: 124,
+              top: 166,
+              textSize: 110,
               tone: toneOf(end.winner),
               opacity: 1,
-              rotation: -7,
-              scaleX: scale,
+              dx: -102 * winner,
+              rotation: -7 * winner,
+              scaleX: 0.6 * scale,
               scaleY: scale,
             ),
           );
@@ -1221,7 +1286,7 @@ class BattleFxTimeline {
               text: end.winner == BattleSide.me
                   ? '상대가 나가서 이겼어요'
                   : '연결이 끊겨서 졌어요',
-              top: top + 18,
+              top: 150,
               textSize: 28,
               tone: toneOf(end.winner),
               opacity: 1,
@@ -1238,8 +1303,8 @@ class BattleFxTimeline {
           add(
             BattleFxBanner(
               text: 'TIME!',
-              top: top + 26,
-              textSize: 110,
+              top: 157,
+              textSize: 96,
               tone: BattleFxTone.plain,
               opacity: time.opacity,
               rotation: -5,
@@ -1258,7 +1323,7 @@ class BattleFxTimeline {
                 BattleSide.opponent => 'LOSE',
                 null => 'DRAW',
               },
-              top: top,
+              top: 159,
               textSize: 88,
               tone: toneOf(end.winner),
               opacity: 1,
@@ -1268,6 +1333,37 @@ class BattleFxTimeline {
             ),
           );
         }
+    }
+    return out;
+  }
+
+  /// The combo marks, the opponent's first: from a second valid rep in a
+  /// row, for 1700 ms, popping in and fading over the last 200. A rep that
+  /// did not count takes its side's mark down at once; none once the battle
+  /// has ended.
+  List<BattleFxCombo> _combos(double now) {
+    if (_end != null) return const [];
+    final out = <BattleFxCombo>[];
+    for (final who in const [BattleSide.opponent, BattleSide.me]) {
+      final side = _sides[who]!;
+      final d = now - side.comboAt;
+      if (side.combo < 2 || d < 0 || d >= 1700) continue;
+      final opacity = d > 1500 ? (1700 - d) / 200 : 1.0;
+      if (opacity <= 0.01) continue;
+      final scale = d < 120 ? 0.6 + 0.4 * BattleFx.back(d / 120) : 1.0;
+      // The inner end rises: my mark turns counterclockwise, the
+      // opponent's clockwise.
+      final sign = who == BattleSide.me ? 1.0 : -1.0;
+      out.add(
+        BattleFxCombo(
+          side: who,
+          count: side.combo,
+          opacity: opacity,
+          rotation: -6 * sign,
+          scaleX: 0.72 * scale,
+          scaleY: scale,
+        ),
+      );
     }
     return out;
   }

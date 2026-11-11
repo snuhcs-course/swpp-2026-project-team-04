@@ -234,9 +234,10 @@ class BattleStageHud extends StatelessWidget {
   }
 
   /// A nickname beside its color swatch: the user's swatch first, the
-  /// opponent's last. A name wider than [_nameWidth] ends in "…"; a screen
-  /// reader gets all of it, and whose it is ([who]), which the eye reads
-  /// from the swatch's color and side.
+  /// opponent's last. A name wider than [_nameWidth] ends in "…" and keeps
+  /// to its swatch: the user's from the left, the opponent's from the right.
+  /// A screen reader gets all of it, and whose it is ([who]), which the eye
+  /// reads from the swatch's color and side.
   Widget _name(
     TextTheme text,
     String name,
@@ -254,6 +255,7 @@ class BattleStageHud extends StatelessWidget {
         name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
+        textAlign: mine ? TextAlign.left : TextAlign.right,
         semanticsLabel: '$who $name',
         style: text.stageName,
       ),

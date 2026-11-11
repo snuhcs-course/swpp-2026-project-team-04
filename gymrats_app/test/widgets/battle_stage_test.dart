@@ -726,6 +726,7 @@ void main() {
         puff: null,
         sign: null,
         banners: const [],
+        combos: const [],
         myScoreBump: 1,
         opponentScoreBump: 1,
         myRepsBump: 1,

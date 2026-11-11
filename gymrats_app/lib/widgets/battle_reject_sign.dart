@@ -262,7 +262,8 @@ class BattleRejectIconPainter extends CustomPainter {
 
 /// The sign for the user's rep that did not count: a white tile with the
 /// pictogram of what to fix, and under it the short label on a band, red for
-/// a rep that earned nothing and amber, with the points, for an average one.
+/// a rep that earned nothing and amber for an average one. It gives the
+/// reason only: an average rep's grade and points show on the stage's bands.
 ///
 /// It is drawn in design points with its top left at the box the design
 /// gives it ([size]), and pops, wobbles and fades as [sign] says. A screen
@@ -297,9 +298,7 @@ class BattleRejectSignView extends StatelessWidget {
     final icon = sign.reason.signIcon;
     return Semantics(
       container: true,
-      label: sign.average
-          ? '${sign.reason.koreanMessage} · +${sign.points}점'
-          : sign.reason.koreanMessage,
+      label: sign.reason.koreanMessage,
       child: ExcludeSemantics(
         child: Opacity(
           opacity: sign.opacity.clamp(0.0, 1.0),

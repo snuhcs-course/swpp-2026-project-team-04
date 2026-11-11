@@ -1,6 +1,6 @@
 {
  "meta": {
-  "version": 2,
+  "version": "2.2",
   "source": "FxA.dc.html (시안 A · 링아웃 무대)",
   "designSize": [
    360,
@@ -8,7 +8,7 @@
   ],
   "units": "px는 360×390 무대 좌표, 각도는 도, 시간은 ms",
   "startMs": 1000,
-  "note": "t는 이벤트 시각으로부터 흐른 ms. 무대는 이벤트 1000ms 전에 만들어졌고(무대 시계 0ms), 그 사이 16ms마다 한 프레임씩 그렸다. 숨쉬기·오라·위험 흔들림·위험 깜빡임은 무대 시계의 함수라서 이 값에 들어 있다. resultButton.scale 은 버튼 크기 배율, scrim 은 카메라 영역을 덮는 배경색의 투명도다.",
+  "note": "t는 이벤트 시각으로부터 흐른 ms. 무대는 이벤트 1000ms 전에 만들어졌고(무대 시계 0ms), 그 사이 16ms마다 한 프레임씩 그렸다. 숨쉬기·오라·위험 흔들림·위험 깜빡임은 무대 시계의 함수라서 이 값에 들어 있다. resultButton.scale 은 버튼 크기 배율, scrim 은 카메라 영역을 덮는 배경색의 투명도다. banners 의 top 은 회전하기 전 띠의 위쪽 끝이고(360×390 무대 좌표), bandHeight 와 padX 는 띠 높이와 글자 좌우 여백이다. combos 는 콤보 표시이고 top 은 화면 좌표다(카메라 영역은 y 390부터).",
   "tolerance": {
    "position": 0.6,
    "rot": 0.6,
@@ -19,7 +19,7 @@
  "scenarios": [
   {
    "name": "my_good",
-   "about": "0:0에서 내 Good(+10). 콤보 없음. 유효 횟수 0 → 1.",
+   "about": "0:0에서 내 Good(+10). 콤보 없음. 유효 횟수 0 → 1. \"GOOD\" 띠(t 80~480) 뒤에 \"+10\" 띠(t 430~1310).",
    "before": {
     "myScore": 0,
     "opponentScore": 0,
@@ -76,6 +76,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -133,6 +134,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -190,6 +192,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -254,20 +257,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 0.5,
+       "rot": -4,
+       "scaleX": 0.4,
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -332,20 +338,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 0.93,
+       "rot": -4,
+       "scaleX": 0.74,
        "scaleY": 0.93
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -410,20 +419,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1.05,
+       "rot": -4,
+       "scaleX": 0.84,
        "scaleY": 1.05
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -488,20 +500,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1.03,
+       "rot": -4,
+       "scaleX": 0.83,
        "scaleY": 1.03
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -566,20 +581,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -644,20 +662,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -722,20 +743,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -800,20 +824,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
-       "opacity": 1,
-       "dx": 34,
-       "dy": -0.6,
-       "rot": -5,
-       "scaleX": 1,
+       "opacity": 0.5,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -832,15 +859,15 @@
      "resultButton": null
     },
     {
-     "t": 560,
-     "xm": 189.9,
+     "t": 429,
+     "xm": 189.8,
      "me": {
       "pose": "idle",
-      "footX": 133.9,
+      "footX": 133.8,
       "footY": 346,
       "rot": 0,
       "scaleX": 1,
-      "scaleY": 0.99,
+      "scaleY": 0.98,
       "opacity": 1,
       "flash": false,
       "glow": false,
@@ -848,7 +875,282 @@
      },
      "op": {
       "pose": "hit",
-      "footX": 246.5,
+      "footX": 254.4,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 190
+     },
+     "star": {
+      "cx": 223.8,
+      "cy": 270,
+      "rot": 54.5,
+      "diameter": 100.8,
+      "opacity": 0.26
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.42,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+10 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 10,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 430,
+     "xm": 189.8,
+     "me": {
+      "pose": "idle",
+      "footX": 133.8,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 254.3,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 190
+     },
+     "star": {
+      "cx": 223.8,
+      "cy": 270,
+      "rot": 54.5,
+      "diameter": 100.8,
+      "opacity": 0.25
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.42,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      },
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.5,
+       "scaleY": 0.5
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+10 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 10,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 460,
+     "xm": 189.8,
+     "me": {
+      "pose": "idle",
+      "footX": 133.8,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 251.3,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 190
+     },
+     "star": {
+      "cx": 223.8,
+      "cy": 270,
+      "rot": 56,
+      "diameter": 100.8,
+      "opacity": 0.06
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.17,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      },
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.91,
+       "scaleY": 0.91
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+10 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 10,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 480,
+     "xm": 189.9,
+     "me": {
+      "pose": "idle",
+      "footX": 133.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 249.8,
       "footY": 346,
       "rot": 0,
       "scaleX": -1,
@@ -874,18 +1176,96 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
-       "dy": -4.8,
-       "rot": -5,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1.02,
+       "scaleY": 1.02
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+10 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 10,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 550,
+     "xm": 189.9,
+     "me": {
+      "pose": "idle",
+      "footX": 133.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.99,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 246.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 190
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -946,18 +1326,21 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
-       "dy": -7.5,
-       "rot": -5,
+       "dy": 0,
+       "rot": -4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -1018,18 +1401,21 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
-       "dy": -12,
-       "rot": -5,
+       "dy": 0,
+       "rot": -4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -1086,7 +1472,25 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
-     "banners": [],
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -1143,7 +1547,233 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+10 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 10,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1200,
+     "xm": 190,
+     "me": {
+      "pose": "idle",
+      "footX": 134,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 246,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 190
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.92,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+10 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 10,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1280,
+     "xm": 190,
+     "me": {
+      "pose": "idle",
+      "footX": 134,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 246,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 190
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.25,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+10 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 10,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1320,
+     "xm": 190,
+     "me": {
+      "pose": "idle",
+      "footX": 134,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 246,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 190
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+10 앞섬",
@@ -1221,12 +1851,16 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
-     "banners": [
+     "banners": [],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -1293,12 +1927,16 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
-     "banners": [
+     "banners": [],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -1375,8 +2013,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -1385,12 +2025,17 @@
        "rot": -4,
        "scaleX": 0.27,
        "scaleY": 0.5
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -1467,8 +2112,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -1477,12 +2124,17 @@
        "rot": -4,
        "scaleX": 0.56,
        "scaleY": 1.04
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -1559,8 +2211,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -1569,12 +2223,17 @@
        "rot": -4,
        "scaleX": 0.54,
        "scaleY": 1
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -1651,8 +2310,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -1661,12 +2322,17 @@
        "rot": -4,
        "scaleX": 0.54,
        "scaleY": 1
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -1743,8 +2409,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -1753,12 +2421,17 @@
        "rot": -4,
        "scaleX": 0.54,
        "scaleY": 1
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -1835,8 +2508,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -1845,12 +2520,17 @@
        "rot": -4,
        "scaleX": 0.54,
        "scaleY": 1
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -1921,8 +2601,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 0.42,
@@ -1935,22 +2617,29 @@
       {
        "text": "+20",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 0.5,
        "scaleY": 0.5
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -2021,22 +2710,29 @@
       {
        "text": "+20",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 1.02,
        "scaleY": 1.02
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -2107,22 +2803,29 @@
       {
        "text": "+20",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 1,
        "scaleY": 1
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -2193,22 +2896,29 @@
       {
        "text": "+20",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
-       "dy": -0.9,
-       "rot": -5,
+       "dy": 0,
+       "rot": -4,
        "scaleX": 1,
        "scaleY": 1
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -2279,22 +2989,29 @@
       {
        "text": "+20",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
-       "dy": -9.9,
-       "rot": -5,
+       "dy": 0,
+       "rot": -4,
        "scaleX": 1,
        "scaleY": 1
-      },
+      }
+     ],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -2361,12 +3078,16 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
-     "banners": [
+     "banners": [],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -2433,12 +3154,16 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
-     "banners": [
+     "banners": [],
+     "combos": [
       {
+       "side": "me",
        "text": "2 HIT",
        "font": "number",
-       "top": 136,
+       "top": 404,
        "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
        "band": "#FFFFFF",
        "align": "left",
        "opacity": 1,
@@ -2506,6 +3231,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+30 앞섬",
@@ -2527,7 +3253,7 @@
   },
   {
    "name": "my_average",
-   "about": "내 Average(+5), 사유 0(더 깊게). 약한 공격과 주황 표지판. 유효 횟수는 그대로.",
+   "about": "내 Average(+5), 사유 0(더 깊게). 약한 공격, 주황 \"AVERAGE\" 띠(t 80~480) 뒤에 \"+5\" 띠(t 430~1150), 주황 표지판(짧은 말만). 유효 횟수는 그대로.",
    "before": {
     "myScore": 0,
     "opponentScore": 0,
@@ -2584,13 +3310,14 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 0.6,
       "rot": 0,
       "opacity": 0.5
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -2648,13 +3375,14 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": 2.32,
       "opacity": 1
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -2718,7 +3446,7 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1.04,
       "rot": 1.95,
@@ -2726,20 +3454,23 @@
      },
      "banners": [
       {
-       "text": "+5",
+       "text": "AVERAGE",
        "font": "number",
-       "top": 150,
-       "fontSize": 72,
+       "top": 168,
+       "fontSize": 48,
+       "bandHeight": 45.8,
+       "padX": 10.2,
        "band": "#FFB547",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 0.5,
+       "rot": -4,
+       "scaleX": 0.34,
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -2803,7 +3534,7 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": 0.24,
@@ -2811,20 +3542,23 @@
      },
      "banners": [
       {
-       "text": "+5",
+       "text": "AVERAGE",
        "font": "number",
-       "top": 150,
-       "fontSize": 72,
+       "top": 168,
+       "fontSize": 48,
+       "bandHeight": 45.8,
+       "padX": 10.2,
        "band": "#FFB547",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 0.98,
+       "rot": -4,
+       "scaleX": 0.67,
        "scaleY": 0.98
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -2888,7 +3622,7 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": -0.17,
@@ -2896,20 +3630,23 @@
      },
      "banners": [
       {
-       "text": "+5",
+       "text": "AVERAGE",
        "font": "number",
-       "top": 150,
-       "fontSize": 72,
+       "top": 168,
+       "fontSize": 48,
+       "bandHeight": 45.8,
+       "padX": 10.2,
        "band": "#FFB547",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1.02,
+       "rot": -4,
+       "scaleX": 0.7,
        "scaleY": 1.02
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -2973,7 +3710,7 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": -0.82,
@@ -2981,20 +3718,23 @@
      },
      "banners": [
       {
-       "text": "+5",
+       "text": "AVERAGE",
        "font": "number",
-       "top": 150,
-       "fontSize": 72,
+       "top": 168,
+       "fontSize": 48,
+       "bandHeight": 45.8,
+       "padX": 10.2,
        "band": "#FFB547",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.68,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -3058,7 +3798,7 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": 0,
@@ -3066,20 +3806,23 @@
      },
      "banners": [
       {
-       "text": "+5",
+       "text": "AVERAGE",
        "font": "number",
-       "top": 150,
-       "fontSize": 72,
+       "top": 168,
+       "fontSize": 48,
+       "bandHeight": 45.8,
+       "padX": 10.2,
        "band": "#FFB547",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.68,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -3137,7 +3880,187 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
+      "band": "#FFB547",
+      "scale": 1,
+      "rot": 0,
+      "opacity": 1
+     },
+     "banners": [
+      {
+       "text": "AVERAGE",
+       "font": "number",
+       "top": 168,
+       "fontSize": 48,
+       "bandHeight": 45.8,
+       "padX": 10.2,
+       "band": "#FFB547",
+       "align": "center",
+       "opacity": 0.5,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.68,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+5 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 5,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 0,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 430,
+     "xm": 184.9,
+     "me": {
+      "pose": "idle",
+      "footX": 128.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 243.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 185
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": {
+      "reason": 0,
+      "text": "더 깊게",
+      "band": "#FFB547",
+      "scale": 1,
+      "rot": 0,
+      "opacity": 1
+     },
+     "banners": [
+      {
+       "text": "AVERAGE",
+       "font": "number",
+       "top": 168,
+       "fontSize": 48,
+       "bandHeight": 45.8,
+       "padX": 10.2,
+       "band": "#FFB547",
+       "align": "center",
+       "opacity": 0.42,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.68,
+       "scaleY": 1
+      },
+      {
+       "text": "+5",
+       "font": "number",
+       "top": 165,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FFB547",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.5,
+       "scaleY": 0.5
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+5 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 5,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 0,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 480,
+     "xm": 184.9,
+     "me": {
+      "pose": "idle",
+      "footX": 128.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 241.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 185
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": {
+      "reason": 0,
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": 0,
@@ -3147,18 +4070,21 @@
       {
        "text": "+5",
        "font": "number",
-       "top": 150,
+       "top": 165,
        "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FFB547",
        "align": "center",
        "opacity": 1,
        "dx": 34,
-       "dy": -0.6,
-       "rot": -5,
-       "scaleX": 1,
-       "scaleY": 1
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1.02,
+       "scaleY": 1.02
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -3216,7 +4142,7 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": 0,
@@ -3226,18 +4152,21 @@
       {
        "text": "+5",
        "font": "number",
-       "top": 150,
+       "top": 165,
        "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FFB547",
        "align": "center",
        "opacity": 1,
        "dx": 34,
-       "dy": -6,
-       "rot": -5,
+       "dy": 0,
+       "rot": -4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -3295,13 +4224,195 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": 0,
       "opacity": 1
      },
-     "banners": [],
+     "banners": [
+      {
+       "text": "+5",
+       "font": "number",
+       "top": 165,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FFB547",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+5 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 5,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 0,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1000,
+     "xm": 185,
+     "me": {
+      "pose": "idle",
+      "footX": 129,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.01,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 241,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.01,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 185
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": {
+      "reason": 0,
+      "text": "더 깊게",
+      "band": "#FFB547",
+      "scale": 1,
+      "rot": 0,
+      "opacity": 1
+     },
+     "banners": [
+      {
+       "text": "+5",
+       "font": "number",
+       "top": 165,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FFB547",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "+5 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 5,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 0,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1100,
+     "xm": 185,
+     "me": {
+      "pose": "idle",
+      "footX": 129,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 241,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 185
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": {
+      "reason": 0,
+      "text": "더 깊게",
+      "band": "#FFB547",
+      "scale": 1,
+      "rot": 0,
+      "opacity": 1
+     },
+     "banners": [
+      {
+       "text": "+5",
+       "font": "number",
+       "top": 165,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FFB547",
+       "align": "center",
+       "opacity": 0.42,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -3359,13 +4470,14 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": 0,
       "opacity": 1
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -3423,13 +4535,14 @@
      "puff": null,
      "sign": {
       "reason": 0,
-      "text": "더 깊게 +5",
+      "text": "더 깊게",
       "band": "#FFB547",
       "scale": 1,
       "rot": 0,
       "opacity": 0.33
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -3487,6 +4600,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+5 앞섬",
@@ -3572,6 +4686,7 @@
       "opacity": 0.5
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -3636,6 +4751,7 @@
       "opacity": 1
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -3703,8 +4819,10 @@
       {
        "text": "MISS",
        "font": "number",
-       "top": 146,
+       "top": 155,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -3715,6 +4833,7 @@
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -3782,18 +4901,21 @@
       {
        "text": "MISS",
        "font": "number",
-       "top": 146,
+       "top": 155,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": -56,
-       "dy": -0.4,
+       "dy": 0,
        "rot": 7,
        "scaleX": 0.63,
        "scaleY": 0.81
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -3861,18 +4983,21 @@
       {
        "text": "MISS",
        "font": "number",
-       "top": 146,
+       "top": 155,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": -56,
-       "dy": -1.8,
+       "dy": 0,
        "rot": 7,
        "scaleX": 0.81,
        "scaleY": 1.03
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -3940,18 +5065,21 @@
       {
        "text": "MISS",
        "font": "number",
-       "top": 146,
+       "top": 155,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": -56,
-       "dy": -3.8,
+       "dy": 0,
        "rot": 7,
        "scaleX": 0.78,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -4019,18 +5147,21 @@
       {
        "text": "MISS",
        "font": "number",
-       "top": 146,
+       "top": 155,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": -56,
-       "dy": -6.2,
+       "dy": 0,
        "rot": 7,
        "scaleX": 0.78,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -4098,18 +5229,21 @@
       {
        "text": "MISS",
        "font": "number",
-       "top": 146,
+       "top": 155,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": -56,
-       "dy": -9,
+       "dy": 0,
        "rot": 7,
        "scaleX": 0.78,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -4177,18 +5311,21 @@
       {
        "text": "MISS",
        "font": "number",
-       "top": 146,
+       "top": 155,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": -56,
-       "dy": -11.8,
+       "dy": 0,
        "rot": 7,
        "scaleX": 0.78,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -4253,6 +5390,7 @@
       "opacity": 1
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -4317,6 +5455,7 @@
       "opacity": 1
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -4381,6 +5520,7 @@
       "opacity": 0.33
      },
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -4438,6 +5578,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -4459,7 +5600,7 @@
   },
   {
    "name": "opponent_good",
-   "about": "상대 Good(+10). 내 선수가 맞음. 상대 유효 횟수 0 → 1.",
+   "about": "상대 Good(+10). 내 선수가 맞음. 상대 유효 횟수 0 → 1. 분홍 \"GOOD\" 뒤에 \"+10\".",
    "before": {
     "myScore": 0,
     "opponentScore": 0,
@@ -4516,6 +5657,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -4573,6 +5715,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -4637,20 +5780,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 0.5,
+       "rot": 4,
+       "scaleX": 0.4,
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -4715,20 +5861,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 0.93,
+       "rot": 4,
+       "scaleX": 0.74,
        "scaleY": 0.93
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -4793,20 +5942,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 1.03,
+       "rot": 4,
+       "scaleX": 0.83,
        "scaleY": 1.03
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -4871,20 +6023,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 1,
+       "rot": 4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -4949,20 +6104,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 1,
+       "rot": 4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -5027,20 +6185,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 1,
+       "rot": 4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -5105,20 +6266,195 @@
      "sign": null,
      "banners": [
       {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 0.5,
+       "dx": 0,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "−10 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 0,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 0,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 430,
+     "xm": 170.2,
+     "me": {
+      "pose": "hit",
+      "footX": 105.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 226.2,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 170
+     },
+     "star": {
+      "cx": 136.2,
+      "cy": 270,
+      "rot": 54.5,
+      "diameter": 100.8,
+      "opacity": 0.25
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 0.42,
+       "dx": 0,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      },
+      {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
        "dx": -34,
-       "dy": -0.6,
-       "rot": 5,
-       "scaleX": 1,
-       "scaleY": 1
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 0.5,
+       "scaleY": 0.5
       }
      ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "−10 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 0,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 0,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 480,
+     "xm": 170.1,
+     "me": {
+      "pose": "hit",
+      "footX": 110.2,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 226.1,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 170
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": -34,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 1.02,
+       "scaleY": 1.02
+      }
+     ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -5179,18 +6515,21 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
        "dx": -34,
-       "dy": -4.8,
-       "rot": 5,
+       "dy": 0,
+       "rot": 4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -5251,18 +6590,21 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
        "dx": -34,
-       "dy": -7.5,
-       "rot": 5,
+       "dy": 0,
+       "rot": 4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -5323,18 +6665,21 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
        "dx": -34,
-       "dy": -12,
-       "rot": 5,
+       "dy": 0,
+       "rot": 4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -5391,7 +6736,25 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
-     "banners": [],
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": -34,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−10 추격 중",
@@ -5401,6 +6764,2164 @@
       "myBump": 1,
       "opponentBump": 1,
       "myReps": 0,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1280,
+     "xm": 170,
+     "me": {
+      "pose": "idle",
+      "footX": 114,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 226,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 170
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 0.25,
+       "dx": -34,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "−10 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 0,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 0,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1320,
+     "xm": 170,
+     "me": {
+      "pose": "idle",
+      "footX": 114,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 226,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 170
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "−10 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 0,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 0,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    }
+   ]
+  },
+  {
+   "name": "combo_while_reconnecting",
+   "about": "60:45에서 내 연결이 끊겨 재연결 띠가 떠 있는 동안 내 Good 뒤 1000ms에 내 Good(콤보 2). 콤보 표시가 재연결 띠 아래(top 438)로 내려간다. 표본 시각은 두 번째 Good 기준.",
+   "before": {
+    "myScore": 70,
+    "opponentScore": 45,
+    "myReps": 6,
+    "opponentReps": 4,
+    "fever": false
+   },
+   "after": {
+    "myScore": 85,
+    "opponentScore": 45,
+    "myReps": 7,
+    "opponentReps": 4,
+    "fever": false,
+    "end": null
+   },
+   "samples": [
+    {
+     "t": 0,
+     "xm": 195,
+     "me": {
+      "pose": "atk",
+      "footX": 139,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 251,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 0.99,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 195
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [
+      {
+       "side": "me",
+       "text": "2 HIT",
+       "font": "number",
+       "top": 438,
+       "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
+       "band": "#FFFFFF",
+       "align": "left",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -6,
+       "scaleX": 0.43,
+       "scaleY": 0.6
+      }
+     ],
+     "hud": {
+      "clock": "0:18",
+      "chip": "+40 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 85,
+      "opponentScore": 45,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 7,
+      "opponentReps": 4,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 60,
+     "xm": 205.5,
+     "me": {
+      "pose": "atk",
+      "footX": 175.1,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 261.5,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 0.99,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 206
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [
+      {
+       "side": "me",
+       "text": "2 HIT",
+       "font": "number",
+       "top": 438,
+       "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
+       "band": "#FFFFFF",
+       "align": "left",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -6,
+       "scaleX": 0.75,
+       "scaleY": 1.03
+      }
+     ],
+     "hud": {
+      "clock": "0:18",
+      "chip": "+40 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 85,
+      "opponentScore": 45,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 7,
+      "opponentReps": 4,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 120,
+     "xm": 211.6,
+     "me": {
+      "pose": "atk",
+      "footX": 181.6,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 273.4,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": true,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": -1.8,
+      "dy": 1.1,
+      "zoom": 1,
+      "originX": 212
+     },
+     "star": {
+      "cx": 245.6,
+      "cy": 270,
+      "rot": 16,
+      "diameter": 75.94,
+      "opacity": 1
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.78,
+       "scaleY": 0.98
+      }
+     ],
+     "combos": [
+      {
+       "side": "me",
+       "text": "2 HIT",
+       "font": "number",
+       "top": 438,
+       "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
+       "band": "#FFFFFF",
+       "align": "left",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -6,
+       "scaleX": 0.72,
+       "scaleY": 1
+      }
+     ],
+     "hud": {
+      "clock": "0:18",
+      "chip": "+40 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 85,
+      "opponentScore": 45,
+      "myBump": 1.09,
+      "opponentBump": 1,
+      "myReps": 7,
+      "opponentReps": 4,
+      "myRepsBump": 1.14,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 800,
+     "xm": 220,
+     "me": {
+      "pose": "idle",
+      "footX": 164,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 276,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 220
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+15",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [
+      {
+       "side": "me",
+       "text": "2 HIT",
+       "font": "number",
+       "top": 438,
+       "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
+       "band": "#FFFFFF",
+       "align": "left",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -6,
+       "scaleX": 0.72,
+       "scaleY": 1
+      }
+     ],
+     "hud": {
+      "clock": "0:18",
+      "chip": "+40 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 85,
+      "opponentScore": 45,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 7,
+      "opponentReps": 4,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1500,
+     "xm": 220,
+     "me": {
+      "pose": "idle",
+      "footX": 164,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.01,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 276,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.01,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 220
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [
+      {
+       "side": "me",
+       "text": "2 HIT",
+       "font": "number",
+       "top": 438,
+       "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
+       "band": "#FFFFFF",
+       "align": "left",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -6,
+       "scaleX": 0.72,
+       "scaleY": 1
+      }
+     ],
+     "hud": {
+      "clock": "0:18",
+      "chip": "+40 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 85,
+      "opponentScore": 45,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 7,
+      "opponentReps": 4,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1600,
+     "xm": 220,
+     "me": {
+      "pose": "idle",
+      "footX": 164,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 276,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 220
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [
+      {
+       "side": "me",
+       "text": "2 HIT",
+       "font": "number",
+       "top": 438,
+       "fontSize": 44,
+       "bandHeight": 42.5,
+       "padX": 9.6,
+       "band": "#FFFFFF",
+       "align": "left",
+       "opacity": 0.5,
+       "dx": 0,
+       "dy": 0,
+       "rot": -6,
+       "scaleX": 0.72,
+       "scaleY": 1
+      }
+     ],
+     "hud": {
+      "clock": "0:18",
+      "chip": "+40 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 85,
+      "opponentScore": 45,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 7,
+      "opponentReps": 4,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1699,
+     "xm": 220,
+     "me": {
+      "pose": "idle",
+      "footX": 164,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 276,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 220
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [],
+     "hud": {
+      "clock": "0:18",
+      "chip": "+40 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 85,
+      "opponentScore": 45,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 7,
+      "opponentReps": 4,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 1700,
+     "xm": 220,
+     "me": {
+      "pose": "idle",
+      "footX": 164,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 276,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 220
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [],
+     "hud": {
+      "clock": "0:18",
+      "chip": "+40 앞섬",
+      "chipBg": "#C6FF3D",
+      "myScore": 85,
+      "opponentScore": 45,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 7,
+      "opponentReps": 4,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    }
+   ]
+  },
+  {
+   "name": "score_bump_three_digits",
+   "about": "245:310, 유효 12:14에서 내 Good(+10). 3자리 점수는 커지지 않고 0.9배까지 줄었다 돌아온다.",
+   "before": {
+    "myScore": 245,
+    "opponentScore": 310,
+    "myReps": 12,
+    "opponentReps": 14,
+    "fever": false
+   },
+   "after": {
+    "myScore": 255,
+    "opponentScore": 310,
+    "myReps": 13,
+    "opponentReps": 14,
+    "fever": false,
+    "end": null
+   },
+   "samples": [
+    {
+     "t": 0,
+     "xm": 115,
+     "me": {
+      "pose": "atk",
+      "footX": 59,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 171,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 0.99,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 115
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 79,
+     "xm": 120.1,
+     "me": {
+      "pose": "atk",
+      "footX": 90.1,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 176.1,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 0.99,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 120
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 80,
+     "xm": 120.2,
+     "me": {
+      "pose": "atk",
+      "footX": 90.2,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 181.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": true,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 2.7,
+      "zoom": 1,
+      "originX": 120
+     },
+     "star": {
+      "cx": 154.2,
+      "cy": 270,
+      "rot": 37,
+      "diameter": 37.86,
+      "opacity": 1
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.4,
+       "scaleY": 0.5
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 150,
+     "xm": 122.4,
+     "me": {
+      "pose": "atk",
+      "footX": 92.4,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 184.2,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": true,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0.1,
+      "dy": -2,
+      "zoom": 1,
+      "originX": 122
+     },
+     "star": {
+      "cx": 156.4,
+      "cy": 270,
+      "rot": 40.5,
+      "diameter": 91.28,
+      "opacity": 1
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.84,
+       "scaleY": 1.05
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 0.93,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1.23,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 220,
+     "xm": 123.6,
+     "me": {
+      "pose": "atk",
+      "footX": 79.6,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 201.6,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": true,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0.1,
+      "dy": 1.3,
+      "zoom": 1,
+      "originX": 124
+     },
+     "star": {
+      "cx": 157.6,
+      "cy": 270,
+      "rot": 44,
+      "diameter": 100.8,
+      "opacity": 1
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 0.9,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1.3,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 290,
+     "xm": 124.3,
+     "me": {
+      "pose": "atk",
+      "footX": 70.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 208.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0.1,
+      "dy": -0.6,
+      "zoom": 1,
+      "originX": 124
+     },
+     "star": {
+      "cx": 158.3,
+      "cy": 270,
+      "rot": 47.5,
+      "diameter": 100.8,
+      "opacity": 1
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 0.93,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1.17,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 359,
+     "xm": 124.6,
+     "me": {
+      "pose": "idle",
+      "footX": 68.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 200.4,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0.1,
+      "zoom": 1,
+      "originX": 125
+     },
+     "star": {
+      "cx": 158.6,
+      "cy": 270,
+      "rot": 51,
+      "diameter": 100.8,
+      "opacity": 0.69
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 360,
+     "xm": 124.6,
+     "me": {
+      "pose": "idle",
+      "footX": 68.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 200.2,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0.1,
+      "dy": 0.1,
+      "zoom": 1,
+      "originX": 125
+     },
+     "star": {
+      "cx": 158.6,
+      "cy": 270,
+      "rot": 51,
+      "diameter": 100.8,
+      "opacity": 0.69
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 400,
+     "xm": 124.7,
+     "me": {
+      "pose": "idle",
+      "footX": 68.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 193.3,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": -0.1,
+      "dy": -0.1,
+      "zoom": 1,
+      "originX": 125
+     },
+     "star": {
+      "cx": 158.7,
+      "cy": 270,
+      "rot": 53,
+      "diameter": 100.8,
+      "opacity": 0.44
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.67,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:07",
+      "chip": "−55 추격 중",
+      "chipBg": "#FF4F81",
+      "myScore": 255,
+      "opponentScore": 310,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 13,
+      "opponentReps": 14,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    }
+   ]
+  },
+  {
+   "name": "both_words_overlap",
+   "about": "상대 Good 100ms 뒤에 내 Good. 두 \"GOOD\" 띠가 같은 자리에 겹치고, banners 목록에서 내 띠가 뒤에 온다(위에 그린다). 표본 시각은 내 Good 기준.",
+   "before": {
+    "myScore": 0,
+    "opponentScore": 10,
+    "myReps": 0,
+    "opponentReps": 1,
+    "fever": false
+   },
+   "after": {
+    "myScore": 10,
+    "opponentScore": 10,
+    "myReps": 1,
+    "opponentReps": 1,
+    "fever": false,
+    "end": null
+   },
+   "samples": [
+    {
+     "t": 0,
+     "xm": 174,
+     "me": {
+      "pose": "atk",
+      "footX": 118,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 230,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 0.99,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 174
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 0.65,
+       "scaleY": 0.81
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "동점",
+      "chipBg": "#FFFFFF",
+      "myScore": 10,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1.05,
+      "myReps": 1,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1.07,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 80,
+     "xm": 177.1,
+     "me": {
+      "pose": "atk",
+      "footX": 147.1,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 238.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": true,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 2.7,
+      "zoom": 1,
+      "originX": 177
+     },
+     "star": {
+      "cx": 211.1,
+      "cy": 270,
+      "rot": 14,
+      "diameter": 37.86,
+      "opacity": 1
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 0.81,
+       "scaleY": 1.02
+      },
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.4,
+       "scaleY": 0.5
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "동점",
+      "chipBg": "#FFFFFF",
+      "myScore": 10,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1.18,
+      "myReps": 1,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1.28,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 200,
+     "xm": 179,
+     "me": {
+      "pose": "atk",
+      "footX": 139.8,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 252,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": true,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": -2.9,
+      "dy": -1.7,
+      "zoom": 1,
+      "originX": 179
+     },
+     "star": {
+      "cx": 213,
+      "cy": 270,
+      "rot": 20,
+      "diameter": 100.24,
+      "opacity": 1
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      },
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "동점",
+      "chipBg": "#FFFFFF",
+      "myScore": 10,
+      "opponentScore": 10,
+      "myBump": 1.2,
+      "opponentBump": 1.13,
+      "myReps": 1,
+      "opponentReps": 1,
+      "myRepsBump": 1.3,
+      "opponentRepsBump": 1.14,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 300,
+     "xm": 179.6,
+     "me": {
+      "pose": "atk",
+      "footX": 125.4,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": true
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 264.4,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 1.3,
+      "dy": -0.9,
+      "zoom": 1,
+      "originX": 180
+     },
+     "star": {
+      "cx": 213.6,
+      "cy": 270,
+      "rot": 25,
+      "diameter": 100.8,
+      "opacity": 1
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 0.67,
+       "dx": 0,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      },
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "동점",
+      "chipBg": "#FFFFFF",
+      "myScore": 10,
+      "opponentScore": 10,
+      "myBump": 1.13,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 1,
+      "myRepsBump": 1.14,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 380,
+     "xm": 179.8,
+     "me": {
+      "pose": "idle",
+      "footX": 123.8,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 251.6,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0.5,
+      "dy": 0.1,
+      "zoom": 1,
+      "originX": 180
+     },
+     "star": {
+      "cx": 213.8,
+      "cy": 270,
+      "rot": 29,
+      "diameter": 100.8,
+      "opacity": 0.56
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": -34,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 1.02,
+       "scaleY": 1.02
+      },
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.83,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "동점",
+      "chipBg": "#FFFFFF",
+      "myScore": 10,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 430,
+     "xm": 179.9,
+     "me": {
+      "pose": "idle",
+      "footX": 123.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 244.4,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 180
+     },
+     "star": {
+      "cx": 213.9,
+      "cy": 270,
+      "rot": 31.5,
+      "diameter": 100.8,
+      "opacity": 0.25
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": -34,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 1.02,
+       "scaleY": 1.02
+      },
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.42,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      },
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.5,
+       "scaleY": 0.5
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "동점",
+      "chipBg": "#FFFFFF",
+      "myScore": 10,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 1,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 0,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 500,
+     "xm": 179.9,
+     "me": {
+      "pose": "idle",
+      "footX": 123.9,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 238.6,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": false,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 180
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": -34,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 1,
+       "scaleY": 1
+      },
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1.05,
+       "scaleY": 1.05
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "동점",
+      "chipBg": "#FFFFFF",
+      "myScore": 10,
+      "opponentScore": 10,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
       "opponentReps": 1,
       "myRepsBump": 1,
       "opponentRepsBump": 1,
@@ -5470,6 +8991,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -5527,6 +9049,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -5591,20 +9114,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 0.5,
+       "rot": -4,
+       "scaleX": 0.4,
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -5669,20 +9195,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 0.98,
+       "rot": -4,
+       "scaleX": 0.78,
        "scaleY": 0.98
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -5747,20 +9276,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1.05,
+       "rot": -4,
+       "scaleX": 0.84,
        "scaleY": 1.05
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -5825,20 +9357,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -5903,20 +9438,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -5981,20 +9519,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -6059,20 +9600,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -6137,20 +9681,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
-       "opacity": 1,
-       "dx": 34,
+       "opacity": 0.67,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+25 앞섬",
@@ -6232,18 +9779,21 @@
       {
        "text": "FEVER ×2",
        "font": "number",
-       "top": 194,
+       "top": 263,
        "fontSize": 80,
-       "band": "#3DE8FF",
+       "bandHeight": 72.4,
+       "padX": 15,
+       "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": -400,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 0.7,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6304,18 +9854,21 @@
       {
        "text": "FEVER ×2",
        "font": "number",
-       "top": 194,
+       "top": 263,
        "fontSize": 80,
-       "band": "#3DE8FF",
+       "bandHeight": 72.4,
+       "padX": 15,
+       "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": -50,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 0.7,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6376,18 +9929,21 @@
       {
        "text": "FEVER ×2",
        "font": "number",
-       "top": 194,
+       "top": 263,
        "fontSize": 80,
-       "band": "#3DE8FF",
+       "bandHeight": 72.4,
+       "padX": 15,
+       "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": 0,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 0.7,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6448,18 +10004,21 @@
       {
        "text": "FEVER ×2",
        "font": "number",
-       "top": 194,
+       "top": 263,
        "fontSize": 80,
-       "band": "#3DE8FF",
+       "bandHeight": 72.4,
+       "padX": 15,
+       "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": 0,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 0.7,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6520,18 +10079,21 @@
       {
        "text": "FEVER ×2",
        "font": "number",
-       "top": 194,
+       "top": 263,
        "fontSize": 80,
-       "band": "#3DE8FF",
+       "bandHeight": 72.4,
+       "padX": 15,
+       "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": 0,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 0.7,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6592,18 +10154,21 @@
       {
        "text": "FEVER ×2",
        "font": "number",
-       "top": 194,
+       "top": 263,
        "fontSize": 80,
-       "band": "#3DE8FF",
+       "bandHeight": 72.4,
+       "padX": 15,
+       "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": 0,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 0.7,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6664,18 +10229,21 @@
       {
        "text": "FEVER ×2",
        "font": "number",
-       "top": 194,
+       "top": 263,
        "fontSize": 80,
-       "band": "#3DE8FF",
+       "bandHeight": 72.4,
+       "padX": 15,
+       "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
        "dx": 350,
        "dy": 0,
-       "rot": -5,
+       "rot": -4,
        "scaleX": 0.7,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6733,6 +10301,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6790,6 +10359,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6854,20 +10424,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+20",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 0.5,
+       "rot": -4,
+       "scaleX": 0.4,
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -6932,20 +10505,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+20",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1.02,
+       "rot": -4,
+       "scaleX": 0.82,
        "scaleY": 1.02
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -7010,20 +10586,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+20",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -7088,20 +10667,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+20",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 34,
+       "dx": 0,
        "dy": 0,
-       "rot": -5,
-       "scaleX": 1,
+       "rot": -4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -7113,6 +10695,178 @@
       "myReps": 1,
       "opponentReps": 0,
       "myRepsBump": 1.14,
+      "opponentRepsBump": 1,
+      "feverOpacity": 1,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 2030,
+     "xm": 199.6,
+     "me": {
+      "pose": "idle",
+      "footX": 143.6,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": true,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 264.1,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": true,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 200
+     },
+     "star": {
+      "cx": 233.6,
+      "cy": 270,
+      "rot": 54.5,
+      "diameter": 151.2,
+      "opacity": 0.25
+     },
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "GOOD",
+       "font": "number",
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.42,
+       "dx": 0,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.8,
+       "scaleY": 1
+      },
+      {
+       "text": "+20",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 0.5,
+       "scaleY": 0.5
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "FEVER ×2",
+      "chipBg": "#3DE8FF",
+      "myScore": 20,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 1,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 2080,
+     "xm": 199.7,
+     "me": {
+      "pose": "idle",
+      "footX": 143.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 0.98,
+      "opacity": 1,
+      "flash": false,
+      "glow": true,
+      "front": false
+     },
+     "op": {
+      "pose": "hit",
+      "footX": 259.7,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1,
+      "opacity": 1,
+      "flash": false,
+      "glow": true,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 200
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+20",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 1,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1.02,
+       "scaleY": 1.02
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "FEVER ×2",
+      "chipBg": "#3DE8FF",
+      "myScore": 20,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
       "opponentRepsBump": 1,
       "feverOpacity": 1,
       "dangerOpacity": 0
@@ -7162,18 +10916,21 @@
       {
        "text": "+20",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
        "dx": 34,
-       "dy": -3,
-       "rot": -5,
-       "scaleX": 1,
-       "scaleY": 1
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1.05,
+       "scaleY": 1.05
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -7234,18 +10991,154 @@
       {
        "text": "+20",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#C6FF3D",
        "align": "center",
-       "opacity": 0.5,
+       "opacity": 1,
        "dx": 34,
-       "dy": -15,
-       "rot": -5,
+       "dy": 0,
+       "rot": -4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "FEVER ×2",
+      "chipBg": "#3DE8FF",
+      "myScore": 20,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 1,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 2900,
+     "xm": 200,
+     "me": {
+      "pose": "idle",
+      "footX": 144,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": true,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 256,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": true,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 200
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [
+      {
+       "text": "+20",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#C6FF3D",
+       "align": "center",
+       "opacity": 0.08,
+       "dx": 34,
+       "dy": 0,
+       "rot": -4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
+     "hud": {
+      "clock": "0:30",
+      "chip": "FEVER ×2",
+      "chipBg": "#3DE8FF",
+      "myScore": 20,
+      "opponentScore": 0,
+      "myBump": 1,
+      "opponentBump": 1,
+      "myReps": 1,
+      "opponentReps": 0,
+      "myRepsBump": 1,
+      "opponentRepsBump": 1,
+      "feverOpacity": 1,
+      "dangerOpacity": 0
+     },
+     "resultButton": null
+    },
+    {
+     "t": 2920,
+     "xm": 200,
+     "me": {
+      "pose": "idle",
+      "footX": 144,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": 1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": true,
+      "front": false
+     },
+     "op": {
+      "pose": "idle",
+      "footX": 256,
+      "footY": 346,
+      "rot": 0,
+      "scaleX": -1,
+      "scaleY": 1.02,
+      "opacity": 1,
+      "flash": false,
+      "glow": true,
+      "front": false
+     },
+     "meTag": null,
+     "opTag": null,
+     "stage": {
+      "dx": 0,
+      "dy": 0,
+      "zoom": 1,
+      "originX": 200
+     },
+     "star": null,
+     "twinkle": null,
+     "puff": null,
+     "sign": null,
+     "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "FEVER ×2",
@@ -7324,6 +11217,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7388,20 +11282,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 0.5,
+       "rot": 4,
+       "scaleX": 0.4,
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7466,20 +11363,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 1,
+       "rot": 4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7544,20 +11444,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
-       "opacity": 1,
-       "dx": -34,
+       "opacity": 0.67,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 1,
+       "rot": 4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7618,18 +11521,21 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
        "dx": -34,
-       "dy": -6,
-       "rot": 5,
+       "dy": 0,
+       "rot": 4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7690,18 +11596,21 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
        "dx": -34,
-       "dy": -9.6,
-       "rot": 5,
+       "dy": 0,
+       "rot": 4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7762,18 +11671,21 @@
       {
        "text": "+10",
        "font": "number",
-       "top": 132,
+       "top": 152,
        "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
        "dx": -34,
-       "dy": -13.2,
-       "rot": 5,
+       "dy": 0,
+       "rot": 4,
        "scaleX": 1,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7830,7 +11742,25 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
-     "banners": [],
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 1,
+       "dx": -34,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7887,7 +11817,25 @@
      "twinkle": null,
      "puff": null,
      "sign": null,
-     "banners": [],
+     "banners": [
+      {
+       "text": "+10",
+       "font": "number",
+       "top": 152,
+       "fontSize": 104,
+       "bandHeight": 92.3,
+       "padX": 18.6,
+       "band": "#FF4F81",
+       "align": "center",
+       "opacity": 0.92,
+       "dx": -34,
+       "dy": 0,
+       "rot": 4,
+       "scaleX": 1,
+       "scaleY": 1
+      }
+     ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -7945,6 +11893,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−65 추격 중",
@@ -8026,6 +11975,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8083,6 +12033,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8149,8 +12100,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -8161,6 +12114,7 @@
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8227,8 +12181,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -8239,13 +12195,14 @@
        "scaleY": 1.04
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
       "chipBg": "#C6FF3D",
       "myScore": 100,
       "opponentScore": 0,
-      "myBump": 1.13,
+      "myBump": 0.94,
       "opponentBump": 1,
       "myReps": 1,
       "opponentReps": 0,
@@ -8305,8 +12262,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -8317,13 +12276,14 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
       "chipBg": "#C6FF3D",
       "myScore": 100,
       "opponentScore": 0,
-      "myBump": 1.2,
+      "myBump": 0.9,
       "opponentBump": 1,
       "myReps": 1,
       "opponentReps": 0,
@@ -8383,8 +12343,10 @@
       {
        "text": "EXCELLENT",
        "font": "number",
-       "top": 138,
+       "top": 153,
        "fontSize": 84,
+       "bandHeight": 75.7,
+       "padX": 15.6,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -8395,13 +12357,14 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
       "chipBg": "#C6FF3D",
       "myScore": 100,
       "opponentScore": 0,
-      "myBump": 1.09,
+      "myBump": 0.96,
       "opponentBump": 1,
       "myReps": 1,
       "opponentReps": 0,
@@ -8458,6 +12421,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8515,6 +12479,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8572,6 +12537,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8629,6 +12595,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8686,6 +12653,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8743,6 +12711,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8800,6 +12769,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8860,18 +12830,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 2.4,
+       "scaleX": 1.44,
        "scaleY": 2.4
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -8932,18 +12905,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1.32,
+       "scaleX": 0.79,
        "scaleY": 1.32
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9004,18 +12980,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9082,18 +13061,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9160,18 +13142,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9238,18 +13223,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9316,18 +13304,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9394,18 +13385,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9476,18 +13470,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9552,18 +13549,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9628,18 +13628,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9704,18 +13707,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": -102,
        "dy": 0,
        "rot": -7,
-       "scaleX": 1,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "+100 앞섬",
@@ -9801,6 +13807,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -9865,20 +13872,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 0.5,
+       "rot": 4,
+       "scaleX": 0.4,
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -9943,20 +13953,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 1,
+       "rot": 4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -9964,7 +13977,7 @@
       "myScore": 0,
       "opponentScore": 100,
       "myBump": 1,
-      "opponentBump": 1.2,
+      "opponentBump": 0.9,
       "myReps": 0,
       "opponentReps": 1,
       "myRepsBump": 1,
@@ -10021,20 +14034,23 @@
      "sign": null,
      "banners": [
       {
-       "text": "+10",
+       "text": "GOOD",
        "font": "number",
-       "top": 132,
-       "fontSize": 104,
+       "top": 158,
+       "fontSize": 72,
+       "bandHeight": 65.8,
+       "padX": 13.8,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": -34,
+       "dx": 0,
        "dy": 0,
-       "rot": 5,
-       "scaleX": 1,
+       "rot": 4,
+       "scaleX": 0.8,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10042,7 +14058,7 @@
       "myScore": 0,
       "opponentScore": 100,
       "myBump": 1,
-      "opponentBump": 1.09,
+      "opponentBump": 0.96,
       "myReps": 0,
       "opponentReps": 1,
       "myRepsBump": 1,
@@ -10092,6 +14108,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10149,6 +14166,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10206,6 +14224,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10266,18 +14285,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": 102,
        "dy": 0,
-       "rot": -7,
-       "scaleX": 2.4,
+       "rot": 7,
+       "scaleX": 1.44,
        "scaleY": 2.4
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10338,18 +14360,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": 102,
        "dy": 0,
-       "rot": -7,
-       "scaleX": 1.32,
+       "rot": 7,
+       "scaleX": 0.79,
        "scaleY": 1.32
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10416,18 +14441,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": 102,
        "dy": 0,
-       "rot": -7,
-       "scaleX": 1,
+       "rot": 7,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10494,18 +14522,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": 102,
        "dy": 0,
-       "rot": -7,
-       "scaleX": 1,
+       "rot": 7,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10572,18 +14603,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": 102,
        "dy": 0,
-       "rot": -7,
-       "scaleX": 1,
+       "rot": 7,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10648,18 +14682,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": 102,
        "dy": 0,
-       "rot": -7,
-       "scaleX": 1,
+       "rot": 7,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10724,18 +14761,21 @@
       {
        "text": "K.O.",
        "font": "number",
-       "top": 128,
-       "fontSize": 124,
+       "top": 166,
+       "fontSize": 110,
+       "bandHeight": 97.3,
+       "padX": 19.5,
        "band": "#FF4F81",
        "align": "center",
        "opacity": 1,
-       "dx": 0,
+       "dx": 102,
        "dy": 0,
-       "rot": -7,
-       "scaleX": 1,
+       "rot": 7,
+       "scaleX": 0.6,
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "−100 추격 중",
@@ -10824,8 +14864,10 @@
       {
        "text": "TIME!",
        "font": "number",
-       "top": 158,
-       "fontSize": 110,
+       "top": 157,
+       "fontSize": 96,
+       "bandHeight": 85.7,
+       "padX": 17.4,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -10836,6 +14878,7 @@
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -10896,8 +14939,10 @@
       {
        "text": "TIME!",
        "font": "number",
-       "top": 158,
-       "fontSize": 110,
+       "top": 157,
+       "fontSize": 96,
+       "bandHeight": 85.7,
+       "padX": 17.4,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -10908,6 +14953,7 @@
        "scaleY": 1.04
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -10968,8 +15014,10 @@
       {
        "text": "TIME!",
        "font": "number",
-       "top": 158,
-       "fontSize": 110,
+       "top": 157,
+       "fontSize": 96,
+       "bandHeight": 85.7,
+       "padX": 17.4,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -10980,6 +15028,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11040,8 +15089,10 @@
       {
        "text": "TIME!",
        "font": "number",
-       "top": 158,
-       "fontSize": 110,
+       "top": 157,
+       "fontSize": 96,
+       "bandHeight": 85.7,
+       "padX": 17.4,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -11052,6 +15103,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11112,8 +15164,10 @@
       {
        "text": "TIME!",
        "font": "number",
-       "top": 158,
-       "fontSize": 110,
+       "top": 157,
+       "fontSize": 96,
+       "bandHeight": 85.7,
+       "padX": 17.4,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -11124,6 +15178,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11181,6 +15236,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11241,8 +15297,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11253,6 +15311,7 @@
        "scaleY": 1.66
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11313,8 +15372,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11325,6 +15386,7 @@
        "scaleY": 1.1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11385,8 +15447,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11397,6 +15461,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11457,8 +15522,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11469,6 +15536,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11529,8 +15597,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11541,6 +15611,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11601,8 +15672,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11613,6 +15686,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11673,8 +15747,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11685,6 +15761,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11749,8 +15826,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11761,6 +15840,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11825,8 +15905,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11837,6 +15919,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11901,8 +15984,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11913,6 +15998,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -11977,8 +16063,10 @@
       {
        "text": "WIN!",
        "font": "number",
-       "top": 132,
+       "top": 159,
        "fontSize": 88,
+       "bandHeight": 79,
+       "padX": 16.2,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -11989,6 +16077,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:00",
       "chip": "+5 앞섬",
@@ -12074,6 +16163,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12136,6 +16226,7 @@
      },
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12198,6 +16289,7 @@
      },
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12260,6 +16352,7 @@
      },
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12322,6 +16415,7 @@
      },
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12384,6 +16478,7 @@
      },
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12451,6 +16546,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -12461,6 +16558,7 @@
        "scaleY": 1.8
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12528,6 +16626,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -12538,6 +16638,7 @@
        "scaleY": 1.1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12605,6 +16706,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -12615,6 +16718,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12677,6 +16781,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -12687,6 +16793,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12749,6 +16856,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -12759,6 +16868,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12821,6 +16931,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -12831,6 +16943,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12893,6 +17006,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -12903,6 +17018,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -12965,6 +17081,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -12975,6 +17093,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -13041,6 +17160,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -13051,6 +17172,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -13117,6 +17239,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -13127,6 +17251,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -13193,6 +17318,8 @@
        "font": "display",
        "top": 150,
        "fontSize": 28,
+       "bandHeight": 35,
+       "padX": 16,
        "band": "#C6FF3D",
        "align": "center",
        "opacity": 1,
@@ -13203,6 +17330,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -13289,6 +17417,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -13350,6 +17479,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:18",
       "chip": "+15 앞섬",
@@ -13441,6 +17571,8 @@
        "font": "display",
        "top": 148,
        "fontSize": 34,
+       "bandHeight": 42.5,
+       "padX": 16,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -13451,6 +17583,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -13521,6 +17654,8 @@
        "font": "display",
        "top": 148,
        "fontSize": 34,
+       "bandHeight": 42.5,
+       "padX": 16,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -13531,6 +17666,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -13601,6 +17737,8 @@
        "font": "display",
        "top": 148,
        "fontSize": 34,
+       "bandHeight": 42.5,
+       "padX": 16,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -13611,6 +17749,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -13681,6 +17820,8 @@
        "font": "display",
        "top": 148,
        "fontSize": 34,
+       "bandHeight": 42.5,
+       "padX": 16,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -13691,6 +17832,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -13772,8 +17914,10 @@
       {
        "text": "3",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -13784,6 +17928,7 @@
        "scaleY": 1.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -13844,8 +17989,10 @@
       {
        "text": "3",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -13856,6 +18003,7 @@
        "scaleY": 1.06
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -13916,8 +18064,10 @@
       {
        "text": "3",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -13928,6 +18078,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -13988,8 +18139,10 @@
       {
        "text": "3",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14000,6 +18153,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -14060,8 +18214,10 @@
       {
        "text": "3",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14072,6 +18228,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -14132,8 +18289,10 @@
       {
        "text": "2",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14144,6 +18303,7 @@
        "scaleY": 1.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -14204,8 +18364,10 @@
       {
        "text": "2",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14216,6 +18378,7 @@
        "scaleY": 1.06
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -14276,8 +18439,10 @@
       {
        "text": "2",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14288,6 +18453,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -14348,8 +18514,10 @@
       {
        "text": "1",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14360,6 +18528,7 @@
        "scaleY": 1.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -14420,8 +18589,10 @@
       {
        "text": "1",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14432,6 +18603,7 @@
        "scaleY": 1.06
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -14492,8 +18664,10 @@
       {
        "text": "1",
        "font": "number",
-       "top": 142,
-       "fontSize": 190,
+       "top": 141,
+       "fontSize": 160,
+       "bandHeight": 138.8,
+       "padX": 27,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14504,6 +18678,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": null,
@@ -14564,8 +18739,10 @@
       {
        "text": "GO!",
        "font": "number",
-       "top": 142,
-       "fontSize": 150,
+       "top": 153,
+       "fontSize": 130,
+       "bandHeight": 113.9,
+       "padX": 22.5,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14576,6 +18753,7 @@
        "scaleY": 0.5
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -14636,8 +18814,10 @@
       {
        "text": "GO!",
        "font": "number",
-       "top": 142,
-       "fontSize": 150,
+       "top": 153,
+       "fontSize": 130,
+       "bandHeight": 113.9,
+       "padX": 22.5,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14648,6 +18828,7 @@
        "scaleY": 1.04
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -14708,8 +18889,10 @@
       {
        "text": "GO!",
        "font": "number",
-       "top": 142,
-       "fontSize": 150,
+       "top": 153,
+       "fontSize": 130,
+       "bandHeight": 113.9,
+       "padX": 22.5,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14720,6 +18903,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -14780,8 +18964,10 @@
       {
        "text": "GO!",
        "font": "number",
-       "top": 142,
-       "fontSize": 150,
+       "top": 153,
+       "fontSize": 130,
+       "bandHeight": 113.9,
+       "padX": 22.5,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14792,6 +18978,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -14852,8 +19039,10 @@
       {
        "text": "GO!",
        "font": "number",
-       "top": 142,
-       "fontSize": 150,
+       "top": 153,
+       "fontSize": 130,
+       "bandHeight": 113.9,
+       "padX": 22.5,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14864,6 +19053,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -14924,8 +19114,10 @@
       {
        "text": "GO!",
        "font": "number",
-       "top": 142,
-       "fontSize": 150,
+       "top": 153,
+       "fontSize": 130,
+       "bandHeight": 113.9,
+       "padX": 22.5,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 1,
@@ -14936,6 +19128,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -14996,8 +19189,10 @@
       {
        "text": "GO!",
        "font": "number",
-       "top": 142,
-       "fontSize": 150,
+       "top": 153,
+       "fontSize": 130,
+       "bandHeight": 113.9,
+       "padX": 22.5,
        "band": "#FFFFFF",
        "align": "center",
        "opacity": 0.5,
@@ -15008,6 +19203,7 @@
        "scaleY": 1
       }
      ],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -15065,6 +19261,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",
@@ -15122,6 +19319,7 @@
      "puff": null,
      "sign": null,
      "banners": [],
+     "combos": [],
      "hud": {
       "clock": "0:30",
       "chip": "동점",

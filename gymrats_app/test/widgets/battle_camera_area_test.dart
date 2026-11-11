@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/widgets/battle_banner.dart';
 import 'package:gymrats_app/widgets/battle_camera_area.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
+import 'package:gymrats_app/widgets/battle_stage_model.dart';
 
 import 'battle_test_support.dart';
 
@@ -27,6 +30,8 @@ Future<void> _pump(
   double spin = 0,
   BattleFxResultButton? resultButton,
   VoidCallback? onShowResult,
+  List<BattleFxCombo> combos = const [],
+  double stageScale = 1,
 }) => tester.pumpWidget(
   battleTestApp(
     MediaQuery(
@@ -51,6 +56,8 @@ Future<void> _pump(
           spin: spin,
           resultButton: resultButton,
           onShowResult: onShowResult,
+          combos: combos,
+          stageScale: stageScale,
         ),
       ),
     ),
@@ -70,6 +77,11 @@ Finder _circle(IconData icon) => find.ancestor(
 );
 
 const _band = '재연결 중 · 경기 시간은 계속 진행됩니다.';
+
+/// The size of the combo mark that says [text], before it is turned.
+Size _mark(WidgetTester tester, String text) => tester.getSize(
+  find.ancestor(of: find.text(text), matching: find.byType(BattleBand)),
+);
 
 void main() {
   setUpAll(loadBattleFonts);
@@ -578,6 +590,177 @@ void main() {
         });
       }
     }
+  });
+
+  group('the combo marks (spec v2.2)', () {
+    /// The combo marks of real reps once they have popped in: mine of
+    /// [mine] in a row, the opponent's of [theirs].
+    List<BattleFxCombo> marks({int? mine, int? theirs}) {
+      final fx = BattleFxTimeline();
+      BattleStageEvent good(BattleSide side, int combo) => BattleStageEvent(
+        side: side,
+        grade: GameGrade.good,
+        points: 15,
+        combo: combo,
+      );
+      if (mine != null) fx.rep(good(BattleSide.me, mine), 0);
+      if (theirs != null) fx.rep(good(BattleSide.opponent, theirs), 0);
+      return fx.frame(500).combos;
+    }
+
+    /// The slanted fill of the mark that says [text], as drawn.
+    Rect fillOf(WidgetTester tester, String text) {
+      final fill = find.descendant(
+        of: find.ancestor(
+          of: find.text(text),
+          matching: find.byType(BattleBand),
+        ),
+        matching: find.byType(DecoratedBox),
+      );
+      final corners = [
+        tester.getTopLeft(fill),
+        tester.getTopRight(fill),
+        tester.getBottomLeft(fill),
+        tester.getBottomRight(fill),
+      ];
+      return Rect.fromPoints(
+        Offset(
+          corners.map((c) => c.dx).reduce((a, b) => a < b ? a : b),
+          corners.map((c) => c.dy).reduce((a, b) => a < b ? a : b),
+        ),
+        Offset(
+          corners.map((c) => c.dx).reduce((a, b) => a > b ? a : b),
+          corners.map((c) => c.dy).reduce((a, b) => a > b ? a : b),
+        ),
+      );
+    }
+
+    // The area starts at the line, which the design has at y 390.
+    const line = 390.0;
+
+    testWidgets('sit in the top corners where the design puts them: "2 HIT" '
+        'x 5 to 95, y 395 to 447', (tester) async {
+      await _pump(tester, combos: marks(mine: 2, theirs: 2));
+      expect(find.text('2 HIT'), findsNWidgets(2));
+      await _pump(tester, combos: marks(mine: 2));
+      final mine = fillOf(tester, '2 HIT');
+      expect(mine.left, closeTo(5, 1.5));
+      expect(mine.right, closeTo(95, 1.5));
+      expect(mine.top, closeTo(395 - line, 1.5));
+      expect(mine.bottom, closeTo(447 - line, 1.5));
+
+      final band = find.byType(BattleBand);
+      final myCorners = [
+        tester.getTopLeft(band),
+        tester.getTopRight(band),
+        tester.getBottomLeft(band),
+        tester.getBottomRight(band),
+      ];
+      await _pump(tester, combos: marks(theirs: 2));
+      // The opponent's band is mine mirrored; only the slant leans the same
+      // way on both, as in the design.
+      final theirCorners = [
+        tester.getTopRight(band),
+        tester.getTopLeft(band),
+        tester.getBottomRight(band),
+        tester.getBottomLeft(band),
+      ];
+      for (var i = 0; i < 4; i++) {
+        expect(theirCorners[i].dx, closeTo(360 - myCorners[i].dx, 0.01));
+        expect(theirCorners[i].dy, closeTo(myCorners[i].dy, 0.01));
+      }
+      // With the slant its outer corner reaches further out than mine (the
+      // design's own CSS does the same), still on the screen.
+      final theirs = fillOf(tester, '2 HIT');
+      expect(theirs.right, lessThan(360));
+      expect(theirs.right, greaterThan(360 - 6));
+      expect(theirs.top, closeTo(395 - line, 1.5));
+      expect(theirs.bottom, closeTo(447 - line, 1.5));
+    });
+
+    testWidgets('"10 HIT" x 5 to 113, y 393 to 447, clear of the reject '
+        'sign\'s tile from x 116', (tester) async {
+      await _pump(tester, combos: marks(mine: 10));
+      final mine = fillOf(tester, '10 HIT');
+      expect(mine.left, closeTo(5, 1.5));
+      expect(mine.right, closeTo(113, 1.5));
+      expect(mine.right, lessThan(116));
+      expect(mine.top, closeTo(393 - line, 1.5));
+      expect(mine.bottom, closeTo(447 - line, 1.5));
+    });
+
+    testWidgets('go under the reconnect band: 34 lower at the design\'s text '
+        'size', (tester) async {
+      final level = [
+        const BattleFxCombo(
+          side: BattleSide.me,
+          count: 2,
+          opacity: 1,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+        ),
+      ];
+      await _pump(tester, combos: level);
+      final top = tester.getTopLeft(find.byType(BattleBand)).dy;
+      expect(top, closeTo(BattleFx.comboBelowLine, 0.01));
+      await _pump(tester, combos: level, reconnecting: true);
+      expect(
+        tester.getTopLeft(find.byType(BattleBand)).dy,
+        closeTo(top + BattleFx.reconnectBandHeight, 0.01),
+      );
+      expect(find.text(_band), findsOneWidget);
+    });
+
+    for (final scale in [1.3, 2.0]) {
+      testWidgets('stay under the reconnect band when the system text size '
+          'grows it ($scale x)', (tester) async {
+        await _pump(
+          tester,
+          textScale: scale,
+          reconnecting: true,
+          combos: marks(mine: 3, theirs: 4),
+        );
+        expect(tester.takeException(), isNull);
+        final band = tester.getRect(
+          find.ancestor(of: find.text(_band), matching: find.byType(Row)),
+        );
+        for (final text in ['3 HIT', '4 HIT']) {
+          expect(
+            fillOf(tester, text).top,
+            greaterThan(band.bottom),
+            reason: text,
+          );
+        }
+        // The marks themselves do not grow with the text.
+        expect(_mark(tester, '3 HIT').height, BattleFx.bandBox(44).height);
+      });
+    }
+
+    testWidgets('are sized with the stage: further from the line and the '
+        'side on a larger stage', (tester) async {
+      final level = [
+        const BattleFxCombo(
+          side: BattleSide.me,
+          count: 2,
+          opacity: 1,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+        ),
+      ];
+      await _pump(tester, combos: level, stageScale: 1.2);
+      final band = tester.getRect(find.byType(BattleBand));
+      expect(band.top, closeTo(14 * 1.2, 0.01));
+      expect(band.left, closeTo(6 * 1.2, 0.01));
+      expect(band.height, closeTo(BattleFx.bandBox(44).height * 1.2, 0.01));
+    });
+
+    testWidgets('none when there is no combo', (tester) async {
+      await _pump(tester, reconnecting: true);
+      expect(find.byType(BattleComboMark), findsNothing);
+      expect(find.text(_band), findsOneWidget);
+    });
   });
 
   group('BattleReconnectArcPainter', () {

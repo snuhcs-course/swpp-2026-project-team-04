@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'battle_banner.dart';
 import 'battle_fx_motion.dart';
+import 'battle_stage_model.dart';
 
 /// The lower half of the battle screen: the user's camera, and over it the
 /// few things to read or press while exercising.
@@ -14,6 +16,7 @@ import 'battle_fx_motion.dart';
 /// - top right, before the start: the camera switch
 /// - along the top: the setup progress before the start, or the reconnect
 ///   band while the user's own connection is down
+/// - in the top corners while the round is on: the combo marks ("2 HIT")
 /// - in the middle, once the ending has played: 결과 보기, over a dimmed
 ///   camera
 ///
@@ -33,6 +36,8 @@ class BattleCameraArea extends StatelessWidget {
     this.spin = 0,
     this.resultButton,
     this.onShowResult,
+    this.combos = const [],
+    this.stageScale = 1,
   });
 
   /// The camera picture with whatever is drawn on it, in its own shape. It
@@ -66,6 +71,15 @@ class BattleCameraArea extends StatelessWidget {
   /// played, and the button cannot be pressed before.
   final BattleFxResultButton? resultButton;
   final VoidCallback? onShowResult;
+
+  /// The combo marks, in the top corners: mine on the left, the opponent's
+  /// on the right, [BattleFx.comboBelowLine] stage points under the line, or
+  /// as far under the reconnect band while it is up, however tall the
+  /// system text size makes it.
+  final List<BattleFxCombo> combos;
+
+  /// What the stage above is sized by; the combo marks are sized with it.
+  final double stageScale;
 
   /// The line between the stage and the camera.
   static const lineWidth = 3.0;
@@ -104,13 +118,6 @@ class BattleCameraArea extends StatelessWidget {
                 right: 0,
                 top: 0,
                 child: _SetupProgress(progress: progress),
-              ),
-            if (reconnecting)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                child: _ReconnectBand(spin: spin, style: text.cameraNotice),
               ),
             if (onSwitchCamera != null)
               Positioned(
@@ -187,8 +194,61 @@ class BattleCameraArea extends StatelessWidget {
                 ),
               ),
             ],
+            // Over everything else here: the band, and the combo marks under
+            // it, in the order of the design's layers.
+            if (reconnecting || combos.isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (reconnecting)
+                      _ReconnectBand(spin: spin, style: text.cameraNotice),
+                    if (combos.isNotEmpty)
+                      _ComboRow(combos: combos, scale: stageScale),
+                  ],
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The combo marks along the camera area's top: each in its own corner,
+/// [BattleFx.comboBelowLine] stage points under the line, or as far under
+/// the band above them.
+class _ComboRow extends StatelessWidget {
+  const _ComboRow({required this.combos, required this.scale});
+
+  final List<BattleFxCombo> combos;
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    // The line itself is not sized with the stage, and the row starts under
+    // it or under the band.
+    final gap = math.max(
+      0.0,
+      BattleFx.comboBelowLine * scale - BattleCameraArea.lineWidth,
+    );
+    return SizedBox(
+      height: gap + BattleFx.bandBox(BattleFx.comboTextSize).height * scale,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (final combo in combos)
+            Positioned(
+              left: combo.side == BattleSide.me ? 0 : null,
+              right: combo.side == BattleSide.me ? null : 0,
+              top: gap,
+              child: BattleComboMark(combo: combo, scale: scale),
+            ),
+        ],
       ),
     );
   }

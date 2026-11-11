@@ -23,14 +23,12 @@ Future<PaintedPicture> _icon(WidgetTester tester, int icon) => paintPicture(
 BattleFxSign _sign(
   RejectReason reason, {
   bool average = false,
-  int points = 5,
   double scale = 1,
   double rotation = 0,
   double opacity = 1,
 }) => BattleFxSign(
   reason: reason,
   average: average,
-  points: points,
   scale: scale,
   rotation: rotation,
   opacity: opacity,
@@ -182,14 +180,13 @@ void main() {
       expect(painter.icon, RejectReason.kneesDown.signIcon);
     });
 
-    testWidgets('an average rep: amber, with the points it earned', (
-      tester,
-    ) async {
+    testWidgets('an average rep: amber, with the reason only', (tester) async {
       await _pumpSign(
         tester,
-        _sign(RejectReason.insufficientDepth, average: true, points: 10),
+        _sign(RejectReason.insufficientDepth, average: true),
       );
-      expect(find.text('더 깊게 +10'), findsOneWidget);
+      // Its grade and points show on the stage, not here.
+      expect(find.text('더 깊게'), findsOneWidget);
       expect(
         tester.widget<BattleBand>(find.byType(BattleBand)).color,
         AppColors.warning,
@@ -255,10 +252,7 @@ void main() {
     testWidgets('a long label is not squeezed into the sign\'s box', (
       tester,
     ) async {
-      await _pumpSign(
-        tester,
-        _sign(RejectReason.standUpFully, average: true, points: 10),
-      );
+      await _pumpSign(tester, _sign(RejectReason.standUpFully, average: true));
       expect(tester.takeException(), isNull);
       final label = tester.getRect(find.byType(BattleBand));
       expect(label.width, greaterThan(BattleRejectSignView.size.width));
@@ -355,7 +349,7 @@ void main() {
         tester,
         _sign(RejectReason.insufficientDepth, average: true),
       );
-      expect(find.bySemanticsLabel('가슴을 더 내려요 · +5점'), findsOneWidget);
+      expect(find.bySemanticsLabel('가슴을 더 내려요'), findsOneWidget);
       handle.dispose();
     });
   });

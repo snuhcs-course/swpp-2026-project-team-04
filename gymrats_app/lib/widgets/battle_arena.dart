@@ -54,6 +54,7 @@ class BattleStageController {
     }
     _fx
       ..setShare(state.barShare, _now)
+      ..setScores(state.myScore, state.opponentScore)
       ..setFever(state.fever, _now)
       ..danger = state.danger
       ..opponentGone = state.opponentDisconnected;
@@ -353,6 +354,8 @@ class _BattleArenaState extends State<BattleArena>
                         : (_controller._now * BattleArena._spinSpeed) % 360,
                     resultButton: frame.resultButton,
                     onShowResult: widget.onShowResult,
+                    combos: frame.combos,
+                    stageScale: scale,
                   ),
                 ),
                 if (sign != null)
