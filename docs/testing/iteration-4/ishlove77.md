@@ -13,7 +13,7 @@ change, newest pending hint, interrupting events, sound off, background, an 8-se
 `VoiceCueTable` (setup reason / countdown / end / outcome → line), `SoundSettings` (the one sound switch, saved in
 secure storage) and the rep beep following that switch. Fakes for J2 and others: `test/support/audio_fakes.dart`.
 Commands from the Plan in `gymrats_app/` on macOS (Flutter 3.47.5 / Dart 3.13.4): `flutter analyze`, `flutter test`,
-`bash ../.claude/skills/testing/coverage_per_file.sh` + `python3 ../.claude/skills/testing/coverage_by_layer.py coverage/lcov.info`.
+the per-file coverage run (`flutter test --coverage` file by file, merged into `coverage/lcov.info`) and a per-layer summary of it.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
