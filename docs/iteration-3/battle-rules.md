@@ -1,4 +1,4 @@
-# GymRats Iteration 3 배틀 게임 규칙 (P4)
+# GymMouse Iteration 3 배틀 게임 규칙 (P4)
 
 상태: 제안 v0.1 / 작성일: 2026-10-25 / 결정: 2026-10-28 중간 체크인 / Average 추가: 2026-11-01 / 작성: 송우현
 
