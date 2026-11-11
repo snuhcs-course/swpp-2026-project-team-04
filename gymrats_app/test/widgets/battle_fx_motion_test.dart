@@ -1,0 +1,1301 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/battle_rules.dart';
+import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/widgets/battle_fx_motion.dart';
+import 'package:gymrats_app/widgets/battle_stage_model.dart';
+
+/// The design prototype's own output (FxA), sampled at fixed times: 15
+/// scenarios, 205 samples. `t` counts from the scenario's event; the stage
+/// was made 1000 ms before it.
+///
+/// Compared in every sample: the meeting point, both fighters, the tags, the
+/// shake and zoom, the star, twinkle, puff, sign, the bands, the bumps, the
+/// fever and danger opacities, the chip and the result button. Not compared:
+/// `hud.clock` and the time bar (the design's own demo values), and the
+/// bands of [_waitsForV21]. The scores and rep counts are inputs: the game
+/// gives them to the stage, so here they only pick the chip's words. Each
+/// scenario's `after` is checked against how the scenario was played.
+const _goldenPath = 'test/widgets/battle_fx_golden.json';
+
+/// The stage clock at a sample's `t = 0`.
+const _eventAt = 1000.0;
+
+/// The points and grade bands ("+10", "EXCELLENT") wait for spec v2.1, which
+/// also brings a new golden file. Until then they are left out of the check.
+bool _waitsForV21(String text) => text.startsWith('+') || text == 'EXCELLENT';
+
+/// One thing that happens in a scenario, [at] on the stage clock.
+typedef _Step = ({
+  double at,
+  void Function(BattleFxTimeline fx, double now) run,
+});
+
+double _share(int lead) => battleRules.barShare(lead);
+
+BattleStageEvent _rep(
+  BattleSide side,
+  GameGrade? grade, {
+  int points = 0,
+  int combo = 0,
+  bool fever = false,
+  RejectReason? reason,
+  bool knockout = false,
+}) => BattleStageEvent(
+  side: side,
+  grade: grade,
+  points: points,
+  combo: combo,
+  fever: fever,
+  reason: reason,
+  knockout: knockout,
+);
+
+_Step _at(double t, void Function(BattleFxTimeline fx, double now) run) =>
+    (at: _eventAt + t, run: run);
+
+/// How each golden scenario is played: the health-bar share before it, and
+/// its events. The scores come from the game in the app; here they are the
+/// scenario's own.
+final _scenarios = <String, ({int leadBefore, bool fever, List<_Step> steps})>{
+  'my_good': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.setShare(_share(10), now);
+        fx.rep(_rep(BattleSide.me, GameGrade.good, points: 10, combo: 1), now);
+      }),
+    ],
+  ),
+  'my_excellent_combo': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(-1000, (fx, now) {
+        fx.setShare(_share(10), now);
+        fx.rep(_rep(BattleSide.me, GameGrade.good, points: 10, combo: 1), now);
+      }),
+      _at(0, (fx, now) {
+        fx.setShare(_share(30), now);
+        fx.rep(
+          _rep(BattleSide.me, GameGrade.excellent, points: 20, combo: 2),
+          now,
+        );
+      }),
+    ],
+  ),
+  'my_average': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.setShare(_share(5), now);
+        fx.rep(
+          _rep(
+            BattleSide.me,
+            GameGrade.average,
+            points: 5,
+            reason: RejectReason.insufficientDepth,
+          ),
+          now,
+        );
+      }),
+    ],
+  ),
+  'my_reject': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), now);
+      }),
+    ],
+  ),
+  'opponent_good': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.setShare(_share(-10), now);
+        fx.rep(
+          _rep(BattleSide.opponent, GameGrade.good, points: 10, combo: 1),
+          now,
+        );
+      }),
+    ],
+  ),
+  'valid_count_bump': (
+    leadBefore: 15,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.setShare(_share(25), now);
+        fx.rep(_rep(BattleSide.me, GameGrade.good, points: 10, combo: 1), now);
+      }),
+    ],
+  ),
+  'fever_then_good': (
+    leadBefore: 0,
+    fever: true,
+    steps: [
+      _at(0, (fx, now) => fx.setFever(true, now)),
+      _at(1600, (fx, now) {
+        fx.setShare(_share(20), now);
+        fx.rep(
+          _rep(
+            BattleSide.me,
+            GameGrade.good,
+            points: 20,
+            combo: 1,
+            fever: true,
+          ),
+          now,
+        );
+      }),
+    ],
+  ),
+  'danger': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.setShare(_share(-65), now);
+        fx.danger = battleRules.inDanger(-65);
+        fx.rep(
+          _rep(BattleSide.opponent, GameGrade.good, points: 10, combo: 1),
+          now,
+        );
+      }),
+    ],
+  ),
+  'ko_win': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.setShare(_share(100), now);
+        fx.rep(
+          _rep(
+            BattleSide.me,
+            GameGrade.excellent,
+            points: 15,
+            combo: 1,
+            knockout: battleRules.isKo(100),
+          ),
+          now,
+        );
+      }),
+    ],
+  ),
+  'ko_lose': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.setShare(_share(-100), now);
+        fx.danger = battleRules.inDanger(-100);
+        fx.rep(
+          _rep(
+            BattleSide.opponent,
+            GameGrade.good,
+            points: 10,
+            combo: 1,
+            knockout: battleRules.isKo(-100),
+          ),
+          now,
+        );
+      }),
+    ],
+  ),
+  'time_up_win': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.setShare(_share(5), now);
+        fx.finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+          now,
+        );
+      }),
+    ],
+  ),
+  'opponent_left': (
+    leadBefore: 15,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) {
+        fx.finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+          now,
+        );
+      }),
+    ],
+  ),
+  'opponent_disconnected': (
+    leadBefore: 15,
+    fever: false,
+    steps: [_at(0, (fx, now) => fx.opponentGone = true)],
+  ),
+  'pre_setup_then_waiting': (
+    leadBefore: 0,
+    fever: false,
+    steps: [
+      _at(0, (fx, now) => fx.setSetup(active: true, opponentReady: true)),
+      _at(1000, (fx, now) => fx.setSetup(active: true, meReady: true)),
+    ],
+  ),
+  'countdown_go': (
+    leadBefore: 0,
+    fever: false,
+    steps: [_at(0, (fx, now) => fx.countDown(3000, now))],
+  ),
+};
+
+const _poses = {
+  'idle': BattlePose.idle,
+  'atk': BattlePose.attack,
+  'hit': BattlePose.hit,
+  'ko': BattlePose.knockedOut,
+  'win': BattlePose.win,
+};
+
+/// The design's fills as the tones the widgets turn into theme colors.
+const _tones = {
+  '#C6FF3D': BattleFxTone.me,
+  '#FF4F81': BattleFxTone.opponent,
+  '#FFFFFF': BattleFxTone.plain,
+  '#FFB547': BattleFxTone.average,
+  '#3DE8FF': BattleFxTone.fever,
+  '#FF3B30': BattleFxTone.danger,
+};
+
+const _aligns = {
+  'left': BattleFxAlign.left,
+  'center': BattleFxAlign.center,
+  'right': BattleFxAlign.right,
+};
+
+const _fonts = {'number': BattleFxFont.number, 'display': BattleFxFont.display};
+
+/// Compares one frame with one golden sample and collects what differs.
+class _Check {
+  _Check(this.where, Map<String, dynamic> tolerance)
+    : position = (tolerance['position'] as num).toDouble(),
+      rotation = (tolerance['rot'] as num).toDouble(),
+      scale = (tolerance['scale'] as num).toDouble(),
+      opacity = (tolerance['opacity'] as num).toDouble();
+
+  final String where;
+  final double position;
+  final double rotation;
+  final double scale;
+  final double opacity;
+  final problems = <String>[];
+
+  void near(String what, num actual, dynamic expected, double tolerance) {
+    final want = (expected as num).toDouble();
+    if ((actual - want).abs() > tolerance + 1e-9) {
+      problems.add('$where $what: $actual, golden $want');
+    }
+  }
+
+  void same(String what, Object? actual, Object? expected) {
+    if (actual != expected) {
+      problems.add('$where $what: $actual, golden $expected');
+    }
+  }
+
+  /// Whether both are there, so their fields can be compared. A thing that
+  /// fades ([faded] is its opacity) may be missing on one side once it is
+  /// within the opacity tolerance of gone; anything else must be on both
+  /// sides or on neither.
+  bool both(String what, Object? actual, dynamic expected, double? faded) {
+    if (actual != null && expected != null) return true;
+    final gone = faded != null && faded <= opacity;
+    if (!(actual == null && expected == null) && !gone) {
+      problems.add('$where $what: ${actual == null ? 'missing' : 'extra'}');
+    }
+    return false;
+  }
+
+  void fighter(String who, BattleFxFighter f, Map<String, dynamic> g) {
+    same('$who pose', f.pose, _poses[g['pose']]);
+    near('$who footX', f.footX, g['footX'], position);
+    near('$who footY', f.footY, g['footY'], position);
+    near('$who rot', f.rotation, g['rot'], rotation);
+    near('$who scaleX', f.scaleX, g['scaleX'], scale);
+    near('$who scaleY', f.scaleY, g['scaleY'], scale);
+    near('$who opacity', f.opacity, g['opacity'], opacity);
+    same('$who flash', f.flash, g['flash']);
+    same('$who glow', f.glow, g['glow']);
+    same('$who front', f.front, g['front']);
+  }
+
+  void tag(String who, BattleFxTag? t, Map<String, dynamic>? g) {
+    if (!both('$who tag', t, g, null)) return;
+    same('$who tag text', t!.text, g!['text']);
+    same('$who tag fill', t.tone, _tones[g['fill']]);
+    near('$who tag cx', t.centerX, g['cx'], position);
+  }
+
+  void banners(List<BattleFxBanner> actual, List<dynamic> golden) {
+    // The same text can show on both sides at once (two MISS bands), so the
+    // bands are paired by text and, within a text, from left to right.
+    final shown = [
+      for (final b in actual)
+        if (b.opacity > opacity) b,
+    ]..sort((a, b) => _order(a.text, a.dx, b.text, b.dx));
+    final wanted = [
+      for (final g in golden.cast<Map<String, dynamic>>())
+        if (!_waitsForV21(g['text'] as String) &&
+            (g['opacity'] as num) > opacity)
+          g,
+    ]..sort((a, b) => _order(a['text'], a['dx'], b['text'], b['dx']));
+    same(
+      'bands',
+      shown.map((b) => b.text).join(' | '),
+      wanted.map((g) => g['text']).join(' | '),
+    );
+    if (shown.length != wanted.length) return;
+    for (var i = 0; i < wanted.length; i++) {
+      final g = wanted[i];
+      final b = shown[i];
+      final text = b.text;
+      same('band "$text" font', b.font, _fonts[g['font']]);
+      near('band "$text" top', b.top, g['top'], position);
+      near('band "$text" size', b.textSize, g['fontSize'], position);
+      same('band "$text" fill', b.tone, _tones[g['band']]);
+      same('band "$text" align', b.align, _aligns[g['align']]);
+      near(
+        'band "$text" opacity',
+        b.opacity.clamp(0, 1),
+        g['opacity'],
+        opacity,
+      );
+      near('band "$text" dx', b.dx, g['dx'], position);
+      near('band "$text" dy', b.dy, g['dy'], position);
+      near('band "$text" rot', b.rotation, g['rot'], rotation);
+      near('band "$text" scaleX', b.scaleX, g['scaleX'], scale);
+      near('band "$text" scaleY', b.scaleY, g['scaleY'], scale);
+    }
+  }
+
+  void frame(BattleFxFrame f, Map<String, dynamic> g, {required bool fever}) {
+    near('xm', f.meetX, g['xm'], position);
+    fighter('me', f.me, g['me'] as Map<String, dynamic>);
+    fighter('op', f.opponent, g['op'] as Map<String, dynamic>);
+    tag('me', f.myTag, g['meTag'] as Map<String, dynamic>?);
+    tag('op', f.opponentTag, g['opTag'] as Map<String, dynamic>?);
+
+    final stage = g['stage'] as Map<String, dynamic>;
+    near('shake dx', f.shakeX, stage['dx'], position);
+    near('shake dy', f.shakeY, stage['dy'], position);
+    near('zoom', f.zoom, stage['zoom'], scale);
+    near('zoom origin', f.meetX, stage['originX'], position);
+
+    final star = g['star'] as Map<String, dynamic>?;
+    if (both('star', f.star, star, f.star?.opacity ?? star?['opacity'])) {
+      near('star cx', f.star!.centerX, star!['cx'], position);
+      near('star cy', f.star!.centerY, star['cy'], position);
+      near('star rot', f.star!.rotation, star['rot'], rotation);
+      near('star diameter', f.star!.diameter, star['diameter'], position);
+      near('star opacity', f.star!.opacity, star['opacity'], opacity);
+    }
+    final twinkle = g['twinkle'] as Map<String, dynamic>?;
+    if (both(
+      'twinkle',
+      f.twinkle,
+      twinkle,
+      f.twinkle?.opacity ?? twinkle?['opacity'],
+    )) {
+      near('twinkle cx', f.twinkle!.centerX, twinkle!['cx'], position);
+      near('twinkle cy', f.twinkle!.centerY, twinkle['cy'], position);
+      near('twinkle rot', f.twinkle!.rotation, twinkle['rot'], rotation);
+      near('twinkle scale', f.twinkle!.scale, twinkle['scale'], scale);
+      near('twinkle opacity', f.twinkle!.opacity, twinkle['opacity'], opacity);
+    }
+    final puff = g['puff'] as Map<String, dynamic>?;
+    if (both('puff', f.puff, puff, f.puff?.opacity ?? puff?['opacity'])) {
+      near('puff cx', f.puff!.centerX, puff!['cx'], position);
+      near('puff cy', f.puff!.centerY, puff['cy'], position);
+      near('puff scale', f.puff!.scale, puff['scale'], scale);
+      near('puff opacity', f.puff!.opacity, puff['opacity'], opacity);
+    }
+    final sign = g['sign'] as Map<String, dynamic>?;
+    if (both('sign', f.sign, sign, f.sign?.opacity ?? sign?['opacity'])) {
+      same('sign icon', f.sign!.reason.signIcon, sign!['reason']);
+      same('sign text', f.sign!.text, sign['text']);
+      same('sign band', f.sign!.tone, _tones[sign['band']]);
+      near('sign scale', f.sign!.scale, sign['scale'], scale);
+      near('sign rot', f.sign!.rotation, sign['rot'], rotation);
+      near('sign opacity', f.sign!.opacity, sign['opacity'], opacity);
+    }
+    banners(f.banners, g['banners'] as List<dynamic>);
+
+    final hud = g['hud'] as Map<String, dynamic>;
+    near('my score bump', f.myScoreBump, hud['myBump'], scale);
+    near(
+      'opponent score bump',
+      f.opponentScoreBump,
+      hud['opponentBump'],
+      scale,
+    );
+    near('my reps bump', f.myRepsBump, hud['myRepsBump'], scale);
+    near(
+      'opponent reps bump',
+      f.opponentRepsBump,
+      hud['opponentRepsBump'],
+      scale,
+    );
+    near('fever', f.feverOpacity, hud['feverOpacity'], opacity);
+    near('danger', f.dangerOpacity, hud['dangerOpacity'], opacity);
+    final chip = BattleFx.chip(
+      lead: (hud['myScore'] as int) - (hud['opponentScore'] as int),
+      fever: fever,
+      beforeStart: f.beforeStart,
+    );
+    same('chip', chip?.text, hud['chip']);
+    same('chip fill', chip?.tone, _tones[hud['chipBg']]);
+
+    final button = g['resultButton'] as Map<String, dynamic>?;
+    if (both('result button', f.resultButton, button, null)) {
+      near(
+        'button opacity',
+        f.resultButton!.opacity,
+        button!['opacity'],
+        opacity,
+      );
+      near('button scale', f.resultButton!.scale, button['scale'], scale);
+      near('button scrim', f.resultButton!.scrim, button['scrim'], opacity);
+    }
+  }
+}
+
+int _order(dynamic textA, dynamic dxA, dynamic textB, dynamic dxB) {
+  final byText = (textA as String).compareTo(textB as String);
+  return byText != 0 ? byText : (dxA as num).compareTo(dxB as num);
+}
+
+const _endKinds = {
+  'ko': BattleEndKind.knockout,
+  'time': BattleEndKind.timeUp,
+  'left': BattleEndKind.playerLeft,
+};
+
+const _sides = {'me': BattleSide.me, 'op': BattleSide.opponent};
+
+BattleStageEvent _good(
+  BattleSide side, {
+  int combo = 1,
+  bool knockout = false,
+}) => _rep(side, GameGrade.good, points: 10, combo: combo, knockout: knockout);
+
+void main() {
+  final golden =
+      jsonDecode(File(_goldenPath).readAsStringSync()) as Map<String, dynamic>;
+  final meta = golden['meta'] as Map<String, dynamic>;
+  final scenarios = (golden['scenarios'] as List<dynamic>)
+      .cast<Map<String, dynamic>>();
+
+  group('against the design prototype (fx_golden.json)', () {
+    test('the file is the one the checks were written for', () {
+      expect(meta['version'], 2);
+      expect(meta['startMs'], _eventAt);
+      expect(scenarios, hasLength(15));
+      expect(
+        scenarios.fold<int>(0, (n, s) => n + (s['samples'] as List).length),
+        205,
+      );
+      expect(scenarios.map((s) => s['name']).toSet(), _scenarios.keys.toSet());
+    });
+
+    for (final scenario in scenarios) {
+      final name = scenario['name'] as String;
+      test('$name: every sample matches within the design tolerance', () {
+        final play = _scenarios[name]!;
+        final fx = BattleFxTimeline(share: _share(play.leadBefore));
+        final steps = [...play.steps]..sort((a, b) => a.at.compareTo(b.at));
+        final samples = (scenario['samples'] as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        final problems = <String>[];
+        var next = 0;
+        for (final sample in samples) {
+          final now = _eventAt + (sample['t'] as num);
+          while (next < steps.length && steps[next].at <= now) {
+            steps[next].run(fx, steps[next].at);
+            next += 1;
+          }
+          final check = _Check(
+            '$name t=${sample['t']}',
+            meta['tolerance'] as Map<String, dynamic>,
+          )..frame(fx.frame(now), sample, fever: play.fever);
+          problems.addAll(check.problems);
+        }
+        expect(next, steps.length, reason: 'every step was played');
+        expect(problems, isEmpty, reason: problems.join('\n'));
+
+        // The scenario was played to the scores and the ending the file
+        // says it has afterwards.
+        final after = scenario['after'] as Map<String, dynamic>;
+        final lead =
+            (after['myScore'] as int) - (after['opponentScore'] as int);
+        expect(
+          fx.frame(_eventAt + 60000).meetX,
+          closeTo(BattleFx.meetX(_share(lead)), 1e-6),
+          reason: 'the meeting point settles where a lead of $lead puts it',
+        );
+        expect(after['fever'], play.fever);
+        final end = after['end'] as Map<String, dynamic>?;
+        expect(fx.end?.kind, _endKinds[end?['kind']]);
+        expect(fx.end?.winner, _sides[end?['win']]);
+      });
+    }
+  });
+
+  group('curves', () {
+    test('seg runs from 0 at a to 1 at b and stays there outside', () {
+      expect(BattleFx.seg(0, 10, 20), 0);
+      expect(BattleFx.seg(15, 10, 20), 0.5);
+      expect(BattleFx.seg(99, 10, 20), 1);
+    });
+
+    test('easeOut and back start at 0, end at 1, and back overshoots', () {
+      expect(BattleFx.easeOut(0), 0);
+      expect(BattleFx.easeOut(1), 1);
+      expect(BattleFx.easeOut(2), 1);
+      expect(BattleFx.easeOut(0.5), 0.875);
+      expect(BattleFx.back(0), closeTo(0, 1e-9));
+      expect(BattleFx.back(1), 1);
+      expect(BattleFx.back(0.8), greaterThan(1));
+    });
+
+    test('a pop is half size at first, full for its middle, gone after', () {
+      expect(BattleFx.pop(-1, 700), isNull);
+      expect(BattleFx.pop(0, 700)!.scale, closeTo(0.5, 1e-9));
+      expect(BattleFx.pop(300, 700), (scale: 1.0, opacity: 1.0));
+      expect(BattleFx.pop(640, 700)!.opacity, 0.5);
+      expect(BattleFx.pop(701, 700), isNull);
+    });
+
+    test('a harder blow stops longer, shakes more and has a bigger star', () {
+      final powers = [
+        BattleFx.powerOf(GameGrade.average),
+        BattleFx.powerOf(GameGrade.good),
+        BattleFx.powerOf(GameGrade.excellent),
+      ];
+      expect(powers, [0.5, 1, 1.6]);
+      expect(BattleFx.powerOf(null), 0);
+      expect(powers.map(BattleFx.hitStop), [40, 90, 120]);
+      expect(powers.map(BattleFx.shakeSize), [1.5, 4.5, 11]);
+      expect(powers.map(BattleFx.starSize), [42, 84, 130]);
+      expect(BattleFx.shakeSize(2.4), 16);
+      expect(BattleFx.starSize(2.4), 170);
+    });
+
+    test('the meeting point puts the loser on the bar end at a KO lead', () {
+      expect(BattleFx.meetX(battleRules.barShare(0)), 180);
+      expect(
+        BattleFx.meetX(battleRules.barShare(battleRules.koLead)) +
+            BattleFx.reach,
+        336,
+      );
+      expect(
+        BattleFx.meetX(battleRules.barShare(-battleRules.koLead)) -
+            BattleFx.reach,
+        24,
+      );
+    });
+  });
+
+  group('the chip beside the clock', () {
+    test('says who leads by how much, level, or fever', () {
+      ({String text, BattleFxTone tone})? chip(
+        int lead, {
+        bool fever = false,
+      }) => BattleFx.chip(lead: lead, fever: fever, beforeStart: false);
+      expect(chip(15), (text: '+15 앞섬', tone: BattleFxTone.me));
+      expect(chip(-65), (text: '−65 추격 중', tone: BattleFxTone.opponent));
+      expect(chip(0), (text: '동점', tone: BattleFxTone.plain));
+      expect(chip(15, fever: true), (
+        text: 'FEVER ×2',
+        tone: BattleFxTone.fever,
+      ));
+    });
+
+    test('is hidden before the start, and takes the rules\' multiplier', () {
+      expect(BattleFx.chip(lead: 0, fever: false, beforeStart: true), isNull);
+      expect(
+        BattleFx.chip(
+          lead: 0,
+          fever: true,
+          beforeStart: false,
+          feverMultiplier: 3,
+        )!.text,
+        'FEVER ×3',
+      );
+    });
+  });
+
+  group('reps', () {
+    test(
+      'the opponent\'s miss swings and shows MISS on their side, no sign',
+      () {
+        final fx = BattleFxTimeline()..rep(_rep(BattleSide.opponent, null), 0);
+        final frame = fx.frame(200);
+        expect(frame.opponent.pose, BattlePose.attack);
+        expect(frame.opponent.rotation, lessThan(0));
+        expect(frame.me.pose, BattlePose.idle);
+        expect(frame.sign, isNull);
+        final miss = frame.banners.single;
+        expect(miss.text, 'MISS');
+        expect(miss.dx, 56);
+        expect(miss.rotation, -7);
+      },
+    );
+
+    test('a combo of two or more shows N HIT until a rep misses', () {
+      final fx = BattleFxTimeline()
+        ..rep(_good(BattleSide.me), 0)
+        ..rep(_good(BattleSide.me, combo: 2), 1000);
+      expect(fx.frame(1500).banners.map((b) => b.text), contains('2 HIT'));
+      fx.rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 1600);
+      expect(
+        fx.frame(1650).banners.map((b) => b.text),
+        isNot(contains('2 HIT')),
+      );
+    });
+
+    test('the opponent\'s combo band sits on the right', () {
+      final fx = BattleFxTimeline()
+        ..rep(_good(BattleSide.opponent, combo: 3), 0);
+      final hit = fx.frame(500).banners.singleWhere((b) => b.text == '3 HIT');
+      expect(hit.align, BattleFxAlign.right);
+      expect(hit.rotation, 6);
+    });
+
+    test('only a counted rep bumps the valid count, when it lands', () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          _rep(
+            BattleSide.me,
+            GameGrade.average,
+            points: 5,
+            reason: RejectReason.insufficientDepth,
+          ),
+          0,
+        );
+      expect(fx.frame(210).myRepsBump, 1);
+      expect(fx.frame(210).myScoreBump, greaterThan(1));
+      fx.rep(_good(BattleSide.me), 1000);
+      expect(fx.frame(1079).myRepsBump, 1);
+      expect(fx.frame(1210).myRepsBump, closeTo(1.3, 1e-9));
+    });
+
+    test('a new rejected rep replaces the sign instead of stacking', () {
+      final fx = BattleFxTimeline()
+        ..rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 0)
+        ..rep(_rep(BattleSide.me, null, reason: RejectReason.phoneMoved), 400);
+      final sign = fx.frame(400).sign!;
+      expect(sign.reason, RejectReason.phoneMoved);
+      expect(sign.scale, closeTo(0.6, 1e-9));
+      expect(sign.tone, BattleFxTone.danger);
+    });
+
+    test('an average rep in fever shows its doubled points on the sign', () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          _rep(
+            BattleSide.me,
+            GameGrade.average,
+            points: 10,
+            fever: true,
+            reason: RejectReason.shallowSquat,
+          ),
+          0,
+        );
+      final sign = fx.frame(300).sign!;
+      expect(sign.text, '더 앉기 +10');
+      expect(sign.tone, BattleFxTone.average);
+    });
+
+    test('in fever the shake and the star are one and a half times as big', () {
+      BattleFxFrame at90(bool fever) =>
+          (BattleFxTimeline()..rep(
+                _rep(
+                  BattleSide.me,
+                  GameGrade.good,
+                  points: 10,
+                  combo: 1,
+                  fever: fever,
+                ),
+                0,
+              ))
+              .frame(90);
+      final plain = at90(false);
+      final fever = at90(true);
+      expect(fever.star!.diameter, closeTo(plain.star!.diameter * 1.5, 1e-9));
+      expect(fever.shakeX, closeTo(plain.shakeX * 1.5, 1e-9));
+    });
+
+    test('nothing plays after the battle has ended', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+          0,
+        )
+        ..rep(_good(BattleSide.opponent), 100);
+      final frame = fx.frame(200);
+      expect(frame.me.pose, BattlePose.idle);
+      expect(frame.star, isNull);
+    });
+  });
+
+  group('the meeting point', () {
+    test('follows a new share with a 110 ms time constant', () {
+      final fx = BattleFxTimeline()..setShare(1, 0);
+      expect(fx.frame(0).meetX, 180);
+      expect(fx.frame(110).meetX, closeTo(280 - 100 / 2.718281828, 1e-6));
+      expect(fx.frame(5000).meetX, closeTo(280, 1e-6));
+    });
+
+    test('keeps gliding from where it is when the share changes again', () {
+      final fx = BattleFxTimeline()..setShare(1, 0);
+      final midway = fx.frame(110).meetX;
+      fx.setShare(0.5, 110);
+      expect(fx.frame(110).meetX, closeTo(midway, 1e-9));
+      expect(fx.frame(9000).meetX, closeTo(180, 1e-6));
+    });
+
+    test('a share outside 0 to 1 stops at the bar ends', () {
+      final fx = BattleFxTimeline()..setShare(7, 0);
+      expect(fx.frame(9000).meetX, closeTo(280, 1e-6));
+    });
+  });
+
+  group('fever and danger', () {
+    test('turning fever off takes the background and the aura away', () {
+      final fx = BattleFxTimeline()..setFever(true, 0);
+      expect(fx.frame(500).feverOpacity, 1);
+      expect(fx.frame(500).me.glow, isTrue);
+      fx.setFever(false, 600);
+      expect(fx.frame(700).feverOpacity, 0);
+      expect(fx.frame(700).me.glow, isFalse);
+      expect(fx.frame(700).banners, isEmpty);
+    });
+
+    test('the danger edge is off before the start and after the end', () {
+      final fx = BattleFxTimeline()
+        ..danger = true
+        ..setSetup(active: true);
+      expect(fx.frame(0).dangerOpacity, 0);
+      fx.setSetup(active: false);
+      expect(fx.frame(0).dangerOpacity, 0.3);
+      expect(fx.frame(240).dangerOpacity, 0.95);
+      fx.finish(
+        const BattleStageEnd(kind: BattleEndKind.timeUp, winner: BattleSide.me),
+        300,
+      );
+      expect(fx.frame(480).dangerOpacity, 0);
+    });
+  });
+
+  group('before the start', () {
+    test('both ready shows two ready tags and no band', () {
+      final fx = BattleFxTimeline()
+        ..setSetup(active: true, meReady: true, opponentReady: true);
+      final frame = fx.frame(0);
+      expect(frame.myTag!.text, '준비 완료');
+      expect(frame.myTag!.tone, BattleFxTone.me);
+      expect(frame.opponentTag!.tone, BattleFxTone.opponent);
+      expect(frame.banners, isEmpty);
+      expect(frame.beforeStart, isTrue);
+    });
+
+    test('more than 3 s before the start: ready tags, no number yet', () {
+      final fx = BattleFxTimeline()
+        ..setSetup(active: true)
+        ..countDown(5000, 0);
+      final early = fx.frame(1000);
+      expect(early.myTag!.text, '준비 완료');
+      expect(early.opponentTag!.text, '준비 완료');
+      expect(early.banners, isEmpty);
+      final late = fx.frame(2500);
+      expect(late.myTag, isNull);
+      expect(late.banners.single.text, '3');
+      expect(fx.frame(5000).beforeStart, isFalse);
+    });
+
+    test('a disconnected opponent has no tag once the battle has ended', () {
+      final fx = BattleFxTimeline()..opponentGone = true;
+      expect(fx.frame(0).opponentTag!.text, '연결 끊김');
+      fx.finish(
+        const BattleStageEnd(
+          kind: BattleEndKind.playerLeft,
+          winner: BattleSide.me,
+        ),
+        100,
+      );
+      expect(fx.frame(200).opponentTag, isNull);
+    });
+  });
+
+  group('endings', () {
+    test('a draw at time-up shows DRAW on white and nobody celebrates', () {
+      final fx = BattleFxTimeline()
+        ..finish(const BattleStageEnd(kind: BattleEndKind.timeUp), 0);
+      final frame = fx.frame(1500);
+      final verdict = frame.banners.single;
+      expect(verdict.text, 'DRAW');
+      expect(verdict.tone, BattleFxTone.plain);
+      expect(frame.me.pose, BattlePose.idle);
+      expect(frame.opponent.pose, BattlePose.idle);
+    });
+
+    test('a loss at time-up shows LOSE on pink and my fighter hit', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.opponent,
+          ),
+          0,
+        );
+      final frame = fx.frame(1500);
+      expect(frame.banners.single.text, 'LOSE');
+      expect(frame.banners.single.tone, BattleFxTone.opponent);
+      expect(frame.me.pose, BattlePose.hit);
+      expect(frame.opponent.pose, BattlePose.win);
+    });
+
+    test('time-up without the result yet: TIME!, then nothing, no button', () {
+      const waiting = BattleStageEnd(
+        kind: BattleEndKind.timeUp,
+        decided: false,
+      );
+      final fx = BattleFxTimeline()..finish(waiting, 0);
+      expect(fx.frame(500).banners.single.text, 'TIME!');
+      final late = fx.frame(4000);
+      expect(late.banners, isEmpty);
+      expect(late.resultButton, isNull);
+      expect(late.me.pose, BattlePose.idle);
+      expect(fx.resultButtonUp(4000), isFalse);
+    });
+
+    test('the verdict and the button follow a result that comes late', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        )
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+          3000,
+        );
+      expect(fx.frame(3000).banners, isEmpty);
+      final verdict = fx.frame(3010).banners.single;
+      expect(verdict.text, 'WIN!');
+      expect(verdict.scaleX, greaterThan(1.6));
+      expect(fx.frame(3010).me.pose, BattlePose.win);
+      expect(fx.resultButtonUp(3799), isFalse);
+      expect(fx.resultButtonUp(3800), isTrue);
+    });
+
+    test('a late result that I lost by my connection plays as that ending', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        )
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.opponent,
+          ),
+          5000,
+        );
+      expect(fx.end!.kind, BattleEndKind.playerLeft);
+      final frame = fx.frame(5500);
+      expect(frame.banners.single.text, '연결이 끊겨서 졌어요');
+      expect(frame.me.opacity, 0);
+      expect(frame.opponent.pose, BattlePose.win);
+      expect(fx.resultButtonUp(6799), isFalse);
+      expect(fx.resultButtonUp(6800), isTrue);
+    });
+
+    test('a late knockout result plays the ring-out, not WIN! or LOSE', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        )
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.knockout,
+            winner: BattleSide.me,
+          ),
+          300,
+        );
+      expect(fx.end!.kind, BattleEndKind.knockout);
+      expect(fx.frame(400).banners, isEmpty);
+      expect(fx.frame(300 + 1300).banners.single.text, 'K.O.');
+    });
+
+    test('a second undecided time-up changes nothing', () {
+      const waiting = BattleStageEnd(
+        kind: BattleEndKind.timeUp,
+        decided: false,
+      );
+      final fx = BattleFxTimeline()
+        ..finish(waiting, 0)
+        ..finish(waiting, 600);
+      expect(fx.frame(700).banners.single.text, 'TIME!');
+      expect(fx.frame(1100).banners, isEmpty);
+    });
+
+    test('a result that comes within the TIME! second waits for it', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        )
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+          200,
+        );
+      expect(fx.frame(900).banners.single.text, 'TIME!');
+      expect(fx.frame(1010).banners.single.text, 'WIN!');
+      expect(fx.resultButtonUp(1800), isTrue);
+    });
+
+    test('a second ending does not replace a decided one', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.knockout,
+            winner: BattleSide.me,
+          ),
+          0,
+        )
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.opponent,
+          ),
+          100,
+        );
+      expect(fx.end!.kind, BattleEndKind.knockout);
+      expect(fx.end!.winner, BattleSide.me);
+    });
+
+    test('losing by my own lost connection mirrors the opponent leaving', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.opponent,
+          ),
+          0,
+        );
+      final frame = fx.frame(500);
+      expect(frame.me.opacity, 0);
+      expect(frame.opponent.pose, BattlePose.win);
+      expect(frame.puff!.centerX, frame.meetX - BattleFx.reach);
+      final band = frame.banners.single;
+      expect(band.text, '연결이 끊겨서 졌어요');
+      expect(band.tone, BattleFxTone.opponent);
+      expect(band.font, BattleFxFont.display);
+    });
+
+    test('a knockout by the opponent twinkles at the left edge', () {
+      final fx = BattleFxTimeline()
+        ..rep(_good(BattleSide.opponent, knockout: true), 0);
+      expect(fx.frame(80 + 1800).twinkle!.centerX, 40);
+    });
+
+    test('a knockout the server reports later still rings the loser out', () {
+      final fx = BattleFxTimeline()
+        ..rep(_good(BattleSide.me), 0)
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.knockout,
+            winner: BattleSide.me,
+          ),
+          300,
+        );
+      final frame = fx.frame(300 + 1500);
+      expect(frame.opponent.opacity, 0);
+      expect(frame.me.pose, BattlePose.win);
+      expect(frame.banners.single.text, 'K.O.');
+      expect(fx.resultButtonUp(300 + 2199), isFalse);
+      expect(fx.resultButtonUp(300 + 2200), isTrue);
+    });
+
+    test('a knockout clears a MISS band still on screen', () {
+      final fx = BattleFxTimeline()
+        ..rep(_rep(BattleSide.opponent, null), 0)
+        ..rep(_good(BattleSide.me, knockout: true), 100);
+      expect(fx.frame(400).banners.map((b) => b.text), contains('MISS'));
+      expect(fx.frame(181 + 300).banners, isEmpty);
+    });
+  });
+
+  group('reduced motion', () {
+    test(
+      'keeps poses, bands and the sign; drops shake, flash and breathing',
+      () {
+        final fx = BattleFxTimeline()
+          ..rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 0)
+          ..rep(_good(BattleSide.opponent, combo: 2), 300);
+        final lively = fx.frame(400);
+        final calm = fx.frame(400, reducedMotion: true);
+        expect(lively.shakeY, isNot(0));
+        expect(lively.me.flash, isTrue);
+        expect(calm.shakeX, 0);
+        expect(calm.shakeY, 0);
+        expect(calm.me.flash, isFalse);
+        expect(calm.me.pose, BattlePose.hit);
+        expect(calm.opponent.pose, BattlePose.attack);
+        expect(calm.sign!.reason, RejectReason.kneesDown);
+        expect(calm.banners.map((b) => b.text), contains('2 HIT'));
+        expect(calm.stripeShift, 0);
+        expect(fx.frame(3000, reducedMotion: true).me.scaleY, 1);
+        expect(fx.frame(3000).me.scaleY, isNot(1));
+      },
+    );
+
+    test('drops the count bump, the zoom, the puff and the growing', () {
+      final ko = BattleFxTimeline()
+        ..rep(_good(BattleSide.me, knockout: true), 0);
+      expect(ko.frame(210).myRepsBump, greaterThan(1));
+      expect(ko.frame(210, reducedMotion: true).myRepsBump, 1);
+      expect(ko.frame(400).zoom, greaterThan(1));
+      expect(ko.frame(400, reducedMotion: true).zoom, 1);
+      expect(ko.frame(80 + 2210).resultButton!.scale, lessThan(1));
+      expect(ko.frame(80 + 2210, reducedMotion: true).resultButton!.scale, 1);
+
+      final left = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+          0,
+        );
+      expect(left.frame(200).puff, isNotNull);
+      expect(left.frame(200, reducedMotion: true).puff, isNull);
+
+      final count = BattleFxTimeline()..countDown(3000, 0);
+      expect(count.frame(0).banners.single.scaleX, 1.5);
+      expect(count.frame(0, reducedMotion: true).banners.single.scaleX, 1);
+    });
+  });
+
+  group('rules the design samples do not reach', () {
+    test('the opponent\'s rejected rep never raises the sign', () {
+      final fx = BattleFxTimeline()
+        ..rep(_rep(BattleSide.opponent, null, reason: RejectReason.tooFast), 0);
+      expect(fx.frame(200).sign, isNull);
+    });
+
+    test('the opponent\'s average rep lands a weak blow without a sign', () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          _rep(
+            BattleSide.opponent,
+            GameGrade.average,
+            points: 5,
+            reason: RejectReason.insufficientDepth,
+          ),
+          0,
+        );
+      final frame = fx.frame(100);
+      expect(frame.sign, isNull);
+      expect(frame.me.pose, BattlePose.hit);
+      expect(frame.star!.centerX, frame.meetX - 34);
+    });
+
+    test('N HIT is not drawn once the battle has ended', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me, combo: 2), 0);
+      expect(fx.frame(400).banners.map((b) => b.text), contains('2 HIT'));
+      fx.finish(
+        const BattleStageEnd(kind: BattleEndKind.timeUp, winner: BattleSide.me),
+        500,
+      );
+      expect(fx.frame(600).banners.map((b) => b.text), ['TIME!']);
+    });
+
+    test('N HIT stays 1700 ms and fades over its last 200', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me, combo: 2), 0);
+      BattleFxBanner? hit(double now) =>
+          fx.frame(now).banners.where((b) => b.text == '2 HIT').firstOrNull;
+      expect(hit(1500)!.opacity, 1);
+      expect(hit(1600)!.opacity, closeTo(0.5, 1e-9));
+      expect(hit(1690)!.opacity, closeTo(0.05, 1e-9));
+      expect(hit(1700), isNull);
+    });
+
+    test('the numbers start exactly 3 s before the start', () {
+      final fx = BattleFxTimeline()..countDown(5000, 0);
+      final before = fx.frame(1999);
+      expect(before.banners, isEmpty);
+      expect(before.myTag!.text, '준비 완료');
+      final at = fx.frame(2000);
+      expect(at.banners.single.text, '3');
+      expect(at.myTag, isNull);
+      expect(at.opponentTag, isNull);
+    });
+
+    test('a blow that lands takes the same side\'s MISS away', () {
+      final fx = BattleFxTimeline()
+        ..rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 0);
+      expect(fx.frame(300).banners.map((b) => b.text), ['MISS']);
+      fx.rep(_good(BattleSide.me), 300);
+      expect(fx.frame(400).banners, isEmpty);
+    });
+
+    test('two MISS bands show at once, one on each side', () {
+      final fx = BattleFxTimeline()
+        ..rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 0)
+        ..rep(_rep(BattleSide.opponent, null), 50);
+      final misses = fx.frame(400).banners;
+      expect(misses.map((b) => b.text), ['MISS', 'MISS']);
+      expect(misses.map((b) => b.dx), [-56, 56]);
+    });
+  });
+
+  group('the countdown', () {
+    test('setting up again stops it: no number and no GO!', () {
+      final fx = BattleFxTimeline()
+        ..setSetup(active: true, meReady: true, opponentReady: true)
+        ..countDown(3000, 0);
+      expect(fx.frame(500).banners.single.text, '3');
+      fx.setSetup(active: true, opponentReady: true);
+      final again = fx.frame(1500);
+      expect(again.banners.single.text, '자세 세팅 중');
+      expect(again.myTag!.text, '세팅 중');
+      final later = fx.frame(3000);
+      expect(later.banners.single.text, '자세 세팅 중');
+      expect(later.beforeStart, isTrue);
+    });
+
+    test('starts over after it was stopped', () {
+      final fx = BattleFxTimeline()
+        ..countDown(3000, 0)
+        ..setSetup(active: true)
+        ..countDown(3000, 4000);
+      expect(fx.frame(4000).banners.single.text, '3');
+      expect(fx.frame(7000).banners.single.text, 'GO!');
+      expect(fx.frame(7000).beforeStart, isFalse);
+    });
+
+    test('asked again after the start does not pop GO! a second time', () {
+      final fx = BattleFxTimeline()
+        ..countDown(3000, 0)
+        ..countDown(0, 3400);
+      expect(fx.frame(3500).banners.single.text, 'GO!');
+      expect(fx.frame(3800).banners, isEmpty);
+    });
+
+    test('keeps its clock for a small correction, follows a real move', () {
+      final fx = BattleFxTimeline()
+        ..countDown(3000, 0)
+        ..countDown(2860, 100);
+      expect(fx.frame(2990).beforeStart, isTrue);
+      expect(fx.frame(3000).beforeStart, isFalse);
+      fx.countDown(4000, 1000);
+      expect(fx.frame(3000).banners.single.text, '2');
+      expect(fx.frame(5000).beforeStart, isFalse);
+    });
+  });
+
+  group('inputs the game should not send', () {
+    test('a miss cannot knock out, and leaves the last blow as it was', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
+      final star = fx.frame(200).star!.diameter;
+      fx.rep(_rep(BattleSide.opponent, null, knockout: true), 150);
+      expect(fx.end, isNull);
+      expect(fx.frame(200).star!.diameter, star);
+    });
+
+    test('my rejected rep without a reason takes the older sign down', () {
+      final fx = BattleFxTimeline()
+        ..rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 0);
+      expect(fx.frame(300).sign, isNotNull);
+      fx.rep(_rep(BattleSide.me, null), 300);
+      expect(fx.frame(400).sign, isNull);
+    });
+
+    test('a starting share outside 0 to 1 starts at the bar end', () {
+      expect(BattleFxTimeline(share: 2).frame(0).meetX, 280);
+      expect(BattleFxTimeline(share: -1).frame(0).meetX, 80);
+    });
+  });
+
+  group('small things', () {
+    test('the aura breathes between 5 and 13 around 9', () {
+      final fx = BattleFxTimeline();
+      expect(fx.frame(0).glowRadius, 9);
+      expect(
+        fx.frame(120 * 3.141592653589793 / 2).glowRadius,
+        closeTo(13, 1e-9),
+      );
+      expect(
+        fx.frame(120 * 3.141592653589793 * 1.5).glowRadius,
+        closeTo(5, 1e-9),
+      );
+    });
+
+    test('the fever stripes drift 0.09 a millisecond and wrap at 61.8', () {
+      final fx = BattleFxTimeline();
+      expect(fx.frame(100).stripeShift, closeTo(9, 1e-9));
+      expect(fx.frame(1000).stripeShift, closeTo(90 - 61.8, 1e-9));
+    });
+
+    test('a disconnected opponent who then leaves fades from 0.45', () {
+      final fx = BattleFxTimeline()
+        ..opponentGone = true
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+          0,
+        );
+      expect(fx.frame(0).opponent.opacity, 0.45);
+      expect(fx.frame(200).opponent.opacity, closeTo(0.45 * 0.125, 1e-9));
+    });
+
+    test('fever told twice keeps its first moment', () {
+      final fx = BattleFxTimeline()
+        ..setFever(true, 0)
+        ..setFever(true, 1000);
+      expect(fx.frame(1500).banners, isEmpty);
+      expect(fx.frame(1500).feverOpacity, 1);
+    });
+
+    test('reduced motion keeps the score bump', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
+      expect(fx.frame(220, reducedMotion: true).myScoreBump, greaterThan(1.1));
+    });
+  });
+}
