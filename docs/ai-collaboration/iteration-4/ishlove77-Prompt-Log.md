@@ -254,3 +254,10 @@ branch 'docs/rename_gymmouse' set up to track 'origin/docs/rename_gymmouse'.</ba
 
 <!-- 0534628e 2026-11-11T08:23:04.948Z -->
 [Jinyoung Park, 11-11 17:23] "커밋하고 푸시해 PR도 열어"
+
+## 2026-11-11 · Jinyoung Park · feat/voice_guidance
+<!-- 154bbf4f 2026-11-11T08:27:34.373Z -->
+[Jinyoung Park, 11-11 17:27] "task 수행해"
+
+<!-- 154bbf4f 2026-11-11T09:00:51.676Z -->
+[Jinyoung Park, 11-11 18:00] "푸시하고 BGM은 추천한거 들을 수 있게 좀 해줘봐"

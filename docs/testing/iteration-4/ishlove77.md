@@ -6,6 +6,34 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-11 · code at commit `779da5d` · step `feat/voice_guidance` (team plan #3, Codex review of PR #48)
+Follow-up to the Codex review of PR #48: a cut-off line's late end callback can no longer end the line that replaced it
+(the cut-off line owes one callback, which is dropped), `SoundSettings()` saves to secure storage by default, and the
+manifest declares the `TTS_SERVICE` query so Android 11+ can find the TTS engine. Same commands as the entry below.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 97.4% (266/273) | 11/11 | `coverage_per_file.sh` + `coverage_by_layer.py` |
+| ViewModel | flutter_test, fakes | 90% | 95.7% (927/969) (not changed in this step) | 11/11 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 94.8% (2388/2519); `tts_speech_engine` 31/31, `sound_settings` 22/22, `voice_guidance` 73/73, `voice_cue_table` 25/25 | 11/11 | same |
+| View | flutter_test (widget) | 75% | 91.0% (4084/4487) (not changed in this step) | 11/11 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; not re-measured | – | – |
+
+- **Tests:** `flutter test` 1531 passed, 0 failed, 10 skipped (pre-existing, as below). `flutter analyze` no issues.
+  App total 93.0% (7706/8290).
+- **Shortfalls:** the manifest query is checked on the device only (no unit test reads the manifest); the S23 Ultra
+  already found its engine before the change.
+- **Reviewer:** APPROVE (one round; three Minor findings: a test for a line replaced before it started, a doc sentence
+  on the one-callback debt, and these notes; all done).
+
+Test cases added or changed:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/audio/tts_speech_engine_test.dart` (+5) | a late `speak.onComplete` / `speak.onError` / `speak.onCancel` of the cut-off line after the new line's `speak.onStart` does not end the new line; a cut-off line whose cancel came before the new line owes nothing; a line replaced before it started owes nothing |
+| Service | `test/services/audio/sound_settings_test.dart` (+1) | without a store the switch is saved in secure storage and survives a restart |
+| Service | `test/services/audio/voice_guidance_test.dart`, `test/services/device/device_controls_test.dart` (updated) | pass `MemorySoundSettingsStore` explicitly now that the default is secure storage |
+
 #### 2026-11-08 · code at commit `4208543` · step `feat/voice_guidance` (team plan #3, P9 voice guidance)
 This step adds the voice guidance behind an interface, with no screen edits: `VoiceCue` (the Korean lines),
 `SpeechEngine` / `TtsSpeechEngine` (`flutter_tts`, the device's Korean TTS), `VoiceGuidanceService` (one line per
