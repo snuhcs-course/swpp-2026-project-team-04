@@ -4,8 +4,9 @@ import '../services/game/rep_grade.dart';
 import '../services/online/online_battle_session.dart';
 import 'battle_stage_model.dart';
 
-/// What the stage last saw of the opponent's reps, to tell a new one by.
-typedef OnlineOpponentSeen = ({GameRepScore? score, int reps});
+/// What the stage last saw of the opponent's reps, to tell a new one by:
+/// their latest score, their valid reps, and their reps that earned nothing.
+typedef OnlineOpponentSeen = ({GameRepScore? score, int reps, int misses});
 
 /// Turns an online battle's session into what the stage is fed. It decides
 /// nothing: the grades, points, combos, the KO and the outcome are the
@@ -48,12 +49,16 @@ abstract final class OnlineStageEvents {
   }
 
   /// What the stage has seen of the opponent's reps in [session] now.
-  static OnlineOpponentSeen opponentSeen(OnlineBattleSession session) =>
-      (score: session.opponentLastScore, reps: session.opponentReps);
+  static OnlineOpponentSeen opponentSeen(OnlineBattleSession session) => (
+    score: session.opponentLastScore,
+    reps: session.opponentReps,
+    misses: session.opponentMisses,
+  );
 
   /// The opponent's rep that the server reported since [before], if any: a
-  /// blow of its grade. The server does not send the phone their reps that
-  /// earned nothing, so on the stage they never miss.
+  /// blow of its grade, or a swing that misses for a rep that earned
+  /// nothing. The server reports one rep at a time; a reconnect snapshot
+  /// counts no miss, so none is played again.
   ///
   /// The blow that brought a KO lead is flagged as the knockout: the server
   /// sends it before the report that ends the battle.
@@ -62,8 +67,15 @@ abstract final class OnlineStageEvents {
     OnlineBattleSession session,
   ) {
     final rules = session.rules;
+    final missed = session.opponentMisses > before.misses
+        ? BattleStageEvent(
+            side: BattleSide.opponent,
+            grade: null,
+            fever: session.fever,
+          )
+        : null;
     if (rules == null) {
-      if (session.opponentReps <= before.reps) return null;
+      if (session.opponentReps <= before.reps) return missed;
       return const BattleStageEvent(
         side: BattleSide.opponent,
         grade: GameGrade.good,
@@ -72,7 +84,7 @@ abstract final class OnlineStageEvents {
       );
     }
     final score = session.opponentLastScore;
-    if (score == null || identical(score, before.score)) return null;
+    if (score == null || identical(score, before.score)) return missed;
     final lead = session.myScore - session.opponentScore;
     return BattleStageEvent(
       side: BattleSide.opponent,

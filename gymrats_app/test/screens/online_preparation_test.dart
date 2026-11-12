@@ -599,6 +599,29 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
+    testWidgets("the opponent's rep that earned nothing: their swing misses "
+        'with MISS, nothing lands on me, and no sign (the sign is mine); a '
+        'reconnect snapshot plays it not again', (tester) async {
+      await open(tester);
+      await play(tester);
+      session.opponentMisses = 1;
+      session.notifyListeners();
+      await wait(tester, 200);
+      expect(frame(tester).opponent.pose, BattlePose.attack);
+      expect(frame(tester).me.pose, BattlePose.idle);
+      final miss = frame(tester).banners.single;
+      expect((miss.text, miss.tone), ('MISS', BattleFxTone.plain));
+      expect(frame(tester).sign, isNull);
+      expect(stage(tester).opponentScore, 0);
+      await wait(tester, 2000);
+      // The same count again, as after a snapshot: nothing plays.
+      session.notifyListeners();
+      await wait(tester, 100);
+      expect(frame(tester).banners, isEmpty);
+      expect(frame(tester).opponent.pose, BattlePose.idle);
+      await tester.pumpWidget(const SizedBox());
+    });
+
     testWidgets('fever turns the stage cyan with its chip; the danger edge is '
         'on from 60 behind', (tester) async {
       await open(tester);

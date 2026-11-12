@@ -94,6 +94,9 @@ class OnlineBattleSession extends ChangeNotifier {
   int? startAtMs, endAtMs;
   int myReps = 0, myInvalidReps = 0, opponentReps = 0;
 
+  /// The opponent's reps that earned nothing, as the server reported them.
+  int opponentMisses = 0;
+
   /// The game's numbers, from the server. Null with an older server, which
   /// has no game: the reps then decide and no grade may be sent.
   BattleRules? rules;
@@ -354,6 +357,9 @@ class OnlineBattleSession extends ChangeNotifier {
           case 'rep.updated':
             if (p['player_id'] == opponent?.id) {
               opponentReps = integer(p['valid_reps'], 0, 10000);
+              if (p['valid'] == false && (p['points'] ?? 0) == 0) {
+                opponentMisses++;
+              }
               if (rules != null) {
                 opponentScore = _gameScore(p);
                 opponentLastScore = _repScore(p, p) ?? opponentLastScore;

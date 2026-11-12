@@ -193,6 +193,53 @@ void main() {
       expect((event.grade, event.points), (GameGrade.good, 1));
       expect(event.knockout, isFalse);
     });
+
+    test('a rep that earned nothing is a miss, once, in fever as the round '
+        'is', () {
+      final session = _session();
+      _play(session, elapsedMs: 21000, leftMs: 8000);
+      final before = OnlineStageEvents.opponentSeen(session);
+      expect(before.misses, 0);
+      session.opponentMisses = 1;
+      final event = OnlineStageEvents.opponentRep(before, session)!;
+      expect(event.side, BattleSide.opponent);
+      expect((event.grade, event.points, event.combo), (null, 0, 0));
+      expect(event.counted, isFalse);
+      expect(event.knockout, isFalse);
+      expect(event.reason, isNull);
+      expect(event.fever, session.fever);
+      expect(event.fever, isTrue);
+      expect(
+        OnlineStageEvents.opponentRep(
+          OnlineStageEvents.opponentSeen(session),
+          session,
+        ),
+        isNull,
+      );
+    });
+
+    test('a blow wins over a miss count left as it was', () {
+      final session = _session()..opponentMisses = 2;
+      final before = OnlineStageEvents.opponentSeen(session);
+      session.opponentLastScore = const GameRepScore(
+        grade: GameGrade.average,
+        combo: 0,
+        fever: false,
+        points: 5,
+      );
+      final event = OnlineStageEvents.opponentRep(before, session)!;
+      expect(event.grade, GameGrade.average);
+      expect(event.points, 5);
+    });
+
+    test('an older server: a rejected rep is a miss', () {
+      final session = _session(rules: null);
+      final before = OnlineStageEvents.opponentSeen(session);
+      session.opponentMisses = 1;
+      final event = OnlineStageEvents.opponentRep(before, session)!;
+      expect(event.grade, isNull);
+      expect(event.points, 0);
+    });
   });
 
   group('endOf', () {
