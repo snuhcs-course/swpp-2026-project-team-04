@@ -4,11 +4,14 @@ import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
+import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/exit_game_button.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
+import 'package:provider/provider.dart';
 
 import '../support/fakes.dart';
 
@@ -29,51 +32,61 @@ void main() {
 
   /// Opens VersusScreen from a home page and, unless [seeWarning] is false,
   /// closes the safety warning it opens with. The battle route, where the
-  /// pose setup is, shows its matchup.
+  /// pose setup is, shows its matchup. With [settings], the app's settings
+  /// view model is above the app, as main.dart has it.
   Future<void> open(
     WidgetTester tester, {
     Matchup matchup = _matchup,
     Size size = const Size(412, 915),
     bool seeWarning = true,
     Duration? warningAutoClose,
+    SettingsViewModel? settings,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     pushes = PushLog();
+    Widget app(Widget child) => settings == null
+        ? child
+        : ChangeNotifierProvider<SettingsViewModel>.value(
+            value: settings,
+            child: child,
+          );
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.dark,
-        navigatorObservers: [pushes],
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => VersusScreen(
-                    matchup: matchup,
-                    warningAutoClose: warningAutoClose,
+      app(
+        MaterialApp(
+          theme: AppTheme.dark,
+          navigatorObservers: [pushes],
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => VersusScreen(
+                      matchup: matchup,
+                      warningAutoClose: warningAutoClose,
+                    ),
                   ),
                 ),
+                child: const Text('home'),
               ),
-              child: const Text('home'),
             ),
           ),
+          onGenerateRoute: (settings) => switch (settings.name) {
+            GymRatsApp.battleRoute => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) {
+                final matchup = settings.arguments! as Matchup;
+                return Scaffold(
+                  appBar: AppBar(),
+                  body: Text('battle vs ${matchup.opponent.name}'),
+                );
+              },
+            ),
+            _ => null,
+          },
         ),
-        onGenerateRoute: (settings) => switch (settings.name) {
-          GymRatsApp.battleRoute => MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) {
-              final matchup = settings.arguments! as Matchup;
-              return Scaffold(
-                appBar: AppBar(),
-                body: Text('battle vs ${matchup.opponent.name}'),
-              );
-            },
-          ),
-          _ => null,
-        },
       ),
     );
     await tester.tap(find.text('home'));
@@ -534,6 +547,105 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('MATCH FOUND'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group("the settings' '매 경기 안전 안내'", () {
+    /// Leaves for home through 게임 나가기, then opens the next match.
+    Future<void> nextMatch(WidgetTester tester) async {
+      await tester.tap(exitButton);
+      await tester.pumpAndSettle();
+      await tester.tap(dialogExit);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('home'));
+      await tester.pumpAndSettle();
+    }
+
+    late SettingsViewModel settings;
+    setUp(() => settings = SettingsViewModel());
+    tearDown(() => settings.dispose());
+
+    testWidgets('on, as designed: every match shows it, seen or not; 확인 '
+        'counts as seen', (tester) async {
+      await open(tester, settings: settings);
+      expect(settings.safetyNotice.seen, isTrue);
+      await nextMatch(tester);
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+    });
+
+    testWidgets('off: it shows until it is seen once, then a match goes '
+        'straight to the setup button', (tester) async {
+      settings.setSafetyNoticeEveryMatch(false);
+      await open(tester, settings: settings, seeWarning: false);
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+      expect(settings.safetyNotice.seen, isTrue);
+
+      await nextMatch(tester);
+      expect(find.byType(SafeWarningDialog), findsNothing);
+      expect(find.text('MATCH FOUND'), findsOneWidget);
+      await tester.tap(find.text('자세 세팅 시작'));
+      await tester.pumpAndSettle();
+      expect(find.text('battle vs RepBot'), findsOneWidget);
+    });
+
+    testWidgets('off and seen in an earlier run: no warning, the setup at '
+        'once', (tester) async {
+      final store = MemorySettingsStore()
+        ..safetyNoticeEveryMatch = false
+        ..safetyNoticeSeen = true;
+      final loaded = SettingsViewModel(store: store);
+      addTearDown(loaded.dispose);
+      await tester.runAsync(loaded.load);
+      await open(tester, settings: loaded, seeWarning: false);
+      expect(find.byType(SafeWarningDialog), findsNothing);
+      await tester.tap(find.text('자세 세팅 시작'));
+      await tester.pumpAndSettle();
+      expect(battleOpens(), 1);
+    });
+
+    testWidgets('leaving from the warning is not seeing it: off, the next '
+        'match shows it again', (tester) async {
+      settings.setSafetyNoticeEveryMatch(false);
+      await open(tester, settings: settings, seeWarning: false);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(dialogExit);
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+      expect(settings.safetyNotice.seen, isFalse);
+
+      await tester.tap(find.text('home'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+    });
+
+    testWidgets('online, closing by itself counts as seen', (tester) async {
+      settings.setSafetyNoticeEveryMatch(false);
+      await open(
+        tester,
+        settings: settings,
+        seeWarning: false,
+        warningAutoClose: const Duration(seconds: 5),
+      );
+      expect(settings.safetyNotice.seen, isFalse);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsNothing);
+      expect(settings.safetyNotice.seen, isTrue);
+    });
+
+    testWidgets('turned off while the warning is up, it still waits for '
+        '확인', (tester) async {
+      await open(tester, settings: settings, seeWarning: false);
+      settings.setSafetyNoticeEveryMatch(false);
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+      await nextMatch(tester);
+      expect(find.byType(SafeWarningDialog), findsNothing);
     });
   });
 }

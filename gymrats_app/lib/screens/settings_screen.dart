@@ -7,9 +7,10 @@ import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/lobby_parts.dart';
 
-/// 환경설정, from home's menu and its profile chip: the nickname, the rules
-/// again, the sound switches and logout, in groups. The switches are the
-/// app's [SettingsViewModel], provided above every screen.
+/// 환경설정, from home's menu and its profile chip: the nickname, the safety
+/// notice switch and the rules again, the sound switches and logout, in
+/// groups. The switches are the app's [SettingsViewModel], provided above
+/// every screen.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.nickname, this.onLogOut});
 
@@ -67,6 +68,12 @@ class SettingsScreen extends StatelessWidget {
         _Group(
           label: '게임',
           rows: [
+            _SwitchRow(
+              title: '매 경기 안전 안내',
+              line: '끄면 처음 한 번만 보여요',
+              value: vm.safetyNotice.everyMatch,
+              onChanged: vm.setSafetyNoticeEveryMatch,
+            ),
             _Row(
               title: '게임 규칙 다시 보기',
               onTap: () => Navigator.pushNamed(context, GymRatsApp.helpRoute),

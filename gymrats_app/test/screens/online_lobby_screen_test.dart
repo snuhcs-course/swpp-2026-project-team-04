@@ -13,6 +13,7 @@ import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_arena.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
@@ -20,6 +21,7 @@ import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/user/avatar_store.dart';
+import 'package:provider/provider.dart';
 
 // The battle server's own default ready limit, read from the sibling server.
 // ignore: avoid_relative_lib_imports
@@ -407,6 +409,53 @@ void main() {
       await tester.pump();
     },
   );
+
+  testWidgets("with 환경설정's '매 경기 안전 안내' off and the notice seen "
+      'once, the match goes straight to the setup button', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final auth = await loggedIn();
+    final settings = SettingsViewModel()
+      ..setSafetyNoticeEveryMatch(false)
+      ..markSafetyNoticeSeen();
+    addTearDown(settings.dispose);
+    late _Session session;
+    await tester.pumpWidget(
+      // Above the app, as main.dart has it.
+      ChangeNotifierProvider<SettingsViewModel>.value(
+        value: settings,
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: OnlineLobbyScreen(
+            autoJoin: false,
+            auth: auth,
+            createSession: (u, t, a) => session = _Session(u, t, a),
+            createCounter: () => RepCounterViewModel(
+              camera: FakeCameraService(),
+              estimator: FakePoseEstimator(),
+              roundLength: const Duration(days: 1),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('온라인 상대 찾기'));
+    await tester.tap(find.text('온라인 상대 찾기'));
+    await tester.pump();
+    session.found(duration: 30000);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('MATCH FOUND'), findsOneWidget);
+    expect(find.byType(SafeWarningDialog), findsNothing);
+    // No 5 s wait for the warning to close itself.
+    await tester.tap(find.text('자세 세팅 시작'));
+    await settle(tester);
+    expect(find.byType(OnlineBattleScreen), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
 
   testWidgets('searching for a squat says where the phone goes for a squat', (
     tester,

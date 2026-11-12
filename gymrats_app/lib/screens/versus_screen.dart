@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
@@ -6,6 +7,7 @@ import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../models/matchup.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/accent_button.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
@@ -16,9 +18,11 @@ import '../widgets/safe_warning_dialog.dart';
 /// Shows who battles whom, the rules, and the button to the pose setup.
 ///
 /// It has no view model: everything it shows comes from [matchup], and its
-/// only behavior is navigation. It opens with the safety warning, every
-/// match; the setup button works once the warning has closed. Back and the
-/// 게임 나가기 button at the top left both ask before going home. The setup
+/// only behavior is navigation. It opens with the safety warning before
+/// every match while 환경설정's '매 경기 안전 안내' is on; off, only until the
+/// warning was seen once ([SettingsViewModel.safetyNotice]). The setup
+/// button works once the warning has closed, or at once without it. Back
+/// and the 게임 나가기 button at the top left both ask before going home. The setup
 /// button opens the battle screen, which starts with the pose setup, in
 /// this one's place, so going back from the battle leads home.
 class VersusScreen extends StatefulWidget {
@@ -76,10 +80,19 @@ class _VersusScreenState extends State<VersusScreen> {
   /// The open safety warning, so that closing this screen closes it too.
   Route<bool>? _warning;
 
-  /// Shows the safety warning until it is seen. Back on it asks whether to
-  /// leave, as back on this screen does; staying shows it again. Removed
-  /// any other way (a logout closes every screen), it asks nothing.
+  /// Shows the safety warning until it is seen, unless the settings say
+  /// this match goes without it. Back on it asks whether to leave, as back
+  /// on this screen does; staying shows it again. Removed any other way (a
+  /// logout closes every screen), it asks nothing. Seen to its end (확인,
+  /// or online by itself), it counts as seen in the settings.
   Future<void> _warn() async {
+    if (!mounted) return;
+    // The app's settings; without them (some tests, demos) it always shows.
+    final settings = context.read<SettingsViewModel?>();
+    if (settings != null && !settings.safetyNotice.showsBeforeMatch) {
+      _warned = true;
+      return;
+    }
     while (true) {
       if (!mounted) return;
       final route = safeWarningRoute(
@@ -92,6 +105,7 @@ class _VersusScreenState extends State<VersusScreen> {
       if (!mounted) return;
       if (seen == true) {
         _warned = true;
+        settings?.markSafetyNoticeSeen();
         return;
       }
       if (seen == null || !(ModalRoute.of(context)?.isActive ?? false)) return;

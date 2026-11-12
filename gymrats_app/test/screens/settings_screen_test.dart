@@ -86,9 +86,8 @@ void main() {
       )
       .value;
 
-  testWidgets('shows the nickname, the rules, the sound switches and logout', (
-    tester,
-  ) async {
+  testWidgets('shows the nickname, the safety switch, the rules, the sound '
+      'switches and logout', (tester) async {
     await open(tester);
     expect(find.text('03 / SETTINGS'), findsOneWidget);
     expect(find.text('환경설정'), findsOneWidget);
@@ -98,6 +97,8 @@ void main() {
       '우현',
       '아바타',
       '게임',
+      '매 경기 안전 안내',
+      '끄면 처음 한 번만 보여요',
       '게임 규칙 다시 보기',
       '소리',
       '효과음',
@@ -107,18 +108,85 @@ void main() {
     ]) {
       expect(find.text(text), findsOneWidget, reason: text);
     }
-    expect(find.byType(Switch), findsNWidgets(2));
+    expect(find.byType(Switch), findsNWidgets(3));
   });
 
-  testWidgets('only what works in this step: no editing, no safety switch', (
-    tester,
-  ) async {
+  testWidgets('only what works in this step: no editing', (tester) async {
     await open(tester);
     // The nickname is shown only: changing it needs a server API.
     expect(find.byType(TextField), findsNothing);
     expect(find.text('저장'), findsNothing);
-    // The safety switch comes with the battle screen's safety notice.
-    expect(find.text('매 경기 안전 안내'), findsNothing);
+  });
+
+  group('the safety switch', () {
+    testWidgets('comes first in 게임, above the rules, with its line; on, as '
+        'designed', (tester) async {
+      await open(tester);
+      final group = tester.getTopLeft(find.text('게임')).dy;
+      final title = tester.getTopLeft(find.text('매 경기 안전 안내')).dy;
+      final line = tester.getTopLeft(find.text('끄면 처음 한 번만 보여요')).dy;
+      final rules = tester.getTopLeft(find.text('게임 규칙 다시 보기')).dy;
+      expect(group < title && title < line && line < rules, isTrue);
+      expect(switchOf(tester, '매 경기 안전 안내'), isTrue);
+    });
+
+    testWidgets('tapping it or its row turns it in the view model, and '
+        'nothing else', (tester) async {
+      await open(tester);
+      await tester.tap(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('매 경기 안전 안내'),
+            matching: find.byType(InkWell),
+          ),
+          matching: find.byType(Switch),
+        ),
+      );
+      await tester.pump();
+      expect(vm.safetyNotice.everyMatch, isFalse);
+      expect(switchOf(tester, '매 경기 안전 안내'), isFalse);
+      expect(vm.state.soundEffectsOn, isTrue);
+      expect(vm.state.voiceGuidanceOn, isFalse);
+
+      await tester.tap(find.text('끄면 처음 한 번만 보여요'));
+      await tester.pump();
+      expect(vm.safetyNotice.everyMatch, isTrue);
+      expect(switchOf(tester, '매 경기 안전 안내'), isTrue);
+    });
+
+    testWidgets('follows the view model; seeing the notice does not move it', (
+      tester,
+    ) async {
+      await open(tester);
+      vm.setSafetyNoticeEveryMatch(false);
+      await tester.pump();
+      expect(switchOf(tester, '매 경기 안전 안내'), isFalse);
+      // Seeing the notice does not move the switch.
+      vm.markSafetyNoticeSeen();
+      await tester.pump();
+      expect(switchOf(tester, '매 경기 안전 안내'), isFalse);
+    });
+
+    testWidgets('a screen reader hears it as one switch with its title', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await open(tester);
+      expect(
+        tester.getSemantics(find.bySemanticsLabel(RegExp('^매 경기 안전 안내'))),
+        matchesSemantics(
+          label: '매 경기 안전 안내\n끄면 처음 한 번만 보여요',
+          hasToggledState: true,
+          isToggled: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          isFocusable: true,
+          hasTapAction: true,
+          hasFocusAction: true,
+        ),
+      );
+      semantics.dispose();
+    });
   });
 
   testWidgets('아바타 opens the avatar page until the characters come', (
@@ -141,7 +209,13 @@ void main() {
     tester,
   ) async {
     await open(tester);
-    await tester.tap(find.byType(Switch).first);
+    // The 효과음 switch: the safety switch comes first on the page.
+    await tester.tap(
+      find.descendant(
+        of: find.ancestor(of: find.text('효과음'), matching: find.byType(InkWell)),
+        matching: find.byType(Switch),
+      ),
+    );
     await tester.pump();
     expect(vm.state.soundEffectsOn, isFalse);
     expect(switchOf(tester, '효과음'), isFalse);
