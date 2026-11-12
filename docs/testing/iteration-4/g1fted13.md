@@ -166,10 +166,17 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `6a8efba`, wit
   - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/result_screen_test.dart`, as on 11-08 and 11-11. Its tests still ran and passed in `flutter test`. So the two places W2 changed in `result_screen.dart` (under its exception) are not in the View number.
 - **Shortfalls:** none; every layer and the server meet their targets.
 - **Screen readers:** widget tests check the words of the stage and the camera area through the semantics tree: the labels, the live-region announcements and the safety picture's label. TalkBack on a real phone was **not** checked.
-- **Manual check (2026-11-13, the user, on a phone):** the user's words: "폰 확인을 마쳤고 대결은 문제 없어." The follow-ups below show that the setup, the matching radar and the match-found screen were seen on the phone. The phone check lists are in the PR.
-  - TODO(Woohyun Song): the phone model(s) and Android version.
-  - TODO(Woohyun Song): whether the online battle was run on two phones, and so whether UAT-3 AC2's "within a second" was seen.
-  - TODO(Woohyun Song): whether the stage demo and the safety picture drawn since `3688547` were checked (the 11-12 look at the dialog was at the old PNG).
+- **Manual check (2026-11-13, the user, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17):** "폰 확인을 마쳤고 대결은 문제 없어."
+  - Seen on the phone:
+    - real bot battles, push-ups and squats, with the effects they produce, including the setup;
+    - the matching radar and the match-found screen;
+    - the safety picture drawn since `3688547`.
+  - The online battle on two phones: not checked; to be checked with a teammate's phone before the UAT. The same holds for UAT-3 AC2's "within a second".
+  - The stage demo was not run.
+  - The effects only an online battle shows were not seen on a phone: the reconnect band, the opponent's lost connection, the opponent leaving, and a loss by my lost connection.
+    - All four are checked by widget tests (`online_preparation_test.dart`, `battle_arena_test.dart`, `battle_fx_motion_test.dart`).
+    - Three are also in the design comparison (`battle_fx_golden.json`: `combo_while_reconnecting`, `opponent_disconnected`, `opponent_left`).
+    - The loss by my lost connection is the mirror of `opponent_left` and is checked by widget tests only, e.g. 'my connection lost too long: I vanish and lose'.
   - Left for later changes:
     - a larger camera during the setup;
     - radar blips that blink as the sweep passes;
@@ -212,7 +219,7 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `6a8efba`, wit
   - `'two counted reps within the combo window: the second earns the bonus and "2 HIT" shows over the camera (UAT-5 combo)'` (through the bot battle screen)
   - `'a combo shows "2 HIT" over the camera, 14 under the line on the left, and under the reconnect band while it is up'` (the arena)
   - `'$name: every sample matches within the design tolerance'` (18 design scenarios)
-- Given an online battle, then both phones show the same health bar and scores within a second (UAT-3 AC2). The stage shows the server's numbers, bar included; "within a second on both phones" is a two-phone manual check (open TODO above). Test: `"the stage shows the server's scores, valid reps and bar, and the camera its chest lines"`.
+- Given an online battle, then both phones show the same health bar and scores within a second (UAT-3 AC2). The stage shows the server's numbers, bar included; "within a second on both phones" is a two-phone manual check: not checked; to be checked with a teammate's phone before the UAT. Test: `"the stage shows the server's scores, valid reps and bar, and the camera its chest lines"`.
 - UAT-1 runs through the battle screen's setup (현우's condition). Tests:
   - `'AC1, step 2 (push-up): a phone lying almost flat, then the left wrist out of the picture: the hint says what to fix, and nothing counts down'`
   - the `'AC2, step 3 (push-up): …'` and `'AC3, step 4 (push-up): …'` tests

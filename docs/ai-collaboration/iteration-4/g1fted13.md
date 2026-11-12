@@ -163,7 +163,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
 - **Not done by AI:**
   - Every design choice was the user's: the candidate, every spec answer (e.g. "the scope is not cut", grade words during the battle, text size rules), the ready words "시작"/"준비", the safety switch's rule, and "three or more missing parts read the whole-body line".
   - The team agreements were made by people. The bot setup moved to the battle screen (question 9) with 한상우's agreement and 현우's approval. #49's widget was reused with 한상우's agreement. The exceptions were approved by PM 송현우, or done first and reported (listed in the PR).
-  - The phone checks were done by the user, last on 11-13 ("폰 확인을 마쳤고 대결은 문제 없어."; which parts were checked on the phone: see the testing notes' TODOs).
+  - The phone checks were done by the user, last on 11-13 on a Galaxy S26+ ("폰 확인을 마쳤고 대결은 문제 없어."): real bot battles and the new safety picture. The online battle on two phones and the stage demo were not checked (the testing notes' manual check).
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-11 20:42] (the restart on the settled design, pasted; excerpt) "새 세션이야. W2(feat/battle_screen_revamp, 대결 화면 개편)를 이어서 할 거야. 대결 화면 디자인은 Claude Design에서 시안 A \"링아웃 무대\"로 확정했고, 원본은 .claude/design/w2-fx/ 에 있어(v2)."
