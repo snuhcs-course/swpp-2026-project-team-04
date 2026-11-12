@@ -140,10 +140,7 @@ void main() {
     expect(find.text('AI'), findsOneWidget);
     expect(find.byIcon(Icons.smart_toy_rounded), findsOneWidget);
     expect(find.text('경기 규칙'), findsOneWidget);
-    expect(
-      find.text('가슴을 충분히 내렸다가 팔을 끝까지 펴야 1회로 인정돼요.'),
-      findsOneWidget,
-    );
+    expect(find.text('가슴을 충분히 내렸다가 팔을 끝까지 펴야 1회로 인정돼요.'), findsOneWidget);
     expect(find.text('1회 인정될 때마다 효과음이 울려요.'), findsOneWidget);
     expect(find.text('자세 세팅 시작'), findsOneWidget);
     // No tier, record, or auto-cancel countdown.
@@ -155,7 +152,15 @@ void main() {
       'right aligned', (tester) async {
     await open(tester);
     final exit = tester.getRect(exitButton);
-    final found = tester.getRect(find.text('MATCH FOUND'));
+    // "MATCH FOUND" stands on its slanted band, which ends at the padding.
+    final found = tester.getRect(
+      find
+          .ancestor(
+            of: find.text('MATCH FOUND'),
+            matching: find.byType(Transform),
+          )
+          .first,
+    );
     final exercise = tester.getRect(find.text('푸쉬업 · 30초'));
     expect(exit.left, 20);
     expect(found.left, greaterThan(exit.right));
@@ -168,13 +173,64 @@ void main() {
     expect(exercise.bottom, lessThanOrEqualTo(exit.bottom));
   });
 
-  testWidgets('fonts and colors: lime for me, pink for the opponent', (
-    tester,
-  ) async {
+  testWidgets('fonts and colors: ink words; lime marks me, pink the '
+      'opponent (palette B)', (tester) async {
     await open(tester);
     final found = tester.widget<Text>(find.text('MATCH FOUND')).style!;
     expect(found.fontFamily, AppFonts.number);
-    expect(found.color, AppColors.accent);
+    expect(found.color, AppColors.ink);
+    BoxDecoration behind(String text) =>
+        tester
+                .widget<DecoratedBox>(
+                  find
+                      .ancestor(
+                        of: find.text(text),
+                        matching: find.byType(DecoratedBox),
+                      )
+                      .first,
+                )
+                .decoration
+            as BoxDecoration;
+    expect(behind('MATCH FOUND').color, AppColors.accent);
+    // The band leans with the words, as the design draws it.
+    expect(
+      tester
+          .widget<Transform>(
+            find
+                .ancestor(
+                  of: find.text('MATCH FOUND'),
+                  matching: find.byType(Transform),
+                )
+                .first,
+          )
+          .transform,
+      AppHighlight.slant,
+    );
+    // A swatch of each player's color beside "나" and "상대".
+    final swatches = tester
+        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .where((d) => d.border != null && d.borderRadius != null)
+        .map((d) => d.color)
+        .toList();
+    expect(swatches, containsAll([AppColors.accent, AppColors.opponent]));
+    final aiPill =
+        tester
+                .widget<DecoratedBox>(
+                  find
+                      .ancestor(
+                        of: find.text('AI'),
+                        matching: find.byType(DecoratedBox),
+                      )
+                      .first,
+                )
+                .decoration
+            as ShapeDecoration;
+    expect(aiPill.color, AppColors.opponent.withValues(alpha: 0.3));
+    for (final icon in [Icons.check_rounded, Icons.volume_up_outlined]) {
+      expect(tester.widget<Icon>(find.byIcon(icon)).color, AppColors.ink);
+    }
     expect(
       tester.widget<Text>(find.text('우현')).style!.fontFamily,
       AppFonts.headline,
@@ -183,22 +239,62 @@ void main() {
       tester.widget<Text>(find.text('RepBot')).style!.fontFamily,
       AppFonts.number,
     );
-    expect(
-      tester.widget<Text>(find.text('나')).style!.color,
-      AppColors.accent,
-    );
-    expect(
-      tester.widget<Text>(find.text('상대')).style!.color,
-      AppColors.opponent,
-    );
-    expect(
-      tester.widget<Text>(find.text('AI')).style!.color,
-      AppColors.opponent,
-    );
+    for (final words in ['나', '상대', 'AI']) {
+      expect(
+        tester.widget<Text>(find.text(words)).style!.color,
+        AppColors.ink,
+        reason: words,
+      );
+    }
     // Me above the VS, the opponent below it.
     final vs = tester.getRect(find.text('VS'));
     expect(tester.getRect(find.text('우현')).bottom, lessThan(vs.top));
     expect(tester.getRect(find.text('RepBot')).top, greaterThan(vs.bottom));
+  });
+
+  testWidgets('the swatch stands before 나 and after 상대, a swatch gap away; '
+      'MATCH FOUND hugs its band; the halves are tinted', (tester) async {
+    await open(tester);
+    Rect swatch(Color color) => tester.getRect(
+      find.byWidgetPredicate(
+        (w) => w is DecoratedBox && w.decoration == AppHighlight.swatch(color),
+      ),
+    );
+    final mine = swatch(AppColors.accent);
+    final theirs = swatch(AppColors.opponent);
+    expect(mine.size, const Size.square(AppHighlight.swatchSize));
+    expect(
+      tester.getRect(find.text('나')).left - mine.right,
+      AppHighlight.swatchGap,
+    );
+    expect(
+      theirs.left - tester.getRect(find.text('상대')).right,
+      AppHighlight.swatchGap,
+    );
+    expect(
+      tester
+          .widget<Padding>(
+            find
+                .ancestor(
+                  of: find.text('MATCH FOUND'),
+                  matching: find.byType(Padding),
+                )
+                .first,
+          )
+          .padding,
+      AppHighlight.tightBandPadding,
+    );
+    final tints = tester
+        .widgetList<ColoredBox>(find.byType(ColoredBox))
+        .map((box) => box.color)
+        .toSet();
+    expect(
+      tints,
+      containsAll([
+        AppColors.accent.withValues(alpha: 0.05),
+        AppColors.opponent.withValues(alpha: 0.05),
+      ]),
+    );
   });
 
   testWidgets('a human opponent gets an initial and no AI tag', (tester) async {
@@ -221,9 +317,7 @@ void main() {
     ('the 게임 나가기 button', (tester) => tester.tap(exitButton)),
   ];
   for (final (name, ask) in asks) {
-    testWidgets('$name keeps the screen and asks; 계속하기 stays', (
-      tester,
-    ) async {
+    testWidgets('$name keeps the screen and asks; 계속하기 stays', (tester) async {
       await open(tester);
       await ask(tester);
       await tester.pumpAndSettle();
@@ -236,9 +330,7 @@ void main() {
       expect(find.text('MATCH FOUND'), findsOneWidget);
     });
 
-    testWidgets('$name, then 게임 나가기 in the dialog, goes home', (
-      tester,
-    ) async {
+    testWidgets('$name, then 게임 나가기 in the dialog, goes home', (tester) async {
       await open(tester);
       await ask(tester);
       await tester.pumpAndSettle();
@@ -249,9 +341,7 @@ void main() {
     });
   }
 
-  testWidgets('the dialog names the opponent from the matchup', (
-    tester,
-  ) async {
+  testWidgets('the dialog names the opponent from the matchup', (tester) async {
     await open(
       tester,
       matchup: const Matchup(
@@ -262,10 +352,7 @@ void main() {
     );
     await tester.tap(exitButton);
     await tester.pumpAndSettle();
-    expect(
-      find.text('IronBot 님과의 대결이 취소되고\n홈으로 돌아가요.'),
-      findsOneWidget,
-    );
+    expect(find.text('IronBot 님과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
   });
 
   testWidgets('back from setup stays here, and setup can open again', (

@@ -350,7 +350,10 @@ void main() {
       expect(find.byType(GridBackground), findsOneWidget);
       expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
       expect(find.text('기다리는 동안 자리를 준비해 두세요'), findsOneWidget);
-      expect(find.text('휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.'), findsOneWidget);
+      expect(
+        find.text('휴대폰을 머리 앞 약 1m 바닥에 세워\n화면이 나를 보게 두세요.'),
+        findsOneWidget,
+      );
       expect(camera.startCount, 0);
       await captureFlowSnapshot('online-search');
       session.found(duration: 30000);

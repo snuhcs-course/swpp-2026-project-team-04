@@ -32,6 +32,9 @@ class SafeWarningDialog extends StatefulWidget {
 }
 
 class _SafeWarningDialogState extends State<SafeWarningDialog> {
+  /// The ink edge of 확인.
+  static const _edge = 2.0;
+
   Timer? _tick;
 
   /// Seconds left on the countdown; null without [SafeWarningDialog.autoClose].
@@ -112,11 +115,13 @@ class _SafeWarningDialogState extends State<SafeWarningDialog> {
                 const SizedBox(height: AppSpacing.s8),
                 // Line breaks are written in: Korean would otherwise break
                 // inside a word.
-                Text(
-                  '무리해서 운동하면 몸을 다칠 수 있어요.\n몸 상태를 살피며 플레이해 주세요.',
-                  textAlign: TextAlign.center,
-                  style: text.bodyLarge?.copyWith(
-                    color: AppColors.textSecondary,
+                _KeepLines(
+                  child: Text(
+                    '무리해서 운동하면 몸을 다칠 수 있어요.\n몸 상태를 살피며 플레이해 주세요.',
+                    textAlign: TextAlign.center,
+                    style: text.bodyLarge?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.s24),
@@ -124,10 +129,12 @@ class _SafeWarningDialogState extends State<SafeWarningDialog> {
                   onPressed: () => _close(confirmed: true),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(54),
+                    // Lime with an ink edge, as the design (palette B).
                     shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.all(
                         Radius.circular(AppRadius.card),
                       ),
+                      side: BorderSide(color: AppColors.ink, width: _edge),
                     ),
                     textStyle: text.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
@@ -136,13 +143,15 @@ class _SafeWarningDialogState extends State<SafeWarningDialog> {
                   child: Text(left == null ? '확인' : '확인 ($left)'),
                 ),
                 const SizedBox(height: AppSpacing.s12),
-                Text(
-                  left == null
-                      ? '확인을 누르면 자세 세팅을 시작할 수 있어요'
-                      : '$left초 뒤 자동으로 닫혀요',
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                _KeepLines(
+                  child: Text(
+                    left == null
+                        ? '확인을 누르면 자세 세팅을 시작할 수 있어요'
+                        : '$left초 뒤 자동으로 닫혀요',
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -151,6 +160,23 @@ class _SafeWarningDialogState extends State<SafeWarningDialog> {
         ),
       ),
     );
+  }
+}
+
+/// Keeps [child]'s lines as they are written at the system's own text size,
+/// shrinking them a little where a line is a few points too wide for the
+/// dialog: Korean would otherwise break inside a word and leave one
+/// syllable alone. With a larger text size the lines wrap as usual, so the
+/// letters keep the size the user asked for.
+class _KeepLines extends StatelessWidget {
+  const _KeepLines({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.textScalerOf(context).scale(1) > 1) return child;
+    return FittedBox(fit: BoxFit.scaleDown, child: child);
   }
 }
 

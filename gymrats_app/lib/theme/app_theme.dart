@@ -423,6 +423,13 @@ abstract final class AppHighlight {
     vertical: AppSpacing.s4,
   );
 
+  /// The room around a short label on a tight [band], hugging the letters
+  /// top and bottom: "MATCH FOUND" on the versus screen (BMatchFound).
+  static const tightBandPadding = EdgeInsets.symmetric(
+    horizontal: AppSpacing.s8,
+    vertical: 1,
+  );
+
   /// The marker's slant, as the design draws WIN and LOSE. A new matrix each
   /// time, so no one changes another's.
   static Matrix4 get slant => Matrix4.skewX(-10 * math.pi / 180);
@@ -457,6 +464,9 @@ abstract final class AppHighlight {
   );
 
   static const double swatchSize = 10;
+
+  /// The room between a [swatch] and the text it marks.
+  static const double swatchGap = 6;
   static const _swatchEdge = 1.5;
 
   /// [style] in ink with a band of [color] right behind the letters, for a

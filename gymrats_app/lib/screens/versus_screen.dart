@@ -287,7 +287,7 @@ class _OpponentSide extends StatelessWidget {
 /// Faint tints over the grid: lime on the user's half, pink on the
 /// opponent's.
 abstract final class _Tint {
-  static final player = AppColors.accent.withValues(alpha: 0.04);
+  static final player = AppColors.accent.withValues(alpha: 0.05);
   static final opponent = AppColors.opponent.withValues(alpha: 0.05);
 }
 
@@ -357,14 +357,25 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                'MATCH FOUND',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.displaySmall?.copyWith(
-                  fontSize: 15,
-                  letterSpacing: 3,
-                  color: AppColors.accent,
+              // Ink on a slanted lime band, slanted with it (palette B).
+              Transform(
+                transform: AppHighlight.slant,
+                alignment: Alignment.center,
+                child: DecoratedBox(
+                  decoration: AppHighlight.band(AppColors.accent),
+                  child: Padding(
+                    padding: AppHighlight.tightBandPadding,
+                    child: Text(
+                      'MATCH FOUND',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.displaySmall?.copyWith(
+                        fontSize: 15,
+                        letterSpacing: 3,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 2),
@@ -402,13 +413,7 @@ class _PlayerRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '나',
-                style: text.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
-                ),
-              ),
+              const _Side(label: '나', color: AppColors.accent, mine: true),
               const SizedBox(height: 4),
               Text(
                 name,
@@ -440,13 +445,7 @@ class _OpponentRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '상대',
-                style: text.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.opponent,
-                ),
-              ),
+              const _Side(label: '상대', color: AppColors.opponent, mine: false),
               const SizedBox(height: 4),
               // English names, like RepBot, use the number font.
               Text(
@@ -473,17 +472,44 @@ class _OpponentRow extends StatelessWidget {
   }
 }
 
-/// "AI" in pink on a faint pink pill.
+/// "나" or "상대" in ink beside a swatch of the player's [color]: the
+/// user's swatch first, the opponent's last (palette B: the color marks,
+/// the text is ink).
+class _Side extends StatelessWidget {
+  const _Side({required this.label, required this.color, required this.mine});
+
+  final String label;
+  final Color color;
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final swatch = SizedBox.square(
+      dimension: AppHighlight.swatchSize,
+      child: DecoratedBox(decoration: AppHighlight.swatch(color)),
+    );
+    final text = Text(
+      label,
+      style: Theme.of(context).textTheme.labelLarge
+          ?.copyWith(fontWeight: FontWeight.w700, color: AppColors.ink),
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: mine
+          ? [swatch, const SizedBox(width: AppHighlight.swatchGap), text]
+          : [text, const SizedBox(width: AppHighlight.swatchGap), swatch],
+    );
+  }
+}
+
+/// "AI" in ink on a pink pill.
 class _AiTag extends StatelessWidget {
   const _AiTag();
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: AppColors.opponent.withValues(alpha: 0.14),
-        shape: const StadiumBorder(),
-      ),
+      decoration: AppHighlight.chip(AppColors.opponent, strength: 0.3),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
         child: Text(
@@ -491,7 +517,7 @@ class _AiTag extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
             fontFamily: AppFonts.number,
             fontWeight: FontWeight.w700,
-            color: AppColors.opponent,
+            color: AppColors.ink,
           ),
         ),
       ),
@@ -593,7 +619,7 @@ class _RuleRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 22, color: AppColors.accent),
+        Icon(icon, size: 22, color: AppColors.ink),
         const SizedBox(width: 12),
         Expanded(
           child: Text.rich(rule, style: Theme.of(context).textTheme.bodyLarge),

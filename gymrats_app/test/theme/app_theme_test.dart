@@ -254,6 +254,13 @@ void main() {
         const BorderRadius.all(Radius.circular(AppRadius.mark)),
       );
       expect(AppHighlight.bandPadding.vertical, 2 * AppSpacing.s4);
+      // The design's tight band (BMatchFound "MATCH FOUND") and the room
+      // beside a swatch.
+      expect(
+        AppHighlight.tightBandPadding,
+        const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      );
+      expect(AppHighlight.swatchGap, 6);
       final marked = AppHighlight.marked(
         const TextStyle(color: AppColors.accent),
         AppColors.accent,

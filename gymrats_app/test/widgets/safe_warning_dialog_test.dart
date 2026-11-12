@@ -1,9 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
+
+import 'battle_test_support.dart';
 
 /// Width and height from a PNG file's IHDR chunk.
 (int, int) _pngSize(String path) {
@@ -80,8 +83,16 @@ void main() {
     expect(tester.widget<Text>(message).style!.color, AppColors.textSecondary);
     expect(find.text('확인'), findsOneWidget);
     expect(find.text('확인을 누르면 자세 세팅을 시작할 수 있어요'), findsOneWidget);
-    // FilledButton paints with the theme's primary, the lime accent.
+    // FilledButton paints with the theme's primary, the lime accent, here
+    // with an ink edge (palette B).
     expect(theme.colorScheme.primary, AppColors.accent);
+    final ok = tester.widget<FilledButton>(
+      find.ancestor(of: find.text('확인'), matching: find.byType(FilledButton)),
+    );
+    expect(
+      (ok.style!.shape!.resolve({})! as RoundedRectangleBorder).side,
+      const BorderSide(color: AppColors.ink, width: 2),
+    );
 
     // Top to bottom: picture, title, message, button, note.
     final order = [
@@ -207,5 +218,68 @@ void main() {
     // Line by line: a Windows checkout has CRLF line ends.
     final pubspec = File('pubspec.yaml').readAsLinesSync();
     expect(pubspec.map((line) => line.trim()), contains('- assets/images/'));
+  });
+
+  // Last in the file: the fonts stay loaded for the rest of the run.
+  group('with the real fonts', () {
+    const message = '무리해서 운동하면 몸을 다칠 수 있어요.\n몸 상태를 살피며 플레이해 주세요.';
+    const note = '확인을 누르면 자세 세팅을 시작할 수 있어요';
+    // Laid-out height over one line's height, at the text size in use.
+    int lines(WidgetTester tester, String text) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(text));
+      final style = tester.widget<Text>(find.text(text)).style!;
+      final line = paragraph.textScaler.scale(style.fontSize!) * style.height!;
+      final count = paragraph.size.height / line;
+      expect(count, moreOrLessEquals(count.roundToDouble(), epsilon: 0.1));
+      return count.round();
+    }
+
+    // Shown width over laid-out width: below 1 when the text is shrunk.
+    double shown(WidgetTester tester, String text) =>
+        tester.getRect(find.text(text)).width /
+        tester.getSize(find.text(text)).width;
+    Rect card(WidgetTester tester) => tester.getRect(
+      find.descendant(
+        of: find.byType(Dialog),
+        matching: find.byType(SingleChildScrollView),
+      ),
+    );
+
+    for (final size in const [Size(360, 640), Size(360, 780), Size(412, 915)]) {
+      testWidgets('at ${size.width.toInt()}x${size.height.toInt()} the '
+          'message keeps its two lines and the note its one, shrunk at most '
+          'a little', (tester) async {
+        await tester.runAsync(loadBattleFonts);
+        await open(tester, size: size);
+        expect(lines(tester, message), 2);
+        expect(lines(tester, note), 1);
+        for (final text in [message, note]) {
+          expect(shown(tester, text), inInclusiveRange(0.9, 1));
+          final rect = tester.getRect(find.text(text));
+          expect(rect.left, greaterThanOrEqualTo(card(tester).left));
+          expect(rect.right, lessThanOrEqualTo(card(tester).right));
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('at text scale 2 the lines wrap at the size asked for', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.runAsync(loadBattleFonts);
+      await open(tester, size: const Size(360, 780));
+      for (final text in [message, note]) {
+        expect(
+          find.ancestor(of: find.text(text), matching: find.byType(FittedBox)),
+          findsNothing,
+        );
+        expect(shown(tester, text), 1);
+      }
+      expect(lines(tester, message), greaterThan(2));
+      expect(lines(tester, note), greaterThan(1));
+      expect(tester.takeException(), isNull);
+    });
   });
 }
