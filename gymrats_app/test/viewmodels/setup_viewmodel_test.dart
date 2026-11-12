@@ -100,10 +100,7 @@ void main() {
     test('no person', () async {
       await feed(0, emptyFrame());
       expect(vm.state.status.reason, SetupReason.noPerson);
-      expect(
-        vm.state.status.message,
-        'No one detected. Step into the camera view.',
-      );
+      expect(vm.state.status.message, '카메라 앞에 서 주세요.');
       expect(vm.state.lastFrame, isNotNull);
     });
 
@@ -113,7 +110,7 @@ void main() {
       );
       await feed(0, frame);
       await feed(2000, frame);
-      expect(vm.state.status.message, 'Hands not visible.');
+      expect(vm.state.status.message, '손이 화면에 안 보여요.');
       expect(vm.state.canStart, isFalse);
     });
 
@@ -122,7 +119,7 @@ void main() {
       await feed(0, frame);
       await feed(2000, frame);
       expect(vm.state.status.reason, SetupReason.notFacingForward);
-      expect(vm.state.status.message, 'Face the camera.');
+      expect(vm.state.status.message, '카메라를 정면으로 봐 주세요.');
       expect(vm.state.canStart, isFalse);
     });
 
@@ -177,9 +174,9 @@ void main() {
       await feed(1500, standingFrame());
       expect(vm.state.status.isReady, isTrue);
       expect(vm.state.autoStartIn, const Duration(seconds: 3));
-      expect(vm.state.message, 'Ready! Starting in 3...');
+      expect(vm.state.message, '준비 완료! 3초 뒤 시작해요.');
       await feed(3600, standingFrame());
-      expect(vm.state.message, 'Ready! Starting in 1...');
+      expect(vm.state.message, '준비 완료! 1초 뒤 시작해요.');
       expect(vm.state.autoStarted, isFalse);
       await feed(4500, standingFrame());
       expect(vm.state.autoStarted, isTrue);

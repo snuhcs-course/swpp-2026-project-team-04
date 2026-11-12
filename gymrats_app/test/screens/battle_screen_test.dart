@@ -235,10 +235,7 @@ void main() {
       expect(find.bySemanticsLabel('카메라 전환'), findsOneWidget);
       expect(canPress(tester, 'Start'), isFalse);
       await frame(tester, 1, found: false);
-      expect(
-        find.text('No one detected. Step into the camera view.'),
-        findsOneWidget,
-      );
+      expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
       expect(canPress(tester, 'Start'), isFalse);
       expect(opponent.startCount, 0);
       await captureFlowSnapshot('ai-battle-setup');
@@ -295,7 +292,7 @@ void main() {
         tester.widget<PoseCameraView>(find.byType(PoseCameraView)).mirror,
         isTrue,
       );
-      const noOne = 'No one detected. Step into the camera view.';
+      const noOne = '카메라 앞에 서 주세요.';
       expect(find.text(noOne), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
@@ -577,8 +574,8 @@ void main() {
       phone.isPropped = true;
       final noWrist = standingFrame(move: {BodyLandmark.leftWrist: (999, 700)});
       await hold(tester, noWrist, from: 7, seconds: 5);
-      expect(setupWords(noWrist, ExerciseType.pushUp), 'Hands not visible.');
-      expect(find.text('Hands not visible.'), findsOneWidget);
+      expect(setupWords(noWrist, ExerciseType.pushUp), '손이 화면에 안 보여요.');
+      expect(find.text('손이 화면에 안 보여요.'), findsOneWidget);
       notCounting(tester);
       await close(tester);
     });
@@ -637,8 +634,8 @@ void main() {
         hide: {BodyLandmark.leftAnkle, BodyLandmark.rightAnkle},
       );
       await hold(tester, noFeet, from: 1, seconds: 3);
-      expect(setupWords(noFeet, ExerciseType.squat), 'Ankles not visible.');
-      expect(find.text('Ankles not visible.'), findsOneWidget);
+      expect(setupWords(noFeet, ExerciseType.squat), '발목이 화면에 안 보여요.');
+      expect(find.text('발목이 화면에 안 보여요.'), findsOneWidget);
       notCounting(tester);
 
       final tooClose = standingFrame(
@@ -650,8 +647,8 @@ void main() {
         },
       );
       await hold(tester, tooClose, from: 5, seconds: 3);
-      expect(setupWords(tooClose, ExerciseType.squat), 'Move back a little.');
-      expect(find.text('Move back a little.'), findsOneWidget);
+      expect(setupWords(tooClose, ExerciseType.squat), '조금 뒤로 물러나 주세요.');
+      expect(find.text('조금 뒤로 물러나 주세요.'), findsOneWidget);
       notCounting(tester);
       // #49 has only the push-up silhouette; the squat slot waits for
       // the standing one.

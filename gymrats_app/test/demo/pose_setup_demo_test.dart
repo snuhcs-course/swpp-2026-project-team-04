@@ -46,7 +46,7 @@ void main() {
     }
 
     await feed(0, standingFrame());
-    expect(find.text('Hold still...'), findsOneWidget);
+    expect(find.text('그대로 잠시 유지하세요.'), findsOneWidget);
     await feed(1500, standingFrame());
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
