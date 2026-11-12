@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -20,11 +21,7 @@ class SafeWarningDialog extends StatefulWidget {
   /// How long it stays open at most, in whole seconds; null waits for 확인.
   final Duration? autoClose;
 
-  /// The picture at 1x; its 2.0x and 3.0x variants sit in the folders of
-  /// those names next to it.
-  static const picture = 'assets/images/safe_warning.png';
-
-  /// What a screen reader says for [picture].
+  /// What a screen reader says for the picture ([SafeWarningPicturePainter]).
   static const pictureLabel = '팔을 깊게 굽힌 채 무리하다 팔꿈치를 다친 모습';
 
   @override
@@ -180,30 +177,174 @@ class _KeepLines extends StatelessWidget {
   }
 }
 
-/// [SafeWarningDialog.picture] on a box a step lighter than the dialog.
+/// The picture ([SafeWarningPicturePainter]) on a box a step lighter than
+/// the dialog, read as one picture by a screen reader.
 class _Picture extends StatelessWidget {
   const _Picture();
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
+    return DecoratedBox(
+      decoration: const BoxDecoration(
         color: AppColors.cardHigh,
         borderRadius: BorderRadius.all(Radius.circular(AppRadius.small)),
       ),
       child: Padding(
-        padding: EdgeInsets.all(AppSpacing.s8),
+        padding: const EdgeInsets.all(AppSpacing.s8),
         child: Center(
-          child: Image(
-            image: AssetImage(SafeWarningDialog.picture),
-            width: 240,
-            height: 150,
-            semanticLabel: SafeWarningDialog.pictureLabel,
+          child: Semantics(
+            container: true,
+            image: true,
+            label: SafeWarningDialog.pictureLabel,
+            child: const CustomPaint(
+              size: SafeWarningPicturePainter.size,
+              painter: SafeWarningPicturePainter(),
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+/// The safety picture of the design (`BMatchFound.dc.html`, its 240 x 150
+/// SVG): a push-up done too hard, the arms bent deep, an impact star at the
+/// elbow. Lines in [AppColors.line] on the light box; the head a white
+/// circle with a [AppColors.line] edge; the star [AppColors.warning] with an
+/// ink edge. The numbers are the SVG's, in its own points. A box of another
+/// size draws it as the SVG's view box does: scaled the same both ways, as
+/// large as fits, in the middle (the dialog is 232 wide on a 360 phone).
+class SafeWarningPicturePainter extends CustomPainter {
+  const SafeWarningPicturePainter();
+
+  /// The SVG's view box, and the size the dialog draws it at.
+  static const size = Size(240, 150);
+
+  /// `M16 132 H224`, 4 wide, round ends.
+  static const floor = (start: Offset(16, 132), end: Offset(224, 132));
+  static const floorWidth = 4.0;
+
+  /// The body, `M80 100 L150 112 L206 127`, 9 wide, round.
+  static const body = [Offset(80, 100), Offset(150, 112), Offset(206, 127)];
+  static const bodyWidth = 9.0;
+
+  /// The bent arm, `M84 102 L104 116 L86 128`, 7 wide, round.
+  static const arm = [Offset(84, 102), Offset(104, 116), Offset(86, 128)];
+  static const armWidth = 7.0;
+
+  /// The head, `circle cx 60 cy 92 r 13`, white with a 3 wide edge.
+  static const head = (center: Offset(60, 92), radius: 13.0);
+  static const headEdge = 3.0;
+
+  /// The two sweat drops, `M42 60 q5 7 0 11 q-5 -4 0 -11 z` and
+  /// `M30 74 q4 6 0 9 q-4 -3 0 -9 z`, in absolute points: from the top,
+  /// curving out to the right to the bottom and back on the left.
+  static const drops = [
+    (
+      top: Offset(42, 60),
+      right: Offset(47, 67),
+      bottom: Offset(42, 71),
+      left: Offset(37, 67),
+    ),
+    (
+      top: Offset(30, 74),
+      right: Offset(34, 80),
+      bottom: Offset(30, 83),
+      left: Offset(26, 80),
+    ),
+  ];
+
+  /// The impact star's 12 corners, with a 1.5 wide ink edge.
+  static const star = [
+    Offset(106, 95),
+    Offset(109, 104.8),
+    Offset(119, 102.5),
+    Offset(112, 110),
+    Offset(119, 117.5),
+    Offset(109, 115.2),
+    Offset(106, 125),
+    Offset(103, 115.2),
+    Offset(93, 117.5),
+    Offset(100, 110),
+    Offset(93, 102.5),
+    Offset(103, 104.8),
+  ];
+  static const starEdge = 1.5;
+
+  static Path _line(List<Offset> points) {
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (final point in points.skip(1)) {
+      path.lineTo(point.dx, point.dy);
+    }
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const own = SafeWarningPicturePainter.size;
+    final scale = math.min(size.width / own.width, size.height / own.height);
+    canvas.save();
+    canvas.translate(
+      (size.width - own.width * scale) / 2,
+      (size.height - own.height * scale) / 2,
+    );
+    canvas.scale(scale, scale);
+    Paint stroke(Color color, double width) => Paint()
+      ..style = PaintingStyle.stroke
+      ..color = color
+      ..strokeWidth = width;
+    Paint round(Paint paint) => paint
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawLine(
+      floor.start,
+      floor.end,
+      stroke(AppColors.line, floorWidth)..strokeCap = StrokeCap.round,
+    );
+    canvas.drawPath(_line(body), round(stroke(AppColors.line, bodyWidth)));
+    canvas.drawPath(_line(arm), round(stroke(AppColors.line, armWidth)));
+    canvas.drawCircle(
+      head.center,
+      head.radius,
+      Paint()..color = AppColors.card,
+    );
+    canvas.drawCircle(
+      head.center,
+      head.radius,
+      stroke(AppColors.line, headEdge),
+    );
+    for (final drop in drops) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(drop.top.dx, drop.top.dy)
+          ..quadraticBezierTo(
+            drop.right.dx,
+            drop.right.dy,
+            drop.bottom.dx,
+            drop.bottom.dy,
+          )
+          ..quadraticBezierTo(
+            drop.left.dx,
+            drop.left.dy,
+            drop.top.dx,
+            drop.top.dy,
+          )
+          ..close(),
+        Paint()..color = AppColors.line,
+      );
+    }
+    final starPath = _line(star)..close();
+    canvas.drawPath(starPath, Paint()..color = AppColors.warning);
+    canvas.drawPath(
+      starPath,
+      stroke(AppColors.ink, starEdge)..strokeJoin = StrokeJoin.round,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(SafeWarningPicturePainter oldDelegate) => false;
 }
 
 /// The route [showSafeWarning] pushes, for a screen that must be able to
