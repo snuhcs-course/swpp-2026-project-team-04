@@ -120,7 +120,7 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `cd88ab2`, wit
 - UAT-4 AC1 (win, loss or draw with both scores) still holds. Tests: `'a win: WIN, the margin, both players, and my stats'`, `'$mine:$theirs is a $word'`.
 
 #### 2026-11-13 · code at commit `6a8efba` · step W2 `feat/battle_screen_revamp` (P8 battle screen revamp, team order #5)
-This step replaces the bot and online battle screens with one fighting stage, as designed (the user's Claude Design candidate A, spec v2.2), and redraws the matching screens in palette B:
+This step replaces the bot and online battle screens with one fighting stage, as designed (candidate A from the user's design canvas, spec v2.2), and redraws the matching screens in palette B:
 - **The stage** (upper half): the HUD (names, clock and lead chip, scores, valid rep counts, time bar), two fighters, a meeting point that moves with the score share, and the effects of every rule: grade word then "+N", combo "N HIT", FEVER ×2, the danger edge, the reject sign with a pictogram, K.O., TIME! and the verdict, then 결과 보기.
 - **The camera area** (lower half): the camera uncropped, a one-line hint, the ready button, the setup bar, the reconnect band, the leave button.
 - **The setup runs on the battle screen** for both battles.
