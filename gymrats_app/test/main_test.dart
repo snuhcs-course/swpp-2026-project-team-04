@@ -266,8 +266,11 @@ void main() {
     expect(versus.read<Matchmaker>(), same(matchmaker));
   });
 
-  testWidgets('the matching flow sets up in MatchSetupScreen; the setup '
-      'route still opens SetupScreen', (tester) async {
+  // The bot flow no longer passes these routes (versus opens the battle
+  // screen, which sets up itself: versus_screen_test.dart); they stay in the
+  // app for 한상우's setup screens.
+  testWidgets('the match setup route still opens MatchSetupScreen and the '
+      'setup route SetupScreen', (tester) async {
     await _openApp(tester);
     final generate = tester
         .widget<MaterialApp>(find.byType(MaterialApp))
