@@ -302,10 +302,11 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // Palette B: text is ink; lime only fills.
             Text(
               'LIVE BATTLE',
               style: Theme.of(context).textTheme.displaySmall
-                  ?.copyWith(color: AppColors.accent),
+                  ?.copyWith(color: AppColors.ink),
             ),
             const SizedBox(height: 16),
             Text(
@@ -322,10 +323,21 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
             Text('프로필 아바타 · ${_avatar.label}'),
             const Text('아바타는 홈의 프로필에서 변경할 수 있어요.'),
             const SizedBox(height: 24),
+            // Ink words on an amber band (palette B: amber only fills).
             if (_error ?? session?.error case final text?)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(text, style: const TextStyle(color: Colors.amber)),
+                child: DecoratedBox(
+                  decoration: AppHighlight.band(AppColors.warning),
+                  child: Padding(
+                    padding: AppHighlight.bandPadding,
+                    child: Text(
+                      text,
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: AppColors.ink),
+                    ),
+                  ),
+                ),
               ),
             if (session?.terminal == true && session?.error == null)
               const Padding(

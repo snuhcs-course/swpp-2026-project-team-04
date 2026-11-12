@@ -283,7 +283,21 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(created, isNull);
-      expect(find.text('프로필 아바타를 불러오지 못했어요. 다시 시도해주세요.'), findsOneWidget);
+      const error = '프로필 아바타를 불러오지 못했어요. 다시 시도해주세요.';
+      expect(find.text(error), findsOneWidget);
+      // Palette B on this plain page too: ink words, the amber as a band
+      // behind them, the title ink (not lime) on the light ground.
+      expect(tester.widget<Text>(find.text(error)).style!.color, AppColors.ink);
+      final band = tester.widget<DecoratedBox>(
+        find
+            .ancestor(of: find.text(error), matching: find.byType(DecoratedBox))
+            .first,
+      );
+      expect((band.decoration as BoxDecoration).color, AppColors.warning);
+      expect(
+        tester.widget<Text>(find.text('LIVE BATTLE')).style!.color,
+        AppColors.ink,
+      );
       avatars.fail = false;
       await tester.tap(find.text('다시 시도'));
       await tester.pump();
