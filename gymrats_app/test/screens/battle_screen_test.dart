@@ -22,6 +22,7 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_arena.dart';
+import 'package:gymrats_app/widgets/battle_camera_area.dart';
 import 'package:gymrats_app/widgets/battle_camera_view.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
@@ -719,6 +720,41 @@ void main() {
       expect(cues, contains('hit me good'));
       expect(tester.takeException(), isNull);
       await captureFlowSnapshot('ai-battle-live-indicators');
+      await close(tester);
+    });
+
+    testWidgets('two counted reps within the combo window: the second earns '
+        'the bonus and "2 HIT" shows over the camera (UAT-5 combo)', (
+      tester,
+    ) async {
+      await open(tester);
+      await begin(tester);
+      judge.snapshot = const JudgeSnapshot(
+        phase: RepPhase.descending,
+        shoulderDrop: .5,
+        topShoulderY: 200,
+      );
+      judge.closeRep();
+      await frame(tester, 6);
+      await wait(tester, 600);
+      expect(find.text('2 HIT'), findsNothing);
+      // One second later, inside the 1.5 s combo window.
+      judge.closeRep();
+      await frame(tester, 7);
+      await wait(tester, 100);
+      expect(find.text('GOOD'), findsOneWidget);
+      await wait(tester, 400);
+      expect(
+        find.descendant(
+          of: find.byType(BattleCameraArea),
+          matching: find.text('2 HIT'),
+        ),
+        findsOneWidget,
+      );
+      // 10, then 10 and the 5 combo bonus.
+      expect(find.text('+15'), findsOneWidget);
+      expect((stage(tester).myScore, stage(tester).myReps), (25, 2));
+      expect(cues.where((cue) => cue == 'hit me good'), hasLength(2));
       await close(tester);
     });
 
