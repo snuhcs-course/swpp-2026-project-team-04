@@ -16,7 +16,7 @@ class ExitDialog extends StatelessWidget {
     required this.leaveLabel,
   });
 
-  /// For leaving a found match, on the versus and setup screens.
+  /// For leaving a found match, on the versus screen and the battle screens.
   ExitDialog.game({super.key, required String opponentName})
     : title = '게임에서 나갈까요?',
       message = gameMessage(opponentName),

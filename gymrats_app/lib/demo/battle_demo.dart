@@ -190,7 +190,8 @@ class _DemoHomeState extends State<_DemoHome> {
 /// The app's BattleScreen, with touches on the camera for the user's reps.
 ///
 /// Touches count only on the camera and only while the round runs, so the
-/// leave dialog and the TIME UP overlay work as in the app.
+/// leave dialog and the stage's ending (TIME! and 결과 보기) work as in the
+/// app.
 class _TouchBattle extends StatefulWidget {
   const _TouchBattle({required this.roundLength});
 
