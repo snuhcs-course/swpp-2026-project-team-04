@@ -476,5 +476,18 @@ void main() {
       }
       expect(text.cameraHint.fontFamily, AppFonts.body);
     });
+
+    test('the leave dialog\'s title is Do Hyeon at the headline\'s size', () {
+      expect(text.leaveDialogTitle.fontFamily, AppFonts.display);
+      expect(text.leaveDialogTitle.fontSize, text.headlineSmall!.fontSize);
+      expect(text.leaveDialogTitle.color, text.headlineSmall!.color);
+    });
+
+    test('a dialog covers the screen with ink at 54%, not black', () {
+      expect(
+        theme.dialogTheme.barrierColor,
+        AppColors.ink.withValues(alpha: 0.54),
+      );
+    });
   });
 }

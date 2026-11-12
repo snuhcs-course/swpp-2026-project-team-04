@@ -179,13 +179,23 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
                 session: session,
                 createCounter: widget.createCounter,
                 userRepository: widget.userRepository,
+                playerName: widget.auth.session?.account.nickname ?? '나',
               ),
       ),
     );
     if (!mounted) return;
     // The lobby is still underneath the setup/battle route. Close it too,
     // rather than exposing the old manual-entry screen after leaving a match.
-    await _cancelSearch();
+    // The battle may have handed over to the result screen, which then sits
+    // on top: only the lobby's own route goes.
+    _release();
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isActive) return;
+    if (route.isCurrent) {
+      Navigator.pop(context);
+    } else {
+      Navigator.removeRoute(context, route);
+    }
   }
 
   Future<void> _cancelSearch() async {

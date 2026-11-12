@@ -698,6 +698,31 @@ void main() {
   });
 
   group('BattleArena, at the end', () {
+    testWidgets('the controller says when 결과 보기 is up, for the system\'s '
+        'back gesture', (tester) async {
+      final controller = BattleStageController();
+      expect(controller.resultReady, isFalse);
+      await _pump(tester, controller, _state());
+      await _wait(tester, 500);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 1700);
+      expect(controller.resultReady, isFalse);
+      expect(find.text('결과 보기'), findsNothing);
+      await _wait(tester, 150);
+      expect(controller.resultReady, isTrue);
+      expect(find.text('결과 보기'), findsOneWidget);
+    });
+
     testWidgets('a knockout: the loser flies off, K.O., then 결과 보기, which '
         'cannot be pressed before it is up', (tester) async {
       var opened = 0;
@@ -926,11 +951,13 @@ void main() {
         _state(phase: BattleStagePhase.ended, me: 100, end: _koEnd),
       );
       await _wait(tester, 16);
-      expect(said, ['K.O. 이겼어요']);
+      // The score that brought it is said once, as it changes.
+      expect(said, ['내 점수 100점, 유효 0회', 'K.O. 이겼어요']);
 
-      said.clear();
       final time = BattleStageController();
       await _pump(tester, time, _state(op: 10));
+      // A new battle on the same arena: only its ending counts here.
+      said.clear();
       await _pump(
         tester,
         time,
@@ -947,9 +974,9 @@ void main() {
       await _wait(tester, 1100);
       expect(said, ['시간 종료', '졌어요']);
 
-      said.clear();
       final left = BattleStageController();
       await _pump(tester, left, _state());
+      said.clear();
       await _pump(
         tester,
         left,
@@ -1003,20 +1030,50 @@ void main() {
   group('battleAnnouncement', () {
     final state = _state(me: 40, op: 25, myReps: 3, opReps: 2);
 
-    test('says who scored and where they stand', () {
+    test('a blow says nothing itself: the score is said as it changes', () {
+      for (final side in BattleSide.values) {
+        expect(
+          battleAnnouncement(
+            BattleStageCue(BattleCueKind.hit, side: side),
+            state,
+          ),
+          isNull,
+        );
+      }
+    });
+
+    test('a change of the standing says the score and valid reps of each '
+        'player once, the user first', () {
+      expect(battleStandingAnnouncements(state, state), isEmpty);
       expect(
-        battleAnnouncement(
-          const BattleStageCue(BattleCueKind.hit, side: BattleSide.me),
+        battleStandingAnnouncements(
           state,
+          _state(me: 50, op: 25, myReps: 4, opReps: 2),
         ),
-        '내 점수 40점, 유효 3회',
+        ['내 점수 50점, 유효 4회'],
+      );
+      // An average rep: points without a valid rep.
+      expect(
+        battleStandingAnnouncements(
+          state,
+          _state(me: 45, op: 25, myReps: 3, opReps: 2),
+        ),
+        ['내 점수 45점, 유효 3회'],
+      );
+      // A valid rep without points: an older server, or a snapshot.
+      expect(
+        battleStandingAnnouncements(
+          state,
+          _state(me: 40, op: 25, myReps: 3, opReps: 3),
+        ),
+        ['상대 점수 25점, 유효 3회'],
       );
       expect(
-        battleAnnouncement(
-          const BattleStageCue(BattleCueKind.hit, side: BattleSide.opponent),
+        battleStandingAnnouncements(
           state,
+          _state(me: 41, op: 26, myReps: 3, opReps: 2),
         ),
-        '상대 점수 25점, 유효 2회',
+        ['내 점수 41점, 유효 3회', '상대 점수 26점, 유효 2회'],
       );
     });
 
@@ -1265,7 +1322,7 @@ void main() {
       expect(_pose(tester, BattleSide.me), BattlePose.attack);
       await _wait(tester, 100);
       expect(cues, ['knockout me excellent']);
-      expect(said, ['K.O. 이겼어요']);
+      expect(said, ['내 점수 100점, 유효 0회', 'K.O. 이겼어요']);
     });
   });
 }

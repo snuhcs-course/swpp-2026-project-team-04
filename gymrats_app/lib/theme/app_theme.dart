@@ -359,6 +359,12 @@ extension BattleCameraText on TextTheme {
     height: 32 / 24,
     color: AppColors.ink,
   );
+
+  /// The title of the dialog that asks before leaving, e.g. "게임에서
+  /// 나갈까요?": Do Hyeon, as the battle design draws it, at the headline's
+  /// size.
+  TextStyle get leaveDialogTitle =>
+      headlineSmall!.copyWith(fontFamily: AppFonts.display);
 }
 
 /// Padding and gap steps (Design Documentation 2.5.5). Screens use only
@@ -492,6 +498,10 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: AppColors.textPrimary),
+      ),
+      // A dialog covers the screen with ink, not black (palette B).
+      dialogTheme: DialogThemeData(
+        barrierColor: AppColors.ink.withValues(alpha: 0.54),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(foregroundColor: AppColors.textPrimary),

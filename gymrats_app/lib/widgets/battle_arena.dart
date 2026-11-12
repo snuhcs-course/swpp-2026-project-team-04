@@ -42,6 +42,10 @@ class BattleStageController {
     }
   }
 
+  /// Whether the ending has played and 결과 보기 is up, so the result may
+  /// open, e.g. from the system's back gesture.
+  bool get resultReady => _fx.resultButtonUp(_now);
+
   /// Brings the stage in line with [state].
   void _sync(BattleStageState state) {
     if (!_started) {
@@ -82,15 +86,14 @@ class BattleStageController {
 }
 
 /// What a screen reader is told for a [cue] of the stage, or null when the
-/// cue has nothing to add: the points and valid reps after a blow, the
-/// countdown, the start and how the battle ended.
+/// cue has nothing to add: the countdown, the start and how the battle
+/// ended. A blow says nothing itself: the score it brings is said when the
+/// score changes ([battleStandingAnnouncements]), which online can be after
+/// the blow is seen.
 String? battleAnnouncement(BattleStageCue cue, BattleStageState state) {
   final mine = cue.side == BattleSide.me;
   return switch (cue.kind) {
-    BattleCueKind.hit =>
-      mine
-          ? '내 점수 ${state.myScore}점, 유효 ${state.myReps}회'
-          : '상대 점수 ${state.opponentScore}점, 유효 ${state.opponentReps}회',
+    BattleCueKind.hit => null,
     // The user's own miss is said with its reason; the opponent's is not
     // the user's business while exercising.
     BattleCueKind.miss => null,
@@ -106,6 +109,20 @@ String? battleAnnouncement(BattleStageCue cue, BattleStageState state) {
     BattleCueKind.playerLeft => mine ? '상대가 나가서 이겼어요' : '연결이 끊겨서 졌어요',
   };
 }
+
+/// What a screen reader is told when the standing changes from [before] to
+/// [now]: each player's score and valid reps, once for every change of
+/// either, in the order the user's first.
+List<String> battleStandingAnnouncements(
+  BattleStageState before,
+  BattleStageState now,
+) => [
+  if (now.myScore != before.myScore || now.myReps != before.myReps)
+    '내 점수 ${now.myScore}점, 유효 ${now.myReps}회',
+  if (now.opponentScore != before.opponentScore ||
+      now.opponentReps != before.opponentReps)
+    '상대 점수 ${now.opponentScore}점, 유효 ${now.opponentReps}회',
+];
 
 /// The whole battle screen's picture, for a bot battle and an online one
 /// alike: the fighting stage on the upper half, the user's camera on the
@@ -210,6 +227,7 @@ class _BattleArenaState extends State<BattleArena>
     _controller._sync(widget.state);
     final before = oldWidget.state;
     final now = widget.state;
+    battleStandingAnnouncements(before, now).forEach(_say);
     // Each of these is said when it begins, not when it ends.
     if (now.fever && !before.fever) {
       _say('피버, 점수 ${now.feverMultiplier}배');

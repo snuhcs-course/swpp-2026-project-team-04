@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Asks before leaving the match flow: a pink exit icon when upright, [title]
-/// over [message], a big lime 계속하기 button and a pink [leaveLabel] one.
+/// Asks before leaving the match flow: an ink exit icon on a faint pink
+/// circle when upright, [title] over [message], a big lime 계속하기 button
+/// with an ink edge and an ink [leaveLabel] one (palette B: color only
+/// fills, text is ink).
 ///
 /// Pops true for [leaveLabel], false for 계속하기.
 class ExitDialog extends StatelessWidget {
@@ -119,7 +121,7 @@ class ExitDialog extends StatelessWidget {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: text.headlineSmall,
+                style: text.leaveDialogTitle,
               ),
               const SizedBox(height: 10),
               Text(
@@ -137,6 +139,7 @@ class ExitDialog extends StatelessWidget {
                   minimumSize: const Size.fromHeight(54),
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.all(Radius.circular(16)),
+                    side: BorderSide(color: AppColors.ink, width: 2),
                   ),
                   textStyle: buttonText,
                 ),
@@ -147,7 +150,7 @@ class ExitDialog extends StatelessWidget {
                 onPressed: () => Navigator.pop(context, true),
                 style: TextButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
-                  foregroundColor: AppColors.opponent,
+                  foregroundColor: AppColors.ink,
                   textStyle: buttonText,
                 ),
                 child: Text(leaveLabel),
@@ -160,7 +163,7 @@ class ExitDialog extends StatelessWidget {
   }
 }
 
-/// The exit icon in pink on a faint pink circle.
+/// The exit icon in ink on a faint pink circle.
 class _ExitIcon extends StatelessWidget {
   const _ExitIcon();
 
@@ -173,11 +176,7 @@ class _ExitIcon extends StatelessWidget {
           color: AppColors.opponent.withValues(alpha: 0.16),
           shape: BoxShape.circle,
         ),
-        child: const Icon(
-          Icons.logout_rounded,
-          size: 26,
-          color: AppColors.opponent,
-        ),
+        child: const Icon(Icons.logout_rounded, size: 26, color: AppColors.ink),
       ),
     );
   }

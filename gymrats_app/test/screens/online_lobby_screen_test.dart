@@ -3,16 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/config/server_config.dart';
+import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/screens/online_lobby_screen.dart';
 import 'package:gymrats_app/screens/login_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
-import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
+import 'package:gymrats_app/widgets/battle_arena.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
@@ -83,6 +84,13 @@ class _ReadFailureStore extends MemoryAvatarStore {
   }
 }
 
+/// Lets a page transition finish. Once the battle is open its stage keeps
+/// moving (the fighters breathe), so `pumpAndSettle` would never return.
+Future<void> settle(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 1));
+}
+
 Future<InMemoryAuthRepository> loggedIn() async {
   final auth = InMemoryAuthRepository()
     ..addAccount(loginId: 'human', nickname: '로그인사용자', password: 'password1');
@@ -136,17 +144,24 @@ void main() {
       await tester.tap(find.text('확인 (5)'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('자세 세팅 시작'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       session.phase = phase;
       session.notifyListeners();
-      await tester.pumpAndSettle();
+      await settle(tester);
       await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.byType(ExitDialog), findsOneWidget);
       // Cancelling the dialog must preserve the ongoing match.
       await tester.tap(find.text('계속하기'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.byType(OnlineBattleScreen), findsOneWidget);
+      // The stage and the result name the user as their account does.
+      expect(
+        tester
+            .widget<OnlineBattleScreen>(find.byType(OnlineBattleScreen))
+            .playerName,
+        '로그인사용자',
+      );
       // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
       // The battle gets the repository its feedback is uploaded to.
       expect(
@@ -157,9 +172,9 @@ void main() {
       );
       expect(session.left, isFalse);
       await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
+      await settle(tester);
       await tester.tap(find.widgetWithText(TextButton, '게임 나가기'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.text('홈 · 온라인 대결'), findsOneWidget);
       expect(find.byType(OnlineBattleScreen), findsNothing);
       expect(find.byType(OnlineLobbyScreen), findsNothing);
@@ -170,6 +185,82 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('a finished battle hands over to the result: the lobby closes '
+      'under it and the result stays; back from it goes home', (tester) async {
+    final auth = await loggedIn();
+    late _Session session;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OnlineLobbyScreen(
+                    auth: auth,
+                    createSession: (u, t, a) => session = _Session(u, t, a),
+                    createCounter: () => RepCounterViewModel(
+                      camera: FakeCameraService(),
+                      estimator: FakePoseEstimator(),
+                      roundLength: const Duration(days: 1),
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('홈 · 온라인 대결'),
+            ),
+          ),
+        ),
+        onGenerateRoute: (settings) => settings.name == GymRatsApp.resultRoute
+            ? MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => const Scaffold(body: Text('결과 화면')),
+              )
+            : null,
+      ),
+    );
+    await tester.tap(find.text('홈 · 온라인 대결'));
+    await settle(tester);
+    session.found(duration: 30000);
+    await settle(tester);
+    await tester.tap(find.text('확인 (5)'));
+    await settle(tester);
+    await tester.tap(find.text('자세 세팅 시작'));
+    await settle(tester);
+    session
+      ..startAtMs = session.serverNow - 1000
+      ..endAtMs = session.serverNow + 29000
+      ..phase = OnlinePhase.playing
+      ..notifyListeners();
+    await settle(tester);
+    session
+      ..phase = OnlinePhase.finished
+      ..result = {
+        'reason': 'time_up',
+        'players': [
+          {'player_id': 'me', 'outcome': 'win'},
+          {'player_id': 'other', 'outcome': 'loss'},
+        ],
+      }
+      ..notifyListeners();
+    await tester.pump();
+    for (var i = 0; i < 25; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.tap(find.text('결과 보기'));
+    await settle(tester);
+    expect(find.text('결과 화면'), findsOneWidget);
+    expect(find.byType(OnlineBattleScreen), findsNothing);
+    expect(find.byType(OnlineLobbyScreen), findsNothing);
+    expect(session.wasDisposed, isTrue);
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(find.text('홈 · 온라인 대결'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'avatar read error requires retry; never silently queues the wrong avatar',
@@ -294,11 +385,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SafeWarningDialog), findsNothing);
       await tester.tap(find.text('자세 세팅 시작'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.byType(OnlineBattleScreen), findsOneWidget);
-      expect(find.byType(PoseSetupPanel), findsOneWidget);
-      expect(find.byType(PoseSetupTopButtons), findsOneWidget);
-      expect(find.text('실제상대 · 자세 세팅 중'), findsOneWidget);
+      // The setup is on the battle's stage: both still setting up.
+      expect(find.byType(BattleArena), findsOneWidget);
+      expect(find.text('실제상대'), findsOneWidget);
+      expect(find.text('세팅 중'), findsNWidgets(2));
+      expect(find.text('Start'), findsOneWidget);
       expect(camera.startCount, 1);
       session.ready(true);
       await tester.pump();

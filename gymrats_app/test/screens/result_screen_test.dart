@@ -119,6 +119,11 @@ void main() {
               );
             },
           ),
+          GymRatsApp.onlineBattleRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                Scaffold(body: Text('online lobby ${settings.arguments}')),
+          ),
           _ => null,
         },
       ),
@@ -549,6 +554,64 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.text('home'), findsOneWidget);
+  });
+
+  testWidgets('after an online battle 다시 매칭 opens the online lobby with '
+      'the same exercise, in the place of the result', (tester) async {
+    await open(
+      tester,
+      _result(
+        matchup: const Matchup(
+          exercise: ExerciseType.squat,
+          playerName: '우현',
+          opponent: Opponent(name: '진영', isBot: false),
+        ),
+      ),
+    );
+    await tester.tap(find.text('다시 매칭'));
+    await tester.pumpAndSettle();
+    expect(find.text('online lobby ${ExerciseType.squat}'), findsOneWidget);
+    expect(find.byType(ResultScreen), findsNothing);
+    expect(pushes.names, isNot(contains(GymRatsApp.matchingRoute)));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('home'), findsOneWidget);
+  });
+
+  testWidgets('an online battle a player left says so instead of how many '
+      'points apart', (tester) async {
+    BattleResult left(MatchOutcome outcome, BattleDeparture departure) =>
+        BattleResult(
+          matchup: const Matchup(
+            exercise: ExerciseType.pushUp,
+            playerName: '우현',
+            opponent: Opponent(name: '진영', isBot: false),
+          ),
+          myReps: 3,
+          myInvalidReps: 0,
+          opponentReps: 5,
+          myScore: 30,
+          opponentScore: 50,
+          decidedOutcome: outcome,
+          endedAt: DateTime(2026, 11, 12),
+          departure: departure,
+        );
+    await open(tester, left(MatchOutcome.win, BattleDeparture.opponentLeft));
+    expect(find.text('WIN'), findsOneWidget);
+    expect(find.text('상대가 나가서 이겼어요'), findsOneWidget);
+    expect(find.textContaining('점 차이로'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await open(
+      tester,
+      left(MatchOutcome.lose, BattleDeparture.myConnectionLost),
+    );
+    expect(find.text('LOSE'), findsOneWidget);
+    expect(find.text('연결이 끊겨서 졌어요'), findsOneWidget);
+    expect(find.textContaining('점 차이로'), findsNothing);
+    // Without a departure the margin is said as before.
+    await tester.pumpWidget(const SizedBox());
+    await open(tester, left(MatchOutcome.lose, BattleDeparture.none));
+    expect(find.text('20점 차이로 졌어요'), findsOneWidget);
   });
 
   testWidgets('pressing 다시 매칭 twice searches once', (tester) async {
