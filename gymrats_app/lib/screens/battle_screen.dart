@@ -21,7 +21,6 @@ import '../widgets/battle_camera_view.dart';
 import '../widgets/battle_stage_events.dart';
 import '../widgets/battle_stage_model.dart';
 import '../widgets/exit_dialog.dart';
-import '../widgets/pose_silhouette_guide.dart';
 
 /// A battle against the bot, from the pose setup to the end: the fighting
 /// stage above and the user's camera below (the battle arena).
@@ -275,7 +274,10 @@ class _BattleScreenState extends State<BattleScreen>
     final settingUp = setup || stage.phase == BattleStagePhase.countdown;
     final running = counterState.phase == CounterPhase.running;
     final guide = settingUp && running
-        ? _setupGuide(widget.matchup.exercise, ready: state.setup.isReady)
+        ? BattleCameraView.setupGuide(
+            widget.matchup.exercise,
+            ready: state.setup.isReady,
+          )
         : null;
     final Widget camera = state.phase == BattlePhase.failed
         ? _CameraFailed(
@@ -321,21 +323,6 @@ class _BattleScreenState extends State<BattleScreen>
       onShowResult: _openResult,
     );
   }
-
-  /// The setup's guide over the camera for [exercise], and how it was drawn
-  /// ([BattleCameraView.guideFit]): 한상우's push-up silhouette fills a
-  /// cropping camera box. Squats have none yet: the standing silhouette
-  /// (UAT-1 step 5) goes into their case when it comes.
-  static ({Widget widget, BoxFit fit})? _setupGuide(
-    ExerciseType exercise, {
-    required bool ready,
-  }) => switch (exercise) {
-    ExerciseType.pushUp => (
-      widget: PoseSilhouetteGuide(ready: ready),
-      fit: BoxFit.cover,
-    ),
-    ExerciseType.squat => null,
-  };
 
   /// The camera area's one line: what the setup wants before the round,
   /// and for squats in the round, where the user is in the rep.

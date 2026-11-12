@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/battle_camera_view.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
 import 'package:gymrats_app/widgets/squat_height_overlay.dart';
 
 import '../support/pose_fixtures.dart';
+import 'battle_test_support.dart';
 
 Future<void> _pump(WidgetTester tester, BattleCameraView view) =>
     tester.pumpWidget(
@@ -209,6 +213,248 @@ void main() {
     ) async {
       await _pump(tester, const BattleCameraView(controller: null));
       expect(find.byType(FractionallySizedBox), findsNothing);
+      expect(find.byType(BattleGuideOverlay), findsNothing);
+    });
+
+    testWidgets('a cover guide is laid with the share of its box, and a '
+        'whole-picture guide with the whole picture', (tester) async {
+      await _pump(
+        tester,
+        const BattleCameraView(
+          controller: null,
+          guide: SizedBox.expand(key: guideKey),
+        ),
+      );
+      final share = BattleCameraView.coverShare(3 / 4, const Size(360, 387));
+      final overlay = find.byType(BattleGuideOverlay);
+      expect(tester.widget<BattleGuideOverlay>(overlay).share, share);
+      // It lies over the whole picture: the dimming reaches its edges.
+      expect(
+        tester.getRect(overlay),
+        tester.getRect(find.byType(PoseCameraView)),
+      );
+
+      await _pump(
+        tester,
+        const BattleCameraView(
+          controller: null,
+          guide: SizedBox.expand(key: guideKey),
+          guideFit: BoxFit.contain,
+        ),
+      );
+      expect(tester.widget<BattleGuideOverlay>(overlay).share, (
+        width: 1.0,
+        height: 1.0,
+      ));
+    });
+  });
+
+  group("the setup's guide for each exercise", () {
+    test('push-ups get the silhouette, drawn for a cropping camera box, '
+        'ready or not', () {
+      for (final ready in [false, true]) {
+        final guide = BattleCameraView.setupGuide(
+          ExerciseType.pushUp,
+          ready: ready,
+        )!;
+        expect(
+          guide.widget,
+          isA<PoseSilhouetteGuide>().having((g) => g.ready, 'ready', ready),
+        );
+        expect(guide.fit, BoxFit.cover);
+      }
+    });
+
+    test('squats have none yet', () {
+      expect(
+        BattleCameraView.setupGuide(ExerciseType.squat, ready: false),
+        isNull,
+      );
+    });
+  });
+
+  group('around the guide the picture is as dark as outside its outline', () {
+    // The S22's picture (290 x 387) and the share a cropping camera shows.
+    const picture = Size(290, 387);
+    final share = BattleCameraView.coverShare(3 / 4, const Size(360, 387));
+    final guideTop = picture.height * (1 - share.height) / 2;
+
+    Widget overlay(Widget guide) => SizedBox.fromSize(
+      size: picture,
+      child: BattleGuideOverlay(share: share, guide: guide),
+    );
+
+    testWidgets("the strips above and below the silhouette's box are the "
+        "silhouette's own dimming; inside the outline the picture is clear", (
+      tester,
+    ) async {
+      final painted = await paintPicture(
+        tester,
+        overlay(const PoseSilhouetteGuide(ready: false)),
+        size: picture,
+        ground: AppColors.card,
+      );
+      // Inside the silhouette's box but outside its outline: its dimming.
+      final outside = painted.at(5, guideTop + 20);
+      expect(outside, isNot(AppColors.card));
+      // The strips: the same shade, top and bottom, at both sides.
+      for (final (x, y) in [
+        (5.0, 2.0),
+        (5.0, guideTop - 2),
+        (picture.width - 5, 10.0),
+        (5.0, picture.height - guideTop + 2),
+        (picture.width / 2, picture.height - 2),
+      ]) {
+        expect(painted.at(x, y), outside, reason: '($x, $y)');
+      }
+      // The torso inside the outline is not dimmed.
+      expect(
+        painted.at(picture.width / 2, guideTop + share.height * 387 * .45),
+        AppColors.card,
+      );
+      // The guide's dimming is the token's: white under black at 45%.
+      final expected = Color.alphaBlend(
+        AppColors.setupGuideScrim,
+        AppColors.card,
+      );
+      expect(outside.r, closeTo(expected.r, 1 / 255));
+    });
+
+    testWidgets('where a strip meets the box, no lighter or darker line', (
+      tester,
+    ) async {
+      final painted = await paintPicture(
+        tester,
+        overlay(const PoseSilhouetteGuide(ready: false)),
+        size: picture,
+        ground: AppColors.card,
+      );
+      final outside = painted.at(5, guideTop + 20);
+      final bottom = picture.height - guideTop;
+      // The box's edges fall inside a pixel row (37.49 and 349.51).
+      expect(guideTop % 1, isNot(0));
+      for (final edge in [guideTop, bottom]) {
+        for (var y = edge.floor() - 3.0; y <= edge.ceil() + 3; y += 1) {
+          for (final x in [5.0, picture.width - 5]) {
+            expect(painted.at(x, y), outside, reason: '($x, $y)');
+          }
+        }
+      }
+    });
+
+    testWidgets('inside its box, past its first point, the silhouette is '
+        'drawn as it is alone, outline and all', (tester) async {
+      const guide = PoseSilhouetteGuide(ready: true);
+      final height = picture.height * share.height;
+      final over = await paintPicture(
+        tester,
+        overlay(guide),
+        size: picture,
+        ground: AppColors.card,
+      );
+      final alone = await paintPicture(
+        tester,
+        SizedBox.fromSize(
+          size: picture,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: guideTop,
+                width: picture.width,
+                height: height,
+                child: guide,
+              ),
+            ],
+          ),
+        ),
+        size: picture,
+        ground: AppColors.card,
+      );
+      var outline = 0;
+      // The strips reach 1 point into the box: the rows they touch are left.
+      final last = (guideTop + height - 1).floor();
+      for (var y = (guideTop + 1).ceil(); y < last; y++) {
+        for (var x = 0; x < picture.width; x++) {
+          final pixel = alone.at(x.toDouble(), y.toDouble());
+          final drawn = over.at(x.toDouble(), y.toDouble());
+          // Within rounding: here the guide goes through a layer of its own.
+          for (final (a, b) in [
+            (drawn.r, pixel.r),
+            (drawn.g, pixel.g),
+            (drawn.b, pixel.b),
+          ]) {
+            expect(a, closeTo(b, 2 / 255), reason: '($x, $y)');
+          }
+          if (pixel.g > pixel.r + .2) outline += 1;
+        }
+      }
+      // The green outline was among what was compared.
+      expect(outline, greaterThan(500));
+    });
+
+    testWidgets('a guide over the whole picture leaves no strip', (
+      tester,
+    ) async {
+      final painted = await paintPicture(
+        tester,
+        SizedBox.fromSize(
+          size: picture,
+          child: const BattleGuideOverlay(
+            share: (width: 1, height: 1),
+            guide: SizedBox.expand(),
+          ),
+        ),
+        size: picture,
+        ground: AppColors.card,
+      );
+      expect(painted.at(5, 2), AppColors.card);
+      expect(painted.at(5, picture.height - 2), AppColors.card);
+    });
+
+    testWidgets('a narrower share dims the sides instead', (tester) async {
+      final painted = await paintPicture(
+        tester,
+        const SizedBox(
+          width: 300,
+          height: 400,
+          child: BattleGuideOverlay(
+            share: (width: .5, height: 1),
+            guide: SizedBox.expand(),
+          ),
+        ),
+        size: const Size(300, 400),
+        ground: AppColors.card,
+      );
+      final dim = Color.alphaBlend(AppColors.setupGuideScrim, AppColors.card);
+      expect(painted.at(30, 200).r, closeTo(dim.r, 1 / 255));
+      expect(painted.at(270, 200).r, closeTo(dim.r, 1 / 255));
+      expect(painted.at(150, 200), AppColors.card);
+      expect(painted.at(150, 5), AppColors.card);
+    });
+
+    testWidgets('the strips take no taps', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: SizedBox.fromSize(
+              size: picture,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  GestureDetector(onTap: () => taps += 1),
+                  BattleGuideOverlay(share: share, guide: const SizedBox()),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      final box = tester.getRect(find.byType(BattleGuideOverlay));
+      await tester.tapAt(box.topCenter + const Offset(0, 5));
+      await tester.tapAt(box.bottomCenter - const Offset(0, 5));
+      expect(taps, 2);
     });
   });
 }

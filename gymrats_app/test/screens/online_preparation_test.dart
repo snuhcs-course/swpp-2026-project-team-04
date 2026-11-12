@@ -26,6 +26,9 @@ import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
+import 'package:gymrats_app/widgets/pose_camera_view.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
+import 'package:gymrats_app/widgets/squat_height_overlay.dart';
 
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
@@ -344,6 +347,97 @@ void main() {
       await open(tester);
       await pose(tester);
       expect(find.bySemanticsLabel('카메라 전환'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('the push-up silhouette lies over the camera as in the bot '
+        'battle, turns ready with the pose and stays through the countdown; '
+        'the chest lines come with the round', (tester) async {
+      await open(tester);
+      await pose(tester, found: false);
+      final guide = find.byType(PoseSilhouetteGuide);
+      expect(guide, findsOneWidget);
+      expect(tester.widget<PoseSilhouetteGuide>(guide).ready, isFalse);
+      // Laid where a cropping camera would show it, the strips around it
+      // dimmed (the S22's 360 x 387 below the line).
+      final overlay = tester.widget<BattleGuideOverlay>(
+        find.byType(BattleGuideOverlay),
+      );
+      expect(
+        overlay.share,
+        BattleCameraView.coverShare(3 / 4, const Size(360, 387)),
+      );
+      final picture = tester.getRect(find.byType(PoseCameraView));
+      expect(tester.getSize(guide).width, closeTo(picture.width, .01));
+      expect(
+        tester.getSize(guide).height,
+        closeTo(picture.height * overlay.share.height, .01),
+      );
+      expect(tester.getCenter(guide), offsetMoreOrLessEquals(picture.center));
+      expect(find.byType(ChestHeightOverlay), findsNothing);
+
+      await pose(tester);
+      expect(tester.widget<PoseSilhouetteGuide>(guide).ready, isTrue);
+      session.scheduleStart(inMs: 5000);
+      await wait(tester, 100);
+      expect(stage(tester).phase, BattleStagePhase.countdown);
+      expect(guide, findsOneWidget);
+      expect(find.byType(ChestHeightOverlay), findsNothing);
+
+      await play(tester);
+      expect(guide, findsNothing);
+      expect(find.byType(ChestHeightOverlay), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a squat setup has no silhouette yet; the squat lines come '
+        'with the round', (tester) async {
+      await open(tester, exercise: ExerciseType.squat);
+      await pose(tester);
+      expect(find.byType(PoseSilhouetteGuide), findsNothing);
+      expect(find.byType(BattleGuideOverlay), findsNothing);
+      expect(find.byType(SquatHeightOverlay), findsNothing);
+      session.scheduleStart(inMs: 5000);
+      await wait(tester, 100);
+      expect(find.byType(SquatHeightOverlay), findsNothing);
+      await play(tester);
+      expect(find.byType(PoseSilhouetteGuide), findsNothing);
+      expect(find.byType(SquatHeightOverlay), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('no silhouette while the app is away, the camera reopens or '
+        'it has failed', (tester) async {
+      await open(tester);
+      await pose(tester);
+      final guide = find.byType(PoseSilhouetteGuide);
+      expect(guide, findsOneWidget);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      expect(counter.state.phase, isNot(CounterPhase.running));
+      expect(find.byType(BattleCameraView), findsOneWidget);
+      expect(guide, findsNothing);
+
+      // Back, with a camera slow to open.
+      camera.startGate = Completer();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(counter.state.phase, CounterPhase.starting);
+      expect(guide, findsNothing);
+      camera.startGate!.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(counter.state.phase, CounterPhase.running);
+      expect(guide, findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+
+      await open(tester, denied: true);
+      expect(find.byType(PoseSilhouetteGuide), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
 

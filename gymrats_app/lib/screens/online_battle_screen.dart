@@ -419,7 +419,16 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       cameraFailed: cameraFailed,
     );
     final setup = stage.phase == BattleStagePhase.setup;
+    // The setup's guide stays up to the start, as in the bot battle, and
+    // the round's height lines come with the round.
+    final settingUp = setup || stage.phase == BattleStagePhase.countdown;
     final pushUp = session.exercise == ExerciseType.pushUp;
+    final guide = settingUp && running
+        ? BattleCameraView.setupGuide(
+            session.exercise,
+            ready: _setupStatus.isReady,
+          )
+        : null;
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -440,8 +449,12 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                   controller: _counter.cameraController,
                   frame: running ? counter.lastFrame : null,
                   mirror: _counter.isFrontCamera,
-                  chestSnapshot: pushUp && !setup ? counter.snapshot : null,
-                  squatSnapshot: !pushUp && !setup ? counter.snapshot : null,
+                  chestSnapshot: pushUp && !settingUp ? counter.snapshot : null,
+                  squatSnapshot: !pushUp && !settingUp
+                      ? counter.snapshot
+                      : null,
+                  guide: guide?.widget,
+                  guideFit: guide?.fit ?? BoxFit.cover,
                 ),
           onLeave: () => unawaited(_exit()),
           hint: setup ? _setupHint : _roundHint,

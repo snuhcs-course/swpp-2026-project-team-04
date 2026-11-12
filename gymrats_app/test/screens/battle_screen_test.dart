@@ -265,6 +265,10 @@ void main() {
         closeTo(picture.height * area.height, .01),
       );
       expect(tester.getCenter(guide), offsetMoreOrLessEquals(picture.center));
+      // The strips above and below it are dimmed as its own outside is.
+      final overlay = find.byType(BattleGuideOverlay);
+      expect(tester.widget<BattleGuideOverlay>(overlay).share, area);
+      expect(tester.getRect(overlay), picture);
       // The chest lines are the round's, not the setup's.
       expect(find.byType(ChestHeightOverlay), findsNothing);
       await frame(tester, 1);

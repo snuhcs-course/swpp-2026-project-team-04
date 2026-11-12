@@ -441,6 +441,11 @@ void main() {
       );
     });
 
+    test('the dimming around the setup guide is black at 45%, as the '
+        'push-up silhouette dims outside its outline', () {
+      expect(AppColors.setupGuideScrim, const Color(0x73000000));
+    });
+
     test('the stage\'s bands slant 12 degrees, and each call is its own', () {
       final slant = AppHighlight.battleSlant;
       expect(slant.entry(0, 1), closeTo(math.tan(-12 * math.pi / 180), 1e-12));

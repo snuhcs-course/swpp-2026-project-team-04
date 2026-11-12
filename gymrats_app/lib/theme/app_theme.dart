@@ -78,6 +78,12 @@ abstract final class AppColors {
   /// gray figure standing on it.
   static const pictogramFloor = Color(0xFFB9C0CC);
 
+  /// The dimming over the battle camera's picture around the setup's guide,
+  /// where the push-up silhouette's box does not reach: the same black at
+  /// 45% that the silhouette (`PoseSilhouetteGuide`) lays outside its
+  /// outline, so the whole picture outside the outline is one shade.
+  static const setupGuideScrim = Color(0x73000000);
+
   /// Text on an [ink] fill, such as the 대결 시작 button: the one exception
   /// to ink text, since a dark fill needs light text (palette B).
   static const onInk = Color(0xFFFFFFFF);
