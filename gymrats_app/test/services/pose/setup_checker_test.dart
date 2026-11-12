@@ -588,7 +588,8 @@ void main() {
       }
     });
 
-    test('the screen says what the voice says, but for the missing parts', () {
+    test('the screen says what the voice says, but for one or two missing '
+        'parts', () {
       for (final ready in [false, true]) {
         for (final reason in SetupReason.values) {
           if (reason == SetupReason.missingParts && !ready) continue;
@@ -630,10 +631,46 @@ void main() {
       expect(words([BodyPart.hands, BodyPart.ankles]), '손, 발목이 화면에 안 보여요.');
       expect(words([BodyPart.ankles, BodyPart.hands]), '발목, 손이 화면에 안 보여요.');
       expect(words([BodyPart.knees, BodyPart.hips]), '무릎, 엉덩이가 화면에 안 보여요.');
-      expect(
-        words([BodyPart.head, BodyPart.shoulders, BodyPart.elbows]),
-        '머리, 어깨, 팔꿈치가 화면에 안 보여요.',
+    });
+
+    test('three or more missing parts are not listed: the voice line for '
+        'the whole body', () {
+      String words(List<BodyPart> parts) =>
+          status(SetupReason.missingParts, parts: parts).message;
+      for (final parts in const [
+        [BodyPart.head, BodyPart.shoulders, BodyPart.elbows],
+        [BodyPart.head, BodyPart.shoulders, BodyPart.elbows, BodyPart.hands],
+        [BodyPart.hips, BodyPart.knees, BodyPart.ankles],
+        [
+          BodyPart.head,
+          BodyPart.shoulders,
+          BodyPart.hips,
+          BodyPart.knees,
+          BodyPart.ankles,
+        ],
+      ]) {
+        expect(words(parts), VoiceCue.missingParts.text, reason: '$parts');
+      }
+    });
+
+    test('a squat with the hips, knees and feet out of the picture says to '
+        'show the whole body', () {
+      final status = checker(ExerciseType.squat).update(
+        standingFrame(
+          showHips: true,
+          hide: {
+            BodyLandmark.leftHip,
+            BodyLandmark.leftKnee,
+            BodyLandmark.rightAnkle,
+          },
+        ),
       );
+      expect(status.missingParts, [
+        BodyPart.hips,
+        BodyPart.knees,
+        BodyPart.ankles,
+      ]);
+      expect(status.message, '몸 전체가 화면에 보이게 해 주세요.');
     });
 
     test('with no part named, the voice line for the whole body', () {

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/widgets/battle_banner.dart';
@@ -589,6 +592,128 @@ void main() {
           );
         });
       }
+    }
+  });
+
+  group('every setup hint fits its two lines at 1.3x text on a 360-wide '
+      'phone', () {
+    String words(SetupReason reason, [List<BodyPart> parts = const []]) =>
+        SetupStatus(
+          reason: reason,
+          isReady: false,
+          readyProgress: 0,
+          missingParts: parts,
+        ).message;
+
+    /// The parts the setup checks for [exercise], in the order it names
+    /// them: the head first, then the exercise's own.
+    const checked = {
+      ExerciseType.pushUp: [
+        BodyPart.head,
+        BodyPart.shoulders,
+        BodyPart.elbows,
+        BodyPart.hands,
+      ],
+      ExerciseType.squat: [
+        BodyPart.head,
+        BodyPart.shoulders,
+        BodyPart.hips,
+        BodyPart.knees,
+        BodyPart.ankles,
+      ],
+    };
+
+    final hints = <String>{
+      for (final reason in SetupReason.values) words(reason),
+      const SetupStatus(
+        reason: SetupReason.ready,
+        isReady: true,
+        readyProgress: 1,
+      ).message,
+      for (final parts in checked.values) ...[
+        for (final (i, one) in parts.indexed) ...[
+          words(SetupReason.missingParts, [one]),
+          for (final two in parts.skip(i + 1))
+            words(SetupReason.missingParts, [one, two]),
+        ],
+        words(SetupReason.missingParts, parts),
+      ],
+      // The online setup's own lines and the squat round's.
+      '재연결 중 · 준비 상태 확인 중…',
+      '상대 준비를 기다리는 중…',
+      '자세 확인! 3초 후 자동으로 준비해요',
+      '10초 후 함께 시작',
+      '일어선 상태 · 무릎 가까이 앉아 주세요',
+      '앉은 상태 · 이제 일어서세요',
+      '정면에서 전신이 보이도록 서 주세요',
+    };
+
+    test('the list holds every named line the checker can give', () {
+      expect(hints, contains('어깨, 팔꿈치가 화면에 안 보여요.'));
+      expect(hints, contains('어깨, 엉덩이가 화면에 안 보여요.'));
+      expect(hints, contains('몸 전체가 화면에 보이게 해 주세요.'));
+      // 4 + 5 single parts, 6 + 10 pairs, the whole-body line, 11 more
+      // reasons (ready twice) and 7 other lines.
+      expect(hints.length, greaterThanOrEqualTo(40));
+    });
+
+    // The online round's lines (`OnlineBattleScreen._roundHint`): there is
+    // no ready button then, so the hint has the row's whole width.
+    const serverCodes = [
+      'ALREADY_IN_MATCH',
+      'ALREADY_QUEUED',
+      'FORBIDDEN',
+      'INVALID_AVATAR',
+      'INVALID_PAYLOAD',
+      'INVALID_STATE',
+      'MATCH_NOT_FOUND',
+      'QUEUE_NOT_FOUND',
+      'RATE_LIMITED',
+      'REP_CONFLICT',
+      'REP_OUT_OF_ORDER',
+      'REQUEST_ID_REUSED',
+      'UNKNOWN_TYPE',
+      'UNSUPPORTED_VERSION',
+    ];
+    // The session's other errors end the battle (phase failed): they show
+    // whole on the ended page, never in this line.
+    final roundHints = [
+      '서버의 최종 결과를 기다리는 중…',
+      '잘못된 서버 데이터를 무시했어요.',
+      for (final code in serverCodes) '온라인 요청 오류: $code',
+    ];
+
+    testWidgets("the online round's lines, with no ready button", (
+      tester,
+    ) async {
+      for (final hint in roundHints) {
+        await _pump(tester, textScale: 1.3, onLeave: () {}, hint: hint);
+        expect(tester.takeException(), isNull, reason: hint);
+        final paragraph = tester.renderObject<RenderParagraph>(find.text(hint));
+        expect(paragraph.didExceedMaxLines, isFalse, reason: hint);
+      }
+    });
+
+    for (final readyLabel in ['시작', '준비', '준비 취소']) {
+      testWidgets('beside "$readyLabel"', (tester) async {
+        for (final hint in hints) {
+          await _pump(
+            tester,
+            textScale: 1.3,
+            onLeave: () {},
+            hint: hint,
+            readyLabel: readyLabel,
+            onReady: () {},
+            onSwitchCamera: () {},
+            setupProgress: 0.3,
+          );
+          expect(tester.takeException(), isNull, reason: hint);
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.text(hint),
+          );
+          expect(paragraph.didExceedMaxLines, isFalse, reason: hint);
+        }
+      });
     }
   });
 

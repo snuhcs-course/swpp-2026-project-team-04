@@ -128,9 +128,9 @@ class SetupStatus {
   final List<BodyPart> missingParts;
 
   /// Message telling the user what to do next, in the same words as the
-  /// setup's voice cues (`VoiceCue`), so the screen and the voice agree. The
-  /// missing parts are named one by one (UAT-1 AC1), where the voice says
-  /// only to show the whole body.
+  /// setup's voice cues (`VoiceCue`), so the screen and the voice agree. One
+  /// or two missing parts are named (UAT-1 AC1), where the voice says only
+  /// to show the whole body; three or more read as the voice's line too.
   String get message {
     if (isReady) return '준비 완료!';
     switch (reason) {
@@ -157,11 +157,17 @@ class SetupStatus {
     }
   }
 
-  /// "손이 화면에 안 보여요.", "손, 발목이 화면에 안 보여요.": the parts in
-  /// order, the subject marker fitted to the last one. With no part named,
-  /// the voice cue's line.
+  /// At most this many missing parts are named; with more, the list would
+  /// not fit the battle's two-line hint, and the body is mostly out anyway.
+  static const _namedPartsAtMost = 2;
+
+  /// "손이 화면에 안 보여요.", "손, 발목이 화면에 안 보여요.": one or two parts
+  /// in order, the subject marker fitted to the last one. With none, or with
+  /// more than [_namedPartsAtMost], the voice cue's line for the whole body.
   static String _notVisible(List<BodyPart> parts) {
-    if (parts.isEmpty) return '몸 전체가 화면에 보이게 해 주세요.';
+    if (parts.isEmpty || parts.length > _namedPartsAtMost) {
+      return '몸 전체가 화면에 보이게 해 주세요.';
+    }
     final names = parts.map((p) => p.label).join(', ');
     return '$names${_subjectMarker(parts.last.label)} 화면에 안 보여요.';
   }
