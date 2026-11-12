@@ -22,12 +22,17 @@ import '../widgets/battle_online_events.dart';
 import '../widgets/battle_stage_model.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
+import 'battle_screen.dart' show BattleScreen, BattleSetupListener;
 
 /// An online battle, from the camera preparation to the end: the fighting
 /// stage above and the user's camera below (the battle arena), fed by the
 /// session. When the server's result is in and its ending has played,
 /// 결과 보기 opens the result screen in its place. A battle that ends
 /// without a result (cancelled, void, a connection error) says so here.
+///
+/// Sounds hook in from outside, as on the bot's [BattleScreen], without
+/// changing this screen: [onCue] for the stage's moments and [onSetup] for
+/// the setup's hints.
 class OnlineBattleScreen extends StatefulWidget {
   const OnlineBattleScreen({
     super.key,
@@ -37,6 +42,8 @@ class OnlineBattleScreen extends StatefulWidget {
     this.formReports,
     this.userRepository,
     this.playerName = '나',
+    this.onCue,
+    this.onSetup,
   });
   final OnlineBattleSession session;
   final RepCounterViewModel Function()? createCounter;
@@ -50,6 +57,20 @@ class OnlineBattleScreen extends StatefulWidget {
 
   /// The user's nickname, for the stage and the result.
   final String playerName;
+
+  /// Called once for each moment of the stage a sound can follow, as it
+  /// shows ([BattleArena.onCue]), as on [BattleScreen.onCue].
+  final ValueChanged<BattleStageCue>? onCue;
+
+  /// Called before the round on every change while the pose is checked,
+  /// as on [BattleScreen.onSetup]: the setup's latest status, and the time
+  /// left before the round starts (the server's start, once both are
+  /// ready), null while not counting down. Unlike the bot's, the count
+  /// does not stop when the pose is lost: once the server has set the
+  /// start, ready cannot be taken back, so the status may say what to fix
+  /// while the time counts.
+  final BattleSetupListener? onSetup;
+
   @override
   State<OnlineBattleScreen> createState() => _OnlineBattleScreenState();
 }
@@ -260,7 +281,31 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     final theirs = OnlineStageEvents.opponentRep(_theirs, session);
     _theirs = OnlineStageEvents.opponentSeen(session);
     if (theirs != null) _stage.rep(theirs);
+    _tellSetup();
     if (mounted) setState(() {});
+  }
+
+  /// Gives [OnlineBattleScreen.onSetup] the setup's status and the time to
+  /// the start while the pose is checked before the round, as the bot
+  /// screen does: through the setup and the countdown, not after the start.
+  void _tellSetup() {
+    final listen = widget.onSetup;
+    if (listen == null || _roundStarted || session.terminal) return;
+    if (_counter.state.phase != CounterPhase.running) return;
+    if (session.phase != OnlinePhase.preparing &&
+        session.phase != OnlinePhase.scheduled) {
+      return;
+    }
+    listen(_setupStatus, _startIn);
+  }
+
+  /// The time left before the round starts, once both are ready and the
+  /// server has set the start; null before that.
+  Duration? get _startIn {
+    final at = session.startAtMs;
+    if (session.phase != OnlinePhase.scheduled || at == null) return null;
+    final left = at - session.serverNow;
+    return Duration(milliseconds: left < 0 ? 0 : left);
   }
 
   void _onCounter() {
@@ -289,6 +334,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       session.ready(false);
     }
     _syncAutoReady();
+    _tellSetup();
     if (mounted) setState(() {});
   }
 
@@ -439,6 +485,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         body: BattleArena(
           controller: _stage,
           state: stage,
+          onCue: widget.onCue,
           camera: cameraFailed
               ? _CameraTrouble(
                   onRetry: counter.phase == CounterPhase.permissionDenied

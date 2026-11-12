@@ -11,9 +11,11 @@ import '../services/user/avatar_store.dart';
 import '../services/user/user_repository.dart';
 import '../services/online/online_battle_session.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_stage_model.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
+import 'battle_screen.dart' show BattleSetupListener;
 import 'matching_screen.dart';
 import 'online_battle_screen.dart';
 import 'online_synthetic_battle_screen.dart';
@@ -37,6 +39,8 @@ class OnlineLobbyScreen extends StatefulWidget {
     this.avatarStore,
     this.autoJoin = true,
     this.userRepository,
+    this.onCue,
+    this.onSetup,
   });
   final AuthRepository auth;
   final ExerciseType exercise;
@@ -50,6 +54,13 @@ class OnlineLobbyScreen extends StatefulWidget {
   /// Where the battle's form feedback is uploaded; null keeps it on the
   /// phone only.
   final UserRepository? userRepository;
+
+  /// Passed on to the battle it opens ([OnlineBattleScreen.onCue] and
+  /// [OnlineBattleScreen.onSetup]), so sound hooks in where the app builds
+  /// this lobby, without changing it.
+  final ValueChanged<BattleStageCue>? onCue;
+  final BattleSetupListener? onSetup;
+
   @override
   State<OnlineLobbyScreen> createState() => _OnlineLobbyScreenState();
 }
@@ -180,6 +191,8 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
                 createCounter: widget.createCounter,
                 userRepository: widget.userRepository,
                 playerName: widget.auth.session?.account.nickname ?? '나',
+                onCue: widget.onCue,
+                onSetup: widget.onSetup,
               ),
       ),
     );

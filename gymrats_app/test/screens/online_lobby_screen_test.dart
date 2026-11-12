@@ -20,7 +20,9 @@ import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
+import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/services/user/avatar_store.dart';
+import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:provider/provider.dart';
 
 // The battle server's own default ready limit, read from the sibling server.
@@ -453,6 +455,54 @@ void main() {
     await tester.tap(find.text('자세 세팅 시작'));
     await settle(tester);
     expect(find.byType(OnlineBattleScreen), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('the sound hooks given to the lobby reach the battle it '
+      'opens', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final auth = await loggedIn();
+    void onCue(BattleStageCue cue) {}
+    void onSetup(SetupStatus status, Duration? startIn) {}
+    late _Session session;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: OnlineLobbyScreen(
+          autoJoin: false,
+          auth: auth,
+          createSession: (u, t, a) => session = _Session(u, t, a),
+          createCounter: () => RepCounterViewModel(
+            camera: FakeCameraService(),
+            estimator: FakePoseEstimator(),
+            roundLength: const Duration(days: 1),
+          ),
+          onCue: onCue,
+          onSetup: onSetup,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('온라인 상대 찾기'));
+    await tester.tap(find.text('온라인 상대 찾기'));
+    await tester.pump();
+    session.found(duration: 30000);
+    await tester.pump();
+    // The safety warning opens, then closes by itself after 5 s.
+    await tester.pump();
+    expect(find.byType(SafeWarningDialog), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('자세 세팅 시작'));
+    await settle(tester);
+    final battle = tester.widget<OnlineBattleScreen>(
+      find.byType(OnlineBattleScreen),
+    );
+    expect(battle.onCue, onCue);
+    expect(battle.onSetup, onSetup);
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });

@@ -11,6 +11,8 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/screens/battle_screen.dart'
+    show BattleSetupListener;
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
@@ -124,6 +126,8 @@ void main() {
     RepJudge? judge,
     ExerciseType exercise = ExerciseType.pushUp,
     double textScale = 1,
+    ValueChanged<BattleStageCue>? onCue,
+    BattleSetupListener? onSetup,
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = const Size(360, 780);
@@ -183,6 +187,8 @@ void main() {
               readyDelay: Duration.zero,
               dropDelay: Duration.zero,
             ),
+            onCue: onCue,
+            onSetup: onSetup,
           ),
         ),
       ),
@@ -1189,6 +1195,122 @@ void main() {
       await tester.tap(find.text('준비'));
       await tester.pump(const Duration(seconds: 4));
       expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('sound hooks, as on the bot screen', () {
+    testWidgets("onCue hears the stage's moments: 3, 2, 1 and GO!", (
+      tester,
+    ) async {
+      final cues = <BattleStageCue>[];
+      void hear(BattleStageCue cue) => cues.add(cue);
+      await open(tester, onCue: hear);
+      expect(tester.widget<BattleArena>(find.byType(BattleArena)).onCue, hear);
+      await pose(tester);
+      session.scheduleStart(inMs: 3000);
+      await wait(tester, 3400);
+      expect(
+        cues.map((cue) => (cue.kind, cue.number)).toList(),
+        containsAllInOrder([
+          (BattleCueKind.countdown, 3),
+          (BattleCueKind.countdown, 2),
+          (BattleCueKind.countdown, 1),
+          (BattleCueKind.go, null),
+        ]),
+      );
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('onSetup hears the setup while the pose is checked, with the '
+        "time to the server's start once it is set, and nothing after it", (
+      tester,
+    ) async {
+      final heard = <(SetupReason, bool, Duration?)>[];
+      await open(
+        tester,
+        onSetup: (status, startIn) =>
+            heard.add((status.reason, status.isReady, startIn)),
+      );
+      await pose(tester, found: false);
+      expect(heard.last, (SetupReason.noPerson, false, null));
+      await pose(tester);
+      expect(heard.last, (SetupReason.ready, true, null));
+
+      // Both ready: the server sets the start 5 s ahead.
+      session.scheduleStart(inMs: 5000);
+      await tester.pump();
+      final (reason, ready, startIn) = heard.last;
+      expect((reason, ready), (SetupReason.ready, true));
+      expect(startIn!.inMilliseconds, inInclusiveRange(4900, 5000));
+      // It follows the server's start, as the stage's countdown does.
+      session.startAtMs = session.serverNow + 2500;
+      session.notifyListeners();
+      await pose(tester);
+      expect(heard.last.$3!.inMilliseconds, inInclusiveRange(2400, 2500));
+
+      // The start passes on the phone's clock while the server still says
+      // scheduled: the round is on, and the setup is over.
+      final before = heard.length;
+      session.startAtMs = session.serverNow - 1;
+      session.endAtMs = session.startAtMs! + session.durationMs;
+      session.notifyListeners();
+      await tester.pump();
+      await pose(tester);
+      expect(session.phase, OnlinePhase.scheduled);
+      expect(heard.length, before);
+
+      await play(tester);
+      final count = heard.length;
+      await pose(tester);
+      await pose(tester, found: false);
+      expect(heard.length, count);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('onSetup keeps counting to the start when the pose is lost '
+        'once the server has set it, and is quiet once the battle ended', (
+      tester,
+    ) async {
+      final heard = <(SetupReason, Duration?)>[];
+      await open(
+        tester,
+        onSetup: (status, startIn) => heard.add((status.reason, startIn)),
+      );
+      await pose(tester);
+      session.scheduleStart(inMs: 5000);
+      await tester.pump();
+      await pose(tester, found: false);
+      final (reason, startIn) = heard.last;
+      expect(reason, SetupReason.noPerson);
+      expect(startIn, isNotNull);
+
+      session.phase = OnlinePhase.cancelled;
+      session.notifyListeners();
+      await tester.pump();
+      final count = heard.length;
+      await pose(tester);
+      session.notifyListeners();
+      await tester.pump();
+      expect(heard.length, count);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('onSetup is quiet while the camera is not running', (
+      tester,
+    ) async {
+      final heard = <SetupStatus>[];
+      await open(tester, onSetup: (status, _) => heard.add(status));
+      await pose(tester);
+      expect(heard, isNotEmpty);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      final count = heard.length;
+      session.notifyListeners();
+      await tester.pump();
+      expect(heard.length, count);
       await tester.pumpWidget(const SizedBox());
     });
   });
