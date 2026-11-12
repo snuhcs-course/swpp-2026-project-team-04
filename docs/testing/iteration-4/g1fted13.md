@@ -139,11 +139,11 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `6a8efba`, wit
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/13 | CI comment "Tests and coverage (GitHub Actions)" on the W2 PR |
-| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the CI comment | 11/13 | same |
-| Service | flutter_test, MockClient, fakes | 85% | TODO(Woohyun Song): from the CI comment | 11/13 | same |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the CI comment | 11/13 | same |
-| API server | pytest, pytest-django, pytest-cov | 90% | not run here; `server/` unchanged | 11/13 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 97.4% (266/273) | 11/13 | CI comment "Tests and coverage (GitHub Actions)" on PR #50, commit `7f12f3e`, [run 43260166309](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43260166309) |
+| ViewModel | flutter_test, fakes | 90% | 96.6% (1096/1135) | 11/13 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 94.9% (2447/2578) | 11/13 | same CI comment |
+| View | flutter_test (widget) | 75% | 94.1% (5924/6295) | 11/13 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/13 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `7f12f3e` |
 
 - **Tests:** `flutter test` had 2113 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as on 11-08, and W2 does not touch them:
@@ -159,8 +159,12 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `6a8efba`, wit
   - `ownership_guard.py --check-diff` flags only the 6 files #49 brought: `setup_screen.dart`, `pose_silhouette_guide.dart` and its test, and 한상우's three notes. This is expected until #49 is merged into `main`.
   - Every other file outside W2's list is covered by an approved exception line.
   - Server `pytest` was not run, because `server/` did not change.
-- **Coverage:** TODO(Woohyun Song): fill from the PR's CI comment (commit, run link, per-layer numbers, any test file left out by CI's time limit).
-- **Shortfalls:** TODO(Woohyun Song): after the CI comment.
+- **Coverage:** from the CI comment on PR #50 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/50#issuecomment-6829754908)), commit `7f12f3e` (2026-11-13 01:41 KST; the app and server jobs both succeeded; [run 43260166309](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43260166309)). `7f12f3e` changes only these notes on top of `6a8efba`.
+  - App total 94.6% (9972/10537); Other 93.4% (239/256).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2113 passed, 10 skipped, 0 failed), the same as on this PC.
+  - The drawings fixture (`battle_art_drawings.json`) was recorded on Windows. It passes on CI's Linux too.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/result_screen_test.dart`, as on 11-08 and 11-11. Its tests still ran and passed in `flutter test`. So the two places W2 changed in `result_screen.dart` (under its exception) are not in the View number.
+- **Shortfalls:** none; every layer and the server meet their targets.
 - **Screen readers:** widget tests check the words of the stage and the camera area through the semantics tree: the labels, the live-region announcements and the safety picture's label. TalkBack on a real phone was **not** checked.
 - **Manual check (2026-11-13, the user, on a phone):** the user's words: "폰 확인을 마쳤고 대결은 문제 없어." The follow-ups below show that the setup, the matching radar and the match-found screen were seen on the phone. The phone check lists are in the PR.
   - TODO(Woohyun Song): the phone model(s) and Android version.
