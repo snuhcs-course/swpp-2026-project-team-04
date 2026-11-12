@@ -396,7 +396,7 @@ void main() {
       expect(find.byType(BattleArena), findsOneWidget);
       expect(find.text('실제상대'), findsOneWidget);
       expect(find.text('세팅 중'), findsNWidgets(2));
-      expect(find.text('Start'), findsOneWidget);
+      expect(find.text('준비'), findsOneWidget);
       expect(camera.startCount, 1);
       session.ready(true);
       await tester.pump();

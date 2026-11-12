@@ -85,7 +85,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   DateTime? _autoReadyAt;
 
   /// The user cancelled ready: no auto ready until the pose is lost and
-  /// found again, or they press Start.
+  /// found again, or they press 준비.
   bool _autoReadyPaused = false;
 
   /// Ready was sent and the server has not confirmed it yet, so it is not
@@ -127,7 +127,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _autoReadyAt = null;
   }
 
-  /// Start or 준비 취소. Cancelling pauses the auto ready.
+  /// 준비 or 준비 취소. Cancelling pauses the auto ready.
   void _toggleReady() {
     final cancelling = _iAmReady;
     _autoReadyPaused = cancelling;
@@ -312,7 +312,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   /// The camera area's one line before the start: what the setup wants, or
   /// that the user waits for the opponent.
   String? get _setupHint {
-    if (!session.connected) return '재연결 중 · 준비 상태를 확인하고 있어요.';
+    if (!session.connected) return '재연결 중 · 준비 상태 확인 중…';
     if (_iAmReady) return '상대 준비를 기다리는 중…';
     final seconds = _autoReadySeconds;
     if (seconds != null) return '자세 확인! $seconds초 후 자동으로 준비해요';
@@ -323,7 +323,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   String? get _roundHint {
     if (session.phase == OnlinePhase.scheduled) {
       // The reconnect band is the round's; before it, the hint says so.
-      if (!session.connected) return '재연결 중 · 준비 상태를 확인하고 있어요.';
+      if (!session.connected) return '재연결 중 · 준비 상태 확인 중…';
       // Until the stage counts 3, 2, 1 itself.
       final seconds = session.countdownSeconds;
       return seconds > 3 ? '$seconds초 후 함께 시작' : null;
@@ -458,7 +458,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                 ),
           onLeave: () => unawaited(_exit()),
           hint: setup ? _setupHint : _roundHint,
-          readyLabel: setup ? (_iAmReady ? '준비 취소' : 'Start') : null,
+          readyLabel: setup ? (_iAmReady ? '준비 취소' : '준비') : null,
           onReady: setup && session.canReady && (_iAmReady || _setupReady)
               ? _toggleReady
               : null,

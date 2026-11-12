@@ -219,7 +219,7 @@ void main() {
 
   group('before the round', () {
     testWidgets('opens on the setup: the band, my tag setting up and the '
-        "bot's ready, the setup bar, the hint, and Start, which waits for a "
+        "bot's ready, the setup bar, the hint, and 시작, which waits for a "
         'ready pose', (tester) async {
       await open(tester);
       expect(stage(tester).phase, BattleStagePhase.setup);
@@ -233,10 +233,10 @@ void main() {
       expect(find.text('0:30'), findsOneWidget);
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
       expect(find.bySemanticsLabel('카메라 전환'), findsOneWidget);
-      expect(canPress(tester, 'Start'), isFalse);
+      expect(canPress(tester, '시작'), isFalse);
       await frame(tester, 1, found: false);
       expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
-      expect(canPress(tester, 'Start'), isFalse);
+      expect(canPress(tester, '시작'), isFalse);
       expect(opponent.startCount, 0);
       await captureFlowSnapshot('ai-battle-setup');
       expect(tester.takeException(), isNull);
@@ -375,10 +375,10 @@ void main() {
       expect(find.text('3'), findsOneWidget);
       expect(find.text('세팅 중'), findsNothing);
       // The setup bar and the camera switch are for setting up; the stage
-      // counts now. Start may still begin the round at once.
+      // counts now. 시작 may still begin the round at once.
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsNothing);
       expect(find.bySemanticsLabel('카메라 전환'), findsNothing);
-      expect(canPress(tester, 'Start'), isTrue);
+      expect(canPress(tester, '시작'), isTrue);
       await wait(tester, 1000);
       await frame(tester, 2);
       expect(find.text('2'), findsOneWidget);
@@ -396,21 +396,21 @@ void main() {
       expect(stage(tester).myScore, 0);
       expect(stage(tester).phase, BattleStagePhase.playing);
       expect(opponent.startCount, 1);
-      expect(find.text('Start'), findsNothing);
+      expect(find.text('시작'), findsNothing);
       expect(find.bySemanticsLabel('카메라 전환'), findsNothing);
       await wait(tester, 900);
       expect(cues, ['countdown 3', 'countdown 2', 'countdown 1', 'go']);
       await close(tester);
     });
 
-    testWidgets('Start in the countdown begins the round at once, with GO!', (
+    testWidgets('시작 in the countdown begins the round at once, with GO!', (
       tester,
     ) async {
       await open(tester);
       await frame(tester, 1);
       await wait(tester, 300);
       expect(find.text('3'), findsOneWidget);
-      await tester.tap(find.text('Start'));
+      await tester.tap(find.text('시작'));
       await wait(tester, 50);
       expect(viewModel.state.started, isTrue);
       expect(find.text('GO!'), findsOneWidget);
@@ -513,12 +513,12 @@ void main() {
             .update(frame, phonePropped: propped)
             .message;
 
-    /// Nothing counts down, nor has the round begun, and Start waits.
+    /// Nothing counts down, nor has the round begun, and 시작 waits.
     void notCounting(WidgetTester tester) {
       expect(viewModel.state.startIn, isNull);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect(viewModel.state.started, isFalse);
-      expect(canPress(tester, 'Start'), isFalse);
+      expect(canPress(tester, '시작'), isFalse);
       expect(opponent.startCount, 0);
     }
 

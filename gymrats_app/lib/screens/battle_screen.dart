@@ -27,7 +27,7 @@ import '../widgets/exit_dialog.dart';
 ///
 /// It opens on the setup, in the same layout: the user's pose is checked
 /// while the bot stands ready, and once the pose holds, the setup's count to
-/// the start is the stage's 3, 2, 1 and GO!. Start begins the round at once.
+/// the start is the stage's 3, 2, 1 and GO!. 시작 begins the round at once.
 /// The screen stays upright throughout. Back and the leave button ask before
 /// leaving, and leaving keeps nothing. When a KO or the time ends the battle
 /// and its ending has played, 결과 보기 opens the result screen in this one's
@@ -314,7 +314,7 @@ class _BattleScreenState extends State<BattleScreen>
       onCue: widget.onCue,
       onLeave: () => unawaited(_askToLeave()),
       hint: _hint(state, counterState, stage.phase),
-      readyLabel: settingUp ? 'Start' : null,
+      readyLabel: settingUp ? '시작' : null,
       onReady: settingUp && state.canStart ? viewModel.startNow : null,
       onSwitchCamera: setup && running && counter.canSwitchCamera
           ? () => unawaited(counter.switchCamera())

@@ -132,7 +132,7 @@ class BattleState {
   /// round starts by itself. Null while not counting down.
   final Duration? startIn;
 
-  /// Whether the setup's Start button may begin the round now: before it,
+  /// Whether the setup's 시작 button may begin the round now: before it,
   /// with the camera running and the pose ready.
   bool get canStart => !started && phase == BattlePhase.setup && setup.isReady;
 
@@ -193,7 +193,7 @@ class BattleState {
 ///
 /// Before the round a [SetupChecker] checks the user's pose on the camera's
 /// frames. Once it is ready and stays so for the setup's auto start delay,
-/// the round begins (the setup's Start button begins it at once): the
+/// the round begins (the setup's 시작 button begins it at once): the
 /// counter's reps and clock start from zero, and the opponent starts.
 /// Without a setup check the round begins as soon as the camera runs.
 ///
@@ -369,7 +369,7 @@ class BattleViewModel extends ChangeNotifier {
   /// Opens the camera; the setup, then the round, begin when it runs.
   Future<void> start() => counter.start();
 
-  /// Begins the round now, as the setup's Start button does; only while
+  /// Begins the round now, as the setup's 시작 button does; only while
   /// [BattleState.canStart].
   void startNow() {
     if (_state.canStart) _beginRound();

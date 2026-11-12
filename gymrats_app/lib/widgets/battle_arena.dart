@@ -48,7 +48,7 @@ class BattleStageController {
 
   /// The round has started now: "GO!" shows at once, also when the
   /// countdown was cut short or never ran (a bot battle started from the
-  /// setup's Start button). A countdown that ends about now keeps its own
+  /// setup's 시작 button). A countdown that ends about now keeps its own
   /// moment.
   void go() => _fx.countDown(0, _now);
 
