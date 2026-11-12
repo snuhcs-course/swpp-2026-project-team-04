@@ -285,3 +285,267 @@ W1 PR #45에 Codex 리뷰 3건이 달렸고, 현우가 그중 하나로 이슈 #
 W2 브랜치에도 최신 feat/home_lobby를 다시 머지해 둬. 커밋 안 한 W2 변경은 지금처럼 그대로 지켜 줘.
 답글 초안은 바뀐 내용(닉네임은 남은 폭, 결과 화면은 무효 횟수 포함)에 맞게 고쳐서 다시 보여 줘. 답글은 내가 GitHub에서 직접 올릴게.
 </pasted_content id=\"02af\">"
+
+## 2026-11-13 · Woohyun Song · feat/battle_screen_revamp
+<!-- Left out on purpose: the session summaries written when a session ran out of context (11-12 00:32, 11-12 10:13; not prompts). Their keys stay so a later export does not add them again. Cut: the client's injected browser notice in front of 9 prompts (11-09 00:22, 11-09 00:55, 11-11 20:42, 11-12 01:15, 11-12 09:14, 11-12 11:57, 11-12 14:57, 11-12 16:31, 11-13 00:25; not the user's text). -->
+<!-- Note: "지금 확인해봐" (11-11 06:34) belongs to W1's #45 follow-up (asked while waiting for that PR's CI comment, after W1's 06:05 export); it is kept here with its key so it is not added twice. -->
+<!-- Restored: two "[profanity removed]" marks the exporter put on "꺼져 있으면" ("if it is switched off", about the safety switch, 11-12 11:57 and 14:57); not profanity. -->
+<!-- 6267d04a 2026-11-08T15:22:53.579Z -->
+[Woohyun Song, 11-09 00:22] "<pasted_content id=\"2de3\">
+현우가 화면·기능 분담을 반영해서 하네스를 갱신했어. .claude/ownership.json과 .claude/team-plan.md는 내가 새 파일로 덮어썼어.
+1. .claude/task-update.md 내용으로 task.md의 PR plan 표와 W4·W5·W6·W7·W8 단계 섹션을 바꿔 줘. 내가 이미 적어 둔 Decisions와 진행 기록은 그대로 남겨.
+2. progress.md 체크리스트도 새 단계(W6~W8)와 새 순서에 맞춰 줘.
+3. W2 섹션 Decisions에 추가해 줘: \"2026-11-08: 온라인 대결도 끝나면 대결 화면 안의 결과 칸 대신 BattleResult를 만들어 /result 결과 리포트로 넘긴다. 경기 무효·취소·연결 오류만 대결 화면에서 알린다.\"
+4. 끝나면 ownership_guard.py --status를 돌려서 W1~W8 목록과 각 단계 상태를 보여 줘.
+코드는 건드리지 마. 하네스 파일은 git에서 제외돼 있으니 커밋할 것도 없어.
+</pasted_content id=\"2de3\">"
+
+<!-- 6267d04a 2026-11-08T15:36:08.568Z -->
+[Woohyun Song, 11-09 00:36] "응, 고쳐 줘. \"Files you must not edit\" 목록을 새 .claude/ownership.json의 others 항목 기준으로 다시 맞춰 줘. 화면 파일은 내 W6~W8로 빠지고, 새로 들어간 진영이형 파일(J2 settings, J3 server_user_repository·match_record·server/matches, J4 result_viewmodel, J5 tutorial 모델)이 반영되면 돼. 형식은 지금 그대로 두고, 코드는 건드리지 마."
+
+<!-- 2882ec04 2026-11-08T15:55:55.177Z -->
+[Woohyun Song, 11-09 00:55] "<pasted_content id=\"1050\">
+W2(feat/battle_screen_revamp)를 시작하자. W1 PR #45가 아직 머지 전이라, CLAUDE.md 규칙대로 feat/home_lobby에서 브랜치를 따 줘. PR은 #45가 머지된 뒤 origin/main을 머지하고 올릴 거야.
+먼저 CLAUDE.md, task.md의 W2 섹션과 Decisions, progress.md를 읽어.
+시안은 .claude/design/b-screens/의 BMatching(상대 찾는 중), BMatchFound(매칭 성공과 안전 안내), BBattle(대결 화면)을 기준으로 해. BMatching은 오늘 레이더를 고친 새 파일이야: 흰 원판, 진한 회색 실선 고리, 잉크색 스윕 끝선, 스윕은 3초에 한 바퀴.
+코드를 고치기 전에, 시안과 지금 화면의 차이, 다른 사람 파일에 걸리는 부분, 온라인 대결 결과를 /result로 넘기는 결정을 어떻게 구현할지를 정리해서 나한테 먼저 물어봐 줘.
+</pasted_content id=\"1050\">"
+
+<!-- 2882ec04 2026-11-08T16:42:13.259Z -->
+[Woohyun Song, 11-09 01:42] "잠깐 멈춰. W2 디자인 방향을 다시 정해야 해서 구현을 보류할 거야.
+지금까지 바꾼 파일은 커밋하지 말고 그대로 둬. 지우지도 마.
+바꾼 파일 목록과 각각 무엇을 바꿨는지만 짧게 정리해 주고, progress.md에 \"W2 디자인 방향 재검토로 보류, 변경은 커밋 안 함\"이라고 적어 줘. 그다음에는 내가 다시 말할 때까지 아무것도 하지 마."
+
+<!-- 46a635bf 2026-11-10T21:34:21.012Z -->
+[Woohyun Song, 11-11 06:34] "지금 확인해봐"
+
+<!-- 543206fe 2026-11-11T11:42:02.853Z -->
+[Woohyun Song, 11-11 20:42] "<pasted_content id=\"2781\">
+새 세션이야. W2(feat/battle_screen_revamp, 대결 화면 개편)를 이어서 할 거야. 대결 화면 디자인은 Claude Design에서 시안 A \"링아웃 무대\"로 확정했고, 원본은 .claude/design/w2-fx/ 에 있어(v2).
+
+먼저 읽어:
+1. CLAUDE.md, task.md, progress.md
+2. .claude/design/w2-fx/README.md, 그리고 거기 적힌 순서대로 W2-FX-SPEC.md(v2)를 끝까지, shots 폴더, FxA.dc.html 맨 아래 <script>, FxFighter.dc.html, FxIcon.dc.html, FxLayout.dc.html, FxHudCounts.dc.html
+3. .claude/ownership.json
+4. docs/testing/Testing-Documentation.md 의 UAT-2, UAT-3, UAT-5
+
+지금 상태 (확인만 하고 바꾸지 마):
+- W2 브랜치는 origin/feat/home_lobby 최신 커밋(e07327d) 위에 있고, 11-09에 보류한 W2 변경(파일 13개)이 커밋되지 않은 채 작업 트리에 있어야 해. stash에 있는 게 아니니 stash는 꺼내지도 지우지도 마. git status, git log -1, git stash list로 이게 맞는지 확인해서 보고해.
+- origin/main에 W1(PR #45)이 머지됐으면 그것도 알려 줘. 그 경우 W2를 main 위로 맞추는 방법은 나한테 먼저 물어봐.
+
+지킬 것:
+- 명세의 연출은 전부 구현해. 마감 때문에 범위를 줄이지 말고, 줄여야 할 것 같으면 먼저 알려 줘.
+- 시안 구조를 그대로 옮겨. 선수는 포즈 5개를 갈아 끼우고 위치·회전·크기는 코드가 계산해. 프레임 애니메이션이나 관절 리깅으로 바꾸지 마.
+- 판정과 점수 코드(BattleGame, BattleRules, 판정기)는 건드리지 마. 무대는 그 결과를 연출로 바꾸기만 해.
+- 봇 대결과 온라인 대결이 같은 무대 위젯을 써. 온라인의 경기 취소·무효·연결 오류 안내는 지금처럼 둬.
+- 연출 계산은 위젯과 분리한 순수 함수로 만들고(W1의 RepBotMotion처럼), fx_golden.json(시나리오 15개, 표본 205개)으로 원본 대조 테스트를 만들어. 수치를 임의로 바꾸지 마.
+- 색과 폰트는 app_theme.dart 토큰만 써(명세 8절).
+- 파일 이름은 네가 정해. W2 허용 목록 밖의 파일이 필요하면 고치기 전에 목록으로 보여 줘. 내가 예외를 받아 줄게.
+
+task.md W2 Decisions에 오늘 날짜로 적어 줘 (이미 있으면 고쳐서):
+- 11-09 결정 1: player_avatar.dart(매칭 레이더 가운데, VS 화면) 색 변경은 W2 예외로 유지. opponent_window.dart는 새 무대에서 상대 창이 빠지므로, 다른 곳에서 안 쓰이면 11-09의 색 변경을 되돌리고 예외 줄도 빼.
+- 11-09 결정 2: 결과 화면 두 곳(온라인 '다시 매칭'은 같은 종목 온라인 대기실로, 기권·연결 끊김 승리는 \"상대가 나가서 이겼어요\")은 W2 예외로 고친다. BattleResult에 표시용 값(opponentLeft)을 더한다.
+- 11-09 결정 3: '매 경기 안전 안내' 스위치는 W2에서 뺀다. 넣을 단계는 PM이 정한다(대기 중).
+- 11-09 결정 4: 온라인 상대 창은 격투 무대의 상대 선수가 대신한다. 상대의 실시간 자세는 그리지 않고 통신은 그대로 둔다.
+- 오늘: 범위는 줄이지 않는다. 유효 횟수는 대결 중 두 점수 사이에 보인다. UAT-5 문구는 팀 테스트 문서를 시안에 맞춰 고친다(PM 확인 중). \"아바타 보기\"는 대결 화면에서 뺀다(pose_avatar_view.dart 파일 자체는 W3 몫이라 건드리지 마).
+
+코드를 쓰기 전에 아래를 보고하고, 내가 승인하면 시작해:
+(a) 명세대로 하려면 고쳐야 하는 파일 목록과, 그중 W2 허용 목록 밖이라 예외가 필요한 것.
+(b) 작업 트리에 있는 W2 변경 13개 중 그대로 살릴 것, 새 시안 때문에 버리거나 다시 할 것.
+(c) 명세 11절 남은 질문 5, 6, 8, 9, 10, 11번을 하나씩 물어봐. 9번은 setup_screen.dart가 상우 S3와 진영이형 J2 파일이라는 점을 같이 적어 줘.
+(d) 구현 순서와 커밋 단위, 폰에서 중간 확인할 수 있는 지점.
+</pasted_content id=\"2781\">"
+
+<!-- 543206fe 2026-11-11T11:51:55.237Z -->
+[Woohyun Song, 11-11 20:51] "<pasted_content id=\"2781\">
+승인할게.
+(a) 새 파일, 수정, 삭제 목록 좋아. 지울 다섯 위젯은 다른 팀원 계획에서 쓰는 곳이 없는 것도 확인했어. 예외는 이렇게 해 줘.
+ - player_avatar, result_screen: 승인된 대로.
+ - opponent_window: HEAD로 되돌리고 예외 줄 2개 삭제, 좋아.
+ - design_tokens_test 2줄 삭제와 online_battle_session.dart 카운터 한 줄: 현우에게 요청해 둘게. 답이 오기 전에는 손대지 말고, 그 작업이 필요한 단계가 오면 나한테 다시 알려 줘.
+ - test/main_test.dart: 9번이 정해진 뒤에 정하자.
+(b) 백업 후 되돌리기 좋아. 백업 위치를 progress.md에 적어 둬.
+(c) 5번: 권장대로 onCue로 해. 이름과 모양이 정해지면 진영이형에게 보낼 두세 줄 요약도 만들어 줘.
+ 6번: 권장대로 CustomPainter로 해.
+ 8번: 1은 예외 요청 중이니 일단 그 연출이 빠진 채로 만들고, 예외가 나오면 살려. 2~5는 그대로 좋아.
+ 9번: A안을 기본으로 생각하지만, 상우 S3와 진영이형 J2의 계획이 바뀌는 일이라 지금 상우와 현우에게 확인 중이야. 답이 올 때까지 4단계(봇 대결 연결)는 미루고 1~3단계부터 해.
+ 10번: 결과 화면도 \"연결이 끊겨서 졌어요\"로 맞춰. opponentLeft 옆에 값을 하나 더 늘리기보다, 끝난 이유를 하나의 표시값(예: 없음 / 상대 퇴장 / 내 연결 끊김)으로 묶는 걸 검토해 줘. 이름은 네가 정해.
+ 11번: 권장대로 둬.
+(d) 순서 좋아. 0단계와 1단계부터 시작하고, 단계가 끝날 때마다 짧게 보고해 줘. 커밋은 로컬에만 해.
+</pasted_content id=\"2781\">"
+
+<!-- 543206fe 2026-11-11T13:29:04.589Z -->
+[Woohyun Song, 11-11 22:29] "<pasted_content id=\"2781\">
+2단계 보고 잘 봤어.
+- 점수 숫자 1pt 차이는 그대로 둬.
+- 닉네임 폭 80 규칙은 그대로 가. 명세의 예시 숫자(영문 12자 74.7, 숫자 12자 84)가 앱 폰트와 다른 건 디자인 쪽에 고쳐 달라고 할게. 테스트는 앱 폰트로 잰 값 기준으로 짜 줘.
+- 무대 안 글자가 시스템 글자 크기를 따르지 않는 건 괜찮아. 대신 카메라 영역의 버튼과 글자(나가기, 안내 한 줄, 결과 보기, 재연결 띠, 나가기 확인 창)는 글자 크기를 따르게 하고, 1.3배와 2배에서 넘치지 않는 테스트를 넣어 줘. 무대의 점수, 유효 횟수, 거절 사유는 명세 10절대로 화면 읽기 프로그램에 전달해.
+- 1단계 때 물어본 것: (1) 온라인에서 TIME! 뒤에 늦게 온 서버 결과가 KO나 상대 퇴장이면 서버 결과를 따라 그 끝 연출로 바꿔. 점수와 승패는 서버가 기준이야. WIN!/LOSE/DRAW와 결과 보기는 계획대로 서버 결과가 온 뒤에 띄워. (2) 상대 퇴장 직전 타격의 흔들림은 스크립트대로 둬.
+- 9번(봇 대결의 자세 세팅)은 아직 상우와 현우 답을 기다리는 중이라 4단계는 계속 보류해.
+reviewer 결과를 반영해서 커밋하고 3단계로 넘어가.
+</pasted_content id=\"2781\">"
+
+<!-- 543206fe 2026-11-11T15:32:38.063Z -->
+
+<!-- 96710a29 2026-11-11T16:15:16.905Z -->
+[Woohyun Song, 11-12 01:15] "<pasted_content id=\"8efb\">
+W2 feat/battle_screen_revamp 작업을 이어서 해. 이전 세션은 컨텍스트가 차서 닫았어.
+먼저 CLAUDE.md, task.md, progress.md(맨 위 인수인계 블록), .claude/design/w2-fx/README.md, W2-FX-SPEC.md를 읽고, git log로 1~3단계 커밋 여섯 개(199e606 ~ 730c15e)를 확인한 뒤 지금 상태를 다섯 줄로 요약해 줘.
+
+그다음 이 순서로 해. 단계마다 reviewer 검토를 받고 APPROVE 뒤에 따로 커밋해.
+
+1. main 맞추기(허락함). main에 W1(#45 홈 로비), 진영이형 J1(#48 음성 안내), 문서 이름 변경(#46)이 머지됐어(origin/main 6e87a0f). 작업 트리가 깨끗한지 확인하고 git fetch 후 origin/main을 이 브랜치에 머지해(리베이스 말고 머지). 충돌이 나면 고치지 말고 멈춰서 알려 줘. 머지 뒤 flutter analyze, 전체 flutter test, 소유권 --check-diff를 다시 돌려. W1 파일 23개 지적은 이 머지로 없어져야 해.
+2. 디자인 v2.2 반영. .claude/design/w2-fx를 v2.2로 바꿔 놨어. 1~3단계는 v2.2 전에 만들었으니, 명세 맨 위 \"v2.2 변경 사항\"과 \"v2.1 변경 사항\"을 이미 만든 코드와 대조해서 고칠 곳 목록을 먼저 보여 주고 고쳐. 적어도 이것들은 들어가야 해:
+ - 영문·숫자 띠 크기 규칙(bandBox: 높이 0.83×S+6, 폭 글자 폭+0.30×S+6)과 top의 새 뜻(회전 전 띠의 위쪽 끝)
+ - 글자 크기 축소: 3·2·1 160, GO! 130, K.O. 110(가로 0.6배), TIME! 96
+ - +N과 MISS는 떠오르지 않음, +N 기울기 ∓4°
+ - \"N HIT\"는 카메라 영역 위쪽 두 모서리(내 것 왼쪽, 상대 오른쪽), 거절 표지판과 같은 층, 재연결 띠가 있으면 그 아래
+ - \"K.O.\"는 이긴 선수의 반대쪽 빈자리
+ - \"FEVER ×2\"는 흰 띠, y 253~345, v2.2 자리 그대로
+ - Average 표지판에서 \" +5\" 빼기, 3자리 점수는 0.9배로 줄었다 돌아오기, 두 띠가 겹치면 내 띠가 위
+ - fx_golden.json 대조 테스트를 새 파일(시나리오 18개, 표본 248개, banners의 bandHeight·padX, combos 목록)로 다시 맞추기
+3. 7단계(등급 글자 → \"+N\" 띠). v2.2가 와서 풀렸으니 이어서 해. 등급 글자는 GOOD/EXCELLENT/AVERAGE 그대로야.
+4. task.md 순서대로 5단계(온라인 대결을 새 무대로 연결)와 6단계(매칭 화면들)를 해. 3단계 reviewer가 남긴 온라인 링아웃 재생 메모도 5단계에서 처리해.
+5. 4단계(봇 대결 연결)는 계속 보류해. 봇 자세 세팅을 대결 화면으로 옮길지(9번)를 상우·현우에게 묻는 중이야.
+
+손대지 말 것:
+- online_battle_session.dart 카운터 한 줄과 design_tokens_test.dart 세 줄 삭제(game_fever_chip, game_health_bar, game_danger_edge)는 현우 승인 전이야. 온라인 상대 헛스윙 연출은 빠진 채로 만들어.
+- J1이 만든 lib/services/audio/ 아래 파일은 W2 파일이 아니야.
+- push는 내가 말할 때만 해.
+
+2번이 끝나면 폰 데모 실행 명령을 다시 알려 줘. 그때 폰으로 확인할게.
+</pasted_content id=\"8efb\">"
+
+<!-- 96710a29 2026-11-12T00:14:48.274Z -->
+[Woohyun Song, 11-12 09:14] "중단된 작업 이어서 진행해줘."
+
+<!-- 96710a29 2026-11-12T01:13:02.996Z -->
+
+<!-- 96710a29 2026-11-12T02:02:43.484Z -->
+[Woohyun Song, 11-12 11:02] "새 세션으로 넘어가려고 해. progress.md 맨 위 인수인계 블록을 지금 상태로 갱신해 줘: 6단계 f0863a2까지의 커밋, 남은 일(4단계, 8단계), 승인 대기 두 개, 폰 확인 4번 항목. 갱신하면 git status를 보여 주고 멈춰."
+
+<!-- 20cb575d 2026-11-12T02:05:38.404Z -->
+[Woohyun Song, 11-12 11:05] "<pasted_content id=\"f8b3\">
+W2 feat/battle_screen_revamp 작업을 이어서 해. 이전 세션은 컨텍스트가 차서 닫았어.
+먼저 CLAUDE.md, task.md, progress.md(맨 위 인수인계 블록), .claude/design/w2-fx/README.md, W2-FX-SPEC.md(특히 2절 카메라 영역, 3절 입력, 4절 대결 전 단계, 11절 9번)를 읽고, git log로 지금까지의 커밋(마지막 f0863a2)을 확인한 뒤 상태를 다섯 줄로 요약해 줘.
+
+오늘(11/12) 정해진 것. task.md \"Decisions\"에 날짜와 함께 적고, progress.md 인수인계 블록에서 이와 다른 내용(4단계 보류, 옛 위젯 세 개를 4단계에서 지운다는 줄)도 고쳐 줘.
+- 9번(progress.md의 Q9): 봇 대결도 대결 화면이 대결 전 단계부터 맡는다. 같은 무대·카메라 배치에서 자세 세팅 → 3·2·1 → GO!까지 진행하고, 봇 흐름은 setup_screen을 거치지 않는다. 상우가 동의했다.
+- 실루엣 가이드: 상우의 PR #49(브랜치 feat/pose_silhouette_guide)에 있는 PoseSilhouetteGuide(ready: ...)를 import해서 카메라 칸의 \"가이드 자리\"에 넣는다. 상우가 동의했다. 상우 파일(pose_silhouette_guide.dart, setup_screen.dart와 각각의 테스트)은 고치지 않는다.
+- #49 사용 방식: 지금 올라와 있는 #49를 이 브랜치에 받아서 먼저 쓰고, 상우가 #49를 고쳐서 main에 머지하면 origin/main을 다시 머지해 그 버전으로 맞춘다. 그래서 W2 PR은 #49 다음에 머지되고, PR 설명에 \"Depends on #49\"를 적는다.
+
+할 일:
+1. 작업 트리가 깨끗한지 확인하고, git fetch 후 origin/feat/pose_silhouette_guide를 이 브랜치에 머지해(리베이스 말고 머지). 충돌이 나면 고치지 말고 멈춰서 알려 줘. 머지 뒤 flutter analyze와 전체 flutter test를 돌려. 소유권 --check-diff에 상우 파일이 잡히는 건 #49가 main에 들어가기 전까지 정상이니 고치지 말고 보고만 해.
+2. 4단계(봇 대결을 새 무대로 연결)를 해.
+ - 봇 대결의 대결 전 단계를 대결 화면이 맡는다(명세 4절). 봇 꼬리표는 늘 \"준비 완료\"이고 \"상대를 기다리는 중\" 상태는 없으며, 카운트다운은 세팅의 자동 시작 카운트를 쓴다.
+ - 세팅 중에도 세로 고정이고, 푸쉬업 카메라는 비율 그대로(S22 기준 약 290×387) 보여 준다.
+ - 실루엣 위치 맞추기: #49는 아래 절반 칸을 카메라 영상이 꽉 채우도록(BoxFit.cover) 확대하고, 그 칸 전체를 기준으로 경계선을 그렸다. W2는 영상을 자르지 않고 보여 주므로, 위젯을 미리보기 전체가 아니라 #49 화면에서 보이던 영역(cover로 잘리고 남는 부분)에만 겹쳐서, 카메라 영상 기준으로 #49와 같은 자리에 경계선이 나오게 해. 잘리는 비율은 고정값 말고 실제 칸 크기와 미리보기 비율로 계산해.
+ - #49의 실루엣은 푸쉬업용만 있다. 스쿼트 세팅에서는 가이드 자리를 비워 둬.
+ - 봇 대결에서도 BattleArena의 onCue를 받는 자리를 만들어(진영이형 J2가 효과음을 붙일 곳).
+ - 새 무대로 옮긴 뒤 아무도 안 쓰게 된 옛 대결 화면 위젯은, W2 파일이면서 다른 사람이 안 쓰는 것만 지워. 단 design_tokens_test.dart에 줄이 있는 game_fever_chip, game_health_bar, game_danger_edge는 현우 승인 전이라 파일과 테스트 줄을 그대로 두고 progress.md에 적어 둬.
+ - 봇 흐름이 바뀌어서 test/main_test.dart(내 W1·W3 파일)를 고쳐야 하면, .claude/ownership-exceptions.txt에 이유와 함께 예외 줄을 넣고 고쳐. 그 밖의 다른 사람 파일이나 테스트가 깨지면 고치지 말고 멈춰서 알려 줘.
+ - reviewer 검토를 받고 APPROVE 뒤에 커밋해.
+3. 끝나면 폰 확인 방법(실행 명령과 볼 것)을 알려 주고 멈춰. 8단계(전체 검사, 수업 기록, 세션 내보내기, PR)와 push는 내가 말할 때 해.
+
+손대지 말 것: online_battle_session.dart 카운터 한 줄과 design_tokens_test.dart 세 줄 삭제(현우 승인 전), 상우 파일, J1이 만든 lib/services/audio/ 아래 파일.
+</pasted_content id=\"f8b3\">"
+
+<!-- 20cb575d 2026-11-12T02:57:33.670Z -->
+[Woohyun Song, 11-12 11:57] "<pasted_content id=\"f8b3\">
+현우 답이 왔어. 아래를 task.md \"Decisions\"에 11/12 날짜로 적고, 승인된 예외는 .claude/ownership-exceptions.txt에 이유와 함께 넣어 줘.
+
+승인된 것
+- 예외(현우 승인): design_tokens_test.dart에서 game_fever_chip, game_health_bar, game_danger_edge 세 줄 삭제 / online_battle_session.dart에 상대 0점 rep 카운터 한 줄과 그 테스트. 이 부분만 바꿔.
+- 9번 흐름(현우·상우 승인). 머지 순서도 #49 → W2로 확정.
+- 안전 안내 스위치를 W2에 넣는다. 예외는 환경설정 화면(settings_screen.dart)과 뷰모델(settings_viewmodel.dart)의 안전 안내 부분만이다. 소리 부분은 진영이형 J2 영역이라 건드리지 마.
+
+지금 하는 4단계에 더할 것 (현우 조건, UAT-1 때문)
+- 대결 화면 세팅 단계에서도 setup_screen과 같은 세팅 안내 문구가 카메라 칸 \"안내 한 줄\"에 나와야 해. 폰이 너무 눕혀졌을 때와 몸 일부가 안 보일 때 무엇을 고치라는 문구야. docs/testing/Testing-Documentation.md의 UAT-1(AC1~AC3, 절차 2~5단계)을 읽고, 대결 화면 세팅 단계로 모두 통과하는지 테스트로 확인해. 문구가 setup_screen.dart 안에서만 만들어져서 가져다 쓸 수 없으면, 상우 파일을 고치지 말고 멈춰서 알려 줘.
+- 스쿼트: UAT-1 5단계는 스쿼트 세팅에서 서 있는 사람 모양의 실루엣을 요구하는데, #49에는 아직 푸쉬업 실루엣만 있다. 스쿼트 가이드 자리는 상우가 나중에 스쿼트 실루엣을 넣으면 바로 들어가게 열어 두고, 지금 비어 있다는 걸 progress.md에 적어.
+- 진영이형 J2가 대결 화면 세팅 단계에 세팅 음성을 붙일 자리를 만들어. J1의 VoiceCueTable.forSetup(SetupStatus)과 forCountdown(Duration?)을 J2가 W2 파일을 고치지 않고 부를 수 있게, 세팅 상태(SetupStatus)와 남은 카운트다운을 밖으로 알려 주면 돼. 이름과 모양을 정하면 onCue 때처럼 진영이형에게 보낼 안내문을 progress.md \"Messages for teammates\"에 적어 줘.
+
+4단계 다음에 할 것 (각각 reviewer APPROVE 뒤 따로 커밋)
+가. 예외 반영: design_tokens_test 세 줄 삭제와 옛 위젯 세 개(game_fever_chip, game_health_bar, game_danger_edge) 파일 삭제, online_battle_session 카운터 한 줄과 테스트, 온라인 대결의 상대 MISS 연출 연결.
+나. 안전 안내 스위치: 디자인 참고 파일 Settings.dc.html의 \"매 경기 안전 안내\"(설명 \"끄면 처음 한 번만 보여요\")를 따른다. 켜져 있으면 매 경기 전에 안전 안내 창을 띄우고, 꺼져 있으면 처음 한 번만 띄워. 값은 앱을 다시 켜도 유지돼야 해. 저장 때문에 화면·뷰모델 말고 다른 파일(예: settings_store.dart)을 고쳐야 하면 멈추고 어느 줄인지 알려 줘. 나중에 J2와 같은 파일에서 충돌이 나면 양쪽 다 살리는 게 원칙이야.
+
+다 끝나면 폰 확인 방법을 알려 주고 멈춰. 8단계와 push는 내가 말할 때 해.
+</pasted_content id=\"f8b3\">"
+
+<!-- 20cb575d 2026-11-12T05:55:12.911Z -->
+[Woohyun Song, 11-12 14:55] "새 세션으로 넘어가려고 해. progress.md 맨 위 인수인계 블록을 지금 상태로 갱신해 줘: 98ad437까지의 커밋, 나 단계에서 멈춘 이유와 settings_store.dart에서 고칠 곳(줄 번호 포함), 폰 확인 목록, 남은 일. 갱신하면 git status를 보여 주고 멈춰."
+
+<!-- a9a0942e 2026-11-12T05:57:34.910Z -->
+[Woohyun Song, 11-12 14:57] "<pasted_content id=\"ed13\">
+W2 feat/battle_screen_revamp 작업을 이어서 해. 이전 세션은 컨텍스트가 차서 닫았어.
+먼저 CLAUDE.md, task.md(Decisions), progress.md(맨 위 인수인계 블록), .claude/design/w2-fx/README.md를 읽고, git log로 지금까지의 커밋(마지막 98ad437)을 확인한 뒤 상태를 다섯 줄로 요약해 줘.
+
+지난 세션 뒤에 정한 것. task.md \"Decisions\"에 11/12 날짜와 이유를 함께 적어 줘.
+- 그대로 둔다: 카운트다운 중 Start 버튼(누르면 바로 GO!), 결과 보기 버튼이 뜨기 전의 뒤로 가기는 무시하고 뜬 뒤에는 결과 화면으로, 스쿼트 첫 줄(\"정면을 보고 전신이 보이도록 서 주세요.\")과 \"Ready! Starting in N...\" 생략.
+- 예외 처리 방식: 아래 가·나·다에서 남의 파일을 고쳐야 하면 먼저 처리하고, 현우·상우에게는 내가 나중에 보고한다. 예외 줄은 .claude/ownership-exceptions.txt에 이유(예: \"담당 없음, 11/12 처리 후 PM에 보고\")와 함께 넣어.
+
+할 일. 가·나·다는 각각 reviewer APPROVE를 받은 뒤 따로 커밋해.
+
+가. 세팅 화면 마무리
+ 1. 온라인 세팅 단계에도 봇과 같은 방식으로 #49 실루엣(PoseSilhouetteGuide)을 넣어.
+ 2. 실루엣 위아래에 어두워지지 않는 띠(S22에서 약 37px)가 남지 않게, 그 띠도 #49 실루엣 바깥과 같은 어둡기로 덮어. 상우 파일은 고치지 말고 W2 쪽에서 해.
+ 3. test/main_test.dart의 \"the matching flow sets up in MatchSetupScreen\" 테스트가 지금 실제로 무엇을 확인하는지 봐. 이름만 안 맞는 거면 이름을 고치고, 옛 봇 흐름을 확인하던 테스트면 새 흐름(versus 다음 대결 화면 세팅 단계)에 맞게 고쳐. 내 W1·W3 파일이니 예외 줄을 넣고 고쳐.
+
+나. 세팅 안내 문구를 한국어로 바꾸기 (담당 없음, 우리가 처리하고 상우에게 보고)
+ - lib/services/pose/setup_checker.dart의 SetupStatus.message에서 영어 문구를 아래처럼 바꿔. J1 음성 안내(VoiceCue)와 같은 문장이라 화면과 음성이 같은 말을 하게 돼.
+   noPerson: \"카메라 앞에 서 주세요.\"
+   tooClose: \"조금 뒤로 물러나 주세요.\"
+   tooFar: \"카메라에 조금 더 가까이 와 주세요.\"
+   notFacingForward: \"카메라를 정면으로 봐 주세요.\"
+   notInPushUp: \"팔을 펴고 푸시업 자세를 잡아 주세요.\"
+   ready(자세 유지 중): \"그대로 잠시 유지하세요.\"
+   isReady: \"준비 완료!\"
+   missingParts: 안 보이는 부위를 이름으로 말해야 해(UAT-1 AC1, 절차 2·5단계). 부위 이름은 머리, 어깨, 팔꿈치, 손, 엉덩이, 무릎, 발목이야. \"손이 화면에 안 보여요.\"처럼 쓰고, 여러 개면 \"손, 발목이 화면에 안 보여요.\"처럼 마지막 부위에 맞춰 이/가를 붙여.
+   이미 한국어인 notStanding, phoneTooFlat, phoneShaky는 그대로 둬.
+ - 이 문구를 확인하는 테스트도 주인과 상관없이 같이 고치고 예외 줄을 넣어. setup_viewmodel.dart의 \"Ready! Starting in N...\"처럼 다른 파일의 영어 문구가 아직 화면에 나오는 곳이 있으면 \"준비 완료! N초 뒤 시작해요.\"로 바꿔. 화면에 안 나오는 문구는 건드리지 마.
+ - 고친 파일과 바꾼 문구 표를 progress.md에 적어 줘(상우에게 보고할 때 쓸 거야).
+
+다. 안전 안내 스위치
+ - 디자인 참고 파일 .claude/design/Settings.dc.html의 \"매 경기 안전 안내\"(설명 \"끄면 처음 한 번만 보여요\")를 따른다. 켜져 있으면 매 경기 전에 안전 안내 창을 띄우고, 꺼져 있으면 처음 한 번만 띄워. 값은 앱을 다시 켜도 유지돼야 해.
+ - 현우가 승인한 예외는 환경설정 화면(settings_screen.dart)과 뷰모델(settings_viewmodel.dart)의 안전 안내 부분이야. 저장에 필요한 lib/services/user/settings_store.dart와 test/services/user/settings_store_test.dart는 우리가 먼저 처리하고 현우에게 보고하니까, 이 두 파일에도 예외 줄을 넣어.
+ - 소리 설정 부분은 진영이형 J2 영역이라 건드리지 마. 나중에 J2와 같은 파일에서 충돌이 나면 양쪽 다 살리는 게 원칙이야.
+
+끝나면 아래 세 가지를 보여 주고 멈춰. 8단계(전체 검사, 수업 기록, 세션 내보내기, PR)와 push는 내가 말할 때 해.
+- 이번 변경까지 넣은 폰 확인 목록(실행 명령 포함)
+- 이번에 넣은 예외 줄 목록(현우 보고용)
+- progress.md \"Messages for teammates\"에 있는 진영이형 안내문(onCue, onSetup) 원문
+</pasted_content id=\"ed13\">"
+
+<!-- a9a0942e 2026-11-12T07:31:26.971Z -->
+[Woohyun Song, 11-12 16:31] "<pasted_content id=\"ed13\">
+확인했어. 답할게.
+
+1. 안전 안내 \"한 번 봤음\"은 폰 단위로 둬. 이 기록을 켜고 끄는 스위치가 폰 단위라서 같은 범위가 맞아. task.md Decisions에 이유와 함께 적어 줘.
+2. \"Start\" 버튼을 한국어로 바꿔. 봇 대결은 \"시작\", 온라인은 \"준비\"(누른 뒤에는 \"준비 취소\")로. 문구가 W2 파일에 없으면 지금까지처럼 먼저 고치고, 예외 줄에 \"11/12 처리 후 보고\"로 적어. /setup과 데모에서만 보이는 영어(툴팁 \"Back\"/\"Switch camera\", 카메라 권한·오류 화면)는 건드리지 말고 progress.md 열린 일에 S3 몫으로 적어.
+3. 안 보이는 부위가 3곳 이상이면 부위를 나열하지 말고 \"몸 전체가 화면에 보이게 해 주세요.\"(J1 음성과 같은 문장)로 말하게 해. 1~2곳이면 지금처럼 이름으로 말해. UAT-1 절차 2·5단계(손 하나, 발목)는 그대로 통과해야 하고, 1.3배 글자 크기와 폭 360에서 잘리지 않는지 테스트로 확인해.
+4. 온라인 대결 화면(OnlineBattleScreen)도 봇의 BattleScreen처럼 onCue와 onSetup을 생성자에서 받는지 확인해. 아니면 같게 만들어서, 진영이형이 W2 파일을 고치지 않고 소리를 붙일 수 있게 해. 온라인 onSetup의 startIn도 봇과 같은 뜻(시작까지 남은 시간)이 되게 해.
+5. 2~4를 묶어서 reviewer APPROVE를 받은 뒤 커밋해.
+
+끝나면 이번에 새로 넣은 예외 줄과 폰 확인 목록에 바뀐 항목만 보여 주고 멈춰.
+</pasted_content id=\"ed13\">
+
+그리고 응답을 한국어로 하도록 해."
+
+<!-- a9a0942e 2026-11-12T08:27:55.346Z -->
+[Woohyun Song, 11-12 17:27] "<pasted_content id=\"ed13\">
+폰에서 보니 안전 안내 창의 그림(사람 모양)이 밝은 배경에 묻혀서 거의 안 보여. 지금 그림이 예전 어두운 테마용 PNG(assets/images/safe_warning.png, 흰 선)라서 그래. PR 전에 W2에서 고치자.
+
+1. .claude/design/w2-fx/BMatchFound.dc.html의 안전 안내 그림(240×150 SVG, aria-label \"팔을 깊게 굽힌 채 무리하다 팔꿈치를 다친 모습\")을 safe_warning_dialog.dart 안에서 CustomPainter로 옮겨서 PNG 대신 써. 바닥선·몸·팔과 땀방울은 #586073(AppColors.line), 머리는 흰 원에 #586073 테두리, 충격 별은 #FFB547(AppColors.warning)에 잉크 테두리야. 좌표와 굵기는 SVG 그대로 옮기고, 그림 상자 크기와 화면 읽기 문구는 지금 것을 유지해.
+2. PNG를 더 이상 아무도 안 쓰면, pubspec.yaml을 고치지 않고 지울 수 있을 때만 지워. pubspec을 고쳐야 하거나 W2 파일이 아니면 그대로 두고 progress.md에 적어.
+3. W2가 맡은 화면(대결, 매칭, 매칭 성공, 안전 안내, 온라인 로비)에 같은 문제가 더 있는지 점검해. 예전 어두운 테마용 그림·아이콘이나 글자 색(흰색·아주 밝은 색, 라임·분홍 글씨)이 밝은 배경 위에 남아 있으면 목록으로 보여 주고, W2 파일이면 팔레트 B 규칙(강조색은 칸·띠에만, 글자는 잉크, 선·아이콘은 #586073이나 잉크)으로 고쳐.
+4. reviewer APPROVE를 받은 뒤 커밋하고, 폰 확인 항목을 알려 주고 멈춰. 규칙 화면(help_screen.dart, help_pictures.dart, help_rules.dart)은 W6에서 고칠 거라 건드리지 마.
+</pasted_content id=\"ed13\">"
+
+<!-- a9a0942e 2026-11-12T15:25:02.761Z -->
+[Woohyun Song, 11-13 00:25] "<pasted_content id=\"ed13\">
+W2 feat/battle_screen_revamp 작업이야. 먼저 CLAUDE.md, task.md, progress.md를 읽고 시작해.
+폰 확인을 마쳤고 대결은 문제 없어. 확인 결과(대결 정상, 아래 후속 작업 세 가지, S3 정렬 확인 문제)를 progress.md에 적고 8단계를 진행해.
+1. git fetch 후 origin/main과 origin/feat/pose_silhouette_guide에 새 커밋이 있으면 이 브랜치에 머지해(리베이스 말고 머지). 충돌이 나면 고치지 말고 멈춰.
+2. task.md의 8단계 체크리스트대로 전체 검사(flutter analyze, 전체 flutter test, 소유권 --check-diff, 커밋 작성자·메시지 확인)와 마지막 reviewer 검토를 하고, 수업 기록(테스트 노트, AI 노트)을 갱신해. 테스트 노트에는 화면 읽기 문구를 위젯 테스트로 확인했고 실기기 TalkBack은 확인하지 않았다고 적어.
+3. 문제가 없으면 push하고 PR을 올려. PR 본문 첫 줄은 team-plan.md의 머지 순서 규칙대로 쓰고, \"Depends on #49\"(#49 다음에 머지)를 적어. 본문에는 팀 합의(9번 봇 세팅 흐름: 상우 동의·현우 승인, #49 위젯 재사용, 현우가 승인한 예외 2건, 먼저 처리하고 보고한 예외 파일 목록, UAT-5 문구는 현우가 문서에 반영)와 남은 일을 적어. 남은 일: 후속 작업(세팅 중 카메라를 화면의 약 80%로 키웠다가 준비되면 지금 크기로 줄이기, 매칭 레이더 점을 레이더가 지나갈 때 깜빡이게, 매칭 성공 화면의 색과 VS 글자), 푸쉬업 세팅에서 실루엣에 맞추기 전에 준비 완료되는 문제(정렬 확인, S3), 스쿼트용 서 있는 실루엣과 /setup 영어 정리(S3), 안 쓰게 된 safe_warning.png는 W8 그림이 들어온 뒤 삭제, 규칙 화면 팔레트 B 적용(W6), 이 PC에서 커버리지 측정 불가.
+4. PR 번호와 CI 결과를 보여 주고 멈춰.
+</pasted_content id=\"ed13\">"

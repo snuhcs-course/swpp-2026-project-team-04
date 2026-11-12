@@ -135,3 +135,92 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - Test the longest valid input at the largest text size on every screen that shows it, not only on the screen the feature started on.
 - When a fix is tested only at the extreme, also test that the normal case is unchanged.
+
+## W2 `feat/battle_screen_revamp` – battle screen revamp (P8, team order #5), 2026-11-09 ~ 2026-11-13
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W2's code and tests, in 24 local commits on `feat/battle_screen_revamp`, from `199e606` (11-11) to `6a8efba` (11-13).
+  - Size at `6a8efba` (without #49's files): 40 `lib/` files changed (14 new, 6 deleted), +7390 / −2094 lines. The test side is +33594 lines, most of them the two data files below.
+  - The main new files:
+    - `lib/widgets/battle_fx_motion.dart` (L1–1462): the stage's effect math, a port of the design prototype's script;
+    - `battle_stage.dart`: one frame of the stage;
+    - `battle_arena.dart`: the stage and the camera, one clock, cues and announcements;
+    - `battle_camera_area.dart` and `battle_camera_view.dart`: the lower half;
+    - `battle_fighter.dart`, `battle_reject_sign.dart`, `battle_banner.dart`, `battle_stage_hud.dart`: the drawings;
+    - `battle_stage_events.dart` and `battle_online_events.dart`: the bot's and the online state turned into stage events;
+    - `lib/services/game/online_battle_result.dart`: the result of an online battle.
+  - Rewritten: `lib/screens/battle_screen.dart` (L1–399) and `online_battle_screen.dart` (L1–606), both on the stage from the setup on; `battle_viewmodel.dart` (the setup phase, the round's own clock).
+  - Restyled: `matching_screen.dart`, `versus_screen.dart` and `safe_warning_dialog.dart`. The safety picture is now `SafeWarningPicturePainter`, drawn from the design's SVG.
+  - Changed under approved exceptions: `settings_store.dart`, `settings_viewmodel.dart` and `settings_screen.dart` for the safety switch, and `setup_checker.dart` for the setup words in Korean.
+- **The design came from the user.** The stage is candidate A "링아웃 무대", spec v2.2, from the user's Claude Design canvas: `W2-FX-SPEC.md`, the prototype `FxA.dc.html`, and the drawings `FxFighter`/`FxIcon`. Claude Code ported it number by number.
+  - It checked the port against the prototype's own samples: `test/widgets/battle_fx_golden.json`, 18 scenarios with 248 samples, compared in `battle_fx_motion_test.dart`.
+  - It pinned every drawing call by call in `test/widgets/battle_art_drawings.json`.
+- **Review:** the `reviewer` subagent reviewed W2 in 20 numbered runs (11–30 in `progress.md` "Review log"); six of them (11, 12, 13, 16, 17, 18) had a re-review, so about 26 verdicts in all.
+  - Ten of these returned CHANGES_REQUESTED (item d).
+  - Each step was committed only after an APPROVE.
+  - In most runs the reviewer also planted its own mutants and reran the suite.
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - Every design choice was the user's: the candidate, every spec answer (e.g. "the scope is not cut", grade words during the battle, text size rules), the ready words "시작"/"준비", the safety switch's rule, and "three or more missing parts read the whole-body line".
+  - The team agreements were made by people. The bot setup moved to the battle screen (question 9) with 한상우's agreement and 현우's approval. #49's widget was reused with 한상우's agreement. The exceptions were approved by PM 송현우, or done first and reported (listed in the PR).
+  - The phone checks were done by the user, last on 11-13 ("폰 확인을 마쳤고 대결은 문제 없어."; which parts were checked on the phone: see the testing notes' TODOs).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-11 20:42] (the restart on the settled design, pasted; excerpt) "새 세션이야. W2(feat/battle_screen_revamp, 대결 화면 개편)를 이어서 할 거야. 대결 화면 디자인은 Claude Design에서 시안 A \"링아웃 무대\"로 확정했고, 원본은 .claude/design/w2-fx/ 에 있어(v2)."
+- [Woohyun Song, 11-12 11:05] (question 9, pasted; excerpt) "- 9번(progress.md의 Q9): 봇 대결도 대결 화면이 대결 전 단계부터 맡는다. 같은 무대·카메라 배치에서 자세 세팅 → 3·2·1 → GO!까지 진행하고, 봇 흐름은 setup_screen을 거치지 않는다. 상우가 동의했다."
+- [Woohyun Song, 11-12 14:57] (the third session, pasted; excerpt) "2. 실루엣 위아래에 어두워지지 않는 띠(S22에서 약 37px)가 남지 않게, 그 띠도 #49 실루엣 바깥과 같은 어둡기로 덮어. 상우 파일은 고치지 말고 W2 쪽에서 해."
+- [Woohyun Song, 11-12 17:27] (after a phone look, pasted; excerpt) "폰에서 보니 안전 안내 창의 그림(사람 모양)이 밝은 배경에 묻혀서 거의 안 보여. 지금 그림이 예전 어두운 테마용 PNG(assets/images/safe_warning.png, 흰 선)라서 그래. PR 전에 W2에서 고치자."
+
+### c. What AI did well
+- **A port that can be checked.** The effect math is pure Dart beside the widgets, compared with the prototype's own samples. Design v2.1 and v2.2 arrived in the middle of the step, and each change landed as a list of number differences the golden check confirmed. No number was tuned by eye.
+- **Planted errors ("mutants") in every step.** Before each commit the agent changed single numbers or lines in its new code and reran the tests, and the reviewer planted its own. Where a mutant survived, a test was added:
+  - step 6: 33 of 34 killed (23 of the agent's own and 11 of the reviewer's); the one left is on a line that step did not change (the avatar ring width);
+  - step 4: the reviewer's 51 mutants in run 20, 36 killed and 6 equivalent; the rest became tests;
+  - the third session's 가: 1 of 8 survived (the silhouette while the camera was not running) and got a test;
+  - 나: 5 of 5 killed with no new test;
+  - 다: 2 of 9 survived; one fix to the test store killed both (item d);
+  - the user's answers 2–4: 11 of 11 killed.
+- **Pixel tests that found visual bugs before the phone did:**
+  - (1) **The dimmed strips:** a plain fill next to #49's silhouette left a lighter line (0.69 against 0.55). The agent measured why: #49's painter both clips and fills its box anti-aliased, so its edge pixel gets the coverage squared. It drew the strips in the guide's own layer with `BlendMode.src`, 1 pt into the box, short of the outline; the white line ends 2 pt away (measured).
+  - (2) **A hint cut at large text:** a test lays every setup hint at 1.3× on a 360-wide phone. It found that the online reconnect hint, a pre-W2 line, was cut beside "준비 취소".
+- **A clock bug found by a test (step 4):** right after GO!, the counter still showed its old time for one frame, so the view model read 26 s instead of 30. The fix and its test are in `battle_viewmodel.dart` (`_endRoundOnTime` and the watchdog).
+- **Ownership kept:** in the second session the agent stopped before `settings_store.dart` (not W2's) and listed the exact lines it would change. The user's answer came with the exception scheme.
+
+### d. Hallucinations / errors
+- **Review findings (10 CHANGES_REQUESTED runs), for example:**
+  - Run 11 (the effect math): the golden check could not see a tag present on one side only, a countdown could not be cancelled, and rules the samples do not reach had no test.
+  - Run 12 (the drawings): 30 of 49 planted mutants survived. Every drawing was then pinned call by call.
+  - Run 13 (the stage): at rest the opponent was drawn over the user's fighter. The design draws the user on top, and the agent's own comparison with the shot had missed it. The stage clock also restarted, so an ending replayed. 20 of 104 mutants survived.
+  - Run 17 (online): two old behaviours were dropped without a reason.
+  - Run 19 (the bot setup): a demo test that could fail by chance, and the app's wiring untested.
+  - Run 28 (the safety picture): on a 360-dp phone the dialog gives the picture 232 × 150. The painter scaled each axis on its own, so the head became an ellipse. A test at 412 wide could not see it.
+  - Cost: one fix round each, from about ten minutes to an hour.
+  - The final review of the whole diff (run 30, 11-13) returned APPROVE with 3 Minor findings: two comments were out of date (one named the removed TIME UP overlay, the other the "setup screens"); no screen-level test showed the combo mark (a test was added through the bot battle screen); and the PR's first line had to name #49 (the order #49 → W2 is newer than `team-plan.md`).
+- **A wrong theory (11-12):** the agent first expected `BlendMode.plus` to remove the lighter seam, assuming the two coverages add. The pixel test still read 0.66. The cause was #49's double anti-aliasing (item c). Cost: one extra try.
+- **Claims about tests that were too strong (11-12):**
+  - A note said a pixel test catches the squeezed head. It does, but only by one anti-aliased pixel; the scale tests are what catch it (run 29).
+  - A test store read its values after the wait. The test 'the switch turned or the notice seen while loading keep the user's' therefore always passed, until a mutant showed it.
+- **Replies in the wrong language again:** on 11-12 the agent wrote a whole long report in English, and the user asked again: "그리고 응답을 한국어로 하도록 해." Cost: none in the code. The memory note on this was made stricter.
+- **Tooling:**
+  - Shell heredocs failed several times on this Windows PC.
+  - A script written through the shell lost its Korean text encoding.
+  - A probe test was blocked once by the ownership guard (wrong file name).
+  - Each was redone with the file tools. No impact on the code.
+
+### e. Prompt revisions
+- **Missing body parts:**
+  - Before (11-12 14:57): "missingParts: 안 보이는 부위를 이름으로 말해야 해(UAT-1 AC1, 절차 2·5단계). … 여러 개면 \"손, 발목이 화면에 안 보여요.\"처럼 마지막 부위에 맞춰 이/가를 붙여."
+  - After (11-12 16:31, after the report): "3. 안 보이는 부위가 3곳 이상이면 부위를 나열하지 말고 \"몸 전체가 화면에 보이게 해 주세요.\"(J1 음성과 같은 문장)로 말하게 해. 1~2곳이면 지금처럼 이름으로 말해. … 1.3배 글자 크기와 폭 360에서 잘리지 않는지 테스트로 확인해."
+  - Why it worked: the first prompt said how to list the parts but not how much room the hint has. The reviewer measured the five-part squat line cut at 1.3×. The second prompt set a limit and asked for a fit test, which also caught a second cut line.
+- **Files outside the step:**
+  - Before (11-12 11:57): "저장 때문에 화면·뷰모델 말고 다른 파일(예: settings_store.dart)을 고쳐야 하면 멈추고 어느 줄인지 알려 줘."
+  - After (11-12 14:57): "예외 처리 방식: 아래 가·나·다에서 남의 파일을 고쳐야 하면 먼저 처리하고, 현우·상우에게는 내가 나중에 보고한다."
+  - Why it worked: the stop rule made the agent name the exact lines, so the user could approve a clear scope at once. Each exception line now records its reason and who is told.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W2 was edited by hand, so W2 has no manual-fix markers.
+- The user's corrections came as prompts and phone checks. Examples: the ready words, the three-parts rule, and the safety picture after the phone check.
+
+### Takeaway
+- Comparing a port with the design's own samples, and planting errors in the new code, caught more than reading the code did.
+- Test each picture at the narrowest real phone width (360 dp), not only at 412.
