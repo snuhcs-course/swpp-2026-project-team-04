@@ -92,6 +92,12 @@ abstract final class BattleStageEvents {
   }
 
   /// What the stage shows of a bot battle's [state].
+  ///
+  /// Before the round the user sets up and the bot is always ready, so
+  /// nobody waits for the other: once the user's pose is ready, the setup's
+  /// count to the start is the countdown. While the camera has failed, the
+  /// red danger edge stays off: the camera area then asks the user to fix
+  /// the camera.
   static BattleStageState stateOf(
     BattleState state,
     Matchup matchup, {
@@ -99,8 +105,16 @@ abstract final class BattleStageEvents {
     BattleRules rules = battleRules,
   }) {
     final end = endOf(state);
+    final startIn = state.startIn;
+    final phase = end != null
+        ? BattleStagePhase.ended
+        : state.started
+        ? BattleStagePhase.playing
+        : startIn != null
+        ? BattleStagePhase.countdown
+        : BattleStagePhase.setup;
     return BattleStageState(
-      phase: end != null ? BattleStagePhase.ended : BattleStagePhase.playing,
+      phase: phase,
       myName: matchup.playerName,
       opponentName: matchup.opponent.name,
       remaining: state.remaining,
@@ -112,7 +126,10 @@ abstract final class BattleStageEvents {
       barShare: state.myBarShare,
       fever: state.fever,
       feverMultiplier: rules.feverMultiplier,
-      danger: state.danger,
+      danger: state.danger && state.phase != BattlePhase.failed,
+      meReady: state.setup.isReady,
+      opponentReady: true,
+      countdown: phase == BattleStagePhase.countdown ? startIn : null,
       end: end,
     );
   }

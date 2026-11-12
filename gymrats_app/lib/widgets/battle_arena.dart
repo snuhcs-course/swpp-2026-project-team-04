@@ -46,6 +46,12 @@ class BattleStageController {
   /// open, e.g. from the system's back gesture.
   bool get resultReady => _fx.resultButtonUp(_now);
 
+  /// The round has started now: "GO!" shows at once, also when the
+  /// countdown was cut short or never ran (a bot battle started from the
+  /// setup's Start button). A countdown that ends about now keeps its own
+  /// moment.
+  void go() => _fx.countDown(0, _now);
+
   /// Brings the stage in line with [state].
   void _sync(BattleStageState state) {
     if (!_started) {

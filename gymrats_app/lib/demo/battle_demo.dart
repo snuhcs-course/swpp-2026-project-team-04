@@ -220,6 +220,7 @@ class _TouchBattleState extends State<_TouchBattle> {
       opponent: BotOpponent(roundLength: widget.roundLength),
       repository: context.read<UserRepository>(),
       sound: const DeviceRepSound(),
+      roundLength: widget.roundLength,
     );
   }
 

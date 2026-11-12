@@ -18,9 +18,9 @@ import '../widgets/safe_warning_dialog.dart';
 /// It has no view model: everything it shows comes from [matchup], and its
 /// only behavior is navigation. It opens with the safety warning, every
 /// match; the setup button works once the warning has closed. Back and the
-/// 게임 나가기 button at the top left both ask before going home. When setup
-/// finishes, the battle screen replaces this one, so going back from the
-/// battle leads home.
+/// 게임 나가기 button at the top left both ask before going home. The setup
+/// button opens the battle screen, which starts with the pose setup, in
+/// this one's place, so going back from the battle leads home.
 class VersusScreen extends StatefulWidget {
   const VersusScreen({
     super.key,
@@ -48,7 +48,8 @@ class VersusScreen extends StatefulWidget {
 }
 
 class _VersusScreenState extends State<VersusScreen> {
-  /// Set while the setup screen is open, so a second tap does nothing.
+  /// Set once the setup button opened the battle (or, online, while the
+  /// lobby's setup runs), so a second tap does nothing.
   bool _settingUp = false;
 
   /// Set once the safety warning has closed; the setup waits for it.
@@ -115,9 +116,8 @@ class _VersusScreenState extends State<VersusScreen> {
     super.dispose();
   }
 
-  /// Opens the pose setup. MatchSetupScreen returns the exercise when the
-  /// user is ready, or null if it closes without one; then this screen
-  /// stays. (Its 게임 나가기 closes this screen as well.)
+  /// Opens the pose setup: the battle screen, which sets up on its stage
+  /// before the round, in this screen's place.
   Future<void> _startSetup() async {
     if (_settingUp || !_warned) return;
     _settingUp = true;
@@ -127,16 +127,6 @@ class _VersusScreenState extends State<VersusScreen> {
       } finally {
         _settingUp = false;
       }
-      return;
-    }
-    final exercise = await Navigator.pushNamed<ExerciseType>(
-      context,
-      GymRatsApp.matchSetupRoute,
-      arguments: widget.matchup,
-    );
-    if (!mounted) return;
-    if (exercise == null) {
-      _settingUp = false;
       return;
     }
     Navigator.pushReplacementNamed(

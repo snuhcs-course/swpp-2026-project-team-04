@@ -672,6 +672,51 @@ void main() {
       expect(find.text('GO!'), findsNothing);
     });
 
+    testWidgets('go() cuts a countdown short: GO! at once, said once, and no '
+        'number after it', (tester) async {
+      final cues = <String>[];
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        onCue: (c) => cues.add('$c'),
+      );
+      await _wait(tester, 600);
+      expect(find.text('3'), findsOneWidget);
+      controller.go();
+      await _pump(tester, controller, _state(), onCue: (c) => cues.add('$c'));
+      await _wait(tester, 16);
+      expect(find.text('GO!'), findsOneWidget);
+      expect(find.text('3'), findsNothing);
+      await _wait(tester, 3000);
+      expect(cues, ['countdown 3', 'go']);
+    });
+
+    testWidgets('go() with no countdown before it still shows GO!', (
+      tester,
+    ) async {
+      final cues = <String>[];
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup),
+        onCue: (c) => cues.add('$c'),
+      );
+      await _wait(tester, 100);
+      controller.go();
+      await _pump(tester, controller, _state(), onCue: (c) => cues.add('$c'));
+      await _wait(tester, 16);
+      expect(find.text('GO!'), findsOneWidget);
+      expect(find.text('동점'), findsOneWidget);
+      await _wait(tester, 1000);
+      expect(cues, ['go']);
+    });
+
     testWidgets('losing the pose during the countdown stops it', (
       tester,
     ) async {

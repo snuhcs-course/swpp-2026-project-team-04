@@ -28,10 +28,8 @@ void main() {
   );
 
   /// Opens VersusScreen from a home page and, unless [seeWarning] is false,
-  /// closes the safety warning it opens with. The match setup route is a
-  /// stub that shows the matchup it received, with a "ready" button that
-  /// returns the exercise and a "back" button that returns null, like
-  /// MatchSetupScreen. The battle route shows its matchup.
+  /// closes the safety warning it opens with. The battle route, where the
+  /// pose setup is, shows its matchup.
   Future<void> open(
     WidgetTester tester, {
     Matchup matchup = _matchup,
@@ -64,30 +62,6 @@ void main() {
           ),
         ),
         onGenerateRoute: (settings) => switch (settings.name) {
-          GymRatsApp.matchSetupRoute => MaterialPageRoute<ExerciseType>(
-            settings: settings,
-            builder: (context) {
-              final matchup = settings.arguments! as Matchup;
-              return Scaffold(
-                body: Column(
-                  children: [
-                    Text(
-                      'setup ${matchup.exercise.name} '
-                      'vs ${matchup.opponent.name}',
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, matchup.exercise),
-                      child: const Text('ready'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('back'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
           GymRatsApp.battleRoute => MaterialPageRoute<void>(
             settings: settings,
             builder: (_) {
@@ -110,8 +84,9 @@ void main() {
     }
   }
 
-  int setupPushes() =>
-      pushes.names.where((name) => name == GymRatsApp.matchSetupRoute).length;
+  /// How often the battle, which starts with the pose setup, was opened.
+  int battleOpens() =>
+      pushes.names.where((name) => name == GymRatsApp.battleRoute).length;
 
   /// The 게임 나가기 button at the top left.
   final exitButton = find.byType(ExitGameButton);
@@ -355,34 +330,16 @@ void main() {
     expect(find.text('IronBot 님과의 대결이 취소되고\n홈으로 돌아가요.'), findsOneWidget);
   });
 
-  testWidgets('back from setup stays here, and setup can open again', (
-    tester,
-  ) async {
+  testWidgets('the setup button replaces this screen with the battle, '
+      'which sets up itself', (tester) async {
     await open(tester);
     await tester.tap(find.text('자세 세팅 시작'));
-    await tester.pumpAndSettle();
-    expect(find.text('setup pushUp vs RepBot'), findsOneWidget);
-
-    await tester.tap(find.text('back'));
-    await tester.pumpAndSettle();
-    expect(find.text('MATCH FOUND'), findsOneWidget);
-
-    await tester.tap(find.text('자세 세팅 시작'));
-    await tester.pumpAndSettle();
-    expect(find.text('setup pushUp vs RepBot'), findsOneWidget);
-    expect(setupPushes(), 2);
-  });
-
-  testWidgets('a finished setup replaces this screen with the battle', (
-    tester,
-  ) async {
-    await open(tester);
-    await tester.tap(find.text('자세 세팅 시작'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('ready'));
     await tester.pumpAndSettle();
     expect(find.text('battle vs RepBot'), findsOneWidget);
     expect(find.byType(VersusScreen), findsNothing);
+    // The bot battle no longer goes through the setup screen.
+    expect(pushes.names, isNot(contains(GymRatsApp.matchSetupRoute)));
+    expect(battleOpens(), 1);
 
     // Replaced, not pushed: going back skips the versus screen.
     await tester.pageBack();
@@ -405,7 +362,7 @@ void main() {
     press();
     press();
     await tester.pumpAndSettle();
-    expect(setupPushes(), 1);
+    expect(battleOpens(), 1);
   });
 
   testWidgets('fits a small phone without overflow', (tester) async {
@@ -460,7 +417,7 @@ void main() {
       await open(tester, seeWarning: false);
       pressSetup(tester);
       await tester.pumpAndSettle();
-      expect(setupPushes(), 0);
+      expect(battleOpens(), 0);
       expect(find.byType(SafeWarningDialog), findsOneWidget);
 
       await tester.tap(warningButton);
@@ -468,7 +425,7 @@ void main() {
       expect(find.byType(SafeWarningDialog), findsNothing);
       await tester.tap(find.text('자세 세팅 시작'));
       await tester.pumpAndSettle();
-      expect(find.text('setup pushUp vs RepBot'), findsOneWidget);
+      expect(find.text('battle vs RepBot'), findsOneWidget);
     });
 
     testWidgets('a tap outside keeps it open', (tester) async {
@@ -494,7 +451,7 @@ void main() {
       expect(find.byType(SafeWarningDialog), findsOneWidget);
       pressSetup(tester);
       await tester.pumpAndSettle();
-      expect(setupPushes(), 0);
+      expect(battleOpens(), 0);
     });
 
     testWidgets('back on it, then 게임 나가기, goes home with no warning left', (
@@ -556,7 +513,7 @@ void main() {
       expect(find.byType(SafeWarningDialog), findsNothing);
       await tester.tap(find.text('자세 세팅 시작'));
       await tester.pumpAndSettle();
-      expect(find.text('setup pushUp vs RepBot'), findsOneWidget);
+      expect(find.text('battle vs RepBot'), findsOneWidget);
     });
 
     testWidgets('online: 확인 closes it before the countdown ends', (

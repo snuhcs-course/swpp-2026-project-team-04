@@ -8,6 +8,7 @@ import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
@@ -31,7 +32,24 @@ final _passDepth = const RepJudgeConfig().bottomDepth;
 final _good = _passDepth * 1.2;
 final _excellent = _passDepth * 1.7;
 
-const _playing = BattleState(remaining: Duration(seconds: 20));
+const _playing = BattleState(
+  phase: BattlePhase.playing,
+  started: true,
+  remaining: Duration(seconds: 20),
+);
+
+/// Before the round: the camera runs and the pose is being checked.
+const _settingUp = BattleState(
+  phase: BattlePhase.setup,
+  remaining: battleDuration,
+);
+
+/// The pose the setup has found ready.
+const _ready = SetupStatus(
+  reason: SetupReason.ready,
+  isReady: true,
+  readyProgress: 1,
+);
 
 String _show(BattleStageEvent e) => [
   e.side.name,
@@ -526,6 +544,82 @@ void main() {
       expect(state.end!.winner, BattleSide.me);
       expect(state.secondsLeft, 0);
       expect(state.elapsed, 1);
+    });
+
+    group('before the round', () {
+      test('setting up: the user is not ready yet, the bot always is; the '
+          'clock shows the whole round', () {
+        final state = BattleStageEvents.stateOf(
+          _settingUp,
+          _matchup,
+          roundLength: battleDuration,
+        );
+        expect(state.phase, BattleStagePhase.setup);
+        expect(state.meReady, isFalse);
+        expect(state.opponentReady, isTrue);
+        expect(state.countdown, isNull);
+        expect(state.secondsLeft, 30);
+        expect((state.myScore, state.opponentScore), (0, 0));
+      });
+
+      test('the camera still opening, paused or failed is the setup too', () {
+        for (final phase in const [
+          BattlePhase.starting,
+          BattlePhase.paused,
+          BattlePhase.failed,
+        ]) {
+          final state = BattleStageEvents.stateOf(
+            _settingUp.copyWith(phase: phase),
+            _matchup,
+            roundLength: battleDuration,
+          );
+          expect(state.phase, BattleStagePhase.setup, reason: '$phase');
+        }
+      });
+
+      test("once the pose holds, the setup's count to the start is the "
+          'countdown, exact to the millisecond', () {
+        final state = BattleStageEvents.stateOf(
+          _settingUp.copyWith(
+            setup: _ready,
+            startIn: const Duration(milliseconds: 2350),
+          ),
+          _matchup,
+          roundLength: battleDuration,
+        );
+        expect(state.phase, BattleStagePhase.countdown);
+        expect(state.countdown, const Duration(milliseconds: 2350));
+        expect(state.meReady, isTrue);
+        expect(state.opponentReady, isTrue);
+      });
+
+      test('the round once begun is playing, with no countdown left', () {
+        final state = BattleStageEvents.stateOf(
+          _playing.copyWith(setup: _ready),
+          _matchup,
+          roundLength: battleDuration,
+        );
+        expect(state.phase, BattleStagePhase.playing);
+        expect(state.countdown, isNull);
+      });
+    });
+
+    test('the danger edge is off while the camera has failed, and back once '
+        'it runs again', () {
+      final failed = BattleStageEvents.stateOf(
+        _playing.copyWith(phase: BattlePhase.failed, danger: true),
+        _matchup,
+        roundLength: battleDuration,
+      );
+      expect(failed.danger, isFalse);
+      for (final phase in const [BattlePhase.playing, BattlePhase.paused]) {
+        final state = BattleStageEvents.stateOf(
+          _playing.copyWith(phase: phase, danger: true),
+          _matchup,
+          roundLength: battleDuration,
+        );
+        expect(state.danger, isTrue, reason: '$phase');
+      }
     });
   });
 }
