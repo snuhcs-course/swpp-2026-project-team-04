@@ -6,6 +6,7 @@ import '../models/exercise_type.dart';
 import '../services/pose/setup_checker.dart';
 import '../viewmodels/setup_viewmodel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
+import '../widgets/pose_silhouette_guide.dart';
 
 const _readyColor = Colors.greenAccent;
 
@@ -184,6 +185,86 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
             final state = vm.state;
             final running = state.phase == SetupPhase.running;
             final showDebug = widget.showDebugTools && running;
+            if (widget.exercise == ExerciseType.pushUp && running) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final isLandscape =
+                      constraints.maxWidth > constraints.maxHeight;
+                  final controls = SafeArea(
+                    bottom: false,
+                    child: Column(
+                      children: [
+                        if (isLandscape)
+                          const SizedBox(height: 64)
+                        else
+                          PoseSetupTopButtons(
+                            canSwitchCamera: vm.canSwitchCamera,
+                            onSwitchCamera: vm.switchCamera,
+                          ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: _BottomPanel(
+                              state: state,
+                              exercise: widget.exercise,
+                              autoStartDelay: vm.config.autoStartDelay,
+                              onStart: state.canStart ? _finish : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  final camera = ClipRect(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        PoseAvatarToggleView(
+                          controller: vm.cameraController,
+                          cameraFit: BoxFit.cover,
+                          frame: state.lastFrame,
+                          mirror: vm.isFrontCamera,
+                          showLandmarks: showDebug,
+                          isVisible: vm.isVisible,
+                          cameraOverlay: PoseSilhouetteGuide(
+                            ready: state.status.isReady,
+                          ),
+                        ),
+                        PoseReadyBorder(ready: state.status.isReady),
+                      ],
+                    ),
+                  );
+                  return isLandscape
+                      ? Stack(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: controls),
+                                Expanded(child: camera),
+                              ],
+                            ),
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: SafeArea(
+                                bottom: false,
+                                child: PoseSetupTopButtons(
+                                  canSwitchCamera: vm.canSwitchCamera,
+                                  onSwitchCamera: vm.switchCamera,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            Expanded(child: controls),
+                            Expanded(child: camera),
+                          ],
+                        );
+                },
+              );
+            }
             return Stack(
               fit: StackFit.expand,
               children: [
