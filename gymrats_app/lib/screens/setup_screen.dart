@@ -66,6 +66,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
     _viewModel =
         widget.createViewModel?.call() ??
         SetupViewModel(exercise: widget.exercise);
+    if (widget.showDebugTools) _viewModel.enableDiagnosticMode();
     WidgetsBinding.instance.addObserver(this);
     _viewModel.addListener(_onViewModelChanged);
     SystemChrome.setPreferredOrientations(SetupScreen.orientations);
@@ -207,7 +208,9 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                               state: state,
                               exercise: widget.exercise,
                               autoStartDelay: vm.config.autoStartDelay,
-                              onStart: null,
+                              onStart: widget.showDebugTools && state.canStart
+                                  ? _finish
+                                  : null,
                             ),
                           ),
                         ),

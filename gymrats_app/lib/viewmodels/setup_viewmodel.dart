@@ -139,6 +139,7 @@ class SetupViewModel extends ChangeNotifier {
   final Clock _clock;
   final bool Function(PoseFrame, Size, bool) _guideMatcher;
   Size? _guideViewport;
+  bool _diagnosticMode = false;
   late final SetupChecker _checker;
 
   SetupState _state = const SetupState();
@@ -162,6 +163,9 @@ class SetupViewModel extends ChangeNotifier {
 
   /// Updated by the camera panel when its displayed size changes.
   void setGuideViewport(Size size) => _guideViewport = size;
+
+  /// Diagnostic recorders retain their manual setup and countdown behavior.
+  void enableDiagnosticMode() => _diagnosticMode = true;
 
   /// Controller for the camera preview; null while the camera is stopped.
   CameraController? get cameraController =>
@@ -307,6 +311,7 @@ class SetupViewModel extends ChangeNotifier {
     final viewport = _guideViewport;
     final aligned =
         exercise != ExerciseType.pushUp ||
+        _diagnosticMode ||
         (viewport != null && _guideMatcher(frame, viewport, isFrontCamera));
     final (autoStartIn, autoStarted) = _autoStart(status, now, aligned);
     _setState(
@@ -327,7 +332,7 @@ class SetupViewModel extends ChangeNotifier {
   /// frame starts a fresh countdown. Squats retain their existing timing.
   (Duration?, bool) _autoStart(SetupStatus status, Duration now, bool aligned) {
     if (_state.autoStarted) return (null, true);
-    final valid = exercise == ExerciseType.pushUp
+    final valid = exercise == ExerciseType.pushUp && !_diagnosticMode
         ? status.reason == SetupReason.ready && aligned
         : status.isReady;
     if (!valid) {

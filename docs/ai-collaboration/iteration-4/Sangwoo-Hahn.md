@@ -34,3 +34,5 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 - The user requested a three-second wait and then suggested comparing the sum of joint distances to the silhouette; Codex implemented the selected approach with individual limits for the head and hands. The configured limits are provisional.
 - Codex ran the scoped tests and built a release app for the connected phone; the user reported completing a test. Specific manual-test outcomes and time savings were not provided. No human manual source-code fixes were reported.
 - Independent review and full interaction-history export remain TODO. Online battle uses a separate setup flow and is not included.
+
+- A full-suite run exposed diagnostic demo tests depending on manual setup. Codex preserved the existing diagnostic behavior and reran those suites; no human source edit was claimed.
