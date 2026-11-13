@@ -14,7 +14,8 @@ import 'battle_stage_model.dart';
 /// The effects say how each rep went, and the opponent's reps make no sound
 /// (user 2026-11-12). The battle has no voice: the setup's spoken hints were
 /// dropped after the phone check (user 2026-11-14). [dispose] stops the
-/// alarm and frees the effects.
+/// alarm and frees the effects; leaving before a result brings the menu
+/// music back.
 class BattleSounds {
   BattleSounds({SoundServices? services})
     : _services = services ?? SoundServices.shared {
@@ -23,6 +24,10 @@ class BattleSounds {
 
   final SoundServices _services;
   bool _disposed = false;
+
+  /// Whether the stage showed a decided result: its jingle (or a draw's
+  /// silence) goes on into the result screen.
+  bool _decided = false;
 
   /// The music for the stage; null keeps what plays: while the server's
   /// result is awaited the battle music goes on, and a draw lets it fade out
@@ -41,6 +46,10 @@ class BattleSounds {
   /// while the round is on. The same state again changes nothing.
   void show(BattleStageState stage) {
     if (_disposed) return;
+    if (stage.phase == BattleStagePhase.ended &&
+        (stage.end?.decided ?? false)) {
+      _decided = true;
+    }
     final music = musicFor(stage);
     if (music != null) {
       _services.music.play(music);
@@ -76,14 +85,17 @@ class BattleSounds {
     _services.music.stop();
   }
 
-  /// Stops the alarm and frees the effects; the music goes on into the next
-  /// screen.
+  /// Stops the alarm and frees the effects. After a result its jingle goes
+  /// on into the result screen; a battle left before its result (the user
+  /// left, or it ended without one) goes back to the menu music, as the
+  /// screen under it plays none of its own (Codex, PR #53).
   void dispose() {
     if (_disposed) return;
     _disposed = true;
     _services.effects
       ..setDanger(false)
       ..release();
+    if (!_decided) _services.music.play(MusicCue.menu);
   }
 }
 

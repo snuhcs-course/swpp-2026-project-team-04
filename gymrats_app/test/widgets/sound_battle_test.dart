@@ -208,6 +208,37 @@ void main() {
     expect(_music(s).stops, 2);
   });
 
+  test('leaving before a result brings the menu music back; after a result '
+      'its jingle, or a draw\'s silence, goes on', () {
+    final s = fakeSoundServices();
+    BattleSounds(services: s)
+      ..show(_stage(BattleStagePhase.playing, fever: true))
+      ..dispose();
+    expect(_music(s).played.last, MusicCue.menu);
+
+    BattleSounds(services: s)
+      ..show(_stage(BattleStagePhase.ended, end: _end(null, decided: false)))
+      ..dispose();
+    expect(_music(s).played.last, MusicCue.menu, reason: 'no result yet');
+
+    BattleSounds(services: s)
+      ..show(_stage(BattleStagePhase.playing))
+      ..ended()
+      ..dispose();
+    expect(_music(s).played.last, MusicCue.menu, reason: 'ended without one');
+
+    BattleSounds(services: s)
+      ..show(_stage(BattleStagePhase.ended, end: _end(BattleSide.me)))
+      ..dispose();
+    expect(_music(s).played.last, MusicCue.win);
+
+    final played = _music(s).played.length;
+    BattleSounds(services: s)
+      ..show(_stage(BattleStagePhase.ended, end: _end(null)))
+      ..dispose();
+    expect(_music(s).played, hasLength(played), reason: 'a draw stays quiet');
+  });
+
   test('without a set it uses the shared one', () {
     final shared = fakeSoundServices();
     SoundServices.shared = shared;

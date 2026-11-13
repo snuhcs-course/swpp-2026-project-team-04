@@ -59,7 +59,7 @@ approved one-off exception (PM agreed).
 | `lib/services/audio/sound_effects.dart` | `SoundEffect` (good, excellent, average, reject, ko; `forRep(grade)`), `SoundEffects` interface (`prepare`, `play`, `setDanger`, `dispose`), `SoundEffectsService`: one loaded player per effect, so a hit only rewinds and plays |
 | `lib/services/audio/sound_services.dart` | `SoundServices`: the switches, the voice, the music and the effects as one app-wide set (`SoundServices.shared`, made on first use; tests set their own) |
 | `lib/widgets/sound_cues.dart` | `SoundCues`: wraps a screen's body and passes its current music and voice cues on every build; its music comes back when the screen shows again |
-| `lib/widgets/sound_battle.dart` | `BattleSounds`: one per battle screen; `show(stage)` (music by stage phase, danger alarm), `cue(BattleStageCue)` (my hit by grade, my miss, KO), `ended()`; `NoRepBeep` |
+| `lib/widgets/sound_battle.dart` | `BattleSounds`: one per battle screen; `show(stage)` (music by stage phase, danger alarm), `cue(BattleStageCue)` (my hit by grade, my miss, KO), `ended()`; `dispose()` frees the effects and, unless a decided result was shown, plays `menu` (left mid-battle or ended without a result; Codex, PR #53); `NoRepBeep` |
 | `test/support/audio_fakes.dart` | adds `FakeMusicPlayer`, `FakeMusicPlayers`, `FakeBackgroundMusic`, `FakeSoundEffects`, `fakeSoundServices()` |
 
 Also changed: `MusicPlayer.seekToStart` (to replay an effect), `SoundSettings.voiceEnabled` (the voice's own switch),
@@ -73,7 +73,8 @@ Also changed: `MusicPlayer.seekToStart` (to replay an effect), `SoundSettings.vo
 - **The battle starts on the beat.** The battle track's quiet 1.5 s build-up is clipped off (`MusicCue.start`, one
   `just_audio` clip, so the loop skips it too), and it fades in over 0.15 s (`MusicCue.fadeIn`) instead of 0.6 s.
 - **Fever keeps its place.** Battle and fever share the file, so fever only raises the rate (and back): no restart.
-- **Jingles once.** `win` and `lose` do not loop. A jingle cut off by sound off or the background is freed, not replayed.
+- **Jingles once.** `win` and `lose` do not loop. A jingle cut off by sound off or the background is freed, not replayed; one still
+  loading then is dropped too (Codex, PR #53).
 - **Sound off / background.** `SoundSettings.enabled` false, or the app not in the foreground, fades the music out and
   pauses it; it fades back in when sound returns. A looping cue asked for while silent starts when sound returns.
 - **Failures are ignored.** A file that fails to load is freed; the next cue plays normally.
@@ -124,6 +125,7 @@ W2's battle screens do the setup in the battle screen itself (bot and online) an
 | setup, countdown | `setup` | none (dropped 2026-11-14) | – |
 | playing | `battle`, `fever` (1.25x) | none | my hit by grade, my miss; alarm while in danger |
 | ended | `win` / `lose` once (a draw fades out; waiting for the server's result keeps the music) | none | gong at a KO |
+| left before a result | `menu` (the screen under the battle plays none of its own) | none | alarm off |
 
 `setup_screen.dart` and `match_setup_screen.dart` are no longer on the way to a battle (their routes stay in
 `main.dart` but nothing opens them), so they get no sound.

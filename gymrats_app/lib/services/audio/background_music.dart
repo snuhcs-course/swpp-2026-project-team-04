@@ -240,13 +240,15 @@ class BackgroundMusicService
     _wasSilenced = silenced;
     final active = _active;
     if (silenced) {
-      if (active == null || !active.loaded) return;
+      if (active == null) return;
       if (!active.cue.loop) {
-        // A jingle that was cut off is not replayed later.
+        // A jingle that was cut off, or still loading, is not played later
+        // (Codex, PR #53).
         _release(active, fadeOut: true);
         _active = null;
         return;
       }
+      if (!active.loaded) return; // It loads paused and starts with sound.
       _ramp(active, 0, then: () => _quietly(active.player.pause));
       return;
     }

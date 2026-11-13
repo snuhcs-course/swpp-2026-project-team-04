@@ -299,6 +299,29 @@ void main() {
       });
     });
 
+    test('a jingle still loading when sound goes off is dropped, not played '
+        'when sound is back', () {
+      fakeAsync((async) {
+        final gate = Completer<void>();
+        final music = BackgroundMusicService(
+          newPlayer: () => players()..loadGate = gate,
+          settings: settings,
+          fade: fade,
+        )..play(MusicCue.win);
+        final p = players.last;
+        unawaited(settings.setEnabled(false));
+        async.flushMicrotasks();
+        expect(p.disposed, isTrue);
+        gate.complete();
+        async.elapse(fade);
+        unawaited(settings.setEnabled(true));
+        async.elapse(fade);
+        expect(p.playing, isFalse);
+        expect(players.made, hasLength(1));
+        music.dispose();
+      });
+    });
+
     test('sound off while the track loads keeps it paused until sound is '
         'back', () {
       fakeAsync((async) {
