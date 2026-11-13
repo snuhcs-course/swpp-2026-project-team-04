@@ -12,6 +12,7 @@ import 'battle_fx_motion.dart';
 import 'battle_reject_sign.dart';
 import 'battle_stage.dart';
 import 'battle_stage_model.dart';
+import 'character_figure.dart';
 
 /// Feeds a [BattleArena]: a battle screen gives it each judged rep once
 /// ([rep]); the arena reads the rest from the state it is built with.
@@ -52,8 +53,8 @@ class BattleStageController {
   /// moment.
   void go() => _fx.countDown(0, _now);
 
-  /// Brings the stage in line with [state].
-  void _sync(BattleStageState state) {
+  /// Brings the stage in line with [state], with the effects of [cast].
+  void _sync(BattleStageState state, BattleFxCast cast) {
     if (!_started) {
       // Nothing has moved yet: stand where the score is, without gliding.
       _started = true;
@@ -67,7 +68,8 @@ class BattleStageController {
       ..setScores(state.myScore, state.opponentScore)
       ..setFever(state.fever, _now)
       ..danger = state.danger
-      ..opponentGone = state.opponentDisconnected;
+      ..opponentGone = state.opponentDisconnected
+      ..cast = cast;
     switch (state.phase) {
       case BattleStagePhase.setup:
         _fx.setSetup(
@@ -145,6 +147,7 @@ class BattleArena extends StatefulWidget {
     required this.state,
     required this.camera,
     this.fighterBuilder = BattleFighter.standIn,
+    this.characters,
     this.onCue,
     this.onLeave,
     this.hint,
@@ -161,8 +164,13 @@ class BattleArena extends StatefulWidget {
   /// The camera picture with what is drawn on it, in its own shape.
   final Widget camera;
 
-  /// Draws a fighter's picture for a pose; the characters come in here.
+  /// Draws a fighter's picture for a pose when there are no [characters]:
+  /// W2's stand-in by default.
   final BattleFighterBuilder fighterBuilder;
+
+  /// The two fighters' characters (W3): drawn on the stage, with their idle
+  /// motions and the hit star where their blows land.
+  final BattleCharacters? characters;
 
   /// Called once for each moment a sound can follow, as it shows: a blow
   /// landing, a miss, a KO, time-up and its verdict, the countdown's
@@ -212,11 +220,14 @@ class _BattleArenaState extends State<BattleArena>
 
   BattleStageController get _controller => widget.controller;
 
+  /// The characters' effects, or W2's stand-in ones without characters.
+  BattleFxCast get _cast => widget.characters?.cast ?? const BattleFxCast();
+
   @override
   void initState() {
     super.initState();
     _clockStart = _controller._now;
-    _controller._sync(widget.state);
+    _controller._sync(widget.state, _cast);
     _frame = ValueNotifier(_controller._fx.frame(_controller._now));
     _ticker = createTicker(_onTick)..start();
   }
@@ -230,7 +241,7 @@ class _BattleArenaState extends State<BattleArena>
   @override
   void didUpdateWidget(BattleArena oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _controller._sync(widget.state);
+    _controller._sync(widget.state, _cast);
     final before = oldWidget.state;
     final now = widget.state;
     battleStandingAnnouncements(before, now).forEach(_say);
@@ -345,6 +356,7 @@ class _BattleArenaState extends State<BattleArena>
                               frame: frame,
                               state: state,
                               fighterBuilder: widget.fighterBuilder,
+                              characters: widget.characters,
                             ),
                           ),
                         ),

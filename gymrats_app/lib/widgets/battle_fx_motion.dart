@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../models/character_idle_motion.dart';
 import '../models/game_score.dart';
 import '../models/rep_event.dart';
 import 'battle_stage_model.dart';
@@ -541,6 +542,36 @@ class _Sign {
   final bool average;
 }
 
+/// What the fighters' characters change in the effects (W3 spec 6): how
+/// each one moves while idle, how much later the opponent's idle motion
+/// runs, and where the hit star sits. The default is W2's stand-in: both
+/// breathe in step and the star is 34 px from the middle, 76 px up.
+class BattleFxCast {
+  const BattleFxCast({
+    this.meIdle = CharacterIdleMotion.w2Default,
+    this.opponentIdle = CharacterIdleMotion.w2Default,
+    this.opponentIdleOffsetMs = 0,
+    this.hitStarDx = 34,
+    this.hitStarUp = 76,
+  });
+
+  final CharacterIdleMotion meIdle;
+  final CharacterIdleMotion opponentIdle;
+
+  /// Added to the opponent's clock for their idle motion.
+  final double opponentIdleOffsetMs;
+
+  /// The hit star's center: [hitStarDx] from the meeting point toward the
+  /// one hit, [hitStarUp] above the floor.
+  final double hitStarDx;
+  final double hitStarUp;
+
+  /// The idle motion of [who] at [now] on the stage clock.
+  IdleSample idleAt(BattleSide who, double now) => who == BattleSide.me
+      ? meIdle.sampleAt(now)
+      : opponentIdle.sampleAt(now + opponentIdleOffsetMs);
+}
+
 class _Motion {
   BattlePose pose = BattlePose.idle;
   double lunge = 0;
@@ -612,6 +643,9 @@ class BattleFxTimeline {
 
   /// Whether the user is far enough behind to lose soon.
   bool danger = false;
+
+  /// The characters' idle motions and hit-star place.
+  BattleFxCast cast = const BattleFxCast();
 
   /// Whether the opponent's connection is down, before it counts as leaving.
   bool opponentGone = false;
@@ -862,7 +896,7 @@ class BattleFxTimeline {
   }
 
   /// The frame at [now]. With [reducedMotion] the hit-stop, the shake, the
-  /// zoom, the flash, the breathing, the stripes' drift, the count bump, the
+  /// zoom, the flash, the idle motion, the stripes' drift, the count bump, the
   /// countdown's growing numbers, the puff and the button's growing are off;
   /// poses, scores, bands, the sign and the button stay.
   BattleFxFrame frame(double now, {bool reducedMotion = false}) {
@@ -874,7 +908,6 @@ class BattleFxTimeline {
     final beforeStart = _setup || counting;
     final inDanger = danger && end == null && !beforeStart;
     final meetX = BattleFx.meetX(_shareAt(now));
-    final breath = reducedMotion ? 0.0 : math.sin(now / 280) * 0.02;
 
     BattleFxFighter build(BattleSide who) {
       final dir = who == BattleSide.me ? 1.0 : -1.0;
@@ -887,9 +920,14 @@ class BattleFxTimeline {
       var rotation = dir * m.tilt;
       var scale = 1.0;
       var opacity = 1.0;
-      if (who == BattleSide.me && inDanger && m.pose == BattlePose.idle) {
-        rotation += -7 + math.sin(now / 85) * 6;
-      }
+      // The character's idle motion (W2's breathing by default), in the
+      // idle pose only.
+      final idle = m.pose == BattlePose.idle && !reducedMotion
+          ? cast.idleAt(who, now)
+          : IdleSample.rest;
+      final swaying =
+          who == BattleSide.me && inDanger && m.pose == BattlePose.idle;
+      if (swaying) rotation += -7 + math.sin(now / 85) * 6;
       if (who == BattleSide.opponent && opponentGone) opacity = 0.45;
       if (m.lost == true && m.sinceEnd >= 0) {
         if (endKind == BattleEndKind.knockout) {
@@ -908,13 +946,16 @@ class BattleFxTimeline {
           dy = -10 * u;
         }
       }
+      dy -= idle.up;
+      // The danger sway replaces the rock; the rest of the motion stays.
+      if (!swaying) rotation += dir * idle.rockDeg;
       return BattleFxFighter(
         pose: m.pose,
         footX: x + dx,
         footY: BattleFx.groundY + dy,
         rotation: rotation,
-        scaleX: dir * scale,
-        scaleY: scale * (m.pose == BattlePose.idle ? 1 + breath : 1),
+        scaleX: dir * scale * idle.scaleX,
+        scaleY: scale * idle.scaleY,
         opacity: opacity,
         flash: m.flash,
         glow: _fever && !m.flash,
@@ -1167,8 +1208,9 @@ class BattleFxTimeline {
     final size = BattleFx.starSize(hit.power) * (hit.fever ? 1.5 : 1);
     final grown = 0.45 + 0.75 * BattleFx.easeOut(BattleFx.seg(d, 0, stop + 60));
     return BattleFxStar(
-      centerX: meetX + (hit.by == BattleSide.me ? 34 : -34),
-      centerY: BattleFx.groundY - 76,
+      centerX:
+          meetX + (hit.by == BattleSide.me ? cast.hitStarDx : -cast.hitStarDx),
+      centerY: BattleFx.groundY - cast.hitStarUp,
       rotation: (hit.count * 37) % 60 + d * 0.05,
       diameter: grown * size,
       opacity: d > stop + 140 ? math.max(0, 1 - (d - stop - 140) / 160) : 1,

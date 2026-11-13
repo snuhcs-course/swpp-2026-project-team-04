@@ -10,6 +10,7 @@ import 'battle_fighter.dart';
 import 'battle_fx_motion.dart';
 import 'battle_stage_hud.dart';
 import 'battle_stage_model.dart';
+import 'character_figure.dart';
 
 /// The fighting stage at one moment: the HUD, the bar the two fighters
 /// stand on, the fighters, and the effects over them, drawn from a [frame]
@@ -25,13 +26,19 @@ class BattleStage extends StatelessWidget {
     required this.frame,
     required this.state,
     this.fighterBuilder = BattleFighter.standIn,
+    this.characters,
   });
 
   final BattleFxFrame frame;
   final BattleStageState state;
 
-  /// Draws a fighter's picture for a pose; the characters come in here.
+  /// Draws a fighter's picture for a pose when there are no [characters]:
+  /// W2's stand-in by default.
   final BattleFighterBuilder fighterBuilder;
+
+  /// The two fighters' characters (W3). They paint their own flash: white
+  /// fills, ink outlines kept.
+  final BattleCharacters? characters;
 
   /// The height the KO zoom grows from.
   static const _zoomOriginY = 300.0;
@@ -43,12 +50,14 @@ class BattleStage extends StatelessWidget {
       side: BattleSide.me,
       glowRadius: frame.glowRadius,
       builder: fighterBuilder,
+      character: characters?.of(BattleSide.me),
     );
     final opponent = _FighterView(
       fighter: frame.opponent,
       side: BattleSide.opponent,
       glowRadius: frame.glowRadius,
       builder: fighterBuilder,
+      character: characters?.of(BattleSide.opponent),
     );
     final star = frame.star;
     final twinkle = frame.twinkle;
@@ -252,13 +261,14 @@ class _Bar extends StatelessWidget {
 /// One fighter where the effect math puts them: moved to their feet, turned
 /// and sized around the feet, faded, and lit (the white flash of a blow, the
 /// aura of fever). The picture itself comes from [builder] and knows none of
-/// this.
+/// this, or is the [character], which paints its own flash.
 class _FighterView extends StatelessWidget {
   const _FighterView({
     required this.fighter,
     required this.side,
     required this.glowRadius,
     required this.builder,
+    this.character,
   });
 
   final BattleFxFighter fighter;
@@ -266,15 +276,31 @@ class _FighterView extends StatelessWidget {
   final double glowRadius;
   final BattleFighterBuilder builder;
 
+  /// The character drawn instead of [builder]'s picture.
+  final String? character;
+
   /// How far the flash's ink edge spreads around the white shape.
   static const _flashEdge = 1.0;
 
   @override
   Widget build(BuildContext context) {
     if (fighter.opacity <= 0) return const SizedBox.shrink();
-    final picture = RepaintBoundary(child: builder(fighter.pose, side));
+    final character = this.character;
+    final picture = RepaintBoundary(
+      child: character == null
+          ? builder(fighter.pose, side)
+          : CharacterFigure(
+              characterId: character,
+              pose: fighter.pose,
+              side: side,
+              flash: fighter.flash,
+            ),
+    );
     final Widget lit;
-    if (fighter.flash) {
+    if (fighter.flash && character != null) {
+      // The character is already white with its ink outlines.
+      lit = picture;
+    } else if (fighter.flash) {
       // A white shape with a soft ink edge, so it shows on the light ground.
       final edge = ImageFiltered(
         imageFilter: ui.ImageFilter.blur(

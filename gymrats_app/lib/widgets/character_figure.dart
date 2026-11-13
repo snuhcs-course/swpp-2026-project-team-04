@@ -54,6 +54,38 @@ class CharacterFigure extends StatelessWidget {
   }
 }
 
+/// The two characters on a battle stage: mine and the opponent's (W3).
+class BattleCharacters {
+  const BattleCharacters({required this.me, required this.opponent});
+
+  /// Character ids; an unknown one draws the default (`mouse`).
+  final String me;
+  final String opponent;
+
+  String of(BattleSide side) => side == BattleSide.me ? me : opponent;
+
+  /// What these characters change in the stage's effects (spec 6): their
+  /// own idle motions, the opponent's running 230 ms later, and the hit
+  /// star where the blows land.
+  BattleFxCast get cast {
+    final rig = CharacterRig.standard;
+    return BattleFxCast(
+      meIdle: rig.art(me).idleMotion,
+      opponentIdle: rig.art(opponent).idleMotion,
+      opponentIdleOffsetMs: rig.idleOpponentOffsetMs,
+      hitStarDx: rig.hitStarDx,
+      hitStarUp: rig.hitStarUp,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is BattleCharacters && other.me == me && other.opponent == opponent;
+
+  @override
+  int get hashCode => Object.hash(me, opponent);
+}
+
 /// The rig's key for a stage pose.
 String characterPoseKey(BattlePose pose) => switch (pose) {
   BattlePose.idle => 'idle',

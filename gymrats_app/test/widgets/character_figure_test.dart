@@ -136,6 +136,39 @@ void main() {
     });
   });
 
+  group('BattleCharacters', () {
+    test('gives each side its character', () {
+      const characters = BattleCharacters(me: 'seal', opponent: 'bot');
+      expect(characters.of(BattleSide.me), 'seal');
+      expect(characters.of(BattleSide.opponent), 'bot');
+    });
+
+    test('brings the rig\'s idle motions, the opponent\'s 230 ms, and the '
+        'star where blows land', () {
+      final cast = const BattleCharacters(me: 'penguin', opponent: 'bear').cast;
+      expect(cast.meIdle, same(rig.art('penguin').idleMotion));
+      expect(cast.opponentIdle, same(rig.art('bear').idleMotion));
+      expect(cast.opponentIdleOffsetMs, 230);
+      expect((cast.hitStarDx, cast.hitStarUp), (48, 58));
+    });
+
+    test('an unknown id idles as the default mouse', () {
+      final cast = const BattleCharacters(me: 'rabbit', opponent: '').cast;
+      expect(cast.meIdle, same(rig.art('mouse').idleMotion));
+      expect(cast.opponentIdle, same(rig.art('mouse').idleMotion));
+    });
+
+    test('two with the same characters are equal', () {
+      const a = BattleCharacters(me: 'mouse', opponent: 'bot');
+      expect(a, const BattleCharacters(me: 'mouse', opponent: 'bot'));
+      expect(
+        a.hashCode,
+        const BattleCharacters(me: 'mouse', opponent: 'bot').hashCode,
+      );
+      expect(a, isNot(const BattleCharacters(me: 'bot', opponent: 'mouse')));
+    });
+  });
+
   test('the stage poses map to the rig pose keys', () {
     expect(
       {for (final pose in BattlePose.values) pose: characterPoseKey(pose)},
