@@ -30,7 +30,8 @@ class HelpRule {
   final String title;
   final String body;
 
-  /// Drawn in red, like the battle's danger edge.
+  /// Its icon sits on red, like the battle's danger edge; the others on
+  /// lime.
   final bool warning;
 }
 
@@ -116,7 +117,7 @@ abstract final class HelpRules {
     HelpRule(
       icon: Icons.warning_amber_rounded,
       title: '위험 신호',
-      // No color in the words: the icon beside them is red.
+      // No color in the words: the box beside them is red.
       body: '$dangerLead점 이상 뒤지면 화면 가장자리가 깜빡여요',
       warning: true,
     ),

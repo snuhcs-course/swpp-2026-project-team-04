@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'help_rules.dart';
+import 'lobby_parts.dart';
 
 /// The rules screen's first picture: a score pushing the health bar from
 /// the player's lime toward the opponent's pink.
@@ -10,6 +11,14 @@ class HelpBarPicture extends StatelessWidget {
 
   /// The player's share of the bar a few reps in.
   static const _myShare = 65;
+
+  /// The room before and after the score above the bar, 1.3 : 0.7 as the
+  /// design spaces it, so the score sits over the lime part's end.
+  static const _roomBefore = 13;
+  static const _roomAfter = 7;
+
+  /// The bar's ink edge.
+  static const barEdge = 2.0;
 
   @override
   Widget build(BuildContext context) {
@@ -23,42 +32,19 @@ class HelpBarPicture extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Above the end of the lime part.
-        Align(
-          alignment: const Alignment(0.3, 0),
-          child: Text(
-            HelpRules.barScore,
-            style: text.titleLarge?.copyWith(color: AppColors.accent),
-          ),
+        Row(
+          children: [
+            const Spacer(flex: _roomBefore),
+            HelpMarkedPoints(HelpRules.barScore),
+            const Spacer(flex: _roomAfter),
+          ],
         ),
         const SizedBox(height: AppSpacing.s8),
         Row(
           children: [
             Text('KO', style: ko),
             const SizedBox(width: AppSpacing.s8),
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(AppRadius.small),
-                ),
-                child: SizedBox(
-                  height: AppSpacing.s24,
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        flex: _myShare,
-                        child: ColoredBox(color: AppColors.accent),
-                      ),
-                      const SizedBox(width: AppSpacing.s4),
-                      const Expanded(
-                        flex: 100 - _myShare,
-                        child: ColoredBox(color: AppColors.opponent),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            const Expanded(child: _HealthBar(myShare: _myShare)),
             const SizedBox(width: AppSpacing.s8),
             Text('KO', style: ko),
           ],
@@ -69,8 +55,20 @@ class HelpBarPicture extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('나', style: side?.copyWith(color: AppColors.accent)),
-              Text('상대', style: side?.copyWith(color: AppColors.opponent)),
+              Row(
+                children: [
+                  const HelpSwatch(AppColors.accent),
+                  const SizedBox(width: AppSpacing.s4),
+                  Text('나', style: side),
+                ],
+              ),
+              Row(
+                children: [
+                  Text('상대', style: side),
+                  const SizedBox(width: AppSpacing.s4),
+                  const HelpSwatch(AppColors.opponent),
+                ],
+              ),
             ],
           ),
         ),
@@ -80,10 +78,106 @@ class HelpBarPicture extends StatelessWidget {
           children: [
             Text('내 점수', style: note),
             const SizedBox(width: AppSpacing.s8),
-            const Icon(Icons.arrow_forward_rounded, color: AppColors.accent),
+            const Icon(Icons.arrow_forward_rounded, color: AppColors.ink),
             const SizedBox(width: AppSpacing.s8),
             Text('바를 밀어요', style: note),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The battle's one health bar: white inside an ink edge, the player's lime
+/// on the left and the opponent's pink on the right, a white gap between.
+/// The two parts stretch to the bar's full inner height.
+class _HealthBar extends StatelessWidget {
+  const _HealthBar({required this.myShare});
+
+  /// Out of 100.
+  final int myShare;
+
+  static const _edge = HelpBarPicture.barEdge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: AppSpacing.s24,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
+        border: Border.all(color: AppColors.ink, width: _edge),
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.all(
+          Radius.circular(AppRadius.small - _edge),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: myShare,
+              child: const ColoredBox(color: AppColors.accent),
+            ),
+            const SizedBox(width: AppSpacing.s4),
+            Expanded(
+              flex: 100 - myShare,
+              child: const ColoredBox(color: AppColors.opponent),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A small square of [color] with an ink edge beside "나" or "상대".
+class HelpSwatch extends StatelessWidget {
+  const HelpSwatch(this.color, {super.key});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: AppHighlight.swatch(color),
+    child: const SizedBox.square(dimension: AppHighlight.swatchSize),
+  );
+}
+
+/// Points such as "+10" in ink, over a slanted lime band that leaves the
+/// top of the digits clear, like a marker stroke.
+class HelpMarkedPoints extends StatelessWidget {
+  const HelpMarkedPoints(this.points, {super.key});
+
+  final String points;
+
+  /// The band's lean, as the design's `skewX(-12deg)`.
+  static const _lean = 12.0;
+
+  /// How far below the top of the line the band starts.
+  static const _bandTop = 6.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        const Positioned.fill(
+          top: _bandTop,
+          bottom: AppSpacing.s4,
+          child: LobbySkew(
+            degrees: _lean,
+            alignment: Alignment.center,
+            child: ColoredBox(color: AppColors.accent),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+          child: Text(
+            points,
+            maxLines: 1,
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(color: AppColors.ink),
+          ),
         ),
       ],
     );
@@ -94,6 +188,9 @@ class HelpBarPicture extends StatelessWidget {
 /// battle's timeline with fever at the end.
 class HelpScorePicture extends StatelessWidget {
   const HelpScorePicture({super.key});
+
+  /// The timeline's ink edge.
+  static const timelineEdge = 1.5;
 
   @override
   Widget build(BuildContext context) {
@@ -114,36 +211,39 @@ class HelpScorePicture extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.s24),
-        ClipRRect(
-          borderRadius: const BorderRadius.all(
-            Radius.circular(AppRadius.small),
+        Container(
+          height: AppSpacing.s32,
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: const BorderRadius.all(
+              Radius.circular(AppRadius.small),
+            ),
+            border: Border.all(color: AppColors.ink, width: timelineEdge),
           ),
-          child: SizedBox(
-            height: AppSpacing.s32,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.all(
+              Radius.circular(AppRadius.small - timelineEdge),
+            ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
                   flex: HelpRules.baseSeconds,
-                  child: ColoredBox(
+                  child: _TimelinePart(
                     color: AppColors.cardHigh,
-                    child: Center(
-                      child: Text(HelpRules.baseLabel, style: tick),
-                    ),
+                    label: HelpRules.baseLabel,
+                    style: tick,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.s4),
                 Expanded(
                   flex: HelpRules.feverSeconds,
-                  child: ColoredBox(
+                  child: _TimelinePart(
                     color: AppColors.accent,
-                    child: Center(
-                      child: Text(
-                        HelpRules.feverLabel,
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.background,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                    label: HelpRules.feverLabel,
+                    style: text.bodySmall?.copyWith(
+                      color: AppColors.ink,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -164,8 +264,39 @@ class HelpScorePicture extends StatelessWidget {
   }
 }
 
-/// "+10" over "Good" on a box a step lighter than the card. Both shrink rather
-/// than break on a large system font: four tiles share the line.
+/// One part of the timeline: its label in the middle of a [color] fill. The
+/// label shrinks rather than breaks on a large system font.
+class _TimelinePart extends StatelessWidget {
+  const _TimelinePart({
+    required this.color,
+    required this.label,
+    required this.style,
+  });
+
+  final Color color;
+  final String label;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: color,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label, maxLines: 1, style: style),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "+10" on its lime band over "Good", on a box a step lighter than the
+/// card. Both shrink rather than break on a large system font: four tiles
+/// share the line.
 class _ScoreTile extends StatelessWidget {
   const _ScoreTile({required this.points, required this.label});
 
@@ -181,32 +312,20 @@ class _ScoreTile extends StatelessWidget {
         borderRadius: BorderRadius.all(Radius.circular(AppRadius.small)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.s4,
+          vertical: AppSpacing.s12,
+        ),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  points,
-                  maxLines: 1,
-                  style: text.titleLarge?.copyWith(color: AppColors.accent),
-                ),
-              ),
-            ),
+            FittedBox(fit: BoxFit.scaleDown, child: HelpMarkedPoints(points)),
             const SizedBox(height: AppSpacing.s4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  style: text.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
               ),
             ),
           ],
@@ -230,7 +349,7 @@ class HelpReminderPicture extends StatelessWidget {
           if (index > 0) const SizedBox(height: AppSpacing.s16),
           Row(
             children: [
-              _IconBox(icon: rule.icon, warning: rule.warning),
+              HelpIconBox(icon: rule.icon, warning: rule.warning),
               const SizedBox(width: AppSpacing.s8),
               Expanded(
                 child: Column(
@@ -259,24 +378,33 @@ class HelpReminderPicture extends StatelessWidget {
   }
 }
 
-/// An icon on a faint box of its own color: red for a warning, else lime.
-class _IconBox extends StatelessWidget {
-  const _IconBox({required this.icon, required this.warning});
+/// An ink icon on a 48-point box of color: red for a warning, else lime
+/// (palette B: the color fills, the icon stays ink).
+class HelpIconBox extends StatelessWidget {
+  const HelpIconBox({super.key, required this.icon, required this.warning});
 
   final IconData icon;
   final bool warning;
 
+  /// How much of the color shows, as the design: red at 30%, lime at 55%.
+  static const warningStrength = 0.30;
+  static const strength = 0.55;
+
+  /// The box's fill.
+  Color get fill => warning
+      ? AppColors.danger.withValues(alpha: warningStrength)
+      : AppColors.accent.withValues(alpha: strength);
+
   @override
   Widget build(BuildContext context) {
-    final color = warning ? AppColors.danger : AppColors.accent;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: fill,
         borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.s12),
-        child: Icon(icon, color: color),
+      child: SizedBox.square(
+        dimension: AppSpacing.s48,
+        child: Icon(icon, color: AppColors.ink),
       ),
     );
   }

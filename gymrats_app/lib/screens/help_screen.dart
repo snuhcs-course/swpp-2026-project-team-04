@@ -47,7 +47,12 @@ class _HelpScreenState extends State<HelpScreen> {
 
   void _next() {
     if (!_onLastPage) {
-      _pager.nextPage(duration: _turn, curve: Curves.easeOut);
+      // With the system's animations off, the next page shows at once.
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _pager.jumpToPage(_page + 1);
+      } else {
+        _pager.nextPage(duration: _turn, curve: Curves.easeOut);
+      }
       return;
     }
     final onStart = widget.onStart;
@@ -171,17 +176,21 @@ class _Page extends StatelessWidget {
   }
 }
 
-/// A score tag such as "KO 100점 차": bold lime text on a faint lime box.
+/// A score tag such as "KO 100점 차": bold ink text on a lime box
+/// (palette B: the lime fills, the text stays ink).
 class _PointTag extends StatelessWidget {
   const _PointTag(this.label);
 
   final String label;
 
+  /// How much of the lime shows, as the design.
+  static const strength = 0.6;
+
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.12),
+        color: AppColors.accent.withValues(alpha: strength),
         borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
       ),
       child: Padding(
@@ -192,23 +201,29 @@ class _PointTag extends StatelessWidget {
         child: Text(
           label,
           style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(fontWeight: FontWeight.w700, color: AppColors.accent),
+              ?.copyWith(fontWeight: FontWeight.w700, color: AppColors.ink),
         ),
       ),
     );
   }
 }
 
-/// Which page is showing: a long lime dot for it, short gray ones for the
-/// rest.
+/// Which page is showing: a long lime dot with an ink edge for it, short
+/// gray ones for the rest.
 class _PageDots extends StatelessWidget {
   const _PageDots({required this.count, required this.current});
 
   final int count;
   final int current;
 
+  static const _move = Duration(milliseconds: 200);
+
+  /// The ink edge of the dot of the page showing.
+  static const currentEdge = 1.5;
+
   @override
   Widget build(BuildContext context) {
+    final still = MediaQuery.disableAnimationsOf(context);
     return Semantics(
       label: '$count장 중 ${current + 1}장',
       child: ExcludeSemantics(
@@ -220,14 +235,21 @@ class _PageDots extends StatelessWidget {
               for (var index = 0; index < count; index++) ...[
                 if (index > 0) const SizedBox(width: AppSpacing.s8),
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: still ? Duration.zero : _move,
                   width: index == current ? AppSpacing.s24 : AppSpacing.s8,
                   height: AppSpacing.s8,
                   decoration: ShapeDecoration(
                     color: index == current
                         ? AppColors.accent
-                        : AppColors.border,
-                    shape: const StadiumBorder(),
+                        : AppColors.inactive,
+                    shape: StadiumBorder(
+                      side: index == current
+                          ? const BorderSide(
+                              color: AppColors.ink,
+                              width: currentEdge,
+                            )
+                          : BorderSide.none,
+                    ),
                   ),
                 ),
               ],
