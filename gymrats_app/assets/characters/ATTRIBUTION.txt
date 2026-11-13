@@ -7,4 +7,4 @@ No third-party art, fonts or models are used, so no third-party licence applies.
 Use in the app: the rig is not bundled as an asset. lib/models/character_rig_data.dart
 holds the same JSON as a Dart string (test/models/character_rig_test.dart checks that
 they match) and lib/widgets/character_figure.dart (CharacterFigure) draws it. Change
-this file first, then copy it into that Dart string.
+w3_rig.json first, then copy it into that Dart string.

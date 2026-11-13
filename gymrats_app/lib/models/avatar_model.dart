@@ -1,7 +1,8 @@
 /// The 3D avatars' ids, before the characters replaced them (W3). Their
-/// models, thumbnails and licences are gone from the app; only the ids are
-/// left, for `avatar_store.dart`, which `test/support/fakes.dart` still
-/// uses until the PM removes both.
+/// models, thumbnails and licences are gone from the app. Only the ids are
+/// still read, by `avatar_store.dart`, which `test/support/fakes.dart` still
+/// uses until the PM removes both; the asset names, labels and categories
+/// are left as unused data until then.
 enum AvatarModel {
   astronaut('avatar_01', 'astronaut', 'Astronaut'),
   robot('avatar_02', 'robot', 'Corebreaker Robot'),
