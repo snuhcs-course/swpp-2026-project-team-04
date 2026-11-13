@@ -12,7 +12,7 @@ my reps' effects (Good punch, Excellent one-two, Average light hit, miss buzz), 
 wired into both battle screens through W2's `onCue` and the stage state, and the 효과음 / 음성 안내 switches in
 settings. No voice in the battle (the setup voice was dropped after the phone check). Commands from the Plan in
 `gymrats_app/` on macOS (Flutter 3.47.5 / Dart 3.13.4): `flutter analyze`, `flutter test`,
-`bash ../.claude/skills/testing/coverage_per_file.sh` + `coverage_by_layer.py`.
+the per-file coverage run (`flutter test --coverage` file by file, merged into `coverage/lcov.info`) and a per-layer summary of it.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
