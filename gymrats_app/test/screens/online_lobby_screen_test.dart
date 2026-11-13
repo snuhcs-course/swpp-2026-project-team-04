@@ -95,6 +95,15 @@ Future<void> settle(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 1));
 }
 
+/// Turns on the system's reduced motion for one test. The match-found
+/// screen's characters then stand still instead of moving, so
+/// `pumpAndSettle` can settle while that screen shows.
+void holdStill(WidgetTester tester) {
+  tester.platformDispatcher.accessibilityFeaturesTestValue =
+      const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+}
+
 Future<InMemoryAuthRepository> loggedIn() async {
   final auth = InMemoryAuthRepository()
     ..addAccount(loginId: 'human', nickname: '로그인사용자', password: 'password1');
@@ -107,6 +116,7 @@ void main() {
     testWidgets('leaving $phase closes both battle and lobby to home', (
       tester,
     ) async {
+      holdStill(tester);
       final auth = await loggedIn();
       late _Session session;
       final camera = FakeCameraService();
@@ -337,6 +347,7 @@ void main() {
   testWidgets(
     'live flow uses AI radar then real-player VS before camera setup',
     (tester) async {
+      holdStill(tester);
       await prepareFlowSnapshotFonts(tester);
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1;
@@ -475,6 +486,7 @@ void main() {
 
   testWidgets('the sound hooks given to the lobby reach the battle it '
       'opens', (tester) async {
+    holdStill(tester);
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -584,6 +596,7 @@ void main() {
 
   testWidgets('a match cancelled while the safety warning is open closes it '
       'with the versus screen', (tester) async {
+    holdStill(tester);
     final auth = await loggedIn();
     late _Session session;
     await tester.pumpWidget(
@@ -619,6 +632,7 @@ void main() {
     'a match found while the cancel dialog is open shows the safety warning '
     'only after 계속하기',
     (tester) async {
+      holdStill(tester);
       final auth = await loggedIn();
       late _Session session;
       await tester.pumpWidget(

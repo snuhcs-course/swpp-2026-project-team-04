@@ -331,6 +331,53 @@ extension StageText on TextTheme {
   static const double stageBandSize = 100;
 }
 
+/// The text styles of the match-found screen's two color cells (W2b 2-A3),
+/// in ink. Like the rest of the app they follow the system text size.
+extension VersusText on TextTheme {
+  /// "나" or "상대" on its white pill: 13 bold on a 20 line.
+  TextStyle get versusSide => bodySmall!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 20 / 13,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// A player's nickname: Do Hyeon 28 on a 34 line, cut to one line.
+  TextStyle get versusName => headlineSmall!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 28,
+    fontWeight: FontWeight.w400,
+    height: 34 / 28,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// "AI" on its white pill under a bot's name: Oxanium 14 on a 20 line.
+  TextStyle get versusAiTag => bodyMedium!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    height: 20 / 14,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// "VS" on the white disc between the cells: Oxanium 800 34.
+  TextStyle get versusMark => displaySmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 34,
+    fontWeight: FontWeight.w800,
+    height: 1,
+    letterSpacing: -1,
+    color: AppColors.ink,
+  );
+}
+
 /// The text styles of the battle's camera area, under the stage: the hint
 /// line, the buttons and the reconnect band. Unlike [StageText] these follow
 /// the system text size, like the rest of the app.
@@ -455,6 +502,13 @@ abstract final class AppHighlight {
   static const tightBandPadding = EdgeInsets.symmetric(
     horizontal: AppSpacing.s8,
     vertical: 1,
+  );
+
+  /// The room around a short tag on a white pill, inside its edge: "AI"
+  /// under a bot's name on the match-found board (W2b 2-A3).
+  static const tagPadding = EdgeInsets.symmetric(
+    horizontal: AppSpacing.s12,
+    vertical: 2,
   );
 
   /// The marker's slant, as the design draws WIN and LOSE. A new matrix each

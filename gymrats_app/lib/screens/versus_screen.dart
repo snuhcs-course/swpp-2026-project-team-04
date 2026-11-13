@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
@@ -9,13 +13,19 @@ import '../models/matchup.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/accent_button.dart';
+import '../widgets/battle_fighter.dart';
+import '../widgets/battle_fx_motion.dart';
+import '../widgets/battle_stage_model.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
 import '../widgets/grid_background.dart';
-import '../widgets/player_avatar.dart';
 import '../widgets/safe_warning_dialog.dart';
 
 /// Shows who battles whom, the rules, and the button to the pose setup.
+///
+/// Who battles whom is one board (W2b 2-A3): the user's lime cell over the
+/// opponent's pink one, each player's character on a pedestal beside their
+/// name, and "VS" between them.
 ///
 /// It has no view model: everything it shows comes from [matchup], and its
 /// only behavior is navigation. It opens with the safety warning before
@@ -46,6 +56,24 @@ class VersusScreen extends StatefulWidget {
   /// set it, since the server's time to get ready keeps running; null waits
   /// for 확인.
   final Duration? warningAutoClose;
+
+  /// The size a player's character and pedestal are drawn at, around the
+  /// feet, in a color cell [cellHeight] tall: full size from 189 up (8
+  /// above the highest a character reaches, 151 over its feet, and the 30
+  /// under them), then smaller with the cell, down to 0.6.
+  static double characterScale(double cellHeight) =>
+      ((cellHeight - _belowFeet - _aboveHead) / _characterReach).clamp(
+        _smallest,
+        1.0,
+      );
+  static const _belowFeet = 30.0;
+  static const _aboveHead = 8.0;
+  static const _characterReach = 151.0;
+  static const _smallest = 0.6;
+
+  /// The opponent's idle motion is this far ahead of the user's, so the
+  /// two do not move in step.
+  static const opponentIdleOffset = Duration(milliseconds: 230);
 
   @override
   State<VersusScreen> createState() => _VersusScreenState();
@@ -178,163 +206,37 @@ class _VersusScreenState extends State<VersusScreen> {
       },
       child: Scaffold(
         body: GridBackground(
-          child: Column(
-            children: [
-              _PlayerSide(
-                matchup: matchup,
-                onExit: _askToLeave,
-                duration: widget.duration,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.s20,
+                AppSpacing.s12,
+                AppSpacing.s20,
+                AppSpacing.s24,
               ),
-              const Expanded(child: _VsBand()),
-              _OpponentSide(
-                opponent: matchup.opponent,
-                exercise: matchup.exercise,
-                onStartSetup: _startSetup,
+              child: Column(
+                children: [
+                  _Header(
+                    exercise: matchup.exercise,
+                    onExit: _askToLeave,
+                    duration: widget.duration,
+                  ),
+                  const SizedBox(height: AppSpacing.s16),
+                  // Takes all the height the rules leave, so longer rules
+                  // (push-ups) make it lower.
+                  Expanded(child: _MatchupBoard(matchup: matchup)),
+                  const SizedBox(height: AppSpacing.s16),
+                  _RulesCard(exercise: matchup.exercise),
+                  const SizedBox(height: AppSpacing.s16),
+                  AccentButton(title: '자세 세팅 시작', onPressed: _startSetup),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-/// The top part, on the user's tint: the header, then the user. The tint
-/// runs under the status bar; the content stays below it.
-class _PlayerSide extends StatelessWidget {
-  const _PlayerSide({
-    required this.matchup,
-    required this.onExit,
-    required this.duration,
-  });
-
-  final Matchup matchup;
-  final VoidCallback onExit;
-  final Duration duration;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: _Tint.player,
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          child: Column(
-            children: [
-              _Header(
-                exercise: matchup.exercise,
-                onExit: onExit,
-                duration: duration,
-              ),
-              const SizedBox(height: 16),
-              _PlayerRow(name: matchup.playerName),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The band between the two parts: "VS" over the diagonal split.
-class _VsBand extends StatelessWidget {
-  const _VsBand();
-
-  @override
-  Widget build(BuildContext context) {
-    return const CustomPaint(
-      painter: _SplitPainter(),
-      child: Center(
-        child: FittedBox(fit: BoxFit.scaleDown, child: _VsMark()),
-      ),
-    );
-  }
-}
-
-/// The bottom part, on the opponent's tint: the opponent, the rules, and
-/// the button to the pose setup. The tint runs under the navigation bar.
-class _OpponentSide extends StatelessWidget {
-  const _OpponentSide({
-    required this.opponent,
-    required this.exercise,
-    required this.onStartSetup,
-  });
-
-  final Opponent opponent;
-  final ExerciseType exercise;
-  final VoidCallback onStartSetup;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: _Tint.opponent,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            children: [
-              _OpponentRow(opponent: opponent),
-              const SizedBox(height: 32),
-              _RulesCard(exercise: exercise),
-              const SizedBox(height: 16),
-              AccentButton(title: '자세 세팅 시작', onPressed: onStartSetup),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Faint tints over the grid: lime on the user's half, pink on the
-/// opponent's.
-abstract final class _Tint {
-  static final player = AppColors.accent.withValues(alpha: 0.05);
-  static final opponent = AppColors.opponent.withValues(alpha: 0.05);
-}
-
-/// Splits the middle band diagonally, rising to the right: the user's tint
-/// above the line, the opponent's below.
-class _SplitPainter extends CustomPainter {
-  const _SplitPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rise = (size.width * 0.13).clamp(0.0, size.height / 2);
-    final left = Offset(0, size.height / 2 + rise);
-    final right = Offset(size.width, size.height / 2 - rise);
-    canvas
-      ..drawPath(
-        Path()
-          ..moveTo(0, 0)
-          ..lineTo(size.width, 0)
-          ..lineTo(right.dx, right.dy)
-          ..lineTo(left.dx, left.dy)
-          ..close(),
-        Paint()..color = _Tint.player,
-      )
-      ..drawPath(
-        Path()
-          ..moveTo(left.dx, left.dy)
-          ..lineTo(right.dx, right.dy)
-          ..lineTo(size.width, size.height)
-          ..lineTo(0, size.height)
-          ..close(),
-        Paint()..color = _Tint.opponent,
-      )
-      ..drawLine(
-        left,
-        right,
-        Paint()
-          ..color = AppColors.textSecondary.withValues(alpha: 0.5)
-          ..strokeWidth = 2,
-      );
-  }
-
-  @override
-  bool shouldRepaint(_SplitPainter oldDelegate) => false;
 }
 
 /// The 게임 나가기 button on the left; "MATCH FOUND" over the exercise and
@@ -400,128 +302,102 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// The user's avatar, then "나" over their name.
-class _PlayerRow extends StatelessWidget {
-  const _PlayerRow({required this.name});
+/// The two players face to face (W2b 2-A3): the user on a lime cell above,
+/// the opponent on a pink one below, an ink line between them and a white
+/// "VS" disc over its middle, all inside one ink-edged box.
+///
+/// The characters move from the moment the board appears, the opponent's
+/// clock [VersusScreen.opponentIdleOffset] ahead of the user's, also under
+/// the safety warning; with the system's reduced motion they stand still.
+class _MatchupBoard extends StatefulWidget {
+  const _MatchupBoard({required this.matchup});
 
-  final String name;
+  final Matchup matchup;
 
   @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        PlayerAvatar(color: AppColors.accent, name: name),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _Side(label: '나', color: AppColors.accent, mine: true),
-              const SizedBox(height: 4),
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.headlineMedium,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  State<_MatchupBoard> createState() => _MatchupBoardState();
 }
 
-/// Mirror of [_PlayerRow] for the opponent: right aligned, pink, and with
-/// an "AI" tag for a bot.
-class _OpponentRow extends StatelessWidget {
-  const _OpponentRow({required this.opponent});
+class _MatchupBoardState extends State<_MatchupBoard>
+    with SingleTickerProviderStateMixin {
+  /// Milliseconds since the board appeared, while the characters move.
+  final _clock = ValueNotifier<double>(0);
+  late final Ticker _ticker = createTicker(
+    (elapsed) => _clock.value = elapsed.inMicroseconds / 1000,
+  );
+  bool _still = false;
 
-  final Opponent opponent;
+  /// The box's ink edge, and the ink line between the cells.
+  static const _edge = 2.0;
+  static const _divider = 3.0;
 
   @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const _Side(label: '상대', color: AppColors.opponent, mine: false),
-              const SizedBox(height: 4),
-              // English names, like RepBot, use the number font.
-              Text(
-                opponent.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.displaySmall?.copyWith(fontSize: 28),
-              ),
-              if (opponent.isBot) ...[
-                const SizedBox(height: 8),
-                const _AiTag(),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 16),
-        PlayerAvatar(
-          color: AppColors.opponent,
-          name: opponent.name,
-          isBot: opponent.isBot,
-        ),
-      ],
-    );
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _still = MediaQuery.disableAnimationsOf(context);
+    if (_still) {
+      _ticker.stop();
+    } else if (!_ticker.isActive) {
+      _ticker.start();
+    }
   }
-}
-
-/// "나" or "상대" in ink beside a swatch of the player's [color]: the
-/// user's swatch first, the opponent's last (palette B: the color marks,
-/// the text is ink).
-class _Side extends StatelessWidget {
-  const _Side({required this.label, required this.color, required this.mine});
-
-  final String label;
-  final Color color;
-  final bool mine;
 
   @override
-  Widget build(BuildContext context) {
-    final swatch = SizedBox.square(
-      dimension: AppHighlight.swatchSize,
-      child: DecoratedBox(decoration: AppHighlight.swatch(color)),
-    );
-    final text = Text(
-      label,
-      style: Theme.of(context).textTheme.labelLarge
-          ?.copyWith(fontWeight: FontWeight.w700, color: AppColors.ink),
-    );
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: mine
-          ? [swatch, const SizedBox(width: AppHighlight.swatchGap), text]
-          : [text, const SizedBox(width: AppHighlight.swatchGap), swatch],
-    );
+  void dispose() {
+    _ticker.dispose();
+    _clock.dispose();
+    super.dispose();
   }
-}
-
-/// "AI" in ink on a pink pill.
-class _AiTag extends StatelessWidget {
-  const _AiTag();
 
   @override
   Widget build(BuildContext context) {
+    final matchup = widget.matchup;
+    final opponent = matchup.opponent;
+    const corners = BorderRadius.all(Radius.circular(AppRadius.sheet));
     return DecoratedBox(
-      decoration: AppHighlight.chip(AppColors.opponent, strength: 0.3),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-        child: Text(
-          'AI',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            fontFamily: AppFonts.number,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
+      position: DecorationPosition.foreground,
+      decoration: const BoxDecoration(
+        borderRadius: corners,
+        border: Border.fromBorderSide(
+          BorderSide(color: AppColors.ink, width: _edge),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: corners,
+        child: Padding(
+          padding: const EdgeInsets.all(_edge),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: _PlayerCell(
+                      side: BattleSide.me,
+                      name: matchup.playerName,
+                      clock: _clock,
+                      still: _still,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: _divider,
+                    width: double.infinity,
+                    child: ColoredBox(color: AppColors.ink),
+                  ),
+                  Expanded(
+                    child: _PlayerCell(
+                      side: BattleSide.opponent,
+                      name: opponent.name,
+                      bot: opponent.isBot,
+                      clock: _clock,
+                      still: _still,
+                    ),
+                  ),
+                ],
+              ),
+              // Over both cells and the characters.
+              const Center(child: _VsDisc()),
+            ],
           ),
         ),
       ),
@@ -529,28 +405,400 @@ class _AiTag extends StatelessWidget {
   }
 }
 
-/// Big slanted "VS" with a lime and a pink shadow.
-class _VsMark extends StatelessWidget {
-  const _VsMark();
+/// One player's color cell: their character on a white pedestal in the
+/// cell's outer bottom corner (the user's on the left facing right, the
+/// opponent's on the right facing left), and beside it "나" or "상대" over
+/// the name, then "AI" for a bot. In a cell too low for the character the
+/// character and its pedestal shrink around the feet
+/// ([VersusScreen.characterScale]) and the words follow the character's
+/// shrinking side, staying as far from it as at full size times the scale
+/// (the user's choice of 2026-11-13: the spec's "146 x scale" would put
+/// the words over a character shrunk around its feet).
+class _PlayerCell extends StatelessWidget {
+  const _PlayerCell({
+    required this.side,
+    required this.name,
+    this.bot = false,
+    required this.clock,
+    required this.still,
+  });
+
+  final BattleSide side;
+  final String name;
+  final bool bot;
+  final ValueListenable<double> clock;
+  final bool still;
+
+  /// The room the character takes beside the words, at full size.
+  static const _characterRoom = 146.0;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      // Room for the shadows.
-      padding: const EdgeInsets.all(8),
-      child: Text(
-        'VS',
-        style: Theme.of(context).textTheme.displayLarge?.copyWith(
-          fontSize: 76,
-          height: 1,
-          fontStyle: FontStyle.italic,
-          letterSpacing: -2,
-          color: AppColors.textPrimary,
-          shadows: const [
-            Shadow(color: AppColors.accent, offset: Offset(-5, 3)),
-            Shadow(color: AppColors.opponent, offset: Offset(5, -1)),
-          ],
+    final mine = side == BattleSide.me;
+    return ColoredBox(
+      color: mine ? AppColors.accent : AppColors.opponent,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final scale = VersusScreen.characterScale(constraints.maxHeight);
+          // The feet stay where they are; the rest of the room shrinks.
+          const feet = _VersusCharacter.foot;
+          final room = feet.dx + (_characterRoom - feet.dx) * scale;
+          return Stack(
+            children: [
+              Positioned(
+                left: mine ? 0 : null,
+                right: mine ? null : 0,
+                bottom: _Figure.bottom,
+                child: Transform.scale(
+                  scale: scale,
+                  alignment: _Figure.feet,
+                  child: _Figure(
+                    side: side,
+                    bot: bot,
+                    clock: clock,
+                    still: still,
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: mine ? room : AppSpacing.s16,
+                    right: mine ? AppSpacing.s16 : room,
+                  ),
+                  child: _PlayerWords(side: side, name: name, bot: bot),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// "나" or "상대" on a white pill, the name on one line under it (cut with
+/// "…"), and for a bot "AI" on a pill under that; to the left for the
+/// user, to the right for the opponent, in the middle of the cell's height.
+/// A screen reader reads them as one: "나, 우현", "상대, RepBot, AI", with
+/// the whole name.
+class _PlayerWords extends StatelessWidget {
+  const _PlayerWords({
+    required this.side,
+    required this.name,
+    required this.bot,
+  });
+
+  final BattleSide side;
+  final String name;
+  final bool bot;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final mine = side == BattleSide.me;
+    final align = mine ? Alignment.centerLeft : Alignment.centerRight;
+    final label = mine ? '나' : '상대';
+    return Semantics(
+      container: true,
+      label: [label, name, if (bot) 'AI'].join(', '),
+      excludeSemantics: true,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Align(
+          alignment: align,
+          // A cell too low for the words (very large system text on a small
+          // phone) shrinks them rather than let them overflow.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: align,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: mine
+                    ? CrossAxisAlignment.start
+                    : CrossAxisAlignment.end,
+                children: [
+                  _Pill(
+                    label: label,
+                    style: text.versusSide,
+                    inside: AppHighlight.tightBandPadding,
+                  ),
+                  const SizedBox(height: AppSpacing.s4),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.versusName,
+                  ),
+                  if (bot) ...[
+                    const SizedBox(height: AppSpacing.s4),
+                    _Pill(
+                      label: 'AI',
+                      style: text.versusAiTag,
+                      inside: AppHighlight.tagPadding,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// [label] in ink on a white pill with an ink edge, [inside] the room
+/// around it within the edge.
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.style, required this.inside});
+
+  final String label;
+  final TextStyle style;
+  final EdgeInsets inside;
+
+  static const _edge = 1.5;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const ShapeDecoration(
+        color: AppColors.card,
+        shape: StadiumBorder(
+          side: BorderSide(color: AppColors.ink, width: _edge),
+        ),
+      ),
+      child: Padding(
+        padding: inside + const EdgeInsets.all(_edge),
+        child: Text(label, style: style),
+      ),
+    );
+  }
+}
+
+/// "VS" in ink on a white disc with a thick ink edge. Decoration only.
+class _VsDisc extends StatelessWidget {
+  const _VsDisc();
+
+  static const _size = 80.0;
+  static const _edge = 3.6;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: _size,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: AppColors.card,
+            shape: BoxShape.circle,
+            border: Border.fromBorderSide(
+              BorderSide(color: AppColors.ink, width: _edge),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(_edge),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'VS',
+                  style: Theme.of(context).textTheme.versusMark,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A player's character standing on a white pedestal, at full size: the
+/// character's box ([_VersusCharacter.size]) with the feet
+/// ([_VersusCharacter.foot]) on the middle of the pedestal's top. The
+/// character has a white edge ([_WhiteOutline]) that moves with it, drawn
+/// over the pedestal's ink edge; the pedestal stays still and has none. The
+/// opponent's character is mirrored to face left.
+class _Figure extends StatelessWidget {
+  const _Figure({
+    required this.side,
+    required this.bot,
+    required this.clock,
+    required this.still,
+  });
+
+  final BattleSide side;
+  final bool bot;
+  final ValueListenable<double> clock;
+  final bool still;
+
+  /// The character's box over the pedestal's lower part.
+  static const _size = Size(140, 166);
+
+  /// The pedestal's bottom above the cell's bottom.
+  static const bottom = 14.0;
+
+  /// The feet in [_size], as a fraction of it: the point the cell shrinks
+  /// the figure around.
+  static final feet = FractionalOffset(
+    _VersusCharacter.foot.dx / _size.width,
+    _VersusCharacter.foot.dy / _size.height,
+  );
+
+  static const _pedestal = Size(116, 16);
+  static const _pedestalEdge = 3.0;
+
+  @override
+  Widget build(BuildContext context) {
+    const foot = _VersusCharacter.foot;
+    const character = _VersusCharacter.size;
+    final delayMs = side == BattleSide.me
+        ? 0
+        : VersusScreen.opponentIdleOffset.inMilliseconds;
+    return SizedBox.fromSize(
+      size: _size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: foot.dx - _pedestal.width / 2,
+            top: foot.dy,
+            width: _pedestal.width,
+            height: _pedestal.height,
+            child: const DecoratedBox(
+              decoration: ShapeDecoration(
+                color: AppColors.card,
+                shape: StadiumBorder(
+                  side: BorderSide(color: AppColors.ink, width: _pedestalEdge),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            width: character.width,
+            height: character.height,
+            // The feet are in the middle of the box, so mirroring around
+            // the middle keeps them on the pedestal.
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.diagonal3Values(
+                side == BattleSide.me ? 1 : -1,
+                1,
+                1,
+              ),
+              child: RepaintBoundary(
+                child: ValueListenableBuilder<double>(
+                  valueListenable: clock,
+                  builder: (context, ms, _) => _WhiteOutline(
+                    child: _VersusCharacter(
+                      side: side,
+                      bot: bot,
+                      clockMs: still ? null : ms + delayMs,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// [child] with a white edge [width] wide around its shape, as the design
+/// draws it: the child turned all white and laid eight times, [width] away
+/// in each direction and diagonal, under the child itself.
+class _WhiteOutline extends StatelessWidget {
+  const _WhiteOutline({required this.child});
+
+  final Widget child;
+
+  static const width = 2.5;
+
+  /// The eight places the white copies lie.
+  static final directions = [
+    for (final dx in const [-width, 0.0, width])
+      for (final dy in const [-width, 0.0, width])
+        if (dx != 0 || dy != 0) Offset(dx, dy),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // One white layer for all eight copies.
+        ExcludeSemantics(
+          child: ColorFiltered(
+            colorFilter: const ColorFilter.mode(
+              AppColors.card,
+              BlendMode.srcIn,
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                for (final offset in directions)
+                  Transform.translate(offset: offset, child: child),
+              ],
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+/// The one place this screen draws a player's character: the picture in
+/// its [size] box, facing right, with the feet at [foot]. [_Figure] mirrors
+/// the opponent's, edges it white and stands it on its pedestal; [clockMs]
+/// is the moment its idle motion shows (null: standing still).
+///
+/// Until the W3 characters are in `main` this is W2's stand-in fighter
+/// in the player's team color, in its idle pose, breathing as it does on
+/// the stage. W3 replaces only this widget: the user's chosen character,
+/// RepBot for a [bot], the server's character for an online opponent, and
+/// the character's own idle motion. The stand-in has no name, so screen
+/// readers skip it; a character is read as a picture with its name.
+class _VersusCharacter extends StatelessWidget {
+  const _VersusCharacter({
+    required this.side,
+    required this.bot,
+    required this.clockMs,
+  });
+
+  final BattleSide side;
+
+  /// The opponent is a bot.
+  final bool bot;
+  final double? clockMs;
+
+  static const size = BattleFighter.size;
+  static const foot = BattleFighter.foot;
+
+  /// How tall the stand-in stands [ms] into its idle motion: the stage's
+  /// breathing (`BattleFxTimeline.frame`), stretching up from the feet by
+  /// up to 2%.
+  static double stretchAt(double ms) => 1 + math.sin(ms / 280) * 0.02;
+
+  @override
+  Widget build(BuildContext context) {
+    final ms = clockMs;
+    return ExcludeSemantics(
+      child: Transform(
+        origin: foot,
+        transform: Matrix4.diagonal3Values(
+          1,
+          ms == null ? 1 : stretchAt(ms),
+          1,
+        ),
+        child: BattleFighter(pose: BattlePose.idle, side: side),
       ),
     );
   }

@@ -260,6 +260,11 @@ void main() {
         AppHighlight.tightBandPadding,
         const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       );
+      // The "AI" tag's pill on the match-found board (W2b 2-A3, 2 x 12).
+      expect(
+        AppHighlight.tagPadding,
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      );
       expect(AppHighlight.swatchGap, 6);
       final marked = AppHighlight.marked(
         const TextStyle(color: AppColors.accent),
@@ -451,6 +456,59 @@ void main() {
       expect(slant.entry(0, 1), closeTo(math.tan(-12 * math.pi / 180), 1e-12));
       expect(identical(slant, AppHighlight.battleSlant), isFalse);
     });
+  });
+
+  test("the match-found board's texts (W2b 2-A3): ink, as the design's "
+      'CSS sets them', () {
+    final text = AppTheme.light.textTheme;
+    List<Object?> look(TextStyle style) => [
+      style.fontFamily,
+      style.fontSize,
+      style.fontWeight,
+      style.height,
+      style.letterSpacing,
+      style.color,
+    ];
+    // "나" / "상대": 13 bold on a 20 line.
+    expect(look(text.versusSide), [
+      AppFonts.body,
+      13,
+      FontWeight.w700,
+      20 / 13,
+      0,
+      AppColors.ink,
+    ]);
+    // The name: Do Hyeon 28 on a 34 line.
+    expect(look(text.versusName), [
+      AppFonts.display,
+      28,
+      FontWeight.w400,
+      34 / 28,
+      0,
+      AppColors.ink,
+    ]);
+    // "AI": Oxanium 700 14 on a 20 line.
+    expect(look(text.versusAiTag), [
+      AppFonts.number,
+      14,
+      FontWeight.w700,
+      20 / 14,
+      0,
+      AppColors.ink,
+    ]);
+    // "VS": Oxanium 800 34, letters 1 closer.
+    expect(look(text.versusMark), [
+      AppFonts.number,
+      34,
+      FontWeight.w800,
+      1,
+      -1,
+      AppColors.ink,
+    ]);
+    // Lines spaced like CSS: the extra height split above and below.
+    for (final style in [text.versusSide, text.versusName, text.versusAiTag]) {
+      expect(style.leadingDistribution, TextLeadingDistribution.even);
+    }
   });
 
   test('AppTheme.dark is the light theme, under its old name', () {
