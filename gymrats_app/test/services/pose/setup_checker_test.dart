@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
+import 'package:gymrats_app/models/voice_cue.dart';
+import 'package:gymrats_app/services/audio/voice_cue_table.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
 
 import '../../support/pose_fixtures.dart';
@@ -22,7 +24,7 @@ void main() {
     test('noPerson when no pose is detected', () {
       final status = checker(ExerciseType.pushUp).update(emptyFrame());
       expect(status.reason, SetupReason.noPerson);
-      expect(status.message, 'No one detected. Step into the camera view.');
+      expect(status.message, '카메라 앞에 서 주세요.');
       expect(status.isReady, isFalse);
     });
 
@@ -58,14 +60,14 @@ void main() {
       );
       final status = checker(ExerciseType.pushUp).update(frame);
       expect(status.reason, SetupReason.tooClose);
-      expect(status.message, 'Move back a little.');
+      expect(status.message, '조금 뒤로 물러나 주세요.');
     });
 
     test('tooFar when the body is below 35% of the frame', () {
       final status = checker(ExerciseType.pushUp)
           .update(standingFrame(scale: 0.4));
       expect(status.reason, SetupReason.tooFar);
-      expect(status.message, 'Move closer to the camera.');
+      expect(status.message, '카메라에 조금 더 가까이 와 주세요.');
     });
 
     test('size uses the width for a wide, short front-view push-up', () {
@@ -80,7 +82,7 @@ void main() {
       final status = checker(ExerciseType.pushUp).update(frame);
       expect(status.reason, SetupReason.missingParts);
       expect(status.missingParts, [BodyPart.hands]);
-      expect(status.message, 'Hands not visible.');
+      expect(status.message, '손이 화면에 안 보여요.');
     });
 
     test('missingParts names the hands when wrists have low likelihood', () {
@@ -88,7 +90,7 @@ void main() {
         hide: {BodyLandmark.leftWrist, BodyLandmark.rightWrist},
       );
       final status = checker(ExerciseType.pushUp).update(frame);
-      expect(status.message, 'Hands not visible.');
+      expect(status.message, '손이 화면에 안 보여요.');
     });
 
     test('missingParts joins several parts', () {
@@ -101,7 +103,7 @@ void main() {
       );
       final status = checker(ExerciseType.pushUp).update(frame);
       expect(status.missingParts, [BodyPart.elbows, BodyPart.hands]);
-      expect(status.message, 'Elbows and hands not visible.');
+      expect(status.message, '팔꿈치, 손이 화면에 안 보여요.');
     });
 
     test('a face above the frame is a missing head, not a turned one', () {
@@ -117,7 +119,7 @@ void main() {
       final status = checker(ExerciseType.pushUp).update(frame);
       expect(status.reason, SetupReason.missingParts);
       expect(status.missingParts, [BodyPart.head, BodyPart.hands]);
-      expect(status.message, 'Head and hands not visible.');
+      expect(status.message, '머리, 손이 화면에 안 보여요.');
     });
 
     test('size checks run before the other checks', () {
@@ -144,7 +146,7 @@ void main() {
       final status = checker(ExerciseType.pushUp).update(standingFrame());
       expect(status.reason, SetupReason.ready);
       expect(status.isReady, isFalse);
-      expect(status.message, 'Hold still...');
+      expect(status.message, '그대로 잠시 유지하세요.');
     });
   });
 
@@ -153,7 +155,7 @@ void main() {
       final status = checker(ExerciseType.pushUp)
           .update(standingFrame(hide: faceLandmarks));
       expect(status.reason, SetupReason.notFacingForward);
-      expect(status.message, 'Face the camera.');
+      expect(status.message, '카메라를 정면으로 봐 주세요.');
       expect(status.isReady, isFalse);
     });
 
@@ -350,7 +352,7 @@ void main() {
       final status = checker(ExerciseType.pushUp)
           .update(standingFrame(showHips: true));
       expect(status.reason, SetupReason.notInPushUp);
-      expect(status.message, 'Get into a push-up with straight arms.');
+      expect(status.message, '팔을 펴고 푸시업 자세를 잡아 주세요.');
     });
 
     test('an upright body never becomes Ready', () {
@@ -452,7 +454,7 @@ void main() {
       );
       expect(
         checker(ExerciseType.pushUp).update(frame).message,
-        'Hands not visible.',
+        '손이 화면에 안 보여요.',
       );
     });
 
@@ -484,7 +486,7 @@ void main() {
       final done = at(c, 1500, standingFrame());
       expect(done.isReady, isTrue);
       expect(done.readyProgress, 1);
-      expect(done.message, 'Ready! Press Start.');
+      expect(done.message, '준비 완료!');
     });
 
     test('Ready is time based, not frame-count based', () {
@@ -550,6 +552,148 @@ void main() {
       );
       at(c, 0, standingFrame());
       expect(at(c, 200, standingFrame()).isReady, isTrue);
+    });
+  });
+
+  group('the words, in Korean, as the setup voice says them', () {
+    SetupStatus status(
+      SetupReason reason, {
+      bool ready = false,
+      List<BodyPart> parts = const [],
+    }) => SetupStatus(
+      reason: reason,
+      isReady: ready,
+      readyProgress: 0,
+      missingParts: parts,
+    );
+
+    test('each reason has its line', () {
+      const lines = {
+        SetupReason.noPerson: '카메라 앞에 서 주세요.',
+        SetupReason.tooClose: '조금 뒤로 물러나 주세요.',
+        SetupReason.tooFar: '카메라에 조금 더 가까이 와 주세요.',
+        SetupReason.notFacingForward: '카메라를 정면으로 봐 주세요.',
+        SetupReason.notInPushUp: '팔을 펴고 푸시업 자세를 잡아 주세요.',
+        SetupReason.notStanding: '정면을 보고 똑바로 서 주세요.',
+        SetupReason.phoneTooFlat: '폰을 더 세워 주세요.',
+        SetupReason.phoneShaky: '폰이 흔들리지 않게 두세요.',
+        SetupReason.ready: '그대로 잠시 유지하세요.',
+      };
+      for (final MapEntry(key: reason, value: line) in lines.entries) {
+        expect(status(reason).message, line, reason: '$reason');
+      }
+      // Ready, whatever the latest frame showed.
+      for (final reason in SetupReason.values) {
+        expect(status(reason, ready: true).message, '준비 완료!');
+      }
+    });
+
+    test('the screen says what the voice says, but for one or two missing '
+        'parts', () {
+      for (final ready in [false, true]) {
+        for (final reason in SetupReason.values) {
+          if (reason == SetupReason.missingParts && !ready) continue;
+          final s = status(reason, ready: ready);
+          expect(
+            s.message,
+            VoiceCueTable.forSetup(s).text,
+            reason: '$reason, ready $ready',
+          );
+        }
+      }
+    });
+
+    test('a missing part is named, with 이 after a final consonant and 가 '
+        'after a vowel', () {
+      const lines = {
+        BodyPart.head: '머리가 화면에 안 보여요.',
+        BodyPart.shoulders: '어깨가 화면에 안 보여요.',
+        BodyPart.elbows: '팔꿈치가 화면에 안 보여요.',
+        BodyPart.hands: '손이 화면에 안 보여요.',
+        BodyPart.hips: '엉덩이가 화면에 안 보여요.',
+        BodyPart.knees: '무릎이 화면에 안 보여요.',
+        BodyPart.ankles: '발목이 화면에 안 보여요.',
+      };
+      expect(lines.keys, unorderedEquals(BodyPart.values));
+      for (final MapEntry(key: part, value: line) in lines.entries) {
+        expect(
+          status(SetupReason.missingParts, parts: [part]).message,
+          line,
+          reason: '$part',
+        );
+      }
+    });
+
+    test('several missing parts are listed in order, the marker fitted to '
+        'the last', () {
+      String words(List<BodyPart> parts) =>
+          status(SetupReason.missingParts, parts: parts).message;
+      expect(words([BodyPart.hands, BodyPart.ankles]), '손, 발목이 화면에 안 보여요.');
+      expect(words([BodyPart.ankles, BodyPart.hands]), '발목, 손이 화면에 안 보여요.');
+      expect(words([BodyPart.knees, BodyPart.hips]), '무릎, 엉덩이가 화면에 안 보여요.');
+    });
+
+    test('three or more missing parts are not listed: the voice line for '
+        'the whole body', () {
+      String words(List<BodyPart> parts) =>
+          status(SetupReason.missingParts, parts: parts).message;
+      for (final parts in const [
+        [BodyPart.head, BodyPart.shoulders, BodyPart.elbows],
+        [BodyPart.head, BodyPart.shoulders, BodyPart.elbows, BodyPart.hands],
+        [BodyPart.hips, BodyPart.knees, BodyPart.ankles],
+        [
+          BodyPart.head,
+          BodyPart.shoulders,
+          BodyPart.hips,
+          BodyPart.knees,
+          BodyPart.ankles,
+        ],
+      ]) {
+        expect(words(parts), VoiceCue.missingParts.text, reason: '$parts');
+      }
+    });
+
+    test('a squat with the hips, knees and feet out of the picture says to '
+        'show the whole body', () {
+      final status = checker(ExerciseType.squat).update(
+        standingFrame(
+          showHips: true,
+          hide: {
+            BodyLandmark.leftHip,
+            BodyLandmark.leftKnee,
+            BodyLandmark.rightAnkle,
+          },
+        ),
+      );
+      expect(status.missingParts, [
+        BodyPart.hips,
+        BodyPart.knees,
+        BodyPart.ankles,
+      ]);
+      expect(status.message, '몸 전체가 화면에 보이게 해 주세요.');
+    });
+
+    test('with no part named, the voice line for the whole body', () {
+      expect(
+        status(SetupReason.missingParts).message,
+        VoiceCue.missingParts.text,
+      );
+      expect(VoiceCue.missingParts.text, '몸 전체가 화면에 보이게 해 주세요.');
+    });
+
+    test('a squat with the feet and knees out of the picture names them', () {
+      final c = checker(ExerciseType.squat);
+      final cut = standingFrame(
+        showHips: true,
+        hide: {
+          BodyLandmark.leftKnee,
+          BodyLandmark.leftAnkle,
+          BodyLandmark.rightAnkle,
+        },
+      );
+      final status = c.update(cut);
+      expect(status.reason, SetupReason.missingParts);
+      expect(status.message, '무릎, 발목이 화면에 안 보여요.');
     });
   });
 }

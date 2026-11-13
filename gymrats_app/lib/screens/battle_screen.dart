@@ -1,49 +1,77 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
-import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/matchup.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/opponent/bot_opponent.dart';
-import '../services/pose/squat_demo_judge.dart';
 import '../services/pose/rep_judge.dart';
+import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
-import '../widgets/battle_score_panel.dart';
+import '../widgets/battle_arena.dart';
+import '../widgets/battle_camera_view.dart';
+import '../widgets/battle_stage_events.dart';
+import '../widgets/battle_stage_model.dart';
 import '../widgets/exit_dialog.dart';
-import '../widgets/game_danger_edge.dart';
-import '../widgets/landmark_overlay.dart';
-import '../widgets/opponent_window.dart';
-import '../widgets/pose_avatar_toggle_view.dart';
-import '../widgets/time_up_overlay.dart';
 
-/// The battle: the user's camera on top, the opponent in a small
-/// window, and the scores below.
+/// A battle against the bot, from the pose setup to the end: the fighting
+/// stage above and the user's camera below (the battle arena).
 ///
-/// The round starts once the camera runs in portrait. Back asks before
-/// leaving, and leaving keeps nothing. When time is up or a KO lands, an
-/// overlay leads to the result screen, which replaces this one; back then
-/// goes home. While the user is about to lose, the screen edge flashes.
+/// It opens on the setup, in the same layout: the user's pose is checked
+/// while the bot stands ready, and once the pose holds, the setup's count to
+/// the start is the stage's 3, 2, 1 and GO!. 시작 begins the round at once.
+/// The screen stays upright throughout. Back and the leave button ask before
+/// leaving, and leaving keeps nothing. When a KO or the time ends the battle
+/// and its ending has played, 결과 보기 opens the result screen in this one's
+/// place; back then does the same, and nothing before.
+///
+/// Sounds hook in from outside, without changing this screen: [onCue] for
+/// the stage's moments and [onSetup] for the setup's hints.
 class BattleScreen extends StatefulWidget {
-  const BattleScreen({super.key, required this.matchup, this.createViewModel});
+  const BattleScreen({
+    super.key,
+    required this.matchup,
+    this.createViewModel,
+    this.onCue,
+    this.onSetup,
+  });
 
   final Matchup matchup;
 
   /// Builds the view model; replaces the default one in tests.
   final BattleViewModel Function()? createViewModel;
 
+  /// Called once for each moment of the stage a sound can follow, as it
+  /// shows: a blow, a miss, 3, 2, 1, GO!, the KO, time-up and its verdict
+  /// ([BattleArena.onCue]). The battle's sound effects come in here.
+  final ValueChanged<BattleStageCue>? onCue;
+
+  /// Called before the round on every change while the pose is checked,
+  /// with the setup's latest status and the time left before the round
+  /// starts by itself (null while not counting down). The setup's voice
+  /// lines come in here (J1's `VoiceCueTable.forSetup` and `forCountdown`
+  /// take these two as they are).
+  final BattleSetupListener? onSetup;
+
   @override
   State<BattleScreen> createState() => _BattleScreenState();
 }
+
+/// Hears the setup before the round: the pose check's latest [status], and
+/// the time left before the round starts by itself, null while not counting
+/// down. See [BattleScreen.onSetup].
+typedef BattleSetupListener = void Function(
+  SetupStatus status,
+  Duration? startIn,
+);
 
 class _BattleScreenState extends State<BattleScreen>
     with WidgetsBindingObserver {
@@ -51,11 +79,19 @@ class _BattleScreenState extends State<BattleScreen>
   bool _cameraStarted = false;
   Orientation? _orientation;
 
-  /// True while the leave dialog is open. Time running out closes it.
+  /// True while the leave dialog is open. The battle ending closes it.
   bool _askingToLeave = false;
 
-  /// Set once 결과 보기 is pressed, so a second tap does nothing.
+  /// Set once the result was asked for, so it opens once.
   bool _openedResult = false;
+
+  /// The stage's clock and what plays on it: a new one for every try after
+  /// a camera failure, with [_try] telling the arena to start over.
+  BattleStageController _stage = BattleStageController();
+  int _try = 0;
+
+  /// The state the stage was last given, to tell the new reps by.
+  late BattleState _shown;
 
   @override
   void initState() {
@@ -64,14 +100,8 @@ class _BattleScreenState extends State<BattleScreen>
     if (createViewModel != null) {
       _viewModel = createViewModel();
     } else {
-      final counter = RepCounterViewModel(
-        roundLength: battleDuration,
-        exercise: widget.matchup.exercise,
-        exerciseJudge: widget.matchup.exercise == ExerciseType.squat
-            ? SquatDemoJudge()
-            : null,
-      );
-      _viewModel = BattleViewModel(
+      final counter = BattleViewModel.botCounter(widget.matchup.exercise);
+      _viewModel = BattleViewModel.bot(
         matchup: widget.matchup,
         counter: counter,
         opponent: BotOpponent.forMatchup(
@@ -83,10 +113,11 @@ class _BattleScreenState extends State<BattleScreen>
         formReports: context.read<FormReportStore>(),
       );
     }
+    _shown = _viewModel.state;
     _viewModel.addListener(_onViewModelChanged);
     WidgetsBinding.instance.addObserver(this);
-    // Setup may have turned the screen sideways, and it restores portrait
-    // only once it is gone, after this screen has opened.
+    // The setup and the battle are upright: the camera's frames and the
+    // stage assume it.
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     unawaited(keepScreenOn(true));
   }
@@ -96,7 +127,7 @@ class _BattleScreenState extends State<BattleScreen>
     super.didChangeDependencies();
     final orientation = MediaQuery.orientationOf(context);
     if (!_cameraStarted && orientation == Orientation.portrait) {
-      // The camera reads the orientation when it opens, so the round waits
+      // The camera reads the orientation when it opens, so the setup waits
       // for portrait.
       _cameraStarted = true;
       _viewModel.start();
@@ -106,9 +137,24 @@ class _BattleScreenState extends State<BattleScreen>
     _orientation = orientation;
   }
 
+  /// Gives the stage every rep at once, on every change: the game reports
+  /// a KO one change before the rep that caused it.
   void _onViewModelChanged() {
+    final state = _viewModel.state;
+    final events = BattleStageEvents.between(
+      _shown,
+      state,
+      passDepth: _viewModel.counter.passDepth,
+      rules: _viewModel.rules,
+    );
+    events.forEach(_stage.rep);
+    if (state.started && !_shown.started) _stage.go();
+    _shown = state;
+    if (!state.started && state.phase == BattlePhase.setup) {
+      widget.onSetup?.call(state.setup, state.startIn);
+    }
     // The battle is over, so the question no longer applies.
-    if (_askingToLeave && _viewModel.state.phase == BattlePhase.timeUp) {
+    if (_askingToLeave && state.phase == BattlePhase.timeUp) {
       _askingToLeave = false;
       Navigator.pop(context);
     }
@@ -128,8 +174,20 @@ class _BattleScreenState extends State<BattleScreen>
     }
   }
 
-  /// Asks before leaving, on a back attempt during the round.
+  /// The system's back gesture: asks to leave while the battle is on. Once
+  /// it has ended, it opens the result after the ending has played, as
+  /// 결과 보기 does, and does nothing before.
+  void _back() {
+    if (_viewModel.state.result != null) {
+      if (_stage.resultReady) _openResult();
+      return;
+    }
+    unawaited(_askToLeave());
+  }
+
+  /// Asks before leaving, from back or the leave button.
   Future<void> _askToLeave() async {
+    if (_askingToLeave) return;
     _askingToLeave = true;
     final leave = await confirmExit(
       context,
@@ -159,6 +217,16 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
+  /// After a camera failure: the setup again, then the round from zero, on
+  /// a stage that starts over.
+  void _retry() {
+    setState(() {
+      _try += 1;
+      _stage = BattleStageController();
+    });
+    unawaited(_viewModel.retry());
+  }
+
   @override
   void dispose() {
     unawaited(keepScreenOn(false));
@@ -177,253 +245,118 @@ class _BattleScreenState extends State<BattleScreen>
           value: _viewModel.counter,
         ),
       ],
-      child: Selector<BattleViewModel, bool>(
-        selector: (_, vm) => vm.state.phase == BattlePhase.timeUp,
-        builder: (context, timeUp, _) => PopScope<Object?>(
-          // Once time is up nothing can be lost: back goes home.
-          canPop: timeUp,
+      child: Consumer2<BattleViewModel, RepCounterViewModel>(
+        builder: (context, viewModel, counter, _) => PopScope<Object?>(
+          canPop: false,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) _askToLeave();
+            if (!didPop) _back();
           },
           child: Scaffold(
-            body: Stack(
-              fit: StackFit.expand,
-              children: [
-                _BattleLayout(matchup: widget.matchup),
-                const _DangerEdge(),
-                if (timeUp)
-                  TimeUpOverlay(
-                    result: _viewModel.state.result!,
-                    onShowResult: _openResult,
-                  ),
-              ],
-            ),
+            backgroundColor: AppColors.background,
+            body: _arena(viewModel, counter),
           ),
         ),
       ),
     );
   }
-}
 
-/// Flashes the screen edge while the user is about to lose, until the battle
-/// is over. A camera failure holds it too: retrying starts from zero.
-class _DangerEdge extends StatelessWidget {
-  const _DangerEdge();
-
-  @override
-  Widget build(BuildContext context) {
-    final active = context.select<BattleViewModel, bool>(
-      (vm) =>
-          vm.state.danger &&
-          vm.state.phase != BattlePhase.timeUp &&
-          vm.state.phase != BattlePhase.left &&
-          vm.state.phase != BattlePhase.failed,
+  Widget _arena(BattleViewModel viewModel, RepCounterViewModel counter) {
+    final state = viewModel.state;
+    final counterState = counter.state;
+    final stage = BattleStageEvents.stateOf(
+      state,
+      widget.matchup,
+      roundLength: viewModel.roundLength,
+      rules: viewModel.rules,
     );
-    return GameDangerEdge(active: active);
+    final pushUp = widget.matchup.exercise == ExerciseType.pushUp;
+    final setup = stage.phase == BattleStagePhase.setup;
+    final settingUp = setup || stage.phase == BattleStagePhase.countdown;
+    final running = counterState.phase == CounterPhase.running;
+    final guide = settingUp && running
+        ? BattleCameraView.setupGuide(
+            widget.matchup.exercise,
+            ready: state.setup.isReady,
+          )
+        : null;
+    final Widget camera = state.phase == BattlePhase.failed
+        ? _CameraFailed(
+            state: counterState,
+            onRetry: _retry,
+            onOpenSettings: counter.openSettings,
+          )
+        : Stack(
+            alignment: Alignment.center,
+            children: [
+              BattleCameraView(
+                controller: counter.cameraController,
+                frame: running ? counterState.lastFrame : null,
+                mirror: counter.isFrontCamera,
+                chestSnapshot: pushUp && state.started
+                    ? counterState.snapshot
+                    : null,
+                squatSnapshot: !pushUp && state.started
+                    ? counterState.snapshot
+                    : null,
+                guide: guide?.widget,
+                guideFit: guide?.fit ?? BoxFit.cover,
+              ),
+              if (state.phase == BattlePhase.starting ||
+                  state.phase == BattlePhase.paused)
+                const CircularProgressIndicator(),
+            ],
+          );
+    return BattleArena(
+      key: ValueKey(_try),
+      controller: _stage,
+      state: stage,
+      camera: camera,
+      onCue: widget.onCue,
+      onLeave: () => unawaited(_askToLeave()),
+      hint: _hint(state, counterState, stage.phase),
+      readyLabel: settingUp ? '시작' : null,
+      onReady: settingUp && state.canStart ? viewModel.startNow : null,
+      onSwitchCamera: setup && running && counter.canSwitchCamera
+          ? () => unawaited(counter.switchCamera())
+          : null,
+      setupProgress: setup ? state.setup.readyProgress : null,
+      onShowResult: _openResult,
+    );
   }
-}
 
-/// The camera on top and the score panel below.
-///
-/// The camera box keeps the preview's own shape, so the picture is neither
-/// cropped nor stretched. On a short screen the panel keeps its room, the
-/// box narrows, and its sides stay dark.
-class _BattleLayout extends StatefulWidget {
-  const _BattleLayout({required this.matchup});
-
-  final Matchup matchup;
-
-  @override
-  State<_BattleLayout> createState() => _BattleLayoutState();
-}
-
-class _BattleLayoutState extends State<_BattleLayout> {
-  /// Width over height of the portrait preview. Kept while the camera
-  /// reopens; 3:4 until the camera first reports its size.
-  double _aspectRatio = 3 / 4;
-
-  /// The least height the panel needs, besides the bottom inset.
-  static const _minPanelHeight = 280.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final previewSize = context.select<RepCounterViewModel, Size?>(
-      (counter) => counter.cameraController?.value.previewSize,
-    );
-    // previewSize is landscape; in portrait the preview is its swap, as in
-    // PoseCameraView.
-    if (previewSize != null) {
-      _aspectRatio = previewSize.height / previewSize.width;
-    }
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cameraSize = _cameraSize(constraints.biggest, bottomInset);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: cameraSize.height,
-              child: _CameraArea(
-                cameraSize: cameraSize,
-                matchup: widget.matchup,
-              ),
-            ),
-            Expanded(
-              child: BattleScorePanel(
-                opponentName: widget.matchup.opponent.name,
-              ),
-            ),
-          ],
-        );
+  /// The camera area's one line: what the setup wants before the round,
+  /// and for squats in the round, where the user is in the rep.
+  String? _hint(
+    BattleState state,
+    RepCounterState counterState,
+    BattleStagePhase phase,
+  ) => switch (phase) {
+    BattleStagePhase.setup =>
+      state.phase == BattlePhase.setup ? state.setup.message : null,
+    BattleStagePhase.playing
+        when widget.matchup.exercise == ExerciseType.squat &&
+            state.phase == BattlePhase.playing =>
+      switch (counterState.snapshot.phase) {
+        RepPhase.up || RepPhase.descending => '일어선 상태 · 무릎 가까이 앉아 주세요',
+        RepPhase.bottom => '앉은 상태 · 이제 일어서세요',
+        RepPhase.idle || RepPhase.lost => '정면에서 전신이 보이도록 서 주세요',
       },
-    );
-  }
-
-  /// The camera box in [area]: full width in the preview's shape, or
-  /// shorter and narrower when the panel below would get less than
-  /// [_minPanelHeight].
-  Size _cameraSize(Size area, double bottomInset) {
-    final fullWidthHeight = area.width / _aspectRatio;
-    final heightAbovePanel = area.height - _minPanelHeight - bottomInset;
-    final height = math.max(0.0, math.min(fullWidthHeight, heightAbovePanel));
-    return Size(math.min(area.width, height * _aspectRatio), height);
-  }
+    _ => null,
+  };
 }
 
-/// The camera box, with the user's name chip and the opponent's window over
-/// its top corners.
-class _CameraArea extends StatelessWidget {
-  const _CameraArea({required this.cameraSize, required this.matchup});
-
-  /// The camera box's size, at most the area's.
-  final Size cameraSize;
-
-  final Matchup matchup;
-
-  /// Camera height in the design, where the opponent window is full size.
-  static const _designHeight = 520.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final moves = context.select<BattleViewModel, int>(
-      (vm) => vm.state.opponentMoves,
-    );
-    final live = context.select<BattleViewModel, bool>(
-      (vm) => vm.state.phase == BattlePhase.playing,
-    );
-    final top = MediaQuery.paddingOf(context).top + 16;
-    return Stack(
-      children: [
-        Center(
-          child: SizedBox.fromSize(
-            size: cameraSize,
-            child: _CameraBox(exercise: matchup.exercise),
-          ),
-        ),
-        Positioned(
-          left: 16,
-          top: top,
-          child: _NameChip(name: matchup.playerName),
-        ),
-        if (matchup.exercise == ExerciseType.squat)
-          Positioned(left: 16, bottom: 12, child: _SquatGuide()),
-        Positioned(
-          right: 16,
-          top: top,
-          child: OpponentWindow(
-            opponent: matchup.opponent,
-            moves: moves,
-            live: live,
-            exercise: matchup.exercise,
-            // Smaller with a short camera, down to three quarters.
-            scale: (cameraSize.height / _designHeight).clamp(0.75, 1.0),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SquatGuide extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final phase = context.select<RepCounterViewModel, RepPhase>(
-      (counter) => counter.state.snapshot.phase,
-    );
-    final message = switch (phase) {
-      RepPhase.up || RepPhase.descending => '일어선 상태 · 무릎 가까이 앉아 주세요',
-      RepPhase.bottom => '앉은 상태 · 이제 일어서세요',
-      RepPhase.idle || RepPhase.lost => '정면에서 전신이 보이도록 서 주세요',
-    };
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(message, style: const TextStyle(color: Colors.white)),
-      ),
-    );
-  }
-}
-
-/// The preview with the landmark dots while the round runs, a spinner while
-/// the camera opens, or what went wrong.
-class _CameraBox extends StatelessWidget {
-  const _CameraBox({required this.exercise});
-
-  final ExerciseType exercise;
-
-  @override
-  Widget build(BuildContext context) {
-    final counter = context.watch<RepCounterViewModel>();
-    final state = counter.state;
-    final frame = state.lastFrame;
-    final Widget? overlay = switch (state.phase) {
-      CounterPhase.starting ||
-      CounterPhase.paused => const Center(child: CircularProgressIndicator()),
-      CounterPhase.permissionDenied ||
-      CounterPhase.cameraError ||
-      CounterPhase.detectorError => _CameraFailed(state: state),
-      CounterPhase.running || CounterPhase.finished => null,
-    };
-    return RepaintBoundary(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          PoseAvatarToggleView(
-            chestSnapshot: exercise == ExerciseType.pushUp
-                ? state.snapshot
-                : null,
-            squatSnapshot: exercise == ExerciseType.squat
-                ? state.snapshot
-                : null,
-            controller: counter.cameraController,
-            frame: state.phase == CounterPhase.running ? frame : null,
-            mirror: counter.isFrontCamera,
-            cameraOverlay: state.phase == CounterPhase.running && frame != null
-                ? LandmarkOverlay(
-                    frame: frame,
-                    mirror: counter.isFrontCamera,
-                    isVisible: counter.isVisible,
-                  )
-                : null,
-          ),
-          ?overlay,
-        ],
-      ),
-    );
-  }
-}
-
-/// Why the camera stopped, and the way back: retrying restarts the round
-/// on both sides.
+/// Why the camera stopped, where the camera would be, and the way back:
+/// retrying sets up again and restarts the round on both sides.
 class _CameraFailed extends StatelessWidget {
-  const _CameraFailed({required this.state});
+  const _CameraFailed({
+    required this.state,
+    required this.onRetry,
+    required this.onOpenSettings,
+  });
 
   final RepCounterState state;
+  final VoidCallback onRetry;
+  final VoidCallback onOpenSettings;
 
   static const _restartNote = '다시 시도하면 경기가 처음부터 시작돼요.';
 
@@ -438,86 +371,26 @@ class _CameraFailed extends StatelessWidget {
       _ when needsSettings => ('카메라 권한이 꺼져 있어요', '설정에서 카메라를 허용해 주세요.'),
       _ => ('카메라 권한이 필요해요', '횟수를 세려면 카메라가 필요해요.'),
     };
-    return ColoredBox(
-      color: AppColors.background.withValues(alpha: 0.85),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                detail,
-                textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (needsSettings)
-                FilledButton(
-                  onPressed: context.read<RepCounterViewModel>().openSettings,
-                  child: const Text('설정 열기'),
-                )
-              else
-                FilledButton(
-                  onPressed: context.read<BattleViewModel>().retry,
-                  child: const Text('다시 시도'),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "● 나 · 우현" on a dark pill with a lime edge.
-class _NameChip extends StatelessWidget {
-  const _NameChip({required this.name});
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 32,
-      // Leaves room for the opponent window on a narrow phone.
-      constraints: const BoxConstraints(maxWidth: 170),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: ShapeDecoration(
-        color: AppColors.background.withValues(alpha: 0.78),
-        shape: StadiumBorder(
-          side: BorderSide(color: AppColors.accent.withValues(alpha: 0.4)),
-        ),
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.s24),
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox.square(
-            dimension: 8,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                shape: BoxShape.circle,
-              ),
-            ),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              '나 · $name',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium
-                  ?.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
+          const SizedBox(height: AppSpacing.s8),
+          Text(
+            detail,
+            textAlign: TextAlign.center,
+            style: text.bodyMedium?.copyWith(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.s16),
+          FilledButton(
+            onPressed: needsSettings ? onOpenSettings : onRetry,
+            child: Text(needsSettings ? '설정 열기' : '다시 시도'),
           ),
         ],
       ),

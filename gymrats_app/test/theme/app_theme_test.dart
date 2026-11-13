@@ -254,6 +254,13 @@ void main() {
         const BorderRadius.all(Radius.circular(AppRadius.mark)),
       );
       expect(AppHighlight.bandPadding.vertical, 2 * AppSpacing.s4);
+      // The design's tight band (BMatchFound "MATCH FOUND") and the room
+      // beside a swatch.
+      expect(
+        AppHighlight.tightBandPadding,
+        const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      );
+      expect(AppHighlight.swatchGap, 6);
       final marked = AppHighlight.marked(
         const TextStyle(color: AppColors.accent),
         AppColors.accent,
@@ -348,6 +355,104 @@ void main() {
     });
   });
 
+  group('the battle stage', () {
+    final text = theme.textTheme;
+
+    test('every stage style is ink, spaced like the design\'s CSS, and in '
+        'the design\'s font, size and weight', () {
+      final styles = {
+        'name': (text.stageName, AppFonts.body, 14.0, FontWeight.w700),
+        'clock': (text.stageClock, AppFonts.number, 26.0, FontWeight.w700),
+        'chip': (text.stageChip, AppFonts.number, 12.0, FontWeight.w700),
+        'score': (text.stageScore, AppFonts.number, 80.0, FontWeight.w800),
+        'count': (text.stageCount, AppFonts.number, 18.0, FontWeight.w700),
+        'bar end': (text.stageBarEnd, AppFonts.number, 12.0, FontWeight.w700),
+        'tag': (text.stageTag, AppFonts.body, 13.0, FontWeight.w700),
+        'band': (text.stageBand, AppFonts.number, 100.0, FontWeight.w800),
+        'korean band': (
+          text.stageBandKorean,
+          AppFonts.display,
+          100.0,
+          FontWeight.w400,
+        ),
+        'sign label': (
+          text.stageSignLabel,
+          AppFonts.display,
+          40.0,
+          FontWeight.w400,
+        ),
+      };
+      for (final MapEntry(key: name, value: (style, family, size, weight))
+          in styles.entries) {
+        expect(style.fontFamily, family, reason: name);
+        expect(style.fontSize, size, reason: name);
+        expect(style.fontWeight, weight, reason: name);
+        expect(style.color, AppColors.ink, reason: name);
+        expect(
+          style.leadingDistribution,
+          TextLeadingDistribution.even,
+          reason: name,
+        );
+      }
+      expect(StageText.stageBandSize, text.stageBand.fontSize);
+    });
+
+    test('the label over the valid counts is the quieter secondary text', () {
+      expect(text.stageCountLabel.color, AppColors.textSecondary);
+      expect(text.stageCountLabel.fontSize, 11);
+      expect(text.stageCountLabel.fontWeight, FontWeight.w700);
+    });
+
+    test('line heights are the design\'s: the score sits tight, Korean '
+        'bands get room', () {
+      expect(text.stageScore.height, 0.92);
+      expect(text.stageScore.letterSpacing, -3);
+      expect(text.stageClock.height, 1);
+      expect(text.stageBand.height, 1);
+      expect(text.stageBand.letterSpacing, -1);
+      expect(text.stageBandKorean.height, 1.25);
+      expect(text.stageSignLabel.height, 1.2);
+      // Given in the design as a line height in points.
+      expect(text.stageCount.fontSize! * text.stageCount.height!, 20);
+      expect(
+        text.stageCountLabel.fontSize! * text.stageCountLabel.height!,
+        closeTo(14, 1e-9),
+      );
+      expect(
+        text.stageTag.fontSize! * text.stageTag.height!,
+        closeTo(16, 1e-9),
+      );
+    });
+
+    test('a band takes its own size from the base size', () {
+      final small = text.stageBand.apply(
+        fontSizeFactor: 44 / StageText.stageBandSize,
+      );
+      expect(small.fontSize, 44);
+      // The letters stay 1 closer whatever the size.
+      expect(small.letterSpacing, -1);
+    });
+
+    test('the pictograms\' floor is lighter than their gray figure', () {
+      expect(AppColors.pictogramFloor, const Color(0xFFB9C0CC));
+      expect(
+        AppColors.pictogramFloor.computeLuminance(),
+        greaterThan(AppColors.line.computeLuminance()),
+      );
+    });
+
+    test('the dimming around the setup guide is black at 45%, as the '
+        'push-up silhouette dims outside its outline', () {
+      expect(AppColors.setupGuideScrim, const Color(0x73000000));
+    });
+
+    test('the stage\'s bands slant 12 degrees, and each call is its own', () {
+      final slant = AppHighlight.battleSlant;
+      expect(slant.entry(0, 1), closeTo(math.tan(-12 * math.pi / 180), 1e-12));
+      expect(identical(slant, AppHighlight.battleSlant), isFalse);
+    });
+  });
+
   test('AppTheme.dark is the light theme, under its old name', () {
     expect(AppTheme.dark, same(AppTheme.light));
   });
@@ -356,5 +461,45 @@ void main() {
     await tester.pumpWidget(testApp());
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
     expect(app.theme, same(AppTheme.light));
+  });
+
+  group('the battle\'s camera area', () {
+    final text = AppTheme.light.textTheme;
+
+    test('its texts are ink in the body font, the result button in the '
+        'display font', () {
+      expect(text.cameraHint.fontSize, 14);
+      expect(text.cameraHint.fontWeight, FontWeight.w500);
+      expect(text.cameraHint.height, 1.35);
+      expect(text.cameraButton.fontSize, 14);
+      expect(text.cameraButton.fontWeight, FontWeight.w700);
+      expect(text.cameraNotice.fontSize, 13);
+      expect(text.cameraNotice.fontWeight, FontWeight.w700);
+      expect(text.cameraResult.fontFamily, AppFonts.display);
+      expect(text.cameraResult.fontSize, 24);
+      expect(text.cameraResult.fontSize! * text.cameraResult.height!, 32);
+      for (final style in [
+        text.cameraHint,
+        text.cameraButton,
+        text.cameraNotice,
+        text.cameraResult,
+      ]) {
+        expect(style.color, AppColors.ink);
+      }
+      expect(text.cameraHint.fontFamily, AppFonts.body);
+    });
+
+    test('the leave dialog\'s title is Do Hyeon at the headline\'s size', () {
+      expect(text.leaveDialogTitle.fontFamily, AppFonts.display);
+      expect(text.leaveDialogTitle.fontSize, text.headlineSmall!.fontSize);
+      expect(text.leaveDialogTitle.color, text.headlineSmall!.color);
+    });
+
+    test('a dialog covers the screen with ink at 54%, not black', () {
+      expect(
+        theme.dialogTheme.barrierColor,
+        AppColors.ink.withValues(alpha: 0.54),
+      );
+    });
   });
 }

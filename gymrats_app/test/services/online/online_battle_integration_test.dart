@@ -908,6 +908,7 @@ void main() {
     expect(b.opponentFrame![BodyLandmark.leftElbow]!.likelihood, .9);
     a.submitRep(const RepEvent(index: 99, valid: true, at: Duration.zero));
     await until(() => b.opponentReps == 1 && a.myReps == 1);
+    expect(b.opponentMisses, 0);
     var rejected = 0;
     for (final reason in RejectReason.values) {
       a.submitRep(
@@ -920,6 +921,7 @@ void main() {
       );
       rejected++;
       await until(() => a.myInvalidReps == rejected);
+      await until(() => b.opponentMisses == rejected);
       expect(a.error, isNull, reason: 'Server must accept ${reason.name}');
       // Leave room under the server's per-second control-message limit.
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -1088,6 +1090,7 @@ void main() {
       expect(a.myReps, 0);
       expect(a.myInvalidReps, 1);
       expect(b.opponentReps, 0);
+      expect(b.opponentMisses, 0);
       expect(a.myBarShare, closeTo(.525, 1e-9));
       expect(b.myBarShare, closeTo(.475, 1e-9));
       expect(a.error, isNull);
@@ -1132,10 +1135,12 @@ void main() {
         ),
       );
       await until(() => a.myInvalidReps == 3);
+      await until(() => b.opponentMisses == 3);
       expect(a.error, isNull);
       expect(a.myScore, 0);
       expect(a.myLastScore, isNull);
       expect(b.opponentLastScore, isNull);
+      expect(b.opponentReps, 0);
     });
 
     test('fever doubles the points on both phones', () async {
@@ -1273,6 +1278,9 @@ void main() {
       expect(session.myScore, 15);
       expect(session.opponentScore, 55);
       expect(session.myBarShare, closeTo(.25, 1e-9));
+      // Its invalid reps were missed meanwhile: they are not played again.
+      expect(session.opponentReps, 4);
+      expect(session.opponentMisses, 0);
       expect(session.error, isNull);
     });
 
@@ -1559,12 +1567,21 @@ void main() {
               'valid_reps': 1,
               'invalid_reps': 0,
             });
-            send('rep.updated', {'player_id': 'b', 'valid_reps': 2});
+            send('rep.updated', {
+              'player_id': 'b',
+              'valid': false,
+              'reason': 'too_fast',
+              'valid_reps': 2,
+              'invalid_reps': 1,
+            });
+            send('rep.updated', {'player_id': 'b', 'valid_reps': 3});
           }
         });
         await until(() => session.roundRunning);
         session.submitRep(deep);
-        await until(() => session.myReps == 1 && session.opponentReps == 2);
+        await until(() => session.myReps == 1 && session.opponentReps == 3);
+        // The rejected report is a miss; the one without a verdict is not.
+        expect(session.opponentMisses, 1);
         expect(submitted.single.containsKey('grade'), isFalse);
         expect(session.rules, isNull);
         expect(session.myScore, 0);

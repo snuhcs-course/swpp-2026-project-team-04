@@ -118,3 +118,113 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `cd88ab2`, wit
 - Lime, pink and amber text become ink, button text and the 무효 count included (user spec 2026-11-11 and its later answer). Tests: `'a ${outcome.name} paints no text in a palette B fill color, the feedback button and 무효 included'` (win, lose, draw), `'a win: WIN, the margin, both players, and my stats'`.
 - The nickname takes the row's free width and ends in "…" only past it: whole at 1.0× on a 360-dp phone, one line with "…" and no overflow at 1.3× and 2× (Codex P2, user's later answer). Tests: `'a 12-letter nickname shows whole on a 360-wide phone at the normal text size'`, `'a 12-letter nickname at ${scale}x text is one line that ends in …, beside its title'`, `'a short nickname shows whole, at the right of its row'`, `'fits $label without overflow, scrolling if it must'`.
 - UAT-4 AC1 (win, loss or draw with both scores) still holds. Tests: `'a win: WIN, the margin, both players, and my stats'`, `'$mine:$theirs is a $word'`.
+
+#### 2026-11-13 · code at commit `6a8efba` · step W2 `feat/battle_screen_revamp` (P8 battle screen revamp, team order #5)
+This step replaces the bot and online battle screens with one fighting stage, as designed (candidate A from the user's design canvas, spec v2.2), and redraws the matching screens in palette B:
+- **The stage** (upper half): the HUD (names, clock and lead chip, scores, valid rep counts, time bar), two fighters, a meeting point that moves with the score share, and the effects of every rule: grade word then "+N", combo "N HIT", FEVER ×2, the danger edge, the reject sign with a pictogram, K.O., TIME! and the verdict, then 결과 보기.
+- **The camera area** (lower half): the camera uncropped, a one-line hint, the ready button, the setup bar, the reconnect band, the leave button.
+- **The setup runs on the battle screen** for both battles.
+  - Bot (team question 9, option A): pose check, 3·2·1, GO!.
+  - Online: the same layout.
+  - #49's push-up silhouette lies over the camera. The strips a cropping camera would not show are dimmed in its shade.
+- **Online:** the server's scores, the opponent's zero-point reps as a miss, reconnecting, and the result to `/result`.
+- **Matching:** the radar, MATCH FOUND and the safety dialog in palette B. The safety picture is now drawn from the design's SVG; the old white-line PNG vanished on the light box.
+- **Settings:** the '매 경기 안전 안내' switch. On: the notice shows every match. Off: only until it was seen once. The setting is kept across restarts.
+- **Setup words in Korean**, the same sentences as the voice guidance. One or two missing parts are named; three or more say "몸 전체가 화면에 보이게 해 주세요.". The ready button reads "시작" (bot) and "준비" / "준비 취소" (online).
+- **Sound hooks for J2:** `onCue` and `onSetup` on both battle screens and on the online lobby.
+
+The branch contains `origin/main` `6e87a0f` and #49 `origin/feat/pose_silhouette_guide` `3efe402`. On 2026-11-13 `git fetch` found nothing new on either, and merging both said "Already up to date".
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `6a8efba`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 97.4% (266/273) | 11/13 | CI comment "Tests and coverage (GitHub Actions)" on PR #50, commit `7f12f3e`, [run 43260166309](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43260166309) |
+| ViewModel | flutter_test, fakes | 90% | 96.6% (1096/1135) | 11/13 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 94.9% (2447/2578) | 11/13 | same CI comment |
+| View | flutter_test (widget) | 75% | 94.1% (5924/6295) | 11/13 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/13 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `7f12f3e` |
+
+- **Tests:** `flutter test` had 2113 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as on 11-08, and W2 does not touch them:
+    - `test/services/online/public_wss_smoke_test.dart`: a live server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`;
+    - 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W2 adds 17 test files, two of them data files: the design's golden samples and the reviewed drawings. It changes 28 and deletes 3.
+  - The deleted ones are the tests of `game_health_bar.dart`, `game_fever_chip.dart` and `game_danger_edge.dart`, which the stage replaces. The PM approved removing them.
+- **The design check:** `test/widgets/battle_fx_motion_test.dart` compares the stage's effect math with the design prototype's own samples.
+  - `test/widgets/battle_fx_golden.json` holds spec v2.2's 18 scenarios with 248 samples: positions, rotations, sizes and opacities of the fighters, bands, star, sign and HUD. A changed design number fails it.
+  - The drawings (5 fighter poses, 10 pictograms) are pinned call by call in `test/widgets/battle_art_drawings.json`.
+- **Tests checked against wrong code:** in every step I planted single-number and single-line changes ("mutants") in the new code and reran its tests. The reviewer subagent planted more in its runs. A mutant that survived got a test. The counts per step are in my AI notes, item c.
+- **Other checks:**
+  - `ownership_guard.py --check-diff` flags only the 6 files #49 brought: `setup_screen.dart`, `pose_silhouette_guide.dart` and its test, and 한상우's three notes. This is expected until #49 is merged into `main`.
+  - Every other file outside W2's list is covered by an approved exception line.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Coverage:** from the CI comment on PR #50 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/50#issuecomment-6829754908)), commit `7f12f3e` (2026-11-13 01:41 KST; the app and server jobs both succeeded; [run 43260166309](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43260166309)). `7f12f3e` changes only these notes on top of `6a8efba`.
+  - App total 94.6% (9972/10537); Other 93.4% (239/256).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2113 passed, 10 skipped, 0 failed), the same as on this PC.
+  - The drawings fixture (`battle_art_drawings.json`) was recorded on Windows. It passes on CI's Linux too.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/result_screen_test.dart`, as on 11-08 and 11-11. Its tests still ran and passed in `flutter test`. So the two places W2 changed in `result_screen.dart` (under its exception) are not in the View number.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Screen readers:** widget tests check the words of the stage and the camera area through the semantics tree: the labels, the live-region announcements and the safety picture's label. TalkBack on a real phone was **not** checked.
+- **Manual check (2026-11-13, the user, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17):** "폰 확인을 마쳤고 대결은 문제 없어."
+  - Seen on the phone:
+    - real bot battles, push-ups and squats, with the effects they produce, including the setup;
+    - the matching radar and the match-found screen;
+    - the safety picture drawn since `3688547`.
+  - The online battle on two phones: not checked; to be checked with a teammate's phone before the UAT. The same holds for UAT-3 AC2's "within a second".
+  - The stage demo was not run.
+  - The effects only an online battle shows were not seen on a phone: the reconnect band, the opponent's lost connection, the opponent leaving, and a loss by my lost connection.
+    - All four are checked by widget tests (`online_preparation_test.dart`, `battle_arena_test.dart`, `battle_fx_motion_test.dart`).
+    - Three are also in the design comparison (`battle_fx_golden.json`: `combo_while_reconnecting`, `opponent_disconnected`, `opponent_left`).
+    - The loss by my lost connection is the mirror of `opponent_left` and is checked by widget tests only, e.g. 'my connection lost too long: I vanish and lose'.
+  - Left for later changes:
+    - a larger camera during the setup;
+    - radar blips that blink as the sweep passes;
+    - the match-found screen's colors and "VS".
+  - Found for S3 (not W2): in the push-up setup the pose can turn ready before the body lines up with the silhouette.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/battle_fx_motion_test.dart` (new) + `battle_fx_golden.json` | the stage's effect math against the design prototype's 248 samples in 18 scenarios: the meeting point's follow, the lunge, hit-stop, shake and zoom, the star, twinkle and puff, the reject sign, the bands' size rule (`bandBox`) and places, combo marks, fever and danger, the K.O. flight, TIME! and the verdict, the countdown and GO!, 결과 보기; the grade word then "+N"; a late result of another kind; reduced motion; cues given once each |
+| View | `test/widgets/battle_stage_model_test.dart` (new) | the stage's inputs: events, endings, the reject sign's short labels and pictograms per reason |
+| View | `test/widgets/battle_art_path_test.dart`, `battle_fighter_test.dart`, `battle_reject_sign_test.dart`, `battle_banner_test.dart`, `battle_stage_hud_test.dart` (new) + `battle_art_drawings.json`, `battle_test_support.dart` | the design's path data read as drawn; 5 poses and 10 pictograms pinned call by call; the bands (ink text on slanted, ink-edged fills); the HUD's names, clock, chip, scores, counts and time bar, with pixel probes and the app's real fonts |
+| View | `test/widgets/battle_stage_test.dart`, `battle_arena_test.dart` (new) | one frame of the stage; the arena's layout on several phones; one clock; the danger edge; the sign over the line; cues for sound; announcements for screen readers; 결과 보기 |
+| View | `test/widgets/battle_camera_area_test.dart` (new) | the camera area's buttons, hint, setup bar, reconnect band and combo marks; it follows the system text size (1.3× and 2× fit); every setup hint and online line fits its two lines at 1.3× on a 360-wide phone beside "시작", "준비" and "준비 취소" |
+| View | `test/widgets/battle_camera_view_test.dart` (new) | the camera in its own shape; the chest and squat lines; the silhouette over the part a cropping camera shows; the strips around it dimmed in its shade with no lighter seam (pixel test); the strips take no taps |
+| View | `test/widgets/battle_stage_events_test.dart`, `battle_online_events_test.dart` (new) | the bot's and the online state turned into stage events and state, deciding nothing; the opponent's miss online; snapshots replay nothing |
+| View | `test/screens/battle_screen_test.dart` (updated) | the bot battle on the stage, from the setup: band, tags, hint, 시작, camera switch; the silhouette; 3·2·1 and GO!; the round, fever, TIME! and the verdict, K.O., 결과 보기; back; the app paused; camera failure and retry; **UAT-1 AC1–AC3 and step 5 through the battle screen, with the setup's real times**; `onCue` and `onSetup` |
+| View | `test/screens/online_preparation_test.dart` (updated) | the online battle on the stage, from the setup: ready and auto ready, 준비 / 준비 취소, the countdown, the silhouette, the server's scores, the opponent's miss, fever, reconnecting, the endings and `/result`, the ended page; `onCue`; `onSetup` with the time to the server's start |
+| View | `test/screens/matching_screen_test.dart`, `versus_screen_test.dart`, `online_lobby_screen_test.dart` (updated) | the radar (still with reduce motion, one picture for screen readers); MATCH FOUND; the safety switch (every match, once seen, kept); the lobby passing the sound hooks on; the lobby's plain page in palette B |
+| View | `test/widgets/safe_warning_dialog_test.dart` (updated) | the picture drawn from the SVG: numbers, order, colors and widths, the drops' curves, pixels, 3:1 contrast, one scale on a 360-wide phone (232 × 150) |
+| View | `test/widgets/exit_dialog_test.dart`, `exit_game_button_test.dart`, `player_avatar_test.dart`, `battle_live_indicators_test.dart`, `game_panel_fonts_test.dart` (updated) | the leave dialog, the leave button and the avatar in palette B; the tests of the removed widgets taken out |
+| View | `test/screens/settings_screen_test.dart`, `home_screen_test.dart` (updated) | the '매 경기 안전 안내' row first in 게임, read as one switch; the 효과음 switch found by its title |
+| View | `test/screens/result_screen_test.dart` (updated, exception) | online, 다시 매칭 opens the lobby; a win because the opponent left, and a loss because my connection dropped, are said so |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | the setup phase; the count to the start; 시작 starts at once; the round's own clock; the `BattleViewModel.bot` / `botCounter` wiring |
+| ViewModel | `test/viewmodels/settings_viewmodel_test.dart` (updated) | the safety notice: on and not seen at first; the rule table; the switch and the seen mark saved; kept across a restart; the user's value wins while loading; failed reads and saves; dispose |
+| ViewModel | `test/viewmodels/setup_viewmodel_test.dart` (updated, exception) | the Korean setup words; "준비 완료! N초 뒤 시작해요." |
+| Service | `test/services/game/online_battle_result_test.dart` (new) | the result of an online battle the server finished, incl. who left |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated, exception) | the session's count of the opponent's zero-point reps |
+| Service | `test/services/pose/setup_checker_test.dart` (updated, exception) | the Korean words, the same lines as the voice; parts named with 이/가; three or more parts give the whole-body line |
+| Service | `test/services/user/settings_store_test.dart` (updated, exception) | the safety switch and its seen mark under their own keys, kept for a new store |
+| Model | `test/models/battle_result_test.dart` (updated) | `BattleResult.departure` |
+| Design | `test/theme/app_theme_test.dart`, `test/design_tokens_test.dart` (updated) | the stage's text styles and tokens, `setupGuideScrim`; the new widget files added to the token check, the three removed ones taken out (PM OK) |
+| App flow | `test/main_test.dart`, `test/demo/battle_demo_test.dart`, `pose_setup_demo_test.dart`, `test/screens/setup_screen_test.dart`, `match_setup_screen_test.dart` (updated; some exceptions) | the stage demo; the setup words; one test renamed for what it checks |
+
+### Acceptance criteria → tests
+- Given a bot or online battle, then every UAT-5 rule still shows in the new layout (grade labels, combo, FEVER ×2, K.O.). Tests:
+  - `'my counted rep: GOOD, then +10, the score and my valid rep on the stage, the chest lines on the camera'`
+  - `'fever turns the stage cyan 20 s into the round, counted from GO!, not from the camera'`
+  - `'a KO plays the ring-out to 결과 보기, which opens the result in place'`
+  - `'two counted reps within the combo window: the second earns the bonus and "2 HIT" shows over the camera (UAT-5 combo)'` (through the bot battle screen)
+  - `'a combo shows "2 HIT" over the camera, 14 under the line on the left, and under the reconnect band while it is up'` (the arena)
+  - `'$name: every sample matches within the design tolerance'` (18 design scenarios)
+- Given an online battle, then both phones show the same health bar and scores within a second (UAT-3 AC2). The stage shows the server's numbers, bar included; "within a second on both phones" is a two-phone manual check: not checked; to be checked with a teammate's phone before the UAT. Test: `"the stage shows the server's scores, valid reps and bar, and the camera its chest lines"`.
+- UAT-1 runs through the battle screen's setup (현우's condition). Tests:
+  - `'AC1, step 2 (push-up): a phone lying almost flat, then the left wrist out of the picture: the hint says what to fix, and nothing counts down'`
+  - the `'AC2, step 3 (push-up): …'` and `'AC3, step 4 (push-up): …'` tests
+  - `'step 5 (squat): missing feet and standing too close are named, …'`
+- The safety switch: on, every match; off, until seen once; kept across restarts. Tests:
+  - `'on, as designed: every match shows it, seen or not; 확인 counts as seen'`
+  - `'off: it shows until it is seen once, then a match goes straight to the setup button'`
+  - `'off and seen in an earlier run: no warning, the setup at once'`

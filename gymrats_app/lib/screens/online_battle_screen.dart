@@ -2,32 +2,37 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../main.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/form_report.dart';
-import '../models/game_score.dart';
 import '../models/pose_frame.dart';
-import '../models/reject_reason_korean.dart';
-import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
-import '../services/game/rep_grade.dart';
+import '../services/game/online_battle_result.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
-import '../widgets/opponent_avatar_panel.dart';
-import '../widgets/pose_avatar_toggle_view.dart';
+import '../widgets/accent_button.dart';
+import '../widgets/battle_arena.dart';
+import '../widgets/battle_camera_view.dart';
+import '../widgets/battle_online_events.dart';
+import '../widgets/battle_stage_model.dart';
 import '../widgets/exit_dialog.dart';
-import '../widgets/exit_game_button.dart';
-import '../widgets/battle_score_balance.dart';
-import '../widgets/game_danger_edge.dart';
-import '../widgets/game_fever_chip.dart';
-import '../widgets/game_health_bar.dart';
-import 'setup_screen.dart';
-import 'feedback_screen.dart';
+import '../widgets/grid_background.dart';
+import 'battle_screen.dart' show BattleScreen, BattleSetupListener;
 
+/// An online battle, from the camera preparation to the end: the fighting
+/// stage above and the user's camera below (the battle arena), fed by the
+/// session. When the server's result is in and its ending has played,
+/// 결과 보기 opens the result screen in its place. A battle that ends
+/// without a result (cancelled, void, a connection error) says so here.
+///
+/// Sounds hook in from outside, as on the bot's [BattleScreen], without
+/// changing this screen: [onCue] for the stage's moments and [onSetup] for
+/// the setup's hints.
 class OnlineBattleScreen extends StatefulWidget {
   const OnlineBattleScreen({
     super.key,
@@ -36,6 +41,9 @@ class OnlineBattleScreen extends StatefulWidget {
     this.setupConfig = const SetupConfig(),
     this.formReports,
     this.userRepository,
+    this.playerName = '나',
+    this.onCue,
+    this.onSetup,
   });
   final OnlineBattleSession session;
   final RepCounterViewModel Function()? createCounter;
@@ -46,6 +54,23 @@ class OnlineBattleScreen extends StatefulWidget {
   /// Receives the battle's form report under the server's result id; the
   /// battle itself is stored by the battle server (P11).
   final UserRepository? userRepository;
+
+  /// The user's nickname, for the stage and the result.
+  final String playerName;
+
+  /// Called once for each moment of the stage a sound can follow, as it
+  /// shows ([BattleArena.onCue]), as on [BattleScreen.onCue].
+  final ValueChanged<BattleStageCue>? onCue;
+
+  /// Called before the round on every change while the pose is checked,
+  /// as on [BattleScreen.onSetup]: the setup's latest status, and the time
+  /// left before the round starts (the server's start, once both are
+  /// ready), null while not counting down. Unlike the bot's, the count
+  /// does not stop when the pose is lost: once the server has set the
+  /// start, ready cannot be taken back, so the status may say what to fix
+  /// while the time counts.
+  final BattleSetupListener? onSetup;
+
   @override
   State<OnlineBattleScreen> createState() => _OnlineBattleScreenState();
 }
@@ -64,6 +89,15 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       _stopping = false,
       _asking = false;
 
+  /// The stage's clock and what plays on it.
+  final _stage = BattleStageController();
+
+  /// What the stage has seen of the opponent's reps, to tell a new one by.
+  late OnlineOpponentSeen _theirs;
+
+  /// Set once the result screen was asked for, so it opens once.
+  bool _resultOpened = false;
+
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   /// Sends ready by itself once the pose has stayed ready for
   /// [SetupConfig.autoStartDelay], like the bot setup's auto start. Losing
@@ -72,15 +106,12 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   DateTime? _autoReadyAt;
 
   /// The user cancelled ready: no auto ready until the pose is lost and
-  /// found again, or they press Start.
+  /// found again, or they press 준비.
   bool _autoReadyPaused = false;
 
   /// Ready was sent and the server has not confirmed it yet, so it is not
   /// sent again while the confirmation is on its way.
   bool _readySent = false;
-
-  /// The clock turns amber once this little of the round is left.
-  static const _clockWarningMs = 5000;
 
   OnlineBattleSession get session => widget.session;
   bool get _iAmReady => session.readyPlayers.contains(session.playerId);
@@ -117,7 +148,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _autoReadyAt = null;
   }
 
-  /// Start or 준비 취소. Cancelling pauses the auto ready.
+  /// 준비 or 준비 취소. Cancelling pauses the auto ready.
   void _toggleReady() {
     final cancelling = _iAmReady;
     _autoReadyPaused = cancelling;
@@ -161,11 +192,25 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
           exercise: session.exercise,
         );
     _counter.addListener(_onCounter);
+    // Reps the server reported before this screen are not played again.
+    _theirs = OnlineStageEvents.opponentSeen(session);
     session.addListener(_onSession);
     _reps = _counter.reps.listen((rep) {
       if (_roundStarted && _counter.history.contains(rep)) {
+        // The session takes a rep only while the round runs; the stage
+        // plays only what the session took.
+        final running = session.roundRunning;
         if (rep.valid) const DeviceRepSound().playRepCounted();
         session.submitRep(rep, passDepth: _counter.passDepth);
+        if (running) {
+          _stage.rep(
+            OnlineStageEvents.myRep(
+              session,
+              rep,
+              passDepth: _counter.passDepth,
+            ),
+          );
+        }
       }
     });
     unawaited(_counter.start());
@@ -233,7 +278,34 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   void _onSession() {
     _syncRound();
     _syncAutoReady();
+    final theirs = OnlineStageEvents.opponentRep(_theirs, session);
+    _theirs = OnlineStageEvents.opponentSeen(session);
+    if (theirs != null) _stage.rep(theirs);
+    _tellSetup();
     if (mounted) setState(() {});
+  }
+
+  /// Gives [OnlineBattleScreen.onSetup] the setup's status and the time to
+  /// the start while the pose is checked before the round, as the bot
+  /// screen does: through the setup and the countdown, not after the start.
+  void _tellSetup() {
+    final listen = widget.onSetup;
+    if (listen == null || _roundStarted || session.terminal) return;
+    if (_counter.state.phase != CounterPhase.running) return;
+    if (session.phase != OnlinePhase.preparing &&
+        session.phase != OnlinePhase.scheduled) {
+      return;
+    }
+    listen(_setupStatus, _startIn);
+  }
+
+  /// The time left before the round starts, once both are ready and the
+  /// server has set the start; null before that.
+  Duration? get _startIn {
+    final at = session.startAtMs;
+    if (session.phase != OnlinePhase.scheduled || at == null) return null;
+    final left = at - session.serverNow;
+    return Duration(milliseconds: left < 0 ? 0 : left);
   }
 
   void _onCounter() {
@@ -262,6 +334,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       session.ready(false);
     }
     _syncAutoReady();
+    _tellSetup();
     if (mounted) setState(() {});
   }
 
@@ -276,48 +349,67 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     }
   }
 
-  /// The clock's color in a game, like the bot battle's: amber for the last
-  /// seconds, cyan in fever, and lime before that. Plain once it has ended.
-  Color? get _clockColor {
-    if (session.rules == null || session.terminal) return null;
-    if (session.remainingMs <= _clockWarningMs) return AppColors.warning;
-    return session.fever ? AppColors.fever : AppColors.accent;
+  /// Whether the battle ended without a result to show: cancelled, void, a
+  /// connection error, or a battle the server no longer knows.
+  bool get _endedWithoutResult =>
+      session.terminal &&
+      (session.phase != OnlinePhase.finished || session.matchUnconfirmed);
+
+  /// The camera area's one line before the start: what the setup wants, or
+  /// that the user waits for the opponent.
+  String? get _setupHint {
+    if (!session.connected) return '재연결 중 · 준비 상태 확인 중…';
+    if (_iAmReady) return '상대 준비를 기다리는 중…';
+    final seconds = _autoReadySeconds;
+    if (seconds != null) return '자세 확인! $seconds초 후 자동으로 준비해요';
+    return _setupStatus.message;
   }
 
-  /// What the user's latest rep gets on the line under the health bar.
-  String _lastRepWords(RepEvent rep) {
-    final rules = session.rules;
-    final score = session.myLastScore;
-    if (!rep.valid) {
-      final reason = rep.reason?.koreanMessage ?? '';
-      // The latest score may be an earlier rep's: this one must have earned it.
-      return rules != null &&
-              rules.earnsAverage(rep) &&
-              score?.grade == GameGrade.average
-          ? '$reason · +${score!.points} ${score.grade.label.toUpperCase()}'
-          : reason;
+  /// The camera area's one line once the setup is over.
+  String? get _roundHint {
+    if (session.phase == OnlinePhase.scheduled) {
+      // The reconnect band is the round's; before it, the hint says so.
+      if (!session.connected) return '재연결 중 · 준비 상태 확인 중…';
+      // Until the stage counts 3, 2, 1 itself.
+      final seconds = session.countdownSeconds;
+      return seconds > 3 ? '$seconds초 후 함께 시작' : null;
     }
-    if (rules == null) return '+1';
-    if (score == null) return '';
-    return [
-      '+${score.points} ${score.grade.label.toUpperCase()}',
-      if (score.combo > 1) '콤보 ${score.combo}',
-      if (score.fever) '점수 ${rules.feverMultiplier}배',
-    ].join(' · ');
+    if (session.terminal) return null;
+    if (session.phase == OnlinePhase.awaitingResult) {
+      return '서버의 최종 결과를 기다리는 중…';
+    }
+    return session.error;
   }
 
-  /// How many of the user's reps got each grade, for the result. It counts
-  /// this phone's records, so it can differ from the score in rare cases: a
-  /// rep closed in the round's last moment reaches no server, and an app
-  /// restarted mid-round no longer has its earlier reps.
-  String _gradeWords(BattleRules rules) {
-    final counts = GameGradeCounts.ofReps(
-      _counter.repRecords,
-      passDepth: _counter.passDepth,
-      rules: rules,
+  /// Opens the result in this screen's place, once the server's result is
+  /// in. The lobby under this screen closes itself under the result.
+  void _showResult() {
+    if (_resultOpened || !mounted) return;
+    final result = onlineBattleResult(
+      session,
+      playerName: widget.playerName,
+      report: _formReport,
     );
-    return 'Excellent ${counts.excellent} · Good ${counts.good} · '
-        'Average ${counts.average}';
+    if (result == null) return;
+    _resultOpened = true;
+    unawaited(
+      Navigator.pushReplacementNamed(
+        context,
+        GymRatsApp.resultRoute,
+        arguments: result,
+      ),
+    );
+  }
+
+  /// The system's back gesture: asks to leave while the battle is on;
+  /// once a result is in it opens the result after its ending has played,
+  /// as 결과 보기 does, and does nothing before.
+  void _back() {
+    if (session.phase == OnlinePhase.finished && !session.matchUnconfirmed) {
+      if (_stage.resultReady) _showResult();
+      return;
+    }
+    unawaited(_exit());
   }
 
   Future<void> _exit() async {
@@ -357,403 +449,157 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   @override
   Widget build(BuildContext context) {
-    final opponent = session.opponent!, counter = _counter.state;
-    final terminal = session.terminal;
-    final rules = session.rules;
-    final ready = session.readyPlayers.contains(session.playerId);
+    if (_endedWithoutResult) {
+      return _Ended(session: session, onHome: () => Navigator.pop(context));
+    }
+    final counter = _counter.state;
+    final running = counter.phase == CounterPhase.running;
     final cameraFailed = {
       CounterPhase.permissionDenied,
       CounterPhase.cameraError,
       CounterPhase.detectorError,
     }.contains(counter.phase);
-    if (!terminal &&
-        (session.phase == OnlinePhase.preparing ||
-            session.phase == OnlinePhase.scheduled)) {
-      final scheduled = session.phase == OnlinePhase.scheduled;
-      return PopScope<Object?>(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) unawaited(_exit());
-        },
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (counter.phase == CounterPhase.running)
-                PoseAvatarToggleView(
-                  initialModel: session.avatar,
-                  allowAvatarSelection: false,
-                  controller: _counter.cameraController,
-                  frame: counter.lastFrame,
-                  mirror: _counter.isFrontCamera,
-                )
-              else if (cameraFailed)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('카메라 권한 또는 자세 인식을 확인해주세요.'),
-                        TextButton(
-                          onPressed:
-                              counter.phase == CounterPhase.permissionDenied
-                              ? _counter.openSettings
-                              : _counter.retry,
-                          child: const Text('카메라 다시 준비'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                const Center(child: CircularProgressIndicator()),
-              PoseReadyBorder(ready: _setupReady),
-              SafeArea(
-                child: Column(
-                  children: [
-                    PoseSetupTopButtons(
-                      canSwitchCamera:
-                          counter.phase == CounterPhase.running &&
-                          _counter.canSwitchCamera &&
-                          !scheduled,
-                      onSwitchCamera: () => unawaited(_counter.switchCamera()),
-                      onBack: () => unawaited(_exit()),
-                      center: ExitGameButton(
-                        onPressed: () => unawaited(_exit()),
-                      ),
-                    ),
-                    const Spacer(),
-                    PoseSetupPanel(
-                      message: scheduled
-                          ? '${session.countdownSeconds}초 후 함께 시작'
-                          : ready
-                          ? '상대 준비를 기다리는 중…'
-                          : _autoReadySeconds != null
-                          ? '자세 확인! $_autoReadySeconds초 후 자동으로 준비해요'
-                          : _setupStatus.message,
-                      ready: _setupReady,
-                      progress: _setupProgress,
-                      buttonLabel: scheduled
-                          ? '경기 시작 대기'
-                          : ready
-                          ? '준비 취소'
-                          : 'Start',
-                      onStart: session.canReady && (ready || _setupReady)
-                          ? _toggleReady
-                          : null,
-                      notice: Text(
-                        !session.connected
-                            ? '재연결 중 · 준비 상태를 확인하고 있어요.'
-                            : session.readyPlayers.contains(opponent.id)
-                            ? '${opponent.name} · 준비 완료'
-                            : '${opponent.name} · 자세 세팅 중',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return PopScope(
-      canPop: terminal,
+    final stage = OnlineStageEvents.stateOf(
+      session,
+      myName: widget.playerName,
+      cameraFailed: cameraFailed,
+    );
+    final setup = stage.phase == BattleStagePhase.setup;
+    // The setup's guide stays up to the start, as in the bot battle, and
+    // the round's height lines come with the round.
+    final settingUp = setup || stage.phase == BattleStagePhase.countdown;
+    final pushUp = session.exercise == ExerciseType.pushUp;
+    final guide = settingUp && running
+        ? BattleCameraView.setupGuide(
+            session.exercise,
+            ready: _setupStatus.isReady,
+          )
+        : null;
+    return PopScope<Object?>(
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(_exit());
+        if (!didPop) _back();
       },
-      child: Stack(
-        fit: StackFit.expand,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: BattleArena(
+          controller: _stage,
+          state: stage,
+          onCue: widget.onCue,
+          camera: cameraFailed
+              ? _CameraTrouble(
+                  onRetry: counter.phase == CounterPhase.permissionDenied
+                      ? _counter.openSettings
+                      : _counter.retry,
+                )
+              : BattleCameraView(
+                  controller: _counter.cameraController,
+                  frame: running ? counter.lastFrame : null,
+                  mirror: _counter.isFrontCamera,
+                  chestSnapshot: pushUp && !settingUp ? counter.snapshot : null,
+                  squatSnapshot: !pushUp && !settingUp
+                      ? counter.snapshot
+                      : null,
+                  guide: guide?.widget,
+                  guideFit: guide?.fit ?? BoxFit.cover,
+                ),
+          onLeave: () => unawaited(_exit()),
+          hint: setup ? _setupHint : _roundHint,
+          readyLabel: setup ? (_iAmReady ? '준비 취소' : '준비') : null,
+          onReady: setup && session.canReady && (_iAmReady || _setupReady)
+              ? _toggleReady
+              : null,
+          onSwitchCamera: setup && running && _counter.canSwitchCamera
+              ? () => unawaited(_counter.switchCamera())
+              : null,
+          setupProgress: setup ? _setupProgress : null,
+          onShowResult: _showResult,
+        ),
+      ),
+    );
+  }
+}
+
+/// The camera could not start, or the pose could not be read: says so where
+/// the camera would be, with a way to try again.
+class _CameraTrouble extends StatelessWidget {
+  const _CameraTrouble({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.s24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Scaffold(
-            appBar: AppBar(
-              title: const Text('온라인 1v1'),
-              leading: IconButton(
-                onPressed: _exit,
-                icon: const Icon(Icons.arrow_back),
-              ),
-            ),
-            body: SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: OpponentAvatarPanel(
-                      name: opponent.name,
-                      model: opponent.avatar,
-                      exercise: session.exercise,
-                      frame: session.opponentFrame,
-                      connected: session.connected && session.opponentConnected,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _SideScore(
-                                '나  ${rules == null ? session.myReps : session.myScore}',
-                                alignment: Alignment.centerLeft,
-                              ),
-                            ),
-                            Text(
-                              '${(session.remainingMs / 1000).ceil()}초',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(color: _clockColor),
-                            ),
-                            Expanded(
-                              child: _SideScore(
-                                '${rules == null ? session.opponentReps : session.opponentScore}  상대',
-                                alignment: Alignment.centerRight,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (rules != null)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _ValidReps(
-                                  session.myReps,
-                                  alignment: Alignment.centerLeft,
-                                ),
-                              ),
-                              if (session.fever && !terminal)
-                                GameFeverChip(
-                                  multiplier: rules.feverMultiplier,
-                                ),
-                              Expanded(
-                                child: _ValidReps(
-                                  session.opponentReps,
-                                  alignment: Alignment.centerRight,
-                                ),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (terminal)
-                    Expanded(
-                      flex: 4,
-                      child: Center(
-                        // The result fits a phone; a short window scrolls.
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  session.matchUnconfirmed
-                                      ? '경기를 확인할 수 없어요'
-                                      : switch (session.phase) {
-                                          OnlinePhase.finished =>
-                                            switch (session.outcome) {
-                                              'win' => '승리',
-                                              'loss' => '패배',
-                                              'draw' => '무승부',
-                                              _ => '서버 결과 확인 중',
-                                            },
-                                          OnlinePhase.voided => '경기 무효',
-                                          OnlinePhase.cancelled => '경기 취소',
-                                          _ => '연결 오류',
-                                        },
-                                  style: const TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  session.serverRestarted
-                                      ? '서버가 다시 시작되어 이 경기는 기록되지 않았어요.'
-                                      : session.matchNotFound
-                                      ? '서버에서 이 경기를 찾을 수 없어요.'
-                                      : session.error ??
-                                            (session.result?['reason'] == 'ko'
-                                                ? 'K.O.로 끝났어요.'
-                                                : '종료 사유: ${session.result?['reason'] ?? '알 수 없음'}'),
-                                  textAlign: TextAlign.center,
-                                ),
-                                if (rules != null &&
-                                    session.phase == OnlinePhase.finished) ...[
-                                  const SizedBox(height: AppSpacing.s8),
-                                  Text(
-                                    '점수 ${session.myScore} : ${session.opponentScore}'
-                                    ' · 유효 ${session.myReps} : ${session.opponentReps}',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: AppSpacing.s4),
-                                  Text(
-                                    _gradeWords(rules),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                                const SizedBox(height: 16),
-                                if (_formReport case final report?)
-                                  TextButton(
-                                    onPressed: () => Navigator.push<void>(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            FeedbackScreen(report: report),
-                                      ),
-                                    ),
-                                    child: const Text('자세 피드백 보기'),
-                                  ),
-                                FilledButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('홈으로 돌아가기'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      flex: 4,
-                      child: cameraFailed
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text('카메라 권한 또는 자세 인식을 확인해주세요.'),
-                                  TextButton(
-                                    onPressed:
-                                        counter.phase ==
-                                            CounterPhase.permissionDenied
-                                        ? _counter.openSettings
-                                        : _counter.retry,
-                                    child: const Text('카메라 다시 준비'),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : PoseAvatarToggleView(
-                              chestSnapshot:
-                                  session.exercise == ExerciseType.pushUp
-                                  ? counter.snapshot
-                                  : null,
-                              squatSnapshot:
-                                  session.exercise == ExerciseType.squat
-                                  ? counter.snapshot
-                                  : null,
-                              initialModel: session.avatar,
-                              allowAvatarSelection: false,
-                              controller: _counter.cameraController,
-                              frame: counter.phase == CounterPhase.running
-                                  ? counter.lastFrame
-                                  : null,
-                              mirror: _counter.isFrontCamera,
-                              showLandmarks: true,
-                            ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (rules == null)
-                          BattleScoreBalance(
-                            mine: session.myReps,
-                            theirs: session.opponentReps,
-                          )
-                        else
-                          GameHealthBar(
-                            myShare: session.myBarShare,
-                            myLastScore: session.myLastScore,
-                            opponentLastScore: session.opponentLastScore,
-                          ),
-                        const SizedBox(height: 8),
-                        if (!session.connected && !terminal)
-                          const Text(
-                            '재연결 중 · 경기 시간은 계속 진행됩니다.',
-                            style: TextStyle(color: Colors.amber),
-                          ),
-                        if (session.phase == OnlinePhase.awaitingResult)
-                          const Text('서버의 최종 결과를 기다리는 중…'),
-                        if (session.roundRunning && counter.lastEvent != null)
-                          Text(
-                            _lastRepWords(counter.lastEvent!),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        if (session.error != null && !terminal)
-                          Text(
-                            session.error!,
-                            maxLines: 2,
-                            style: const TextStyle(color: Colors.amber),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          Text(
+            '카메라 권한 또는 자세 인식을 확인해주세요.',
+            textAlign: TextAlign.center,
+            style: text.bodyLarge,
           ),
-          GameDangerEdge(
-            active: session.inDanger && !terminal && !cameraFailed,
-          ),
+          const SizedBox(height: AppSpacing.s8),
+          TextButton(onPressed: onRetry, child: const Text('카메라 다시 준비')),
         ],
       ),
     );
   }
 }
 
-/// A player's label and number beside the clock. A wide one shrinks rather
-/// than overflows.
-class _SideScore extends StatelessWidget {
-  const _SideScore(this.words, {required this.alignment});
+/// A battle that ended without a result: cancelled, void, or lost to a
+/// connection error. Nothing was recorded; the user goes home.
+class _Ended extends StatelessWidget {
+  const _Ended({required this.session, required this.onHome});
 
-  final String words;
-  final Alignment alignment;
-
-  @override
-  Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: alignment,
-      child: Text(
-        words,
-        maxLines: 1,
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
-    );
-  }
-}
-
-/// "유효 N회" under a player's game score. It shrinks rather than overflows
-/// beside the fever chip on the largest system font.
-class _ValidReps extends StatelessWidget {
-  const _ValidReps(this.reps, {required this.alignment});
-
-  final int reps;
-  final Alignment alignment;
+  final OnlineBattleSession session;
+  final VoidCallback onHome;
 
   @override
   Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      alignment: alignment,
-      child: Text(
-        '유효 $reps회',
-        maxLines: 1,
-        style: Theme.of(context).textTheme.bodySmall
-            ?.copyWith(color: AppColors.textSecondary),
+    final text = Theme.of(context).textTheme;
+    final title = session.matchUnconfirmed
+        ? '경기를 확인할 수 없어요'
+        : switch (session.phase) {
+            OnlinePhase.voided => '경기 무효',
+            OnlinePhase.cancelled => '경기 취소',
+            _ => '연결 오류',
+          };
+    final message = session.serverRestarted
+        ? '서버가 다시 시작되어 이 경기는 기록되지 않았어요.'
+        : session.matchNotFound
+        ? '서버에서 이 경기를 찾을 수 없어요.'
+        : session.error ?? '종료 사유: ${session.result?['reason'] ?? '알 수 없음'}';
+    return Scaffold(
+      body: GridBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.s24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: text.headlineMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.s12),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: text.bodyLarge?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.s24),
+                  AccentButton(title: '홈으로 돌아가기', onPressed: onHome),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

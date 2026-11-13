@@ -77,7 +77,7 @@ class SetupState {
     final left = autoStartIn;
     if (left == null) return status.message;
     final seconds = (left.inMilliseconds / 1000).ceil();
-    return 'Ready! Starting in $seconds...';
+    return '준비 완료! $seconds초 뒤 시작해요.';
   }
 
   /// Copies the state. The auto start countdown is always cleared: it is

@@ -217,7 +217,7 @@ void main() {
     for (final ms in [0, 1500, 3000]) {
       await feed(tester, ms, standingFrame());
     }
-    expect(find.text('Ready! Starting in 2...'), findsOneWidget);
+    expect(find.text('준비 완료! 2초 뒤 시작해요.'), findsOneWidget);
     await tester.tap(exitButton);
     await tester.pumpAndSettle();
     await tester.tap(dialogExit);

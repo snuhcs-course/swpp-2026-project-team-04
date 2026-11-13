@@ -51,7 +51,15 @@ void main() {
     return answer;
   }
 
-  testWidgets('shows the words it is given and 계속하기 under a pink exit '
+  testWidgets('covers the screen with ink at 54%', (tester) async {
+    await open(tester);
+    await tester.tap(find.text('ask'));
+    await tester.pumpAndSettle();
+    final barrier = tester.widgetList<ModalBarrier>(find.byType(ModalBarrier));
+    expect(barrier.last.color, AppColors.ink.withValues(alpha: 0.54));
+  });
+
+  testWidgets('shows the words it is given and 계속하기 under an ink exit '
       'icon', (tester) async {
     await open(tester);
     await tester.tap(find.text('ask'));
@@ -60,10 +68,10 @@ void main() {
       expect(find.text(words), findsOneWidget, reason: words);
     }
     final icon = tester.widget<Icon>(find.byIcon(Icons.logout_rounded));
-    expect(icon.color, AppColors.opponent);
+    expect(icon.color, AppColors.ink);
     expect(
-      tester.widget<Text>(find.text('title')).style!.fontFamily,
-      AppFonts.headline,
+      tester.widget<Text>(find.text('title')).style,
+      Theme.of(tester.element(find.text('title'))).textTheme.leaveDialogTitle,
     );
     expect(
       tester.widget<Text>(find.text('message')).style!.color,
@@ -92,7 +100,13 @@ void main() {
     final leave = tester.widget<TextButton>(
       find.ancestor(of: find.text('leave'), matching: find.byType(TextButton)),
     );
-    expect(leave.style!.foregroundColor!.resolve({}), AppColors.opponent);
+    expect(leave.style!.foregroundColor!.resolve({}), AppColors.ink);
+    // The lime button has an ink edge.
+    final edge = tester.widget<FilledButton>(stay).style!.shape!.resolve({})!;
+    expect(
+      (edge as RoundedRectangleBorder).side,
+      const BorderSide(color: AppColors.ink, width: 2),
+    );
     expect(
       tester.getRect(stay).bottom,
       lessThan(tester.getRect(find.text('leave')).top),

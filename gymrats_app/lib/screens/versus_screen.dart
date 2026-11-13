@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
@@ -6,6 +7,7 @@ import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../models/matchup.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/accent_button.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
@@ -16,11 +18,13 @@ import '../widgets/safe_warning_dialog.dart';
 /// Shows who battles whom, the rules, and the button to the pose setup.
 ///
 /// It has no view model: everything it shows comes from [matchup], and its
-/// only behavior is navigation. It opens with the safety warning, every
-/// match; the setup button works once the warning has closed. Back and the
-/// 게임 나가기 button at the top left both ask before going home. When setup
-/// finishes, the battle screen replaces this one, so going back from the
-/// battle leads home.
+/// only behavior is navigation. It opens with the safety warning before
+/// every match while 환경설정's '매 경기 안전 안내' is on; off, only until the
+/// warning was seen once ([SettingsViewModel.safetyNotice]). The setup
+/// button works once the warning has closed, or at once without it. Back
+/// and the 게임 나가기 button at the top left both ask before going home. The setup
+/// button opens the battle screen, which starts with the pose setup, in
+/// this one's place, so going back from the battle leads home.
 class VersusScreen extends StatefulWidget {
   const VersusScreen({
     super.key,
@@ -48,7 +52,8 @@ class VersusScreen extends StatefulWidget {
 }
 
 class _VersusScreenState extends State<VersusScreen> {
-  /// Set while the setup screen is open, so a second tap does nothing.
+  /// Set once the setup button opened the battle (or, online, while the
+  /// lobby's setup runs), so a second tap does nothing.
   bool _settingUp = false;
 
   /// Set once the safety warning has closed; the setup waits for it.
@@ -75,10 +80,19 @@ class _VersusScreenState extends State<VersusScreen> {
   /// The open safety warning, so that closing this screen closes it too.
   Route<bool>? _warning;
 
-  /// Shows the safety warning until it is seen. Back on it asks whether to
-  /// leave, as back on this screen does; staying shows it again. Removed
-  /// any other way (a logout closes every screen), it asks nothing.
+  /// Shows the safety warning until it is seen, unless the settings say
+  /// this match goes without it. Back on it asks whether to leave, as back
+  /// on this screen does; staying shows it again. Removed any other way (a
+  /// logout closes every screen), it asks nothing. Seen to its end (확인,
+  /// or online by itself), it counts as seen in the settings.
   Future<void> _warn() async {
+    if (!mounted) return;
+    // The app's settings; without them (some tests, demos) it always shows.
+    final settings = context.read<SettingsViewModel?>();
+    if (settings != null && !settings.safetyNotice.showsBeforeMatch) {
+      _warned = true;
+      return;
+    }
     while (true) {
       if (!mounted) return;
       final route = safeWarningRoute(
@@ -91,6 +105,7 @@ class _VersusScreenState extends State<VersusScreen> {
       if (!mounted) return;
       if (seen == true) {
         _warned = true;
+        settings?.markSafetyNoticeSeen();
         return;
       }
       if (seen == null || !(ModalRoute.of(context)?.isActive ?? false)) return;
@@ -115,9 +130,8 @@ class _VersusScreenState extends State<VersusScreen> {
     super.dispose();
   }
 
-  /// Opens the pose setup. MatchSetupScreen returns the exercise when the
-  /// user is ready, or null if it closes without one; then this screen
-  /// stays. (Its 게임 나가기 closes this screen as well.)
+  /// Opens the pose setup: the battle screen, which sets up on its stage
+  /// before the round, in this screen's place.
   Future<void> _startSetup() async {
     if (_settingUp || !_warned) return;
     _settingUp = true;
@@ -127,16 +141,6 @@ class _VersusScreenState extends State<VersusScreen> {
       } finally {
         _settingUp = false;
       }
-      return;
-    }
-    final exercise = await Navigator.pushNamed<ExerciseType>(
-      context,
-      GymRatsApp.matchSetupRoute,
-      arguments: widget.matchup,
-    );
-    if (!mounted) return;
-    if (exercise == null) {
-      _settingUp = false;
       return;
     }
     Navigator.pushReplacementNamed(
@@ -287,7 +291,7 @@ class _OpponentSide extends StatelessWidget {
 /// Faint tints over the grid: lime on the user's half, pink on the
 /// opponent's.
 abstract final class _Tint {
-  static final player = AppColors.accent.withValues(alpha: 0.04);
+  static final player = AppColors.accent.withValues(alpha: 0.05);
   static final opponent = AppColors.opponent.withValues(alpha: 0.05);
 }
 
@@ -357,14 +361,25 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                'MATCH FOUND',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: text.displaySmall?.copyWith(
-                  fontSize: 15,
-                  letterSpacing: 3,
-                  color: AppColors.accent,
+              // Ink on a slanted lime band, slanted with it (palette B).
+              Transform(
+                transform: AppHighlight.slant,
+                alignment: Alignment.center,
+                child: DecoratedBox(
+                  decoration: AppHighlight.band(AppColors.accent),
+                  child: Padding(
+                    padding: AppHighlight.tightBandPadding,
+                    child: Text(
+                      'MATCH FOUND',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.displaySmall?.copyWith(
+                        fontSize: 15,
+                        letterSpacing: 3,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 2),
@@ -402,13 +417,7 @@ class _PlayerRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '나',
-                style: text.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
-                ),
-              ),
+              const _Side(label: '나', color: AppColors.accent, mine: true),
               const SizedBox(height: 4),
               Text(
                 name,
@@ -440,13 +449,7 @@ class _OpponentRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '상대',
-                style: text.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.opponent,
-                ),
-              ),
+              const _Side(label: '상대', color: AppColors.opponent, mine: false),
               const SizedBox(height: 4),
               // English names, like RepBot, use the number font.
               Text(
@@ -473,17 +476,44 @@ class _OpponentRow extends StatelessWidget {
   }
 }
 
-/// "AI" in pink on a faint pink pill.
+/// "나" or "상대" in ink beside a swatch of the player's [color]: the
+/// user's swatch first, the opponent's last (palette B: the color marks,
+/// the text is ink).
+class _Side extends StatelessWidget {
+  const _Side({required this.label, required this.color, required this.mine});
+
+  final String label;
+  final Color color;
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final swatch = SizedBox.square(
+      dimension: AppHighlight.swatchSize,
+      child: DecoratedBox(decoration: AppHighlight.swatch(color)),
+    );
+    final text = Text(
+      label,
+      style: Theme.of(context).textTheme.labelLarge
+          ?.copyWith(fontWeight: FontWeight.w700, color: AppColors.ink),
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: mine
+          ? [swatch, const SizedBox(width: AppHighlight.swatchGap), text]
+          : [text, const SizedBox(width: AppHighlight.swatchGap), swatch],
+    );
+  }
+}
+
+/// "AI" in ink on a pink pill.
 class _AiTag extends StatelessWidget {
   const _AiTag();
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: ShapeDecoration(
-        color: AppColors.opponent.withValues(alpha: 0.14),
-        shape: const StadiumBorder(),
-      ),
+      decoration: AppHighlight.chip(AppColors.opponent, strength: 0.3),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
         child: Text(
@@ -491,7 +521,7 @@ class _AiTag extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge?.copyWith(
             fontFamily: AppFonts.number,
             fontWeight: FontWeight.w700,
-            color: AppColors.opponent,
+            color: AppColors.ink,
           ),
         ),
       ),
@@ -593,7 +623,7 @@ class _RuleRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 22, color: AppColors.accent),
+        Icon(icon, size: 22, color: AppColors.ink),
         const SizedBox(width: 12),
         Expanded(
           child: Text.rich(rule, style: Theme.of(context).textTheme.bodyLarge),

@@ -11,9 +11,11 @@ import '../services/user/avatar_store.dart';
 import '../services/user/user_repository.dart';
 import '../services/online/online_battle_session.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_stage_model.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
+import 'battle_screen.dart' show BattleSetupListener;
 import 'matching_screen.dart';
 import 'online_battle_screen.dart';
 import 'online_synthetic_battle_screen.dart';
@@ -37,6 +39,8 @@ class OnlineLobbyScreen extends StatefulWidget {
     this.avatarStore,
     this.autoJoin = true,
     this.userRepository,
+    this.onCue,
+    this.onSetup,
   });
   final AuthRepository auth;
   final ExerciseType exercise;
@@ -50,6 +54,13 @@ class OnlineLobbyScreen extends StatefulWidget {
   /// Where the battle's form feedback is uploaded; null keeps it on the
   /// phone only.
   final UserRepository? userRepository;
+
+  /// Passed on to the battle it opens ([OnlineBattleScreen.onCue] and
+  /// [OnlineBattleScreen.onSetup]), so sound hooks in where the app builds
+  /// this lobby, without changing it.
+  final ValueChanged<BattleStageCue>? onCue;
+  final BattleSetupListener? onSetup;
+
   @override
   State<OnlineLobbyScreen> createState() => _OnlineLobbyScreenState();
 }
@@ -179,13 +190,25 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
                 session: session,
                 createCounter: widget.createCounter,
                 userRepository: widget.userRepository,
+                playerName: widget.auth.session?.account.nickname ?? '나',
+                onCue: widget.onCue,
+                onSetup: widget.onSetup,
               ),
       ),
     );
     if (!mounted) return;
     // The lobby is still underneath the setup/battle route. Close it too,
     // rather than exposing the old manual-entry screen after leaving a match.
-    await _cancelSearch();
+    // The battle may have handed over to the result screen, which then sits
+    // on top: only the lobby's own route goes.
+    _release();
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isActive) return;
+    if (route.isCurrent) {
+      Navigator.pop(context);
+    } else {
+      Navigator.removeRoute(context, route);
+    }
   }
 
   Future<void> _cancelSearch() async {
@@ -279,10 +302,11 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // Palette B: text is ink; lime only fills.
             Text(
               'LIVE BATTLE',
               style: Theme.of(context).textTheme.displaySmall
-                  ?.copyWith(color: AppColors.accent),
+                  ?.copyWith(color: AppColors.ink),
             ),
             const SizedBox(height: 16),
             Text(
@@ -299,10 +323,21 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
             Text('프로필 아바타 · ${_avatar.label}'),
             const Text('아바타는 홈의 프로필에서 변경할 수 있어요.'),
             const SizedBox(height: 24),
+            // Ink words on an amber band (palette B: amber only fills).
             if (_error ?? session?.error case final text?)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(text, style: const TextStyle(color: Colors.amber)),
+                child: DecoratedBox(
+                  decoration: AppHighlight.band(AppColors.warning),
+                  child: Padding(
+                    padding: AppHighlight.bandPadding,
+                    child: Text(
+                      text,
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: AppColors.ink),
+                    ),
+                  ),
+                ),
               ),
             if (session?.terminal == true && session?.error == null)
               const Padding(

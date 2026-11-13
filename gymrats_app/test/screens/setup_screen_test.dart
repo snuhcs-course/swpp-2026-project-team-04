@@ -162,7 +162,7 @@ void main() {
     await open(tester);
     await feed(tester, 0, pushUpFrontFrame());
     await feed(tester, 1500, pushUpFrontFrame());
-    expect(find.text('Ready! Starting in 3...'), findsOneWidget);
+    expect(find.text('준비 완료! 3초 뒤 시작해요.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -234,12 +234,9 @@ void main() {
   testWidgets('no person message and Start disabled', (tester) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
-    expect(find.text('Hold still...'), findsOneWidget);
+    expect(find.text('그대로 잠시 유지하세요.'), findsOneWidget);
     await feed(tester, 100, emptyFrame());
-    expect(
-      find.text('No one detected. Step into the camera view.'),
-      findsOneWidget,
-    );
+    expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNull);
   });
 
@@ -249,9 +246,9 @@ void main() {
       move: {for (final l in handLandmarks) l: (500, 995)},
     );
     await feed(tester, 0, frame);
-    expect(find.text('Hands not visible.'), findsOneWidget);
+    expect(find.text('손이 화면에 안 보여요.'), findsOneWidget);
     await feed(tester, 2000, frame);
-    expect(find.text('Hands not visible.'), findsOneWidget);
+    expect(find.text('손이 화면에 안 보여요.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNull);
   });
 
@@ -260,7 +257,7 @@ void main() {
     final frame = standingFrame(hide: faceLandmarks);
     await feed(tester, 0, frame);
     await feed(tester, 2000, frame);
-    expect(find.text('Face the camera.'), findsOneWidget);
+    expect(find.text('카메라를 정면으로 봐 주세요.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNull);
   });
 
@@ -271,7 +268,7 @@ void main() {
     await feed(tester, 0, standingFrame());
     await feed(tester, 1500, standingFrame());
     await feed(tester, 3000, standingFrame());
-    expect(find.text('Ready! Starting in 2...'), findsOneWidget);
+    expect(find.text('준비 완료! 2초 뒤 시작해요.'), findsOneWidget);
     expect(popped, isNull);
     await feed(tester, 4500, standingFrame());
     await tester.pumpAndSettle();
@@ -304,10 +301,7 @@ void main() {
     await feed(tester, 1500, standingFrame());
     await feed(tester, 2000, emptyFrame());
     await feed(tester, 2600, emptyFrame());
-    expect(
-      find.text('No one detected. Step into the camera view.'),
-      findsOneWidget,
-    );
+    expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
     await feed(tester, 5000, emptyFrame());
     await tester.pumpAndSettle();
     expect(popped, isNull);
@@ -318,9 +312,9 @@ void main() {
   ) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
-    expect(find.text('Hold still...'), findsOneWidget);
+    expect(find.text('그대로 잠시 유지하세요.'), findsOneWidget);
     await feed(tester, 1500, standingFrame());
-    expect(find.text('Ready! Starting in 3...'), findsOneWidget);
+    expect(find.text('준비 완료! 3초 뒤 시작해요.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNotNull);
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();

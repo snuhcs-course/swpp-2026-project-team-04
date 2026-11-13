@@ -53,12 +53,23 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 
+  /// The same battle again: a bot of the same level, or, after an online
+  /// battle, the online lobby with the same exercise.
   void _matchAgain() => _leaveOnce(() {
-    Navigator.pushReplacementNamed(
-      context,
-      GymRatsApp.matchingRoute,
-      arguments: widget.result.matchup.rematch,
-    );
+    final matchup = widget.result.matchup;
+    if (matchup.opponent.isBot) {
+      Navigator.pushReplacementNamed(
+        context,
+        GymRatsApp.matchingRoute,
+        arguments: matchup.rematch,
+      );
+    } else {
+      Navigator.pushReplacementNamed(
+        context,
+        GymRatsApp.onlineBattleRoute,
+        arguments: matchup.exercise,
+      );
+    }
   });
 
   @override
@@ -206,6 +217,12 @@ class _Verdict extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final (word, band, message) = switch (result.outcome) {
+      // An online battle a player left: said as the stage said it.
+      MatchOutcome.win when result.departure == BattleDeparture.opponentLeft =>
+        ('WIN', AppColors.accent, '상대가 나가서 이겼어요'),
+      MatchOutcome.lose
+          when result.departure == BattleDeparture.myConnectionLost =>
+        ('LOSE', AppColors.opponent, '연결이 끊겨서 졌어요'),
       MatchOutcome.win => ('WIN', AppColors.accent, '$_how 이겼어요!'),
       MatchOutcome.lose => ('LOSE', AppColors.opponent, '$_how 졌어요'),
       MatchOutcome.draw => ('DRAW', null, '비겼어요!'),

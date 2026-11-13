@@ -84,15 +84,15 @@ enum SetupReason {
   ready,
 }
 
-/// Body parts named in "not visible" messages.
+/// Body parts named, in Korean, in the "not visible" message.
 enum BodyPart {
-  head('head'),
-  shoulders('shoulders'),
-  elbows('elbows'),
-  hands('hands'),
-  hips('hips'),
-  knees('knees'),
-  ankles('ankles');
+  head('머리'),
+  shoulders('어깨'),
+  elbows('팔꿈치'),
+  hands('손'),
+  hips('엉덩이'),
+  knees('무릎'),
+  ankles('발목');
 
   const BodyPart(this.label);
 
@@ -127,22 +127,25 @@ class SetupStatus {
   /// Parts that are not visible when [reason] is [SetupReason.missingParts].
   final List<BodyPart> missingParts;
 
-  /// Message telling the user what to do next.
+  /// Message telling the user what to do next, in the same words as the
+  /// setup's voice cues (`VoiceCue`), so the screen and the voice agree. One
+  /// or two missing parts are named (UAT-1 AC1), where the voice says only
+  /// to show the whole body; three or more read as the voice's line too.
   String get message {
-    if (isReady) return 'Ready! Press Start.';
+    if (isReady) return '준비 완료!';
     switch (reason) {
       case SetupReason.noPerson:
-        return 'No one detected. Step into the camera view.';
+        return '카메라 앞에 서 주세요.';
       case SetupReason.tooClose:
-        return 'Move back a little.';
+        return '조금 뒤로 물러나 주세요.';
       case SetupReason.tooFar:
-        return 'Move closer to the camera.';
+        return '카메라에 조금 더 가까이 와 주세요.';
       case SetupReason.notFacingForward:
-        return 'Face the camera.';
+        return '카메라를 정면으로 봐 주세요.';
       case SetupReason.missingParts:
-        return '${_capitalize(_joinParts(missingParts))} not visible.';
+        return _notVisible(missingParts);
       case SetupReason.notInPushUp:
-        return 'Get into a push-up with straight arms.';
+        return '팔을 펴고 푸시업 자세를 잡아 주세요.';
       case SetupReason.notStanding:
         return '정면을 보고 똑바로 서 주세요.';
       case SetupReason.phoneTooFlat:
@@ -150,18 +153,33 @@ class SetupStatus {
       case SetupReason.phoneShaky:
         return '폰이 흔들리지 않게 두세요.';
       case SetupReason.ready:
-        return 'Hold still...';
+        return '그대로 잠시 유지하세요.';
     }
   }
 
-  static String _joinParts(List<BodyPart> parts) {
-    final labels = parts.map((p) => p.label).toList();
-    if (labels.length <= 1) return labels.join();
-    return '${labels.sublist(0, labels.length - 1).join(', ')} and ${labels.last}';
+  /// At most this many missing parts are named; with more, the list would
+  /// not fit the battle's two-line hint, and the body is mostly out anyway.
+  static const _namedPartsAtMost = 2;
+
+  /// "손이 화면에 안 보여요.", "손, 발목이 화면에 안 보여요.": one or two parts
+  /// in order, the subject marker fitted to the last one. With none, or with
+  /// more than [_namedPartsAtMost], the voice cue's line for the whole body.
+  static String _notVisible(List<BodyPart> parts) {
+    if (parts.isEmpty || parts.length > _namedPartsAtMost) {
+      return '몸 전체가 화면에 보이게 해 주세요.';
+    }
+    final names = parts.map((p) => p.label).join(', ');
+    return '$names${_subjectMarker(parts.last.label)} 화면에 안 보여요.';
   }
 
-  static String _capitalize(String s) =>
-      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+  /// 이 after a final consonant (손이, 발목이), 가 after a vowel (머리가).
+  static String _subjectMarker(String word) {
+    const first = 0xAC00, last = 0xD7A3, finals = 28;
+    final code = word.runes.last;
+    final closed =
+        code >= first && code <= last && (code - first) % finals != 0;
+    return closed ? '이' : '가';
+  }
 }
 
 typedef _PartLandmarks = ({

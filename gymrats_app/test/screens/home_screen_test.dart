@@ -389,7 +389,12 @@ void main() {
     await tester.pump();
     await back(tester);
     await tapAndSettle(tester, find.text('환경설정'));
-    expect(tester.widget<Switch>(find.byType(Switch).first).value, isFalse);
+    // The 효과음 switch: the safety switch comes first on the page.
+    final soundEffects = find.descendant(
+      of: find.ancestor(of: find.text('효과음'), matching: find.byType(InkWell)),
+      matching: find.byType(Switch),
+    );
+    expect(tester.widget<Switch>(soundEffects).value, isFalse);
   });
 
   testWidgets('a long nickname ends in an ellipsis beside the rules', (
