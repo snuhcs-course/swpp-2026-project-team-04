@@ -6,7 +6,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import '../../shared/battle_protocol.dart';
-import '../../models/avatar_model.dart';
+import '../../models/character_rig.dart';
 import '../../models/exercise_type.dart';
 import '../../models/battle_rules.dart';
 import '../../models/game_score.dart';
@@ -32,36 +32,50 @@ enum OnlinePhase {
 }
 
 class OnlinePlayer {
-  const OnlinePlayer(this.id, this.name, this.avatar);
+  const OnlinePlayer(this.id, this.name, this.character);
   final String id, name;
-  final AvatarModel avatar;
+
+  /// The character the stage draws for this player: the one they sent in
+  /// `avatar_id` when a person may pick it, or else the default (`mouse`):
+  /// nothing sent, an older app's avatar id, `bot` or an unknown id.
+  final String character;
+
   factory OnlinePlayer.fromJson(dynamic raw) {
     final p = object(raw), id = p['player_id'], name = p['display_name'];
     if (id is! String || name is! String) invalid();
+    final sent = p['avatar_id'];
     return OnlinePlayer(
       id,
       name,
-      AvatarModel.values.firstWhere(
-        (a) => a.protocolId == p['avatar_id'],
-        orElse: () => AvatarModel.astronaut,
-      ),
+      CharacterRig.standard.selectableOrDefault(sent is String ? sent : null),
     );
   }
 }
 
 /// One socket survives lobby → camera preparation → battle → result.
-/// Only explicit joint coordinates, avatar IDs, verdicts and control data leave.
+/// Only explicit joint coordinates, the character id, verdicts and control
+/// data leave.
 class OnlineBattleSession extends ChangeNotifier {
   OnlineBattleSession({
     required this.endpoint,
     required this.accessToken,
-    required this.avatar,
+    this.character = CharacterRig.defaultId,
     this.exercise = ExerciseType.pushUp,
     this.allowInsecureLoopback = false,
   });
   final Uri endpoint;
   final String accessToken;
-  final AvatarModel avatar;
+
+  /// The user's character id, sent in `queue.join`'s `avatar_id` (W3).
+  final String character;
+
+  /// What an older server, which knows only the avatar ids, gets instead
+  /// once it refuses [character] with `INVALID_AVATAR`.
+  static const legacyAvatarId = 'avatar_01';
+
+  /// Whether the server refused [character], so every join of this
+  /// session (a reconnect too) sends [legacyAvatarId].
+  bool _sentLegacyAvatar = false;
   final ExerciseType exercise;
   final bool allowInsecureLoopback;
 
@@ -178,6 +192,15 @@ class OnlineBattleSession extends ChangeNotifier {
   }
 
   String _rid() => '$_nonce-${++_request}';
+
+  /// Asks for a match with [avatarId] in `avatar_id`.
+  void _join(String avatarId) => _send(
+    _message('queue.join', {
+      'exercise': exercise == ExerciseType.squat ? 'squat' : 'push_up',
+      'avatar_id': avatarId,
+    }),
+  );
+
   Map<String, dynamic> _message(
     String type,
     Map<String, dynamic> payload, {
@@ -285,12 +308,7 @@ class OnlineBattleSession extends ChangeNotifier {
         if (matchId != null) {
           _send(_message('match.resume', {}));
         } else {
-          _send(
-            _message('queue.join', {
-              'exercise': exercise == ExerciseType.squat ? 'squat' : 'push_up',
-              'avatar_id': avatar.protocolId,
-            }),
-          );
+          _join(_sentLegacyAvatar ? legacyAvatarId : character);
         }
       } else if (type == 'clock.synced') {
         final sent = integer(p['client_sent_ms'], 0, 0x1fffffffffffff),
@@ -396,6 +414,13 @@ class OnlineBattleSession extends ChangeNotifier {
         } else if (code == 'QUEUE_NOT_FOUND' && matchId != null) {
           _send(_message('match.leave', {'reason': 'user_exit'}));
         } else if (code == 'RATE_LIMITED') {
+        } else if (code == 'INVALID_AVATAR' &&
+            matchId == null &&
+            !_sentLegacyAvatar) {
+          // An older server that knows only the avatar ids: join once more
+          // as one of them. The opponent then sees the default character.
+          _sentLegacyAvatar = true;
+          _join(legacyAvatarId);
         } else {
           error = '온라인 요청 오류: $code';
           if (code == 'MATCH_NOT_FOUND' || matchId == null) {

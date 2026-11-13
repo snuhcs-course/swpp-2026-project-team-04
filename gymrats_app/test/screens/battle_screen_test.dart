@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/matchup.dart';
@@ -27,6 +28,7 @@ import 'package:gymrats_app/widgets/battle_camera_view.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
@@ -79,6 +81,7 @@ void main() {
     double textScale = 1,
     SetupConfig setupConfig = _quickSetup,
     BattleSetupListener? onSetup,
+    String? myCharacter,
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = size;
@@ -134,6 +137,7 @@ void main() {
                 MaterialPageRoute<void>(
                   builder: (_) => BattleScreen(
                     matchup: matchup,
+                    myCharacter: myCharacter ?? CharacterRig.defaultId,
                     createViewModel: () => viewModel,
                     onCue: (cue) => cues.add('$cue'),
                     onSetup: onSetup,
@@ -219,6 +223,28 @@ void main() {
       tester.pumpWidget(const SizedBox());
 
   group('before the round', () {
+    testWidgets('the stage shows my character against RepBot', (tester) async {
+      await open(tester, myCharacter: 'seal');
+      expect(
+        tester.widget<BattleArena>(find.byType(BattleArena)).characters,
+        const BattleCharacters(me: 'seal', opponent: 'bot'),
+      );
+      expect(
+        tester
+            .widgetList<CharacterFigure>(find.byType(CharacterFigure))
+            .map((figure) => (figure.characterId, figure.side)),
+        containsAll([('seal', BattleSide.me), ('bot', BattleSide.opponent)]),
+      );
+    });
+
+    testWidgets('without a character given, mine is the mouse', (tester) async {
+      await open(tester);
+      expect(
+        tester.widget<BattleArena>(find.byType(BattleArena)).characters!.me,
+        'mouse',
+      );
+    });
+
     testWidgets('opens on the setup: the band, my tag setting up and the '
         "bot's ready, the setup bar, the hint, and 시작, which waits for a "
         'ready pose', (tester) async {

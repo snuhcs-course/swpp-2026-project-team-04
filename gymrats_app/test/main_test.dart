@@ -1,13 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
-import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
+import 'package:gymrats_app/screens/character_select_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
@@ -19,19 +21,24 @@ import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
+import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
+import 'package:gymrats_app/services/user/rules_seen_store.dart';
 import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
+import 'package:gymrats_app/widgets/help_rules.dart';
 import 'package:provider/provider.dart';
 
 import 'support/fakes.dart';
 
 /// Stays in the queue, with no server behind it.
 class _QueuedSession extends OnlineBattleSession {
-  _QueuedSession(Uri endpoint, String token, AvatarModel avatar)
-    : super(endpoint: endpoint, accessToken: token, avatar: avatar);
+  _QueuedSession(Uri endpoint, String token, String character)
+    : super(endpoint: endpoint, accessToken: token, character: character);
 
   @override
   Future<void> connect() async {
@@ -39,6 +46,40 @@ class _QueuedSession extends OnlineBattleSession {
     connected = true;
     phase = OnlinePhase.queued;
     notifyListeners();
+  }
+}
+
+/// A character store whose reads wait until [finishRead] (or fail at
+/// [failRead]), as a slow phone storage would; writes land at once. A read answers what was saved when
+/// it began, as a real read in flight does.
+class _SlowReadCharacterStore implements CharacterStore {
+  final saved = <int, String>{};
+  final _reads = <(Completer<String>, String)>[];
+
+  void finishRead() {
+    for (final (answer, value) in _reads) {
+      answer.complete(value);
+    }
+    _reads.clear();
+  }
+
+  void failRead() {
+    for (final (answer, _) in _reads) {
+      answer.completeError(StateError('storage unreadable'));
+    }
+    _reads.clear();
+  }
+
+  @override
+  Future<String> read(int accountId) {
+    final answer = Completer<String>();
+    _reads.add((answer, saved[accountId] ?? 'mouse'));
+    return answer.future;
+  }
+
+  @override
+  Future<void> write(int accountId, String characterId) async {
+    saved[accountId] = characterId;
   }
 }
 
@@ -230,6 +271,28 @@ void main() {
     expect(exerciseOf(null), ExerciseType.pushUp);
   });
 
+  testWidgets('the online route sends the character of the account', (
+    tester,
+  ) async {
+    final store = MemoryCharacterStore()..values[testAccount.id] = 'kangaroo';
+    await _openApp(
+      tester,
+      GymRatsApp(
+        authRepository: signedInAuth(),
+        userRepository: InMemoryUserRepository(),
+        characterStore: store,
+      ),
+    );
+    final route =
+        tester.widget<MaterialApp>(find.byType(MaterialApp)).onGenerateRoute!(
+          const RouteSettings(name: GymRatsApp.onlineBattleRoute),
+        )!;
+    final lobby = (route as MaterialPageRoute<void>).builder(
+      tester.element(find.byType(HomeScreen)),
+    ) as OnlineLobbyScreen;
+    expect(lobby.myCharacter, 'kangaroo');
+  });
+
   testWidgets("'?' on home opens the rules over home; back returns home", (
     tester,
   ) async {
@@ -324,12 +387,199 @@ void main() {
       (route! as MaterialPageRoute<void>).builder(
         tester.element(find.byType(HomeScreen)),
       ),
-      isA<BattleScreen>().having(
-        (screen) => screen.matchup,
-        'matchup',
-        same(matchup),
-      ),
+      isA<BattleScreen>()
+          .having((screen) => screen.matchup, 'matchup', same(matchup))
+          .having((screen) => screen.myCharacter, 'my character', 'mouse'),
     );
+  });
+
+  group('the character (W3)', () {
+    late MemoryCharacterStore store;
+
+    GymRatsApp app() => GymRatsApp(
+      authRepository: signedInAuth(),
+      userRepository: InMemoryUserRepository(),
+      characterStore: store,
+    );
+
+    setUp(() => store = MemoryCharacterStore());
+
+    testWidgets('the signed-in account\'s saved character shows on 게임 '
+        '시작', (tester) async {
+      store.values[testAccount.id] = 'bear';
+      await _openApp(tester, app());
+      await tapAndSettle(tester, '게임 시작');
+      expect(find.text('곰탱이'), findsOneWidget);
+    });
+
+    testWidgets('a pick on 캐릭터 선택 is saved for the account, shows on 게임 '
+        '시작 and goes into the next bot battle', (tester) async {
+      await _openApp(tester, app());
+      await tapAndSettle(tester, '게임 시작');
+      expect(find.text('GYM마우스'), findsOneWidget);
+      await tapAndSettle(tester, '캐릭터');
+      expect(find.byType(CharacterSelectScreen), findsOneWidget);
+      await tester.tap(find.text('펭뚱이'));
+      await tester.pumpAndSettle();
+      await tapAndSettle(tester, '이 캐릭터로 하기');
+      expect(find.byType(CharacterSelectScreen), findsNothing);
+      expect(find.text('펭뚱이'), findsOneWidget);
+      expect(store.values, {testAccount.id: 'penguin'});
+
+      final generate = tester
+          .widget<MaterialApp>(find.byType(MaterialApp))
+          .onGenerateRoute!;
+      final route =
+          generate(
+                const RouteSettings(
+                  name: GymRatsApp.battleRoute,
+                  arguments: Matchup(
+                    exercise: ExerciseType.pushUp,
+                    playerName: '우현',
+                    opponent: BotMatchmaker.bot,
+                  ),
+                ),
+              )!
+              as MaterialPageRoute<void>;
+      expect(
+        (route.builder(
+          tester.element(find.byType(PlayScreen)),
+        ) as BattleScreen).myCharacter,
+        'penguin',
+      );
+    });
+
+    group('while the saved character is still being read', () {
+      late _SlowReadCharacterStore slow;
+
+      setUp(
+        () => slow = _SlowReadCharacterStore()..saved[testAccount.id] = 'seal',
+      );
+
+      /// The app on a phone-sized screen, a second after it opened, with
+      /// the character's read still running (no settling: a spinner turns).
+      Future<void> openWhileReading(
+        WidgetTester tester, {
+        RulesSeenStore? rules,
+      }) async {
+        tester.view.physicalSize = const Size(412, 915);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        _stillRepBot(tester);
+        await tester.pumpWidget(
+          GymRatsApp(
+            authRepository: signedInAuth(),
+            userRepository: InMemoryUserRepository(),
+            characterStore: slow,
+            rulesSeenStore: rules,
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      CharacterViewModel characters(WidgetTester tester) =>
+          Provider.of<CharacterViewModel>(
+            tester.element(find.byType(MaterialApp)),
+            listen: false,
+          );
+
+      testWidgets('home waits for it, so 캐릭터 선택 and a bot battle start on '
+          'the saved character and a pick does not overwrite it', (
+        tester,
+      ) async {
+        await openWhileReading(tester);
+        expect(find.byType(HomeScreen), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        slow.finishRead();
+        await tester.pumpAndSettle();
+        expect(find.byType(HomeScreen), findsOneWidget);
+        await tapAndSettle(tester, '게임 시작');
+        expect(find.text('물렁범'), findsOneWidget);
+        final route =
+            tester
+                    .widget<MaterialApp>(find.byType(MaterialApp))
+                    .onGenerateRoute!(
+                  const RouteSettings(
+                    name: GymRatsApp.battleRoute,
+                    arguments: Matchup(
+                      exercise: ExerciseType.pushUp,
+                      playerName: '우현',
+                      opponent: BotMatchmaker.bot,
+                    ),
+                  ),
+                )!
+                as MaterialPageRoute<void>;
+        expect(
+          (route.builder(
+            tester.element(find.byType(PlayScreen)),
+          ) as BattleScreen).myCharacter,
+          'seal',
+        );
+        await tapAndSettle(tester, '캐릭터');
+        await tapAndSettle(tester, '이 캐릭터로 하기');
+        expect(slow.saved[testAccount.id], 'seal');
+        expect(characters(tester).characterId, 'seal');
+      });
+
+      testWidgets('a new account reads the rules meanwhile; after 시작하기 '
+          'home still waits for the read', (tester) async {
+        await openWhileReading(
+          tester,
+          rules: MemoryRulesSeenStore()..values[testAccount.id] = false,
+        );
+        expect(find.byType(HelpScreen), findsOneWidget);
+        for (var page = 1; page < HelpRules.pages.length; page++) {
+          await tester.tap(find.text('다음'));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+        }
+        await tester.tap(find.text('시작하기'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byType(HelpScreen), findsNothing);
+        expect(find.byType(HomeScreen), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        slow.finishRead();
+        await tester.pumpAndSettle();
+        expect(find.byType(HomeScreen), findsOneWidget);
+        expect(characters(tester).characterId, 'seal');
+      });
+
+      testWidgets('a read that fails opens home with the mouse', (
+        tester,
+      ) async {
+        await openWhileReading(tester);
+        slow.failRead();
+        await tester.pumpAndSettle();
+        expect(find.byType(HomeScreen), findsOneWidget);
+        expect(characters(tester).characterId, 'mouse');
+        expect(characters(tester).loading, isFalse);
+      });
+    });
+
+    testWidgets('logging out puts the mouse back for the next account', (
+      tester,
+    ) async {
+      store.values[testAccount.id] = 'seal';
+      await _openApp(tester, app());
+      final element = tester.element(find.byType(HomeScreen));
+      expect(
+        Provider.of<CharacterViewModel>(element, listen: false).art.name,
+        '물렁범',
+      );
+      await Provider.of<AuthViewModel>(element, listen: false).logOut();
+      await tester.pumpAndSettle();
+      expect(
+        Provider.of<CharacterViewModel>(
+          tester.element(find.byType(MaterialApp)),
+          listen: false,
+        ).characterId,
+        'mouse',
+      );
+    });
   });
 
   testWidgets('after the result, home shows the saved battle', (tester) async {

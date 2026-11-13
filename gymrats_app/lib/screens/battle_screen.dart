@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/exercise_type.dart';
+import '../models/character_rig.dart';
 import '../models/matchup.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
@@ -20,6 +21,7 @@ import '../widgets/battle_arena.dart';
 import '../widgets/battle_camera_view.dart';
 import '../widgets/battle_stage_events.dart';
 import '../widgets/battle_stage_model.dart';
+import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/sound_battle.dart';
 
@@ -40,12 +42,16 @@ class BattleScreen extends StatefulWidget {
   const BattleScreen({
     super.key,
     required this.matchup,
+    this.myCharacter = CharacterRig.defaultId,
     this.createViewModel,
     this.onCue,
     this.onSetup,
   });
 
   final Matchup matchup;
+
+  /// The user's character on the stage; RepBot is the opponent's.
+  final String myCharacter;
 
   /// Builds the view model; replaces the default one in tests.
   final BattleViewModel Function()? createViewModel;
@@ -315,6 +321,10 @@ class _BattleScreenState extends State<BattleScreen>
       controller: _stage,
       state: stage,
       camera: camera,
+      characters: BattleCharacters(
+        me: widget.myCharacter,
+        opponent: CharacterRig.botId,
+      ),
       onCue: widget.onCue ?? _sounds.cue,
       onLeave: () => unawaited(_askToLeave()),
       hint: _hint(state, counterState, stage.phase),

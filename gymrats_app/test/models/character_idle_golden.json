@@ -1,0 +1,563 @@
+{
+ "note": "idleMotion(character, tMs) for a right-facing fighter in idle pose. up = px above the ground, rockDeg = clockwise degrees about the foot, scaleX/scaleY about the foot. The opponent uses t + idleOpponentOffsetMs and the stage flips rockDeg with its dir.",
+ "tolerance": {
+  "up": 0.05,
+  "rockDeg": 0.05,
+  "scale": 0.001
+ },
+ "samples": {
+  "mouse": [
+   {
+    "t": 0,
+    "up": 0.0,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 50,
+    "up": 1.414,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 115,
+    "up": 2.712,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 160,
+    "up": 3.0,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 230,
+    "up": 2.319,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 400,
+    "up": 2.121,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 650,
+    "up": 0.294,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 975,
+    "up": 0.44,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 1300,
+    "up": 0.585,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 1900,
+    "up": 0.585,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 2350,
+    "up": 2.646,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   }
+  ],
+  "kangaroo": [
+   {
+    "t": 0,
+    "up": 0.0,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 50,
+    "up": 2.009,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 115,
+    "up": 4.243,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 160,
+    "up": 5.327,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 230,
+    "up": 6.0,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 400,
+    "up": 2.39,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 650,
+    "up": 5.778,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 975,
+    "up": 2.201,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 1300,
+    "up": 3.118,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 1900,
+    "up": 2.39,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 2350,
+    "up": 2.009,
+    "rockDeg": 0,
+    "scaleX": 1,
+    "scaleY": 1
+   }
+  ],
+  "bear": [
+   {
+    "t": 0,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0
+   },
+   {
+    "t": 50,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9961,
+    "scaleY": 1.0013
+   },
+   {
+    "t": 115,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9911,
+    "scaleY": 1.003
+   },
+   {
+    "t": 160,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9878,
+    "scaleY": 1.0041
+   },
+   {
+    "t": 230,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.983,
+    "scaleY": 1.0057
+   },
+   {
+    "t": 400,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.974,
+    "scaleY": 1.0087
+   },
+   {
+    "t": 650,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9703,
+    "scaleY": 1.0099
+   },
+   {
+    "t": 975,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9833,
+    "scaleY": 1.0056
+   },
+   {
+    "t": 1300,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0078,
+    "scaleY": 0.9974
+   },
+   {
+    "t": 1900,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.029,
+    "scaleY": 0.9903
+   },
+   {
+    "t": 2350,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0039,
+    "scaleY": 0.9987
+   }
+  ],
+  "penguin": [
+   {
+    "t": 0,
+    "up": 0,
+    "rockDeg": 0.0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 50,
+    "up": 0,
+    "rockDeg": 0.957,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 115,
+    "up": 0,
+    "rockDeg": 2.111,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 160,
+    "up": 0,
+    "rockDeg": 2.794,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 230,
+    "up": 0,
+    "rockDeg": 3.586,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 400,
+    "up": 0,
+    "rockDeg": 3.74,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 650,
+    "up": 0,
+    "rockDeg": 0.0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 975,
+    "up": 0,
+    "rockDeg": -4.0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 1300,
+    "up": 0,
+    "rockDeg": -0.0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 1900,
+    "up": 0,
+    "rockDeg": 0.957,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 2350,
+    "up": 0,
+    "rockDeg": -3.74,
+    "scaleX": 1,
+    "scaleY": 1
+   }
+  ],
+  "seal": [
+   {
+    "t": 0,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0
+   },
+   {
+    "t": 50,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9915,
+    "scaleY": 1.0085
+   },
+   {
+    "t": 115,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9817,
+    "scaleY": 1.0183
+   },
+   {
+    "t": 160,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9762,
+    "scaleY": 1.0238
+   },
+   {
+    "t": 230,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.971,
+    "scaleY": 1.029
+   },
+   {
+    "t": 400,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9773,
+    "scaleY": 1.0227
+   },
+   {
+    "t": 650,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0162,
+    "scaleY": 0.9838
+   },
+   {
+    "t": 975,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0196,
+    "scaleY": 0.9804
+   },
+   {
+    "t": 1300,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9727,
+    "scaleY": 1.0273
+   },
+   {
+    "t": 1900,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0297,
+    "scaleY": 0.9703
+   },
+   {
+    "t": 2350,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 0.9773,
+    "scaleY": 1.0227
+   }
+  ],
+  "bot": [
+   {
+    "t": 0,
+    "up": 0,
+    "rockDeg": 0.0,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 50,
+    "up": 0,
+    "rockDeg": 1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 115,
+    "up": 0,
+    "rockDeg": 1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 160,
+    "up": 0,
+    "rockDeg": 1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 230,
+    "up": 0,
+    "rockDeg": 1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 400,
+    "up": 0,
+    "rockDeg": 1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 650,
+    "up": 0,
+    "rockDeg": -1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 975,
+    "up": 0,
+    "rockDeg": -1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 1300,
+    "up": 0,
+    "rockDeg": 1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 1900,
+    "up": 0,
+    "rockDeg": -1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   },
+   {
+    "t": 2350,
+    "up": 0,
+    "rockDeg": -1.5,
+    "scaleX": 1,
+    "scaleY": 1
+   }
+  ],
+  "w2default": [
+   {
+    "t": 0,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0
+   },
+   {
+    "t": 50,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0036
+   },
+   {
+    "t": 115,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.008
+   },
+   {
+    "t": 160,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0108
+   },
+   {
+    "t": 230,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0146
+   },
+   {
+    "t": 400,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0198
+   },
+   {
+    "t": 650,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0146
+   },
+   {
+    "t": 975,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 0.9933
+   },
+   {
+    "t": 1300,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 0.98
+   },
+   {
+    "t": 1900,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0096
+   },
+   {
+    "t": 2350,
+    "up": 0,
+    "rockDeg": 0,
+    "scaleX": 1.0,
+    "scaleY": 1.0172
+   }
+  ]
+ }
+}

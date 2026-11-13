@@ -66,6 +66,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
     _viewModel =
         widget.createViewModel?.call() ??
         SetupViewModel(exercise: widget.exercise);
+    if (widget.showDebugTools) _viewModel.enableDiagnosticMode();
     WidgetsBinding.instance.addObserver(this);
     _viewModel.addListener(_onViewModelChanged);
     SystemChrome.setPreferredOrientations(SetupScreen.orientations);
@@ -207,31 +208,46 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                               state: state,
                               exercise: widget.exercise,
                               autoStartDelay: vm.config.autoStartDelay,
-                              onStart: state.canStart ? _finish : null,
+                              onStart: widget.showDebugTools && state.canStart
+                                  ? _finish
+                                  : null,
                             ),
                           ),
                         ),
                       ],
                     ),
                   );
-                  final camera = ClipRect(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        PoseAvatarToggleView(
-                          controller: vm.cameraController,
-                          cameraFit: BoxFit.cover,
-                          frame: state.lastFrame,
-                          mirror: vm.isFrontCamera,
-                          showLandmarks: showDebug,
-                          isVisible: vm.isVisible,
-                          cameraOverlay: PoseSilhouetteGuide(
-                            ready: state.status.isReady,
-                          ),
+                  final camera = LayoutBuilder(
+                    builder: (context, cameraSize) {
+                      vm.setGuideViewport(cameraSize.biggest);
+                      return ClipRect(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            PoseAvatarToggleView(
+                              controller: vm.cameraController,
+                              cameraFit: BoxFit.cover,
+                              frame: state.lastFrame,
+                              mirror: vm.isFrontCamera,
+                              showLandmarks: showDebug,
+                              isVisible: vm.isVisible,
+                              cameraOverlay: PoseSilhouetteGuide(
+                                ready:
+                                    state.status.isReady &&
+                                    state.guideAligned &&
+                                    state.status.reason == SetupReason.ready,
+                              ),
+                            ),
+                            PoseReadyBorder(
+                              ready:
+                                  state.status.isReady &&
+                                  state.guideAligned &&
+                                  state.status.reason == SetupReason.ready,
+                            ),
+                          ],
                         ),
-                        PoseReadyBorder(ready: state.status.isReady),
-                      ],
-                    ),
+                      );
+                    },
                   );
                   return isLandscape
                       ? Stack(
@@ -392,14 +408,19 @@ class _BottomPanel extends StatelessWidget {
     final status = state.status;
     final left = state.autoStartIn;
     // The bar fills while holding still, then again during the countdown.
-    final progress = left == null
+    final progress = !state.guideAligned || status.reason != SetupReason.ready
+        ? 0.0
+        : left == null
         ? status.readyProgress
         : 1 - left.inMicroseconds / autoStartDelay.inMicroseconds;
     return PoseSetupPanel(
       message: exercise == ExerciseType.squat
           ? '정면을 보고 전신이 보이도록 서 주세요.\n${state.message}'
           : state.message,
-      ready: status.isReady,
+      ready:
+          status.isReady &&
+          state.guideAligned &&
+          status.reason == SetupReason.ready,
       progress: progress,
       onStart: onStart,
     );

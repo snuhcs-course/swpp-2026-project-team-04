@@ -66,6 +66,7 @@ void main() {
                 estimator: estimator,
                 clock: () => now,
                 phoneTilt: placedPhone(),
+                guideMatcher: (_, _, _) => true,
               ),
             ),
           ),
@@ -201,11 +202,13 @@ void main() {
     });
   }
 
-  testWidgets('Start pops with the exercise', (tester) async {
+  testWidgets('three seconds of readiness pops with the exercise', (
+    tester,
+  ) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
     await feed(tester, 1500, standingFrame());
-    await tester.tap(find.text('Start'));
+    await feed(tester, 3000, standingFrame());
     await tester.pumpAndSettle();
     expect(popped, ExerciseType.pushUp);
     expect(find.text('versus'), findsOneWidget);
@@ -214,16 +217,16 @@ void main() {
   testWidgets('a frame arriving after 게임 나가기 cannot finish setup and pop '
       'home', (tester) async {
     await open(tester);
-    for (final ms in [0, 1500, 3000]) {
+    for (final ms in [0, 1500, 2000]) {
       await feed(tester, ms, standingFrame());
     }
-    expect(find.text('준비 완료! 2초 뒤 시작해요.'), findsOneWidget);
+    expect(find.text('준비 완료! 1초 뒤 시작해요.'), findsOneWidget);
     await tester.tap(exitButton);
     await tester.pumpAndSettle();
     await tester.tap(dialogExit);
     await tester.pump();
     // The screen is sliding away; this frame would end the countdown.
-    await feed(tester, 4500, standingFrame());
+    await feed(tester, 3000, standingFrame());
     await tester.pumpAndSettle();
     expect(find.text('home'), findsOneWidget);
     expect(popped, isNull);

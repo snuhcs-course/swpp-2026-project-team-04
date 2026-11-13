@@ -13,7 +13,8 @@
 // battle and result screens and their view models are the app's own.
 //
 // The new fighting stage by itself, with a button for every effect (the
-// design prototype's buttons) and no camera or exercise:
+// design prototype's buttons), two to change the characters (내 캐릭터,
+// 상대 캐릭터), and no camera or exercise:
 //   flutter run -t lib/demo/battle_demo.dart --dart-define=STAGE_DEMO=true
 // It is also behind "무대 연출 보기" on the demo's home.
 import 'dart:async';
@@ -27,6 +28,7 @@ import 'package:provider/provider.dart';
 import '../main.dart';
 import '../models/battle_result.dart';
 import '../models/battle_rules.dart';
+import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/game_score.dart';
 import '../models/matchup.dart';
@@ -47,6 +49,7 @@ import '../viewmodels/battle_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../widgets/battle_arena.dart';
 import '../widgets/battle_stage_model.dart';
+import '../widgets/character_figure.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/pose_camera_view.dart';
 
@@ -451,6 +454,19 @@ class _BattleStageDemoState extends State<BattleStageDemo> {
   BattleStageEnd? _end;
   int _nextReason = 0;
 
+  /// The two characters on the stage (W3): the mouse against RepBot at
+  /// first; each button takes the next character in the rig's order.
+  final _characters = {
+    BattleSide.me: CharacterRig.standard.defaultCharacter,
+    BattleSide.opponent: 'bot',
+  };
+
+  void _nextCharacter(BattleSide side) {
+    final order = CharacterRig.standard.order;
+    final next = (order.indexOf(_characters[side]!) + 1) % order.length;
+    setState(() => _characters[side] = order[next]);
+  }
+
   int get _lead => _score[BattleSide.me]! - _score[BattleSide.opponent]!;
 
   @override
@@ -594,6 +610,10 @@ class _BattleStageDemoState extends State<BattleStageDemo> {
         key: ValueKey(_run),
         controller: _controller,
         state: state,
+        characters: BattleCharacters(
+          me: _characters[BattleSide.me]!,
+          opponent: _characters[BattleSide.opponent]!,
+        ),
         camera: _StageButtons(
           buttons: {
             '내 Good': () => _rep(BattleSide.me, GameGrade.good),
@@ -632,6 +652,8 @@ class _BattleStageDemoState extends State<BattleStageDemo> {
             '상대 퇴장': () => _finish(BattleEndKind.playerLeft, BattleSide.me),
             '내 연결 끊김 패배': () =>
                 _finish(BattleEndKind.playerLeft, BattleSide.opponent),
+            '내 캐릭터': () => _nextCharacter(BattleSide.me),
+            '상대 캐릭터': () => _nextCharacter(BattleSide.opponent),
             '처음으로': _reset,
           },
         ),

@@ -17,3 +17,13 @@ Author: Sangwoo Hahn. Dates: 2026-11-07 through 2026-11-12 (individual timestamp
 - 경계선도 더 부드럽게 해줘.
 - 좀 더 귀엽고 부드럽게 다듬어줘. Claude의 도움을 받아줘.
 - 이거 PR 올려줘.
+
+## Selected follow-up prompts, 2026-11-13
+
+These are the user inputs visible in the current conversation, not a complete session export.
+
+- 일단 실루엣 작업으로 돌아가자. 실루엣에 사람이 들어왔을 때 3초간 기다리고 그 후 배틀이 시작되어야 해.
+- 사람 관절 형태를 2D 카메라에 찍었을 때 실루엣으로부터의 거리 합이 얼마 이하인 경우만 시작되도록 하는건 어때?
+- 좋아.
+- 스마트폰에 다운로드해줘.
+- 좋아. 테스트 완료했어. 이거 PR 올려줘.

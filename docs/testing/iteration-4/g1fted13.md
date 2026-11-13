@@ -228,3 +228,157 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `6a8efba`, wit
   - `'on, as designed: every match shows it, seen or not; 확인 counts as seen'`
   - `'off: it shows until it is seen once, then a match goes straight to the setup button'`
   - `'off and seen in an earlier run: no warning, the setup at once'`
+
+#### 2026-11-14 · code at commit `47afaff` · step W3 `feat/characters` (P14 characters replace the avatars, with a selection screen, team order #11)
+This step replaces the old avatars with six drawn characters. The design is the user's (spec v1.1 from the design canvas; rig data `w3-rig-2`).
+- **The characters:** one data file (`assets/characters/w3_rig.json`) and one painter (`CharacterFigure`) draw all six in five poses (idle, attack, hit, K.O., win).
+  - Five can be picked: GYM마우스 (`mouse`, the default), 그루 (`kangaroo`), 곰탱이 (`bear`), 펭뚱이 (`penguin`) and 물렁범 (`seal`). RepBot (`bot`) is the bot's.
+  - Each character has its own idle motion: a hop, a rock or a stretch.
+- **The stage:** the bot and online battles draw the two characters instead of W2's stand-in fighter.
+  - The opponent idles 230 ms after me, the hit star sits where the blows land, and each character draws its own flash.
+  - Without characters the stage keeps W2's values, so W2's `battle_fx_golden.json` passes unchanged.
+- **캐릭터 선택:** a screen after the design `ChSelectB`. It opens from 게임 시작's new 캐릭터 row and from 환경설정's 캐릭터 row (was 아바타).
+  - The choice is saved per account in the phone's secure storage.
+  - Nothing saved, an unknown id, RepBot or an old avatar id all read as the mouse.
+- **Online:** the app sends its character id in the protocol's existing `avatar_id` field.
+  - The battle server takes the field as optional, checks only its shape (1 to 32 lowercase letters, digits or `_`) and passes it on.
+  - An older server that refuses the character with `INVALID_AVATAR` gets one more `queue.join` with `avatar_01`.
+  - An opponent's id that is not one of the five draws the mouse.
+- **The old 3D avatars are gone:** the profile screen with its avatar list in `83c00ce`; the 3D models, the viewers, the opponent mannequin and `tools/avatar-preview/` in `dded304`. `PoseAvatarToggleView` now shows the camera only.
+
+The branch was made from W2's head `38ea06d` before #50 was merged. On 2026-11-14 I merged `origin/main` `1ed57ca` (#49 and #50) into it as `47afaff`. There was no conflict, and `main` brought no file change: `git diff 38ea06d 1ed57ca` is empty.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `47afaff`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.2% (470/474) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #52, commit `a55507b`, [run 43457588271](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43457588271) |
+| ViewModel | flutter_test, fakes | 90% | 96.7% (1151/1190) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.3% (2259/2370) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.1% (5898/6139) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; the Django code is unchanged, only the Dart battle server changed) | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `a55507b` |
+
+- **Tests:** `flutter test` had 2263 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as in W2:
+    - `test/services/online/public_wss_smoke_test.dart`: a live server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`. W3 builds its sessions with character ids. It expects the opponent's character to be the mouse until the W3 battle server is deployed.
+    - 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - `main` before W3 had 2113 passed, so W3 adds 150 tests in all.
+  - W3 adds 7 test files and two fixtures, changes 20 test files and deletes 4.
+    - The fixtures are the design's idle samples (`test/models/character_idle_golden.json`) and 36 of the design's 60 shots (`test/widgets/character_shots/`).
+    - The deleted files tested removed code: the profile screen, the avatar pose payload, the opponent avatar panel and the opponent mannequin.
+- **The design check:**
+  - `character_idle_motion_test.dart` compares every character's idle motion, and W2's breathing, with the design's own samples.
+  - `character_figure_test.dart` paints each of the 36 shots and compares it pixel by pixel with the design's PNG. At most 0.03% of the pixels may differ (smoothed edges). One test shows that the comparison catches a wrong picture: the other team's colors, or one missing eye shine.
+  - `character_rig_test.dart` checks the rig against `assets/characters/w3_rig.json` and the spec: the box, the order, the names, the five poses, where every attack ends (`hit_contact.json`), the hit star (48 px over, 58 px up) and the 230 ms. It also checks that a malformed rig is refused.
+- **Tests checked against wrong code:** the reviewer planted mutants in runs 1 and 2. In the painter, 13 of 14 were caught; the one left changes no pixel. In the stage wiring, 15 of 16 were caught, and the one left got a test. The two tests of run 3's double-tap fix fail on the old code.
+- **Other checks:**
+  - `ownership_guard.py --check-diff` is ok: 235 changed files. Each is W3's or is under an approved exception line; the exceptions are listed in the PR.
+  - The Dart battle server changed (`server/lib/battle_server.dart`). Its tests run in `flutter test` (`test/services/online/online_battle_integration_test.dart`). The Django server did not change, so `pytest` was not run on this PC.
+- **Coverage:** from the CI comment on PR #52 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/52#issuecomment-6858206591)), commit `a55507b` (2026-11-14 01:02 KST; the app and server jobs both succeeded; [run 43457588271](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43457588271)). `a55507b` changes only these notes on top of `c057a58`, and `c057a58` only two comments on top of `47afaff`.
+  - App total 96.1% (10033/10445); Other 93.8% (255/272).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2263 passed, 10 skipped, 0 failed), the same as on this PC.
+  - The pixel comparison with the 36 design shots, run on Windows so far, passes on CI's Linux too.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart`. Its tests still ran and passed in `flutter test`. So W3's change to `settings_screen.dart` (the 캐릭터 row, under its exception) is not in the View number.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Screen readers:** widget tests check that each cell of 캐릭터 선택 says its name and animal and whether it is picked. TalkBack on a real phone was **not** checked.
+- **Manual check (the user, reported 2026-11-14, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17):** the user found nothing to fix in W3's code.
+  - Seen on the phone:
+    - picking a character with 게임 시작's 캐릭터 row;
+    - a bot battle with the chosen character (물렁범): its idle, hit and K.O. motions.
+  - Not in the reported check: the online battle on two phones, which shows the opponent's character and also needs the W3 battle server deployed; 환경설정's 캐릭터 row; a second account; the stage demo's character buttons; reduced motion; TalkBack.
+  - Left for later steps (the user's plan): the character on the main menu (W4) and the screen after the battle (W2b). MATCH FOUND still draws W2's stand-in in `_VersusCharacter` (`versus_screen.dart`, on W2b); it gets the W3 character once W2b and W3 are both in `main`.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/character_rig_test.dart` (new) | the rig equals `assets/characters/w3_rig.json`; `w3-rig-2`'s 140 × 160 box; six characters in order, with the names of 11-13; five poses with fourteen values each; the shapes per character; expressions only in their poses; the design colors, no character lime or pink; outlines; the default mouse and RepBot; every other choice reads as the mouse; the stage values (where attacks end, the hit star, 230 ms, each idle motion); a malformed rig is refused and says where |
+| Model | `test/models/character_idle_motion_test.dart` (new) + `character_idle_golden.json` | each character's idle motion and W2's breathing against the design's samples; a hop never goes below the floor; stepped and smooth rocks; a stretch; a period of 0 turns its part off |
+| Model | `test/models/avatar_catalog_test.dart` (updated) | the kept avatar ids only (the asset getters are gone) |
+| View | `test/widgets/character_figure_test.dart` (new) + `character_shots/` (36 PNG) | the painter against 36 design shots, pixel by pixel, and a check that the comparison catches a wrong picture; size, pose and team; an unknown id draws the mouse; the idle figure (its motion, still with reduced motion); `BattleCharacters`; the theme colors are the rig's; even scaling in a box of another shape; every pose in both teams, with and without the flash |
+| View | `test/screens/character_select_screen_test.dart` (new) | the account's character large with its name and line; a tap changes only the preview; 이 캐릭터로 하기 saves and goes back; during a slow save a second tap or back goes back only once; back saves nothing; the layout and type of ChSelectB; each cell read with its name and animal; the picked cell; 360 × 640 and a large text size |
+| ViewModel | `test/viewmodels/character_viewmodel_test.dart` (new) | the app-wide character: the mouse before login, the account's saved one after it, another account, logout, choosing saves for the signed-in account, RepBot not choosable, a failed save, a slow read does not undo a choice |
+| ViewModel | `test/viewmodels/character_select_viewmodel_test.dart` (new) | the five in order, each said as its animal and a few words; picking changes only the preview; confirming saves; a second confirm while saving does nothing |
+| Service | `test/services/user/character_store_test.dart` (new) | per account in secure storage; nothing saved, unknown, RepBot or an old avatar id read as the mouse; an unreadable value; a failed write reaches the caller; the in-memory store |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | `avatar_id` carries the character: the server checks only the shape, passes the id on in `match.found`, the snapshot and the result, and leaves it out for a player who sent none; RepBot, an old avatar id or nothing reads as the mouse; an older server: one resend with `avatar_01`, also after a reconnect, and a second refusal fails the search; every character a person may pick reaches the opponent |
+| Service | `test/services/game/online_battle_result_test.dart`, `test/services/online/battle_result_store_test.dart`, `public_wss_smoke_test.dart` (updated, exceptions) | sessions and players built with a character id instead of `AvatarModel` |
+| View | `test/widgets/battle_fx_motion_test.dart`, `battle_stage_test.dart`, `battle_arena_test.dart` (updated, exceptions) | without characters, W2's breathing and star; with them, each side's idle (hop, rock, stretch), the opponent 230 ms later, only the idle pose moves, the danger sway, reduced motion, the star at (xm ± 48, 288); the characters in their poses and team colors, the hit one flashing on its own; the fever aura |
+| View | `test/screens/battle_screen_test.dart`, `online_preparation_test.dart`, `online_lobby_screen_test.dart` (updated) | my character against RepBot; the mouse when none is given; online, mine and the one the opponent sent; the lobby matches with my character |
+| View | `test/screens/play_screen_test.dart`, `settings_screen_test.dart`, `home_screen_test.dart` (updated, exceptions) | 게임 시작's 캐릭터 row shows my character, opens 캐릭터 선택 and follows a new choice; 환경설정's 캐릭터 opens the selection; the app-wide view model in the test apps |
+| View | `test/widgets/pose_avatar_toggle_view_test.dart` (updated), `battle_live_indicators_test.dart`, `battle_online_events_test.dart` (updated, exceptions) | the camera-only view: no avatar button, the pose and both height gauges on the given frame; one gauge test rewritten for it; the online events with character ids |
+| App flow | `test/main_test.dart`, `test/demo/battle_demo_test.dart` (updated; the demo under an exception) | the account's saved character on 게임 시작; a pick is saved and goes into the next bot battle; logout puts the mouse back; the online route sends the account's character; the stage demo's character buttons |
+| Design | `test/design_tokens_test.dart` (updated) | `character_select_screen.dart` and `character_figure.dart` in the token check |
+
+### Acceptance criteria → tests
+- Given I open character selection and pick one, then it is saved for my account. Tests:
+  - `'이 캐릭터로 하기 saves the pick for the account and goes back'`
+  - `'choosing saves for the signed-in account and shows at once'`
+  - `'keeps the choices per account while the app runs'`
+  - `'another account starts from the mouse, then shows its own'`
+- …and shown in battle. Tests:
+  - `'a pick on 캐릭터 선택 is saved for the account, shows on 게임 시작 and goes into the next bot battle'`
+  - `'the stage shows my character against RepBot'`
+- …and shown to my online opponent. Tests:
+  - `'every character a person may pick matches and appears on the opponent client'`
+  - `'a character id is passed on to the opponent as it came, in match.found, the snapshot and the result'`
+  - `'the stage draws my character and the one the opponent sent'`
+  - `'the online route sends the character of the account'`
+  - On real phones this needs the W3 battle server deployed; it was not checked on two phones.
+
+#### 2026-11-14 · code at commit `1f7e6f5` · step W3 `feat/characters`, follow-up to the Codex review of PR #52 (team order #11)
+The Codex review of PR #52 left one comment (P2, `lib/viewmodels/character_select_viewmodel.dart`). This push fixes it on the same branch.
+- **The problem:** home could open as soon as the rules check ended, while the account's character was still being read.
+  - 캐릭터 선택 then started on the stand-in `mouse`, and 이 캐릭터로 하기 saved `mouse` over the saved choice.
+  - A battle opened then got `mouse` too.
+- **The fix (`1f7e6f5`).** The user chose between two options the agent gave:
+  - Home waits until the account's character is read, behind the same spinner as the rules check. A read that fails counts as the default, so the wait always ends.
+  - 캐릭터 선택 keeps a second guard. Before the read ends, the button shows "저장된 캐릭터를 불러오는 중…" and takes no taps. When the read ends, the preview takes the saved character, unless a cell was picked meanwhile.
+  - A choice made during the read still wins over the read (the rule of 11-13).
+  - Only W3 files changed: `main.dart`, `character_viewmodel.dart`, `character_select_viewmodel.dart`, `character_select_screen.dart` and their tests.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `1f7e6f5`, without coverage. The coverage comes from the PR's CI comment on `1f7e6f5`, [run 43475382323](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43475382323).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.2% (470/474) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #52, commit `1f7e6f5`, [run 43475382323](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43475382323) |
+| ViewModel | flutter_test, fakes | 90% | 96.8% (1165/1204) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.3% (2259/2370) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.1% (5902/6143) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/14 | same CI comment |
+
+- **Tests:** `flutter test` had 2278 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before.
+  - The count grew from 2263 by the 15 new tests below. No test was removed.
+  - Two existing tests in `character_viewmodel_test.dart` counted the notifications of a load. A load now notifies twice, as the read starts and as it ends. Their intent is kept:
+    - 'a login reads the account's saved character' expects 2, with that reason;
+    - 'RepBot or an unknown id cannot be chosen' starts its count after the load.
+- **Tests before the fix:** the agent wrote the reproduction first and ran it on the code before the fix (`15434a6`). All three tests failed:
+  - in `character_select_viewmodel_test.dart`, 'confirming saves nothing over the saved character': the saved `seal` became `mouse`;
+  - in `main_test.dart`, the first two app tests: the same overwrite through 캐릭터 선택, and a bot battle built during the read got `mouse`.
+  - After the user chose the fix, the app tests were rewritten for "home waits". On a copy of the old code, with the one line that reads the new `loading` dropped, all three final app tests fail. The new screen test fails there too.
+  - The view-model tests use the new API (`loading`, `isReadyFor`, `ready`), so they do not compile on the old code.
+- **Other checks:** `dart format` leaves the 8 changed files unchanged, and `ownership_guard.py --check-diff` is ok (238 files). Server `pytest` was not run on this PC, because `server/` did not change.
+- **Coverage:** from the CI comment on `1f7e6f5` (2026-11-14 02:49 KST; the app and server jobs both succeeded).
+  - App total 96.1% (10052/10464); Other 93.8% (256/273).
+  - CI's `flutter analyze` and `flutter test` (2278 passed, 10 skipped, 0 failed) match this PC.
+  - Still left out of the numbers by CI's 240 s limit: `test/screens/settings_screen_test.dart`; its tests passed.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Review:** the reviewer subagent returned APPROVE (run 7) with 4 Minor findings. Three were fixed, among them the test 'a new account reads the rules meanwhile; after 시작하기 home still waits for the read'. It also fails on the old code. The fourth was kept: three near-identical slow-read fakes stay private, because the shared `test/support/fakes.dart` is the PM's.
+- **Manual check:** not checked on a phone for this push.
+
+### Test cases added or changed in this follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| App flow | `test/main_test.dart` (updated) | group 'while the saved character is still being read': home waits for the read, then 캐릭터 선택 and a bot battle start on the saved character and a pick keeps it; a new account reads the rules meanwhile and home still waits after 시작하기; a read that fails opens home with the mouse |
+| View | `test/screens/character_select_screen_test.dart` (updated) | opened during the read: the hint, no taps, nothing saved; then the preview takes the saved character and the button saves |
+| ViewModel | `test/viewmodels/character_select_viewmodel_test.dart` (updated) | during the read: confirming saves nothing over the saved character; not ready until the read ends; the preview takes the saved character if nothing was picked; a cell picked meanwhile stays and can then be saved; a read after the screen is gone changes nothing on it |
+| ViewModel | `test/viewmodels/character_viewmodel_test.dart` (updated) | group 'loading': not loading before a login; loading from a login until the read ends, said both times; a choice during the read ends it and wins; a logout ends it; another account's loading is not ended by the first one's late read; a read that fails reads as the mouse and ends it; two tests count the load's two notifications |
+
+### Acceptance criteria → tests (this follow-up)
+- Given I picked a character, then it stays saved for my account, even when the app reads it slowly after a login. Tests:
+  - `'home waits for it, so 캐릭터 선택 and a bot battle start on the saved character and a pick does not overwrite it'`
+  - `'confirming saves nothing over the saved character'`
+  - `'opened while the saved character is still read, 이 캐릭터로 하기 says so and cannot be pressed; then the preview takes the saved one and the button saves'`
+- …and it is the one shown in battle. Tests:
+  - the same first test (the bot battle gets `seal`)
+  - `'a new account reads the rules meanwhile; after 시작하기 home still waits for the read'`
+- A choice made during the read still wins (the rule of 11-13). Tests: `'a choice made while reading ends the loading and wins'`, `'a slow read does not undo a choice made meanwhile'`.

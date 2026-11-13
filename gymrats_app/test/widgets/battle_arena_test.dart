@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +14,7 @@ import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_reject_sign.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 
 import 'battle_test_support.dart';
 
@@ -82,6 +85,7 @@ Future<void> _pump(
   String? hint,
   String? readyLabel,
   VoidCallback? onReady,
+  BattleCharacters? characters,
 }) async {
   // The test's screen is the phone's.
   await tester.binding.setSurfaceSize(size);
@@ -115,6 +119,7 @@ Future<void> _pump(
             hint: hint,
             readyLabel: readyLabel,
             onReady: onReady,
+            characters: characters,
           ),
         ),
       ),
@@ -304,6 +309,49 @@ void main() {
       await _wait(tester, 1500);
       expect(_pose(tester, BattleSide.me), BattlePose.idle);
       expect(_pose(tester, BattleSide.opponent), BattlePose.idle);
+    });
+
+    testWidgets('characters reach the stage with their idle motions, the '
+        'opponent\'s 230 ms later, and blows land under the star', (
+      tester,
+    ) async {
+      const characters = BattleCharacters(me: 'kangaroo', opponent: 'kangaroo');
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(), characters: characters);
+      expect(
+        tester.widget<BattleStage>(find.byType(BattleStage)).characters,
+        characters,
+      );
+      expect(find.byType(CharacterFigure), findsNWidgets(2));
+      // A new state rebuilds the arena, as every second of a battle does;
+      // the characters' motions stay.
+      await _pump(tester, controller, _state(me: 10), characters: characters);
+      await _wait(tester, 100);
+      // The clock started at 0 with the first frame.
+      final hop = 6 * math.sin(math.pi * 100 / 460).abs();
+      final late = 6 * math.sin(math.pi * 330 / 460).abs();
+      expect(_frame(tester).me.footY, closeTo(BattleFx.groundY - hop, 1e-6));
+      expect(
+        _frame(tester).opponent.footY,
+        closeTo(BattleFx.groundY - late, 1e-6),
+      );
+      controller.rep(_myGood);
+      await _wait(tester, 100);
+      final frame = _frame(tester);
+      expect(frame.star!.centerX, frame.meetX + 48);
+      expect(frame.star!.centerY, BattleFx.groundY - 58);
+    });
+
+    testWidgets('without characters the stand-ins breathe in step', (
+      tester,
+    ) async {
+      await _pump(tester, BattleStageController(), _state());
+      expect(find.byType(CharacterFigure), findsNothing);
+      expect(find.byType(BattleFighter), findsNWidgets(2));
+      await _wait(tester, 100);
+      final frame = _frame(tester);
+      expect(frame.me.scaleY, frame.opponent.scaleY);
+      expect(frame.me.scaleY, closeTo(1 + 0.02 * math.sin(100 / 280), 1e-9));
     });
 
     testWidgets('gives each cue once, when it shows', (tester) async {
