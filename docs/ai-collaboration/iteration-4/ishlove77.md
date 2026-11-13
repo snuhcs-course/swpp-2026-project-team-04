@@ -1,7 +1,7 @@
 # AI collaboration notes: Iteration 4, Jinyoung Park (ishlove77)
 Status: draft (iteration open)
 Written by: Jinyoung Park
-Tools used: Claude Code (Fable 5.1)
+Tools used: Claude Code (Fable 5.1, Opus 5.5)
 
 These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a–f per the guideline; the PM merges them into the one-page team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session Exporter before every push).
 
@@ -13,15 +13,28 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - `pubspec.yaml`: `flutter pub add flutter_tts` run by Claude Code (one line).
 - Codex PR review follow-up (2026-11-11): Codex (`chatgpt-codex-connector`) reviewed PR #48 and left three findings; Claude Code checked each against the code, fixed the two in `tts_speech_engine.dart` and `sound_settings.dart` with 6 tests, and added the `TTS_SERVICE` query to `AndroidManifest.xml` (PM-owned file, one-off exception approved by the user with the PM's agreement).
 - Not used: the decision between device TTS and recorded clips (the user chose `flutter_tts` from the two options Claude Code laid out, 11-07); the Korean wording of the lines was AI-drafted and is open to the team's edits in `voice_cue.dart`.
+### J2 `feat/battle_bgm` (team plan #8, P11 battle BGM and effects, 2026-11-11 ~ 11-14)
+- Music and effects services `gymrats_app/lib/services/audio/` (`music_player.dart`, `just_audio_music_player.dart`, `background_music.dart`, `sound_effects.dart`, `sound_services.dart`; `sound_settings.dart` and `voice_guidance.dart` gained the 음성 안내 switch): Claude Code, from the J2 spec and the user's sound decisions.
+- Screen wiring `gymrats_app/lib/widgets/sound_battle.dart`, `sound_cues.dart`, a few lines each in `battle_screen.dart`, `online_battle_screen.dart` (W2's hooks `onCue`), `home_screen.dart` (approved exception), `settings_viewmodel.dart`: Claude Code.
+- Candidate search and preparation of the tracks and effects (CC0 packs on OpenGameArt; trimming, leveling) and a team listening page (claude.ai artifact) used to pick the preset: Claude Code. The picks themselves were the user's and the team's.
+- Phone check analysis (11-14): Claude Code pulled the S23 screen recording over adb and analysed it (audio matched against each effect file, frames read from the video) to tell which sounds played.
+- Tests (`test/services/audio/*`, `test/widgets/sound_*`, `test/viewmodels/settings_viewmodel_test.dart`, `test/support/audio_fakes.dart`) and `docs/iteration-4/sound-battle-bgm.md`: Claude Code.
+- Not used: which sounds to keep, cut or change (no voice in the battle, no sound for the opponent, the alarm, fever 1.25x, dropping the setup voice); all decided by the user by ear.
 
 ## 2. Prompt History
 [Jinyoung Park, 11-07] "task 수행해"
 [Jinyoung Park, 11-11] "그리고 이제 codex review PR 댓글도 반영해야 하거든? 그것도 harness에 추가하고"
 (Full log: [ishlove77-Prompt-Log.md](ishlove77-Prompt-Log.md))
+[Jinyoung Park, 11-12] "세팅할떄만 voice 놓고 게임도중에는 voice를 빼고 대신 점수에 따라나 실패 할떄 효과음을 넣는 식으로 하자. 때리는 효과음으로 하고, 죽기 직전이면 경고음 효과음을 넣을건데 시안을 몇개 뽑아줘. 브금도 포함해서"
+[Jinyoung Park, 11-12] "battle 소리가 3초 load되는데 artifact 보니까"
+[Jinyoung Park, 11-14] "효과음중 가장 크면 안되지 그러면 차이가 없자나"
+[Jinyoung Park, 11-14] "혹시 average 점수가 아예 안나오느건 아니지 지금?"
 
 ## 3. What AI Did Well
 - J1 in one session: the service, cue table, settings, fakes and 46 tests were written and green on the first full run (`flutter test` 1518 passed), with every new service file at 100 % line coverage (`coverage_by_layer.py --files`). TODO(Jinyoung Park): rough time saved.
 - The ownership guard, the file list in the task file and the team-plan contract were followed without a block: only J1 files changed (`ownership_guard.py --check-diff` ok).
+- J2: the listening page let the team pick the effects by ear over the real battle music before any app code; the app reproduces its preset (volumes, fever 1.25x, music start 1.54 s into the track).
+- J2: the screen-recording analysis settled a disputed bug in minutes: the result screen frame showed Average 0 and the audio showed the buzz, alarm and gong at the right times, so the "missing Average sound" was a rep that was never graded Average, not an audio fault.
 
 ## 4. Hallucinations / Errors
 - `TtsSpeechEngine` first relied only on `flutter_tts`'s `awaitSpeakCompletion(true)` to learn when a line ends. The reviewer subagent read the plugin's Android source (`FlutterTtsPlugin.kt`) and found that the awaited `speak` never returns on a TTS error, which would have left every later setup hint pending. Fixed the same session: the engine also ends the utterance from the plugin's completion/cancel/error callbacks, and the service waits at most 8 s per line (`voice_guidance.dart`, `maxUtterance`), with tests for both. Cost: ~20 min.
@@ -29,13 +42,19 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - The first draft of `VoiceGuidanceService` used a non-existent default-clock expression (`(Stopwatch()..start()).elapsed_`) in the initializer list; caught by `flutter analyze` on the first run and replaced by a small static helper. Cost: ~1 min.
 - A second AI reviewer caught what our own three review rounds missed (PR #48, Codex): (1) a cut-off line's end callback arriving *after* the replacement's `onStart` still ended the replacement, because the round-2 fix only guarded callbacks before `onStart`; (2) `SoundSettings()` defaulted to the in-memory store, so the production path would never persist the switch; (3) `flutter_tts` needs a `TTS_SERVICE` `<queries>` entry on Android 11+, which the J1 plan missed because `android/*` was outside the step's files. All three fixed on 11-11 in 779da5d (reviewer APPROVE in one round). Cost: ~40 min.
 - `flutter analyze` then flagged two lints on the same constructor (`prefer_initializing_formals`, then `type_init_formals`); fixed in two passes. Cost: ~2 min.
+- J2: `JustAudioMusicPlayer` first loaded a track with `setAsset` and then `setClip`, decoding it twice; the reviewer caught it and it became one `ClippingAudioSource` load. Cost: ~10 min.
+- J2: the reviewer found that an online battle ending without a result (connection error, void) kept the danger alarm and the battle music playing (Major); fixed with `BattleSounds.ended()` and a test.
+- J2 (11-14): Claude Code explained the unheard Average hit as "lost under the music" and made it the loudest effect without evidence. The user objected ("효과음중 가장 크면 안되지") and then asked whether Average was graded at all; the recording showed it was not (Average needs a push-up rejected as "더 깊게" with the elbow bent to 120° or less). Cost: two needless rebuilds, ~20 min.
 
 ## 5. Prompt Revisions
 - 11-11: added a standing rule to the harness after the Codex findings ("codex review PR 댓글도 반영해야"): Codex findings on every open PR are read at session start and before every push, fixed or answered with a reason, and replied to on their threads.
 - Before that, none: the one prompt was the task start; the open decision was asked and answered through a question dialog (flutter_tts vs recorded clips).
+- J2: "소리가 거의 안들리는디" → "battle 소리가 3초 load되는데 artifact 보니까": naming the exact symptom (3 s before the music) led to prefetching the track and starting it at its first beat (1.54 s) instead of only raising volumes.
+- J2: "Average를 조금더 키워야 할듯" → "효과음중 가장 크면 안되지 그러면 차이가 없자나": the second prompt gave the constraint (Excellent > Good > Average), so the level was set just under Good.
 
 ## 6. Manual Fixes and Why
 - None so far in J1 (no manual-fix marker added).
+- None in J2 (no manual-fix marker added).
 
 ## 7. Takeaway for Iteration 5
 - TODO(Jinyoung Park): fill when the iteration closes.
