@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:ui' show Size;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/exercise_type.dart';
 import '../models/pose_frame.dart';
+import '../models/setup_silhouette_alignment.dart';
 import '../services/device/phone_tilt.dart';
 import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
@@ -44,6 +46,7 @@ class SetupState {
     this.fps = 0,
     this.autoStartIn,
     this.autoStarted = false,
+    this.guideAligned = true,
   });
 
   final SetupPhase phase;
@@ -69,11 +72,15 @@ class SetupState {
   /// The user stayed Ready for [SetupConfig.autoStartDelay]: setup is done
   /// without a tap. The screen leaves as if Start was pressed.
   final bool autoStarted;
+  final bool guideAligned;
 
   bool get canStart => phase == SetupPhase.running && status.isReady;
 
   /// Message for the user, including the auto start countdown.
   String get message {
+    if (!guideAligned && status.reason == SetupReason.ready) {
+      return '실루엣 안에 머리와 양손을 맞춰 주세요.';
+    }
     final left = autoStartIn;
     if (left == null) return status.message;
     final seconds = (left.inMilliseconds / 1000).ceil();
@@ -97,6 +104,7 @@ class SetupState {
     lastFrame: lastFrame ?? this.lastFrame,
     fps: fps ?? this.fps,
     autoStarted: autoStarted,
+    guideAligned: guideAligned,
   );
 }
 
@@ -110,10 +118,16 @@ class SetupViewModel extends ChangeNotifier {
     PoseEstimator? estimator,
     PhoneTiltMonitor? phoneTilt,
     Clock? clock,
+    bool Function(PoseFrame, Size, bool)? guideMatcher,
   }) : _camera = camera ?? CameraService(),
        _estimator = estimator ?? PoseEstimator(),
        _phoneTilt = phoneTilt ?? PhoneTiltMonitor.platform(),
-       _clock = clock ?? _stopwatchClock() {
+       _clock = clock ?? _stopwatchClock(),
+       _guideMatcher =
+           guideMatcher ??
+           ((frame, size, mirror) =>
+               SetupSilhouetteAlignment(minLikelihood: config.minLikelihood)
+                   .matches(frame, size, mirror: mirror)) {
     _checker = SetupChecker(exercise: exercise, config: config, clock: _clock);
   }
 
@@ -123,6 +137,9 @@ class SetupViewModel extends ChangeNotifier {
   final PoseEstimator _estimator;
   final PhoneTiltMonitor _phoneTilt;
   final Clock _clock;
+  final bool Function(PoseFrame, Size, bool) _guideMatcher;
+  Size? _guideViewport;
+  bool _diagnosticMode = false;
   late final SetupChecker _checker;
 
   SetupState _state = const SetupState();
@@ -143,6 +160,12 @@ class SetupViewModel extends ChangeNotifier {
   }
 
   SetupState get state => _state;
+
+  /// Updated by the camera panel when its displayed size changes.
+  void setGuideViewport(Size size) => _guideViewport = size;
+
+  /// Diagnostic recorders retain their manual setup and countdown behavior.
+  void enableDiagnosticMode() => _diagnosticMode = true;
 
   /// Controller for the camera preview; null while the camera is stopped.
   CameraController? get cameraController =>
@@ -285,7 +308,12 @@ class SetupViewModel extends ChangeNotifier {
       phoneStill: _phoneTilt.isStill,
     );
     logPoseLive('setup', frame, tilt: _phoneTilt);
-    final (autoStartIn, autoStarted) = _autoStart(status, now);
+    final viewport = _guideViewport;
+    final aligned =
+        exercise != ExerciseType.pushUp ||
+        _diagnosticMode ||
+        (viewport != null && _guideMatcher(frame, viewport, isFrontCamera));
+    final (autoStartIn, autoStarted) = _autoStart(status, now, aligned);
     _setState(
       SetupState(
         phase: _state.phase,
@@ -294,20 +322,27 @@ class SetupViewModel extends ChangeNotifier {
         fps: _frameTimes.length,
         autoStartIn: autoStartIn,
         autoStarted: autoStarted,
+        guideAligned: aligned,
       ),
     );
   }
 
-  /// Counts down [SetupConfig.autoStartDelay] while the user stays Ready.
-  /// Leaving Ready cancels the countdown.
-  (Duration?, bool) _autoStart(SetupStatus status, Duration now) {
+  /// For push-ups, count from the first valid frame so the readiness hold is
+  /// part of the countdown, rather than an additional delay. Any invalid
+  /// frame starts a fresh countdown. Squats retain their existing timing.
+  (Duration?, bool) _autoStart(SetupStatus status, Duration now, bool aligned) {
     if (_state.autoStarted) return (null, true);
-    if (!status.isReady) {
+    final valid = exercise == ExerciseType.pushUp && !_diagnosticMode
+        ? status.reason == SetupReason.ready && aligned
+        : status.isReady;
+    if (!valid) {
       _readySince = null;
       return (null, false);
     }
     final left = config.autoStartDelay - (now - (_readySince ??= now));
-    return left <= Duration.zero ? (null, true) : (left, false);
+    return left <= Duration.zero && status.isReady
+        ? (null, true)
+        : (left > Duration.zero ? left : Duration.zero, false);
   }
 
   void _onDetectorFailure() {

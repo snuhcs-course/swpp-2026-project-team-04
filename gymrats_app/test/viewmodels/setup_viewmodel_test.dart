@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show Size;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
@@ -16,18 +17,22 @@ void main() {
   late FakePoseEstimator estimator;
   late Duration now;
   late SetupViewModel vm;
+  late bool guideMatches;
 
   setUp(() {
     camera = FakeCameraService();
     estimator = FakePoseEstimator();
     now = Duration.zero;
+    guideMatches = true;
     vm = SetupViewModel(
       exercise: ExerciseType.pushUp,
       camera: camera,
       estimator: estimator,
       clock: () => now,
       phoneTilt: placedPhone(),
+      guideMatcher: (_, _, _) => guideMatches,
     );
+    vm.setGuideViewport(const Size(400, 400));
   });
 
   /// Feeds [frame] (null = ML Kit error) at [ms] milliseconds.
@@ -169,60 +174,88 @@ void main() {
   group('auto start', () {
     setUp(() => vm.start());
 
-    test('counts down after Ready and finishes after 3 s', () async {
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
-      expect(vm.state.status.isReady, isTrue);
-      expect(vm.state.autoStartIn, const Duration(seconds: 3));
-      expect(vm.state.message, '준비 완료! 3초 뒤 시작해요.');
-      await feed(3600, standingFrame());
-      expect(vm.state.message, '준비 완료! 1초 뒤 시작해요.');
-      expect(vm.state.autoStarted, isFalse);
-      await feed(4500, standingFrame());
-      expect(vm.state.autoStarted, isTrue);
-      expect(vm.state.autoStartIn, isNull);
-    });
+    test(
+      'out-of-guide poses cancel and must hold for three fresh seconds',
+      () async {
+        guideMatches = false;
+        await feed(0, standingFrame());
+        expect(vm.state.autoStartIn, isNull);
+        expect(vm.state.message, contains('실루엣'));
+        guideMatches = true;
+        await feed(100, standingFrame());
+        await feed(1600, standingFrame());
+        guideMatches = false;
+        await feed(1700, standingFrame());
+        expect(vm.state.autoStartIn, isNull);
+        guideMatches = true;
+        await feed(1800, standingFrame());
+        await feed(4700, standingFrame());
+        expect(vm.state.autoStarted, isFalse);
+        await feed(4800, standingFrame());
+        expect(vm.state.autoStarted, isTrue);
+      },
+    );
+
+    test(
+      'counts from the first valid push-up frame and finishes after 3 s',
+      () async {
+        await feed(0, standingFrame());
+        expect(vm.state.autoStartIn, const Duration(seconds: 3));
+        await feed(1500, standingFrame());
+        expect(vm.state.status.isReady, isTrue);
+        expect(vm.state.autoStartIn, const Duration(milliseconds: 1500));
+        await feed(2100, standingFrame());
+        expect(vm.state.message, '준비 완료! 1초 뒤 시작해요.');
+        expect(vm.state.autoStarted, isFalse);
+        await feed(3000, standingFrame());
+        expect(vm.state.autoStarted, isTrue);
+        expect(vm.state.autoStartIn, isNull);
+      },
+    );
 
     test('auto start stays set once reached', () async {
       await feed(0, standingFrame());
       await feed(1500, standingFrame());
-      await feed(4500, standingFrame());
-      await feed(4600, emptyFrame());
+      await feed(3000, standingFrame());
+      await feed(3100, emptyFrame());
       expect(vm.state.autoStarted, isTrue);
     });
 
     test('losing Ready cancels and restarts the countdown', () async {
       await feed(0, standingFrame());
       await feed(1500, standingFrame());
-      await feed(3000, standingFrame());
+      await feed(2000, standingFrame());
       // 0.5 s of invalid frames drops Ready.
-      await feed(3100, emptyFrame());
-      await feed(3600, emptyFrame());
+      await feed(2100, emptyFrame());
+      await feed(2600, emptyFrame());
       expect(vm.state.status.isReady, isFalse);
       expect(vm.state.autoStartIn, isNull);
-      // Ready again needs 1.5 s, then a full new 3 s countdown.
-      await feed(3700, standingFrame());
-      await feed(5200, standingFrame());
+      // The new countdown starts with the first valid frame.
+      await feed(2700, standingFrame());
       expect(vm.state.autoStartIn, const Duration(seconds: 3));
-      await feed(8100, standingFrame());
+      await feed(5600, standingFrame());
       expect(vm.state.autoStarted, isFalse);
-      await feed(8200, standingFrame());
+      await feed(5700, standingFrame());
       expect(vm.state.autoStarted, isTrue);
     });
 
-    test('one bad frame does not stop the countdown', () async {
+    test('an invalid frame restarts the countdown', () async {
       await feed(0, standingFrame());
       await feed(1500, standingFrame());
       await feed(2000, emptyFrame());
-      expect(vm.state.autoStartIn, const Duration(milliseconds: 2500));
+      expect(vm.state.autoStartIn, isNull);
+      await feed(2100, standingFrame());
+      expect(vm.state.autoStartIn, const Duration(seconds: 3));
       await feed(4500, standingFrame());
+      expect(vm.state.autoStarted, isFalse);
+      await feed(5100, standingFrame());
       expect(vm.state.autoStarted, isTrue);
     });
 
     test('pause and resume restart the hold and the countdown', () async {
       await feed(0, standingFrame());
       await feed(1500, standingFrame());
-      await feed(3000, standingFrame());
+      await feed(2000, standingFrame());
       expect(vm.state.autoStartIn, isNotNull);
       await vm.pause();
       await vm.resume();
@@ -230,10 +263,10 @@ void main() {
       await feed(3100, standingFrame());
       expect(vm.state.status.isReady, isFalse);
       await feed(4600, standingFrame());
-      expect(vm.state.autoStartIn, const Duration(seconds: 3));
-      await feed(7500, standingFrame());
+      expect(vm.state.autoStartIn, const Duration(milliseconds: 1500));
+      await feed(6000, standingFrame());
       expect(vm.state.autoStarted, isFalse);
-      await feed(7600, standingFrame());
+      await feed(6100, standingFrame());
       expect(vm.state.autoStarted, isTrue);
     });
 
@@ -245,31 +278,68 @@ void main() {
       await feed(2600, null);
       expect(vm.state.status.isReady, isFalse);
       expect(vm.state.autoStartIn, isNull);
-      // Detection recovers: a fresh 1.5 s hold, then a fresh 3 s countdown.
+      // Detection recovers: a fresh 3 s countdown starts immediately.
       await feed(2700, standingFrame());
       await feed(4200, standingFrame());
-      expect(vm.state.autoStartIn, const Duration(seconds: 3));
-      await feed(7100, standingFrame());
+      expect(vm.state.autoStartIn, const Duration(milliseconds: 1500));
+      await feed(5600, standingFrame());
       expect(vm.state.autoStarted, isFalse);
     });
 
     test('custom auto start delay is used', () async {
       final custom = SetupViewModel(
         exercise: ExerciseType.pushUp,
-        config: const SetupConfig(autoStartDelay: Duration(seconds: 1)),
+        config: const SetupConfig(autoStartDelay: Duration(seconds: 2)),
+        camera: camera,
+        estimator: estimator,
+        clock: () => now,
+        phoneTilt: placedPhone(),
+        guideMatcher: (_, _, _) => true,
+      );
+      custom.setGuideViewport(const Size(400, 400));
+      await custom.start();
+      await feed(0, standingFrame());
+      await feed(1500, standingFrame());
+      await feed(2000, standingFrame());
+      expect(custom.state.autoStarted, isTrue);
+      custom.dispose();
+    });
+  });
+
+  test(
+    'real guide matching gates the three-second push-up countdown',
+    () async {
+      final actual = SetupViewModel(
+        exercise: ExerciseType.pushUp,
         camera: camera,
         estimator: estimator,
         clock: () => now,
         phoneTilt: placedPhone(),
       );
-      await custom.start();
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
-      await feed(2500, standingFrame());
-      expect(custom.state.autoStarted, isTrue);
-      custom.dispose();
-    });
-  });
+      actual.setGuideViewport(const Size(1000, 1000));
+      await actual.start();
+      PoseFrame frame({double shift = 0}) => standingFrame(
+        move: {
+          BodyLandmark.nose: (500 + shift, 140),
+          BodyLandmark.leftShoulder: (360 + shift, 270),
+          BodyLandmark.rightShoulder: (640 + shift, 270),
+          BodyLandmark.leftElbow: (280 + shift, 550),
+          BodyLandmark.rightElbow: (720 + shift, 550),
+          BodyLandmark.leftWrist: (200 + shift, 850),
+          BodyLandmark.rightWrist: (800 + shift, 850),
+        },
+      );
+      await feed(0, frame(shift: 250));
+      expect(actual.state.guideAligned, isFalse);
+      expect(actual.state.autoStarted, isFalse);
+      await feed(100, frame());
+      expect(actual.state.guideAligned, isTrue);
+      await feed(1600, frame());
+      await feed(3100, frame());
+      expect(actual.state.autoStarted, isTrue);
+      actual.dispose();
+    },
+  );
 
   group('detector failures', () {
     setUp(() => vm.start());
