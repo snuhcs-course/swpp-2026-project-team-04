@@ -85,8 +85,8 @@ Also changed: `MusicPlayer.seekToStart` (to replay an effect), `SoundSettings.vo
   before it is ready is skipped (a late hit is worse than none).
 - **Danger alarm.** `setDanger(true)` loops the alarm, `false` pauses it. A danger that starts while the alarm still
   loads sounds once it is ready.
-- **Sound off / background** silences the hits and pauses the alarm; the alarm comes back with the sound if the user
-  is still in danger.
+- **Sound off / background** silences the hits (one still sounding is cut off and not resumed, also one that was
+  rewinding) and pauses the alarm; the alarm comes back with the sound if the user is still in danger (Codex, PR #53).
 - **Loaded for the battle only.** `BattleSounds.dispose` calls `release` when the screen goes: the players are freed and
   the next battle's `prepare` loads them again (also retrying one that failed).
 - **Failures are ignored**; `dispose` releases the players for good.

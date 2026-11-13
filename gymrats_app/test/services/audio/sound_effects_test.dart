@@ -156,6 +156,50 @@ void main() {
     });
   });
 
+  test('sound off, or the app going to the background, cuts off a hit and '
+      'the gong still sounding', () {
+    fakeAsync((async) {
+      final effects = newEffects()..prepare();
+      async.flushMicrotasks();
+      final hit = playerOf(SoundEffect.excellent.asset);
+      final gong = playerOf(SoundEffect.ko.asset);
+      effects.play(SoundEffect.excellent);
+      async.flushMicrotasks();
+      expect(hit.playing, isTrue);
+      unawaited(settings.setEnabled(false));
+      async.flushMicrotasks();
+      expect(hit.playing, isFalse);
+
+      unawaited(settings.setEnabled(true));
+      async.flushMicrotasks();
+      expect(hit.playing, isFalse, reason: 'a cut-off hit does not resume');
+      effects.play(SoundEffect.ko);
+      async.flushMicrotasks();
+      expect(gong.playing, isTrue);
+      effects.didChangeAppLifecycleState(AppLifecycleState.paused);
+      async.flushMicrotasks();
+      expect(gong.playing, isFalse);
+      effects.dispose();
+    });
+  });
+
+  test('a hit whose rewind ends after the sound went off stays silent', () {
+    fakeAsync((async) {
+      final effects = newEffects()..prepare();
+      async.flushMicrotasks();
+      final hit = playerOf(SoundEffect.good.asset);
+      final gate = hit.seekGate = Completer<void>();
+      effects.play(SoundEffect.good);
+      async.flushMicrotasks();
+      unawaited(settings.setEnabled(false));
+      async.flushMicrotasks();
+      gate.complete();
+      async.flushMicrotasks();
+      expect(hit.playing, isFalse);
+      effects.dispose();
+    });
+  });
+
   test('danger asked for while sound is off starts when sound is back', () {
     fakeAsync((async) {
       unawaited(settings.setEnabled(false));

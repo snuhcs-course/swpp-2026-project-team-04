@@ -70,8 +70,9 @@ abstract interface class SoundEffects {
 /// has to rewind and play: no file is opened when the rep lands.
 ///
 /// - [SoundSettings.enabled] false, or the app not in the foreground,
-///   silences the effects and pauses the alarm; the alarm comes back with
-///   the sound if the user is still in danger.
+///   silences the effects (cutting off one still sounding) and pauses the
+///   alarm; the alarm comes back with the sound if the user is still in
+///   danger.
 /// - Player failures are ignored: a missing effect is not worth stopping the
 ///   battle for.
 class SoundEffectsService with WidgetsBindingObserver implements SoundEffects {
@@ -133,7 +134,8 @@ class SoundEffectsService with WidgetsBindingObserver implements SoundEffects {
     if (player == null || !_ready.contains(player)) return;
     _quietly(() async {
       await player.seekToStart();
-      await player.play();
+      // The sound may have gone, or the app left, while it rewound.
+      if (!_silenced && !_disposed) await player.play();
     });
   }
 
@@ -166,6 +168,10 @@ class SoundEffectsService with WidgetsBindingObserver implements SoundEffects {
   void _onSilenceChanged() {
     if (_disposed) return;
     if (_silenced) {
+      // A hit or the gong still sounding stops too, not only the alarm.
+      for (final player in _players.values) {
+        _quietly(player.pause);
+      }
       _pauseAlarm();
     } else if (_danger) {
       _startAlarm();

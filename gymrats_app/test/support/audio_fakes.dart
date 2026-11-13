@@ -116,8 +116,14 @@ class FakeMusicPlayer implements MusicPlayer {
   /// How many times it went back to the start.
   int rewinds = 0;
 
+  /// Completes [seekToStart]; null rewinds at once.
+  Completer<void>? seekGate;
+
   @override
-  Future<void> seekToStart() async => rewinds++;
+  Future<void> seekToStart() async {
+    rewinds++;
+    await seekGate?.future;
+  }
 
   @override
   Future<void> stop() async {
