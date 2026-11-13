@@ -401,11 +401,11 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `ae44bbb`, wit
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | – | CI comment "Tests and coverage (GitHub Actions)" on the W2b PR |
-| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | – | same CI comment |
-| Service | flutter_test, MockClient, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment | – | same CI comment |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | – | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | TODO(Woohyun Song): from the PR's CI comment (`server/` unchanged) | – | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 99.2% (510/514) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #54, commit `4cd89bc`, [run 43492170043](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43492170043) |
+| ViewModel | flutter_test, fakes | 90% | 96.8% (1179/1218) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.3% (2259/2370) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.3% (6235/6475) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `4cd89bc` |
 
 - **Tests:** `flutter test` had 2362 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as before, and W2b does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
@@ -417,8 +417,11 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `ae44bbb`, wit
 - **Other checks:**
   - `ownership_guard.py --check-diff`: ok on `ae44bbb`: 32 changed files, all owned by W2b (with #50 in `main`, W2's and #49's files have left the diff).
   - Server `pytest` was not run, because `server/` did not change.
-- **Coverage:** TODO(Woohyun Song): the PR's CI comment (commit, run link, per-layer numbers, any test file left out by CI's 240 s limit).
-- **Shortfalls:** TODO(Woohyun Song): from the CI comment.
+- **Coverage:** from the CI comment on PR #54 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/54#issuecomment-6862902439)), commit `4cd89bc` (2026-11-14 04:32 KST; the app and server jobs both succeeded; [run 43492170043](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43492170043)). `4cd89bc` changes only these notes on top of `ae44bbb`.
+  - App total 96.2% (10448/10859); Other 94.0% (265/282).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2362 passed, 10 skipped, 0 failed), the same as on this PC.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` (not a W2b file), as for W3. Its tests still ran and passed in `flutter test`.
+- **Shortfalls:** none; every layer and the server meet their targets.
 - **Screen readers:** widget tests check the words through the semantics tree: the large setup hint read whole, MATCH FOUND's "나, (name)" and "상대, (name), AI" and each character as a picture with its name, the radar as one picture, and 결과 보기 as a button. TalkBack on a real phone was **not** checked.
 - **Manual check (the user, on the Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17 from W2's record):**
   - 3-B: the push-up setup passed with the body matched to the larger silhouette, and at the countdown the screen went to the 50 : 50 layout. No problems.
