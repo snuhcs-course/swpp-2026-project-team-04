@@ -382,3 +382,84 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `1f7e6f5`, wit
   - the same first test (the bot battle gets `seal`)
   - `'a new account reads the rules meanwhile; after 시작하기 home still waits for the read'`
 - A choice made during the read still wins (the rule of 11-13). Tests: `'a choice made while reading ends the loading and wins'`, `'a slow read does not undo a choice made meanwhile'`.
+
+#### 2026-11-14 · code at commit `ae44bbb` · step W2b `feat/battle_screen_polish` (A2 polish of the battle and matching screens, team order #7)
+This step polishes W2's screens, following the W2b design spec (`W2B-SPEC.md`, from the user's design canvas) and the user's follow-ups after W2's phone check:
+- **3-B, the pose setup:** while setting up, the camera takes about 80% of the screen. The stage shows only its HUD, with a status band and two ready chips. The hint is a large one-line band and the ready button is large. When the countdown starts, the line comes down to W2's half-and-half layout in 350 ms and the fighters pop up. Going back to the setup reverses it. #49's silhouette keeps its place on the camera picture (option 가), so it grows with the picture.
+- **1-A, the radar blips:** the three blips are red laser-pointer dots that light up as the sweep passes. The online lobby uses the same radar.
+- **2-A3, MATCH FOUND:** a board with a lime cell (me) over a pink one (the opponent), each player on a white pedestal, and a "VS" disc. Since W3 (#52) is in `main`, the players are the W3 characters: my saved choice, RepBot for a bot, and online the character the server passed on, each with its own idle motion (the opponent's 230 ms later, as on the stage) and read as a picture with its name. (Built first with W2's stand-in fighter, then swapped in `ae44bbb`.)
+- **The end screen (option A, the user's choice of three drawn options):** once the result is known, the line goes down to the bottom of the screen in 450 ms and the camera area disappears. The stage stays where it is, its ground fills the screen, and 결과 보기 stays in the middle of the lower half, now without the gray cover. An online time-up keeps the camera and the leave button until the server's result comes. With reduced motion the end look comes at once.
+- **Old avatar words:** one comment in `battle_viewmodel.dart` and two test names still named the old mannequin.
+
+Judging, scores, timing, the conditions for the result screen, the server and the protocol do not change.
+
+The branch started on 2026-11-13 from W2's head `38ea06d`. On 2026-11-14 it merged `origin/main` twice:
+- `1ed57ca` (#49, #50) as `46c394e`, with no conflict;
+- `23879ca` (#51, #52) as `13d0b4d`, with conflicts in three W2b files: `battle_arena.dart`, `battle_fx_motion.dart` and `battle_arena_test.dart`. W3's idle motion and W2b's setup layout were both kept. Two W3 screen tests looked for the characters while setting up, where 3-B draws no fighter; they now check after the countdown.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `ae44bbb`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | – | CI comment "Tests and coverage (GitHub Actions)" on the W2b PR |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | – | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment | – | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | – | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | TODO(Woohyun Song): from the PR's CI comment (`server/` unchanged) | – | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` had 2362 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W2b does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W2b adds 1 test file and 1 data file, and changes 15 test files and 1 data file (the table below).
+- **The design checks:**
+  - `test/widgets/battle_w2b_golden.json` is the design's `w2b_golden.json`, byte for byte. 3-B is checked against its 39 `setupTransition` samples (the line, the camera box, the picture, what fades and pops) and 1-A against its `radar` samples.
+  - `test/widgets/battle_fx_golden.json` (W2's samples) changed in one field only: the 17 `resultButton.scrim` values were removed, because option A leaves no camera to cover behind 결과 보기. The check of that field left `battle_fx_motion_test.dart`. Every other W2 sample is unchanged and still passes.
+  - The end screen has no design samples: its progress is one pure function (`BattleFxFrame.endLayout`, `BattleArenaLayout.lineTop(progress, end:)`), tested at its start, middle and end for a knockout, a time-up decided at once or later, a player leaving, an end during the setup, and reduced motion.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `ae44bbb`: 32 changed files, all owned by W2b (with #50 in `main`, W2's and #49's files have left the diff).
+  - Server `pytest` was not run, because `server/` did not change.
+- **Coverage:** TODO(Woohyun Song): the PR's CI comment (commit, run link, per-layer numbers, any test file left out by CI's 240 s limit).
+- **Shortfalls:** TODO(Woohyun Song): from the CI comment.
+- **Screen readers:** widget tests check the words through the semantics tree: the large setup hint read whole, MATCH FOUND's "나, (name)" and "상대, (name), AI" and each character as a picture with its name, the radar as one picture, and 결과 보기 as a button. TalkBack on a real phone was **not** checked.
+- **Manual check (the user, on the Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17 from W2's record):**
+  - 3-B: the push-up setup passed with the body matched to the larger silhouette, and at the countdown the screen went to the 50 : 50 layout. No problems.
+  - 1-A: the radar's red dots. No problems.
+  - 2-A3: MATCH FOUND. No problems.
+  - **Not checked on the phone yet:** the end screen, and MATCH FOUND with the W3 characters (the phone check above saw W2's stand-in).
+  - An online battle on two phones was not reported in this step.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/battle_fx_motion_test.dart` (updated) + `battle_w2b_golden.json` (new) + `battle_fx_golden.json` (updated) | the setup's layout and its move against the design's 39 samples; reduced motion; going back during the move or the pop; the status band fading with its words; the ready chips; the line going down after the battle: when it starts for each ending, 450 ms eased, an online time-up waiting for the server, reduced motion, the ending and the button's moment unchanged |
+| View | `test/widgets/battle_arena_test.dart` (updated) | the setup's line, camera box and picture on two phones; the countdown's move; going back; a screen opening on the round; after the battle: the line and the camera going down, the ground filling the screen, the stage in place, 결과 보기 in the lower half with no cover, the online wait, reduced motion, an end during the setup |
+| View | `test/widgets/battle_camera_area_test.dart` (updated) | the setup's large band, bar, camera switch and ready button; their fade at the countdown (no taps, not read); every setup line on one line at 1.3× and 2×; 결과 보기's tests moved out |
+| View | `test/widgets/battle_result_button_test.dart` (new) | 결과 보기: lime with an ink edge, words and arrow, read as a button, opens the result, comes up as the effect says, fits at 1.3× and 2× on 360 and 320 wide |
+| View | `test/widgets/battle_camera_view_test.dart` (updated) | the picture fills the setup's box and fits whole in the battle's; the silhouette keeps its place on the picture (option 가) and its shape |
+| View | `test/widgets/battle_stage_test.dart`, `battle_banner_test.dart` (updated) | no fighters or tags while setting up; the ready chips; the valid counts fading in; the Korean bands |
+| View | `test/screens/battle_screen_test.dart`, `online_preparation_test.dart` (updated) | the bot and online setups in the new layout, with the silhouette's place; W3's two character tests now look for the characters after the countdown (none while setting up) |
+| View | `test/screens/matching_screen_test.dart`, `online_lobby_screen_test.dart` (updated) | the blips against the design's `radar` samples, every 50 ms over two turns; their look; still with reduced motion; a stopped radar keeps its blips; the same radar in the online lobby; the lobby gives MATCH FOUND the session's two characters |
+| View | `test/screens/versus_screen_test.dart` (updated) | the board, cells, pedestals, white edges, words and pills; long names cut and read whole; online without the AI pill; the low-cell scale; the W3 characters: my saved choice against RepBot, the lobby's two online, the default for an unknown person, each read as a picture with its name; their idle motions against W3's (the opponent 230 ms later), the white copies moving with them, under the safety warning, still with reduced motion |
+| View | `test/demo/battle_demo_test.dart` (updated) | the stage demo after an ending: its buttons go with the camera, and 결과 보기 starts over |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | two test names: "swings the opponent" instead of the old mannequin |
+| Design | `test/theme/app_theme_test.dart`, `test/design_tokens_test.dart` (updated) | the setup's and the board's text styles; the new widget file in the token check |
+
+### Acceptance criteria → tests
+- 3-B: during the setup the camera takes about 80% of the screen; at the countdown the line comes down in 350 ms and the fighters pop up; going back reverses it; reduced motion jumps. Tests:
+  - `"every sample matches: the line's progress, what fades, the fighters and the number"` (the design's 39 samples)
+  - `'setting up, the camera takes the screen from 156 down, over the stage, the picture fills it, and no fighter is drawn'`
+  - `'the countdown brings the line down in 350 ms, then the fighters pop up, as the design times it'`
+  - `'back to the setup during the countdown, the fighters fade out and the line goes back up'`
+  - `"with reduced motion the countdown jumps to the battle's layout, and back"`
+- 1-A: the blips light up as the sweep passes, as the design's samples say. Tests: `'every 50 ms over two turns: the sweep and the three blips'`, `'a radar stopped when the search ends keeps its blips as they were, fading or lit'`
+- 2-A3: the board, the players and their words; reduced motion; the W3 characters. Tests:
+  - `'the board (W2b 2-A3): a lime cell over a pink one, an ink line between, a white VS disc over its middle, in one ink-edged box that takes the height between the header and the rules'`
+  - `'beside each character: "나" or "상대" on a white pill over the name in Do Hyeon 28, and "AI" on a pill for a bot; …'` (the name goes on about the sides and the cell's middle)
+  - `'with reduced motion they stand still in the idle pose and nothing keeps the screen redrawing'`
+  - `"the user's saved character stands against RepBot; online, the characters the lobby gives, the opponent's as the server sent it; each is read as a picture with its name"`
+  - `"they move by their own idle motions from the moment the board shows, the opponent's running 230 ms later, as on the stage; the pedestals and the words stay"`
+- The end screen: the camera goes once the result is known, the stage fills the screen, 결과 보기 stays in place; the ending and the way to the result do not change. Tests:
+  - `'a knockout: once the blow lands the line goes down in 450 ms, the camera with it, the ground fills the screen and the stage stays; 결과 보기 comes up in the middle of the lower half, with no dimming'`
+  - `'online, a time-up waiting for the server keeps the camera and the way out until the result comes, then the line goes down'`
+  - `'with reduced motion the camera is gone at once'`
+  - `"the ending itself, the button's moment and the setup layout do not change with it"`
+  - unchanged and passing: `'a KO plays the ring-out to 결과 보기, which opens the result in place'` (the bot battle screen)

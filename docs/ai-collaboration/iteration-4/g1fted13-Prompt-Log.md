@@ -550,6 +550,25 @@ W2 feat/battle_screen_revamp 작업이야. 먼저 CLAUDE.md, task.md, progress.m
 4. PR 번호와 CI 결과를 보여 주고 멈춰.
 </pasted_content id=\"ed13\">"
 
+<!-- Added 2026-11-14: the two prompts below came after W2's export (sent 11-13 01:47 and 01:50); taken from a re-export of the W2 session only. -->
+<!-- a9a0942e 2026-11-12T16:47:30.655Z -->
+[Woohyun Song, 11-13 01:47] "<pasted_content id=\"ed13\">
+테스트 노트 TODO 답이야.
+1. 폰을 연결해 둘 테니 adb로 기종과 Android 버전을 직접 읽어서 채워(adb shell getprop ro.product.model, ro.build.version.release).
+2. 온라인 대결은 폰 두 대로 [확인했어 / 확인 안 했어]. 안 했으면 \"확인하지 않음, UAT 전에 팀원 폰과 확인 예정\"으로 적어. UAT-3 AC2의 \"1초 안에\"도 같은 상태로 적어.
+3. 무대 데모는 [봤어 / 안 봤어], 새로 그린 안전 안내 그림(3688547 이후)은 [봤어 / 안 봤어]. 안 본 것은 \"확인하지 않음\"으로 적어.
+채운 뒤 커밋하고 push해. PR 본문의 테스트 부분도 같게 맞춰 주고 멈춰.
+</pasted_content id=\"ed13\">"
+
+<!-- a9a0942e 2026-11-12T16:50:58.687Z -->
+[Woohyun Song, 11-13 01:50] "<pasted_content id=\"ed13\">
+테스트 노트 TODO 답이야. 채운 뒤 커밋하고 push하고, PR 본문의 테스트 부분도 같게 맞춰 주고 멈춰.
+1. 폰: Galaxy S26+ (SM-S947N), One UI 9.0, Android 17.
+2. 온라인 대결은 폰 두 대로 확인하지 않았어. \"확인하지 않음, UAT 전에 팀원 폰과 확인 예정\"으로 적고, UAT-3 AC2의 \"1초 안에\"도 같은 상태로 적어.
+3. 무대 데모는 실행하지 않았어. 실제 봇 대결(푸쉬업, 스쿼트)에서 나온 연출만 폰으로 봤고, 온라인에서만 나오는 연출(재연결 띠, 상대 연결 끊김, 상대 퇴장, 내 연결 끊김 패배)은 폰에서 보지 않았다고 적어. 이 연출들은 위젯 테스트와 원본 대조 테스트(fx_golden.json)로 확인했다는 점도 같이 적어.
+4. 새로 그린 안전 안내 그림(3688547 이후)은 폰에서 확인했어.
+</pasted_content id=\"ed13\">"
+
 ## 2026-11-14 · Woohyun Song · feat/characters
 <!-- Left out on purpose: the session summary written when the session ran out of context (11-13 04:32; not a prompt). Its key stays at the end of this section so a later export does not add it again. Cut: the client's injected browser notice in front of 4 prompts (11-13 03:25, 11-13 03:28, 11-14 00:08, 11-14 02:01; not the user's text). -->
 <!-- Note: the 11-13 03:25 prompt was stopped seconds after it was sent (that session has no other prompt); the 11-13 03:28 prompt, a revised version, started W3 in a new session. -->
@@ -648,3 +667,71 @@ PR #52(W3)에 Codex 리뷰 코멘트가 하나 달렸어(P2, gymrats_app/lib/vie
 </pasted_content id=\"2b89\">"
 
 <!-- 8c23246f 2026-11-12T19:32:29.399Z -->
+
+## 2026-11-14 · Woohyun Song · feat/battle_screen_polish
+<!-- Left out on purpose: the session summary written when a session ran out of context (11-13 14:23; not a prompt). Its key stays so a later export does not add it again. Cut: the client's injected browser notice in front of 3 prompts (11-13 12:27, 11-13 21:47, 11-14 02:59; not the user's text). The 11-14 02:59 prompt was interrupted by the user about 10 s after it was sent and re-sent, revised, at 03:02; both are kept. -->
+<!-- bba62a78 2026-11-13T03:27:47.426Z -->
+[Woohyun Song, 11-13 12:27] "<pasted_content id=\"b923\">
+W2b 시작하자 (feat/battle_screen_polish, 팀 계획 #7). 오늘 하네스가 업데이트돼서 .claude/ownership.json과 .claude/team-plan.md가 바뀌었어. 먼저 python .claude/hooks/ownership_guard.py --status로 W2b가 보이는지 확인해. 그다음 task.md \"PR plan\"에 W2b 줄을 넣고, progress.md에 오늘 업데이트 내용을 적어. 내용은 W2b 추가, S3 1부(#49)가 W2보다 먼저 머지, W7·W8 마감 11/15, 기능 머지 마감 11/15 밤이야.
+
+브랜치: W2b는 원래 W2(#50) 머지 후에 시작하지만, 마감이 빠듯해서 #50 위에 쌓아서 먼저 한다. W3(feat/characters)는 push하지 말고 그대로 둬. 작업 트리가 깨끗한지 확인한 뒤 origin/feat/battle_screen_revamp(38ea06d)에서 feat/battle_screen_polish를 만들어. W2b 파일 목록이 W2와 같아서 #49 파일용 예외 줄만으로 check-diff가 통과해야 해. 처음에 한 번 확인해.
+
+기준: .claude/design/gymrats-w2b-reference/W2B-SPEC.md. 이번 범위는 3-B만이야. 자세 세팅 중에는 카메라가 화면의 약 80%를 쓰고, 카운트다운이 시작되면 50:50으로 바뀌는 것. 1-A(레이더 점)와 2-A3(MATCH FOUND)은 W6~W8 뒤에 할 거라 지금은 손대지 마.
+
+명세 11절 질문의 답이야. task.md Decisions에 오늘 날짜로 적어.
+1. (가) 그림 위의 자리를 지금과 똑같이 둔다
+2~5. 권장안대로
+6. 권장안대로 하되 이번에는 3-B만. 1-A는 W6~W8 뒤, 2-A3은 W3 머지 뒤
+7~9. 권장안대로 (1-A, 2-A3을 할 때 적용)
+10. 권장안대로. 문서 주인인 현우에게 보낼 문장을 progress.md \"Messages for teammates\"에 적어
+
+w2b_golden.json 대조를 포함한 테스트, flutter analyze, check-diff, reviewer APPROVE까지 마치고 보고해. push는 내가 말할 때 해. PR 본문 첫 줄은 \"Merge order: #7 (team plan); merge after: #6 feat/battle_screen_revamp (PR #50, open)\"이고, 본문에 \"Depends on #50\"을 넣어.
+</pasted_content id=\"b923\">"
+
+<!-- bba62a78 2026-11-13T05:23:10.824Z -->
+
+<!-- bba62a78 2026-11-13T08:15:58.700Z -->
+[Woohyun Song, 11-13 17:15] "네가 정한 네 가지(준비 칩과 상태 띠가 사라지는 방식, 사라지는 큰 띠·버튼을 누를 수 없게 한 것, 카운트다운 중에 열리면 전환 없이 50:50, 큰 안내 띠 모서리 AppRadius.small) 모두 그대로 가자. task.md Decisions에 오늘 날짜로 적고 로컬 커밋해. push는 하지 마.
+폰 확인은 오늘 밤에 내가 할 거라서 수업 노트와 push는 그 뒤에 할게.
+현우에게 보낼 10번 문장(테스트 문서 설명)은 카톡으로 따로 보내지 않고 PR 본문에 넣을 거니까, PR 본문 초안 만들 때 넣어 줘."
+
+<!-- 577b69d4 2026-11-13T12:47:20.330Z -->
+[Woohyun Song, 11-13 21:47] "<pasted_content id=\"cc8c\">
+W2b에 1-A(레이더 점)와 2-A3(MATCH FOUND)도 넣자. 범위를 넓히는 거라 처음 지시의 \"이번에는 3-B만\"은 취소야.
+1. 작업 트리가 깨끗한지 확인하고 feat/battle_screen_polish로 바꿔. 다른 worktree에 체크아웃돼 있어서 안 바뀌면 멈추고 알려줘.
+2. 기준은 .claude/design/gymrats-w2b-reference/W2B-SPEC.md 2절(1-A)과 3절(2-A3)이야. 11절 답은 task.md Decisions에 적어 둔 그대로이고, 7번(온라인 로비의 레이더도 같이 바뀜)과 9번(긴 닉네임은 한 줄에서 \"…\")은 권장안대로 해.
+3. 2-A3의 캐릭터는 W3(feat/characters) 코드가 이 브랜치에 없어서 지금은 쓸 수 없어. 명세 11절 6번의 대안대로 캐릭터 자리에 W2의 임시 선수를 넣고, 흰 테두리·발판·자리·크기·화면이 낮을 때 줄이는 규칙은 명세 그대로 만들어. 캐릭터가 들어갈 자리는 위젯 하나로 모아서, 나중에 W3에서 그 위젯만 W3 캐릭터로 바꾸면 되게 해. W3 파일은 고치지도 가져오지도 마.
+4. 동작 줄이기와 접근성은 명세 2절, 3절, 6절, 7절대로 하고, w2b_golden.json의 radar 값도 대조해.
+5. 테스트, analyze, check-diff, reviewer APPROVE까지 마치고 커밋해. push는 하지 마. progress.md 남은 일에 \"W3가 main에 들어온 뒤 MATCH FOUND의 임시 선수를 W3 캐릭터로 바꾼다\"를 적어.
+</pasted_content id=\"cc8c\">"
+
+<!-- b776618b 2026-11-13T17:59:05.885Z -->
+[Woohyun Song, 11-14 02:59] "<pasted_content id=\"1e04\">
+W2b를 마무리해서 PR을 올리자. PM이 W6~W8을 먼저 끝내라고 해서, 대결이 끝난 뒤 화면(무대를 화면 전체로)은 이번 W2b에서 빼고 시간이 남으면 나중에 따로 할 거야.
+1. 작업 트리가 깨끗한지 확인하고 feat/battle_screen_polish로 바꾼 뒤 git fetch origin && git merge origin/main을 해(rebase 금지). 충돌은 W2b 파일 안에서만 풀어. PR 본문 첫 줄은 \"Merge order: #7 (team plan); merge after: #6 feat/battle_screen_revamp (merged as #50)\"으로 하고 \"Depends on #50\"은 빼.
+2. 상우가 #49 후속으로 세팅 화면 카메라 비율을 고치는 PR을 올렸어. origin에서 그 브랜치를 찾아서 3-B의 실루엣 (가) 계산(BattleCameraView.coverShare)과 겹치는 파일이나 동작이 있는지 보고 알려 줘. 상우 파일은 고치지 마.
+3. W3 세션이 progress.md에 적어 둔 대로, battle_viewmodel.dart 주석과 그 테스트 이름 두 개에 남은 예전 아바타 문구를 고쳐.
+4. W2 마무리 때 보낸 프롬프트 두 개(11-13 01:47, 01:50)가 W2 내보내기 뒤에 와서 Prompt Log에서 빠졌어. docs/ai-collaboration/iteration-4/[REDACTED:custom_term]-Prompt-Log.md의 W2 부분에 그 두 개를 더해 줘.
+5. 테스트, analyze, check-diff, reviewer APPROVE까지 마쳐.
+6. 수업 노트(테스트 노트, AI 노트)에 W2b를 써. 폰 확인은 내가 했어: 3-B(커진 실루엣에 맞춰 세팅 통과, 카운트다운 때 50:50 전환), 1-A 레이더 점, 2-A3 MATCH FOUND 모두 문제없었어. 기기 정보는 노트에 있는 기존 기록 그대로 쓰고 다시 묻지 마.
+7. PR 본문에는 3-B·1-A·2-A3의 내용, 명세 11절에서 정한 답, MATCH FOUND의 임시 선수(_VersusCharacter)가 W3가 들어오면 캐릭터로 바뀐다는 것, W3(#52)와 겹치는 파일, 테스트 문서 설명(11절 10번)을 넣어. 대결이 끝난 뒤 화면은 PM 결정으로 이번 범위에서 뺐다고 적어.
+8. 커밋하고 push한 뒤 PR을 열어. CI 결과가 나오면 노트와 PR 본문에 반영해서 다시 push해.
+</pasted_content id=\"1e04\">"
+
+<!-- b776618b 2026-11-13T18:02:55.164Z -->
+[Woohyun Song, 11-14 03:02] "<pasted_content id=\"1e04\">
+W2b를 마무리해서 PR을 올리자. 대결이 끝난 뒤 화면까지 이번 W2b에 넣는다.
+1. 작업 트리가 깨끗한지 확인하고 feat/battle_screen_polish로 바꾼 뒤 git fetch origin && git merge origin/main을 해(rebase 금지). 충돌은 W2b 파일 안에서만 풀어. PR 본문 첫 줄은 \"Merge order: #7 (team plan); merge after: #6 feat/battle_screen_revamp (merged as #50)\"으로 하고 \"Depends on #50\"은 빼.
+2. 상우가 #49 후속으로 세팅 화면 카메라 비율을 고치는 PR을 올렸어. origin에서 그 브랜치를 찾아서 3-B의 실루엣 (가) 계산(BattleCameraView.coverShare)과 겹치는 파일이나 동작이 있는지 보고 알려 줘. 상우 파일은 고치지 마.
+3. W3 세션이 progress.md에 적어 둔 대로, battle_viewmodel.dart 주석과 그 테스트 이름 두 개에 남은 예전 아바타 문구를 고쳐.
+4. W2 마무리 때 보낸 프롬프트 두 개(11-13 01:47, 01:50)가 W2 내보내기 뒤에 와서 Prompt Log에서 빠졌어. docs/ai-collaboration/iteration-4/[REDACTED:custom_term]-Prompt-Log.md의 W2 부분에 그 두 개를 더해 줘.
+5. 대결이 끝난 뒤 화면: 지금은 대결이 끝나면(KO든 시간 종료든) 아래 카메라 칸이 회색으로 덮이고 \"결과 보기\" 버튼만 남은 채, 승리 모션은 위쪽 절반에서만 나와. 대결이 끝나 카메라가 더 필요 없어지는 순간부터는 무대가 화면 전체를 쓰게 바꾸고 싶어. 3-B의 반대 방향이라고 보면 돼. 세팅 때 경계선이 위로 올라갔던 것처럼, 끝날 때는 경계선이 아래로 내려가며 카메라 칸이 사라지는 거야.
+   먼저 코드는 고치지 말고 2~3개 안을 실제 글꼴로 그린 그림으로 .claude/design/out/w2b-end/에 만들어 보여 줘. 안마다 무대를 어떻게 채우는지(배경만 늘리고 캐릭터와 HUD는 제자리에 두기, 또는 무대를 늘리거나 옮겨서 승자를 화면 가운데에 두기 등), \"결과 보기\" 버튼의 자리, 전환 시간, KO와 시간 종료·봇과 온라인에서 달라지는 점을 짧게 적어 줘. 시간이 빠듯하니 안은 간단히 보여 주고, 내가 고르면 바로 만들어.
+6. 고른 안으로 만들 때: 판정, 점수, 결과 화면으로 넘어가는 조건은 바꾸지 않는다. 봇과 온라인 둘 다 BattleArena 공용 배치에 넣고, 3-B처럼 진행값 하나로 계산하는 순수 함수로 두고 테스트한다. 동작 줄이기가 켜져 있으면 곧바로 끝 모습으로 간다. 기존 W2 골든의 끝 상태 값이 바뀌면 바뀐 필드만 고치고 그 이유를 task.md Decisions에 적는다.
+7. 테스트, analyze, check-diff, reviewer APPROVE까지 마친 뒤 수업 노트(테스트 노트, AI 노트)에 W2b를 써. 폰 확인은 내가 했어: 3-B(커진 실루엣에 맞춰 세팅 통과, 카운트다운 때 50:50 전환), 1-A 레이더 점, 2-A3 MATCH FOUND 모두 문제없었어. 끝 화면은 아직 폰에서 안 봤으니 노트에 확인 전으로 적어. 기기 정보는 노트에 있는 기존 기록 그대로 쓰고 다시 묻지 마.
+8. PR 본문에는 3-B·1-A·2-A3·끝 화면의 내용, 명세 11절에서 정한 답과 끝 화면에서 고른 안, MATCH FOUND의 임시 선수(_VersusCharacter)가 W3가 들어오면 캐릭터로 바뀐다는 것, W3(#52)와 겹치는 파일, 테스트 문서 설명(11절 10번)을 넣어.
+9. 커밋하고 push한 뒤 PR을 열어. CI 결과가 나오면 노트와 PR 본문에 반영해서 다시 push해.
+</pasted_content id=\"1e04\">"
+
+<!-- b776618b 2026-11-13T18:21:55.054Z -->
+[Woohyun Song, 11-14 03:21] "일단 A로 가자"
