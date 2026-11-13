@@ -6,6 +6,19 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-14 · code at commit `6ef8614` · step `feat/battle_bgm` (team plan #8, Codex review of PR #53)
+Follow-up to the Codex review of PR #53 (P2): turning the sound off or leaving the app now also cuts off an effect still
+sounding (a hit, the KO gong), and a hit whose rewind ends after the sound went off stays silent. Same commands as the
+entry below; coverage not re-measured (one method changed, both new branches run by the new tests).
+
+- **Tests:** `flutter test` 2362 passed, 0 failed, 10 skipped (pre-existing, as below). `flutter analyze` no issues.
+- **Reviewer:** APPROVE (one round; Minor: re-check after the rewind, the doc rule, these notes; all done).
+
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/audio/sound_effects_test.dart` (+2) | sound off, or the app going to the background, cuts off a hit and the gong still sounding (not resumed when sound is back); a hit whose rewind ends after the sound went off stays silent |
+| Service | `test/support/audio_fakes.dart` (updated) | `FakeMusicPlayer.seekGate` holds a rewind open |
+
 #### 2026-11-14 · code at commit `8867160` · step `feat/battle_bgm` (team plan #8, P11 battle BGM and effects)
 The battle's sound: music by screen and stage (menu, setup, battle, fever = battle track at 1.25x, win/lose jingle),
 my reps' effects (Good punch, Excellent one-two, Average light hit, miss buzz), a looping danger alarm and a KO gong,
