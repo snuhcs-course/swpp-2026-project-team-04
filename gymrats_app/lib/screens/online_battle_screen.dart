@@ -22,6 +22,7 @@ import '../widgets/battle_online_events.dart';
 import '../widgets/battle_stage_model.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
+import '../widgets/sound_battle.dart';
 import 'battle_screen.dart' show BattleScreen, BattleSetupListener;
 
 /// An online battle, from the camera preparation to the end: the fighting
@@ -78,6 +79,7 @@ class OnlineBattleScreen extends StatefulWidget {
 class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     with WidgetsBindingObserver {
   late final RepCounterViewModel _counter;
+  final _sounds = BattleSounds();
   StreamSubscription<dynamic>? _reps;
   late final SetupChecker _setup;
   SetupStatus _setupStatus = SetupStatus.initial;
@@ -200,7 +202,6 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         // The session takes a rep only while the round runs; the stage
         // plays only what the session took.
         final running = session.roundRunning;
-        if (rep.valid) const DeviceRepSound().playRepCounted();
         session.submitRep(rep, passDepth: _counter.passDepth);
         if (running) {
           _stage.rep(
@@ -444,12 +445,14 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _counter.removeListener(_onCounter);
     unawaited(_reps?.cancel());
     _counter.dispose();
+    _sounds.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     if (_endedWithoutResult) {
+      _sounds.ended();
       return _Ended(session: session, onHome: () => Navigator.pop(context));
     }
     final counter = _counter.state;
@@ -464,6 +467,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       myName: widget.playerName,
       cameraFailed: cameraFailed,
     );
+    _sounds.show(stage);
     final setup = stage.phase == BattleStagePhase.setup;
     // The setup's guide stays up to the start, as in the bot battle, and
     // the round's height lines come with the round.
@@ -485,7 +489,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         body: BattleArena(
           controller: _stage,
           state: stage,
-          onCue: widget.onCue,
+          onCue: widget.onCue ?? _sounds.cue,
           camera: cameraFailed
               ? _CameraTrouble(
                   onRetry: counter.phase == CounterPhase.permissionDenied

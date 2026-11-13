@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
+import '../services/audio/background_music.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/lobby_menu_item.dart';
 import '../widgets/lobby_parts.dart';
 import '../widgets/lobby_rep_bot.dart';
+import '../widgets/sound_cues.dart';
 import 'play_screen.dart';
 import 'settings_screen.dart';
 
@@ -109,7 +111,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             body: _LoadFailed(message: vm.state.errorMessage, onRetry: vm.load),
           ),
           HomePhase.ready => LobbyPage.fill(
-            behind: const LobbyBackdrop(),
+            behind: const SoundCues(
+              music: MusicCue.menu,
+              child: LobbyBackdrop(),
+            ),
             above: [
               _TopBar(name: vm.state.profile!.name, onProfile: _openSettings),
               const SizedBox(height: AppSpacing.s16),
