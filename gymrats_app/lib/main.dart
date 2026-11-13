@@ -56,7 +56,6 @@ Future<void> main() async {
     GymRatsApp(
       authRepository: auth,
       userRepository: ServerUserRepository(api: api, auth: auth),
-      avatarStore: SecureAvatarStore(),
       characterStore: SecureCharacterStore(),
       rulesSeenStore: SecureRulesSeenStore(),
       settingsStore: SecureSettingsStore(),
@@ -88,6 +87,11 @@ class GymRatsApp extends StatefulWidget {
 
   /// Defaults to [BotMatchmaker].
   final Matchmaker Function()? createMatchmaker;
+
+  /// Unused since the characters replaced the avatars (W3): nothing reads
+  /// it, and the app passes none. Kept only because
+  /// `test/support/fakes.dart` still passes it; the PM removes it with
+  /// `avatar_store.dart` once no branch uses it.
   final AvatarStore? avatarStore;
 
   /// Keeps each account's character. Defaults to [MemoryCharacterStore].
@@ -134,7 +138,6 @@ class _GymRatsAppState extends State<GymRatsApp> {
   final _navigator = GlobalKey<NavigatorState>();
   late final AuthViewModel _auth;
   late final HelpViewModel _help;
-  late final AvatarStore _avatars;
 
   /// The signed-in account's character, the same on every screen.
   late final CharacterViewModel _characters;
@@ -146,7 +149,6 @@ class _GymRatsAppState extends State<GymRatsApp> {
   @override
   void initState() {
     super.initState();
-    _avatars = widget.avatarStore ?? MemoryAvatarStore();
     _characters = CharacterViewModel(
       store: widget.characterStore ?? MemoryCharacterStore(),
     );
@@ -239,7 +241,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
               exercise:
                   (settings.arguments as ExerciseType?) ?? ExerciseType.pushUp,
               onAuthenticationFailed: _auth.logOut,
-              avatarStore: _avatars,
+              myCharacter: _characters.characterId,
               createSession: widget.createOnlineSession,
               userRepository: widget.userRepository,
             ),

@@ -87,7 +87,7 @@ void main() {
         'display_name': 'Other',
         'avatar_id': 'https://untrusted/model.glb',
       });
-      expect(p.avatar, AvatarModel.astronaut);
+      expect(p.character, 'mouse');
     },
   );
 }

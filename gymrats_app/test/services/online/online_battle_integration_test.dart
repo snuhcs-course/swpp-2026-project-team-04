@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymrats_app/models/avatar_model.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
@@ -125,7 +125,7 @@ void main() {
       final session = OnlineBattleSession(
         endpoint: Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle'),
         accessToken: 'invalid-token',
-        avatar: AvatarModel.astronaut,
+        character: 'mouse',
         allowInsecureLoopback: true,
       );
       addTearDown(session.dispose);
@@ -520,52 +520,51 @@ void main() {
     });
   });
 
-  test(
-    'all catalog avatars can match and appear on the opponent client',
-    () async {
-      for (final avatar in AvatarModel.values) {
-        final s = BattleServer(
-          authenticate: (token) => token == 'alpha'
-              ? const BattleIdentity('a', 'Alpha')
-              : const BattleIdentity('b', 'Beta'),
-          readyTimeoutMs: 10000,
+  test('every character a person may pick matches and appears on the '
+      'opponent client', () async {
+    for (final art in CharacterRig.standard.selectable) {
+      final s = BattleServer(
+        authenticate: (token) => token == 'alpha'
+            ? const BattleIdentity('a', 'Alpha')
+            : const BattleIdentity('b', 'Beta'),
+        readyTimeoutMs: 10000,
+      );
+      await s.start();
+      final endpoint = Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle');
+      final a = OnlineBattleSession(
+        endpoint: endpoint,
+        accessToken: 'alpha',
+        character: art.id,
+        allowInsecureLoopback: true,
+      );
+      final b = OnlineBattleSession(
+        endpoint: endpoint,
+        accessToken: 'beta',
+        character: 'seal',
+        allowInsecureLoopback: true,
+      );
+      try {
+        await a.connect();
+        await until(() => a.phase == OnlinePhase.queued);
+        await b.connect();
+        await until(
+          () =>
+              a.phase == OnlinePhase.preparing &&
+              b.phase == OnlinePhase.preparing,
         );
-        await s.start();
-        final endpoint = Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle');
-        final a = OnlineBattleSession(
-          endpoint: endpoint,
-          accessToken: 'alpha',
-          avatar: avatar,
-          allowInsecureLoopback: true,
-        );
-        final b = OnlineBattleSession(
-          endpoint: endpoint,
-          accessToken: 'beta',
-          avatar: AvatarModel.robot,
-          allowInsecureLoopback: true,
-        );
-        try {
-          await a.connect();
-          await until(() => a.phase == OnlinePhase.queued);
-          await b.connect();
-          await until(
-            () =>
-                a.phase == OnlinePhase.preparing &&
-                b.phase == OnlinePhase.preparing,
-          );
-          expect(b.opponent!.avatar, avatar);
-          expect(a.error, isNull);
-          await a.leave();
-          await until(() => b.terminal);
-        } finally {
-          a.dispose();
-          b.dispose();
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-          await s.close();
-        }
+        expect(b.opponent!.character, art.id);
+        expect(a.opponent!.character, 'seal');
+        expect(a.error, isNull);
+        await a.leave();
+        await until(() => b.terminal);
+      } finally {
+        a.dispose();
+        b.dispose();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await s.close();
       }
-    },
-  );
+    }
+  });
 
   test('exercise queues stay separate and each preserves FIFO', () async {
     final s = await server(ready: 10000);
@@ -722,6 +721,154 @@ void main() {
     a.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'evil-url'});
     expect((await a.next('error'))['payload']['code'], 'INVALID_AVATAR');
   });
+
+  group('avatar_id carries the character (W3, Option A)', () {
+    test('the shape is all the server checks: 1 to 32 lowercase letters, '
+        'digits or _, as a string', () {
+      for (final ok in ['mouse', 'bear', 'avatar_01', 'a', 'x' * 32, 'b0t_2']) {
+        expect(isBattleAvatarId(ok), isTrue, reason: ok);
+      }
+      for (final bad in <Object?>[
+        '',
+        'x' * 33,
+        'Bear',
+        'evil-url',
+        'https://x/y.glb',
+        'mouse ',
+        7,
+        null,
+      ]) {
+        expect(isBattleAvatarId(bad), isFalse, reason: '$bad');
+      }
+    });
+
+    test('a character id is passed on to the opponent as it came, in '
+        'match.found, the snapshot and the result', () async {
+      final s = await server();
+      final a = await Wire.open(s, 'alpha'), b = await Wire.open(s, 'beta');
+      addTearDown(a.close);
+      addTearDown(b.close);
+      a.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'penguin'});
+      await a.next('queue.joined');
+      // Not one the app draws: still passed on, the app decides.
+      b.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'dragon'});
+      final found = await a.next('match.found');
+      final players = {
+        for (final p in found['payload']['players'] as List)
+          p['player_id']: p['avatar_id'],
+      };
+      expect(players, {'a': 'penguin', 'b': 'dragon'});
+      a.match = b.match = found['match_id'] as String;
+      a.send('match.resume', {});
+      final snapshot = await a.next('match.snapshot');
+      expect(
+        [
+          for (final p in snapshot['payload']['players'] as List)
+            p['avatar_id'],
+        ],
+        ['penguin', 'dragon'],
+      );
+      await ready(a, b);
+      a.send('match.leave', {'reason': 'user_exit'});
+      final ended = await b.next('match.finished');
+      expect(
+        {
+          for (final p in ended['payload']['players'] as List)
+            p['player_id']: p['avatar_id'],
+        },
+        {'a': 'penguin', 'b': 'dragon'},
+      );
+    });
+
+    test('avatar_id may be left out: that player has none in players[], '
+        'and the other app draws the mouse', () async {
+      final s = await server();
+      final wire = await Wire.open(s, 'alpha');
+      addTearDown(wire.close);
+      wire.send('queue.join', {'exercise': 'push_up'});
+      await wire.next('queue.joined');
+      final session = OnlineBattleSession(
+        endpoint: Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle'),
+        accessToken: 'beta',
+        character: 'bear',
+        allowInsecureLoopback: true,
+      );
+      addTearDown(session.dispose);
+      await session.connect();
+      final found = await wire.next('match.found');
+      final players = found['payload']['players'] as List;
+      final mine = players.singleWhere((p) => p['player_id'] == 'a') as Map;
+      expect(mine.containsKey('avatar_id'), isFalse);
+      final theirs = players.singleWhere((p) => p['player_id'] == 'b') as Map;
+      expect(theirs['avatar_id'], 'bear');
+      await until(() => session.phase == OnlinePhase.preparing);
+      expect(session.opponent!.character, 'mouse');
+      await session.leave();
+      await until(() => session.terminal);
+      await wire.next('match.cancelled');
+    });
+
+    test('an opponent that sent RepBot, an old avatar id or nothing is drawn '
+        'as the mouse', () {
+      for (final sent in <Object?>['bot', 'avatar_02', 'dragon', 7, null]) {
+        final player = OnlinePlayer.fromJson({
+          'player_id': 'other',
+          'display_name': 'Other',
+          'avatar_id': ?sent,
+        });
+        expect(player.character, 'mouse', reason: '$sent');
+      }
+      expect(
+        OnlinePlayer.fromJson({
+          'player_id': 'other',
+          'display_name': 'Other',
+          'avatar_id': 'kangaroo',
+        }).character,
+        'kangaroo',
+      );
+    });
+
+    test(
+      'an older server that refuses the character: the app joins once '
+      'more as avatar_01 and keeps searching, also after a reconnect',
+      () async {
+        final old = await _OldServer.start();
+        addTearDown(old.close);
+        final session = OnlineBattleSession(
+          endpoint: Uri.parse('ws://127.0.0.1:${old.port}/ws/v1/battle'),
+          accessToken: 'alpha',
+          character: 'seal',
+          allowInsecureLoopback: true,
+        );
+        addTearDown(session.dispose);
+        await session.connect();
+        await until(() => session.phase == OnlinePhase.queued);
+        expect(old.joins, ['seal', 'avatar_01']);
+        expect(session.error, isNull);
+        // The next connection of this session asks as avatar_01 at once.
+        await old.dropAll();
+        await until(() => old.joins.length == 3);
+        expect(old.joins.last, 'avatar_01');
+      },
+    );
+
+    test('an older server that refuses avatar_01 too: the search fails with '
+        'the error, without a third join', () async {
+      final old = await _OldServer.start(refuseAll: true);
+      addTearDown(old.close);
+      final session = OnlineBattleSession(
+        endpoint: Uri.parse('ws://127.0.0.1:${old.port}/ws/v1/battle'),
+        accessToken: 'alpha',
+        character: 'seal',
+        allowInsecureLoopback: true,
+      );
+      addTearDown(session.dispose);
+      await session.connect();
+      await until(() => session.phase == OnlinePhase.failed);
+      expect(old.joins, ['seal', 'avatar_01']);
+      expect(session.error, contains('INVALID_AVATAR'));
+    });
+  });
   test('server deduplicates verdicts, rejects conflicts, relays only pose whitelist', () async {
     final s = await server();
     final (a, b) = await paired(s);
@@ -868,13 +1015,13 @@ void main() {
     final a = OnlineBattleSession(
           endpoint: uri,
           accessToken: 'alpha',
-          avatar: AvatarModel.robot,
+          character: 'seal',
           allowInsecureLoopback: true,
         ),
         b = OnlineBattleSession(
           endpoint: uri,
           accessToken: 'beta',
-          avatar: AvatarModel.humanoid,
+          character: 'bear',
           allowInsecureLoopback: true,
         );
     addTearDown(a.dispose);
@@ -885,8 +1032,8 @@ void main() {
       () =>
           a.phase == OnlinePhase.preparing && b.phase == OnlinePhase.preparing,
     );
-    expect(a.opponent!.avatar, AvatarModel.humanoid);
-    expect(b.opponent!.avatar, AvatarModel.robot);
+    expect(a.opponent!.character, 'bear');
+    expect(b.opponent!.character, 'seal');
     a.ready(true);
     b.ready(true);
     await until(() => a.roundRunning && b.roundRunning);
@@ -957,7 +1104,7 @@ void main() {
         final session = OnlineBattleSession(
           endpoint: Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle'),
           accessToken: token,
-          avatar: AvatarModel.robot,
+          character: 'seal',
           allowInsecureLoopback: true,
         );
         addTearDown(session.dispose);
@@ -1222,7 +1369,7 @@ void main() {
       final session = OnlineBattleSession(
         endpoint: Uri.parse('ws://127.0.0.1:${http.port}/ws/v1/battle'),
         accessToken: 'alpha',
-        avatar: AvatarModel.robot,
+        character: 'seal',
         allowInsecureLoopback: true,
       );
       addTearDown(session.dispose);
@@ -1599,7 +1746,7 @@ void main() {
       final session = OnlineBattleSession(
         endpoint: Uri.parse('ws://52.78.38.225/ws/v1/battle'),
         accessToken: 'not-sent',
-        avatar: AvatarModel.astronaut,
+        character: 'mouse',
         allowInsecureLoopback: true,
       );
       addTearDown(session.dispose);
@@ -1608,4 +1755,69 @@ void main() {
       expect(session.connected, false);
     },
   );
+}
+
+/// A battle server from before W3, as far as joining goes: it knows only
+/// the avatar ids and refuses anything else with INVALID_AVATAR. With
+/// [refuseAll] it refuses every join.
+class _OldServer {
+  _OldServer(this._http, this.refuseAll);
+
+  final HttpServer _http;
+  final bool refuseAll;
+  final _sockets = <WebSocket>[];
+
+  /// The avatar_id of every queue.join, in order.
+  final joins = <String?>[];
+
+  int get port => _http.port;
+
+  static Future<_OldServer> start({bool refuseAll = false}) async {
+    final http = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final server = _OldServer(http, refuseAll);
+    http.listen((request) async {
+      final socket = await WebSocketTransformer.upgrade(request);
+      server._sockets.add(socket);
+      void send(String type, Map<String, dynamic> payload, [Object? rid]) =>
+          socket.add(
+            jsonEncode({
+              'v': 1,
+              'type': type,
+              'request_id': ?rid,
+              'server_time_ms': DateTime.now().millisecondsSinceEpoch,
+              'payload': payload,
+            }),
+          );
+      send('session.welcome', {'player_id': 'a'});
+      socket.listen((raw) {
+        final m = jsonDecode(raw as String) as Map<String, dynamic>;
+        if (m['type'] != 'queue.join') return;
+        final id = (m['payload'] as Map)['avatar_id'] as String?;
+        server.joins.add(id);
+        final known = id != null && RegExp(r'^avatar_\d\d$').hasMatch(id);
+        if (refuseAll || !known) {
+          send('error', {
+            'code': 'INVALID_AVATAR',
+            'retryable': false,
+          }, m['request_id']);
+        } else {
+          send('queue.joined', {'queue_id': 'q1'}, m['request_id']);
+        }
+      });
+    });
+    return server;
+  }
+
+  /// Drops every connection, as a network hiccup does.
+  Future<void> dropAll() async {
+    for (final socket in _sockets) {
+      await socket.close();
+    }
+    _sockets.clear();
+  }
+
+  Future<void> close() async {
+    await dropAll();
+    await _http.close(force: true);
+  }
 }

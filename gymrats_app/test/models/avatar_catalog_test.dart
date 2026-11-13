@@ -18,9 +18,10 @@ void main() {
       expect(AvatarModel.robot.protocolId, 'avatar_02');
       expect(AvatarModel.mannequiny.protocolId, 'avatar_03');
       expect(AvatarModel.humanoid.protocolId, 'avatar_04');
+      // Old apps still send these; the server takes any such short id.
       expect(
-        AvatarModel.values.map((a) => a.protocolId).toSet(),
-        battleAvatarIds,
+        AvatarModel.values.map((a) => a.protocolId),
+        everyElement(predicate(isBattleAvatarId)),
       );
       expect(AvatarModel.values.map((a) => a.assetName).toSet(), hasLength(28));
     },

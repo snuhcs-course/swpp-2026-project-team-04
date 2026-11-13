@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
-import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
@@ -34,8 +33,8 @@ import 'support/fakes.dart';
 
 /// Stays in the queue, with no server behind it.
 class _QueuedSession extends OnlineBattleSession {
-  _QueuedSession(Uri endpoint, String token, AvatarModel avatar)
-    : super(endpoint: endpoint, accessToken: token, avatar: avatar);
+  _QueuedSession(Uri endpoint, String token, String character)
+    : super(endpoint: endpoint, accessToken: token, character: character);
 
   @override
   Future<void> connect() async {
@@ -232,6 +231,28 @@ void main() {
 
     expect(exerciseOf(ExerciseType.squat), ExerciseType.squat);
     expect(exerciseOf(null), ExerciseType.pushUp);
+  });
+
+  testWidgets('the online route sends the character of the account', (
+    tester,
+  ) async {
+    final store = MemoryCharacterStore()..values[testAccount.id] = 'kangaroo';
+    await _openApp(
+      tester,
+      GymRatsApp(
+        authRepository: signedInAuth(),
+        userRepository: InMemoryUserRepository(),
+        characterStore: store,
+      ),
+    );
+    final route =
+        tester.widget<MaterialApp>(find.byType(MaterialApp)).onGenerateRoute!(
+          const RouteSettings(name: GymRatsApp.onlineBattleRoute),
+        )!;
+    final lobby = (route as MaterialPageRoute<void>).builder(
+      tester.element(find.byType(HomeScreen)),
+    ) as OnlineLobbyScreen;
+    expect(lobby.myCharacter, 'kangaroo');
   });
 
   testWidgets("'?' on home opens the rules over home; back returns home", (

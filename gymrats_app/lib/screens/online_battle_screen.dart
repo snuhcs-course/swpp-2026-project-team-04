@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
+import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/form_report.dart';
 import '../models/pose_frame.dart';
@@ -20,6 +21,7 @@ import '../widgets/battle_arena.dart';
 import '../widgets/battle_camera_view.dart';
 import '../widgets/battle_online_events.dart';
 import '../widgets/battle_stage_model.dart';
+import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import 'battle_screen.dart' show BattleScreen, BattleSetupListener;
@@ -485,6 +487,12 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         body: BattleArena(
           controller: _stage,
           state: stage,
+          // Mine as sent; theirs as the server passed it on (the mouse
+          // when it is missing or not one a person may pick).
+          characters: BattleCharacters(
+            me: session.character,
+            opponent: session.opponent?.character ?? CharacterRig.defaultId,
+          ),
           onCue: widget.onCue,
           camera: cameraFailed
               ? _CameraTrouble(
