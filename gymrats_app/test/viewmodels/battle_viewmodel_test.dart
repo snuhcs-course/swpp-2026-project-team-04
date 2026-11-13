@@ -124,7 +124,7 @@ void main() {
     expect(sound.played, 0);
   });
 
-  test('every opponent rep moves the mannequin; counted ones score', () async {
+  test('every opponent rep swings the opponent; counted ones score', () async {
     await vm.start();
     opponent
       ..emit()
@@ -658,7 +658,7 @@ void main() {
     });
 
     test(
-      'a rejected opponent rep moves the mannequin and scores nothing',
+      'a rejected opponent rep swings the opponent and scores nothing',
       () async {
         await battle.start();
         await theirRep(3, reason: RejectReason.bellyDown);

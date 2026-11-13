@@ -114,8 +114,8 @@ class BattleState {
   /// each one, even for two alike in a row.
   final int feedbackCount;
 
-  /// How many reps the opponent made, valid or not. The mannequin dips once
-  /// for each.
+  /// How many reps the opponent made, valid or not. The opponent on the
+  /// stage swings once for each.
   final int opponentMoves;
 
   /// Set once time is up.
