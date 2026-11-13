@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
-import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
@@ -27,6 +26,7 @@ import 'package:gymrats_app/widgets/battle_camera_view.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
@@ -43,12 +43,12 @@ class _Session extends OnlineBattleSession {
     : super(
         endpoint: Uri.parse('wss://example.com/ws/v1/battle'),
         accessToken: 'test-only',
-        avatar: AvatarModel.humanoid,
+        character: 'bear',
       ) {
     playerId = 'me';
     connected = true;
     phase = OnlinePhase.preparing;
-    opponent = const OnlinePlayer('opponent', '상대사용자', AvatarModel.robot);
+    opponent = const OnlinePlayer('opponent', '상대사용자', 'seal');
   }
   final readyRequests = <bool>[];
   var leaves = 0;
@@ -285,6 +285,27 @@ void main() {
   }
 
   group('before the start', () {
+    testWidgets('the stage draws my character and the one the opponent sent', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(
+        tester.widget<BattleArena>(find.byType(BattleArena)).characters,
+        const BattleCharacters(me: 'bear', opponent: 'seal'),
+      );
+      // While setting up no fighter stands on the stage (W2b 3-B); they pop
+      // up as the round begins.
+      expect(find.byType(CharacterFigure), findsNothing);
+      await play(tester);
+      expect(
+        tester
+            .widgetList<CharacterFigure>(find.byType(CharacterFigure))
+            .map((figure) => (figure.characterId, figure.side)),
+        containsAll([('bear', BattleSide.me), ('seal', BattleSide.opponent)]),
+      );
+      await tester.pumpWidget(const SizedBox());
+    });
+
     testWidgets('both players set up on the stage; the camera area has the '
         'setup bar, the hint and 준비, which waits for a valid pose', (
       tester,
@@ -556,7 +577,7 @@ void main() {
     ]) {
       testWidgets(name, (tester) async {
         await open(tester);
-        session.opponent = OnlinePlayer('opponent', name, AvatarModel.robot);
+        session.opponent = OnlinePlayer('opponent', name, 'seal');
         await tester.binding.handlePopRoute();
         await wait(tester, 400);
         expect(find.text('게임에서 나갈까요?'), findsOneWidget);

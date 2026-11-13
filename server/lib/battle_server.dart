@@ -35,7 +35,9 @@ class _Player {
   final BattleIdentity identity;
   WebSocket? socket;
   _Match? match;
-  String avatar = 'avatar_01';
+  /// What the player sent in `avatar_id` (W3: their character id),
+  /// passed on as it came; null when they sent none.
+  String? avatar;
   String exercise = 'push_up';
   bool queued = false;
   int lastHeartbeat = 0, rateAt = 0, controls = 0, poseAt = -1000;
@@ -50,7 +52,7 @@ class _Match {
           {
             'player_id': p.identity.id,
             'display_name': p.identity.name,
-            'avatar_id': p.avatar,
+            if (p.avatar case final avatar?) 'avatar_id': avatar,
           },
       ];
   final String id;
@@ -326,14 +328,17 @@ class BattleServer {
       case 'queue.join':
         fields(payload, {'exercise', 'avatar_id'});
         if (!{'push_up', 'squat'}.contains(payload['exercise'])) invalid();
-        if (!battleAvatarIds.contains(payload['avatar_id']))
+        // Optional (W3); any short id, passed on without reading it.
+        if (payload.containsKey('avatar_id') &&
+            !isBattleAvatarId(payload['avatar_id'])) {
           invalid('INVALID_AVATAR');
+        }
         if (p.queued) invalid('ALREADY_QUEUED');
         if (p.match != null && !p.match!.terminal) invalid('ALREADY_IN_MATCH');
         p.requests
             .clear(); // Prior match is terminal; retain all IDs of the new one.
         p.match = null;
-        p.avatar = payload['avatar_id'] as String;
+        p.avatar = payload['avatar_id'] as String?;
         p.exercise = payload['exercise'] as String;
         p.queued = true;
         _queue.addLast(p);
@@ -596,7 +601,7 @@ class BattleServer {
           .map(
             (p) => {
               'player_id': p.identity.id,
-              'avatar_id': p.avatar,
+              if (p.avatar case final avatar?) 'avatar_id': avatar,
               'valid_reps': m.scores[p.identity.id]![0],
               'invalid_reps': m.scores[p.identity.id]![1],
               'game_score': m.games[p.identity.id]!.points,

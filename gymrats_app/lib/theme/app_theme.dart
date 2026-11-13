@@ -443,6 +443,44 @@ extension BattleCameraText on TextTheme {
       headlineSmall!.copyWith(fontFamily: AppFonts.display);
 }
 
+/// The text styles of the character selection screen (W3 spec 7,
+/// ChSelectB), in ink.
+extension CharacterText on TextTheme {
+  /// "캐릭터 선택" at the top: Do Hyeon 30 on a 36 line.
+  TextStyle get characterTitle => headlineSmall!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 30,
+    fontWeight: FontWeight.w400,
+    height: 36 / 30,
+    color: AppColors.ink,
+  );
+
+  /// The picked character's name on the slanted band: Do Hyeon 30.
+  TextStyle get characterName => headlineSmall!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 30,
+    fontWeight: FontWeight.w400,
+    height: 1.25,
+    color: AppColors.ink,
+  );
+
+  /// The line under the band, e.g. "쥐 · 대표 캐릭터": 13 bold.
+  TextStyle get characterCaption => bodySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 18 / 13,
+    color: AppColors.ink,
+  );
+
+  /// A cell's name under its picture: 13 bold on a 16 line.
+  TextStyle get characterCellName => bodySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 16 / 13,
+    color: AppColors.ink,
+  );
+}
+
 /// Padding and gap steps (Design Documentation 2.5.5). Screens use only
 /// these for padding and gaps.
 abstract final class AppSpacing {

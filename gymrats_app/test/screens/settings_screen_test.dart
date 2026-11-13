@@ -60,8 +60,8 @@ void main() {
           ),
           routes: {
             GymRatsApp.helpRoute: (_) => const HelpScreen(),
-            GymRatsApp.profileRoute: (_) =>
-                const Scaffold(body: Text('avatar page')),
+            GymRatsApp.characterRoute: (_) =>
+                const Scaffold(body: Text('character page')),
           },
         ),
       ),
@@ -95,7 +95,7 @@ void main() {
       '프로필',
       '닉네임',
       '우현',
-      '아바타',
+      '캐릭터',
       '게임',
       '매 경기 안전 안내',
       '끄면 처음 한 번만 보여요',
@@ -189,12 +189,10 @@ void main() {
     });
   });
 
-  testWidgets('아바타 opens the avatar page until the characters come', (
-    tester,
-  ) async {
+  testWidgets('캐릭터 opens the character selection', (tester) async {
     await open(tester);
-    await tapAndSettle(tester, find.text('아바타'));
-    expect(find.text('avatar page'), findsOneWidget);
+    await tapAndSettle(tester, find.text('캐릭터'));
+    expect(find.text('character page'), findsOneWidget);
   });
 
   testWidgets('the switches show the view model, as designed at first', (
@@ -346,7 +344,7 @@ void main() {
           find.descendant(of: find.text(text), matching: find.byType(RichText)),
         );
 
-    /// The right edge of the rows, at the 아바타 row's chevron.
+    /// The right edge of the rows, at the 캐릭터 row's chevron.
     double rowEnd(WidgetTester tester) =>
         tester.getRect(find.byIcon(Icons.chevron_right_rounded).first).right;
 
@@ -409,7 +407,7 @@ void main() {
       await open(tester, size: const Size(360, 780));
       expect(tester.takeException(), isNull);
       expect(paragraphOf(tester, '우현').didExceedMaxLines, isFalse);
-      // Flush with the 아바타 row's chevron below it.
+      // Flush with the 캐릭터 row's chevron below it.
       expect(
         tester.getRect(find.text('우현')).right,
         moreOrLessEquals(rowEnd(tester), epsilon: 1),

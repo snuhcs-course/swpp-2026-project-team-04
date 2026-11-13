@@ -14,6 +14,7 @@ import 'package:gymrats_app/widgets/battle_arena.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
 
 void main() {
@@ -186,6 +187,8 @@ void main() {
         '상대 끊김',
         '상대 퇴장',
         '내 연결 끊김 패배',
+        '내 캐릭터',
+        '상대 캐릭터',
         '처음으로',
       ]) {
         expect(button(label), findsOneWidget, reason: label);
@@ -304,6 +307,26 @@ void main() {
       // The start timer of the demo fires after three seconds.
       await tester.pump(const Duration(milliseconds: 3100));
       expect(state(tester).phase, BattleStagePhase.playing);
+    });
+
+    testWidgets('the mouse fights RepBot at first; each character button '
+        'takes the next character in turn', (tester) async {
+      BattleCharacters? characters() =>
+          tester.widget<BattleStage>(find.byType(BattleStage)).characters;
+      await open(tester);
+      expect(
+        characters(),
+        const BattleCharacters(me: 'mouse', opponent: 'bot'),
+      );
+      await press(tester, '내 캐릭터');
+      expect(characters()!.me, 'kangaroo');
+      await press(tester, '상대 캐릭터');
+      expect(characters()!.opponent, 'mouse', reason: 'after bot, the first');
+      for (var i = 0; i < 5; i++) {
+        await press(tester, '내 캐릭터');
+      }
+      expect(characters()!.me, 'mouse', reason: 'round the six');
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('the online states toggle', (tester) async {

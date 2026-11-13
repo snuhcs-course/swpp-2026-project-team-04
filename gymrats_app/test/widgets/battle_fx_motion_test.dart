@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
+import 'package:gymrats_app/models/character_idle_motion.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
@@ -2452,6 +2455,147 @@ void main() {
       expect(fx.rep(_good(BattleSide.me), 0), isTrue);
       fx.finish(const BattleStageEnd(kind: BattleEndKind.timeUp), 100);
       expect(fx.rep(_good(BattleSide.me), 200), isFalse);
+    });
+  });
+
+  group('the characters (W3 spec 6)', () {
+    final rig = CharacterRig.standard;
+
+    /// The rig's values for [me] against [opponent].
+    BattleFxCast cast(String me, String opponent) => BattleFxCast(
+      meIdle: rig.art(me).idleMotion,
+      opponentIdle: rig.art(opponent).idleMotion,
+      opponentIdleOffsetMs: rig.idleOpponentOffsetMs,
+      hitStarDx: rig.hitStarDx,
+      hitStarUp: rig.hitStarUp,
+    );
+
+    test('without characters both fighters breathe in step as in W2 and the '
+        'star sits 34 px over, 76 px up', () {
+      final fx = BattleFxTimeline();
+      for (final now in [0.0, 333.0, 1234.5, 20000.0]) {
+        final frame = fx.frame(now);
+        for (final f in [frame.me, frame.opponent]) {
+          expect(f.scaleY, closeTo(1 + 0.02 * math.sin(now / 280), 1e-12));
+          expect(f.scaleX.abs(), 1);
+          expect(f.footY, BattleFx.groundY);
+          expect(f.rotation, 0);
+        }
+      }
+      fx.rep(_good(BattleSide.me), 1000);
+      final star = fx.frame(1080).star!;
+      expect(star.centerX, fx.frame(1080).meetX + 34);
+      expect(star.centerY, BattleFx.groundY - 76);
+    });
+
+    test('a hop lifts the idle fighter, a stretch sizes it about the feet', () {
+      final fx = BattleFxTimeline()..cast = cast('kangaroo', 'seal');
+      const t = 300.0;
+      final frame = fx.frame(t);
+      final up = 6 * math.sin(math.pi * t / 460).abs();
+      expect(frame.me.footY, closeTo(BattleFx.groundY - up, 1e-9));
+      expect(frame.me.rotation, 0);
+      expect(frame.me.scaleX, 1);
+      expect(frame.me.scaleY, 1);
+      final breath = math.sin(2 * math.pi * (t + 230) / 1100);
+      expect(frame.opponent.footY, BattleFx.groundY);
+      expect(frame.opponent.scaleX, closeTo(-(1 - 0.03 * breath), 1e-12));
+      expect(frame.opponent.scaleY, closeTo(1 + 0.03 * breath, 1e-12));
+    });
+
+    test('a rock leans each fighter toward the one it faces', () {
+      final fx = BattleFxTimeline()..cast = cast('penguin', 'penguin');
+      const t = 200.0;
+      final frame = fx.frame(t);
+      expect(
+        frame.me.rotation,
+        closeTo(4 * math.sin(2 * math.pi * t / 1300), 1e-9),
+      );
+      expect(
+        frame.opponent.rotation,
+        closeTo(-4 * math.sin(2 * math.pi * (t + 230) / 1300), 1e-9),
+      );
+    });
+
+    test('the opponent idles 230 ms later than me', () {
+      final fx = BattleFxTimeline()..cast = cast('mouse', 'mouse');
+      for (final t in [0.0, 50.0, 410.0, 1777.0]) {
+        expect(
+          fx.frame(t).opponent.footY,
+          closeTo(fx.frame(t + 230).me.footY, 1e-9),
+          reason: '$t',
+        );
+      }
+      expect(fx.frame(90).opponent.footY, isNot(fx.frame(90).me.footY));
+    });
+
+    test('only the idle pose moves: the attack and the hit stand as without '
+        'characters', () {
+      final plain = BattleFxTimeline()..rep(_good(BattleSide.me), 1000);
+      final drawn = BattleFxTimeline()
+        ..cast = cast('kangaroo', 'bear')
+        ..rep(_good(BattleSide.me), 1000);
+      // The blow lands 80 ms after the lunge starts.
+      for (final now in [1080.0, 1200.0]) {
+        final a = plain.frame(now);
+        final b = drawn.frame(now);
+        expect(b.me.pose, BattlePose.attack);
+        expect(b.opponent.pose, BattlePose.hit);
+        for (final (x, y) in [(a.me, b.me), (a.opponent, b.opponent)]) {
+          expect(
+            (y.footX, y.footY, y.rotation, y.scaleX, y.scaleY),
+            (x.footX, x.footY, x.rotation, x.scaleX, x.scaleY),
+            reason: '$now',
+          );
+        }
+      }
+      // Back in the idle pose the hop is back.
+      expect(drawn.frame(3000).me.pose, BattlePose.idle);
+      expect(drawn.frame(3100).me.footY, lessThan(BattleFx.groundY));
+    });
+
+    test('while I am about to lose the danger sway replaces my rock; my hop '
+        'stays', () {
+      final fx = BattleFxTimeline()
+        ..cast = const BattleFxCast(
+          meIdle: CharacterIdleMotion(
+            hopAmp: 3,
+            hopPeriodMs: 320,
+            rockDeg: 4,
+            rockPeriodMs: 1300,
+          ),
+        )
+        ..danger = true;
+      const t = 500.0;
+      final me = fx.frame(t).me;
+      expect(me.rotation, closeTo(-7 + math.sin(t / 85) * 6, 1e-9));
+      expect(
+        me.footY,
+        closeTo(BattleFx.groundY - 3 * math.sin(math.pi * t / 320).abs(), 1e-9),
+      );
+    });
+
+    test('with reduced motion nobody idles', () {
+      final fx = BattleFxTimeline()..cast = cast('kangaroo', 'penguin');
+      final frame = fx.frame(300, reducedMotion: true);
+      for (final f in [frame.me, frame.opponent]) {
+        expect(f.footY, BattleFx.groundY);
+        expect(f.rotation, 0);
+        expect(f.scaleY, 1);
+        expect(f.scaleX.abs(), 1);
+      }
+    });
+
+    test('the hit star sits where the blow lands: (xm ± 48, 288)', () {
+      for (final side in BattleSide.values) {
+        final fx = BattleFxTimeline()
+          ..cast = cast('mouse', 'bot')
+          ..rep(_good(side), 1000);
+        final frame = fx.frame(1090);
+        final toward = side == BattleSide.me ? 1 : -1;
+        expect(frame.star!.centerX, frame.meetX + toward * 48, reason: '$side');
+        expect(frame.star!.centerY, 288);
+      }
     });
   });
 }

@@ -52,11 +52,10 @@ class SettingsScreen extends StatelessWidget {
           label: '프로필',
           rows: [
             _Row(title: '닉네임', line: '온라인 대결에서 상대에게 보여요', value: nickname),
-            // Until the characters replace the avatars (W3).
             _Row(
-              title: '아바타',
+              title: '캐릭터',
               onTap: () =>
-                  Navigator.pushNamed(context, GymRatsApp.profileRoute),
+                  Navigator.pushNamed(context, GymRatsApp.characterRoute),
               end: const Icon(
                 Icons.chevron_right_rounded,
                 color: AppColors.line,
