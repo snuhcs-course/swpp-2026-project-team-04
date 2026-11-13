@@ -11,6 +11,7 @@ import 'battle_camera_view.dart';
 import 'battle_fighter.dart';
 import 'battle_fx_motion.dart';
 import 'battle_reject_sign.dart';
+import 'battle_result_button.dart';
 import 'battle_stage.dart';
 import 'battle_stage_model.dart';
 
@@ -144,6 +145,8 @@ List<String> battleStandingAnnouncements(
 /// ([scale]); and the line between the stage and the camera, which stands
 /// there from the countdown on but higher while setting up (W2b 3-B), at
 /// [BattleFx.setupLineY] on the stage, the camera over the stage below it.
+/// Once the result is known the line goes on down to the screen's bottom,
+/// and the camera is gone (W2b end screen, option A).
 class BattleArenaLayout {
   factory BattleArenaLayout(Size size, {required double statusBar}) {
     final line = size.height / 2;
@@ -174,10 +177,15 @@ class BattleArenaLayout {
       Offset((size.width - stage.width) / 2, line - stage.height);
 
   /// The top of the ink line between the stage and the camera, at a layout
-  /// [progress] from 0 (the setup's) to 1 (the battle's, on [line]), eased.
-  double lineTop(double progress) =>
-      line -
-      (BattleFx.stageHeight - BattleFx.setupLineY) * scale * (1 - progress);
+  /// [progress] from 0 (the setup's) to 1 (the battle's, on [line]), eased;
+  /// and after the battle, from there to the screen's bottom as [end] goes
+  /// from 0 to 1 ([BattleFxFrame.endLayout]).
+  double lineTop(double progress, {double end = 0}) {
+    final top =
+        line -
+        (BattleFx.stageHeight - BattleFx.setupLineY) * scale * (1 - progress);
+    return top + (size.height - top) * end;
+  }
 
   /// The camera's box under the line at a layout [progress]: the screen's
   /// width, down to its bottom.
@@ -196,6 +204,11 @@ class BattleArenaLayout {
 /// stage's lower part, and the stage shows only its HUD with the ready
 /// chips; when the countdown begins the line comes down to the half and the
 /// fighters pop up (W2b 3-B, [BattleArenaLayout]).
+///
+/// Once the result is known the camera is not needed: the line goes on
+/// down until the camera is gone, and the stage's ground fills the screen,
+/// the stage itself staying where it is (W2b end screen, option A). Once
+/// the ending has played 결과 보기 comes up in the middle of the lower half.
 ///
 /// It turns one clock for all of it. The stage is drawn in its own design
 /// points and sized as a whole: as large as fits the width and the room
@@ -371,16 +384,22 @@ class _BattleArenaState extends State<BattleArena>
           valueListenable: _frame,
           builder: (context, frame, _) {
             final sign = frame.sign;
+            final result = frame.resultButton;
             // The line between the stage and the camera: high while setting
-            // up, half way down from the countdown on.
-            final lineTop = layout.lineTop(frame.battleLayout);
+            // up, half way down from the countdown on, and down and gone once
+            // the result is known.
+            final lineTop = layout.lineTop(
+              frame.battleLayout,
+              end: frame.endLayout,
+            );
             return Stack(
               children: [
                 Positioned(
                   left: 0,
                   right: 0,
                   top: 0,
-                  height: line,
+                  // Down to the line as it goes down after the battle.
+                  height: math.max(line, lineTop),
                   child: ExcludeSemantics(
                     child: BattleStageBackdrop(
                       feverOpacity: frame.feverOpacity,
@@ -452,12 +471,30 @@ class _BattleArenaState extends State<BattleArena>
                     spin: _reducedMotion
                         ? 0
                         : (_controller._now * BattleArena._spinSpeed) % 360,
-                    resultButton: frame.resultButton,
-                    onShowResult: widget.onShowResult,
                     combos: frame.combos,
                     stageScale: scale,
                   ),
                 ),
+                // Where it was over the camera: in the middle of the lower
+                // half, under the line's width.
+                if (result != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: line + BattleCameraArea.lineWidth,
+                    bottom: 0,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.s12,
+                        ),
+                        child: BattleResultButton(
+                          look: result,
+                          onPressed: widget.onShowResult,
+                        ),
+                      ),
+                    ),
+                  ),
                 if (sign != null)
                   Positioned(
                     left:

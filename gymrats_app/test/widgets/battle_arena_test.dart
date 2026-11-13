@@ -1227,6 +1227,207 @@ void main() {
     });
   });
 
+  group('BattleArena, after the battle (W2b end screen, option A)', () {
+    /// Where the camera area begins on screen: the top of the ink line.
+    double lineTop(WidgetTester tester) =>
+        tester.getTopLeft(find.byType(BattleCameraArea)).dy;
+
+    Finder scrim() => find.byWidgetPredicate(
+      (w) =>
+          w is ColoredBox &&
+          w.color.a < 1 &&
+          w.color.withValues(alpha: 1) == AppColors.background,
+    );
+
+    test('the line goes from where the layout puts it to the bottom as the '
+        'end progress goes from 0 to 1', () {
+      final layout = BattleArenaLayout(const Size(360, 780), statusBar: 26);
+      expect(layout.lineTop(1, end: 0), 390);
+      expect(layout.lineTop(1, end: 0.5), 585);
+      expect(layout.lineTop(1, end: 1), 780);
+      // Ended while setting up, e.g. a player who left: from the setup's
+      // line.
+      expect(layout.lineTop(0), 156);
+      expect(layout.lineTop(0, end: 0.5), 468);
+      expect(layout.lineTop(0, end: 1), 780);
+      final other = BattleArenaLayout(const Size(412, 915), statusBar: 24);
+      expect(other.lineTop(1, end: 1), 915);
+      expect(other.lineTop(1, end: 0.25), 457.5 + 457.5 * 0.25);
+    });
+
+    testWidgets('a knockout: once the blow lands the line goes down in '
+        '450 ms, the camera with it, the ground fills the screen and the '
+        'stage stays; 결과 보기 comes up in the middle of the lower half, '
+        'with no dimming', (tester) async {
+      var opened = 0;
+      final controller = BattleStageController();
+      Future<void> pump(BattleStageState state) => _pump(
+        tester,
+        controller,
+        state,
+        onLeave: () {},
+        onShowResult: () => opened++,
+      );
+      await pump(_state(me: 85));
+      await _wait(tester, 1000);
+      final stage = tester.getRect(find.byType(BattleStage));
+      expect(lineTop(tester), 390);
+      expect(tester.getSize(find.byType(BattleStageBackdrop)).height, 390);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.excellent,
+          points: 15,
+          combo: 1,
+          knockout: true,
+        ),
+      );
+      await pump(_state(phase: BattleStagePhase.ended, me: 100, end: _koEnd));
+      await _wait(tester, 40);
+      // The blow has not landed yet.
+      expect(lineTop(tester), 390);
+      await _wait(tester, 40 + 225);
+      expect(lineTop(tester), closeTo(585, 4));
+      await _wait(tester, 225);
+      expect(lineTop(tester), 780);
+      expect(tester.getSize(find.byType(BattleCameraArea)).height, 0);
+      expect(tester.getSize(find.byType(BattleStageBackdrop)).height, 780);
+      expect(tester.getRect(find.byType(BattleStage)), stage);
+      expect(tester.takeException(), isNull);
+      await _wait(tester, 2000);
+      expect(find.text('결과 보기'), findsOneWidget);
+      final button = tester.getRect(
+        find
+            .ancestor(of: find.text('결과 보기'), matching: find.byType(Material))
+            .first,
+      );
+      // Where it was over the camera, under the 3 wide line.
+      expect(button.center.dx, closeTo(180, 0.01));
+      expect(button.center.dy, closeTo(390 + 3 + 387 / 2, 0.01));
+      expect(scrim(), findsNothing);
+      await tester.tap(find.text('결과 보기'));
+      expect(opened, 1);
+    });
+
+    testWidgets('online, a time-up waiting for the server keeps the camera '
+        'and the way out until the result comes, then the line goes down', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      Future<void> pump(BattleStageState state) =>
+          _pump(tester, controller, state, onLeave: () {});
+      await pump(_state(me: 30, op: 20));
+      await _wait(tester, 500);
+      await pump(
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 30,
+          op: 20,
+          end: const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+        ),
+      );
+      await _wait(tester, 3000);
+      expect(lineTop(tester), 390);
+      expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
+      await pump(
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 30,
+          op: 20,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 16);
+      expect(find.byIcon(Icons.logout_rounded), findsNothing);
+      await _wait(tester, 450);
+      expect(lineTop(tester), 780);
+    });
+
+    testWidgets('in fever, as a bot battle always is at its time-up, the '
+        'cyan wash goes down with the ground and fills the screen', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(me: 60, op: 40, fever: true));
+      await _wait(tester, 500);
+      Finder wash() => find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == AppColors.fever,
+      );
+      expect(tester.getRect(wash()).height, 390);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 60,
+          op: 40,
+          fever: true,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 500);
+      expect(tester.getRect(wash()), const Rect.fromLTWH(0, 0, 360, 780));
+    });
+
+    testWidgets('with reduced motion the camera is gone at once', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(me: 30), reducedMotion: true);
+      await _wait(tester, 500);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 30,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+        reducedMotion: true,
+      );
+      expect(lineTop(tester), 780);
+      expect(tester.getSize(find.byType(BattleStageBackdrop)).height, 780);
+    });
+
+    testWidgets('an end during the setup takes the line from the setup\'s '
+        'place down', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, opReady: true),
+        onLeave: () {},
+      );
+      await _wait(tester, 500);
+      expect(lineTop(tester), 156);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 225);
+      expect(lineTop(tester), greaterThan(390));
+      await _wait(tester, 250);
+      expect(lineTop(tester), 780);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('BattleArena, for a screen reader', () {
     testWidgets('a blow says the new score and valid count; my rejected rep '
         'its reason; an average rep its reason and points', (tester) async {

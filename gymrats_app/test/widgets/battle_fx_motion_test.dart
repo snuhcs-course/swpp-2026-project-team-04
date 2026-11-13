@@ -656,7 +656,6 @@ class _Check {
         opacity,
       );
       near('button scale', f.resultButton!.scale, button['scale'], scale);
-      near('button scrim', f.resultButton!.scrim, button['scrim'], opacity);
     }
   }
 }
@@ -1742,6 +1741,126 @@ void main() {
         ..rep(_good(BattleSide.me, knockout: true), 100);
       expect(fx.frame(400).banners.map((b) => b.text), contains('MISS'));
       expect(fx.frame(181 + 300).banners, isEmpty);
+    });
+  });
+
+  group('the line going down after the battle (W2b end screen, option A)', () {
+    const koBlow = BattleStageEvent(
+      side: BattleSide.me,
+      grade: GameGrade.excellent,
+      points: 15,
+      combo: 1,
+      knockout: true,
+    );
+    const won = BattleStageEnd(
+      kind: BattleEndKind.timeUp,
+      winner: BattleSide.me,
+    );
+
+    test('it stays up while the battle runs', () {
+      final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
+      expect(fx.frame(0).endLayout, 0);
+      expect(fx.frame(5000).endLayout, 0);
+    });
+
+    test('a knockout: from the moment the blow lands, over 450 ms, eased '
+        'in and out', () {
+      final fx = BattleFxTimeline()..rep(koBlow, 1000);
+      const lands = 1000 + BattleFx.impactDelay;
+      expect(fx.frame(1000).endLayout, 0);
+      expect(fx.frame(lands).endLayout, 0);
+      expect(fx.frame(lands + 225).endLayout, closeTo(0.5, 1e-9));
+      expect(
+        fx.frame(lands + 90).endLayout,
+        closeTo(BattleFx.easeInOut(0.2), 1e-9),
+      );
+      expect(fx.frame(lands + BattleFx.endLayoutMs).endLayout, 1);
+      expect(fx.frame(lands + 5000).endLayout, 1);
+      expect(BattleFx.endLayoutMs, 450);
+    });
+
+    test('a knockout reported before its blow goes down from the report, '
+        'and never back up when the blow lands; the ring-out keeps the '
+        "blow's times", () {
+      const reported = BattleStageEnd(
+        kind: BattleEndKind.knockout,
+        winner: BattleSide.me,
+      );
+      final fx = BattleFxTimeline()..finish(reported, 1000);
+      var last = 0.0;
+      for (var t = 1000.0; t <= 1700; t += 10) {
+        if (t == 1150) expect(fx.rep(koBlow, t), isTrue);
+        final now = fx.frame(t).endLayout;
+        expect(now, greaterThanOrEqualTo(last), reason: 'at $t ms');
+        last = now;
+      }
+      expect(fx.frame(1000 + BattleFx.endLayoutMs).endLayout, 1);
+      const lands = 1150 + BattleFx.impactDelay;
+      expect(fx.frame(lands + 1249).banners, isEmpty);
+      expect(fx.frame(lands + 1250).banners.single.text, 'K.O.');
+      expect(fx.resultButtonUp(lands + 2199), isFalse);
+      expect(fx.resultButtonUp(lands + 2200), isTrue);
+    });
+
+    test('a time-up the game decides at once goes down from TIME!; a '
+        'player leaving from the moment it is known', () {
+      final time = BattleFxTimeline()..finish(won, 2000);
+      expect(time.frame(2000).endLayout, 0);
+      expect(time.frame(2225).endLayout, closeTo(0.5, 1e-9));
+      expect(time.frame(2450).endLayout, 1);
+      final left = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+          2000,
+        );
+      expect(left.frame(2225).endLayout, closeTo(0.5, 1e-9));
+      expect(left.frame(2450).endLayout, 1);
+    });
+
+    test('a time-up waiting for the server stays up until the result '
+        'comes, then goes down from there', () {
+      final fx = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        );
+      expect(fx.frame(500).endLayout, 0);
+      expect(fx.frame(6000).endLayout, 0);
+      fx.finish(won, 6000);
+      expect(fx.frame(6000).endLayout, 0);
+      expect(fx.frame(6225).endLayout, closeTo(0.5, 1e-9));
+      expect(fx.frame(6450).endLayout, 1);
+    });
+
+    test('with reduced motion it is down at once, but not before the result '
+        'is known', () {
+      final fx = BattleFxTimeline()..rep(koBlow, 1000);
+      expect(fx.frame(1000, reducedMotion: true).endLayout, 0);
+      expect(
+        fx.frame(1000 + BattleFx.impactDelay, reducedMotion: true).endLayout,
+        1,
+      );
+      final waiting = BattleFxTimeline()
+        ..finish(
+          const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+          0,
+        );
+      expect(waiting.frame(3000, reducedMotion: true).endLayout, 0);
+    });
+
+    test('the ending itself, the button\'s moment and the setup layout do '
+        'not change with it', () {
+      final fx = BattleFxTimeline()..finish(won, 0);
+      expect(fx.resultButtonUp(1799), isFalse);
+      expect(fx.resultButtonUp(1800), isTrue);
+      final frame = fx.frame(2400);
+      expect(frame.endLayout, 1);
+      expect(frame.battleLayout, 1);
+      expect(frame.banners.single.text, 'WIN!');
+      expect(frame.resultButton!.opacity, 1);
     });
   });
 

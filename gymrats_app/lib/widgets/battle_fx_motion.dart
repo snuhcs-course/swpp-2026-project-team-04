@@ -77,6 +77,11 @@ abstract final class BattleFx {
   /// How long the line takes to move the whole way between the two layouts.
   static const layoutMs = 350.0;
 
+  /// Once the result is known the camera is no longer needed: the line goes
+  /// on down to the bottom of the screen over this long, and the stage's
+  /// ground fills the screen (W2b end screen, option A).
+  static const endLayoutMs = 450.0;
+
   /// As the line comes down: how long the setup's own things take to fade
   /// out (the status band, the ready chips, and the camera's large hint and
   /// buttons), and how long the valid counts take to come in.
@@ -454,19 +459,12 @@ class BattleFxCombo {
   String get text => '$count HIT';
 }
 
-/// 결과 보기 coming up over the camera once the ending has played.
+/// 결과 보기 coming up once the ending has played.
 class BattleFxResultButton {
-  const BattleFxResultButton({
-    required this.opacity,
-    required this.scale,
-    required this.scrim,
-  });
+  const BattleFxResultButton({required this.opacity, required this.scale});
 
   final double opacity;
   final double scale;
-
-  /// How strongly the camera area is covered with the background color.
-  final double scrim;
 }
 
 /// Everything the stage draws at one moment.
@@ -497,6 +495,7 @@ class BattleFxFrame {
     required this.beforeStart,
     required this.resultButton,
     this.battleLayout = 1,
+    this.endLayout = 0,
     this.setupLook = 0,
     this.countsOpacity = 1,
     this.readyChips = const [],
@@ -554,6 +553,12 @@ class BattleFxFrame {
   /// of the screen, [BattleFx.setupLineY]) to the battle's (1: half and
   /// half), eased: where the line between the stage and the camera is.
   final double battleLayout;
+
+  /// How far the line has gone on down once the result is known (W2b end
+  /// screen, option A), eased: 0 where [battleLayout] puts it, 1 at the
+  /// bottom of the screen, the camera gone and the stage's ground filling
+  /// the screen.
+  final double endLayout;
 
   /// How strongly the setup's own things show, from 1 to 0: the status
   /// band, the ready chips, and the camera's large hint and buttons.
@@ -833,7 +838,9 @@ class BattleFxTimeline {
       _hit!.power = 2.4;
       _end = BattleStageEnd(kind: BattleEndKind.knockout, winner: event.side);
       _endAt = impact;
-      _decidedAt = impact;
+      // Known from the report already, when one came first: the line that
+      // has started down after it does not go back up.
+      _decidedAt = math.min(_decidedAt ?? impact, impact);
       _endByBlow = true;
     }
   }
@@ -1041,12 +1048,28 @@ class BattleFxTimeline {
     return at != null && now >= at;
   }
 
+  /// How far the line has gone down after the battle at [now], eased: 0
+  /// until the result is known, then 1 after [BattleFx.endLayoutMs] (W2b
+  /// end screen, option A). A knockout is known when its blow lands, or
+  /// when the screen reports it, if that comes first; a player leaving as it
+  /// is reported; a time-up when it is decided, so online the camera, and
+  /// the way out, stay while the server's result is awaited. With
+  /// [reducedMotion] it is 1 at once.
+  double _endLayoutAt(double now, {required bool reducedMotion}) {
+    final at = _decidedAt;
+    // A knockout's blow is played a moment before it lands.
+    if (_end == null || at == null || now < at) return 0;
+    if (reducedMotion) return 1;
+    return BattleFx.easeInOut(BattleFx.seg(now, at, at + BattleFx.endLayoutMs));
+  }
+
   /// The frame at [now]. With [reducedMotion] the hit-stop, the shake, the
   /// zoom, the flash, the breathing, the stripes' drift, the count bump, the
   /// countdown's growing numbers, the puff and the button's growing are off;
-  /// and the layout's move (W2b 3-B: the line, the setup's things fading,
-  /// the valid counts coming in, the fighters popping up or fading out)
-  /// jumps to its end. Poses, scores, bands, the sign and the button stay.
+  /// and the layout's moves (W2b 3-B: the line, the setup's things fading,
+  /// the valid counts coming in, the fighters popping up or fading out; and
+  /// after the battle the line going down) jump to their ends. Poses,
+  /// scores, bands, the sign and the button stay.
   BattleFxFrame frame(double now, {bool reducedMotion = false}) {
     final end = _end;
     final endKind = end?.kind;
@@ -1189,9 +1212,6 @@ class BattleFxTimeline {
                       BattleFx.back(
                         BattleFx.seg(now, buttonAt, buttonAt + 160),
                       ),
-        scrim:
-            0.62 *
-            BattleFx.easeOut(BattleFx.seg(now, buttonAt, buttonAt + 200)),
       );
     }
 
@@ -1227,6 +1247,7 @@ class BattleFxTimeline {
       beforeStart: beforeStart,
       resultButton: button,
       battleLayout: BattleFx.easeInOut(layout),
+      endLayout: _endLayoutAt(now, reducedMotion: reducedMotion),
       setupLook: setupLook,
       countsOpacity: (layout * BattleFx.layoutMs / BattleFx.countsFadeMs).clamp(
         0.0,

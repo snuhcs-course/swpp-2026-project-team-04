@@ -14,9 +14,6 @@ import 'battle_test_support.dart';
 
 const _camera = Key('camera');
 
-/// 결과 보기 fully up.
-const _up = BattleFxResultButton(opacity: 1, scale: 1, scrim: 0.62);
-
 /// The lower half of a phone: 360 x 390 unless [size] says otherwise.
 Future<void> _pump(
   WidgetTester tester, {
@@ -34,8 +31,6 @@ Future<void> _pump(
   double setupLook = 0,
   bool reconnecting = false,
   double spin = 0,
-  BattleFxResultButton? resultButton,
-  VoidCallback? onShowResult,
   List<BattleFxCombo> combos = const [],
   double stageScale = 1,
 }) async {
@@ -68,8 +63,6 @@ Future<void> _pump(
             setupLook: setupLook,
             reconnecting: reconnecting,
             spin: spin,
-            resultButton: resultButton,
-            onShowResult: onShowResult,
             combos: combos,
             stageScale: stageScale,
           ),
@@ -230,7 +223,8 @@ void main() {
     testWidgets('the leave button is gone once the battle has ended', (
       tester,
     ) async {
-      await _pump(tester, resultButton: _up, onShowResult: () {});
+      // The arena gives no way to leave then.
+      await _pump(tester);
       expect(find.byIcon(Icons.logout_rounded), findsNothing);
     });
 
@@ -417,93 +411,6 @@ void main() {
       );
     });
 
-    testWidgets('결과 보기: lime with an ink edge in the middle of a dimmed '
-        'camera, and it opens the result', (tester) async {
-      var opened = 0;
-      final handle = tester.ensureSemantics();
-      await _pump(tester, resultButton: _up, onShowResult: () => opened++);
-      final button = find
-          .ancestor(of: find.text('결과 보기'), matching: find.byType(Material))
-          .first;
-      final material = tester.widget<Material>(button);
-      expect(material.color, AppColors.accent);
-      expect(
-        material.shape,
-        const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(18)),
-          side: BorderSide(color: AppColors.ink, width: 2),
-        ),
-      );
-      final rect = tester.getRect(button);
-      expect(rect.size, const Size(240, 58));
-      expect(rect.center.dx, closeTo(180, 0.01));
-      expect(rect.center.dy, closeTo(3 + 387 / 2, 0.01));
-      final label = tester.widget<Text>(find.text('결과 보기'));
-      expect(label.style!.fontFamily, AppFonts.display);
-      expect(label.style!.color, AppColors.ink);
-      // The words on the left, the arrow on the right.
-      expect(
-        tester.getRect(find.text('결과 보기')).left,
-        lessThan(tester.getRect(find.byIcon(Icons.arrow_forward_rounded)).left),
-      );
-      expect(
-        rect.right -
-            tester.getRect(find.byIcon(Icons.arrow_forward_rounded)).right,
-        24,
-      );
-      // The camera behind it is covered with the background color.
-      final scrim = tester.widget<ColoredBox>(
-        find.byWidgetPredicate(
-          (w) =>
-              w is ColoredBox &&
-              w.color == AppColors.background.withValues(alpha: 0.62),
-        ),
-      );
-      expect(scrim, isNotNull);
-      expect(
-        tester.getSemantics(find.bySemanticsLabel('결과 보기')),
-        matchesSemantics(label: '결과 보기', isButton: true, hasTapAction: true),
-      );
-      await tester.tap(find.text('결과 보기'));
-      expect(opened, 1);
-      handle.dispose();
-    });
-
-    testWidgets('결과 보기 comes up as the effect says, and is not there '
-        'before', (tester) async {
-      await _pump(tester, onShowResult: () {});
-      expect(find.text('결과 보기'), findsNothing);
-      await _pump(
-        tester,
-        resultButton: const BattleFxResultButton(
-          opacity: 0.5,
-          scale: 0.8,
-          scrim: 0.2,
-        ),
-        onShowResult: () {},
-      );
-      final button = find
-          .ancestor(of: find.text('결과 보기'), matching: find.byType(Material))
-          .first;
-      expect(tester.getRect(button).width, closeTo(240 * 0.8, 0.01));
-      expect(
-        tester
-            .widget<Opacity>(
-              find.ancestor(of: button, matching: find.byType(Opacity)).first,
-            )
-            .opacity,
-        0.5,
-      );
-      expect(
-        find.byWidgetPredicate(
-          (w) =>
-              w is ColoredBox &&
-              w.color == AppColors.background.withValues(alpha: 0.2),
-        ),
-        findsOneWidget,
-      );
-    });
-
     testWidgets('the buttons stand above the system\'s bottom bar', (
       tester,
     ) async {
@@ -602,9 +509,7 @@ void main() {
           );
         });
 
-        testWidgets('the reconnect band and 결과 보기 fit ($where)', (
-          tester,
-        ) async {
+        testWidgets('the reconnect band fits ($where)', (tester) async {
           await _pump(
             tester,
             size: size,
@@ -631,35 +536,6 @@ void main() {
           expect(
             band.bottom,
             lessThan(tester.getRect(find.byIcon(Icons.logout_rounded)).top),
-          );
-
-          await _pump(
-            tester,
-            size: size,
-            textScale: scale,
-            resultButton: _up,
-            onShowResult: () {},
-          );
-          expect(tester.takeException(), isNull);
-          final button = tester.getRect(
-            find
-                .ancestor(
-                  of: find.text('결과 보기'),
-                  matching: find.byType(Material),
-                )
-                .first,
-          );
-          expect(button.left, greaterThanOrEqualTo(area.left + 12));
-          expect(button.right, lessThanOrEqualTo(area.right - 12));
-          expect(button.top, greaterThanOrEqualTo(area.top));
-          expect(button.bottom, lessThanOrEqualTo(area.bottom));
-          final words = tester.getRect(find.text('결과 보기'));
-          expect(words.left, greaterThanOrEqualTo(button.left));
-          expect(
-            words.right,
-            lessThanOrEqualTo(
-              tester.getRect(find.byIcon(Icons.arrow_forward_rounded)).left,
-            ),
           );
         });
       }

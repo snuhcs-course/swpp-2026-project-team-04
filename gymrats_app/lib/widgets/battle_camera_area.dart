@@ -17,8 +17,10 @@ import 'battle_stage_model.dart';
 /// - along the top: the setup progress before the start, or the reconnect
 ///   band while the user's own connection is down
 /// - in the top corners while the round is on: the combo marks ("2 HIT")
-/// - in the middle, once the ending has played: 결과 보기, over a dimmed
-///   camera
+///
+/// Once the result is known the battle screen takes it away: the line
+/// above it goes down and it gets shorter until it is gone (W2b end screen,
+/// option A); 결과 보기 is the screen's ([BattleArena]), not its own.
 ///
 /// While [settingUp] (W2b 3-B) the setup's things are drawn large instead:
 /// the progress bar along the top, the guidance in a large band under it,
@@ -46,8 +48,6 @@ class BattleCameraArea extends StatefulWidget {
     this.setupLook = 0,
     this.reconnecting = false,
     this.spin = 0,
-    this.resultButton,
-    this.onShowResult,
     this.combos = const [],
     this.stageScale = 1,
   });
@@ -93,11 +93,6 @@ class BattleCameraArea extends StatefulWidget {
   /// How far the reconnect band's arc has turned, in degrees.
   final double spin;
 
-  /// 결과 보기 as the effect math brings it up; null until the ending has
-  /// played, and the button cannot be pressed before.
-  final BattleFxResultButton? resultButton;
-  final VoidCallback? onShowResult;
-
   /// The combo marks, in the top corners: mine on the left, the opponent's
   /// on the right, [BattleFx.comboBelowLine] stage points under the line, or
   /// as far under the reconnect band while it is up, however tall the
@@ -116,8 +111,6 @@ class BattleCameraArea extends StatefulWidget {
   static const _edge = 1.5;
   static const _progressHeight = 6.0;
   static const _bandHeight = 34.0;
-  static const _resultSize = Size(240, 58);
-  static const _arrowSize = 26.0;
 
   /// While setting up: the large band's height, the large ready button's
   /// least size, and their ink edges.
@@ -177,7 +170,6 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
     final area = widget;
     final text = Theme.of(context).textTheme;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final result = area.resultButton;
     final progress = area.setupProgress;
     final setup = _last;
     final setupLook = area.setupLook.clamp(0.0, 1.0);
@@ -282,35 +274,6 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
                   ),
                 ),
               ),
-            if (result != null) ...[
-              // The camera fades behind the button: the battle is over.
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: ColoredBox(
-                    color: AppColors.background.withValues(
-                      alpha: result.scrim.clamp(0.0, 1.0),
-                    ),
-                  ),
-                ),
-              ),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s12,
-                  ),
-                  child: Opacity(
-                    opacity: result.opacity.clamp(0.0, 1.0),
-                    child: Transform.scale(
-                      scale: result.scale,
-                      child: _ResultButton(
-                        onPressed: area.onShowResult,
-                        style: text.cameraResult,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
             // Over everything else here: the band, and the combo marks under
             // it, in the order of the design's layers.
             if (area.reconnecting || area.combos.isNotEmpty)
@@ -870,88 +833,4 @@ class BattleReconnectArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(BattleReconnectArcPainter oldDelegate) => false;
-}
-
-/// 결과 보기: the only way on once the battle has ended.
-class _ResultButton extends StatelessWidget {
-  const _ResultButton({required this.onPressed, required this.style});
-
-  final VoidCallback? onPressed;
-  final TextStyle style;
-
-  static const _edge = 2.0;
-  static const _glow = 0.22;
-  static const _glowBlur = 36.0;
-  static const _glowDrop = 14.0;
-
-  @override
-  Widget build(BuildContext context) {
-    const shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(AppRadius.card)),
-      side: BorderSide(color: AppColors.ink, width: _edge),
-    );
-    return Semantics(
-      container: true,
-      button: true,
-      label: '결과 보기',
-      onTap: onPressed,
-      child: ExcludeSemantics(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: const BorderRadius.all(
-              Radius.circular(AppRadius.card),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.accent.withValues(alpha: _glow),
-                blurRadius: _glowBlur,
-                offset: const Offset(0, _glowDrop),
-              ),
-            ],
-          ),
-          child: Material(
-            color: AppColors.accent,
-            shape: shape,
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onPressed,
-              // As wide as its words need, at least the design's width, and
-              // never wider than the room it has.
-              child: IntrinsicWidth(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: BattleCameraArea._resultSize.width,
-                    minHeight: BattleCameraArea._resultSize.height,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.s24,
-                      vertical: AppSpacing.s8,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text('결과 보기', maxLines: 1, style: style),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.s12),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: BattleCameraArea._arrowSize,
-                          color: AppColors.ink,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
