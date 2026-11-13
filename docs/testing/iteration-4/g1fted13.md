@@ -228,3 +228,94 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `6a8efba`, wit
   - `'on, as designed: every match shows it, seen or not; 확인 counts as seen'`
   - `'off: it shows until it is seen once, then a match goes straight to the setup button'`
   - `'off and seen in an earlier run: no warning, the setup at once'`
+
+#### 2026-11-14 · code at commit `47afaff` · step W3 `feat/characters` (P14 characters replace the avatars, with a selection screen, team order #11)
+This step replaces the old avatars with six drawn characters. The design is the user's (spec v1.1 from the design canvas; rig data `w3-rig-2`).
+- **The characters:** one data file (`assets/characters/w3_rig.json`) and one painter (`CharacterFigure`) draw all six in five poses (idle, attack, hit, K.O., win).
+  - Five can be picked: GYM마우스 (`mouse`, the default), 그루 (`kangaroo`), 곰탱이 (`bear`), 펭뚱이 (`penguin`) and 물렁범 (`seal`). RepBot (`bot`) is the bot's.
+  - Each character has its own idle motion: a hop, a rock or a stretch.
+- **The stage:** the bot and online battles draw the two characters instead of W2's stand-in fighter.
+  - The opponent idles 230 ms after me, the hit star sits where the blows land, and each character draws its own flash.
+  - Without characters the stage keeps W2's values, so W2's `battle_fx_golden.json` passes unchanged.
+- **캐릭터 선택:** a screen after the design `ChSelectB`. It opens from 게임 시작's new 캐릭터 row and from 환경설정's 캐릭터 row (was 아바타).
+  - The choice is saved per account in the phone's secure storage.
+  - Nothing saved, an unknown id, RepBot or an old avatar id all read as the mouse.
+- **Online:** the app sends its character id in the protocol's existing `avatar_id` field.
+  - The battle server takes the field as optional, checks only its shape (1 to 32 lowercase letters, digits or `_`) and passes it on.
+  - An older server that refuses the character with `INVALID_AVATAR` gets one more `queue.join` with `avatar_01`.
+  - An opponent's id that is not one of the five draws the mouse.
+- **The old 3D avatars are gone:** the profile screen with its avatar list in `83c00ce`; the 3D models, the viewers, the opponent mannequin and `tools/avatar-preview/` in `dded304`. `PoseAvatarToggleView` now shows the camera only.
+
+The branch was made from W2's head `38ea06d` before #50 was merged. On 2026-11-14 I merged `origin/main` `1ed57ca` (#49 and #50) into it as `47afaff`. There was no conflict, and `main` brought no file change: `git diff 38ea06d 1ed57ca` is empty.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `47afaff`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | – | CI comment "Tests and coverage (GitHub Actions)" on the W3 PR |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the same CI comment | – | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | TODO(Woohyun Song): from the same CI comment | – | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the same CI comment | – | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | the Django code is unchanged (only the Dart battle server changed); TODO(Woohyun Song): CI's pytest number | – | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` had 2263 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as in W2:
+    - `test/services/online/public_wss_smoke_test.dart`: a live server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`. W3 builds its sessions with character ids. It expects the opponent's character to be the mouse until the W3 battle server is deployed.
+    - 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - `main` before W3 had 2113 passed, so W3 adds 150 tests in all.
+  - W3 adds 7 test files and two fixtures, changes 20 test files and deletes 4.
+    - The fixtures are the design's idle samples (`test/models/character_idle_golden.json`) and 36 of the design's 60 shots (`test/widgets/character_shots/`).
+    - The deleted files tested removed code: the profile screen, the avatar pose payload, the opponent avatar panel and the opponent mannequin.
+- **The design check:**
+  - `character_idle_motion_test.dart` compares every character's idle motion, and W2's breathing, with the design's own samples.
+  - `character_figure_test.dart` paints each of the 36 shots and compares it pixel by pixel with the design's PNG. At most 0.03% of the pixels may differ (smoothed edges). One test shows that the comparison catches a wrong picture: the other team's colors, or one missing eye shine.
+  - `character_rig_test.dart` checks the rig against `assets/characters/w3_rig.json` and the spec: the box, the order, the names, the five poses, where every attack ends (`hit_contact.json`), the hit star (48 px over, 58 px up) and the 230 ms. It also checks that a malformed rig is refused.
+- **Tests checked against wrong code:** the reviewer planted mutants in runs 1 and 2. In the painter, 13 of 14 were caught; the one left changes no pixel. In the stage wiring, 15 of 16 were caught, and the one left got a test. The two tests of run 3's double-tap fix fail on the old code.
+- **Other checks:**
+  - `ownership_guard.py --check-diff` is ok: 235 changed files. Each is W3's or is under an approved exception line; the exceptions are listed in the PR.
+  - The Dart battle server changed (`server/lib/battle_server.dart`). Its tests run in `flutter test` (`test/services/online/online_battle_integration_test.dart`). The Django server did not change, so `pytest` was not run on this PC.
+- **Coverage:** TODO(Woohyun Song): fill from the PR's CI comment (commit, run link, per layer, files left out by CI's time limit).
+- **Shortfalls:** TODO(Woohyun Song): to be stated with the CI coverage.
+- **Screen readers:** widget tests check that each cell of 캐릭터 선택 says its name and animal and whether it is picked. TalkBack on a real phone was **not** checked.
+- **Manual check (the user, reported 2026-11-14, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17):** the user found nothing to fix in W3's code.
+  - Seen on the phone:
+    - picking a character with 게임 시작's 캐릭터 row;
+    - a bot battle with the chosen character (물렁범): its idle, hit and K.O. motions.
+  - Not in the reported check: the online battle on two phones, which shows the opponent's character and also needs the W3 battle server deployed; 환경설정's 캐릭터 row; a second account; the stage demo's character buttons; reduced motion; TalkBack.
+  - Left for later steps (the user's plan): the character on the main menu (W4) and the screen after the battle (W2b). MATCH FOUND still draws W2's stand-in in `_VersusCharacter` (`versus_screen.dart`, on W2b); it gets the W3 character once W2b and W3 are both in `main`.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/character_rig_test.dart` (new) | the rig equals `assets/characters/w3_rig.json`; `w3-rig-2`'s 140 × 160 box; six characters in order, with the names of 11-13; five poses with fourteen values each; the shapes per character; expressions only in their poses; the design colors, no character lime or pink; outlines; the default mouse and RepBot; every other choice reads as the mouse; the stage values (where attacks end, the hit star, 230 ms, each idle motion); a malformed rig is refused and says where |
+| Model | `test/models/character_idle_motion_test.dart` (new) + `character_idle_golden.json` | each character's idle motion and W2's breathing against the design's samples; a hop never goes below the floor; stepped and smooth rocks; a stretch; a period of 0 turns its part off |
+| Model | `test/models/avatar_catalog_test.dart` (updated) | the kept avatar ids only (the asset getters are gone) |
+| View | `test/widgets/character_figure_test.dart` (new) + `character_shots/` (36 PNG) | the painter against 36 design shots, pixel by pixel, and a check that the comparison catches a wrong picture; size, pose and team; an unknown id draws the mouse; the idle figure (its motion, still with reduced motion); `BattleCharacters`; the theme colors are the rig's; even scaling in a box of another shape; every pose in both teams, with and without the flash |
+| View | `test/screens/character_select_screen_test.dart` (new) | the account's character large with its name and line; a tap changes only the preview; 이 캐릭터로 하기 saves and goes back; during a slow save a second tap or back goes back only once; back saves nothing; the layout and type of ChSelectB; each cell read with its name and animal; the picked cell; 360 × 640 and a large text size |
+| ViewModel | `test/viewmodels/character_viewmodel_test.dart` (new) | the app-wide character: the mouse before login, the account's saved one after it, another account, logout, choosing saves for the signed-in account, RepBot not choosable, a failed save, a slow read does not undo a choice |
+| ViewModel | `test/viewmodels/character_select_viewmodel_test.dart` (new) | the five in order, each said as its animal and a few words; picking changes only the preview; confirming saves; a second confirm while saving does nothing |
+| Service | `test/services/user/character_store_test.dart` (new) | per account in secure storage; nothing saved, unknown, RepBot or an old avatar id read as the mouse; an unreadable value; a failed write reaches the caller; the in-memory store |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | `avatar_id` carries the character: the server checks only the shape, passes the id on in `match.found`, the snapshot and the result, and leaves it out for a player who sent none; RepBot, an old avatar id or nothing reads as the mouse; an older server: one resend with `avatar_01`, also after a reconnect, and a second refusal fails the search; every character a person may pick reaches the opponent |
+| Service | `test/services/game/online_battle_result_test.dart`, `test/services/online/battle_result_store_test.dart`, `public_wss_smoke_test.dart` (updated, exceptions) | sessions and players built with a character id instead of `AvatarModel` |
+| View | `test/widgets/battle_fx_motion_test.dart`, `battle_stage_test.dart`, `battle_arena_test.dart` (updated, exceptions) | without characters, W2's breathing and star; with them, each side's idle (hop, rock, stretch), the opponent 230 ms later, only the idle pose moves, the danger sway, reduced motion, the star at (xm ± 48, 288); the characters in their poses and team colors, the hit one flashing on its own; the fever aura |
+| View | `test/screens/battle_screen_test.dart`, `online_preparation_test.dart`, `online_lobby_screen_test.dart` (updated) | my character against RepBot; the mouse when none is given; online, mine and the one the opponent sent; the lobby matches with my character |
+| View | `test/screens/play_screen_test.dart`, `settings_screen_test.dart`, `home_screen_test.dart` (updated, exceptions) | 게임 시작's 캐릭터 row shows my character, opens 캐릭터 선택 and follows a new choice; 환경설정's 캐릭터 opens the selection; the app-wide view model in the test apps |
+| View | `test/widgets/pose_avatar_toggle_view_test.dart` (updated), `battle_live_indicators_test.dart`, `battle_online_events_test.dart` (updated, exceptions) | the camera-only view: no avatar button, the pose and both height gauges on the given frame; one gauge test rewritten for it; the online events with character ids |
+| App flow | `test/main_test.dart`, `test/demo/battle_demo_test.dart` (updated; the demo under an exception) | the account's saved character on 게임 시작; a pick is saved and goes into the next bot battle; logout puts the mouse back; the online route sends the account's character; the stage demo's character buttons |
+| Design | `test/design_tokens_test.dart` (updated) | `character_select_screen.dart` and `character_figure.dart` in the token check |
+
+### Acceptance criteria → tests
+- Given I open character selection and pick one, then it is saved for my account. Tests:
+  - `'이 캐릭터로 하기 saves the pick for the account and goes back'`
+  - `'choosing saves for the signed-in account and shows at once'`
+  - `'keeps the choices per account while the app runs'`
+  - `'another account starts from the mouse, then shows its own'`
+- …and shown in battle. Tests:
+  - `'a pick on 캐릭터 선택 is saved for the account, shows on 게임 시작 and goes into the next bot battle'`
+  - `'the stage shows my character against RepBot'`
+- …and shown to my online opponent. Tests:
+  - `'every character a person may pick matches and appears on the opponent client'`
+  - `'a character id is passed on to the opponent as it came, in match.found, the snapshot and the result'`
+  - `'the stage draws my character and the one the opponent sent'`
+  - `'the online route sends the character of the account'`
+  - On real phones this needs the W3 battle server deployed; it was not checked on two phones.
