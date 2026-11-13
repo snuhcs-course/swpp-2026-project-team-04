@@ -23,6 +23,11 @@ import 'package:gymrats_app/widgets/battle_stage_model.dart';
 /// the scenario was played.
 const _goldenPath = 'test/widgets/battle_fx_golden.json';
 
+/// The W2b design's own output (W2B-SPEC, `w2b_golden.json`, copied as it
+/// is): here its `setupTransition`, the move from the setup's layout to the
+/// battle's as the countdown begins (3-B). The radar's part is for 1-A.
+const _w2bGoldenPath = 'test/widgets/battle_w2b_golden.json';
+
 /// The stage clock at a sample's `t = 0`.
 const _eventAt = 1000.0;
 
@@ -65,6 +70,7 @@ class _Play {
     this.scoresBefore = (0, 0),
     this.fever = false,
     this.reconnecting = false,
+    this.setup = false,
     required this.steps,
   });
 
@@ -72,7 +78,53 @@ class _Play {
   final (int, int) scoresBefore;
   final bool fever;
   final bool reconnecting;
+
+  /// Whether the stage was made setting up, in the setup's layout (W2b).
+  final bool setup;
   final List<_Step> steps;
+}
+
+/// W2b 3-B changes these fields of two W2 scenarios (W2B-SPEC section 9);
+/// everything else in them, and the other scenarios, stay W2's. Returns the
+/// sample as W2b expects it.
+Map<String, dynamic> _w2b(String scenario, Map<String, dynamic> sample) {
+  Map<String, dynamic> sized(Object? fighter, double scale, double opacity) {
+    final f = Map<String, dynamic>.of(fighter! as Map<String, dynamic>);
+    f['scaleX'] = (f['scaleX'] as num) * scale;
+    f['scaleY'] = (f['scaleY'] as num) * scale;
+    f['opacity'] = opacity;
+    return f;
+  }
+
+  final out = Map<String, dynamic>.of(sample);
+  switch (scenario) {
+    case 'pre_setup_then_waiting':
+      // The status band higher and smaller, no tags, no fighters yet.
+      out['banners'] = [
+        for (final b
+            in (sample['banners'] as List).cast<Map<String, dynamic>>())
+          b['font'] == 'display'
+              ? {...b, 'top': 71, 'fontSize': 24, 'bandHeight': 30}
+              : b,
+      ];
+      out['meTag'] = null;
+      out['opTag'] = null;
+      out['me'] = sized(sample['me'], 0.6, 0);
+      out['op'] = sized(sample['op'], 0.6, 0);
+    case 'countdown_go':
+      // The fighters pop up once the line is down (W2B-SPEC 4.4).
+      final t = (sample['t'] as num).toDouble();
+      if (t <= 600) {
+        double clamp(double x) => x.clamp(0.0, 1.0);
+        final y = clamp((t - 350) / 250) - 1;
+        final back = 1 + 2.70158 * y * y * y + 1.70158 * y * y;
+        final scale = 0.6 + 0.4 * back;
+        final opacity = clamp((t - 350) / 70);
+        out['me'] = sized(sample['me'], scale, opacity);
+        out['op'] = sized(sample['op'], scale, opacity);
+      }
+  }
+  return out;
 }
 
 /// A rep of [event] at [t], with the scores and the share it leaves.
@@ -302,12 +354,35 @@ final _scenarios = <String, _Play>{
     steps: [_at(0, (fx, now) => fx.opponentGone = true)],
   ),
   'pre_setup_then_waiting': _Play(
+    setup: true,
     steps: [
-      _at(0, (fx, now) => fx.setSetup(active: true, opponentReady: true)),
-      _at(1000, (fx, now) => fx.setSetup(active: true, meReady: true)),
+      _at(
+        0,
+        (fx, now) => fx.setSetup(active: true, opponentReady: true, now: now),
+      ),
+      _at(
+        1000,
+        (fx, now) => fx.setSetup(active: true, meReady: true, now: now),
+      ),
     ],
   ),
-  'countdown_go': _Play(steps: [_at(0, (fx, now) => fx.countDown(3000, now))]),
+  // W2b: the countdown begins from a setup in which both are ready, as
+  // online (W2B-SPEC section 9), so no status band fades out over the "3".
+  'countdown_go': _Play(
+    setup: true,
+    steps: [
+      _at(
+        -500,
+        (fx, now) => fx.setSetup(
+          active: true,
+          meReady: true,
+          opponentReady: true,
+          now: now,
+        ),
+      ),
+      _at(0, (fx, now) => fx.countDown(3000, now)),
+    ],
+  ),
 };
 
 const _poses = {
@@ -623,8 +698,10 @@ void main() {
       final name = scenario['name'] as String;
       test('$name: every sample matches within the design tolerance', () {
         final play = _scenarios[name]!;
-        final fx = BattleFxTimeline(share: _share(play.leadBefore))
-          ..setScores(play.scoresBefore.$1, play.scoresBefore.$2);
+        final fx = BattleFxTimeline(
+          share: _share(play.leadBefore),
+          setup: play.setup,
+        )..setScores(play.scoresBefore.$1, play.scoresBefore.$2);
         final steps = [...play.steps]..sort((a, b) => a.at.compareTo(b.at));
         final samples = (scenario['samples'] as List<dynamic>)
             .cast<Map<String, dynamic>>();
@@ -642,7 +719,7 @@ void main() {
                 meta['tolerance'] as Map<String, dynamic>,
               )..frame(
                 fx.frame(now),
-                sample,
+                _w2b(name, sample),
                 fever: play.fever,
                 reconnecting: play.reconnecting,
               );
@@ -667,6 +744,309 @@ void main() {
         expect(fx.end?.winner, _sides[end?['win']]);
       });
     }
+  });
+
+  group('the setup layout against the W2b design (w2b_golden.json, 3-B)', () {
+    final w2b = jsonDecode(
+      File(_w2bGoldenPath).readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final w2bMeta = w2b['meta'] as Map<String, dynamic>;
+    final tolerance = w2bMeta['tolerance'] as Map<String, dynamic>;
+    final position = (tolerance['position'] as num).toDouble();
+    final scale = (tolerance['scale'] as num).toDouble();
+    final opacity = (tolerance['opacity'] as num).toDouble();
+    final transition = w2b['setupTransition'] as Map<String, dynamic>;
+    final samples = (transition['samples'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+
+    test('the file is the one the checks were written for', () {
+      expect(w2bMeta['version'], 'w2b-golden-1');
+      expect(samples, hasLength(39));
+      final constants = transition['constants'] as Map<String, dynamic>;
+      expect(constants['boundarySetupY'], BattleFx.setupLineY);
+      expect(constants['boundaryBattleY'], BattleFx.stageHeight);
+      expect(constants['boundaryMs'], BattleFx.layoutMs);
+      expect(constants['setupOverlayFadeMs'], BattleFx.setupFadeMs);
+      expect(constants['validCountFadeMs'], BattleFx.countsFadeMs);
+      expect(
+        constants['fighterPopStartMs'],
+        BattleFx.layoutMs,
+        reason: 'the fighters pop up once the line is down',
+      );
+      expect(
+        constants['fighterPopEndMs'],
+        BattleFx.layoutMs + BattleFx.fighterPopMs,
+      );
+      expect(
+        constants['fighterFadeInEndMs'],
+        BattleFx.layoutMs + BattleFx.fighterFadeInMs,
+      );
+    });
+
+    test('every sample matches: the line\'s progress, what fades, the '
+        'fighters and the number', () {
+      // A countdown of exactly 3000 ms from a setup where both are ready,
+      // beginning at tMs 0, on a stage made setting up 1000 ms before.
+      final fx = BattleFxTimeline(setup: true)
+        ..setSetup(active: true, meReady: true, opponentReady: true, now: 0);
+      var counting = false;
+      final problems = <String>[];
+      void near(String what, num actual, Object? expected, double within) {
+        final want = (expected! as num).toDouble();
+        if ((actual - want).abs() > within + 1e-9) {
+          problems.add('$what: $actual, golden $want');
+        }
+      }
+
+      for (final sample in samples) {
+        final t = (sample['tMs'] as num).toDouble();
+        if (t >= 0 && !counting) {
+          fx.countDown(3000, _eventAt);
+          counting = true;
+        }
+        final frame = fx.frame(_eventAt + t);
+        final at = 'tMs $t';
+        near('$at progress', frame.battleLayout, sample['progress'], scale);
+        near(
+          '$at setup look',
+          frame.setupLook,
+          sample['setupOverlayOpacity'],
+          opacity,
+        );
+        near(
+          '$at counts',
+          frame.countsOpacity,
+          sample['validCountOpacity'],
+          opacity,
+        );
+        for (final chip in frame.readyChips) {
+          near('$at ${chip.side.name} chip', chip.opacity, frame.setupLook, 0);
+        }
+        final fighter = sample['fighter'] as Map<String, dynamic>;
+        for (final f in [frame.me, frame.opponent]) {
+          near('$at fighter size', f.scaleX.abs(), fighter['scale'], scale);
+          near('$at fighter opacity', f.opacity, fighter['opacity'], opacity);
+          near('$at fighter footY', f.footY, fighter['footY'], position);
+        }
+        near('$at my foot', frame.me.footX, fighter['myFootX'], position);
+        near(
+          '$at opponent foot',
+          frame.opponent.footX,
+          fighter['opponentFootX'],
+          position,
+        );
+        final digit = sample['countdownDigit'] as Map<String, dynamic>?;
+        final numbers = [
+          for (final b in frame.banners)
+            if (int.tryParse(b.text) != null) b,
+        ];
+        if (digit == null) {
+          if (numbers.isNotEmpty) problems.add('$at: an extra number');
+        } else if (numbers.length != 1) {
+          problems.add('$at: ${numbers.length} numbers');
+        } else {
+          final number = numbers.single;
+          if (number.text != '${digit['number']}') {
+            problems.add('$at number: ${number.text}, golden $digit');
+          }
+          near('$at number size', number.scaleX, digit['scale'], scale);
+        }
+      }
+      expect(problems, isEmpty, reason: problems.join('\n'));
+    });
+
+    test('with reduced motion the countdown jumps to the end values', () {
+      final end = transition['reducedMotion'] as Map<String, dynamic>;
+      final fighter = end['fighter'] as Map<String, dynamic>;
+      final fx = BattleFxTimeline(setup: true);
+      final before = fx.frame(0, reducedMotion: true);
+      expect((before.battleLayout, before.setupLook), (0, 1));
+      expect(before.me.opacity, 0);
+      fx.countDown(3000, 0);
+      final frame = fx.frame(0, reducedMotion: true);
+      expect(frame.battleLayout, 1);
+      expect(frame.setupLook, end['setupOverlayOpacity']);
+      expect(frame.countsOpacity, end['validCountOpacity']);
+      expect(frame.readyChips, isEmpty);
+      for (final f in [frame.me, frame.opponent]) {
+        expect(f.scaleX.abs(), fighter['scale']);
+        expect(f.opacity, fighter['opacity']);
+      }
+      // And straight back to the setup's layout.
+      fx.setSetup(active: true, now: 100);
+      final back = fx.frame(100, reducedMotion: true);
+      expect(
+        (back.battleLayout, back.setupLook, back.countsOpacity),
+        (0, 1, 0),
+      );
+      expect(back.me.opacity, 0);
+    });
+
+    test('a stage made in another phase stands in the battle\'s layout at '
+        'once, fighters and all', () {
+      final fx = BattleFxTimeline();
+      for (final now in [0.0, 100.0, 400.0]) {
+        final frame = fx.frame(now);
+        expect(
+          (frame.battleLayout, frame.setupLook, frame.countsOpacity),
+          (1, 0, 1),
+        );
+        expect(frame.readyChips, isEmpty);
+        expect((frame.me.opacity, frame.me.scaleX), (1, 1));
+        expect((frame.opponent.opacity, frame.opponent.scaleX), (1, -1));
+      }
+      // A countdown or the round does not move it either.
+      fx.countDown(3000, 500);
+      expect(fx.frame(520).me.opacity, 1);
+      expect(fx.frame(520).battleLayout, 1);
+    });
+
+    test('back to the setup during the pop: the fighters fade out over '
+        '100 ms at the size they had, the line goes back up from where it '
+        'is, and nothing jumps', () {
+      final fx = BattleFxTimeline(setup: true)..countDown(3000, 0);
+      final before = fx.frame(450);
+      expect(before.me.opacity, 1);
+      final size = before.me.scaleX;
+      expect(size, greaterThan(1), reason: 'past the overshoot at 450 ms');
+      fx.setSetup(active: true, opponentReady: true, now: 450);
+      final turned = fx.frame(450);
+      expect(turned.battleLayout, before.battleLayout);
+      expect(turned.me.opacity, closeTo(1, 1e-9));
+      expect(turned.me.scaleX, closeTo(size, 1e-9));
+      final half = fx.frame(500);
+      expect(half.me.opacity, closeTo(0.5, 1e-9));
+      expect(half.me.scaleX, closeTo(size, 1e-9));
+      expect(half.opponent.opacity, closeTo(0.5, 1e-9));
+      expect(fx.frame(550).me.opacity, 0);
+      // The line takes 350 ms back; the setup's things show for the last
+      // 150 ms of it, the valid counts go in the last 200.
+      expect(fx.frame(450 + 175).battleLayout, closeTo(0.5, 1e-9));
+      expect(fx.frame(450 + 175).setupLook, 0);
+      expect(fx.frame(450 + 275).setupLook, closeTo(0.5, 1e-9));
+      expect(fx.frame(450 + 250).countsOpacity, closeTo(0.5, 1e-9));
+      final setup = fx.frame(800);
+      expect(
+        (setup.battleLayout, setup.setupLook, setup.countsOpacity),
+        (0, 1, 0),
+      );
+      expect(setup.banners.single.text, '자세 세팅 중');
+      expect(setup.readyChips.map((c) => c.text), ['세팅 중', '준비 완료']);
+    });
+
+    test('back to the setup while the line comes down: it turns where it '
+        'is, and the fighters never show', () {
+      final fx = BattleFxTimeline(setup: true)..countDown(3000, 0);
+      final down = fx.frame(175).battleLayout;
+      expect(down, closeTo(0.5, 1e-9));
+      fx.setSetup(active: true, now: 175);
+      for (var now = 175.0; now <= 400; now += 25) {
+        expect(fx.frame(now).me.opacity, 0, reason: 'at $now');
+      }
+      expect(fx.frame(175).battleLayout, closeTo(down, 1e-9));
+      expect(fx.frame(350).battleLayout, 0);
+      // Down again from there: the pop waits for the line, all the way.
+      fx.countDown(3000, 400);
+      expect(fx.frame(749).me.opacity, 0);
+      expect(fx.frame(785).me.opacity, closeTo(0.5, 1e-9));
+    });
+
+    test('the status band fades out with its words as the line comes down, '
+        'and the chips say both are ready', () {
+      // The bot: the user is setting up, the bot is ready, and the count
+      // begins as the pose holds.
+      final fx = BattleFxTimeline(setup: true)
+        ..setSetup(active: true, opponentReady: true, now: 0);
+      final setup = fx.frame(500);
+      final band = setup.banners.single;
+      expect(
+        (band.text, band.top, band.textSize, band.bandHeight, band.font),
+        ('자세 세팅 중', 71, 24, 30, BattleFxFont.display),
+      );
+      expect(band.rotation, -3);
+      expect(band.opacity, 1);
+      expect(setup.readyChips.map((c) => (c.side, c.text, c.tone)), [
+        (BattleSide.me, '세팅 중', BattleFxTone.plain),
+        (BattleSide.opponent, '준비 완료', BattleFxTone.opponent),
+      ]);
+      fx.countDown(3000, 1000);
+      final fading = fx.frame(1075);
+      final words = fading.banners.where((b) => b.font == BattleFxFont.display);
+      expect(words.single.text, '자세 세팅 중');
+      expect(words.single.opacity, closeTo(0.5, 1e-9));
+      expect(fading.readyChips.map((c) => (c.text, c.opacity)), [
+        ('준비 완료', 0.5),
+        ('준비 완료', 0.5),
+      ]);
+      final gone = fx.frame(1150);
+      expect(gone.banners.map((b) => b.text), ['3']);
+      expect(gone.readyChips, isEmpty);
+    });
+
+    test('waiting for the opponent: my chip lime, theirs white, and the '
+        'band says whom it waits for; both ready, no band', () {
+      final fx = BattleFxTimeline(setup: true)
+        ..setSetup(active: true, meReady: true, now: 0);
+      final waiting = fx.frame(0);
+      expect(waiting.banners.single.text, '상대를 기다리는 중');
+      expect(waiting.readyChips.map((c) => (c.text, c.tone)), [
+        ('준비 완료', BattleFxTone.me),
+        ('세팅 중', BattleFxTone.plain),
+      ]);
+      fx.setSetup(active: true, meReady: true, opponentReady: true, now: 10);
+      expect(fx.frame(10).banners, isEmpty);
+      // Nothing to fade out once both were ready.
+      fx.countDown(3000, 20);
+      expect(fx.frame(30).banners.map((b) => b.text), ['3']);
+    });
+
+    test('more than 3 s before the start the ready tags show as the '
+        'fighters pop up', () {
+      final fx = BattleFxTimeline(setup: true)..countDown(5000, 0);
+      expect(fx.frame(300).myTag!.opacity, 0);
+      expect(fx.frame(385).myTag!.opacity, closeTo(0.5, 1e-9));
+      expect(fx.frame(385).opponentTag!.opacity, closeTo(0.5, 1e-9));
+      expect(fx.frame(385).me.opacity, closeTo(0.5, 1e-9));
+    });
+
+    test('an opponent whose connection is down has no tag while setting up '
+        '(there is no fighter); from the countdown it shows as the fighter '
+        'does', () {
+      final fx = BattleFxTimeline(setup: true)
+        ..opponentGone = true
+        ..setSetup(active: true, meReady: true, now: 0);
+      expect(fx.frame(0).opponentTag, isNull);
+      fx.countDown(3000, 100);
+      // The line comes down; no fighter yet, so the tag shows nothing.
+      expect(fx.frame(100 + 200).opponentTag!.opacity, 0);
+      expect(fx.frame(100 + 385).opponentTag!.opacity, closeTo(0.5, 1e-9));
+      final standing = fx.frame(100 + 600);
+      expect(standing.opponentTag!.text, '연결 끊김');
+      expect(standing.opponentTag!.opacity, 1);
+      expect(standing.opponent.opacity, closeTo(0.45, 1e-9));
+    });
+
+    test('the start pressed during the move: GO! at once, and the move goes '
+        'on to its end', () {
+      final fx = BattleFxTimeline(setup: true)..countDown(3000, 0);
+      final layout = fx.frame(200).battleLayout;
+      fx.countDown(0, 100);
+      expect(fx.frame(200).battleLayout, layout);
+      expect(fx.frame(200).banners.single.text, 'GO!');
+      expect(fx.frame(350).battleLayout, 1);
+      expect(fx.frame(600).me.opacity, 1);
+      expect(fx.frame(600).me.scaleX, closeTo(1, 1e-9));
+    });
+
+    test('the in-and-out curve starts and stops slowly', () {
+      expect(BattleFx.easeInOut(0), 0);
+      expect(BattleFx.easeInOut(0.25), closeTo(0.0625, 1e-9));
+      expect(BattleFx.easeInOut(0.5), closeTo(0.5, 1e-9));
+      expect(BattleFx.easeInOut(0.75), closeTo(0.9375, 1e-9));
+      expect(BattleFx.easeInOut(1), 1);
+      expect(BattleFx.easeInOut(-1), 0);
+      expect(BattleFx.easeInOut(2), 1);
+    });
   });
 
   group('curves', () {
@@ -1104,11 +1484,9 @@ void main() {
     });
 
     test('the danger edge is off before the start and after the end', () {
-      final fx = BattleFxTimeline()
-        ..danger = true
-        ..setSetup(active: true);
+      final fx = BattleFxTimeline(setup: true)..danger = true;
       expect(fx.frame(0).dangerOpacity, 0);
-      fx.setSetup(active: false);
+      fx.setSetup(active: false, now: 0);
       expect(fx.frame(0).dangerOpacity, 0.3);
       expect(fx.frame(240).dangerOpacity, 0.95);
       fx.finish(
@@ -1120,24 +1498,26 @@ void main() {
   });
 
   group('before the start', () {
-    test('both ready shows two ready tags and no band', () {
-      final fx = BattleFxTimeline()
-        ..setSetup(active: true, meReady: true, opponentReady: true);
+    test('both ready shows two ready chips, no tags and no band', () {
+      final fx = BattleFxTimeline(setup: true)
+        ..setSetup(active: true, meReady: true, opponentReady: true, now: 0);
       final frame = fx.frame(0);
-      expect(frame.myTag!.text, '준비 완료');
-      expect(frame.myTag!.tone, BattleFxTone.me);
-      expect(frame.opponentTag!.tone, BattleFxTone.opponent);
+      expect(frame.readyChips.map((c) => (c.side, c.text, c.tone, c.opacity)), [
+        (BattleSide.me, '준비 완료', BattleFxTone.me, 1),
+        (BattleSide.opponent, '준비 완료', BattleFxTone.opponent, 1),
+      ]);
+      expect(frame.myTag, isNull);
+      expect(frame.opponentTag, isNull);
       expect(frame.banners, isEmpty);
       expect(frame.beforeStart, isTrue);
     });
 
     test('more than 3 s before the start: ready tags, no number yet', () {
-      final fx = BattleFxTimeline()
-        ..setSetup(active: true)
-        ..countDown(5000, 0);
+      final fx = BattleFxTimeline(setup: true)..countDown(5000, 0);
       final early = fx.frame(1000);
       expect(early.myTag!.text, '준비 완료');
       expect(early.opponentTag!.text, '준비 완료');
+      expect((early.myTag!.opacity, early.opponentTag!.opacity), (1, 1));
       expect(early.banners, isEmpty);
       final late = fx.frame(2500);
       expect(late.myTag, isNull);
@@ -1527,14 +1907,14 @@ void main() {
 
   group('the countdown', () {
     test('setting up again stops it: no number and no GO!', () {
-      final fx = BattleFxTimeline()
-        ..setSetup(active: true, meReady: true, opponentReady: true)
+      final fx = BattleFxTimeline(setup: true)
+        ..setSetup(active: true, meReady: true, opponentReady: true, now: 0)
         ..countDown(3000, 0);
       expect(fx.frame(500).banners.single.text, '3');
-      fx.setSetup(active: true, opponentReady: true);
+      fx.setSetup(active: true, opponentReady: true, now: 1000);
       final again = fx.frame(1500);
       expect(again.banners.single.text, '자세 세팅 중');
-      expect(again.myTag!.text, '세팅 중');
+      expect(again.readyChips.first.text, '세팅 중');
       final later = fx.frame(3000);
       expect(later.banners.single.text, '자세 세팅 중');
       expect(later.beforeStart, isTrue);
@@ -1543,9 +1923,11 @@ void main() {
     test('starts over after it was stopped', () {
       final fx = BattleFxTimeline()
         ..countDown(3000, 0)
-        ..setSetup(active: true)
+        ..setSetup(active: true, now: 2000)
         ..countDown(3000, 4000);
-      expect(fx.frame(4000).banners.single.text, '3');
+      // The setup's band fades out over the first 150 ms of the new count.
+      expect(fx.frame(4000).banners.map((b) => b.text), ['자세 세팅 중', '3']);
+      expect(fx.frame(4150).banners.single.text, '3');
       expect(fx.frame(7000).banners.single.text, 'GO!');
       expect(fx.frame(7000).beforeStart, isFalse);
     });
@@ -1762,7 +2144,7 @@ void main() {
         'from 3 again', () {
       final fx = BattleFxTimeline()..countDown(3000, 0);
       expect(fx.takeCues(1200).single.number, 2);
-      fx.setSetup(active: true);
+      fx.setSetup(active: true, now: 1200);
       expect(fx.takeCues(4000), isEmpty);
       fx.countDown(3000, 5000);
       expect(fx.takeCues(5000).single.number, 3);

@@ -79,8 +79,12 @@ class BattleStage extends StatelessWidget {
               opponentScoreBump: frame.opponentScoreBump,
               myRepsBump: frame.myRepsBump,
               opponentRepsBump: frame.opponentRepsBump,
+              countsOpacity: frame.countsOpacity,
             ),
           ),
+          // In the valid counts' place while setting up, with the HUD: they
+          // hold still.
+          for (final chip in frame.readyChips) _ReadyChip(chip: chip),
           Positioned.fill(
             child: Transform(
               transform: Matrix4.translationValues(
@@ -330,7 +334,7 @@ class _FighterView extends StatelessWidget {
   );
 }
 
-/// The pill over a fighter's head: "세팅 중", "준비 완료", "연결 끊김".
+/// The pill over a fighter's head: "준비 완료" counting down, "연결 끊김".
 class _Tag extends StatelessWidget {
   const _Tag({required this.tag});
 
@@ -338,6 +342,63 @@ class _Tag extends StatelessWidget {
 
   static const _top = 200.0;
   static const _room = 120.0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (tag.opacity <= 0) return const SizedBox.shrink();
+    return Positioned(
+      left: tag.centerX - _room / 2,
+      top: _top,
+      width: _room,
+      child: Center(
+        child: Opacity(
+          opacity: tag.opacity.clamp(0.0, 1.0),
+          child: _Pill(text: tag.text, tone: tag.tone),
+        ),
+      ),
+    );
+  }
+}
+
+/// A player's ready chip between the scores while setting up (W2b 3-B):
+/// the user's begins [_inset] from the stage's left side, the opponent's
+/// ends as far from its right. A screen reader hears whose it is.
+class _ReadyChip extends StatelessWidget {
+  const _ReadyChip({required this.chip});
+
+  final BattleFxReadyChip chip;
+
+  static const _top = 106.0;
+  static const _inset = 72.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final mine = chip.side == BattleSide.me;
+    return Positioned(
+      left: mine ? _inset : null,
+      right: mine ? null : _inset,
+      top: _top,
+      child: Opacity(
+        opacity: chip.opacity.clamp(0.0, 1.0),
+        child: _Pill(
+          text: chip.text,
+          tone: chip.tone,
+          semanticsLabel: '${mine ? '나' : '상대'} ${chip.text}',
+        ),
+      ),
+    );
+  }
+}
+
+/// The stage's small pill: ink words on a [tone] fill with an ink edge, as a
+/// tag over a fighter or a ready chip.
+class _Pill extends StatelessWidget {
+  const _Pill({required this.text, required this.tone, this.semanticsLabel});
+
+  final String text;
+  final BattleFxTone tone;
+  final String? semanticsLabel;
+
   static const _edge = 1.5;
   static const _corner = 11.0;
 
@@ -348,30 +409,24 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: tag.centerX - _room / 2,
-      top: _top,
-      width: _room,
-      child: Center(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: tag.tone.color,
-            border: Border.all(color: AppColors.ink, width: _edge),
-            borderRadius: BorderRadius.circular(_corner),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: _side,
-              vertical: _topPadding,
-            ),
-            child: Text(
-              tag.text,
-              maxLines: 1,
-              softWrap: false,
-              textScaler: TextScaler.noScaling,
-              style: Theme.of(context).textTheme.stageTag,
-            ),
-          ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: tone.color,
+        border: Border.all(color: AppColors.ink, width: _edge),
+        borderRadius: BorderRadius.circular(_corner),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: _side,
+          vertical: _topPadding,
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+          textScaler: TextScaler.noScaling,
+          semanticsLabel: semanticsLabel,
+          style: Theme.of(context).textTheme.stageTag,
         ),
       ),
     );

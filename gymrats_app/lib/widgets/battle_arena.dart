@@ -7,6 +7,7 @@ import 'package:flutter/semantics.dart';
 import '../models/reject_reason_korean.dart';
 import '../theme/app_theme.dart';
 import 'battle_camera_area.dart';
+import 'battle_camera_view.dart';
 import 'battle_fighter.dart';
 import 'battle_fx_motion.dart';
 import 'battle_reject_sign.dart';
@@ -55,11 +56,13 @@ class BattleStageController {
   /// Brings the stage in line with [state].
   void _sync(BattleStageState state) {
     if (!_started) {
-      // Nothing has moved yet: stand where the score is, without gliding.
+      // Nothing has moved yet: stand where the score is, without gliding,
+      // and in the layout of the battle's phase, without moving to it.
       _started = true;
       _fx = BattleFxTimeline(
         share: state.barShare,
         feverMultiplier: state.feverMultiplier,
+        setup: state.phase == BattleStagePhase.setup,
       );
     }
     _fx
@@ -74,6 +77,7 @@ class BattleStageController {
           active: true,
           meReady: state.meReady,
           opponentReady: state.opponentReady,
+          now: _now,
         );
       case BattleStagePhase.countdown:
         final left = state.countdown;
@@ -82,9 +86,13 @@ class BattleStageController {
             left.inMicroseconds / Duration.microsecondsPerMillisecond,
             _now,
           );
+        } else {
+          // Counting, but not yet known to what: the setup is over all the
+          // same, and the layout moves on.
+          _fx.setSetup(active: false, now: _now);
         }
       case BattleStagePhase.playing || BattleStagePhase.ended:
-        _fx.setSetup(active: false);
+        _fx.setSetup(active: false, now: _now);
     }
     final end = state.end;
     if (end != null) _fx.finish(end, _now);
@@ -130,10 +138,64 @@ List<String> battleStandingAnnouncements(
     '상대 점수 ${now.opponentScore}점, 유효 ${now.opponentReps}회',
 ];
 
+/// Where the battle screen's parts go on a screen of [size] with a status
+/// bar [statusBar] tall: the stage on the [line] half way down, as large as
+/// fits the width and the room between the status bar and the line
+/// ([scale]); and the line between the stage and the camera, which stands
+/// there from the countdown on but higher while setting up (W2b 3-B), at
+/// [BattleFx.setupLineY] on the stage, the camera over the stage below it.
+class BattleArenaLayout {
+  factory BattleArenaLayout(Size size, {required double statusBar}) {
+    final line = size.height / 2;
+    final scale = math.max(
+      0.0,
+      math.min(
+        size.width / BattleFx.stageWidth,
+        (line - statusBar) / BattleArena._stageBelowStatusBar,
+      ),
+    );
+    return BattleArenaLayout._(size, line, scale);
+  }
+
+  const BattleArenaLayout._(this.size, this.line, this.scale);
+
+  final Size size;
+
+  /// Where the stage stands: half way down the screen.
+  final double line;
+
+  /// What the stage's design points are sized by.
+  final double scale;
+
+  /// The stage's size on screen, and where its top left corner is.
+  Size get stage =>
+      Size(BattleFx.stageWidth * scale, BattleFx.stageHeight * scale);
+  Offset get origin =>
+      Offset((size.width - stage.width) / 2, line - stage.height);
+
+  /// The top of the ink line between the stage and the camera, at a layout
+  /// [progress] from 0 (the setup's) to 1 (the battle's, on [line]), eased.
+  double lineTop(double progress) =>
+      line -
+      (BattleFx.stageHeight - BattleFx.setupLineY) * scale * (1 - progress);
+
+  /// The camera's box under the line at a layout [progress]: the screen's
+  /// width, down to its bottom.
+  Size cameraBox(double progress) => Size(
+    size.width,
+    math.max(0, size.height - lineTop(progress) - BattleCameraArea.lineWidth),
+  );
+}
+
 /// The whole battle screen's picture, for a bot battle and an online one
 /// alike: the fighting stage on the upper half, the user's camera on the
 /// lower half, the reject sign across the line between them, and the red
 /// edge while the user is about to lose.
+///
+/// While setting up the camera takes most of the screen instead, over the
+/// stage's lower part, and the stage shows only its HUD with the ready
+/// chips; when the countdown begins the line comes down to the half and the
+/// fighters pop up (W2b 3-B, [BattleArenaLayout]).
 ///
 /// It turns one clock for all of it. The stage is drawn in its own design
 /// points and sized as a whole: as large as fits the width and the room
@@ -150,6 +212,7 @@ class BattleArena extends StatefulWidget {
     this.hint,
     this.readyLabel,
     this.onReady,
+    this.readyPressed = false,
     this.onSwitchCamera,
     this.setupProgress,
     this.onShowResult,
@@ -178,6 +241,9 @@ class BattleArena extends StatefulWidget {
   /// The ready button before the start; see [BattleCameraArea].
   final String? readyLabel;
   final VoidCallback? onReady;
+
+  /// Whether the user is ready already, so the button takes it back.
+  final bool readyPressed;
 
   /// The camera switch before the start.
   final VoidCallback? onSwitchCamera;
@@ -231,6 +297,13 @@ class _BattleArenaState extends State<BattleArena>
   void didUpdateWidget(BattleArena oldWidget) {
     super.didUpdateWidget(oldWidget);
     _controller._sync(widget.state);
+    // Drawn as the new state says on this very frame: the tick's frame was
+    // worked out before it, e.g. with reduced motion the layout jumps on the
+    // frame the phase changes.
+    _frame.value = _controller._fx.frame(
+      _controller._now,
+      reducedMotion: _reducedMotion,
+    );
     final before = oldWidget.state;
     final now = widget.state;
     battleStandingAnnouncements(before, now).forEach(_say);
@@ -287,27 +360,20 @@ class _BattleArenaState extends State<BattleArena>
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
-        // The line between the stage and the camera: half way down.
-        final line = size.height / 2;
-        final scale = math.max(
-          0.0,
-          math.min(
-            size.width / BattleFx.stageWidth,
-            (line - statusBar) / BattleArena._stageBelowStatusBar,
-          ),
-        );
-        final stage = Size(
-          BattleFx.stageWidth * scale,
-          BattleFx.stageHeight * scale,
-        );
-        final origin = Offset(
-          (size.width - stage.width) / 2,
-          line - stage.height,
-        );
+        final layout = BattleArenaLayout(size, statusBar: statusBar);
+        final line = layout.line;
+        final scale = layout.scale;
+        final stage = layout.stage;
+        final origin = layout.origin;
+        final setupBox = layout.cameraBox(0);
+        final battleBox = layout.cameraBox(1);
         return ValueListenableBuilder<BattleFxFrame>(
           valueListenable: _frame,
           builder: (context, frame, _) {
             final sign = frame.sign;
+            // The line between the stage and the camera: high while setting
+            // up, half way down from the countdown on.
+            final lineTop = layout.lineTop(frame.battleLayout);
             return Stack(
               children: [
                 Positioned(
@@ -352,13 +418,20 @@ class _BattleArenaState extends State<BattleArena>
                     ),
                   ),
                 ),
+                // Over the stage: while setting up it covers the stage below
+                // the HUD.
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: line,
+                  top: lineTop,
                   bottom: 0,
                   child: BattleCameraArea(
-                    camera: widget.camera,
+                    camera: BattleCameraLayout(
+                      setupBox: setupBox,
+                      battleBox: battleBox,
+                      progress: frame.battleLayout,
+                      child: widget.camera,
+                    ),
                     // Gone once the battle has ended. While a time-up
                     // still waits for its result it stays: there is no
                     // other way out yet.
@@ -368,6 +441,9 @@ class _BattleArenaState extends State<BattleArena>
                     hint: widget.hint,
                     readyLabel: widget.readyLabel,
                     onReady: widget.onReady,
+                    readyPressed: widget.readyPressed,
+                    settingUp: state.phase == BattleStagePhase.setup,
+                    setupLook: frame.setupLook,
                     onSwitchCamera: widget.onSwitchCamera,
                     setupProgress: widget.setupProgress,
                     reconnecting:

@@ -509,6 +509,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
           onReady: setup && session.canReady && (_iAmReady || _setupReady)
               ? _toggleReady
               : null,
+          readyPressed: _iAmReady,
           onSwitchCamera: setup && running && _counter.canSwitchCamera
               ? () => unawaited(_counter.switchCamera())
               : null,

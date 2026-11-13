@@ -350,6 +350,27 @@ extension BattleCameraText on TextTheme {
     color: AppColors.ink,
   );
 
+  /// The large hint over the camera while setting up (W2b 3-B), e.g.
+  /// "팔을 펴고 푸시업 자세를 잡아 주세요.": one line, shrunk to fit its band.
+  TextStyle get cameraSetupHint => bodyMedium!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 26,
+    fontWeight: FontWeight.w400,
+    height: 1.2,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// The large ready button's label while setting up (W2b 3-B), e.g. "준비".
+  TextStyle get cameraSetupButton => bodyMedium!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 22,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    color: AppColors.ink,
+  );
+
   /// The reconnect band's line.
   TextStyle get cameraNotice => bodySmall!.copyWith(
     fontSize: 13,

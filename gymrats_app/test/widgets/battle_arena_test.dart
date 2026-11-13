@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,11 +10,13 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/battle_arena.dart';
 import 'package:gymrats_app/widgets/battle_banner.dart';
 import 'package:gymrats_app/widgets/battle_camera_area.dart';
+import 'package:gymrats_app/widgets/battle_camera_view.dart';
 import 'package:gymrats_app/widgets/battle_fighter.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_reject_sign.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/pose_camera_view.dart';
 
 import 'battle_test_support.dart';
 
@@ -82,6 +87,10 @@ Future<void> _pump(
   String? hint,
   String? readyLabel,
   VoidCallback? onReady,
+  bool readyPressed = false,
+  VoidCallback? onSwitchCamera,
+  double? setupProgress,
+  Widget? camera,
 }) async {
   // The test's screen is the phone's.
   await tester.binding.setSurfaceSize(size);
@@ -98,23 +107,28 @@ Future<void> _pump(
           child: BattleArena(
             controller: controller,
             state: state,
-            camera: AspectRatio(
-              aspectRatio: 3 / 4,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _cameraTaps++,
-                child: const ColoredBox(
-                  key: _camera,
-                  color: AppColors.textMuted,
+            camera:
+                camera ??
+                AspectRatio(
+                  aspectRatio: 3 / 4,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _cameraTaps++,
+                    child: const ColoredBox(
+                      key: _camera,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ),
-              ),
-            ),
             onCue: onCue,
             onLeave: onLeave,
             onShowResult: onShowResult,
             hint: hint,
             readyLabel: readyLabel,
             onReady: onReady,
+            readyPressed: readyPressed,
+            onSwitchCamera: onSwitchCamera,
+            setupProgress: setupProgress,
           ),
         ),
       ),
@@ -601,9 +615,329 @@ void main() {
     });
   });
 
+  group('BattleArena, the setup\'s layout (W2b 3-B)', () {
+    final w2b = jsonDecode(
+      File('test/widgets/battle_w2b_golden.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final tolerance =
+        (w2b['meta'] as Map<String, dynamic>)['tolerance']
+            as Map<String, dynamic>;
+    final position = (tolerance['position'] as num).toDouble();
+    final scale = (tolerance['scale'] as num).toDouble();
+    final transition = w2b['setupTransition'] as Map<String, dynamic>;
+    final samples = (transition['samples'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    // The design's picture, 290 x 387 in the battle's layout.
+    const shape = 290 / 387;
+
+    test('every sample\'s line, camera box and picture match the design '
+        'on its 360 x 780 screen', () {
+      final layout = BattleArenaLayout(const Size(360, 780), statusBar: 26);
+      final problems = <String>[];
+      void near(String what, num actual, Object? expected, double within) {
+        final want = (expected! as num).toDouble();
+        if ((actual - want).abs() > within + 1e-9) {
+          problems.add('$what: $actual, golden $want');
+        }
+      }
+
+      final battle = BattleCameraView.pictureSize(
+        shape,
+        setupBox: layout.cameraBox(0),
+        battleBox: layout.cameraBox(1),
+        progress: 1,
+      );
+      for (final sample in samples) {
+        final at = 'tMs ${sample['tMs']}';
+        final progress = (sample['progress'] as num).toDouble();
+        final top = layout.lineTop(progress);
+        near('$at line', top, sample['boundaryY'], position);
+        final box = sample['cameraBox'] as Map<String, dynamic>;
+        near(
+          '$at box top',
+          top + BattleCameraArea.lineWidth,
+          box['top'],
+          position,
+        );
+        near(
+          '$at box height',
+          layout.cameraBox(progress).height,
+          box['height'],
+          position,
+        );
+        final picture = sample['picture'] as Map<String, dynamic>;
+        final size = BattleCameraView.pictureSize(
+          shape,
+          setupBox: layout.cameraBox(0),
+          battleBox: layout.cameraBox(1),
+          progress: progress,
+        );
+        near('$at width', size.width, picture['width'], position);
+        near('$at height', size.height, picture['height'], position);
+        near('$at left', (360 - size.width) / 2, picture['left'], position);
+        near('$at scale', size.height / battle.height, picture['scale'], scale);
+      }
+      expect(problems, isEmpty, reason: problems.join('\n'));
+      final end = transition['reducedMotion'] as Map<String, dynamic>;
+      expect(layout.lineTop(1), end['boundaryY']);
+      expect(battle.height, (end['picture'] as Map)['height']);
+    });
+
+    test('on another phone the setup\'s line stands 234 stage points above '
+        'the middle, as the stage is sized (W2B-SPEC 4.5)', () {
+      final layout = BattleArenaLayout(const Size(412, 915), statusBar: 24);
+      expect(layout.line, 457.5);
+      // As wide as the screen allows: the width is the limit here.
+      expect(layout.scale, closeTo(412 / 360, 1e-9));
+      expect(layout.lineTop(0), closeTo(457.5 - 234 * layout.scale, 1e-9));
+      expect(layout.lineTop(1), 457.5);
+      expect(layout.lineTop(0.5), closeTo(457.5 - 117 * layout.scale, 1e-9));
+      expect(
+        layout.cameraBox(0),
+        Size(412, 915 - layout.lineTop(0) - BattleCameraArea.lineWidth),
+      );
+      expect(layout.cameraBox(1), const Size(412, 915 - 457.5 - 3));
+    });
+
+    /// Where the camera area begins on screen: the top of the ink line.
+    double lineTop(WidgetTester tester) =>
+        tester.getTopLeft(find.byType(BattleCameraArea)).dy;
+
+    testWidgets('setting up, the camera takes the screen from 156 down, over '
+        'the stage, the picture fills it, and no fighter is drawn', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(phase: BattleStagePhase.setup, opReady: true),
+        camera: const BattleCameraView(controller: null),
+      );
+      await _wait(tester, 16);
+      expect(lineTop(tester), closeTo(156, 1e-9));
+      expect(find.byType(BattleFighter), findsNothing);
+      expect(find.text('유효 횟수'), findsNothing);
+      // A 3 : 4 picture as tall as the box, cut at both sides.
+      final picture = tester.getRect(find.byType(PoseCameraView));
+      expect(picture.top, closeTo(159, 0.01));
+      expect(picture.height, closeTo(621, 0.01));
+      expect(picture.width, closeTo(621 * 3 / 4, 0.01));
+      expect(picture.center.dx, closeTo(180, 0.01));
+    });
+
+    testWidgets('the countdown brings the line down in 350 ms, then the '
+        'fighters pop up, as the design times it', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, meReady: true, opReady: true),
+        camera: const BattleCameraView(controller: null),
+      );
+      await _wait(tester, 16);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        camera: const BattleCameraView(controller: null),
+      );
+      final byTime = {for (final s in samples) (s['tMs'] as num).toInt(): s};
+      var elapsed = 0;
+      for (final t in [100, 175, 250, 350, 400, 450, 600]) {
+        await _wait(tester, t - elapsed);
+        elapsed = t;
+        final sample = byTime[t]!;
+        expect(
+          lineTop(tester),
+          closeTo((sample['boundaryY'] as num).toDouble(), position),
+          reason: 'line at $t',
+        );
+        final fighter = sample['fighter'] as Map<String, dynamic>;
+        final frame = _frame(tester);
+        expect(
+          frame.me.opacity,
+          closeTo((fighter['opacity'] as num).toDouble(), 0.02),
+          reason: 'fighter at $t',
+        );
+        final picture = tester.getRect(find.byType(PoseCameraView));
+        expect(
+          picture.height,
+          closeTo(((sample['picture'] as Map)['height'] as num).toDouble(), 1),
+          reason: 'picture at $t',
+        );
+      }
+      // In the end the battle's layout: a whole 3 : 4 picture under the
+      // middle, and both fighters.
+      expect(lineTop(tester), 390);
+      expect(find.byType(BattleFighter), findsNWidgets(2));
+      expect(
+        tester.getRect(find.byType(PoseCameraView)),
+        rectMoreOrLessEquals(const Rect.fromLTWH(34.875, 393, 290.25, 387)),
+      );
+    });
+
+    testWidgets('with reduced motion the countdown jumps to the battle\'s '
+        'layout, and back', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup),
+        reducedMotion: true,
+      );
+      await _wait(tester, 16);
+      expect(lineTop(tester), 156);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        reducedMotion: true,
+      );
+      // On the very frame the phase changes (W2B-SPEC 9).
+      expect(lineTop(tester), 390);
+      expect(_frame(tester).me.opacity, 1);
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup),
+        reducedMotion: true,
+      );
+      // On the very frame the phase changes, back as well.
+      expect(lineTop(tester), 156);
+      expect(find.byType(BattleFighter), findsNothing);
+    });
+
+    testWidgets('back to the setup during the countdown, the fighters fade '
+        'out and the line goes back up', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(phase: BattleStagePhase.setup));
+      await _wait(tester, 16);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+      );
+      await _wait(tester, 800);
+      expect(lineTop(tester), 390);
+      await _pump(tester, controller, _state(phase: BattleStagePhase.setup));
+      await _wait(tester, 50);
+      expect(_frame(tester).me.opacity, closeTo(0.5, 0.02));
+      expect(lineTop(tester), lessThan(390));
+      await _wait(tester, 60);
+      expect(find.byType(BattleFighter), findsNothing);
+      await _wait(tester, 300);
+      expect(lineTop(tester), closeTo(156, 1e-9));
+      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(find.text('3'), findsNothing);
+    });
+
+    testWidgets('a screen that opens on the round, or on its countdown, '
+        'stands in the battle\'s layout from the first frame', (tester) async {
+      for (final state in [
+        _state(),
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 2),
+        ),
+      ]) {
+        await _pump(tester, BattleStageController(), state);
+        await _wait(tester, 16);
+        expect(lineTop(tester), 390, reason: state.phase.name);
+        expect(_frame(tester).me.opacity, 1, reason: state.phase.name);
+        expect(find.text('유효 횟수'), findsOneWidget);
+      }
+    });
+
+    testWidgets('the large hint, the camera switch and the large ready button '
+        'sit where the design has them on an S22', (tester) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(phase: BattleStagePhase.setup),
+        hint: '카메라 앞에 서 주세요.',
+        readyLabel: '준비',
+        onReady: () {},
+        onSwitchCamera: () {},
+        setupProgress: 0.5,
+        onLeave: () {},
+      );
+      await _wait(tester, 16);
+      final band = find.ancestor(
+        of: find.text('카메라 앞에 서 주세요.'),
+        matching: find.byType(SizedBox),
+      );
+      expect(
+        tester.getRect(band.first),
+        rectMoreOrLessEquals(const Rect.fromLTWH(12, 173, 336, 54)),
+      );
+      final ready = find.ancestor(
+        of: find.text('준비'),
+        matching: find.byType(Material),
+      );
+      expect(
+        tester.getRect(ready.first),
+        rectMoreOrLessEquals(const Rect.fromLTRB(216, 714, 348, 766)),
+      );
+      final circle = find.descendant(
+        of: find.bySemanticsLabel('카메라 전환'),
+        matching: find.byWidgetPredicate(
+          (w) => w is SizedBox && w.width == 44 && w.height == 44,
+        ),
+      );
+      expect(
+        tester.getRect(circle),
+        rectMoreOrLessEquals(const Rect.fromLTWH(304, 237, 44, 44)),
+      );
+    });
+
+    testWidgets('the setup\'s large things take no taps while they fade out; '
+        'the countdown\'s 시작 does', (tester) async {
+      var ready = 0;
+      var start = 0;
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, opReady: true),
+        readyLabel: '시작',
+        onReady: () => ready++,
+      );
+      await _wait(tester, 16);
+      final at = tester.getCenter(find.text('시작'));
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        readyLabel: '시작',
+        onReady: () => start++,
+      );
+      await _wait(tester, 50);
+      // The large 시작 is still fading where it was; the small one comes in.
+      expect(find.text('시작'), findsNWidgets(2));
+      await tester.tapAt(at);
+      expect((ready, start), (0, 0));
+      await _wait(tester, 150);
+      expect(find.text('시작'), findsOneWidget);
+      await tester.tap(find.text('시작'));
+      expect((ready, start), (0, 1));
+    });
+  });
+
   group('BattleArena, before the start', () {
-    testWidgets('setting up: tags over both, the band, and the camera '
-        'area\'s hint and ready button', (tester) async {
+    testWidgets('setting up: the ready chips, the band, and the camera '
+        'area\'s large hint and ready button', (tester) async {
       var ready = 0;
       await _pump(
         tester,
@@ -618,6 +952,12 @@ void main() {
       expect(find.text('세팅 중'), findsOneWidget);
       expect(find.text('준비 완료'), findsOneWidget);
       expect(find.text('폰을 더 세워 주세요.'), findsOneWidget);
+      expect(
+        tester.widget<BattleCameraArea>(find.byType(BattleCameraArea)),
+        isA<BattleCameraArea>()
+            .having((a) => a.settingUp, 'setting up', isTrue)
+            .having((a) => a.setupLook, 'setup look', 1),
+      );
       // No chip before the start.
       expect(find.text('동점'), findsNothing);
       await tester.tap(find.text('준비'));
@@ -656,8 +996,11 @@ void main() {
       );
       await _wait(tester, 16);
       expect(find.text('3'), findsOneWidget);
+      // The ready chips fade out as the line comes down.
+      expect(find.text('준비 완료'), findsNWidgets(2));
+      await _wait(tester, 150);
       expect(find.text('준비 완료'), findsNothing);
-      await _wait(tester, 1000);
+      await _wait(tester, 1000 - 150);
       expect(find.text('2'), findsOneWidget);
       await _wait(tester, 1000);
       expect(find.text('1'), findsOneWidget);
@@ -1269,7 +1612,7 @@ void main() {
     });
 
     testWidgets('a round that starts without a countdown takes the setup\'s '
-        'tags and band away', (tester) async {
+        'chips and band away as the line comes down', (tester) async {
       final controller = BattleStageController();
       await _pump(
         tester,
@@ -1280,6 +1623,8 @@ void main() {
       expect(find.text('자세 세팅 중'), findsOneWidget);
       await _pump(tester, controller, _state());
       await _wait(tester, 16);
+      expect(find.text('동점'), findsOneWidget);
+      await _wait(tester, 150);
       expect(find.text('자세 세팅 중'), findsNothing);
       expect(find.text('준비 완료'), findsNothing);
       expect(find.text('동점'), findsOneWidget);

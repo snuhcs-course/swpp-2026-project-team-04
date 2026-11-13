@@ -27,46 +27,117 @@ Future<void> _pump(
   String? hint,
   String? readyLabel,
   VoidCallback? onReady,
+  bool readyPressed = false,
   VoidCallback? onSwitchCamera,
   double? setupProgress,
+  bool settingUp = false,
+  double setupLook = 0,
   bool reconnecting = false,
   double spin = 0,
   BattleFxResultButton? resultButton,
   VoidCallback? onShowResult,
   List<BattleFxCombo> combos = const [],
   double stageScale = 1,
-}) => tester.pumpWidget(
-  battleTestApp(
-    MediaQuery(
-      data: MediaQueryData(
-        size: size,
-        textScaler: TextScaler.linear(textScale),
-        padding: EdgeInsets.only(bottom: bottomInset),
-      ),
-      child: Material(
-        child: BattleCameraArea(
-          camera: const AspectRatio(
-            aspectRatio: 3 / 4,
-            child: ColoredBox(key: _camera, color: AppColors.textMuted),
+}) async {
+  // The test's screen is the area's, also when it is taller than the
+  // default window, as while setting up.
+  await tester.binding.setSurfaceSize(size);
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+  await tester.pumpWidget(
+    battleTestApp(
+      MediaQuery(
+        data: MediaQueryData(
+          size: size,
+          textScaler: TextScaler.linear(textScale),
+          padding: EdgeInsets.only(bottom: bottomInset),
+        ),
+        child: Material(
+          child: BattleCameraArea(
+            camera: const AspectRatio(
+              aspectRatio: 3 / 4,
+              child: ColoredBox(key: _camera, color: AppColors.textMuted),
+            ),
+            onLeave: onLeave,
+            hint: hint,
+            readyLabel: readyLabel,
+            onReady: onReady,
+            readyPressed: readyPressed,
+            onSwitchCamera: onSwitchCamera,
+            setupProgress: setupProgress,
+            settingUp: settingUp,
+            setupLook: setupLook,
+            reconnecting: reconnecting,
+            spin: spin,
+            resultButton: resultButton,
+            onShowResult: onShowResult,
+            combos: combos,
+            stageScale: stageScale,
           ),
-          onLeave: onLeave,
-          hint: hint,
-          readyLabel: readyLabel,
-          onReady: onReady,
-          onSwitchCamera: onSwitchCamera,
-          setupProgress: setupProgress,
-          reconnecting: reconnecting,
-          spin: spin,
-          resultButton: resultButton,
-          onShowResult: onShowResult,
-          combos: combos,
-          stageScale: stageScale,
         ),
       ),
+      size: size,
     ),
-    size: size,
-  ),
-);
+  );
+}
+
+String _words(SetupReason reason, [List<BodyPart> parts = const []]) =>
+    SetupStatus(
+      reason: reason,
+      isReady: false,
+      readyProgress: 0,
+      missingParts: parts,
+    ).message;
+
+/// The parts the setup checks for each exercise, in the order it names
+/// them: the head first, then the exercise's own.
+const _checked = {
+  ExerciseType.pushUp: [
+    BodyPart.head,
+    BodyPart.shoulders,
+    BodyPart.elbows,
+    BodyPart.hands,
+  ],
+  ExerciseType.squat: [
+    BodyPart.head,
+    BodyPart.shoulders,
+    BodyPart.hips,
+    BodyPart.knees,
+    BodyPart.ankles,
+  ],
+};
+
+/// The setup's lines: every reason the checker gives, every one- and
+/// two-part line of both exercises in its order and the whole-body line,
+/// the online setup's own lines; and the countdown's and the squat round's
+/// lines, shown in the small hint.
+final _setupHints = <String>{
+  for (final reason in SetupReason.values) _words(reason),
+  const SetupStatus(
+    reason: SetupReason.ready,
+    isReady: true,
+    readyProgress: 1,
+  ).message,
+  for (final parts in _checked.values) ...[
+    for (final (i, one) in parts.indexed) ...[
+      _words(SetupReason.missingParts, [one]),
+      for (final two in parts.skip(i + 1))
+        _words(SetupReason.missingParts, [one, two]),
+    ],
+    _words(SetupReason.missingParts, parts),
+  ],
+  '재연결 중 · 준비 상태 확인 중…',
+  '상대 준비를 기다리는 중…',
+  '자세 확인! 3초 후 자동으로 준비해요',
+};
+
+final _hints = <String>{
+  ..._setupHints,
+  // The online countdown's line and the squat round's.
+  '10초 후 함께 시작',
+  '일어선 상태 · 무릎 가까이 앉아 주세요',
+  '앉은 상태 · 이제 일어서세요',
+  '정면에서 전신이 보이도록 서 주세요',
+};
 
 /// The white circle of a round button, by its icon.
 Finder _circle(IconData icon) => find.ancestor(
@@ -597,56 +668,7 @@ void main() {
 
   group('every setup hint fits its two lines at 1.3x text on a 360-wide '
       'phone', () {
-    String words(SetupReason reason, [List<BodyPart> parts = const []]) =>
-        SetupStatus(
-          reason: reason,
-          isReady: false,
-          readyProgress: 0,
-          missingParts: parts,
-        ).message;
-
-    /// The parts the setup checks for [exercise], in the order it names
-    /// them: the head first, then the exercise's own.
-    const checked = {
-      ExerciseType.pushUp: [
-        BodyPart.head,
-        BodyPart.shoulders,
-        BodyPart.elbows,
-        BodyPart.hands,
-      ],
-      ExerciseType.squat: [
-        BodyPart.head,
-        BodyPart.shoulders,
-        BodyPart.hips,
-        BodyPart.knees,
-        BodyPart.ankles,
-      ],
-    };
-
-    final hints = <String>{
-      for (final reason in SetupReason.values) words(reason),
-      const SetupStatus(
-        reason: SetupReason.ready,
-        isReady: true,
-        readyProgress: 1,
-      ).message,
-      for (final parts in checked.values) ...[
-        for (final (i, one) in parts.indexed) ...[
-          words(SetupReason.missingParts, [one]),
-          for (final two in parts.skip(i + 1))
-            words(SetupReason.missingParts, [one, two]),
-        ],
-        words(SetupReason.missingParts, parts),
-      ],
-      // The online setup's own lines and the squat round's.
-      '재연결 중 · 준비 상태 확인 중…',
-      '상대 준비를 기다리는 중…',
-      '자세 확인! 3초 후 자동으로 준비해요',
-      '10초 후 함께 시작',
-      '일어선 상태 · 무릎 가까이 앉아 주세요',
-      '앉은 상태 · 이제 일어서세요',
-      '정면에서 전신이 보이도록 서 주세요',
-    };
+    final hints = _hints;
 
     test('the list holds every named line the checker can give', () {
       expect(hints, contains('어깨, 팔꿈치가 화면에 안 보여요.'));
@@ -715,6 +737,409 @@ void main() {
         }
       });
     }
+  });
+
+  group('the setup\'s large look (W2b 3-B)', () {
+    // The camera's box while setting up on an S22, with the line on top.
+    const setupSize = Size(360, 624);
+
+    /// The large hint's band, and the large ready button's pill.
+    Finder band(String hint) => find
+        .ancestor(of: find.text(hint), matching: find.byType(SizedBox))
+        .first;
+    Finder pill(String label) => find
+        .ancestor(of: find.text(label), matching: find.byType(Material))
+        .first;
+
+    testWidgets('the bar on top, the guidance in a large band under it, the '
+        'camera switch under the band, the large ready button bottom right, '
+        'the leave button as before; no small hint or ready button', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        onLeave: () {},
+        hint: '카메라 앞에 서 주세요.',
+        readyLabel: '준비',
+        onReady: () {},
+        onSwitchCamera: () {},
+        setupProgress: 0.4,
+      );
+      // Inside the box under the 3 wide line: the bar 0 to 6, the band 14
+      // to 68, 12 from the sides.
+      expect(
+        tester.getRect(band('카메라 앞에 서 주세요.')),
+        const Rect.fromLTWH(12, 3 + 14, 336, 54),
+      );
+      final look =
+          tester
+                  .widget<DecoratedBox>(
+                    find
+                        .ancestor(
+                          of: find.text('카메라 앞에 서 주세요.'),
+                          matching: find.byType(DecoratedBox),
+                        )
+                        .first,
+                  )
+                  .decoration
+              as BoxDecoration;
+      expect(look.color, AppColors.card);
+      expect(look.border, Border.all(color: AppColors.ink, width: 2));
+      expect(
+        tester.widget<Text>(find.text('카메라 앞에 서 주세요.')).style!.fontFamily,
+        AppFonts.display,
+      );
+      expect(
+        tester.widget<Text>(find.text('카메라 앞에 서 주세요.')).style!.fontSize,
+        26,
+      );
+      expect(
+        tester.getRect(_circle(Icons.cameraswitch_outlined)),
+        const Rect.fromLTWH(304, 3 + 78, 44, 44),
+      );
+      expect(
+        tester.getRect(pill('준비')),
+        const Rect.fromLTRB(216, 624 - 14 - 52, 348, 624 - 14),
+      );
+      expect(tester.widget<Text>(find.text('준비')).style!.fontSize, 22);
+      expect(
+        tester.getRect(_circle(Icons.logout_rounded)),
+        const Rect.fromLTWH(12, 624 - 14 - 44, 44, 44),
+      );
+      // Only one of each.
+      expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
+      expect(find.text('준비'), findsOneWidget);
+      expect(find.byIcon(Icons.cameraswitch_outlined), findsOneWidget);
+      expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
+    });
+
+    testWidgets('the large ready button: lime to press, white to take the '
+        'ready back, gray when it cannot be pressed', (tester) async {
+      ShapeBorder shape(String label) =>
+          tester.widget<Material>(pill(label)).shape!;
+      Color fill(String label) => tester.widget<Material>(pill(label)).color!;
+      Color words(String label) =>
+          tester.widget<Text>(find.text(label)).style!.color!;
+
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        readyLabel: '준비',
+        onReady: () {},
+      );
+      expect(fill('준비'), AppColors.accent);
+      expect(
+        shape('준비'),
+        const StadiumBorder(side: BorderSide(color: AppColors.ink, width: 2)),
+      );
+      expect(words('준비'), AppColors.ink);
+
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        readyLabel: '준비 취소',
+        onReady: () {},
+        readyPressed: true,
+      );
+      expect(fill('준비 취소'), AppColors.card);
+      expect(words('준비 취소'), AppColors.ink);
+
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        readyLabel: '시작',
+      );
+      expect(fill('시작'), AppColors.card);
+      expect(
+        shape('시작'),
+        const StadiumBorder(
+          side: BorderSide(color: AppColors.border, width: 2),
+        ),
+      );
+      expect(words('시작'), AppColors.textMuted);
+      final handle = tester.ensureSemantics();
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('시작')),
+        matchesSemantics(
+          label: '시작',
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: false,
+          hasTapAction: false,
+        ),
+      );
+      handle.dispose();
+    });
+
+    testWidgets('pressing them while setting up', (tester) async {
+      var ready = 0;
+      var switched = 0;
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        readyLabel: '준비',
+        onReady: () => ready++,
+        onSwitchCamera: () => switched++,
+      );
+      await tester.tap(find.text('준비'));
+      await tester.tap(find.byIcon(Icons.cameraswitch_outlined));
+      expect((ready, switched), (1, 1));
+    });
+
+    testWidgets('with nothing to say there is no band', (tester) async {
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        readyLabel: '시작',
+      );
+      expect(
+        find.byWidgetPredicate((w) => w is SizedBox && w.height == 54),
+        findsNothing,
+      );
+    });
+
+    testWidgets('a screen reader hears the large guidance whole when it '
+        'changes', (tester) async {
+      const longest = '팔을 펴고 푸시업 자세를 잡아 주세요.';
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        hint: longest,
+      );
+      expect(
+        tester.getSemantics(find.text(longest)),
+        matchesSemantics(label: longest, isLiveRegion: true),
+      );
+      handle.dispose();
+    });
+
+    // W2B-SPEC 4.2: in DoHyeon 26 four lines are wider than the band's 316
+    // inside, and are shrunk to it on their one line; the rest fit as they
+    // are.
+    const tooWide = {
+      '팔을 펴고 푸시업 자세를 잡아 주세요.': 343.7,
+      '자세 확인! 3초 후 자동으로 준비해요': 339.5,
+      '카메라에 조금 더 가까이 와 주세요.': 323.8,
+      '몸 전체가 화면에 보이게 해 주세요.': 323.8,
+    };
+
+    testWidgets('the four wide lines measure as the design says and are '
+        'shrunk to the band; the longest to about 23.9', (tester) async {
+      for (final MapEntry(key: hint, value: width) in tooWide.entries) {
+        await _pump(
+          tester,
+          size: setupSize,
+          settingUp: true,
+          setupLook: 1,
+          hint: hint,
+        );
+        final natural = tester.getSize(find.text(hint)).width;
+        expect(natural, closeTo(width, 1.5), reason: hint);
+        final drawn = tester.getRect(find.text(hint));
+        expect(drawn.width, closeTo(316, 0.01), reason: hint);
+      }
+      const longest = '팔을 펴고 푸시업 자세를 잡아 주세요.';
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        hint: longest,
+      );
+      final scale =
+          tester.getRect(find.text(longest)).width /
+          tester.getSize(find.text(longest)).width;
+      expect(26 * scale, closeTo(23.9, 0.15));
+    });
+
+    for (final textScale in [1.0, 1.3, 2.0]) {
+      testWidgets('every setup line keeps to one line inside the band at '
+          '${textScale}x text, and nothing overflows', (tester) async {
+        final bandRect = Rect.fromLTWH(12 + 2, 3 + 14 + 2, 336 - 4, 54 - 4);
+        for (final hint in _setupHints) {
+          await _pump(
+            tester,
+            size: setupSize,
+            textScale: textScale,
+            settingUp: true,
+            setupLook: 1,
+            onLeave: () {},
+            hint: hint,
+            readyLabel: '준비 취소',
+            onReady: () {},
+            readyPressed: true,
+            onSwitchCamera: () {},
+            setupProgress: 0.3,
+          );
+          expect(tester.takeException(), isNull, reason: hint);
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.text(hint),
+          );
+          // One line, and all of it: shrunk, never cut.
+          expect(paragraph.maxLines, 1, reason: hint);
+          expect(paragraph.didExceedMaxLines, isFalse, reason: hint);
+          final drawn = tester.getRect(find.text(hint));
+          expect(
+            bandRect.inflate(0.01).contains(drawn.topLeft) &&
+                bandRect.inflate(0.01).contains(drawn.bottomRight),
+            isTrue,
+            reason: '$hint at $textScale: $drawn',
+          );
+          if (textScale == 1 && !tooWide.containsKey(hint)) {
+            expect(
+              drawn.width,
+              closeTo(tester.getSize(find.text(hint)).width, 0.01),
+              reason: '$hint is not shrunk',
+            );
+          }
+          // The large ready button grows with the text, from 132 x 52.
+          final button = tester.getSize(pill('준비 취소'));
+          expect(button.width, greaterThanOrEqualTo(132), reason: hint);
+          expect(button.height, greaterThanOrEqualTo(52), reason: hint);
+        }
+      });
+    }
+
+    testWidgets('as the countdown begins the large things keep the setup\'s '
+        'look while they fade, take no taps and are not read; the '
+        'countdown\'s own come in, small', (tester) async {
+      var ready = 0;
+      var started = 0;
+      var switched = 0;
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        onLeave: () {},
+        hint: '그대로 잠시 유지하세요.',
+        readyLabel: '준비',
+        onReady: () => ready++,
+        onSwitchCamera: () => switched++,
+        setupProgress: 0.9,
+      );
+      final bigReady = tester.getCenter(find.text('준비'));
+      final bigSwitch = tester.getCenter(
+        find.byIcon(Icons.cameraswitch_outlined),
+      );
+      // The countdown: other words, the bot's pressable 시작.
+      await _pump(
+        tester,
+        size: setupSize,
+        setupLook: 0.5,
+        onLeave: () {},
+        hint: '10초 후 함께 시작',
+        readyLabel: '시작',
+        onReady: () => started++,
+      );
+      // The setup's band, bar, switch and button as the setup left them.
+      expect(find.text('그대로 잠시 유지하세요.'), findsOneWidget);
+      expect(find.text('준비'), findsOneWidget);
+      expect(find.byIcon(Icons.cameraswitch_outlined), findsOneWidget);
+      // The bar is drawn as the setup left it (0.9 filled), half faded, and
+      // read by no one.
+      final bar = find.byWidgetPredicate(
+        (w) => w is FractionallySizedBox && w.widthFactor == 0.9,
+      );
+      expect(bar, findsOneWidget);
+      expect(
+        tester
+            .widgetList<Opacity>(
+              find.ancestor(of: bar, matching: find.byType(Opacity)),
+            )
+            .first
+            .opacity,
+        0.5,
+      );
+      expect(find.bySemanticsLabel('자세 세팅 진행'), findsNothing);
+      expect(
+        tester.widget<Material>(pill('준비')).color,
+        AppColors.accent,
+        reason: 'the look it had',
+      );
+      Opacity around(Finder finder) => tester
+          .widgetList<Opacity>(
+            find.ancestor(of: finder, matching: find.byType(Opacity)),
+          )
+          .first;
+      expect(around(find.text('준비')).opacity, 0.5);
+      // The countdown's small hint and button, coming in.
+      expect(find.text('10초 후 함께 시작'), findsOneWidget);
+      expect(around(find.text('10초 후 함께 시작')).opacity, 0.5);
+      expect(around(find.text('시작')).opacity, 0.5);
+      final handle = tester.ensureSemantics();
+      expect(find.bySemanticsLabel('준비'), findsNothing);
+      expect(find.bySemanticsLabel('그대로 잠시 유지하세요.'), findsNothing);
+      handle.dispose();
+      await tester.tapAt(bigReady);
+      await tester.tapAt(bigSwitch);
+      expect((ready, switched), (0, 0));
+      await tester.tap(find.text('시작'));
+      expect(started, 1);
+      // Gone once faded.
+      await _pump(
+        tester,
+        size: setupSize,
+        onLeave: () {},
+        hint: '10초 후 함께 시작',
+        readyLabel: '시작',
+        onReady: () => started++,
+      );
+      expect(find.text('그대로 잠시 유지하세요.'), findsNothing);
+      expect(find.text('준비'), findsNothing);
+      expect(find.byIcon(Icons.cameraswitch_outlined), findsNothing);
+    });
+
+    testWidgets('back to the setup they come in with its words, and take '
+        'taps once all there', (tester) async {
+      var ready = 0;
+      Future<void> setup(double look) => _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: look,
+        hint: '카메라 앞에 서 주세요.',
+        readyLabel: '준비',
+        onReady: () => ready++,
+      );
+      await setup(0.5);
+      expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
+      await tester.tap(find.text('준비'), warnIfMissed: false);
+      expect(ready, 0);
+      await setup(1);
+      await tester.tap(find.text('준비'));
+      expect(ready, 1);
+    });
+
+    testWidgets('the large ready button stands above the system\'s bottom '
+        'bar', (tester) async {
+      await _pump(
+        tester,
+        size: setupSize,
+        bottomInset: 24,
+        settingUp: true,
+        setupLook: 1,
+        readyLabel: '준비',
+        onReady: () {},
+      );
+      expect(tester.getRect(pill('준비')).bottom, 624 - 24 - 14);
+    });
   });
 
   group('the combo marks (spec v2.2)', () {

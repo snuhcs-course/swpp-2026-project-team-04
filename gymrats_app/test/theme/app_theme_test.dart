@@ -489,6 +489,24 @@ void main() {
       expect(text.cameraHint.fontFamily, AppFonts.body);
     });
 
+    test('the setup\'s large hint and ready button (W2b 3-B): Do Hyeon 26 on '
+        'a 1.2 line and Do Hyeon 22, ink, with no extra letter spacing', () {
+      final hint = text.cameraSetupHint;
+      expect(hint.fontFamily, AppFonts.display);
+      expect(hint.fontSize, 26);
+      expect(hint.fontWeight, FontWeight.w400);
+      expect(hint.height, 1.2);
+      expect(hint.leadingDistribution, TextLeadingDistribution.even);
+      final button = text.cameraSetupButton;
+      expect(button.fontFamily, AppFonts.display);
+      expect(button.fontSize, 22);
+      expect(button.fontWeight, FontWeight.w400);
+      for (final style in [hint, button]) {
+        expect(style.letterSpacing, 0);
+        expect(style.color, AppColors.ink);
+      }
+    });
+
     test('the leave dialog\'s title is Do Hyeon at the headline\'s size', () {
       expect(text.leaveDialogTitle.fontFamily, AppFonts.display);
       expect(text.leaveDialogTitle.fontSize, text.headlineSmall!.fontSize);
