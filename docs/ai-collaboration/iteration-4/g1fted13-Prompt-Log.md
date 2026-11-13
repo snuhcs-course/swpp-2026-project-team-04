@@ -738,3 +738,12 @@ W2b를 마무리해서 PR을 올리자. 대결이 끝난 뒤 화면까지 이번
 
 <!-- b776618b 2026-11-13T19:29:43.040Z -->
 [Woohyun Song, 11-14 04:29] "Ready는 내가 폰 확인한 뒤에 바꿀게. CI 코멘트가 오면 커버리지를 테스트 노트와 PR 본문에 넣고 push까지만 해 둬. 폰 확인 결과는 내가 알려 줄 테니, 그때 노트의 \"폰 확인 전\"을 고치고 Ready for review로 바꿔."
+
+<!-- Added by hand from the same redacted export: sent while the agent was working, so it is stored as a queued message, which extract_prompts.py skips. -->
+<!-- b776618b 2026-11-13T19:41:58.413Z -->
+[Woohyun Song, 11-14 04:41] "<pasted_content id=\"1e04\">
+폰 확인 끝났어. 문제없었어: W3 캐릭터가 들어간 MATCH FOUND(내 캐릭터와 RepBot이 발판 위에, 흰 테두리·크기·대기 동작), 끝 화면 KO(경계선이 내려가며 무대가 화면 전체를 채우고 결과 보기가 같은 자리), 끝 화면 시간 종료(피버 무늬가 화면 전체를 채우는 모습도 괜찮음), 세팅 중 카메라 80% 전환. 기기 정보는 노트의 기존 기록 그대로 써.
+1. 테스트 노트와 PR 본문의 \"폰 확인 전\"을 위 내용으로 고쳐. CI 커버리지가 아직 안 들어갔으면 같이 넣어.
+2. progress.md 남은 일에 W4 항목을 하나 추가해: \"캐릭터 선택 화면에서 그루(캥거루)의 귀가 위쪽 설명 문구('캥거루 · 키 큰 점프 선수')를 덮는다. character_select_screen.dart는 W3 파일이라 W4에서 예외 줄을 넣고 고친다.\"
+3. 커밋하고 push한 뒤 PR #54를 Ready for review로 바꿔.
+</pasted_content id=\"1e04\">"

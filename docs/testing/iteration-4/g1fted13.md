@@ -426,8 +426,12 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `ae44bbb`, wit
 - **Manual check (the user, on the Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17 from W2's record):**
   - 3-B: the push-up setup passed with the body matched to the larger silhouette, and at the countdown the screen went to the 50 : 50 layout. No problems.
   - 1-A: the radar's red dots. No problems.
-  - 2-A3: MATCH FOUND. No problems.
-  - **Not checked on the phone yet:** the end screen, and MATCH FOUND with the W3 characters (the phone check above saw W2's stand-in).
+  - 2-A3: MATCH FOUND, first with W2's stand-in fighter. No problems.
+  - A second check after the merge with W3 (2026-11-14), all with no problems:
+    - MATCH FOUND with the W3 characters: my character and RepBot on their pedestals, with the white edge, the size and the idle motion;
+    - the end screen after a KO: the line goes down, the stage fills the screen, and 결과 보기 is in the same place;
+    - the end screen after a time-up: the fever wash filling the whole screen is fine too;
+    - the setup: the camera at 80% and the switch at the countdown.
   - An online battle on two phones was not reported in this step.
 
 ### Test cases added or changed in this step
