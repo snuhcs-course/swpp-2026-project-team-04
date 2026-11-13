@@ -31,6 +31,7 @@ const _checked = [
   'lib/widgets/battle_stage_events.dart',
   'lib/widgets/battle_stage_hud.dart',
   'lib/widgets/battle_stage_model.dart',
+  'lib/widgets/character_figure.dart',
   'lib/widgets/exercise_sheet.dart',
   'lib/widgets/help_pictures.dart',
   'lib/widgets/help_rules.dart',
