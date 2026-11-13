@@ -286,6 +286,32 @@ void main() {
     expect(first.left, 16);
   });
 
+  testWidgets('opened while the saved character is still read, 이 캐릭터로 '
+      '하기 says so and cannot be pressed; then the preview takes the saved '
+      'one and the button saves', (tester) async {
+    final slow = _SlowReadStore()..saved[7] = 'seal';
+    final reading = CharacterViewModel(store: slow);
+    addTearDown(reading.dispose);
+    unawaited(reading.load(7));
+    await open(tester, characters: reading);
+    expect(find.text('저장된 캐릭터를 불러오는 중…'), findsOneWidget);
+    expect(previewId(tester), 'mouse');
+    await tester.tap(find.text('이 캐릭터로 하기'), warnIfMissed: false);
+    await settle(tester);
+    expect(find.byType(CharacterSelectScreen), findsOneWidget);
+    expect(slow.writes, 0);
+
+    slow.finishRead();
+    await settle(tester);
+    expect(find.text('저장된 캐릭터를 불러오는 중…'), findsNothing);
+    expect(previewId(tester), 'seal');
+    await tester.tap(find.text('이 캐릭터로 하기'));
+    await settle(tester);
+    expect(find.byType(CharacterSelectScreen), findsNothing);
+    expect(slow.saved[7], 'seal');
+    expect(slow.writes, 1);
+  });
+
   testWidgets('back goes back without saving', (tester) async {
     await open(tester);
     await tester.tap(find.text('곰탱이'));
@@ -377,6 +403,34 @@ void main() {
     await open(tester, textScale: 2);
     expect(tester.takeException(), isNull);
   });
+}
+
+/// Reads only when told to ([finishRead]), like a slow phone; writes land
+/// at once. A read answers what was saved when it began.
+class _SlowReadStore implements CharacterStore {
+  final saved = <int, String>{};
+  final _reads = <(Completer<String>, String)>[];
+  int writes = 0;
+
+  void finishRead() {
+    for (final (answer, value) in _reads) {
+      answer.complete(value);
+    }
+    _reads.clear();
+  }
+
+  @override
+  Future<String> read(int accountId) {
+    final answer = Completer<String>();
+    _reads.add((answer, saved[accountId] ?? 'mouse'));
+    return answer.future;
+  }
+
+  @override
+  Future<void> write(int accountId, String characterId) async {
+    writes++;
+    saved[accountId] = characterId;
+  }
 }
 
 /// Saves only when told to, like a slow phone.

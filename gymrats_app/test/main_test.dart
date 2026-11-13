@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
@@ -21,12 +23,14 @@ import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
+import 'package:gymrats_app/services/user/rules_seen_store.dart';
 import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
+import 'package:gymrats_app/widgets/help_rules.dart';
 import 'package:provider/provider.dart';
 
 import 'support/fakes.dart';
@@ -42,6 +46,40 @@ class _QueuedSession extends OnlineBattleSession {
     connected = true;
     phase = OnlinePhase.queued;
     notifyListeners();
+  }
+}
+
+/// A character store whose reads wait until [finishRead] (or fail at
+/// [failRead]), as a slow phone storage would; writes land at once. A read answers what was saved when
+/// it began, as a real read in flight does.
+class _SlowReadCharacterStore implements CharacterStore {
+  final saved = <int, String>{};
+  final _reads = <(Completer<String>, String)>[];
+
+  void finishRead() {
+    for (final (answer, value) in _reads) {
+      answer.complete(value);
+    }
+    _reads.clear();
+  }
+
+  void failRead() {
+    for (final (answer, _) in _reads) {
+      answer.completeError(StateError('storage unreadable'));
+    }
+    _reads.clear();
+  }
+
+  @override
+  Future<String> read(int accountId) {
+    final answer = Completer<String>();
+    _reads.add((answer, saved[accountId] ?? 'mouse'));
+    return answer.future;
+  }
+
+  @override
+  Future<void> write(int accountId, String characterId) async {
+    saved[accountId] = characterId;
   }
 }
 
@@ -409,6 +447,117 @@ void main() {
         ) as BattleScreen).myCharacter,
         'penguin',
       );
+    });
+
+    group('while the saved character is still being read', () {
+      late _SlowReadCharacterStore slow;
+
+      setUp(
+        () => slow = _SlowReadCharacterStore()..saved[testAccount.id] = 'seal',
+      );
+
+      /// The app on a phone-sized screen, a second after it opened, with
+      /// the character's read still running (no settling: a spinner turns).
+      Future<void> openWhileReading(
+        WidgetTester tester, {
+        RulesSeenStore? rules,
+      }) async {
+        tester.view.physicalSize = const Size(412, 915);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        _stillRepBot(tester);
+        await tester.pumpWidget(
+          GymRatsApp(
+            authRepository: signedInAuth(),
+            userRepository: InMemoryUserRepository(),
+            characterStore: slow,
+            rulesSeenStore: rules,
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      CharacterViewModel characters(WidgetTester tester) =>
+          Provider.of<CharacterViewModel>(
+            tester.element(find.byType(MaterialApp)),
+            listen: false,
+          );
+
+      testWidgets('home waits for it, so 캐릭터 선택 and a bot battle start on '
+          'the saved character and a pick does not overwrite it', (
+        tester,
+      ) async {
+        await openWhileReading(tester);
+        expect(find.byType(HomeScreen), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        slow.finishRead();
+        await tester.pumpAndSettle();
+        expect(find.byType(HomeScreen), findsOneWidget);
+        await tapAndSettle(tester, '게임 시작');
+        expect(find.text('물렁범'), findsOneWidget);
+        final route =
+            tester
+                    .widget<MaterialApp>(find.byType(MaterialApp))
+                    .onGenerateRoute!(
+                  const RouteSettings(
+                    name: GymRatsApp.battleRoute,
+                    arguments: Matchup(
+                      exercise: ExerciseType.pushUp,
+                      playerName: '우현',
+                      opponent: BotMatchmaker.bot,
+                    ),
+                  ),
+                )!
+                as MaterialPageRoute<void>;
+        expect(
+          (route.builder(
+            tester.element(find.byType(PlayScreen)),
+          ) as BattleScreen).myCharacter,
+          'seal',
+        );
+        await tapAndSettle(tester, '캐릭터');
+        await tapAndSettle(tester, '이 캐릭터로 하기');
+        expect(slow.saved[testAccount.id], 'seal');
+        expect(characters(tester).characterId, 'seal');
+      });
+
+      testWidgets('a new account reads the rules meanwhile; after 시작하기 '
+          'home still waits for the read', (tester) async {
+        await openWhileReading(
+          tester,
+          rules: MemoryRulesSeenStore()..values[testAccount.id] = false,
+        );
+        expect(find.byType(HelpScreen), findsOneWidget);
+        for (var page = 1; page < HelpRules.pages.length; page++) {
+          await tester.tap(find.text('다음'));
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+        }
+        await tester.tap(find.text('시작하기'));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byType(HelpScreen), findsNothing);
+        expect(find.byType(HomeScreen), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        slow.finishRead();
+        await tester.pumpAndSettle();
+        expect(find.byType(HomeScreen), findsOneWidget);
+        expect(characters(tester).characterId, 'seal');
+      });
+
+      testWidgets('a read that fails opens home with the mouse', (
+        tester,
+      ) async {
+        await openWhileReading(tester);
+        slow.failRead();
+        await tester.pumpAndSettle();
+        expect(find.byType(HomeScreen), findsOneWidget);
+        expect(characters(tester).characterId, 'mouse');
+        expect(characters(tester).loading, isFalse);
+      });
     });
 
     testWidgets('logging out puts the mouse back for the next account', (

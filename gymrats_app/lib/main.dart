@@ -212,8 +212,8 @@ class _GymRatsAppState extends State<GymRatsApp> {
         theme: AppTheme.light,
         navigatorKey: _navigator,
         navigatorObservers: [GymRatsApp.routeObserver],
-        home: Consumer2<AuthViewModel, HelpViewModel>(
-          builder: (context, auth, help, _) => switch (auth.status) {
+        home: Consumer3<AuthViewModel, HelpViewModel, CharacterViewModel>(
+          builder: (context, auth, help, character, _) => switch (auth.status) {
             AuthStatus.restoring => const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             ),
@@ -223,6 +223,14 @@ class _GymRatsAppState extends State<GymRatsApp> {
                 body: Center(child: CircularProgressIndicator()),
               ),
               HelpGate.rules => HelpScreen(onStart: help.markSeen),
+              // Home also waits for the account's saved character, so no
+              // screen opened from it takes the stand-in default for it: a
+              // pick on 캐릭터 선택 would save it over the saved one, and a
+              // battle would fight with it.
+              HelpGate.home when !character.isReadyFor(auth.account?.id) =>
+                const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
               // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
               // A new home shell per account, so nothing of the previous
               // user's profile stays on screen.

@@ -40,11 +40,11 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
     super.dispose();
   }
 
-  /// Saves the pick and goes back, once: a second tap while saving does
-  /// nothing, and a page that was left meanwhile (system back) is not
-  /// left twice.
+  /// Saves the pick and goes back, once: a second tap while saving, or a
+  /// tap before the account's saved character is read, does nothing, and a
+  /// page that was left meanwhile (system back) is not left twice.
   Future<void> _confirm() async {
-    if (_viewModel.saving) return;
+    if (_viewModel.saving || !_viewModel.ready) return;
     await _viewModel.confirm();
     if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
     Navigator.pop(context);
@@ -86,7 +86,16 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
                     AppSpacing.s16,
                     AppSpacing.s20,
                   ),
-                  child: AccentButton(title: '이 캐릭터로 하기', onPressed: _confirm),
+                  // Not pressable until the saved character is read (home
+                  // normally opens only after that).
+                  child: IgnorePointer(
+                    ignoring: !_viewModel.ready,
+                    child: AccentButton(
+                      title: '이 캐릭터로 하기',
+                      hint: _viewModel.ready ? null : '저장된 캐릭터를 불러오는 중…',
+                      onPressed: _confirm,
+                    ),
+                  ),
                 ),
               ],
             );

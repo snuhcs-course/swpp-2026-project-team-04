@@ -93,6 +93,74 @@ void main() {
     expect(slow.writes, 1);
   });
 
+  group('while the account\'s saved character is still being read', () {
+    late _SlowReadStore slow;
+    late CharacterViewModel reading;
+    late CharacterSelectViewModel vm;
+
+    setUp(() {
+      slow = _SlowReadStore()..saved[7] = 'seal';
+      reading = CharacterViewModel(store: slow);
+      unawaited(reading.load(7));
+      vm = CharacterSelectViewModel(account: reading);
+    });
+
+    tearDown(() {
+      vm.dispose();
+      reading.dispose();
+    });
+
+    test('confirming saves nothing over the saved character', () async {
+      await vm.confirm();
+      expect(vm.saving, isFalse);
+      slow.finishRead();
+      await pumpEventQueue();
+      expect(slow.saved[7], 'seal');
+      expect(reading.characterId, 'seal');
+    });
+
+    test('is not ready until the read ends, then says so', () async {
+      var notified = 0;
+      vm.addListener(() => notified++);
+      expect(vm.ready, isFalse);
+      slow.finishRead();
+      await pumpEventQueue();
+      expect(vm.ready, isTrue);
+      expect(notified, greaterThan(0));
+    });
+
+    test('the preview takes the saved character when the read ends, if '
+        'nothing was picked', () async {
+      expect(vm.selected, 'mouse');
+      slow.finishRead();
+      await pumpEventQueue();
+      expect(vm.selected, 'seal');
+    });
+
+    test('a cell picked meanwhile stays when the read ends, and can then '
+        'be saved', () async {
+      vm.select('bear');
+      slow.finishRead();
+      await pumpEventQueue();
+      expect(vm.selected, 'bear');
+      await vm.confirm();
+      expect(slow.saved[7], 'bear');
+      expect(reading.characterId, 'bear');
+    });
+
+    test(
+      'a read that ends after the screen is gone changes nothing on it',
+      () async {
+        vm.dispose();
+        slow.finishRead();
+        await pumpEventQueue();
+        expect(reading.characterId, 'seal');
+        // Rebuilt for tearDown, which disposes it again.
+        vm = CharacterSelectViewModel(account: reading);
+      },
+    );
+  });
+
   test(
     'a confirm that ends after the screen is gone does not notify',
     () async {
@@ -107,6 +175,32 @@ void main() {
       await expectLater(saving, completes);
     },
   );
+}
+
+/// A store whose reads wait until [finishRead]; writes land at once. The
+/// read answers what was saved when it began, as a real read in flight does.
+class _SlowReadStore implements CharacterStore {
+  final saved = <int, String>{};
+  final _reads = <(int, Completer<String>, String)>[];
+
+  void finishRead() {
+    for (final (_, answer, value) in _reads) {
+      answer.complete(value);
+    }
+    _reads.clear();
+  }
+
+  @override
+  Future<String> read(int accountId) {
+    final answer = Completer<String>();
+    _reads.add((accountId, answer, saved[accountId] ?? 'mouse'));
+    return answer.future;
+  }
+
+  @override
+  Future<void> write(int accountId, String characterId) async {
+    saved[accountId] = characterId;
+  }
 }
 
 class _SlowStore implements CharacterStore {
