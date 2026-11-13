@@ -80,7 +80,7 @@ class BattleDemoApp extends StatelessWidget {
             builder: (_) =>
                 ResultScreen(result: settings.arguments! as BattleResult),
           ),
-          // The demo has no search: 다시 매칭 on the result screen opens the
+          // The demo has no search: 다시 대결 on the result screen opens the
           // next battle right away.
           GymRatsApp.matchingRoute => MaterialPageRoute<void>(
             settings: settings,

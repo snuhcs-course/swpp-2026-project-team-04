@@ -37,8 +37,7 @@ abstract final class AppColors {
   static const opponent = Color(0xFFFF4F81);
 
   /// Amber fill behind ink text, for warnings:
-  /// - invalid reps: the "not counted" popup in the battle and the invalid
-  ///   count on the result screen
+  /// - invalid reps: the "not counted" popup in the battle
   /// - the "needs improvement" posture label
   /// - the battle timer during its last 5 seconds
   static const warning = Color(0xFFFFB547);
@@ -238,6 +237,56 @@ abstract final class AppRadius {
 
   /// Tiny color marks: [AppHighlight.swatch].
   static const double mark = 3;
+
+  /// The top of a chart's bar, and a small icon box inside a card.
+  static const double bar = 6;
+}
+
+/// The text styles of the result report (BResult), at the design's sizes.
+/// Screens change only their color or weight.
+extension ReportText on TextTheme {
+  /// The verdict, e.g. "KO 승리": semibold body letters, set tight; the
+  /// screen slants it.
+  TextStyle get reportHeadline => displayMedium!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 46,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -1,
+    height: 1.05,
+  );
+
+  /// The user's score, big.
+  TextStyle get reportMyScore => displaySmall!.copyWith(
+    fontSize: 40,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// The opponent's score, beside the user's.
+  TextStyle get reportTheirScore => displaySmall!.copyWith(
+    fontSize: 24,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// The ":" between the scores.
+  TextStyle get reportScoreColon => displaySmall!.copyWith(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    height: 1,
+  );
+
+  /// A small line: the date, the sub line, a card's detail, the feedback
+  /// link.
+  TextStyle get reportLine => bodyMedium!.copyWith(fontSize: 13);
+
+  /// A card's bold title, e.g. "개인 최고 기록 갱신".
+  TextStyle get reportCardTitle =>
+      bodyLarge!.copyWith(fontSize: 15, fontWeight: FontWeight.w700);
+
+  /// The 다시 대결 button's label.
+  TextStyle get reportButton =>
+      titleMedium!.copyWith(fontSize: 17, fontWeight: FontWeight.w600);
 }
 
 /// Palette B's highlighter: color never carries text. It sits behind ink

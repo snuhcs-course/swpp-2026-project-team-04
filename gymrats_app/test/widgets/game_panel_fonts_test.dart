@@ -2,16 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
-import 'package:gymrats_app/models/form_report.dart';
-import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
-import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
@@ -245,72 +241,4 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
-
-  group('the result with the grades', () {
-    final result = BattleResult(
-      matchup: const Matchup(
-        exercise: ExerciseType.pushUp,
-        playerName: '우현',
-        opponent: Opponent(name: 'RepBot', isBot: true),
-      ),
-      myReps: 12,
-      myInvalidReps: 3,
-      opponentReps: 11,
-      myScore: 180,
-      opponentScore: 150,
-      decidedOutcome: MatchOutcome.win,
-      endedAt: DateTime(2026, 10, 4, 14, 32),
-      form: FormReport(
-        endedAt: DateTime(2026, 10, 4, 14, 32),
-        opponentName: 'RepBot',
-        roundLength: battleDuration,
-        reps: [
-          for (var i = 0; i < 10; i++)
-            RepRecord(
-              index: i + 1,
-              valid: true,
-              at: Duration(seconds: i + 1),
-              maxDepth: i == 0 ? 1.9 : 1.4,
-            ),
-          RepRecord(
-            index: 11,
-            valid: false,
-            at: const Duration(seconds: 15),
-            reason: RejectReason.insufficientDepth,
-            minElbowAngle: 90,
-          ),
-        ],
-        samples: const [],
-      ),
-    );
-
-    for (final size in const [Size(360, 640), Size(360, 780)]) {
-      for (final scale in const [1.0, 1.5, 2.0]) {
-        final name = '${size.width.toInt()}x${size.height.toInt()}';
-        testWidgets('on $name at text scale $scale all three stay on the '
-            'card', (tester) async {
-          await _loadAppFonts(tester);
-          tester.platformDispatcher.textScaleFactorTestValue = scale;
-          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-          tester.view.physicalSize = size;
-          tester.view.devicePixelRatio = 1;
-          addTearDown(tester.view.reset);
-          await tester.pumpWidget(
-            MaterialApp(
-              theme: AppTheme.dark,
-              home: ResultScreen(result: result),
-            ),
-          );
-          final first = tester.getRect(find.text('Excellent 1'));
-          final last = tester.getRect(find.text('Average 1'));
-          expect(find.text('Good 9'), findsOneWidget);
-          // One line, though each shrinks by its own width.
-          expect(first.center.dy, closeTo(last.center.dy, 1));
-          expect(first.left, greaterThanOrEqualTo(0));
-          expect(last.right, lessThanOrEqualTo(size.width));
-          expect(tester.takeException(), isNull);
-        });
-      }
-    }
-  });
 }

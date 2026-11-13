@@ -1,7 +1,4 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
@@ -11,582 +8,220 @@ import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
-import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/widgets/result_report.dart';
 
-import '../support/fakes.dart';
+// The drawing of the report is tested in test/widgets/result_report_test.dart
+// and result_cards_test.dart. This file checks only what the screen adds:
+// the values it gathers from the battle, and where its buttons lead.
 
-const _matchup = Matchup(
+final _matchup = Matchup(
   exercise: ExerciseType.pushUp,
   playerName: '우현',
-  opponent: Opponent(name: 'RepBot', isBot: true),
+  opponent: const Opponent(
+    name: 'RepBot',
+    isBot: true,
+  ).at(BotDifficulty.beginner),
+);
+
+final _form = FormReport(
+  endedAt: DateTime(2026, 11, 4, 14, 30),
+  opponentName: 'AI 봇 · 초보',
+  roundLength: const Duration(seconds: 30),
+  reps: const [],
+  samples: const [],
 );
 
 BattleResult _result({
-  int mine = 26,
-  int invalid = 3,
-  int theirs = 24,
-  Matchup matchup = _matchup,
+  MatchOutcome? outcome = MatchOutcome.win,
+  GameEnd end = GameEnd.timeUp,
   Duration roundLength = const Duration(seconds: 30),
+  FormReport? form,
 }) => BattleResult(
-  matchup: matchup,
-  myReps: mine,
-  myInvalidReps: invalid,
-  opponentReps: theirs,
-  endedAt: DateTime(2026, 10, 4, 14, 32),
-  roundLength: roundLength,
-);
-
-/// A battle played with the game and with a form report, so the screen also
-/// shows the grades and the 자세 피드백 보기 button.
-BattleResult _withForm(MatchOutcome outcome) => BattleResult(
   matchup: _matchup,
-  myReps: 3,
-  myInvalidReps: 1,
-  opponentReps: 4,
-  myScore: 110,
-  opponentScore: 90,
+  myReps: 12,
+  myInvalidReps: 2,
+  opponentReps: 14,
+  myScore: 240,
+  opponentScore: 125,
+  end: end,
   decidedOutcome: outcome,
-  endedAt: DateTime(2026, 10, 4, 14, 32),
-  form: FormReport(
-    endedAt: DateTime(2026, 10, 4, 14, 32),
-    opponentName: 'RepBot',
-    roundLength: const Duration(seconds: 30),
-    reps: const [],
-    samples: const [],
-  ),
+  endedAt: DateTime(2026, 11, 4, 14, 30),
+  roundLength: roundLength,
+  form: form,
 );
 
-/// The WCAG contrast ratio of two opaque colors, from 1 to 21.
-double _contrast(Color a, Color b) {
-  final (la, lb) = (a.computeLuminance(), b.computeLuminance());
-  return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+/// The routes pushed or put in place, in order.
+class _Routes extends NavigatorObserver {
+  final settings = <RouteSettings>[];
+
+  List<String?> get names => [for (final route in settings) route.name];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      settings.add(route.settings);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
+      settings.add(newRoute!.settings);
 }
 
-/// The fills of palette B: lime, pink, amber, cyan and red, never a text
-/// color.
-const _fillOnly = [
-  AppColors.accent,
-  AppColors.accentDeep,
-  AppColors.opponent,
-  AppColors.opponentDeep,
-  AppColors.warning,
-  AppColors.fever,
-  AppColors.danger,
-];
-
 void main() {
-  late PushLog pushes;
+  group('the values it gathers from main\'s battle result', () {
+    test('a time-up win: the outcome, the scores, the reps, the times', () {
+      final data = ResultScreen.reportOf(_result());
+      expect(data.outcome, MatchOutcome.win);
+      expect(data.byKo, isFalse);
+      expect(data.exercise, ExerciseType.pushUp);
+      expect(data.opponent.difficulty, BotDifficulty.beginner);
+      expect(data.played, const Duration(seconds: 30));
+      expect((data.myScore, data.opponentScore), (240, 125));
+      expect((data.myValidReps, data.myInvalidReps), (12, 2));
+      expect(data.endedAt, DateTime(2026, 11, 4, 14, 30));
+    });
 
-  /// Opens ResultScreen above a home page, where the battle leaves it. The
-  /// matching route is a stub that shows its argument.
-  Future<void> open(
-    WidgetTester tester,
-    BattleResult result, {
-    Size size = const Size(412, 915),
-  }) async {
-    tester.view.physicalSize = size;
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    pushes = PushLog();
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.dark,
-        navigatorObservers: [pushes],
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => ResultScreen(result: result),
-                ),
-              ),
-              child: const Text('home'),
-            ),
-          ),
+    test('a KO loss, and the time it took', () {
+      final data = ResultScreen.reportOf(
+        _result(
+          outcome: MatchOutcome.lose,
+          end: GameEnd.ko,
+          roundLength: const Duration(seconds: 24),
         ),
-        onGenerateRoute: (settings) => switch (settings.name) {
-          GymRatsApp.matchingRoute => MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) {
-              final request = settings.arguments! as BotMatchRequest;
-              return Scaffold(
-                body: Text(
-                  'matching ${request.exercise} ${request.difficulty}',
-                ),
-              );
-            },
-          ),
-          _ => null,
-        },
-      ),
-    );
-    await tester.tap(find.text('home'));
-    await tester.pumpAndSettle();
-  }
+      );
+      expect(data.outcome, MatchOutcome.lose);
+      expect(data.byKo, isTrue);
+      expect(data.played, const Duration(seconds: 24));
+    });
 
-  Color? colorOf(WidgetTester tester, String text) =>
-      tester.widget<Text>(find.text(text)).style!.color;
+    test('a battle built without a game shows its reps as the scores', () {
+      final data = ResultScreen.reportOf(_result(outcome: null));
+      expect((data.myScore, data.opponentScore), (12, 14));
+      expect(data.outcome, MatchOutcome.lose);
+    });
 
-  /// The nearest box painted behind [text], or null if nothing is painted
-  /// between it and the screen's ground.
-  BoxDecoration? bandBehind(WidgetTester tester, String text) {
-    final boxes = find.ancestor(
-      of: find.text(text),
-      matching: find.byType(DecoratedBox),
-    );
-    if (boxes.evaluate().isEmpty) return null;
-    return tester.widget<DecoratedBox>(boxes.first).decoration as BoxDecoration;
-  }
+    test('feedback only with a form report', () {
+      expect(ResultScreen.reportOf(_result()).hasFeedback, isFalse);
+      expect(ResultScreen.reportOf(_result(form: _form)).hasFeedback, isTrue);
+    });
 
-  /// Every color text is painted in on the result screen, with what a span
-  /// takes from the span around it; icons left out.
-  Set<Color> textColors(WidgetTester tester) {
-    final colors = <Color>{};
-    void walk(InlineSpan span, Color? around) {
-      if (span is! TextSpan) return;
-      final color = span.style?.color ?? around;
-      final isIcon = span.style?.fontFamily == Icons.home.fontFamily;
-      if (!isIcon && (span.text ?? '').trim().isNotEmpty && color != null) {
-        colors.add(color);
-      }
-      for (final child in span.children ?? const <InlineSpan>[]) {
-        walk(child, color);
-      }
-    }
-
-    for (final paragraph in tester.renderObjectList<RenderParagraph>(
-      find.descendant(
-        of: find.byType(ResultScreen),
-        matching: find.byType(RichText),
-      ),
-    )) {
-      walk(paragraph.text, null);
-    }
-    return colors;
-  }
-
-  testWidgets('a win: WIN, the margin, both players, and my stats', (
-    tester,
-  ) async {
-    await open(tester, _result());
-    expect(find.text('RESULT'), findsOneWidget);
-    expect(find.text('푸쉬업 · 30초 · 오늘 14:32'), findsOneWidget);
-    expect(find.text('WIN'), findsOneWidget);
-    expect(colorOf(tester, 'WIN'), AppColors.ink);
-    expect(find.text('2개 차이로 이겼어요!'), findsOneWidget);
-
-    expect(find.text('우현'), findsOneWidget);
-    expect(find.text('우'), findsOneWidget);
-    expect(find.text('RepBot'), findsOneWidget);
-    expect(find.byIcon(Icons.smart_toy_rounded), findsOneWidget);
-    expect(colorOf(tester, '26'), AppColors.ink);
-    expect(colorOf(tester, '24'), AppColors.ink);
-
-    expect(find.text('인정'), findsOneWidget);
-    expect(find.text('26회'), findsOneWidget);
-    expect(find.text('무효'), findsOneWidget);
-    expect(find.text('3회'), findsOneWidget);
-    expect(
-      tester.widget<Text>(find.text('3회')).textSpan!.style!.color,
-      AppColors.ink,
-    );
-    // 26 of 29 judged reps.
-    expect(find.text('정확도'), findsOneWidget);
-    expect(find.text('90%'), findsOneWidget);
-
-    // Left out this iteration.
-    expect(find.textContaining('TP'), findsNothing);
-    expect(find.textContaining('티어'), findsNothing);
-    expect(find.textContaining('자세 피드백'), findsNothing);
-    expect(find.text('홈으로'), findsOneWidget);
-    expect(find.text('다시 매칭'), findsOneWidget);
+    test('main has no personal best, latest battles or tip: those cards '
+        'stay hidden until the view model (J4) gives them', () {
+      final data = ResultScreen.reportOf(_result(form: _form));
+      expect(data.best, isNull);
+      expect(data.recent, isNull);
+      expect(data.tip, isNull);
+    });
   });
 
-  for (final (mine, theirs, word, line, color) in [
-    (20, 23, 'LOSE', '3개 차이로 졌어요', AppColors.ink),
-    (22, 22, 'DRAW', '비겼어요!', AppColors.textPrimary),
-  ]) {
-    testWidgets('$mine:$theirs is a $word', (tester) async {
-      await open(tester, _result(mine: mine, theirs: theirs));
-      expect(find.text(word), findsOneWidget);
-      expect(colorOf(tester, word), color);
-      expect(find.text(line), findsOneWidget);
-    });
-  }
+  group('the buttons', () {
+    late _Routes routes;
 
-  group('readable on the light ground (palette B)', () {
-    for (final (mine, theirs, word, band) in const [
-      (26, 24, 'WIN', AppColors.accent),
-      (20, 23, 'LOSE', AppColors.opponent),
-    ]) {
-      testWidgets('$word is ink on a slanted band, 4.5:1 or more', (
-        tester,
-      ) async {
-        await open(tester, _result(mine: mine, theirs: theirs));
-        final ink = colorOf(tester, word)!;
-        final behind = bandBehind(tester, word);
-        expect(ink, AppColors.ink);
-        expect(behind?.color, band);
-        final ratio = _contrast(ink, behind!.color!);
-        expect(ratio, greaterThanOrEqualTo(4.5), reason: '$word $ratio:1');
-
-        // The band leans like a marker stroke, together with the word.
-        final slant = tester.widget<Transform>(
-          find
-              .ancestor(
-                of: find.byWidgetPredicate(
-                  (widget) =>
-                      widget is DecoratedBox && widget.decoration == behind,
+    /// Opens ResultScreen above a home page, where the battle leaves it. The
+    /// matching and feedback routes are stubs that show their argument.
+    Future<void> open(WidgetTester tester, BattleResult result) async {
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      routes = _Routes();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          navigatorObservers: [routes],
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => ResultScreen(result: result),
+                  ),
                 ),
-                matching: find.byType(Transform),
-              )
-              .first,
-        );
-        expect(slant.transform.entry(0, 1), isNot(0));
+                child: const Text('home'),
+              ),
+            ),
+          ),
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                Scaffold(body: Text('${settings.name} ${settings.arguments}')),
+          ),
+        ),
+      );
+      await tester.tap(find.text('home'));
+      await tester.pumpAndSettle();
+      routes.settings.clear();
+    }
+
+    testWidgets('it shows the report of the battle', (tester) async {
+      await open(tester, _result());
+      expect(find.byType(ResultReport), findsOneWidget);
+      expect(find.text('승리'), findsOneWidget);
+      expect(find.text('RepBot 초보'), findsOneWidget);
+      expect(find.text('240'), findsOneWidget);
+    });
+
+    for (final (name, press) in [
+      ('홈으로', (WidgetTester t) => t.tap(find.text('홈으로'))),
+      ('the back button', (WidgetTester t) => t.tap(find.byTooltip('홈으로'))),
+      ('system back', (WidgetTester t) => t.binding.handlePopRoute()),
+    ]) {
+      testWidgets('$name goes home', (tester) async {
+        await open(tester, _result());
+        await press(tester);
+        await tester.pumpAndSettle();
+        expect(find.text('home'), findsOneWidget);
+        expect(find.byType(ResultScreen), findsNothing);
       });
     }
 
-    testWidgets('DRAW stays ink on the screen ground, with no band', (
+    testWidgets('다시 대결 replaces the result with a search for the same '
+        'battle; back from it goes home', (tester) async {
+      await open(tester, _result());
+      await tester.tap(find.text('다시 대결'));
+      await tester.pumpAndSettle();
+      expect(routes.names, [GymRatsApp.matchingRoute]);
+      final request = routes.settings.single.arguments! as BotMatchRequest;
+      expect(request.exercise, ExerciseType.pushUp);
+      expect(request.difficulty, BotDifficulty.beginner);
+      expect(find.byType(ResultScreen), findsNothing);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets('only the first leaving button acts', (tester) async {
+      await open(tester, _result());
+      final rematch = tester
+          .widget<FilledButton>(find.byType(FilledButton))
+          .onPressed!;
+      final home = tester
+          .widget<OutlinedButton>(find.byType(OutlinedButton))
+          .onPressed!;
+      rematch();
+      rematch();
+      home();
+      await tester.pumpAndSettle();
+      expect(routes.names, [GymRatsApp.matchingRoute]);
+    });
+
+    testWidgets('자세 피드백 전체 보기 opens this battle\'s feedback on top; '
+        'back comes here again', (tester) async {
+      await open(tester, _result(form: _form));
+      await tester.tap(find.text('자세 피드백 전체 보기'));
+      await tester.pumpAndSettle();
+      expect(routes.names, [GymRatsApp.feedbackRoute]);
+      expect(routes.settings.single.arguments, same(_form));
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(ResultScreen), findsOneWidget);
+    });
+
+    testWidgets('without a form report there is no feedback link', (
       tester,
     ) async {
-      await open(tester, _result(mine: 22, theirs: 22));
-      final ink = colorOf(tester, 'DRAW')!;
-      expect(_fillOnly, isNot(contains(bandBehind(tester, 'DRAW')?.color)));
-      expect(_contrast(ink, AppColors.background), greaterThanOrEqualTo(4.5));
-      // Its glow stays as it was; only WIN and LOSE changed.
-      expect(
-        tester.widget<Text>(find.text('DRAW')).style!.shadows,
-        hasLength(1),
-      );
+      await open(tester, _result());
+      expect(find.text('자세 피드백 전체 보기'), findsNothing);
     });
-
-    for (final outcome in MatchOutcome.values) {
-      testWidgets('a ${outcome.name} paints no text in a palette B fill '
-          'color, the feedback button and 무효 included', (tester) async {
-        await open(tester, _withForm(outcome));
-        expect(find.text('자세 피드백 보기'), findsOneWidget);
-        final colors = textColors(tester);
-        expect(colors, isNotEmpty);
-        for (final fill in _fillOnly) {
-          expect(colors, isNot(contains(fill)));
-        }
-      });
-    }
-  });
-
-  group('a battle played with the game', () {
-    BattleResult game({
-      int mine = 110,
-      int theirs = 90,
-      MatchOutcome outcome = MatchOutcome.win,
-      GameEnd end = GameEnd.timeUp,
-      Duration roundLength = const Duration(seconds: 30),
-    }) => BattleResult(
-      matchup: _matchup,
-      myReps: 5,
-      myInvalidReps: 1,
-      opponentReps: 6,
-      myScore: mine,
-      opponentScore: theirs,
-      end: end,
-      decidedOutcome: outcome,
-      endedAt: DateTime(2026, 10, 4, 14, 32),
-      roundLength: roundLength,
-    );
-
-    testWidgets('shows the points big and the reps under them, even when '
-        'fewer reps won', (tester) async {
-      await open(tester, game());
-      expect(find.text('WIN'), findsOneWidget);
-      expect(find.text('20점 차이로 이겼어요!'), findsOneWidget);
-      expect(colorOf(tester, '110'), AppColors.ink);
-      expect(colorOf(tester, '90'), AppColors.ink);
-      expect(find.text('유효 5회'), findsOneWidget);
-      expect(find.text('유효 6회'), findsOneWidget);
-      expect(find.text('5회'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    });
-
-    for (final (outcome, word, line) in const [
-      (MatchOutcome.win, 'WIN', 'KO로 이겼어요!'),
-      (MatchOutcome.lose, 'LOSE', 'KO로 졌어요'),
-    ]) {
-      testWidgets('a KO says "$line" and the time played', (tester) async {
-        await open(
-          tester,
-          game(
-            outcome: outcome,
-            end: GameEnd.ko,
-            roundLength: const Duration(seconds: 24),
-          ),
-        );
-        expect(find.text(word), findsOneWidget);
-        expect(find.text(line), findsOneWidget);
-        expect(find.text('푸쉬업 · 24초 · 오늘 14:32'), findsOneWidget);
-      });
-    }
-
-    for (final (outcome, line) in const [
-      (MatchOutcome.win, '유효 횟수로 이겼어요!'),
-      (MatchOutcome.lose, '유효 횟수로 졌어요'),
-      (MatchOutcome.draw, '비겼어요!'),
-    ]) {
-      testWidgets('level points say "$line"', (tester) async {
-        await open(tester, game(mine: 100, theirs: 100, outcome: outcome));
-        expect(find.text(line), findsOneWidget);
-      });
-    }
-
-    testWidgets('fits a 360x640 phone', (tester) async {
-      await open(tester, game(), size: const Size(360, 640));
-      expect(tester.takeException(), isNull);
-    });
-
-    group('the grades', () {
-      RepRecord rep({
-        RejectReason? reason,
-        double? maxDepth,
-        double? minElbowAngle,
-      }) => RepRecord(
-        index: 1,
-        valid: reason == null,
-        at: const Duration(seconds: 3),
-        reason: reason,
-        maxDepth: maxDepth,
-        minElbowAngle: minElbowAngle,
-      );
-
-      BattleResult graded(List<RepRecord> reps) => BattleResult(
-        matchup: _matchup,
-        myReps: 3,
-        myInvalidReps: 2,
-        opponentReps: 6,
-        myScore: 110,
-        opponentScore: 90,
-        decidedOutcome: MatchOutcome.win,
-        endedAt: DateTime(2026, 10, 4, 14, 32),
-        form: FormReport(
-          endedAt: DateTime(2026, 10, 4, 14, 32),
-          opponentName: 'RepBot',
-          roundLength: const Duration(seconds: 30),
-          reps: reps,
-          samples: const [],
-        ),
-      );
-
-      final reps = [
-        rep(maxDepth: 1.9),
-        rep(maxDepth: 1.4),
-        rep(maxDepth: 1.4),
-        rep(reason: RejectReason.insufficientDepth, minElbowAngle: 90),
-        rep(reason: RejectReason.kneesDown, minElbowAngle: 90),
-      ];
-
-      testWidgets('all three show how many of my reps got them', (
-        tester,
-      ) async {
-        await open(tester, graded(reps));
-        expect(find.text('Excellent 1'), findsOneWidget);
-        expect(find.text('Good 2'), findsOneWidget);
-        expect(find.text('Average 1'), findsOneWidget);
-        // An average rep is still rejected.
-        expect(find.text('2회'), findsOneWidget);
-        expect(find.text('3회'), findsOneWidget);
-      });
-
-      testWidgets('a squat is counted by the squat judge\'s pass depth', (
-        tester,
-      ) async {
-        // 1.6 x 0.75: a push-up at this depth would only be good.
-        final squat = graded([rep(maxDepth: 1.2)]);
-        await open(
-          tester,
-          BattleResult(
-            matchup: const Matchup(
-              exercise: ExerciseType.squat,
-              playerName: '우현',
-              opponent: Opponent(name: 'RepBot', isBot: true),
-            ),
-            myReps: squat.myReps,
-            myInvalidReps: squat.myInvalidReps,
-            opponentReps: squat.opponentReps,
-            decidedOutcome: MatchOutcome.win,
-            endedAt: squat.endedAt,
-            form: squat.form,
-          ),
-        );
-        expect(find.text('Excellent 1'), findsOneWidget);
-        expect(find.text('Good 0'), findsOneWidget);
-      });
-
-      testWidgets('a battle with no reps shows zeros', (tester) async {
-        await open(tester, graded(const []));
-        expect(find.text('Excellent 0'), findsOneWidget);
-        expect(find.text('Good 0'), findsOneWidget);
-        expect(find.text('Average 0'), findsOneWidget);
-      });
-
-      testWidgets('with no report they do not show', (tester) async {
-        await open(tester, game());
-        expect(find.textContaining('Excellent'), findsNothing);
-      });
-
-      testWidgets('a battle built without a game does not show them', (
-        tester,
-      ) async {
-        await open(
-          tester,
-          BattleResult(
-            matchup: _matchup,
-            myReps: 3,
-            myInvalidReps: 2,
-            opponentReps: 6,
-            endedAt: DateTime(2026, 10, 4, 14, 32),
-            form: graded(reps).form,
-          ),
-        );
-        expect(find.textContaining('Excellent'), findsNothing);
-      });
-
-      for (final size in const [Size(360, 640), Size(360, 740)]) {
-        testWidgets('they fit ${size.width.toInt()}x${size.height.toInt()}', (
-          tester,
-        ) async {
-          await open(tester, graded(reps), size: size);
-          expect(find.text('Average 1'), findsOneWidget);
-          expect(tester.takeException(), isNull);
-        });
-      }
-
-      testWidgets('on the largest system font the line does not overflow', (
-        tester,
-      ) async {
-        tester.platformDispatcher.textScaleFactorTestValue = 2;
-        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-        await open(tester, graded(reps), size: const Size(360, 740));
-        expect(find.text('Average 1'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      });
-    });
-  });
-
-  testWidgets('a battle built without a game has no reps line', (tester) async {
-    await open(tester, _result());
-    expect(find.textContaining('유효'), findsNothing);
-  });
-
-  testWidgets('without a judged rep, accuracy is a dash', (tester) async {
-    await open(tester, _result(mine: 0, invalid: 0, theirs: 21));
-    expect(find.text('0회'), findsNWidgets(2));
-    expect(find.text('—'), findsOneWidget);
-    expect(find.textContaining('%'), findsNothing);
-  });
-
-  testWidgets('a person gets a person icon; the header follows the round', (
-    tester,
-  ) async {
-    await open(
-      tester,
-      _result(
-        matchup: const Matchup(
-          exercise: ExerciseType.pushUp,
-          playerName: '우현',
-          opponent: Opponent(name: 'Mina', isBot: false),
-        ),
-        roundLength: const Duration(seconds: 20),
-      ),
-    );
-    expect(find.text('Mina'), findsOneWidget);
-    expect(find.byIcon(Icons.person_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.smart_toy_rounded), findsNothing);
-    expect(find.text('푸쉬업 · 20초 · 오늘 14:32'), findsOneWidget);
-  });
-
-  testWidgets('홈으로 goes home', (tester) async {
-    await open(tester, _result());
-    await tester.tap(find.text('홈으로'));
-    await tester.pumpAndSettle();
-    expect(find.text('home'), findsOneWidget);
-    expect(find.byType(ResultScreen), findsNothing);
-  });
-
-  testWidgets('back goes home too', (tester) async {
-    await open(tester, _result());
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(find.text('home'), findsOneWidget);
-  });
-
-  testWidgets('다시 매칭 replaces the result with a search for the same battle', (
-    tester,
-  ) async {
-    await open(
-      tester,
-      _result(
-        matchup: Matchup(
-          exercise: ExerciseType.pushUp,
-          playerName: '우현',
-          opponent: const Opponent(
-            name: 'RepBot',
-            isBot: true,
-          ).at(BotDifficulty.beginner),
-        ),
-      ),
-    );
-    expect(find.text('AI 봇 · 초보'), findsOneWidget);
-    await tester.tap(find.text('다시 매칭'));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('matching ${ExerciseType.pushUp} ${BotDifficulty.beginner}'),
-      findsOneWidget,
-    );
-    expect(find.byType(ResultScreen), findsNothing);
-
-    // Replaced, not pushed: back from the search goes home.
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    expect(find.text('home'), findsOneWidget);
-  });
-
-  testWidgets('pressing 다시 매칭 twice searches once', (tester) async {
-    await open(tester, _result());
-    final press = tester
-        .widget<FilledButton>(
-          find.ancestor(
-            of: find.text('다시 매칭'),
-            matching: find.byType(FilledButton),
-          ),
-        )
-        .onPressed!;
-    press();
-    press();
-    await tester.pumpAndSettle();
-    expect(
-      pushes.names.where((name) => name == GymRatsApp.matchingRoute),
-      hasLength(1),
-    );
-  });
-
-  /// The 홈으로 button, tap area included.
-  final homeButton = find.ancestor(
-    of: find.text('홈으로'),
-    matching: find.byType(OutlinedButton),
-  );
-
-  testWidgets('a tall phone shows the buttons at the bottom', (tester) async {
-    await open(tester, _result());
-    expect(tester.takeException(), isNull);
-    expect(tester.getRect(homeButton).bottom, 915 - 28);
-  });
-
-  testWidgets('a short phone scrolls down to the buttons', (tester) async {
-    await open(tester, _result(), size: const Size(360, 640));
-    expect(tester.takeException(), isNull);
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
-    await tester.pumpAndSettle();
-    expect(tester.getRect(homeButton).bottom, 640 - 28);
   });
 }

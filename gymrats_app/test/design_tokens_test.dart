@@ -15,6 +15,7 @@ const _checked = [
   'lib/screens/home_shell_screen.dart',
   'lib/screens/match_feedback_screen.dart',
   'lib/screens/play_screen.dart',
+  'lib/screens/result_screen.dart',
   'lib/screens/settings_screen.dart',
   'lib/widgets/auth_form.dart',
   'lib/widgets/battle_mode_card.dart',
@@ -28,6 +29,8 @@ const _checked = [
   'lib/widgets/lobby_parts.dart',
   'lib/widgets/lobby_rep_bot.dart',
   'lib/widgets/match_record_card.dart',
+  'lib/widgets/result_cards.dart',
+  'lib/widgets/result_report.dart',
   'lib/widgets/safe_warning_dialog.dart',
 ];
 
