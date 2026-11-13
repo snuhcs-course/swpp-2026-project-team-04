@@ -252,11 +252,11 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `47afaff`, wit
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | – | CI comment "Tests and coverage (GitHub Actions)" on the W3 PR |
-| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the same CI comment | – | same CI comment |
-| Service | flutter_test, MockClient, fakes | 85% | TODO(Woohyun Song): from the same CI comment | – | same CI comment |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the same CI comment | – | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | the Django code is unchanged (only the Dart battle server changed); TODO(Woohyun Song): CI's pytest number | – | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 99.2% (470/474) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #52, commit `a55507b`, [run 43457588271](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43457588271) |
+| ViewModel | flutter_test, fakes | 90% | 96.7% (1151/1190) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.3% (2259/2370) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.1% (5898/6139) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; the Django code is unchanged, only the Dart battle server changed) | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `a55507b` |
 
 - **Tests:** `flutter test` had 2263 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as in W2:
@@ -274,8 +274,12 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `47afaff`, wit
 - **Other checks:**
   - `ownership_guard.py --check-diff` is ok: 235 changed files. Each is W3's or is under an approved exception line; the exceptions are listed in the PR.
   - The Dart battle server changed (`server/lib/battle_server.dart`). Its tests run in `flutter test` (`test/services/online/online_battle_integration_test.dart`). The Django server did not change, so `pytest` was not run on this PC.
-- **Coverage:** TODO(Woohyun Song): fill from the PR's CI comment (commit, run link, per layer, files left out by CI's time limit).
-- **Shortfalls:** TODO(Woohyun Song): to be stated with the CI coverage.
+- **Coverage:** from the CI comment on PR #52 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/52#issuecomment-6858206591)), commit `a55507b` (2026-11-14 01:02 KST; the app and server jobs both succeeded; [run 43457588271](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43457588271)). `a55507b` changes only these notes on top of `c057a58`, and `c057a58` only two comments on top of `47afaff`.
+  - App total 96.1% (10033/10445); Other 93.8% (255/272).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2263 passed, 10 skipped, 0 failed), the same as on this PC.
+  - The pixel comparison with the 36 design shots, run on Windows so far, passes on CI's Linux too.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart`. Its tests still ran and passed in `flutter test`. So W3's change to `settings_screen.dart` (the 캐릭터 row, under its exception) is not in the View number.
+- **Shortfalls:** none; every layer and the server meet their targets.
 - **Screen readers:** widget tests check that each cell of 캐릭터 선택 says its name and animal and whether it is picked. TalkBack on a real phone was **not** checked.
 - **Manual check (the user, reported 2026-11-14, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17):** the user found nothing to fix in W3's code.
   - Seen on the phone:
