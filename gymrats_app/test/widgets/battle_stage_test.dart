@@ -12,6 +12,7 @@ import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_hud.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 
 import 'battle_test_support.dart';
 
@@ -49,6 +50,7 @@ Future<void> _pump(
   BattleFxFrame frame,
   BattleStageState state, {
   BattleFighterBuilder fighterBuilder = BattleFighter.standIn,
+  BattleCharacters? characters,
 }) => tester.pumpWidget(
   battleTestApp(
     Stack(
@@ -60,6 +62,7 @@ Future<void> _pump(
             frame: frame,
             state: state,
             fighterBuilder: fighterBuilder,
+            characters: characters,
           ),
         ),
       ],
@@ -464,6 +467,53 @@ void main() {
       expect(find.byType(BattleFighter), findsNothing);
       expect(find.text('me attack'), findsOneWidget);
       expect(find.text('opponent idle'), findsOneWidget);
+    });
+
+    testWidgets('with characters the fighters are the characters, in their '
+        'poses and team colors, the hit one flashing on its own', (
+      tester,
+    ) async {
+      final fx = BattleFxTimeline()..rep(_hit, 0);
+      await _pump(
+        tester,
+        fx.frame(100),
+        _state(),
+        characters: const BattleCharacters(me: 'penguin', opponent: 'bot'),
+      );
+      expect(find.byType(BattleFighter), findsNothing);
+      final drawn = tester
+          .widgetList<CharacterFigure>(find.byType(CharacterFigure))
+          .toList();
+      expect(drawn, hasLength(2));
+      final me = drawn.singleWhere((f) => f.side == BattleSide.me);
+      final opponent = drawn.singleWhere((f) => f.side == BattleSide.opponent);
+      expect(
+        (me.characterId, me.pose, me.flash),
+        ('penguin', BattlePose.attack, false),
+      );
+      expect(
+        (opponent.characterId, opponent.pose, opponent.flash),
+        ('bot', BattlePose.hit, true),
+      );
+      // The character paints its own flash: no white tint, no ink blur.
+      expect(find.byType(ColorFiltered), findsNothing);
+      expect(find.byType(ImageFiltered), findsNothing);
+      // Later in the list is drawn on top: the attacker.
+      expect(drawn.last.side, BattleSide.me);
+    });
+
+    testWidgets('with characters fever still puts the white aura on both', (
+      tester,
+    ) async {
+      final fx = BattleFxTimeline()..setFever(true, 0);
+      await _pump(
+        tester,
+        fx.frame(500),
+        _state(fever: true),
+        characters: const BattleCharacters(me: 'mouse', opponent: 'seal'),
+      );
+      expect(find.byType(ImageFiltered), findsNWidgets(2));
+      expect(find.byType(CharacterFigure), findsNWidgets(4));
     });
 
     testWidgets('a screen reader gets the bar and the HUD, not the pictures', (

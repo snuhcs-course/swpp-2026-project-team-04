@@ -67,7 +67,9 @@ void main() {
       isFalse,
     );
   });
-  testWidgets('avatar keeps gauge but not camera-space guide', (tester) async {
+  testWidgets('the camera view keeps the gauge and its camera-space guide', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -75,7 +77,6 @@ void main() {
             controller: null,
             frame: standingFrame(),
             chestSnapshot: snapshot,
-            avatarBuilder: (_, _, _) => const SizedBox(),
           ),
         ),
       ),
@@ -86,15 +87,15 @@ void main() {
           .drawGuide,
       isTrue,
     );
-    await tester.tap(find.byKey(const Key('avatarCameraToggle')));
-    await tester.pumpAndSettle();
+    // The guide line on the camera, and the words; the bar was the
+    // avatar's stand-in for the line.
     expect(
-      tester
-          .widget<ChestHeightOverlay>(find.byType(ChestHeightOverlay))
-          .drawGuide,
-      isFalse,
+      find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is ChestHeightGuidePainter,
+      ),
+      findsOneWidget,
     );
-    expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.text('하강 50% · 어깨 너비 기준'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 }

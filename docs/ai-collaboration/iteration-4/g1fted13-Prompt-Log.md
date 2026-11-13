@@ -549,3 +549,102 @@ W2 feat/battle_screen_revamp 작업이야. 먼저 CLAUDE.md, task.md, progress.m
 3. 문제가 없으면 push하고 PR을 올려. PR 본문 첫 줄은 team-plan.md의 머지 순서 규칙대로 쓰고, \"Depends on #49\"(#49 다음에 머지)를 적어. 본문에는 팀 합의(9번 봇 세팅 흐름: 상우 동의·현우 승인, #49 위젯 재사용, 현우가 승인한 예외 2건, 먼저 처리하고 보고한 예외 파일 목록, UAT-5 문구는 현우가 문서에 반영)와 남은 일을 적어. 남은 일: 후속 작업(세팅 중 카메라를 화면의 약 80%로 키웠다가 준비되면 지금 크기로 줄이기, 매칭 레이더 점을 레이더가 지나갈 때 깜빡이게, 매칭 성공 화면의 색과 VS 글자), 푸쉬업 세팅에서 실루엣에 맞추기 전에 준비 완료되는 문제(정렬 확인, S3), 스쿼트용 서 있는 실루엣과 /setup 영어 정리(S3), 안 쓰게 된 safe_warning.png는 W8 그림이 들어온 뒤 삭제, 규칙 화면 팔레트 B 적용(W6), 이 PC에서 커버리지 측정 불가.
 4. PR 번호와 CI 결과를 보여 주고 멈춰.
 </pasted_content id=\"ed13\">"
+
+## 2026-11-14 · Woohyun Song · feat/characters
+<!-- Left out on purpose: the session summary written when the session ran out of context (11-13 04:32; not a prompt). Its key stays at the end of this section so a later export does not add it again. Cut: the client's injected browser notice in front of 4 prompts (11-13 03:25, 11-13 03:28, 11-14 00:08, 11-14 02:01; not the user's text). -->
+<!-- Note: the 11-13 03:25 prompt was stopped seconds after it was sent (that session has no other prompt); the 11-13 03:28 prompt, a revised version, started W3 in a new session. -->
+<!-- cdef097c 2026-11-12T18:25:12.241Z -->
+[Woohyun Song, 11-13 03:25] "<pasted_content id=\"b58a\">
+W3(feat/characters)를 시작하자. W2(feat/battle_screen_revamp)는 PR #50으로 올라갔고 #49 다음에 머지될 예정이야.
+먼저 CLAUDE.md, task.md(W3 부분), progress.md, .claude/ownership.json을 읽고, .claude/design/w3/ 안의 W3-CHARACTER-SPEC.md(v1.1)를 끝까지 읽어. 같은 폴더의 w3_rig.json(version w3-rig-2), render_ref.py, hit_contact.json, idle_golden.json, svg/, shots/, ChSelectB.dc.html도 확인해. 좌표와 모양은 w3_rig.json이 원본이야.
+
+1. 브랜치: W3는 W2 무대에 캐릭터를 그려 넣는 일이라 W2 코드가 필요해. 작업 트리가 깨끗한지 확인하고 feat/battle_screen_revamp에서 feat/characters를 만들어. W2가 main에 머지되면 origin/main을 머지해서 맞출 거야. push는 W2가 머지된 뒤에 할 테니 지금은 로컬에만 커밋해.
+
+2. 명세 11절에서 확정된 것은 그대로 따르고, 남은 질문과 바꾸는 것은 아래와 같아. task.md \"Decisions\"에 11/13 날짜로 적어.
+ - 5번 RepBot: 난이도와 상관없이 같은 모습.
+ - 온라인 상대의 캐릭터(명세 8절·12절을 바꿈): 서버와 프로토콜은 고치지 않는다. 온라인 세션이 지금 주고받는 avatar_id(서버가 battleAvatarIds 목록으로 검사함)를 그대로 쓰고, 고를 수 있는 캐릭터 다섯(mouse, kangaroo, bear, penguin, seal)을 그 목록에 이미 있는 id 다섯에 짝지어 보내고 받는다. 짝이 없는 id가 오면 mouse로 그린다. 옛 3D 아바타가 이 id를 아직 쓰는 곳이 있으면 어떻게 정리할지 3번 보고에 같이 적어. 이 방법이 안 되는 이유가 있으면 코드를 쓰기 전에 알려 줘.
+ - 무대 코드(대기 움직임, 충격 별 자리)는 W2 파일이야. 명세 6절대로 입력값을 더하고 기본값은 W2 값으로 남겨서 fx_golden.json 대조 테스트가 그대로 통과하게 해. 내 파일이니 필요하면 예외 줄에 이유를 적고 고쳐.
+
+3. 코드를 쓰기 전에 아래를 조사해서 보고하고, 내 답을 기다려.
+ - W3 허용 목록에 있는 파일, 그리고 위 결정 때문에 고쳐야 하는데 허용 목록 밖인 파일과 그 주인(\"게임 시작\" 화면의 캐릭터 줄, 저장소 포함)
+ - 앱에 남아 있는 옛 3D 아바타(AvatarModel, 환경설정의 \"아바타\" 줄과 프로필 아바타 화면, pose_avatar_view, 아바타 에셋 파일)가 어디서 쓰이는지, 캐릭터로 바꾸면서 무엇을 남기고 무엇을 뺄지
+ - 작업을 몇 단계로 나눌지(예: 리그 화가와 테스트 → 무대 연결과 대기 움직임·충격 별 → 선택 화면과 저장, 게임 시작 줄 → 온라인 연결)
+</pasted_content id=\"b58a\">"
+
+<!-- 8c23246f 2026-11-12T18:28:36.459Z -->
+[Woohyun Song, 11-13 03:28] "<pasted_content id=\"2f10\">
+W3(feat/characters)를 시작하자. W2(feat/battle_screen_revamp)는 PR #50으로 올라갔고 #49 다음에 머지될 예정이야.
+먼저 CLAUDE.md, task.md(W3 부분), progress.md, .claude/ownership.json을 읽고, .claude/design/w3/ 안의 W3-CHARACTER-SPEC.md(v1.1)를 끝까지 읽어. 같은 폴더의 w3_rig.json(version w3-rig-2), render_ref.py, hit_contact.json, idle_golden.json, svg/, shots/, ChSelectB.dc.html도 확인해. 좌표와 모양은 w3_rig.json이 원본이야.
+
+1. 브랜치: W3는 W2 무대에 캐릭터를 그려 넣는 일이라 W2 코드가 필요해. 작업 트리가 깨끗한지 확인하고 feat/battle_screen_revamp에서 feat/characters를 만들어. W2가 main에 머지되면 origin/main을 머지해서 맞출 거야. push는 W2가 머지된 뒤에 할 테니 지금은 로컬에만 커밋해.
+
+2. 명세 11절에서 확정된 것은 그대로 따르고, 남은 질문과 추가로 정한 것은 아래와 같아. task.md \"Decisions\"에 11/13 날짜로 적어.
+ - 5번 RepBot: 난이도와 상관없이 같은 모습.
+ - 8번 온라인 상대의 캐릭터: 서버에 요청하지 않고, W3에서 우리가 서버와 프로토콜에 필드를 직접 추가한 뒤 서버 파일 주인과 현우에게 보고한다. 명세 12절의 요청 글을 구현 기준으로 삼아. 앱이 매칭을 요청할 때 자기 캐릭터 id를 문자열로 보내고, 매칭이 성사됐을 때 상대 닉네임을 주는 메시지에 상대 캐릭터 id를 넣는다. 서버는 값을 해석하지 않고 전달만 하고, 값 목록을 고정하지 않으며, 선택 항목으로 둔다. 메시지와 필드 이름은 지금 프로토콜 규칙에 맞게 정해. 값이 없거나 목록에 없으면 mouse로 그린다.
+   주의: 지금 서버와 앱은 모르는 키가 오면 거절한다(battle_protocol.dart의 fields()). 그래서 옛 앱, 새 앱, 옛 서버, 새 서버가 섞여도 깨지지 않게 해야 해.
+   (a) 새 서버는 새 필드를 선택 항목으로 받는다.
+   (b) 새 서버는 새 필드를 보낸 앱에게만 상대 캐릭터를 넣어 보낸다. 그래야 옛 앱이 모르는 키를 받고 거절하지 않는다.
+   (c) 새 앱이 지금 배포된 옛 서버에 새 필드를 보내면 거절당한다. 이걸 어떻게 피할지(예: 서버를 먼저 배포하는 순서, 거절되면 필드 없이 다시 보내기 등) 코드를 쓰기 전에 방법을 제안해.
+   서버 테스트와 프로토콜 문서도 같이 고친다. 서버 배포는 하지 말고, 배포가 필요하다는 것과 순서를 보고에 적어. 이 파일들이 W3 허용 목록 밖이면 먼저 처리하고 보고하는 방식으로, 예외 줄에 이유(\"11/13 처리 후 서버 파일 주인·PM에 보고\")를 적어.
+ - 무대 코드(대기 움직임, 충격 별 자리)는 W2 파일이야. 명세 6절대로 입력값을 더하고 기본값은 W2 값으로 남겨서 fx_golden.json 대조 테스트가 그대로 통과하게 해. 내 파일이니 필요하면 예외 줄에 이유를 적고 고쳐.
+
+3. 코드를 쓰기 전에 아래를 조사해서 보고하고, 내 답을 기다려.
+ - W3 허용 목록에 있는 파일, 그리고 위 결정 때문에 고쳐야 하는데 허용 목록 밖인 파일과 그 주인(\"게임 시작\" 화면의 캐릭터 줄, 저장소, 서버와 프로토콜 파일, 서버 테스트, 프로토콜 문서 포함)
+ - 2번 (c)의 방법 제안과 서버 배포 순서
+ - 앱에 남아 있는 옛 3D 아바타(AvatarModel, avatar_id, 환경설정의 \"아바타\" 줄과 프로필 아바타 화면, pose_avatar_view, 아바타 에셋 파일)가 어디서 쓰이는지, 캐릭터로 바꾸면서 무엇을 남기고 무엇을 뺄지
+ - 작업을 몇 단계로 나눌지(예: 리그 화가와 테스트 → 무대 연결과 대기 움직임·충격 별 → 선택 화면과 저장, 게임 시작 줄 → 서버 필드와 온라인 연결)
+</pasted_content id=\"2f10\">"
+
+<!-- 8c23246f 2026-11-12T23:36:21.094Z -->
+[Woohyun Song, 11-13 08:36] "<pasted_content id=\"2f10\">
+조사 고마워. 답할게. task.md \"Decisions\"에 11/13 날짜로 적고 1단계부터 시작해.
+
+1. 프로토콜: A안(avatar_id 재사용). 서버는 avatar_id를 선택 항목으로 바꾸고, 값은 모양만 검사(소문자·숫자·밑줄 1~32자)해서 해석 없이 그대로 전달한다. 앱은 내 캐릭터 id를 이 필드로 보내고, 상대 값이 고를 수 있는 다섯 가운데 하나가 아니면(bot 포함) mouse로 그린다. 옛 서버가 INVALID_AVATAR로 거절하면 avatar_01로 한 번만 다시 보낸다. 서버 수정은 우리가 하고 현우에게 보고한다. B안의 character_id는 만들지 않는다. task.md의 (c) \"답 대기\"도 이걸로 정리하고, 프로토콜 문서도 고쳐.
+2. 저장: 계정별. 같은 보안 저장소에 계정 id를 넣은 키로 저장한다(task.md 완료 조건 \"saved for my account\"). 값이 없거나, 읽지 못하거나, 목록에 없으면 mouse.
+3. 환경설정 \"아바타\" 줄: 이름을 \"캐릭터\"로 바꾸고 같은 선택 화면을 연다. 그 줄만 고친다(진영이형 J2와 같이 쓰는 파일).
+4. 매칭 레이더와 VS 화면의 동그라미: 지금 그대로 둔다. VS 화면은 W2b(매칭 성공 화면 2-A3)에서 캐릭터로 바꾼다.
+5. fakes.dart: 건드리지 않는다. 다른 사람 브랜치의 테스트가 testApp(avatarStore:)를 쓸 수 있어서야. 그래서 avatar_store와 그 테스트는 이번에 지우지 말고 남겨 두고, PM 정리 대상으로 progress.md와 나중 PR 본문에 적어.
+6. 처리 후 보고: 표의 파일들(게임 시작 줄, 환경설정 줄, 세션, 주인 없는 테스트 두 개, 프로토콜 문서, W2 파일)은 예외 줄에 이유와 \"11/13 처리 후 보고\"를 적고 고쳐. J5 계약을 CharacterFigure 위젯 방식으로 바꾸는 것도 좋아. 진영이형에게 보낼 안내문을 progress.md \"Messages for teammates\"에 적어 둬.
+
+추가로 지킬 것
+- 옛 아바타 파일과 에셋, pubspec 줄, webview_flutter를 지우기 전에 git fetch 후 원격의 다른 브랜치와 열린 PR(#49 포함)에서 그 파일이나 패키지를 쓰는 곳이 있는지 확인해. 쓰는 곳이 있으면 지우지 말고 알려 줘.
+- pose_avatar_toggle_view에서 \"아바타 보기\" 버튼이 사라지는 건 상우에게 알릴 거야. 안내문을 progress.md \"Messages for teammates\"에 적어 둬.
+- 서버 배포는 하지 마. 배포 순서(#49 → #50 → W3 머지 뒤 배틀 서버 먼저, 그다음 앱)는 현우에게 보낼 보고에 넣을 수 있게 progress.md에 적어 둬.
+- 단계마다 reviewer APPROVE를 받은 뒤 로컬 커밋하고 짧게 보고해. push와 PR 시점은 W3가 끝났을 때 W2 머지 상황을 보고 정하자.
+</pasted_content id=\"2f10\">"
+
+<!-- a116305a 2026-11-13T15:08:14.377Z -->
+[Woohyun Song, 11-14 00:08] "<pasted_content id=\"2b89\">
+#49와 #50(W2)이 main에 머지됐어(origin/main 1ed57ca). W3(feat/characters)를 마무리해서 PR을 준비하자. 폰 확인은 내가 끝냈고 W3 코드에서 고칠 건 없어. 메인 메뉴의 '캐릭터' 칸은 W4에서, 대결이 끝난 뒤 화면은 W2b에서 할 거야.
+1. 작업 트리가 깨끗한지 확인하고 feat/characters로 바꿔. 다른 worktree에 잡혀 있어서 안 바뀌면 멈추고 알려줘.
+2. git fetch origin 후 git merge origin/main (rebase 금지). 충돌은 W3 파일 안에서만 풀고, 다른 사람 파일에서 나면 멈추고 알려줘.
+3. flutter analyze, flutter test 전체, ownership_guard.py --check-diff를 돌려. .claude/ownership-exceptions.txt는 이번에 고치지 마. #49·W2 파일용 예외 줄은 W2b까지 main을 받은 뒤에 한 번에 정리할 거야.
+4. reviewer를 다시 돌려서 APPROVE 받아.
+5. 개인 노트(docs/testing/iteration-4/[REDACTED:custom_term].md, docs/ai-collaboration/iteration-4/[REDACTED:custom_term].md)에 W3 항목을 써. 폰 확인은 내가 했어: 게임 시작 화면의 캐릭터 줄로 캐릭터 고르기, 봇 대결에서 고른 캐릭터(물렁범)의 대기·타격·KO 모션까지 문제없었어. 기기 정보는 노트에 있는 기존 기록 그대로 쓰고 다시 묻지 마.
+6. PR 본문 초안을 보여줘. 첫 줄은 \"Merge order: #11 (team plan); merge after: #6 feat/battle_screen_revamp (merged as #50), #3 feat/voice_guidance (merged as #48)\"이야. 본문에 넣을 것: 서버·프로토콜 변경(기존 avatar_id에 캐릭터 id, 서버는 형식만 검사, 예전 서버면 avatar_01로 한 번 재시도), 배포 순서(배틀 서버 먼저, 그다음 앱), W3에서 예외로 처리한 다른 사람·주인 없는 파일 목록, PM에게 부탁할 정리 목록. W2b(feat/battle_screen_polish)가 MATCH FOUND의 캐릭터 자리를 versus_screen.dart의 _VersusCharacter 위젯 하나로 모아 뒀어. 그래서 \"W2b가 먼저 머지되면 main을 다시 받아 _VersusCharacter를 W3 캐릭터로 바꾼다\"를 남은 일로 progress.md에 적어.
+push와 PR은 내가 말할 때 해.
+</pasted_content id=\"2b89\">
+
+추가 확인 하나: 환경설정 → 프로필 화면에 예전 3D 아바타 \"내 아바타\" 칸(미리보기, \"SOMA 네이비 트레이닝\" 등 3종 목록, 아바타 검색, 운동복 필터)이 남아 있는지 봐 줘. W3에서 3D 아바타를 지웠으니 이 칸도 없어야 해. 이미 지웠다면 어느 커밋에서 지웠는지 알려 주고, 남아 있으면 profile_screen.dart(W3 파일)에서 지우고 테스트도 맞게 고쳐. 다른 화면에도 예전 아바타로 들어가는 길이 남아 있는지 같이 찾아 줘."
+
+<!-- a116305a 2026-11-13T15:47:24.436Z -->
+[Woohyun Song, 11-14 00:47] "<pasted_content id=\"2b89\">
+좋아, 이대로 마무리하자.
+1. AI 노트 e항목은 적어 줘. 11-13 03:25 첫 지시는 온라인 상대의 캐릭터를 보여 주려고 서버 담당에게 새 필드를 요청하는 계획이었어. 보낸 직후 방침을 바꿔서, 기존 avatar_id 필드에 캐릭터 id를 싣는 서버 처리를 W3 안에서 직접 하고 PM과 서버 담당에게는 처리한 뒤 보고하기로 했어. 그래서 지시를 고쳐 03:28에 다시 보냈어.
+2. 말한 순서대로 진행해. 노트와 주석 수정 커밋 → 이번 세션 프롬프트를 Prompt Log에 추가 → push → PR(제목은 초안대로) → CI 커버리지가 나오면 노트와 PR 본문에 반영해서 커밋하고 push.
+3. progress.md \"Messages for teammates\"에 W6 세션이 적어 둔 진영이형(J4 값 목록) 메시지가 있을 거야. 카톡에 바로 붙일 수 있게 친근한 존댓말로 보여 줘.
+</pasted_content id=\"2b89\">"
+
+<!-- a116305a 2026-11-13T17:01:50.324Z -->
+[Woohyun Song, 11-14 02:01] "<pasted_content id=\"2b89\">
+PR #52(W3)에 Codex 리뷰 코멘트가 하나 달렸어(P2, gymrats_app/lib/viewmodels/character_select_viewmodel.dart). 이번 PR에서 고치자.
+지적 내용: 계정에 저장된 캐릭터를 아직 읽는 중이어도 main.dart는 규칙 확인만 끝나면 홈을 보여 줄 수 있다. 그때 캐릭터 선택 화면을 열면 CharacterSelectViewModel이 임시 기본값 mouse를 잡아 두고, 그대로 \"이 캐릭터로 하기\"를 누르면 choose가 진행 중인 읽기를 무효로 만들고 mouse를 저장해서 원래 저장된 선택을 덮어쓴다. 대결을 시작할 때 캐릭터를 잡는 곳도 같은 문제가 있다.
+1. 작업 트리가 깨끗한지 확인하고 feat/characters로 바꿔. 다른 worktree에 잡혀 있으면 멈추고 알려줘.
+2. 먼저 이 상황이 실제로 일어나는지 느리게 읽히는 가짜 저장소로 테스트를 만들어 재현해.
+3. 고치는 방향: 저장된 캐릭터를 다 읽기 전에는 선택 화면의 \"이 캐릭터로 하기\"를 누를 수 없게 하고, 읽기가 끝나면 사용자가 아직 미리보기를 바꾸지 않았을 때만 그 값으로 맞춘다. 대결을 시작할 때 캐릭터를 잡는 곳도 읽기가 끝난 값을 쓰게 한다. 기존 결정(\"느린 읽기가 사용자가 직접 고른 선택을 되돌리지 않는다\")은 그대로 지켜. 더 단순하고 안전한 방법이 있으면 고치기 전에 알려줘.
+4. 고치는 건 W3 파일 안에서만 해. 다른 파일이 필요하면 멈추고 알려줘.
+5. 전체 테스트, analyze, check-diff, reviewer APPROVE까지 마치고 커밋해(메시지 예: fix(characters): wait for the saved character before choosing). 그다음 push하고, Codex 코멘트에 영어로 답글을 달아 줘: 무엇이 문제였는지 한 줄, 어떻게 고쳤는지, 커밋 해시, 추가한 테스트 이름. 답글을 단 뒤 그 대화를 resolve해.
+6. AI 노트(docs/ai-collaboration/iteration-4/[REDACTED:custom_term].md)의 W3 항목에 Codex 리뷰를 기록해: 지적 내용, 실제로 재현됐는지, 어떻게 고쳤는지. 새 CI 결과가 나오면 테스트 노트와 PR 본문의 숫자를 갱신해서 커밋하고 push해.
+</pasted_content id=\"2b89\">"
+
+<!-- 8c23246f 2026-11-12T19:32:29.399Z -->

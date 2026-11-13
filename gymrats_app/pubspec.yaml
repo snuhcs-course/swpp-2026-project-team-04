@@ -68,9 +68,6 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - assets/avatar/
-    - assets/avatar/models/
-    - assets/avatar/thumbnails/
     - assets/images/
 
   # Static TTFs from fonts.google.com; licenses are next to them (*-OFL.txt).

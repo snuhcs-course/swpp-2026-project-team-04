@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
@@ -21,13 +20,13 @@ OnlineBattleSession _finished(
   final session = OnlineBattleSession(
     endpoint: Uri.parse('wss://example.com/ws/v1/battle'),
     accessToken: 'test-only',
-    avatar: AvatarModel.humanoid,
+    character: 'bear',
     exercise: exercise,
   );
   addTearDown(session.dispose);
   session
     ..playerId = 'me'
-    ..opponent = const OnlinePlayer('them', '진영', AvatarModel.robot)
+    ..opponent = const OnlinePlayer('them', '진영', 'seal')
     ..rules = rules
     ..durationMs = 30000
     ..startAtMs = 1792400000000

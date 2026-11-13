@@ -224,3 +224,113 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - Comparing a port with the design's own samples, and planting errors in the new code, caught more than reading the code did.
 - Test each picture at the narrowest real phone width (360 dp), not only at 412.
+
+## W3 `feat/characters` – characters replace the avatars (P14, team order #11), 2026-11-13 ~ 2026-11-14
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W3's code and tests. They are five local commits on `feat/characters`, all on 11-13, from `7b190db` (09:11) to `dded304` (11:26). On 11-14 it merged `origin/main` into the branch as `47afaff`.
+  - Size: 30 `lib/` files changed (8 new, 6 deleted), +2842 / −2062 lines. 68 test files and fixtures, +3406 / −1085. `assets/avatar/` (16 MB) was removed.
+  - The new files:
+    - `lib/models/character_rig.dart` (L1–542): the rig model and its parser;
+    - `character_rig_data.dart` (L1–800): the rig as Dart data;
+    - `character_idle_motion.dart` (L1–101): the idle motions;
+    - `lib/widgets/character_figure.dart` (L1–353): one painter for all six characters, `CharacterIdleFigure` and `BattleCharacters`;
+    - `lib/screens/character_select_screen.dart` (L1–374), `lib/services/user/character_store.dart` (L1–60), `lib/viewmodels/character_viewmodel.dart` (L1–80) and `character_select_viewmodel.dart` (L1–72).
+  - Changed:
+    - W2's stage: `BattleFxCast` in `battle_fx_motion.dart`, `battle_stage.dart`, `battle_arena.dart`;
+    - the online side: `online_battle_session.dart`, `lib/shared/battle_protocol.dart`, `server/lib/battle_server.dart` and `docs/iteration-2-protocol.md`;
+    - `main.dart`, and the 게임 시작 and 환경설정 rows.
+- **The design came from the user.** The user's Claude Design canvas gave `W3-CHARACTER-SPEC.md` v1.1, the rig `w3_rig.json` (`w3-rig-2`), `render_ref.py`, `hit_contact.json`, `idle_golden.json`, the shots and `ChSelectB.dc.html`.
+  - Claude Code ported the rig.
+  - It checked the painter against 36 of the 60 design shots, pixel by pixel, and the idle motions against `idle_golden.json`.
+- **A report before any code:** as the user asked, the agent first listed the files and their owners. It proposed how a new app gets past the old deployed server, and wrote the deploy order, what to keep of the old avatar, and the build steps. Then it waited for the user's answers.
+- **Review:** the `reviewer` subagent reviewed each step (runs 1–5 in `progress.md` "Review log"). Runs 1, 3, 4 and 5 had a re-review or re-check. Three runs returned CHANGES_REQUESTED first (item d). Each step was committed only after an APPROVE. After the merge, a sixth run reviewed the whole diff and returned APPROVE with five Minor findings (item d).
+- **Course notes:** Claude Code drafted these notes, the testing notes and the PR body.
+- **The Codex review of PR #52** left one P2 comment, a real race (item d). Claude Code reproduced it with tests, fixed it in `1f7e6f5` after the user chose the approach, and replied to the comment.
+- **Not done by AI:**
+  - The characters and the selection screen were designed by the user.
+  - The fix of the Codex finding: the user chose "home waits" from the two options the agent gave.
+  - Every decision was the user's:
+    - reuse `avatar_id` (Option A);
+    - storage per account;
+    - only the settings row renamed;
+    - the radar and VS circles kept;
+    - `fakes.dart` untouched;
+    - RepBot the same at every AI level;
+    - no server deploy.
+  - The messages to 현우, 박진영 and 한상우 are drafts; the user sends them.
+  - The phone check was the user's (the testing notes' manual check): picking a character, and the chosen character (물렁범) idling, hit and knocked out in a bot battle.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-13 03:25] (the first start, stopped seconds after it was sent; excerpt) "온라인 상대의 캐릭터(명세 8절·12절을 바꿈): 서버와 프로토콜은 고치지 않는다. 온라인 세션이 지금 주고받는 avatar_id(서버가 battleAvatarIds 목록으로 검사함)를 그대로 쓰고, 고를 수 있는 캐릭터 다섯(mouse, kangaroo, bear, penguin, seal)을 그 목록에 이미 있는 id 다섯에 짝지어 보내고 받는다."
+- [Woohyun Song, 11-13 03:28] (the restart in a new session, pasted; excerpt) "(c) 새 앱이 지금 배포된 옛 서버에 새 필드를 보내면 거절당한다. 이걸 어떻게 피할지(예: 서버를 먼저 배포하는 순서, 거절되면 필드 없이 다시 보내기 등) 코드를 쓰기 전에 방법을 제안해."
+- [Woohyun Song, 11-13 08:36] (the answers to the report; excerpt) "1. 프로토콜: A안(avatar_id 재사용). 서버는 avatar_id를 선택 항목으로 바꾸고, 값은 모양만 검사(소문자·숫자·밑줄 1~32자)해서 해석 없이 그대로 전달한다."
+- [Woohyun Song, 11-14 00:08] (the finish, pasted; excerpt) "2. git fetch origin 후 git merge origin/main (rebase 금지). 충돌은 W3 파일 안에서만 풀고, 다른 사람 파일에서 나면 멈추고 알려줘."
+- [Woohyun Song, 11-14 02:01] (the Codex comment on #52, pasted; excerpt) "대결을 시작할 때 캐릭터를 잡는 곳도 읽기가 끝난 값을 쓰게 한다. 기존 결정(\"느린 읽기가 사용자가 직접 고른 선택을 되돌리지 않는다\")은 그대로 지켜. 더 단순하고 안전한 방법이 있으면 고치기 전에 알려줘."
+
+### c. What AI did well
+- **A port checked against the design's own data:**
+  - A test keeps the rig equal to the design's JSON (`assets/characters/w3_rig.json`).
+  - The painter matches 36 shots pixel by pixel: at most 0.03% of the pixels may differ. On 11-13 all 60 design shots measured 0.018% or less.
+  - The idle motions match `idle_golden.json`, and every attack ends where `hit_contact.json` measured.
+  - The stage took the characters through new inputs whose defaults are W2's. So W2's 248-sample golden check passed unchanged.
+- **Mixed versions worked out before the code:**
+  - The report before any code proposed how a new app gets past the old, deployed server. The user chose Option A, with a one-time `avatar_01` resend.
+  - The tests run the Dart battle server in the test process. They cover an old app on the new server, and a new app on the old server: one resend, kept on reconnect, and a second refusal fails the search.
+  - The reviewer checked both cases again in run 4.
+- **Checked before deleting:** before removing the 3D avatar files, the agent ran `git fetch` and checked every remote branch and the open PRs (#49, #50) for uses. #49 passes camera parameters only, so `PoseAvatarToggleView` became camera-only without a change to 한상우's files.
+- **Ownership kept:** files outside W3's list were changed only under exception lines with their reason, as the user's answer 6 said. `--check-diff` passes (235 files).
+- **The old avatar page checked on request (11-14):** the user asked whether 환경설정 → 프로필 still showed "내 아바타" (preview, the SOMA list, search, the 운동복 filter). The agent found that `profile_screen.dart` and its test were deleted in `83c00ce`, and the 3D assets and viewers in `dded304`. No route or row leads to the old page any more. The SOMA names are left only as data in `avatar_model.dart`, kept for the PM's cleanup.
+
+### d. Hallucinations / errors
+- **Review findings (3 CHANGES_REQUESTED runs):**
+  - Run 1 (the rig and painter):
+    - `assets/characters/ATTRIBUTION.txt` pointed to a licence file in the repo that does not exist.
+    - The Design doc rows were missing.
+    - An empty move threw a `StateError`, and missing shape geometry silently became 0.
+    - The figure stretched in a box of another shape.
+  - Run 3 (the selection screen):
+    - During a slow save, a second tap on 이 캐릭터로 하기 (or back) also closed the page under the selection screen. The reviewer reproduced it.
+    - Gaps, paddings and corners were numbers outside the design tokens.
+    - The re-review found that the back-during-save test let the page finish closing first, so it could not catch the guard.
+  - Run 5 (the cleanup):
+    - The agent's own pre-check had missed that 한상우's `tools/diagnose/Verify-AndroidPluginRegistration.ps1` (on `main`) requires `WebViewFlutterPlugin`. So removing `webview_flutter` would break it. The package was restored.
+    - A fresh `pub get` had also bumped a transitive package, so the lock file was restored from HEAD.
+    - The protocol doc said 25 avatars; there were 28.
+  - Cost: one fix round each.
+- **The final review (run 6, 11-14)** returned APPROVE with 5 Minor findings:
+  - The PR body draft said old apps send `avatar_01`–`avatar_28`. In fact the ids are `avatar_01`–`avatar_25` plus three `soma_*` ids, as the protocol doc says.
+  - Two comments were unclear or out of date: `ATTRIBUTION.txt` said "this file" for `w3_rig.json`, and `avatar_model.dart` said only the ids were left.
+  - The selection screen's name band keeps the mockup's 14 at its top without a recorded deviation.
+  - Old avatar words remain in files outside W3's list.
+  - A harness line still said "Merge order: #10".
+  - All of them were fixed or recorded, with no change in behavior.
+- **A race that the agent and six review runs missed, found by the Codex review of PR #52 (P2, `character_select_viewmodel.dart`, 11-14):**
+  - The claim: home can open as soon as the rules check ends, while the account's character is still being read. 캐릭터 선택 then starts on the stand-in `mouse`. Confirming it calls `choose`, which voids the pending read and saves `mouse` over the saved choice. A battle started then captures `mouse` too.
+  - Reproduced: the agent first wrote tests with a store whose read waits. All three failed on the old code: the saved `seal` became `mouse` (view-model and app level), and a bot battle built during the read got `mouse`. Review run 3 had tested a slow *save* on this screen, but no test had a slow *read*.
+  - The fix (`1f7e6f5`): before fixing, the agent proposed a simpler way than the one in the prompt, and the user chose it. Home waits until the character is read, behind the rules check's spinner (`CharacterViewModel.loading` / `isReadyFor` in `main.dart`). A read that fails counts as the default, so the wait always ends. The selection screen keeps a second guard: no confirm before the read ends, and the preview follows the read unless a cell was picked. The rule of 11-13 "a slow read does not undo a choice made meanwhile" still holds.
+  - Tests: 15 new ones (3 app tests, 1 screen test, 5 + 6 view-model tests). Two existing tests counted the load's notifications and were adjusted to the new contract, with their intent kept.
+  - Review run 7 returned APPROVE with 4 Minor findings: the decision and a design-doc row were not recorded; no app test covered the rules screen before home; the notes and PR body still had the old numbers; three near-identical test fakes. The first three were fixed: a test for the rules path was added, and it also fails on the old code. The fakes stay, because the shared fake file is the PM's.
+  - The agent replied to the Codex comment on GitHub with the problem, the fix, the commit and the tests, then resolved the thread.
+  - Cost: one fix round. The comment came at 01:00 KST and the fix was committed at 02:41; that span includes the time before the user passed the comment on.
+- **Tooling slips:**
+  - In run 2 the agent reverted a reviewer mutant with `git checkout`. That also dropped the step's own uncommitted arena changes. They were restored at once from the copy taken just before.
+  - In step 5, one `sed` edit of the comment in `android/app/build.gradle.kts` (not W3's file) was reverted at once. The reviewer checked it is identical to HEAD.
+  - No impact on the code.
+
+### e. Prompt revisions
+- **The online opponent's character:**
+  - Before (11-13 03:25): keep the server and the protocol as they are, and map the five characters onto five avatar ids already in the server's list.
+  - After (11-13 03:28, in a new session): add the field to the server and the protocol ourselves, keep old and new apps and servers working ((a)–(c)), and propose the way past the old server before any code.
+  - Then (11-13 08:36, after the agent's report): Option A. Reuse `avatar_id`, check only its shape, and resend once with `avatar_01`.
+  - Why it was revised (the user, 11-14): right after sending the first prompt, the user changed course. W3 would do the server-side handling itself, then report to the PM and the server file's owner afterwards. So the user corrected the instruction and sent it again at 03:28. Carrying the character id in the existing `avatar_id` field was settled at 08:36, after the agent's report.
+  - Why it worked: asking for a proposal before code put the choices side by side in the report. The chosen option needs no new field. Old apps already draw an unknown `avatar_id` as their default, so the per-recipient messages of (b) were no longer needed.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W3 was edited by hand, and the diff has no manual-fix marker.
+- The user's corrections came as prompts and answers: the protocol option and the files kept for the PM. The 08:36 rule (do not delete what a teammate uses) kept `webview_flutter` once run 5 found 한상우's script.
+
+### Takeaway
+- When a change crosses versions (old and new apps and servers), ask for a proposal before any code. The answer then picks the option with the fewest moving parts.
+- Before deleting a package, check the scripts and tools too, not only the Dart code.
+- Test the moment between login and the first read of saved data. A stand-in default shown then can be saved over the real value.
