@@ -30,6 +30,7 @@ import 'package:provider/provider.dart';
 import '../../../server/lib/battle_server.dart';
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
+import '../widgets/battle_test_support.dart';
 
 class _Session extends OnlineBattleSession {
   _Session(Uri endpoint, String token, AvatarModel avatar)
@@ -376,6 +377,27 @@ void main() {
       await tester.pump();
       expect(find.byType(BattleSearchView), findsOneWidget);
       expect(find.byType(BattleSearchRadar), findsOneWidget);
+      // The bot search's red blips here too (W2b 1-A): with reduced motion
+      // all three stay lit.
+      final radar = tester
+          .widget<CustomPaint>(
+            find
+                .descendant(
+                  of: find.byType(BattleSearchRadar),
+                  matching: find.byType(CustomPaint),
+                )
+                .first,
+          )
+          .painter!;
+      final blips = paintedOps(
+        radar,
+        const Size(288, 288),
+      ).where((op) => op.contains(', 3.600, fill #FFFF3B30)')).toList();
+      expect(blips, [
+        'drawCircle((55.500, 199.300), 3.600, fill #FFFF3B30)',
+        'drawCircle((220.800, 67.200), 3.600, fill #FFFF3B30)',
+        'drawCircle((241.600, 217.600), 3.600, fill #FFFF3B30)',
+      ]);
       expect(find.byType(GridBackground), findsOneWidget);
       expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
       expect(find.text('기다리는 동안 자리를 준비해 두세요'), findsOneWidget);

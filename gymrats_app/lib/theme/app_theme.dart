@@ -48,7 +48,9 @@ abstract final class AppColors {
   static const fever = Color(0xFF3DE8FF);
 
   /// Red fill, only for the battle's danger edge and its mark on the rules
-  /// screen: the user is about to lose. Every other problem is [warning].
+  /// screen (the user is about to lose), and the matching radar's blips
+  /// (W2b 1-A: a laser pointer's dots, decoration). Every other problem is
+  /// [warning].
   static const danger = Color(0xFFFF3B30);
 
   /// Near-black of the game-style screens: edges and icons on a color fill,
