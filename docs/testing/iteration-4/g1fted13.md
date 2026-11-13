@@ -323,3 +323,62 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `47afaff`, wit
   - `'the stage draws my character and the one the opponent sent'`
   - `'the online route sends the character of the account'`
   - On real phones this needs the W3 battle server deployed; it was not checked on two phones.
+
+#### 2026-11-14 · code at commit `1f7e6f5` · step W3 `feat/characters`, follow-up to the Codex review of PR #52 (team order #11)
+The Codex review of PR #52 left one comment (P2, `lib/viewmodels/character_select_viewmodel.dart`). This push fixes it on the same branch.
+- **The problem:** home could open as soon as the rules check ended, while the account's character was still being read.
+  - 캐릭터 선택 then started on the stand-in `mouse`, and 이 캐릭터로 하기 saved `mouse` over the saved choice.
+  - A battle opened then got `mouse` too.
+- **The fix (`1f7e6f5`).** The user chose between two options the agent gave:
+  - Home waits until the account's character is read, behind the same spinner as the rules check. A read that fails counts as the default, so the wait always ends.
+  - 캐릭터 선택 keeps a second guard. Before the read ends, the button shows "저장된 캐릭터를 불러오는 중…" and takes no taps. When the read ends, the preview takes the saved character, unless a cell was picked meanwhile.
+  - A choice made during the read still wins over the read (the rule of 11-13).
+  - Only W3 files changed: `main.dart`, `character_viewmodel.dart`, `character_select_viewmodel.dart`, `character_select_screen.dart` and their tests.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `1f7e6f5`, without coverage. The coverage comes from the PR's CI comment on `1f7e6f5`, [run 43475382323](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43475382323).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.2% (470/474) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #52, commit `1f7e6f5`, [run 43475382323](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43475382323) |
+| ViewModel | flutter_test, fakes | 90% | 96.8% (1165/1204) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.3% (2259/2370) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.1% (5902/6143) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/14 | same CI comment |
+
+- **Tests:** `flutter test` had 2278 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before.
+  - The count grew from 2263 by the 15 new tests below. No test was removed.
+  - Two existing tests in `character_viewmodel_test.dart` counted the notifications of a load. A load now notifies twice, as the read starts and as it ends. Their intent is kept:
+    - 'a login reads the account's saved character' expects 2, with that reason;
+    - 'RepBot or an unknown id cannot be chosen' starts its count after the load.
+- **Tests before the fix:** the agent wrote the reproduction first and ran it on the code before the fix (`15434a6`). All three tests failed:
+  - in `character_select_viewmodel_test.dart`, 'confirming saves nothing over the saved character': the saved `seal` became `mouse`;
+  - in `main_test.dart`, the first two app tests: the same overwrite through 캐릭터 선택, and a bot battle built during the read got `mouse`.
+  - After the user chose the fix, the app tests were rewritten for "home waits". On a copy of the old code, with the one line that reads the new `loading` dropped, all three final app tests fail. The new screen test fails there too.
+  - The view-model tests use the new API (`loading`, `isReadyFor`, `ready`), so they do not compile on the old code.
+- **Other checks:** `dart format` leaves the 8 changed files unchanged, and `ownership_guard.py --check-diff` is ok (238 files). Server `pytest` was not run on this PC, because `server/` did not change.
+- **Coverage:** from the CI comment on `1f7e6f5` (2026-11-14 02:49 KST; the app and server jobs both succeeded).
+  - App total 96.1% (10052/10464); Other 93.8% (256/273).
+  - CI's `flutter analyze` and `flutter test` (2278 passed, 10 skipped, 0 failed) match this PC.
+  - Still left out of the numbers by CI's 240 s limit: `test/screens/settings_screen_test.dart`; its tests passed.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Review:** the reviewer subagent returned APPROVE (run 7) with 4 Minor findings. Three were fixed, among them the test 'a new account reads the rules meanwhile; after 시작하기 home still waits for the read'. It also fails on the old code. The fourth was kept: three near-identical slow-read fakes stay private, because the shared `test/support/fakes.dart` is the PM's.
+- **Manual check:** not checked on a phone for this push.
+
+### Test cases added or changed in this follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| App flow | `test/main_test.dart` (updated) | group 'while the saved character is still being read': home waits for the read, then 캐릭터 선택 and a bot battle start on the saved character and a pick keeps it; a new account reads the rules meanwhile and home still waits after 시작하기; a read that fails opens home with the mouse |
+| View | `test/screens/character_select_screen_test.dart` (updated) | opened during the read: the hint, no taps, nothing saved; then the preview takes the saved character and the button saves |
+| ViewModel | `test/viewmodels/character_select_viewmodel_test.dart` (updated) | during the read: confirming saves nothing over the saved character; not ready until the read ends; the preview takes the saved character if nothing was picked; a cell picked meanwhile stays and can then be saved; a read after the screen is gone changes nothing on it |
+| ViewModel | `test/viewmodels/character_viewmodel_test.dart` (updated) | group 'loading': not loading before a login; loading from a login until the read ends, said both times; a choice during the read ends it and wins; a logout ends it; another account's loading is not ended by the first one's late read; a read that fails reads as the mouse and ends it; two tests count the load's two notifications |
+
+### Acceptance criteria → tests (this follow-up)
+- Given I picked a character, then it stays saved for my account, even when the app reads it slowly after a login. Tests:
+  - `'home waits for it, so 캐릭터 선택 and a bot battle start on the saved character and a pick does not overwrite it'`
+  - `'confirming saves nothing over the saved character'`
+  - `'opened while the saved character is still read, 이 캐릭터로 하기 says so and cannot be pressed; then the preview takes the saved one and the button saves'`
+- …and it is the one shown in battle. Tests:
+  - the same first test (the bot battle gets `seal`)
+  - `'a new account reads the rules meanwhile; after 시작하기 home still waits for the read'`
+- A choice made during the read still wins (the rule of 11-13). Tests: `'a choice made while reading ends the loading and wins'`, `'a slow read does not undo a choice made meanwhile'`.

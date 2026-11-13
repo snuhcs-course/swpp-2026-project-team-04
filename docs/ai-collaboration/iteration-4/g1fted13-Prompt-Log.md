@@ -551,7 +551,7 @@ W2 feat/battle_screen_revamp 작업이야. 먼저 CLAUDE.md, task.md, progress.m
 </pasted_content id=\"ed13\">"
 
 ## 2026-11-14 · Woohyun Song · feat/characters
-<!-- Left out on purpose: the session summary written when the session ran out of context (11-13 04:32; not a prompt). Its key stays at the end of this section so a later export does not add it again. Cut: the client's injected browser notice in front of 3 prompts (11-13 03:25, 11-13 03:28, 11-14 00:08; not the user's text). -->
+<!-- Left out on purpose: the session summary written when the session ran out of context (11-13 04:32; not a prompt). Its key stays at the end of this section so a later export does not add it again. Cut: the client's injected browser notice in front of 4 prompts (11-13 03:25, 11-13 03:28, 11-14 00:08, 11-14 02:01; not the user's text). -->
 <!-- Note: the 11-13 03:25 prompt was stopped seconds after it was sent (that session has no other prompt); the 11-13 03:28 prompt, a revised version, started W3 in a new session. -->
 <!-- cdef097c 2026-11-12T18:25:12.241Z -->
 [Woohyun Song, 11-13 03:25] "<pasted_content id=\"b58a\">
@@ -633,6 +633,18 @@ push와 PR은 내가 말할 때 해.
 1. AI 노트 e항목은 적어 줘. 11-13 03:25 첫 지시는 온라인 상대의 캐릭터를 보여 주려고 서버 담당에게 새 필드를 요청하는 계획이었어. 보낸 직후 방침을 바꿔서, 기존 avatar_id 필드에 캐릭터 id를 싣는 서버 처리를 W3 안에서 직접 하고 PM과 서버 담당에게는 처리한 뒤 보고하기로 했어. 그래서 지시를 고쳐 03:28에 다시 보냈어.
 2. 말한 순서대로 진행해. 노트와 주석 수정 커밋 → 이번 세션 프롬프트를 Prompt Log에 추가 → push → PR(제목은 초안대로) → CI 커버리지가 나오면 노트와 PR 본문에 반영해서 커밋하고 push.
 3. progress.md \"Messages for teammates\"에 W6 세션이 적어 둔 진영이형(J4 값 목록) 메시지가 있을 거야. 카톡에 바로 붙일 수 있게 친근한 존댓말로 보여 줘.
+</pasted_content id=\"2b89\">"
+
+<!-- a116305a 2026-11-13T17:01:50.324Z -->
+[Woohyun Song, 11-14 02:01] "<pasted_content id=\"2b89\">
+PR #52(W3)에 Codex 리뷰 코멘트가 하나 달렸어(P2, gymrats_app/lib/viewmodels/character_select_viewmodel.dart). 이번 PR에서 고치자.
+지적 내용: 계정에 저장된 캐릭터를 아직 읽는 중이어도 main.dart는 규칙 확인만 끝나면 홈을 보여 줄 수 있다. 그때 캐릭터 선택 화면을 열면 CharacterSelectViewModel이 임시 기본값 mouse를 잡아 두고, 그대로 \"이 캐릭터로 하기\"를 누르면 choose가 진행 중인 읽기를 무효로 만들고 mouse를 저장해서 원래 저장된 선택을 덮어쓴다. 대결을 시작할 때 캐릭터를 잡는 곳도 같은 문제가 있다.
+1. 작업 트리가 깨끗한지 확인하고 feat/characters로 바꿔. 다른 worktree에 잡혀 있으면 멈추고 알려줘.
+2. 먼저 이 상황이 실제로 일어나는지 느리게 읽히는 가짜 저장소로 테스트를 만들어 재현해.
+3. 고치는 방향: 저장된 캐릭터를 다 읽기 전에는 선택 화면의 \"이 캐릭터로 하기\"를 누를 수 없게 하고, 읽기가 끝나면 사용자가 아직 미리보기를 바꾸지 않았을 때만 그 값으로 맞춘다. 대결을 시작할 때 캐릭터를 잡는 곳도 읽기가 끝난 값을 쓰게 한다. 기존 결정(\"느린 읽기가 사용자가 직접 고른 선택을 되돌리지 않는다\")은 그대로 지켜. 더 단순하고 안전한 방법이 있으면 고치기 전에 알려줘.
+4. 고치는 건 W3 파일 안에서만 해. 다른 파일이 필요하면 멈추고 알려줘.
+5. 전체 테스트, analyze, check-diff, reviewer APPROVE까지 마치고 커밋해(메시지 예: fix(characters): wait for the saved character before choosing). 그다음 push하고, Codex 코멘트에 영어로 답글을 달아 줘: 무엇이 문제였는지 한 줄, 어떻게 고쳤는지, 커밋 해시, 추가한 테스트 이름. 답글을 단 뒤 그 대화를 resolve해.
+6. AI 노트(docs/ai-collaboration/iteration-4/[REDACTED:custom_term].md)의 W3 항목에 Codex 리뷰를 기록해: 지적 내용, 실제로 재현됐는지, 어떻게 고쳤는지. 새 CI 결과가 나오면 테스트 노트와 PR 본문의 숫자를 갱신해서 커밋하고 push해.
 </pasted_content id=\"2b89\">"
 
 <!-- 8c23246f 2026-11-12T19:32:29.399Z -->

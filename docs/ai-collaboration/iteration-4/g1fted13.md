@@ -246,8 +246,10 @@ team plan, one day before the iteration's official start. Its prompts from that 
 - **A report before any code:** as the user asked, the agent first listed the files and their owners. It proposed how a new app gets past the old deployed server, and wrote the deploy order, what to keep of the old avatar, and the build steps. Then it waited for the user's answers.
 - **Review:** the `reviewer` subagent reviewed each step (runs 1–5 in `progress.md` "Review log"). Runs 1, 3, 4 and 5 had a re-review or re-check. Three runs returned CHANGES_REQUESTED first (item d). Each step was committed only after an APPROVE. After the merge, a sixth run reviewed the whole diff and returned APPROVE with five Minor findings (item d).
 - **Course notes:** Claude Code drafted these notes, the testing notes and the PR body.
+- **The Codex review of PR #52** left one P2 comment, a real race (item d). Claude Code reproduced it with tests, fixed it in `1f7e6f5` after the user chose the approach, and replied to the comment.
 - **Not done by AI:**
   - The characters and the selection screen were designed by the user.
+  - The fix of the Codex finding: the user chose "home waits" from the two options the agent gave.
   - Every decision was the user's:
     - reuse `avatar_id` (Option A);
     - storage per account;
@@ -264,6 +266,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
 - [Woohyun Song, 11-13 03:28] (the restart in a new session, pasted; excerpt) "(c) 새 앱이 지금 배포된 옛 서버에 새 필드를 보내면 거절당한다. 이걸 어떻게 피할지(예: 서버를 먼저 배포하는 순서, 거절되면 필드 없이 다시 보내기 등) 코드를 쓰기 전에 방법을 제안해."
 - [Woohyun Song, 11-13 08:36] (the answers to the report; excerpt) "1. 프로토콜: A안(avatar_id 재사용). 서버는 avatar_id를 선택 항목으로 바꾸고, 값은 모양만 검사(소문자·숫자·밑줄 1~32자)해서 해석 없이 그대로 전달한다."
 - [Woohyun Song, 11-14 00:08] (the finish, pasted; excerpt) "2. git fetch origin 후 git merge origin/main (rebase 금지). 충돌은 W3 파일 안에서만 풀고, 다른 사람 파일에서 나면 멈추고 알려줘."
+- [Woohyun Song, 11-14 02:01] (the Codex comment on #52, pasted; excerpt) "대결을 시작할 때 캐릭터를 잡는 곳도 읽기가 끝난 값을 쓰게 한다. 기존 결정(\"느린 읽기가 사용자가 직접 고른 선택을 되돌리지 않는다\")은 그대로 지켜. 더 단순하고 안전한 방법이 있으면 고치기 전에 알려줘."
 
 ### c. What AI did well
 - **A port checked against the design's own data:**
@@ -302,6 +305,14 @@ team plan, one day before the iteration's official start. Its prompts from that 
   - Old avatar words remain in files outside W3's list.
   - A harness line still said "Merge order: #10".
   - All of them were fixed or recorded, with no change in behavior.
+- **A race that the agent and six review runs missed, found by the Codex review of PR #52 (P2, `character_select_viewmodel.dart`, 11-14):**
+  - The claim: home can open as soon as the rules check ends, while the account's character is still being read. 캐릭터 선택 then starts on the stand-in `mouse`. Confirming it calls `choose`, which voids the pending read and saves `mouse` over the saved choice. A battle started then captures `mouse` too.
+  - Reproduced: the agent first wrote tests with a store whose read waits. All three failed on the old code: the saved `seal` became `mouse` (view-model and app level), and a bot battle built during the read got `mouse`. Review run 3 had tested a slow *save* on this screen, but no test had a slow *read*.
+  - The fix (`1f7e6f5`): before fixing, the agent proposed a simpler way than the one in the prompt, and the user chose it. Home waits until the character is read, behind the rules check's spinner (`CharacterViewModel.loading` / `isReadyFor` in `main.dart`). A read that fails counts as the default, so the wait always ends. The selection screen keeps a second guard: no confirm before the read ends, and the preview follows the read unless a cell was picked. The rule of 11-13 "a slow read does not undo a choice made meanwhile" still holds.
+  - Tests: 15 new ones (3 app tests, 1 screen test, 5 + 6 view-model tests). Two existing tests counted the load's notifications and were adjusted to the new contract, with their intent kept.
+  - Review run 7 returned APPROVE with 4 Minor findings: the decision and a design-doc row were not recorded; no app test covered the rules screen before home; the notes and PR body still had the old numbers; three near-identical test fakes. The first three were fixed: a test for the rules path was added, and it also fails on the old code. The fakes stay, because the shared fake file is the PM's.
+  - The agent replied to the Codex comment on GitHub with the problem, the fix, the commit and the tests, then resolved the thread.
+  - Cost: one fix round. The comment came at 01:00 KST and the fix was committed at 02:41; that span includes the time before the user passed the comment on.
 - **Tooling slips:**
   - In run 2 the agent reverted a reviewer mutant with `git checkout`. That also dropped the step's own uncommitted arena changes. They were restored at once from the copy taken just before.
   - In step 5, one `sed` edit of the comment in `android/app/build.gradle.kts` (not W3's file) was reverted at once. The reviewer checked it is identical to HEAD.
@@ -322,3 +333,4 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - When a change crosses versions (old and new apps and servers), ask for a proposal before any code. The answer then picks the option with the fewest moving parts.
 - Before deleting a package, check the scripts and tools too, not only the Dart code.
+- Test the moment between login and the first read of saved data. A stand-in default shown then can be saved over the real value.
