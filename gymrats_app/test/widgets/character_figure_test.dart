@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -133,6 +134,117 @@ void main() {
                   .painter!
               as CharacterFigurePainter;
       expect(painter.art.id, 'mouse');
+    });
+  });
+
+  group('CharacterIdleFigure', () {
+    Future<void> pump(
+      WidgetTester tester,
+      Widget figure, {
+      bool still = false,
+    }) => tester.pumpWidget(
+      MediaQuery(
+        data: MediaQueryData(disableAnimations: still),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(child: figure),
+        ),
+      ),
+    );
+
+    Matrix4 transform(WidgetTester tester) => tester
+        .widget<Transform>(
+          find.descendant(
+            of: find.byType(CharacterIdleFigure),
+            matching: find.byType(Transform),
+          ),
+        )
+        .transform;
+
+    testWidgets('moves as its character idles, about its feet, at its scale', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const CharacterIdleFigure(characterId: 'kangaroo', scale: 1.5),
+      );
+      expect(
+        tester.getSize(find.byType(CharacterFigure)),
+        const Size(210, 240),
+      );
+      await tester.pump(const Duration(milliseconds: 230));
+      // The top of the hop: 6 px times the scale, straight up.
+      final hop = transform(tester).getTranslation();
+      expect(hop.y, closeTo(-6 * 1.5, 1e-6));
+      expect(hop.x, closeTo(0, 1e-6));
+      final paint = tester.widget<Transform>(
+        find.descendant(
+          of: find.byType(CharacterIdleFigure),
+          matching: find.byType(Transform),
+        ),
+      );
+      expect(paint.origin, const Offset(70 * 1.5, 150 * 1.5));
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(transform(tester).getTranslation().y, closeTo(0, 1e-6));
+    });
+
+    testWidgets('rocks and stretches as the rig says', (tester) async {
+      await pump(tester, const CharacterIdleFigure(characterId: 'seal'));
+      await tester.pump(const Duration(milliseconds: 275));
+      // A quarter of the seal's 1100 ms: tallest and narrowest.
+      final m = transform(tester);
+      expect(m.entry(0, 0), closeTo(0.97, 1e-6));
+      expect(m.entry(1, 1), closeTo(1.03, 1e-6));
+      // A new figure, on its own clock.
+      await pump(
+        tester,
+        const CharacterIdleFigure(
+          key: ValueKey('penguin'),
+          characterId: 'penguin',
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 325));
+      // A quarter of the penguin's 1300 ms: leaning the full 4 degrees.
+      final lean = transform(tester);
+      expect(
+        math.atan2(lean.entry(1, 0), lean.entry(0, 0)) * 180 / math.pi,
+        closeTo(4, 0.05),
+      );
+    });
+
+    testWidgets('holds still when the device asks for less motion', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const CharacterIdleFigure(characterId: 'kangaroo'),
+        still: true,
+      );
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(transform(tester), Matrix4.identity());
+      // And moves again once it may.
+      await pump(tester, const CharacterIdleFigure(characterId: 'kangaroo'));
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(transform(tester).getTranslation().y, lessThan(0));
+    });
+
+    testWidgets('wears the side\'s color and draws the character asked for', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const CharacterIdleFigure(
+          characterId: 'bot',
+          side: BattleSide.opponent,
+        ),
+      );
+      final figure = tester.widget<CharacterFigure>(
+        find.byType(CharacterFigure),
+      );
+      expect(
+        (figure.characterId, figure.side, figure.pose),
+        ('bot', BattleSide.opponent, BattlePose.idle),
+      );
     });
   });
 

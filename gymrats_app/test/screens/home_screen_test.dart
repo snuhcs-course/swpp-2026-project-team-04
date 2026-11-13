@@ -13,6 +13,8 @@ import 'package:gymrats_app/screens/play_screen.dart';
 import 'package:gymrats_app/screens/settings_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/services/user/character_store.dart';
+import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
 import 'package:gymrats_app/widgets/lobby_menu_item.dart';
@@ -88,14 +90,20 @@ void main() {
     if (still) _stillRepBot(tester);
     final settings = SettingsViewModel();
     addTearDown(settings.dispose);
+    final characters = CharacterViewModel(store: MemoryCharacterStore());
+    addTearDown(characters.dispose);
     final home = HomeScreen(
       createViewModel: () => HomeViewModel(repository: repository),
       onLogOut: onLogOut,
     );
     await tester.pumpWidget(
-      // The app's settings sit above the navigator, as in main.dart.
-      ChangeNotifierProvider<SettingsViewModel>.value(
-        value: settings,
+      // The app's settings and character sit above the navigator, as in
+      // main.dart.
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SettingsViewModel>.value(value: settings),
+          ChangeNotifierProvider<CharacterViewModel>.value(value: characters),
+        ],
         child: MaterialApp(
           theme: AppTheme.dark,
           navigatorObservers: [GymRatsApp.routeObserver],

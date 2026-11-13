@@ -8,6 +8,7 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
+import 'package:gymrats_app/screens/character_select_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
@@ -19,9 +20,12 @@ import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
+import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
 import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:provider/provider.dart';
@@ -324,12 +328,88 @@ void main() {
       (route! as MaterialPageRoute<void>).builder(
         tester.element(find.byType(HomeScreen)),
       ),
-      isA<BattleScreen>().having(
-        (screen) => screen.matchup,
-        'matchup',
-        same(matchup),
-      ),
+      isA<BattleScreen>()
+          .having((screen) => screen.matchup, 'matchup', same(matchup))
+          .having((screen) => screen.myCharacter, 'my character', 'mouse'),
     );
+  });
+
+  group('the character (W3)', () {
+    late MemoryCharacterStore store;
+
+    GymRatsApp app() => GymRatsApp(
+      authRepository: signedInAuth(),
+      userRepository: InMemoryUserRepository(),
+      characterStore: store,
+    );
+
+    setUp(() => store = MemoryCharacterStore());
+
+    testWidgets('the signed-in account\'s saved character shows on 게임 '
+        '시작', (tester) async {
+      store.values[testAccount.id] = 'bear';
+      await _openApp(tester, app());
+      await tapAndSettle(tester, '게임 시작');
+      expect(find.text('곰탱이'), findsOneWidget);
+    });
+
+    testWidgets('a pick on 캐릭터 선택 is saved for the account, shows on 게임 '
+        '시작 and goes into the next bot battle', (tester) async {
+      await _openApp(tester, app());
+      await tapAndSettle(tester, '게임 시작');
+      expect(find.text('GYM마우스'), findsOneWidget);
+      await tapAndSettle(tester, '캐릭터');
+      expect(find.byType(CharacterSelectScreen), findsOneWidget);
+      await tester.tap(find.text('펭뚱이'));
+      await tester.pumpAndSettle();
+      await tapAndSettle(tester, '이 캐릭터로 하기');
+      expect(find.byType(CharacterSelectScreen), findsNothing);
+      expect(find.text('펭뚱이'), findsOneWidget);
+      expect(store.values, {testAccount.id: 'penguin'});
+
+      final generate = tester
+          .widget<MaterialApp>(find.byType(MaterialApp))
+          .onGenerateRoute!;
+      final route =
+          generate(
+                const RouteSettings(
+                  name: GymRatsApp.battleRoute,
+                  arguments: Matchup(
+                    exercise: ExerciseType.pushUp,
+                    playerName: '우현',
+                    opponent: BotMatchmaker.bot,
+                  ),
+                ),
+              )!
+              as MaterialPageRoute<void>;
+      expect(
+        (route.builder(
+          tester.element(find.byType(PlayScreen)),
+        ) as BattleScreen).myCharacter,
+        'penguin',
+      );
+    });
+
+    testWidgets('logging out puts the mouse back for the next account', (
+      tester,
+    ) async {
+      store.values[testAccount.id] = 'seal';
+      await _openApp(tester, app());
+      final element = tester.element(find.byType(HomeScreen));
+      expect(
+        Provider.of<CharacterViewModel>(element, listen: false).art.name,
+        '물렁범',
+      );
+      await Provider.of<AuthViewModel>(element, listen: false).logOut();
+      await tester.pumpAndSettle();
+      expect(
+        Provider.of<CharacterViewModel>(
+          tester.element(find.byType(MaterialApp)),
+          listen: false,
+        ).characterId,
+        'mouse',
+      );
+    });
   });
 
   testWidgets('after the result, home shows the saved battle', (tester) async {

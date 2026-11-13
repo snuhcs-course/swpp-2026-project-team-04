@@ -87,6 +87,13 @@ class CharacterRig {
   /// The app's characters, read from [characterRigJson] on first use.
   static final standard = CharacterRig.parse(characterRigJson);
 
+  /// The default character's id (`standard.defaultCharacter`), for a
+  /// constant default value.
+  static const defaultId = 'mouse';
+
+  /// RepBot's id: the AI battle's opponent, which no person picks.
+  static const botId = 'bot';
+
   final String version;
 
   /// The box every pose is drawn in (140 x 160); drawings may leave it.

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../models/character_idle_motion.dart';
 import '../models/character_rig.dart';
 import '../theme/app_theme.dart';
 import 'battle_fx_motion.dart';
@@ -50,6 +51,82 @@ class CharacterFigure extends StatelessWidget {
             : AppColors.opponent,
         flash: flash,
       ),
+    );
+  }
+}
+
+/// A [CharacterFigure] standing idle and moving as its character does
+/// (spec 6 "대기 움직임"): hopping, rocking or stretching about its feet,
+/// on its own clock. Off when the device asks for reduced motion. For the
+/// selection screen's preview, and anywhere a character stands alone.
+class CharacterIdleFigure extends StatefulWidget {
+  const CharacterIdleFigure({
+    super.key,
+    required this.characterId,
+    this.side = BattleSide.me,
+    this.scale = 1,
+  });
+
+  final String characterId;
+  final BattleSide side;
+  final double scale;
+
+  @override
+  State<CharacterIdleFigure> createState() => _CharacterIdleFigureState();
+}
+
+class _CharacterIdleFigureState extends State<CharacterIdleFigure>
+    with SingleTickerProviderStateMixin {
+  late final _ticker = createTicker(
+    (elapsed) => _now.value = elapsed.inMicroseconds / 1000,
+  );
+
+  /// Milliseconds since the figure appeared.
+  final _now = ValueNotifier<double>(0);
+  bool _still = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (_still) {
+      _ticker.stop();
+      _now.value = 0;
+    } else if (!_ticker.isActive) {
+      _ticker.start();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _now.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rig = CharacterRig.standard;
+    final motion = rig.art(widget.characterId).idleMotion;
+    final scale = widget.scale;
+    final figure = CharacterFigure(
+      characterId: widget.characterId,
+      side: widget.side,
+      scale: scale,
+    );
+    return ValueListenableBuilder<double>(
+      valueListenable: _now,
+      builder: (context, now, child) {
+        final idle = _still ? IdleSample.rest : motion.sampleAt(now);
+        return Transform(
+          transform: Matrix4.translationValues(0, -idle.up * scale, 0)
+              .multiplied(Matrix4.rotationZ(idle.rockDeg * math.pi / 180))
+              .multiplied(Matrix4.diagonal3Values(idle.scaleX, idle.scaleY, 1)),
+          origin: Offset(rig.anchorX * scale, rig.anchorY * scale),
+          child: child,
+        );
+      },
+      child: figure,
     );
   }
 }

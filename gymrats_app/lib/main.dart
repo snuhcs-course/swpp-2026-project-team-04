@@ -7,6 +7,7 @@ import 'models/exercise_type.dart';
 import 'models/form_report.dart';
 import 'models/matchup.dart';
 import 'screens/battle_screen.dart';
+import 'screens/character_select_screen.dart';
 import 'screens/feedback_screen.dart';
 import 'screens/help_screen.dart';
 import 'screens/history_screen.dart';
@@ -15,7 +16,6 @@ import 'screens/login_screen.dart';
 import 'screens/match_setup_screen.dart';
 import 'screens/matching_screen.dart';
 import 'screens/online_lobby_screen.dart';
-import 'screens/profile_screen.dart';
 import 'screens/result_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/signup_screen.dart';
@@ -26,6 +26,7 @@ import 'services/auth/token_store.dart';
 import 'services/feedback/form_report_store.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
+import 'services/user/character_store.dart';
 import 'services/user/rules_seen_store.dart';
 import 'services/user/settings_store.dart';
 import 'services/user/server_user_repository.dart';
@@ -33,6 +34,7 @@ import 'services/user/user_repository.dart';
 import 'services/user/avatar_store.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
+import 'viewmodels/character_viewmodel.dart';
 import 'viewmodels/help_viewmodel.dart';
 import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/signup_viewmodel.dart';
@@ -55,6 +57,7 @@ Future<void> main() async {
       authRepository: auth,
       userRepository: ServerUserRepository(api: api, auth: auth),
       avatarStore: SecureAvatarStore(),
+      characterStore: SecureCharacterStore(),
       rulesSeenStore: SecureRulesSeenStore(),
       settingsStore: SecureSettingsStore(),
     ),
@@ -74,6 +77,7 @@ class GymRatsApp extends StatefulWidget {
     required this.userRepository,
     this.createMatchmaker,
     this.avatarStore,
+    this.characterStore,
     this.createOnlineSession,
     this.rulesSeenStore,
     this.settingsStore,
@@ -85,6 +89,9 @@ class GymRatsApp extends StatefulWidget {
   /// Defaults to [BotMatchmaker].
   final Matchmaker Function()? createMatchmaker;
   final AvatarStore? avatarStore;
+
+  /// Keeps each account's character. Defaults to [MemoryCharacterStore].
+  final CharacterStore? characterStore;
   final OnlineSessionFactory? createOnlineSession;
 
   /// Defaults to [MemoryRulesSeenStore].
@@ -97,7 +104,9 @@ class GymRatsApp extends StatefulWidget {
   static const signupRoute = '/signup';
   static const historyRoute = '/history';
   static const onlineBattleRoute = '/online-battle';
-  static const profileRoute = '/profile';
+
+  /// 캐릭터 선택, from 게임 시작's 캐릭터 row and 환경설정.
+  static const characterRoute = '/character';
 
   /// The battle rules, from '?' on home; back returns there.
   static const helpRoute = '/help';
@@ -127,6 +136,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
   late final HelpViewModel _help;
   late final AvatarStore _avatars;
 
+  /// The signed-in account's character, the same on every screen.
+  late final CharacterViewModel _characters;
+
   /// The app's settings, the same on every screen and every visit.
   late final SettingsViewModel _settings;
   AuthStatus? _shownStatus;
@@ -135,6 +147,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
   void initState() {
     super.initState();
     _avatars = widget.avatarStore ?? MemoryAvatarStore();
+    _characters = CharacterViewModel(
+      store: widget.characterStore ?? MemoryCharacterStore(),
+    );
     _help = HelpViewModel(
       store: widget.rulesSeenStore ?? MemoryRulesSeenStore(),
     );
@@ -148,7 +163,8 @@ class _GymRatsAppState extends State<GymRatsApp> {
 
   /// Logging in or out swaps the first screen; anything opened on top of
   /// it (sign-up, a match, history) belongs to the old state and closes.
-  /// A login reads whether the account still has the rules to see.
+  /// A login reads whether the account still has the rules to see, and
+  /// its character; a logout puts the default character back.
   void _onAuthChanged() {
     if (_auth.status == _shownStatus) return;
     _shownStatus = _auth.status;
@@ -156,6 +172,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
     final account = _auth.account;
     if (_auth.status == AuthStatus.signedIn && account != null) {
       _help.load(account.id);
+      _characters.load(account.id);
+    } else if (_auth.status == AuthStatus.signedOut) {
+      _characters.clear();
     }
   }
 
@@ -166,6 +185,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
       ..dispose();
     _help.dispose();
     _settings.dispose();
+    _characters.dispose();
     super.dispose();
   }
 
@@ -182,6 +202,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ChangeNotifierProvider<AuthViewModel>.value(value: _auth),
         ChangeNotifierProvider<HelpViewModel>.value(value: _help),
         ChangeNotifierProvider<SettingsViewModel>.value(value: _settings),
+        ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
       ],
       child: MaterialApp(
@@ -223,10 +244,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
               userRepository: widget.userRepository,
             ),
           ),
-          GymRatsApp.profileRoute => MaterialPageRoute<void>(
+          GymRatsApp.characterRoute => MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) =>
-                ProfileScreen(auth: widget.authRepository, avatars: _avatars),
+            builder: (_) => const CharacterSelectScreen(),
           ),
           GymRatsApp.signupRoute => MaterialPageRoute<void>(
             settings: settings,
@@ -269,8 +289,10 @@ class _GymRatsAppState extends State<GymRatsApp> {
           ),
           GymRatsApp.battleRoute => MaterialPageRoute<void>(
             settings: settings,
-            builder: (_) =>
-                BattleScreen(matchup: settings.arguments! as Matchup),
+            builder: (_) => BattleScreen(
+              matchup: settings.arguments! as Matchup,
+              myCharacter: _characters.characterId,
+            ),
           ),
           GymRatsApp.resultRoute => MaterialPageRoute<void>(
             settings: settings,

@@ -203,6 +203,13 @@ void main() {
   });
 
   group('choosing a character', () {
+    test('the constant ids are those of the rig: the default mouse and RepBot, '
+        'which no person picks', () {
+      expect(CharacterRig.defaultId, rig.defaultCharacter);
+      expect(rig.characters.keys, contains(CharacterRig.botId));
+      expect(rig.art(CharacterRig.botId).selectable, isFalse);
+    });
+
     test('an unknown or missing id draws the default mouse', () {
       expect(rig.art(null).id, 'mouse');
       expect(rig.art('rabbit').id, 'mouse');
