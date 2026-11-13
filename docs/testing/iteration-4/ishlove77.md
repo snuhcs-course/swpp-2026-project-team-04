@@ -6,6 +6,21 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-14 · code at commit `6d9fb89` · step `feat/battle_bgm` (team plan #8, Codex review of PR #53, round 2)
+Two more Codex findings (P2): leaving an online battle before its result left the battle music playing over the play
+screen, and a win or lose jingle still loading when the sound went off played once the sound came back. A battle left
+before a decided result now goes back to the menu music, and a loading jingle is dropped on silence. Same commands as
+below; coverage not re-measured (two methods changed, both new branches run by the new tests).
+
+- **Tests:** `flutter test` 2364 passed, 0 failed, 10 skipped (pre-existing). `flutter analyze` no issues.
+- **Reviewer:** APPROVE (one round; Minor: doc lines (done), these notes (done), a screen-level test of the online
+  leave path (not added: the same `BattleSounds` path is unit-tested, and the online screen tests are heavy)).
+
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/audio/background_music_test.dart` (+1) | a jingle still loading when sound goes off is dropped, not played when sound is back |
+| View | `test/widgets/sound_battle_test.dart` (+1) | leaving before a result (mid-round, waiting for the server, ended without one) brings the menu music back; after a result its jingle, or a draw's silence, goes on |
+
 #### 2026-11-14 · code at commit `6ef8614` · step `feat/battle_bgm` (team plan #8, Codex review of PR #53)
 Follow-up to the Codex review of PR #53 (P2): turning the sound off or leaving the app now also cuts off an effect still
 sounding (a hit, the KO gong), and a hit whose rewind ends after the sound went off stays silent. Same commands as the

@@ -306,3 +306,10 @@ branch 'docs/rename_gymmouse' set up to track 'origin/docs/rename_gymmouse'.</ba
 
 <!-- 154bbf4f 2026-11-13T19:01:03.052Z -->
 [Jinyoung Park, 11-14 04:01] "ㅇㅇ"
+
+## 2026-11-14 · Jinyoung Park · feat/battle_bgm
+<!-- 154bbf4f 2026-11-13T19:09:00.122Z -->
+[Jinyoung Park, 11-14 04:09] "ㄱㄱ"
+
+<!-- 154bbf4f 2026-11-13T19:12:06.083Z -->
+[Jinyoung Park, 11-14 04:12] "ㄱ"
