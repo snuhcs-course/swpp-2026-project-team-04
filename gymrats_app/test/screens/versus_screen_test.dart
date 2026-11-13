@@ -4,15 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/character_idle_motion.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
+import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_fighter.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/exit_game_button.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
@@ -57,6 +62,8 @@ void main() {
     bool seeWarning = true,
     Duration? warningAutoClose,
     SettingsViewModel? settings,
+    CharacterViewModel? chosen,
+    BattleCharacters? characters,
     double textScale = 1,
     double top = 0,
   }) async {
@@ -70,12 +77,21 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     pushes = PushLog();
-    Widget app(Widget child) => settings == null
+    Widget withSettings(Widget child) => settings == null
         ? child
         : ChangeNotifierProvider<SettingsViewModel>.value(
             value: settings,
             child: child,
           );
+    // The app's character choice above the app, as main.dart has it.
+    Widget app(Widget child) => withSettings(
+      chosen == null
+          ? child
+          : ChangeNotifierProvider<CharacterViewModel>.value(
+              value: chosen,
+              child: child,
+            ),
+    );
     await tester.pumpWidget(
       app(
         MaterialApp(
@@ -90,6 +106,7 @@ void main() {
                     builder: (_) => VersusScreen(
                       matchup: matchup,
                       warningAutoClose: warningAutoClose,
+                      characters: characters,
                     ),
                   ),
                 ),
@@ -166,16 +183,21 @@ void main() {
 
   /// A player's character itself, not one of its white copies (they come
   /// first).
-  Finder character(BattleSide side) =>
-      find.byWidgetPredicate((w) => w is BattleFighter && w.side == side).last;
+  Finder character(BattleSide side) => find
+      .byWidgetPredicate((w) => w is CharacterFigure && w.side == side)
+      .last;
 
   /// The white copies under a player's character.
   Finder whiteCopies(BattleSide side) => find.descendant(
     of: find.byType(ColorFiltered),
     matching: find.byWidgetPredicate(
-      (w) => w is BattleFighter && w.side == side,
+      (w) => w is CharacterFigure && w.side == side,
     ),
   );
+
+  /// Which character stands for [side].
+  String characterOf(WidgetTester tester, BattleSide side) =>
+      tester.widget<CharacterFigure>(character(side)).characterId;
 
   /// The two pedestals, the user's first.
   final pedestals = find.byWidgetPredicate(
@@ -192,10 +214,6 @@ void main() {
   Finder pill(String label) => find
       .ancestor(of: find.text(label), matching: find.byType(DecoratedBox))
       .first;
-
-  /// How tall the stand-in stands [ms] into its idle motion: the stage's
-  /// breathing.
-  double stretch(num ms) => 1 + math.sin(ms / 280) * 0.02;
 
   void expectRect(Rect actual, Rect expected, {String? reason}) {
     for (final (a, b) in [
@@ -238,16 +256,19 @@ void main() {
     expect(find.text('상대'), findsOneWidget);
     expect(find.text('RepBot'), findsOneWidget);
     expect(find.text('AI'), findsOneWidget);
-    // Until the W3 characters: W2's stand-in fighter, idle, in each team
-    // color, with its eight white copies.
+    // The W3 characters, idle, each in its team color, with eight white
+    // copies: without a choice mine is the default one, against RepBot.
     for (final side in BattleSide.values) {
       expect(
-        tester.widget<BattleFighter>(character(side)).pose,
+        tester.widget<CharacterFigure>(character(side)).pose,
         BattlePose.idle,
       );
       expect(whiteCopies(side), findsNWidgets(8));
     }
-    expect(find.byType(BattleFighter), findsNWidgets(18));
+    expect(characterOf(tester, BattleSide.me), CharacterRig.defaultId);
+    expect(characterOf(tester, BattleSide.opponent), CharacterRig.botId);
+    expect(find.byType(CharacterFigure), findsNWidgets(18));
+    expect(find.byType(BattleFighter), findsNothing);
     expect(find.byType(PlayerAvatar), findsNothing);
     expect(find.text('경기 규칙'), findsOneWidget);
     expect(find.text('가슴을 충분히 내렸다가 팔을 끝까지 펴야 1회로 인정돼요.'), findsOneWidget);
@@ -256,6 +277,55 @@ void main() {
     // No tier, record, or auto-cancel countdown.
     expect(find.textContaining('승률'), findsNothing);
     expect(find.textContaining('15'), findsNothing);
+  });
+
+  testWidgets("the user's saved character stands against RepBot; online, the "
+      'characters the lobby gives, the opponent\'s as the server sent it; '
+      'each is read as a picture with its name', (tester) async {
+    final store = MemoryCharacterStore()..values[7] = 'seal';
+    final chosen = CharacterViewModel(store: store);
+    addTearDown(chosen.dispose);
+    await chosen.load(7);
+    final handle = tester.ensureSemantics();
+    await open(tester, chosen: chosen);
+    expect(characterOf(tester, BattleSide.me), 'seal');
+    expect(characterOf(tester, BattleSide.opponent), CharacterRig.botId);
+    final rig = CharacterRig.standard;
+    for (final id in ['seal', CharacterRig.botId]) {
+      expect(
+        tester.getSemantics(find.bySemanticsLabel(rig.art(id).name)),
+        matchesSemantics(label: rig.art(id).name, isImage: true),
+      );
+    }
+
+    // A new screen, from the online lobby.
+    await tester.pumpWidget(const SizedBox());
+    await open(
+      tester,
+      chosen: chosen,
+      matchup: const Matchup(
+        exercise: ExerciseType.squat,
+        playerName: '우현',
+        opponent: Opponent(name: '상대사용자', isBot: false),
+      ),
+      characters: const BattleCharacters(me: 'bear', opponent: 'kangaroo'),
+    );
+    expect(characterOf(tester, BattleSide.me), 'bear');
+    expect(characterOf(tester, BattleSide.opponent), 'kangaroo');
+    handle.dispose();
+  });
+
+  testWidgets('a human opponent without a given character stands as the '
+      'default one', (tester) async {
+    await open(
+      tester,
+      matchup: const Matchup(
+        exercise: ExerciseType.pushUp,
+        playerName: '우현',
+        opponent: Opponent(name: '상대사용자', isBot: false),
+      ),
+    );
+    expect(characterOf(tester, BattleSide.opponent), CharacterRig.defaultId);
   });
 
   testWidgets('게임 나가기 on the left; MATCH FOUND over the exercise, '
@@ -388,7 +458,7 @@ void main() {
     final all = boardWidgets();
     expect(
       all.indexOf(tester.widget(disc)),
-      greaterThan(all.lastIndexWhere((w) => w is BattleFighter)),
+      greaterThan(all.lastIndexWhere((w) => w is CharacterFigure)),
     );
     // No tints from before.
     expect(
@@ -596,7 +666,7 @@ void main() {
     );
     expect(find.text('Mina'), findsOneWidget);
     expect(find.text('AI'), findsNothing);
-    // Online the opponent is the stand-in too, mirrored on the pink cell.
+    // A person's character stands mirrored on the pink cell too.
     expect(whiteCopies(BattleSide.opponent), findsNWidgets(8));
   });
 
@@ -757,41 +827,60 @@ void main() {
       tester.getRect(character(BattleSide.opponent)).height,
     );
 
-    testWidgets('they breathe from the moment the board shows, the '
-        "opponent 230 ms ahead, standing on their feet; the pedestals and "
-        'the words stay', (tester) async {
+    /// The idle motion on [figure], a character or one of its copies: the
+    /// transform right above it, about its feet.
+    Transform motionOn(WidgetTester tester, Finder figure) =>
+        tester.widget<Transform>(
+          find.ancestor(of: figure, matching: find.byType(Transform)).first,
+        );
+
+    /// How [idle] moves a character facing right, as the stage does.
+    Matrix4 moved(IdleSample idle) => Matrix4.translationValues(0, -idle.up, 0)
+        .multiplied(Matrix4.rotationZ(idle.rockDeg * math.pi / 180))
+        .multiplied(Matrix4.diagonal3Values(idle.scaleX, idle.scaleY, 1));
+
+    void expectMatrix(Matrix4 actual, Matrix4 expected, String reason) {
+      for (var i = 0; i < 16; i++) {
+        expect(
+          actual.storage[i],
+          moreOrLessEquals(expected.storage[i], epsilon: 1e-9),
+          reason: '$reason [$i]',
+        );
+      }
+    }
+
+    testWidgets('they move by their own idle motions from the moment the '
+        "board shows, the opponent's running 230 ms later, as on the "
+        'stage; the pedestals and the words stay', (tester) async {
       await openNow(tester);
+      final rig = CharacterRig.standard;
+      final mouse = rig.art(CharacterRig.defaultId).idleMotion;
+      final bot = rig.art(CharacterRig.botId).idleMotion;
+      expect(rig.idleOpponentOffsetMs, 230);
       final mine = tester.getRect(pedestals.first);
       final words = tester.getRect(find.text('우현'));
-      // At once: the user's clock at 0, the opponent's at 230 ms.
-      expect(heights(tester).$1, moreOrLessEquals(160));
-      expect(heights(tester).$2, moreOrLessEquals(160 * stretch(230)));
       var now = 0;
-      for (final ms in [500, 1200, 2950]) {
+      // At once (the user's clock at 0), then later.
+      for (final ms in [0, 500, 700, 1200, 2950]) {
         await tester.pump(Duration(milliseconds: ms - now));
         now = ms;
-        final (me, them) = heights(tester);
-        expect(me, moreOrLessEquals(160 * stretch(ms)), reason: '$ms');
-        expect(them, moreOrLessEquals(160 * stretch(ms + 230)), reason: '$ms');
-        // Around the feet, on the pedestal.
-        final rect = tester.getRect(character(BattleSide.me));
-        expect(
-          rect.top + 150 * stretch(ms),
-          moreOrLessEquals(mine.top),
-          reason: '$ms',
+        final me = motionOn(tester, character(BattleSide.me));
+        expect(me.origin, BattleFighter.foot);
+        expectMatrix(me.transform, moved(mouse.sampleAt(ms * 1.0)), 'me $ms');
+        expectMatrix(
+          motionOn(tester, character(BattleSide.opponent)).transform,
+          moved(bot.sampleAt(ms + 230.0)),
+          'opponent $ms',
         );
         // The white edge moves with the character.
-        expect(
-          tester.getRect(whiteCopies(BattleSide.me).first).height,
-          moreOrLessEquals(me),
+        expectMatrix(
+          motionOn(tester, whiteCopies(BattleSide.me).first).transform,
+          me.transform,
+          'copy $ms',
         );
         expect(tester.getRect(pedestals.first), mine);
         expect(tester.getRect(find.text('우현')), words);
       }
-      expect(
-        VersusScreen.opponentIdleOffset,
-        const Duration(milliseconds: 230),
-      );
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -799,10 +888,19 @@ void main() {
       await openNow(tester, warning: true);
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.byType(SafeWarningDialog), findsOneWidget);
-      final before = heights(tester);
+      final before = [
+        for (final side in BattleSide.values)
+          motionOn(tester, character(side)).transform.clone(),
+      ];
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byType(SafeWarningDialog), findsOneWidget);
-      expect(heights(tester), isNot(before));
+      for (final (i, side) in BattleSide.values.indexed) {
+        expect(
+          motionOn(tester, character(side)).transform,
+          isNot(before[i]),
+          reason: '$side',
+        );
+      }
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -813,9 +911,16 @@ void main() {
       expect(heights(tester), (160.0, 160.0));
       await tester.pump(const Duration(milliseconds: 900));
       expect(heights(tester), (160.0, 160.0));
+      for (final side in BattleSide.values) {
+        expectMatrix(
+          motionOn(tester, character(side)).transform,
+          Matrix4.identity(),
+          '$side',
+        );
+      }
       expect(tester.binding.hasScheduledFrame, isFalse);
       expect(
-        tester.widget<BattleFighter>(character(BattleSide.me)).pose,
+        tester.widget<CharacterFigure>(character(BattleSide.me)).pose,
         BattlePose.idle,
       );
     });

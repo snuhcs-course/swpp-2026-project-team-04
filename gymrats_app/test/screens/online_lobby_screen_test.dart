@@ -19,6 +19,7 @@ import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:provider/provider.dart';
 
 // The battle server's own default ready limit, read from the sibling server.
@@ -412,6 +413,12 @@ void main() {
       session.found(duration: 30000);
       await tester.pump();
       expect(find.byType(VersusScreen), findsOneWidget);
+      // The characters as the battle will draw them: mine as sent (the
+      // default here), the opponent's as the server passed it on.
+      expect(
+        tester.widget<VersusScreen>(find.byType(VersusScreen)).characters,
+        const BattleCharacters(me: 'mouse', opponent: 'seal'),
+      );
       expect(find.text('MATCH FOUND'), findsOneWidget);
       expect(find.text('VS'), findsOneWidget);
       expect(find.text('실제상대'), findsOneWidget);

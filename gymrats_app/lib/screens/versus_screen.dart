@@ -7,15 +7,19 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
+import '../models/character_idle_motion.dart';
+import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../models/matchup.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/character_viewmodel.dart';
 import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/accent_button.dart';
 import '../widgets/battle_fighter.dart';
 import '../widgets/battle_fx_motion.dart';
 import '../widgets/battle_stage_model.dart';
+import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
 import '../widgets/grid_background.dart';
@@ -27,8 +31,9 @@ import '../widgets/safe_warning_dialog.dart';
 /// opponent's pink one, each player's character on a pedestal beside their
 /// name, and "VS" between them.
 ///
-/// It has no view model: everything it shows comes from [matchup], and its
-/// only behavior is navigation. It opens with the safety warning before
+/// It has no view model: everything it shows comes from [matchup] and the
+/// two characters ([characters], or the app's [CharacterViewModel] choice
+/// against RepBot), and its only behavior is navigation. It opens with the safety warning before
 /// every match while 환경설정's '매 경기 안전 안내' is on; off, only until the
 /// warning was seen once ([SettingsViewModel.safetyNotice]). The setup
 /// button works once the warning has closed, or at once without it. Back
@@ -43,9 +48,16 @@ class VersusScreen extends StatefulWidget {
     this.onLeave,
     this.duration = battleDuration,
     this.warningAutoClose,
+    this.characters,
   });
 
   final Matchup matchup;
+
+  /// The two players' characters (W3). Null takes the user's from the
+  /// app's choice ([CharacterViewModel]; the default character without
+  /// one), and RepBot for a bot opponent. The online lobby gives both: the
+  /// one sent and the one the server passed on for the opponent.
+  final BattleCharacters? characters;
 
   /// Live matches use the same presentation without the offline route logic.
   final Future<void> Function()? onStartSetup;
@@ -70,10 +82,6 @@ class VersusScreen extends StatefulWidget {
   static const _aboveHead = 8.0;
   static const _characterReach = 151.0;
   static const _smallest = 0.6;
-
-  /// The opponent's idle motion is this far ahead of the user's, so the
-  /// two do not move in step.
-  static const opponentIdleOffset = Duration(milliseconds: 230);
 
   @override
   State<VersusScreen> createState() => _VersusScreenState();
@@ -196,9 +204,23 @@ class _VersusScreenState extends State<VersusScreen> {
     return leave;
   }
 
+  /// Who stands on the board: as given, or the user's choice against
+  /// RepBot (or the default character for an opponent of unknown choice).
+  BattleCharacters _characters(BuildContext context) =>
+      widget.characters ??
+      BattleCharacters(
+        me:
+            context.watch<CharacterViewModel?>()?.characterId ??
+            CharacterRig.defaultId,
+        opponent: widget.matchup.opponent.isBot
+            ? CharacterRig.botId
+            : CharacterRig.defaultId,
+      );
+
   @override
   Widget build(BuildContext context) {
     final matchup = widget.matchup;
+    final characters = _characters(context);
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -224,7 +246,12 @@ class _VersusScreenState extends State<VersusScreen> {
                   const SizedBox(height: AppSpacing.s16),
                   // Takes all the height the rules leave, so longer rules
                   // (push-ups) make it lower.
-                  Expanded(child: _MatchupBoard(matchup: matchup)),
+                  Expanded(
+                    child: _MatchupBoard(
+                      matchup: matchup,
+                      characters: characters,
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.s16),
                   _RulesCard(exercise: matchup.exercise),
                   const SizedBox(height: AppSpacing.s16),
@@ -306,13 +333,15 @@ class _Header extends StatelessWidget {
 /// the opponent on a pink one below, an ink line between them and a white
 /// "VS" disc over its middle, all inside one ink-edged box.
 ///
-/// The characters move from the moment the board appears, the opponent's
-/// clock [VersusScreen.opponentIdleOffset] ahead of the user's, also under
-/// the safety warning; with the system's reduced motion they stand still.
+/// The characters move from the moment the board appears, each with its
+/// own idle motion and the opponent's running the rig's 230 ms later, as on
+/// the stage ([BattleCharacters.cast]), also under the safety warning; with
+/// the system's reduced motion they stand still.
 class _MatchupBoard extends StatefulWidget {
-  const _MatchupBoard({required this.matchup});
+  const _MatchupBoard({required this.matchup, required this.characters});
 
   final Matchup matchup;
+  final BattleCharacters characters;
 
   @override
   State<_MatchupBoard> createState() => _MatchupBoardState();
@@ -353,6 +382,8 @@ class _MatchupBoardState extends State<_MatchupBoard>
   Widget build(BuildContext context) {
     final matchup = widget.matchup;
     final opponent = matchup.opponent;
+    final characters = widget.characters;
+    final cast = characters.cast;
     const corners = BorderRadius.all(Radius.circular(AppRadius.sheet));
     return DecoratedBox(
       position: DecorationPosition.foreground,
@@ -375,6 +406,8 @@ class _MatchupBoardState extends State<_MatchupBoard>
                     child: _PlayerCell(
                       side: BattleSide.me,
                       name: matchup.playerName,
+                      characterId: characters.me,
+                      cast: cast,
                       clock: _clock,
                       still: _still,
                     ),
@@ -389,6 +422,8 @@ class _MatchupBoardState extends State<_MatchupBoard>
                       side: BattleSide.opponent,
                       name: opponent.name,
                       bot: opponent.isBot,
+                      characterId: characters.opponent,
+                      cast: cast,
                       clock: _clock,
                       still: _still,
                     ),
@@ -419,6 +454,8 @@ class _PlayerCell extends StatelessWidget {
     required this.side,
     required this.name,
     this.bot = false,
+    required this.characterId,
+    required this.cast,
     required this.clock,
     required this.still,
   });
@@ -426,6 +463,8 @@ class _PlayerCell extends StatelessWidget {
   final BattleSide side;
   final String name;
   final bool bot;
+  final String characterId;
+  final BattleFxCast cast;
   final ValueListenable<double> clock;
   final bool still;
 
@@ -454,7 +493,8 @@ class _PlayerCell extends StatelessWidget {
                   alignment: _Figure.feet,
                   child: _Figure(
                     side: side,
-                    bot: bot,
+                    characterId: characterId,
+                    cast: cast,
                     clock: clock,
                     still: still,
                   ),
@@ -621,17 +661,20 @@ class _VsDisc extends StatelessWidget {
 /// ([_VersusCharacter.foot]) on the middle of the pedestal's top. The
 /// character has a white edge ([_WhiteOutline]) that moves with it, drawn
 /// over the pedestal's ink edge; the pedestal stays still and has none. The
-/// opponent's character is mirrored to face left.
+/// opponent's character is mirrored to face left. [clock] runs its idle
+/// motion as [cast] says for its [side]; it stands still when [still].
 class _Figure extends StatelessWidget {
   const _Figure({
     required this.side,
-    required this.bot,
+    required this.characterId,
+    required this.cast,
     required this.clock,
     required this.still,
   });
 
   final BattleSide side;
-  final bool bot;
+  final String characterId;
+  final BattleFxCast cast;
   final ValueListenable<double> clock;
   final bool still;
 
@@ -655,9 +698,6 @@ class _Figure extends StatelessWidget {
   Widget build(BuildContext context) {
     const foot = _VersusCharacter.foot;
     const character = _VersusCharacter.size;
-    final delayMs = side == BattleSide.me
-        ? 0
-        : VersusScreen.opponentIdleOffset.inMilliseconds;
     return SizedBox.fromSize(
       size: _size,
       child: Stack(
@@ -696,9 +736,9 @@ class _Figure extends StatelessWidget {
                   valueListenable: clock,
                   builder: (context, ms, _) => _WhiteOutline(
                     child: _VersusCharacter(
+                      characterId: characterId,
                       side: side,
-                      bot: bot,
-                      clockMs: still ? null : ms + delayMs,
+                      idle: still ? IdleSample.rest : cast.idleAt(side, ms),
                     ),
                   ),
                 ),
@@ -755,50 +795,44 @@ class _WhiteOutline extends StatelessWidget {
   }
 }
 
-/// The one place this screen draws a player's character: the picture in
-/// its [size] box, facing right, with the feet at [foot]. [_Figure] mirrors
-/// the opponent's, edges it white and stands it on its pedestal; [clockMs]
-/// is the moment its idle motion shows (null: standing still).
-///
-/// Until the W3 characters are in `main` this is W2's stand-in fighter
-/// in the player's team color, in its idle pose, breathing as it does on
-/// the stage. W3 replaces only this widget: the user's chosen character,
-/// RepBot for a [bot], the server's character for an online opponent, and
-/// the character's own idle motion. The stand-in has no name, so screen
-/// readers skip it; a character is read as a picture with its name.
+/// The one place this screen draws a player's character (W3): the
+/// character [characterId] in its idle pose and [side]'s team color, in
+/// its [size] box facing right with the feet at [foot], moved about the
+/// feet by its idle motion [idle] as on the stage (up, rock, stretch).
+/// [_Figure] mirrors the opponent's, edges it white and stands it on its
+/// pedestal. A screen reader reads it as a picture with the character's
+/// name.
 class _VersusCharacter extends StatelessWidget {
   const _VersusCharacter({
+    required this.characterId,
     required this.side,
-    required this.bot,
-    required this.clockMs,
+    required this.idle,
   });
 
+  final String characterId;
   final BattleSide side;
+  final IdleSample idle;
 
-  /// The opponent is a bot.
-  final bool bot;
-  final double? clockMs;
-
+  /// The rig's box and feet, the stage fighters' (W3 spec 3).
   static const size = BattleFighter.size;
   static const foot = BattleFighter.foot;
 
-  /// How tall the stand-in stands [ms] into its idle motion: the stage's
-  /// breathing (`BattleFxTimeline.frame`), stretching up from the feet by
-  /// up to 2%.
-  static double stretchAt(double ms) => 1 + math.sin(ms / 280) * 0.02;
+  /// How [idle] moves a character facing right, about its feet: as the
+  /// stage moves the user's (`BattleFxTimeline.frame`).
+  static Matrix4 motion(IdleSample idle) =>
+      Matrix4.translationValues(0, -idle.up, 0)
+          .multiplied(Matrix4.rotationZ(idle.rockDeg * math.pi / 180))
+          .multiplied(Matrix4.diagonal3Values(idle.scaleX, idle.scaleY, 1));
 
   @override
   Widget build(BuildContext context) {
-    final ms = clockMs;
-    return ExcludeSemantics(
+    return Semantics(
+      image: true,
+      label: CharacterRig.standard.art(characterId).name,
       child: Transform(
         origin: foot,
-        transform: Matrix4.diagonal3Values(
-          1,
-          ms == null ? 1 : stretchAt(ms),
-          1,
-        ),
-        child: BattleFighter(pose: BattlePose.idle, side: side),
+        transform: motion(idle),
+        child: CharacterFigure(characterId: characterId, side: side),
       ),
     );
   }
