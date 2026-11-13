@@ -28,3 +28,9 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 
 ## 7. Takeaway
 - Validate the visible camera region against the detector input and confirm the guide on multiple real devices before calling the feature complete.
+
+## S3 follow-up — alignment and auto-start (2026-11-13)
+- Codex added a weighted distance check for the head, shoulders and hands in `gymrats_app/lib/models/setup_silhouette_alignment.dart`, considering the preview crop and mirror; the ViewModel gates the offline push-up countdown on this and existing pose checks. No ML model was trained for this change.
+- The user requested a three-second wait and then suggested comparing the sum of joint distances to the silhouette; Codex implemented the selected approach with individual limits for the head and hands. The configured limits are provisional.
+- Codex ran the scoped tests and built a release app for the connected phone; the user reported completing a test. Specific manual-test outcomes and time savings were not provided. No human manual source-code fixes were reported.
+- Independent review and full interaction-history export remain TODO. Online battle uses a separate setup flow and is not included.
