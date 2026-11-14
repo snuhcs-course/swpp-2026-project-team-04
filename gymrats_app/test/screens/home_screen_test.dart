@@ -23,6 +23,7 @@ import 'package:gymrats_app/widgets/lobby_rep_bot.dart';
 import 'package:provider/provider.dart';
 
 import '../support/fakes.dart';
+import '../widgets/battle_test_support.dart';
 
 const _lastMatch = MatchRecord(
   exercise: ExerciseType.pushUp,
@@ -49,6 +50,35 @@ RepBotPainter _repBot(WidgetTester tester) =>
             )
             .painter!
         as RepBotPainter;
+
+// An Android phone's status bar and three-button navigation bar.
+const _systemBars = FakeViewPadding(top: 24, bottom: 48);
+
+// The status bar and the gesture bar.
+const _gestureBars = FakeViewPadding(top: 24, bottom: 24);
+
+const _titles = ['게임 시작', '캐릭터', '기록보관소', '환경설정'];
+
+final _least = LobbyRepBot.designSize * HomeScreen.repBotMinScale;
+final _most = LobbyRepBot.designSize * HomeScreen.repBotMaxScale;
+
+double _scrollRoom(WidgetTester tester) => tester
+    .state<ScrollableState>(find.byType(Scrollable))
+    .position
+    .maxScrollExtent;
+
+Size _repBotSize(WidgetTester tester) =>
+    tester.getSize(find.byType(LobbyRepBot));
+
+Finder _row(String title) =>
+    find.ancestor(of: find.text(title), matching: find.byType(LobbyMenuItem));
+
+/// RepBot's room: the box it is placed in.
+Rect _slot(WidgetTester tester) => tester.getRect(
+  find
+      .ancestor(of: find.byType(LobbyRepBot), matching: find.byType(Align))
+      .first,
+);
 
 void main() {
   late FakeUserRepository repository;
@@ -178,7 +208,6 @@ void main() {
       '03 / ARCHIVE',
       '04 / SETTINGS',
     ]);
-    expect(items.map((item) => item.last), [false, false, false, true]);
     // The same gray chevron on each; no lime or arrow chip (2026-11-08).
     expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(4));
     expect(find.byIcon(Icons.arrow_forward_rounded), findsNothing);
@@ -441,113 +470,31 @@ void main() {
   });
 
   group('fits the screen: RepBot takes the height left', () {
-    // An Android phone's status bar and three-button navigation bar.
-    const systemBars = FakeViewPadding(top: 24, bottom: 48);
-    // The status bar and the gesture bar.
-    const gestureBars = FakeViewPadding(top: 24, bottom: 16);
-    final least = LobbyRepBot.designSize * HomeScreen.repBotMinScale;
-    final most = LobbyRepBot.designSize * HomeScreen.repBotMaxScale;
-    const titles = ['게임 시작', '캐릭터', '기록보관소', '환경설정'];
-
-    double scrollRoom(WidgetTester tester) => tester
-        .state<ScrollableState>(find.byType(Scrollable))
-        .position
-        .maxScrollExtent;
-    Size repBot(WidgetTester tester) =>
-        tester.getSize(find.byType(LobbyRepBot));
-    Finder row(String title) => find.ancestor(
-      of: find.text(title),
-      matching: find.byType(LobbyMenuItem),
-    );
-
-    // With four menu rows (user, 2026-11-14) a 360×780 phone with system
-    // bars no longer fits; see the next test.
-    for (final (label, size, bars) in [
-      ('360×780', const Size(360, 780), FakeViewPadding.zero),
-      ('393×852', const Size(393, 852), FakeViewPadding.zero),
-      ('393×852 with system bars', const Size(393, 852), systemBars),
-      ('412×915 with system bars', const Size(412, 915), systemBars),
-    ]) {
-      testWidgets('a $label phone shows it all without scrolling', (
-        tester,
-      ) async {
-        await open(tester, size: size, bars: bars);
-        expect(tester.takeException(), isNull);
-        expect(scrollRoom(tester), 0);
-        for (final title in titles) {
-          expect(
-            tester.getRect(row(title)).bottom,
-            lessThanOrEqualTo(size.height - bars.bottom),
-          );
-          expect(find.text(title).hitTestable(), findsOneWidget);
-        }
-        expect(
-          repBot(tester).height,
-          inInclusiveRange(least.height, most.height),
-        );
-      });
-    }
-
-    // Four rows leave a 360×780 phone with system bars (a Galaxy S22 or S23)
-    // too little room: RepBot stays at its least and the page scrolls by
-    // less than one row until home is laid out again (W4 part 2; user,
-    // 2026-11-14: keep the rule).
-    for (final (label, bars) in [
-      ('three-button', systemBars),
-      ('gesture', gestureBars),
-    ]) {
-      testWidgets('a 360×780 phone with a $label bar keeps RepBot at its '
-          'least and scrolls a little; every row opens its page', (
-        tester,
-      ) async {
-        await open(tester, size: const Size(360, 780), bars: bars);
-        expect(tester.takeException(), isNull);
-        expect(repBot(tester).height, closeTo(least.height, 0.01));
-        expect(scrollRoom(tester), greaterThan(0));
-        expect(
-          scrollRoom(tester),
-          lessThan(tester.getSize(row('환경설정')).height),
-        );
-        for (final (title, opened) in [
-          ('게임 시작', find.byType(PlayScreen)),
-          ('캐릭터', find.text('character page')),
-          ('기록보관소', find.text('history page')),
-          ('환경설정', find.byType(SettingsScreen)),
-        ]) {
-          await tester.dragUntilVisible(
-            find.text(title),
-            find.byType(SingleChildScrollView),
-            const Offset(0, -100),
-          );
-          await tapAndSettle(tester, find.text(title));
-          expect(opened, findsOneWidget, reason: title);
-          await back(tester);
-        }
-      });
-    }
-
     testWidgets('a shorter screen shrinks RepBot, keeping its shape', (
       tester,
     ) async {
-      await open(tester, size: const Size(393, 852), bars: systemBars);
-      final size = repBot(tester);
+      await open(tester, size: const Size(360, 700), bars: _systemBars);
+      final size = _repBotSize(tester);
       expect(size.height, lessThan(LobbyRepBot.designSize.height));
-      expect(size.height, greaterThan(least.height));
+      expect(size.height, greaterThan(_least.height));
       expect(
         size.aspectRatio,
         closeTo(LobbyRepBot.designSize.aspectRatio, 0.01),
       );
-      expect(scrollRoom(tester), 0);
+      expect(_scrollRoom(tester), 0);
     });
 
     testWidgets('a taller screen grows RepBot, up to 1.2 times its design', (
       tester,
     ) async {
-      await open(tester, size: const Size(412, 960), bars: systemBars);
-      expect(repBot(tester).height, greaterThan(LobbyRepBot.designSize.height));
+      await open(tester, size: const Size(412, 960), bars: _systemBars);
+      expect(
+        _repBotSize(tester).height,
+        greaterThan(LobbyRepBot.designSize.height),
+      );
       await open(tester, size: const Size(800, 1280));
-      expect(repBot(tester).width, closeTo(most.width, 0.01));
-      expect(repBot(tester).height, closeTo(most.height, 0.01));
+      expect(_repBotSize(tester).width, closeTo(_most.width, 0.01));
+      expect(_repBotSize(tester).height, closeTo(_most.height, 0.01));
     });
 
     testWidgets('only RepBot changes: the chip and the menu rows stay', (
@@ -558,39 +505,44 @@ void main() {
           .first;
       List<Size> parts() => [
         tester.getSize(chip),
-        for (final title in titles) tester.getSize(row(title)),
+        for (final title in _titles) tester.getSize(_row(title)),
       ];
       await open(tester, size: const Size(360, 640));
       final short = parts();
-      final shortRepBot = repBot(tester);
+      final shortRepBot = _repBotSize(tester);
       await open(tester, size: const Size(360, 1000));
       expect(parts(), short);
       expect(short.first.height, 48);
-      expect(repBot(tester).height, greaterThan(shortRepBot.height));
+      expect(_repBotSize(tester).height, greaterThan(shortRepBot.height));
     });
 
     testWidgets('a tab bar under home is left out of the room', (tester) async {
-      await open(tester, size: const Size(412, 960), bars: systemBars);
-      final withoutBar = repBot(tester);
+      await open(tester, size: const Size(412, 800), bars: _systemBars);
+      final withoutBar = _repBotSize(tester);
       await open(
         tester,
-        size: const Size(412, 960),
-        bars: systemBars,
+        size: const Size(412, 800),
+        bars: _systemBars,
         tabBar: 80,
       );
       expect(tester.takeException(), isNull);
-      expect(scrollRoom(tester), 0);
+      expect(_scrollRoom(tester), 0);
       final barTop = tester.getTopLeft(find.byKey(const Key('tab bar'))).dy;
-      expect(tester.getRect(row('환경설정')).bottom, lessThanOrEqualTo(barTop));
-      expect(repBot(tester).height, lessThan(withoutBar.height));
+      expect(tester.getRect(_row('환경설정')).bottom, lessThanOrEqualTo(barTop));
+      expect(_repBotSize(tester).height, lessThan(withoutBar.height));
     });
 
-    testWidgets('320×640 at 1.3× text scrolls, with RepBot at its least, '
-        'and every menu row can be scrolled to and tapped', (tester) async {
-      await open(tester, size: const Size(320, 640), textScale: 1.3);
+    testWidgets('320×568 at 2× text scrolls, with RepBot at its least, and '
+        'every menu row can be scrolled to and tapped', (tester) async {
+      await open(
+        tester,
+        size: const Size(320, 568),
+        bars: _systemBars,
+        textScale: 2,
+      );
       expect(tester.takeException(), isNull);
-      expect(scrollRoom(tester), greaterThan(0));
-      expect(repBot(tester).height, closeTo(least.height, 0.01));
+      expect(_scrollRoom(tester), greaterThan(0));
+      expect(_repBotSize(tester).height, closeTo(_least.height, 0.01));
       for (final (title, opened) in [
         ('게임 시작', find.byType(PlayScreen)),
         ('캐릭터', find.text('character page')),
@@ -626,14 +578,14 @@ void main() {
           await open(
             tester,
             size: size,
-            bars: systemBars,
+            bars: _systemBars,
             textScale: textScale,
           );
           expect(tester.takeException(), isNull);
-          final height = repBot(tester).height;
-          expect(height, inInclusiveRange(least.height - 0.01, most.height));
-          if (scrollRoom(tester) > 0) {
-            expect(height, closeTo(least.height, 0.01));
+          final height = _repBotSize(tester).height;
+          expect(height, inInclusiveRange(_least.height - 0.01, _most.height));
+          if (_scrollRoom(tester) > 0) {
+            expect(height, closeTo(_least.height, 0.01));
           }
           await tester.dragUntilVisible(
             find.text('환경설정'),
@@ -653,5 +605,122 @@ void main() {
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     semantics.dispose();
+  });
+
+  // The design's numbers, measured with the app's fonts as on a phone (the
+  // test font's wider letters shrink the logo). Placed last: it loads the
+  // fonts, and the tests above keep the test font.
+  group('the 76 px menu layout with the app\'s fonts (user, 2026-11-14)', () {
+    setUpAll(loadBattleFonts);
+
+    // Home's 76 px menu layout (user, 2026-11-14): at the default text size
+    // these phones show it all without scrolling, also with the note of
+    // battles not saved yet.
+    for (final (label, size, bars) in [
+      ('360×780 with a three-button bar', const Size(360, 780), _systemBars),
+      ('360×780 with a gesture bar', const Size(360, 780), _gestureBars),
+      ('360×780 without bars', const Size(360, 780), FakeViewPadding.zero),
+      ('393×852 with a three-button bar', const Size(393, 852), _systemBars),
+      ('412×915 with a three-button bar', const Size(412, 915), _systemBars),
+    ]) {
+      for (final unsent in const [0, 2]) {
+        testWidgets('a $label phone shows it all without scrolling'
+            '${unsent > 0 ? ', with the note of battles not saved' : ''}', (
+          tester,
+        ) async {
+          repository.profile = UserProfile(
+            name: '우현',
+            lastMatch: _lastMatch,
+            unsentMatches: unsent,
+          );
+          await open(tester, size: size, bars: bars);
+          expect(tester.takeException(), isNull);
+          expect(
+            find.textContaining('저장하지 못한 경기'),
+            unsent > 0 ? findsOneWidget : findsNothing,
+          );
+          expect(_scrollRoom(tester), 0);
+          for (final title in _titles) {
+            expect(
+              tester.getRect(_row(title)).bottom,
+              lessThanOrEqualTo(size.height - bars.bottom),
+            );
+            expect(find.text(title).hitTestable(), findsOneWidget);
+          }
+          expect(
+            _repBotSize(tester).height,
+            inInclusiveRange(_least.height, _most.height),
+          );
+        });
+      }
+    }
+
+    testWidgets('the design\'s layout on a 360×780 phone with a three-button '
+        'bar: RepBot gets the 272 left, less the app\'s own sizes', (
+      tester,
+    ) async {
+      await open(tester, size: const Size(360, 780), bars: _systemBars);
+      // 708 inside the bars. From the top: 8; the top bar 48 (the chip's
+      // tap height, the design's 44); 8; the logo row 40; 8 (the design's 6
+      // as a token step); the 18 high line. Under RepBot: four rows of 75
+      // (the design's 76 in token steps) and 8.
+      const inside = 780 - 24 - 48;
+      final chip = tester.getRect(
+        find
+            .ancestor(of: find.text('우현'), matching: find.byType(Material))
+            .first,
+      );
+      expect(chip.top, 24 + 8);
+      expect(chip.height, 48);
+      expect(tester.getSize(find.text('GYMMOUSE')).height, 40);
+      // The logo's lime bar: 11 x 34 with a 1.5 ink edge (the profile mark
+      // is lime too, but round).
+      final bar = find.byWidgetPredicate((w) {
+        final decoration = w is Container ? w.decoration : null;
+        return decoration is BoxDecoration &&
+            decoration.color == AppColors.accent &&
+            decoration.shape == BoxShape.rectangle &&
+            decoration.border == Border.all(color: AppColors.ink, width: 1.5);
+      });
+      expect(tester.getSize(bar), const Size(11, 34));
+      expect(tester.getSize(find.text('30초 실시간 운동 대결')).height, 18);
+      expect(tester.getSize(find.text('1V1')).height, 18);
+      final firstRow = tester.getRect(_row('게임 시작'));
+      expect(firstRow.top, 24 + inside - 8 - 4 * LobbyMenuItem.height);
+      expect(tester.getRect(_row('환경설정')).bottom, 24 + inside - 8);
+      // The design's 272, less the chip's 4 and the gap's 2, plus the rows'
+      // 4 x 1.
+      expect(_slot(tester).height, 272 - (48 - 44) - (8 - 6) + 4 * (76 - 75));
+      expect(_slot(tester).bottom, firstRow.top);
+      // RepBot fills it at its design size: the room is wider than tall.
+      expect(_repBotSize(tester), LobbyRepBot.designSize);
+    });
+
+    for (final textScale in const [1.3, 1.5]) {
+      testWidgets('at $textScale× text a 360×780 phone with a three-button '
+          'bar still fits: the logo and the menu titles keep their size, '
+          'the small text grows', (tester) async {
+        await open(
+          tester,
+          size: const Size(360, 780),
+          bars: _systemBars,
+          textScale: textScale,
+        );
+        expect(tester.takeException(), isNull);
+        expect(_scrollRoom(tester), 0);
+        expect(tester.getSize(find.text('GYMMOUSE')).height, 40);
+        for (final title in _titles) {
+          expect(tester.getSize(find.text(title)).height, 44, reason: title);
+        }
+        expect(
+          tester.getSize(find.text('30초 실시간 운동 대결')).height,
+          closeTo(18 * textScale, 1),
+        );
+        expect(
+          tester.getSize(_row('게임 시작')).height,
+          greaterThan(LobbyMenuItem.height),
+        );
+      });
+    }
   });
 }

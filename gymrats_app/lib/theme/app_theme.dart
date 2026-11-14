@@ -148,19 +148,27 @@ abstract final class AppFonts {
 /// 환경설정), made from the theme's styles. Screens change only their color
 /// or weight, so a font decision changes this one place.
 extension LobbyText on TextTheme {
-  /// "GYMRATS" on home.
+  /// "GYMMOUSE" on home: Oxanium 800, 40 high (home's 76 px menu layout,
+  /// 2026-11-14).
   TextStyle get lobbyLogo => displayMedium!.copyWith(
+    fontSize: 40,
     fontWeight: FontWeight.w800,
     letterSpacing: 1,
     height: 1,
   );
 
-  /// "1V1" beside home's one-line pitch.
+  /// "1V1" beside home's one-line pitch, on its 18 high line.
   TextStyle get lobbyBadge => bodyMedium!.copyWith(
     fontFamily: AppFonts.number,
+    fontSize: 13,
     fontWeight: FontWeight.w700,
     letterSpacing: 2,
+    height: 18 / 13,
   );
+
+  /// Home's one-line pitch, "30초 실시간 운동 대결": 13 on an 18 high line.
+  TextStyle get lobbyPitch =>
+      bodyMedium!.copyWith(fontSize: 13, height: 18 / 13);
 
   /// "01 / PLAY": small spaced-out English capitals.
   TextStyle get lobbyTag => labelMedium!.copyWith(
@@ -176,11 +184,22 @@ extension LobbyText on TextTheme {
     letterSpacing: 2,
   );
 
-  /// Home's menu titles, e.g. "게임 시작".
+  /// Home's menu titles, e.g. "게임 시작": Do Hyeon 44 on a 44 high line.
   TextStyle get lobbyMenuTitle => displayLarge!.copyWith(
     fontFamily: AppFonts.display,
+    fontSize: 44,
     fontWeight: FontWeight.w400,
     height: 1,
+  );
+
+  /// Home's menu tags, e.g. "01 / PLAY": 11 on a 14 high line, spaced out.
+  /// The pages' own tags stay [lobbyTag].
+  TextStyle get lobbyMenuTag => labelSmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 3,
+    height: 14 / 11,
   );
 
   /// A page's name as a huge faint word behind it, e.g. "PLAY".

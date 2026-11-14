@@ -121,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             ),
             above: [
               _TopBar(name: vm.state.profile!.name, onProfile: _openSettings),
-              const SizedBox(height: AppSpacing.s16),
+              const SizedBox(height: AppSpacing.s8),
               const _Title(),
               if (vm.state.profile!.unsentMatches > 0) ...[
                 const SizedBox(height: AppSpacing.s8),
@@ -146,7 +146,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               LobbyMenuItem(
                 tag: '04 / SETTINGS',
                 title: '환경설정',
-                last: true,
                 onTap: _openSettings,
               ),
             ],
@@ -261,12 +260,13 @@ class _ProfileChip extends StatelessWidget {
 }
 
 /// A slanted lime bar, "GYMMOUSE" (the app's name), and what the game is in
-/// one line.
+/// one line: a 40 high logo row and an 18 high line (the design's 76 px menu
+/// layout, 2026-11-14). The logo keeps its size at any system text size.
 class _Title extends StatelessWidget {
   const _Title();
 
-  static const _barWidth = 12.0;
-  static const _barHeight = 40.0;
+  static const _barWidth = 11.0;
+  static const _barHeight = 34.0;
   static const _barEdge = 1.5;
 
   @override
@@ -296,7 +296,11 @@ class _Title extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: LobbySkew(
                   degrees: 10,
-                  child: Text('GYMMOUSE', style: text.lobbyLogo),
+                  child: Text(
+                    'GYMMOUSE',
+                    textScaler: TextScaler.noScaling,
+                    style: text.lobbyLogo,
+                  ),
                 ),
               ),
             ),
@@ -310,9 +314,7 @@ class _Title extends StatelessWidget {
             Flexible(
               child: Text(
                 '${battleDuration.inSeconds}초 실시간 운동 대결',
-                style: text.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: text.lobbyPitch.copyWith(color: AppColors.textSecondary),
               ),
             ),
           ],
