@@ -54,8 +54,10 @@ class FormFeedback {
     final buckets = List<int>.filled(battleTimeSlices, 0);
     for (final rep in report.reps) {
       if (!rep.valid) continue;
+      // A rep closing as time runs out, or just after, still scored: it
+      // goes in the last slice rather than off the chart.
       final index = (rep.at.inMilliseconds / 1000 / slice).floor();
-      if (index >= 0 && index < battleTimeSlices) buckets[index]++;
+      buckets[index.clamp(0, battleTimeSlices - 1)]++;
     }
     return FormFeedback(
       findings: analyzer.analyze(report),
@@ -83,7 +85,9 @@ class FormFeedback {
   /// Which arm bent more; [ArmBalance.unknown] for a squat or too little data.
   final ArmBalance armBalance;
 
-  /// Counted reps in each of the round's [battleTimeSlices] equal slices.
+  /// Counted reps in each of the round's [battleTimeSlices] equal slices;
+  /// they add up to [FormReport.validReps] (a rep at or after the end is in
+  /// the last slice).
   final List<int> paceBuckets;
 
   /// Seconds in one slice: 5 for a 30 s round, less for a KO round.

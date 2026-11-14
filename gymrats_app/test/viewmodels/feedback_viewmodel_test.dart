@@ -252,8 +252,27 @@ void main() {
       );
       final form = FormFeedback.of(report);
       expect(form.sliceSeconds, 2);
-      expect(form.paceBuckets, [1, 0, 0, 0, 0, 1]);
+      // The rep at 13 s closed after the 12 s round: still in the last slice.
+      expect(form.paceBuckets, [1, 0, 0, 0, 0, 2]);
       expect(form.paceBuckets.length, 6);
+    });
+
+    test('a rep closing exactly at the end is in the last slice', () {
+      final form = FormFeedback.of(
+        FormReport(
+          endedAt: _endedAt,
+          opponentName: 'RepBot',
+          roundLength: const Duration(seconds: 30),
+          reps: const [
+            RepRecord(index: 1, valid: true, at: Duration(seconds: 29)),
+            RepRecord(index: 2, valid: true, at: Duration(seconds: 30)),
+            RepRecord(index: 3, valid: false, at: Duration(seconds: 30)),
+          ],
+          samples: const [],
+        ),
+      );
+      expect(form.paceBuckets, [0, 0, 0, 0, 0, 2]);
+      expect(form.paceBuckets.reduce((a, b) => a + b), 2);
     });
 
     test('a round without length keeps 5 s slices and no rate', () {
