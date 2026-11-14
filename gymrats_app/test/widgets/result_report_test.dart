@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
@@ -24,9 +25,12 @@ ResultReportData _data({
   bool byKo = true,
   ExerciseType exercise = ExerciseType.pushUp,
   Opponent opponent = _bot,
-  Duration played = const Duration(seconds: 25),
+  Duration? played = const Duration(seconds: 25),
   int myScore = 240,
   int opponentScore = 125,
+  int myValidReps = 12,
+  int opponentValidReps = 6,
+  BattleDeparture departure = BattleDeparture.none,
   bool hasFeedback = false,
   ResultNewBest? best,
   ResultRecent? recent,
@@ -39,9 +43,11 @@ ResultReportData _data({
   played: played,
   myScore: myScore,
   opponentScore: opponentScore,
-  myValidReps: 12,
+  myValidReps: myValidReps,
   myInvalidReps: 0,
+  opponentValidReps: opponentValidReps,
   endedAt: DateTime(2026, 11, 4, 14, 30),
+  departure: departure,
   hasFeedback: hasFeedback,
   best: best,
   recent: recent,
@@ -334,6 +340,173 @@ void main() {
         );
       });
     }
+  });
+
+  group('the reason under the sub line', () {
+    const person = Opponent(name: '진영', isBot: false);
+
+    /// A time-up battle with equal scores, decided by [mine] : [theirs]
+    /// valid reps.
+    ResultReportData tied(MatchOutcome outcome, int mine, int theirs) => _data(
+      outcome: outcome,
+      byKo: false,
+      played: const Duration(seconds: 60),
+      myScore: 150,
+      opponentScore: 150,
+      myValidReps: mine,
+      opponentValidReps: theirs,
+    );
+
+    test('equal scores at time-up: the valid reps decided it', () {
+      expect(
+        ResultSubLine.reasonOf(tied(MatchOutcome.win, 11, 10)),
+        '점수 같음 · 횟수로 승리',
+      );
+      expect(
+        ResultSubLine.reasonOf(tied(MatchOutcome.lose, 9, 10)),
+        '점수 같음 · 횟수로 패배',
+      );
+    });
+
+    test('a player leaving an online battle', () {
+      expect(
+        ResultSubLine.reasonOf(
+          _data(departure: BattleDeparture.opponentLeft, opponent: person),
+        ),
+        '상대가 나갔어요',
+      );
+      expect(
+        ResultSubLine.reasonOf(
+          _data(
+            outcome: MatchOutcome.lose,
+            departure: BattleDeparture.myConnectionLost,
+            opponent: person,
+          ),
+        ),
+        '연결이 끊겼어요',
+      );
+      // Leaving says why even when the scores were equal.
+      expect(
+        ResultSubLine.reasonOf(
+          _data(
+            byKo: false,
+            myScore: 50,
+            opponentScore: 50,
+            departure: BattleDeparture.opponentLeft,
+          ),
+        ),
+        '상대가 나갔어요',
+      );
+    });
+
+    test('no reason: a draw, different scores, a KO, or values that do not '
+        'agree with the outcome', () {
+      for (final data in [
+        // Equal scores and equal reps: a draw stays as it is.
+        tied(MatchOutcome.draw, 10, 10),
+        // The scores decided it.
+        _data(byKo: false, myValidReps: 11, opponentValidReps: 10),
+        _data(byKo: true, myScore: 150, opponentScore: 150),
+        // The reps do not back the outcome.
+        tied(MatchOutcome.win, 10, 10),
+        tied(MatchOutcome.win, 9, 10),
+        tied(MatchOutcome.lose, 11, 10),
+        // A departure that does not match the outcome.
+        _data(departure: BattleDeparture.myConnectionLost),
+        _data(
+          outcome: MatchOutcome.lose,
+          departure: BattleDeparture.opponentLeft,
+        ),
+      ]) {
+        expect(ResultSubLine.reasonOf(data), isNull);
+      }
+    });
+
+    testWidgets('the reason goes on its own line under the sub line, which '
+        'keeps its seconds', (tester) async {
+      await show(tester, tied(MatchOutcome.win, 11, 10));
+      final line = tester.getRect(find.text('푸쉬업 · vs '));
+      expect(find.text(' · 60초'), findsOneWidget);
+      final reason = tester.getRect(find.text('점수 같음 · 횟수로 승리'));
+      expect(reason.left, line.left);
+      expect(reason.top, greaterThanOrEqualTo(line.bottom));
+      expect(
+        reason.bottom,
+        lessThan(tester.getRect(find.text('150').first).top),
+      );
+      final style = tester.widget<Text>(find.text('점수 같음 · 횟수로 승리')).style;
+      expect(style, tester.widget<Text>(find.text('푸쉬업 · vs ')).style);
+      expect(
+        find.bySemanticsLabel('푸쉬업, RepBot 고수 상대, 60초, 점수 같음, 횟수로 승리'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a battle a player left, without its length: no seconds', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        _data(
+          byKo: false,
+          played: null,
+          opponent: person,
+          departure: BattleDeparture.opponentLeft,
+        ),
+      );
+      expect(find.text('상대가 나갔어요'), findsOneWidget);
+      expect(find.textContaining('초'), findsNothing);
+      expect(find.bySemanticsLabel('푸쉬업, 진영 상대, 상대가 나갔어요'), findsOneWidget);
+    });
+
+    testWidgets('no second line without a reason', (tester) async {
+      await show(tester, tied(MatchOutcome.draw, 10, 10));
+      final sub = find.byType(ResultSubLine);
+      expect(
+        find.descendant(of: sub, matching: find.byType(Text)),
+        findsNWidgets(3),
+      );
+      expect(
+        tester.getRect(sub).height,
+        tester.getRect(find.text('푸쉬업 · vs ')).height,
+      );
+    });
+
+    // W5 seats the victory character in a 144-point cell at the right end
+    // of the headline's rows: the reason stays left of it.
+    for (final textScale in const [1.0, 1.3]) {
+      testWidgets('at ${textScale}x on a 360 phone the reason line stays '
+          'clear of the seat at the right end', (tester) async {
+        const seatLeft = 360 - 20 - 144;
+        for (final data in [
+          tied(MatchOutcome.win, 11, 10),
+          tied(MatchOutcome.lose, 9, 10),
+          _data(departure: BattleDeparture.opponentLeft, opponent: person),
+          _data(
+            outcome: MatchOutcome.lose,
+            departure: BattleDeparture.myConnectionLost,
+            opponent: person,
+          ),
+        ]) {
+          await show(tester, data, textScale: textScale);
+          final reason = ResultSubLine.reasonOf(data)!;
+          expect(
+            tester.getRect(find.text(reason)).right,
+            lessThanOrEqualTo(seatLeft),
+          );
+        }
+      });
+    }
+
+    testWidgets('the design\'s bot line stays left of the seat too', (
+      tester,
+    ) async {
+      await show(tester, _data());
+      expect(
+        tester.getRect(find.text(' · 25초')).right,
+        lessThanOrEqualTo(360 - 20 - 144),
+      );
+    });
   });
 
   group('the score row', () {

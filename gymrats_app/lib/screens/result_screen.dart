@@ -27,12 +27,17 @@ class ResultScreen extends StatefulWidget {
     byKo: result.end == GameEnd.ko,
     exercise: result.matchup.exercise,
     opponent: result.matchup.opponent,
-    played: result.roundLength,
+    // A battle a player left carries the whole round, not when they left.
+    played: result.departure == BattleDeparture.none
+        ? result.roundLength
+        : null,
     myScore: result.myDisplayScore,
     opponentScore: result.opponentDisplayScore,
     myValidReps: result.myReps,
     myInvalidReps: result.myInvalidReps,
+    opponentValidReps: result.opponentReps,
     endedAt: result.endedAt,
+    departure: result.departure,
     hasFeedback: result.form != null,
   );
 

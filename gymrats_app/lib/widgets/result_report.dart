@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/battle_result.dart';
 import '../models/bot_difficulty.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
@@ -25,7 +26,9 @@ class ResultReportData {
     required this.opponentScore,
     required this.myValidReps,
     required this.myInvalidReps,
+    required this.opponentValidReps,
     required this.endedAt,
+    this.departure = BattleDeparture.none,
     this.hasFeedback = false,
     this.best,
     this.recent,
@@ -40,8 +43,10 @@ class ResultReportData {
   final ExerciseType exercise;
   final Opponent opponent;
 
-  /// How long the battle ran: the whole round, or up to the KO.
-  final Duration played;
+  /// How long the battle ran: the whole round, or up to the KO. Null when it
+  /// is not known: an online battle a player left carries the whole round's
+  /// length, not when they left.
+  final Duration? played;
 
   /// The two big numbers.
   final int myScore;
@@ -51,8 +56,15 @@ class ResultReportData {
   final int myValidReps;
   final int myInvalidReps;
 
+  /// The opponent's reps that counted: with equal scores at time-up, they
+  /// decide the battle.
+  final int opponentValidReps;
+
   /// When the battle ended, for the header.
   final DateTime endedAt;
+
+  /// Whether a player leaving ended an online battle.
+  final BattleDeparture departure;
 
   /// Whether this battle's form feedback can be opened.
   final bool hasFeedback;
@@ -108,6 +120,7 @@ class ResultReport extends StatelessWidget {
           exercise: data.exercise,
           opponent: data.opponent,
           played: data.played,
+          reason: ResultSubLine.reasonOf(data),
         ),
         const SizedBox(height: AppSpacing.s12),
         ResultScoreRow(
@@ -335,18 +348,27 @@ class ResultHeadline extends StatelessWidget {
 }
 
 /// "푸쉬업 · vs RepBot 고수 · 25초" on one line. A long nickname alone is
-/// cut with "…"; the exercise and the seconds stay whole.
+/// cut with "…"; the exercise and the seconds stay whole. A [reason] goes
+/// on a line of its own below, so the line keeps clear of the right end of
+/// the headline's rows (the victory scene's seat, W5).
 class ResultSubLine extends StatelessWidget {
   const ResultSubLine({
     super.key,
     required this.exercise,
     required this.opponent,
     required this.played,
+    this.reason,
   });
 
   final ExerciseType exercise;
   final Opponent opponent;
-  final Duration played;
+
+  /// Null leaves the seconds out.
+  final Duration? played;
+
+  /// Why the battle went as it did, when the headline and the scores do not
+  /// say it; null for no second line.
+  final String? reason;
 
   /// A bot as "RepBot" and its level (a bot without one plays as 고수); a
   /// person by their nickname.
@@ -354,27 +376,60 @@ class ResultSubLine extends StatelessWidget {
       ? 'RepBot ${(opponent.difficulty ?? BotDifficulty.expert).label}'
       : opponent.name;
 
+  /// The [reason] for [data], from its values: a player leaving an online
+  /// battle, or equal scores at time-up that the valid reps decided. Null
+  /// otherwise; a draw (equal scores and reps) needs none.
+  static String? reasonOf(ResultReportData data) {
+    final repsDecided = !data.byKo && data.myScore == data.opponentScore;
+    final repsLead = data.myValidReps.compareTo(data.opponentValidReps);
+    return switch ((data.outcome, data.departure)) {
+      (MatchOutcome.win, BattleDeparture.opponentLeft) => '상대가 나갔어요',
+      (MatchOutcome.lose, BattleDeparture.myConnectionLost) => '연결이 끊겼어요',
+      (MatchOutcome.win, BattleDeparture.none)
+          when repsDecided && repsLead > 0 =>
+        '점수 같음 · 횟수로 승리',
+      (MatchOutcome.lose, BattleDeparture.none)
+          when repsDecided && repsLead < 0 =>
+        '점수 같음 · 횟수로 패배',
+      _ => null,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.reportLine
         .copyWith(color: AppColors.textSecondary);
     final name = opponentText(opponent);
-    final seconds = '${played.inSeconds}초';
+    final played = this.played;
+    final seconds = played == null ? null : '${played.inSeconds}초';
+    final reason = this.reason;
     return Semantics(
-      label: '${exercise.koreanName}, $name 상대, $seconds',
+      label: [
+        exercise.koreanName,
+        '$name 상대',
+        ?seconds,
+        ?reason?.replaceAll(' · ', ', '),
+      ].join(', '),
       child: ExcludeSemantics(
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text('${exercise.koreanName} · vs ', style: style),
-            Flexible(
-              child: Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: style,
-              ),
+            Row(
+              children: [
+                Text('${exercise.koreanName} · vs ', style: style),
+                Flexible(
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: style,
+                  ),
+                ),
+                if (seconds != null) Text(' · $seconds', style: style),
+              ],
             ),
-            Text(' · $seconds', style: style),
+            if (reason != null) Text(reason, style: style),
           ],
         ),
       ),

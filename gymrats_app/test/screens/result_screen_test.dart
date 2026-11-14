@@ -33,23 +33,34 @@ final _form = FormReport(
   samples: const [],
 );
 
+const _online = Matchup(
+  exercise: ExerciseType.squat,
+  playerName: '우현',
+  opponent: Opponent(name: '진영', isBot: false),
+);
+
 BattleResult _result({
+  Matchup? matchup,
   MatchOutcome? outcome = MatchOutcome.win,
   GameEnd end = GameEnd.timeUp,
   Duration roundLength = const Duration(seconds: 30),
+  int opponentScore = 125,
+  int opponentReps = 14,
+  BattleDeparture departure = BattleDeparture.none,
   FormReport? form,
 }) => BattleResult(
-  matchup: _matchup,
+  matchup: matchup ?? _matchup,
   myReps: 12,
   myInvalidReps: 2,
-  opponentReps: 14,
+  opponentReps: opponentReps,
   myScore: 240,
-  opponentScore: 125,
+  opponentScore: opponentScore,
   end: end,
   decidedOutcome: outcome,
   endedAt: DateTime(2026, 11, 4, 14, 30),
   roundLength: roundLength,
   form: form,
+  departure: departure,
 );
 
 /// The routes pushed or put in place, in order.
@@ -78,7 +89,23 @@ void main() {
       expect(data.played, const Duration(seconds: 30));
       expect((data.myScore, data.opponentScore), (240, 125));
       expect((data.myValidReps, data.myInvalidReps), (12, 2));
+      expect(data.opponentValidReps, 14);
       expect(data.endedAt, DateTime(2026, 11, 4, 14, 30));
+      expect(data.departure, BattleDeparture.none);
+    });
+
+    test('an online battle a player left: the departure, and no length (the '
+        'result carries the whole round, not when they left)', () {
+      for (final departure in [
+        BattleDeparture.opponentLeft,
+        BattleDeparture.myConnectionLost,
+      ]) {
+        final data = ResultScreen.reportOf(
+          _result(matchup: _online, departure: departure),
+        );
+        expect(data.departure, departure);
+        expect(data.played, isNull);
+      }
     });
 
     test('a KO loss, and the time it took', () {
@@ -161,6 +188,31 @@ void main() {
       expect(find.text('240'), findsOneWidget);
     });
 
+    testWidgets('equal scores at time-up: the reps that decided it, under the '
+        'sub line', (tester) async {
+      await open(tester, _result(opponentScore: 240, opponentReps: 11));
+      expect(find.text('승리'), findsOneWidget);
+      expect(find.text('점수 같음 · 횟수로 승리'), findsOneWidget);
+      expect(find.text(' · 30초'), findsOneWidget);
+    });
+
+    for (final (outcome, departure, headline, reason) in const [
+      (MatchOutcome.win, BattleDeparture.opponentLeft, '승리', '상대가 나갔어요'),
+      (MatchOutcome.lose, BattleDeparture.myConnectionLost, '패배', '연결이 끊겼어요'),
+    ]) {
+      testWidgets('an online battle that ended by ${departure.name}: '
+          '$headline, and why, without the seconds', (tester) async {
+        await open(
+          tester,
+          _result(matchup: _online, outcome: outcome, departure: departure),
+        );
+        expect(find.text(headline), findsOneWidget);
+        expect(find.text(reason), findsOneWidget);
+        expect(find.text('진영'), findsOneWidget);
+        expect(find.textContaining('초'), findsNothing);
+      });
+    }
+
     for (final (name, press) in [
       ('홈으로', (WidgetTester t) => t.tap(find.text('홈으로'))),
       ('the back button', (WidgetTester t) => t.tap(find.byTooltip('홈으로'))),
@@ -184,6 +236,19 @@ void main() {
       final request = routes.settings.single.arguments! as BotMatchRequest;
       expect(request.exercise, ExerciseType.pushUp);
       expect(request.difficulty, BotDifficulty.beginner);
+      expect(find.byType(ResultScreen), findsNothing);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+    });
+
+    testWidgets('after an online battle 다시 대결 opens the online lobby with '
+        'the same exercise, in the place of the result', (tester) async {
+      await open(tester, _result(matchup: _online));
+      await tester.tap(find.text('다시 대결'));
+      await tester.pumpAndSettle();
+      expect(routes.names, [GymRatsApp.onlineBattleRoute]);
+      expect(routes.settings.single.arguments, ExerciseType.squat);
       expect(find.byType(ResultScreen), findsNothing);
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
