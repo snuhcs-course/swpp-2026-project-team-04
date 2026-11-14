@@ -139,11 +139,8 @@ void main() {
   });
 
   test('a server with no bests leaves best_reps for push-ups', () async {
-    answer = (_) => _json({
-      'nickname': '우현',
-      'best_reps': 32,
-      'last_match': null,
-    });
+    answer = (_) =>
+        _json({'nickname': '우현', 'best_reps': 32, 'last_match': null});
     final profile = await repository.fetchProfile();
     expect(profile.bests, isEmpty);
     expect(profile.bestOf(ExerciseType.pushUp)!.reps, 32);
@@ -212,24 +209,27 @@ void main() {
     expect(body['opponent_reps'], 9);
   });
 
-  test('saves a squat battle as squat, with its scores and no report', () async {
-    await repository.saveMatch(
-      const MatchRecord(
-        exercise: ExerciseType.squat,
-        opponentName: 'AI 봇 · 고수',
-        myReps: 7,
-        opponentReps: 9,
-        myScore: 150,
-        opponentScore: 90,
-      ),
-    );
-    final body = posted().single;
-    expect(body['exercise'], 'squat');
-    expect(body['opponent_name'], 'AI 봇 · 고수');
-    expect(body['my_score'], 150);
-    expect(body['opponent_score'], 90);
-    expect(body.containsKey('feedback'), isFalse);
-  });
+  test(
+    'saves a squat battle as squat, with its scores and no report',
+    () async {
+      await repository.saveMatch(
+        const MatchRecord(
+          exercise: ExerciseType.squat,
+          opponentName: 'AI 봇 · 고수',
+          myReps: 7,
+          opponentReps: 9,
+          myScore: 150,
+          opponentScore: 90,
+        ),
+      );
+      final body = posted().single;
+      expect(body['exercise'], 'squat');
+      expect(body['opponent_name'], 'AI 봇 · 고수');
+      expect(body['my_score'], 150);
+      expect(body['opponent_score'], 90);
+      expect(body.containsKey('feedback'), isFalse);
+    },
+  );
 
   test('one score alone is not sent: the server would refuse it', () async {
     await repository.saveMatch(
@@ -639,6 +639,11 @@ void main() {
       expect(forfeit.feedbackSummary!.line, '좋은 자세');
       expect(old.outcome, MatchOutcome.draw);
       expect(old.hasFeedback, isFalse);
+      // A forfeit is neither KO nor time up; an old row says nothing.
+      expect(forfeit.gameEnd, isNull);
+      expect(old.isOnline, isNull);
+      expect(old.feedbackSummary, isNull);
+      expect(forfeit.feedbackSummary!.issues, isEmpty);
     });
 
     test('an unknown outcome is a server error', () async {
@@ -694,6 +699,173 @@ void main() {
       answer = (_) => _json({'report': 'nope'});
       await expectLater(
         repository.fetchFeedback(9),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.kind,
+            'kind',
+            ApiErrorKind.server,
+          ),
+        ),
+      );
+    });
+  });
+
+  group('archive and statistics (J3)', () {
+    test('history rows read KO, time up and the online flag', () async {
+      answer = (_) => _json({
+        'items': [
+          {..._match, 'id': 3, 'reason': 'ko', 'is_online': true},
+          {..._match, 'id': 2, 'reason': 'time_up', 'is_online': false},
+          {
+            ..._match,
+            'id': 1,
+            'reason': 'disconnect_timeout',
+            'is_online': true,
+            'has_feedback': true,
+            'feedback_summary': {
+              'valid_reps': 9,
+              'invalid_reps': 2,
+              'accuracy': 0.8,
+              'top_issue': '더 깊이',
+              'issue_count': 2,
+              'issues': {'reject.insufficientDepth': 2, 'head_lead': 1},
+            },
+          },
+        ],
+        'next_before': null,
+      });
+      final [ko, timeUp, dropped] = (await repository.fetchHistory()).items;
+      expect((ko.gameEnd, ko.isOnline), (GameEnd.ko, true));
+      expect((timeUp.gameEnd, timeUp.isOnline), (GameEnd.timeUp, false));
+      expect((dropped.gameEnd, dropped.isOnline), (null, true));
+      expect(
+        [ko, timeUp, dropped].map((m) => m.opponentLeft),
+        everyElement(false),
+      );
+      expect(dropped.feedbackSummary!.issues, {
+        'reject.insufficientDepth': 2,
+        'head_lead': 1,
+      });
+    });
+
+    test('a win by forfeit or disconnect says the opponent left', () async {
+      answer = (_) => _json({
+        'items': [
+          {..._match, 'id': 4, 'outcome': 'win', 'reason': 'forfeit'},
+          {
+            ..._match,
+            'id': 3,
+            'outcome': 'win',
+            'reason': 'disconnect_timeout',
+          },
+          // The one who left lost; the other side's row says so, not this one.
+          {..._match, 'id': 2, 'outcome': 'loss', 'reason': 'forfeit'},
+          {..._match, 'id': 1, 'outcome': 'win', 'reason': 'ko'},
+        ],
+        'next_before': null,
+      });
+      final rows = (await repository.fetchHistory()).items;
+      expect(rows.map((m) => m.opponentLeft), [true, true, false, false]);
+    });
+
+    test('reads every statistics point with its codes', () async {
+      answer = (_) => _json({
+        'items': [
+          {
+            'id': 4,
+            'exercise': 'squat',
+            'played_at': '2026-11-09T15:30:00Z',
+            'my_reps': 12,
+            'my_score': 140,
+            'outcome': 'win',
+            'reason': 'ko',
+            'is_online': true,
+            'has_feedback': true,
+            'issues': {'elbow_flare': 1},
+          },
+          {
+            'id': 5,
+            'exercise': 'push_up',
+            'played_at': '2026-11-10T01:00:00Z',
+            'my_reps': 7,
+            'my_score': null,
+            'outcome': 'loss',
+            'reason': 'forfeit',
+            'is_online': false,
+            'has_feedback': false,
+            'issues': null,
+          },
+        ],
+      });
+      final [squat, pushUp] = await repository.fetchStatsPoints();
+      expect(requests.single.url.path, '/matches/stats');
+      expect(requests.single.url.queryParameters, isEmpty);
+      expect(squat.id, 4);
+      expect(squat.exercise, ExerciseType.squat);
+      expect(squat.playedAt.isUtc, isFalse);
+      expect(
+        squat.playedAt.isAtSameMomentAs(DateTime.utc(2026, 11, 9, 15, 30)),
+        isTrue,
+      );
+      expect((squat.reps, squat.score), (12, 140));
+      expect((squat.outcome, squat.gameEnd), (MatchOutcome.win, GameEnd.ko));
+      expect((squat.isOnline, squat.hasFeedback), (true, true));
+      expect(squat.issues, {'elbow_flare': 1});
+      expect((pushUp.score, pushUp.gameEnd), (null, null));
+      expect((pushUp.isOnline, pushUp.hasFeedback), (false, false));
+      expect(pushUp.issues, isEmpty);
+    });
+
+    test('sends the exercise and the start in UTC', () async {
+      answer = (_) => _json({'items': []});
+      final since = DateTime.utc(2026, 11, 8, 15);
+      await repository.fetchStatsPoints(
+        exercise: ExerciseType.pushUp,
+        since: since.toLocal(),
+      );
+      expect(requests.single.url.queryParameters, {
+        'exercise': 'push_up',
+        'since': '2026-11-08T15:00:00.000Z',
+      });
+    });
+
+    test('an old server without the new fields reads as offline', () async {
+      answer = (_) => _json({
+        'items': [
+          {
+            'id': 1,
+            'exercise': 'push_up',
+            'played_at': '2026-11-10T01:00:00Z',
+            'my_reps': 3,
+          },
+        ],
+      });
+      final [point] = await repository.fetchStatsPoints();
+      expect((point.isOnline, point.hasFeedback), (false, false));
+      expect((point.outcome, point.gameEnd, point.score), (null, null, null));
+    });
+
+    test('queued battles are sent before the statistics load', () async {
+      answer = (r) => r.method == 'POST' ? _json({}, 503) : _json({});
+      await expectLater(repository.saveMatch(_record(3)), throwsA(anything));
+      requests.clear();
+      answer = (r) =>
+          r.method == 'POST' ? _json({}, 201) : _json({'items': []});
+      await repository.fetchStatsPoints();
+      expect(requests.map((r) => '${r.method} ${r.url.path}'), [
+        'POST /matches',
+        'GET /matches/stats',
+      ]);
+    });
+
+    test('unreadable points are a server error', () async {
+      answer = (_) => _json({
+        'items': [
+          {'id': 1, 'exercise': 'plank'},
+        ],
+      });
+      await expectLater(
+        repository.fetchStatsPoints(),
         throwsA(
           isA<ApiException>().having(
             (e) => e.kind,

@@ -20,6 +20,7 @@ FeedbackSummary summarizeForm(
     accuracy: judged == 0 ? null : report.validReps / judged,
     topIssue: _fit(issues.firstOrNull?.title),
     issueCount: issues.length,
+    issues: {for (final issue in issues) ?issue.code: issue.count},
   );
 }
 
