@@ -49,6 +49,9 @@ void main() {
       tester,
     ) async {
       await open(tester, const LoginScreen());
+      // The app is called GymMouse now (user, 2026-11-14).
+      expect(find.text('GYMMOUSE'), findsOneWidget);
+      expect(find.text('GYMRATS'), findsNothing);
       expect(find.text('로그인하고\n한 판 붙어볼까요?'), findsOneWidget);
       expect(field('아이디'), findsOneWidget);
       expect(field('비밀번호'), findsOneWidget);
