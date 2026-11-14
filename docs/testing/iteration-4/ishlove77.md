@@ -6,6 +6,60 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-14 · code at commit `51052b7` · step `feat/cumulative_feedback` (team plan #9, P12 cumulative feedback)
+The data for the archive and the statistics (UAT-4 AC3), no screen (the screens are 송우현's W7): the server's
+`GET /matches/stats` gives every battle of a period as a compact point, summaries keep stable issue codes, and rows
+carry `is_online`; the app groups by local midnight. `HistoryViewModel` adds the archive summary (last 7 days, streak,
+score growth, best gains) next to the list, and `FeedbackStatsViewModel` gives, per period (all, this month, this
+week), the average counted reps, reps by day and issue counts. Match records read KO, bot or online, and a win by the
+opponent leaving. Commit `a21a431` is the feature; `51052b7` merges `origin/main` (c3866e5) into it. Commands from the
+Plan in `gymrats_app/` on macOS (Flutter 3.47.5 / Dart 3.13.4), and the server tests in `server/`
+(`.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats`).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.3% (542/546); `feedback_stats`, `feedback_summary`, `match_record` 100% | 11/14 | `coverage_per_file.sh` + `coverage_by_layer.py` |
+| ViewModel | flutter_test, fakes | 90% | 97.1% (1254/1292); `history_viewmodel`, `feedback_stats_viewmodel` 100% | 11/14 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 95.8% (2613/2727); `feedback_stats`, `form_summary`, `server_user_repository` 100%, `form_analyzer` 97.7% (its unreached lines are not J3's) | 11/14 | same |
+| View | flutter_test (widget) | 75% | 95.0% (6342/6676) (no view file changed in this step) | 11/14 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% total; `matches/serializers.py` 100%, `matches/views.py` 93% (the uncovered lines are IntegrityError race paths from before J3) | 11/14 | pytest `--cov` |
+
+- **Tests:** `flutter test` 2504 passed, 0 failed, 10 skipped (pre-existing, as in the J2 entry). `flutter analyze` no
+  issues. Server `pytest` 114 passed, 0 failed. App total 95.6% (10795/11286).
+- **Not in the numbers:** `test/screens/online_preparation_test.dart` hit the script's 180-second limit again (it passes
+  in `flutter test`); no J3 file depends on it.
+- **Manual check (Android emulator Medium_Phone, 2026-11-14):** a temporary demo (not committed) fed 34 dummy battles
+  over 5 weeks into both view models: 7-day 136 reps / 10 battles, 8-day streak, bars Sunday to today, growth 80→240
+  (push-up) and 84→200 (squat), +25/+30 best-gain chips, KO and online rows, load more; this week's average 13.8 =
+  124 / 9 with Monday-to-Sunday bars and six issue codes; the period and exercise tabs recompute. All matched counting
+  the dummy data by hand. Not checked against the team server (needs the redeploy, planned with the PM).
+- **Reviewer:** APPROVE in round 1 (four Minor fixed: UTC day cut, battles after now, unbounded `IN` list, a comment)
+  and round 2 after aligning with 송우현's data list (three Minor fixed: `firstPlayedAt` of the first scored battle,
+  future battles out of streak/growth/gains, a doc row).
+
+Test cases added or changed:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/feedback_stats_test.dart` (new, 6) | point defaults; value equality of day reps and issue counts; a `reject.` code names its reason (unknown reason null); average per battle, none without battles; growth first and best score; best gain by match id |
+| Model | `test/models/feedback_summary_test.dart`, `match_record_test.dart` (updated) | issue codes read and written, missing ones empty; `isOnline` unknown by default, `opponentLeft` false by default |
+| Service | `test/services/feedback/feedback_stats_test.dart` (new, 20) | week starts Monday at local midnight (Monday, Sunday, across a year); month from the 1st; per period: average, 7 slots Mon–Sun, one slot per day of the month, only battle days for all, issue counts sorted; empty period; the second before Monday; the last 7 days with zeros; streak from today or yesterday, 0 when older, across a month; growth and best gains (ties, lower scores, the first battle, no score, same time by id); a UTC time cut at local midnight; a battle after now left out everywhere |
+| Service | `test/services/feedback/form_analyzer_test.dart`, `form_summary_test.dart` (updated) | each issue's stable code and count (rejections per rep); good points and notes have none; the summary's codes |
+| Service | `test/services/user/server_user_repository_test.dart` (updated, +7) | rows read KO, time up, online and a win by the opponent leaving; statistics points with codes; exercise and start sent in UTC; an old server reads as offline; queued battles go first; unreadable points are a server error |
+| ViewModel | `test/viewmodels/history_viewmodel_test.dart` (updated, +12) | the summary after the first page; best gain per row; the list before the summary; a failed summary keeps the list and retries; later pages keep it; no request without battles or after a failed page; an earlier load's summary or failure dropped; dispose; a repository that is a statistics source; none without a source |
+| ViewModel | `test/viewmodels/feedback_stats_viewmodel_test.dart` (new, 12) | loading; this week by default; switching period or exercise without a new request; same tab no notify; a tab chosen while loading; first tab given; zeros without battles; failure and retry; generic message; double load; dispose; the clock at each computation |
+| Server | `server/tests/test_stats.py` (new, 13) | points oldest first with codes and fields; old feedback without codes; exercise and `since` filters (the start included); uncapped; bad queries 422; login 401; only the user's battles; online flag in history and stats; a single match's flag; issue-code checks; codes kept in the list summary; at most 3 queries for stats and history |
+| Support | `test/support/feedback_fakes.dart` (new) | `FakeFeedbackStatsSource`, `FakeStatsUserRepository`, `statsPoint` (for W7's screen tests too) |
+
+Acceptance criteria → tests:
+- **UAT-4 AC3 (average counted reps, the graph and the issue counts for all / this month / this week):**
+  `this week: average, 7 slots Monday to Sunday, issue counts`, `this month: one slot per day from the 1st to today`,
+  `every record: only the days with battles, oldest first`, `switching the period needs no new request (UAT-4 AC3)`,
+  `test_points_are_oldest_first_with_issue_codes`, `test_points_filter_by_exercise_and_since`. The screen is W7.
+- **Archive values (weekReps, weekMatches, streakDays, weekDaily, growth, bestGain, isOnline, gameEnd):** the `archive`
+  group in `feedback_stats_test.dart`, `loads after the first page, over every battle`, `the best gain of each row`,
+  `history rows read KO, time up and the online flag`.
+
 #### 2026-11-14 · code at commit `6d9fb89` · step `feat/battle_bgm` (team plan #8, Codex review of PR #53, round 2)
 Two more Codex findings (P2): leaving an online battle before its result left the battle music playing over the play
 screen, and a win or lose jingle still loading when the sound went off played once the sound came back. A battle left
