@@ -289,13 +289,22 @@ class FormAnalyzer {
 
   /// Whether the counted reps kept their depth: [DepthTrend.dropped] exactly
   /// when [analyze] reports the late-depth issue.
+  ///
+  /// A loss within [_depthTolerance] of the limit counts as reaching it, so
+  /// 0.95 → 0.80 is the 0.15 it reads as, not the 0.1499… that binary
+  /// subtraction gives.
   DepthTrend depthTrend(FormReport report) {
     final halves = depthHalves(report);
     if (halves == null) return DepthTrend.tooFew;
-    return halves.early - halves.late >= depthLossLimit(report.exercise)
+    final loss = halves.early - halves.late;
+    return loss >= depthLossLimit(report.exercise) - _depthTolerance
         ? DepthTrend.dropped
         : DepthTrend.kept;
   }
+
+  /// Far below any depth the camera can tell apart, far above the rounding
+  /// error of a subtraction.
+  static const _depthTolerance = 1e-9;
 
   /// Which arm bent more while the head was down: [ArmBalance.leftDeeper] or
   /// [ArmBalance.rightDeeper] exactly when [analyze] reports the imbalance

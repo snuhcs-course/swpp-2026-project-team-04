@@ -170,6 +170,29 @@ void main() {
       expect(finding.fix, contains('허벅지'));
     });
 
+    test('a loss of exactly 0.15 is flagged despite binary rounding', () {
+      // 0.95 - 0.80 is 0.1499999… in binary floating point.
+      expect(0.95 - 0.80 < 0.15, isTrue);
+      final report = _withDepths([0.95, 0.95, 0.80, 0.80]);
+      expect(analyzer.depthTrend(report), DepthTrend.dropped);
+      expect(analyzer.analyze(report).first.code, 'depth_loss');
+    });
+
+    test(
+      'a push-up loss of exactly 0.25 is flagged despite binary rounding',
+      () {
+        // 1.15 - 0.9 is 0.2499999… in binary floating point.
+        expect(1.15 - 0.9 < 0.25, isTrue);
+        final report = _withDepths([
+          1.15,
+          1.15,
+          0.9,
+          0.9,
+        ], exercise: ExerciseType.pushUp);
+        expect(analyzer.depthTrend(report), DepthTrend.dropped);
+      },
+    );
+
     test('squats losing less than 0.15 kept their depth', () {
       final report = _withDepths([0.95, 0.95, 0.85, 0.85]);
       expect(analyzer.depthTrend(report), DepthTrend.kept);
