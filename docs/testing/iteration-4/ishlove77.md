@@ -6,6 +6,26 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-14 · code at commit `5309c66` · step `feat/squat_feedback` (team plan #12, Codex review of PR #57)
+Codex left three P2 findings on PR #57. One is fixed here: a depth loss exactly at the limit read as kept, because
+0.95 − 0.80 is 0.1499… in binary floating point (and 1.15 − 0.9 for the push-up 0.25 line); `FormAnalyzer.depthTrend`
+now compares with a 1e-9 tolerance. The other two are kept out of this PR by the user's decision and tracked: the
+current `FeedbackScreen` (W8's file) words its chart sentences by its own push-up rules (#58, W8), and bot squat samples
+have no depth because `SquatDemoJudge` (S4's file) sets none (#59, S4).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Service | flutter_test, fakes | 85% | `form_analyzer.dart` 98.5% (unchanged; the new lines are covered) | 11/14 | `flutter test --coverage test/services/feedback/` + `coverage_by_layer.py --files` |
+| Other layers | – | – | unchanged from the `ddef3f7` entry (no other file changed) | 11/14 | – |
+
+- **Tests:** `flutter test` 2727 passed, 0 failed, 10 skipped. `flutter analyze` no issues.
+- **Reviewer:** APPROVE (round 3); its one Minor (the push-up boundary test used depths that subtract exactly) was fixed
+  before the commit, so both boundary tests fail on the old comparison.
+
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/feedback/squat_form_analyzer_test.dart` (updated, +2) | a squat loss of exactly 0.15 and a push-up loss of exactly 0.25 are `dropped` despite binary rounding |
+
 #### 2026-11-14 · code at commit `ddef3f7` · step `feat/squat_feedback` (team plan #12, P15 squat feedback)
 Squat form feedback and the view-model values of the result report and the form feedback (no screen: 송우현's W6/W8
 draw them). Squat battles (bot and online) now save a form report that keeps its exercise; `FormAnalyzer` judges a
