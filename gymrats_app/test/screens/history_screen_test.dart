@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_stats.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
+import 'package:gymrats_app/screens/feedback_stats_screen.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
 import 'package:gymrats_app/screens/match_feedback_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
@@ -182,6 +184,105 @@ void main() {
       await tester.tap(find.byTooltip('뒤로'));
       await tester.pumpAndSettle();
       expect(find.text('home'), findsOneWidget);
+    });
+  });
+
+  group('the way into 기간별 통계 (W7-STATS 6)', () {
+    final pill = find.byKey(const ValueKey('archive-stats-pill'));
+
+    testWidgets('a lime pill at the right end of the header row', (
+      tester,
+    ) async {
+      withBattles();
+      await open(tester, size: const Size(360, 780));
+      await tester.pumpAndSettle();
+      expect(find.text('기간별 통계'), findsOneWidget);
+      final rect = tester.getRect(pill);
+      expect(rect.height, 44);
+      // 20 from the right edge, on the back button's row.
+      expect(rect.right, 340);
+      expect(
+        rect.center.dy,
+        moreOrLessEquals(tester.getCenter(find.byTooltip('뒤로')).dy),
+      );
+      final material = tester.widget<Material>(
+        find.ancestor(of: pill, matching: find.byType(Material)).first,
+      );
+      expect(material.color, AppColors.accent);
+      expect(
+        (material.shape! as StadiumBorder).side,
+        const BorderSide(color: AppColors.ink, width: 1.5),
+      );
+    });
+
+    testWidgets('it opens the statistics on this week and both exercises', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSemantics(pill),
+        isSemantics(label: '기간별 통계', isButton: true, hasTapAction: true),
+      );
+      await tester.tap(pill);
+      await tester.pumpAndSettle();
+      expect(find.byType(FeedbackStatsScreen), findsOneWidget);
+      expect(find.text('03 / STATS'), findsOneWidget);
+      bool picked(String label) =>
+          isSemantics(isSelected: true)
+              .matches(tester.getSemantics(find.text(label)), {});
+      expect(picked('이번 주'), isTrue);
+      expect(picked('둘 다'), isTrue);
+      // The archive's summary, then the statistics' own load.
+      expect(repository.stats.calls, hasLength(2));
+      // The archive's clock: Saturday 11/14 is in the week from 11/9.
+      expect(find.text('이번 주 · 11/9 월 ~ 11/15 일'), findsOneWidget);
+      await tester.tap(find.byTooltip('뒤로'));
+      await tester.pumpAndSettle();
+      expect(find.text('기록보관소'), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('no statistics source: no pill', (tester) async {
+      await open(
+        tester,
+        using: FakeUserRepository()..historyPages = [_battles],
+      );
+      await tester.pumpAndSettle();
+      expect(pill, findsNothing);
+      expect(find.text('기간별 통계'), findsNothing);
+      expect(find.text('03 / ARCHIVE'), findsOneWidget);
+    });
+
+    testWidgets('on a narrow phone with large text the tag is cut, the pill '
+        'stays whole', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      withBattles();
+      await open(tester, size: const Size(320, 640));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      final tag = tester.renderObject<RenderParagraph>(
+        find.text('03 / ARCHIVE'),
+      );
+      expect(tag.didExceedMaxLines, isTrue);
+      expect(
+        tester
+            .renderObject<RenderParagraph>(find.text('기간별 통계'))
+            .didExceedMaxLines,
+        isFalse,
+      );
+    });
+
+    testWidgets('the 7-day card is named from its first day to today', (
+      tester,
+    ) async {
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      expect(find.text('최근 7일 · 11/8 ~ 오늘'), findsOneWidget);
     });
   });
 

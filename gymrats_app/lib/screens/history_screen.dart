@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/feedback/feedback_stats.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/feedback_stats_viewmodel.dart';
 import '../viewmodels/history_viewmodel.dart';
 import '../widgets/archive_cards.dart';
+import '../widgets/archive_chart.dart';
 import '../widgets/archive_match_row.dart';
 import '../widgets/auth_form.dart';
 import '../widgets/lobby_parts.dart';
+import 'feedback_stats_screen.dart';
 import 'match_feedback_screen.dart';
 
 /// 기록보관소 (BArchive), opened from home's 03 / ARCHIVE: the last 7 days,
 /// the score growth per exercise, and the newest battles; "전체 보기" opens
 /// every battle, loaded page by page as that list scrolls. A row with
-/// feedback opens it.
+/// feedback opens it. The lime "기간별 통계" pill in the header opens the
+/// statistics (W7-STATS 6) when the repository is a statistics source.
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key, this.createViewModel, this.now});
 
@@ -33,9 +38,16 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   late final HistoryViewModel _viewModel;
 
+  /// The statistics' battles; null without a source, and then no pill.
+  late final FeedbackStatsSource? _statsSource;
+
   @override
   void initState() {
     super.initState();
+    _statsSource = switch (context.read<UserRepository>()) {
+      final FeedbackStatsSource source => source,
+      _ => null,
+    };
     _viewModel =
         widget.createViewModel?.call() ??
         HistoryViewModel(
@@ -54,6 +66,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   DateTime _now() => widget.now?.call() ?? DateTime.now();
 
+  /// 기간별 통계 on this week and both exercises, on the same clock.
+  void _openStats(FeedbackStatsSource source) => Navigator.push<void>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => FeedbackStatsScreen(
+        createViewModel: () =>
+            FeedbackStatsViewModel(source: source, now: widget.now),
+        now: widget.now,
+      ),
+    ),
+  );
+
   void _openAll() => Navigator.push<void>(
     context,
     MaterialPageRoute(
@@ -71,10 +95,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Consumer<HistoryViewModel>(
         builder: (context, vm, _) {
           final state = vm.state;
+          final source = _statsSource;
           return LobbyPage(
             behind: const LobbyWatermark('LOG', left: _watermarkLeft),
             children: [
-              const _Header(title: '기록보관소'),
+              _Header(
+                title: '기록보관소',
+                onOpenStats: source == null ? null : () => _openStats(source),
+              ),
               const SizedBox(height: AppSpacing.s16),
               ...switch (state.phase) {
                 HistoryPhase.loading => const [
@@ -145,18 +173,111 @@ class _HistoryScreenState extends State<HistoryScreen> {
 /// Where the faint "LOG" starts, as designed.
 const _watermarkLeft = 178.0;
 
-/// The back button, "03 / ARCHIVE" and the slanted [title].
+/// The back button, "03 / ARCHIVE" (cut with "…" when narrow) and, with
+/// [onOpenStats], the "기간별 통계" pill at the right end; then the slanted
+/// [title]. As `LobbyPageHeader`, with room for the pill.
 class _Header extends StatelessWidget {
-  const _Header({required this.title});
+  const _Header({required this.title, this.onOpenStats});
 
   final String title;
+  final VoidCallback? onOpenStats;
 
   @override
-  Widget build(BuildContext context) => LobbyPageHeader(
-    tag: '03 / ARCHIVE',
-    title: title,
-    tagColor: AppColors.textMuted,
-  );
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final onOpenStats = this.onOpenStats;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            LobbySquareButton(
+              icon: Icons.chevron_left_rounded,
+              tooltip: '뒤로',
+              onPressed: () => Navigator.maybePop(context),
+            ),
+            const SizedBox(width: AppSpacing.s12),
+            Expanded(
+              child: Text(
+                '03 / ARCHIVE',
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: text.lobbyTag.copyWith(color: AppColors.textMuted),
+              ),
+            ),
+            if (onOpenStats != null) ...[
+              const SizedBox(width: AppSpacing.s12),
+              _StatsPill(onTap: onOpenStats),
+            ],
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s20),
+        Semantics(
+          header: true,
+          child: LobbySkew(
+            degrees: 10,
+            child: Text(title, style: text.lobbyPageTitle),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "기간별 통계" with a bar icon on a lime pill with an ink edge: the way
+/// into the statistics (W7-STATS 6), a 44 high button.
+class _StatsPill extends StatelessWidget {
+  const _StatsPill({required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const _height = 44.0;
+  static const _edge = 1.5;
+  static const _iconSize = 18.0;
+
+  @override
+  Widget build(BuildContext context) {
+    const shape = StadiumBorder(
+      side: BorderSide(color: AppColors.ink, width: _edge),
+    );
+    // One button for a screen reader; the icon is decoration.
+    return Semantics(
+      button: true,
+      label: '기간별 통계',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.accent,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const ValueKey('archive-stats-pill'),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: _height),
+            child: Padding(
+              // W7A's 12 / 14, on the 12 step.
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const ArchiveStatsIcon(size: _iconSize),
+                  const SizedBox(width: AppSpacing.s4),
+                  Text(
+                    '기간별 통계',
+                    maxLines: 1,
+                    style: Theme.of(context).textTheme.archiveLabel
+                        .copyWith(color: AppColors.ink),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// "최근 경기", and "전체 보기 ›" when there are more battles than shown.

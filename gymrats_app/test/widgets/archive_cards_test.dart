@@ -86,7 +86,8 @@ void main() {
       tester,
     ) async {
       await show(tester, ArchiveWeekCard(stats: _stats()));
-      expect(find.text('최근 7일'), findsOneWidget);
+      // Named by its first day, unlike the statistics' week from Monday.
+      expect(find.text('최근 7일 · 11/8 ~ 오늘'), findsOneWidget);
       expect(find.text('123회  · 11판'), findsOneWidget);
       expect(find.text('8일 연속'), findsOneWidget);
       expect(find.byIcon(Icons.local_fire_department_rounded), findsOneWidget);
@@ -156,7 +157,47 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets('a quiet week: every bar at the least height', (tester) async {
+    testWidgets('a day without battles is a thin light line, today too', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        ArchiveWeekCard(stats: _stats(reps: const [12, 27, 0, 10, 43, 16, 0])),
+      );
+      BoxDecoration look(int i) =>
+          tester
+                  .widget<Container>(find.byKey(ValueKey('archive-bar-$i')))
+                  .decoration!
+              as BoxDecoration;
+      for (final i in [2, 6]) {
+        expect(
+          tester.getSize(find.byKey(ValueKey('archive-bar-$i'))).height,
+          ArchiveWeekCard.zeroBarHeight,
+        );
+        expect(look(i).color, AppColors.border);
+        expect(
+          look(i).borderRadius,
+          const BorderRadius.all(Radius.circular(2)),
+        );
+      }
+      expect(look(0).color, AppColors.chartBar);
+      expect(look(0).borderRadius, const BorderRadius.all(Radius.circular(6)));
+      expect(
+        tester.getSize(find.byKey(const ValueKey('archive-bar-4'))).height,
+        ArchiveWeekCard.barsHeight,
+      );
+      // A few reps still get the least bar.
+      await show(
+        tester,
+        ArchiveWeekCard(stats: _stats(reps: const [1, 0, 0, 0, 0, 0, 100])),
+      );
+      expect(
+        tester.getSize(find.byKey(const ValueKey('archive-bar-0'))).height,
+        ArchiveWeekCard.barMinHeight,
+      );
+    });
+
+    testWidgets('a quiet week: every bar the thin line', (tester) async {
       await show(
         tester,
         ArchiveWeekCard(stats: _stats(streakDays: 0, reps: List.filled(7, 0))),
@@ -164,15 +205,25 @@ void main() {
       for (var i = 0; i < 7; i++) {
         expect(
           tester.getSize(find.byKey(ValueKey('archive-bar-$i'))).height,
-          ArchiveWeekCard.barMinHeight,
+          ArchiveWeekCard.zeroBarHeight,
         );
       }
     });
 
-    testWidgets('no days given: no bars', (tester) async {
+    testWidgets('no days given: no bars, no dates in the name', (tester) async {
       await show(tester, const ArchiveWeekCard(stats: ArchiveStats()));
       expect(find.text('0회  · 0판'), findsOneWidget);
+      expect(find.text('최근 7일'), findsOneWidget);
       expect(find.byKey(const ValueKey('archive-bar-0')), findsNothing);
+    });
+
+    test('sinceLabel: month/day of the first of the 7 days', () {
+      expect(
+        ArchiveWeekCard.sinceLabel(
+          DayReps(date: DateTime(2026, 10, 31), reps: 3),
+        ),
+        '10/31',
+      );
     });
 
     test('dayLabel: the weekday, or 오늘 for the last', () {

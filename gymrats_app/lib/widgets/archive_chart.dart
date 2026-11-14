@@ -159,18 +159,59 @@ class ArchiveGrowthPainter extends CustomPainter {
 }
 
 /// The heights of the archive's day bars: the most reps fill [max], the
-/// others in proportion, and every bar is at least [min] high, also on a
-/// day without battles.
+/// others in proportion but at least [min] high, and a day without battles
+/// is a [zero] high line (W7-STATS 6).
 List<double> archiveBarHeights(
   List<int> reps, {
   required double max,
   required double min,
+  required double zero,
 }) {
   final most = reps.fold(0, math.max);
   return [
     for (final count in reps)
-      most == 0 ? min : math.max(min, (count / most * max).roundToDouble()),
+      count == 0 ? zero : math.max(min, (count / most * max).roundToDouble()),
   ];
+}
+
+/// The statistics pill's bar icon (W7-STATS 6): a floor line and three
+/// bars, in ink.
+class ArchiveStatsIcon extends StatelessWidget {
+  const ArchiveStatsIcon({super.key, this.size = 18});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: Size.square(size),
+    painter: const ArchiveStatsIconPainter(),
+  );
+}
+
+/// Draws the design's 24-point bar icon, scaled to the canvas.
+class ArchiveStatsIconPainter extends CustomPainter {
+  const ArchiveStatsIconPainter();
+
+  static const _box = 24.0;
+  static const _stroke = 2.4;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / _box, size.height / _box);
+    final pen = Paint()
+      ..color = AppColors.ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _stroke
+      ..strokeCap = StrokeCap.round;
+    canvas
+      ..drawLine(const Offset(4, 20), const Offset(20, 20), pen)
+      ..drawLine(const Offset(7, 16), const Offset(7, 11), pen)
+      ..drawLine(const Offset(12, 16), const Offset(12, 6), pen)
+      ..drawLine(const Offset(17, 16), const Offset(17, 8), pen);
+  }
+
+  @override
+  bool shouldRepaint(ArchiveStatsIconPainter oldDelegate) => false;
 }
 
 /// A small line drawing of [exercise] in ink: a push-up from the side, or

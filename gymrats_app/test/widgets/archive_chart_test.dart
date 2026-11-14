@@ -58,16 +58,45 @@ void main() {
   group('archiveBarHeights', () {
     test('the mockup reps give the mockup bars', () {
       expect(
-        archiveBarHeights(const [7, 8, 8, 21, 24, 26, 29], max: 58, min: 6),
+        archiveBarHeights(
+          const [7, 8, 8, 21, 24, 26, 29],
+          max: 58,
+          min: 6,
+          zero: 3,
+        ),
         [14, 16, 16, 42, 48, 52, 58],
+      );
+      // W7-STATS's archive (W7Archive.dc.html), with a day without battles.
+      expect(
+        archiveBarHeights(
+          const [12, 27, 0, 10, 43, 16, 28],
+          max: 58,
+          min: 6,
+          zero: 3,
+        ),
+        [16, 36, 3, 13, 58, 22, 38],
       );
     });
 
-    test('a day without battles still gets the least bar', () {
-      expect(archiveBarHeights(const [0, 1], max: 58, min: 6), [6, 58]);
-      expect(archiveBarHeights(const [0, 0, 0], max: 58, min: 6), [6, 6, 6]);
-      expect(archiveBarHeights(const [], max: 58, min: 6), isEmpty);
-    });
+    test(
+      'a day without battles is the thin line; a few reps the least bar',
+      () {
+        expect(archiveBarHeights(const [0, 1], max: 58, min: 6, zero: 3), [
+          3,
+          58,
+        ]);
+        expect(archiveBarHeights(const [1, 100], max: 58, min: 6, zero: 3), [
+          6,
+          58,
+        ]);
+        expect(archiveBarHeights(const [0, 0, 0], max: 58, min: 6, zero: 3), [
+          3,
+          3,
+          3,
+        ]);
+        expect(archiveBarHeights(const [], max: 58, min: 6, zero: 3), isEmpty);
+      },
+    );
   });
 
   group('ArchiveGrowthPainter', () {
@@ -225,6 +254,34 @@ void main() {
           const ArchiveExerciseIconPainter(ExerciseType.squat),
         ),
         isTrue,
+      );
+    });
+  });
+
+  group('ArchiveStatsIcon', () {
+    testWidgets("the statistics pill's icon: a floor and three bars in ink", (
+      tester,
+    ) async {
+      await tester.pumpWidget(const Center(child: ArchiveStatsIcon()));
+      final icon = find.byType(ArchiveStatsIcon);
+      expect(tester.getSize(icon), const Size.square(18));
+      expect(
+        icon,
+        paints
+          ..line(
+            p1: const Offset(4, 20),
+            p2: const Offset(20, 20),
+            color: AppColors.ink,
+          )
+          ..line(p1: const Offset(7, 16), p2: const Offset(7, 11))
+          ..line(p1: const Offset(12, 16), p2: const Offset(12, 6))
+          ..line(p1: const Offset(17, 16), p2: const Offset(17, 8)),
+      );
+      expect(
+        const ArchiveStatsIconPainter().shouldRepaint(
+          const ArchiveStatsIconPainter(),
+        ),
+        isFalse,
       );
     });
   });

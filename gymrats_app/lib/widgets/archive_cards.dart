@@ -35,14 +35,19 @@ class ArchiveWeekCard extends StatelessWidget {
 
   final ArchiveStats stats;
 
-  /// The bars' room and the least bar, as designed.
+  /// The bars' room, the least bar and a day without battles, as designed.
   static const barsHeight = 58.0;
   static const barMinHeight = 6.0;
+  static const zeroBarHeight = 3.0;
   static const _barRadius = 6.0;
+  static const _zeroRadius = 2.0;
   static const _chipHeight = 32.0;
   static const _flameSize = 16.0;
 
   static const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+
+  /// The first of the 7 days in the card's name, e.g. "11/8".
+  static String sinceLabel(DayReps day) => '${day.date.month}/${day.date.day}';
 
   /// The bar's letter under it: the weekday, "오늘" for the last one.
   static String dayLabel(DayReps day, {required bool isToday}) =>
@@ -56,6 +61,7 @@ class ArchiveWeekCard extends StatelessWidget {
       [for (final day in days) day.reps],
       max: barsHeight,
       min: barMinHeight,
+      zero: zeroBarHeight,
     );
     String label(int i) => dayLabel(days[i], isToday: i == days.length - 1);
     return ArchiveCard(
@@ -69,8 +75,22 @@ class ArchiveWeekCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '최근 7일',
+                    // "최근 7일 · 11/8 ~ 오늘": the last 7 days up to today,
+                    // unlike the statistics' week from Monday (W7-STATS 6).
+                    Text.rich(
+                      TextSpan(
+                        text: '최근 7일',
+                        children: [
+                          if (days.isNotEmpty)
+                            TextSpan(
+                              text: ' · ${sinceLabel(days.first)} ~ 오늘',
+                              style: text.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                        ],
+                      ),
                       style: text.bodySmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppColors.textSecondary,
@@ -129,11 +149,17 @@ class ArchiveWeekCard extends StatelessWidget {
                                 key: ValueKey('archive-bar-$i'),
                                 height: heights[i],
                                 decoration: BoxDecoration(
-                                  color: i == days.length - 1
+                                  color: days[i].reps == 0
+                                      ? AppColors.border
+                                      : i == days.length - 1
                                       ? AppColors.ink
                                       : AppColors.chartBar,
-                                  borderRadius: const BorderRadius.all(
-                                    Radius.circular(_barRadius),
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(
+                                      days[i].reps == 0
+                                          ? _zeroRadius
+                                          : _barRadius,
+                                    ),
                                   ),
                                 ),
                               ),
