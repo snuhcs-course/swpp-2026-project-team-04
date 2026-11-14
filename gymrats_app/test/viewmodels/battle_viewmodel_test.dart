@@ -14,7 +14,7 @@ import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
-import 'package:gymrats_app/services/pose/squat_demo_judge.dart';
+import 'package:gymrats_app/services/pose/squat_rep_judge.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 
@@ -1233,7 +1233,7 @@ void main() {
       () async {
         battle = make(ExerciseType.squat);
         expect(battle.counter.exercise, ExerciseType.squat);
-        expect(battle.counter.passDepth, SquatDemoJudge().passDepth);
+        expect(battle.counter.passDepth, SquatRepJudge().passDepth);
         await battle.start();
         // Legs hidden, as in a push-up seen from the floor: not a squat setup.
         await frameAt(1, standingFrame());
@@ -1248,32 +1248,42 @@ void main() {
       },
     );
 
-    test('a squat counts by the lenient squat judge of the bot battle, which '
-        'a moved phone does not overrule', () async {
-      battle = make(ExerciseType.squat);
-      await battle.start();
-      PoseFrame standing() => standingFrame(showHips: true);
-      // The hips down at the knees: the bottom of a squat.
-      PoseFrame down() => standingFrame(
-        showHips: true,
-        move: {
-          BodyLandmark.leftHip: (530, 680),
-          BodyLandmark.rightHip: (470, 680),
-        },
-      );
-      await frameAt(1, standing());
-      await frameAt(2.5, standing());
-      await frameAt(5.5, standing());
-      expect(battle.state.started, isTrue);
-      // Beginning the round took the phone's angle; it moves after that.
-      phone.isDisturbed = true;
-      await frameAt(6, standing());
-      await frameAt(6.8, down());
-      await frameAt(7.6, standing());
-      expect(battle.state.myReps, 1);
-      expect(battle.state.myInvalidReps, 0);
-      expect(battle.state.feedback!.valid, isTrue);
-    });
+    test(
+      'a squat bot battle uses the shared judge and rejects a moved phone',
+      () async {
+        battle = make(ExerciseType.squat);
+        await battle.start();
+        PoseFrame standing() => standingFrame(showHips: true);
+        // The hips down at the knees: the bottom of a squat.
+        PoseFrame down() => standingFrame(
+          showHips: true,
+          move: {
+            BodyLandmark.leftHip: (530, 680),
+            BodyLandmark.rightHip: (470, 680),
+          },
+        );
+        await frameAt(1, standing());
+        await frameAt(2.5, standing());
+        await frameAt(5.5, standing());
+        expect(battle.state.started, isTrue);
+        // Beginning the round took the phone's angle; it moves after that.
+        phone.isDisturbed = true;
+        // Keep camera cadence: gaps over 500 ms deliberately abandon tracking.
+        for (var i = 0; i < 5; i++) {
+          await frameAt(5.6 + i * .1, standing());
+        }
+        for (var i = 0; i < 5; i++) {
+          await frameAt(6.1 + i * .1, down());
+        }
+        for (var i = 0; i < 7; i++) {
+          await frameAt(6.6 + i * .1, standing());
+        }
+        expect(battle.state.myReps, 0);
+        expect(battle.state.myInvalidReps, 1);
+        expect(battle.state.feedback!.valid, isFalse);
+        expect(battle.state.feedback!.reason, RejectReason.phoneMoved);
+      },
+    );
 
     test("the app in the background starts the setup's hold over, with the "
         "setup's own times", () async {

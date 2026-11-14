@@ -18,7 +18,6 @@ import '../services/opponent/opponent_source.dart';
 import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
 import '../services/pose/setup_checker.dart';
-import '../services/pose/squat_demo_judge.dart';
 import '../services/user/user_repository.dart';
 import 'rep_counter_viewmodel.dart';
 
@@ -281,9 +280,6 @@ class BattleViewModel extends ChangeNotifier {
     clock: clock,
     roundLength: counterRound,
     exercise: exercise,
-    exerciseJudge: exercise == ExerciseType.squat
-        ? SquatDemoJudge(clock: clock)
-        : null,
   );
 
   /// How long the counter's own round lasts in [botCounter]: far beyond any

@@ -27,3 +27,58 @@ These are the user inputs visible in the current conversation, not a complete se
 - 좋아.
 - 스마트폰에 다운로드해줘.
 - 좋아. 테스트 완료했어. 이거 PR 올려줘.
+
+## S4 / issue #59 task inputs, 2026-11-14
+
+These are the user inputs visible in this chat from the issue handoff through the commit/push request, in order. The two short decision replies came through the question UI. Reviewed for credentials and unrelated personal information; no redaction was needed. This is a record of this task's inputs, not a complete export of the iteration or other chats. Assistant responses, hidden reasoning and tool output are not included.
+
+### 1. Issue handoff and implementation request
+
+```text
+잠깐 다음 메세지 읽고 작업해줘.
+
+@송우현  @한상우  각각 issue확인 바람
+우현에게 (결과 리포트 답장, #58, 테스트 예외 동의)
+
+▎ 우현, J4 결과 리포트 반영했어. PR #57에 올라가 있어.
+▎ 1. 상대 인정 횟수는 ResultState.opponentReps(int)로 추가했어.
+▎ 2. 퇴장 여부는 ResultState.departure(BattleDeparture)로 추가했어. 기존 opponentLeft는 여기서 계산되는 getter로 남겨 뒀어. 지난 경기는 서버 기록에 "상대가 나감"만 있어서 opponentLeft 아니면 none이야.
+▎ 3. recentScores랑 평균은 같은 종목이면 봇·온라인을 섞어서 계산해. 네 의견대로 유지할게.
+▎ 4. 스쿼트도 이제 자세 리포트를 저장해서 nextTip이 나와. 예: "엉덩이를 뒤로 빼며 허벅지가 바닥과 나란해질 때까지 앉아요."
+▎
+▎ 데이터 목록이랑 다른 점도 있어:
+▎ - NextTip에 code가 하나 더 있어.
+▎ - 첫 판은 이전 기록이 없어서 isNewBest가 false야.
+▎ - history(loading/ready/failed)로 비교 값을 불러오는 중인지, 실패했는지 알 수 있어.
+▎ - opponent(Opponent?, 봇 난이도 포함)과 opponentName이 같이 있어.
+▎
+▎ 피드백 쪽 값은 FeedbackViewModel.fromReport → state.form이고, sliceSeconds는 KO 판 때문에 double이야.
+▎
+▎ 이슈 #58도 봐 줘. 스쿼트 리포트가 생기면서 지금 피드백 화면의 그래프 문장이 푸쉬업 기준(0.25)으로 판정해서 카드랑 말이 달라질 수 있어. W8에서 state.form의 depthTrend/armBalance를 쓰면 해결돼.
+▎
+▎ 그리고 온라인 테스트 말고도 battle_viewmodel_test.dart의 'a squat bot battle is saved too' 테스트도 같은 이유로 하나 고쳤어. 마지막 줄을 "리포트 없음"에서 "스쿼트 리포트 저장" 확인으로 바꿨어. 이것도 같은 일회성 예외로 J4 PR에 넣어도 될까?
+
+상우에게 (#59, PM 참고)
+
+▎ 상우, 이슈 #59 봐 줘. AI 대결 스쿼트가 쓰는 SquatDemoJudge가 프레임별 깊이를 snapshot에 안 넣어서, 피드백 화면의 깊이 그래프가 비어 있어. 회차별 최대 깊이는 들어와서 분석이랑 표는 정상이야.
+▎ 그리고 이 판정기는 얕은 스쿼트도 전부 인정해서, UAT-4 스쿼트 시나리오(4회 인정 + 2회 무효)가 지금은 온라인 대결(SquatRepJudge)에서만 재현돼. S4에서 판정기 고칠 때 같이 봐 주면 좋겠어.
+▎ (PM님 참고: AI 대결 스쿼트 판정기를 바꿀지는 팀 결정이 필요해서 공유해요.)
+```
+
+### 2. Judge selection
+
+```text
+AI·온라인 판정도 SquatRepJudge로 통일
+```
+
+### 3. Owner/PM agreement for the bot wiring and its test
+
+```text
+응, 이 두 파일 수정도 동의받았어
+```
+
+### 4. Commit and push request
+
+```text
+커밋과 푸쉬 해줘.
+```

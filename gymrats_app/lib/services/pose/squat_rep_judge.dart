@@ -54,7 +54,7 @@ class SquatRepJudge implements ExerciseRepJudge {
     if (_last != null && now - _last! > const Duration(milliseconds: 500)) {
       abandon();
     }
-    final measurements = <(double, double)>[];
+    final measurements = <(double, double, double, double)>[];
     for (final (hipId, kneeId, ankleId) in [
       (BodyLandmark.leftHip, BodyLandmark.leftKnee, BodyLandmark.leftAnkle),
       (BodyLandmark.rightHip, BodyLandmark.rightKnee, BodyLandmark.rightAnkle),
@@ -72,11 +72,23 @@ class SquatRepJudge implements ExerciseRepJudge {
         continue;
       }
       final shin = a.y - k.y;
-      if (shin > 0) measurements.add((k.y - h.y, shin));
+      if (shin > 0) measurements.add((k.y - h.y, shin, h.y, k.y));
     }
     if (measurements.isEmpty) {
       return RepUpdate(snapshot: JudgeSnapshot(phase: _phase));
     }
+    // The same usable sides drive both the judge and the hip/knee guides.
+    // Keep these raw image coordinates separate from the smoothed depth.
+    JudgeSnapshot snapshot({double? depth}) => JudgeSnapshot(
+      phase: _phase,
+      depth: depth,
+      squatHipY:
+          measurements.map((v) => v.$3).reduce((a, b) => a + b) /
+          measurements.length,
+      squatKneeY:
+          measurements.map((v) => v.$4).reduce((a, b) => a + b) /
+          measurements.length,
+    );
     final previousAt = _last;
     _last = now;
     final measuredThigh =
@@ -104,7 +116,7 @@ class SquatRepJudge implements ExerciseRepJudge {
           _phase = RepPhase.up;
         }
       }
-      return RepUpdate(snapshot: JudgeSnapshot(phase: _phase));
+      return RepUpdate(snapshot: snapshot(depth: _top == null ? null : 0));
     }
     var depth = 1 - thigh / _top!;
     if (_phase == RepPhase.up && depth < .25 && standing) {
@@ -114,7 +126,7 @@ class SquatRepJudge implements ExerciseRepJudge {
     RepEvent? event;
     if (_start != null && now - _start! > const Duration(seconds: 12)) {
       abandon();
-      return RepUpdate(snapshot: JudgeSnapshot(phase: _phase));
+      return RepUpdate(snapshot: snapshot());
     }
     if (_phase == RepPhase.up && depth >= .25) {
       _phase = RepPhase.descending;
@@ -165,7 +177,7 @@ class SquatRepJudge implements ExerciseRepJudge {
       }
     }
     return RepUpdate(
-      snapshot: JudgeSnapshot(phase: _phase, depth: depth),
+      snapshot: snapshot(depth: depth),
       event: event,
     );
   }

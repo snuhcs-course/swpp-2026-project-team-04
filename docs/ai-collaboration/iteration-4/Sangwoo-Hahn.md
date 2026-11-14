@@ -36,3 +36,11 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 - Independent review and full interaction-history export remain TODO. Online battle uses a separate setup flow and is not included.
 
 - A full-suite run exposed diagnostic demo tests depending on manual setup. Codex preserved the existing diagnostic behavior and reran those suites; no human source edit was claimed.
+
+## S4 follow-up — #59 and common squat judging (2026-11-14)
+- Tool: Codex. Base: main eb336c3, including J4 #57. Codex reproduced the missing per-frame depth and added regression tests before the fix.
+- The user chose to unify production AI/online squats through SquatRepJudge and confirmed owner/PM agreement for the bot factory and its existing test file. The prior demo type had also bypassed phone-movement rejection; using the normal factory removes that production bypass.
+- Codex supplied current depth and valid-side hip/knee coordinates, retained the legacy diagnostic judge's API, and verified 4 full + 2 shallow repetitions through real counter wiring, report serialization and the analyzer using fakes.
+- Verification: 92 targeted tests passed; Flutter analysis clean. Independent read-only Codex review found no actionable defects and approved this implementation scope. Full-suite results are in the personal testing notes. No physical-phone UAT or broad squat-accuracy result is claimed.
+- A coverage command initially referenced a nonexistent squat_error_cases_test.dart; the actual three service suites were rerun successfully. This was an agent command error, not a human manual fix. No human source edits or measured time savings were reported.
+- The issue handoff, actual decision replies and commit/push request for this task are recorded verbatim in the prompt log, reviewed for credentials and unrelated personal data before staging. Full-iteration session export and team-wide interaction-history review remain TODO; no assistant transcript or tool output is included.
