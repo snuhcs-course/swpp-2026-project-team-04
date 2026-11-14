@@ -27,7 +27,7 @@ void main() {
     expect(HelpRules.order, TutorialViewModel.pagesFor(battleRules));
     expect(HelpRules.pages, hasLength(HelpRules.order.length));
     expect(HelpRules.pages.first.title, '푸시업으로 1:1 대결해요');
-    expect(HelpRules.pages.last.title, '끝나면 피드백 리포트를 받아요');
+    expect(HelpRules.pages.last.title, '끝나면 리포트를 받아요');
   });
 
   test('the exercises by name', () {

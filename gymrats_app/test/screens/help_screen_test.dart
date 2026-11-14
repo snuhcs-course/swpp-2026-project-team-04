@@ -216,6 +216,30 @@ void main() {
     expect(find.text('home'), findsOneWidget);
   });
 
+  testWidgets('titles, lines and the hint stay on one line, shrunk to fit', (
+    tester,
+  ) async {
+    void expectOneLine(String text) {
+      final words = find.text(text);
+      expect(tester.widget<Text>(words).maxLines, 1, reason: text);
+      expect(tester.widget<Text>(words).softWrap, isFalse, reason: text);
+      expect(
+        find.ancestor(of: words, matching: find.byType(FittedBox)),
+        findsOneWidget,
+        reason: text,
+      );
+    }
+
+    await show(tester, HelpScreen(onStart: () {}), size: const Size(320, 640));
+    for (var index = 0; index < pages.length; index++) {
+      if (index > 0) await tapNext(tester);
+      expectOneLine(pages[index].title);
+      expectOneLine(pages[index].body);
+      expect(tester.takeException(), isNull);
+    }
+    expectOneLine('홈 화면의 ?로 다시 볼 수 있어요');
+  });
+
   for (final size in const [Size(412, 915), Size(360, 740)]) {
     testWidgets('every page fits ${size.width.toInt()}×${size.height.toInt()}: '
         'no overflow, the one button on screen', (tester) async {

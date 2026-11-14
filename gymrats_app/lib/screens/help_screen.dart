@@ -136,6 +136,21 @@ class _HelpScreenState extends State<HelpScreen> {
                       current: number - 1,
                       exercise: HelpRules.exerciseName(_tutorial.exercise),
                     ),
+                    if (_tutorial.isLast && onStart != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.s20,
+                          0,
+                          AppSpacing.s20,
+                          AppSpacing.s8,
+                        ),
+                        child: _OneLine(
+                          '홈 화면의 ?로 다시 볼 수 있어요',
+                          style: text.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
                         AppSpacing.s20,
@@ -158,9 +173,6 @@ class _HelpScreenState extends State<HelpScreen> {
                             flex: 2,
                             child: AccentButton(
                               title: _tutorial.isLast ? '완료' : '다음',
-                              hint: _tutorial.isLast && onStart != null
-                                  ? '홈 화면의 ?로 다시 볼 수 있어요'
-                                  : null,
                               onPressed: _next,
                             ),
                           ),
@@ -241,13 +253,31 @@ class _Page extends StatelessWidget {
           style: text.labelLarge?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.s4),
-        Text(words.title, style: text.headlineLarge),
+        _OneLine(words.title, style: text.headlineLarge),
         const SizedBox(height: AppSpacing.s8),
-        Text(
+        _OneLine(
           words.body,
           style: text.bodyLarge?.copyWith(color: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+}
+
+/// [text] on one line (user 2026-11-15): shrunk to fit a narrow screen or
+/// a large text size instead of wrapping.
+class _OneLine extends StatelessWidget {
+  const _OneLine(this.text, {this.style});
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(text, maxLines: 1, softWrap: false, style: style),
     );
   }
 }

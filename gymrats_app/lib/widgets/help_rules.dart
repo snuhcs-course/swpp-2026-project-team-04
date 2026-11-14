@@ -48,24 +48,22 @@ abstract final class HelpRules {
       TutorialStep.intro => HelpPage(
         title: squat ? '스쿼트로 1:1 대결해요' : '푸시업으로 1:1 대결해요',
         body: squat
-            ? '$totalSeconds초 동안 겨뤄요. 점수는 푸시업과 같고 Average만 없어요.'
+            ? '$totalSeconds초 대결이에요. Average는 없어요.'
             : '다른 사람이나 RepBot과 $totalSeconds초 동안 겨뤄요.',
       ),
       TutorialStep.setup =>
         squat
             ? const HelpPage(
                 title: '휴대폰을 보고 서서 준비해요',
-                body: '몸 전체가 보이면 초록색! 상대가 준비될 때까지 기다려요.',
+                body: '몸 전체가 보이면 준비 완료예요.',
               )
             : const HelpPage(
                 title: '초록 선 안에 몸을 맞춰요',
-                body: '선 안에 들어와야 준비 완료! 그다음 상대를 기다려요.',
+                body: '선 안에 들어오면 준비 완료예요.',
               ),
       TutorialStep.battle => HelpPage(
         title: '점수로 겨루는 대결이에요',
-        body: squat
-            ? '한 번 앉았다 일어날 때마다 체력 바가 밀려요.'
-            : '한 번 할 때마다 체력 바가 상대 쪽으로 밀려요.',
+        body: squat ? '한 번 앉을 때마다 체력 바가 밀려요.' : '한 번 할 때마다 체력 바가 밀려요.',
       ),
       TutorialStep.excellent => HelpPage(
         title: squat ? '깊게 앉으면 Excellent' : '깊게 내려가면 Excellent',
@@ -83,9 +81,7 @@ abstract final class HelpRules {
       ),
       TutorialStep.fail => HelpPage(
         title: squat ? '얕게 앉으면 Fail' : '자세가 무너지면 Fail',
-        body: squat
-            ? '기준보다 얕거나 자세가 무너지면 점수가 없어요.'
-            : '너무 얕거나 자세가 흐트러지면 점수가 없어요.',
+        body: squat ? '기준선보다 얕게 앉으면 0점이에요.' : '너무 얕거나 흐트러지면 0점이에요.',
       ),
       TutorialStep.fever => HelpPage(
         title: '마지막 $feverSeconds초는 피버 타임',
@@ -96,7 +92,7 @@ abstract final class HelpRules {
         body: '체력 바를 끝까지 밀면 바로 끝나요.',
       ),
       TutorialStep.report => const HelpPage(
-        title: '끝나면 피드백 리포트를 받아요',
+        title: '끝나면 리포트를 받아요',
         body: "'자세 피드백 보기'에서 내 자세를 확인해요.",
       ),
     };
