@@ -550,6 +550,67 @@ extension ArchiveText on TextTheme {
       bodyMedium!.copyWith(fontSize: 13, fontWeight: FontWeight.w700);
 }
 
+/// The text styles of the statistics screen (기간별 통계, W7-STATS) that the
+/// theme's own sizes lack. Screens change only their color or weight.
+extension StatsText on TextTheme {
+  /// The average counted reps, e.g. "13.8": Oxanium 800, 40.
+  TextStyle get statsAverage => displaySmall!.copyWith(
+    fontSize: 40,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// The "회" after the average, and the 다시 시도 button: 15 bold.
+  TextStyle get statsStrong =>
+      bodyLarge!.copyWith(fontSize: 15, fontWeight: FontWeight.w700);
+
+  /// The battles and the total reps beside the average: Oxanium 800, 20.
+  TextStyle get statsCount => displaySmall!.copyWith(
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// A form issue's count: Oxanium 800, 15 on a 20 line.
+  TextStyle get statsIssueCount => displaySmall!.copyWith(
+    fontSize: 15,
+    fontWeight: FontWeight.w800,
+    height: 20 / 15,
+  );
+
+  /// The reps over a bar: Oxanium 700, 11 on a 12 line.
+  TextStyle get statsBarValue => displaySmall!.copyWith(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    height: 12 / 11,
+  );
+
+  /// The letters under the bars: 11 on a 14 line.
+  TextStyle get statsAxis =>
+      bodySmall!.copyWith(fontSize: 11, height: 14 / 11, letterSpacing: 0);
+
+  /// The empty notice's second line: 13 on a 1.45 line.
+  TextStyle get statsDetail => bodyMedium!.copyWith(fontSize: 13, height: 1.45);
+
+  /// A small note under a card's content: the weeks' note, the failed
+  /// card's last line: 12 on a 1.5 line.
+  TextStyle get statsNote => bodySmall!.copyWith(height: 1.5);
+
+  /// A sentence in a card: the form card's only line, the failed card's
+  /// reason: 14 on a 1.5 line.
+  TextStyle get statsSentence => bodyMedium!.copyWith(height: 1.5);
+
+  /// A form issue's name: 14 on a 20 line.
+  TextStyle get statsIssueName => bodyMedium!.copyWith(height: 20 / 14);
+
+  /// The "!" in the failed card's circle: Oxanium 800, 22.
+  TextStyle get statsMark => displaySmall!.copyWith(
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+}
+
 /// Padding and gap steps (Design Documentation 2.5.5). Screens use only
 /// these for padding and gaps.
 abstract final class AppSpacing {
