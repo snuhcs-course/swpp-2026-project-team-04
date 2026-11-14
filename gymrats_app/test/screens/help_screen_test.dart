@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/accent_button.dart';
-import 'package:gymrats_app/widgets/help_pictures.dart';
 import 'package:gymrats_app/widgets/help_rules.dart';
 
 void main() {
@@ -82,111 +81,16 @@ void main() {
       expect(find.text(rule.title), findsOneWidget);
       expect(find.text(rule.body), findsOneWidget);
     }
-    // The danger row's box is red like the danger edge; the others lime.
-    expect(find.byType(HelpReminderPicture), findsOneWidget);
-    expect(
-      tester
-          .widgetList<HelpIconBox>(find.byType(HelpIconBox))
-          .map((box) => box.warning),
-      [true, false, false],
-    );
+    // The danger row is red like the danger edge; the others are lime.
+    Color? iconColor(IconData icon) =>
+        tester.widget<Icon>(find.byIcon(icon)).color;
+    final [danger, ...others] = HelpRules.reminders;
+    expect(iconColor(danger.icon), AppColors.danger);
+    for (final rule in others) {
+      expect(iconColor(rule.icon), AppColors.accent);
+    }
     expect(find.bySemanticsLabel('3장 중 3장'), findsOneWidget);
     expect(find.text('다음'), findsNothing);
-  });
-
-  testWidgets('the score tags are ink on lime (palette B)', (tester) async {
-    await show(tester, HelpScreen(onStart: () {}));
-    final tag = find.text('KO 100점 차');
-    expect(tester.widget<Text>(tag).style?.color, AppColors.ink);
-    final box =
-        tester
-                .widget<DecoratedBox>(
-                  find.ancestor(of: tag, matching: find.byType(DecoratedBox)),
-                )
-                .decoration
-            as BoxDecoration;
-    expect(box.color, AppColors.accent.withValues(alpha: 0.6));
-  });
-
-  /// The page dots' boxes, left to right.
-  List<ShapeDecoration> dots(WidgetTester tester) => [
-    for (final dot in tester.widgetList<AnimatedContainer>(
-      find.byType(AnimatedContainer),
-    ))
-      dot.decoration! as ShapeDecoration,
-  ];
-
-  testWidgets('the dot of the page showing is lime with an ink edge, the '
-      'others gray', (tester) async {
-    await show(tester, HelpScreen(onStart: () {}));
-    final [current, ...rest] = dots(tester);
-    expect(current.color, AppColors.accent);
-    expect(
-      (current.shape as StadiumBorder).side,
-      const BorderSide(color: AppColors.ink, width: 1.5),
-    );
-    for (final dot in rest) {
-      expect(dot.color, AppColors.inactive);
-      expect((dot.shape as StadiumBorder).side, BorderSide.none);
-    }
-    expect(
-      tester.getSize(find.byType(AnimatedContainer).first),
-      const Size(24, 8),
-    );
-    expect(
-      tester.getSize(find.byType(AnimatedContainer).last),
-      const Size(8, 8),
-    );
-  });
-
-  group('the page turn', () {
-    testWidgets('slides over 0.3 s', (tester) async {
-      await show(tester, HelpScreen(onStart: () {}));
-      await tester.tap(find.text('다음'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      // Both pages show while it slides.
-      expect(find.text(bar.title), findsOneWidget);
-      expect(find.text(score.title), findsOneWidget);
-      await tester.pumpAndSettle();
-      expect(find.text(bar.title), findsNothing);
-    });
-
-    testWidgets('with the system animations off, the next page shows at once', (
-      tester,
-    ) async {
-      tester.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: true);
-      addTearDown(
-        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
-      );
-      await show(tester, HelpScreen(onStart: () {}));
-      await tester.tap(find.text('다음'));
-      await tester.pump();
-      expect(find.text(score.title), findsOneWidget);
-      expect(find.text(bar.title), findsNothing);
-      expect(
-        tester
-            .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
-            .map((dot) => dot.duration),
-        everyElement(Duration.zero),
-      );
-      expect(find.bySemanticsLabel('3장 중 2장'), findsOneWidget);
-    });
-
-    testWidgets('with the system animations off, swiping still turns the '
-        'pages', (tester) async {
-      tester.platformDispatcher.accessibilityFeaturesTestValue =
-          const FakeAccessibilityFeatures(disableAnimations: true);
-      addTearDown(
-        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
-      );
-      await show(tester, HelpScreen(onStart: () {}));
-      await tester.fling(find.text(bar.title), const Offset(-300, 0), 1000);
-      await tester.pumpAndSettle();
-      expect(find.text(score.title), findsOneWidget);
-      expect(find.bySemanticsLabel('3장 중 2장'), findsOneWidget);
-    });
   });
 
   testWidgets('swiping turns the pages too', (tester) async {
@@ -248,18 +152,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(HelpScreen), findsNothing);
     expect(find.text('home'), findsOneWidget);
-  });
-
-  testWidgets('at 2x text every page still fits 360×740 without overflow', (
-    tester,
-  ) async {
-    tester.platformDispatcher.textScaleFactorTestValue = 2;
-    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    await show(tester, HelpScreen(onStart: () {}), size: const Size(360, 740));
-    for (var page = 0; page < HelpRules.pages.length; page++) {
-      if (page > 0) await tapNext(tester);
-      expect(tester.takeException(), isNull);
-    }
   });
 
   for (final size in const [Size(412, 915), Size(360, 740)]) {

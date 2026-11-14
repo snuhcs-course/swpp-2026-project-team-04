@@ -89,8 +89,8 @@ abstract final class AppColors {
   /// to ink text, since a dark fill needs light text (palette B).
   static const onInk = Color(0xFFFFFFFF);
 
-  /// Quiet marks that only fill, never lines or text: the rules' dots of
-  /// the pages not shown, the result's bars of the earlier battles.
+  /// Quiet marks that only fill, never lines or text: the result's bars of
+  /// the earlier battles.
   static const inactive = Color(0xFFA9B0BE);
 }
 
