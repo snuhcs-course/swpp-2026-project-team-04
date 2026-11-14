@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
+import '../services/audio/sound_services.dart';
+import '../services/audio/sound_settings.dart';
 import '../services/user/settings_store.dart';
 
 /// Immutable state of the app's settings.
@@ -54,6 +58,7 @@ class SettingsViewModel extends ChangeNotifier {
     SettingsStore? store,
     bool soundEffectsOn = true,
     bool voiceGuidanceOn = false,
+    this._sound,
   }) : _store = store ?? MemorySettingsStore(),
        _state = SettingsState(
          soundEffectsOn: soundEffectsOn,
@@ -61,6 +66,10 @@ class SettingsViewModel extends ChangeNotifier {
        );
 
   final SettingsStore _store;
+
+  /// The app's sound switches the 효과음 and 음성 안내 switches feed; the
+  /// shared sound set's when null.
+  final SoundSettings? _sound;
   SettingsState _state;
   bool _disposed = false;
 
@@ -80,13 +89,23 @@ class SettingsViewModel extends ChangeNotifier {
   /// Shows the saved switches; one never saved keeps its default. Until it
   /// finishes the defaults show. If reading fails the defaults stay.
   Future<void> load() async {
-    final safetyNoticeRead = await _loadSafetyNotice();
+    final bool safetyNoticeRead;
+    try {
+      safetyNoticeRead = await _loadSafetyNotice();
+    } catch (_) {
+      _passToSound(); // The app's sound waits for the switches: defaults.
+      rethrow;
+    }
     final SavedSettings saved;
     try {
       saved = await _store.read();
     } on Exception {
       if (safetyNoticeRead && !_disposed) notifyListeners();
+      _passToSound(); // The app's sound waits for the switches: defaults.
       return;
+    } catch (_) {
+      _passToSound();
+      rethrow;
     }
     _setState(
       SettingsState(
@@ -98,12 +117,14 @@ class SettingsViewModel extends ChangeNotifier {
             : saved.voiceGuidanceOn ?? _state.voiceGuidanceOn,
       ),
     );
+    _passToSound();
   }
 
   void setSoundEffects(bool on) {
     if (_disposed) return;
     _soundEffectsTurned = true;
     _setState(_state.copyWith(soundEffectsOn: on));
+    _passToSound();
     _save(_store.writeSoundEffects(on));
   }
 
@@ -111,6 +132,7 @@ class SettingsViewModel extends ChangeNotifier {
     if (_disposed) return;
     _voiceGuidanceTurned = true;
     _setState(_state.copyWith(voiceGuidanceOn: on));
+    _passToSound();
     _save(_store.writeVoiceGuidance(on));
   }
 
@@ -156,6 +178,15 @@ class SettingsViewModel extends ChangeNotifier {
       seen: _safetyNotice.seen || (saved.seen ?? false),
     );
     return true;
+  }
+
+  /// The app's sound follows the switches: 효과음 turns the BGM and the
+  /// effects on or off, 음성 안내 the voice guidance. The sound starts
+  /// silent and waits for [load] to pass the saved switches on.
+  void _passToSound() {
+    final sound = _sound ?? SoundServices.shared.settings;
+    unawaited(sound.setEnabled(_state.soundEffectsOn));
+    sound.setVoiceEnabled(_state.voiceGuidanceOn);
   }
 
   /// A save that fails keeps the switch as it is for this run; the next
