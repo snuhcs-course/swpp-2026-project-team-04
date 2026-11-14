@@ -1,0 +1,2408 @@
+{
+ "meta": {
+  "version": "w2b-golden-1",
+  "madeFrom": [
+   "dc/MxRadar.dc.html (variant a)",
+   "dc/MxSetup.dc.html (variant b)"
+  ],
+  "generated": "2026-11-13",
+  "tolerance": {
+   "position": 0.6,
+   "scale": 0.01,
+   "opacity": 0.02,
+   "angleDeg": 0.6
+  },
+  "checkedAgainstComponent": {
+   "radarMaxError": 0.0049,
+   "setupMaxError": 0.005,
+   "note": "식으로 계산한 값을 원본 부품의 renderVals() 출력과 견준 최대 차이(부품은 소수 둘째 자리까지만 낸다)."
+  }
+ },
+ "radar": {
+  "note": "레이더 상자 288 x 288 좌표. tMs 는 레이더가 돌기 시작한 뒤 흐른 시간. 바늘은 tMs 0 에 아래(6시)를 가리키고 시계 방향으로 3000ms 에 한 바퀴 돈다(지금 앱과 같다).",
+  "periodMs": 3000,
+  "center": [
+   144,
+   144
+  ],
+  "dots": [
+   {
+    "index": 0,
+    "x": 55.5,
+    "y": 199.3,
+    "angleDeg": 58.0004,
+    "passMsExact": 483.337,
+    "passMs": 483,
+    "distanceFromCenter": 104.3568
+   },
+   {
+    "index": 1,
+    "x": 220.8,
+    "y": 67.2,
+    "angleDeg": 225,
+    "passMsExact": 1875,
+    "passMs": 1875,
+    "distanceFromCenter": 108.6116
+   },
+   {
+    "index": 2,
+    "x": 241.6,
+    "y": 217.6,
+    "angleDeg": 307.0199,
+    "passMsExact": 2558.4991,
+    "passMs": 2558,
+    "distanceFromCenter": 122.2404
+   }
+  ],
+  "dotStyle": {
+   "color": "#FF3B30",
+   "glow": {
+    "radius": 12,
+    "stops": [
+     {
+      "offset": 0,
+      "opacity": 0.6
+     },
+     {
+      "offset": 0.45,
+      "opacity": 0.24
+     },
+     {
+      "offset": 1,
+      "opacity": 0
+     }
+    ]
+   },
+   "core": {
+    "radius": 3.6,
+    "opacity": 1
+   },
+   "hotSpot": {
+    "radius": 1.2,
+    "color": "#FFFFFF",
+    "opacity": 0.9
+   },
+   "note": "세 겹(번짐, 점, 흰 심) 전체에 dotOpacity 를 곱한다. 잉크 외곽선은 없다."
+  },
+  "envelope": {
+   "formula": "d = 바늘이 그 점을 지난 뒤 흐른 ms (0 이상 3000 미만). d < 60: d / 60 · d < 240: 1 · d < 1000: (1 - (d - 240) / 760)^2 · 그 밖: 0",
+   "riseMs": 60,
+   "holdUntilMs": 240,
+   "goneAtMs": 1000,
+   "samples": [
+    {
+     "sinceMs": 0,
+     "opacity": 0
+    },
+    {
+     "sinceMs": 15,
+     "opacity": 0.25
+    },
+    {
+     "sinceMs": 30,
+     "opacity": 0.5
+    },
+    {
+     "sinceMs": 45,
+     "opacity": 0.75
+    },
+    {
+     "sinceMs": 60,
+     "opacity": 1
+    },
+    {
+     "sinceMs": 120,
+     "opacity": 1
+    },
+    {
+     "sinceMs": 240,
+     "opacity": 1
+    },
+    {
+     "sinceMs": 300,
+     "opacity": 0.8483
+    },
+    {
+     "sinceMs": 400,
+     "opacity": 0.6233
+    },
+    {
+     "sinceMs": 500,
+     "opacity": 0.4328
+    },
+    {
+     "sinceMs": 620,
+     "opacity": 0.25
+    },
+    {
+     "sinceMs": 700,
+     "opacity": 0.1558
+    },
+    {
+     "sinceMs": 800,
+     "opacity": 0.0693
+    },
+    {
+     "sinceMs": 900,
+     "opacity": 0.0173
+    },
+    {
+     "sinceMs": 999,
+     "opacity": 0
+    },
+    {
+     "sinceMs": 1000,
+     "opacity": 0
+    },
+    {
+     "sinceMs": 1500,
+     "opacity": 0
+    },
+    {
+     "sinceMs": 2999,
+     "opacity": 0
+    }
+   ]
+  },
+  "frames": [
+   {
+    "tMs": 0,
+    "sweepDeg": 0,
+    "dotOpacity": [
+     0,
+     0,
+     0.5391
+    ]
+   },
+   {
+    "tMs": 50,
+    "sweepDeg": 6,
+    "dotOpacity": [
+     0,
+     0,
+     0.4468
+    ]
+   },
+   {
+    "tMs": 100,
+    "sweepDeg": 12,
+    "dotOpacity": [
+     0,
+     0,
+     0.3632
+    ]
+   },
+   {
+    "tMs": 150,
+    "sweepDeg": 18,
+    "dotOpacity": [
+     0,
+     0,
+     0.2882
+    ]
+   },
+   {
+    "tMs": 200,
+    "sweepDeg": 24,
+    "dotOpacity": [
+     0,
+     0,
+     0.2219
+    ]
+   },
+   {
+    "tMs": 250,
+    "sweepDeg": 30,
+    "dotOpacity": [
+     0,
+     0,
+     0.1642
+    ]
+   },
+   {
+    "tMs": 300,
+    "sweepDeg": 36,
+    "dotOpacity": [
+     0,
+     0,
+     0.1152
+    ]
+   },
+   {
+    "tMs": 350,
+    "sweepDeg": 42,
+    "dotOpacity": [
+     0,
+     0,
+     0.0749
+    ]
+   },
+   {
+    "tMs": 400,
+    "sweepDeg": 48,
+    "dotOpacity": [
+     0,
+     0,
+     0.0432
+    ]
+   },
+   {
+    "tMs": 450,
+    "sweepDeg": 54,
+    "dotOpacity": [
+     0,
+     0,
+     0.0202
+    ]
+   },
+   {
+    "tMs": 500,
+    "sweepDeg": 60,
+    "dotOpacity": [
+     0.2833,
+     0,
+     0.0058
+    ]
+   },
+   {
+    "tMs": 550,
+    "sweepDeg": 66,
+    "dotOpacity": [
+     1,
+     0,
+     0.0001
+    ]
+   },
+   {
+    "tMs": 600,
+    "sweepDeg": 72,
+    "dotOpacity": [
+     1,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 650,
+    "sweepDeg": 78,
+    "dotOpacity": [
+     1,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 700,
+    "sweepDeg": 84,
+    "dotOpacity": [
+     1,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 750,
+    "sweepDeg": 90,
+    "dotOpacity": [
+     0.9302,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 800,
+    "sweepDeg": 96,
+    "dotOpacity": [
+     0.8076,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 850,
+    "sweepDeg": 102,
+    "dotOpacity": [
+     0.6937,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 900,
+    "sweepDeg": 108,
+    "dotOpacity": [
+     0.5885,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 950,
+    "sweepDeg": 114,
+    "dotOpacity": [
+     0.4918,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1000,
+    "sweepDeg": 120,
+    "dotOpacity": [
+     0.4039,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1050,
+    "sweepDeg": 126,
+    "dotOpacity": [
+     0.3246,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1100,
+    "sweepDeg": 132,
+    "dotOpacity": [
+     0.254,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1150,
+    "sweepDeg": 138,
+    "dotOpacity": [
+     0.192,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1200,
+    "sweepDeg": 144,
+    "dotOpacity": [
+     0.1387,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1250,
+    "sweepDeg": 150,
+    "dotOpacity": [
+     0.094,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1300,
+    "sweepDeg": 156,
+    "dotOpacity": [
+     0.058,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1350,
+    "sweepDeg": 162,
+    "dotOpacity": [
+     0.0306,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1400,
+    "sweepDeg": 168,
+    "dotOpacity": [
+     0.0119,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1450,
+    "sweepDeg": 174,
+    "dotOpacity": [
+     0.0019,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1500,
+    "sweepDeg": 180,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1550,
+    "sweepDeg": 186,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1600,
+    "sweepDeg": 192,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1650,
+    "sweepDeg": 198,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1700,
+    "sweepDeg": 204,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1750,
+    "sweepDeg": 210,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1800,
+    "sweepDeg": 216,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1850,
+    "sweepDeg": 222,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 1900,
+    "sweepDeg": 228,
+    "dotOpacity": [
+     0,
+     0.4167,
+     0
+    ]
+   },
+   {
+    "tMs": 1950,
+    "sweepDeg": 234,
+    "dotOpacity": [
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "tMs": 2000,
+    "sweepDeg": 240,
+    "dotOpacity": [
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "tMs": 2050,
+    "sweepDeg": 246,
+    "dotOpacity": [
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "tMs": 2100,
+    "sweepDeg": 252,
+    "dotOpacity": [
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "tMs": 2150,
+    "sweepDeg": 258,
+    "dotOpacity": [
+     0,
+     0.91,
+     0
+    ]
+   },
+   {
+    "tMs": 2200,
+    "sweepDeg": 264,
+    "dotOpacity": [
+     0,
+     0.7888,
+     0
+    ]
+   },
+   {
+    "tMs": 2250,
+    "sweepDeg": 270,
+    "dotOpacity": [
+     0,
+     0.6763,
+     0
+    ]
+   },
+   {
+    "tMs": 2300,
+    "sweepDeg": 276,
+    "dotOpacity": [
+     0,
+     0.5724,
+     0
+    ]
+   },
+   {
+    "tMs": 2350,
+    "sweepDeg": 282,
+    "dotOpacity": [
+     0,
+     0.4772,
+     0
+    ]
+   },
+   {
+    "tMs": 2400,
+    "sweepDeg": 288,
+    "dotOpacity": [
+     0,
+     0.3906,
+     0
+    ]
+   },
+   {
+    "tMs": 2450,
+    "sweepDeg": 294,
+    "dotOpacity": [
+     0,
+     0.3127,
+     0
+    ]
+   },
+   {
+    "tMs": 2500,
+    "sweepDeg": 300,
+    "dotOpacity": [
+     0,
+     0.2435,
+     0
+    ]
+   },
+   {
+    "tMs": 2550,
+    "sweepDeg": 306,
+    "dotOpacity": [
+     0,
+     0.1829,
+     0
+    ]
+   },
+   {
+    "tMs": 2600,
+    "sweepDeg": 312,
+    "dotOpacity": [
+     0,
+     0.1309,
+     0.7
+    ]
+   },
+   {
+    "tMs": 2650,
+    "sweepDeg": 318,
+    "dotOpacity": [
+     0,
+     0.0876,
+     1
+    ]
+   },
+   {
+    "tMs": 2700,
+    "sweepDeg": 324,
+    "dotOpacity": [
+     0,
+     0.053,
+     1
+    ]
+   },
+   {
+    "tMs": 2750,
+    "sweepDeg": 330,
+    "dotOpacity": [
+     0,
+     0.0271,
+     1
+    ]
+   },
+   {
+    "tMs": 2800,
+    "sweepDeg": 336,
+    "dotOpacity": [
+     0,
+     0.0097,
+     0.9947
+    ]
+   },
+   {
+    "tMs": 2850,
+    "sweepDeg": 342,
+    "dotOpacity": [
+     0,
+     0.0011,
+     0.8678
+    ]
+   },
+   {
+    "tMs": 2900,
+    "sweepDeg": 348,
+    "dotOpacity": [
+     0,
+     0,
+     0.7496
+    ]
+   },
+   {
+    "tMs": 2950,
+    "sweepDeg": 354,
+    "dotOpacity": [
+     0,
+     0,
+     0.64
+    ]
+   },
+   {
+    "tMs": 3000,
+    "sweepDeg": 0,
+    "dotOpacity": [
+     0,
+     0,
+     0.5391
+    ]
+   },
+   {
+    "tMs": 3050,
+    "sweepDeg": 6,
+    "dotOpacity": [
+     0,
+     0,
+     0.4468
+    ]
+   },
+   {
+    "tMs": 3100,
+    "sweepDeg": 12,
+    "dotOpacity": [
+     0,
+     0,
+     0.3632
+    ]
+   },
+   {
+    "tMs": 3150,
+    "sweepDeg": 18,
+    "dotOpacity": [
+     0,
+     0,
+     0.2882
+    ]
+   },
+   {
+    "tMs": 3200,
+    "sweepDeg": 24,
+    "dotOpacity": [
+     0,
+     0,
+     0.2219
+    ]
+   },
+   {
+    "tMs": 3250,
+    "sweepDeg": 30,
+    "dotOpacity": [
+     0,
+     0,
+     0.1642
+    ]
+   },
+   {
+    "tMs": 3300,
+    "sweepDeg": 36,
+    "dotOpacity": [
+     0,
+     0,
+     0.1152
+    ]
+   },
+   {
+    "tMs": 3350,
+    "sweepDeg": 42,
+    "dotOpacity": [
+     0,
+     0,
+     0.0749
+    ]
+   },
+   {
+    "tMs": 3400,
+    "sweepDeg": 48,
+    "dotOpacity": [
+     0,
+     0,
+     0.0432
+    ]
+   },
+   {
+    "tMs": 3450,
+    "sweepDeg": 54,
+    "dotOpacity": [
+     0,
+     0,
+     0.0202
+    ]
+   },
+   {
+    "tMs": 3500,
+    "sweepDeg": 60,
+    "dotOpacity": [
+     0.2833,
+     0,
+     0.0058
+    ]
+   },
+   {
+    "tMs": 3550,
+    "sweepDeg": 66,
+    "dotOpacity": [
+     1,
+     0,
+     0.0001
+    ]
+   },
+   {
+    "tMs": 3600,
+    "sweepDeg": 72,
+    "dotOpacity": [
+     1,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 3650,
+    "sweepDeg": 78,
+    "dotOpacity": [
+     1,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 3700,
+    "sweepDeg": 84,
+    "dotOpacity": [
+     1,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 3750,
+    "sweepDeg": 90,
+    "dotOpacity": [
+     0.9302,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 3800,
+    "sweepDeg": 96,
+    "dotOpacity": [
+     0.8076,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 3850,
+    "sweepDeg": 102,
+    "dotOpacity": [
+     0.6937,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 3900,
+    "sweepDeg": 108,
+    "dotOpacity": [
+     0.5885,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 3950,
+    "sweepDeg": 114,
+    "dotOpacity": [
+     0.4918,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4000,
+    "sweepDeg": 120,
+    "dotOpacity": [
+     0.4039,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4050,
+    "sweepDeg": 126,
+    "dotOpacity": [
+     0.3246,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4100,
+    "sweepDeg": 132,
+    "dotOpacity": [
+     0.254,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4150,
+    "sweepDeg": 138,
+    "dotOpacity": [
+     0.192,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4200,
+    "sweepDeg": 144,
+    "dotOpacity": [
+     0.1387,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4250,
+    "sweepDeg": 150,
+    "dotOpacity": [
+     0.094,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4300,
+    "sweepDeg": 156,
+    "dotOpacity": [
+     0.058,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4350,
+    "sweepDeg": 162,
+    "dotOpacity": [
+     0.0306,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4400,
+    "sweepDeg": 168,
+    "dotOpacity": [
+     0.0119,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4450,
+    "sweepDeg": 174,
+    "dotOpacity": [
+     0.0019,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4500,
+    "sweepDeg": 180,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4550,
+    "sweepDeg": 186,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4600,
+    "sweepDeg": 192,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4650,
+    "sweepDeg": 198,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4700,
+    "sweepDeg": 204,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4750,
+    "sweepDeg": 210,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4800,
+    "sweepDeg": 216,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4850,
+    "sweepDeg": 222,
+    "dotOpacity": [
+     0,
+     0,
+     0
+    ]
+   },
+   {
+    "tMs": 4900,
+    "sweepDeg": 228,
+    "dotOpacity": [
+     0,
+     0.4167,
+     0
+    ]
+   },
+   {
+    "tMs": 4950,
+    "sweepDeg": 234,
+    "dotOpacity": [
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "tMs": 5000,
+    "sweepDeg": 240,
+    "dotOpacity": [
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "tMs": 5050,
+    "sweepDeg": 246,
+    "dotOpacity": [
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "tMs": 5100,
+    "sweepDeg": 252,
+    "dotOpacity": [
+     0,
+     1,
+     0
+    ]
+   },
+   {
+    "tMs": 5150,
+    "sweepDeg": 258,
+    "dotOpacity": [
+     0,
+     0.91,
+     0
+    ]
+   },
+   {
+    "tMs": 5200,
+    "sweepDeg": 264,
+    "dotOpacity": [
+     0,
+     0.7888,
+     0
+    ]
+   },
+   {
+    "tMs": 5250,
+    "sweepDeg": 270,
+    "dotOpacity": [
+     0,
+     0.6763,
+     0
+    ]
+   },
+   {
+    "tMs": 5300,
+    "sweepDeg": 276,
+    "dotOpacity": [
+     0,
+     0.5724,
+     0
+    ]
+   },
+   {
+    "tMs": 5350,
+    "sweepDeg": 282,
+    "dotOpacity": [
+     0,
+     0.4772,
+     0
+    ]
+   },
+   {
+    "tMs": 5400,
+    "sweepDeg": 288,
+    "dotOpacity": [
+     0,
+     0.3906,
+     0
+    ]
+   },
+   {
+    "tMs": 5450,
+    "sweepDeg": 294,
+    "dotOpacity": [
+     0,
+     0.3127,
+     0
+    ]
+   },
+   {
+    "tMs": 5500,
+    "sweepDeg": 300,
+    "dotOpacity": [
+     0,
+     0.2435,
+     0
+    ]
+   },
+   {
+    "tMs": 5550,
+    "sweepDeg": 306,
+    "dotOpacity": [
+     0,
+     0.1829,
+     0
+    ]
+   },
+   {
+    "tMs": 5600,
+    "sweepDeg": 312,
+    "dotOpacity": [
+     0,
+     0.1309,
+     0.7
+    ]
+   },
+   {
+    "tMs": 5650,
+    "sweepDeg": 318,
+    "dotOpacity": [
+     0,
+     0.0876,
+     1
+    ]
+   },
+   {
+    "tMs": 5700,
+    "sweepDeg": 324,
+    "dotOpacity": [
+     0,
+     0.053,
+     1
+    ]
+   },
+   {
+    "tMs": 5750,
+    "sweepDeg": 330,
+    "dotOpacity": [
+     0,
+     0.0271,
+     1
+    ]
+   },
+   {
+    "tMs": 5800,
+    "sweepDeg": 336,
+    "dotOpacity": [
+     0,
+     0.0097,
+     0.9947
+    ]
+   },
+   {
+    "tMs": 5850,
+    "sweepDeg": 342,
+    "dotOpacity": [
+     0,
+     0.0011,
+     0.8678
+    ]
+   },
+   {
+    "tMs": 5900,
+    "sweepDeg": 348,
+    "dotOpacity": [
+     0,
+     0,
+     0.7496
+    ]
+   },
+   {
+    "tMs": 5950,
+    "sweepDeg": 354,
+    "dotOpacity": [
+     0,
+     0,
+     0.64
+    ]
+   },
+   {
+    "tMs": 6000,
+    "sweepDeg": 0,
+    "dotOpacity": [
+     0,
+     0,
+     0.5391
+    ]
+   }
+  ],
+  "reducedMotion": {
+   "sweepDeg": 0,
+   "dotOpacity": [
+    0.9,
+    0.9,
+    0.9
+   ],
+   "note": "바늘은 0도(아래)에 멈추고 세 점은 0.9 로 켜진 채 고정된다."
+  }
+ },
+ "setupTransition": {
+  "note": "S22 기준 360 x 780 화면 좌표(dp). tMs 는 무대 단계가 countdown 이 된 순간(세팅이 끝나고 카운트다운이 시작된 순간)부터 흐른 시간. 음수는 그 전(세팅 중)이다. countdownDigit 은 카운트다운이 정확히 3000ms 남은 채 시작한 경우의 값이고, 숫자 자체는 W2 그대로다.",
+  "constants": {
+   "boundarySetupY": 156,
+   "boundaryBattleY": 390,
+   "lineWidth": 3,
+   "boundaryMs": 350,
+   "boundaryCurve": "easeInOutCubic: x < 0.5 ? 4x^3 : 1 - (2 - 2x)^3 / 2",
+   "setupOverlayFadeMs": 150,
+   "validCountFadeMs": 200,
+   "fighterPopStartMs": 350,
+   "fighterPopEndMs": 600,
+   "fighterFadeInEndMs": 420,
+   "fighterPopCurve": "scale = 0.6 + 0.4 * back(x), back(x) = 1 + 2.70158 (x - 1)^3 + 1.70158 (x - 1)^2 (W2 의 back)",
+   "pictureAtSetup": {
+    "width": 465.3488,
+    "height": 621,
+    "left": -52.6744,
+    "scaleOverBattle": 1.6047
+   },
+   "pictureAtBattle": {
+    "width": 290,
+    "height": 387,
+    "left": 35
+   }
+  },
+  "formulas": {
+   "progress": "e = easeInOutCubic(tMs / 350)",
+   "boundaryY": "156 + 234 * e",
+   "pictureHeight": "780 - boundaryY - 3 (그림 높이가 늘 카메라 칸 높이와 같다. 일반 기기용 식은 W2B-SPEC 4절)",
+   "setupOverlayOpacity": "1 - clamp(tMs / 150): 상태 띠, 준비 칩, 큰 안내, 큰 준비 버튼, 카메라 전환, 진행 막대",
+   "validCountOpacity": "clamp(tMs / 200)",
+   "fighterScale": "0.6 + 0.4 * back(clamp((tMs - 350) / 250))",
+   "fighterOpacity": "clamp((tMs - 350) / 70)"
+  },
+  "samples": [
+   {
+    "tMs": -200,
+    "progress": 0,
+    "boundaryY": 156,
+    "cameraBox": {
+     "top": 159,
+     "height": 621
+    },
+    "picture": {
+     "scale": 1.6047,
+     "width": 465.3488,
+     "height": 621,
+     "left": -52.6744
+    },
+    "setupOverlayOpacity": 1,
+    "validCountOpacity": 0,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": null
+   },
+   {
+    "tMs": -1,
+    "progress": 0,
+    "boundaryY": 156,
+    "cameraBox": {
+     "top": 159,
+     "height": 621
+    },
+    "picture": {
+     "scale": 1.6047,
+     "width": 465.3488,
+     "height": 621,
+     "left": -52.6744
+    },
+    "setupOverlayOpacity": 1,
+    "validCountOpacity": 0,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": null
+   },
+   {
+    "tMs": 0,
+    "progress": 0,
+    "boundaryY": 156,
+    "cameraBox": {
+     "top": 159,
+     "height": 621
+    },
+    "picture": {
+     "scale": 1.6047,
+     "width": 465.3488,
+     "height": 621,
+     "left": -52.6744
+    },
+    "setupOverlayOpacity": 1,
+    "validCountOpacity": 0,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1.5
+    }
+   },
+   {
+    "tMs": 25,
+    "progress": 0.0015,
+    "boundaryY": 156.3411,
+    "cameraBox": {
+     "top": 159.3411,
+     "height": 620.6589
+    },
+    "picture": {
+     "scale": 1.6038,
+     "width": 465.0932,
+     "height": 620.6589,
+     "left": -52.5466
+    },
+    "setupOverlayOpacity": 0.8333,
+    "validCountOpacity": 0.125,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1.3003
+    }
+   },
+   {
+    "tMs": 50,
+    "progress": 0.0117,
+    "boundaryY": 158.7289,
+    "cameraBox": {
+     "top": 161.7289,
+     "height": 618.2711
+    },
+    "picture": {
+     "scale": 1.5976,
+     "width": 463.304,
+     "height": 618.2711,
+     "left": -51.652
+    },
+    "setupOverlayOpacity": 0.6667,
+    "validCountOpacity": 0.25,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1.1625
+    }
+   },
+   {
+    "tMs": 75,
+    "progress": 0.0394,
+    "boundaryY": 165.2099,
+    "cameraBox": {
+     "top": 168.2099,
+     "height": 611.7901
+    },
+    "picture": {
+     "scale": 1.5809,
+     "width": 458.4474,
+     "height": 611.7901,
+     "left": -49.2237
+    },
+    "setupOverlayOpacity": 0.5,
+    "validCountOpacity": 0.375,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1.075
+    }
+   },
+   {
+    "tMs": 100,
+    "progress": 0.0933,
+    "boundaryY": 177.8309,
+    "cameraBox": {
+     "top": 180.8309,
+     "height": 599.1691
+    },
+    "picture": {
+     "scale": 1.5482,
+     "width": 448.9898,
+     "height": 599.1691,
+     "left": -44.4949
+    },
+    "setupOverlayOpacity": 0.3333,
+    "validCountOpacity": 0.5,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1.0264
+    }
+   },
+   {
+    "tMs": 125,
+    "progress": 0.1822,
+    "boundaryY": 198.6385,
+    "cameraBox": {
+     "top": 201.6385,
+     "height": 578.3615
+    },
+    "picture": {
+     "scale": 1.4945,
+     "width": 433.3975,
+     "height": 578.3615,
+     "left": -36.6988
+    },
+    "setupOverlayOpacity": 0.1667,
+    "validCountOpacity": 0.625,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1.0052
+    }
+   },
+   {
+    "tMs": 150,
+    "progress": 0.3149,
+    "boundaryY": 229.6793,
+    "cameraBox": {
+     "top": 232.6793,
+     "height": 547.3207
+    },
+    "picture": {
+     "scale": 1.4143,
+     "width": 410.137,
+     "height": 547.3207,
+     "left": -25.0685
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 0.75,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1.0001
+    }
+   },
+   {
+    "tMs": 175,
+    "progress": 0.5,
+    "boundaryY": 273,
+    "cameraBox": {
+     "top": 276,
+     "height": 504
+    },
+    "picture": {
+     "scale": 1.3023,
+     "width": 377.6744,
+     "height": 504,
+     "left": -8.8372
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 0.875,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 200,
+    "progress": 0.6851,
+    "boundaryY": 316.3207,
+    "cameraBox": {
+     "top": 319.3207,
+     "height": 460.6793
+    },
+    "picture": {
+     "scale": 1.1904,
+     "width": 345.2119,
+     "height": 460.6793,
+     "left": 7.3941
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 225,
+    "progress": 0.8178,
+    "boundaryY": 347.3615,
+    "cameraBox": {
+     "top": 350.3615,
+     "height": 429.6385
+    },
+    "picture": {
+     "scale": 1.1102,
+     "width": 321.9513,
+     "height": 429.6385,
+     "left": 19.0243
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 250,
+    "progress": 0.9067,
+    "boundaryY": 368.1691,
+    "cameraBox": {
+     "top": 371.1691,
+     "height": 408.8309
+    },
+    "picture": {
+     "scale": 1.0564,
+     "width": 306.3591,
+     "height": 408.8309,
+     "left": 26.8205
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 275,
+    "progress": 0.9606,
+    "boundaryY": 380.7901,
+    "cameraBox": {
+     "top": 383.7901,
+     "height": 396.2099
+    },
+    "picture": {
+     "scale": 1.0238,
+     "width": 296.9015,
+     "height": 396.2099,
+     "left": 31.5493
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 300,
+    "progress": 0.9883,
+    "boundaryY": 387.2711,
+    "cameraBox": {
+     "top": 390.2711,
+     "height": 389.7289
+    },
+    "picture": {
+     "scale": 1.0071,
+     "width": 292.0449,
+     "height": 389.7289,
+     "left": 33.9776
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 325,
+    "progress": 0.9985,
+    "boundaryY": 389.6589,
+    "cameraBox": {
+     "top": 392.6589,
+     "height": 387.3411
+    },
+    "picture": {
+     "scale": 1.0009,
+     "width": 290.2556,
+     "height": 387.3411,
+     "left": 34.8722
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 349,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 350,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6,
+     "opacity": 0,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 351,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.6075,
+     "opacity": 0.0143,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 375,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.7635,
+     "opacity": 0.3571,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 400,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.8823,
+     "opacity": 0.7143,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 419,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.9467,
+     "opacity": 0.9857,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 421,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.9523,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 425,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 0.9629,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 450,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1.0116,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 475,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1.0351,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 500,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1.0397,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 525,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1.0321,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 550,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1.0186,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 575,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1.0057,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 600,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 625,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 650,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 675,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 700,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 800,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 3,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 1000,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 2,
+     "scale": 1.5
+    }
+   },
+   {
+    "tMs": 1500,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 2,
+     "scale": 1
+    }
+   },
+   {
+    "tMs": 2999,
+    "progress": 1,
+    "boundaryY": 390,
+    "cameraBox": {
+     "top": 393,
+     "height": 387
+    },
+    "picture": {
+     "scale": 1,
+     "width": 290,
+     "height": 387,
+     "left": 35
+    },
+    "setupOverlayOpacity": 0,
+    "validCountOpacity": 1,
+    "fighter": {
+     "scale": 1,
+     "opacity": 1,
+     "myFootX": 124,
+     "opponentFootX": 236,
+     "footY": 346
+    },
+    "countdownDigit": {
+     "number": 1,
+     "scale": 1
+    }
+   }
+  ],
+  "reducedMotion": {
+   "note": "애니메이션 줄이기가 켜지면 tMs 0 에 곧바로 끝 값이 된다.",
+   "boundaryY": 390,
+   "picture": {
+    "scale": 1,
+    "width": 290,
+    "height": 387,
+    "left": 35
+   },
+   "setupOverlayOpacity": 0,
+   "validCountOpacity": 1,
+   "fighter": {
+    "scale": 1,
+    "opacity": 1
+   }
+  }
+ }
+}

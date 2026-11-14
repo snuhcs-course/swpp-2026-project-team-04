@@ -12,11 +12,48 @@ import 'pose_camera_view.dart';
 import 'pose_silhouette_guide.dart';
 import 'squat_height_overlay.dart';
 
-/// The user's camera in the battle's lower half, in the camera's own shape:
-/// the arena centers it and never crops it. Over it, as before the stage,
-/// the detected joints and the chest or squat height lines, and before the
-/// round the setup's guide, with the picture around the guide dimmed as the
-/// guide dims its own outside ([BattleGuideOverlay]).
+/// Where the arena lays the camera picture out (W2b 3-B), for a
+/// [BattleCameraView] under it: the camera's box in the setup's layout and
+/// in the battle's, and how far the screen is from the one to the other
+/// ([progress], eased, 0 to 1). Without it the view fills the box it is
+/// given in its own shape, as before W2b.
+class BattleCameraLayout extends InheritedWidget {
+  const BattleCameraLayout({
+    super.key,
+    required this.setupBox,
+    required this.battleBox,
+    required this.progress,
+    required super.child,
+  });
+
+  /// The camera's box while setting up: under a line high on the screen.
+  final Size setupBox;
+
+  /// The camera's box from the countdown on: the lower half.
+  final Size battleBox;
+  final double progress;
+
+  static BattleCameraLayout? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<BattleCameraLayout>();
+
+  @override
+  bool updateShouldNotify(BattleCameraLayout oldWidget) =>
+      oldWidget.setupBox != setupBox ||
+      oldWidget.battleBox != battleBox ||
+      oldWidget.progress != progress;
+}
+
+/// The user's camera on the battle screen, in the camera's own shape. Over
+/// it, as before the stage, the detected joints and the chest or squat
+/// height lines, and before the round the setup's guide, with the picture
+/// around the guide dimmed as the guide dims its own outside
+/// ([BattleGuideOverlay]).
+///
+/// Under a [BattleCameraLayout] (the arena's) it fills the camera's box while
+/// setting up, cropping what does not fit, and shows the whole picture,
+/// uncropped and centered, in the battle's layout, growing or shrinking in
+/// between ([pictureSize]); the guide keeps its place on the picture all the
+/// way. Without one it shows the whole picture in the box it is given.
 ///
 /// Before the camera runs it is a black picture of the usual 3 : 4 shape.
 class BattleCameraView extends StatelessWidget {
@@ -54,9 +91,13 @@ class BattleCameraView extends StatelessWidget {
   /// same place of the picture here:
   ///
   /// - [BoxFit.cover]: a camera that fills its whole box and crops what does
-  ///   not fit. This view shows the whole picture instead, so the guide
-  ///   covers only the part of it such a camera would show in the box this
-  ///   view is given ([coverShare]).
+  ///   not fit. The battle's layout shows the whole picture instead, so the
+  ///   guide covers only the part of it such a camera would show in the
+  ///   battle layout's box ([coverShare]): the box this view is given, or
+  ///   under a [BattleCameraLayout] its [BattleCameraLayout.battleBox], in
+  ///   the setup's layout too. So the guide grows with the picture there,
+  ///   keeps its shape, and asks the user to stand where the battle's
+  ///   layout does (W2b, option 가).
   /// - [BoxFit.contain]: the whole picture, as here; the guide covers it.
   final BoxFit guideFit;
 
@@ -97,6 +138,27 @@ class BattleCameraView extends StatelessWidget {
     );
   }
 
+  /// The picture's size for a camera of [shape] (width over height) at a
+  /// layout [progress] (W2b 3-B 4.5): at 0 it fills [setupBox], cropping
+  /// what does not fit; at 1 it fits whole in [battleBox]; in between its
+  /// height goes evenly from the one to the other, in its own shape.
+  static Size pictureSize(
+    double shape, {
+    required Size setupBox,
+    required Size battleBox,
+    required double progress,
+  }) {
+    if (shape <= 0 || setupBox.isEmpty || battleBox.isEmpty) return Size.zero;
+    final filling = shape > setupBox.width / setupBox.height
+        ? setupBox.height
+        : setupBox.width / shape;
+    final whole = shape > battleBox.width / battleBox.height
+        ? battleBox.width / shape
+        : battleBox.height;
+    final height = filling + (whole - filling) * progress;
+    return Size(height * shape, height);
+  }
+
   @override
   Widget build(BuildContext context) {
     final preview = controller?.value.previewSize;
@@ -108,38 +170,61 @@ class BattleCameraView extends StatelessWidget {
         : (landscape
               ? preview.width / preview.height
               : preview.height / preview.width);
-    final chest = chestSnapshot;
-    final squat = squatSnapshot;
-    final guide = this.guide;
+    final layout = BattleCameraLayout.maybeOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final share = guideFit == BoxFit.cover
-            ? coverShare(shape, constraints.biggest)
-            : (width: 1.0, height: 1.0);
-        return AspectRatio(
-          aspectRatio: shape,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              PoseCameraView(
-                controller: controller,
-                frame: frame,
-                mirror: mirror,
-                showLandmarks: true,
-              ),
-              if (chest != null)
-                ChestHeightOverlay(
-                  frame: frame,
-                  snapshot: chest,
-                  mirror: mirror,
-                ),
-              if (squat != null)
-                SquatHeightOverlay(frame: frame, snapshot: squat),
-              if (guide != null) BattleGuideOverlay(share: share, guide: guide),
-            ],
+        if (layout == null) {
+          return AspectRatio(
+            aspectRatio: shape,
+            child: _picture(_guideShare(shape, constraints.biggest)),
+          );
+        }
+        final size = pictureSize(
+          shape,
+          setupBox: layout.setupBox,
+          battleBox: layout.battleBox,
+          progress: layout.progress,
+        );
+        // Centered in the box, and what does not fit is cut off.
+        return ClipRect(
+          child: OverflowBox(
+            minWidth: size.width,
+            maxWidth: size.width,
+            minHeight: size.height,
+            maxHeight: size.height,
+            child: _picture(_guideShare(shape, layout.battleBox)),
           ),
         );
       },
+    );
+  }
+
+  /// The share of the picture the guide covers, for the battle layout's
+  /// camera [box] ([guideFit]).
+  ({double width, double height}) _guideShare(double shape, Size box) =>
+      guideFit == BoxFit.cover
+      ? coverShare(shape, box)
+      : (width: 1.0, height: 1.0);
+
+  /// The picture and what is drawn on it, filling its box.
+  Widget _picture(({double width, double height}) share) {
+    final chest = chestSnapshot;
+    final squat = squatSnapshot;
+    final guide = this.guide;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PoseCameraView(
+          controller: controller,
+          frame: frame,
+          mirror: mirror,
+          showLandmarks: true,
+        ),
+        if (chest != null)
+          ChestHeightOverlay(frame: frame, snapshot: chest, mirror: mirror),
+        if (squat != null) SquatHeightOverlay(frame: frame, snapshot: squat),
+        if (guide != null) BattleGuideOverlay(share: share, guide: guide),
+      ],
     );
   }
 }

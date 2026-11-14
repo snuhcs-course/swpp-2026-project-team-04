@@ -23,6 +23,7 @@ import '../widgets/battle_stage_events.dart';
 import '../widgets/battle_stage_model.dart';
 import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
+import '../widgets/sound_battle.dart';
 
 /// A battle against the bot, from the pose setup to the end: the fighting
 /// stage above and the user's camera below (the battle arena).
@@ -82,6 +83,7 @@ typedef BattleSetupListener = void Function(
 class _BattleScreenState extends State<BattleScreen>
     with WidgetsBindingObserver {
   late final BattleViewModel _viewModel;
+  final _sounds = BattleSounds();
   bool _cameraStarted = false;
   Orientation? _orientation;
 
@@ -115,7 +117,7 @@ class _BattleScreenState extends State<BattleScreen>
           passDepth: counter.passDepth,
         ),
         repository: context.read<UserRepository>(),
-        sound: const DeviceRepSound(),
+        sound: const NoRepBeep(),
         formReports: context.read<FormReportStore>(),
       );
     }
@@ -239,6 +241,7 @@ class _BattleScreenState extends State<BattleScreen>
     WidgetsBinding.instance.removeObserver(this);
     _viewModel.removeListener(_onViewModelChanged);
     _viewModel.dispose();
+    _sounds.dispose();
     super.dispose();
   }
 
@@ -275,6 +278,7 @@ class _BattleScreenState extends State<BattleScreen>
       roundLength: viewModel.roundLength,
       rules: viewModel.rules,
     );
+    _sounds.show(stage);
     final pushUp = widget.matchup.exercise == ExerciseType.pushUp;
     final setup = stage.phase == BattleStagePhase.setup;
     final settingUp = setup || stage.phase == BattleStagePhase.countdown;
@@ -321,7 +325,7 @@ class _BattleScreenState extends State<BattleScreen>
         me: widget.myCharacter,
         opponent: CharacterRig.botId,
       ),
-      onCue: widget.onCue,
+      onCue: widget.onCue ?? _sounds.cue,
       onLeave: () => unawaited(_askToLeave()),
       hint: _hint(state, counterState, stage.phase),
       readyLabel: settingUp ? '시작' : null,

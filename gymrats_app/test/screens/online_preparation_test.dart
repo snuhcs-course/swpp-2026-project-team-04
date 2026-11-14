@@ -242,6 +242,9 @@ void main() {
     session.notifyListeners();
     await tester.pump();
     await pose(tester);
+    // From the setup the line comes down and the fighters pop up (W2b 3-B,
+    // 600 ms); the round's checks begin once they stand.
+    await tester.pump(const Duration(milliseconds: 600));
   }
 
   /// Plays a short online round and ends it with the server's [result],
@@ -290,6 +293,10 @@ void main() {
         tester.widget<BattleArena>(find.byType(BattleArena)).characters,
         const BattleCharacters(me: 'bear', opponent: 'seal'),
       );
+      // While setting up no fighter stands on the stage (W2b 3-B); they pop
+      // up as the round begins.
+      expect(find.byType(CharacterFigure), findsNothing);
+      await play(tester);
       expect(
         tester
             .widgetList<CharacterFigure>(find.byType(CharacterFigure))
@@ -311,8 +318,19 @@ void main() {
       expect(find.text('세팅 중'), findsNWidgets(2));
       expect(canPress(tester, '준비'), isFalse);
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
+      // The large ready button (W2b 3-B): white and gray while it waits for
+      // the pose, lime once it can be pressed, white again to take it back.
+      Color fill(String label) => tester
+          .widget<Material>(
+            find
+                .ancestor(of: find.text(label), matching: find.byType(Material))
+                .first,
+          )
+          .color!;
+      expect(fill('준비'), AppColors.card);
       await pose(tester);
       expect(canPress(tester, '준비'), isTrue);
+      expect(fill('준비'), AppColors.accent);
       await tester.tap(find.text('준비'));
       await tester.pump();
       expect(session.readyRequests, [true]);
@@ -321,6 +339,7 @@ void main() {
       expect(find.text('상대를 기다리는 중'), findsOneWidget);
       expect(find.text('준비 완료'), findsOneWidget);
       expect(canPress(tester, '준비 취소'), isTrue);
+      expect(fill('준비 취소'), AppColors.card);
       expect(session.startAtMs, isNull);
       expect(counter.history, isEmpty);
       expect(counter.roundLength, const Duration(days: 1));
@@ -487,10 +506,17 @@ void main() {
       await wait(tester, 100);
       expect(stage(tester).phase, BattleStagePhase.countdown);
       expect(find.text('5초 후 함께 시작'), findsOneWidget);
+      // The setup's large button fades out with the line coming down (no
+      // taps meanwhile); the two ready chips say both are ready as they go.
+      expect(find.text('준비'), findsOneWidget);
+      expect(canPress(tester, '준비'), isFalse);
+      expect(find.text('준비 완료'), findsNWidgets(2));
+      await wait(tester, 600);
       expect(find.text('준비'), findsNothing);
+      // Then the fighters stand, both tagged ready until the numbers.
       expect(find.text('준비 완료'), findsNWidgets(2));
       await captureFlowSnapshot('online-countdown');
-      await wait(tester, 2200);
+      await wait(tester, 1600);
       expect(find.text('3'), findsOneWidget);
       // From 3 seconds on the stage counts; the hint has nothing to add.
       session.startAtMs = session.serverNow + 2500;

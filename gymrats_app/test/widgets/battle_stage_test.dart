@@ -73,6 +73,20 @@ Future<void> _pump(
 Finder _fighter(BattleSide side) =>
     find.byWidgetPredicate((w) => w is BattleFighter && w.side == side);
 
+/// The pill around a tag's or a chip's [text], and its look.
+Rect _pillRect(WidgetTester tester, Finder text) => tester.getRect(
+  find.ancestor(of: text, matching: find.byType(DecoratedBox)).first,
+);
+BoxDecoration _pillLook(WidgetTester tester, Finder text) =>
+    tester
+            .widget<DecoratedBox>(
+              find
+                  .ancestor(of: text, matching: find.byType(DecoratedBox))
+                  .first,
+            )
+            .decoration
+        as BoxDecoration;
+
 /// The inside of the bar the fighters stand on.
 Finder _bar() => find.byWidgetPredicate(
   (w) => w is ClipRRect && w.borderRadius == BorderRadius.circular(4),
@@ -111,7 +125,7 @@ void main() {
     testWidgets('the chip is hidden before the start and says fever in fever', (
       tester,
     ) async {
-      final setup = BattleFxTimeline()..setSetup(active: true);
+      final setup = BattleFxTimeline(setup: true);
       await _pump(
         tester,
         setup.frame(0),
@@ -332,39 +346,110 @@ void main() {
       );
     });
 
-    testWidgets('the tags sit over the fighters\' heads in their tones', (
-      tester,
-    ) async {
-      final fx = BattleFxTimeline()
-        ..setSetup(active: true, opponentReady: true);
-      await _pump(tester, fx.frame(0), _state(phase: BattleStagePhase.setup));
-      final mine = find.text('세팅 중');
-      final theirs = find.text('준비 완료');
+    testWidgets('the tags sit over the fighters\' heads in their tones, as '
+        'visible as the fighters', (tester) async {
+      // More than 3 s before the start: both ready, over their heads.
+      final fx = BattleFxTimeline(setup: true)..countDown(5000, 0);
+      await _pump(
+        tester,
+        fx.frame(1000),
+        _state(phase: BattleStagePhase.countdown),
+      );
+      final ready = find.text('준비 완료');
+      expect(ready, findsNWidgets(2));
+      final mine = ready.first;
+      final theirs = ready.last;
       expect(tester.getCenter(mine).dx, closeTo(124, 0.01));
       expect(tester.getCenter(theirs).dx, closeTo(236, 0.01));
-      Rect pill(Finder text) => tester.getRect(
-        find.ancestor(of: text, matching: find.byType(DecoratedBox)).first,
-      );
-      BoxDecoration look(Finder text) =>
-          tester
-                  .widget<DecoratedBox>(
-                    find
-                        .ancestor(of: text, matching: find.byType(DecoratedBox))
-                        .first,
-                  )
-                  .decoration
-              as BoxDecoration;
-      expect(pill(mine).top, 200);
+      expect(_pillRect(tester, mine).top, 200);
       // A 16 line with 2 above and below inside a 1.5 edge.
-      expect(pill(mine).height, 16 + 2 * (2 + 1.5));
+      expect(_pillRect(tester, mine).height, 16 + 2 * (2 + 1.5));
       expect(
-        pill(mine).width,
+        _pillRect(tester, mine).width,
         closeTo(tester.getSize(mine).width + 2 * (9 + 1.5), 0.01),
       );
-      expect(look(mine).color, AppColors.card);
-      expect(look(theirs).color, AppColors.opponent);
-      expect(look(mine).border, Border.all(color: AppColors.ink, width: 1.5));
-      expect(look(mine).borderRadius, BorderRadius.circular(11));
+      expect(_pillLook(tester, mine).color, AppColors.accent);
+      expect(_pillLook(tester, theirs).color, AppColors.opponent);
+      expect(
+        _pillLook(tester, mine).border,
+        Border.all(color: AppColors.ink, width: 1.5),
+      );
+      expect(_pillLook(tester, mine).borderRadius, BorderRadius.circular(11));
+      // While the fighters pop up, the tags show as much as they do.
+      await _pump(
+        tester,
+        fx.frame(385),
+        _state(phase: BattleStagePhase.countdown),
+      );
+      expect(
+        tester
+            .widgetList<Opacity>(
+              find.ancestor(of: ready.first, matching: find.byType(Opacity)),
+            )
+            .first
+            .opacity,
+        closeTo(0.5, 1e-9),
+      );
+    });
+
+    testWidgets('while setting up: no fighters and no tags, the ready chips '
+        'between the scores in the valid counts\' place (W2b 3-B 4.2)', (
+      tester,
+    ) async {
+      final fx = BattleFxTimeline(setup: true)
+        ..setSetup(active: true, opponentReady: true, now: 0);
+      final handle = tester.ensureSemantics();
+      await _pump(tester, fx.frame(0), _state(phase: BattleStagePhase.setup));
+      expect(_fighter(BattleSide.me), findsNothing);
+      expect(_fighter(BattleSide.opponent), findsNothing);
+      expect(find.text('유효 횟수'), findsNothing);
+      final mine = find.text('세팅 중');
+      final theirs = find.text('준비 완료');
+      expect(mine, findsOneWidget);
+      expect(theirs, findsOneWidget);
+      expect(_pillRect(tester, mine).left, 72);
+      expect(_pillRect(tester, theirs).right, 288);
+      expect(_pillRect(tester, mine).top, 106);
+      expect(_pillRect(tester, theirs).top, 106);
+      expect(_pillRect(tester, mine).height, 16 + 2 * (2 + 1.5));
+      // The design's widths with the app's fonts: 59 and 71.
+      expect(_pillRect(tester, mine).width, closeTo(59, 1));
+      expect(_pillRect(tester, theirs).width, closeTo(71, 1));
+      expect(_pillLook(tester, mine).color, AppColors.card);
+      expect(_pillLook(tester, theirs).color, AppColors.opponent);
+      // Whose each is, for a screen reader.
+      expect(find.bySemanticsLabel('나 세팅 중'), findsOneWidget);
+      expect(find.bySemanticsLabel('상대 준비 완료'), findsOneWidget);
+      // Waiting for the opponent: mine lime.
+      fx.setSetup(active: true, meReady: true, now: 10);
+      await _pump(tester, fx.frame(10), _state(phase: BattleStagePhase.setup));
+      expect(_pillLook(tester, find.text('준비 완료')).color, AppColors.accent);
+      expect(_pillRect(tester, find.text('준비 완료')).left, 72);
+      handle.dispose();
+    });
+
+    testWidgets('the valid counts fade in as the line comes down, and the '
+        'chips fade out', (tester) async {
+      final fx = BattleFxTimeline(setup: true)..countDown(3000, 0);
+      await _pump(
+        tester,
+        fx.frame(100),
+        _state(phase: BattleStagePhase.countdown),
+      );
+      Opacity around(Finder finder) => tester
+          .widgetList<Opacity>(
+            find.ancestor(of: finder, matching: find.byType(Opacity)),
+          )
+          .first;
+      expect(around(find.text('유효 횟수')).opacity, closeTo(0.5, 1e-9));
+      expect(around(find.text('준비 완료').first).opacity, closeTo(1 / 3, 1e-9));
+      await _pump(
+        tester,
+        fx.frame(200),
+        _state(phase: BattleStagePhase.countdown),
+      );
+      expect(find.text('준비 완료'), findsNothing);
+      expect(around(find.text('유효 횟수')).opacity, 1);
     });
 
     testWidgets('the impact star sits in front of the one who is hit, as '

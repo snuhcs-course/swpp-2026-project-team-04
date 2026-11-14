@@ -334,3 +334,65 @@ team plan, one day before the iteration's official start. Its prompts from that 
 - When a change crosses versions (old and new apps and servers), ask for a proposal before any code. The answer then picks the option with the fewest moving parts.
 - Before deleting a package, check the scripts and tools too, not only the Dart code.
 - Test the moment between login and the first read of saved data. A stand-in default shown then can be saved over the real value.
+
+## W2b `feat/battle_screen_polish` – polish of the battle and matching screens (A2, team order #7), 2026-11-13 ~ 2026-11-14
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W2b's code and tests, in six commits on `feat/battle_screen_polish`: `0b8f610` (3-B, the pose setup), `c421b42` (2-A3, MATCH FOUND), `4c555ec` (1-A, the radar blips) on 11-13, and `374b72c` (old avatar words), `82772e5` (the end screen) and `ae44bbb` (MATCH FOUND with the W3 characters) on 11-14. It also resolved the merge of `main` with #51 and #52 (`13d0b4d`).
+  - 3-B: the setup's layout and its move in `lib/widgets/battle_fx_motion.dart` (`BattleFxFrame.battleLayout`, `setupLook`, the ready chips), the screen's geometry as a pure function (`BattleArenaLayout` in `battle_arena.dart`), the camera picture's size and the silhouette's place (`BattleCameraLayout`, `BattleCameraView.pictureSize`, `coverShare` in `battle_camera_view.dart`), and the large band and button in `battle_camera_area.dart`.
+  - 1-A: `RadarBlips` in `lib/screens/matching_screen.dart`, a pure function of the sweep.
+  - 2-A3: the board in `lib/screens/versus_screen.dart`. It was built with W2's stand-in in one slot (`_VersusCharacter`). Once W3 was in `main`, that slot draws the W3 characters (`ae44bbb`), and the online lobby passes the session's two characters.
+  - The end screen: `BattleFxFrame.endLayout`, `BattleArenaLayout.lineTop(progress, end:)`, and 결과 보기 moved into its own widget, `lib/widgets/battle_result_button.dart`.
+- **The design came from the user:** `W2B-SPEC.md` and `w2b_golden.json` from the user's design canvas. Claude Code ported them and checked the port against the design's own samples (`test/widgets/battle_w2b_golden.json`).
+- **The end screen's options:** the spec had none. Claude Code drew three options with the app's real fonts and the real stage widgets (a temporary render test, not committed). The user chose one, and only that one was built.
+- **A teammate's PR:** Claude Code compared 한상우's #51 with 3-B's silhouette and reported the result to the user (item c). It did not edit his files.
+- **Review:** the `reviewer` subagent reviewed W2b in four runs: run 1 (3-B), run 2 (1-A and 2-A3), run 3 (the end screen and this push's notes) and run 4 (the merge of `main` and the character swap). Run 3 returned CHANGES_REQUESTED twice (item d); every run ended with APPROVE.
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - The scope and every choice were the user's: the spec section 11 answers, the four open choices of 3-B kept as built, the words' margin (70 + 76 × scale) and leaving the "VS" disc's overlap on small phones, the end screen in this step, option A, the character swap as its own commit, and a Draft PR first.
+  - The phone checks were the user's (Galaxy S26+), all with no problems: first 3-B, the radar dots and MATCH FOUND (with the stand-in); then, after the merge with W3, MATCH FOUND with the W3 characters, the end screen after a KO and after a time-up (the fever wash filling the screen included), and the setup's 80% camera with its switch.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-13 12:27] (the start, pasted; excerpt) "기준: .claude/design/gymrats-w2b-reference/W2B-SPEC.md. 이번 범위는 3-B만이야. 자세 세팅 중에는 카메라가 화면의 약 80%를 쓰고, 카운트다운이 시작되면 50:50으로 바뀌는 것."
+- [Woohyun Song, 11-13 21:47] (the scope widened, pasted; excerpt) "3. 2-A3의 캐릭터는 W3(feat/characters) 코드가 이 브랜치에 없어서 지금은 쓸 수 없어. … 캐릭터가 들어갈 자리는 위젯 하나로 모아서, 나중에 W3에서 그 위젯만 W3 캐릭터로 바꾸면 되게 해. W3 파일은 고치지도 가져오지도 마."
+- [Woohyun Song, 11-14 03:02] (the finish with the end screen, pasted; excerpt) "먼저 코드는 고치지 말고 2~3개 안을 실제 글꼴로 그린 그림으로 .claude/design/out/w2b-end/에 만들어 보여 줘."
+- [Woohyun Song, 11-14 03:21] "일단 A로 가자"
+- [Woohyun Song, 11-14 04:00] (an answer in the agent's question dialog, so not in the Prompt Log; excerpt) "교체는 지금 이 브랜치에서 별도 커밋으로 해(내 캐릭터는 저장된 선택, 봇은 RepBot, 온라인은 서버 id, 대기 동작에서 상대는 230ms 늦게). 그다음 PR은 Draft로 바로 열고, …"
+
+### c. What AI did well
+- **A port checked against the design's samples.** 3-B matches the design's 39 `setupTransition` samples and 1-A its `radar` samples, every 50 ms over two turns. In W2's own samples only one field changed (the end screen's cover behind 결과 보기), and the reason is in the notes.
+- **Options drawn before code.** For the end screen, the agent rendered three options with the app's fonts and the real stage, at the KO and time-up endings and the middle of the move. The user's prompt came at 11-14 03:02, and the choice at 03:21 in one line, "일단 A로 가자". Only that option was coded.
+- **A spec conflict found and asked, not guessed (2-A3):** the spec puts the words "146 × scale" from the character's side, but a character shrunk around its feet then overlaps them, which the spec's own section 9 forbids. The agent measured it (overlap below a scale of 0.92; on the S22 at text 1.3 the scale is about 0.79) and asked. The user chose 70 + 76 × scale.
+- **A teammate's PR read against this one:** 한상우's #51 shares no file with W2b. The agent found that its alignment check sits in `SetupViewModel`, which only the `/setup` screen uses, while the real bot and online setups use `SetupChecker` directly. So #51 does not reach the battle's setup yet. Its crop math equals `coverShare`, so a later hookup should pass the battle layout's camera box.
+- **The review caught a moved `main` before the push:** checking this push's notes, the reviewer ran `git fetch` and found #51 and #52 (W3) merged into `main`. The notes and the PR draft were for a head that could not be pushed. The branch merged `main` first (three conflicts, all in W2b's files), and MATCH FOUND got the W3 characters at once.
+- **The full suite caught a regression in a demo:** after the end screen, the stage demo's effect buttons, which sit where the camera is, vanished at every ending. The full suite found it, not the phone. The demo now starts over through 결과 보기.
+
+### d. Hallucinations / errors
+- **Review findings (runs 1 and 2: no Critical or Major, 5 Minor each, all fixed; run 3: 1 Major, 3 Minor):**
+  - Run 1 (3-B): a disconnected opponent's "연결 끊김" tag floated over the empty ground during the setup; with reduced motion the layout jumped one frame (16 ms) after the phase changed; one assertion about the fading bar could not fail.
+  - Run 2 (1-A, 2-A3): the blips' glow colors and the pills' paddings had no test (planted changes passed); the "AI" pill's lift was a raw number in the screen.
+  - Run 3 (the end screen): **1 Major.** When the screen reports a knockout before its blow (a supported order), the line started down at the report. It then went back up when the blow landed, so the camera came back for a moment. The agent's own tests had covered a knockout by its blow, but not one reported first. The fix came test first: the start never moves later. Run 3 also had 3 Minor findings. In fever the cyan wash fills the whole screen; the options had been drawn without fever. It was kept, and a render was made (`.claude/design/out/w2b-end/_built.png`, not committed). The render was named to the user in the question they answered at 04:12, and the user then checked it on the phone: "피버 무늬가 화면 전체를 채우는 모습도 괜찮음". Moving 결과 보기's tests had lost a small-phone size. One note said the button's place was "as before" when it was 1.5 points higher; it is now placed exactly as before.
+  - Run 3's check of the notes: **CHANGES_REQUESTED.** They described a head that could not be pushed, because `main` had moved (item c). One sentence stated as done something not yet done (the render "shown" to the user), and two time estimates could not be checked. The notes were redone after the merge.
+  - Run 4 (the merge and the swap): APPROVE with 3 Minor findings, all fixed: a stale class doc, and design-doc rows and a task line still naming the stand-in.
+- **Two W3 tests broken by the merge:** W3's screen tests looked for the characters while setting up, where 3-B draws no fighter. They now check after the countdown.
+- **A demo broken by the end screen (11-14):** the first version of the end screen made the stage demo's buttons disappear with the camera, and one demo test failed in the full suite (2186 passed, 1 failed). Cost: one test and one doc comment.
+- **Tooling:** a Python edit of a test file failed to find its text (Windows line endings and an escaped quote), and was redone with the file tools. No impact on the code.
+
+### e. Prompt revisions
+- **The end screen in or out:**
+  - Before (11-14 02:59): "PM이 W6~W8을 먼저 끝내라고 해서, 대결이 끝난 뒤 화면(무대를 화면 전체로)은 이번 W2b에서 빼고 시간이 남으면 나중에 따로 할 거야."
+  - After (11-14 03:02, re-sent): "대결이 끝난 뒤 화면까지 이번 W2b에 넣는다." with a new step: "먼저 코드는 고치지 말고 2~3개 안을 실제 글꼴로 그린 그림으로 .claude/design/out/w2b-end/에 만들어 보여 줘. … 시간이 빠듯하니 안은 간단히 보여 주고, 내가 고르면 바로 만들어."
+  - Why it worked: the second prompt kept the end screen small enough for the deadline. Pictures first, then one option, so no time went into code for options that were not chosen. It also gave the rules up front (no change to judging or the result conditions, one pure progress value, reduced motion, which golden fields may change and where to write why).
+
+- **A dialog answer written for an older state:**
+  - Before (11-14 04:00, the question dialog): "…본문에 \"대결이 끝난 뒤 화면을 이어서 올림\"이라고 적어. 끝 화면 안을 보여 주고 내가 고르면 같은 브랜치에 이어서 커밋하고 …"
+  - After (11-14 04:12): the agent pointed out that option A was already built and committed, and asked again. The user chose "A 그대로 포함".
+  - Why it worked: asking kept a PR line that was no longer true out of the PR.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W2b was edited by hand, so W2b has no manual-fix markers.
+- The user's corrections came as prompts and phone checks: the spec answers, the words' margin, the end screen's option.
+
+### Takeaway
+- When the spec leaves a screen open, draw two or three options with the real widgets before writing code; the choice then takes one line.
+- Run the full suite before review: a demo that shares the screen's layout can break in ways the widget's own tests do not see.

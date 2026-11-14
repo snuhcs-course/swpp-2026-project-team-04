@@ -74,6 +74,189 @@ void main() {
     );
   });
 
+  group('under the arena\'s layout (W2b 3-B, guide option 가)', () {
+    const laidKey = Key('laid guide');
+    const setupBox = Size(360, 621);
+    const battleBox = Size(360, 387);
+
+    test('the picture fills the setup\'s box, fits whole in the battle\'s, '
+        'and its height goes evenly in between', () {
+      Size at(double progress, {double shape = 3 / 4}) =>
+          BattleCameraView.pictureSize(
+            shape,
+            setupBox: setupBox,
+            battleBox: battleBox,
+            progress: progress,
+          );
+      // Wider than the setup's box: as tall as it, cut at the sides.
+      expect(at(0), const Size(621 * 3 / 4, 621));
+      // Narrower than the battle's box: as tall as it, whole.
+      expect(at(1), const Size(387 * 3 / 4, 387));
+      expect(at(0.5).height, closeTo((621 + 387) / 2, 1e-9));
+      expect(at(0.5).width, closeTo(at(0.5).height * 3 / 4, 1e-9));
+      // A 2 : 3 camera (W2B-SPEC 4.5): 414 x 621 while setting up.
+      expect(at(0, shape: 2 / 3).width, closeTo(414, 1e-9));
+      // A picture narrower than the setup's box is cut at the top and
+      // bottom instead; one wider than the battle's box fits its width.
+      final tall = BattleCameraView.pictureSize(
+        0.5,
+        setupBox: const Size(400, 600),
+        battleBox: const Size(400, 300),
+        progress: 0,
+      );
+      expect(tall, const Size(400, 800));
+      final wide = BattleCameraView.pictureSize(
+        2,
+        setupBox: const Size(400, 600),
+        battleBox: const Size(400, 300),
+        progress: 1,
+      );
+      expect(wide, const Size(400, 200));
+      expect(
+        BattleCameraView.pictureSize(
+          0,
+          setupBox: setupBox,
+          battleBox: battleBox,
+          progress: 0,
+        ),
+        Size.zero,
+      );
+    });
+
+    /// The phone's screen, so the setup's 621-tall box fits.
+    Future<void> phone(WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 780));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+    }
+
+    Future<void> pumpLaidOut(
+      WidgetTester tester,
+      double progress, {
+      Widget? guide,
+    }) async {
+      await phone(tester);
+      final box = Size(360, 621 - (621 - 387) * progress);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox.fromSize(
+              size: box,
+              child: BattleCameraLayout(
+                setupBox: setupBox,
+                battleBox: battleBox,
+                progress: progress,
+                child: Center(
+                  child: BattleCameraView(controller: null, guide: guide),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('setting up on an S22: the picture covers the box, cut at '
+        'the sides, and the guide keeps its share of the picture: '
+        '465.75 x 500.7 in the middle', (tester) async {
+      await pumpLaidOut(tester, 0, guide: const SizedBox.expand(key: laidKey));
+      final picture = tester.getRect(find.byType(PoseCameraView));
+      expect(picture.width, closeTo(465.75, 0.01));
+      expect(picture.height, closeTo(621, 0.01));
+      expect(picture.left, closeTo(-52.875, 0.01));
+      expect(picture.top, closeTo(0, 0.01));
+      final guide = tester.getRect(find.byKey(laidKey));
+      expect(guide.width, closeTo(465.75, 0.01));
+      expect(guide.height, closeTo(621 * 387 / 480, 0.01));
+      // On the screen, under the line's 159: y 219.2 to 719.8.
+      expect(159 + guide.top, closeTo(219.2, 0.1));
+      expect(159 + guide.bottom, closeTo(719.8, 0.1));
+      // What does not fit the box is cut off.
+      final clip = find.ancestor(
+        of: find.byType(PoseCameraView),
+        matching: find.byType(ClipRect),
+      );
+      expect(tester.getRect(clip.last), const Rect.fromLTWH(0, 0, 360, 621));
+    });
+
+    testWidgets('the guide\'s box keeps its shape all the way, so its '
+        'outline is never stretched', (tester) async {
+      double shapeAt(double progress) {
+        final guide = tester.getRect(find.byKey(laidKey));
+        return guide.width / guide.height;
+      }
+
+      final shapes = <double>[];
+      for (final progress in [0.0, 0.3, 0.7, 1.0]) {
+        await pumpLaidOut(
+          tester,
+          progress,
+          guide: const SizedBox.expand(key: laidKey),
+        );
+        shapes.add(shapeAt(progress));
+      }
+      for (final shape in shapes) {
+        expect(shape, closeTo(shapes.first, 1e-6));
+      }
+    });
+
+    testWidgets('in the battle\'s layout it is W2\'s picture and guide, to '
+        'the point', (tester) async {
+      await pumpLaidOut(tester, 1, guide: const SizedBox.expand(key: laidKey));
+      final picture = tester.getRect(find.byType(PoseCameraView));
+      final guide = tester.getRect(find.byKey(laidKey));
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 360,
+              height: 387,
+              child: Center(
+                child: BattleCameraView(
+                  controller: null,
+                  guide: SizedBox.expand(key: laidKey),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.getRect(find.byType(PoseCameraView)), picture);
+      expect(tester.getRect(find.byKey(laidKey)), guide);
+    });
+
+    testWidgets('a guide drawn for the whole picture covers it whole there '
+        'too', (tester) async {
+      await phone(tester);
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 360,
+              height: 621,
+              child: BattleCameraLayout(
+                setupBox: setupBox,
+                battleBox: battleBox,
+                progress: 0,
+                child: BattleCameraView(
+                  controller: null,
+                  guide: SizedBox.expand(key: laidKey),
+                  guideFit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(
+        tester.getRect(find.byKey(laidKey)),
+        tester.getRect(find.byType(PoseCameraView)),
+      );
+    });
+  });
+
   group("the setup's guide lies where a cropping camera would show it", () {
     /// Where a camera of [shape] that fills a [box] and crops what does not
     /// fit (BoxFit.cover) shows the picture: the part of it left visible,

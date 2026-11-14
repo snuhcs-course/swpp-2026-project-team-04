@@ -25,6 +25,7 @@ import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_arena.dart';
 import 'package:gymrats_app/widgets/battle_camera_area.dart';
 import 'package:gymrats_app/widgets/battle_camera_view.dart';
+import 'package:gymrats_app/widgets/battle_fighter.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
@@ -229,12 +230,18 @@ void main() {
         tester.widget<BattleArena>(find.byType(BattleArena)).characters,
         const BattleCharacters(me: 'seal', opponent: 'bot'),
       );
+      // While setting up no fighter stands on the stage (W2b 3-B); they pop
+      // up once the countdown brings the line down.
+      expect(find.byType(CharacterFigure), findsNothing);
+      await frame(tester, 1);
+      await wait(tester, 1000);
       expect(
         tester
             .widgetList<CharacterFigure>(find.byType(CharacterFigure))
             .map((figure) => (figure.characterId, figure.side)),
         containsAll([('seal', BattleSide.me), ('bot', BattleSide.opponent)]),
       );
+      await close(tester);
     });
 
     testWidgets('without a character given, mine is the mouse', (tester) async {
@@ -279,25 +286,41 @@ void main() {
       final guide = find.byType(PoseSilhouetteGuide);
       expect(guide, findsOneWidget);
       expect(tester.widget<PoseSilhouetteGuide>(guide).ready, isFalse);
-      // 360 x 387 below the line, the picture 3 : 4 in it, whole.
-      final picture = tester.getRect(find.byType(PoseCameraView));
+      // Setting up (W2b 3-B): 360 x 621 below the line, the 3 : 4 picture
+      // filling it, cut at the sides. The guide keeps the share a cropping
+      // camera would show in the battle's 360 x 387 box (option 가).
+      var picture = tester.getRect(find.byType(PoseCameraView));
       final area = BattleCameraView.coverShare(3 / 4, const Size(360, 387));
-      expect(picture.height, closeTo(387, .01));
-      expect(tester.getSize(guide).width, closeTo(picture.width, .01));
-      expect(
-        tester.getSize(guide).height,
-        closeTo(picture.height * area.height, .01),
-      );
-      expect(tester.getCenter(guide), offsetMoreOrLessEquals(picture.center));
-      // The strips above and below it are dimmed as its own outside is.
-      final overlay = find.byType(BattleGuideOverlay);
-      expect(tester.widget<BattleGuideOverlay>(overlay).share, area);
-      expect(tester.getRect(overlay), picture);
+      expect(picture.top, closeTo(159, .01));
+      expect(picture.height, closeTo(621, .01));
+      expect(picture.width, closeTo(621 * 3 / 4, .01));
+      void guideOn(Rect picture) {
+        expect(tester.getSize(guide).width, closeTo(picture.width, .01));
+        expect(
+          tester.getSize(guide).height,
+          closeTo(picture.height * area.height, .01),
+        );
+        expect(tester.getCenter(guide), offsetMoreOrLessEquals(picture.center));
+        // The strips above and below it are dimmed as its own outside is.
+        final overlay = find.byType(BattleGuideOverlay);
+        expect(tester.widget<BattleGuideOverlay>(overlay).share, area);
+        expect(tester.getRect(overlay), picture);
+      }
+
+      guideOn(picture);
       // The chest lines are the round's, not the setup's.
       expect(find.byType(ChestHeightOverlay), findsNothing);
       await frame(tester, 1);
       expect(tester.widget<PoseSilhouetteGuide>(guide).ready, isTrue);
-      // Still there while counting down, gone in the round.
+      // Still there while counting down, gone in the round; in the battle's
+      // layout the picture is whole, 3 : 4 under the middle, as in W2.
+      await wait(tester, 400);
+      picture = tester.getRect(find.byType(PoseCameraView));
+      expect(
+        picture,
+        rectMoreOrLessEquals(const Rect.fromLTWH(34.875, 393, 290.25, 387)),
+      );
+      guideOn(picture);
       await frame(tester, 2);
       expect(guide, findsOneWidget);
       expect(find.byType(ChestHeightOverlay), findsNothing);
@@ -402,11 +425,17 @@ void main() {
       expect(find.text('3'), findsOneWidget);
       expect(find.text('세팅 중'), findsNothing);
       // The setup bar and the camera switch are for setting up; the stage
-      // counts now. 시작 may still begin the round at once.
+      // counts now. They fade out with the large 시작 as the line comes
+      // down, read by no one, while the countdown's small 시작 comes in.
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsNothing);
       expect(find.bySemanticsLabel('카메라 전환'), findsNothing);
+      expect(find.text('시작'), findsNWidgets(2));
+      await wait(tester, 150);
+      // 시작 may still begin the round at once.
+      expect(find.text('시작'), findsOneWidget);
       expect(canPress(tester, '시작'), isTrue);
-      await wait(tester, 1000);
+      expect(find.byIcon(Icons.cameraswitch_outlined), findsNothing);
+      await wait(tester, 1000 - 150);
       await frame(tester, 2);
       expect(find.text('2'), findsOneWidget);
       await wait(tester, 1000);
@@ -457,8 +486,18 @@ void main() {
       await frame(tester, 2, found: false);
       await wait(tester, 16);
       expect(stage(tester).phase, BattleStagePhase.setup);
+      // W2b 3-B 4.6: the fighters fade out in 0.1 s and the line goes back
+      // up in 0.35 s; the setup's band and chips come back with it.
+      await wait(tester, 100);
+      expect(find.byType(BattleFighter), findsNothing);
+      await wait(tester, 250);
+      expect(
+        tester.getTopLeft(find.byType(BattleCameraArea)).dy,
+        closeTo(156, 1e-9),
+      );
       expect(find.text('자세 세팅 중'), findsOneWidget);
       expect(find.text('세팅 중'), findsOneWidget);
+      expect(find.text('3'), findsNothing);
       await wait(tester, 3000);
       expect(find.text('GO!'), findsNothing);
       expect(viewModel.state.started, isFalse);

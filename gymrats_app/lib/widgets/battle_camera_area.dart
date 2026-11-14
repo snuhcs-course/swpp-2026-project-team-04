@@ -7,7 +7,7 @@ import 'battle_banner.dart';
 import 'battle_fx_motion.dart';
 import 'battle_stage_model.dart';
 
-/// The lower half of the battle screen: the user's camera, and over it the
+/// The battle screen under the stage: the user's camera, and over it the
 /// few things to read or press while exercising.
 ///
 /// - bottom left: the leave button, until the battle has ended
@@ -17,12 +17,23 @@ import 'battle_stage_model.dart';
 /// - along the top: the setup progress before the start, or the reconnect
 ///   band while the user's own connection is down
 /// - in the top corners while the round is on: the combo marks ("2 HIT")
-/// - in the middle, once the ending has played: 결과 보기, over a dimmed
-///   camera
+///
+/// Once the result is known the battle screen takes it away: the line
+/// above it goes down and it gets shorter until it is gone (W2b end screen,
+/// option A); 결과 보기 is the screen's ([BattleArena]), not its own.
+///
+/// While [settingUp] (W2b 3-B) the setup's things are drawn large instead:
+/// the progress bar along the top, the guidance in a large band under it,
+/// the camera switch under that, and a large ready button bottom right; the
+/// leave button stays. When the countdown begins they fade out as
+/// [setupLook] falls, keeping how the setup last gave them, and take no
+/// taps meanwhile; the countdown's own guidance and button fade in in
+/// their usual places.
 ///
 /// Unlike the stage above it, its texts follow the system text size, and
-/// its buttons grow with them.
-class BattleCameraArea extends StatelessWidget {
+/// its buttons grow with them; the large band's guidance keeps to one line
+/// and shrinks to fit.
+class BattleCameraArea extends StatefulWidget {
   const BattleCameraArea({
     super.key,
     required this.camera,
@@ -30,24 +41,26 @@ class BattleCameraArea extends StatelessWidget {
     this.hint,
     this.readyLabel,
     this.onReady,
+    this.readyPressed = false,
     this.onSwitchCamera,
     this.setupProgress,
+    this.settingUp = false,
+    this.setupLook = 0,
     this.reconnecting = false,
     this.spin = 0,
-    this.resultButton,
-    this.onShowResult,
     this.combos = const [],
     this.stageScale = 1,
   });
 
-  /// The camera picture with whatever is drawn on it, in its own shape. It
-  /// is centered and never cropped; the sides it leaves stay plain.
+  /// The camera picture with whatever is drawn on it. It is centered, and
+  /// cut off where it does not fit; the sides it leaves stay plain.
   final Widget camera;
 
   /// Asks to leave the battle. Null hides the button: the battle has ended.
   final VoidCallback? onLeave;
 
-  /// The one line of guidance, at most two lines long; null shows none.
+  /// The guidance, when there is something to say: in the large band while
+  /// [settingUp], otherwise one line of at most two lines at the bottom.
   final String? hint;
 
   /// The ready button's words; null hides it. [onReady] null shows it but
@@ -55,22 +68,30 @@ class BattleCameraArea extends StatelessWidget {
   final String? readyLabel;
   final VoidCallback? onReady;
 
+  /// Whether the user is ready already, so the button takes it back: the
+  /// large button is then white instead of lime.
+  final bool readyPressed;
+
   /// Switches between the cameras; null hides the button.
   final VoidCallback? onSwitchCamera;
 
   /// How far the setup has come, from 0 to 1; null hides the bar.
   final double? setupProgress;
 
+  /// Whether the battle is setting up now, so [hint], the ready button, the
+  /// camera switch and [setupProgress] are the setup's, drawn large.
+  final bool settingUp;
+
+  /// How strongly the setup's large look shows: 1 while setting up, falling
+  /// to 0 as the countdown begins ([BattleFxFrame.setupLook]). The guidance
+  /// and button of the countdown and the round show the rest of the way.
+  final double setupLook;
+
   /// Whether the user's own connection is down and being restored.
   final bool reconnecting;
 
   /// How far the reconnect band's arc has turned, in degrees.
   final double spin;
-
-  /// 결과 보기 as the effect math brings it up; null until the ending has
-  /// played, and the button cannot be pressed before.
-  final BattleFxResultButton? resultButton;
-  final VoidCallback? onShowResult;
 
   /// The combo marks, in the top corners: mine on the left, the opponent's
   /// on the right, [BattleFx.comboBelowLine] stage points under the line, or
@@ -90,45 +111,114 @@ class BattleCameraArea extends StatelessWidget {
   static const _edge = 1.5;
   static const _progressHeight = 6.0;
   static const _bandHeight = 34.0;
-  static const _resultSize = Size(240, 58);
-  static const _arrowSize = 26.0;
+
+  /// While setting up: the large band's height, the large ready button's
+  /// least size, and their ink edges.
+  static const _setupHintHeight = 54.0;
+  static const _setupButtonSize = Size(132, 52);
+  static const _setupEdge = 2.0;
+
+  /// How far a round button's circle is from the edge of its finger room.
+  static const _circleInset = (_tapSize - _buttonSize) / 2;
+
+  @override
+  State<BattleCameraArea> createState() => _BattleCameraAreaState();
+}
+
+/// What the setup last gave the camera area: its large things keep it while
+/// they fade out, once the countdown has given other things.
+class _SetupLook {
+  _SetupLook.of(BattleCameraArea area)
+    : hint = area.hint,
+      readyLabel = area.readyLabel,
+      readyEnabled = area.onReady != null,
+      readyPressed = area.readyPressed,
+      canSwitch = area.onSwitchCamera != null,
+      progress = area.setupProgress;
+
+  final String? hint;
+  final String? readyLabel;
+  final bool readyEnabled;
+  final bool readyPressed;
+  final bool canSwitch;
+  final double? progress;
+}
+
+class _BattleCameraAreaState extends State<BattleCameraArea> {
+  _SetupLook? _last;
+
+  @override
+  void initState() {
+    super.initState();
+    _remember();
+  }
+
+  @override
+  void didUpdateWidget(BattleCameraArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _remember();
+  }
+
+  void _remember() {
+    if (widget.settingUp) _last = _SetupLook.of(widget);
+  }
+
+  static void _none() {}
 
   @override
   Widget build(BuildContext context) {
+    final area = widget;
     final text = Theme.of(context).textTheme;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final result = resultButton;
-    final progress = setupProgress;
+    final progress = area.setupProgress;
+    final setup = _last;
+    final setupLook = area.setupLook.clamp(0.0, 1.0);
+    // The setup's large things take taps only while they are all there.
+    final setupLive = area.settingUp && setupLook >= 1;
+    // The countdown's and the round's things, as they come in.
+    final round = !area.settingUp;
+    final roundOpacity = 1 - setupLook;
+    final hint = area.hint;
+    final readyLabel = area.readyLabel;
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: AppColors.border,
         border: Border(
-          top: BorderSide(color: AppColors.ink, width: lineWidth),
+          top: BorderSide(
+            color: AppColors.ink,
+            width: BattleCameraArea.lineWidth,
+          ),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(top: lineWidth),
+        padding: const EdgeInsets.only(top: BattleCameraArea.lineWidth),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Center(child: camera),
-            if (progress != null && !reconnecting)
+            ClipRect(child: Center(child: area.camera)),
+            if (round && progress != null && !area.reconnecting)
               Positioned(
                 left: 0,
                 right: 0,
                 top: 0,
-                child: _SetupProgress(progress: progress),
+                child: _Fade(
+                  opacity: roundOpacity,
+                  child: _SetupProgress(progress: progress),
+                ),
               ),
-            if (onSwitchCamera != null)
+            if (round && area.onSwitchCamera != null)
               Positioned(
                 right: AppSpacing.s12,
                 // Clear of the band or the bar along the top.
                 top: AppSpacing.s32 + AppSpacing.s12,
-                child: _RoundButton(
-                  icon: Icons.cameraswitch_outlined,
-                  label: '카메라 전환',
-                  alignment: Alignment.topRight,
-                  onPressed: onSwitchCamera!,
+                child: _Fade(
+                  opacity: roundOpacity,
+                  child: _RoundButton(
+                    icon: Icons.cameraswitch_outlined,
+                    label: '카메라 전환',
+                    alignment: Alignment.topRight,
+                    onPressed: area.onSwitchCamera!,
+                  ),
                 ),
               ),
             Positioned(
@@ -138,65 +228,55 @@ class BattleCameraArea extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  if (onLeave != null)
+                  if (area.onLeave != null)
                     _RoundButton(
                       icon: Icons.logout_rounded,
                       label: '게임 나가기',
                       alignment: Alignment.centerLeft,
-                      onPressed: onLeave!,
+                      onPressed: area.onLeave!,
                     )
                   else
-                    const SizedBox(width: _tapSize),
+                    const SizedBox(width: BattleCameraArea._tapSize),
                   const SizedBox(width: AppSpacing.s8),
                   Expanded(
-                    child: hint == null
-                        ? const SizedBox.shrink()
-                        : _Hint(text: hint!, style: text.cameraHint),
+                    child: round && hint != null
+                        ? _Fade(
+                            opacity: roundOpacity,
+                            child: _Hint(text: hint, style: text.cameraHint),
+                          )
+                        : const SizedBox.shrink(),
                   ),
                   const SizedBox(width: AppSpacing.s8),
-                  if (readyLabel != null)
-                    _ReadyButton(
-                      label: readyLabel!,
-                      onPressed: onReady,
-                      style: text.cameraButton,
+                  if (round && readyLabel != null)
+                    _Fade(
+                      opacity: roundOpacity,
+                      child: _ReadyButton(
+                        label: readyLabel,
+                        onPressed: area.onReady,
+                        style: text.cameraButton,
+                      ),
                     )
                   else
-                    const SizedBox(width: _tapSize),
+                    const SizedBox(width: BattleCameraArea._tapSize),
                 ],
               ),
             ),
-            if (result != null) ...[
-              // The camera fades behind the button: the battle is over.
+            if (setup != null && setupLook > 0)
               Positioned.fill(
                 child: IgnorePointer(
-                  child: ColoredBox(
-                    color: AppColors.background.withValues(
-                      alpha: result.scrim.clamp(0.0, 1.0),
+                  ignoring: !setupLive,
+                  child: ExcludeSemantics(
+                    excluding: !setupLive,
+                    child: _Fade(
+                      opacity: setupLook,
+                      child: _setupLayer(setup, text, bottomInset, setupLive),
                     ),
                   ),
                 ),
               ),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s12,
-                  ),
-                  child: Opacity(
-                    opacity: result.opacity.clamp(0.0, 1.0),
-                    child: Transform.scale(
-                      scale: result.scale,
-                      child: _ResultButton(
-                        onPressed: onShowResult,
-                        style: text.cameraResult,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
             // Over everything else here: the band, and the combo marks under
             // it, in the order of the design's layers.
-            if (reconnecting || combos.isNotEmpty)
+            if (area.reconnecting || area.combos.isNotEmpty)
               Positioned(
                 left: 0,
                 right: 0,
@@ -205,10 +285,10 @@ class BattleCameraArea extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (reconnecting)
-                      _ReconnectBand(spin: spin, style: text.cameraNotice),
-                    if (combos.isNotEmpty)
-                      _ComboRow(combos: combos, scale: stageScale),
+                    if (area.reconnecting)
+                      _ReconnectBand(spin: area.spin, style: text.cameraNotice),
+                    if (area.combos.isNotEmpty)
+                      _ComboRow(combos: area.combos, scale: area.stageScale),
                   ],
                 ),
               ),
@@ -216,6 +296,82 @@ class BattleCameraArea extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// The setup's things, large (W2b 3-B): the progress bar along the top,
+  /// the guidance in a band under it, the camera switch under the band at
+  /// the right, and the ready button at the bottom right, its bottom level
+  /// with the leave button's circle. [live] says they can be
+  /// pressed; otherwise they only show.
+  Widget _setupLayer(
+    _SetupLook setup,
+    TextTheme text,
+    double bottomInset,
+    bool live,
+  ) {
+    final area = widget;
+    final progress = setup.progress;
+    final hint = setup.hint;
+    final readyLabel = setup.readyLabel;
+    const hintTop = BattleCameraArea._progressHeight + AppSpacing.s8;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (progress != null && !area.reconnecting)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: _SetupProgress(progress: progress),
+          ),
+        if (hint != null)
+          Positioned(
+            left: AppSpacing.s12,
+            right: AppSpacing.s12,
+            top: hintTop,
+            child: _SetupHint(text: hint, style: text.cameraSetupHint),
+          ),
+        if (setup.canSwitch)
+          Positioned(
+            right: AppSpacing.s12,
+            top: hintTop + BattleCameraArea._setupHintHeight + AppSpacing.s8,
+            child: _RoundButton(
+              icon: Icons.cameraswitch_outlined,
+              label: '카메라 전환',
+              alignment: Alignment.centerRight,
+              onPressed: live ? area.onSwitchCamera ?? _none : _none,
+            ),
+          ),
+        if (readyLabel != null)
+          Positioned(
+            right: AppSpacing.s12,
+            bottom:
+                AppSpacing.s12 + bottomInset + BattleCameraArea._circleInset,
+            child: _SetupReadyButton(
+              label: readyLabel,
+              enabled: setup.readyEnabled,
+              pressed: setup.readyPressed,
+              onPressed: live ? area.onReady : null,
+              style: text.cameraSetupButton,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// [child] at [opacity]; nothing at all at 0.
+class _Fade extends StatelessWidget {
+  const _Fade({required this.opacity, required this.child});
+
+  final double opacity;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (opacity >= 1) return child;
+    if (opacity <= 0) return const SizedBox.shrink();
+    return Opacity(opacity: opacity, child: child);
   }
 }
 
@@ -425,6 +581,126 @@ class _ReadyButton extends StatelessWidget {
   }
 }
 
+/// The setup's guidance, large (W2b 3-B): ink on a white band with an ink
+/// edge, as wide as the area less its sides, one line that shrinks to fit
+/// the band, also at a large system text size. A screen reader hears it
+/// whole when it changes.
+class _SetupHint extends StatelessWidget {
+  const _SetupHint({required this.text, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: SizedBox(
+        height: BattleCameraArea._setupHintHeight,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            border: Border.all(
+              color: AppColors.ink,
+              width: BattleCameraArea._setupEdge,
+            ),
+            borderRadius: const BorderRadius.all(
+              Radius.circular(AppRadius.small),
+            ),
+          ),
+          child: Padding(
+            // The design's room inside the edge, which is painted inside the
+            // box here.
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s8 + BattleCameraArea._setupEdge,
+              vertical: BattleCameraArea._setupEdge,
+            ),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  softWrap: false,
+                  textAlign: TextAlign.center,
+                  style: style,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The setup's ready button, large (W2b 3-B): a pill with an ink edge,
+/// lime when it can be pressed, white when it takes the user's ready back,
+/// gray when it cannot be pressed. It is [enabled] or not as the setup said;
+/// [onPressed] is null while it only shows.
+class _SetupReadyButton extends StatelessWidget {
+  const _SetupReadyButton({
+    required this.label,
+    required this.enabled,
+    required this.pressed,
+    required this.onPressed,
+    required this.style,
+  });
+
+  final String label;
+  final bool enabled;
+  final bool pressed;
+  final VoidCallback? onPressed;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: enabled,
+      label: label,
+      onTap: onPressed,
+      child: ExcludeSemantics(
+        child: Material(
+          color: enabled && !pressed ? AppColors.accent : AppColors.card,
+          shape: StadiumBorder(
+            side: BorderSide(
+              color: enabled ? AppColors.ink : AppColors.border,
+              width: BattleCameraArea._setupEdge,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: BattleCameraArea._setupButtonSize.width,
+                minHeight: BattleCameraArea._setupButtonSize.height,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+                child: Center(
+                  widthFactor: 1,
+                  heightFactor: 1,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: style.copyWith(
+                      color: enabled ? AppColors.ink : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The thin bar under the line that fills with lime as the setup goes on.
 class _SetupProgress extends StatelessWidget {
   const _SetupProgress({required this.progress});
@@ -557,88 +833,4 @@ class BattleReconnectArcPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(BattleReconnectArcPainter oldDelegate) => false;
-}
-
-/// 결과 보기: the only way on once the battle has ended.
-class _ResultButton extends StatelessWidget {
-  const _ResultButton({required this.onPressed, required this.style});
-
-  final VoidCallback? onPressed;
-  final TextStyle style;
-
-  static const _edge = 2.0;
-  static const _glow = 0.22;
-  static const _glowBlur = 36.0;
-  static const _glowDrop = 14.0;
-
-  @override
-  Widget build(BuildContext context) {
-    const shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(AppRadius.card)),
-      side: BorderSide(color: AppColors.ink, width: _edge),
-    );
-    return Semantics(
-      container: true,
-      button: true,
-      label: '결과 보기',
-      onTap: onPressed,
-      child: ExcludeSemantics(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: const BorderRadius.all(
-              Radius.circular(AppRadius.card),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.accent.withValues(alpha: _glow),
-                blurRadius: _glowBlur,
-                offset: const Offset(0, _glowDrop),
-              ),
-            ],
-          ),
-          child: Material(
-            color: AppColors.accent,
-            shape: shape,
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onPressed,
-              // As wide as its words need, at least the design's width, and
-              // never wider than the room it has.
-              child: IntrinsicWidth(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: BattleCameraArea._resultSize.width,
-                    minHeight: BattleCameraArea._resultSize.height,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.s24,
-                      vertical: AppSpacing.s8,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text('결과 보기', maxLines: 1, style: style),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.s12),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: BattleCameraArea._arrowSize,
-                          color: AppColors.ink,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

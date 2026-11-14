@@ -28,6 +28,7 @@ const _checked = [
   'lib/widgets/battle_mode_card.dart',
   'lib/widgets/battle_online_events.dart',
   'lib/widgets/battle_reject_sign.dart',
+  'lib/widgets/battle_result_button.dart',
   'lib/widgets/battle_stage.dart',
   'lib/widgets/battle_stage_events.dart',
   'lib/widgets/battle_stage_hud.dart',

@@ -301,11 +301,10 @@ class _Radar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // With the system's "reduce motion" on, the sweep holds still, as the
-    // design's CSS does.
-    final sweep = MediaQuery.disableAnimationsOf(context)
-        ? const AlwaysStoppedAnimation<double>(0)
-        : animation;
+    // With the system's "reduce motion" on, the sweep holds still pointing
+    // down and the blips stay lit (W2b 1-A).
+    final still = MediaQuery.disableAnimationsOf(context);
+    final sweep = still ? const AlwaysStoppedAnimation<double>(0) : animation;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -323,7 +322,9 @@ class _Radar extends StatelessWidget {
                   children: [
                     Positioned.fill(
                       child: RepaintBoundary(
-                        child: CustomPaint(painter: _RadarPainter(sweep)),
+                        child: CustomPaint(
+                          painter: _RadarPainter(sweep, still: still),
+                        ),
                       ),
                     ),
                     PlayerAvatar(
@@ -342,15 +343,101 @@ class _Radar extends StatelessWidget {
   }
 }
 
+/// The radar's three blips (W2b 1-A): red dots like a laser pointer's that
+/// light up the moment the sweep reaches them, stay lit 0.24 s, and fade
+/// out over the next 0.76 s. Pure functions of the sweep's turn, checked
+/// against the design's `w2b_golden.json`.
+abstract final class RadarBlips {
+  /// The blips in the radar's 288 x 288 points, in the order the sweep
+  /// reaches them, as before 1-A.
+  static const spots = [
+    Offset(55.5, 199.3),
+    Offset(220.8, 67.2),
+    Offset(241.6, 217.6),
+  ];
+
+  /// One turn of the sweep.
+  static const periodMs = 3000.0;
+
+  /// How bright every blip stays when the system reduces motion.
+  static const still = 0.9;
+
+  /// The blip lights up over this long after the sweep reaches it...
+  static const riseMs = 60.0;
+
+  /// ...stays fully lit until this long after...
+  static const holdUntilMs = 240.0;
+
+  /// ...and is gone this long after.
+  static const goneAtMs = 1000.0;
+
+  /// A blip's look, decoration only, all faded together and with no ink
+  /// edge: a narrow red glow of [glowRadius], from [glowOpacities] at
+  /// [glowStops] of its radius; a red dot of [dotRadius]; and a white spot
+  /// of [spotRadius] at [spotOpacity] in its middle.
+  static const glowRadius = 12.0;
+  static const glowStops = [0.0, 0.45, 1.0];
+  static const glowOpacities = [0.6, 0.24, 0.0];
+  static const dotRadius = 3.6;
+  static const spotRadius = 1.2;
+  static const spotOpacity = 0.9;
+
+  /// The glow's red, from [glowOpacities] at [glowStops].
+  static final glow = RadialGradient(
+    colors: [
+      for (final opacity in glowOpacities)
+        AppColors.danger.withValues(alpha: opacity),
+    ],
+    stops: glowStops,
+  );
+
+  static const _center = Offset(144, 144);
+
+  /// Degrees clockwise from straight down (where the sweep starts) at which
+  /// the sweep reaches [spot], from 0 up to 360.
+  static double angleOf(Offset spot) {
+    final degrees =
+        math.atan2(-(spot.dx - _center.dx), spot.dy - _center.dy) *
+        180 /
+        math.pi;
+    return degrees % 360;
+  }
+
+  /// How bright a blip is [sinceMs] after the sweep last reached it (0 up
+  /// to [periodMs]): rising, held, then fading fast at first with a long
+  /// tail.
+  static double opacityAfter(double sinceMs) {
+    if (sinceMs < riseMs) return sinceMs / riseMs;
+    if (sinceMs < holdUntilMs) return 1;
+    if (sinceMs < goneAtMs) {
+      final left = 1 - (sinceMs - holdUntilMs) / (goneAtMs - holdUntilMs);
+      return left * left;
+    }
+    return 0;
+  }
+
+  /// Each blip's brightness, in the order of [spots], when the sweep has
+  /// made [turn] of its turn (the animation's value, 0 up to 1). Only the
+  /// sweep's angle counts, so a blip it just passed is fading even on the
+  /// first turn.
+  static List<double> opacitiesAt(double turn) => [
+    for (final spot in spots)
+      opacityAfter(((turn - angleOf(spot) / 360) % 1) * periodMs),
+  ];
+}
+
 /// The radar of the design (BMatching), drawn in its 288 x 288 points and
 /// sized to the box: a white disc with an ink edge, a lime sweep of six
 /// wedges that grow stronger toward its ink edge and turn once per cycle,
-/// two gray rings, a dashed gray crosshair, and three pink blips with ink
-/// edges. The avatar in the middle is a widget over it.
+/// two gray rings, a dashed gray crosshair, and three red blips that the
+/// sweep lights up ([RadarBlips]). The avatar in the middle is a widget
+/// over it. When [still], the blips stay lit at [RadarBlips.still].
 class _RadarPainter extends CustomPainter {
-  _RadarPainter(this.animation) : super(repaint: animation);
+  _RadarPainter(this.animation, {required this.still})
+    : super(repaint: animation);
 
   final Animation<double> animation;
+  final bool still;
 
   /// The avatar's diameter as a fraction of the radar's.
   static const avatarRatio = 0.36;
@@ -373,14 +460,6 @@ class _RadarPainter extends CustomPainter {
   static const _ringWidth = 1.25;
   static const _crossWidth = 1.0;
   static const _dash = 4.0;
-
-  /// Decoration only: (x, y, radius, fill opacity) in the design's box.
-  static const _blips = [
-    (220.8, 67.2, 6.0, 1.0),
-    (55.5, 199.3, 4.6, 0.55),
-    (241.6, 217.6, 3.8, 1.0),
-  ];
-  static const _blipEdge = 1.5;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -445,29 +524,47 @@ class _RadarPainter extends CustomPainter {
         ..drawLine(Offset(144, at), Offset(144, to), cross);
     }
 
-    for (final (x, y, radius, opacity) in _blips) {
-      final at = Offset(x, y);
+    final opacities = still
+        ? List.filled(RadarBlips.spots.length, RadarBlips.still)
+        : RadarBlips.opacitiesAt(animation.value);
+    for (var i = 0; i < RadarBlips.spots.length; i++) {
+      if (opacities[i] <= 0) continue;
+      final at = RadarBlips.spots[i];
+      final glowBox = Rect.fromCircle(
+        center: at,
+        radius: RadarBlips.glowRadius,
+      );
+      // The three parts fade as one, as the design's group does; only the
+      // layer paint's alpha counts.
       canvas
-        ..drawCircle(
-          at,
-          radius,
-          Paint()..color = AppColors.opponent.withValues(alpha: opacity),
+        ..saveLayer(
+          glowBox,
+          Paint()..color = AppColors.ink.withValues(alpha: opacities[i]),
         )
         ..drawCircle(
           at,
-          radius,
+          RadarBlips.glowRadius,
+          Paint()..shader = RadarBlips.glow.createShader(glowBox),
+        )
+        ..drawCircle(
+          at,
+          RadarBlips.dotRadius,
+          Paint()..color = AppColors.danger,
+        )
+        ..drawCircle(
+          at,
+          RadarBlips.spotRadius,
           Paint()
-            ..color = AppColors.ink
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = _blipEdge,
-        );
+            ..color = AppColors.card.withValues(alpha: RadarBlips.spotOpacity),
+        )
+        ..restore();
     }
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(_RadarPainter oldDelegate) =>
-      oldDelegate.animation != animation;
+      oldDelegate.animation != animation || oldDelegate.still != still;
 }
 
 class _SearchFailed extends StatelessWidget {

@@ -277,7 +277,12 @@ void main() {
       await press(tester, '상대 퇴장');
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('상대가 나가서 이겼어요'), findsOneWidget);
-      await press(tester, '처음으로');
+      // The buttons have gone with the camera (W2b end screen); 결과 보기
+      // starts over.
+      expect(button('처음으로').hitTestable(), findsNothing);
+      await tester.pump(const Duration(milliseconds: 1200));
+      await tester.tap(find.text('결과 보기'));
+      await tester.pump();
       await press(tester, '내 연결 끊김 패배');
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text('연결이 끊겨서 졌어요'), findsOneWidget);
