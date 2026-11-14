@@ -21,9 +21,18 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - Tests (`test/services/audio/*`, `test/widgets/sound_*`, `test/viewmodels/settings_viewmodel_test.dart`, `test/support/audio_fakes.dart`) and `docs/iteration-4/sound-battle-bgm.md`: Claude Code.
 - Not used: which sounds to keep, cut or change (no voice in the battle, no sound for the opponent, the alarm, fever 1.25x, dropping the setup voice); all decided by the user by ear.
 
+### J3 `feat/cumulative_feedback` (team plan #9, P12 cumulative feedback, 2026-11-14)
+- Server statistics API `server/matches/views.py` (`MatchStatsView`, `_online_flag`), `serializers.py` (summary `issues` codes, `is_online` on rows), `urls.py`, `server/tests/test_stats.py`: Claude Code, from the J3 decisions (light server API, app-side grouping).
+- App models and calculator `gymrats_app/lib/models/feedback_stats.dart`, `gymrats_app/lib/services/feedback/feedback_stats.dart` (`FeedbackStatsSource`, `FeedbackStatsCalculator`), issue codes in `form_analyzer.dart` / `form_summary.dart` / `feedback_summary.dart`, `MatchRecord.isOnline/gameEnd/opponentLeft` read in `server_user_repository.dart`, `HistoryViewModel` archive summary, new `FeedbackStatsViewModel`, and all the tests and `test/support/feedback_fakes.dart`: Claude Code.
+- A temporary dummy-data demo (34 battles) run on the Android emulator to see the values, then deleted (never committed): Claude Code.
+- Not used: the definitions of `weekDaily`, `streakDays` and `bestGain` (from 송우현, forwarded by the user) and the value names (송우현's data list document).
+
 ## 2. Prompt History
 [Jinyoung Park, 11-07] "task 수행해"
 [Jinyoung Park, 11-11] "그리고 이제 codex review PR 댓글도 반영해야 하거든? 그것도 harness에 추가하고"
+[Jinyoung Park, 11-14] "J3 task 수행해보자"
+[Jinyoung Park, 11-14] "아티팩트를 못본다고?"
+[Jinyoung Park, 11-14] "더미 데이터 만들어서 android studi에서 확인할 수 있게 해주삼"
 (Full log: [ishlove77-Prompt-Log.md](ishlove77-Prompt-Log.md))
 [Jinyoung Park, 11-12] "세팅할떄만 voice 놓고 게임도중에는 voice를 빼고 대신 점수에 따라나 실패 할떄 효과음을 넣는 식으로 하자. 때리는 효과음으로 하고, 죽기 직전이면 경고음 효과음을 넣을건데 시안을 몇개 뽑아줘. 브금도 포함해서"
 [Jinyoung Park, 11-12] "battle 소리가 3초 load되는데 artifact 보니까"
@@ -35,6 +44,8 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - The ownership guard, the file list in the task file and the team-plan contract were followed without a block: only J1 files changed (`ownership_guard.py --check-diff` ok).
 - J2: the listening page let the team pick the effects by ear over the real battle music before any app code; the app reproduces its preset (volumes, fever 1.25x, music start 1.54 s into the track).
 - J2: the screen-recording analysis settled a disputed bug in minutes: the result screen frame showed Average 0 and the audio showed the buzz, alarm and gong at the right times, so the "missing Average sound" was a rep that was never graded Average, not an audio fault.
+- J3: server API, calculator, two view models and their tests in one session; every J3 client file at 100 % line coverage except the untouched lines of `form_analyzer.dart`, and the server stats tests pass on the first full run after one status-code fix.
+- J3: the emulator demo showed the values computed from 34 dummy battles (7-day 136 reps / 10 battles, 8-day streak, this-week average 13.8 = 124 / 9), which matched counting the dummy data by hand.
 
 ## 4. Hallucinations / Errors
 - `TtsSpeechEngine` first relied only on `flutter_tts`'s `awaitSpeakCompletion(true)` to learn when a line ends. The reviewer subagent read the plugin's Android source (`FlutterTtsPlugin.kt`) and found that the awaited `speak` never returns on a TTS error, which would have left every later setup hint pending. Fixed the same session: the engine also ends the utterance from the plugin's completion/cancel/error callbacks, and the service waits at most 8 s per line (`voice_guidance.dart`, `maxUtterance`), with tests for both. Cost: ~20 min.
@@ -46,16 +57,21 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J2: the reviewer found that an online battle ending without a result (connection error, void) kept the danger alarm and the battle music playing (Major); fixed with `BattleSounds.ended()` and a test.
 - J2 (11-14): Claude Code explained the unheard Average hit as "lost under the music" and made it the loudest effect without evidence. The user objected ("효과음중 가장 크면 안되지") and then asked whether Average was graded at all; the recording showed it was not (Average needs a push-up rejected as "더 깊게" with the elbow bent to 120° or less). Cost: two needless rebuilds, ~20 min.
 - J2: Codex reviewed PR #53 twice and found three P2 gaps our reviewer rounds missed, each on a different exit path: a hit or the KO gong already playing went on after the sound was turned off (6ef8614; the reviewer then found a hit still rewinding could start too, same commit); leaving an online battle early left the battle music over the play screen (only the bot battle goes home, where the menu music restarts); a jingle still loading when the sound went off played later (both 6d9fb89). Listing every screen exit and every silence moment up front would have caught them earlier.
+- J3: 송우현's data list is a Claude Docs document shared only with his account. Claude Code tried the artifact reader (it returned only the title "Claude Docs") and the docs reader (access denied), said so, and built from the task file and his three forwarded answers. When the document arrived as a file, comparing it found two gaps the build had missed: the growth type is `ScoreGrowth` in the document, and J3 also owes `opponentLeft` for past battles (a paragraph in the result-report section, not the archive table). Both fixed before the commit. Cost: one extra review round.
+- J3: the first server tests expected HTTP 400 for bad input; this API returns 422 (`gymrats/exceptions.py`). Caught by the test run. Cost: ~2 min.
+- J3: the reviewer found the day cut used the time's own zone (a UTC time would split days at 09:00 in Korea), that a battle stamped after now (phone clock ahead) counted in totals without a bar, that the stats view built an `IN` list as long as the user's battles (SQLite parameter limit), and in round 2 that `firstPlayedAt` could name a battle without a score. All fixed with tests.
 
 ## 5. Prompt Revisions
 - 11-11: added a standing rule to the harness after the Codex findings ("codex review PR 댓글도 반영해야"): Codex findings on every open PR are read at session start and before every push, fixed or answered with a reason, and replied to on their threads.
 - Before that, none: the one prompt was the task start; the open decision was asked and answered through a question dialog (flutter_tts vs recorded clips).
 - J2: "소리가 거의 안들리는디" → "battle 소리가 3초 load되는데 artifact 보니까": naming the exact symptom (3 s before the music) led to prefetching the track and starting it at its first beat (1.54 s) instead of only raising volumes.
 - J2: "Average를 조금더 키워야 할듯" → "효과음중 가장 크면 안되지 그러면 차이가 없자나": the second prompt gave the constraint (Excellent > Good > Average), so the level was set just under Good.
+- J3: a 288-line paste reached Claude Code only as "[Pasted text #2 +288 lines]"; the user saved the document as a file and sent the path ("~/Downloads/GymRats-화면별-데이터-목록.md"), which worked.
 
 ## 6. Manual Fixes and Why
 - None so far in J1 (no manual-fix marker added).
 - None in J2 (no manual-fix marker added).
+- None in J3 (no manual-fix marker added).
 
 ## 7. Takeaway for Iteration 5
 - TODO(Jinyoung Park): fill when the iteration closes.

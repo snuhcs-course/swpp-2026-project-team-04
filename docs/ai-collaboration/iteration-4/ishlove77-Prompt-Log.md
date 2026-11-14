@@ -313,3 +313,42 @@ branch 'docs/rename_gymmouse' set up to track 'origin/docs/rename_gymmouse'.</ba
 
 <!-- 154bbf4f 2026-11-13T19:12:06.083Z -->
 [Jinyoung Park, 11-14 04:12] "ㄱ"
+
+## 2026-11-14 · Jinyoung Park · feat/cumulative_feedback
+<!-- 154bbf4f 2026-11-11T14:10:21.695Z -->
+[Jinyoung Park, 11-14 04:21] "그 혹시 codex 지금 모델 뭐쓰지?"
+
+<!-- 07c1b229 2026-11-13T19:34:25.857Z -->
+[Jinyoung Park, 11-14 04:34] "J3 시작해보자"
+
+<!-- 07c1b229 2026-11-13T19:36:12.479Z -->
+[Jinyoung Park, 11-14 04:36] "~/Downloads/gymrats-iter4-update-jinyoung-1113 이거 지금 반영된거 맞지 그전에"
+
+<!-- 2bd9fff5 2026-11-13T19:37:47.649Z -->
+[Jinyoung Park, 11-14 04:37] "J3 task 수행해보자"
+
+<!-- 2bd9fff5 2026-11-14T07:39:34.026Z -->
+[Jinyoung Park, 11-14 16:39] "<pasted_content id=\"c222\">
+형, 그 문서 링크예요: https://claude.ai/artifact/EASZzzoujteE538XtfbxXY (GymRats 화면별 데이터 목록). '기록보관소·통계' 표에 J3 값이 있어요. 물어보신 세 개는 이렇게 가면 돼요.
+
+1. weekDaily: 경기 수가 아니라 횟수예요. 최근 7일(오늘 포함)을 하루 한 칸씩, 오래된 날부터 7칸이고, 칸마다 {date, reps}이고 reps는 그날 모든 경기의 인정 횟수 합이에요. 경기가 없는 날도 reps 0으로 채워 주세요. 맨 위 \"최근 7일 123회 · 11판\"은 weekReps(7일 인정 횟수 합)와 weekMatches(7일 경기 수)로 따로 주시면 돼요.
+2. streakDays: 오늘 아직 경기를 안 했어도 어제까지 이어졌으면 그 연속을 인정해 주세요. 오늘 하면 +1이고, 마지막 경기가 그저께 이전이면 0이에요. 날짜 경계는 폰 현지 시간(한국) 자정이에요.
+3. bestGain: 기록보관소 최근 경기 줄의 \"+55\" 칩이에요. 그 경기 점수가 같은 종목의 '그 경기 전까지' 최고 점수보다 높으면 그 차이, 아니면 null이에요. 그 종목 첫 경기는 비교할 기록이 없어서 null로 해 주세요.
+
+하나 더요. 테스트 문서 UAT-4 3번 기준이 '전체 / 이번 달 / 이번 주'를 골라서 평균 인정 횟수, 날짜별 횟수 그래프, 자세 문제 종류별 빈도를 보여 주라고 고정돼 있어요. 시안에는 최근 7일만 있지만 UAT가 고정이라 세 기간이 다 필요해요. J3에서 기간별로 그 세 값을 내주시면, 기간 탭 화면은 제가 W7에서 만들게요.
+</pasted_content id=\"c222\">"
+
+<!-- 2bd9fff5 2026-11-14T07:50:21.871Z -->
+[Jinyoung Park, 11-14 16:50] "[Pasted text #2 +288 lines] 이게 내용임"
+
+<!-- 2bd9fff5 2026-11-14T07:51:17.584Z -->
+[Jinyoung Park, 11-14 16:51] "아티팩트를 못본다고?"
+
+<!-- 2bd9fff5 2026-11-14T08:01:02.957Z -->
+[Jinyoung Park, 11-14 17:01] "~/Downloads/GymRats-화면별-데이터-목록.md"
+
+<!-- 2bd9fff5 2026-11-14T08:06:54.400Z -->
+[Jinyoung Park, 11-14 17:06] "더미 데이터 만들어서 android studi에서 확인할 수 있게 해주삼"
+
+<!-- 2bd9fff5 2026-11-14T08:10:23.221Z -->
+[Jinyoung Park, 11-14 17:10] "다 되면 commit, push, pr"

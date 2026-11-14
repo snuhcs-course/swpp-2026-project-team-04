@@ -1,19 +1,35 @@
 """Saving finished battles and reading them back, newest first."""
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Match, MatchFeedback, OnlineBattle, outcome_from_reps
-from .serializers import FeedbackInSerializer, MatchInSerializer, MatchSerializer
+from .serializers import (
+    AwareDateTimeField,
+    FeedbackInSerializer,
+    MatchInSerializer,
+    MatchSerializer,
+)
 
 
 class PageQuery(serializers.Serializer):
     limit = serializers.IntegerField(min_value=1, max_value=50, default=20)
     # next_before of the last page.
     before = serializers.IntegerField(required=False)
+
+
+class StatsQuery(serializers.Serializer):
+    exercise = serializers.ChoiceField(choices=["push_up", "squat"], required=False)
+    # Only battles played at or after this time; all of them when missing.
+    since = AwareDateTimeField(required=False)
+
+
+def _online_flag():
+    """True for a match the battle server stored (its client_id is a result_id)."""
+    return Exists(OnlineBattle.objects.filter(result_id=OuterRef("client_id")))
 
 
 # AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
@@ -88,7 +104,9 @@ class MatchListView(APIView):
         limit = query.validated_data["limit"]
         before = query.validated_data.get("before")
 
-        matches = Match.objects.filter(user=request.user)
+        matches = Match.objects.filter(user=request.user).annotate(
+            is_online=_online_flag()
+        )
         if before is not None:
             cursor = matches.filter(id=before).first()
             if cursor is None:
@@ -113,6 +131,56 @@ class MatchListView(APIView):
             {
                 "items": [_list_item(m, feedback.get(m.client_id)) for m in page],
                 "next_before": page[-1].id if len(rows) > limit else None,
+            }
+        )
+
+
+class MatchStatsView(APIView):
+    def get(self, request):
+        """Every battle of the period as a compact point, oldest first and
+        uncapped, for the app's statistics (it groups them by local day)."""
+        query = StatsQuery(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        matches = Match.objects.filter(user=request.user)
+        if (exercise := query.validated_data.get("exercise")) is not None:
+            matches = matches.filter(exercise=exercise)
+        if (since := query.validated_data.get("since")) is not None:
+            matches = matches.filter(played_at__gte=since)
+        rows = list(
+            matches.annotate(is_online=_online_flag())
+            .order_by("played_at", "id")
+            .values(
+                "id",
+                "client_id",
+                "exercise",
+                "played_at",
+                "my_reps",
+                "my_score",
+                "outcome",
+                "reason",
+                "is_online",
+            )
+        )
+        # One query for the issue codes; the reports stay in the DB. All of
+        # the user's feedback rows, so no IN list grows with the battles.
+        issues = {
+            client_id: summary.get("issues")
+            for client_id, summary in MatchFeedback.objects.filter(
+                user=request.user
+            ).values_list("client_id", "summary")
+        }
+        field = serializers.DateTimeField()
+        return Response(
+            {
+                "items": [
+                    {
+                        **{k: v for k, v in r.items() if k != "client_id"},
+                        "played_at": field.to_representation(r["played_at"]),
+                        "has_feedback": r["client_id"] in issues,
+                        "issues": issues.get(r["client_id"]),
+                    }
+                    for r in rows
+                ]
             }
         )
 
