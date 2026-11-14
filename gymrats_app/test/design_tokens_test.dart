@@ -45,6 +45,10 @@ const _checked = [
   'lib/widgets/lobby_parts.dart',
   'lib/widgets/match_record_card.dart',
   'lib/widgets/safe_warning_dialog.dart',
+  'lib/widgets/victory_motion.dart',
+  'lib/widgets/victory_overlay.dart',
+  'lib/widgets/victory_rig_data.dart',
+  'lib/widgets/victory_scene.dart',
 ];
 
 /// Pattern and what it catches.
