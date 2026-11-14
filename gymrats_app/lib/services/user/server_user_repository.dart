@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../../models/exercise_type.dart';
+import '../../models/feedback_stats.dart';
 import '../../models/feedback_summary.dart';
 import '../../models/form_report.dart';
 import '../../models/game_score.dart';
@@ -9,6 +10,7 @@ import '../../models/match_record.dart';
 import '../../models/user_profile.dart';
 import '../api/api_client.dart';
 import '../auth/auth_repository.dart';
+import '../feedback/feedback_stats.dart';
 import '../feedback/form_summary.dart';
 import 'user_repository.dart';
 
@@ -18,8 +20,9 @@ import 'user_repository.dart';
 /// sent again before the next profile or history load. Each upload carries
 /// an id made on the phone, so a retry never stores the battle twice. A
 /// battle's form report rides along with it; an online battle's report is
-/// queued on its own under the battle server's result id.
-class ServerUserRepository implements UserRepository {
+/// queued on its own under the battle server's result id. It also gives the
+/// statistics their battles ([FeedbackStatsSource]).
+class ServerUserRepository implements UserRepository, FeedbackStatsSource {
   ServerUserRepository({
     required this._api,
     required this._auth,
@@ -116,6 +119,40 @@ class ServerUserRepository implements UserRepository {
     });
   }
 
+  @override
+  Future<List<StatsPoint>> fetchStatsPoints({
+    ExerciseType? exercise,
+    DateTime? since,
+  }) async {
+    await _sendQueued();
+    final json = await _api.get(
+      '/matches/stats',
+      query: {
+        if (exercise != null) 'exercise': _exerciseCode(exercise),
+        if (since != null) 'since': since.toUtc().toIso8601String(),
+      },
+    ) as Map<String, Object?>?;
+    return _read(
+      () => [
+        for (final p in json!['items']! as List<Object?>)
+          _point(p! as Map<String, Object?>),
+      ],
+    );
+  }
+
+  static StatsPoint _point(Map<String, Object?> json) => StatsPoint(
+    id: json['id']! as int,
+    exercise: _exercise(json['exercise']! as String),
+    playedAt: DateTime.parse(json['played_at']! as String).toLocal(),
+    reps: json['my_reps']! as int,
+    score: json['my_score'] as int?,
+    outcome: _outcome(json['outcome'] as String?),
+    gameEnd: _gameEnd(json['reason'] as String?),
+    isOnline: json['is_online'] as bool? ?? false,
+    hasFeedback: json['has_feedback'] as bool? ?? false,
+    issues: readIssueCodes(json['issues']),
+  );
+
   Iterable<_Queued> get _queuedForMe {
     final me = _auth.session?.account.id;
     return _unsent.where((m) => m.accountId == me);
@@ -206,6 +243,7 @@ class ServerUserRepository implements UserRepository {
 
   static MatchRecord _match(Map<String, Object?> json) {
     final summary = json['feedback_summary'];
+    final outcome = _outcome(json['outcome'] as String?);
     return MatchRecord(
       id: json['id'] as int?,
       exercise: _exercise(json['exercise']! as String),
@@ -215,7 +253,12 @@ class ServerUserRepository implements UserRepository {
       myScore: json['my_score'] as int?,
       opponentScore: json['opponent_score'] as int?,
       playedAt: DateTime.parse(json['played_at']! as String).toLocal(),
-      decidedOutcome: _outcome(json['outcome'] as String?),
+      decidedOutcome: outcome,
+      gameEnd: _gameEnd(json['reason'] as String?),
+      isOnline: json['is_online'] as bool?,
+      opponentLeft:
+          outcome == MatchOutcome.win &&
+          const {'forfeit', 'disconnect_timeout'}.contains(json['reason']),
       feedbackSummary: summary == null
           ? null
           : FeedbackSummary.fromJson((summary as Map).cast<String, Object?>()),
@@ -240,6 +283,14 @@ class ServerUserRepository implements UserRepository {
     'loss' => MatchOutcome.lose,
     'draw' => MatchOutcome.draw,
     _ => throw FormatException('Unknown outcome $code'),
+  };
+
+  /// KO or time up; null for an online forfeit or disconnect, and for a
+  /// server that does not send the reason.
+  static GameEnd? _gameEnd(String? code) => switch (code) {
+    'ko' => GameEnd.ko,
+    'time_up' => GameEnd.timeUp,
+    _ => null,
   };
 
   static String _exerciseCode(ExerciseType exercise) => switch (exercise) {

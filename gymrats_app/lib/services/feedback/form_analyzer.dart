@@ -43,9 +43,19 @@ class FormFinding {
     this.pose,
     this.highlight = const [],
     this.demo,
+    this.code,
+    this.count = 1,
   });
 
   final FindingKind kind;
+
+  /// Stable name of the issue for the statistics, e.g. `elbow_flare` or
+  /// `reject.insufficientDepth`; null for good points and notes.
+  final String? code;
+
+  /// How often the issue came up in the battle: the rejected reps for a
+  /// rejection, 1 for the other issues.
+  final int count;
 
   /// e.g. "좌우 불균형".
   final String title;
@@ -176,6 +186,8 @@ class FormAnalyzer {
       for (final MapEntry(key: reason, value: count) in sorted)
         FormFinding(
           kind: FindingKind.issue,
+          code: 'reject.${reason.name}',
+          count: count,
           title: '${_titles[reason]} $count회',
           detail: '${reason.koreanMessage} — 이 이유로 $count회가 카운트되지 않았어요.',
           fix: _fixes[reason],
@@ -200,6 +212,7 @@ class FormAnalyzer {
     final bentSide = leftMean < rightMean ? '왼팔' : '오른팔';
     return FormFinding(
       kind: FindingKind.issue,
+      code: 'imbalance',
       title: '좌우 불균형',
       detail:
           '양팔 각도가 평균 ${gap.toStringAsFixed(0)}° 달라요. '
@@ -222,6 +235,7 @@ class FormAnalyzer {
     if (early - late < rules.maxDepthLoss) return null;
     return FormFinding(
       kind: FindingKind.issue,
+      code: 'depth_loss',
       title: '후반 깊이 감소',
       detail:
           '전반 평균 ${early.toStringAsFixed(2)} → 후반 '
@@ -248,6 +262,7 @@ class FormAnalyzer {
     final fastest = fast.reduce((a, b) => a < b ? a : b);
     return FormFinding(
       kind: FindingKind.issue,
+      code: 'fast_descent',
       title: '내려가는 속도',
       detail:
           '바닥까지 내려간 ${descents.length}회 중 ${fast.length}회가 '
@@ -297,6 +312,7 @@ class FormAnalyzer {
     };
     return FormFinding(
       kind: FindingKind.issue,
+      code: 'elbow_flare',
       title: '팔꿈치 벌어짐',
       detail:
           '내려가는 동안 $side가 어깨 밖으로 평균 '
@@ -320,6 +336,7 @@ class FormAnalyzer {
     if (mean == null || mean <= rules.maxHandSpan) return null;
     return FormFinding(
       kind: FindingKind.issue,
+      code: 'hand_width',
       title: '손 간격',
       detail:
           '양손 간격이 어깨너비의 평균 ${mean.toStringAsFixed(1)}배예요. '
@@ -356,6 +373,7 @@ class FormAnalyzer {
     }
     return FormFinding(
       kind: FindingKind.issue,
+      code: 'head_lead',
       title: '고개가 먼저 내려감',
       detail:
           '머리가 어깨보다 평균 ${mean.toStringAsFixed(2)}배 어깨너비만큼 '

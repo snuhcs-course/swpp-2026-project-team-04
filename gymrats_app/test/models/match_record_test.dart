@@ -42,6 +42,19 @@ void main() {
     expect(ko.gameEnd, GameEnd.ko);
   });
 
+  test('bot or online is unknown unless the server said', () {
+    expect(record(1, 2).isOnline, isNull);
+    expect(record(1, 2).opponentLeft, isFalse);
+    const online = MatchRecord(
+      exercise: ExerciseType.squat,
+      opponentName: '우현',
+      myReps: 5,
+      opponentReps: 1,
+      isOnline: true,
+    );
+    expect(online.isOnline, isTrue);
+  });
+
   test('a battle has scores only when it kept both', () {
     expect(record(1, 2).hasScores, isFalse);
     const both = MatchRecord(
