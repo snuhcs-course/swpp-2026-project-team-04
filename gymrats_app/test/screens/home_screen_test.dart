@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -17,8 +18,10 @@ import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
+import 'package:gymrats_app/widgets/character_motion.dart';
+import 'package:gymrats_app/widgets/character_motion_data.dart';
+import 'package:gymrats_app/widgets/lobby_character.dart';
 import 'package:gymrats_app/widgets/lobby_menu_item.dart';
-import 'package:gymrats_app/widgets/lobby_rep_bot.dart';
 
 import 'package:provider/provider.dart';
 
@@ -32,24 +35,24 @@ const _lastMatch = MatchRecord(
   opponentReps: 19,
 );
 
-/// Turns on the system's reduced motion, so RepBot holds still and
+/// Turns on the system's reduced motion, so the character holds still and
 /// pumpAndSettle can settle.
-void _stillRepBot(WidgetTester tester) {
+void _stillCharacter(WidgetTester tester) {
   tester.platformDispatcher.accessibilityFeaturesTestValue =
       const FakeAccessibilityFeatures(disableAnimations: true);
   addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
 }
 
-RepBotPainter _repBot(WidgetTester tester) =>
+LobbyCharacterPainter _character(WidgetTester tester) =>
     tester
             .widget<CustomPaint>(
               find.descendant(
-                of: find.byType(LobbyRepBot),
+                of: find.byType(LobbyCharacter),
                 matching: find.byType(CustomPaint),
               ),
             )
             .painter!
-        as RepBotPainter;
+        as LobbyCharacterPainter;
 
 // An Android phone's status bar and three-button navigation bar.
 const _systemBars = FakeViewPadding(top: 24, bottom: 48);
@@ -59,29 +62,25 @@ const _gestureBars = FakeViewPadding(top: 24, bottom: 24);
 
 const _titles = ['게임 시작', '캐릭터', '기록보관소', '환경설정'];
 
-final _least = LobbyRepBot.designSize * HomeScreen.repBotMinScale;
-final _most = LobbyRepBot.designSize * HomeScreen.repBotMaxScale;
-
 double _scrollRoom(WidgetTester tester) => tester
     .state<ScrollableState>(find.byType(Scrollable))
     .position
     .maxScrollExtent;
 
-Size _repBotSize(WidgetTester tester) =>
-    tester.getSize(find.byType(LobbyRepBot));
+/// The character's room: the whole LobbyCharacter, between the title and
+/// the menu.
+Rect _room(WidgetTester tester) => tester.getRect(find.byType(LobbyCharacter));
+
+/// The character's scale in its room now (W4 spec 3).
+double _scale(WidgetTester tester) =>
+    _character(tester).placementIn(_room(tester).size).scale;
 
 Finder _row(String title) =>
     find.ancestor(of: find.text(title), matching: find.byType(LobbyMenuItem));
 
-/// RepBot's room: the box it is placed in.
-Rect _slot(WidgetTester tester) => tester.getRect(
-  find
-      .ancestor(of: find.byType(LobbyRepBot), matching: find.byType(Align))
-      .first,
-);
-
 void main() {
   late FakeUserRepository repository;
+  late CharacterViewModel characters;
 
   // A tap that misses its button must fail here, not pass with nothing
   // opened.
@@ -97,10 +96,10 @@ void main() {
   });
 
   /// Opens HomeScreen on a phone-sized screen with the app's route observer
-  /// and stub pages for the routes it opens. RepBot holds still unless
-  /// [still] is false. [bars] are the system bars' heights, [textScale] the
-  /// system text size, and [tabBar] the height of a bar under home (none
-  /// when 0).
+  /// and stub pages for the routes it opens. The account's character is
+  /// [character] and holds still unless [still] is false. [bars] are the
+  /// system bars' heights, [textScale] the system text size, and [tabBar]
+  /// the height of a bar under home (none when 0).
   Future<void> open(
     WidgetTester tester, {
     Size size = const Size(412, 915),
@@ -108,6 +107,7 @@ void main() {
     double textScale = 1,
     double tabBar = 0,
     bool still = true,
+    String character = 'mouse',
     Future<void> Function()? onLogOut,
   }) async {
     tester.view.physicalSize = size;
@@ -117,11 +117,13 @@ void main() {
     addTearDown(tester.view.reset);
     tester.platformDispatcher.textScaleFactorTestValue = textScale;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-    if (still) _stillRepBot(tester);
+    if (still) _stillCharacter(tester);
     final settings = SettingsViewModel();
     addTearDown(settings.dispose);
-    final characters = CharacterViewModel(store: MemoryCharacterStore());
+    characters = CharacterViewModel(store: MemoryCharacterStore());
     addTearDown(characters.dispose);
+    // Signed out, the choice holds without saving.
+    await characters.choose(character);
     final home = HomeScreen(
       createViewModel: () => HomeViewModel(repository: repository),
       onLogOut: onLogOut,
@@ -170,9 +172,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('shows rules, the nickname, the title, RepBot and the menu', (
-    tester,
-  ) async {
+  testWidgets('shows rules, the nickname, the title, the character and the '
+      'menu', (tester) async {
     await open(tester);
     expect(find.byTooltip('게임 규칙'), findsOneWidget);
     expect(find.text('우현'), findsOneWidget);
@@ -181,7 +182,7 @@ void main() {
     expect(find.text('GYMRATS'), findsNothing);
     expect(find.text('1V1'), findsOneWidget);
     expect(find.text('30초 실시간 운동 대결'), findsOneWidget);
-    expect(find.byType(LobbyRepBot), findsOneWidget);
+    expect(find.byType(LobbyCharacter), findsOneWidget);
     expect(find.byType(LobbyMenuItem), findsNWidgets(4));
     for (final tag in [
       '01 / PLAY',
@@ -232,42 +233,102 @@ void main() {
     expect((decoration.border! as Border).top.color, AppColors.ink);
   });
 
-  testWidgets('RepBot stands between the title and the menu, top to bottom', (
-    tester,
-  ) async {
+  testWidgets('the character stands between the title and the menu, top '
+      'to bottom', (tester) async {
     await open(tester);
     double top(Finder finder) => tester.getTopLeft(finder).dy;
-    final repBot = tester.getRect(find.byType(LobbyRepBot));
-    expect(top(find.text('GYMMOUSE')), lessThan(repBot.top));
-    expect(repBot.top, lessThan(top(find.text('게임 시작'))));
+    final room = _room(tester);
+    expect(tester.getRect(find.text('30초 실시간 운동 대결')).bottom, room.top);
+    expect(room.bottom, top(_row('게임 시작')));
+    expect(top(find.text('GYMMOUSE')), lessThan(room.top));
     expect(top(find.text('게임 시작')), lessThan(top(find.text('캐릭터'))));
     expect(top(find.text('캐릭터')), lessThan(top(find.text('기록보관소'))));
     expect(top(find.text('기록보관소')), lessThan(top(find.text('환경설정'))));
   });
 
-  testWidgets('RepBot keeps doing push-ups on home', (tester) async {
+  testWidgets('the account\'s character stands there, and a new choice '
+      'shows at once, from the start of its motion', (tester) async {
+    await open(tester, character: 'seal', still: false);
+    expect(
+      tester.widget<LobbyCharacter>(find.byType(LobbyCharacter)).characterId,
+      'seal',
+    );
+    expect(_character(tester).art.id, 'seal');
+    await tester.pump(const Duration(milliseconds: 500));
+    await characters.choose('bear');
+    await tester.pump();
+    expect(_character(tester).art.id, 'bear');
+    expect(_character(tester).clock.value, 0);
+  });
+
+  testWidgets('without the app\'s character above it (a test, a demo) home '
+      'shows the default mouse', (tester) async {
+    _stillCharacter(tester);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        navigatorObservers: [GymRatsApp.routeObserver],
+        home: HomeScreen(
+          createViewModel: () => HomeViewModel(repository: repository),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(_character(tester).art.id, 'mouse');
+  });
+
+  testWidgets('the character keeps doing its exercise on home', (tester) async {
     await open(tester, still: false);
-    final first = _repBot(tester).depth;
+    final first = _character(tester).frame.pose;
     await tester.pump(const Duration(milliseconds: 400));
-    expect(_repBot(tester).depth, isNot(first));
+    expect(_character(tester).frame.pose, isNot(same(first)));
     expect(tester.binding.hasScheduledFrame, isTrue);
   });
 
-  testWidgets('RepBot holds the top pose with reduced motion', (tester) async {
+  testWidgets('with less motion it holds its rest picture', (tester) async {
     await open(tester);
-    expect(_repBot(tester).depth, 0);
+    final rest = CharacterMotionRig.standard.characters['mouse']!.rest;
+    expect(_character(tester).frame, same(rest));
     await tester.pumpAndSettle();
-    expect(_repBot(tester).depth, 0);
+    expect(_character(tester).frame, same(rest));
+  });
+
+  testWidgets('tapping the character opens 캐릭터 선택; back returns home '
+      '(W4 spec 6)', (tester) async {
+    await open(tester);
+    await tester.tapAt(_room(tester).topLeft + const Offset(8, 8));
+    await tester.pumpAndSettle();
+    expect(find.text('character page'), findsOneWidget);
+    await back(tester);
+    expect(find.byType(LobbyCharacter), findsOneWidget);
+  });
+
+  testWidgets('screen readers hear the character button with its name, the '
+      'rules button and the 캐릭터 row without it (W4 spec 6)', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await open(tester, character: 'kangaroo');
+    expect(
+      tester.getSemantics(find.byType(LobbyCharacter)),
+      matchesSemantics(
+        label: '캐릭터 바꾸기, 지금 캐릭터 그루',
+        isButton: true,
+        hasTapAction: true,
+      ),
+    );
+    expect(tester.getSemantics(find.byTooltip('게임 규칙')).tooltip, '게임 규칙');
+    expect(tester.getSemantics(_row('캐릭터')).label, '캐릭터');
+    semantics.dispose();
   });
 
   testWidgets('shows a spinner while loading', (tester) async {
     repository.gate = Completer();
     await open(tester);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.byType(LobbyRepBot), findsNothing);
+    expect(find.byType(LobbyCharacter), findsNothing);
     repository.gate!.complete();
     await tester.pump();
-    expect(find.byType(LobbyRepBot), findsOneWidget);
+    expect(find.byType(LobbyCharacter), findsOneWidget);
   });
 
   testWidgets('a failed load shows a retry button that loads again', (
@@ -469,37 +530,34 @@ void main() {
     expect(name.overflow, TextOverflow.ellipsis);
   });
 
-  group('fits the screen: RepBot takes the height left', () {
-    testWidgets('a shorter screen shrinks RepBot, keeping its shape', (
+  group('fits the screen: the character takes the height left, and the '
+      'menu does not scroll for it (W4 spec 10.2)', () {
+    testWidgets('a shorter screen shrinks the character, without scrolling', (
       tester,
     ) async {
-      await open(tester, size: const Size(360, 700), bars: _systemBars);
-      final size = _repBotSize(tester);
-      expect(size.height, lessThan(LobbyRepBot.designSize.height));
-      expect(size.height, greaterThan(_least.height));
-      expect(
-        size.aspectRatio,
-        closeTo(LobbyRepBot.designSize.aspectRatio, 0.01),
-      );
+      await open(tester, size: const Size(360, 640), bars: _systemBars);
       expect(_scrollRoom(tester), 0);
+      final scale = _scale(tester);
+      expect(scale, lessThan(CharacterHomeMotion.maxScale));
+      expect(scale, greaterThan(0));
+      // The feet stay on the unseen floor 16 above the menu.
+      expect(
+        _character(tester).placementIn(_room(tester).size).foot.dy,
+        _room(tester).height - CharacterHomeMotion.floorLift,
+      );
     });
 
-    testWidgets('a taller screen grows RepBot, up to 1.2 times its design', (
+    testWidgets('a taller screen leaves the character at 1.6 times at most', (
       tester,
     ) async {
       await open(tester, size: const Size(412, 960), bars: _systemBars);
-      expect(
-        _repBotSize(tester).height,
-        greaterThan(LobbyRepBot.designSize.height),
-      );
+      expect(_scale(tester), CharacterHomeMotion.maxScale);
       await open(tester, size: const Size(800, 1280));
-      expect(_repBotSize(tester).width, closeTo(_most.width, 0.01));
-      expect(_repBotSize(tester).height, closeTo(_most.height, 0.01));
+      expect(_scale(tester), CharacterHomeMotion.maxScale);
     });
 
-    testWidgets('only RepBot changes: the chip and the menu rows stay', (
-      tester,
-    ) async {
+    testWidgets('only the character\'s room changes: the chip and the menu '
+        'rows stay', (tester) async {
       final chip = find
           .ancestor(of: find.text('우현'), matching: find.byType(Material))
           .first;
@@ -509,16 +567,16 @@ void main() {
       ];
       await open(tester, size: const Size(360, 640));
       final short = parts();
-      final shortRepBot = _repBotSize(tester);
+      final shortRoom = _room(tester);
       await open(tester, size: const Size(360, 1000));
       expect(parts(), short);
       expect(short.first.height, 48);
-      expect(_repBotSize(tester).height, greaterThan(shortRepBot.height));
+      expect(_room(tester).height, greaterThan(shortRoom.height));
     });
 
     testWidgets('a tab bar under home is left out of the room', (tester) async {
       await open(tester, size: const Size(412, 800), bars: _systemBars);
-      final withoutBar = _repBotSize(tester);
+      final withoutBar = _room(tester);
       await open(
         tester,
         size: const Size(412, 800),
@@ -529,11 +587,16 @@ void main() {
       expect(_scrollRoom(tester), 0);
       final barTop = tester.getTopLeft(find.byKey(const Key('tab bar'))).dy;
       expect(tester.getRect(_row('환경설정')).bottom, lessThanOrEqualTo(barTop));
-      expect(_repBotSize(tester).height, lessThan(withoutBar.height));
+      // The bar takes the three-button bar's 48 under it into its own 80.
+      expect(
+        _room(tester).height,
+        withoutBar.height - (80 - _systemBars.bottom),
+      );
     });
 
-    testWidgets('320×568 at 2× text scrolls, with RepBot at its least, and '
-        'every menu row can be scrolled to and tapped', (tester) async {
+    testWidgets('320×568 at 2× text: the rest alone does not fit, so the page '
+        'scrolls with no room left for the character, and every menu row can '
+        'be scrolled to and tapped', (tester) async {
       await open(
         tester,
         size: const Size(320, 568),
@@ -542,7 +605,8 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       expect(_scrollRoom(tester), greaterThan(0));
-      expect(_repBotSize(tester).height, closeTo(_least.height, 0.01));
+      expect(_room(tester).height, 0);
+      expect(_scale(tester), 0);
       for (final (title, opened) in [
         ('게임 시작', find.byType(PlayScreen)),
         ('캐릭터', find.text('character page')),
@@ -560,7 +624,7 @@ void main() {
       }
     });
 
-    // Scrolling only ever starts once RepBot is as small as it goes.
+    // Scrolling only ever starts once the character has no room left.
     for (final size in const [
       Size(320, 568),
       Size(320, 640),
@@ -572,9 +636,8 @@ void main() {
       for (final textScale in const [1.0, 1.3, 2.0]) {
         final label =
             '${size.width.toInt()}×${size.height.toInt()} at $textScale× text';
-        testWidgets('$label: no overflow, no scroll while RepBot can shrink', (
-          tester,
-        ) async {
+        testWidgets('$label: no overflow, no scroll while the character has '
+            'room', (tester) async {
           await open(
             tester,
             size: size,
@@ -582,10 +645,8 @@ void main() {
             textScale: textScale,
           );
           expect(tester.takeException(), isNull);
-          final height = _repBotSize(tester).height;
-          expect(height, inInclusiveRange(_least.height - 0.01, _most.height));
           if (_scrollRoom(tester) > 0) {
-            expect(height, closeTo(_least.height, 0.01));
+            expect(_room(tester).height, 0);
           }
           await tester.dragUntilVisible(
             find.text('환경설정'),
@@ -647,16 +708,14 @@ void main() {
             );
             expect(find.text(title).hitTestable(), findsOneWidget);
           }
-          expect(
-            _repBotSize(tester).height,
-            inInclusiveRange(_least.height, _most.height),
-          );
+          // The default mouse at its full 1.6 times.
+          expect(_scale(tester), CharacterHomeMotion.maxScale);
         });
       }
     }
 
     testWidgets('the design\'s layout on a 360×780 phone with a three-button '
-        'bar: RepBot gets the 272 left, less the app\'s own sizes', (
+        'bar: the character gets the 272 left, less the app\'s own sizes', (
       tester,
     ) async {
       await open(tester, size: const Size(360, 780), bars: _systemBars);
@@ -690,11 +749,55 @@ void main() {
       expect(tester.getRect(_row('환경설정')).bottom, 24 + inside - 8);
       // The design's 272, less the chip's 4 and the gap's 2, plus the rows'
       // 4 x 1.
-      expect(_slot(tester).height, 272 - (48 - 44) - (8 - 6) + 4 * (76 - 75));
-      expect(_slot(tester).bottom, firstRow.top);
-      // RepBot fills it at its design size: the room is wider than tall.
-      expect(_repBotSize(tester), LobbyRepBot.designSize);
+      expect(_room(tester).height, 272 - (48 - 44) - (8 - 6) + 4 * (76 - 75));
+      expect(_room(tester).bottom, firstRow.top);
+      // The W4 bundle's character room: x 20 to 340, y 154 to 424.
+      expect(_room(tester), const Rect.fromLTRB(20, 154, 340, 424));
     });
+
+    // W4 spec 8, "배치 검사": on home itself, each character's scale and
+    // feet are the bundle's placement.
+    final placements = {
+      for (final MapEntry(:key, :value)
+          in ((jsonDecode(characterMotionJson)
+                      as Map<String, dynamic>)['characters']
+                  as Map<String, dynamic>)
+              .entries)
+        key:
+            (value as Map<String, dynamic>)['placement']
+                as Map<String, dynamic>,
+    };
+    for (final (bar, bars) in [
+      ('threeButton', _systemBars),
+      ('gesture', _gestureBars),
+    ]) {
+      testWidgets('on 360×780 with the $bar bar every character stands at its '
+          'placement', (tester) async {
+        for (final MapEntry(key: id, value: placement) in placements.entries) {
+          await open(
+            tester,
+            size: const Size(360, 780),
+            bars: bars,
+            character: id,
+          );
+          final room = _room(tester);
+          final want = placement[bar] as Map<String, dynamic>;
+          final place = _character(tester).placementIn(room.size);
+          expect(place.scale, want['scale'], reason: id);
+          final foot = want['foot'] as List;
+          expect(
+            room.left + place.foot.dx,
+            closeTo(foot[0] as num, 0.01),
+            reason: id,
+          );
+          expect(
+            room.top + place.foot.dy,
+            closeTo(foot[1] as num, 0.01),
+            reason: id,
+          );
+        }
+      });
+    }
 
     for (final textScale in const [1.3, 1.5]) {
       testWidgets('at $textScale× text a 360×780 phone with a three-button '
