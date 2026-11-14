@@ -470,3 +470,67 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `ae44bbb`, wit
   - `'with reduced motion the camera is gone at once'`
   - `"the ending itself, the button's moment and the setup layout do not change with it"`
   - unchanged and passing: `'a KO plays the ring-out to 결과 보기, which opens the result in place'` (the bot battle screen)
+
+#### 2026-11-14 · code at commit `80b00d7` · step W4 `feat/home_character` (P17 the chosen character on home, team order #14)
+This step puts the account's character on home and tidies home around it, in three parts (all on 2026-11-14):
+- **Part 1 (the user's list, before the design package):**
+  - Home's menu has four rows: 01 / PLAY 게임 시작, 02 / CHARACTER 캐릭터 (new; opens 캐릭터 선택), 03 / ARCHIVE 기록보관소, 04 / SETTINGS 환경설정.
+  - 게임 시작 loses its 캐릭터 row; 환경설정 keeps its own.
+  - The logo reads GYMMOUSE (the app's new name).
+  - On 캐릭터 선택 the line under the name band moved under the floor (the user's choice of three drawn options), because 그루's ears covered it, found on the phone. The band's name keeps the design's size at any text size, and the line grows up to 1.5×.
+- **Home fit (after the phone check: home still scrolled):** `origin/main` (W2b #54, J2 #53) merged as `7be4abb` with no conflict. Home then follows the design's 76 px menu layout: the logo 40, the menu titles 44, rows of 75 (the design's gaps in token steps). The logo and the titles keep their size at any text size. Nothing scrolls at the default text size on 360 × 780 (three-button or gesture bar) or 412 × 915, the unsaved-battles note included.
+- **Part 2 (the W4 design package `W4-HOME-SPEC.md`, numbers from `w4_home_rig.json`):**
+  - In RepBot's place the character does its exercise again and again: GYM마우스 and 그루 push-ups, 곰탱이 the one-two punch, 펭뚱이 and 물렁범 squats. No stand, no name band.
+  - The whole room is one button to 캐릭터 선택, read as "캐릭터 바꾸기, 지금 캐릭터 (name)". With reduced motion it shows one rest picture.
+  - Its clock stops while a page covers home or the app is in the background, and the motion starts from 0 when home shows again or the character changes.
+  - `CharacterFigurePainter` takes a pose table, expression tags, draw patches and motion flags from outside, so W5 can add its own patches. The stage's pose-name drawing is unchanged except for 그루's inner tail fur, now on the stage and 캐릭터 선택 too (the user's answer to the spec's question 10.1).
+  - A small room shrinks the character rather than scrolling the menu (question 10.2).
+  - RepBot's widget and its test are deleted. The login page's logo reads GYMMOUSE too.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
+| ViewModel | flutter_test, fakes | 90% | same TODO | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | same TODO | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | same TODO | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` had 2606 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W4 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W4 adds 3 test files and 2 data sets, changes 10 test files and deletes `test/widgets/lobby_rep_bot_test.dart` with the widget it tested (the table below).
+- **The design checks:**
+  - `test/widgets/character_motion_golden.json` is the design's `golden` (the rest of `w4_home_rig.json` is the app's `character_motion_data.dart`; the two together equal the bundle's file). Every pose value, expression and whole-picture move of its 54 samples and 5 rest pictures is matched within its tolerance 0.01; the samples include times past one rep and parts that run late.
+  - `test/widgets/character_home_shots/` holds the design's five home shots (three-button bar, reduced motion) cut to the character's room. The app's rest picture is compared pixel by pixel both ways. The shots put the feet on a whole point (GYM마우스 at 180 for 179.52), so the test moves its render by that rounding; the app keeps the spec's exact place, which the placement tests check.
+  - The W3 shot tests (`test/widgets/character_shots/`) compare the painter without patches and still pass; a new test checks that 그루's fur is the only change on the stage, in its color, in every pose (knocked out, the body hides the whole tail).
+- **Mutation checks (by me, files restored byte for byte):** 13 deliberate faults (in 15 runs) were all caught: the easing formula, a part's delay ignored, the floor 16 → 15, effects drawn, flags ignored, the insert position, no restart on a new character or when shown again, no fur on the stage, a wrong screen-reader name, reduced motion ignored, RepBot's id not mapped to the mouse, and a least height brought back for the room.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `80b00d7`: 36 changed files, all owned by W4 or under the user's one-off exceptions (W1 / W3 files of the user, `app_theme.dart`'s home styles, the login page and its test).
+  - Server `pytest` was not run, because `server/` did not change.
+- **Shortfalls:** coverage is a TODO until the CI comment.
+- **Screen readers:** widget tests check the character button's name and role, that the drawing itself is not read, the '?' button's 게임 규칙, and the 캐릭터 row's name without the character. TalkBack on a real phone was **not** checked.
+- **Manual check (the user, on the phone, 2026-11-14):** the ears on 캐릭터 선택 were found during W2b's phone check; after part 1, home still scrolled (also on the S26+), which led to the home fit. The final build (part 2, with W2b and J2 from the merge) passed with no problems. TODO(Woohyun Song): the phone model and Android version of the final check, if not W2's record (Galaxy S26+, Android 17).
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/character_motion_test.dart` (new) + `character_motion_golden.json` (new) | the home rig's data (five characters, 17 pose keys alike in steps, timetables naming real key poses, malformed rigs rejected); the 54 golden samples and 5 rest pictures within 0.01; the easings, segments, loop wrap, late parts, expressions, hop / rock / landing; expression tags incl. W5's per-character form; the placement rule at 360 × 780 with both bars, a lower and a narrower room, no room |
+| View | `test/widgets/character_draw_patch_test.dart` (new) | every drawPatch of the five aimed at exactly one W3 shape; added shapes right after it; the flags (back glove, paddle fins) and the belly key; the five stage effects marked and not drawn (pixel-equal to the shapes removed), still drawn by pose name; W5-style patches (a fixed move written alone, a later patch at the same shape first); malformed patches; shape equality |
+| View | `test/widgets/lobby_character_test.dart` (new) + `character_home_shots/` (new) | the whole room one button with the spec's name, for every character, RepBot's and unknown ids as the mouse; its own clock and repaint boundary; reduced motion; restart from 0 on a new character, when shown again, and for a character chosen while covered; no frames when covered or in the background; the placement in any room; the design's home shots |
+| View | `test/widgets/character_figure_test.dart` (updated) | the painter's motion inputs (a table without a pose name, tags as the name, repaint on change); 그루's tail fur from `CharacterFigure` only, the only change in every stage pose |
+| View | `test/screens/home_screen_test.dart` (updated) | four menu rows and their taps; GYMMOUSE; the character between the title and the menu, the account's choice and a new choice from 0, the default without a character above home, its motion and its rest picture, its tap and its screen-reader names; the fit (shrinks, at most 1.6×, only its room changes, a tab bar, 320 × 568 at 2× scrolls with no room left, a size × text sweep); with the app's fonts: no scroll on five phones with and without the note, the design's layout numbers, each character's placement on 360 × 780 with both bars, 1.3× / 1.5× text |
+| View | `test/widgets/lobby_menu_item_test.dart`, `lobby_parts_test.dart` (updated) | the 75 high row (line, tag, title, chevron box), the title's fixed size at larger text, the page's 8 / 8 padding |
+| View | `test/screens/character_select_screen_test.dart` (updated) | the line under the floor; no picture of the five overlaps the name band or its line at any extreme of their idle motion, at 1.0 / 1.3 / 2.0× text; the band's name at 30 and the line up to 1.5× at 2× text |
+| View | `test/screens/play_screen_test.dart`, `settings_screen_test.dart`, `auth_screens_test.dart` (updated) | 게임 시작 without the 캐릭터 row; 환경설정's tag 04 / SETTINGS; the login page's GYMMOUSE |
+| App flow | `test/main_test.dart` (updated) | GYMMOUSE on home; 캐릭터 선택 opened from home's 캐릭터 row, the saved character on its preview and a pick kept |
+| Design | `test/design_tokens_test.dart` (updated) | the four new widget files in the token check; the deleted `lobby_rep_bot.dart` line removed with its file |
+
+### Acceptance criteria → tests
+- I chose a character, then home shows it; after I change it, home shows the new one. Tests: `"the account's character stands there, and a new choice shows at once, from the start of its motion"`, `'a character chosen while a page covers home starts from 0 when home shows again (환경설정 -> 캐릭터 -> back)'`
+- Its poses, expression and whole-picture move match the design within 0.01. Tests: `'$id at ${t.toInt()} ms: pose, expression and whole move'` (54 samples), `'$id still: the rest picture with less motion'`
+- Every drawPatch target is found and the five stage effects are not drawn. Tests: `'$id: every patch is aimed at exactly one W3 shape'`, `'each effect rule finds its W3 shapes, and only W3 ones'`, `'$id with $tags draws as if the effect shapes were not there'`
+- On 360 × 780 with a three-button and a gesture bar, each character's scale and feet are the design's. Tests: `'360×780 with the $bar bar: $id at the scale and feet of its placement'`, `'on 360×780 with the $bar bar every character stands at its placement'`
+- Tapping the character opens 캐릭터 선택, with the spec's name; reduced motion does not move. Tests: `'tapping the character opens 캐릭터 선택; back returns home (W4 spec 6)'`, `'the whole room is one button that opens 캐릭터 선택, named for the character (W4 spec 6)'`, `'with less motion it shows the rest picture and stays still'`
+- Home fits without scrolling (part 1's tests, kept). Tests: `'a $label phone shows it all without scrolling'` (five phones, with and without the note)
+- Part 1: four menu rows, 캐릭터 opens 캐릭터 선택, 게임 시작 has no 캐릭터 row, the logo reads GYMMOUSE, no character covers the band or its line. Tests: `'the menu: 게임 시작, 캐릭터, 기록보관소, 환경설정, all alike'`, `'캐릭터 opens 캐릭터 선택; back returns home'`, `"no 캐릭터 row: the character is picked from home's menu"`, `'for all five, at every extreme of their idle motion (rig …'`
