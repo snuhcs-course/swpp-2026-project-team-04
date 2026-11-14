@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 
+import '../models/exercise_type.dart';
+import '../models/tutorial_page.dart';
+import '../services/audio/background_music.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/tutorial_viewmodel.dart';
 import '../widgets/accent_button.dart';
 import '../widgets/auth_form.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/help_pictures.dart';
 import '../widgets/help_rules.dart';
+import '../widgets/sound_cues.dart';
 
-/// The battle rules in three pages, turned by swiping or 다음: the health
-/// bar, scoring with fever, then the danger edge, the winner and safety.
-/// The texts come from [HelpRules].
+/// The tutorial: the game rules in pages, every push-up page and then every
+/// squat page, turned by swiping, 이전/다음 or the exercise tabs. One
+/// picture and one or two lines a page; the words come from [HelpRules].
+/// It replaces the three-page rules screen (PM 2026-11-15) and plays the
+/// main-menu music (user 2026-11-15).
 ///
 /// Opens once before home for an account that signed up on this phone:
 /// then [onStart] is set, there is no back arrow, and 건너뛰기 or the last
-/// page's 시작하기 calls it. Opened from '?' on home, [onStart] is null:
-/// back or the last page's 확인 returns home.
+/// page's 완료 calls it. Opened from '?' on home (or 규칙 보기, 게임 규칙
+/// 다시 보기), [onStart] is null: back or 완료 returns.
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key, this.onStart});
 
@@ -27,29 +34,23 @@ class HelpScreen extends StatefulWidget {
 class _HelpScreenState extends State<HelpScreen> {
   static const _turn = Duration(milliseconds: 300);
 
-  /// One per page of [HelpRules.pages], in order.
-  static const _pictures = [
-    HelpBarPicture(),
-    HelpScorePicture(),
-    HelpReminderPicture(),
-  ];
-
+  final _tutorial = TutorialViewModel();
   final _pager = PageController();
-  int _page = 0;
-
-  bool get _onLastPage => _page == _pictures.length - 1;
 
   @override
   void dispose() {
     _pager.dispose();
+    _tutorial.dispose();
     super.dispose();
   }
 
-  void _next() {
-    if (!_onLastPage) {
-      _pager.nextPage(duration: _turn, curve: Curves.easeOut);
-      return;
-    }
+  /// Turns to [index]; the pager tells the view model when it lands.
+  void _turnTo(int index) {
+    if (!_pager.hasClients) return;
+    _pager.animateToPage(index, duration: _turn, curve: Curves.easeOut);
+  }
+
+  void _finish() {
     final onStart = widget.onStart;
     if (onStart != null) {
       onStart();
@@ -58,67 +59,118 @@ class _HelpScreenState extends State<HelpScreen> {
     }
   }
 
+  void _next() {
+    if (_tutorial.isLast) {
+      _finish();
+    } else {
+      _turnTo(_tutorial.index + 1);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final onStart = widget.onStart;
-    final pages = HelpRules.pages;
-    return Scaffold(
-      body: GridBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TopBar(title: '게임 규칙', showBack: onStart == null),
-                  ),
-                  if (onStart != null && !_onLastPage)
-                    Padding(
-                      padding: const EdgeInsets.only(right: AppSpacing.s8),
-                      child: TextButton(
-                        onPressed: onStart,
-                        child: Text(
-                          '건너뛰기',
-                          style: text.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
+    final text = Theme.of(context).textTheme;
+    return SoundCues(
+      music: MusicCue.menu,
+      child: Scaffold(
+        body: GridBackground(
+          child: SafeArea(
+            child: ListenableBuilder(
+              listenable: _tutorial,
+              builder: (context, _) {
+                final pages = _tutorial.pages;
+                final (number, count) = _tutorial.positionOf(_tutorial.index);
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TopBar(
+                            title: '게임 규칙',
+                            showBack: onStart == null,
                           ),
                         ),
+                        if (onStart != null && !_tutorial.isLast)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              right: AppSpacing.s8,
+                            ),
+                            child: TextButton(
+                              onPressed: onStart,
+                              child: Text(
+                                '건너뛰기',
+                                style: text.bodyMedium?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.s20,
+                      ),
+                      child: _ExerciseTabs(
+                        selected: _tutorial.exercise,
+                        onSelected: (exercise) =>
+                            _turnTo(_tutorial.firstIndexOf(exercise)),
                       ),
                     ),
-                ],
-              ),
-              Expanded(
-                child: PageView(
-                  controller: _pager,
-                  onPageChanged: (page) => setState(() => _page = page),
-                  children: [
-                    for (final (index, page) in pages.indexed)
-                      _Page(page: page, picture: _pictures[index]),
+                    Expanded(
+                      child: PageView(
+                        controller: _pager,
+                        onPageChanged: _tutorial.goTo,
+                        children: [
+                          for (final (index, page) in pages.indexed)
+                            _Page(
+                              page: page,
+                              position: _tutorial.positionOf(index),
+                            ),
+                        ],
+                      ),
+                    ),
+                    _PageDots(
+                      count: count,
+                      current: number - 1,
+                      exercise: HelpRules.exerciseName(_tutorial.exercise),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.s20,
+                        0,
+                        AppSpacing.s20,
+                        AppSpacing.s24,
+                      ),
+                      child: Row(
+                        children: [
+                          if (!_tutorial.isFirst) ...[
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => _turnTo(_tutorial.index - 1),
+                                child: const Text('이전'),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.s12),
+                          ],
+                          Expanded(
+                            flex: 2,
+                            child: AccentButton(
+                              title: _tutorial.isLast ? '완료' : '다음',
+                              hint: _tutorial.isLast && onStart != null
+                                  ? '홈 화면의 ?로 다시 볼 수 있어요'
+                                  : null,
+                              onPressed: _next,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                ),
-              ),
-              _PageDots(count: pages.length, current: _page),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.s20,
-                  0,
-                  AppSpacing.s20,
-                  AppSpacing.s24,
-                ),
-                child: AccentButton(
-                  title: !_onLastPage
-                      ? '다음'
-                      : onStart == null
-                      ? '확인'
-                      : '시작하기',
-                  hint: _onLastPage && onStart != null
-                      ? '규칙은 홈의 ? 버튼으로 다시 볼 수 있어요'
-                      : null,
-                  onPressed: _next,
-                ),
-              ),
-            ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -126,17 +178,46 @@ class _HelpScreenState extends State<HelpScreen> {
   }
 }
 
-/// One page: its picture on a card, then the title, the text and the
-/// score tags. Scrolls on a short screen.
-class _Page extends StatelessWidget {
-  const _Page({required this.page, required this.picture});
+/// 푸시업 | 스쿼트: the exercise whose pages show, and a jump to the other.
+class _ExerciseTabs extends StatelessWidget {
+  const _ExerciseTabs({required this.selected, required this.onSelected});
 
-  final HelpPage page;
-  final Widget picture;
+  final ExerciseType selected;
+  final ValueChanged<ExerciseType> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<ExerciseType>(
+        showSelectedIcon: false,
+        segments: [
+          for (final exercise in TutorialViewModel.exercises)
+            ButtonSegment(
+              value: exercise,
+              label: Text(HelpRules.exerciseName(exercise)),
+            ),
+        ],
+        selected: {selected},
+        onSelectionChanged: (choice) => onSelected(choice.single),
+      ),
+    );
+  }
+}
+
+/// One page: its picture on a card, then "푸시업 3 / 10", the title and its
+/// line. Scrolls on a short screen.
+class _Page extends StatelessWidget {
+  const _Page({required this.page, required this.position});
+
+  final TutorialPage page;
+  final (int, int) position;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final words = HelpRules.of(page);
+    final (number, count) = position;
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.s20,
@@ -148,80 +229,57 @@ class _Page extends StatelessWidget {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.s16),
-            child: picture,
+            child: AspectRatio(
+              aspectRatio: HelpPicture.width / HelpPicture.height,
+              child: HelpPicture(page: page),
+            ),
           ),
         ),
-        const SizedBox(height: AppSpacing.s24),
-        Text(page.title, style: text.headlineLarge),
+        const SizedBox(height: AppSpacing.s20),
+        Text(
+          '${HelpRules.exerciseName(page.exercise)} $number / $count',
+          style: text.labelLarge?.copyWith(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.s4),
+        Text(words.title, style: text.headlineLarge),
         const SizedBox(height: AppSpacing.s8),
         Text(
-          page.body,
+          words.body,
           style: text.bodyLarge?.copyWith(color: AppColors.textSecondary),
         ),
-        if (page.points.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s16),
-          Wrap(
-            spacing: AppSpacing.s8,
-            runSpacing: AppSpacing.s8,
-            children: [for (final point in page.points) _PointTag(point)],
-          ),
-        ],
       ],
     );
   }
 }
 
-/// A score tag such as "KO 100점 차": bold lime text on a faint lime box.
-class _PointTag extends StatelessWidget {
-  const _PointTag(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.12),
-        borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s12,
-          vertical: AppSpacing.s4,
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(fontWeight: FontWeight.w700, color: AppColors.accent),
-        ),
-      ),
-    );
-  }
-}
-
-/// Which page is showing: a long lime dot for it, short gray ones for the
-/// rest.
+/// Which page of the exercise is showing: a long lime dot for it, short
+/// gray ones for the rest.
 class _PageDots extends StatelessWidget {
-  const _PageDots({required this.count, required this.current});
+  const _PageDots({
+    required this.count,
+    required this.current,
+    required this.exercise,
+  });
 
   final int count;
   final int current;
+  final String exercise;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '$count장 중 ${current + 1}장',
+      label: '$exercise $count장 중 ${current + 1}장',
       child: ExcludeSemantics(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s16),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               for (var index = 0; index < count; index++) ...[
-                if (index > 0) const SizedBox(width: AppSpacing.s8),
+                if (index > 0) const SizedBox(width: AppSpacing.s4),
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: index == current ? AppSpacing.s24 : AppSpacing.s8,
+                  width: index == current ? AppSpacing.s20 : AppSpacing.s8,
                   height: AppSpacing.s8,
                   decoration: ShapeDecoration(
                     color: index == current
