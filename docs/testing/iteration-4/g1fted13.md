@@ -534,3 +534,48 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, wit
 - Tapping the character opens 캐릭터 선택, with the spec's name; reduced motion does not move. Tests: `'tapping the character opens 캐릭터 선택; back returns home (W4 spec 6)'`, `'the whole room is one button that opens 캐릭터 선택, named for the character (W4 spec 6)'`, `'with less motion it shows the rest picture and stays still'`
 - Home fits without scrolling (part 1's tests, kept). Tests: `'a $label phone shows it all without scrolling'` (five phones, with and without the note)
 - Part 1: four menu rows, 캐릭터 opens 캐릭터 선택, 게임 시작 has no 캐릭터 row, the logo reads GYMMOUSE, no character covers the band or its line. Tests: `'the menu: 게임 시작, 캐릭터, 기록보관소, 환경설정, all alike'`, `'캐릭터 opens 캐릭터 선택; back returns home'`, `"no 캐릭터 row: the character is picked from home's menu"`, `'for all five, at every extreme of their idle motion (rig …'`
+
+#### 2026-11-15 · code at commit `13afb2f` · step W6 `feat/ui_report_rules` (the result report in palette B, team order #13)
+This step redraws the result screen as the game report of the design (BResult, headline option A of BResultHeads). It was built on 2026-11-13 and 2026-11-14 against a list of values, and connected to 박진영's result view model (J4 #57) on 2026-11-15:
+- **The report:** the verdict on a marker band (KO 승리 / 승리 lime, KO 패배 / 패배 pink, 무승부 gray), the sub line (exercise, "vs RepBot <level>" or the nickname, the seconds), a reason line when the headline does not say it ("점수 같음 · 횟수로 승리/패배", "상대가 나갔어요", "연결이 끊겼어요"; no seconds when a player left), both scores with swatches and the user's reps, then the cards, and 홈으로 / 다시 대결. Accuracy and the grade counts left the screen (the design has neither).
+- **The cards, from J4's `ResultState`:** the personal best when this battle beat the best before it ("185점 → 240점 · 55점 올랐어요"), the latest battles (up to 8 bars, this one last, the mean of up to 5 battles before it as a dashed line, the same exercise, bot and online mixed), and the next tip (the first issue's fix and what it was, push-ups and squats), with 자세 피드백 전체 보기 when the battle has a form report.
+- **Empty and waiting states (my defaults, the design has none):** the first battle shows neither the best nor the latest battles (the user's rule of 2026-11-13: a card without values is left out); while the earlier battles load, one quiet card "이전 기록을 불러오는 중…" stands in their place (no 0, no empty chart); if they cannot be loaded, the comparison is left out and the rest stays. A battle without a game score (an old server) leaves out the latest battles too.
+- **Rules pages:** built here on 2026-11-13, then moved to 박진영's tutorial at the team meeting of 2026-11-15. Their files are back to `main`'s version on this branch, and the rules tests I had added (`test/widgets/help_pictures_test.dart`) left with them.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `13afb2f`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
+| ViewModel | flutter_test, fakes | 90% | same TODO (W6 changes no view model) | 11/15 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | same TODO (W6 changes no service) | 11/15 | same CI comment |
+| View | flutter_test (widget) | 75% | same TODO | 11/15 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/15 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` had 2797 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W6 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - The review run measured the three result test files alone with `--coverage` (not the layer numbers): `result_screen.dart` 100%, `result_report.dart` 99.4%, `result_cards.dart` 99.3% (the two lines left are painters' `shouldRepaint`).
+- **Mutation checks (by me, 2026-11-14, before the J4 wiring; files restored byte for byte):** 9 deliberate faults in the reason line and the report were all caught.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `13afb2f`: 13 changed files, all owned by W6 or under the user's one-off W6 exceptions of 2026-11-13 (the old result words in `main_test.dart`, `battle_demo_test.dart`, `feedback_screen_test.dart`, the grade-count group of `game_panel_fonts_test.dart`, one comment in `battle_demo.dart`).
+  - Server `pytest` was not run, because `server/` did not change.
+- **Shortfalls:** coverage is a TODO until the CI comment. J4 gives the best before and the average, not the gain and the difference: the screen subtracts them (noted for 박진영 after the cutoff).
+- **Screen readers:** widget tests check what the headline, the sub line (with its reason), the scores and the chart are read as. TalkBack on a real phone was **not** checked.
+- **Manual check:** at the team meeting of 2026-11-15 the result screen was checked in an online battle (before the J4 wiring) with no problem. The check of this build on the phone runs with CI. TODO(Woohyun Song): the phone, Android version and what was seen on this build (a new best, the latest battles, a squat tip, the loading line).
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/result_screen_test.dart` (rewritten) | the mapping from J4's `ResultState` (outcome, KO from the end, a player leaving without seconds, a past battle's name, the new best and its gain, not beaten or matched, the latest battles and the difference, the first battle without them, no game score, loading, failed, the tip's headline / detail and no code, feedback); where the earlier battles come from (the app's repository when it keeps the list, else a source that fails); on the screen: time-up win / loss / draw for push-ups and squats with both scores, KO win / loss, equal scores decided by reps, the opponent leaving and the lost connection, the comparison as in the design, the first battle, the placeholder while loading and the cards in its place, a failed load, the push-up and squat tips, nothing to fix, the buttons (home, back, system back, 다시 대결 for a bot and online, one leaving button, the feedback and back), leaving while loading |
+| View | `test/widgets/result_report_test.dart` (new) | the headline's words, bands, slant and one line at larger text; the sub line (bot levels, a long nickname cut at 1.0 / 2×); the reason line and the seat at the right end; the score row (swatches, baseline, reps under the scores at 2×, rejected reps unknown); the header; the cards' order, gaps and the placeholder while loading; the buttons; no text in a fill color; a 360 × 780 and a short phone, 320 × 640 at 1.3 / 2× |
+| View | `test/widgets/result_cards_test.dart` (new) | the best card's words and colors; the latest-battles chart (bars from the right, this one in ink, the dashed average and its label above or below, the chip above / equal / below, dates, the screen-reader label); the tip card with and without a reason or the link; the placeholder (one muted line, no number, no chart) |
+| App flow | `test/main_test.dart`, `test/demo/battle_demo_test.dart`, `test/screens/feedback_screen_test.dart` (updated) | the result's new words only ('승리', 다시 대결, 자세 피드백 전체 보기) |
+| View | `test/widgets/game_panel_fonts_test.dart` (updated) | the group of the result's grade counts deleted (they left the screen) |
+| Design | `test/design_tokens_test.dart` (updated) | `result_screen.dart`, `result_cards.dart`, `result_report.dart` in the token check |
+
+### Acceptance criteria → tests
+- UAT-4 AC1: the result shows win, loss or draw with both scores, for push-ups and squats. Tests: `'a time-up ${squat ? 'squat' : 'push-up'} ${outcome.name}: "$headline", both scores, the seconds'` (6 cases), `'a KO ${outcome.name}: "$headline" and the time it took'`, `'${outcome.name}${byKo ? ' by KO' : ''}: "$word" in ink on …'`
+- An online battle a player left says why and shows no seconds. Tests: `'an online battle that ended by ${departure.name}: $headline, and why, without the seconds'`, `'a battle a player left, without its length: no seconds'`
+- The first battle does not look like a new best. Tests: `'the first battle: no new best and no comparison, the rest of the report as usual'`, `'no best card when the best was not beaten, or there was none (the first battle)'`
+- While loading, a placeholder, not 0 or an empty chart; a failed load leaves the comparison out. Tests: `'while they load: the placeholder, no 0 and no chart; then the cards in its place'`, `'a failed load: the comparison is left out, the rest of the report stays'`
+- The next tip shows for push-ups and squats. Tests: `"a push-up battle: its first issue's fix and what it was"`, `'a squat battle has its squat tip'`

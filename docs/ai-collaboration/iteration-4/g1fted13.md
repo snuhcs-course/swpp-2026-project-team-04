@@ -460,3 +460,56 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - For anything driven by a clock, test the path where the screen is covered or the app is paused, not only the visible screen.
 - When a pixel comparison with the design is off, look for a systematic cause (here the design's rounding) before loosening the tolerance.
+
+## W6 `feat/ui_report_rules` – the result report (P15 screens, team order #13), 2026-11-13 ~ 2026-11-15
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W6's code and tests on `feat/ui_report_rules`, and merged `main` twice (`970369b`, `40fe312`):
+  - `937966e` (11-13): the rules pages in palette B, reverted by `df08927`.
+  - `b57cd08` (11-13): the report widgets `lib/widgets/result_report.dart` and `result_cards.dart`, the screen `lib/screens/result_screen.dart`, the `ReportText` styles in `app_theme.dart`, and the tests that looked for the old result's words.
+  - `9f4aee8` (11-14): the reason line under the sub line (`ResultSubLine.reasonOf`).
+  - `df08927` (11-15): the rules pages back to `main`'s version.
+  - `13afb2f` (11-15): the screen on 박진영's `ResultViewModel` (J4 #57), with `ResultScreen.reportOf(ResultState)`, `historyOf`, and the loading placeholder `ResultComparisonPlaceholder`.
+- **The design came from the user:** the palette B mockups BResult and BResultHeads (`.claude/design/b-screens/`). The view model and its values are 박진영's (J4), from the list of values Claude Code drafted for the user to send on 11-13.
+- **Review:** the `reviewer` subagent reviewed W6 in four runs. Runs 1, 2 and 4 returned CHANGES_REQUESTED (item d); each ended with APPROVE.
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - The scope and every choice were the user's: 8 + 3 answers on 11-13 (bands, the bot's name, a cut nickname, empty cards left out, large text), the reason line on its own line (11-14), and on 11-15 dropping the rules pages after the team meeting.
+  - Sending the list of values to 박진영, and J4's code.
+  - The check in an online battle at the team meeting of 11-15 (before the J4 wiring).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-13 17:20] (the start, pasted; excerpt) "2. 결과 리포트 (screens/result_screen.dart, widgets/result_*): BResult.dc.html. 제목은 BResultHeads.dc.html의 A안(밑줄 띠: KO 승리·승리는 라임 띠, 패배는 분홍 띠, 46px 한 줄)이고, 온라인 대결도 같은 리포트로 간다."
+- [Woohyun Song, 11-14 19:50] (the resume after the merges, pasted; excerpt) "result_screen.dart와 규칙 화면: main에 있는 동작(온라인 대결의 \"다시 대결\", 상대가 나간 경기의 사유 표시 등)이 W6의 새 화면에서도 그대로 되게 맞춘다."
+- [Woohyun Song, 11-15 05:14] (the finish, pasted; excerpt) "첫 판은 이전 기록이 없어 isNewBest 가 false 다. 첫 판이 신기록처럼 보이지 않게 하고, 이전 기록 비교 자리는 시안의 빈 상태 규칙을 따른다. 시안에 규칙이 없으면 가장 무난하게 정하고 보고한다."
+- The 11-13 answers to the 8 + 3 open choices were given in the agent's question dialog, so they are not in the Prompt Log; they are in `task.md`'s W6 decisions (not committed).
+
+### c. What AI did well
+- **One place for the values, built before they existed.** On 11-13 the screen took every value through one function, and the three cards J4 would fill were drawn but hidden. On 11-15 the J4 wiring rewrote `result_screen.dart` and added to the widgets only the loading placeholder, a count of rejected reps that may be unknown, and an optional tip reason. The drawing and its tests stayed.
+- **The merged code read as the contract, and the differences reported.** J4's `ResultState` gives the best before this battle and the average, not the gain and the difference the list asked for. The agent subtracted them in the screen, wrote it into `task.md` as a default for the user, and drafted a follow-up for 박진영.
+- **States tested at the screen, not only the mapping.** The fetch was held on a gate to test the placeholder and the cards that take its place, a failed fetch, the first battle, and a late answer after leaving (`test/screens/result_screen_test.dart`).
+
+### d. Hallucinations / errors
+- **Review run 1 (11-13, the rules pages, now reverted): CHANGES_REQUESTED.** 1 Major: no design-doc rows for the new token and public classes. 4 Minor: three in tests and one stale comment. All fixed.
+- **Review run 2 (11-13, the report): CHANGES_REQUESTED.**
+  - 1 Critical: the full suite failed 9 tests outside W6 (`main_test`, `battle_demo_test`, `feedback_screen_test`, `game_panel_fonts_test`) that still looked for the old result's words. The reviewer found them by running the full suite. The user approved five one-off exceptions to update them.
+  - 1 Major (design-doc rows) and 2 Minor (an empty score list would throw; a 0 difference read "+0점"). All fixed. The re-check left one Minor open on purpose: `feedback_screen_test.dart:207-208` still checks that the old '자세 피드백 보기' is absent, so it cannot fail; it is outside the approved lines (for W8).
+- **Review run 4 (11-15, the J4 wiring): CHANGES_REQUESTED.**
+  - 1 Major: the "Design doc changes" rows still described the reverted rules classes and "no view model until J4", and missed the new public API.
+  - 4 Minor: the placeholder showed for a battle without a game score, though no card could follow; the screen does arithmetic the contract gives to view models; the win / loss / draw test ran for push-ups only; the checklist had the old team number.
+  - All fixed or recorded as defaults. The re-check returned APPROVE.
+- **Wrong expectations in new tests (one caught while writing the test, one on the first run; fixed in the test):** a draw shows '240' twice; Material's `Card` paints with its own `CustomPaint`, so "no chart" had to look for the chart itself.
+
+### e. Prompt revisions
+- **Where the reason goes:**
+  - Before (11-13, answer 8 in the question dialog): the reason for an online departure ends the sub line, in place of the seconds.
+  - After (11-14, the user's choice when asked again): the reasons go on a line of their own under the sub line.
+  - Why it worked: W5's victory scene needs the right end of the headline rows. The agent measured that cell (x 196-340) and asked again with the numbers, and the second answer kept the sub line out of it.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W6 was edited by hand, so W6 has no manual-fix markers.
+- The user's corrections came as answers and as the 11-15 scope change.
+
+### Takeaway
+- When a screen's words change, run the whole suite before review: other flow tests read them.
+- When a view model lands after the screen, read its merged code as the contract and list each difference from the agreed list, rather than bending either side.
