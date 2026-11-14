@@ -352,3 +352,66 @@ branch 'docs/rename_gymmouse' set up to track 'origin/docs/rename_gymmouse'.</ba
 
 <!-- 2bd9fff5 2026-11-14T08:10:23.221Z -->
 [Jinyoung Park, 11-14 17:10] "다 되면 commit, push, pr"
+
+## 2026-11-14 · Jinyoung Park · feat/squat_feedback
+<!-- 154bbf4f 2026-11-13T19:21:07.960Z -->
+[Jinyoung Park, 11-14 04:21] "그 혹시 codex 지금 모델 뭐쓰지?"
+
+<!-- 2bd9fff5 2026-11-14T08:26:34.361Z -->
+[Jinyoung Park, 11-14 17:26] "ㅇㅋ 끝나면 알려줘"
+
+<!-- 2bd9fff5 2026-11-14T08:30:29.054Z -->
+[Jinyoung Park, 11-14 17:30] "우현이한테 보낼 메시지 써줘"
+
+<!-- 2bd9fff5 2026-11-14T08:30:50.878Z -->
+[Jinyoung Park, 11-14 17:30] "현우한테 보낼 재배포 메시지도 써줘"
+
+<!-- 2bd9fff5 2026-11-14T08:37:05.218Z -->
+[Jinyoung Park, 11-14 17:37] "codex 리뷰 끝난듯"
+
+<!-- 3a04aaa8 2026-11-14T08:45:29.998Z -->
+[Jinyoung Park, 11-14 17:45] "J4 task 수행해보자"
+
+<!-- 3a04aaa8 2026-11-14T09:08:34.244Z -->
+[Jinyoung Park, 11-14 18:08] "응 J4 진행하자"
+
+<!-- 3a04aaa8 2026-11-14T10:52:44.381Z -->
+[Jinyoung Park, 11-14 19:52] "형, 그 테스트(online_preparation_test.dart의 'squat result does not save or carry push-up form feedback')는 J4에서 스쿼트도 리포트를 저장하게 바뀌어서 옛 동작을 검사하고 있는 게 맞아요. 제 파일이지만 J4 PR 안에서 형이 새 동작에 맞게 고쳐 주세요. 일회성 예외로 해 주시면 돼요(예외 줄이랑 Decisions에 적어 주세요). 제가 따로 고치면 J4 머지 전에는 main에서 깨져서, 동작이랑 테스트가 같이 들어가야 해요.
+우현 message"
+
+<!-- 3a04aaa8 2026-11-14T10:56:39.825Z -->
+[Jinyoung Park, 11-14 19:56] "다 되면 commit, push, pr"
+
+<!-- 3a04aaa8 2026-11-14T10:57:21.574Z -->
+[Jinyoung Park, 11-14 19:57] "그전에 작동 확인을 할 수 는 없나"
+
+## 2026-11-14 · Jinyoung Park · feat/squat_feedback
+<!-- 3a04aaa8 2026-11-14T11:26:11.200Z -->
+[Jinyoung Park, 11-14 20:26] "ㄱㄱ"
+
+<!-- 3a04aaa8 2026-11-14T11:27:08.757Z -->
+[Jinyoung Park, 11-14 20:27] "J5말고"
+
+<!-- 3a04aaa8 2026-11-14T11:27:12.228Z -->
+[Jinyoung Park, 11-14 20:27] "J5말고codex 리뷰"
+
+## 2026-11-14 · Jinyoung Park · feat/squat_feedback
+<!-- 3a04aaa8 2026-11-14T11:38:16.157Z -->
+[Jinyoung Park, 11-14 20:38] "재리뷰 나오면 한번 android stuido로 예시 보여줘봐"
+
+## 2026-11-14 · Jinyoung Park · feat/squat_feedback
+<!-- 3a04aaa8 2026-11-14T12:12:53.296Z -->
+[Jinyoung Park, 11-14 21:12] "<pasted_content id=\"e11e\">
+@박진영 형, J4 결과 리포트 값 정리해 드려요. 기본은 데이터 목록 파일의 '결과 리포트' 표 그대로예요(previousBest·isNewBest, recentScores·recentFrom·recentAverage·recentAverageOf, nextTip). W6 화면은 이 값들을 ResultScreen.reportOf 한 군데에서 받게 만들어 뒀고, 값이 null이면 그 칸을 숨겨요. 화면 쪽 값 묶음은 lib/widgets/result_cards.dart의 ResultNewBest, ResultRecent, ResultTip이에요.
+
+표에 없어서 더 필요한 것 두 개랑, 정해 주셨으면 하는 것 두 개예요.
+1. 상대 인정 횟수(int): 시간이 끝나 점수가 같고 인정 횟수로 갈린 판에 부제 아래 줄로 \"점수 같음 · 횟수로 승리/패배\"를 보여 줘요. 지금은 BattleResult.opponentReps에서 읽어요.
+2. 퇴장 여부(BattleDeparture): 문서의 opponentLeft(bool) 대신 이 값이 필요해요. 상대가 나간 판은 \"상대가 나갔어요\", 제 연결이 끊긴 판은 \"연결이 끊겼어요\"를 보여 줘서요. 지금은 BattleResult.departure에서 읽어요. 누가 나간 판은 경기 시간을 안 보여 줘요(온라인 결과가 나간 시각이 아니라 한 판 길이를 들고 있어서).
+3. recentScores와 평균에 봇 경기와 온라인 경기를 섞을지 정해 주세요. 제 점수 계산 규칙은 똑같아서 저는 섞는 쪽이 좋아 보여요.
+4. J4에서 스쿼트도 자세 리포트를 저장하게 되면 스쿼트 판에도 nextTip을 줄 수 있을까요? 어려우면 지금처럼 null이면 돼요.
+
+J4 머지되면 W6에서 reportOf를 형 뷰모델로 바꿔서 바로 PR 올릴게요.
+</pasted_content id=\"e11e\">"
+
+<!-- 3a04aaa8 2026-11-14T12:16:07.048Z -->
+[Jinyoung Park, 11-14 21:16] "ㅇㅇ 커밋하고 푸시해"

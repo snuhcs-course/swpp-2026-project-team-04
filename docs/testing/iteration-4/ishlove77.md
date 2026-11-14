@@ -6,6 +6,112 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-14 · code at commit `87b8b8e` · step `feat/squat_feedback` (team plan #12, values for 송우현's W6)
+송우현 (W6, the result screen) asked for two more result-report values: `ResultState.opponentReps` (a time-up battle with
+equal scores is decided by reps) and `ResultState.departure` (`BattleDeparture`: the opponent left or the user's own
+connection was lost; a past battle knows only the opponent leaving), with `opponentLeft` kept as a getter. Bot and
+online battles of the same exercise stay compared together, as he preferred; a test now pins it.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| ViewModel | flutter_test, fakes | 90% | `result_viewmodel.dart` 100% | 11/14 | `flutter test --coverage test/viewmodels/result_viewmodel_test.dart` + `coverage_by_layer.py --files` |
+| Other layers | – | – | unchanged from the `ddef3f7` entry | 11/14 | – |
+
+- **Tests:** `flutter test` 2730 passed, 0 failed, 10 skipped. `flutter analyze` no issues. Reviewer APPROVE (round 5).
+
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/result_viewmodel_test.dart` (updated, +2) | the opponent's reps and the departure from a battle and a record; the user's lost connection told apart (also after loading); bot and online battles of the exercise compared together |
+
+#### 2026-11-14 · code at commit `ab4abec` · step `feat/squat_feedback` (team plan #12, Codex review of PR #57, round 2)
+Codex's second pass found one P2: a counted rep closing at or just after the round end (the rep counter still scores
+it) got slice index 6 and fell off `FormFeedback.paceBuckets`, so the bars added up to less than the counted reps.
+Such a rep now goes in the last slice.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| ViewModel | flutter_test, fakes | 90% | `feedback_viewmodel.dart` 100% | 11/14 | `flutter test --coverage test/viewmodels/feedback_viewmodel_test.dart` + `coverage_by_layer.py --files` |
+| Other layers | – | – | unchanged from the `ddef3f7` entry | 11/14 | – |
+
+- **Tests:** `flutter test` 2728 passed, 0 failed, 10 skipped. `flutter analyze` no issues. Reviewer APPROVE (round 4).
+
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/feedback_viewmodel_test.dart` (updated, +1) | a rep closing exactly at the end is in the last slice (a rejected one stays out, the bars add up to the counted reps); a KO round's rep after its end is in the last slice |
+
+#### 2026-11-14 · code at commit `5309c66` · step `feat/squat_feedback` (team plan #12, Codex review of PR #57)
+Codex left three P2 findings on PR #57. One is fixed here: a depth loss exactly at the limit read as kept, because
+0.95 − 0.80 is 0.1499… in binary floating point (and 1.15 − 0.9 for the push-up 0.25 line); `FormAnalyzer.depthTrend`
+now compares with a 1e-9 tolerance. The other two are kept out of this PR by the user's decision and tracked: the
+current `FeedbackScreen` (W8's file) words its chart sentences by its own push-up rules (#58, W8), and bot squat samples
+have no depth because `SquatDemoJudge` (S4's file) sets none (#59, S4).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Service | flutter_test, fakes | 85% | `form_analyzer.dart` 98.5% (unchanged; the new lines are covered) | 11/14 | `flutter test --coverage test/services/feedback/` + `coverage_by_layer.py --files` |
+| Other layers | – | – | unchanged from the `ddef3f7` entry (no other file changed) | 11/14 | – |
+
+- **Tests:** `flutter test` 2727 passed, 0 failed, 10 skipped. `flutter analyze` no issues.
+- **Reviewer:** APPROVE (round 3); its one Minor (the push-up boundary test used depths that subtract exactly) was fixed
+  before the commit, so both boundary tests fail on the old comparison.
+
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/feedback/squat_form_analyzer_test.dart` (updated, +2) | a squat loss of exactly 0.15 and a push-up loss of exactly 0.25 are `dropped` despite binary rounding |
+
+#### 2026-11-14 · code at commit `ddef3f7` · step `feat/squat_feedback` (team plan #12, P15 squat feedback)
+Squat form feedback and the view-model values of the result report and the form feedback (no screen: 송우현's W6/W8
+draw them). Squat battles (bot and online) now save a form report that keeps its exercise; `FormAnalyzer` judges a
+squat by its rejected reps and late depth loss, with tips, and leaves the push-up arm/hand/head rules out;
+`FeedbackViewModel` gives mean depth, depth trend, arm balance and pace by the analyzer's own rules and can start from
+a report in hand; the new `ResultViewModel` gives the previous best, the recent 8 scores and the recent-5 average from
+the earlier battles of the same exercise (J3's statistics source), the next tip and the rematch. Branch based on
+`origin/main` 690c873 (J3 #56 merged). Commands from the Plan in `gymrats_app/` on macOS (Flutter 3.47.5 / Dart 3.13.4).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.3% (545/549); `form_report` 100% | 11/14 | `coverage_per_file.sh` + `coverage_by_layer.py` |
+| ViewModel | flutter_test, fakes | 90% | 97.4% (1425/1463); `result_viewmodel`, `feedback_viewmodel` 100%, `battle_viewmodel` 98.6% | 11/14 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 95.9% (2636/2749); `form_analyzer` 98.5% (the unreached lines are an older push-up flare branch), `form_summary` 100% | 11/14 | same |
+| View | flutter_test (widget) | 75% | 95.2% (6793/7138); `online_battle_screen` 64.5% in the numbers (see below) | 11/14 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed in this step | – | – |
+
+- **Tests:** `flutter test` 2725 passed, 0 failed, 10 skipped (pre-existing, as in the J2 entry). `flutter analyze` no
+  issues. App total 95.8% (11443/11944).
+- **Not in the numbers:** `test/screens/online_preparation_test.dart` hit the script's 180-second limit again (it passes
+  in `flutter test`, including the changed squat test), so `online_battle_screen.dart` shows only what other tests reach.
+- **Manual check (Android emulator Medium_Phone, 2026-11-14):** a temporary demo (not committed) with dummy reports and
+  battles: the current result screen offers the feedback for a squat; the current feedback screen shows 인정 4 · 무효 2,
+  '얕은 스쿼트 2회' with its tip and 6 rep rows (UAT-4 squat run); the view-model values matched hand counts (push-up
+  185→240 new best, recent 8, average 136 of 5, this battle's own upload left out; a past online battle compared only
+  with the 4 battles before it). Not run on a phone: bot squat battles use `SquatDemoJudge` (S4), which never rejects,
+  so the 2 rejected squats appear only online until S4 changes the judge.
+- **Reviewer:** CHANGES_REQUESTED in round 1 (Major: a squat with even arms got the push-up praise '양팔 균형'; Major:
+  missing Design doc rows; three Minor), APPROVE in round 2 after the fixes and +3 tests.
+
+Test cases added or changed:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/feedback_form_report_test.dart` (new, 4) | push-up by default; a squat report keeps its exercise through JSON; an old report without it and an unknown exercise read as push-up |
+| Service | `test/services/feedback/squat_form_analyzer_test.dart` (new, 18) | UAT-4 squat run: shallow squats the one issue with a tip, highlight and code; push-up rules quiet for a squat; the summary's squat code; not standing up; a rejected squat's figure; clean squats praised; even arms in a squat get no push-up praise (push-ups still do); late depth: squat 0.15 line, push-up 0.25 line, too few reps, the middle rep of an odd count; arm balance: unknown for squats, even, left/right deeper as in the finding, too few or top-only samples |
+| ViewModel | `test/viewmodels/feedback_viewmodel_test.dart` (updated, +9) | server and phone reports come with their feedback; a report in hand is ready at once and never loads; UAT-4 squat run values; mean depth over counted reps only; pace per 5 s slice; a KO round's shorter slices; a round without length; the given analyzer's rules |
+| ViewModel | `test/viewmodels/result_viewmodel_test.dart` (new, 26) | a battle just played: values, loading state, next tip (push-up, squat, none), online without rematch and with the opponent leaving; comparison: best/recent 8/average (the data list's 185→240, 136), only the last 7 earlier battles, first battle, fewer than 5, this battle's own upload left out, no score/other exercise/later left out, no game score, failure, retry, double load, dispose; a past battle: values, only battles before it, its form report for the tip, no feedback no request, missing or failed report, no scores, no server id, no time |
+| ViewModel / View | `test/viewmodels/battle_viewmodel_test.dart`, `test/screens/online_preparation_test.dart` (one test each, approved one-off exceptions, 송우현's files) | bot and online squat battles save a squat form report |
+| Support | `test/support/form_report_fixtures.dart` (updated) | `squatReport`: the UAT-4 squat run (4 full, 2 shallow) with push-up-only numbers the squat rules must ignore |
+
+Acceptance criteria → tests:
+- **UAT-4 squat run (4 full and 2 shallow squats → 4 counted, 2 rejected, the squat issues with tips, one row per
+  rep):** `UAT-4 squat run: 4 counted, 2 rejected, the issue, a row per rep`, the group `UAT-4 squat run: 4 full and 2
+  shallow squats`, `a squat bot battle is saved too, with a squat form report`, `a squat result saves and carries a
+  squat form report`. On a phone only online for now (see Manual check).
+- **Result report values (previousBest/isNewBest, recentScores/recentFrom, recentAverage/Of, nextTip, form, rematch;
+  battle just played and past battle):** `previous best, recent 8 and the 5-battle average`, `compares only with the
+  battles before it`, `the next tip is the first issue's fix`, `online: no rematch, and the opponent leaving is said`.
+- **Feedback values moved out of the screen (meanDepth, depthTrend, armBalance, paceBuckets/sliceSeconds/
+  repsPerSecond):** the group `feedback values the screen shows`, `the more bent arm is named, as in the imbalance
+  finding`, `a push-up losing 0.25 is dropped, the same as its finding`.
+
 #### 2026-11-14 · code at commit `51052b7` · step `feat/cumulative_feedback` (team plan #9, P12 cumulative feedback)
 The data for the archive and the statistics (UAT-4 AC3), no screen (the screens are 송우현's W7): the server's
 `GET /matches/stats` gives every battle of a period as a compact point, summaries keep stable issue codes, and rows
