@@ -109,7 +109,7 @@ class GymRatsApp extends StatefulWidget {
   static const historyRoute = '/history';
   static const onlineBattleRoute = '/online-battle';
 
-  /// 캐릭터 선택, from 게임 시작's 캐릭터 row and 환경설정.
+  /// 캐릭터 선택, from home's 캐릭터 row and 환경설정.
   static const characterRoute = '/character';
 
   /// The battle rules, from '?' on home; back returns there.

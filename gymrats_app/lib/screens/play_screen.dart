@@ -8,17 +8,15 @@ import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../models/matchup.dart';
 import '../theme/app_theme.dart';
-import '../viewmodels/character_viewmodel.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/battle_mode_card.dart';
-import '../widgets/character_figure.dart';
 import '../widgets/exercise_sheet.dart';
 import '../widgets/lobby_parts.dart';
 import 'ai_setup_screen.dart';
 
-/// 게임 시작, from home: online 1v1 and AI 1v1 as two big cards, the user's
-/// character to change, the latest setup to play again in one tap, and the
-/// rules. Reads home's view model and the app's character.
+/// 게임 시작, from home: online 1v1 and AI 1v1 as two big cards, the latest
+/// setup to play again in one tap, and the rules. Reads home's view model.
+/// The character is picked from home's 캐릭터 row (W4).
 class PlayScreen extends StatelessWidget {
   const PlayScreen({super.key});
 
@@ -112,10 +110,6 @@ class PlayScreen extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.s12),
-        _CharacterRow(
-          onTap: () => Navigator.pushNamed(context, GymRatsApp.characterRoute),
-        ),
         if (last != null) ...[
           const SizedBox(height: AppSpacing.s12),
           _PlayAgain(setup: last, onTap: () => _playAgain(context, last)),
@@ -146,63 +140,6 @@ class PlayScreen extends StatelessWidget {
   static final _exercises = ExerciseType.values
       .map((exercise) => exercise.koreanName)
       .join(' · ');
-}
-
-/// "캐릭터" with the user's character, small, and its name: opens 캐릭터
-/// 선택 (W3 spec 7). Shaped like the play-again row under it.
-class _CharacterRow extends StatelessWidget {
-  const _CharacterRow({required this.onTap});
-
-  final VoidCallback onTap;
-
-  /// The picture's room: the play-again row's chip size, a little taller
-  /// for the whole character.
-  static const _pictureSize = Size(36, 40);
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final art = context.watch<CharacterViewModel>().art;
-    return Semantics(
-      button: true,
-      label: '캐릭터, ${art.name}',
-      onTap: onTap,
-      excludeSemantics: true,
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.s12),
-            child: Row(
-              children: [
-                SizedBox.fromSize(
-                  size: _pictureSize,
-                  child: CharacterFigure(characterId: art.id),
-                ),
-                const SizedBox(width: AppSpacing.s12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('캐릭터', style: text.lobbyRowTitle),
-                      Text(
-                        art.name,
-                        style: text.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: AppColors.line),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// "최근 설정으로 다시 하기" with the setup in one line under it.

@@ -118,6 +118,8 @@ void main() {
                 ),
           routes: {
             GymRatsApp.helpRoute: (_) => const HelpScreen(),
+            GymRatsApp.characterRoute: (_) =>
+                const Scaffold(body: Text('character page')),
             GymRatsApp.historyRoute: (_) =>
                 const Scaffold(body: Text('history page')),
           },
@@ -150,8 +152,13 @@ void main() {
     expect(find.text('1V1'), findsOneWidget);
     expect(find.text('30초 실시간 운동 대결'), findsOneWidget);
     expect(find.byType(LobbyRepBot), findsOneWidget);
-    expect(find.byType(LobbyMenuItem), findsNWidgets(3));
-    for (final tag in ['01 / PLAY', '02 / ARCHIVE', '03 / SETTINGS']) {
+    expect(find.byType(LobbyMenuItem), findsNWidgets(4));
+    for (final tag in [
+      '01 / PLAY',
+      '02 / CHARACTER',
+      '03 / ARCHIVE',
+      '04 / SETTINGS',
+    ]) {
       expect(find.text(tag), findsOneWidget);
     }
     // The old home's parts are gone.
@@ -159,15 +166,21 @@ void main() {
     expect(find.byTooltip('로그아웃'), findsNothing);
   });
 
-  testWidgets('the menu: 게임 시작, 기록보관소, 환경설정, all alike', (tester) async {
+  testWidgets('the menu: 게임 시작, 캐릭터, 기록보관소, 환경설정, all alike', (tester) async {
     await open(tester);
     final items = tester
         .widgetList<LobbyMenuItem>(find.byType(LobbyMenuItem))
         .toList();
-    expect(items.map((item) => item.title), ['게임 시작', '기록보관소', '환경설정']);
-    expect(items.map((item) => item.last), [false, false, true]);
+    expect(items.map((item) => item.title), ['게임 시작', '캐릭터', '기록보관소', '환경설정']);
+    expect(items.map((item) => item.tag), [
+      '01 / PLAY',
+      '02 / CHARACTER',
+      '03 / ARCHIVE',
+      '04 / SETTINGS',
+    ]);
+    expect(items.map((item) => item.last), [false, false, false, true]);
     // The same gray chevron on each; no lime or arrow chip (2026-11-08).
-    expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(3));
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(4));
     expect(find.byIcon(Icons.arrow_forward_rounded), findsNothing);
   });
 
@@ -198,7 +211,8 @@ void main() {
     final repBot = tester.getRect(find.byType(LobbyRepBot));
     expect(top(find.text('GYMMOUSE')), lessThan(repBot.top));
     expect(repBot.top, lessThan(top(find.text('게임 시작'))));
-    expect(top(find.text('게임 시작')), lessThan(top(find.text('기록보관소'))));
+    expect(top(find.text('게임 시작')), lessThan(top(find.text('캐릭터'))));
+    expect(top(find.text('캐릭터')), lessThan(top(find.text('기록보관소'))));
     expect(top(find.text('기록보관소')), lessThan(top(find.text('환경설정'))));
   });
 
@@ -265,6 +279,14 @@ void main() {
     expect(find.text('푸쉬업 · AI 1v1 · 고수'), findsOneWidget);
   });
 
+  testWidgets('캐릭터 opens 캐릭터 선택; back returns home', (tester) async {
+    await open(tester);
+    await tapAndSettle(tester, find.text('캐릭터'));
+    expect(find.text('character page'), findsOneWidget);
+    await back(tester);
+    expect(find.text('캐릭터'), findsOneWidget);
+  });
+
   testWidgets('기록보관소 opens the history page', (tester) async {
     await open(tester);
     await tapAndSettle(tester, find.text('기록보관소'));
@@ -313,6 +335,7 @@ void main() {
   group('coming back to home loads it again', () {
     for (final (name, entry) in [
       ('the play page', '게임 시작'),
+      ('캐릭터 선택', '캐릭터'),
       ('the history page', '기록보관소'),
       ('settings', '환경설정'),
     ]) {
@@ -420,9 +443,11 @@ void main() {
   group('fits the screen: RepBot takes the height left', () {
     // An Android phone's status bar and three-button navigation bar.
     const systemBars = FakeViewPadding(top: 24, bottom: 48);
+    // The status bar and the gesture bar.
+    const gestureBars = FakeViewPadding(top: 24, bottom: 16);
     final least = LobbyRepBot.designSize * HomeScreen.repBotMinScale;
     final most = LobbyRepBot.designSize * HomeScreen.repBotMaxScale;
-    const titles = ['게임 시작', '기록보관소', '환경설정'];
+    const titles = ['게임 시작', '캐릭터', '기록보관소', '환경설정'];
 
     double scrollRoom(WidgetTester tester) => tester
         .state<ScrollableState>(find.byType(Scrollable))
@@ -435,11 +460,13 @@ void main() {
       matching: find.byType(LobbyMenuItem),
     );
 
+    // With four menu rows (user, 2026-11-14) a 360×780 phone with system
+    // bars no longer fits; see the next test.
     for (final (label, size, bars) in [
       ('360×780', const Size(360, 780), FakeViewPadding.zero),
-      ('360×780 with system bars', const Size(360, 780), systemBars),
       ('393×852', const Size(393, 852), FakeViewPadding.zero),
       ('393×852 with system bars', const Size(393, 852), systemBars),
+      ('412×915 with system bars', const Size(412, 915), systemBars),
     ]) {
       testWidgets('a $label phone shows it all without scrolling', (
         tester,
@@ -461,10 +488,48 @@ void main() {
       });
     }
 
+    // Four rows leave a 360×780 phone with system bars (a Galaxy S22 or S23)
+    // too little room: RepBot stays at its least and the page scrolls by
+    // less than one row until home is laid out again (W4 part 2; user,
+    // 2026-11-14: keep the rule).
+    for (final (label, bars) in [
+      ('three-button', systemBars),
+      ('gesture', gestureBars),
+    ]) {
+      testWidgets('a 360×780 phone with a $label bar keeps RepBot at its '
+          'least and scrolls a little; every row opens its page', (
+        tester,
+      ) async {
+        await open(tester, size: const Size(360, 780), bars: bars);
+        expect(tester.takeException(), isNull);
+        expect(repBot(tester).height, closeTo(least.height, 0.01));
+        expect(scrollRoom(tester), greaterThan(0));
+        expect(
+          scrollRoom(tester),
+          lessThan(tester.getSize(row('환경설정')).height),
+        );
+        for (final (title, opened) in [
+          ('게임 시작', find.byType(PlayScreen)),
+          ('캐릭터', find.text('character page')),
+          ('기록보관소', find.text('history page')),
+          ('환경설정', find.byType(SettingsScreen)),
+        ]) {
+          await tester.dragUntilVisible(
+            find.text(title),
+            find.byType(SingleChildScrollView),
+            const Offset(0, -100),
+          );
+          await tapAndSettle(tester, find.text(title));
+          expect(opened, findsOneWidget, reason: title);
+          await back(tester);
+        }
+      });
+    }
+
     testWidgets('a shorter screen shrinks RepBot, keeping its shape', (
       tester,
     ) async {
-      await open(tester, size: const Size(360, 780), bars: systemBars);
+      await open(tester, size: const Size(393, 852), bars: systemBars);
       final size = repBot(tester);
       expect(size.height, lessThan(LobbyRepBot.designSize.height));
       expect(size.height, greaterThan(least.height));
@@ -478,7 +543,7 @@ void main() {
     testWidgets('a taller screen grows RepBot, up to 1.2 times its design', (
       tester,
     ) async {
-      await open(tester, size: const Size(393, 852), bars: systemBars);
+      await open(tester, size: const Size(412, 960), bars: systemBars);
       expect(repBot(tester).height, greaterThan(LobbyRepBot.designSize.height));
       await open(tester, size: const Size(800, 1280));
       expect(repBot(tester).width, closeTo(most.width, 0.01));
@@ -505,11 +570,11 @@ void main() {
     });
 
     testWidgets('a tab bar under home is left out of the room', (tester) async {
-      await open(tester, size: const Size(393, 852), bars: systemBars);
+      await open(tester, size: const Size(412, 960), bars: systemBars);
       final withoutBar = repBot(tester);
       await open(
         tester,
-        size: const Size(393, 852),
+        size: const Size(412, 960),
         bars: systemBars,
         tabBar: 80,
       );
@@ -528,6 +593,7 @@ void main() {
       expect(repBot(tester).height, closeTo(least.height, 0.01));
       for (final (title, opened) in [
         ('게임 시작', find.byType(PlayScreen)),
+        ('캐릭터', find.text('character page')),
         ('기록보관소', find.text('history page')),
         ('환경설정', find.byType(SettingsScreen)),
       ]) {

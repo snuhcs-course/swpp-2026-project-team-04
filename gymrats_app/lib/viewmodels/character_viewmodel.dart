@@ -4,7 +4,7 @@ import '../models/character_rig.dart';
 import '../services/user/character_store.dart';
 
 /// The signed-in account's character (W3), the same on every screen: the
-/// battle stage, 게임 시작's 캐릭터 row, and later home and the tutorial.
+/// battle stage, 캐릭터 선택, and later home and the tutorial.
 ///
 /// One for the whole app, above the navigator. GymRatsApp loads it when an
 /// account signs in and clears it when it signs out; until it has read the

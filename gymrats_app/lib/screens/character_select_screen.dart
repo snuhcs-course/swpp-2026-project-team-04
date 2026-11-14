@@ -12,7 +12,7 @@ import '../widgets/grid_background.dart';
 /// 캐릭터 선택 (W3 spec 7, ChSelectB): the picked character idling large
 /// over a floor, its name on a slanted band, the five characters as cells,
 /// and "이 캐릭터로 하기", which saves the pick and goes back. Back goes back
-/// without saving. Opened from 게임 시작's 캐릭터 row and 환경설정.
+/// without saving. Opened from home's 캐릭터 row and 환경설정.
 class CharacterSelectScreen extends StatefulWidget {
   const CharacterSelectScreen({super.key, this.createViewModel});
 

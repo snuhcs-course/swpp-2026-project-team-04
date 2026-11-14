@@ -13,8 +13,8 @@ import 'play_screen.dart';
 import 'settings_screen.dart';
 
 /// First screen after login: the game lobby. RepBot does push-ups over a
-/// menu of 게임 시작, 기록보관소 and 환경설정; '?' opens the rules and the
-/// profile chip opens 환경설정 too.
+/// menu of 게임 시작, 캐릭터, 기록보관소 and 환경설정; '?' opens the rules
+/// and the profile chip opens 환경설정 too.
 ///
 /// The lobby fits the screen: RepBot takes the height the rest leaves,
 /// between [repBotMinScale] and [repBotMaxScale] of its design size, and
@@ -81,6 +81,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     ),
   );
 
+  /// 캐릭터 선택; what it saves is the app's character, not home's.
+  void _openCharacter() =>
+      Navigator.pushNamed(context, GymRatsApp.characterRoute);
+
   /// The battle history as its own page, with a back button.
   void _openArchive() => Navigator.pushNamed(context, GymRatsApp.historyRoute);
 
@@ -125,12 +129,17 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             below: [
               LobbyMenuItem(tag: '01 / PLAY', title: '게임 시작', onTap: _openPlay),
               LobbyMenuItem(
-                tag: '02 / ARCHIVE',
+                tag: '02 / CHARACTER',
+                title: '캐릭터',
+                onTap: _openCharacter,
+              ),
+              LobbyMenuItem(
+                tag: '03 / ARCHIVE',
                 title: '기록보관소',
                 onTap: _openArchive,
               ),
               LobbyMenuItem(
-                tag: '03 / SETTINGS',
+                tag: '04 / SETTINGS',
                 title: '환경설정',
                 last: true,
                 onTap: _openSettings,

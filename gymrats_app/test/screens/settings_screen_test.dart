@@ -89,7 +89,7 @@ void main() {
   testWidgets('shows the nickname, the safety switch, the rules, the sound '
       'switches and logout', (tester) async {
     await open(tester);
-    expect(find.text('03 / SETTINGS'), findsOneWidget);
+    expect(find.text('04 / SETTINGS'), findsOneWidget);
     expect(find.text('환경설정'), findsOneWidget);
     for (final text in [
       '프로필',

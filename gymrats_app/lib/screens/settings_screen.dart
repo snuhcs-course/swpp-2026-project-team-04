@@ -43,7 +43,7 @@ class SettingsScreen extends StatelessWidget {
       behind: const LobbyWatermark('SET', left: 138),
       children: [
         const LobbyPageHeader(
-          tag: '03 / SETTINGS',
+          tag: '04 / SETTINGS',
           title: '환경설정',
           tagColor: AppColors.textSecondary,
         ),

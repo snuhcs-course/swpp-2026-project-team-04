@@ -9,9 +9,7 @@ import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/screens/ai_setup_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/play_screen.dart';
-import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
-import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_mode_card.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
@@ -31,15 +29,10 @@ MatchRecord _battleWith(String opponentName, ExerciseType exercise) =>
 void main() {
   late FakeUserRepository repository;
 
-  /// The app's character, above the navigator as in main.dart.
-  late CharacterViewModel characters;
-
   // A tap that misses its target must fail here, not pass with nothing done.
   setUpAll(() => WidgetController.hitTestWarningShouldBeFatal = true);
 
   setUp(() {
-    characters = CharacterViewModel(store: MemoryCharacterStore());
-    addTearDown(characters.dispose);
     repository = FakeUserRepository()
       ..profile = UserProfile(
         name: '우현',
@@ -67,45 +60,37 @@ void main() {
     addTearDown(vm.dispose);
     await vm.load();
     await tester.pumpWidget(
-      ChangeNotifierProvider<CharacterViewModel>.value(
-        value: characters,
-        child: MaterialApp(
-          theme: AppTheme.dark,
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => ChangeNotifierProvider.value(
-                      value: vm,
-                      child: const PlayScreen(),
-                    ),
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => ChangeNotifierProvider.value(
+                    value: vm,
+                    child: const PlayScreen(),
                   ),
                 ),
-                child: const Text('below'),
               ),
+              child: const Text('below'),
             ),
           ),
-          routes: {
-            GymRatsApp.helpRoute: (_) => const HelpScreen(),
-            GymRatsApp.characterRoute: (_) =>
-                const Scaffold(body: Text('character page')),
-            GymRatsApp.onlineBattleRoute: (context) => Scaffold(
-              body: Text('lobby ${ModalRoute.of(context)!.settings.arguments}'),
-            ),
-            GymRatsApp.matchingRoute: (context) {
-              final request =
-                  ModalRoute.of(context)!.settings.arguments!
-                      as BotMatchRequest;
-              return Scaffold(
-                body: Text(
-                  'matching ${request.exercise} ${request.difficulty}',
-                ),
-              );
-            },
-          },
         ),
+        routes: {
+          GymRatsApp.helpRoute: (_) => const HelpScreen(),
+          GymRatsApp.onlineBattleRoute: (context) => Scaffold(
+            body: Text('lobby ${ModalRoute.of(context)!.settings.arguments}'),
+          ),
+          GymRatsApp.matchingRoute: (context) {
+            final request =
+                ModalRoute.of(context)!.settings.arguments! as BotMatchRequest;
+            return Scaffold(
+              body: Text('matching ${request.exercise} ${request.difficulty}'),
+            );
+          },
+        },
       ),
     );
     await tester.tap(find.text('below'));
@@ -260,30 +245,13 @@ void main() {
     });
   }
 
-  testWidgets('the 캐릭터 row shows my character and opens 캐릭터 선택', (
+  testWidgets('no 캐릭터 row: the character is picked from home\'s menu', (
     tester,
   ) async {
     await open(tester);
-    expect(find.text('캐릭터'), findsOneWidget);
-    expect(find.text('GYM마우스'), findsOneWidget);
-    expect(
-      tester.widget<CharacterFigure>(find.byType(CharacterFigure)).characterId,
-      'mouse',
-    );
-    await tapAndSettle(tester, find.text('캐릭터'));
-    expect(find.text('character page'), findsOneWidget);
-  });
-
-  testWidgets('the 캐릭터 row follows a new choice at once', (tester) async {
-    await open(tester);
-    await characters.choose('penguin');
-    await tester.pump();
-    expect(find.text('펭뚱이'), findsOneWidget);
+    expect(find.text('캐릭터'), findsNothing);
+    expect(find.byType(CharacterFigure), findsNothing);
     expect(find.text('GYM마우스'), findsNothing);
-    expect(
-      tester.widget<CharacterFigure>(find.byType(CharacterFigure)).characterId,
-      'penguin',
-    );
   });
 
   testWidgets('every button is big enough and has a name', (tester) async {
@@ -295,7 +263,6 @@ void main() {
       find.bySemanticsLabel('최근 설정으로 다시 하기, 푸쉬업 · AI 1v1 · 고수'),
       findsOneWidget,
     );
-    expect(find.bySemanticsLabel('캐릭터, GYM마우스'), findsOneWidget);
     semantics.dispose();
   });
 }
