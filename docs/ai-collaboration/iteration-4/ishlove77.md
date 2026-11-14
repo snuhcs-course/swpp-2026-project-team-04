@@ -34,6 +34,12 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - Django API redeploy for J3 at the PM's request (rsync of the four changed server files, `gymrats-api` restart, checks): Claude Code, each step approved by the user.
 - Not used: how to compute the previous best (from the match list, user's choice) and leaving the bot squat judge to S4 (user's choice).
 
+### J5 `feat/tutorial` (team plan #16, P19 tutorial, 2026-11-15)
+- A clickable mock of the tutorial on a claude.ai design canvas, built from the team chat (pages, one picture and one or two lines each, push-up then squat, skip), revised over a dozen prompts (squat facing the phone, no squat silhouette, the green guide line, the squat pass-depth line): Claude Code. The team reviewed it before any app code.
+- The 3D RepBot pictures: Claude Code found home's former RepBot painter in git history (`lobby_rep_bot.dart`, removed by W4), rendered it offline with a scratch Flutter test, and drew a new front-facing squat and front push-up RepBot in the same style.
+- App code `gymrats_app/lib/models/tutorial_page.dart`, `lib/viewmodels/tutorial_viewmodel.dart`, `lib/widgets/tutorial_rep_bot.dart`, and the rewritten `lib/screens/help_screen.dart`, `lib/widgets/help_rules.dart`, `lib/widgets/help_pictures.dart`; the tests (`test/models/tutorial_page_test.dart`, `test/viewmodels/tutorial_viewmodel_test.dart`, `test/widgets/tutorial_rep_bot_test.dart`, `test/widgets/help_pictures_test.dart`, `test/widgets/help_rules_test.dart`, `test/screens/help_screen_test.dart`) and the one-off label/page updates in `main_test.dart`, `auth_flow_test.dart`, `game_panel_fonts_test.dart` (approved exceptions): Claude Code.
+- Not used: what the tutorial shows (the team chat and the user: rules only, push-up then squat, which pages and characters), '완료', the main-menu music, and keeping the rules-only scope against UAT-6 (team agreement).
+
 ## 2. Prompt History
 [Jinyoung Park, 11-07] "task 수행해"
 [Jinyoung Park, 11-11] "그리고 이제 codex review PR 댓글도 반영해야 하거든? 그것도 harness에 추가하고"
@@ -47,6 +53,10 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 [Jinyoung Park, 11-12] "battle 소리가 3초 load되는데 artifact 보니까"
 [Jinyoung Park, 11-14] "효과음중 가장 크면 안되지 그러면 차이가 없자나"
 [Jinyoung Park, 11-14] "혹시 average 점수가 아예 안나오느건 아니지 지금?"
+[Jinyoung Park, 11-15] "이거 반영해서 만들어 보자 한번 artifact로 예제를 보여주면 좋을듯?"
+[Jinyoung Park, 11-15] "아니 홈화면에 3d rending 해놓은거 있자나 그거 스냅샷으로"
+[Jinyoung Park, 11-15] "너가 3D 스쿼트 RepBot q비슷하게 만들어주면 좋겠다 그리고 푸시업 실루엣 여거 초록색선을 따라 하는 거자나 그게 잘 안들어남 초록색 선에 들어와야 setup이 된다 이거"
+[Jinyoung Park, 11-15] "일단 이걸로 만들어서 갑시다"
 
 ## 3. What AI Did Well
 - J1 in one session: the service, cue table, settings, fakes and 46 tests were written and green on the first full run (`flutter test` 1518 passed), with every new service file at 100 % line coverage (`coverage_by_layer.py --files`). TODO(Jinyoung Park): rough time saved.
@@ -57,6 +67,8 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J3: the emulator demo showed the values computed from 34 dummy battles (7-day 136 reps / 10 battles, 8-day streak, this-week average 13.8 = 124 / 9), which matched counting the dummy data by hand.
 - J4: before writing code, reading the judges showed that bot squat battles use `SquatDemoJudge`, which never rejects a rep, so the UAT-4 squat run (2 rejected) can only reproduce online for now; this was raised as a question instead of being found on the phone.
 - J4: the redeploy dry run (`rsync -n --checksum`) showed exactly the four J3 server files differing and no pending migration before anything on the shared server changed.
+- J5: rendering every tutorial page offline with the app's fonts showed the missing health bar (a zero-height row) before the reviewer or a phone saw it.
+- J5: before any change, a search for every test that opened the rules screen found three teammates' tests tied to its old content, so the exceptions were asked for and agreed up front instead of breaking CI.
 
 ## 4. Hallucinations / Errors
 - `TtsSpeechEngine` first relied only on `flutter_tts`'s `awaitSpeakCompletion(true)` to learn when a line ends. The reviewer subagent read the plugin's Android source (`FlutterTtsPlugin.kt`) and found that the awaited `speak` never returns on a TTS error, which would have left every later setup hint pending. Fixed the same session: the engine also ends the utterance from the plugin's completion/cancel/error callbacks, and the service waits at most 8 s per line (`voice_guidance.dart`, `maxUtterance`), with tests for both. Cost: ~20 min.
@@ -77,6 +89,11 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J4: Codex reviewed PR #57 and found three P2 gaps our three reviewer rounds missed: the depth-loss line missed a loss exactly at the limit by binary rounding (the same rounding had already broken one of our own tests, which we worked around by moving the data instead of fixing the comparison; fixed in 5309c66), the current feedback screen's chart sentences still use push-up rules for squats (#58, W8), and bot squat reports have no depth samples (#59, S4). Also, a `sed` replacement after `dart format` silently missed its target, so a boundary test kept the wrong data until the reviewer caught it.
 - J4: Codex's second pass on PR #57 found that a rep closing at the round end fell off the pace bars; our own KO-round test had asserted that drop as intended, so the test encoded the bug. Fixed in ab4abec, the test now expects the rep in the last slice.
 - J4: Codex's third pass on PR #57 claimed `ResultState.copyWith` drops the bot rematch on a failed load. Not so: `copyWith` has no `rematch` parameter, so `rematch: rematch` reads the field. A test now pins it; no code change. A reviewer's finding still needs checking against the code before acting.
+- J5: asked for "the 3D snapshot on home", Claude Code first rendered the current home characters (2D animals) and offered them as 3D; the user corrected it twice ("아니 홈화면에 3d rending 해놓은거"). The 3D RepBot was in git history only (W4 had replaced it), which Claude Code should have checked first. Cost: two extra rounds.
+- J5: the first mock wrote a quote as `\u0027` inside a string; the canvas turned it into a real quote and the page failed to load ("Unexpected identifier '자세'"). Fixed by quoting the string with double quotes.
+- J5: the reviewer (round 1) found that the rules-only tutorial does not cover all of the frozen UAT-6 criteria, including the combo, a game rule; the team chose to keep the scope (recorded in the task), so the gap is a decision, not a bug. It also found a hard-coded fever multiplier and example numbers that did not add up (17 reps and 245 points for tiles worth 190); fixed with the numbers taken from the game rules.
+
+- J5: Codex's second pass on PR #60 found that the KO picture's scores were fixed numbers while its label and bar followed `koLead`, the same "every number from the rules" gap the reviewer had found for the fever multiplier; fixed in 1b8bd87. Our own test had checked only the label.
 
 ## 5. Prompt Revisions
 - 11-11: added a standing rule to the harness after the Codex findings ("codex review PR 댓글도 반영해야"): Codex findings on every open PR are read at session start and before every push, fixed or answered with a reason, and replied to on their threads.
@@ -84,12 +101,15 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J2: "소리가 거의 안들리는디" → "battle 소리가 3초 load되는데 artifact 보니까": naming the exact symptom (3 s before the music) led to prefetching the track and starting it at its first beat (1.54 s) instead of only raising volumes.
 - J2: "Average를 조금더 키워야 할듯" → "효과음중 가장 크면 안되지 그러면 차이가 없자나": the second prompt gave the constraint (Excellent > Good > Average), so the level was set just under Good.
 - J3: a 288-line paste reached Claude Code only as "[Pasted text #2 +288 lines]"; the user saved the document as a file and sent the path ("~/Downloads/GymRats-화면별-데이터-목록.md"), which worked.
+- J5: after a phone check, "글이 2줄로 되는것들이 있는데 … 싹다 한줄안에 들어가게": one prompt with the rule (no wrap anywhere) gave a one-line layout for every page, a test at 320×640, and shorter lines; shortening one line removed "너무" and made the Fail page contradict Average, which the reviewer caught.
+- J5: "3d 형식의 snap shot" → "앱 첫화면 들어가면 3d 스냅샷" → "홈화면에 3d rending 해놓은거": each prompt named the source more exactly until it pointed at the right picture.
 
 ## 6. Manual Fixes and Why
 - None so far in J1 (no manual-fix marker added).
 - None in J2 (no manual-fix marker added).
 - None in J3 (no manual-fix marker added).
 - None in J4 (no manual-fix marker added).
+- None in J5 (no manual-fix marker added).
 
 ## 7. Takeaway for Iteration 5
 - TODO(Jinyoung Park): fill when the iteration closes.
