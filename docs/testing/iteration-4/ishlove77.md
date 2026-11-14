@@ -6,6 +6,22 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-14 · code at commit `ab4abec` · step `feat/squat_feedback` (team plan #12, Codex review of PR #57, round 2)
+Codex's second pass found one P2: a counted rep closing at or just after the round end (the rep counter still scores
+it) got slice index 6 and fell off `FormFeedback.paceBuckets`, so the bars added up to less than the counted reps.
+Such a rep now goes in the last slice.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| ViewModel | flutter_test, fakes | 90% | `feedback_viewmodel.dart` 100% | 11/14 | `flutter test --coverage test/viewmodels/feedback_viewmodel_test.dart` + `coverage_by_layer.py --files` |
+| Other layers | – | – | unchanged from the `ddef3f7` entry | 11/14 | – |
+
+- **Tests:** `flutter test` 2728 passed, 0 failed, 10 skipped. `flutter analyze` no issues. Reviewer APPROVE (round 4).
+
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/feedback_viewmodel_test.dart` (updated, +1) | a rep closing exactly at the end is in the last slice (a rejected one stays out, the bars add up to the counted reps); a KO round's rep after its end is in the last slice |
+
 #### 2026-11-14 · code at commit `5309c66` · step `feat/squat_feedback` (team plan #12, Codex review of PR #57)
 Codex left three P2 findings on PR #57. One is fixed here: a depth loss exactly at the limit read as kept, because
 0.95 − 0.80 is 0.1499… in binary floating point (and 1.15 − 0.9 for the push-up 0.25 line); `FormAnalyzer.depthTrend`

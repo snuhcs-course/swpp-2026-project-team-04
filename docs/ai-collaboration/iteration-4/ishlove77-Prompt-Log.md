@@ -394,3 +394,7 @@ branch 'docs/rename_gymmouse' set up to track 'origin/docs/rename_gymmouse'.</ba
 
 <!-- 3a04aaa8 2026-11-14T11:27:12.228Z -->
 [Jinyoung Park, 11-14 20:27] "J5말고codex 리뷰"
+
+## 2026-11-14 · Jinyoung Park · feat/squat_feedback
+<!-- 3a04aaa8 2026-11-14T11:38:16.157Z -->
+[Jinyoung Park, 11-14 20:38] "재리뷰 나오면 한번 android stuido로 예시 보여줘봐"
