@@ -144,7 +144,9 @@ void main() {
     await open(tester);
     expect(find.byTooltip('게임 규칙'), findsOneWidget);
     expect(find.text('우현'), findsOneWidget);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    // The app is called GymMouse now (user, 2026-11-14).
+    expect(find.text('GYMMOUSE'), findsOneWidget);
+    expect(find.text('GYMRATS'), findsNothing);
     expect(find.text('1V1'), findsOneWidget);
     expect(find.text('30초 실시간 운동 대결'), findsOneWidget);
     expect(find.byType(LobbyRepBot), findsOneWidget);
@@ -194,7 +196,7 @@ void main() {
     await open(tester);
     double top(Finder finder) => tester.getTopLeft(finder).dy;
     final repBot = tester.getRect(find.byType(LobbyRepBot));
-    expect(top(find.text('GYMRATS')), lessThan(repBot.top));
+    expect(top(find.text('GYMMOUSE')), lessThan(repBot.top));
     expect(repBot.top, lessThan(top(find.text('게임 시작'))));
     expect(top(find.text('게임 시작')), lessThan(top(find.text('기록보관소'))));
     expect(top(find.text('기록보관소')), lessThan(top(find.text('환경설정'))));

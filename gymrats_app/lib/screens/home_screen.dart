@@ -246,7 +246,8 @@ class _ProfileChip extends StatelessWidget {
   }
 }
 
-/// A slanted lime bar, "GYMRATS", and what the game is in one line.
+/// A slanted lime bar, "GYMMOUSE" (the app's name), and what the game is in
+/// one line.
 class _Title extends StatelessWidget {
   const _Title();
 
@@ -281,7 +282,7 @@ class _Title extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: LobbySkew(
                   degrees: 10,
-                  child: Text('GYMRATS', style: text.lobbyLogo),
+                  child: Text('GYMMOUSE', style: text.lobbyLogo),
                 ),
               ),
             ),

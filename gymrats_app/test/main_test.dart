@@ -130,7 +130,7 @@ void main() {
     tester,
   ) async {
     await _openApp(tester);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    expect(find.text('GYMMOUSE'), findsOneWidget);
 
     await startMatching(tester);
     expect(find.text('초보 AI 상대를 찾는 중'), findsOneWidget);
@@ -159,7 +159,7 @@ void main() {
     await tester.pumpAndSettle();
     // Past 게임 시작 and AI 1v1, straight to home.
     expect(find.byType(PlayScreen), findsNothing);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    expect(find.text('GYMMOUSE'), findsOneWidget);
   });
 
   testWidgets('the AI 1v1 page leads to a squat bot at the level chosen', (
@@ -247,7 +247,7 @@ void main() {
     expect(find.byType(PlayScreen), findsOneWidget);
     await back();
     expect(find.byType(PlayScreen), findsNothing);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    expect(find.text('GYMMOUSE'), findsOneWidget);
   });
 
   testWidgets('the online route takes the exercise, not a bot request', (
@@ -305,7 +305,7 @@ void main() {
     await tester.tap(find.byTooltip('뒤로'));
     await tester.pumpAndSettle();
     expect(find.byType(HelpScreen), findsNothing);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    expect(find.text('GYMMOUSE'), findsOneWidget);
   });
 
   testWidgets('every screen gets the same repository and matchmaker', (
