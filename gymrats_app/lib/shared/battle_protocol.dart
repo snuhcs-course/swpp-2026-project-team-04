@@ -1,34 +1,14 @@
 // Pure Dart contract shared by the server and Flutter. No camera/video fields.
-const battleAvatarIds = {
-  'avatar_01',
-  'avatar_02',
-  'avatar_03',
-  'avatar_04',
-  'avatar_05',
-  'avatar_06',
-  'avatar_07',
-  'avatar_08',
-  'avatar_09',
-  'avatar_10',
-  'avatar_11',
-  'avatar_12',
-  'avatar_13',
-  'avatar_14',
-  'avatar_15',
-  'avatar_16',
-  'avatar_17',
-  'avatar_18',
-  'avatar_19',
-  'avatar_20',
-  'avatar_21',
-  'avatar_22',
-  'avatar_23',
-  'avatar_24',
-  'avatar_25',
-  'soma_training',
-  'soma_active',
-  'soma_studio',
-};
+/// Whether [value] may travel in `avatar_id`: a short id of lowercase
+/// letters, digits and `_` (1 to 32). Since W3 it holds the player's
+/// character id (`mouse`, `bear`, ...); older apps still send their avatar
+/// id (`avatar_01`). The server checks only this shape and passes the value
+/// on; each app decides what it draws for it.
+bool isBattleAvatarId(Object? value) =>
+    value is String && _battleAvatarId.hasMatch(value);
+
+final _battleAvatarId = RegExp(r'^[a-z0-9_]{1,32}$');
+
 const battleReasons = {
   'insufficient_depth',
   'incomplete_extension',

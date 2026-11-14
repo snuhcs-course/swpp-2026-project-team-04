@@ -64,5 +64,35 @@ void main() {
     final summary = summarizeForm(report);
     expect(summary.issueCount, issues.length);
     expect(summary.topIssue, issues.firstOrNull?.title);
+    expect(summary.issues, {'reject.insufficientDepth': 2});
+  });
+
+  test('issue codes with counts; findings without a code are left out', () {
+    final summary = summarizeForm(
+      sampleReport(),
+      analyzer: const _FixedAnalyzer([
+        FormFinding(
+          kind: FindingKind.issue,
+          title: '얕음 3회',
+          detail: '',
+          code: 'reject.insufficientDepth',
+          count: 3,
+        ),
+        FormFinding(
+          kind: FindingKind.issue,
+          title: '팔꿈치',
+          detail: '',
+          code: 'elbow_flare',
+        ),
+        FormFinding(kind: FindingKind.issue, title: '코드 없음', detail: ''),
+        FormFinding(kind: FindingKind.good, title: '좋아요', detail: ''),
+      ]),
+    );
+    expect(summary.issueCount, 3);
+    expect(summary.issues, {'reject.insufficientDepth': 3, 'elbow_flare': 1});
+  });
+
+  test('a clean battle has no issue codes', () {
+    expect(summarizeForm(sampleReport()).issues, isEmpty);
   });
 }

@@ -64,12 +64,23 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 
+  /// The same battle again: a bot of the same level, or, after an online
+  /// battle, the online lobby with the same exercise.
   void _matchAgain() => _leaveOnce(() {
-    Navigator.pushReplacementNamed(
-      context,
-      GymRatsApp.matchingRoute,
-      arguments: widget.result.matchup.rematch,
-    );
+    final matchup = widget.result.matchup;
+    if (matchup.opponent.isBot) {
+      Navigator.pushReplacementNamed(
+        context,
+        GymRatsApp.matchingRoute,
+        arguments: matchup.rematch,
+      );
+    } else {
+      Navigator.pushReplacementNamed(
+        context,
+        GymRatsApp.onlineBattleRoute,
+        arguments: matchup.exercise,
+      );
+    }
   });
 
   @override

@@ -6,6 +6,7 @@ import '../models/exercise_type.dart';
 import '../services/pose/setup_checker.dart';
 import '../viewmodels/setup_viewmodel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
+import '../widgets/pose_silhouette_guide.dart';
 
 const _readyColor = Colors.greenAccent;
 
@@ -65,6 +66,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
     _viewModel =
         widget.createViewModel?.call() ??
         SetupViewModel(exercise: widget.exercise);
+    if (widget.showDebugTools) _viewModel.enableDiagnosticMode();
     WidgetsBinding.instance.addObserver(this);
     _viewModel.addListener(_onViewModelChanged);
     SystemChrome.setPreferredOrientations(SetupScreen.orientations);
@@ -184,6 +186,101 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
             final state = vm.state;
             final running = state.phase == SetupPhase.running;
             final showDebug = widget.showDebugTools && running;
+            if (widget.exercise == ExerciseType.pushUp && running) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final isLandscape =
+                      constraints.maxWidth > constraints.maxHeight;
+                  final controls = SafeArea(
+                    bottom: false,
+                    child: Column(
+                      children: [
+                        if (isLandscape)
+                          const SizedBox(height: 64)
+                        else
+                          PoseSetupTopButtons(
+                            canSwitchCamera: vm.canSwitchCamera,
+                            onSwitchCamera: vm.switchCamera,
+                          ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: _BottomPanel(
+                              state: state,
+                              exercise: widget.exercise,
+                              autoStartDelay: vm.config.autoStartDelay,
+                              onStart: widget.showDebugTools && state.canStart
+                                  ? _finish
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  final camera = LayoutBuilder(
+                    builder: (context, cameraSize) {
+                      vm.setGuideViewport(cameraSize.biggest);
+                      return ClipRect(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            PoseAvatarToggleView(
+                              controller: vm.cameraController,
+                              cameraFit: BoxFit.cover,
+                              frame: state.lastFrame,
+                              mirror: vm.isFrontCamera,
+                              showLandmarks: showDebug,
+                              isVisible: vm.isVisible,
+                              cameraOverlay: PoseSilhouetteGuide(
+                                ready:
+                                    state.status.isReady &&
+                                    state.guideAligned &&
+                                    state.status.reason == SetupReason.ready,
+                              ),
+                            ),
+                            PoseReadyBorder(
+                              ready:
+                                  state.status.isReady &&
+                                  state.guideAligned &&
+                                  state.status.reason == SetupReason.ready,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                  return isLandscape
+                      ? Stack(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: controls),
+                                Expanded(child: camera),
+                              ],
+                            ),
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: SafeArea(
+                                bottom: false,
+                                child: PoseSetupTopButtons(
+                                  canSwitchCamera: vm.canSwitchCamera,
+                                  onSwitchCamera: vm.switchCamera,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            Expanded(child: controls),
+                            Expanded(child: camera),
+                          ],
+                        );
+                },
+              );
+            }
             return Stack(
               fit: StackFit.expand,
               children: [
@@ -311,14 +408,19 @@ class _BottomPanel extends StatelessWidget {
     final status = state.status;
     final left = state.autoStartIn;
     // The bar fills while holding still, then again during the countdown.
-    final progress = left == null
+    final progress = !state.guideAligned || status.reason != SetupReason.ready
+        ? 0.0
+        : left == null
         ? status.readyProgress
         : 1 - left.inMicroseconds / autoStartDelay.inMicroseconds;
     return PoseSetupPanel(
       message: exercise == ExerciseType.squat
           ? '정면을 보고 전신이 보이도록 서 주세요.\n${state.message}'
           : state.message,
-      ready: status.isReady,
+      ready:
+          status.isReady &&
+          state.guideAligned &&
+          status.reason == SetupReason.ready,
       progress: progress,
       onStart: onStart,
     );

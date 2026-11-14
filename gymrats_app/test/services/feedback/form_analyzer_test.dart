@@ -69,6 +69,7 @@ void main() {
     expect(finding.detail, contains('25°'));
     expect(finding.detail, contains('왼팔'));
     expect(finding.fix, isNotNull);
+    expect((finding.code, finding.count), ('imbalance', 1));
   });
 
   test('even arms are praised, not flagged', () {
@@ -110,6 +111,7 @@ void main() {
     final finding = find(r, '후반 깊이 감소')!;
     expect(finding.detail, contains('1.65'));
     expect(finding.detail, contains('1.25'));
+    expect((finding.code, finding.count), ('depth_loss', 1));
   });
 
   test('steady depth, or too few reps, has no depth finding', () {
@@ -134,6 +136,9 @@ void main() {
     expect(knees.fix, contains('무릎'));
     expect(find(r, '바닥 푸시업 아님 1회'), isNotNull);
     expect(titles(r).first, '무릎 대고 함 2회');
+    // Stable codes for the statistics, counted per rejected rep.
+    expect((knees.code, knees.count), ('reject.kneesDown', 2));
+    expect(find(r, '바닥 푸시업 아님 1회')!.code, 'reject.notFloorPushUp');
   });
 
   test('a clean battle gets good points and no issues', () {
@@ -144,6 +149,8 @@ void main() {
     final findings = analyzer.analyze(r);
     expect(findings.where((f) => f.kind == FindingKind.issue), isEmpty);
     expect(titles(r), containsAll(['정확도 100%', '양팔 균형', '자세 유지']));
+    // Good points and notes have no issue code.
+    expect(findings.map((f) => f.code), everyElement(isNull));
   });
 
   test('hidden arms say nothing about the elbow angle', () {
@@ -155,10 +162,7 @@ void main() {
     final r = report(
       reps: [
         for (var i = 1; i <= 4; i++)
-          rep(
-            i,
-            descent: Duration(milliseconds: i.isEven ? 180 : 500),
-          ),
+          rep(i, descent: Duration(milliseconds: i.isEven ? 180 : 500)),
       ],
     );
     final finding = find(r, '내려가는 속도')!;
@@ -167,6 +171,7 @@ void main() {
     expect(finding.detail, contains('인정'));
     expect(finding.detail, contains('0.18'));
     expect(finding.fix, isNotNull);
+    expect((finding.code, finding.count), ('fast_descent', 1));
   });
 
   test('one fast descent, or fewer than four, says nothing', () {
@@ -220,6 +225,9 @@ void main() {
     expect(flare.highlight, ['leftElbow']);
     expect(find(r, '손 간격')!.detail, contains('2.4'));
     expect(find(r, '고개가 먼저 내려감')!.detail, contains('0.60'));
+    expect(flare.code, 'elbow_flare');
+    expect(find(r, '손 간격')!.code, 'hand_width');
+    expect(find(r, '고개가 먼저 내려감')!.code, 'head_lead');
   });
 
   test('the stick figure is the arm the sentence names', () {
@@ -311,10 +319,7 @@ void main() {
     final r = report(
       samples: [
         for (var i = 0; i < 12; i++)
-          FormSample(
-            at: Duration(milliseconds: i * 100),
-            handSpan: 2.5,
-          ),
+          FormSample(at: Duration(milliseconds: i * 100), handSpan: 2.5),
       ],
       handsPose: FormPose(
         at: const Duration(seconds: 1),

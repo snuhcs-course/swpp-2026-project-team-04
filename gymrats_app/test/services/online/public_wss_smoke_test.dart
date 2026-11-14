@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
@@ -72,12 +71,12 @@ void main() {
       final a = OnlineBattleSession(
         endpoint: endpoint,
         accessToken: authA.session!.token,
-        avatar: AvatarModel.astronaut,
+        character: 'mouse',
       );
       final b = OnlineBattleSession(
         endpoint: endpoint,
         accessToken: authB.session!.token,
-        avatar: AvatarModel.robot,
+        character: 'seal',
       );
       addTearDown(a.dispose);
       addTearDown(b.dispose);
@@ -88,8 +87,11 @@ void main() {
       expect(a.playerId, authA.session!.account.id.toString());
       expect(b.playerId, authB.session!.account.id.toString());
       expect(a.opponent!.name, authB.session!.account.nickname);
-      expect(a.opponent!.avatar, AvatarModel.robot);
-      expect(b.opponent!.avatar, AvatarModel.astronaut);
+      // Each sees the other's character; the mouse while the deployed
+      // server is older than W3 (it refuses the character and the app
+      // joins as avatar_01).
+      expect(a.opponent!.character, anyOf('seal', 'mouse'));
+      expect(b.opponent!.character, 'mouse');
       a.ready(true);
       b.ready(true);
       await waitFor(() => a.roundRunning && b.roundRunning);

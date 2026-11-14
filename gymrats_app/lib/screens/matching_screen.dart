@@ -210,11 +210,14 @@ class _BattleChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox.square(
-              dimension: 8,
+              dimension: 10,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: AppColors.accent,
                   shape: BoxShape.circle,
+                  border: Border.fromBorderSide(
+                    BorderSide(color: AppColors.ink, width: 1.5),
+                  ),
                 ),
               ),
             ),
@@ -278,7 +281,7 @@ class BattleSearchRadar extends StatelessWidget {
         Text(
           '${elapsed.inMinutes}:$seconds',
           style: Theme.of(context).textTheme.displaySmall
-              ?.copyWith(fontSize: 22, color: AppColors.accent),
+              ?.copyWith(fontSize: 22, color: AppColors.ink),
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -298,26 +301,40 @@ class _Radar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // With the system's "reduce motion" on, the sweep holds still pointing
+    // down and the blips stay lit (W2b 1-A).
+    final still = MediaQuery.disableAnimationsOf(context);
+    final sweep = still ? const AlwaysStoppedAnimation<double>(0) : animation;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: AspectRatio(
           aspectRatio: 1,
-          child: LayoutBuilder(
-            builder: (context, constraints) => Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned.fill(
-                  child: RepaintBoundary(
-                    child: CustomPaint(painter: _RadarPainter(animation)),
-                  ),
+          // One picture to a screen reader, named as in the design.
+          child: Semantics(
+            container: true,
+            image: true,
+            label: '상대를 찾는 레이더',
+            child: ExcludeSemantics(
+              child: LayoutBuilder(
+                builder: (context, constraints) => Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned.fill(
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                          painter: _RadarPainter(sweep, still: still),
+                        ),
+                      ),
+                    ),
+                    PlayerAvatar(
+                      color: AppColors.accent,
+                      name: name,
+                      size: constraints.maxWidth * _RadarPainter.avatarRatio,
+                    ),
+                  ],
                 ),
-                PlayerAvatar(
-                  color: AppColors.accent,
-                  name: name,
-                  size: constraints.maxWidth * _RadarPainter.avatarRatio,
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -326,86 +343,228 @@ class _Radar extends StatelessWidget {
   }
 }
 
-/// Rings, a crosshair, a lime sweep turning once per cycle, a pulse
-/// spreading out from the avatar, and a few pink blips.
+/// The radar's three blips (W2b 1-A): red dots like a laser pointer's that
+/// light up the moment the sweep reaches them, stay lit 0.24 s, and fade
+/// out over the next 0.76 s. Pure functions of the sweep's turn, checked
+/// against the design's `w2b_golden.json`.
+abstract final class RadarBlips {
+  /// The blips in the radar's 288 x 288 points, in the order the sweep
+  /// reaches them, as before 1-A.
+  static const spots = [
+    Offset(55.5, 199.3),
+    Offset(220.8, 67.2),
+    Offset(241.6, 217.6),
+  ];
+
+  /// One turn of the sweep.
+  static const periodMs = 3000.0;
+
+  /// How bright every blip stays when the system reduces motion.
+  static const still = 0.9;
+
+  /// The blip lights up over this long after the sweep reaches it...
+  static const riseMs = 60.0;
+
+  /// ...stays fully lit until this long after...
+  static const holdUntilMs = 240.0;
+
+  /// ...and is gone this long after.
+  static const goneAtMs = 1000.0;
+
+  /// A blip's look, decoration only, all faded together and with no ink
+  /// edge: a narrow red glow of [glowRadius], from [glowOpacities] at
+  /// [glowStops] of its radius; a red dot of [dotRadius]; and a white spot
+  /// of [spotRadius] at [spotOpacity] in its middle.
+  static const glowRadius = 12.0;
+  static const glowStops = [0.0, 0.45, 1.0];
+  static const glowOpacities = [0.6, 0.24, 0.0];
+  static const dotRadius = 3.6;
+  static const spotRadius = 1.2;
+  static const spotOpacity = 0.9;
+
+  /// The glow's red, from [glowOpacities] at [glowStops].
+  static final glow = RadialGradient(
+    colors: [
+      for (final opacity in glowOpacities)
+        AppColors.danger.withValues(alpha: opacity),
+    ],
+    stops: glowStops,
+  );
+
+  static const _center = Offset(144, 144);
+
+  /// Degrees clockwise from straight down (where the sweep starts) at which
+  /// the sweep reaches [spot], from 0 up to 360.
+  static double angleOf(Offset spot) {
+    final degrees =
+        math.atan2(-(spot.dx - _center.dx), spot.dy - _center.dy) *
+        180 /
+        math.pi;
+    return degrees % 360;
+  }
+
+  /// How bright a blip is [sinceMs] after the sweep last reached it (0 up
+  /// to [periodMs]): rising, held, then fading fast at first with a long
+  /// tail.
+  static double opacityAfter(double sinceMs) {
+    if (sinceMs < riseMs) return sinceMs / riseMs;
+    if (sinceMs < holdUntilMs) return 1;
+    if (sinceMs < goneAtMs) {
+      final left = 1 - (sinceMs - holdUntilMs) / (goneAtMs - holdUntilMs);
+      return left * left;
+    }
+    return 0;
+  }
+
+  /// Each blip's brightness, in the order of [spots], when the sweep has
+  /// made [turn] of its turn (the animation's value, 0 up to 1). Only the
+  /// sweep's angle counts, so a blip it just passed is fading even on the
+  /// first turn.
+  static List<double> opacitiesAt(double turn) => [
+    for (final spot in spots)
+      opacityAfter(((turn - angleOf(spot) / 360) % 1) * periodMs),
+  ];
+}
+
+/// The radar of the design (BMatching), drawn in its 288 x 288 points and
+/// sized to the box: a white disc with an ink edge, a lime sweep of six
+/// wedges that grow stronger toward its ink edge and turn once per cycle,
+/// two gray rings, a dashed gray crosshair, and three red blips that the
+/// sweep lights up ([RadarBlips]). The avatar in the middle is a widget
+/// over it. When [still], the blips stay lit at [RadarBlips.still].
 class _RadarPainter extends CustomPainter {
-  _RadarPainter(this.animation) : super(repaint: animation);
+  _RadarPainter(this.animation, {required this.still})
+    : super(repaint: animation);
 
   final Animation<double> animation;
+  final bool still;
 
   /// The avatar's diameter as a fraction of the radar's.
   static const avatarRatio = 0.36;
 
-  /// Ring radii as fractions of the outer one.
-  static const _rings = [1.0, 0.72, 0.44];
+  /// The design's box.
+  static const _view = 288.0;
+  static const _center = Offset(144, 144);
+  static const _discRadius = 142.0;
+  static const _discEdge = 2.0;
 
-  /// Angle the sweep's tail trails behind its edge.
-  static const _sweepAngle = math.pi / 3;
+  /// The sweep: six wedges of ten degrees, from 30 to 90 degrees (pointing
+  /// down) before it turns, out to [_sweepRadius], lime at these opacities
+  /// toward the leading edge, which is an ink line.
+  static const _sweepRadius = 143.0;
+  static const _wedgeOpacities = [0.12, 0.24, 0.36, 0.5, 0.66, 0.85];
+  static const _sweepEdgeLength = 142.0;
+  static const _sweepEdgeWidth = 2.0;
 
-  /// Decoration only: (distance, angle in degrees, dot radius, opacity),
-  /// lengths as fractions of the outer radius.
-  static const _blips = [
-    (0.76, -45.0, 0.038, 0.8),
-    (0.73, 148.0, 0.03, 0.45),
-    (0.855, 37.0, 0.024, 0.7),
-  ];
+  static const _rings = [103.0, 62.9];
+  static const _ringWidth = 1.25;
+  static const _crossWidth = 1.0;
+  static const _dash = 4.0;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = size.shortestSide / 2 - 1;
-    final circle = Rect.fromCircle(center: center, radius: radius);
-    final t = animation.value;
-
-    final edge = t * 2 * math.pi;
-    // The gradient goes all the way round and ends at the bright edge, so
-    // its wrap-around seam hides there instead of showing on the tail.
-    final sweep = Paint()
-      ..shader = SweepGradient(
-        colors: [
-          AppColors.accent.withValues(alpha: 0),
-          AppColors.accent.withValues(alpha: 0),
-          AppColors.accent.withValues(alpha: 0.3),
-        ],
-        stops: const [0, 1 - _sweepAngle / (2 * math.pi), 1],
-        transform: GradientRotation(edge),
-      ).createShader(circle);
-    canvas.drawArc(circle, edge - _sweepAngle, _sweepAngle, true, sweep);
-
-    final line = Paint()
-      ..color = AppColors.border
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    for (final ring in _rings) {
-      canvas.drawCircle(center, radius * ring, line);
-    }
     canvas
-      ..drawLine(circle.centerLeft, circle.centerRight, line)
-      ..drawLine(circle.topCenter, circle.bottomCenter, line);
+      ..save()
+      ..scale(size.width / _view, size.height / _view);
 
-    final from = radius * avatarRatio;
-    canvas.drawCircle(
-      center,
-      from + (radius - from) * t,
-      Paint()
-        ..color = AppColors.accent.withValues(alpha: 0.35 * (1 - t))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
+    canvas
+      ..drawCircle(_center, _discRadius, Paint()..color = AppColors.card)
+      ..drawCircle(
+        _center,
+        _discRadius,
+        Paint()
+          ..color = AppColors.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _discEdge,
+      );
 
-    for (final (distance, degrees, dot, opacity) in _blips) {
-      canvas.drawCircle(
-        center +
-            Offset.fromDirection(degrees * math.pi / 180, radius * distance),
-        radius * dot,
-        Paint()..color = AppColors.opponent.withValues(alpha: opacity),
+    // The sweep turns clockwise, one turn per cycle, over the disc's edge
+    // as the design draws it.
+    canvas
+      ..save()
+      ..translate(_center.dx, _center.dy)
+      ..rotate(animation.value * 2 * math.pi);
+    final sweepBox = Rect.fromCircle(center: Offset.zero, radius: _sweepRadius);
+    const wedge = math.pi / 18;
+    for (var i = 0; i < _wedgeOpacities.length; i++) {
+      canvas.drawArc(
+        sweepBox,
+        math.pi / 6 + i * wedge,
+        wedge,
+        true,
+        Paint()..color = AppColors.accent.withValues(alpha: _wedgeOpacities[i]),
       );
     }
+    canvas
+      ..drawLine(
+        Offset.zero,
+        const Offset(0, _sweepEdgeLength),
+        Paint()
+          ..color = AppColors.ink
+          ..strokeWidth = _sweepEdgeWidth
+          ..strokeCap = StrokeCap.round,
+      )
+      ..restore();
+
+    final ring = Paint()
+      ..color = AppColors.line
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _ringWidth;
+    for (final radius in _rings) {
+      canvas.drawCircle(_center, radius, ring);
+    }
+
+    final cross = Paint()
+      ..color = AppColors.line
+      ..strokeWidth = _crossWidth;
+    for (var at = 2.0; at < 286; at += 2 * _dash) {
+      final to = math.min(at + _dash, 286.0);
+      canvas
+        ..drawLine(Offset(at, 144), Offset(to, 144), cross)
+        ..drawLine(Offset(144, at), Offset(144, to), cross);
+    }
+
+    final opacities = still
+        ? List.filled(RadarBlips.spots.length, RadarBlips.still)
+        : RadarBlips.opacitiesAt(animation.value);
+    for (var i = 0; i < RadarBlips.spots.length; i++) {
+      if (opacities[i] <= 0) continue;
+      final at = RadarBlips.spots[i];
+      final glowBox = Rect.fromCircle(
+        center: at,
+        radius: RadarBlips.glowRadius,
+      );
+      // The three parts fade as one, as the design's group does; only the
+      // layer paint's alpha counts.
+      canvas
+        ..saveLayer(
+          glowBox,
+          Paint()..color = AppColors.ink.withValues(alpha: opacities[i]),
+        )
+        ..drawCircle(
+          at,
+          RadarBlips.glowRadius,
+          Paint()..shader = RadarBlips.glow.createShader(glowBox),
+        )
+        ..drawCircle(
+          at,
+          RadarBlips.dotRadius,
+          Paint()..color = AppColors.danger,
+        )
+        ..drawCircle(
+          at,
+          RadarBlips.spotRadius,
+          Paint()
+            ..color = AppColors.card.withValues(alpha: RadarBlips.spotOpacity),
+        )
+        ..restore();
+    }
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(_RadarPainter oldDelegate) =>
-      oldDelegate.animation != animation;
+      oldDelegate.animation != animation || oldDelegate.still != still;
 }
 
 class _SearchFailed extends StatelessWidget {
@@ -434,6 +593,9 @@ class _GuideCard extends StatelessWidget {
 
   final ExerciseType exercise;
 
+  /// The lime box behind the phone icon (palette B: the color fills).
+  static final _iconFill = AppColors.accent.withValues(alpha: 0.55);
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -443,17 +605,17 @@ class _GuideCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox.square(
+            SizedBox.square(
               dimension: 40,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppColors.cardHigh,
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  color: _iconFill,
+                  borderRadius: const BorderRadius.all(Radius.circular(12)),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.smartphone_rounded,
                   size: 22,
-                  color: AppColors.accent,
+                  color: AppColors.ink,
                 ),
               ),
             ),
@@ -476,11 +638,13 @@ class _GuideCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
+                    // Line breaks set by hand: Flutter may break Korean
+                    // inside a word ("화 / 면" on a 360-wide phone).
                     switch (exercise) {
-                      ExerciseType.pushUp => '휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.',
-                      // squat-judge-design.md section 3, the placement. Line
-                      // breaks set by hand: Flutter may break Korean inside a
-                      // word.
+                      ExerciseType.pushUp =>
+                        '휴대폰을 머리 앞 약 1m 바닥에 세워\n'
+                            '화면이 나를 보게 두세요.',
+                      // squat-judge-design.md section 3, the placement.
                       ExerciseType.squat =>
                         '휴대폰을 세로로 세워 내 앞 2~3m에\n'
                             '두세요. 의자나 선반 위면 더 좋아요.\n'
@@ -513,7 +677,7 @@ class _CancelButton extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(56),
         foregroundColor: AppColors.textPrimary,
-        side: const BorderSide(color: AppColors.border),
+        side: const BorderSide(color: AppColors.line, width: 1.5),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppTheme.cardRadius)),
         ),

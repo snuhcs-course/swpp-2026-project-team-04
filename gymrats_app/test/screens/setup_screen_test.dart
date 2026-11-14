@@ -8,6 +8,7 @@ import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
 
 import '../support/fakes.dart';
 import '../support/placed_phone.dart';
@@ -57,6 +58,7 @@ void main() {
                       estimator: estimator,
                       clock: () => now,
                       phoneTilt: placedPhone(),
+                      guideMatcher: (_, _, _) => true,
                     ),
                   ),
                 ),
@@ -83,6 +85,20 @@ void main() {
   FilledButton startButton(WidgetTester tester) => tester.widget(
     find.ancestor(of: find.text('Start'), matching: find.byType(FilledButton)),
   );
+
+  testWidgets('push-up camera guide occupies the lower half in portrait', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await open(tester);
+    final guide = tester.getRect(find.byType(PoseSilhouetteGuide));
+    expect(guide.top, 400);
+    expect(guide.bottom, 800);
+    expect(tester.getBottomLeft(find.text('Start')).dy, lessThanOrEqualTo(400));
+  });
 
   testWidgets('no guide text bar, only floating back and switch buttons', (
     tester,
@@ -147,7 +163,7 @@ void main() {
     await open(tester);
     await feed(tester, 0, pushUpFrontFrame());
     await feed(tester, 1500, pushUpFrontFrame());
-    expect(find.text('Ready! Starting in 3...'), findsOneWidget);
+    expect(find.text('준비 완료! 2초 뒤 시작해요.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -219,12 +235,9 @@ void main() {
   testWidgets('no person message and Start disabled', (tester) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
-    expect(find.text('Hold still...'), findsOneWidget);
+    expect(find.text('준비 완료! 3초 뒤 시작해요.'), findsOneWidget);
     await feed(tester, 100, emptyFrame());
-    expect(
-      find.text('No one detected. Step into the camera view.'),
-      findsOneWidget,
-    );
+    expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNull);
   });
 
@@ -234,9 +247,9 @@ void main() {
       move: {for (final l in handLandmarks) l: (500, 995)},
     );
     await feed(tester, 0, frame);
-    expect(find.text('Hands not visible.'), findsOneWidget);
+    expect(find.text('손이 화면에 안 보여요.'), findsOneWidget);
     await feed(tester, 2000, frame);
-    expect(find.text('Hands not visible.'), findsOneWidget);
+    expect(find.text('손이 화면에 안 보여요.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNull);
   });
 
@@ -245,7 +258,7 @@ void main() {
     final frame = standingFrame(hide: faceLandmarks);
     await feed(tester, 0, frame);
     await feed(tester, 2000, frame);
-    expect(find.text('Face the camera.'), findsOneWidget);
+    expect(find.text('카메라를 정면으로 봐 주세요.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNull);
   });
 
@@ -255,28 +268,24 @@ void main() {
     await open(tester);
     await feed(tester, 0, standingFrame());
     await feed(tester, 1500, standingFrame());
-    await feed(tester, 3000, standingFrame());
-    expect(find.text('Ready! Starting in 2...'), findsOneWidget);
+    await feed(tester, 2000, standingFrame());
+    expect(find.text('준비 완료! 1초 뒤 시작해요.'), findsOneWidget);
     expect(popped, isNull);
-    await feed(tester, 4500, standingFrame());
+    await feed(tester, 3000, standingFrame());
     await tester.pumpAndSettle();
     expect(popped, ExerciseType.pushUp);
     expect(camera.isStreaming, isFalse);
   });
 
-  testWidgets('auto start and a Start tap together pop only once', (
+  testWidgets('auto start pops only once after repeated frames', (
     tester,
   ) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
     await feed(tester, 1500, standingFrame());
-    // The button hides once setup finishes, so keep its handler to press
-    // it late, like a tap that lands while the screen is closing.
-    final tapStart = startButton(tester).onPressed!;
-    await feed(tester, 4500, standingFrame());
-    await feed(tester, 4600, standingFrame());
-    tapStart();
-    await feed(tester, 4700, standingFrame());
+    expect(startButton(tester).onPressed, isNull);
+    await feed(tester, 3000, standingFrame());
+    await feed(tester, 3100, standingFrame());
     await tester.pumpAndSettle();
     expect(popCounter.pops, 1);
     expect(popped, ExerciseType.pushUp);
@@ -289,37 +298,34 @@ void main() {
     await feed(tester, 1500, standingFrame());
     await feed(tester, 2000, emptyFrame());
     await feed(tester, 2600, emptyFrame());
-    expect(
-      find.text('No one detected. Step into the camera view.'),
-      findsOneWidget,
-    );
+    expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
     await feed(tester, 5000, emptyFrame());
     await tester.pumpAndSettle();
     expect(popped, isNull);
   });
 
-  testWidgets('Ready enables Start, which returns the exercise', (
+  testWidgets('push-up setup cannot be started before the countdown', (
     tester,
   ) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
-    expect(find.text('Hold still...'), findsOneWidget);
+    expect(find.text('준비 완료! 3초 뒤 시작해요.'), findsOneWidget);
     await feed(tester, 1500, standingFrame());
-    expect(find.text('Ready! Starting in 3...'), findsOneWidget);
-    expect(startButton(tester).onPressed, isNotNull);
-    await tester.tap(find.text('Start'));
+    expect(find.text('준비 완료! 2초 뒤 시작해요.'), findsOneWidget);
+    expect(startButton(tester).onPressed, isNull);
+    await feed(tester, 3000, standingFrame());
     await tester.pumpAndSettle();
     expect(popped, ExerciseType.pushUp);
     expect(camera.isStreaming, isFalse);
     expect(estimator.closed, isTrue);
   });
 
-  testWidgets('Start leaves only after the camera is released', (tester) async {
+  testWidgets('automatic start waits for camera release', (tester) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
     await feed(tester, 1500, standingFrame());
     camera.stopGate = Completer();
-    await tester.tap(find.text('Start'));
+    await feed(tester, 3000, standingFrame());
     await tester.pump();
     expect(camera.stopCount, 1);
     expect(popCounter.pops, 0);

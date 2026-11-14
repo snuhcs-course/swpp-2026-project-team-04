@@ -1,3 +1,8 @@
+/// The 3D avatars' ids, before the characters replaced them (W3). Their
+/// models, thumbnails and licences are gone from the app. Only the ids are
+/// still read, by `avatar_store.dart`, which `test/support/fakes.dart` still
+/// uses until the PM removes both; the asset names, labels and categories
+/// are left as unused data until then.
 enum AvatarModel {
   astronaut('avatar_01', 'astronaut', 'Astronaut'),
   robot('avatar_02', 'robot', 'Corebreaker Robot'),
@@ -38,16 +43,4 @@ enum AvatarModel {
   final String assetName;
   final String label;
   final String category;
-  String get assetPath => 'assets/avatar/models/$assetName.glb';
-  String get thumbnailPath => 'assets/avatar/thumbnails/$assetName.png';
-  bool get isSomaOutfit => assetName.startsWith('soma_');
-  String get credit => isSomaOutfit
-      ? 'SOMA · NVIDIA · CC BY 4.0'
-      : assetName.startsWith('kenney_')
-      ? 'Kenney · CC0'
-      : assetName.startsWith('kaykit_')
-      ? 'Kay Lousberg · CC0'
-      : this == AvatarModel.mannequiny
-      ? 'GDQuest · CC BY 4.0'
-      : 'CC0';
 }

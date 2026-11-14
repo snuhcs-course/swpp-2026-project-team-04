@@ -189,10 +189,10 @@ void main() {
     });
   });
 
-  group('sound off', () {
-    test('nothing is spoken while the sound is off', () async {
+  group('voice off', () {
+    test('nothing is spoken while the voice is off', () async {
       build();
-      await settings.setEnabled(false);
+      settings.setVoiceEnabled(false);
       voice
         ..say(VoiceCue.tooFar)
         ..say(VoiceCue.ko);
@@ -200,11 +200,11 @@ void main() {
       expect(engine.spoken, isEmpty);
     });
 
-    test('turning the sound off cuts the current line', () async {
+    test('turning the voice off cuts the current line', () async {
       build(manual: true);
       voice.say(VoiceCue.fever);
       await pumpEventQueue();
-      await settings.setEnabled(false);
+      settings.setVoiceEnabled(false);
       expect(engine.stops, 1);
       expect(voice.isSpeaking, isFalse);
     });
@@ -216,18 +216,18 @@ void main() {
         voice.say(VoiceCue.noPerson);
         await pumpEventQueue();
         voice.say(VoiceCue.tooFar);
-        await settings.setEnabled(false);
+        settings.setVoiceEnabled(false);
         engine.finish();
         await pumpEventQueue();
         expect(engine.spoken, [VoiceCue.noPerson.text]);
       },
     );
 
-    test('turning the sound back on speaks again', () async {
+    test('turning the voice back on speaks again', () async {
       build();
-      await settings.setEnabled(false);
+      settings.setVoiceEnabled(false);
       voice.say(VoiceCue.tooFar);
-      await settings.setEnabled(true);
+      settings.setVoiceEnabled(true);
       voice.say(VoiceCue.tooFar);
       await pumpEventQueue();
       expect(engine.spoken, [VoiceCue.tooFar.text]);
@@ -376,7 +376,7 @@ void main() {
       await pumpEventQueue();
       expect(engine.spoken, [VoiceCue.fever.text]);
       voice.dispose();
-      await settings.setEnabled(false);
+      settings.setVoiceEnabled(false);
       expect(engine.stops, 1, reason: 'no longer listening to settings');
     });
   });

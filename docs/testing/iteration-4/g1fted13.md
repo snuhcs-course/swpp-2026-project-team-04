@@ -118,3 +118,419 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `cd88ab2`, wit
 - Lime, pink and amber text become ink, button text and the 무효 count included (user spec 2026-11-11 and its later answer). Tests: `'a ${outcome.name} paints no text in a palette B fill color, the feedback button and 무효 included'` (win, lose, draw), `'a win: WIN, the margin, both players, and my stats'`.
 - The nickname takes the row's free width and ends in "…" only past it: whole at 1.0× on a 360-dp phone, one line with "…" and no overflow at 1.3× and 2× (Codex P2, user's later answer). Tests: `'a 12-letter nickname shows whole on a 360-wide phone at the normal text size'`, `'a 12-letter nickname at ${scale}x text is one line that ends in …, beside its title'`, `'a short nickname shows whole, at the right of its row'`, `'fits $label without overflow, scrolling if it must'`.
 - UAT-4 AC1 (win, loss or draw with both scores) still holds. Tests: `'a win: WIN, the margin, both players, and my stats'`, `'$mine:$theirs is a $word'`.
+
+#### 2026-11-13 · code at commit `6a8efba` · step W2 `feat/battle_screen_revamp` (P8 battle screen revamp, team order #5)
+This step replaces the bot and online battle screens with one fighting stage, as designed (candidate A from the user's design canvas, spec v2.2), and redraws the matching screens in palette B:
+- **The stage** (upper half): the HUD (names, clock and lead chip, scores, valid rep counts, time bar), two fighters, a meeting point that moves with the score share, and the effects of every rule: grade word then "+N", combo "N HIT", FEVER ×2, the danger edge, the reject sign with a pictogram, K.O., TIME! and the verdict, then 결과 보기.
+- **The camera area** (lower half): the camera uncropped, a one-line hint, the ready button, the setup bar, the reconnect band, the leave button.
+- **The setup runs on the battle screen** for both battles.
+  - Bot (team question 9, option A): pose check, 3·2·1, GO!.
+  - Online: the same layout.
+  - #49's push-up silhouette lies over the camera. The strips a cropping camera would not show are dimmed in its shade.
+- **Online:** the server's scores, the opponent's zero-point reps as a miss, reconnecting, and the result to `/result`.
+- **Matching:** the radar, MATCH FOUND and the safety dialog in palette B. The safety picture is now drawn from the design's SVG; the old white-line PNG vanished on the light box.
+- **Settings:** the '매 경기 안전 안내' switch. On: the notice shows every match. Off: only until it was seen once. The setting is kept across restarts.
+- **Setup words in Korean**, the same sentences as the voice guidance. One or two missing parts are named; three or more say "몸 전체가 화면에 보이게 해 주세요.". The ready button reads "시작" (bot) and "준비" / "준비 취소" (online).
+- **Sound hooks for J2:** `onCue` and `onSetup` on both battle screens and on the online lobby.
+
+The branch contains `origin/main` `6e87a0f` and #49 `origin/feat/pose_silhouette_guide` `3efe402`. On 2026-11-13 `git fetch` found nothing new on either, and merging both said "Already up to date".
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `6a8efba`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 97.4% (266/273) | 11/13 | CI comment "Tests and coverage (GitHub Actions)" on PR #50, commit `7f12f3e`, [run 43260166309](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43260166309) |
+| ViewModel | flutter_test, fakes | 90% | 96.6% (1096/1135) | 11/13 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 94.9% (2447/2578) | 11/13 | same CI comment |
+| View | flutter_test (widget) | 75% | 94.1% (5924/6295) | 11/13 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/13 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `7f12f3e` |
+
+- **Tests:** `flutter test` had 2113 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as on 11-08, and W2 does not touch them:
+    - `test/services/online/public_wss_smoke_test.dart`: a live server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`;
+    - 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W2 adds 17 test files, two of them data files: the design's golden samples and the reviewed drawings. It changes 28 and deletes 3.
+  - The deleted ones are the tests of `game_health_bar.dart`, `game_fever_chip.dart` and `game_danger_edge.dart`, which the stage replaces. The PM approved removing them.
+- **The design check:** `test/widgets/battle_fx_motion_test.dart` compares the stage's effect math with the design prototype's own samples.
+  - `test/widgets/battle_fx_golden.json` holds spec v2.2's 18 scenarios with 248 samples: positions, rotations, sizes and opacities of the fighters, bands, star, sign and HUD. A changed design number fails it.
+  - The drawings (5 fighter poses, 10 pictograms) are pinned call by call in `test/widgets/battle_art_drawings.json`.
+- **Tests checked against wrong code:** in every step I planted single-number and single-line changes ("mutants") in the new code and reran its tests. The reviewer subagent planted more in its runs. A mutant that survived got a test. The counts per step are in my AI notes, item c.
+- **Other checks:**
+  - `ownership_guard.py --check-diff` flags only the 6 files #49 brought: `setup_screen.dart`, `pose_silhouette_guide.dart` and its test, and 한상우's three notes. This is expected until #49 is merged into `main`.
+  - Every other file outside W2's list is covered by an approved exception line.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Coverage:** from the CI comment on PR #50 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/50#issuecomment-6829754908)), commit `7f12f3e` (2026-11-13 01:41 KST; the app and server jobs both succeeded; [run 43260166309](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43260166309)). `7f12f3e` changes only these notes on top of `6a8efba`.
+  - App total 94.6% (9972/10537); Other 93.4% (239/256).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2113 passed, 10 skipped, 0 failed), the same as on this PC.
+  - The drawings fixture (`battle_art_drawings.json`) was recorded on Windows. It passes on CI's Linux too.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/result_screen_test.dart`, as on 11-08 and 11-11. Its tests still ran and passed in `flutter test`. So the two places W2 changed in `result_screen.dart` (under its exception) are not in the View number.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Screen readers:** widget tests check the words of the stage and the camera area through the semantics tree: the labels, the live-region announcements and the safety picture's label. TalkBack on a real phone was **not** checked.
+- **Manual check (2026-11-13, the user, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17):** "폰 확인을 마쳤고 대결은 문제 없어."
+  - Seen on the phone:
+    - real bot battles, push-ups and squats, with the effects they produce, including the setup;
+    - the matching radar and the match-found screen;
+    - the safety picture drawn since `3688547`.
+  - The online battle on two phones: not checked; to be checked with a teammate's phone before the UAT. The same holds for UAT-3 AC2's "within a second".
+  - The stage demo was not run.
+  - The effects only an online battle shows were not seen on a phone: the reconnect band, the opponent's lost connection, the opponent leaving, and a loss by my lost connection.
+    - All four are checked by widget tests (`online_preparation_test.dart`, `battle_arena_test.dart`, `battle_fx_motion_test.dart`).
+    - Three are also in the design comparison (`battle_fx_golden.json`: `combo_while_reconnecting`, `opponent_disconnected`, `opponent_left`).
+    - The loss by my lost connection is the mirror of `opponent_left` and is checked by widget tests only, e.g. 'my connection lost too long: I vanish and lose'.
+  - Left for later changes:
+    - a larger camera during the setup;
+    - radar blips that blink as the sweep passes;
+    - the match-found screen's colors and "VS".
+  - Found for S3 (not W2): in the push-up setup the pose can turn ready before the body lines up with the silhouette.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/battle_fx_motion_test.dart` (new) + `battle_fx_golden.json` | the stage's effect math against the design prototype's 248 samples in 18 scenarios: the meeting point's follow, the lunge, hit-stop, shake and zoom, the star, twinkle and puff, the reject sign, the bands' size rule (`bandBox`) and places, combo marks, fever and danger, the K.O. flight, TIME! and the verdict, the countdown and GO!, 결과 보기; the grade word then "+N"; a late result of another kind; reduced motion; cues given once each |
+| View | `test/widgets/battle_stage_model_test.dart` (new) | the stage's inputs: events, endings, the reject sign's short labels and pictograms per reason |
+| View | `test/widgets/battle_art_path_test.dart`, `battle_fighter_test.dart`, `battle_reject_sign_test.dart`, `battle_banner_test.dart`, `battle_stage_hud_test.dart` (new) + `battle_art_drawings.json`, `battle_test_support.dart` | the design's path data read as drawn; 5 poses and 10 pictograms pinned call by call; the bands (ink text on slanted, ink-edged fills); the HUD's names, clock, chip, scores, counts and time bar, with pixel probes and the app's real fonts |
+| View | `test/widgets/battle_stage_test.dart`, `battle_arena_test.dart` (new) | one frame of the stage; the arena's layout on several phones; one clock; the danger edge; the sign over the line; cues for sound; announcements for screen readers; 결과 보기 |
+| View | `test/widgets/battle_camera_area_test.dart` (new) | the camera area's buttons, hint, setup bar, reconnect band and combo marks; it follows the system text size (1.3× and 2× fit); every setup hint and online line fits its two lines at 1.3× on a 360-wide phone beside "시작", "준비" and "준비 취소" |
+| View | `test/widgets/battle_camera_view_test.dart` (new) | the camera in its own shape; the chest and squat lines; the silhouette over the part a cropping camera shows; the strips around it dimmed in its shade with no lighter seam (pixel test); the strips take no taps |
+| View | `test/widgets/battle_stage_events_test.dart`, `battle_online_events_test.dart` (new) | the bot's and the online state turned into stage events and state, deciding nothing; the opponent's miss online; snapshots replay nothing |
+| View | `test/screens/battle_screen_test.dart` (updated) | the bot battle on the stage, from the setup: band, tags, hint, 시작, camera switch; the silhouette; 3·2·1 and GO!; the round, fever, TIME! and the verdict, K.O., 결과 보기; back; the app paused; camera failure and retry; **UAT-1 AC1–AC3 and step 5 through the battle screen, with the setup's real times**; `onCue` and `onSetup` |
+| View | `test/screens/online_preparation_test.dart` (updated) | the online battle on the stage, from the setup: ready and auto ready, 준비 / 준비 취소, the countdown, the silhouette, the server's scores, the opponent's miss, fever, reconnecting, the endings and `/result`, the ended page; `onCue`; `onSetup` with the time to the server's start |
+| View | `test/screens/matching_screen_test.dart`, `versus_screen_test.dart`, `online_lobby_screen_test.dart` (updated) | the radar (still with reduce motion, one picture for screen readers); MATCH FOUND; the safety switch (every match, once seen, kept); the lobby passing the sound hooks on; the lobby's plain page in palette B |
+| View | `test/widgets/safe_warning_dialog_test.dart` (updated) | the picture drawn from the SVG: numbers, order, colors and widths, the drops' curves, pixels, 3:1 contrast, one scale on a 360-wide phone (232 × 150) |
+| View | `test/widgets/exit_dialog_test.dart`, `exit_game_button_test.dart`, `player_avatar_test.dart`, `battle_live_indicators_test.dart`, `game_panel_fonts_test.dart` (updated) | the leave dialog, the leave button and the avatar in palette B; the tests of the removed widgets taken out |
+| View | `test/screens/settings_screen_test.dart`, `home_screen_test.dart` (updated) | the '매 경기 안전 안내' row first in 게임, read as one switch; the 효과음 switch found by its title |
+| View | `test/screens/result_screen_test.dart` (updated, exception) | online, 다시 매칭 opens the lobby; a win because the opponent left, and a loss because my connection dropped, are said so |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | the setup phase; the count to the start; 시작 starts at once; the round's own clock; the `BattleViewModel.bot` / `botCounter` wiring |
+| ViewModel | `test/viewmodels/settings_viewmodel_test.dart` (updated) | the safety notice: on and not seen at first; the rule table; the switch and the seen mark saved; kept across a restart; the user's value wins while loading; failed reads and saves; dispose |
+| ViewModel | `test/viewmodels/setup_viewmodel_test.dart` (updated, exception) | the Korean setup words; "준비 완료! N초 뒤 시작해요." |
+| Service | `test/services/game/online_battle_result_test.dart` (new) | the result of an online battle the server finished, incl. who left |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated, exception) | the session's count of the opponent's zero-point reps |
+| Service | `test/services/pose/setup_checker_test.dart` (updated, exception) | the Korean words, the same lines as the voice; parts named with 이/가; three or more parts give the whole-body line |
+| Service | `test/services/user/settings_store_test.dart` (updated, exception) | the safety switch and its seen mark under their own keys, kept for a new store |
+| Model | `test/models/battle_result_test.dart` (updated) | `BattleResult.departure` |
+| Design | `test/theme/app_theme_test.dart`, `test/design_tokens_test.dart` (updated) | the stage's text styles and tokens, `setupGuideScrim`; the new widget files added to the token check, the three removed ones taken out (PM OK) |
+| App flow | `test/main_test.dart`, `test/demo/battle_demo_test.dart`, `pose_setup_demo_test.dart`, `test/screens/setup_screen_test.dart`, `match_setup_screen_test.dart` (updated; some exceptions) | the stage demo; the setup words; one test renamed for what it checks |
+
+### Acceptance criteria → tests
+- Given a bot or online battle, then every UAT-5 rule still shows in the new layout (grade labels, combo, FEVER ×2, K.O.). Tests:
+  - `'my counted rep: GOOD, then +10, the score and my valid rep on the stage, the chest lines on the camera'`
+  - `'fever turns the stage cyan 20 s into the round, counted from GO!, not from the camera'`
+  - `'a KO plays the ring-out to 결과 보기, which opens the result in place'`
+  - `'two counted reps within the combo window: the second earns the bonus and "2 HIT" shows over the camera (UAT-5 combo)'` (through the bot battle screen)
+  - `'a combo shows "2 HIT" over the camera, 14 under the line on the left, and under the reconnect band while it is up'` (the arena)
+  - `'$name: every sample matches within the design tolerance'` (18 design scenarios)
+- Given an online battle, then both phones show the same health bar and scores within a second (UAT-3 AC2). The stage shows the server's numbers, bar included; "within a second on both phones" is a two-phone manual check: not checked; to be checked with a teammate's phone before the UAT. Test: `"the stage shows the server's scores, valid reps and bar, and the camera its chest lines"`.
+- UAT-1 runs through the battle screen's setup (현우's condition). Tests:
+  - `'AC1, step 2 (push-up): a phone lying almost flat, then the left wrist out of the picture: the hint says what to fix, and nothing counts down'`
+  - the `'AC2, step 3 (push-up): …'` and `'AC3, step 4 (push-up): …'` tests
+  - `'step 5 (squat): missing feet and standing too close are named, …'`
+- The safety switch: on, every match; off, until seen once; kept across restarts. Tests:
+  - `'on, as designed: every match shows it, seen or not; 확인 counts as seen'`
+  - `'off: it shows until it is seen once, then a match goes straight to the setup button'`
+  - `'off and seen in an earlier run: no warning, the setup at once'`
+
+#### 2026-11-14 · code at commit `47afaff` · step W3 `feat/characters` (P14 characters replace the avatars, with a selection screen, team order #11)
+This step replaces the old avatars with six drawn characters. The design is the user's (spec v1.1 from the design canvas; rig data `w3-rig-2`).
+- **The characters:** one data file (`assets/characters/w3_rig.json`) and one painter (`CharacterFigure`) draw all six in five poses (idle, attack, hit, K.O., win).
+  - Five can be picked: GYM마우스 (`mouse`, the default), 그루 (`kangaroo`), 곰탱이 (`bear`), 펭뚱이 (`penguin`) and 물렁범 (`seal`). RepBot (`bot`) is the bot's.
+  - Each character has its own idle motion: a hop, a rock or a stretch.
+- **The stage:** the bot and online battles draw the two characters instead of W2's stand-in fighter.
+  - The opponent idles 230 ms after me, the hit star sits where the blows land, and each character draws its own flash.
+  - Without characters the stage keeps W2's values, so W2's `battle_fx_golden.json` passes unchanged.
+- **캐릭터 선택:** a screen after the design `ChSelectB`. It opens from 게임 시작's new 캐릭터 row and from 환경설정's 캐릭터 row (was 아바타).
+  - The choice is saved per account in the phone's secure storage.
+  - Nothing saved, an unknown id, RepBot or an old avatar id all read as the mouse.
+- **Online:** the app sends its character id in the protocol's existing `avatar_id` field.
+  - The battle server takes the field as optional, checks only its shape (1 to 32 lowercase letters, digits or `_`) and passes it on.
+  - An older server that refuses the character with `INVALID_AVATAR` gets one more `queue.join` with `avatar_01`.
+  - An opponent's id that is not one of the five draws the mouse.
+- **The old 3D avatars are gone:** the profile screen with its avatar list in `83c00ce`; the 3D models, the viewers, the opponent mannequin and `tools/avatar-preview/` in `dded304`. `PoseAvatarToggleView` now shows the camera only.
+
+The branch was made from W2's head `38ea06d` before #50 was merged. On 2026-11-14 I merged `origin/main` `1ed57ca` (#49 and #50) into it as `47afaff`. There was no conflict, and `main` brought no file change: `git diff 38ea06d 1ed57ca` is empty.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `47afaff`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.2% (470/474) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #52, commit `a55507b`, [run 43457588271](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43457588271) |
+| ViewModel | flutter_test, fakes | 90% | 96.7% (1151/1190) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.3% (2259/2370) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.1% (5898/6139) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; the Django code is unchanged, only the Dart battle server changed) | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `a55507b` |
+
+- **Tests:** `flutter test` had 2263 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as in W2:
+    - `test/services/online/public_wss_smoke_test.dart`: a live server check that runs only with `RUN_PUBLIC_BATTLE_SMOKE`. W3 builds its sessions with character ids. It expects the opponent's character to be the mouse until the W3 battle server is deployed.
+    - 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - `main` before W3 had 2113 passed, so W3 adds 150 tests in all.
+  - W3 adds 7 test files and two fixtures, changes 20 test files and deletes 4.
+    - The fixtures are the design's idle samples (`test/models/character_idle_golden.json`) and 36 of the design's 60 shots (`test/widgets/character_shots/`).
+    - The deleted files tested removed code: the profile screen, the avatar pose payload, the opponent avatar panel and the opponent mannequin.
+- **The design check:**
+  - `character_idle_motion_test.dart` compares every character's idle motion, and W2's breathing, with the design's own samples.
+  - `character_figure_test.dart` paints each of the 36 shots and compares it pixel by pixel with the design's PNG. At most 0.03% of the pixels may differ (smoothed edges). One test shows that the comparison catches a wrong picture: the other team's colors, or one missing eye shine.
+  - `character_rig_test.dart` checks the rig against `assets/characters/w3_rig.json` and the spec: the box, the order, the names, the five poses, where every attack ends (`hit_contact.json`), the hit star (48 px over, 58 px up) and the 230 ms. It also checks that a malformed rig is refused.
+- **Tests checked against wrong code:** the reviewer planted mutants in runs 1 and 2. In the painter, 13 of 14 were caught; the one left changes no pixel. In the stage wiring, 15 of 16 were caught, and the one left got a test. The two tests of run 3's double-tap fix fail on the old code.
+- **Other checks:**
+  - `ownership_guard.py --check-diff` is ok: 235 changed files. Each is W3's or is under an approved exception line; the exceptions are listed in the PR.
+  - The Dart battle server changed (`server/lib/battle_server.dart`). Its tests run in `flutter test` (`test/services/online/online_battle_integration_test.dart`). The Django server did not change, so `pytest` was not run on this PC.
+- **Coverage:** from the CI comment on PR #52 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/52#issuecomment-6858206591)), commit `a55507b` (2026-11-14 01:02 KST; the app and server jobs both succeeded; [run 43457588271](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43457588271)). `a55507b` changes only these notes on top of `c057a58`, and `c057a58` only two comments on top of `47afaff`.
+  - App total 96.1% (10033/10445); Other 93.8% (255/272).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2263 passed, 10 skipped, 0 failed), the same as on this PC.
+  - The pixel comparison with the 36 design shots, run on Windows so far, passes on CI's Linux too.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart`. Its tests still ran and passed in `flutter test`. So W3's change to `settings_screen.dart` (the 캐릭터 row, under its exception) is not in the View number.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Screen readers:** widget tests check that each cell of 캐릭터 선택 says its name and animal and whether it is picked. TalkBack on a real phone was **not** checked.
+- **Manual check (the user, reported 2026-11-14, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17):** the user found nothing to fix in W3's code.
+  - Seen on the phone:
+    - picking a character with 게임 시작's 캐릭터 row;
+    - a bot battle with the chosen character (물렁범): its idle, hit and K.O. motions.
+  - Not in the reported check: the online battle on two phones, which shows the opponent's character and also needs the W3 battle server deployed; 환경설정's 캐릭터 row; a second account; the stage demo's character buttons; reduced motion; TalkBack.
+  - Left for later steps (the user's plan): the character on the main menu (W4) and the screen after the battle (W2b). MATCH FOUND still draws W2's stand-in in `_VersusCharacter` (`versus_screen.dart`, on W2b); it gets the W3 character once W2b and W3 are both in `main`.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/character_rig_test.dart` (new) | the rig equals `assets/characters/w3_rig.json`; `w3-rig-2`'s 140 × 160 box; six characters in order, with the names of 11-13; five poses with fourteen values each; the shapes per character; expressions only in their poses; the design colors, no character lime or pink; outlines; the default mouse and RepBot; every other choice reads as the mouse; the stage values (where attacks end, the hit star, 230 ms, each idle motion); a malformed rig is refused and says where |
+| Model | `test/models/character_idle_motion_test.dart` (new) + `character_idle_golden.json` | each character's idle motion and W2's breathing against the design's samples; a hop never goes below the floor; stepped and smooth rocks; a stretch; a period of 0 turns its part off |
+| Model | `test/models/avatar_catalog_test.dart` (updated) | the kept avatar ids only (the asset getters are gone) |
+| View | `test/widgets/character_figure_test.dart` (new) + `character_shots/` (36 PNG) | the painter against 36 design shots, pixel by pixel, and a check that the comparison catches a wrong picture; size, pose and team; an unknown id draws the mouse; the idle figure (its motion, still with reduced motion); `BattleCharacters`; the theme colors are the rig's; even scaling in a box of another shape; every pose in both teams, with and without the flash |
+| View | `test/screens/character_select_screen_test.dart` (new) | the account's character large with its name and line; a tap changes only the preview; 이 캐릭터로 하기 saves and goes back; during a slow save a second tap or back goes back only once; back saves nothing; the layout and type of ChSelectB; each cell read with its name and animal; the picked cell; 360 × 640 and a large text size |
+| ViewModel | `test/viewmodels/character_viewmodel_test.dart` (new) | the app-wide character: the mouse before login, the account's saved one after it, another account, logout, choosing saves for the signed-in account, RepBot not choosable, a failed save, a slow read does not undo a choice |
+| ViewModel | `test/viewmodels/character_select_viewmodel_test.dart` (new) | the five in order, each said as its animal and a few words; picking changes only the preview; confirming saves; a second confirm while saving does nothing |
+| Service | `test/services/user/character_store_test.dart` (new) | per account in secure storage; nothing saved, unknown, RepBot or an old avatar id read as the mouse; an unreadable value; a failed write reaches the caller; the in-memory store |
+| Service | `test/services/online/online_battle_integration_test.dart` (updated) | `avatar_id` carries the character: the server checks only the shape, passes the id on in `match.found`, the snapshot and the result, and leaves it out for a player who sent none; RepBot, an old avatar id or nothing reads as the mouse; an older server: one resend with `avatar_01`, also after a reconnect, and a second refusal fails the search; every character a person may pick reaches the opponent |
+| Service | `test/services/game/online_battle_result_test.dart`, `test/services/online/battle_result_store_test.dart`, `public_wss_smoke_test.dart` (updated, exceptions) | sessions and players built with a character id instead of `AvatarModel` |
+| View | `test/widgets/battle_fx_motion_test.dart`, `battle_stage_test.dart`, `battle_arena_test.dart` (updated, exceptions) | without characters, W2's breathing and star; with them, each side's idle (hop, rock, stretch), the opponent 230 ms later, only the idle pose moves, the danger sway, reduced motion, the star at (xm ± 48, 288); the characters in their poses and team colors, the hit one flashing on its own; the fever aura |
+| View | `test/screens/battle_screen_test.dart`, `online_preparation_test.dart`, `online_lobby_screen_test.dart` (updated) | my character against RepBot; the mouse when none is given; online, mine and the one the opponent sent; the lobby matches with my character |
+| View | `test/screens/play_screen_test.dart`, `settings_screen_test.dart`, `home_screen_test.dart` (updated, exceptions) | 게임 시작's 캐릭터 row shows my character, opens 캐릭터 선택 and follows a new choice; 환경설정's 캐릭터 opens the selection; the app-wide view model in the test apps |
+| View | `test/widgets/pose_avatar_toggle_view_test.dart` (updated), `battle_live_indicators_test.dart`, `battle_online_events_test.dart` (updated, exceptions) | the camera-only view: no avatar button, the pose and both height gauges on the given frame; one gauge test rewritten for it; the online events with character ids |
+| App flow | `test/main_test.dart`, `test/demo/battle_demo_test.dart` (updated; the demo under an exception) | the account's saved character on 게임 시작; a pick is saved and goes into the next bot battle; logout puts the mouse back; the online route sends the account's character; the stage demo's character buttons |
+| Design | `test/design_tokens_test.dart` (updated) | `character_select_screen.dart` and `character_figure.dart` in the token check |
+
+### Acceptance criteria → tests
+- Given I open character selection and pick one, then it is saved for my account. Tests:
+  - `'이 캐릭터로 하기 saves the pick for the account and goes back'`
+  - `'choosing saves for the signed-in account and shows at once'`
+  - `'keeps the choices per account while the app runs'`
+  - `'another account starts from the mouse, then shows its own'`
+- …and shown in battle. Tests:
+  - `'a pick on 캐릭터 선택 is saved for the account, shows on 게임 시작 and goes into the next bot battle'`
+  - `'the stage shows my character against RepBot'`
+- …and shown to my online opponent. Tests:
+  - `'every character a person may pick matches and appears on the opponent client'`
+  - `'a character id is passed on to the opponent as it came, in match.found, the snapshot and the result'`
+  - `'the stage draws my character and the one the opponent sent'`
+  - `'the online route sends the character of the account'`
+  - On real phones this needs the W3 battle server deployed; it was not checked on two phones.
+
+#### 2026-11-14 · code at commit `1f7e6f5` · step W3 `feat/characters`, follow-up to the Codex review of PR #52 (team order #11)
+The Codex review of PR #52 left one comment (P2, `lib/viewmodels/character_select_viewmodel.dart`). This push fixes it on the same branch.
+- **The problem:** home could open as soon as the rules check ended, while the account's character was still being read.
+  - 캐릭터 선택 then started on the stand-in `mouse`, and 이 캐릭터로 하기 saved `mouse` over the saved choice.
+  - A battle opened then got `mouse` too.
+- **The fix (`1f7e6f5`).** The user chose between two options the agent gave:
+  - Home waits until the account's character is read, behind the same spinner as the rules check. A read that fails counts as the default, so the wait always ends.
+  - 캐릭터 선택 keeps a second guard. Before the read ends, the button shows "저장된 캐릭터를 불러오는 중…" and takes no taps. When the read ends, the preview takes the saved character, unless a cell was picked meanwhile.
+  - A choice made during the read still wins over the read (the rule of 11-13).
+  - Only W3 files changed: `main.dart`, `character_viewmodel.dart`, `character_select_viewmodel.dart`, `character_select_screen.dart` and their tests.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `1f7e6f5`, without coverage. The coverage comes from the PR's CI comment on `1f7e6f5`, [run 43475382323](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43475382323).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.2% (470/474) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #52, commit `1f7e6f5`, [run 43475382323](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43475382323) |
+| ViewModel | flutter_test, fakes | 90% | 96.8% (1165/1204) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.3% (2259/2370) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.1% (5902/6143) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/14 | same CI comment |
+
+- **Tests:** `flutter test` had 2278 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before.
+  - The count grew from 2263 by the 15 new tests below. No test was removed.
+  - Two existing tests in `character_viewmodel_test.dart` counted the notifications of a load. A load now notifies twice, as the read starts and as it ends. Their intent is kept:
+    - 'a login reads the account's saved character' expects 2, with that reason;
+    - 'RepBot or an unknown id cannot be chosen' starts its count after the load.
+- **Tests before the fix:** the agent wrote the reproduction first and ran it on the code before the fix (`15434a6`). All three tests failed:
+  - in `character_select_viewmodel_test.dart`, 'confirming saves nothing over the saved character': the saved `seal` became `mouse`;
+  - in `main_test.dart`, the first two app tests: the same overwrite through 캐릭터 선택, and a bot battle built during the read got `mouse`.
+  - After the user chose the fix, the app tests were rewritten for "home waits". On a copy of the old code, with the one line that reads the new `loading` dropped, all three final app tests fail. The new screen test fails there too.
+  - The view-model tests use the new API (`loading`, `isReadyFor`, `ready`), so they do not compile on the old code.
+- **Other checks:** `dart format` leaves the 8 changed files unchanged, and `ownership_guard.py --check-diff` is ok (238 files). Server `pytest` was not run on this PC, because `server/` did not change.
+- **Coverage:** from the CI comment on `1f7e6f5` (2026-11-14 02:49 KST; the app and server jobs both succeeded).
+  - App total 96.1% (10052/10464); Other 93.8% (256/273).
+  - CI's `flutter analyze` and `flutter test` (2278 passed, 10 skipped, 0 failed) match this PC.
+  - Still left out of the numbers by CI's 240 s limit: `test/screens/settings_screen_test.dart`; its tests passed.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Review:** the reviewer subagent returned APPROVE (run 7) with 4 Minor findings. Three were fixed, among them the test 'a new account reads the rules meanwhile; after 시작하기 home still waits for the read'. It also fails on the old code. The fourth was kept: three near-identical slow-read fakes stay private, because the shared `test/support/fakes.dart` is the PM's.
+- **Manual check:** not checked on a phone for this push.
+
+### Test cases added or changed in this follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| App flow | `test/main_test.dart` (updated) | group 'while the saved character is still being read': home waits for the read, then 캐릭터 선택 and a bot battle start on the saved character and a pick keeps it; a new account reads the rules meanwhile and home still waits after 시작하기; a read that fails opens home with the mouse |
+| View | `test/screens/character_select_screen_test.dart` (updated) | opened during the read: the hint, no taps, nothing saved; then the preview takes the saved character and the button saves |
+| ViewModel | `test/viewmodels/character_select_viewmodel_test.dart` (updated) | during the read: confirming saves nothing over the saved character; not ready until the read ends; the preview takes the saved character if nothing was picked; a cell picked meanwhile stays and can then be saved; a read after the screen is gone changes nothing on it |
+| ViewModel | `test/viewmodels/character_viewmodel_test.dart` (updated) | group 'loading': not loading before a login; loading from a login until the read ends, said both times; a choice during the read ends it and wins; a logout ends it; another account's loading is not ended by the first one's late read; a read that fails reads as the mouse and ends it; two tests count the load's two notifications |
+
+### Acceptance criteria → tests (this follow-up)
+- Given I picked a character, then it stays saved for my account, even when the app reads it slowly after a login. Tests:
+  - `'home waits for it, so 캐릭터 선택 and a bot battle start on the saved character and a pick does not overwrite it'`
+  - `'confirming saves nothing over the saved character'`
+  - `'opened while the saved character is still read, 이 캐릭터로 하기 says so and cannot be pressed; then the preview takes the saved one and the button saves'`
+- …and it is the one shown in battle. Tests:
+  - the same first test (the bot battle gets `seal`)
+  - `'a new account reads the rules meanwhile; after 시작하기 home still waits for the read'`
+- A choice made during the read still wins (the rule of 11-13). Tests: `'a choice made while reading ends the loading and wins'`, `'a slow read does not undo a choice made meanwhile'`.
+
+#### 2026-11-14 · code at commit `ae44bbb` · step W2b `feat/battle_screen_polish` (A2 polish of the battle and matching screens, team order #7)
+This step polishes W2's screens, following the W2b design spec (`W2B-SPEC.md`, from the user's design canvas) and the user's follow-ups after W2's phone check:
+- **3-B, the pose setup:** while setting up, the camera takes about 80% of the screen. The stage shows only its HUD, with a status band and two ready chips. The hint is a large one-line band and the ready button is large. When the countdown starts, the line comes down to W2's half-and-half layout in 350 ms and the fighters pop up. Going back to the setup reverses it. #49's silhouette keeps its place on the camera picture (option 가), so it grows with the picture.
+- **1-A, the radar blips:** the three blips are red laser-pointer dots that light up as the sweep passes. The online lobby uses the same radar.
+- **2-A3, MATCH FOUND:** a board with a lime cell (me) over a pink one (the opponent), each player on a white pedestal, and a "VS" disc. Since W3 (#52) is in `main`, the players are the W3 characters: my saved choice, RepBot for a bot, and online the character the server passed on, each with its own idle motion (the opponent's 230 ms later, as on the stage) and read as a picture with its name. (Built first with W2's stand-in fighter, then swapped in `ae44bbb`.)
+- **The end screen (option A, the user's choice of three drawn options):** once the result is known, the line goes down to the bottom of the screen in 450 ms and the camera area disappears. The stage stays where it is, its ground fills the screen, and 결과 보기 stays in the middle of the lower half, now without the gray cover. An online time-up keeps the camera and the leave button until the server's result comes. With reduced motion the end look comes at once.
+- **Old avatar words:** one comment in `battle_viewmodel.dart` and two test names still named the old mannequin.
+
+Judging, scores, timing, the conditions for the result screen, the server and the protocol do not change.
+
+The branch started on 2026-11-13 from W2's head `38ea06d`. On 2026-11-14 it merged `origin/main` twice:
+- `1ed57ca` (#49, #50) as `46c394e`, with no conflict;
+- `23879ca` (#51, #52) as `13d0b4d`, with conflicts in three W2b files: `battle_arena.dart`, `battle_fx_motion.dart` and `battle_arena_test.dart`. W3's idle motion and W2b's setup layout were both kept. Two W3 screen tests looked for the characters while setting up, where 3-B draws no fighter; they now check after the countdown.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `ae44bbb`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.2% (510/514) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #54, commit `4cd89bc`, [run 43492170043](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43492170043) |
+| ViewModel | flutter_test, fakes | 90% | 96.8% (1179/1218) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.3% (2259/2370) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.3% (6235/6475) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` on `4cd89bc` |
+
+- **Tests:** `flutter test` had 2362 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W2b does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W2b adds 1 test file and 1 data file, and changes 15 test files and 1 data file (the table below).
+- **The design checks:**
+  - `test/widgets/battle_w2b_golden.json` is the design's `w2b_golden.json`, byte for byte. 3-B is checked against its 39 `setupTransition` samples (the line, the camera box, the picture, what fades and pops) and 1-A against its `radar` samples.
+  - `test/widgets/battle_fx_golden.json` (W2's samples) changed in one field only: the 17 `resultButton.scrim` values were removed, because option A leaves no camera to cover behind 결과 보기. The check of that field left `battle_fx_motion_test.dart`. Every other W2 sample is unchanged and still passes.
+  - The end screen has no design samples: its progress is one pure function (`BattleFxFrame.endLayout`, `BattleArenaLayout.lineTop(progress, end:)`), tested at its start, middle and end for a knockout, a time-up decided at once or later, a player leaving, an end during the setup, and reduced motion.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `ae44bbb`: 32 changed files, all owned by W2b (with #50 in `main`, W2's and #49's files have left the diff).
+  - Server `pytest` was not run, because `server/` did not change.
+- **Coverage:** from the CI comment on PR #54 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/54#issuecomment-6862902439)), commit `4cd89bc` (2026-11-14 04:32 KST; the app and server jobs both succeeded; [run 43492170043](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43492170043)). `4cd89bc` changes only these notes on top of `ae44bbb`.
+  - App total 96.2% (10448/10859); Other 94.0% (265/282).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2362 passed, 10 skipped, 0 failed), the same as on this PC.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` (not a W2b file), as for W3. Its tests still ran and passed in `flutter test`.
+- **Shortfalls:** none; every layer and the server meet their targets.
+- **Screen readers:** widget tests check the words through the semantics tree: the large setup hint read whole, MATCH FOUND's "나, (name)" and "상대, (name), AI" and each character as a picture with its name, the radar as one picture, and 결과 보기 as a button. TalkBack on a real phone was **not** checked.
+- **Manual check (the user, on the Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17 from W2's record):**
+  - 3-B: the push-up setup passed with the body matched to the larger silhouette, and at the countdown the screen went to the 50 : 50 layout. No problems.
+  - 1-A: the radar's red dots. No problems.
+  - 2-A3: MATCH FOUND, first with W2's stand-in fighter. No problems.
+  - A second check after the merge with W3 (2026-11-14), all with no problems:
+    - MATCH FOUND with the W3 characters: my character and RepBot on their pedestals, with the white edge, the size and the idle motion;
+    - the end screen after a KO: the line goes down, the stage fills the screen, and 결과 보기 is in the same place;
+    - the end screen after a time-up: the fever wash filling the whole screen is fine too;
+    - the setup: the camera at 80% and the switch at the countdown.
+  - An online battle on two phones was not reported in this step.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/battle_fx_motion_test.dart` (updated) + `battle_w2b_golden.json` (new) + `battle_fx_golden.json` (updated) | the setup's layout and its move against the design's 39 samples; reduced motion; going back during the move or the pop; the status band fading with its words; the ready chips; the line going down after the battle: when it starts for each ending, 450 ms eased, an online time-up waiting for the server, reduced motion, the ending and the button's moment unchanged |
+| View | `test/widgets/battle_arena_test.dart` (updated) | the setup's line, camera box and picture on two phones; the countdown's move; going back; a screen opening on the round; after the battle: the line and the camera going down, the ground filling the screen, the stage in place, 결과 보기 in the lower half with no cover, the online wait, reduced motion, an end during the setup |
+| View | `test/widgets/battle_camera_area_test.dart` (updated) | the setup's large band, bar, camera switch and ready button; their fade at the countdown (no taps, not read); every setup line on one line at 1.3× and 2×; 결과 보기's tests moved out |
+| View | `test/widgets/battle_result_button_test.dart` (new) | 결과 보기: lime with an ink edge, words and arrow, read as a button, opens the result, comes up as the effect says, fits at 1.3× and 2× on 360 and 320 wide |
+| View | `test/widgets/battle_camera_view_test.dart` (updated) | the picture fills the setup's box and fits whole in the battle's; the silhouette keeps its place on the picture (option 가) and its shape |
+| View | `test/widgets/battle_stage_test.dart`, `battle_banner_test.dart` (updated) | no fighters or tags while setting up; the ready chips; the valid counts fading in; the Korean bands |
+| View | `test/screens/battle_screen_test.dart`, `online_preparation_test.dart` (updated) | the bot and online setups in the new layout, with the silhouette's place; W3's two character tests now look for the characters after the countdown (none while setting up) |
+| View | `test/screens/matching_screen_test.dart`, `online_lobby_screen_test.dart` (updated) | the blips against the design's `radar` samples, every 50 ms over two turns; their look; still with reduced motion; a stopped radar keeps its blips; the same radar in the online lobby; the lobby gives MATCH FOUND the session's two characters |
+| View | `test/screens/versus_screen_test.dart` (updated) | the board, cells, pedestals, white edges, words and pills; long names cut and read whole; online without the AI pill; the low-cell scale; the W3 characters: my saved choice against RepBot, the lobby's two online, the default for an unknown person, each read as a picture with its name; their idle motions against W3's (the opponent 230 ms later), the white copies moving with them, under the safety warning, still with reduced motion |
+| View | `test/demo/battle_demo_test.dart` (updated) | the stage demo after an ending: its buttons go with the camera, and 결과 보기 starts over |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | two test names: "swings the opponent" instead of the old mannequin |
+| Design | `test/theme/app_theme_test.dart`, `test/design_tokens_test.dart` (updated) | the setup's and the board's text styles; the new widget file in the token check |
+
+### Acceptance criteria → tests
+- 3-B: during the setup the camera takes about 80% of the screen; at the countdown the line comes down in 350 ms and the fighters pop up; going back reverses it; reduced motion jumps. Tests:
+  - `"every sample matches: the line's progress, what fades, the fighters and the number"` (the design's 39 samples)
+  - `'setting up, the camera takes the screen from 156 down, over the stage, the picture fills it, and no fighter is drawn'`
+  - `'the countdown brings the line down in 350 ms, then the fighters pop up, as the design times it'`
+  - `'back to the setup during the countdown, the fighters fade out and the line goes back up'`
+  - `"with reduced motion the countdown jumps to the battle's layout, and back"`
+- 1-A: the blips light up as the sweep passes, as the design's samples say. Tests: `'every 50 ms over two turns: the sweep and the three blips'`, `'a radar stopped when the search ends keeps its blips as they were, fading or lit'`
+- 2-A3: the board, the players and their words; reduced motion; the W3 characters. Tests:
+  - `'the board (W2b 2-A3): a lime cell over a pink one, an ink line between, a white VS disc over its middle, in one ink-edged box that takes the height between the header and the rules'`
+  - `'beside each character: "나" or "상대" on a white pill over the name in Do Hyeon 28, and "AI" on a pill for a bot; …'` (the name goes on about the sides and the cell's middle)
+  - `'with reduced motion they stand still in the idle pose and nothing keeps the screen redrawing'`
+  - `"the user's saved character stands against RepBot; online, the characters the lobby gives, the opponent's as the server sent it; each is read as a picture with its name"`
+  - `"they move by their own idle motions from the moment the board shows, the opponent's running 230 ms later, as on the stage; the pedestals and the words stay"`
+- The end screen: the camera goes once the result is known, the stage fills the screen, 결과 보기 stays in place; the ending and the way to the result do not change. Tests:
+  - `'a knockout: once the blow lands the line goes down in 450 ms, the camera with it, the ground fills the screen and the stage stays; 결과 보기 comes up in the middle of the lower half, with no dimming'`
+  - `'online, a time-up waiting for the server keeps the camera and the way out until the result comes, then the line goes down'`
+  - `'with reduced motion the camera is gone at once'`
+  - `"the ending itself, the button's moment and the setup layout do not change with it"`
+  - unchanged and passing: `'a KO plays the ring-out to 결과 보기, which opens the result in place'` (the bot battle screen)
+
+#### 2026-11-14 · code at commit `80b00d7` · step W4 `feat/home_character` (P17 the chosen character on home, team order #14)
+This step puts the account's character on home and tidies home around it, in three parts (all on 2026-11-14):
+- **Part 1 (the user's list, before the design package):**
+  - Home's menu has four rows: 01 / PLAY 게임 시작, 02 / CHARACTER 캐릭터 (new; opens 캐릭터 선택), 03 / ARCHIVE 기록보관소, 04 / SETTINGS 환경설정.
+  - 게임 시작 loses its 캐릭터 row; 환경설정 keeps its own.
+  - The logo reads GYMMOUSE (the app's new name).
+  - On 캐릭터 선택 the line under the name band moved under the floor (the user's choice of three drawn options), because 그루's ears covered it, found on the phone. The band's name keeps the design's size at any text size, and the line grows up to 1.5×.
+- **Home fit (after the phone check: home still scrolled):** `origin/main` (W2b #54, J2 #53) merged as `7be4abb` with no conflict. Home then follows the design's 76 px menu layout: the logo 40, the menu titles 44, rows of 75 (the design's gaps in token steps). The logo and the titles keep their size at any text size. Nothing scrolls at the default text size on 360 × 780 (three-button or gesture bar) or 412 × 915, the unsaved-battles note included.
+- **Part 2 (the W4 design package `W4-HOME-SPEC.md`, numbers from `w4_home_rig.json`):**
+  - In RepBot's place the character does its exercise again and again: GYM마우스 and 그루 push-ups, 곰탱이 the one-two punch, 펭뚱이 and 물렁범 squats. No stand, no name band.
+  - The whole room is one button to 캐릭터 선택, read as "캐릭터 바꾸기, 지금 캐릭터 (name)". With reduced motion it shows one rest picture.
+  - Its clock stops while a page covers home or the app is in the background, and the motion starts from 0 when home shows again or the character changes.
+  - `CharacterFigurePainter` takes a pose table, expression tags, draw patches and motion flags from outside, so W5 can add its own patches. The stage's pose-name drawing is unchanged except for 그루's inner tail fur, now on the stage and 캐릭터 선택 too (the user's answer to the spec's question 10.1).
+  - A small room shrinks the character rather than scrolling the menu (question 10.2).
+  - RepBot's widget and its test are deleted. The login page's logo reads GYMMOUSE too.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
+| ViewModel | flutter_test, fakes | 90% | same TODO | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | same TODO | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | same TODO | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` had 2606 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W4 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W4 adds 3 test files and 2 data sets, changes 10 test files and deletes `test/widgets/lobby_rep_bot_test.dart` with the widget it tested (the table below).
+- **The design checks:**
+  - `test/widgets/character_motion_golden.json` is the design's `golden` (the rest of `w4_home_rig.json` is the app's `character_motion_data.dart`; the two together equal the bundle's file). Every pose value, expression and whole-picture move of its 54 samples and 5 rest pictures is matched within its tolerance 0.01; the samples include times past one rep and parts that run late.
+  - `test/widgets/character_home_shots/` holds the design's five home shots (three-button bar, reduced motion) cut to the character's room. The app's rest picture is compared pixel by pixel both ways. The shots put the feet on a whole point (GYM마우스 at 180 for 179.52), so the test moves its render by that rounding; the app keeps the spec's exact place, which the placement tests check.
+  - The W3 shot tests (`test/widgets/character_shots/`) compare the painter without patches and still pass; a new test checks that 그루's fur is the only change on the stage, in its color, in every pose (knocked out, the body hides the whole tail).
+- **Mutation checks (by me, files restored byte for byte):** 13 deliberate faults (in 15 runs) were all caught: the easing formula, a part's delay ignored, the floor 16 → 15, effects drawn, flags ignored, the insert position, no restart on a new character or when shown again, no fur on the stage, a wrong screen-reader name, reduced motion ignored, RepBot's id not mapped to the mouse, and a least height brought back for the room.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `80b00d7`: 36 changed files, all owned by W4 or under the user's one-off exceptions (W1 / W3 files of the user, `app_theme.dart`'s home styles, the login page and its test).
+  - Server `pytest` was not run, because `server/` did not change.
+- **Shortfalls:** coverage is a TODO until the CI comment.
+- **Screen readers:** widget tests check the character button's name and role, that the drawing itself is not read, the '?' button's 게임 규칙, and the 캐릭터 row's name without the character. TalkBack on a real phone was **not** checked.
+- **Manual check (the user, on the phone, 2026-11-14):** the ears on 캐릭터 선택 were found during W2b's phone check; after part 1, home still scrolled (also on the S26+), which led to the home fit. The final build (part 2, with W2b and J2 from the merge) passed with no problems. TODO(Woohyun Song): the phone model and Android version of the final check, if not W2's record (Galaxy S26+, Android 17).
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/character_motion_test.dart` (new) + `character_motion_golden.json` (new) | the home rig's data (five characters, 17 pose keys alike in steps, timetables naming real key poses, malformed rigs rejected); the 54 golden samples and 5 rest pictures within 0.01; the easings, segments, loop wrap, late parts, expressions, hop / rock / landing; expression tags incl. W5's per-character form; the placement rule at 360 × 780 with both bars, a lower and a narrower room, no room |
+| View | `test/widgets/character_draw_patch_test.dart` (new) | every drawPatch of the five aimed at exactly one W3 shape; added shapes right after it; the flags (back glove, paddle fins) and the belly key; the five stage effects marked and not drawn (pixel-equal to the shapes removed), still drawn by pose name; W5-style patches (a fixed move written alone, a later patch at the same shape first); malformed patches; shape equality |
+| View | `test/widgets/lobby_character_test.dart` (new) + `character_home_shots/` (new) | the whole room one button with the spec's name, for every character, RepBot's and unknown ids as the mouse; its own clock and repaint boundary; reduced motion; restart from 0 on a new character, when shown again, and for a character chosen while covered; no frames when covered or in the background; the placement in any room; the design's home shots |
+| View | `test/widgets/character_figure_test.dart` (updated) | the painter's motion inputs (a table without a pose name, tags as the name, repaint on change); 그루's tail fur from `CharacterFigure` only, the only change in every stage pose |
+| View | `test/screens/home_screen_test.dart` (updated) | four menu rows and their taps; GYMMOUSE; the character between the title and the menu, the account's choice and a new choice from 0, the default without a character above home, its motion and its rest picture, its tap and its screen-reader names; the fit (shrinks, at most 1.6×, only its room changes, a tab bar, 320 × 568 at 2× scrolls with no room left, a size × text sweep); with the app's fonts: no scroll on five phones with and without the note, the design's layout numbers, each character's placement on 360 × 780 with both bars, 1.3× / 1.5× text |
+| View | `test/widgets/lobby_menu_item_test.dart`, `lobby_parts_test.dart` (updated) | the 75 high row (line, tag, title, chevron box), the title's fixed size at larger text, the page's 8 / 8 padding |
+| View | `test/screens/character_select_screen_test.dart` (updated) | the line under the floor; no picture of the five overlaps the name band or its line at any extreme of their idle motion, at 1.0 / 1.3 / 2.0× text; the band's name at 30 and the line up to 1.5× at 2× text |
+| View | `test/screens/play_screen_test.dart`, `settings_screen_test.dart`, `auth_screens_test.dart` (updated) | 게임 시작 without the 캐릭터 row; 환경설정's tag 04 / SETTINGS; the login page's GYMMOUSE |
+| App flow | `test/main_test.dart` (updated) | GYMMOUSE on home; 캐릭터 선택 opened from home's 캐릭터 row, the saved character on its preview and a pick kept |
+| Design | `test/design_tokens_test.dart` (updated) | the four new widget files in the token check; the deleted `lobby_rep_bot.dart` line removed with its file |
+
+### Acceptance criteria → tests
+- I chose a character, then home shows it; after I change it, home shows the new one. Tests: `"the account's character stands there, and a new choice shows at once, from the start of its motion"`, `'a character chosen while a page covers home starts from 0 when home shows again (환경설정 -> 캐릭터 -> back)'`
+- Its poses, expression and whole-picture move match the design within 0.01. Tests: `'$id at ${t.toInt()} ms: pose, expression and whole move'` (54 samples), `'$id still: the rest picture with less motion'`
+- Every drawPatch target is found and the five stage effects are not drawn. Tests: `'$id: every patch is aimed at exactly one W3 shape'`, `'each effect rule finds its W3 shapes, and only W3 ones'`, `'$id with $tags draws as if the effect shapes were not there'`
+- On 360 × 780 with a three-button and a gesture bar, each character's scale and feet are the design's. Tests: `'360×780 with the $bar bar: $id at the scale and feet of its placement'`, `'on 360×780 with the $bar bar every character stands at its placement'`
+- Tapping the character opens 캐릭터 선택, with the spec's name; reduced motion does not move. Tests: `'tapping the character opens 캐릭터 선택; back returns home (W4 spec 6)'`, `'the whole room is one button that opens 캐릭터 선택, named for the character (W4 spec 6)'`, `'with less motion it shows the rest picture and stays still'`
+- Home fits without scrolling (part 1's tests, kept). Tests: `'a $label phone shows it all without scrolling'` (five phones, with and without the note)
+- Part 1: four menu rows, 캐릭터 opens 캐릭터 선택, 게임 시작 has no 캐릭터 row, the logo reads GYMMOUSE, no character covers the band or its line. Tests: `'the menu: 게임 시작, 캐릭터, 기록보관소, 환경설정, all alike'`, `'캐릭터 opens 캐릭터 선택; back returns home'`, `"no 캐릭터 row: the character is picked from home's menu"`, `'for all five, at every extreme of their idle motion (rig …'`

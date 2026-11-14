@@ -131,7 +131,11 @@ class ResultReport extends StatelessWidget {
       ],
       fill: const SizedBox.shrink(),
       fillMinHeight: AppSpacing.s16,
-      below: [ResultButtons(onGoHome: onGoHome, onRematch: onRematch)],
+      below: [
+        ResultButtons(onGoHome: onGoHome, onRematch: onRematch),
+        // The frame pads home's 8 below; the report keeps the design's 24.
+        const SizedBox(height: AppSpacing.s16),
+      ],
     );
   }
 }

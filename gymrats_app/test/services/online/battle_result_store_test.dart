@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymrats_app/models/avatar_model.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 
 // The standalone battle server is exercised through real loopback sockets.
@@ -275,7 +274,7 @@ void main() {
         final session = OnlineBattleSession(
           endpoint: Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle'),
           accessToken: 'alpha',
-          avatar: AvatarModel.astronaut,
+          character: 'mouse',
           allowInsecureLoopback: true,
         );
         addTearDown(session.dispose);
@@ -341,7 +340,7 @@ void main() {
       final session = OnlineBattleSession(
         endpoint: Uri.parse('ws://127.0.0.1:${fake.port}/ws/v1/battle'),
         accessToken: 'alpha',
-        avatar: AvatarModel.astronaut,
+        character: 'mouse',
         allowInsecureLoopback: true,
       );
       addTearDown(session.dispose);

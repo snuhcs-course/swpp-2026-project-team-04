@@ -1,34 +1,37 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/config/server_config.dart';
-import 'package:gymrats_app/models/avatar_model.dart';
+import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/screens/online_lobby_screen.dart';
 import 'package:gymrats_app/screens/login_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
-import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
+import 'package:gymrats_app/widgets/battle_arena.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
-import 'package:gymrats_app/services/user/avatar_store.dart';
+import 'package:gymrats_app/services/pose/setup_checker.dart';
+import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:provider/provider.dart';
 
 // The battle server's own default ready limit, read from the sibling server.
 // ignore: avoid_relative_lib_imports
 import '../../../server/lib/battle_server.dart';
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
+import '../widgets/battle_test_support.dart';
 
 class _Session extends OnlineBattleSession {
-  _Session(Uri endpoint, String token, AvatarModel avatar)
-    : super(endpoint: endpoint, accessToken: token, avatar: avatar);
+  _Session(Uri endpoint, String token, String character)
+    : super(endpoint: endpoint, accessToken: token, character: character);
   bool wasDisposed = false, left = false;
   @override
   Future<void> connect() async {
@@ -39,7 +42,7 @@ class _Session extends OnlineBattleSession {
   }
 
   void found({int duration = 60000}) {
-    opponent = const OnlinePlayer('other', '실제상대', AvatarModel.robot);
+    opponent = const OnlinePlayer('other', '실제상대', 'seal');
     durationMs = duration;
     phase = OnlinePhase.preparing;
     notifyListeners();
@@ -68,19 +71,32 @@ class _Session extends OnlineBattleSession {
   }
 }
 
-class _SlowAvatarStore extends MemoryAvatarStore {
-  final gate = Completer<AvatarModel>();
+/// A session whose connection fails, as with no internet.
+class _FailingSession extends _Session {
+  _FailingSession(super.endpoint, super.token, super.character);
+
   @override
-  Future<AvatarModel> read(int id) => gate.future;
+  Future<void> connect() async {
+    error = '서버에 연결하지 못했어요.';
+    phase = OnlinePhase.failed;
+    notifyListeners();
+  }
 }
 
-class _ReadFailureStore extends MemoryAvatarStore {
-  bool fail = true;
-  @override
-  Future<AvatarModel> read(int id) async {
-    if (fail) throw StateError('test read failure');
-    return AvatarModel.humanoid;
-  }
+/// Lets a page transition finish. Once the battle is open its stage keeps
+/// moving (the fighters breathe), so `pumpAndSettle` would never return.
+Future<void> settle(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 1));
+}
+
+/// Turns on the system's reduced motion for one test. The match-found
+/// screen's characters then stand still instead of moving, so
+/// `pumpAndSettle` can settle while that screen shows.
+void holdStill(WidgetTester tester) {
+  tester.platformDispatcher.accessibilityFeaturesTestValue =
+      const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
 }
 
 Future<InMemoryAuthRepository> loggedIn() async {
@@ -95,6 +111,7 @@ void main() {
     testWidgets('leaving $phase closes both battle and lobby to home', (
       tester,
     ) async {
+      holdStill(tester);
       final auth = await loggedIn();
       late _Session session;
       final camera = FakeCameraService();
@@ -136,17 +153,24 @@ void main() {
       await tester.tap(find.text('확인 (5)'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('자세 세팅 시작'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       session.phase = phase;
       session.notifyListeners();
-      await tester.pumpAndSettle();
+      await settle(tester);
       await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.byType(ExitDialog), findsOneWidget);
       // Cancelling the dialog must preserve the ongoing match.
       await tester.tap(find.text('계속하기'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.byType(OnlineBattleScreen), findsOneWidget);
+      // The stage and the result name the user as their account does.
+      expect(
+        tester
+            .widget<OnlineBattleScreen>(find.byType(OnlineBattleScreen))
+            .playerName,
+        '로그인사용자',
+      );
       // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
       // The battle gets the repository its feedback is uploaded to.
       expect(
@@ -157,9 +181,9 @@ void main() {
       );
       expect(session.left, isFalse);
       await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
+      await settle(tester);
       await tester.tap(find.widgetWithText(TextButton, '게임 나가기'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.text('홈 · 온라인 대결'), findsOneWidget);
       expect(find.byType(OnlineBattleScreen), findsNothing);
       expect(find.byType(OnlineLobbyScreen), findsNothing);
@@ -171,63 +195,163 @@ void main() {
     });
   }
 
+  testWidgets('a finished battle hands over to the result: the lobby closes '
+      'under it and the result stays; back from it goes home', (tester) async {
+    final auth = await loggedIn();
+    late _Session session;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OnlineLobbyScreen(
+                    auth: auth,
+                    createSession: (u, t, a) => session = _Session(u, t, a),
+                    createCounter: () => RepCounterViewModel(
+                      camera: FakeCameraService(),
+                      estimator: FakePoseEstimator(),
+                      roundLength: const Duration(days: 1),
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('홈 · 온라인 대결'),
+            ),
+          ),
+        ),
+        onGenerateRoute: (settings) => settings.name == GymRatsApp.resultRoute
+            ? MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) => const Scaffold(body: Text('결과 화면')),
+              )
+            : null,
+      ),
+    );
+    await tester.tap(find.text('홈 · 온라인 대결'));
+    await settle(tester);
+    session.found(duration: 30000);
+    await settle(tester);
+    await tester.tap(find.text('확인 (5)'));
+    await settle(tester);
+    await tester.tap(find.text('자세 세팅 시작'));
+    await settle(tester);
+    session
+      ..startAtMs = session.serverNow - 1000
+      ..endAtMs = session.serverNow + 29000
+      ..phase = OnlinePhase.playing
+      ..notifyListeners();
+    await settle(tester);
+    session
+      ..phase = OnlinePhase.finished
+      ..result = {
+        'reason': 'time_up',
+        'players': [
+          {'player_id': 'me', 'outcome': 'win'},
+          {'player_id': 'other', 'outcome': 'loss'},
+        ],
+      }
+      ..notifyListeners();
+    await tester.pump();
+    for (var i = 0; i < 25; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    await tester.tap(find.text('결과 보기'));
+    await settle(tester);
+    expect(find.text('결과 화면'), findsOneWidget);
+    expect(find.byType(OnlineBattleScreen), findsNothing);
+    expect(find.byType(OnlineLobbyScreen), findsNothing);
+    expect(session.wasDisposed, isTrue);
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(find.text('홈 · 온라인 대결'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'avatar read error requires retry; never silently queues the wrong avatar',
+    'a failed search shows its error as ink on an amber band; 온라인 상대 찾기 '
+    'tries again with my character',
     (tester) async {
       final auth = await loggedIn();
-      final avatars = _ReadFailureStore();
-      _Session? created;
+      var fail = true;
+      final created = <_Session>[];
       await tester.pumpWidget(
         MaterialApp(
           home: OnlineLobbyScreen(
             auth: auth,
-            avatarStore: avatars,
-            createSession: (u, t, a) => created = _Session(u, t, a),
+            myCharacter: 'penguin',
+            createSession: (u, t, c) {
+              final session = fail
+                  ? _FailingSession(u, t, c)
+                  : _Session(u, t, c);
+              created.add(session);
+              return session;
+            },
           ),
         ),
       );
       await tester.pumpAndSettle();
-      expect(created, isNull);
-      expect(find.text('프로필 아바타를 불러오지 못했어요. 다시 시도해주세요.'), findsOneWidget);
-      avatars.fail = false;
-      await tester.tap(find.text('다시 시도'));
+      const error = '서버에 연결하지 못했어요.';
+      expect(find.text(error), findsOneWidget);
+      // Palette B on this plain page too: ink words, the amber as a band
+      // behind them, the title ink (not lime) on the light ground.
+      expect(tester.widget<Text>(find.text(error)).style!.color, AppColors.ink);
+      final band = tester.widget<DecoratedBox>(
+        find
+            .ancestor(of: find.text(error), matching: find.byType(DecoratedBox))
+            .first,
+      );
+      expect((band.decoration as BoxDecoration).color, AppColors.warning);
+      expect(
+        tester.widget<Text>(find.text('LIVE BATTLE')).style!.color,
+        AppColors.ink,
+      );
+      expect(find.text('캐릭터 · 펭뚱이'), findsOneWidget);
+      fail = false;
+      await tester.tap(find.text('온라인 상대 찾기'));
       await tester.pump();
-      expect(created!.avatar, AvatarModel.humanoid);
+      expect(created, hasLength(2));
+      expect(created.last.character, 'penguin');
+      expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
     },
   );
 
   testWidgets(
-    'expired login while avatar loads cannot create a stale matchmaking session',
+    'searches from the first frame: no plain page shows before the radar',
     (tester) async {
       final auth = await loggedIn();
-      final avatars = _SlowAvatarStore();
-      var created = 0;
+      _Session? created;
       await tester.pumpWidget(
         MaterialApp(
           home: OnlineLobbyScreen(
             auth: auth,
-            avatarStore: avatars,
-            createSession: (u, t, a) {
-              created++;
-              return _Session(u, t, a);
-            },
+            createSession: (u, t, c) => created = _Session(u, t, c),
           ),
         ),
       );
-      await auth.expireSession();
+      expect(created, isNotNull);
+      expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
+      expect(find.text('LIVE BATTLE'), findsNothing);
+      // It connects at once, and later news of the session still reaches
+      // the lobby.
+      expect(created!.connected, isTrue);
+      created!.found();
       await tester.pump();
-      avatars.gate.complete(AvatarModel.robot);
-      await tester.pumpAndSettle();
-      expect(created, 0);
-      expect(find.text('로그인이 필요해요.'), findsOneWidget);
+      expect(find.text('실제상대'), findsWidgets);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
     },
   );
 
   testWidgets(
     'live flow uses AI radar then real-player VS before camera setup',
     (tester) async {
+      holdStill(tester);
       await prepareFlowSnapshotFonts(tester);
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1;
@@ -256,15 +380,45 @@ void main() {
       await tester.pump();
       expect(find.byType(BattleSearchView), findsOneWidget);
       expect(find.byType(BattleSearchRadar), findsOneWidget);
+      // The bot search's red blips here too (W2b 1-A): with reduced motion
+      // all three stay lit.
+      final radar = tester
+          .widget<CustomPaint>(
+            find
+                .descendant(
+                  of: find.byType(BattleSearchRadar),
+                  matching: find.byType(CustomPaint),
+                )
+                .first,
+          )
+          .painter!;
+      final blips = paintedOps(
+        radar,
+        const Size(288, 288),
+      ).where((op) => op.contains(', 3.600, fill #FFFF3B30)')).toList();
+      expect(blips, [
+        'drawCircle((55.500, 199.300), 3.600, fill #FFFF3B30)',
+        'drawCircle((220.800, 67.200), 3.600, fill #FFFF3B30)',
+        'drawCircle((241.600, 217.600), 3.600, fill #FFFF3B30)',
+      ]);
       expect(find.byType(GridBackground), findsOneWidget);
       expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
       expect(find.text('기다리는 동안 자리를 준비해 두세요'), findsOneWidget);
-      expect(find.text('휴대폰을 머리 앞 약 1m 바닥에 세워 화면이 나를 보게 두세요.'), findsOneWidget);
+      expect(
+        find.text('휴대폰을 머리 앞 약 1m 바닥에 세워\n화면이 나를 보게 두세요.'),
+        findsOneWidget,
+      );
       expect(camera.startCount, 0);
       await captureFlowSnapshot('online-search');
       session.found(duration: 30000);
       await tester.pump();
       expect(find.byType(VersusScreen), findsOneWidget);
+      // The characters as the battle will draw them: mine as sent (the
+      // default here), the opponent's as the server passed it on.
+      expect(
+        tester.widget<VersusScreen>(find.byType(VersusScreen)).characters,
+        const BattleCharacters(me: 'mouse', opponent: 'seal'),
+      );
       expect(find.text('MATCH FOUND'), findsOneWidget);
       expect(find.text('VS'), findsOneWidget);
       expect(find.text('실제상대'), findsOneWidget);
@@ -294,11 +448,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SafeWarningDialog), findsNothing);
       await tester.tap(find.text('자세 세팅 시작'));
-      await tester.pumpAndSettle();
+      await settle(tester);
       expect(find.byType(OnlineBattleScreen), findsOneWidget);
-      expect(find.byType(PoseSetupPanel), findsOneWidget);
-      expect(find.byType(PoseSetupTopButtons), findsOneWidget);
-      expect(find.text('실제상대 · 자세 세팅 중'), findsOneWidget);
+      // The setup is on the battle's stage: both still setting up.
+      expect(find.byType(BattleArena), findsOneWidget);
+      expect(find.text('실제상대'), findsOneWidget);
+      expect(find.text('세팅 중'), findsNWidgets(2));
+      expect(find.text('준비'), findsOneWidget);
       expect(camera.startCount, 1);
       session.ready(true);
       await tester.pump();
@@ -311,6 +467,102 @@ void main() {
       await tester.pump();
     },
   );
+
+  testWidgets("with 환경설정's '매 경기 안전 안내' off and the notice seen "
+      'once, the match goes straight to the setup button', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final auth = await loggedIn();
+    final settings = SettingsViewModel()
+      ..setSafetyNoticeEveryMatch(false)
+      ..markSafetyNoticeSeen();
+    addTearDown(settings.dispose);
+    late _Session session;
+    await tester.pumpWidget(
+      // Above the app, as main.dart has it.
+      ChangeNotifierProvider<SettingsViewModel>.value(
+        value: settings,
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: OnlineLobbyScreen(
+            autoJoin: false,
+            auth: auth,
+            createSession: (u, t, a) => session = _Session(u, t, a),
+            createCounter: () => RepCounterViewModel(
+              camera: FakeCameraService(),
+              estimator: FakePoseEstimator(),
+              roundLength: const Duration(days: 1),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('온라인 상대 찾기'));
+    await tester.tap(find.text('온라인 상대 찾기'));
+    await tester.pump();
+    session.found(duration: 30000);
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('MATCH FOUND'), findsOneWidget);
+    expect(find.byType(SafeWarningDialog), findsNothing);
+    // No 5 s wait for the warning to close itself.
+    await tester.tap(find.text('자세 세팅 시작'));
+    await settle(tester);
+    expect(find.byType(OnlineBattleScreen), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets('the sound hooks given to the lobby reach the battle it '
+      'opens', (tester) async {
+    holdStill(tester);
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final auth = await loggedIn();
+    void onCue(BattleStageCue cue) {}
+    void onSetup(SetupStatus status, Duration? startIn) {}
+    late _Session session;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: OnlineLobbyScreen(
+          autoJoin: false,
+          auth: auth,
+          createSession: (u, t, a) => session = _Session(u, t, a),
+          createCounter: () => RepCounterViewModel(
+            camera: FakeCameraService(),
+            estimator: FakePoseEstimator(),
+            roundLength: const Duration(days: 1),
+          ),
+          onCue: onCue,
+          onSetup: onSetup,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('온라인 상대 찾기'));
+    await tester.tap(find.text('온라인 상대 찾기'));
+    await tester.pump();
+    session.found(duration: 30000);
+    await tester.pump();
+    // The safety warning opens, then closes by itself after 5 s.
+    await tester.pump();
+    expect(find.byType(SafeWarningDialog), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('자세 세팅 시작'));
+    await settle(tester);
+    final battle = tester.widget<OnlineBattleScreen>(
+      find.byType(OnlineBattleScreen),
+    );
+    expect(battle.onCue, onCue);
+    expect(battle.onSetup, onSetup);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
 
   testWidgets('searching for a squat says where the phone goes for a squat', (
     tester,
@@ -375,6 +627,7 @@ void main() {
 
   testWidgets('a match cancelled while the safety warning is open closes it '
       'with the versus screen', (tester) async {
+    holdStill(tester);
     final auth = await loggedIn();
     late _Session session;
     await tester.pumpWidget(
@@ -410,6 +663,7 @@ void main() {
     'a match found while the cancel dialog is open shows the safety warning '
     'only after 계속하기',
     (tester) async {
+      holdStill(tester);
       final auth = await loggedIn();
       late _Session session;
       await tester.pumpWidget(
@@ -455,8 +709,8 @@ void main() {
           home: OnlineLobbyScreen(
             autoJoin: false,
             auth: auth,
-            createSession: (url, token, avatar) =>
-                created = _Session(url, token, avatar),
+            createSession: (url, token, character) =>
+                created = _Session(url, token, character),
           ),
         ),
       );
@@ -468,7 +722,7 @@ void main() {
       await tester.pump();
       expect(created!.endpoint.toString(), gymratsBattleUrl);
       expect(created!.accessToken, auth.session!.token);
-      expect(created!.avatar, AvatarModel.astronaut);
+      expect(created!.character, 'mouse', reason: 'the default');
       await tester.tap(find.text('매칭 취소'));
       await tester.pump();
       expect(created!.left, isTrue);
@@ -508,7 +762,7 @@ void main() {
           home: OnlineLobbyScreen(
             autoJoin: false,
             auth: auth,
-            createSession: (u, t, a) => created = _Session(u, t, a),
+            createSession: (u, t, c) => created = _Session(u, t, c),
           ),
         ),
       );
@@ -570,36 +824,29 @@ void main() {
     },
   );
 
-  testWidgets(
-    'entering online auto-matches with the stored profile avatar; no picker',
-    (tester) async {
-      final auth = await loggedIn();
-      final avatars = MemoryAvatarStore();
-      await avatars.write(auth.session!.account.id, AvatarModel.robot);
-      _Session? created;
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: OnlineLobbyScreen(
-            auth: auth,
-            avatarStore: avatars,
-            createSession: (u, t, a) => created = _Session(u, t, a),
-          ),
+  testWidgets('entering online auto-matches with my character; no picker', (
+    tester,
+  ) async {
+    final auth = await loggedIn();
+    _Session? created;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: OnlineLobbyScreen(
+          auth: auth,
+          myCharacter: 'seal',
+          createSession: (u, t, c) => created = _Session(u, t, c),
         ),
-      );
-      await tester.pump();
-      expect(created, isNotNull);
-      expect(created!.avatar, AvatarModel.robot);
-      expect(created!.accessToken, auth.session!.token);
-      expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
-      expect(find.byType(DropdownButtonFormField<AvatarModel>), findsNothing);
-      expect(find.text('이번 경기의 아바타'), findsNothing);
-      // Profile changes never mutate an already queued match's frozen avatar.
-      await avatars.write(auth.session!.account.id, AvatarModel.humanoid);
-      await tester.pump();
-      expect(created!.avatar, AvatarModel.robot);
-      await tester.pumpWidget(const SizedBox());
-      await tester.pump();
-    },
-  );
+      ),
+    );
+    await tester.pump();
+    expect(created, isNotNull);
+    expect(created!.character, 'seal');
+    expect(created!.accessToken, auth.session!.token);
+    expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+    expect(find.text('이번 경기의 아바타'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
 }

@@ -135,3 +135,328 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - Test the longest valid input at the largest text size on every screen that shows it, not only on the screen the feature started on.
 - When a fix is tested only at the extreme, also test that the normal case is unchanged.
+
+## W2 `feat/battle_screen_revamp` – battle screen revamp (P8, team order #5), 2026-11-09 ~ 2026-11-13
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W2's code and tests, in 24 local commits on `feat/battle_screen_revamp`, from `199e606` (11-11) to `6a8efba` (11-13).
+  - Size at `6a8efba` (without #49's files): 40 `lib/` files changed (14 new, 6 deleted), +7390 / −2094 lines. The test side is +33594 lines, most of them the two data files below.
+  - The main new files:
+    - `lib/widgets/battle_fx_motion.dart` (L1–1462): the stage's effect math, a port of the design prototype's script;
+    - `battle_stage.dart`: one frame of the stage;
+    - `battle_arena.dart`: the stage and the camera, one clock, cues and announcements;
+    - `battle_camera_area.dart` and `battle_camera_view.dart`: the lower half;
+    - `battle_fighter.dart`, `battle_reject_sign.dart`, `battle_banner.dart`, `battle_stage_hud.dart`: the drawings;
+    - `battle_stage_events.dart` and `battle_online_events.dart`: the bot's and the online state turned into stage events;
+    - `lib/services/game/online_battle_result.dart`: the result of an online battle.
+  - Rewritten: `lib/screens/battle_screen.dart` (L1–399) and `online_battle_screen.dart` (L1–606), both on the stage from the setup on; `battle_viewmodel.dart` (the setup phase, the round's own clock).
+  - Restyled: `matching_screen.dart`, `versus_screen.dart` and `safe_warning_dialog.dart`. The safety picture is now `SafeWarningPicturePainter`, drawn from the design's SVG.
+  - Changed under approved exceptions: `settings_store.dart`, `settings_viewmodel.dart` and `settings_screen.dart` for the safety switch, and `setup_checker.dart` for the setup words in Korean.
+- **The design came from the user.** The stage is candidate A "링아웃 무대", spec v2.2, from the user's Claude Design canvas: `W2-FX-SPEC.md`, the prototype `FxA.dc.html`, and the drawings `FxFighter`/`FxIcon`. Claude Code ported it number by number.
+  - It checked the port against the prototype's own samples: `test/widgets/battle_fx_golden.json`, 18 scenarios with 248 samples, compared in `battle_fx_motion_test.dart`.
+  - It pinned every drawing call by call in `test/widgets/battle_art_drawings.json`.
+- **Review:** the `reviewer` subagent reviewed W2 in 20 numbered runs (11–30 in `progress.md` "Review log"); six of them (11, 12, 13, 16, 17, 18) had a re-review, so about 26 verdicts in all.
+  - Ten of these returned CHANGES_REQUESTED (item d).
+  - Each step was committed only after an APPROVE.
+  - In most runs the reviewer also planted its own mutants and reran the suite.
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - Every design choice was the user's: the candidate, every spec answer (e.g. "the scope is not cut", grade words during the battle, text size rules), the ready words "시작"/"준비", the safety switch's rule, and "three or more missing parts read the whole-body line".
+  - The team agreements were made by people. The bot setup moved to the battle screen (question 9) with 한상우's agreement and 현우's approval. #49's widget was reused with 한상우's agreement. The exceptions were approved by PM 송현우, or done first and reported (listed in the PR).
+  - The phone checks were done by the user, last on 11-13 on a Galaxy S26+ ("폰 확인을 마쳤고 대결은 문제 없어."): real bot battles and the new safety picture. The online battle on two phones and the stage demo were not checked (the testing notes' manual check).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-11 20:42] (the restart on the settled design, pasted; excerpt) "새 세션이야. W2(feat/battle_screen_revamp, 대결 화면 개편)를 이어서 할 거야. 대결 화면 디자인은 Claude Design에서 시안 A \"링아웃 무대\"로 확정했고, 원본은 .claude/design/w2-fx/ 에 있어(v2)."
+- [Woohyun Song, 11-12 11:05] (question 9, pasted; excerpt) "- 9번(progress.md의 Q9): 봇 대결도 대결 화면이 대결 전 단계부터 맡는다. 같은 무대·카메라 배치에서 자세 세팅 → 3·2·1 → GO!까지 진행하고, 봇 흐름은 setup_screen을 거치지 않는다. 상우가 동의했다."
+- [Woohyun Song, 11-12 14:57] (the third session, pasted; excerpt) "2. 실루엣 위아래에 어두워지지 않는 띠(S22에서 약 37px)가 남지 않게, 그 띠도 #49 실루엣 바깥과 같은 어둡기로 덮어. 상우 파일은 고치지 말고 W2 쪽에서 해."
+- [Woohyun Song, 11-12 17:27] (after a phone look, pasted; excerpt) "폰에서 보니 안전 안내 창의 그림(사람 모양)이 밝은 배경에 묻혀서 거의 안 보여. 지금 그림이 예전 어두운 테마용 PNG(assets/images/safe_warning.png, 흰 선)라서 그래. PR 전에 W2에서 고치자."
+
+### c. What AI did well
+- **A port that can be checked.** The effect math is pure Dart beside the widgets, compared with the prototype's own samples. Design v2.1 and v2.2 arrived in the middle of the step, and each change landed as a list of number differences the golden check confirmed. No number was tuned by eye.
+- **Planted errors ("mutants") in every step.** Before each commit the agent changed single numbers or lines in its new code and reran the tests, and the reviewer planted its own. Where a mutant survived, a test was added:
+  - step 6: 33 of 34 killed (23 of the agent's own and 11 of the reviewer's); the one left is on a line that step did not change (the avatar ring width);
+  - step 4: the reviewer's 51 mutants in run 20, 36 killed and 6 equivalent; the rest became tests;
+  - the third session's 가: 1 of 8 survived (the silhouette while the camera was not running) and got a test;
+  - 나: 5 of 5 killed with no new test;
+  - 다: 2 of 9 survived; one fix to the test store killed both (item d);
+  - the user's answers 2–4: 11 of 11 killed.
+- **Pixel tests that found visual bugs before the phone did:**
+  - (1) **The dimmed strips:** a plain fill next to #49's silhouette left a lighter line (0.69 against 0.55). The agent measured why: #49's painter both clips and fills its box anti-aliased, so its edge pixel gets the coverage squared. It drew the strips in the guide's own layer with `BlendMode.src`, 1 pt into the box, short of the outline; the white line ends 2 pt away (measured).
+  - (2) **A hint cut at large text:** a test lays every setup hint at 1.3× on a 360-wide phone. It found that the online reconnect hint, a pre-W2 line, was cut beside "준비 취소".
+- **A clock bug found by a test (step 4):** right after GO!, the counter still showed its old time for one frame, so the view model read 26 s instead of 30. The fix and its test are in `battle_viewmodel.dart` (`_endRoundOnTime` and the watchdog).
+- **Ownership kept:** in the second session the agent stopped before `settings_store.dart` (not W2's) and listed the exact lines it would change. The user's answer came with the exception scheme.
+
+### d. Hallucinations / errors
+- **Review findings (10 CHANGES_REQUESTED runs), for example:**
+  - Run 11 (the effect math): the golden check could not see a tag present on one side only, a countdown could not be cancelled, and rules the samples do not reach had no test.
+  - Run 12 (the drawings): 30 of 49 planted mutants survived. Every drawing was then pinned call by call.
+  - Run 13 (the stage): at rest the opponent was drawn over the user's fighter. The design draws the user on top, and the agent's own comparison with the shot had missed it. The stage clock also restarted, so an ending replayed. 20 of 104 mutants survived.
+  - Run 17 (online): two old behaviours were dropped without a reason.
+  - Run 19 (the bot setup): a demo test that could fail by chance, and the app's wiring untested.
+  - Run 28 (the safety picture): on a 360-dp phone the dialog gives the picture 232 × 150. The painter scaled each axis on its own, so the head became an ellipse. A test at 412 wide could not see it.
+  - Cost: one fix round each, from about ten minutes to an hour.
+  - The final review of the whole diff (run 30, 11-13) returned APPROVE with 3 Minor findings: two comments were out of date (one named the removed TIME UP overlay, the other the "setup screens"); no screen-level test showed the combo mark (a test was added through the bot battle screen); and the PR's first line had to name #49 (the order #49 → W2 is newer than `team-plan.md`).
+- **A wrong theory (11-12):** the agent first expected `BlendMode.plus` to remove the lighter seam, assuming the two coverages add. The pixel test still read 0.66. The cause was #49's double anti-aliasing (item c). Cost: one extra try.
+- **Claims about tests that were too strong (11-12):**
+  - A note said a pixel test catches the squeezed head. It does, but only by one anti-aliased pixel; the scale tests are what catch it (run 29).
+  - A test store read its values after the wait. The test 'the switch turned or the notice seen while loading keep the user's' therefore always passed, until a mutant showed it.
+- **Replies in the wrong language again:** on 11-12 the agent wrote a whole long report in English, and the user asked again: "그리고 응답을 한국어로 하도록 해." Cost: none in the code. The memory note on this was made stricter.
+- **Tooling:**
+  - Shell heredocs failed several times on this Windows PC.
+  - A script written through the shell lost its Korean text encoding.
+  - A probe test was blocked once by the ownership guard (wrong file name).
+  - Each was redone with the file tools. No impact on the code.
+
+### e. Prompt revisions
+- **Missing body parts:**
+  - Before (11-12 14:57): "missingParts: 안 보이는 부위를 이름으로 말해야 해(UAT-1 AC1, 절차 2·5단계). … 여러 개면 \"손, 발목이 화면에 안 보여요.\"처럼 마지막 부위에 맞춰 이/가를 붙여."
+  - After (11-12 16:31, after the report): "3. 안 보이는 부위가 3곳 이상이면 부위를 나열하지 말고 \"몸 전체가 화면에 보이게 해 주세요.\"(J1 음성과 같은 문장)로 말하게 해. 1~2곳이면 지금처럼 이름으로 말해. … 1.3배 글자 크기와 폭 360에서 잘리지 않는지 테스트로 확인해."
+  - Why it worked: the first prompt said how to list the parts but not how much room the hint has. The reviewer measured the five-part squat line cut at 1.3×. The second prompt set a limit and asked for a fit test, which also caught a second cut line.
+- **Files outside the step:**
+  - Before (11-12 11:57): "저장 때문에 화면·뷰모델 말고 다른 파일(예: settings_store.dart)을 고쳐야 하면 멈추고 어느 줄인지 알려 줘."
+  - After (11-12 14:57): "예외 처리 방식: 아래 가·나·다에서 남의 파일을 고쳐야 하면 먼저 처리하고, 현우·상우에게는 내가 나중에 보고한다."
+  - Why it worked: the stop rule made the agent name the exact lines, so the user could approve a clear scope at once. Each exception line now records its reason and who is told.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W2 was edited by hand, so W2 has no manual-fix markers.
+- The user's corrections came as prompts and phone checks. Examples: the ready words, the three-parts rule, and the safety picture after the phone check.
+
+### Takeaway
+- Comparing a port with the design's own samples, and planting errors in the new code, caught more than reading the code did.
+- Test each picture at the narrowest real phone width (360 dp), not only at 412.
+
+## W3 `feat/characters` – characters replace the avatars (P14, team order #11), 2026-11-13 ~ 2026-11-14
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W3's code and tests. They are five local commits on `feat/characters`, all on 11-13, from `7b190db` (09:11) to `dded304` (11:26). On 11-14 it merged `origin/main` into the branch as `47afaff`.
+  - Size: 30 `lib/` files changed (8 new, 6 deleted), +2842 / −2062 lines. 68 test files and fixtures, +3406 / −1085. `assets/avatar/` (16 MB) was removed.
+  - The new files:
+    - `lib/models/character_rig.dart` (L1–542): the rig model and its parser;
+    - `character_rig_data.dart` (L1–800): the rig as Dart data;
+    - `character_idle_motion.dart` (L1–101): the idle motions;
+    - `lib/widgets/character_figure.dart` (L1–353): one painter for all six characters, `CharacterIdleFigure` and `BattleCharacters`;
+    - `lib/screens/character_select_screen.dart` (L1–374), `lib/services/user/character_store.dart` (L1–60), `lib/viewmodels/character_viewmodel.dart` (L1–80) and `character_select_viewmodel.dart` (L1–72).
+  - Changed:
+    - W2's stage: `BattleFxCast` in `battle_fx_motion.dart`, `battle_stage.dart`, `battle_arena.dart`;
+    - the online side: `online_battle_session.dart`, `lib/shared/battle_protocol.dart`, `server/lib/battle_server.dart` and `docs/iteration-2-protocol.md`;
+    - `main.dart`, and the 게임 시작 and 환경설정 rows.
+- **The design came from the user.** The user's Claude Design canvas gave `W3-CHARACTER-SPEC.md` v1.1, the rig `w3_rig.json` (`w3-rig-2`), `render_ref.py`, `hit_contact.json`, `idle_golden.json`, the shots and `ChSelectB.dc.html`.
+  - Claude Code ported the rig.
+  - It checked the painter against 36 of the 60 design shots, pixel by pixel, and the idle motions against `idle_golden.json`.
+- **A report before any code:** as the user asked, the agent first listed the files and their owners. It proposed how a new app gets past the old deployed server, and wrote the deploy order, what to keep of the old avatar, and the build steps. Then it waited for the user's answers.
+- **Review:** the `reviewer` subagent reviewed each step (runs 1–5 in `progress.md` "Review log"). Runs 1, 3, 4 and 5 had a re-review or re-check. Three runs returned CHANGES_REQUESTED first (item d). Each step was committed only after an APPROVE. After the merge, a sixth run reviewed the whole diff and returned APPROVE with five Minor findings (item d).
+- **Course notes:** Claude Code drafted these notes, the testing notes and the PR body.
+- **The Codex review of PR #52** left one P2 comment, a real race (item d). Claude Code reproduced it with tests, fixed it in `1f7e6f5` after the user chose the approach, and replied to the comment.
+- **Not done by AI:**
+  - The characters and the selection screen were designed by the user.
+  - The fix of the Codex finding: the user chose "home waits" from the two options the agent gave.
+  - Every decision was the user's:
+    - reuse `avatar_id` (Option A);
+    - storage per account;
+    - only the settings row renamed;
+    - the radar and VS circles kept;
+    - `fakes.dart` untouched;
+    - RepBot the same at every AI level;
+    - no server deploy.
+  - The messages to 현우, 박진영 and 한상우 are drafts; the user sends them.
+  - The phone check was the user's (the testing notes' manual check): picking a character, and the chosen character (물렁범) idling, hit and knocked out in a bot battle.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-13 03:25] (the first start, stopped seconds after it was sent; excerpt) "온라인 상대의 캐릭터(명세 8절·12절을 바꿈): 서버와 프로토콜은 고치지 않는다. 온라인 세션이 지금 주고받는 avatar_id(서버가 battleAvatarIds 목록으로 검사함)를 그대로 쓰고, 고를 수 있는 캐릭터 다섯(mouse, kangaroo, bear, penguin, seal)을 그 목록에 이미 있는 id 다섯에 짝지어 보내고 받는다."
+- [Woohyun Song, 11-13 03:28] (the restart in a new session, pasted; excerpt) "(c) 새 앱이 지금 배포된 옛 서버에 새 필드를 보내면 거절당한다. 이걸 어떻게 피할지(예: 서버를 먼저 배포하는 순서, 거절되면 필드 없이 다시 보내기 등) 코드를 쓰기 전에 방법을 제안해."
+- [Woohyun Song, 11-13 08:36] (the answers to the report; excerpt) "1. 프로토콜: A안(avatar_id 재사용). 서버는 avatar_id를 선택 항목으로 바꾸고, 값은 모양만 검사(소문자·숫자·밑줄 1~32자)해서 해석 없이 그대로 전달한다."
+- [Woohyun Song, 11-14 00:08] (the finish, pasted; excerpt) "2. git fetch origin 후 git merge origin/main (rebase 금지). 충돌은 W3 파일 안에서만 풀고, 다른 사람 파일에서 나면 멈추고 알려줘."
+- [Woohyun Song, 11-14 02:01] (the Codex comment on #52, pasted; excerpt) "대결을 시작할 때 캐릭터를 잡는 곳도 읽기가 끝난 값을 쓰게 한다. 기존 결정(\"느린 읽기가 사용자가 직접 고른 선택을 되돌리지 않는다\")은 그대로 지켜. 더 단순하고 안전한 방법이 있으면 고치기 전에 알려줘."
+
+### c. What AI did well
+- **A port checked against the design's own data:**
+  - A test keeps the rig equal to the design's JSON (`assets/characters/w3_rig.json`).
+  - The painter matches 36 shots pixel by pixel: at most 0.03% of the pixels may differ. On 11-13 all 60 design shots measured 0.018% or less.
+  - The idle motions match `idle_golden.json`, and every attack ends where `hit_contact.json` measured.
+  - The stage took the characters through new inputs whose defaults are W2's. So W2's 248-sample golden check passed unchanged.
+- **Mixed versions worked out before the code:**
+  - The report before any code proposed how a new app gets past the old, deployed server. The user chose Option A, with a one-time `avatar_01` resend.
+  - The tests run the Dart battle server in the test process. They cover an old app on the new server, and a new app on the old server: one resend, kept on reconnect, and a second refusal fails the search.
+  - The reviewer checked both cases again in run 4.
+- **Checked before deleting:** before removing the 3D avatar files, the agent ran `git fetch` and checked every remote branch and the open PRs (#49, #50) for uses. #49 passes camera parameters only, so `PoseAvatarToggleView` became camera-only without a change to 한상우's files.
+- **Ownership kept:** files outside W3's list were changed only under exception lines with their reason, as the user's answer 6 said. `--check-diff` passes (235 files).
+- **The old avatar page checked on request (11-14):** the user asked whether 환경설정 → 프로필 still showed "내 아바타" (preview, the SOMA list, search, the 운동복 filter). The agent found that `profile_screen.dart` and its test were deleted in `83c00ce`, and the 3D assets and viewers in `dded304`. No route or row leads to the old page any more. The SOMA names are left only as data in `avatar_model.dart`, kept for the PM's cleanup.
+
+### d. Hallucinations / errors
+- **Review findings (3 CHANGES_REQUESTED runs):**
+  - Run 1 (the rig and painter):
+    - `assets/characters/ATTRIBUTION.txt` pointed to a licence file in the repo that does not exist.
+    - The Design doc rows were missing.
+    - An empty move threw a `StateError`, and missing shape geometry silently became 0.
+    - The figure stretched in a box of another shape.
+  - Run 3 (the selection screen):
+    - During a slow save, a second tap on 이 캐릭터로 하기 (or back) also closed the page under the selection screen. The reviewer reproduced it.
+    - Gaps, paddings and corners were numbers outside the design tokens.
+    - The re-review found that the back-during-save test let the page finish closing first, so it could not catch the guard.
+  - Run 5 (the cleanup):
+    - The agent's own pre-check had missed that 한상우's `tools/diagnose/Verify-AndroidPluginRegistration.ps1` (on `main`) requires `WebViewFlutterPlugin`. So removing `webview_flutter` would break it. The package was restored.
+    - A fresh `pub get` had also bumped a transitive package, so the lock file was restored from HEAD.
+    - The protocol doc said 25 avatars; there were 28.
+  - Cost: one fix round each.
+- **The final review (run 6, 11-14)** returned APPROVE with 5 Minor findings:
+  - The PR body draft said old apps send `avatar_01`–`avatar_28`. In fact the ids are `avatar_01`–`avatar_25` plus three `soma_*` ids, as the protocol doc says.
+  - Two comments were unclear or out of date: `ATTRIBUTION.txt` said "this file" for `w3_rig.json`, and `avatar_model.dart` said only the ids were left.
+  - The selection screen's name band keeps the mockup's 14 at its top without a recorded deviation.
+  - Old avatar words remain in files outside W3's list.
+  - A harness line still said "Merge order: #10".
+  - All of them were fixed or recorded, with no change in behavior.
+- **A race that the agent and six review runs missed, found by the Codex review of PR #52 (P2, `character_select_viewmodel.dart`, 11-14):**
+  - The claim: home can open as soon as the rules check ends, while the account's character is still being read. 캐릭터 선택 then starts on the stand-in `mouse`. Confirming it calls `choose`, which voids the pending read and saves `mouse` over the saved choice. A battle started then captures `mouse` too.
+  - Reproduced: the agent first wrote tests with a store whose read waits. All three failed on the old code: the saved `seal` became `mouse` (view-model and app level), and a bot battle built during the read got `mouse`. Review run 3 had tested a slow *save* on this screen, but no test had a slow *read*.
+  - The fix (`1f7e6f5`): before fixing, the agent proposed a simpler way than the one in the prompt, and the user chose it. Home waits until the character is read, behind the rules check's spinner (`CharacterViewModel.loading` / `isReadyFor` in `main.dart`). A read that fails counts as the default, so the wait always ends. The selection screen keeps a second guard: no confirm before the read ends, and the preview follows the read unless a cell was picked. The rule of 11-13 "a slow read does not undo a choice made meanwhile" still holds.
+  - Tests: 15 new ones (3 app tests, 1 screen test, 5 + 6 view-model tests). Two existing tests counted the load's notifications and were adjusted to the new contract, with their intent kept.
+  - Review run 7 returned APPROVE with 4 Minor findings: the decision and a design-doc row were not recorded; no app test covered the rules screen before home; the notes and PR body still had the old numbers; three near-identical test fakes. The first three were fixed: a test for the rules path was added, and it also fails on the old code. The fakes stay, because the shared fake file is the PM's.
+  - The agent replied to the Codex comment on GitHub with the problem, the fix, the commit and the tests, then resolved the thread.
+  - Cost: one fix round. The comment came at 01:00 KST and the fix was committed at 02:41; that span includes the time before the user passed the comment on.
+- **Tooling slips:**
+  - In run 2 the agent reverted a reviewer mutant with `git checkout`. That also dropped the step's own uncommitted arena changes. They were restored at once from the copy taken just before.
+  - In step 5, one `sed` edit of the comment in `android/app/build.gradle.kts` (not W3's file) was reverted at once. The reviewer checked it is identical to HEAD.
+  - No impact on the code.
+
+### e. Prompt revisions
+- **The online opponent's character:**
+  - Before (11-13 03:25): keep the server and the protocol as they are, and map the five characters onto five avatar ids already in the server's list.
+  - After (11-13 03:28, in a new session): add the field to the server and the protocol ourselves, keep old and new apps and servers working ((a)–(c)), and propose the way past the old server before any code.
+  - Then (11-13 08:36, after the agent's report): Option A. Reuse `avatar_id`, check only its shape, and resend once with `avatar_01`.
+  - Why it was revised (the user, 11-14): right after sending the first prompt, the user changed course. W3 would do the server-side handling itself, then report to the PM and the server file's owner afterwards. So the user corrected the instruction and sent it again at 03:28. Carrying the character id in the existing `avatar_id` field was settled at 08:36, after the agent's report.
+  - Why it worked: asking for a proposal before code put the choices side by side in the report. The chosen option needs no new field. Old apps already draw an unknown `avatar_id` as their default, so the per-recipient messages of (b) were no longer needed.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W3 was edited by hand, and the diff has no manual-fix marker.
+- The user's corrections came as prompts and answers: the protocol option and the files kept for the PM. The 08:36 rule (do not delete what a teammate uses) kept `webview_flutter` once run 5 found 한상우's script.
+
+### Takeaway
+- When a change crosses versions (old and new apps and servers), ask for a proposal before any code. The answer then picks the option with the fewest moving parts.
+- Before deleting a package, check the scripts and tools too, not only the Dart code.
+- Test the moment between login and the first read of saved data. A stand-in default shown then can be saved over the real value.
+
+## W2b `feat/battle_screen_polish` – polish of the battle and matching screens (A2, team order #7), 2026-11-13 ~ 2026-11-14
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W2b's code and tests, in six commits on `feat/battle_screen_polish`: `0b8f610` (3-B, the pose setup), `c421b42` (2-A3, MATCH FOUND), `4c555ec` (1-A, the radar blips) on 11-13, and `374b72c` (old avatar words), `82772e5` (the end screen) and `ae44bbb` (MATCH FOUND with the W3 characters) on 11-14. It also resolved the merge of `main` with #51 and #52 (`13d0b4d`).
+  - 3-B: the setup's layout and its move in `lib/widgets/battle_fx_motion.dart` (`BattleFxFrame.battleLayout`, `setupLook`, the ready chips), the screen's geometry as a pure function (`BattleArenaLayout` in `battle_arena.dart`), the camera picture's size and the silhouette's place (`BattleCameraLayout`, `BattleCameraView.pictureSize`, `coverShare` in `battle_camera_view.dart`), and the large band and button in `battle_camera_area.dart`.
+  - 1-A: `RadarBlips` in `lib/screens/matching_screen.dart`, a pure function of the sweep.
+  - 2-A3: the board in `lib/screens/versus_screen.dart`. It was built with W2's stand-in in one slot (`_VersusCharacter`). Once W3 was in `main`, that slot draws the W3 characters (`ae44bbb`), and the online lobby passes the session's two characters.
+  - The end screen: `BattleFxFrame.endLayout`, `BattleArenaLayout.lineTop(progress, end:)`, and 결과 보기 moved into its own widget, `lib/widgets/battle_result_button.dart`.
+- **The design came from the user:** `W2B-SPEC.md` and `w2b_golden.json` from the user's design canvas. Claude Code ported them and checked the port against the design's own samples (`test/widgets/battle_w2b_golden.json`).
+- **The end screen's options:** the spec had none. Claude Code drew three options with the app's real fonts and the real stage widgets (a temporary render test, not committed). The user chose one, and only that one was built.
+- **A teammate's PR:** Claude Code compared 한상우's #51 with 3-B's silhouette and reported the result to the user (item c). It did not edit his files.
+- **Review:** the `reviewer` subagent reviewed W2b in four runs: run 1 (3-B), run 2 (1-A and 2-A3), run 3 (the end screen and this push's notes) and run 4 (the merge of `main` and the character swap). Run 3 returned CHANGES_REQUESTED twice (item d); every run ended with APPROVE.
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - The scope and every choice were the user's: the spec section 11 answers, the four open choices of 3-B kept as built, the words' margin (70 + 76 × scale) and leaving the "VS" disc's overlap on small phones, the end screen in this step, option A, the character swap as its own commit, and a Draft PR first.
+  - The phone checks were the user's (Galaxy S26+), all with no problems: first 3-B, the radar dots and MATCH FOUND (with the stand-in); then, after the merge with W3, MATCH FOUND with the W3 characters, the end screen after a KO and after a time-up (the fever wash filling the screen included), and the setup's 80% camera with its switch.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-13 12:27] (the start, pasted; excerpt) "기준: .claude/design/gymrats-w2b-reference/W2B-SPEC.md. 이번 범위는 3-B만이야. 자세 세팅 중에는 카메라가 화면의 약 80%를 쓰고, 카운트다운이 시작되면 50:50으로 바뀌는 것."
+- [Woohyun Song, 11-13 21:47] (the scope widened, pasted; excerpt) "3. 2-A3의 캐릭터는 W3(feat/characters) 코드가 이 브랜치에 없어서 지금은 쓸 수 없어. … 캐릭터가 들어갈 자리는 위젯 하나로 모아서, 나중에 W3에서 그 위젯만 W3 캐릭터로 바꾸면 되게 해. W3 파일은 고치지도 가져오지도 마."
+- [Woohyun Song, 11-14 03:02] (the finish with the end screen, pasted; excerpt) "먼저 코드는 고치지 말고 2~3개 안을 실제 글꼴로 그린 그림으로 .claude/design/out/w2b-end/에 만들어 보여 줘."
+- [Woohyun Song, 11-14 03:21] "일단 A로 가자"
+- [Woohyun Song, 11-14 04:00] (an answer in the agent's question dialog, so not in the Prompt Log; excerpt) "교체는 지금 이 브랜치에서 별도 커밋으로 해(내 캐릭터는 저장된 선택, 봇은 RepBot, 온라인은 서버 id, 대기 동작에서 상대는 230ms 늦게). 그다음 PR은 Draft로 바로 열고, …"
+
+### c. What AI did well
+- **A port checked against the design's samples.** 3-B matches the design's 39 `setupTransition` samples and 1-A its `radar` samples, every 50 ms over two turns. In W2's own samples only one field changed (the end screen's cover behind 결과 보기), and the reason is in the notes.
+- **Options drawn before code.** For the end screen, the agent rendered three options with the app's fonts and the real stage, at the KO and time-up endings and the middle of the move. The user's prompt came at 11-14 03:02, and the choice at 03:21 in one line, "일단 A로 가자". Only that option was coded.
+- **A spec conflict found and asked, not guessed (2-A3):** the spec puts the words "146 × scale" from the character's side, but a character shrunk around its feet then overlaps them, which the spec's own section 9 forbids. The agent measured it (overlap below a scale of 0.92; on the S22 at text 1.3 the scale is about 0.79) and asked. The user chose 70 + 76 × scale.
+- **A teammate's PR read against this one:** 한상우's #51 shares no file with W2b. The agent found that its alignment check sits in `SetupViewModel`, which only the `/setup` screen uses, while the real bot and online setups use `SetupChecker` directly. So #51 does not reach the battle's setup yet. Its crop math equals `coverShare`, so a later hookup should pass the battle layout's camera box.
+- **The review caught a moved `main` before the push:** checking this push's notes, the reviewer ran `git fetch` and found #51 and #52 (W3) merged into `main`. The notes and the PR draft were for a head that could not be pushed. The branch merged `main` first (three conflicts, all in W2b's files), and MATCH FOUND got the W3 characters at once.
+- **The full suite caught a regression in a demo:** after the end screen, the stage demo's effect buttons, which sit where the camera is, vanished at every ending. The full suite found it, not the phone. The demo now starts over through 결과 보기.
+
+### d. Hallucinations / errors
+- **Review findings (runs 1 and 2: no Critical or Major, 5 Minor each, all fixed; run 3: 1 Major, 3 Minor):**
+  - Run 1 (3-B): a disconnected opponent's "연결 끊김" tag floated over the empty ground during the setup; with reduced motion the layout jumped one frame (16 ms) after the phase changed; one assertion about the fading bar could not fail.
+  - Run 2 (1-A, 2-A3): the blips' glow colors and the pills' paddings had no test (planted changes passed); the "AI" pill's lift was a raw number in the screen.
+  - Run 3 (the end screen): **1 Major.** When the screen reports a knockout before its blow (a supported order), the line started down at the report. It then went back up when the blow landed, so the camera came back for a moment. The agent's own tests had covered a knockout by its blow, but not one reported first. The fix came test first: the start never moves later. Run 3 also had 3 Minor findings. In fever the cyan wash fills the whole screen; the options had been drawn without fever. It was kept, and a render was made (`.claude/design/out/w2b-end/_built.png`, not committed). The render was named to the user in the question they answered at 04:12, and the user then checked it on the phone: "피버 무늬가 화면 전체를 채우는 모습도 괜찮음". Moving 결과 보기's tests had lost a small-phone size. One note said the button's place was "as before" when it was 1.5 points higher; it is now placed exactly as before.
+  - Run 3's check of the notes: **CHANGES_REQUESTED.** They described a head that could not be pushed, because `main` had moved (item c). One sentence stated as done something not yet done (the render "shown" to the user), and two time estimates could not be checked. The notes were redone after the merge.
+  - Run 4 (the merge and the swap): APPROVE with 3 Minor findings, all fixed: a stale class doc, and design-doc rows and a task line still naming the stand-in.
+- **Two W3 tests broken by the merge:** W3's screen tests looked for the characters while setting up, where 3-B draws no fighter. They now check after the countdown.
+- **A demo broken by the end screen (11-14):** the first version of the end screen made the stage demo's buttons disappear with the camera, and one demo test failed in the full suite (2186 passed, 1 failed). Cost: one test and one doc comment.
+- **Tooling:** a Python edit of a test file failed to find its text (Windows line endings and an escaped quote), and was redone with the file tools. No impact on the code.
+
+### e. Prompt revisions
+- **The end screen in or out:**
+  - Before (11-14 02:59): "PM이 W6~W8을 먼저 끝내라고 해서, 대결이 끝난 뒤 화면(무대를 화면 전체로)은 이번 W2b에서 빼고 시간이 남으면 나중에 따로 할 거야."
+  - After (11-14 03:02, re-sent): "대결이 끝난 뒤 화면까지 이번 W2b에 넣는다." with a new step: "먼저 코드는 고치지 말고 2~3개 안을 실제 글꼴로 그린 그림으로 .claude/design/out/w2b-end/에 만들어 보여 줘. … 시간이 빠듯하니 안은 간단히 보여 주고, 내가 고르면 바로 만들어."
+  - Why it worked: the second prompt kept the end screen small enough for the deadline. Pictures first, then one option, so no time went into code for options that were not chosen. It also gave the rules up front (no change to judging or the result conditions, one pure progress value, reduced motion, which golden fields may change and where to write why).
+
+- **A dialog answer written for an older state:**
+  - Before (11-14 04:00, the question dialog): "…본문에 \"대결이 끝난 뒤 화면을 이어서 올림\"이라고 적어. 끝 화면 안을 보여 주고 내가 고르면 같은 브랜치에 이어서 커밋하고 …"
+  - After (11-14 04:12): the agent pointed out that option A was already built and committed, and asked again. The user chose "A 그대로 포함".
+  - Why it worked: asking kept a PR line that was no longer true out of the PR.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W2b was edited by hand, so W2b has no manual-fix markers.
+- The user's corrections came as prompts and phone checks: the spec answers, the words' margin, the end screen's option.
+
+### Takeaway
+- When the spec leaves a screen open, draw two or three options with the real widgets before writing code; the choice then takes one line.
+- Run the full suite before review: a demo that shares the screen's layout can break in ways the widget's own tests do not see.
+
+## W4 `feat/home_character` – the chosen character on home (P17, team order #14), 2026-11-14
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W4's code and tests, in six commits on `feat/home_character`, and merged `main` once (`7be4abb`, no conflict):
+  - Part 1: `3cf81e9` (the logo GYMMOUSE), `6badfdb` (home's four menu rows; 게임 시작 without its 캐릭터 row), `4d5577d` (캐릭터 선택: the line under the floor, the band's name at a fixed size).
+  - The home fit: `a1a7ee4` (the 76 px menu layout; `LobbyMenuItem`, `LobbyPage.fill`'s padding, home-only text styles in `app_theme.dart`).
+  - Part 2: `b0ab94c` and `80b00d7`. The home rig and its timing are in `lib/widgets/character_motion.dart`, with the data in `character_motion_data.dart`. Draw patches and the stage effects are in `character_draw_patch.dart`. `CharacterFigurePainter` takes the motion's inputs (`character_figure.dart`). Home's room is `LobbyCharacter` (`lobby_character.dart`), and the login logo changed too.
+- **The design came from the user:** the user's design canvas package `W4-HOME-SPEC.md` with `w4_home_rig.json` (its key poses, timetables, patches, placements and 54 + 5 golden values). For the shared painter, W5's spec sections 7 and 9 were read too. Claude Code ported the package and checked it against the golden values and the design's home shots.
+- **Options drawn before code:** for the ears on 캐릭터 선택, Claude Code rendered three fixes with the app's fonts (`.claude/design/out/w4/_options_all.png`, not committed); the user chose A. After review run 1 it rendered the band at larger text sizes for the user's two answers.
+- **Review:** the `reviewer` subagent reviewed W4 in three runs (part 1, the merge and the home fit, part 2). Runs 1 and 3 returned CHANGES_REQUESTED (item d); each ended with APPROVE.
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - The scope and every choice were the user's. In part 1 that was fix A for the ears, keeping RepBot's fit rule (later replaced) and the one-off exceptions. For the home fit it was the 76 px numbers and the home-only styles in `app_theme.dart`. In part 2 it was the answers to the spec's questions 10.1 and 10.2, keeping the `design_tokens_test.dart` line removal, and leaving the unused `RepBotColors` token until after the deadline.
+  - The phone checks were the user's. They found the ears on 캐릭터 선택 (during W2b's check) and home still scrolling after part 1. The final build passed with no problems.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-14 05:05] (the start, pasted; excerpt) "4. 캐릭터 선택 화면에서 그루(캥거루)의 귀가 이름 띠 아래 한 줄 설명을 가리는 문제를 고친다. character_select_screen.dart는 W3 파일이므로 2번과 같은 방식으로 예외를 단다."
+- [Woohyun Song, 11-14 10:34] (answers in the agent's question dialog; excerpt) "지금 규칙 유지, 테스트를 새 수치로 (Recommended)"
+- [Woohyun Song, 11-14 13:53] (the home fit, pasted; excerpt) "글자 1.0배에서는 360×780에 상태바 24·버튼 세 개 내비게이션 바 48인 경우, 제스처 바 24인 경우, 그보다 큰 화면(예: 412×915) 모두 스크롤이 없어야 한다."
+- [Woohyun Song, 11-14 15:30] (part 2, pasted; excerpt) "2. 화가 넓히기(명세 8절). widgets/character_figure.dart의 CharacterFigurePainter를 그대로 쓰되, 바깥에서 세 가지를 넣을 수 있게 넓힌다: … W5가 같은 화가에 w5_victory_rig.json의 drawPatch를 이어 붙일 수 있는 구조로 만든다."
+- [Woohyun Song, 11-14 16:33] (excerpt) "2. RepBotColors 토큰은 지우지 않고 그대로 둔다. app_theme.dart는 W6 브랜치에도 변경이 있어서 지금 지우면 충돌만 늘어난다."
+
+### c. What AI did well
+- **An exact overlap test instead of a box.** The ears test paints the real character at every extreme of its idle motion and counts painted points inside the band and the line, 8 times finer than a point. It finds 그루's ears over the old line (3159 points) and a band moved 10 px down over the mouse. A bounding box would have failed the mouse's 0.4 px clearance that the design itself has. The reviewer accepted this reading in run 1.
+- **The port checked against the design's own values.** All 54 golden samples and 5 rest pictures match within 0.01; they include times past one rep and parts that run late. The rest pictures also match the design's home shots pixel by pixel both ways.
+- **A 1 % difference explained, not hidden.** The first shot comparison showed GYM마우스 and 그루 about 1 % off. The agent searched offsets and found the design canvas had put the feet on whole points (179.52 drawn at 180; the seal at 174.96 matched with no shift). The app keeps the spec's exact place, and the test moves only its own render by that rounding. The tolerance was not loosened.
+- **One painter for W4 and W5 without touching W3's files.** The added shapes are read by W3's own parser, and the blended poses fit W3's types. The reviewer confirmed that W5's patches all find their targets under the same rule, and that W5's insert lands before W4's paddle as W5's spec says. W5's spec writes one target's fixed move in a different form from W3; the matching handles both.
+- **Mutation checks before review:** 13 planted faults (in 15 runs) (easing, delays, floor height, effects, flags, insert position, restarts, the fur, the screen-reader name, reduced motion, RepBot's id, a least height) were all caught, and the files were restored byte for byte.
+
+### d. Hallucinations / errors
+- **Review run 1 (part 1): CHANGES_REQUESTED.**
+  - 1 Critical: `main_test.dart` changed three tests where its exception line allowed two, and `progress.md` logged only 4 of the 7 exception paths.
+  - 1 Major: from 1.1× system text, the growing name band reached the mouse's ears at the top of its hop.
+  - 3 Minor: stale doc lines; at 2× text the line ran past the preview; the overlap search left out the rest moment.
+  - Fixed after the user's answers (the band's name fixed, the line capped at 1.5×, the exceptions widened). The re-check returned APPROVE.
+- **Review run 2 (the merge and the home fit): APPROVE**, with 2 Minor findings. The logo bar's size had no test (a 12 × 40 bar passed), and a note was stale. Both were fixed.
+- **Review run 3 (part 2): CHANGES_REQUESTED.**
+  - Major 1: a character chosen while a page covered home (환경설정 → 캐릭터 → back) did not start from 0. A muted ticker keeps counting from its restart, so the reviewer's probe read 3016 ms. The agent's tests had changed the character only on an uncovered home. Now the motion restarts when home shows again (the spec allows it), with a test that fails on the old code.
+  - Major 2: no design-doc rows for the token list change and the new test data.
+  - 4 Minor: `LobbyCharacter('bot')` threw, because RepBot's art came with the mouse's patches; the token-list line removal was not recorded as the user's; the data file was missing from the token list; some notes were stale ("59 samples" for 54 + 5).
+  - All were fixed, and the re-check returned APPROVE.
+- **The full suite caught what the W4 tests did not:** `home_shell_screen_test.dart` builds home without the app's character above it, and part 2's home threw there (1 failed of 2603). Home now draws the default mouse in that case (the spec's rule for an unknown character), with a test.
+- **Wrong expectations in new tests:** these were found on the first run and fixed in the test, not the code.
+  - The far glove behind the body changes nothing at the push-up's top, where the two do not meet.
+  - Knocked out, the body hides 그루's whole tail, so the fur cannot show.
+  - A tab bar takes the three-button bar's 48 into its own 80.
+  - Expected values for a restart were counted from the wrong frame.
+  - The test font (Ahem) measured home differently from the app's fonts, so the exact-number tests run in a group that loads the app's fonts.
+- **Tooling:** shell here-documents broke edits with quotes and backslashes, so the edits were redone through script files. `grep` aborted on this PC, and the wording check was redone in Python. No impact on the code.
+
+### e. Prompt revisions
+- **Home's fit:**
+  - Before (11-14 10:34, the user's answer in the question dialog): "지금 규칙 유지, 테스트를 새 수치로 (Recommended)". The old rule shrinks RepBot to 0.6×, then the page scrolls. With four rows, the agent had reported a 27–59 px scroll on 360 × 780 with system bars.
+  - After (11-14 13:53, after the phone check, pasted): the 76 px menu layout with every height from the design, and "글자 1.0배에서는 360×780에 상태바 24·버튼 세 개 내비게이션 바 48인 경우, 제스처 바 24인 경우, 그보다 큰 화면(예: 412×915) 모두 스크롤이 없어야 한다."
+  - Why it worked: the first answer kept a rule that allowed scrolling, which the agent had measured and reported but which only looked wrong on the phone. The second gave numbers the agent could build to and phones and bars it could test, so it ended in one review round.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W4 was edited by hand, so W4 has no manual-fix markers.
+- The user's corrections came as prompts, answers and phone checks: fix A, the text-size rules, the 76 px layout, the spec's questions, and the two notes about the token list and `RepBotColors`.
+
+### Takeaway
+- For anything driven by a clock, test the path where the screen is covered or the app is paused, not only the visible screen.
+- When a pixel comparison with the design is off, look for a systematic cause (here the design's rounding) before loosening the tolerance.

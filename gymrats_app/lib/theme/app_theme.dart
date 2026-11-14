@@ -47,7 +47,9 @@ abstract final class AppColors {
   static const fever = Color(0xFF3DE8FF);
 
   /// Red fill, only for the battle's danger edge and its mark on the rules
-  /// screen: the user is about to lose. Every other problem is [warning].
+  /// screen (the user is about to lose), and the matching radar's blips
+  /// (W2b 1-A: a laser pointer's dots, decoration). Every other problem is
+  /// [warning].
   static const danger = Color(0xFFFF3B30);
 
   /// Near-black of the game-style screens: edges and icons on a color fill,
@@ -72,6 +74,16 @@ abstract final class AppColors {
 
   /// Behind a chosen option, with an [ink] edge.
   static const selectedFill = Color(0xFFF6FFE6);
+
+  /// The floor line in the battle's reject pictograms: lighter than the
+  /// gray figure standing on it.
+  static const pictogramFloor = Color(0xFFB9C0CC);
+
+  /// The dimming over the battle camera's picture around the setup's guide,
+  /// where the push-up silhouette's box does not reach: the same black at
+  /// 45% that the silhouette (`PoseSilhouetteGuide`) lays outside its
+  /// outline, so the whole picture outside the outline is one shade.
+  static const setupGuideScrim = Color(0x73000000);
 
   /// Text on an [ink] fill, such as the 대결 시작 button: the one exception
   /// to ink text, since a dark fill needs light text (palette B).
@@ -139,19 +151,27 @@ abstract final class AppFonts {
 /// 환경설정), made from the theme's styles. Screens change only their color
 /// or weight, so a font decision changes this one place.
 extension LobbyText on TextTheme {
-  /// "GYMRATS" on home.
+  /// "GYMMOUSE" on home: Oxanium 800, 40 high (home's 76 px menu layout,
+  /// 2026-11-14).
   TextStyle get lobbyLogo => displayMedium!.copyWith(
+    fontSize: 40,
     fontWeight: FontWeight.w800,
     letterSpacing: 1,
     height: 1,
   );
 
-  /// "1V1" beside home's one-line pitch.
+  /// "1V1" beside home's one-line pitch, on its 18 high line.
   TextStyle get lobbyBadge => bodyMedium!.copyWith(
     fontFamily: AppFonts.number,
+    fontSize: 13,
     fontWeight: FontWeight.w700,
     letterSpacing: 2,
+    height: 18 / 13,
   );
+
+  /// Home's one-line pitch, "30초 실시간 운동 대결": 13 on an 18 high line.
+  TextStyle get lobbyPitch =>
+      bodyMedium!.copyWith(fontSize: 13, height: 18 / 13);
 
   /// "01 / PLAY": small spaced-out English capitals.
   TextStyle get lobbyTag => labelMedium!.copyWith(
@@ -167,11 +187,22 @@ extension LobbyText on TextTheme {
     letterSpacing: 2,
   );
 
-  /// Home's menu titles, e.g. "게임 시작".
+  /// Home's menu titles, e.g. "게임 시작": Do Hyeon 44 on a 44 high line.
   TextStyle get lobbyMenuTitle => displayLarge!.copyWith(
     fontFamily: AppFonts.display,
+    fontSize: 44,
     fontWeight: FontWeight.w400,
     height: 1,
+  );
+
+  /// Home's menu tags, e.g. "01 / PLAY": 11 on a 14 high line, spaced out.
+  /// The pages' own tags stay [lobbyTag].
+  TextStyle get lobbyMenuTag => labelSmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 3,
+    height: 14 / 11,
   );
 
   /// A page's name as a huge faint word behind it, e.g. "PLAY".
@@ -208,6 +239,267 @@ extension LobbyText on TextTheme {
   TextStyle get lobbyLink => bodyMedium!.copyWith(
     fontWeight: FontWeight.w700,
     decoration: TextDecoration.underline,
+  );
+}
+
+/// The text styles of the battle stage (the HUD, the bands, the tags and the
+/// reject sign), in the stage's own 360 x 390 design points: the stage is
+/// sized as a whole to fit the screen, so these do not follow the system
+/// text size. All ink, on a light ground or a color fill.
+///
+/// Lines are spaced like the design's CSS: the extra height is split evenly
+/// above and below the letters.
+extension StageText on TextTheme {
+  TextStyle _stage({
+    required String family,
+    required double size,
+    required FontWeight weight,
+    double? height,
+    double spacing = 0,
+    Color color = AppColors.ink,
+  }) => bodyMedium!.copyWith(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: spacing,
+    color: color,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// A player's nickname beside their color swatch.
+  TextStyle get stageName =>
+      _stage(family: AppFonts.body, size: 14, weight: FontWeight.w700);
+
+  /// The clock, e.g. "0:23".
+  TextStyle get stageClock => _stage(
+    family: AppFonts.number,
+    size: 26,
+    weight: FontWeight.w700,
+    height: 1,
+  );
+
+  /// The chip beside the clock, e.g. "+15 앞섬", "FEVER ×2".
+  TextStyle get stageChip =>
+      _stage(family: AppFonts.number, size: 12, weight: FontWeight.w700);
+
+  /// A player's game score.
+  TextStyle get stageScore => _stage(
+    family: AppFonts.number,
+    size: 80,
+    weight: FontWeight.w800,
+    height: 0.92,
+    spacing: -3,
+  );
+
+  /// "유효 횟수" over the two valid rep counts.
+  TextStyle get stageCountLabel => _stage(
+    family: AppFonts.body,
+    size: 11,
+    weight: FontWeight.w700,
+    height: 14 / 11,
+    color: AppColors.textSecondary,
+  );
+
+  /// A valid rep count, and the ":" between the two.
+  TextStyle get stageCount => _stage(
+    family: AppFonts.number,
+    size: 18,
+    weight: FontWeight.w700,
+    height: 20 / 18,
+  );
+
+  /// "KO" under each end of the bar.
+  TextStyle get stageBarEnd => _stage(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w700,
+    height: 1,
+  );
+
+  /// The pill over a fighter's head, e.g. "준비 완료".
+  TextStyle get stageTag => _stage(
+    family: AppFonts.body,
+    size: 13,
+    weight: FontWeight.w700,
+    height: 16 / 13,
+  );
+
+  /// A band of numbers or English, e.g. "MISS", "K.O.", at [stageBandSize].
+  /// A band takes its own size with `apply(fontSizeFactor:)`.
+  TextStyle get stageBand => _stage(
+    family: AppFonts.number,
+    size: stageBandSize,
+    weight: FontWeight.w800,
+    height: 1,
+    spacing: -1,
+  );
+
+  /// A band of Korean, e.g. "자세 세팅 중", at [stageBandSize].
+  TextStyle get stageBandKorean => _stage(
+    family: AppFonts.display,
+    size: stageBandSize,
+    weight: FontWeight.w400,
+    height: 1.25,
+  );
+
+  /// The short label under the reject sign's pictogram, e.g. "더 깊게".
+  TextStyle get stageSignLabel => _stage(
+    family: AppFonts.display,
+    size: 40,
+    weight: FontWeight.w400,
+    height: 1.2,
+  );
+
+  /// The size [stageBand] and [stageBandKorean] are given at.
+  static const double stageBandSize = 100;
+}
+
+/// The text styles of the match-found screen's two color cells (W2b 2-A3),
+/// in ink. Like the rest of the app they follow the system text size.
+extension VersusText on TextTheme {
+  /// "나" or "상대" on its white pill: 13 bold on a 20 line.
+  TextStyle get versusSide => bodySmall!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 20 / 13,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// A player's nickname: Do Hyeon 28 on a 34 line, cut to one line.
+  TextStyle get versusName => headlineSmall!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 28,
+    fontWeight: FontWeight.w400,
+    height: 34 / 28,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// "AI" on its white pill under a bot's name: Oxanium 14 on a 20 line.
+  TextStyle get versusAiTag => bodyMedium!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    height: 20 / 14,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// "VS" on the white disc between the cells: Oxanium 800 34.
+  TextStyle get versusMark => displaySmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 34,
+    fontWeight: FontWeight.w800,
+    height: 1,
+    letterSpacing: -1,
+    color: AppColors.ink,
+  );
+}
+
+/// The text styles of the battle's camera area, under the stage: the hint
+/// line, the buttons and the reconnect band. Unlike [StageText] these follow
+/// the system text size, like the rest of the app.
+extension BattleCameraText on TextTheme {
+  /// The one-line hint under the camera, e.g. "폰을 더 세워 주세요."
+  TextStyle get cameraHint => bodyMedium!.copyWith(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    height: 1.35,
+    color: AppColors.ink,
+  );
+
+  /// A button's label on the camera, e.g. "준비".
+  TextStyle get cameraButton => bodyMedium!.copyWith(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
+  /// The large hint over the camera while setting up (W2b 3-B), e.g.
+  /// "팔을 펴고 푸시업 자세를 잡아 주세요.": one line, shrunk to fit its band.
+  TextStyle get cameraSetupHint => bodyMedium!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 26,
+    fontWeight: FontWeight.w400,
+    height: 1.2,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// The large ready button's label while setting up (W2b 3-B), e.g. "준비".
+  TextStyle get cameraSetupButton => bodyMedium!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 22,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    color: AppColors.ink,
+  );
+
+  /// The reconnect band's line.
+  TextStyle get cameraNotice => bodySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
+  /// "결과 보기" on the button that ends the battle screen.
+  TextStyle get cameraResult => titleLarge!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 24,
+    fontWeight: FontWeight.w400,
+    height: 32 / 24,
+    color: AppColors.ink,
+  );
+
+  /// The title of the dialog that asks before leaving, e.g. "게임에서
+  /// 나갈까요?": Do Hyeon, as the battle design draws it, at the headline's
+  /// size.
+  TextStyle get leaveDialogTitle =>
+      headlineSmall!.copyWith(fontFamily: AppFonts.display);
+}
+
+/// The text styles of the character selection screen (W3 spec 7,
+/// ChSelectB), in ink.
+extension CharacterText on TextTheme {
+  /// "캐릭터 선택" at the top: Do Hyeon 30 on a 36 line.
+  TextStyle get characterTitle => headlineSmall!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 30,
+    fontWeight: FontWeight.w400,
+    height: 36 / 30,
+    color: AppColors.ink,
+  );
+
+  /// The picked character's name on the slanted band: Do Hyeon 30.
+  TextStyle get characterName => headlineSmall!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 30,
+    fontWeight: FontWeight.w400,
+    height: 1.25,
+    color: AppColors.ink,
+  );
+
+  /// The line under the band, e.g. "쥐 · 대표 캐릭터": 13 bold.
+  TextStyle get characterCaption => bodySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 18 / 13,
+    color: AppColors.ink,
+  );
+
+  /// A cell's name under its picture: 13 bold on a 16 line.
+  TextStyle get characterCellName => bodySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 16 / 13,
+    color: AppColors.ink,
   );
 }
 
@@ -317,9 +609,27 @@ abstract final class AppHighlight {
     vertical: AppSpacing.s4,
   );
 
+  /// The room around a short label on a tight [band], hugging the letters
+  /// top and bottom: "MATCH FOUND" on the versus screen (BMatchFound).
+  static const tightBandPadding = EdgeInsets.symmetric(
+    horizontal: AppSpacing.s8,
+    vertical: 1,
+  );
+
+  /// The room around a short tag on a white pill, inside its edge: "AI"
+  /// under a bot's name on the match-found board (W2b 2-A3).
+  static const tagPadding = EdgeInsets.symmetric(
+    horizontal: AppSpacing.s12,
+    vertical: 2,
+  );
+
   /// The marker's slant, as the design draws WIN and LOSE. A new matrix each
   /// time, so no one changes another's.
   static Matrix4 get slant => Matrix4.skewX(-10 * math.pi / 180);
+
+  /// The steeper slant of the battle stage's bands: behind the scores, the
+  /// band texts and the reject sign's label. A new matrix each time.
+  static Matrix4 get battleSlant => Matrix4.skewX(-12 * math.pi / 180);
 
   /// A soft pill of [color] behind ink text, for chips: points (lime),
   /// fever (cyan), warnings (amber), danger (red). [strength] is how much of
@@ -347,6 +657,9 @@ abstract final class AppHighlight {
   );
 
   static const double swatchSize = 10;
+
+  /// The room between a [swatch] and the text it marks.
+  static const double swatchGap = 6;
   static const _swatchEdge = 1.5;
 
   /// [style] in ink with a band of [color] right behind the letters, for a
@@ -388,6 +701,10 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(foregroundColor: AppColors.textPrimary),
+      ),
+      // A dialog covers the screen with ink, not black (palette B).
+      dialogTheme: DialogThemeData(
+        barrierColor: AppColors.ink.withValues(alpha: 0.54),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(foregroundColor: AppColors.textPrimary),
