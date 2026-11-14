@@ -30,6 +30,10 @@ class HelpPicture extends StatelessWidget {
     TutorialStep.fail: 0.15,
   };
 
+  /// The opponent's score on the KO page; mine is [HelpRules.koLead] more,
+  /// so the scores, the label and the full bar agree with the rules.
+  static const koLoserScore = 145;
+
   /// The squat's pass line, at the good page's depth.
   static const squatPassDepth = 0.75;
 
@@ -366,11 +370,16 @@ class HelpPicture extends StatelessWidget {
   List<Widget> _ko(BuildContext context) {
     final (mine, theirs) = charactersOf(page.exercise);
     return [
-      const Positioned(
+      Positioned(
         left: 16,
         right: 16,
         top: 8,
-        child: _Hud(mine: 245, theirs: 145, time: '0:12', fever: false),
+        child: _Hud(
+          mine: koLoserScore + HelpRules.koLead,
+          theirs: koLoserScore,
+          time: '0:12',
+          fever: false,
+        ),
       ),
       Positioned(
         left: 0,

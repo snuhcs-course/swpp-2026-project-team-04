@@ -126,7 +126,25 @@ void main() {
 
     await show(tester, const TutorialPage(squat, TutorialStep.ko));
     expect(find.text('K.O.!'), findsOneWidget);
-    expect(find.text('100점 차'), findsOneWidget);
+    // The scores are koLead apart, as the label says, and the bar is full.
+    expect(find.text('${HelpRules.koLead}점 차'), findsOneWidget);
+    expect(find.text('${HelpPicture.koLoserScore}'), findsOneWidget);
+    expect(
+      find.text('${HelpPicture.koLoserScore + HelpRules.koLead}'),
+      findsOneWidget,
+    );
+    int barFlex(Color color) => tester
+        .widget<Expanded>(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Expanded &&
+                widget.child is ColoredBox &&
+                (widget.child as ColoredBox).color == color,
+          ),
+        )
+        .flex;
+    expect(barFlex(AppColors.accent), 100);
+    expect(barFlex(AppColors.opponent), 0);
   });
 
   testWidgets('the report shows the way to the form feedback', (tester) async {
