@@ -13417,8 +13417,7 @@
      },
      "resultButton": {
       "opacity": 0,
-      "scale": 0.8,
-      "scrim": 0
+      "scale": 0.8
      }
     },
     {
@@ -13502,8 +13501,7 @@
      },
      "resultButton": {
       "opacity": 0.5,
-      "scale": 1,
-      "scrim": 0.41
+      "scale": 1
      }
     },
     {
@@ -13581,8 +13579,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     },
     {
@@ -13660,8 +13657,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     },
     {
@@ -13739,8 +13735,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     }
    ]
@@ -14635,8 +14630,7 @@
      },
      "resultButton": {
       "opacity": 0,
-      "scale": 0.8,
-      "scrim": 0
+      "scale": 0.8
      }
     },
     {
@@ -14714,8 +14708,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     },
     {
@@ -14793,8 +14786,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     }
    ]
@@ -15779,8 +15771,7 @@
      },
      "resultButton": {
       "opacity": 0,
-      "scale": 0.8,
-      "scrim": 0
+      "scale": 0.8
      }
     },
     {
@@ -15858,8 +15849,7 @@
      },
      "resultButton": {
       "opacity": 0.5,
-      "scale": 1,
-      "scrim": 0.41
+      "scale": 1
      }
     },
     {
@@ -15937,8 +15927,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     },
     {
@@ -16016,8 +16005,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     },
     {
@@ -16095,8 +16083,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     }
    ]
@@ -17111,8 +17098,7 @@
      },
      "resultButton": {
       "opacity": 0,
-      "scale": 0.8,
-      "scrim": 0
+      "scale": 0.8
      }
     },
     {
@@ -17190,8 +17176,7 @@
      },
      "resultButton": {
       "opacity": 0.5,
-      "scale": 1,
-      "scrim": 0.41
+      "scale": 1
      }
     },
     {
@@ -17269,8 +17254,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     },
     {
@@ -17348,8 +17332,7 @@
      },
      "resultButton": {
       "opacity": 1,
-      "scale": 1,
-      "scrim": 0.62
+      "scale": 1
      }
     }
    ]

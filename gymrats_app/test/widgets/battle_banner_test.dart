@@ -622,11 +622,14 @@ void main() {
       }
     });
 
-    testWidgets('the Korean bands, unchanged', (tester) async {
-      final setup = BattleFxTimeline()..setSetup(active: true);
-      await expectSpan(tester, only(setup, 0, '자세 세팅 중'), 143, 196);
-      final waiting = BattleFxTimeline()..setSetup(active: true, meReady: true);
-      await expectSpan(tester, only(waiting, 0, '상대를 기다리는 중'), 141, 198);
+    testWidgets('the Korean bands: the setup\'s between the scores and '
+        'smaller (W2b 3-B: "상대를 기다리는 중" y 66 to 106 turned), the '
+        'leaving one unchanged', (tester) async {
+      final setup = BattleFxTimeline(setup: true);
+      await expectSpan(tester, only(setup, 0, '자세 세팅 중'), 67.4, 104.6);
+      final waiting = BattleFxTimeline(setup: true)
+        ..setSetup(active: true, meReady: true, now: 0);
+      await expectSpan(tester, only(waiting, 0, '상대를 기다리는 중'), 66, 106);
       final left = BattleFxTimeline()
         ..finish(
           const BattleStageEnd(

@@ -11,6 +11,7 @@ import '../services/user/user_repository.dart';
 import '../services/online/online_battle_session.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_stage_model.dart';
+import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
@@ -245,6 +246,12 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
           exercise: widget.exercise,
           playerName: login?.account.nickname ?? '나',
           opponent: Opponent(name: session.opponent!.name, isBot: false),
+        ),
+        // As the battle draws them: mine as sent, theirs as the server
+        // passed it on.
+        characters: BattleCharacters(
+          me: session.character,
+          opponent: session.opponent!.character,
         ),
         duration: Duration(milliseconds: session.durationMs),
         onStartSetup: () => _openBattle(session),

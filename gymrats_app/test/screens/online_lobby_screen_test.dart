@@ -19,6 +19,7 @@ import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:provider/provider.dart';
 
 // The battle server's own default ready limit, read from the sibling server.
@@ -26,6 +27,7 @@ import 'package:provider/provider.dart';
 import '../../../server/lib/battle_server.dart';
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
+import '../widgets/battle_test_support.dart';
 
 class _Session extends OnlineBattleSession {
   _Session(Uri endpoint, String token, String character)
@@ -88,6 +90,15 @@ Future<void> settle(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 1));
 }
 
+/// Turns on the system's reduced motion for one test. The match-found
+/// screen's characters then stand still instead of moving, so
+/// `pumpAndSettle` can settle while that screen shows.
+void holdStill(WidgetTester tester) {
+  tester.platformDispatcher.accessibilityFeaturesTestValue =
+      const FakeAccessibilityFeatures(disableAnimations: true);
+  addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+}
+
 Future<InMemoryAuthRepository> loggedIn() async {
   final auth = InMemoryAuthRepository()
     ..addAccount(loginId: 'human', nickname: '로그인사용자', password: 'password1');
@@ -100,6 +111,7 @@ void main() {
     testWidgets('leaving $phase closes both battle and lobby to home', (
       tester,
     ) async {
+      holdStill(tester);
       final auth = await loggedIn();
       late _Session session;
       final camera = FakeCameraService();
@@ -339,6 +351,7 @@ void main() {
   testWidgets(
     'live flow uses AI radar then real-player VS before camera setup',
     (tester) async {
+      holdStill(tester);
       await prepareFlowSnapshotFonts(tester);
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1;
@@ -367,6 +380,27 @@ void main() {
       await tester.pump();
       expect(find.byType(BattleSearchView), findsOneWidget);
       expect(find.byType(BattleSearchRadar), findsOneWidget);
+      // The bot search's red blips here too (W2b 1-A): with reduced motion
+      // all three stay lit.
+      final radar = tester
+          .widget<CustomPaint>(
+            find
+                .descendant(
+                  of: find.byType(BattleSearchRadar),
+                  matching: find.byType(CustomPaint),
+                )
+                .first,
+          )
+          .painter!;
+      final blips = paintedOps(
+        radar,
+        const Size(288, 288),
+      ).where((op) => op.contains(', 3.600, fill #FFFF3B30)')).toList();
+      expect(blips, [
+        'drawCircle((55.500, 199.300), 3.600, fill #FFFF3B30)',
+        'drawCircle((220.800, 67.200), 3.600, fill #FFFF3B30)',
+        'drawCircle((241.600, 217.600), 3.600, fill #FFFF3B30)',
+      ]);
       expect(find.byType(GridBackground), findsOneWidget);
       expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
       expect(find.text('기다리는 동안 자리를 준비해 두세요'), findsOneWidget);
@@ -379,6 +413,12 @@ void main() {
       session.found(duration: 30000);
       await tester.pump();
       expect(find.byType(VersusScreen), findsOneWidget);
+      // The characters as the battle will draw them: mine as sent (the
+      // default here), the opponent's as the server passed it on.
+      expect(
+        tester.widget<VersusScreen>(find.byType(VersusScreen)).characters,
+        const BattleCharacters(me: 'mouse', opponent: 'seal'),
+      );
       expect(find.text('MATCH FOUND'), findsOneWidget);
       expect(find.text('VS'), findsOneWidget);
       expect(find.text('실제상대'), findsOneWidget);
@@ -477,6 +517,7 @@ void main() {
 
   testWidgets('the sound hooks given to the lobby reach the battle it '
       'opens', (tester) async {
+    holdStill(tester);
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -586,6 +627,7 @@ void main() {
 
   testWidgets('a match cancelled while the safety warning is open closes it '
       'with the versus screen', (tester) async {
+    holdStill(tester);
     final auth = await loggedIn();
     late _Session session;
     await tester.pumpWidget(
@@ -621,6 +663,7 @@ void main() {
     'a match found while the cancel dialog is open shows the safety warning '
     'only after 계속하기',
     (tester) async {
+      holdStill(tester);
       final auth = await loggedIn();
       late _Session session;
       await tester.pumpWidget(

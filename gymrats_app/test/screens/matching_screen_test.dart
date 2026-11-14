@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -195,7 +198,7 @@ void main() {
 
   testWidgets('the radar is the design\'s (BMatching): a white disc with an '
       'ink edge, a lime sweep of six wedges with an ink edge turning once '
-      'per cycle, gray rings and dashes, ink-edged pink blips', (tester) async {
+      'per cycle, gray rings and dashes, red blips (W2b 1-A)', (tester) async {
     final turn = AnimationController(
       vsync: const TestVSync(),
       duration: const Duration(seconds: 3),
@@ -273,16 +276,46 @@ void main() {
         'drawLine((144.000, 282.000), (144.000, 286.000), fill #FF586073)',
       ]),
     );
-    expect(
-      ops,
-      containsAll([
-        'drawCircle((220.800, 67.200), 6.000, fill #FFFF4F81)',
-        'drawCircle((55.500, 199.300), 4.600, fill #8CFF4F81)',
-        'drawCircle((241.600, 217.600), 3.800, fill #FFFF4F81)',
-        'drawCircle((220.800, 67.200), 6.000, stroke #FF141A26 1.500 butt '
-            'miter)',
-      ]),
+    // At the start of a turn only the third blip shows, fading (0.54): its
+    // glow, red dot and white spot in one layer at that opacity, no ink
+    // edge. The sweep has not reached the other two yet.
+    final blipAt = ops.indexOf(
+      'saveLayer(rect(229.600, 205.600, 253.600, 229.600), fill #8A141A26)',
     );
+    expect(blipAt, isNonNegative);
+    expect(ops.sublist(blipAt + 1, blipAt + 5), [
+      'drawCircle((241.600, 217.600), 12.000, fill #FF000000)',
+      'drawCircle((241.600, 217.600), 3.600, fill #FFFF3B30)',
+      'drawCircle((241.600, 217.600), 1.200, fill #E5FFFFFF)',
+      'restore()',
+    ]);
+    expect(ops.where((op) => op.startsWith('saveLayer')), hasLength(1));
+    // The pink blips and their ink edges are gone.
+    expect(ops.where((op) => op.contains('FF4F81')), isEmpty);
+    expect(ops.where((op) => op.contains('stroke #FF141A26 1.500')), isEmpty);
+    // The glow is red, from 0.6 in the middle through 0.24 at 45% to
+    // nothing at its edge.
+    final recorded = TestRecordingCanvas();
+    painter.paint(recorded, const Size(288, 288));
+    final glow =
+        recorded.invocations
+                .where((call) => call.invocation.memberName == #drawCircle)
+                .map((call) => call.invocation.positionalArguments)
+                .firstWhere((args) => args[1] == 12.0)[2]
+            as Paint;
+    expect(glow.shader, isA<ui.Gradient>());
+    // Halfway through the next turn's first second the first blip is
+    // fully lit and the third gone.
+    turn.value = 0.2;
+    final later = paintedOps(painter, const Size(288, 288));
+    expect(
+      later,
+      contains(
+        'saveLayer(rect(43.500, 187.300, 67.500, 211.300), fill #FF141A26)',
+      ),
+    );
+    expect(later.where((op) => op.startsWith('saveLayer')), hasLength(1));
+    turn.value = 0;
     // No pulse: nothing lime but the sweep.
     expect(
       ops.where((op) => op.contains('C6FF3D') && !op.startsWith('drawArc')),
@@ -302,7 +335,6 @@ void main() {
     final dashAt = ops.indexOf(
       'drawLine((2.000, 144.000), (6.000, 144.000), fill #FF586073)',
     );
-    final blipAt = first('drawCircle((220.800, 67.200)');
     expect(first('drawArc'), greaterThan(3));
     expect(
       ringAt,
@@ -373,8 +405,19 @@ void main() {
       return paintedOps(painter, const Size(288, 288));
     }
 
-    expect(await paintWith(still: false), contains('rotate(1.571)'));
-    expect(await paintWith(still: true), contains('rotate(0.000)'));
+    final moving = await paintWith(still: false);
+    expect(moving, contains('rotate(1.571)'));
+    // A quarter turn in, only the first blip shows, fading.
+    expect(moving.where((op) => op.startsWith('saveLayer')), hasLength(1));
+    final still = await paintWith(still: true);
+    expect(still, contains('rotate(0.000)'));
+    // All three blips stay lit at 0.9 (W2b 1-A), not the 0.54 of the
+    // third that a sweep at rest would give.
+    expect(still.where((op) => op.startsWith('saveLayer')), [
+      'saveLayer(rect(43.500, 187.300, 67.500, 211.300), fill #E5141A26)',
+      'saveLayer(rect(208.800, 55.200, 232.800, 79.200), fill #E5141A26)',
+      'saveLayer(rect(229.600, 205.600, 253.600, 229.600), fill #E5141A26)',
+    ]);
     expect(find.bySemanticsLabel('상대를 찾는 레이더'), findsOneWidget);
     // The letter in the middle is part of the picture.
     expect(find.bySemanticsLabel('우'), findsNothing);
@@ -406,6 +449,166 @@ void main() {
     final after = turned();
     // A quarter turn, wherever in the turn it was.
     expect((after - before) % (2 * 3.14159265), closeTo(1.571, 0.01));
+  });
+
+  group("the blips match the design's numbers (w2b_golden.json radar)", () {
+    // The design's file, as copied for the W2b tests.
+    final file = jsonDecode(
+      File('test/widgets/battle_w2b_golden.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final golden = file['radar'] as Map<String, dynamic>;
+    final tolerance = file['meta']['tolerance'] as Map<String, dynamic>;
+    final opacityTolerance = (tolerance['opacity'] as num).toDouble();
+    final angleTolerance = (tolerance['angleDeg'] as num).toDouble();
+
+    test('the three spots, the angles where the sweep reaches them and '
+        'when', () {
+      final dots = (golden['dots'] as List).cast<Map<String, dynamic>>();
+      expect(golden['periodMs'], RadarBlips.periodMs);
+      expect(golden['center'], [144, 144]);
+      expect(dots, hasLength(RadarBlips.spots.length));
+      for (final (i, dot) in dots.indexed) {
+        final spot = RadarBlips.spots[i];
+        expect(spot, Offset(dot['x'] as double, dot['y'] as double));
+        final angle = RadarBlips.angleOf(spot);
+        expect(
+          angle,
+          closeTo((dot['angleDeg'] as num).toDouble(), angleTolerance),
+        );
+        expect(
+          angle / 360 * RadarBlips.periodMs,
+          closeTo((dot['passMsExact'] as num).toDouble(), 1),
+        );
+      }
+    });
+
+    test("the brightness after the sweep passes: the design's samples, "
+        'and the edges of each part', () {
+      final envelope = golden['envelope'] as Map<String, dynamic>;
+      expect(envelope['riseMs'], RadarBlips.riseMs);
+      expect(envelope['holdUntilMs'], RadarBlips.holdUntilMs);
+      expect(envelope['goneAtMs'], RadarBlips.goneAtMs);
+      for (final sample
+          in (envelope['samples'] as List).cast<Map<String, dynamic>>()) {
+        expect(
+          RadarBlips.opacityAfter((sample['sinceMs'] as num).toDouble()),
+          closeTo((sample['opacity'] as num).toDouble(), opacityTolerance),
+          reason: 'at ${sample['sinceMs']} ms',
+        );
+      }
+      // Lights up over 60 ms, held to 240 ms, gone from 1000 ms.
+      expect(RadarBlips.opacityAfter(59), lessThan(1));
+      expect(RadarBlips.opacityAfter(60), 1);
+      expect(RadarBlips.opacityAfter(239.9), 1);
+      expect(RadarBlips.opacityAfter(240), 1);
+      expect(RadarBlips.opacityAfter(240.1), lessThan(1));
+      expect(RadarBlips.opacityAfter(999.9), closeTo(0, 1e-6));
+      expect(RadarBlips.opacityAfter(1000), 0);
+      expect(RadarBlips.opacityAfter(2999), 0);
+    });
+
+    test('every 50 ms over two turns: the sweep and the three blips', () {
+      final frames = (golden['frames'] as List).cast<Map<String, dynamic>>();
+      expect(frames, hasLength(121));
+      for (final frame in frames) {
+        final ms = (frame['tMs'] as num).toDouble();
+        // The animation's value: the share of the current turn.
+        final turn = (ms % RadarBlips.periodMs) / RadarBlips.periodMs;
+        expect(
+          turn * 360,
+          closeTo((frame['sweepDeg'] as num).toDouble(), angleTolerance),
+          reason: 'sweep at $ms ms',
+        );
+        final expected = (frame['dotOpacity'] as List).cast<num>();
+        final actual = RadarBlips.opacitiesAt(turn);
+        for (var i = 0; i < expected.length; i++) {
+          expect(
+            actual[i],
+            closeTo(expected[i].toDouble(), opacityTolerance),
+            reason: 'blip $i at $ms ms',
+          );
+        }
+      }
+    });
+
+    test('the look of a blip and the still radar', () {
+      final style = golden['dotStyle'] as Map<String, dynamic>;
+      expect(
+        style['color'],
+        '#${(AppColors.danger.toARGB32() & 0xFFFFFF).toRadixString(16).toUpperCase()}',
+      );
+      final glow = style['glow'] as Map<String, dynamic>;
+      expect(glow['radius'], RadarBlips.glowRadius);
+      final stops = (glow['stops'] as List).cast<Map<String, dynamic>>();
+      expect([for (final stop in stops) stop['offset']], RadarBlips.glowStops);
+      expect([
+        for (final stop in stops) stop['opacity'],
+      ], RadarBlips.glowOpacities);
+      // The gradient the painter draws: red at those opacities and stops.
+      expect(RadarBlips.glow.stops, RadarBlips.glowStops);
+      expect(RadarBlips.glow.colors, [
+        for (final opacity in RadarBlips.glowOpacities)
+          AppColors.danger.withValues(alpha: opacity),
+      ]);
+      expect(style['core']['radius'], RadarBlips.dotRadius);
+      expect(style['core']['opacity'], 1);
+      expect(style['hotSpot']['radius'], RadarBlips.spotRadius);
+      expect(style['hotSpot']['color'], '#FFFFFF');
+      expect(style['hotSpot']['opacity'], RadarBlips.spotOpacity);
+      final reduced = golden['reducedMotion'] as Map<String, dynamic>;
+      expect(reduced['sweepDeg'], 0);
+      expect(reduced['dotOpacity'], everyElement(RadarBlips.still));
+    });
+  });
+
+  testWidgets('a radar stopped when the search ends keeps its blips as they '
+      'were, fading or lit', (tester) async {
+    final turn = AnimationController(
+      vsync: tester,
+      duration: const Duration(seconds: 3),
+    );
+    addTearDown(turn.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 360,
+            height: 500,
+            child: BattleSearchRadar(
+              animation: turn,
+              elapsed: Duration.zero,
+              playerName: '우현',
+            ),
+          ),
+        ),
+      ),
+    );
+    List<String> layers() => paintedOps(
+      tester
+          .widget<CustomPaint>(
+            find
+                .descendant(
+                  of: find.byType(BattleSearchRadar),
+                  matching: find.byType(CustomPaint),
+                )
+                .first,
+          )
+          .painter!,
+      const Size(288, 288),
+    ).where((op) => op.startsWith('saveLayer')).toList();
+
+    turn.repeat();
+    // 883 ms in: the first blip 400 ms after the sweep, fading (0.62).
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 883));
+    turn.stop();
+    final stopped = layers();
+    expect(stopped, [
+      'saveLayer(rect(43.500, 187.300, 67.500, 211.300), fill #9F141A26)',
+    ]);
+    await tester.pump(const Duration(seconds: 2));
+    expect(layers(), stopped);
+    expect(tester.binding.hasScheduledFrame, isFalse);
   });
 
   testWidgets('palette B: the chip dot, the guide icon and 매칭 취소 are '

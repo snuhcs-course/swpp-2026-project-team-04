@@ -407,8 +407,9 @@ final _designPose = PoseFrame(
 
 /// The fighting stage by itself: every effect behind a button, as in the
 /// design prototype, with no camera and no exercise. The buttons sit where
-/// the camera would be. The scores here are the demo's own sums by the
-/// game's rules; in the app they come from the game.
+/// the camera would be, so once an ending is decided they go with it (W2b
+/// end screen); 결과 보기 then starts over. The scores here are the demo's
+/// own sums by the game's rules; in the app they come from the game.
 class BattleStageDemo extends StatefulWidget {
   const BattleStageDemo({super.key});
 
