@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/feedback_stats.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
@@ -85,6 +86,8 @@ void main() {
       expect(state.opponentScore, 125);
       expect(state.myReps, 12);
       expect(state.myInvalidReps, 2);
+      expect(state.opponentReps, 5);
+      expect(state.departure, BattleDeparture.none);
       expect(state.opponentLeft, isFalse);
       expect(state.form, isNotNull);
       expect(state.rematch?.difficulty, BotDifficulty.expert);
@@ -166,6 +169,23 @@ void main() {
       expect(state.rematch, isNull);
       expect(state.opponentLeft, isTrue);
       expect(state.end, isNull);
+    });
+
+    test("online: the user's lost connection is told apart", () async {
+      final model = ResultViewModel.battle(
+        _battle(
+          opponent: _person,
+          end: GameEnd.timeUp,
+          departure: BattleDeparture.myConnectionLost,
+        ),
+        history: _history([100]),
+      );
+      expect(model.state.departure, BattleDeparture.myConnectionLost);
+      expect(model.state.opponentLeft, isFalse);
+      expect(model.state.end, isNull);
+      await model.load();
+      expect(model.state.departure, BattleDeparture.myConnectionLost);
+      expect(model.state.opponentReps, 5);
     });
 
     test('online by time keeps its end', () {
@@ -288,6 +308,27 @@ void main() {
       },
     );
 
+    test(
+      'bot and online battles of the exercise are compared together',
+      () async {
+        final history = FakeFeedbackStatsSource([
+          StatsPoint(
+            id: 1,
+            exercise: ExerciseType.pushUp,
+            playedAt: _endedAt.subtract(const Duration(days: 2)),
+            reps: 10,
+            score: 300,
+            isOnline: true,
+          ),
+          statsPoint(2, _endedAt.subtract(const Duration(days: 1)), score: 100),
+        ]);
+        final model = ResultViewModel.battle(_battle(), history: history);
+        await model.load();
+        expect(model.state.recentScores, [300, 100, 240]);
+        expect(model.state.previousBest, 300);
+      },
+    );
+
     test('a failed load leaves that part out', () async {
       final history = FakeFeedbackStatsSource()..error = Exception('offline');
       final model = ResultViewModel.battle(_battle(), history: history);
@@ -371,6 +412,8 @@ void main() {
       expect(state.opponentName, 'AI 봇 · 고수');
       expect(state.isOnline, isTrue);
       expect(state.opponentLeft, isTrue);
+      expect(state.departure, BattleDeparture.opponentLeft);
+      expect(state.opponentReps, 7);
       expect(state.myScore, 130);
       expect(state.opponentScore, 110);
       expect(state.myReps, 9);

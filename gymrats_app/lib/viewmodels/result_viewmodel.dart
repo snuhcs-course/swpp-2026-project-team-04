@@ -51,12 +51,13 @@ class ResultState {
     required this.myScore,
     required this.opponentScore,
     required this.myReps,
+    required this.opponentReps,
     this.end,
     this.opponent,
     this.isOnline,
     this.roundLength,
     this.myInvalidReps,
-    this.opponentLeft = false,
+    this.departure = BattleDeparture.none,
     this.history = ResultHistoryPhase.loading,
     this.previousBest,
     this.isNewBest = false,
@@ -101,8 +102,17 @@ class ResultState {
   /// The user's rejected reps; null for a past battle without feedback.
   final int? myInvalidReps;
 
+  /// The opponent's counted reps: a time-up battle with equal scores is
+  /// decided by them.
+  final int opponentReps;
+
+  /// Whether a player leaving ended an online battle: the opponent (a win)
+  /// or the user's own connection (a loss). A past battle knows only the
+  /// opponent leaving.
+  final BattleDeparture departure;
+
   /// An online battle won because the opponent forfeited or dropped out.
-  final bool opponentLeft;
+  bool get opponentLeft => departure == BattleDeparture.opponentLeft;
 
   final ResultHistoryPhase history;
 
@@ -159,8 +169,9 @@ class ResultState {
     myScore: myScore,
     opponentScore: opponentScore,
     myReps: myReps,
+    opponentReps: opponentReps,
     myInvalidReps: myInvalidReps,
-    opponentLeft: opponentLeft,
+    departure: departure,
     history: history ?? this.history,
     previousBest: previousBest ?? this.previousBest,
     isNewBest: isNewBest ?? this.isNewBest,
@@ -204,8 +215,9 @@ class ResultViewModel extends ChangeNotifier {
          myScore: result.myDisplayScore,
          opponentScore: result.opponentDisplayScore,
          myReps: result.myReps,
+         opponentReps: result.opponentReps,
          myInvalidReps: result.myInvalidReps,
-         opponentLeft: result.departure == BattleDeparture.opponentLeft,
+         departure: result.departure,
          form: result.form,
          nextTip: _tipOf(result.form, analyzer),
          rematch: result.matchup.opponent.isBot ? result.matchup.rematch : null,
@@ -234,8 +246,11 @@ class ResultViewModel extends ChangeNotifier {
              ? record.opponentScore!
              : record.opponentReps,
          myReps: record.myReps,
+         opponentReps: record.opponentReps,
          myInvalidReps: record.feedbackSummary?.invalidReps,
-         opponentLeft: record.opponentLeft,
+         departure: record.opponentLeft
+             ? BattleDeparture.opponentLeft
+             : BattleDeparture.none,
        );
 
   /// A battle just played may already be on the server when the list
@@ -318,8 +333,9 @@ class ResultViewModel extends ChangeNotifier {
         myScore: _state.myScore,
         opponentScore: _state.opponentScore,
         myReps: _state.myReps,
+        opponentReps: _state.opponentReps,
         myInvalidReps: _state.myInvalidReps,
-        opponentLeft: _state.opponentLeft,
+        departure: _state.departure,
         history: ResultHistoryPhase.ready,
         previousBest: best,
         isNewBest: best != null && thisScore != null && thisScore > best,
