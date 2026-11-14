@@ -11,6 +11,7 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/widgets/character_motion.dart';
 
 /// The design's shots (W3 spec 0): 2x, the box's (0, 0) at pixel (60, 24),
 /// on this ground.
@@ -471,6 +472,169 @@ void main() {
       teamColor: AppColors.accent,
     );
     expect(base.shouldRepaint(otherRig), isTrue);
+  });
+
+  group('W4: what a motion gives the painter (W4 spec 8)', () {
+    final home = CharacterMotionRig.standard;
+
+    CharacterFigurePainter painter({
+      String id = 'mouse',
+      String pose = 'idle',
+      RigPoseTable? values,
+      Set<String>? tags,
+      bool patched = false,
+      Set<String> flags = const {},
+      bool effects = false,
+    }) => CharacterFigurePainter(
+      rig: rig,
+      art: rig.art(id),
+      pose: pose,
+      teamColor: AppColors.accent,
+      values: values,
+      tags: tags,
+      patches: patched ? home.characters[id]!.drawPatch : const [],
+      flags: flags,
+      effects: effects ? home.effects : const [],
+    );
+
+    test('given a table, it draws that and needs no pose of that name', () {
+      final table = home.characters['bear']!.keyPoses['j']!;
+      final recorder = ui.PictureRecorder();
+      expect(
+        () => painter(
+          id: 'bear',
+          pose: 'dance',
+          values: table,
+          tags: {'atk'},
+        ).paint(Canvas(recorder), const Size(140, 160)),
+        returnsNormally,
+      );
+      recorder.endRecording().dispose();
+    });
+
+    test('a pose\'s table and its name as the tag draw what the name '
+        'draws', () async {
+      for (final pose in rig.poses) {
+        final byName = await _render(painter(pose: pose), 400, 400);
+        final given = await _render(
+          painter(values: rig.art('mouse').poses[pose], tags: {pose}),
+          400,
+          400,
+        );
+        expect(given, byName, reason: pose);
+      }
+    });
+
+    test('repaints when what a motion gives changes', () {
+      final table = home.characters['mouse']!.keyPoses['up']!;
+      final base = painter(values: table, tags: {'idle'});
+      expect(
+        base.shouldRepaint(painter(values: table, tags: {'idle'})),
+        isFalse,
+      );
+      expect(
+        base.shouldRepaint(
+          painter(
+            values: home.characters['mouse']!.keyPoses['down']!,
+            tags: {'idle'},
+          ),
+        ),
+        isTrue,
+      );
+      expect(base.shouldRepaint(painter(values: table, tags: {'atk'})), isTrue);
+      expect(
+        base.shouldRepaint(
+          painter(values: table, tags: {'idle'}, patched: true),
+        ),
+        isTrue,
+      );
+      expect(
+        base.shouldRepaint(
+          painter(values: table, tags: {'idle'}, flags: {'gBack'}),
+        ),
+        isTrue,
+      );
+      expect(
+        base.shouldRepaint(
+          painter(values: table, tags: {'idle'}, effects: true),
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('그루\'s inner tail fur on the stage and 캐릭터 선택 (user, 2026-11-14, '
+      'W4 spec 10.1)', () {
+    CharacterFigurePainter figurePainter(WidgetTester tester) =>
+        tester
+                .widget<CustomPaint>(
+                  find.descendant(
+                    of: find.byType(CharacterFigure),
+                    matching: find.byType(CustomPaint),
+                  ),
+                )
+                .painter!
+            as CharacterFigurePainter;
+
+    testWidgets('CharacterFigure adds it to 그루 and nothing to the others', (
+      tester,
+    ) async {
+      for (final id in rig.order) {
+        await tester.pumpWidget(
+          Center(child: CharacterFigure(characterId: id)),
+        );
+        final patches = figurePainter(tester).patches;
+        if (id == 'kangaroo') {
+          expect([for (final p in patches) p.group], ['tailInner'], reason: id);
+        } else {
+          expect(patches, isEmpty, reason: id);
+        }
+      }
+    });
+
+    for (final pose in rig.poses) {
+      test(
+        'in $pose it is the only change, a #F6E3C5 patch of the tail',
+        () async {
+          final fur = CharacterMotionRig.standard.stagePatchOf('kangaroo');
+          final plain = await _render(_painter('kangaroo', pose), 400, 400);
+          final withFur = await _render(
+            CharacterFigurePainter(
+              rig: rig,
+              art: rig.art('kangaroo'),
+              pose: pose,
+              teamColor: AppColors.accent,
+              patches: fur,
+            ),
+            400,
+            400,
+          );
+          var changed = 0;
+          var furColored = 0;
+          for (var i = 0; i < plain.length; i += 4) {
+            if (plain[i] == withFur[i] &&
+                plain[i + 1] == withFur[i + 1] &&
+                plain[i + 2] == withFur[i + 2]) {
+              continue;
+            }
+            changed++;
+            if ((withFur[i] - 0xF6).abs() <= 8 &&
+                (withFur[i + 1] - 0xE3).abs() <= 8 &&
+                (withFur[i + 2] - 0xC5).abs() <= 8) {
+              furColored++;
+            }
+          }
+          if (pose == 'ko') {
+            // Knocked out, the body hides the whole tail.
+            expect(changed, 0);
+            return;
+          }
+          expect(changed, greaterThan(500), reason: pose);
+          // All but the smoothed edges is the fur's color.
+          expect(furColored / changed, greaterThan(0.85), reason: pose);
+        },
+      );
+    }
   });
 
   group('against the design shots (test/widgets/character_shots)', () {

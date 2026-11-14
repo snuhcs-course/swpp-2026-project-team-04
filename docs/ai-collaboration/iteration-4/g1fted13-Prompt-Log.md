@@ -747,3 +747,116 @@ W2b를 마무리해서 PR을 올리자. 대결이 끝난 뒤 화면까지 이번
 2. progress.md 남은 일에 W4 항목을 하나 추가해: \"캐릭터 선택 화면에서 그루(캥거루)의 귀가 위쪽 설명 문구('캥거루 · 키 큰 점프 선수')를 덮는다. character_select_screen.dart는 W3 파일이라 W4에서 예외 줄을 넣고 고친다.\"
 3. 커밋하고 push한 뒤 PR #54를 Ready for review로 바꿔.
 </pasted_content id=\"1e04\">"
+
+## 2026-11-14 · Woohyun Song · feat/home_character
+<!-- 21f5e71e 2026-11-13T20:05:06.471Z -->
+[Woohyun Song, 11-14 05:05] "<pasted_content id=\"ac80\">
+W4(feat/home_character, 시트 P17)를 시작해. 하네스 규칙과 .claude/team-plan.md를 따른다.
+
+[시작]
+git fetch origin 후 최신 origin/main에서 feat/home_character 브랜치를 만든다. W3(PR #52)는 main에 머지됐다. python3 .claude/hooks/ownership_guard.py --status 로 W4를 시작할 수 있는지 확인하고, 하네스 방식대로 task.md와 progress.md를 W4로 준비한다.
+
+[이번에 할 일 — 1부: 디자인 시안 없이 할 수 있는 것]
+1. 메인 메뉴를 네 줄로 바꾼다(home_screen.dart): 01 / PLAY 게임 시작, 02 / CHARACTER 캐릭터, 03 / ARCHIVE 기록보관소, 04 / SETTINGS 환경설정(마지막 줄). 캐릭터 줄은 다른 줄과 같은 LobbyMenuItem 모양이고, 누르면 캐릭터 선택 화면(GymRatsApp.characterRoute)을 연다.
+2. \"게임 시작\" 화면(play_screen.dart)의 캐릭터 줄(_CharacterRow)을 뺀다. 캐릭터는 이제 메인 메뉴에서 고른다. play_screen.dart와 play_screen_test.dart는 W1 파일이라 W4 허용 목록 밖이다. W1은 머지됐고 주인이 나라서, 일회성 예외를 .claude/ownership-exceptions.txt에 하네스 형식대로 더하고 task.md Decisions에 이유를 적은 뒤 진행한다. 환경설정의 캐릭터 줄은 그대로 둔다.
+3. 홈 로고를 \"GYMRATS\"에서 \"GYMMOUSE\"로 바꾼다(home_screen.dart의 _Title, 글꼴·기울기는 그대로). 앱 이름이 GymMouse로 바뀌었기 때문이다.
+4. 캐릭터 선택 화면에서 그루(캥거루)의 귀가 이름 띠 아래 한 줄 설명을 가리는 문제를 고친다. character_select_screen.dart는 W3 파일이므로 2번과 같은 방식으로 예외를 단다.
+   - 조건: 캐릭터 다섯 모두, 대기 움직임으로 가장 높이 올라간 순간에도 그림이 이름 띠·설명과 겹치지 않는다.
+   - 시안의 크기(미리보기 높이 300, 캐릭터 1.5배, 이름 띠 30px)는 가능하면 유지한다.
+   - 고치는 방법이 둘 이상이면 실제 화면을 보여 주며 나에게 고르게 한다.
+   - 겹치지 않음을 검사하는 테스트를 더한다(리그의 idle 범위와 대기 움직임 높이로 계산).
+5. 홈 가운데 RepBot 자리는 아직 바꾸지 않는다. 그 자리에 고른 캐릭터를 세우는 일은 Claude Design 묶음(W4-HOME-SPEC.md)이 오면 2부로 한다. 다만 메뉴가 네 줄이 되면서 RepBot 자리가 얼마나 줄어드는지는 확인해서 알려 준다(360×780에서 최소 크기 아래로 내려가 스크롤이 생기는지).
+
+[마무리]
+- 테스트를 고치고 더한 뒤 전체 테스트, flutter analyze, python3 .claude/hooks/ownership_guard.py --check-diff 를 돌린다. 새 파일이 생기면 design_tokens_test.dart의 목록에 알파벳 순서 자리로 더한다.
+- 리뷰어 APPROVE를 받은 뒤 커밋한다. 푸시는 내가 말할 때만 한다.
+- 끝나면 폰으로 확인할 것 3~5개를 짧게 적어 줘.
+</pasted_content id=\"ac80\">"
+
+<!-- 21f5e71e 2026-11-14T01:34:11.448Z -->
+[Woohyun Song, 11-14 10:34] "Answering your earlier questions:
+- \"캐릭터 선택 화면 겹침(4번) 해법을 골라 주세요. 지금은 그루의 귀, 펭뚱이·물렁범의 머리띠 끈이 이름 띠 아래 한 줄 설명에 닿습니다. 비교 그림: .claude/design/out/w4/_options_all.png (다섯 캐릭터가 가장 높이 뛴/기운 순간, 360×780 실제 글꼴). 세 안 모두 미리보기 300, 캐릭터 1.5배, 이름 띠 30px은 그대로입니다.\": A: 설명을 발판 아래 왼쪽 (Recommended)
+- \"홈 메뉴가 네 줄이 되면서 RepBot 자리가 285 → 171px로 줄었습니다(한 줄 114px). 360×780에서 시스템 바가 없으면 RepBot 0.648배로 스크롤이 없지만, 상태바+3버튼 내비바(24+48)면 최소 0.6배에서도 59px, 상태바+제스처 바(24+16)면 27px 스크롤이 생깁니다. 11-08 규칙('보통 폰은 스크롤 없음')을 확인하던 홈 테스트 4개가 깨집니다. 2부(W4-HOME-SPEC) 전까지 어떻게 할까요?\": 지금 규칙 유지, 테스트를 새 수치로 (Recommended)
+- \"W4 밖 파일 두 곳도 이번 변경과 엮입니다. 일회성 예외로 고칠까요? (1) main_test.dart(W3 파일, 머지됨, 주인 본인): 로고 확인 'GYMRATS'→'GYMMOUSE' 3개 테스트, 그리고 게임 시작의 캐릭터 줄로 캐릭터 선택을 열던 테스트 2개를 홈의 '캐릭터' 메뉴 줄로 옮김. (2) settings_screen.dart + 그 테스트(W1 파일, 박진영 J2와 공유): 환경설정 페이지 머리 태그 '03 / SETTINGS'를 홈 메뉴와 맞춰 '04 / SETTINGS'로 한 줄씩.\": 둘 다 허용 (Recommended)"
+
+<!-- 21f5e71e 2026-11-14T04:53:54.213Z -->
+[Woohyun Song, 11-14 13:53] "<pasted_content id=\"ac80\">
+W4 1부에 이어서 두 가지를 더 한다. 브랜치는 그대로 feat/home_character다.
+
+[1. main 합치기]
+origin/main에 W2b(PR #54, feat/battle_screen_polish)와 J2(PR #53, feat/battle_bgm)가 머지됐다. git fetch origin 후 git merge origin/main 으로 합친다(리베이스 금지).
+- home_screen.dart: J2가 LobbyBackdrop을 SoundCues(music: MusicCue.menu)로 감싸고 import 두 줄(background_music.dart, sound_cues.dart)을 더했다. 충돌이 나면 J2의 줄과 W4의 변경을 모두 살린다.
+- design_tokens_test.dart: 충돌이 나면 양쪽 줄을 모두 남긴다.
+- 그 밖의 파일에서 충돌이 나면 멈추고 나에게 묻는다.
+합친 뒤 전체 테스트와 flutter analyze를 돌린다.
+
+[2. 홈이 한 화면에 들어가게 (폰 확인 결과 S26+에서도 스크롤이 생김)]
+Claude Design에서 정한 76px 메뉴 배치로 홈의 세로 크기를 바꾼다. 가운데 자리에는 일단 지금 RepBot을 그대로 둔다(2부에서 캐릭터 푸시업으로 바뀐다). 숫자는 캔버스 시안 기준이고, 화면 위아래의 시스템 바를 뺀 안쪽 기준으로 위에서부터 이렇다.
+- 위 여백 8, \"?\" 버튼과 프로필 칩 줄 44, 간격 8
+- 로고 줄 40: 기울인 라임 막대(11×34, 잉크 테두리 1.5)와 \"GYMMOUSE\"(Oxanium 800, 40px, 기울기는 지금과 같음), 간격 6
+- 한 줄 소개 18: \"1V1\"(Oxanium 700, 글자 간격 2)과 \"30초 실시간 운동 대결\"(13px, 보조색)
+- 가운데 캐릭터 자리: 남는 높이 전부(360×780에 상태바 24·버튼 세 개 내비게이션 바 48이면 272, 제스처 바 24면 296)
+- 메뉴 네 줄, 한 줄 76: 위 경계선 1px, 안쪽 위 8·아래 6, 태그(Oxanium 700, 11px, 줄 높이 14, 글자 간격 3, 흐림색), 간격 3, 제목(Do Hyeon 44px, 줄 높이 44, 지금처럼 기울임), 오른쪽 화살표는 40×40 자리에 24px 아이콘
+- 아래 여백 8
+좌우 여백, 색, 프로필 칩처럼 이미 이유가 있어 정한 크기(누르기 최소 높이 등)는 지금 앱 것을 유지한다. 그러면 몇 px 차이가 생길 수 있는데, 그 차이는 캐릭터 자리에서 흡수한다.
+
+조건:
+- 글자 1.0배에서는 360×780에 상태바 24·버튼 세 개 내비게이션 바 48인 경우, 제스처 바 24인 경우, 그보다 큰 화면(예: 412×915) 모두 스크롤이 없어야 한다. \"저장하지 못한 경기\" 칩이 보일 때도 마찬가지다.
+- RepBot은 자리 높이에 맞춰 줄어든다. 최소 배율은 이 조건을 지키도록 필요한 만큼 낮춘다(RepBot은 임시라 작아져도 된다).
+- 글자를 키운 경우, 로고와 메뉴 제목처럼 이미 큰 글자는 캐릭터 선택 화면의 이름 띠처럼 크기를 고정해도 된다. 그래도 안 들어가는 큰 글자 설정에서만 스크롤을 허용한다. 어떻게 했는지 task.md Decisions에 적는다.
+- 위 화면 크기들로 \"스크롤 없음\"을 확인하는 테스트를 지금 규칙 테스트 대신 둔다.
+
+[마무리]
+전체 테스트, flutter analyze, python3 .claude/hooks/ownership_guard.py --check-diff 를 돌리고, 리뷰어 APPROVE 뒤에 커밋한다. 푸시는 내가 말할 때만 한다. 끝나면 폰으로 다시 확인할 것을 짧게 적어 줘. 이번 빌드에는 W2b와 J2도 들어가니까, 홈 배경음이 나오는지와 대결 화면에서 W2b 변경(세팅 중 카메라 80%, 레이더 빨간 점, MATCH FOUND)이 보이는지도 포함한다.
+</pasted_content id=\"ac80\">"
+
+<!-- 21f5e71e 2026-11-14T06:30:10.731Z -->
+[Woohyun Song, 11-14 15:30] "<pasted_content id=\"ac80\">
+W4 2부를 시작한다. 브랜치는 그대로 feat/home_character다.
+
+[자료]
+Claude Design 묶음을 .claude/design/gymrats-w4-home/ 에 풀어 두었다. W4-HOME-SPEC.md를 먼저 읽고, 좌표·포즈·시간 값은 w4_home_rig.json을 원본으로 쓴다. dc/와 shots/는 참고용이다. W5 묶음(.claude/design/gymrats-w5-victory/)이 같은 화가를 쓰므로 W5-VICTORY-SPEC.md의 7절과 9절도 읽어 둔다.
+
+[할 일]
+1. 홈 가운데의 RepBot 푸시업을 고른 캐릭터의 운동 반복으로 바꾼다(명세 1~7절).
+   - GYM마우스·그루는 푸시업, 곰탱이는 원투 펀치, 펭뚱이·물렁범은 스쿼트다. 발판과 이름 띠는 없다.
+   - 캐릭터 자리 전체가 캐릭터 선택 화면을 여는 버튼이다. 접근성 이름은 \"캐릭터 바꾸기, 지금 캐릭터 (이름)\"이다.
+   - 애니메이션 줄이기를 켜면 쉬는 자세 한 장만 그린다. 화면이 안 보이면 시계를 멈추고, 캐릭터가 바뀌면 동작을 0부터 다시 시작한다.
+2. 화가 넓히기(명세 8절). widgets/character_figure.dart의 CharacterFigurePainter를 그대로 쓰되, 바깥에서 세 가지를 넣을 수 있게 넓힌다: 보간한 포즈 값 표, 표정 꼬리표 목록, drawPatch와 동작 플래그. W5가 같은 화가에 w5_victory_rig.json의 drawPatch를 이어 붙일 수 있는 구조로 만든다. 대결 무대와 캐릭터 선택 화면처럼 포즈 이름으로 그리는 기존 호출은 결과가 바뀌면 안 된다(3번의 꼬리 털만 예외).
+3. 명세 10절 질문의 답(task.md Decisions에 날짜와 함께 적는다).
+   - 10.1: 그루 꼬리 안쪽 밝은 털(#F6E3C5)을 대결 무대와 캐릭터 선택 화면에도 넣는다. 화가가 W4 파일이니 W4에서 하고, W3 파일을 고쳐야 하면 일회성 예외로 한다.
+   - 10.2: 권장대로 자리가 작으면 배율이 작아져도 그리고, 메뉴는 스크롤하지 않는다.
+4. 데이터: pubspec.yaml은 PM 전용이므로 w4_home_rig.json은 W3처럼 Dart 상수 문자열로 넣는다. 파일 이름은 W4 허용 범위(widgets/character_*, lobby_*) 안에서 정한다. golden 값은 테스트 쪽에만 둔다.
+5. lobby_rep_bot.dart는 홈에서만 쓰였다. 쓰는 곳이 없어지면 파일과 테스트를 지운다.
+6. 앱 이름 정리: 로그인 화면의 \"GYMRATS\"를 \"GYMMOUSE\"로 바꾼다. login_screen.dart는 이번 이터레이션 팀 계획에 주인이 없는 파일이라 일회성 예외로 고친다(관련 테스트가 있으면 같이). app_theme.dart의 lobbyLogo 주석에 남은 \"GYMRATS\"도 같은 방식으로 고친다.
+
+[테스트]
+명세 8절 그대로다.
+- 데이터 검사
+- golden 대조(tolerance 0.01)
+- 그리기 검사: drawPatch의 기준 항목이 모두 찾아지고, 효과 다섯 가지는 그리지 않는다.
+- 배치 검사: 360×780, 버튼 세 개·제스처 바에서 배율과 발끝이 placement와 같다.
+- 화면 검사: 누르면 선택 화면이 열리고, 접근성 이름이 맞고, 애니메이션 줄이기를 켜면 움직이지 않는다.
+기존의 홈 스크롤 없음 테스트는 유지한다. 대결 무대와 캐릭터 선택 화면의 기존 테스트는 꼬리 털 외에는 그대로 통과해야 한다.
+
+[마무리]
+전체 테스트, flutter analyze, python3 .claude/hooks/ownership_guard.py --check-diff 를 돌리고, 리뷰어 APPROVE 뒤에 커밋한다. 푸시는 내가 말할 때만 한다. 끝나면 폰으로 확인할 것을 짧게 적어 준다.
+</pasted_content id=\"ac80\">"
+
+<!-- 21f5e71e 2026-11-14T07:33:53.331Z -->
+[Woohyun Song, 11-14 16:33] "두 가지 답이다.
+1. design_tokens_test.dart에서 lobby_rep_bot.dart 줄을 지운 것은 그대로 둔다. \"추가만\" 규칙은 남의 줄과 충돌하지 않게 하려는 것인데, 지운 파일을 가리키는 줄은 남겨 둘 수 없다. PR 본문에 이유를 한 줄 적는다.
+2. RepBotColors 토큰은 지우지 않고 그대로 둔다. app_theme.dart는 W6 브랜치에도 변경이 있어서 지금 지우면 충돌만 늘어난다. 튜토리얼에서 RepBot 그림을 다시 쓸 수도 있다. progress.md에 \"쓰지 않는 토큰, 마감 뒤 정리\"로 적어 둔다."
+
+<!-- 21f5e71e 2026-11-14T07:43:54.011Z -->
+[Woohyun Song, 11-14 16:43] "<pasted_content id=\"ac80\">
+폰 확인 끝났고 문제없다. 푸시하고 PR을 올려 줘.
+주의: 지금 작업 폴더는 W5 세션이 쓰던 feat/victory_animation 브랜치에 있다(W5 세션은 멈춰 둠).
+1. git status로 추적 파일에 커밋 안 된 변경이 있는지 먼저 본다. 있으면 아무것도 하지 말고 멈춰서 알려 준다.
+2. 없으면 feat/home_character로 바꾸고, 말한 대로 origin/main을 합치고, 코스 기록을 갱신하고, 푸시하고 PR을 연다. PR 본문에는 design_tokens_test 한 줄 설명을 넣는다.
+3. .claude/task.md와 progress.md의 W5 부분은 건드리지 않는다.
+4. 끝나면 작업 폴더를 다시 feat/victory_animation으로 바꿔 놓고, PR 번호와 링크를 알려 준다.
+</pasted_content id=\"ac80\">"
+
+<!-- Left out on purpose: the session summary written when this session ran out of context (11-14 15:20; not a prompt). Its key stays so a later export does not add it again. Cut: the client's injected browser notice in front of 2 prompts (11-14 13:53, 11-14 15:30; not the user's text). Two later answers in the agent's question dialogs (11-14: the band and line text sizes after review run 1, the home-only styles) are not in the export as prompts; the 10:34 dialog answers are. -->
+<!-- 21f5e71e 2026-11-14T06:20:20.758Z -->

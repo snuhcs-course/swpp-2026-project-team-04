@@ -3,33 +3,30 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
+import '../models/character_rig.dart';
 import '../services/audio/background_music.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/character_viewmodel.dart';
 import '../viewmodels/home_viewmodel.dart';
+import '../widgets/lobby_character.dart';
 import '../widgets/lobby_menu_item.dart';
 import '../widgets/lobby_parts.dart';
-import '../widgets/lobby_rep_bot.dart';
 import '../widgets/sound_cues.dart';
 import 'play_screen.dart';
 import 'settings_screen.dart';
 
-/// First screen after login: the game lobby. RepBot does push-ups over a
-/// menu of 게임 시작, 기록보관소 and 환경설정; '?' opens the rules and the
-/// profile chip opens 환경설정 too.
+/// First screen after login: the game lobby. The account's character does
+/// its exercise over a menu of 게임 시작, 캐릭터, 기록보관소 and 환경설정
+/// (W4 spec); tapping the character opens 캐릭터 선택 as the 캐릭터 row
+/// does. '?' opens the rules and the profile chip opens 환경설정 too.
 ///
-/// The lobby fits the screen: RepBot takes the height the rest leaves,
-/// between [repBotMinScale] and [repBotMaxScale] of its design size, and
-/// the page scrolls only when RepBot at its least still does not fit.
+/// The lobby fits the screen: the character's room is the height the rest
+/// leaves, and the character shrinks with it rather than the menu scrolling
+/// (W4 spec 10.2). The page scrolls only when the rest alone does not fit,
+/// at a large system text size.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.createViewModel, this.onLogOut});
-
-  /// The least share of [LobbyRepBot.designSize] RepBot shrinks to on a
-  /// short screen or with a large text size, before the page scrolls.
-  static const repBotMinScale = 0.6;
-
-  /// The largest share RepBot grows to on a tall screen.
-  static const repBotMaxScale = 1.2;
 
   /// Builds the view model; replaces the default one in tests.
   final HomeViewModel Function()? createViewModel;
@@ -83,6 +80,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     ),
   );
 
+  /// 캐릭터 선택; what it saves is the app's character, not home's.
+  void _openCharacter() =>
+      Navigator.pushNamed(context, GymRatsApp.characterRoute);
+
   /// The battle history as its own page, with a back button.
   void _openArchive() => Navigator.pushNamed(context, GymRatsApp.historyRoute);
 
@@ -117,27 +118,38 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
             ),
             above: [
               _TopBar(name: vm.state.profile!.name, onProfile: _openSettings),
-              const SizedBox(height: AppSpacing.s16),
+              const SizedBox(height: AppSpacing.s8),
               const _Title(),
               if (vm.state.profile!.unsentMatches > 0) ...[
                 const SizedBox(height: AppSpacing.s8),
                 _UnsentNote(count: vm.state.profile!.unsentMatches),
               ],
             ],
-            fill: const _RepBotSlot(),
-            fillMinHeight:
-                LobbyRepBot.designSize.height * HomeScreen.repBotMinScale,
+            // The app's character; without one above home (a test, a demo)
+            // the default, as for a character not known (W4 spec 7).
+            fill: Consumer<CharacterViewModel?>(
+              builder: (context, characters, _) => LobbyCharacter(
+                characterId: characters?.characterId ?? CharacterRig.defaultId,
+                onTap: _openCharacter,
+              ),
+            ),
+            // The menu does not scroll to make room for the character.
+            fillMinHeight: 0,
             below: [
               LobbyMenuItem(tag: '01 / PLAY', title: '게임 시작', onTap: _openPlay),
               LobbyMenuItem(
-                tag: '02 / ARCHIVE',
+                tag: '02 / CHARACTER',
+                title: '캐릭터',
+                onTap: _openCharacter,
+              ),
+              LobbyMenuItem(
+                tag: '03 / ARCHIVE',
                 title: '기록보관소',
                 onTap: _openArchive,
               ),
               LobbyMenuItem(
-                tag: '03 / SETTINGS',
+                tag: '04 / SETTINGS',
                 title: '환경설정',
-                last: true,
                 onTap: _openSettings,
               ),
             ],
@@ -251,12 +263,14 @@ class _ProfileChip extends StatelessWidget {
   }
 }
 
-/// A slanted lime bar, "GYMRATS", and what the game is in one line.
+/// A slanted lime bar, "GYMMOUSE" (the app's name), and what the game is in
+/// one line: a 40 high logo row and an 18 high line (the design's 76 px menu
+/// layout, 2026-11-14). The logo keeps its size at any system text size.
 class _Title extends StatelessWidget {
   const _Title();
 
-  static const _barWidth = 12.0;
-  static const _barHeight = 40.0;
+  static const _barWidth = 11.0;
+  static const _barHeight = 34.0;
   static const _barEdge = 1.5;
 
   @override
@@ -286,7 +300,11 @@ class _Title extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: LobbySkew(
                   degrees: 10,
-                  child: Text('GYMRATS', style: text.lobbyLogo),
+                  child: Text(
+                    'GYMMOUSE',
+                    textScaler: TextScaler.noScaling,
+                    style: text.lobbyLogo,
+                  ),
                 ),
               ),
             ),
@@ -300,42 +318,12 @@ class _Title extends StatelessWidget {
             Flexible(
               child: Text(
                 '${battleDuration.inSeconds}초 실시간 운동 대결',
-                style: text.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: text.lobbyPitch.copyWith(color: AppColors.textSecondary),
               ),
             ),
           ],
         ),
       ],
-    );
-  }
-}
-
-/// RepBot at the bottom left of the room above the menu, as large as that
-/// room allows but at most [HomeScreen.repBotMaxScale] of its design size,
-/// keeping its shape; it sinks a little behind the menu's top line.
-class _RepBotSlot extends StatelessWidget {
-  const _RepBotSlot();
-
-  static const _sink = 6.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.bottomLeft,
-      child: Transform.translate(
-        offset: const Offset(0, _sink),
-        child: ConstrainedBox(
-          constraints: BoxConstraints.loose(
-            LobbyRepBot.designSize * HomeScreen.repBotMaxScale,
-          ),
-          child: AspectRatio(
-            aspectRatio: LobbyRepBot.designSize.aspectRatio,
-            child: const LobbyRepBot(),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -28,6 +28,7 @@ import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/help_rules.dart';
@@ -130,7 +131,7 @@ void main() {
     tester,
   ) async {
     await _openApp(tester);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    expect(find.text('GYMMOUSE'), findsOneWidget);
 
     await startMatching(tester);
     expect(find.text('초보 AI 상대를 찾는 중'), findsOneWidget);
@@ -159,7 +160,7 @@ void main() {
     await tester.pumpAndSettle();
     // Past 게임 시작 and AI 1v1, straight to home.
     expect(find.byType(PlayScreen), findsNothing);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    expect(find.text('GYMMOUSE'), findsOneWidget);
   });
 
   testWidgets('the AI 1v1 page leads to a squat bot at the level chosen', (
@@ -247,7 +248,7 @@ void main() {
     expect(find.byType(PlayScreen), findsOneWidget);
     await back();
     expect(find.byType(PlayScreen), findsNothing);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    expect(find.text('GYMMOUSE'), findsOneWidget);
   });
 
   testWidgets('the online route takes the exercise, not a bot request', (
@@ -305,7 +306,7 @@ void main() {
     await tester.tap(find.byTooltip('뒤로'));
     await tester.pumpAndSettle();
     expect(find.byType(HelpScreen), findsNothing);
-    expect(find.text('GYMRATS'), findsOneWidget);
+    expect(find.text('GYMMOUSE'), findsOneWidget);
   });
 
   testWidgets('every screen gets the same repository and matchmaker', (
@@ -404,26 +405,32 @@ void main() {
 
     setUp(() => store = MemoryCharacterStore());
 
-    testWidgets('the signed-in account\'s saved character shows on 게임 '
-        '시작', (tester) async {
+    /// The character idling large on 캐릭터 선택.
+    String previewOf(WidgetTester tester) => tester
+        .widget<CharacterIdleFigure>(find.byType(CharacterIdleFigure))
+        .characterId;
+
+    testWidgets('the signed-in account\'s saved character shows on 캐릭터 '
+        '선택, opened from home\'s 캐릭터 row', (tester) async {
       store.values[testAccount.id] = 'bear';
       await _openApp(tester, app());
-      await tapAndSettle(tester, '게임 시작');
-      expect(find.text('곰탱이'), findsOneWidget);
+      await tapAndSettle(tester, '캐릭터');
+      expect(previewOf(tester), 'bear');
     });
 
-    testWidgets('a pick on 캐릭터 선택 is saved for the account, shows on 게임 '
-        '시작 and goes into the next bot battle', (tester) async {
+    testWidgets('a pick on 캐릭터 선택, opened from home\'s 캐릭터 row, is '
+        'saved for the account and goes into the next bot battle', (
+      tester,
+    ) async {
       await _openApp(tester, app());
-      await tapAndSettle(tester, '게임 시작');
-      expect(find.text('GYM마우스'), findsOneWidget);
       await tapAndSettle(tester, '캐릭터');
       expect(find.byType(CharacterSelectScreen), findsOneWidget);
+      expect(previewOf(tester), 'mouse');
       await tester.tap(find.text('펭뚱이'));
       await tester.pumpAndSettle();
       await tapAndSettle(tester, '이 캐릭터로 하기');
       expect(find.byType(CharacterSelectScreen), findsNothing);
-      expect(find.text('펭뚱이'), findsOneWidget);
+      expect(find.byType(HomeScreen), findsOneWidget);
       expect(store.values, {testAccount.id: 'penguin'});
 
       final generate = tester
@@ -443,7 +450,7 @@ void main() {
               as MaterialPageRoute<void>;
       expect(
         (route.builder(
-          tester.element(find.byType(PlayScreen)),
+          tester.element(find.byType(HomeScreen)),
         ) as BattleScreen).myCharacter,
         'penguin',
       );
@@ -495,8 +502,6 @@ void main() {
         slow.finishRead();
         await tester.pumpAndSettle();
         expect(find.byType(HomeScreen), findsOneWidget);
-        await tapAndSettle(tester, '게임 시작');
-        expect(find.text('물렁범'), findsOneWidget);
         final route =
             tester
                     .widget<MaterialApp>(find.byType(MaterialApp))
@@ -513,11 +518,12 @@ void main() {
                 as MaterialPageRoute<void>;
         expect(
           (route.builder(
-            tester.element(find.byType(PlayScreen)),
+            tester.element(find.byType(HomeScreen)),
           ) as BattleScreen).myCharacter,
           'seal',
         );
         await tapAndSettle(tester, '캐릭터');
+        expect(previewOf(tester), 'seal');
         await tapAndSettle(tester, '이 캐릭터로 하기');
         expect(slow.saved[testAccount.id], 'seal');
         expect(characters(tester).characterId, 'seal');

@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/character_idle_motion.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/screens/character_select_screen.dart';
 import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -9,6 +12,8 @@ import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/widgets/accent_button.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:provider/provider.dart';
+
+import '../widgets/battle_test_support.dart';
 
 void main() {
   late MemoryCharacterStore store;
@@ -260,6 +265,13 @@ void main() {
       AppColors.accent,
     );
 
+    // The line: under the floor, 4 below it, on the band's left line (user,
+    // 2026-11-14; the design has it under the band).
+    final line = tester.getRect(find.text('캥거루 · 키 큰 점프 선수'));
+    expect(line.left, 16);
+    expect(line.top, tester.getRect(floor).bottom + 4);
+    expect(line.bottom, lessThanOrEqualTo(preview.bottom - 3));
+
     // The name band leans like the stage's bands.
     final slant = tester.widget<Transform>(
       find.descendant(
@@ -402,6 +414,193 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await open(tester, textScale: 2);
     expect(tester.takeException(), isNull);
+  });
+
+  // Found on the phone (user, 2026-11-14): at the top of its hop 그루's ears
+  // covered the line under the name band. The line now sits under the floor.
+  // Placed last: it loads the app's fonts, so the band and the line are as
+  // wide as on a phone, and the tests above keep the test font.
+  group('no picture overlaps the name band or its line', () {
+    setUpAll(loadBattleFonts);
+
+    final rig = CharacterRig.standard;
+
+    /// The preview's character as drawn now, idle motion included.
+    Finder figure() => find.descendant(
+      of: find.byType(CharacterIdleFigure),
+      matching: find.byType(CharacterFigure),
+    );
+
+    /// The name band as drawn: its slanted white box.
+    Path bandArea(WidgetTester tester, String name) {
+      final band = find.ancestor(
+        of: find.byWidgetPredicate(
+          (w) => w is Text && w.data == name && w.maxLines == 1,
+        ),
+        matching: find.byType(Stack),
+      );
+      final box = tester.renderObject<RenderBox>(
+        find.descendant(of: band.first, matching: find.byType(DecoratedBox)),
+      );
+      final size = box.size;
+      return Path()..addPolygon([
+        for (final corner in [
+          Offset.zero,
+          size.topRight(Offset.zero),
+          size.bottomRight(Offset.zero),
+          size.bottomLeft(Offset.zero),
+        ])
+          box.localToGlobal(corner),
+      ], true);
+    }
+
+    /// How many points of the character, drawn as the screen draws it now,
+    /// fall inside [area], counted on a grid 8 times finer than a point.
+    Future<int> paintedInside(WidgetTester tester, Path area) async {
+      const fine = 8.0;
+      final box = tester.renderObject<RenderBox>(figure());
+      final painter =
+          tester
+                  .widget<CustomPaint>(
+                    find.descendant(
+                      of: figure(),
+                      matching: find.byType(CustomPaint),
+                    ),
+                  )
+                  .painter!
+              as CharacterFigurePainter;
+      final bounds = area.getBounds();
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder)
+        ..scale(fine)
+        ..translate(-bounds.left, -bounds.top)
+        ..clipPath(area)
+        ..transform(box.getTransformTo(null).storage);
+      painter.paint(canvas, box.size);
+      final width = (bounds.width * fine).ceil();
+      final height = (bounds.height * fine).ceil();
+      final count = await tester.runAsync(() async {
+        final image = await recorder.endRecording().toImage(width, height);
+        final bytes = (await image.toByteData())!;
+        image.dispose();
+        var inside = 0;
+        for (var i = 3; i < bytes.lengthInBytes; i += 4) {
+          if (bytes.getUint8(i) > 0) inside++;
+        }
+        return inside;
+      });
+      return count!;
+    }
+
+    /// The moments to check: at rest (the feet lowest for a hop), and where
+    /// each part of [motion] is at its most: the top of a hop, the lean to
+    /// either side, the stretch and the squash.
+    List<double> extremesOf(CharacterIdleMotion motion) => [
+      0,
+      if (motion.hopPeriodMs > 0) motion.hopPeriodMs / 2,
+      for (final period in [motion.rockPeriodMs, motion.stretchPeriodMs])
+        if (period > 0) ...[period / 4, period * 3 / 4],
+    ]..sort();
+
+    // The default text size, a larger one, and twice: the name keeps its
+    // size and the line grows under the floor (user, 2026-11-14).
+    for (final textScale in const [1.0, 1.3, 2.0]) {
+      testWidgets('for all five, at every extreme of their idle motion (rig '
+          'pose, idle motion values, 360 x 780, the app\'s fonts, '
+          '$textScale× text)', (tester) async {
+        // The account's 그루 first, so every cell below picks a new one.
+        await open(tester, textScale: textScale);
+        for (final art in rig.selectable) {
+          // A cell picks the character and starts its idle clock at 0.
+          await tester.ensureVisible(cellText(art.name));
+          await tester.pump();
+          await tester.tap(cellText(art.name));
+          await tester.pump();
+          await tester.pump();
+          final rest = tester
+              .renderObject<RenderBox>(figure())
+              .localToGlobal(Offset.zero);
+          final caption = find.textContaining('${art.species} · ');
+          var now = 0.0;
+          for (final moment in extremesOf(art.idleMotion)) {
+            await tester.pump(
+              Duration(microseconds: ((moment - now) * 1000).round()),
+            );
+            now = moment;
+            final sample = art.idleMotion.sampleAt(moment);
+            if (art.idleMotion.hopPeriodMs > 0) {
+              // The clock is the screen's: at the top of the hop the
+              // picture is hopAmp x 1.5 higher than at rest.
+              final at = tester
+                  .renderObject<RenderBox>(figure())
+                  .localToGlobal(Offset.zero);
+              expect(rest.dy - at.dy, closeTo(sample.up * 1.5, 0.01));
+            }
+            final where = '${art.id} at $moment ms ($sample)';
+            expect(
+              await paintedInside(tester, bandArea(tester, art.name)),
+              0,
+              reason: 'name band, $where',
+            );
+            expect(
+              await paintedInside(
+                tester,
+                Path()..addRect(tester.getRect(caption)),
+              ),
+              0,
+              reason: 'line, $where',
+            );
+          }
+        }
+      });
+    }
+
+    testWidgets('the same count finds 그루\'s ears where the line used to be, '
+        'under the band', (tester) async {
+      await open(tester);
+      await tester.tap(cellText('GYM마우스'));
+      await tester.pump();
+      await tester.tap(cellText('그루'));
+      await tester.pump();
+      await tester.pump();
+      final hop = rig.art('kangaroo').idleMotion.hopPeriodMs / 2;
+      await tester.pump(Duration(microseconds: (hop * 1000).round()));
+      final band = bandArea(tester, '그루').getBounds();
+      final line = tester.getRect(find.text('캥거루 · 키 큰 점프 선수'));
+      final designPlace = Rect.fromLTWH(
+        band.left,
+        band.bottom + AppSpacing.s8,
+        line.width,
+        line.height,
+      );
+      expect(
+        await paintedInside(tester, Path()..addRect(designPlace)),
+        greaterThan(0),
+      );
+    });
+
+    testWidgets('at 2× text the name keeps the design\'s 30, and the line, '
+        'grown to 1.5× at most, stays inside the preview', (tester) async {
+      await open(tester, textScale: 2, reducedMotion: true);
+      final text = Theme.of(tester.element(find.byType(CharacterSelectScreen)))
+          .textTheme;
+      final name = find.byWidgetPredicate(
+        (w) => w is Text && w.data == '그루' && w.style == text.characterName,
+      );
+      // One line of 30 x 1.25 (laid out whole: 38); scaled it would be 75.
+      expect(tester.getSize(name).height, closeTo(30 * 1.25, 1));
+      final line = tester.getRect(find.text('캥거루 · 키 큰 점프 선수'));
+      expect(line.height, closeTo(18 * 1.5, 0.01));
+      final preview = tester.getRect(
+        find
+            .ancestor(
+              of: find.byType(CharacterIdleFigure),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      expect(line.bottom, lessThanOrEqualTo(preview.bottom - 3));
+    });
   });
 }
 

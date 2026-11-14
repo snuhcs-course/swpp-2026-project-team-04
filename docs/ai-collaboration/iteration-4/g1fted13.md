@@ -396,3 +396,67 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - When the spec leaves a screen open, draw two or three options with the real widgets before writing code; the choice then takes one line.
 - Run the full suite before review: a demo that shares the screen's layout can break in ways the widget's own tests do not see.
+
+## W4 `feat/home_character` – the chosen character on home (P17, team order #14), 2026-11-14
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W4's code and tests, in six commits on `feat/home_character`, and merged `main` once (`7be4abb`, no conflict):
+  - Part 1: `3cf81e9` (the logo GYMMOUSE), `6badfdb` (home's four menu rows; 게임 시작 without its 캐릭터 row), `4d5577d` (캐릭터 선택: the line under the floor, the band's name at a fixed size).
+  - The home fit: `a1a7ee4` (the 76 px menu layout; `LobbyMenuItem`, `LobbyPage.fill`'s padding, home-only text styles in `app_theme.dart`).
+  - Part 2: `b0ab94c` and `80b00d7`. The home rig and its timing are in `lib/widgets/character_motion.dart`, with the data in `character_motion_data.dart`. Draw patches and the stage effects are in `character_draw_patch.dart`. `CharacterFigurePainter` takes the motion's inputs (`character_figure.dart`). Home's room is `LobbyCharacter` (`lobby_character.dart`), and the login logo changed too.
+- **The design came from the user:** the user's design canvas package `W4-HOME-SPEC.md` with `w4_home_rig.json` (its key poses, timetables, patches, placements and 54 + 5 golden values). For the shared painter, W5's spec sections 7 and 9 were read too. Claude Code ported the package and checked it against the golden values and the design's home shots.
+- **Options drawn before code:** for the ears on 캐릭터 선택, Claude Code rendered three fixes with the app's fonts (`.claude/design/out/w4/_options_all.png`, not committed); the user chose A. After review run 1 it rendered the band at larger text sizes for the user's two answers.
+- **Review:** the `reviewer` subagent reviewed W4 in three runs (part 1, the merge and the home fit, part 2). Runs 1 and 3 returned CHANGES_REQUESTED (item d); each ended with APPROVE.
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - The scope and every choice were the user's. In part 1 that was fix A for the ears, keeping RepBot's fit rule (later replaced) and the one-off exceptions. For the home fit it was the 76 px numbers and the home-only styles in `app_theme.dart`. In part 2 it was the answers to the spec's questions 10.1 and 10.2, keeping the `design_tokens_test.dart` line removal, and leaving the unused `RepBotColors` token until after the deadline.
+  - The phone checks were the user's. They found the ears on 캐릭터 선택 (during W2b's check) and home still scrolling after part 1. The final build passed with no problems.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-14 05:05] (the start, pasted; excerpt) "4. 캐릭터 선택 화면에서 그루(캥거루)의 귀가 이름 띠 아래 한 줄 설명을 가리는 문제를 고친다. character_select_screen.dart는 W3 파일이므로 2번과 같은 방식으로 예외를 단다."
+- [Woohyun Song, 11-14 10:34] (answers in the agent's question dialog; excerpt) "지금 규칙 유지, 테스트를 새 수치로 (Recommended)"
+- [Woohyun Song, 11-14 13:53] (the home fit, pasted; excerpt) "글자 1.0배에서는 360×780에 상태바 24·버튼 세 개 내비게이션 바 48인 경우, 제스처 바 24인 경우, 그보다 큰 화면(예: 412×915) 모두 스크롤이 없어야 한다."
+- [Woohyun Song, 11-14 15:30] (part 2, pasted; excerpt) "2. 화가 넓히기(명세 8절). widgets/character_figure.dart의 CharacterFigurePainter를 그대로 쓰되, 바깥에서 세 가지를 넣을 수 있게 넓힌다: … W5가 같은 화가에 w5_victory_rig.json의 drawPatch를 이어 붙일 수 있는 구조로 만든다."
+- [Woohyun Song, 11-14 16:33] (excerpt) "2. RepBotColors 토큰은 지우지 않고 그대로 둔다. app_theme.dart는 W6 브랜치에도 변경이 있어서 지금 지우면 충돌만 늘어난다."
+
+### c. What AI did well
+- **An exact overlap test instead of a box.** The ears test paints the real character at every extreme of its idle motion and counts painted points inside the band and the line, 8 times finer than a point. It finds 그루's ears over the old line (3159 points) and a band moved 10 px down over the mouse. A bounding box would have failed the mouse's 0.4 px clearance that the design itself has. The reviewer accepted this reading in run 1.
+- **The port checked against the design's own values.** All 54 golden samples and 5 rest pictures match within 0.01; they include times past one rep and parts that run late. The rest pictures also match the design's home shots pixel by pixel both ways.
+- **A 1 % difference explained, not hidden.** The first shot comparison showed GYM마우스 and 그루 about 1 % off. The agent searched offsets and found the design canvas had put the feet on whole points (179.52 drawn at 180; the seal at 174.96 matched with no shift). The app keeps the spec's exact place, and the test moves only its own render by that rounding. The tolerance was not loosened.
+- **One painter for W4 and W5 without touching W3's files.** The added shapes are read by W3's own parser, and the blended poses fit W3's types. The reviewer confirmed that W5's patches all find their targets under the same rule, and that W5's insert lands before W4's paddle as W5's spec says. W5's spec writes one target's fixed move in a different form from W3; the matching handles both.
+- **Mutation checks before review:** 13 planted faults (in 15 runs) (easing, delays, floor height, effects, flags, insert position, restarts, the fur, the screen-reader name, reduced motion, RepBot's id, a least height) were all caught, and the files were restored byte for byte.
+
+### d. Hallucinations / errors
+- **Review run 1 (part 1): CHANGES_REQUESTED.**
+  - 1 Critical: `main_test.dart` changed three tests where its exception line allowed two, and `progress.md` logged only 4 of the 7 exception paths.
+  - 1 Major: from 1.1× system text, the growing name band reached the mouse's ears at the top of its hop.
+  - 3 Minor: stale doc lines; at 2× text the line ran past the preview; the overlap search left out the rest moment.
+  - Fixed after the user's answers (the band's name fixed, the line capped at 1.5×, the exceptions widened). The re-check returned APPROVE.
+- **Review run 2 (the merge and the home fit): APPROVE**, with 2 Minor findings. The logo bar's size had no test (a 12 × 40 bar passed), and a note was stale. Both were fixed.
+- **Review run 3 (part 2): CHANGES_REQUESTED.**
+  - Major 1: a character chosen while a page covered home (환경설정 → 캐릭터 → back) did not start from 0. A muted ticker keeps counting from its restart, so the reviewer's probe read 3016 ms. The agent's tests had changed the character only on an uncovered home. Now the motion restarts when home shows again (the spec allows it), with a test that fails on the old code.
+  - Major 2: no design-doc rows for the token list change and the new test data.
+  - 4 Minor: `LobbyCharacter('bot')` threw, because RepBot's art came with the mouse's patches; the token-list line removal was not recorded as the user's; the data file was missing from the token list; some notes were stale ("59 samples" for 54 + 5).
+  - All were fixed, and the re-check returned APPROVE.
+- **The full suite caught what the W4 tests did not:** `home_shell_screen_test.dart` builds home without the app's character above it, and part 2's home threw there (1 failed of 2603). Home now draws the default mouse in that case (the spec's rule for an unknown character), with a test.
+- **Wrong expectations in new tests:** these were found on the first run and fixed in the test, not the code.
+  - The far glove behind the body changes nothing at the push-up's top, where the two do not meet.
+  - Knocked out, the body hides 그루's whole tail, so the fur cannot show.
+  - A tab bar takes the three-button bar's 48 into its own 80.
+  - Expected values for a restart were counted from the wrong frame.
+  - The test font (Ahem) measured home differently from the app's fonts, so the exact-number tests run in a group that loads the app's fonts.
+- **Tooling:** shell here-documents broke edits with quotes and backslashes, so the edits were redone through script files. `grep` aborted on this PC, and the wording check was redone in Python. No impact on the code.
+
+### e. Prompt revisions
+- **Home's fit:**
+  - Before (11-14 10:34, the user's answer in the question dialog): "지금 규칙 유지, 테스트를 새 수치로 (Recommended)". The old rule shrinks RepBot to 0.6×, then the page scrolls. With four rows, the agent had reported a 27–59 px scroll on 360 × 780 with system bars.
+  - After (11-14 13:53, after the phone check, pasted): the 76 px menu layout with every height from the design, and "글자 1.0배에서는 360×780에 상태바 24·버튼 세 개 내비게이션 바 48인 경우, 제스처 바 24인 경우, 그보다 큰 화면(예: 412×915) 모두 스크롤이 없어야 한다."
+  - Why it worked: the first answer kept a rule that allowed scrolling, which the agent had measured and reported but which only looked wrong on the phone. The second gave numbers the agent could build to and phones and bars it could test, so it ended in one review round.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W4 was edited by hand, so W4 has no manual-fix markers.
+- The user's corrections came as prompts, answers and phone checks: fix A, the text-size rules, the 76 px layout, the spec's questions, and the two notes about the token list and `RepBotColors`.
+
+### Takeaway
+- For anything driven by a clock, test the path where the screen is covered or the app is paused, not only the visible screen.
+- When a pixel comparison with the design is off, look for a systematic cause (here the design's rounding) before loosening the tolerance.

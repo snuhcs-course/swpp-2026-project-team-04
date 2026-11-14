@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/character_idle_motion.dart';
@@ -7,6 +8,8 @@ import '../models/character_rig.dart';
 import '../theme/app_theme.dart';
 import 'battle_fx_motion.dart';
 import 'battle_stage_model.dart';
+import 'character_draw_patch.dart';
+import 'character_motion.dart';
 
 /// One character in one pose, in a team's color (W3 spec 3 and 6).
 ///
@@ -15,7 +18,8 @@ import 'battle_stage_model.dart';
 /// parts may leave the box (the attack's fist does). A parent that forces
 /// another size gets the box scaled the same both ways and centred. An unknown
 /// [characterId] draws the default character (`mouse`). It does not move:
-/// the stage and the selection preview move it.
+/// the stage and the selection preview move it. 그루 has the inner tail fur
+/// of home's motion here too (user, 2026-11-14, W4 spec 10.1).
 class CharacterFigure extends StatelessWidget {
   const CharacterFigure({
     super.key,
@@ -40,16 +44,18 @@ class CharacterFigure extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rig = CharacterRig.standard;
+    final art = rig.art(characterId);
     return CustomPaint(
       size: Size(rig.boxWidth * scale, rig.boxHeight * scale),
       painter: CharacterFigurePainter(
         rig: rig,
-        art: rig.art(characterId),
+        art: art,
         pose: characterPoseKey(pose),
         teamColor: side == BattleSide.me
             ? AppColors.accent
             : AppColors.opponent,
         flash: flash,
+        patches: CharacterMotionRig.standard.stagePatchOf(art.id),
       ),
     );
   }
@@ -176,48 +182,105 @@ String characterPoseKey(BattlePose pose) => switch (pose) {
 /// shapes in order, each one skipped when its pose list leaves this pose
 /// out, moved by its chain, then filled and outlined.
 ///
-/// The paths of a character and pose are built once and kept.
+/// The stage draws a pose by its name. A motion (home's exercise, W4 spec 8;
+/// W5's celebration) gives from outside what a name gives: the pose table
+/// ([values]), the expression's tags ([tags]), and changes to the drawing
+/// list with the flags they test ([patches], [flags], [effects]). With none
+/// of these it draws exactly what it drew before W4.
+///
+/// The paths of a character and a named pose are built once and kept; a
+/// motion's are built each frame but for the fixed ones.
 class CharacterFigurePainter extends CustomPainter {
   CharacterFigurePainter({
     required this.rig,
     required this.art,
-    required this.pose,
+    this.pose = 'idle',
     required this.teamColor,
     this.flash = false,
+    this.values,
+    this.tags,
+    this.patches = const [],
+    this.flags = const {},
+    this.effects = const [],
   });
 
   final CharacterRig rig;
   final CharacterArt art;
 
-  /// The pose key (idle, atk, hit, ko, win).
+  /// The pose key (idle, atk, hit, ko, win): its table unless [values] is
+  /// given, and the shapes shown in it unless [tags] is given.
   final String pose;
   final Color teamColor;
   final bool flash;
 
-  static final _shapes = <(CharacterRig, String, String), List<_Shape>>{};
+  /// A pose table from outside, drawn instead of [pose]'s: a frame of a
+  /// motion, blended between its key poses.
+  final RigPoseTable? values;
 
-  /// The built shapes of [art] in [pose]: each one's moves and path.
-  static List<_Shape> _shapesOf(
-    CharacterRig rig,
-    CharacterArt art,
-    String pose,
-  ) {
-    return _shapes.putIfAbsent((rig, art.id, pose), () {
+  /// The `show` tags of an expression: a shape with a pose list shows when
+  /// the list has one of them. Null shows the shapes of [pose].
+  final Set<String>? tags;
+
+  /// Changes to [art]'s drawing list, applied in order (W4's, then W5's).
+  final List<CharacterDrawPatch> patches;
+
+  /// The motion flags that are on (gBack, pa): which shapes the patches
+  /// made conditional show.
+  final Set<String> flags;
+
+  /// Shapes left out: a motion leaves out the stage's effects.
+  final List<CharacterOpMatch> effects;
+
+  static final _shapes =
+      <
+        (CharacterRig, String, String, List<CharacterDrawOp>, String, String),
+        List<_Shape>
+      >{};
+
+  /// The fixed paths (all but the ones a pose table gives), built once.
+  static final _fixedPaths = Expando<Path>();
+
+  /// The built shapes to draw: each one's moves and path.
+  List<_Shape> _shapesNow() {
+    final list = characterDrawList(art, patches, effects);
+    final shown = tags ?? {pose};
+    final table = values;
+    if (table != null) return _build(list, table, shown);
+    final flagKey = (flags.toList()..sort()).join(' ');
+    final tagKey = (shown.toList()..sort()).join(' ');
+    return _shapes.putIfAbsent((rig, art.id, pose, list, tagKey, flagKey), () {
       final table =
           art.poses[pose] ?? (throw ArgumentError.value(pose, 'pose'));
-      return [
-        for (final op in art.ops)
-          if (op.showsIn(pose))
-            _Shape(
-              transforms: op.transformsIn(table),
-              path: _pathOf(op.prim, table),
-              prim: op.prim,
-            ),
-      ];
+      return _build(list, table, shown);
     });
   }
 
+  List<_Shape> _build(
+    List<CharacterDrawOp> list,
+    RigPoseTable table,
+    Set<String> shown,
+  ) {
+    return [
+      for (final item in list)
+        if (!item.effect &&
+            (item.condition?.passes(flags) ?? true) &&
+            (item.op.show?.any(shown.contains) ?? true))
+          _Shape(
+            transforms: item.op.transformsIn(table),
+            path: _pathOf(item.op.prim, table),
+            prim: item.op.prim,
+          ),
+    ];
+  }
+
   static Path _pathOf(RigPrim prim, RigPoseTable table) {
+    if (prim.shape == RigShape.path && prim.pathKey != null) {
+      return _buildPath(prim, table);
+    }
+    return _fixedPaths[prim] ??= _buildPath(prim, table);
+  }
+
+  static Path _buildPath(RigPrim prim, RigPoseTable table) {
     switch (prim.shape) {
       case RigShape.circle:
         return Path()..addOval(
@@ -282,7 +345,7 @@ class CharacterFigurePainter extends CustomPainter {
       (size.height - rig.boxHeight * scale) / 2,
     );
     canvas.scale(scale);
-    for (final shape in _shapesOf(rig, art, pose)) {
+    for (final shape in _shapesNow()) {
       final prim = shape.prim;
       canvas.save();
       for (final move in shape.transforms) {
@@ -337,7 +400,12 @@ class CharacterFigurePainter extends CustomPainter {
       oldDelegate.art.id != art.id ||
       oldDelegate.pose != pose ||
       oldDelegate.teamColor != teamColor ||
-      oldDelegate.flash != flash;
+      oldDelegate.flash != flash ||
+      !identical(oldDelegate.values, values) ||
+      !setEquals(oldDelegate.tags, tags) ||
+      !listEquals(oldDelegate.patches, patches) ||
+      !setEquals(oldDelegate.flags, flags) ||
+      !listEquals(oldDelegate.effects, effects);
 }
 
 class _Shape {
