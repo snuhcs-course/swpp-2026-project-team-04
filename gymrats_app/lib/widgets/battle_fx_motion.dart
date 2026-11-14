@@ -69,6 +69,38 @@ abstract final class BattleFx {
   static const leftBandAt = 400.0;
   static const resultButtonAt = 1800.0;
 
+  /// The setup's own layout (W2b 3-B): while the players set up, the line
+  /// between the stage and the camera stands this high on the stage, so the
+  /// camera takes most of the screen. From the countdown on it is at
+  /// [stageHeight], half way down the screen.
+  static const setupLineY = 156.0;
+
+  /// How long the line takes to move the whole way between the two layouts.
+  static const layoutMs = 350.0;
+
+  /// Once the result is known the camera is no longer needed: the line goes
+  /// on down to the bottom of the screen over this long, and the stage's
+  /// ground fills the screen (W2b end screen, option A).
+  static const endLayoutMs = 450.0;
+
+  /// As the line comes down: how long the setup's own things take to fade
+  /// out (the status band, the ready chips, and the camera's large hint and
+  /// buttons), and how long the valid counts take to come in.
+  static const setupFadeMs = 150.0;
+  static const countsFadeMs = 200.0;
+
+  /// Once the line is down the fighters pop up from [fighterPopFrom] of
+  /// their size, over [fighterPopMs], and show over [fighterFadeInMs]. Back
+  /// to the setup they fade out over [fighterFadeOutMs], keeping their size.
+  static const fighterPopFrom = 0.6;
+  static const fighterPopMs = 250.0;
+  static const fighterFadeInMs = 70.0;
+  static const fighterFadeOutMs = 100.0;
+
+  /// The setup's status band, "자세 세팅 중": its top and text size.
+  static const setupBandTop = 71.0;
+  static const setupBandSize = 24.0;
+
   /// 0 at [a], 1 at [b], straight in between.
   static double seg(double d, double a, double b) =>
       d <= a ? 0 : (d >= b ? 1 : (d - a) / (b - a));
@@ -77,6 +109,14 @@ abstract final class BattleFx {
   static double easeOut(double x) {
     final y = 1 - x.clamp(0.0, 1.0);
     return 1 - y * y * y;
+  }
+
+  /// Starts slowly and stops slowly (the design's `io`, a cubic).
+  static double easeInOut(double x) {
+    final y = x.clamp(0.0, 1.0);
+    if (y < 0.5) return 4 * y * y * y;
+    final z = 2 - 2 * y;
+    return 1 - z * z * z / 2;
   }
 
   /// Overshoots a little, then settles.
@@ -245,11 +285,36 @@ class BattleFxTag {
     required this.text,
     required this.tone,
     required this.centerX,
+    this.opacity = 1,
   });
 
   final String text;
   final BattleFxTone tone;
   final double centerX;
+
+  /// A ready tag shows as much as its fighter does while they pop up.
+  final double opacity;
+}
+
+/// A player's ready chip between the two scores while setting up (W2b 3-B):
+/// "세팅 중" on white, or "준비 완료" on the player's color. The user's chip
+/// is left of the middle, the opponent's right of it.
+class BattleFxReadyChip {
+  const BattleFxReadyChip({
+    required this.side,
+    required this.ready,
+    required this.opacity,
+  });
+
+  final BattleSide side;
+  final bool ready;
+  final double opacity;
+
+  String get text => ready ? '준비 완료' : '세팅 중';
+
+  BattleFxTone get tone => !ready
+      ? BattleFxTone.plain
+      : (side == BattleSide.me ? BattleFxTone.me : BattleFxTone.opponent);
 }
 
 /// The impact star in front of the fighter who is hit.
@@ -395,19 +460,12 @@ class BattleFxCombo {
   String get text => '$count HIT';
 }
 
-/// 결과 보기 coming up over the camera once the ending has played.
+/// 결과 보기 coming up once the ending has played.
 class BattleFxResultButton {
-  const BattleFxResultButton({
-    required this.opacity,
-    required this.scale,
-    required this.scrim,
-  });
+  const BattleFxResultButton({required this.opacity, required this.scale});
 
   final double opacity;
   final double scale;
-
-  /// How strongly the camera area is covered with the background color.
-  final double scrim;
 }
 
 /// Everything the stage draws at one moment.
@@ -437,6 +495,11 @@ class BattleFxFrame {
     required this.dangerOpacity,
     required this.beforeStart,
     required this.resultButton,
+    this.battleLayout = 1,
+    this.endLayout = 0,
+    this.setupLook = 0,
+    this.countsOpacity = 1,
+    this.readyChips = const [],
   });
 
   /// Where the two fighters meet; also where the bar turns from lime to
@@ -486,6 +549,29 @@ class BattleFxFrame {
 
   /// Null until the ending has played.
   final BattleFxResultButton? resultButton;
+
+  /// How far the screen is from the setup's layout (0: the camera over most
+  /// of the screen, [BattleFx.setupLineY]) to the battle's (1: half and
+  /// half), eased: where the line between the stage and the camera is.
+  final double battleLayout;
+
+  /// How far the line has gone on down once the result is known (W2b end
+  /// screen, option A), eased: 0 where [battleLayout] puts it, 1 at the
+  /// bottom of the screen, the camera gone and the stage's ground filling
+  /// the screen.
+  final double endLayout;
+
+  /// How strongly the setup's own things show, from 1 to 0: the status
+  /// band, the ready chips, and the camera's large hint and buttons.
+  final double setupLook;
+
+  /// How strongly the valid rep counts show: they are hidden while setting
+  /// up, where the ready chips take their place.
+  final double countsOpacity;
+
+  /// The two ready chips while setting up, the user's first; empty when
+  /// they are gone.
+  final List<BattleFxReadyChip> readyChips;
 }
 
 enum _ActKind { attack, miss, hit }
@@ -591,9 +677,18 @@ class _Motion {
 ///
 /// Every time is on the stage's own clock, in milliseconds.
 class BattleFxTimeline {
-  BattleFxTimeline({double share = 0.5, this.feverMultiplier = 2})
-    : _shareFrom = share.clamp(0.0, 1.0),
-      _shareTarget = share.clamp(0.0, 1.0);
+  /// A stage made [setup] begins in the setup's layout, setting up; any
+  /// other stands in the battle's layout at once, with no move to it, as a
+  /// screen that opens on a battle already counting down, running or over.
+  BattleFxTimeline({
+    double share = 0.5,
+    this.feverMultiplier = 2,
+    bool setup = false,
+  }) : _shareFrom = share.clamp(0.0, 1.0),
+       _shareTarget = share.clamp(0.0, 1.0),
+       _setup = setup,
+       _toBattle = !setup,
+       _layoutFrom = setup ? 0 : 1;
 
   /// How far a new countdown end may be from the running one and still be
   /// the same countdown: the server's clock is corrected by a few
@@ -627,10 +722,32 @@ class BattleFxTimeline {
   /// be played as the ending blow.
   static const _blowSlack = 250.0;
 
-  bool _setup = false;
+  bool _setup;
   bool _meReady = false;
   bool _opponentReady = false;
   double? _countEnd;
+
+  /// The status band's words as the setup left them: it fades out with
+  /// them as the line comes down. Null when it showed none.
+  String? _leftWords;
+
+  /// The layout around the stage (W2b 3-B), from 0 (the setup's) to 1 (the
+  /// battle's): it moves toward the battle's while [_toBattle], back
+  /// otherwise, at an even speed, [BattleFx.layoutMs] for the whole way,
+  /// from [_layoutFrom] at [_layoutSince].
+  bool _toBattle;
+  double _layoutFrom;
+  double _layoutSince = 0;
+
+  /// When the fighters start to pop up: the moment the layout reaches the
+  /// battle's. Null on a stage that began in it, where they just stand.
+  double? _popAt;
+
+  /// The fighters fading out as the layout goes back to the setup's: from
+  /// when, from how visible, at what size.
+  double _outAt = double.negativeInfinity;
+  double _outOpacity = 0;
+  double _outScale = BattleFx.fighterPopFrom;
 
   /// The cues still to come, each with its moment.
   final _cues = <(double, BattleStageCue)>[];
@@ -755,7 +872,9 @@ class BattleFxTimeline {
       _hit!.power = 2.4;
       _end = BattleStageEnd(kind: BattleEndKind.knockout, winner: event.side);
       _endAt = impact;
-      _decidedAt = impact;
+      // Known from the report already, when one came first: the line that
+      // has started down after it does not go back up.
+      _decidedAt = math.min(_decidedAt ?? impact, impact);
       _endByBlow = true;
     }
   }
@@ -833,13 +952,16 @@ class BattleFxTimeline {
   }
 
   /// Before the round: who has finished setting up. Setting up again stops a
-  /// countdown that was running (a player left the ready pose). [active] is
-  /// false once the countdown or the round is on.
+  /// countdown that was running (a player left the ready pose), and the
+  /// layout goes back to the setup's from [now]. [active] is false once the
+  /// countdown or the round is on.
   void setSetup({
     required bool active,
     bool meReady = false,
     bool opponentReady = false,
+    required double now,
   }) {
+    if (_setup && !active) _leftWords = _setupWords;
     _setup = active;
     _meReady = meReady;
     _opponentReady = opponentReady;
@@ -848,10 +970,12 @@ class BattleFxTimeline {
       _countSaid = 4;
       _goSaid = false;
     }
+    _layoutTo(battle: !active, now: now);
   }
 
-  /// Counts down to the start, [remaining] from [now], and ends the setup.
-  /// The round starts, and "GO!" shows, when it reaches zero.
+  /// Counts down to the start, [remaining] from [now], and ends the setup:
+  /// the layout moves to the battle's from [now]. The round starts, and
+  /// "GO!" shows, when it reaches zero.
   ///
   /// Called again while counting, it follows a start that really moved and
   /// keeps its own clock for a small correction. Once the round has started
@@ -861,11 +985,74 @@ class BattleFxTimeline {
   void countDown(double remaining, double now) {
     final running = _countEnd;
     if (running != null && now >= running) return;
+    if (_setup) _leftWords = _setupWords;
     _setup = false;
     final end = now + remaining;
     if (running == null || (end - running).abs() > _countSlack) {
       _countEnd = end;
     }
+    _layoutTo(battle: true, now: now);
+  }
+
+  /// The status band's words while setting up: whom the setup waits for;
+  /// none once both are ready.
+  String? get _setupWords =>
+      _meReady && _opponentReady ? null : (_meReady ? '상대를 기다리는 중' : '자세 세팅 중');
+
+  /// Turns the layout toward the battle's or back to the setup's from [now],
+  /// from wherever it is: the line never jumps. Back to the setup the
+  /// fighters fade out from how they look now.
+  void _layoutTo({required bool battle, required double now}) {
+    if (battle == _toBattle) return;
+    final at = _layoutAt(now);
+    if (!battle) {
+      final look = _fighterLook(now);
+      _outAt = now;
+      _outOpacity = look.opacity;
+      _outScale = look.scale;
+    }
+    _toBattle = battle;
+    _layoutFrom = at;
+    _layoutSince = now;
+    if (battle) _popAt = now + (1 - at) * BattleFx.layoutMs;
+  }
+
+  /// The layout at [now], from 0 (the setup's) to 1 (the battle's), before
+  /// it is eased.
+  double _layoutAt(double now) {
+    final moved = math.max(0.0, now - _layoutSince) / BattleFx.layoutMs;
+    return _toBattle
+        ? math.min(1.0, _layoutFrom + moved)
+        : math.max(0.0, _layoutFrom - moved);
+  }
+
+  /// How large the fighters are drawn, as a share of their size, and how
+  /// visible: hidden while setting up, popping up once the line is down,
+  /// fading out when the setup comes back (whichever shows more, should the
+  /// two meet). With [reducedMotion] they are there or not.
+  ({double scale, double opacity}) _fighterLook(
+    double now, {
+    bool reducedMotion = false,
+  }) {
+    final fading = (
+      scale: _outScale,
+      opacity:
+          _outOpacity *
+          (1 - BattleFx.seg(now, _outAt, _outAt + BattleFx.fighterFadeOutMs)),
+    );
+    if (!_toBattle) return reducedMotion ? (scale: 1, opacity: 0) : fading;
+    final popAt = _popAt;
+    if (popAt == null || reducedMotion) return (scale: 1, opacity: 1);
+    final popping = (
+      scale:
+          BattleFx.fighterPopFrom +
+          (1 - BattleFx.fighterPopFrom) *
+              BattleFx.back(
+                BattleFx.seg(now, popAt, popAt + BattleFx.fighterPopMs),
+              ),
+      opacity: BattleFx.seg(now, popAt, popAt + BattleFx.fighterFadeInMs),
+    );
+    return fading.opacity > popping.opacity ? fading : popping;
   }
 
   /// When "TIME!" gives way to the verdict; null while it is not decided.
@@ -895,10 +1082,28 @@ class BattleFxTimeline {
     return at != null && now >= at;
   }
 
+  /// How far the line has gone down after the battle at [now], eased: 0
+  /// until the result is known, then 1 after [BattleFx.endLayoutMs] (W2b
+  /// end screen, option A). A knockout is known when its blow lands, or
+  /// when the screen reports it, if that comes first; a player leaving as it
+  /// is reported; a time-up when it is decided, so online the camera, and
+  /// the way out, stay while the server's result is awaited. With
+  /// [reducedMotion] it is 1 at once.
+  double _endLayoutAt(double now, {required bool reducedMotion}) {
+    final at = _decidedAt;
+    // A knockout's blow is played a moment before it lands.
+    if (_end == null || at == null || now < at) return 0;
+    if (reducedMotion) return 1;
+    return BattleFx.easeInOut(BattleFx.seg(now, at, at + BattleFx.endLayoutMs));
+  }
+
   /// The frame at [now]. With [reducedMotion] the hit-stop, the shake, the
   /// zoom, the flash, the idle motion, the stripes' drift, the count bump, the
   /// countdown's growing numbers, the puff and the button's growing are off;
-  /// poses, scores, bands, the sign and the button stay.
+  /// and the layout's moves (W2b 3-B: the line, the setup's things fading,
+  /// the valid counts coming in, the fighters popping up or fading out; and
+  /// after the battle the line going down) jump to their ends. Poses,
+  /// scores, bands, the sign and the button stay.
   BattleFxFrame frame(double now, {bool reducedMotion = false}) {
     final end = _end;
     final endKind = end?.kind;
@@ -908,6 +1113,11 @@ class BattleFxTimeline {
     final beforeStart = _setup || counting;
     final inDanger = danger && end == null && !beforeStart;
     final meetX = BattleFx.meetX(_shareAt(now));
+    // The layout around the stage, and what shows with it (W2b 3-B).
+    final layout = reducedMotion ? (_toBattle ? 1.0 : 0.0) : _layoutAt(now);
+    final setupLook =
+        1 - (layout * BattleFx.layoutMs / BattleFx.setupFadeMs).clamp(0.0, 1.0);
+    final look = _fighterLook(now, reducedMotion: reducedMotion);
 
     BattleFxFighter build(BattleSide who) {
       final dir = who == BattleSide.me ? 1.0 : -1.0;
@@ -949,6 +1159,10 @@ class BattleFxTimeline {
       dy -= idle.up;
       // The danger sway replaces the rock; the rest of the motion stays.
       if (!swaying) rotation += dir * idle.rockDeg;
+      // Hidden while setting up, popping up around the foot once the line
+      // is down.
+      scale *= look.scale;
+      opacity *= look.opacity;
       return BattleFxFighter(
         pose: m.pose,
         footX: x + dx,
@@ -999,31 +1213,29 @@ class BattleFxTimeline {
       );
     }
 
-    // More than three seconds before the start both stand ready; the
-    // numbers take over from there.
+    // More than three seconds before the start both stand ready, with a tag
+    // over their heads that shows as they do; the numbers take over from
+    // there. While setting up the ready chips between the scores say it
+    // instead, and there are no fighters to tag.
     final earlyCount = counting && countEnd - now > 3000;
-    final showTags = _setup || earlyCount;
-    final meReady = earlyCount || _meReady;
-    final opponentReady = earlyCount || _opponentReady;
-    BattleFxTag readyTag(BattleSide who, bool ready, double centerX) =>
-        BattleFxTag(
-          text: ready ? '준비 완료' : '세팅 중',
-          tone: !ready
-              ? BattleFxTone.plain
-              : (who == BattleSide.me
-                    ? BattleFxTone.me
-                    : BattleFxTone.opponent),
-          centerX: centerX,
-        );
+    BattleFxTag readyTag(BattleSide who, double centerX) => BattleFxTag(
+      text: '준비 완료',
+      tone: who == BattleSide.me ? BattleFxTone.me : BattleFxTone.opponent,
+      centerX: centerX,
+      opacity: look.opacity,
+    );
     final opponentX = meetX + BattleFx.reach;
     final BattleFxTag? opponentTag;
-    if (showTags) {
-      opponentTag = readyTag(BattleSide.opponent, opponentReady, opponentX);
-    } else if (opponentGone && end == null) {
+    if (earlyCount) {
+      opponentTag = readyTag(BattleSide.opponent, opponentX);
+    } else if (opponentGone && end == null && !_setup) {
+      // Over the fighter, so not while setting up, where there is none, and
+      // showing as the fighter does when they pop up.
       opponentTag = BattleFxTag(
         text: '연결 끊김',
         tone: BattleFxTone.plain,
         centerX: opponentX,
+        opacity: look.opacity,
       );
     } else {
       opponentTag = null;
@@ -1041,9 +1253,6 @@ class BattleFxTimeline {
                       BattleFx.back(
                         BattleFx.seg(now, buttonAt, buttonAt + 160),
                       ),
-        scrim:
-            0.62 *
-            BattleFx.easeOut(BattleFx.seg(now, buttonAt, buttonAt + 200)),
       );
     }
 
@@ -1053,8 +1262,8 @@ class BattleFxTimeline {
       meetX: meetX,
       me: build(BattleSide.me),
       opponent: build(BattleSide.opponent),
-      myTag: showTags
-          ? readyTag(BattleSide.me, meReady, meetX - BattleFx.reach)
+      myTag: earlyCount
+          ? readyTag(BattleSide.me, meetX - BattleFx.reach)
           : null,
       opponentTag: opponentTag,
       shakeX: shake.$1,
@@ -1064,7 +1273,7 @@ class BattleFxTimeline {
       twinkle: twinkle,
       puff: puff,
       sign: _signAt(now),
-      banners: _banners(now, counting, reducedMotion),
+      banners: _banners(now, counting, reducedMotion, setupLook),
       combos: _combos(now),
       myScoreBump: _scoreBump(now - mine.scoreBumpAt, _myScore),
       opponentScoreBump: _scoreBump(now - theirs.scoreBumpAt, _opponentScore),
@@ -1078,6 +1287,28 @@ class BattleFxTimeline {
       dangerOpacity: inDanger ? ((now / 240).floor().isOdd ? 0.95 : 0.3) : 0,
       beforeStart: beforeStart,
       resultButton: button,
+      battleLayout: BattleFx.easeInOut(layout),
+      endLayout: _endLayoutAt(now, reducedMotion: reducedMotion),
+      setupLook: setupLook,
+      countsOpacity: (layout * BattleFx.layoutMs / BattleFx.countsFadeMs).clamp(
+        0.0,
+        1.0,
+      ),
+      // As the line comes down the countdown says both are ready.
+      readyChips: setupLook <= 0
+          ? const []
+          : [
+              BattleFxReadyChip(
+                side: BattleSide.me,
+                ready: !_setup || _meReady,
+                opacity: setupLook,
+              ),
+              BattleFxReadyChip(
+                side: BattleSide.opponent,
+                ready: !_setup || _opponentReady,
+                opacity: setupLook,
+              ),
+            ],
     );
   }
 
@@ -1231,7 +1462,12 @@ class BattleFxTimeline {
     );
   }
 
-  List<BattleFxBanner> _banners(double now, bool counting, bool reducedMotion) {
+  List<BattleFxBanner> _banners(
+    double now,
+    bool counting,
+    bool reducedMotion,
+    double setupLook,
+  ) {
     final end = _end;
     final sinceEnd = now - _endAt;
     final out = <BattleFxBanner>[];
@@ -1332,14 +1568,17 @@ class BattleFxTimeline {
       );
     }
 
-    if (_setup && (!_meReady || !_opponentReady)) {
+    // The setup's status band, between the scores; it fades out with the
+    // setup's other things, with the words it had.
+    final setupWords = _setup ? _setupWords : _leftWords;
+    if (setupWords != null) {
       add(
         BattleFxBanner(
-          text: _meReady ? '상대를 기다리는 중' : '자세 세팅 중',
-          top: 148,
-          textSize: 34,
+          text: setupWords,
+          top: BattleFx.setupBandTop,
+          textSize: BattleFx.setupBandSize,
           tone: BattleFxTone.plain,
-          opacity: 1,
+          opacity: setupLook,
           font: BattleFxFont.display,
           rotation: -3,
         ),

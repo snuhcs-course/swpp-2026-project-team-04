@@ -43,6 +43,7 @@ dependencies:
   http: ^1.6.0
   flutter_secure_storage: ^11.2.0
   flutter_tts: ^4.2.5
+  just_audio: ^0.10.6
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +69,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/audio/
     - assets/images/
 
   # Static TTFs from fonts.google.com; licenses are next to them (*-OFL.txt).

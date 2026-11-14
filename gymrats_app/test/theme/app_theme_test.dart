@@ -260,6 +260,11 @@ void main() {
         AppHighlight.tightBandPadding,
         const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       );
+      // The "AI" tag's pill on the match-found board (W2b 2-A3, 2 x 12).
+      expect(
+        AppHighlight.tagPadding,
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      );
       expect(AppHighlight.swatchGap, 6);
       final marked = AppHighlight.marked(
         const TextStyle(color: AppColors.accent),
@@ -453,6 +458,59 @@ void main() {
     });
   });
 
+  test("the match-found board's texts (W2b 2-A3): ink, as the design's "
+      'CSS sets them', () {
+    final text = AppTheme.light.textTheme;
+    List<Object?> look(TextStyle style) => [
+      style.fontFamily,
+      style.fontSize,
+      style.fontWeight,
+      style.height,
+      style.letterSpacing,
+      style.color,
+    ];
+    // "나" / "상대": 13 bold on a 20 line.
+    expect(look(text.versusSide), [
+      AppFonts.body,
+      13,
+      FontWeight.w700,
+      20 / 13,
+      0,
+      AppColors.ink,
+    ]);
+    // The name: Do Hyeon 28 on a 34 line.
+    expect(look(text.versusName), [
+      AppFonts.display,
+      28,
+      FontWeight.w400,
+      34 / 28,
+      0,
+      AppColors.ink,
+    ]);
+    // "AI": Oxanium 700 14 on a 20 line.
+    expect(look(text.versusAiTag), [
+      AppFonts.number,
+      14,
+      FontWeight.w700,
+      20 / 14,
+      0,
+      AppColors.ink,
+    ]);
+    // "VS": Oxanium 800 34, letters 1 closer.
+    expect(look(text.versusMark), [
+      AppFonts.number,
+      34,
+      FontWeight.w800,
+      1,
+      -1,
+      AppColors.ink,
+    ]);
+    // Lines spaced like CSS: the extra height split above and below.
+    for (final style in [text.versusSide, text.versusName, text.versusAiTag]) {
+      expect(style.leadingDistribution, TextLeadingDistribution.even);
+    }
+  });
+
   test('AppTheme.dark is the light theme, under its old name', () {
     expect(AppTheme.dark, same(AppTheme.light));
   });
@@ -487,6 +545,24 @@ void main() {
         expect(style.color, AppColors.ink);
       }
       expect(text.cameraHint.fontFamily, AppFonts.body);
+    });
+
+    test('the setup\'s large hint and ready button (W2b 3-B): Do Hyeon 26 on '
+        'a 1.2 line and Do Hyeon 22, ink, with no extra letter spacing', () {
+      final hint = text.cameraSetupHint;
+      expect(hint.fontFamily, AppFonts.display);
+      expect(hint.fontSize, 26);
+      expect(hint.fontWeight, FontWeight.w400);
+      expect(hint.height, 1.2);
+      expect(hint.leadingDistribution, TextLeadingDistribution.even);
+      final button = text.cameraSetupButton;
+      expect(button.fontFamily, AppFonts.display);
+      expect(button.fontSize, 22);
+      expect(button.fontWeight, FontWeight.w400);
+      for (final style in [hint, button]) {
+        expect(style.letterSpacing, 0);
+        expect(style.color, AppColors.ink);
+      }
     });
 
     test('the leave dialog\'s title is Do Hyeon at the headline\'s size', () {

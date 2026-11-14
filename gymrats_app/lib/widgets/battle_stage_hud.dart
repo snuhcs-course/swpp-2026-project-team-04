@@ -26,6 +26,7 @@ class BattleStageHud extends StatelessWidget {
     this.opponentScoreBump = 1,
     this.myRepsBump = 1,
     this.opponentRepsBump = 1,
+    this.countsOpacity = 1,
   });
 
   final String myName;
@@ -52,6 +53,11 @@ class BattleStageHud extends StatelessWidget {
   final double opponentScoreBump;
   final double myRepsBump;
   final double opponentRepsBump;
+
+  /// How strongly the valid rep counts show: not at all while setting up,
+  /// where the ready chips take their place; a screen reader does not get
+  /// them then either.
+  final double countsOpacity;
 
   static const _side = 12.0;
   static const _nameTop = 26.0;
@@ -173,40 +179,16 @@ class BattleStageHud extends StatelessWidget {
               child: _score(text, opponentScore, AppColors.opponent, '상대 점수'),
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: _countTop,
-            child: Semantics(
-              container: true,
-              label: '유효 횟수 나 $myReps회, 상대 $opponentReps회',
-              child: ExcludeSemantics(
-                child: Column(
-                  children: [
-                    Text('유효 횟수', style: text.stageCountLabel),
-                    const SizedBox(height: _countLabelGap),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        _count(text, myReps, myRepsBump, TextAlign.right),
-                        const SizedBox(width: _countGap),
-                        Text(':', style: text.stageCount),
-                        const SizedBox(width: _countGap),
-                        _count(
-                          text,
-                          opponentReps,
-                          opponentRepsBump,
-                          TextAlign.left,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+          if (countsOpacity > 0)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: _countTop,
+              child: Opacity(
+                opacity: countsOpacity.clamp(0.0, 1.0),
+                child: _counts(text),
               ),
             ),
-          ),
           Positioned(
             left: _side,
             right: _side,
@@ -232,6 +214,32 @@ class BattleStageHud extends StatelessWidget {
       ),
     );
   }
+
+  /// "유효 횟수" over the two valid rep counts, read out as one.
+  Widget _counts(TextTheme text) => Semantics(
+    container: true,
+    label: '유효 횟수 나 $myReps회, 상대 $opponentReps회',
+    child: ExcludeSemantics(
+      child: Column(
+        children: [
+          Text('유효 횟수', style: text.stageCountLabel),
+          const SizedBox(height: _countLabelGap),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              _count(text, myReps, myRepsBump, TextAlign.right),
+              const SizedBox(width: _countGap),
+              Text(':', style: text.stageCount),
+              const SizedBox(width: _countGap),
+              _count(text, opponentReps, opponentRepsBump, TextAlign.left),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 
   /// A nickname beside its color swatch: the user's swatch first, the
   /// opponent's last. A name wider than [_nameWidth] ends in "…" and keeps

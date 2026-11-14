@@ -1,18 +1,23 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/services/audio/sound_services.dart';
 import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
+
+import '../support/audio_fakes.dart';
 
 /// A store whose read waits for [gate], and that can fail.
 class _ScriptedStore extends MemorySettingsStore {
   Completer<void>? gate;
   bool failRead = false;
+  Object? failWith;
   bool failWrite = false;
 
   @override
   Future<SavedSettings> read() async {
     await gate?.future;
+    if (failWith case final error?) throw error;
     if (failRead) throw Exception('storage');
     return super.read();
   }
@@ -318,6 +323,76 @@ void main() {
       expect(store.safetyNoticeSeen, isNull);
     });
   });
+
+  group('the app\'s sound follows the switches', () {
+    late SoundServices sound;
+    setUp(() {
+      sound = fakeSoundServices();
+      unawaited(sound.settings.setEnabled(false));
+      sound.settings.setVoiceEnabled(false);
+      SoundServices.shared = sound;
+    });
+    tearDown(() => SoundServices.shared = null);
+
+    test('the saved switches are passed on once read', () async {
+      final store = MemorySettingsStore();
+      await store.writeVoiceGuidance(true);
+      await SettingsViewModel(store: store).load();
+      expect(sound.settings.enabled, isTrue, reason: '효과음 default on');
+      expect(sound.settings.voiceEnabled, isTrue);
+    });
+
+    test('a store that cannot be read passes the defaults on', () async {
+      await SettingsViewModel(store: _ScriptedStore()..failRead = true).load();
+      expect(sound.settings.enabled, isTrue);
+      expect(sound.settings.voiceEnabled, isFalse);
+    });
+
+    test(
+      'a read that fails with an error still passes the defaults on',
+      () async {
+        final store = _ScriptedStore()..failWith = StateError('broken');
+        await expectLater(
+          SettingsViewModel(store: store).load(),
+          throwsStateError,
+        );
+        expect(sound.settings.enabled, isTrue);
+      },
+    );
+
+    test('a safety-notice read that fails with an error still passes the '
+        'defaults on', () async {
+      final store = _SafetyGatedStore()..failSafetyWith = StateError('broken');
+      await expectLater(
+        SettingsViewModel(store: store).load(),
+        throwsStateError,
+      );
+      expect(sound.settings.enabled, isTrue);
+    });
+
+    test('a given sound switch set is used instead of the shared one', () {
+      final own = fakeSoundServices().settings;
+      SettingsViewModel(sound: own).setSoundEffects(false);
+      expect(own.enabled, isFalse);
+      expect(sound.settings.enabled, isFalse, reason: 'shared untouched');
+      SettingsViewModel(sound: own).setVoiceGuidance(false);
+      expect(own.voiceEnabled, isFalse);
+      expect(sound.settings.voiceEnabled, isFalse);
+    });
+
+    test('효과음 turns the music and effects off and on, 음성 안내 the '
+        'voice', () async {
+      final vm = SettingsViewModel()..setSoundEffects(false);
+      expect(sound.settings.enabled, isFalse);
+      vm.setVoiceGuidance(true);
+      expect(sound.settings.voiceEnabled, isTrue);
+      expect(sound.settings.enabled, isFalse, reason: 'each switch alone');
+      vm.setSoundEffects(true);
+      expect(sound.settings.enabled, isTrue);
+      vm.setVoiceGuidance(false);
+      expect(sound.settings.voiceEnabled, isFalse);
+    });
+  });
 }
 
 /// A store whose safety-notice read waits for [gate], and whose safety
@@ -327,11 +402,13 @@ class _SafetyGatedStore extends MemorySettingsStore {
   Completer<void>? gate;
   bool failSafetyRead = false;
   bool failSafetyWrite = false;
+  Object? failSafetyWith;
 
   @override
   Future<SavedSafetyNotice> readSafetyNotice() async {
     final saved = await super.readSafetyNotice();
     await gate?.future;
+    if (failSafetyWith case final error?) throw error;
     if (failSafetyRead) throw Exception('storage');
     return saved;
   }
