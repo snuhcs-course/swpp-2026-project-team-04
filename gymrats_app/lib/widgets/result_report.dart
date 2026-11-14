@@ -13,8 +13,8 @@ import 'result_cards.dart';
 /// Everything the result report draws, as the screen is given it. The
 /// report computes nothing: it only words and draws these values.
 ///
-/// [best], [recent] and [tip] stay null until a view model gives them
-/// (박진영's J4); a null one leaves its card out.
+/// A null [best], [recent] or [tip] leaves its card out; while
+/// [comparisonLoading], one placeholder stands where [best] and [recent] go.
 class ResultReportData {
   const ResultReportData({
     required this.outcome,
@@ -30,6 +30,7 @@ class ResultReportData {
     required this.endedAt,
     this.departure = BattleDeparture.none,
     this.hasFeedback = false,
+    this.comparisonLoading = false,
     this.best,
     this.recent,
     this.tip,
@@ -52,9 +53,10 @@ class ResultReportData {
   final int myScore;
   final int opponentScore;
 
-  /// The user's reps that counted and that did not.
+  /// The user's reps that counted and that did not; null [myInvalidReps]
+  /// (not known) leaves 무효 out.
   final int myValidReps;
-  final int myInvalidReps;
+  final int? myInvalidReps;
 
   /// The opponent's reps that counted: with equal scores at time-up, they
   /// decide the battle.
@@ -68,6 +70,10 @@ class ResultReportData {
 
   /// Whether this battle's form feedback can be opened.
   final bool hasFeedback;
+
+  /// Whether the earlier battles that [best] and [recent] compare with are
+  /// still loading.
+  final bool comparisonLoading;
 
   /// A personal best this battle set; null when it set none.
   final ResultNewBest? best;
@@ -129,6 +135,10 @@ class ResultReport extends StatelessWidget {
           validReps: data.myValidReps,
           invalidReps: data.myInvalidReps,
         ),
+        if (data.comparisonLoading) ...[
+          const SizedBox(height: AppSpacing.s12),
+          const ResultComparisonPlaceholder(),
+        ],
         if (best != null) ...[
           const SizedBox(height: AppSpacing.s12),
           ResultBestCard(best),
@@ -453,10 +463,13 @@ class ResultScoreRow extends StatelessWidget {
   final int myScore;
   final int opponentScore;
   final int validReps;
-  final int invalidReps;
 
-  /// The reps line, e.g. "인정 12회 · 무효 0회".
-  static String repsText(int valid, int invalid) => '인정 $valid회 · 무효 $invalid회';
+  /// Null when not known: the line then names only the counted reps.
+  final int? invalidReps;
+
+  /// The reps line, e.g. "인정 12회 · 무효 0회", or "인정 12회".
+  static String repsText(int valid, int? invalid) =>
+      invalid == null ? '인정 $valid회' : '인정 $valid회 · 무효 $invalid회';
 
   @override
   Widget build(BuildContext context) {

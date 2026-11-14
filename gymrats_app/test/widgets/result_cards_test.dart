@@ -240,11 +240,11 @@ void main() {
       );
       expect(find.text('다음 판 한 가지'), findsOneWidget);
       expect(find.text(tip.title), findsOneWidget);
-      expect(find.text(tip.reason), findsOneWidget);
+      expect(find.text(tip.reason!), findsOneWidget);
       final link = find.text('자세 피드백 전체 보기');
       expect(
         tester.getRect(link).top,
-        greaterThan(tester.getRect(find.text(tip.reason)).bottom),
+        greaterThan(tester.getRect(find.text(tip.reason!)).bottom),
       );
       expect(
         tester.getSize(find.byType(TextButton)).height,
@@ -264,6 +264,47 @@ void main() {
       await show(tester, ResultTipCard(onOpenFeedback: () {}));
       expect(find.text('다음 판 한 가지'), findsNothing);
       expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
+    });
+
+    testWidgets('a tip without a reason: its title, then the link, and no '
+        'empty line between', (tester) async {
+      const bare = ResultTip(title: '엉덩이를 뒤로 빼며 허벅지가 바닥과 나란해질 때까지 앉아요.');
+      await show(tester, ResultTipCard(tip: bare, onOpenFeedback: () {}));
+      final title = tester.getRect(find.text(bare.title));
+      // 다음 판 한 가지, the title and the link's label: no reason line.
+      expect(find.byType(Text), findsNWidgets(3));
+      expect(
+        tester.getRect(find.byType(TextButton)).top,
+        moreOrLessEquals(title.bottom, epsilon: 0.5),
+      );
+    });
+  });
+
+  group('the placeholder while the earlier battles load', () {
+    testWidgets('one muted line in a card: no number, no chart', (
+      tester,
+    ) async {
+      await show(tester, const ResultComparisonPlaceholder());
+      Finder inside(Finder matching) => find.descendant(
+        of: find.byType(ResultComparisonPlaceholder),
+        matching: matching,
+      );
+      final line = tester.widget<Text>(
+        find.text(ResultComparisonPlaceholder.text),
+      );
+      expect(line.style?.color, AppColors.textMuted);
+      expect(inside(find.byType(Card)), findsOneWidget);
+      expect(inside(find.byType(Text)), findsOneWidget);
+      expect(inside(find.textContaining(RegExp(r'\d'))), findsNothing);
+      expect(inside(find.byType(ResultRecentCard)), findsNothing);
+      expect(
+        inside(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is ResultDashedLine,
+          ),
+        ),
+        findsNothing,
+      );
     });
   });
 }

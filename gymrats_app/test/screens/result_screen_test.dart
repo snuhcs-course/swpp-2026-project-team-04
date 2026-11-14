@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
@@ -9,12 +11,24 @@ import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
+import 'package:gymrats_app/services/feedback/feedback_stats.dart';
+import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/viewmodels/result_viewmodel.dart';
+import 'package:gymrats_app/widgets/result_cards.dart';
 import 'package:gymrats_app/widgets/result_report.dart';
+import 'package:provider/provider.dart';
+
+import '../support/fakes.dart';
+import '../support/feedback_fakes.dart';
+import '../support/form_report_fixtures.dart';
 
 // The drawing of the report is tested in test/widgets/result_report_test.dart
 // and result_cards_test.dart. This file checks only what the screen adds:
-// the values it gathers from the battle, and where its buttons lead.
+// the values it takes from J4's result view model, and where its buttons
+// lead.
+
+final _endedAt = DateTime(2026, 11, 4, 14, 30);
 
 final _matchup = Matchup(
   exercise: ExerciseType.pushUp,
@@ -25,8 +39,17 @@ final _matchup = Matchup(
   ).at(BotDifficulty.beginner),
 );
 
+final _squatBot = Matchup(
+  exercise: ExerciseType.squat,
+  playerName: '우현',
+  opponent: const Opponent(
+    name: 'RepBot',
+    isBot: true,
+  ).at(BotDifficulty.expert),
+);
+
 final _form = FormReport(
-  endedAt: DateTime(2026, 11, 4, 14, 30),
+  endedAt: _endedAt,
   opponentName: 'AI 봇 · 초보',
   roundLength: const Duration(seconds: 30),
   reps: const [],
@@ -44,6 +67,7 @@ BattleResult _result({
   MatchOutcome? outcome = MatchOutcome.win,
   GameEnd end = GameEnd.timeUp,
   Duration roundLength = const Duration(seconds: 30),
+  int myScore = 240,
   int opponentScore = 125,
   int opponentReps = 14,
   BattleDeparture departure = BattleDeparture.none,
@@ -53,14 +77,68 @@ BattleResult _result({
   myReps: 12,
   myInvalidReps: 2,
   opponentReps: opponentReps,
-  myScore: 240,
+  myScore: myScore,
   opponentScore: opponentScore,
   end: end,
   decidedOutcome: outcome,
-  endedAt: DateTime(2026, 11, 4, 14, 30),
+  endedAt: _endedAt,
   roundLength: roundLength,
   form: form,
   departure: departure,
+);
+
+/// Push-up battles before the one under test, oldest first, one day apart
+/// from 10월 28일 (the design's last-8 card: 185 the best, 136 the mean of
+/// the last five).
+FakeFeedbackStatsSource _earlier([
+  List<int> scores = const [80, 95, 110, 105, 130, 150, 185],
+]) => FakeFeedbackStatsSource([
+  for (var i = 0; i < scores.length; i++)
+    statsPoint(100 + i, DateTime(2026, 10, 28 + i, 20), score: scores[i]),
+]);
+
+/// A state as J4's view model gives it, for the mapping alone.
+ResultState _state({
+  MatchOutcome outcome = MatchOutcome.win,
+  GameEnd? end = GameEnd.timeUp,
+  Opponent? opponent = const Opponent(name: '진영', isBot: false),
+  String opponentName = '진영',
+  Duration? roundLength = const Duration(seconds: 30),
+  int myScore = 240,
+  int? myInvalidReps = 2,
+  BattleDeparture departure = BattleDeparture.none,
+  ResultHistoryPhase history = ResultHistoryPhase.ready,
+  int? previousBest,
+  bool isNewBest = false,
+  List<int> recentScores = const [],
+  DateTime? recentFrom,
+  int? recentAverage,
+  int recentAverageOf = 0,
+  FormReport? form,
+  NextTip? nextTip,
+}) => ResultState(
+  endedAt: _endedAt,
+  outcome: outcome,
+  end: end,
+  exercise: ExerciseType.pushUp,
+  opponent: opponent,
+  opponentName: opponentName,
+  roundLength: roundLength,
+  myScore: myScore,
+  opponentScore: 125,
+  myReps: 12,
+  opponentReps: 14,
+  myInvalidReps: myInvalidReps,
+  departure: departure,
+  history: history,
+  previousBest: previousBest,
+  isNewBest: isNewBest,
+  recentScores: recentScores,
+  recentFrom: recentFrom,
+  recentAverage: recentAverage,
+  recentAverageOf: recentAverageOf,
+  form: form,
+  nextTip: nextTip,
 );
 
 /// The routes pushed or put in place, in order.
@@ -79,214 +157,604 @@ class _Routes extends NavigatorObserver {
 }
 
 void main() {
-  group('the values it gathers from main\'s battle result', () {
-    test('a time-up win: the outcome, the scores, the reps, the times', () {
-      final data = ResultScreen.reportOf(_result());
+  group('the values it takes from J4\'s result state', () {
+    test('the outcome, the scores, the reps, the length, the opponent', () {
+      final data = ResultScreen.reportOf(_state());
       expect(data.outcome, MatchOutcome.win);
       expect(data.byKo, isFalse);
       expect(data.exercise, ExerciseType.pushUp);
-      expect(data.opponent.difficulty, BotDifficulty.beginner);
+      expect(data.opponent.name, '진영');
       expect(data.played, const Duration(seconds: 30));
       expect((data.myScore, data.opponentScore), (240, 125));
       expect((data.myValidReps, data.myInvalidReps), (12, 2));
       expect(data.opponentValidReps, 14);
-      expect(data.endedAt, DateTime(2026, 11, 4, 14, 30));
+      expect(data.endedAt, _endedAt);
       expect(data.departure, BattleDeparture.none);
+      expect(data.hasFeedback, isFalse);
+      expect(data.comparisonLoading, isFalse);
     });
 
-    test('an online battle a player left: the departure, and no length (the '
+    test('a KO is said by the end; a battle a player left has no length (the '
         'result carries the whole round, not when they left)', () {
+      expect(ResultScreen.reportOf(_state(end: GameEnd.ko)).byKo, isTrue);
       for (final departure in [
         BattleDeparture.opponentLeft,
         BattleDeparture.myConnectionLost,
       ]) {
         final data = ResultScreen.reportOf(
-          _result(matchup: _online, departure: departure),
+          _state(end: null, departure: departure),
         );
         expect(data.departure, departure);
+        expect(data.byKo, isFalse);
         expect(data.played, isNull);
       }
     });
 
-    test('a KO loss, and the time it took', () {
+    test('a past battle keeps only the name; its rejected reps may be '
+        'unknown', () {
       final data = ResultScreen.reportOf(
-        _result(
-          outcome: MatchOutcome.lose,
-          end: GameEnd.ko,
-          roundLength: const Duration(seconds: 24),
-        ),
+        _state(opponent: null, opponentName: 'AI 봇 · 초보', myInvalidReps: null),
       );
-      expect(data.outcome, MatchOutcome.lose);
-      expect(data.byKo, isTrue);
-      expect(data.played, const Duration(seconds: 24));
+      expect(data.opponent.name, 'AI 봇 · 초보');
+      expect(data.opponent.isBot, isFalse);
+      expect(data.myInvalidReps, isNull);
     });
 
-    test('a battle built without a game shows its reps as the scores', () {
-      final data = ResultScreen.reportOf(_result(outcome: null));
-      expect((data.myScore, data.opponentScore), (12, 14));
-      expect(data.outcome, MatchOutcome.lose);
+    test('a new best: the best before, this score, and the gain', () {
+      final best = ResultScreen.reportOf(
+        _state(previousBest: 185, isNewBest: true),
+      ).best!;
+      expect((best.previous, best.current, best.gain), (185, 240, 55));
+    });
+
+    test('no best card when the best was not beaten, or there was none (the '
+        'first battle)', () {
+      expect(ResultScreen.reportOf(_state(previousBest: 250)).best, isNull);
+      expect(ResultScreen.reportOf(_state(previousBest: 240)).best, isNull);
+      expect(ResultScreen.reportOf(_state()).best, isNull);
+    });
+
+    test('the latest battles: the scores, the first date, the average and '
+        'this score against it', () {
+      final recent = ResultScreen.reportOf(
+        _state(
+          recentScores: const [80, 95, 110, 105, 130, 150, 185, 240],
+          recentFrom: DateTime(2026, 10, 28),
+          recentAverage: 136,
+          recentAverageOf: 5,
+        ),
+      ).recent!;
+      expect(recent.scores, [80, 95, 110, 105, 130, 150, 185, 240]);
+      expect(recent.firstPlayedAt, DateTime(2026, 10, 28));
+      expect((recent.average, recent.averageCount), (136, 5));
+      expect(recent.difference, 104);
+      final below = ResultScreen.reportOf(
+        _state(
+          myScore: 200,
+          recentScores: const [250, 200],
+          recentFrom: DateTime(2026, 11, 3),
+          recentAverage: 250,
+          recentAverageOf: 1,
+        ),
+      ).recent!;
+      expect(below.difference, -50);
+    });
+
+    test('the first battle has no average: no latest-battles card', () {
+      final data = ResultScreen.reportOf(
+        _state(recentScores: const [240], recentFrom: _endedAt),
+      );
+      expect(data.recent, isNull);
+    });
+
+    test('a battle without a game score leaves the latest battles out: '
+        'their last bar would be an earlier battle', () {
+      final state = _state(
+        recentScores: const [100, 120],
+        recentFrom: DateTime(2026, 11, 2),
+        recentAverage: 110,
+        recentAverageOf: 2,
+      );
+      expect(ResultScreen.reportOf(state).recent, isNotNull);
+      expect(ResultScreen.reportOf(state, scored: false).recent, isNull);
+      final loading = _state(history: ResultHistoryPhase.loading);
+      expect(ResultScreen.reportOf(loading).comparisonLoading, isTrue);
+      expect(
+        ResultScreen.reportOf(loading, scored: false).comparisonLoading,
+        isFalse,
+      );
+    });
+
+    test('while loading: the placeholder, and no comparison card even with '
+        'values', () {
+      final data = ResultScreen.reportOf(
+        _state(
+          history: ResultHistoryPhase.loading,
+          previousBest: 185,
+          isNewBest: true,
+          recentScores: const [185, 240],
+          recentFrom: DateTime(2026, 11, 3),
+          recentAverage: 185,
+          recentAverageOf: 1,
+        ),
+      );
+      expect(data.comparisonLoading, isTrue);
+      expect(data.best, isNull);
+      expect(data.recent, isNull);
+    });
+
+    test('a failed load: no placeholder and no comparison card', () {
+      final data = ResultScreen.reportOf(
+        _state(
+          history: ResultHistoryPhase.failed,
+          previousBest: 185,
+          isNewBest: true,
+        ),
+      );
+      expect(data.comparisonLoading, isFalse);
+      expect(data.best, isNull);
+      expect(data.recent, isNull);
+    });
+
+    test('the tip: its headline as the title and its detail as the reason; '
+        'the code is not shown', () {
+      final tip = ResultScreen.reportOf(
+        _state(
+          form: _form,
+          nextTip: const NextTip(
+            headline: '가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.',
+            detail: '깊이 부족 2회',
+            code: 'reject.insufficientDepth',
+          ),
+        ),
+      ).tip!;
+      expect(tip.title, '가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.');
+      expect(tip.reason, '깊이 부족 2회');
+      final bare = ResultScreen.reportOf(
+        _state(nextTip: const NextTip(headline: '천천히 내려가요.')),
+      ).tip!;
+      expect(bare.reason, isNull);
+      expect(ResultScreen.reportOf(_state()).tip, isNull);
     });
 
     test('feedback only with a form report', () {
-      expect(ResultScreen.reportOf(_result()).hasFeedback, isFalse);
-      expect(ResultScreen.reportOf(_result(form: _form)).hasFeedback, isTrue);
-    });
-
-    test('main has no personal best, latest battles or tip: those cards '
-        'stay hidden until the view model (J4) gives them', () {
-      final data = ResultScreen.reportOf(_result(form: _form));
-      expect(data.best, isNull);
-      expect(data.recent, isNull);
-      expect(data.tip, isNull);
+      expect(ResultScreen.reportOf(_state(form: _form)).hasFeedback, isTrue);
     });
   });
 
-  group('the buttons', () {
+  group('where the earlier battles come from', () {
+    Future<FeedbackStatsSource> sourceUnder(
+      WidgetTester tester,
+      UserRepository? repository,
+    ) async {
+      late FeedbackStatsSource source;
+      final reader = Builder(
+        builder: (context) {
+          source = ResultScreen.historyOf(context);
+          return const SizedBox.shrink();
+        },
+      );
+      await tester.pumpWidget(
+        repository == null
+            ? reader
+            : Provider<UserRepository>.value(value: repository, child: reader),
+      );
+      return source;
+    }
+
+    testWidgets('the app\'s repository, when it keeps the battle list', (
+      tester,
+    ) async {
+      final repository = FakeStatsUserRepository();
+      expect(await sourceUnder(tester, repository), same(repository));
+    });
+
+    testWidgets('otherwise, or without a repository, every fetch fails', (
+      tester,
+    ) async {
+      for (final repository in [FakeUserRepository(), null]) {
+        final source = await sourceUnder(tester, repository);
+        await expectLater(source.fetchStatsPoints(), throwsException);
+      }
+    });
+  });
+
+  group('on the screen', () {
     late _Routes routes;
 
-    /// Opens ResultScreen above a home page, where the battle leaves it. The
+    /// Opens ResultScreen above a home page, where the battle leaves it. With
+    /// [history] its view model compares with those battles; without, no
+    /// repository is given, so the comparison fails and stays out. The
     /// matching and feedback routes are stubs that show their argument.
-    Future<void> open(WidgetTester tester, BattleResult result) async {
+    Future<void> open(
+      WidgetTester tester,
+      BattleResult result, {
+      FeedbackStatsSource? history,
+      UserRepository? repository,
+    }) async {
       tester.view.physicalSize = const Size(360, 780);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       routes = _Routes();
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          navigatorObservers: [routes],
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => ResultScreen(result: result),
+      final app = MaterialApp(
+        theme: AppTheme.light,
+        navigatorObservers: [routes],
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => ResultScreen(
+                    result: result,
+                    createViewModel: history == null
+                        ? null
+                        : () =>
+                              ResultViewModel.battle(result, history: history),
                   ),
                 ),
-                child: const Text('home'),
               ),
+              child: const Text('home'),
             ),
           ),
-          onGenerateRoute: (settings) => MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) =>
-                Scaffold(body: Text('${settings.name} ${settings.arguments}')),
-          ),
         ),
+        onGenerateRoute: (settings) => MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) =>
+              Scaffold(body: Text('${settings.name} ${settings.arguments}')),
+        ),
+      );
+      await tester.pumpWidget(
+        repository == null
+            ? app
+            : Provider<UserRepository>.value(value: repository, child: app),
       );
       await tester.tap(find.text('home'));
       await tester.pumpAndSettle();
       routes.settings.clear();
     }
 
-    testWidgets('it shows the report of the battle', (tester) async {
-      await open(tester, _result());
-      expect(find.byType(ResultReport), findsOneWidget);
-      expect(find.text('승리'), findsOneWidget);
-      expect(find.text('RepBot 초보'), findsOneWidget);
-      expect(find.text('240'), findsOneWidget);
+    group('how it ended', () {
+      for (final squat in [false, true]) {
+        for (final (outcome, opponentScore, opponentReps, headline) in const [
+          (MatchOutcome.win, 125, 14, '승리'),
+          (MatchOutcome.lose, 260, 14, '패배'),
+          (MatchOutcome.draw, 240, 12, '무승부'),
+        ]) {
+          testWidgets('a time-up ${squat ? 'squat' : 'push-up'} '
+              '${outcome.name}: "$headline", both scores, the seconds', (
+            tester,
+          ) async {
+            await open(
+              tester,
+              _result(
+                matchup: squat ? _squatBot : _matchup,
+                outcome: outcome,
+                opponentScore: opponentScore,
+                opponentReps: opponentReps,
+              ),
+              history: _earlier(),
+            );
+            expect(find.byType(ResultReport), findsOneWidget);
+            expect(find.text(headline), findsOneWidget);
+            expect(
+              find.text(squat ? '스쿼트 · vs ' : '푸쉬업 · vs '),
+              findsOneWidget,
+            );
+            expect(
+              find.text(squat ? 'RepBot 고수' : 'RepBot 초보'),
+              findsOneWidget,
+            );
+            if (opponentScore == 240) {
+              expect(find.text('240'), findsNWidgets(2));
+            } else {
+              expect(find.text('240'), findsOneWidget);
+              expect(find.text('$opponentScore'), findsOneWidget);
+            }
+            expect(find.text(' · 30초'), findsOneWidget);
+            expect(find.text('인정 12회 · 무효 2회'), findsOneWidget);
+          });
+        }
+      }
+
+      for (final (outcome, headline) in const [
+        (MatchOutcome.win, 'KO 승리'),
+        (MatchOutcome.lose, 'KO 패배'),
+      ]) {
+        testWidgets('a KO ${outcome.name}: "$headline" and the time it took', (
+          tester,
+        ) async {
+          await open(
+            tester,
+            _result(
+              outcome: outcome,
+              end: GameEnd.ko,
+              roundLength: const Duration(seconds: 24),
+            ),
+            history: _earlier(),
+          );
+          expect(find.text(headline), findsOneWidget);
+          expect(find.text(' · 24초'), findsOneWidget);
+        });
+      }
+
+      testWidgets('equal scores at time-up: the reps that decided it, under '
+          'the sub line', (tester) async {
+        await open(tester, _result(opponentScore: 240, opponentReps: 11));
+        expect(find.text('승리'), findsOneWidget);
+        expect(find.text('점수 같음 · 횟수로 승리'), findsOneWidget);
+        expect(find.text(' · 30초'), findsOneWidget);
+      });
+
+      for (final (outcome, departure, headline, reason) in const [
+        (MatchOutcome.win, BattleDeparture.opponentLeft, '승리', '상대가 나갔어요'),
+        (MatchOutcome.lose, BattleDeparture.myConnectionLost, '패배', '연결이 끊겼어요'),
+      ]) {
+        testWidgets('an online battle that ended by ${departure.name}: '
+            '$headline, and why, without the seconds', (tester) async {
+          await open(
+            tester,
+            _result(
+              matchup: _online,
+              outcome: outcome,
+              end: GameEnd.ko,
+              departure: departure,
+            ),
+            history: _earlier(),
+          );
+          expect(find.text(headline), findsOneWidget);
+          expect(find.text(reason), findsOneWidget);
+          expect(find.text('진영'), findsOneWidget);
+          expect(find.textContaining('초'), findsNothing);
+        });
+      }
     });
 
-    testWidgets('equal scores at time-up: the reps that decided it, under the '
-        'sub line', (tester) async {
-      await open(tester, _result(opponentScore: 240, opponentReps: 11));
-      expect(find.text('승리'), findsOneWidget);
-      expect(find.text('점수 같음 · 횟수로 승리'), findsOneWidget);
-      expect(find.text(' · 30초'), findsOneWidget);
-    });
+    group('the comparison with earlier battles', () {
+      testWidgets('a new best: the best card and the latest battles, as in '
+          'the design', (tester) async {
+        await open(tester, _result(), history: _earlier());
+        expect(find.text('개인 최고 기록 갱신'), findsOneWidget);
+        expect(
+          find.text('185점 → 240점 · 55점 올랐어요', findRichText: true),
+          findsOneWidget,
+        );
+        expect(find.text('최근 8판 중 이번 판'), findsOneWidget);
+        expect(find.text('평균보다 +104점'), findsOneWidget);
+        expect(find.text('최근 5판 평균 136'), findsOneWidget);
+        expect(find.text('10/28'), findsOneWidget);
+        expect(find.text('이번 판 240'), findsOneWidget);
+        expect(find.byType(ResultComparisonPlaceholder), findsNothing);
+      });
 
-    for (final (outcome, departure, headline, reason) in const [
-      (MatchOutcome.win, BattleDeparture.opponentLeft, '승리', '상대가 나갔어요'),
-      (MatchOutcome.lose, BattleDeparture.myConnectionLost, '패배', '연결이 끊겼어요'),
-    ]) {
-      testWidgets('an online battle that ended by ${departure.name}: '
-          '$headline, and why, without the seconds', (tester) async {
+      for (final (earlier, chip) in const [
+        ([250, 200], '평균보다 +15점'),
+        ([240], '평균과 같아요'),
+      ]) {
+        testWidgets('earlier best ${earlier.first}: not beaten, so no best '
+            'card; the latest battles still show', (tester) async {
+          await open(tester, _result(), history: _earlier(earlier));
+          expect(find.byType(ResultBestCard), findsNothing);
+          expect(find.byType(ResultRecentCard), findsOneWidget);
+          expect(find.text('최근 ${earlier.length + 1}판 중 이번 판'), findsOneWidget);
+          expect(find.text(chip), findsOneWidget);
+        });
+      }
+
+      testWidgets('the first battle: no new best and no comparison, the rest '
+          'of the report as usual', (tester) async {
+        final history = FakeFeedbackStatsSource();
+        await open(tester, _result(form: _form), history: history);
+        expect(history.calls.single.exercise, ExerciseType.pushUp);
+        expect(find.byType(ResultBestCard), findsNothing);
+        expect(find.textContaining('최고'), findsNothing);
+        expect(find.byType(ResultRecentCard), findsNothing);
+        expect(find.byType(ResultComparisonPlaceholder), findsNothing);
+        expect(find.text('승리'), findsOneWidget);
+        expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
+      });
+
+      testWidgets('while they load: the placeholder, no 0 and no chart; then '
+          'the cards in its place', (tester) async {
+        final history = _earlier()..gate = Completer<void>();
+        await open(tester, _result(form: _form), history: history);
+        final placeholder = find.byType(ResultComparisonPlaceholder);
+        expect(placeholder, findsOneWidget);
+        expect(find.text(ResultComparisonPlaceholder.text), findsOneWidget);
+        expect(find.byType(ResultBestCard), findsNothing);
+        expect(find.byType(ResultRecentCard), findsNothing);
+        expect(find.text('0'), findsNothing);
+        final top = tester.getRect(placeholder).top;
+        // The feedback link does not wait for them.
+        expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
+
+        history.gate!.complete();
+        await tester.pumpAndSettle();
+        expect(placeholder, findsNothing);
+        expect(
+          tester.getRect(find.byType(ResultBestCard)).top,
+          moreOrLessEquals(top, epsilon: 0.5),
+        );
+        expect(find.byType(ResultRecentCard), findsOneWidget);
+      });
+
+      testWidgets('a failed load: the comparison is left out, the rest of the '
+          'report stays', (tester) async {
+        final history = _earlier()..error = Exception('offline');
         await open(
           tester,
-          _result(matchup: _online, outcome: outcome, departure: departure),
+          _result(form: sampleReport(valid: 12, rejected: 2)),
+          history: history,
         );
-        expect(find.text(headline), findsOneWidget);
-        expect(find.text(reason), findsOneWidget);
-        expect(find.text('진영'), findsOneWidget);
-        expect(find.textContaining('초'), findsNothing);
+        expect(find.byType(ResultComparisonPlaceholder), findsNothing);
+        expect(find.byType(ResultBestCard), findsNothing);
+        expect(find.byType(ResultRecentCard), findsNothing);
+        expect(find.text('승리'), findsOneWidget);
+        expect(find.text('240'), findsOneWidget);
+        expect(find.text('다음 판 한 가지'), findsOneWidget);
+        expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
       });
-    }
 
-    for (final (name, press) in [
-      ('홈으로', (WidgetTester t) => t.tap(find.text('홈으로'))),
-      ('the back button', (WidgetTester t) => t.tap(find.byTooltip('홈으로'))),
-      ('system back', (WidgetTester t) => t.binding.handlePopRoute()),
-    ]) {
-      testWidgets('$name goes home', (tester) async {
+      testWidgets('from the app\'s repository, of this battle\'s exercise', (
+        tester,
+      ) async {
+        final repository = FakeStatsUserRepository();
+        repository.stats.points = _earlier().points;
+        await open(tester, _result(), repository: repository);
+        expect(repository.stats.calls.single.exercise, ExerciseType.pushUp);
+        expect(find.byType(ResultBestCard), findsOneWidget);
+        expect(find.byType(ResultRecentCard), findsOneWidget);
+      });
+
+      testWidgets('a repository without the battle list: no comparison, and '
+          'nothing breaks', (tester) async {
+        await open(tester, _result(), repository: FakeUserRepository());
+        expect(tester.takeException(), isNull);
+        expect(find.byType(ResultComparisonPlaceholder), findsNothing);
+        expect(find.byType(ResultBestCard), findsNothing);
+        expect(find.byType(ResultRecentCard), findsNothing);
+        expect(find.text('승리'), findsOneWidget);
+      });
+
+      testWidgets('a battle without a game shows its reps as the scores, and '
+          'no comparison: not even the placeholder while they load', (
+        tester,
+      ) async {
+        final history = _earlier()..gate = Completer<void>();
+        await open(tester, _result(outcome: null), history: history);
+        expect(find.byType(ResultComparisonPlaceholder), findsNothing);
+        history.gate!.complete();
+        await tester.pumpAndSettle();
+        expect(find.text('패배'), findsOneWidget);
+        expect(find.text('12'), findsOneWidget);
+        expect(find.text('14'), findsOneWidget);
+        expect(find.byType(ResultBestCard), findsNothing);
+        expect(find.byType(ResultRecentCard), findsNothing);
+      });
+    });
+
+    group('the next tip', () {
+      testWidgets('a push-up battle: its first issue\'s fix and what it was', (
+        tester,
+      ) async {
+        await open(
+          tester,
+          _result(form: sampleReport(valid: 12, rejected: 2)),
+          history: _earlier(),
+        );
+        expect(find.text('다음 판 한 가지'), findsOneWidget);
+        expect(find.text('가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.'), findsOneWidget);
+        expect(find.text('깊이 부족 2회'), findsOneWidget);
+        expect(find.text('reject.insufficientDepth'), findsNothing);
+      });
+
+      testWidgets('a squat battle has its squat tip', (tester) async {
+        await open(
+          tester,
+          _result(matchup: _squatBot, form: squatReport()),
+          history: _earlier(),
+        );
+        expect(find.text('다음 판 한 가지'), findsOneWidget);
+        expect(find.text('엉덩이를 뒤로 빼며 허벅지가 바닥과 나란해질 때까지 앉아요.'), findsOneWidget);
+        expect(find.text('얕은 스쿼트 2회'), findsOneWidget);
+        expect(find.text('RepBot 고수'), findsOneWidget);
+      });
+
+      testWidgets('nothing to fix: the feedback link alone', (tester) async {
+        await open(tester, _result(form: sampleReport()), history: _earlier());
+        expect(find.text('다음 판 한 가지'), findsNothing);
+        expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
+      });
+    });
+
+    group('the buttons', () {
+      for (final (name, press) in [
+        ('홈으로', (WidgetTester t) => t.tap(find.text('홈으로'))),
+        ('the back button', (WidgetTester t) => t.tap(find.byTooltip('홈으로'))),
+        ('system back', (WidgetTester t) => t.binding.handlePopRoute()),
+      ]) {
+        testWidgets('$name goes home', (tester) async {
+          await open(tester, _result());
+          await press(tester);
+          await tester.pumpAndSettle();
+          expect(find.text('home'), findsOneWidget);
+          expect(find.byType(ResultScreen), findsNothing);
+        });
+      }
+
+      testWidgets('다시 대결 replaces the result with a search for the same '
+          'battle; back from it goes home', (tester) async {
         await open(tester, _result());
-        await press(tester);
+        await tester.tap(find.text('다시 대결'));
+        await tester.pumpAndSettle();
+        expect(routes.names, [GymRatsApp.matchingRoute]);
+        final request = routes.settings.single.arguments! as BotMatchRequest;
+        expect(request.exercise, ExerciseType.pushUp);
+        expect(request.difficulty, BotDifficulty.beginner);
+        expect(find.byType(ResultScreen), findsNothing);
+        await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
         expect(find.text('home'), findsOneWidget);
-        expect(find.byType(ResultScreen), findsNothing);
       });
-    }
 
-    testWidgets('다시 대결 replaces the result with a search for the same '
-        'battle; back from it goes home', (tester) async {
-      await open(tester, _result());
-      await tester.tap(find.text('다시 대결'));
-      await tester.pumpAndSettle();
-      expect(routes.names, [GymRatsApp.matchingRoute]);
-      final request = routes.settings.single.arguments! as BotMatchRequest;
-      expect(request.exercise, ExerciseType.pushUp);
-      expect(request.difficulty, BotDifficulty.beginner);
-      expect(find.byType(ResultScreen), findsNothing);
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      expect(find.text('home'), findsOneWidget);
-    });
+      testWidgets('after an online battle 다시 대결 opens the online lobby with '
+          'the same exercise, in the place of the result', (tester) async {
+        await open(tester, _result(matchup: _online));
+        await tester.tap(find.text('다시 대결'));
+        await tester.pumpAndSettle();
+        expect(routes.names, [GymRatsApp.onlineBattleRoute]);
+        expect(routes.settings.single.arguments, ExerciseType.squat);
+        expect(find.byType(ResultScreen), findsNothing);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text('home'), findsOneWidget);
+      });
 
-    testWidgets('after an online battle 다시 대결 opens the online lobby with '
-        'the same exercise, in the place of the result', (tester) async {
-      await open(tester, _result(matchup: _online));
-      await tester.tap(find.text('다시 대결'));
-      await tester.pumpAndSettle();
-      expect(routes.names, [GymRatsApp.onlineBattleRoute]);
-      expect(routes.settings.single.arguments, ExerciseType.squat);
-      expect(find.byType(ResultScreen), findsNothing);
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      expect(find.text('home'), findsOneWidget);
-    });
+      testWidgets('only the first leaving button acts', (tester) async {
+        await open(tester, _result());
+        final rematch = tester
+            .widget<FilledButton>(find.byType(FilledButton))
+            .onPressed!;
+        final home = tester
+            .widget<OutlinedButton>(find.byType(OutlinedButton))
+            .onPressed!;
+        rematch();
+        rematch();
+        home();
+        await tester.pumpAndSettle();
+        expect(routes.names, [GymRatsApp.matchingRoute]);
+      });
 
-    testWidgets('only the first leaving button acts', (tester) async {
-      await open(tester, _result());
-      final rematch = tester
-          .widget<FilledButton>(find.byType(FilledButton))
-          .onPressed!;
-      final home = tester
-          .widget<OutlinedButton>(find.byType(OutlinedButton))
-          .onPressed!;
-      rematch();
-      rematch();
-      home();
-      await tester.pumpAndSettle();
-      expect(routes.names, [GymRatsApp.matchingRoute]);
-    });
+      testWidgets('자세 피드백 전체 보기 opens this battle\'s feedback on top; '
+          'back comes here again', (tester) async {
+        await open(tester, _result(form: _form));
+        await tester.tap(find.text('자세 피드백 전체 보기'));
+        await tester.pumpAndSettle();
+        expect(routes.names, [GymRatsApp.feedbackRoute]);
+        expect(routes.settings.single.arguments, same(_form));
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(ResultScreen), findsOneWidget);
+      });
 
-    testWidgets('자세 피드백 전체 보기 opens this battle\'s feedback on top; '
-        'back comes here again', (tester) async {
-      await open(tester, _result(form: _form));
-      await tester.tap(find.text('자세 피드백 전체 보기'));
-      await tester.pumpAndSettle();
-      expect(routes.names, [GymRatsApp.feedbackRoute]);
-      expect(routes.settings.single.arguments, same(_form));
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      expect(find.byType(ResultScreen), findsOneWidget);
-    });
+      testWidgets('without a form report there is no feedback link', (
+        tester,
+      ) async {
+        await open(tester, _result());
+        expect(find.text('자세 피드백 전체 보기'), findsNothing);
+      });
 
-    testWidgets('without a form report there is no feedback link', (
-      tester,
-    ) async {
-      await open(tester, _result());
-      expect(find.text('자세 피드백 전체 보기'), findsNothing);
+      testWidgets('leaving while the earlier battles load: the late answer '
+          'changes nothing', (tester) async {
+        final history = _earlier()..gate = Completer<void>();
+        await open(tester, _result(), history: history);
+        await tester.tap(find.text('홈으로'));
+        await tester.pumpAndSettle();
+        history.gate!.complete();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('home'), findsOneWidget);
+      });
     });
   });
 }

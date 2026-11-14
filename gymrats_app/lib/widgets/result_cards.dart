@@ -50,13 +50,37 @@ class ResultRecent {
 
 /// One thing to try in the next battle.
 class ResultTip {
-  const ResultTip({required this.title, required this.reason});
+  const ResultTip({required this.title, this.reason});
 
-  /// e.g. "팔꿈치를 90°까지 굽혀 보세요".
+  /// How to do it, e.g. "가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.".
   final String title;
 
-  /// One line on why, e.g. "이번 판 평균 123° · 더 깊게 내려가면 Excellent +15".
-  final String reason;
+  /// One line on why, e.g. "깊이 부족 2회"; null leaves the line out.
+  final String? reason;
+}
+
+/// Where the personal best and the latest battles go while the earlier
+/// battles load: one quiet line in a card, never a 0 or an empty chart.
+class ResultComparisonPlaceholder extends StatelessWidget {
+  const ResultComparisonPlaceholder({super.key});
+
+  /// The line it shows.
+  static const text = '이전 기록을 불러오는 중…';
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.reportLine
+        .copyWith(color: AppColors.textMuted);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.s16,
+          vertical: AppSpacing.s12,
+        ),
+        child: Text(text, style: style),
+      ),
+    );
+  }
 }
 
 /// "개인 최고 기록 갱신" on lime with an ink edge: a lime trophy on an ink
@@ -375,6 +399,7 @@ class ResultTipCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final tip = this.tip;
+    final reason = tip?.reason;
     final open = onOpenFeedback;
     // The link brings its own room above and below: it is a full tap
     // target tall.
@@ -422,12 +447,13 @@ class ResultTipCard extends StatelessWidget {
                 tip.title,
                 style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
-              Text(
-                tip.reason,
-                style: text.lobbyCardLine.copyWith(
-                  color: AppColors.textSecondary,
+              if (reason != null)
+                Text(
+                  reason,
+                  style: text.lobbyCardLine.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
             ],
             if (open != null)
               TextButton.icon(

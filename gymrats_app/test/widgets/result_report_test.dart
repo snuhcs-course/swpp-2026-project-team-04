@@ -32,6 +32,8 @@ ResultReportData _data({
   int opponentValidReps = 6,
   BattleDeparture departure = BattleDeparture.none,
   bool hasFeedback = false,
+  bool comparisonLoading = false,
+  int? myInvalidReps = 0,
   ResultNewBest? best,
   ResultRecent? recent,
   ResultTip? tip,
@@ -44,11 +46,12 @@ ResultReportData _data({
   myScore: myScore,
   opponentScore: opponentScore,
   myValidReps: myValidReps,
-  myInvalidReps: 0,
+  myInvalidReps: myInvalidReps,
   opponentValidReps: opponentValidReps,
   endedAt: DateTime(2026, 11, 4, 14, 30),
   departure: departure,
   hasFeedback: hasFeedback,
+  comparisonLoading: comparisonLoading,
   best: best,
   recent: recent,
   tip: tip,
@@ -584,6 +587,15 @@ void main() {
 
     test('the reps line', () {
       expect(ResultScoreRow.repsText(3, 1), '인정 3회 · 무효 1회');
+      expect(ResultScoreRow.repsText(3, null), '인정 3회');
+    });
+
+    testWidgets('rejected reps not known: only the counted ones', (
+      tester,
+    ) async {
+      await show(tester, _data(myInvalidReps: null));
+      expect(find.text('인정 12회'), findsOneWidget);
+      expect(find.textContaining('무효'), findsNothing);
     });
   });
 
@@ -652,6 +664,35 @@ void main() {
           0.5,
         ),
       );
+    });
+
+    testWidgets('while the earlier battles load, one placeholder stands under '
+        'the scores, and the tip card follows it', (tester) async {
+      await show(
+        tester,
+        _data(comparisonLoading: true, hasFeedback: true, tip: _tip),
+      );
+      final placeholder = tester.getRect(
+        find.byType(ResultComparisonPlaceholder),
+      );
+      expect(
+        placeholder.top,
+        closeTo(
+          tester.getRect(find.byType(ResultScoreRow)).bottom + AppSpacing.s12,
+          0.5,
+        ),
+      );
+      expect(
+        tester.getRect(find.byType(ResultTipCard)).top,
+        closeTo(placeholder.bottom + AppSpacing.s12, 0.5),
+      );
+      expect(find.byType(ResultBestCard), findsNothing);
+      expect(find.byType(ResultRecentCard), findsNothing);
+    });
+
+    testWidgets('no placeholder once they are in', (tester) async {
+      await show(tester, _full());
+      expect(find.byType(ResultComparisonPlaceholder), findsNothing);
     });
 
     testWidgets('latest battles with no scores leave their card out', (
