@@ -230,8 +230,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       unawaited(_counter.finish(stoppedByUser: session.terminal));
     }
     final reason = session.result?['reason'];
-    if (session.exercise == ExerciseType.pushUp &&
-        !_reportCreated &&
+    if (!_reportCreated &&
         _roundStarted &&
         session.phase == OnlinePhase.finished &&
         (reason == 'time_up' || reason == 'ko')) {
@@ -242,6 +241,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       final report = FormReport(
         endedAt: DateTime.fromMillisecondsSinceEpoch(endedAt),
         opponentName: session.opponent!.name,
+        exercise: session.exercise,
         roundLength: reason == 'ko'
             ? BattleRules.koRoundLength(
                 Duration(milliseconds: endedAt - session.startAtMs!),
