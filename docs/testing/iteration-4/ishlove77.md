@@ -6,6 +6,23 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-14 · code at commit `87b8b8e` · step `feat/squat_feedback` (team plan #12, values for 송우현's W6)
+송우현 (W6, the result screen) asked for two more result-report values: `ResultState.opponentReps` (a time-up battle with
+equal scores is decided by reps) and `ResultState.departure` (`BattleDeparture`: the opponent left or the user's own
+connection was lost; a past battle knows only the opponent leaving), with `opponentLeft` kept as a getter. Bot and
+online battles of the same exercise stay compared together, as he preferred; a test now pins it.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| ViewModel | flutter_test, fakes | 90% | `result_viewmodel.dart` 100% | 11/14 | `flutter test --coverage test/viewmodels/result_viewmodel_test.dart` + `coverage_by_layer.py --files` |
+| Other layers | – | – | unchanged from the `ddef3f7` entry | 11/14 | – |
+
+- **Tests:** `flutter test` 2730 passed, 0 failed, 10 skipped. `flutter analyze` no issues. Reviewer APPROVE (round 5).
+
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/result_viewmodel_test.dart` (updated, +2) | the opponent's reps and the departure from a battle and a record; the user's lost connection told apart (also after loading); bot and online battles of the exercise compared together |
+
 #### 2026-11-14 · code at commit `ab4abec` · step `feat/squat_feedback` (team plan #12, Codex review of PR #57, round 2)
 Codex's second pass found one P2: a counted rep closing at or just after the round end (the rep counter still scores
 it) got slice index 6 and fell off `FormFeedback.paceBuckets`, so the bars added up to less than the counted reps.

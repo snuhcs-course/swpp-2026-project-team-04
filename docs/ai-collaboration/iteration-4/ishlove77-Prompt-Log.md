@@ -398,3 +398,20 @@ branch 'docs/rename_gymmouse' set up to track 'origin/docs/rename_gymmouse'.</ba
 ## 2026-11-14 · Jinyoung Park · feat/squat_feedback
 <!-- 3a04aaa8 2026-11-14T11:38:16.157Z -->
 [Jinyoung Park, 11-14 20:38] "재리뷰 나오면 한번 android stuido로 예시 보여줘봐"
+
+## 2026-11-14 · Jinyoung Park · feat/squat_feedback
+<!-- 3a04aaa8 2026-11-14T12:12:53.296Z -->
+[Jinyoung Park, 11-14 21:12] "<pasted_content id=\"e11e\">
+@박진영 형, J4 결과 리포트 값 정리해 드려요. 기본은 데이터 목록 파일의 '결과 리포트' 표 그대로예요(previousBest·isNewBest, recentScores·recentFrom·recentAverage·recentAverageOf, nextTip). W6 화면은 이 값들을 ResultScreen.reportOf 한 군데에서 받게 만들어 뒀고, 값이 null이면 그 칸을 숨겨요. 화면 쪽 값 묶음은 lib/widgets/result_cards.dart의 ResultNewBest, ResultRecent, ResultTip이에요.
+
+표에 없어서 더 필요한 것 두 개랑, 정해 주셨으면 하는 것 두 개예요.
+1. 상대 인정 횟수(int): 시간이 끝나 점수가 같고 인정 횟수로 갈린 판에 부제 아래 줄로 \"점수 같음 · 횟수로 승리/패배\"를 보여 줘요. 지금은 BattleResult.opponentReps에서 읽어요.
+2. 퇴장 여부(BattleDeparture): 문서의 opponentLeft(bool) 대신 이 값이 필요해요. 상대가 나간 판은 \"상대가 나갔어요\", 제 연결이 끊긴 판은 \"연결이 끊겼어요\"를 보여 줘서요. 지금은 BattleResult.departure에서 읽어요. 누가 나간 판은 경기 시간을 안 보여 줘요(온라인 결과가 나간 시각이 아니라 한 판 길이를 들고 있어서).
+3. recentScores와 평균에 봇 경기와 온라인 경기를 섞을지 정해 주세요. 제 점수 계산 규칙은 똑같아서 저는 섞는 쪽이 좋아 보여요.
+4. J4에서 스쿼트도 자세 리포트를 저장하게 되면 스쿼트 판에도 nextTip을 줄 수 있을까요? 어려우면 지금처럼 null이면 돼요.
+
+J4 머지되면 W6에서 reportOf를 형 뷰모델로 바꿔서 바로 PR 올릴게요.
+</pasted_content id=\"e11e\">"
+
+<!-- 3a04aaa8 2026-11-14T12:16:07.048Z -->
+[Jinyoung Park, 11-14 21:16] "ㅇㅇ 커밋하고 푸시해"
