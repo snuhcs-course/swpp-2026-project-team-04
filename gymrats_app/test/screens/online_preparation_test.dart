@@ -1122,7 +1122,7 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('squat result does not save or carry push-up form feedback', (
+    testWidgets('a squat result saves and carries a squat form report', (
       tester,
     ) async {
       await open(tester, exercise: ExerciseType.squat);
@@ -1130,10 +1130,11 @@ void main() {
         ..._result('time_up'),
         'ended_at_ms': 1792400000000,
       });
-      expect(await reports.list(), isEmpty);
-      expect(repository.savedFeedback, isEmpty);
+      final report = (await reports.list()).single;
+      expect(report.exercise, ExerciseType.squat);
+      expect(repository.savedFeedback.single.$2, same(report));
       final result = await showResult(tester);
-      expect(result.form, isNull);
+      expect(result.form?.exercise, ExerciseType.squat);
       expect(result.matchup.exercise, ExerciseType.squat);
       await tester.pumpWidget(const SizedBox());
     });

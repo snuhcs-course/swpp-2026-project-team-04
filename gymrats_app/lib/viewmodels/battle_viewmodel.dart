@@ -707,20 +707,19 @@ class BattleViewModel extends ChangeNotifier {
       decidedOutcome: _game.outcome,
       endedAt: endedAt,
       roundLength: played,
-      form: matchup.exercise == ExerciseType.squat
-          ? null
-          : FormReport(
-              endedAt: endedAt,
-              opponentName: matchup.opponent.name,
-              roundLength: played,
-              reps: counter.repRecords,
-              samples: counter.formSamples,
-              poses: counter.formPoses,
-              leftFlarePose: counter.leftFlarePose,
-              rightFlarePose: counter.rightFlarePose,
-              handsPose: counter.handsPose,
-              headPose: counter.headPose,
-            ),
+      form: FormReport(
+        endedAt: endedAt,
+        opponentName: matchup.opponent.name,
+        exercise: matchup.exercise,
+        roundLength: played,
+        reps: counter.repRecords,
+        samples: counter.formSamples,
+        poses: counter.formPoses,
+        leftFlarePose: counter.leftFlarePose,
+        rightFlarePose: counter.rightFlarePose,
+        handsPose: counter.handsPose,
+        headPose: counter.headPose,
+      ),
     );
     _setState(
       _state.copyWith(

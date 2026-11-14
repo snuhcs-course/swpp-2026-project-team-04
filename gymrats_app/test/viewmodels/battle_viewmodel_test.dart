@@ -188,7 +188,7 @@ void main() {
     expect(vm.state.result, same(result));
   });
 
-  test('a squat bot battle is saved too, with no form report', () async {
+  test('a squat bot battle is saved too, with a squat form report', () async {
     final squat = BattleViewModel(
       matchup: const Matchup(
         exercise: ExerciseType.squat,
@@ -224,7 +224,10 @@ void main() {
     expect(record.opponentReps, 1);
     expect(record.myScore, greaterThan(0));
     expect(record.opponentScore, greaterThan(0));
-    expect(repository.savedReports.single, isNull);
+    final report = repository.savedReports.single!;
+    expect(report.exercise, ExerciseType.squat);
+    expect(report.validReps, 1);
+    expect((await reports.list()).single.exercise, ExerciseType.squat);
   });
 
   test('a battle that runs its full time is saved once', () async {

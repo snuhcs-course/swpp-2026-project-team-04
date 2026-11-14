@@ -6,6 +6,7 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
+import 'package:gymrats_app/services/feedback/form_analyzer.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/viewmodels/feedback_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/login_viewmodel.dart';
@@ -161,5 +162,128 @@ void main() {
     expect(model.state.phase, FeedbackPhase.loading);
     await model.load();
     expect(repository.feedbackRequests, [7]);
+  });
+
+  group('feedback values the screen shows', () {
+    test('a report loaded from the server comes with its feedback', () async {
+      repository.reports = {7: sampleReport(valid: 3, rejected: 1)};
+      final model = vm(_match());
+      await model.load();
+      final form = model.state.form!;
+      expect(form.findings.first.title, '깊이 부족 1회');
+      expect(form.meanDepth, 1.5);
+    });
+
+    test('the phone copy comes with its feedback too', () async {
+      repository.feedbackError = Exception('offline');
+      await phone.save(sampleReport(endedAt: _endedAt));
+      final model = vm(_match());
+      await model.load();
+      expect(model.state.fromPhone, isTrue);
+      expect(model.state.form, isNotNull);
+    });
+
+    test('a report in hand is ready at once and never loads', () async {
+      final report = squatReport();
+      final model = FeedbackViewModel.fromReport(report);
+      expect(model.state.phase, FeedbackPhase.ready);
+      expect(model.state.report, same(report));
+      expect(model.match, isNull);
+      await model.load();
+      expect(model.state.phase, FeedbackPhase.ready);
+      expect(repository.feedbackRequests, isEmpty);
+    });
+
+    test(
+      'UAT-4 squat run: 4 counted, 2 rejected, the issue, a row per rep',
+      () {
+        final state = FeedbackViewModel.fromReport(squatReport()).state;
+        expect(state.report!.validReps, 4);
+        expect(state.report!.invalidReps, 2);
+        expect(state.report!.reps, hasLength(6));
+        final issue = state.form!.findings.first;
+        expect(issue.title, '얕은 스쿼트 2회');
+        expect(issue.fix, isNotNull);
+        expect(state.form!.meanDepth, 0.9);
+        expect(state.form!.armBalance, ArmBalance.unknown);
+        expect(state.form!.depthTrend, DepthTrend.kept);
+      },
+    );
+
+    test('mean depth is over counted reps only, null without one', () {
+      expect(
+        FormFeedback.of(sampleReport(valid: 0, rejected: 2)).meanDepth,
+        isNull,
+      );
+      final report = FormReport(
+        endedAt: _endedAt,
+        opponentName: 'RepBot',
+        roundLength: const Duration(seconds: 30),
+        reps: const [
+          RepRecord(index: 1, valid: true, at: Duration.zero, maxDepth: 1),
+          RepRecord(index: 2, valid: true, at: Duration.zero, maxDepth: 2),
+          RepRecord(index: 3, valid: true, at: Duration.zero),
+          RepRecord(index: 4, valid: false, at: Duration.zero, maxDepth: 9),
+        ],
+        samples: const [],
+      );
+      expect(FormFeedback.of(report).meanDepth, 1.5);
+    });
+
+    test('pace: counted reps per 5 s slice of a 30 s round', () {
+      final form = FormFeedback.of(sampleReport(valid: 4, rejected: 2));
+      // Reps close at 0, 2, 4, 6 s (counted) and 8, 10 s (rejected).
+      expect(form.sliceSeconds, 5);
+      expect(form.paceBuckets, [3, 1, 0, 0, 0, 0]);
+      expect(form.repsPerSecond, closeTo(4 / 30, 1e-9));
+    });
+
+    test('a KO round is cut into six shorter slices', () {
+      final report = FormReport(
+        endedAt: _endedAt,
+        opponentName: 'RepBot',
+        roundLength: const Duration(seconds: 12),
+        reps: const [
+          RepRecord(index: 1, valid: true, at: Duration(seconds: 1)),
+          RepRecord(index: 2, valid: true, at: Duration(seconds: 11)),
+          RepRecord(index: 3, valid: true, at: Duration(seconds: 13)),
+        ],
+        samples: const [],
+      );
+      final form = FormFeedback.of(report);
+      expect(form.sliceSeconds, 2);
+      expect(form.paceBuckets, [1, 0, 0, 0, 0, 1]);
+      expect(form.paceBuckets.length, 6);
+    });
+
+    test('a round without length keeps 5 s slices and no rate', () {
+      final report = FormReport(
+        endedAt: _endedAt,
+        opponentName: 'RepBot',
+        roundLength: Duration.zero,
+        reps: const [RepRecord(index: 1, valid: true, at: Duration.zero)],
+        samples: const [],
+      );
+      final form = FormFeedback.of(report);
+      expect(form.sliceSeconds, 5);
+      expect(form.repsPerSecond, 0);
+      expect(form.paceBuckets.first, 1);
+    });
+
+    test('the verdicts use the analyzer the view model was given', () {
+      const strict = FormAnalyzer(rules: FormRules(minRepsForTrend: 2));
+      final model = FeedbackViewModel.fromReport(
+        sampleReport(valid: 2),
+        analyzer: strict,
+      );
+      expect(model.state.form!.depthTrend, DepthTrend.kept);
+      expect(
+        FeedbackViewModel.fromReport(sampleReport(valid: 2))
+            .state
+            .form!
+            .depthTrend,
+        DepthTrend.tooFew,
+      );
+    });
   });
 }
