@@ -99,6 +99,7 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J2: "소리가 거의 안들리는디" → "battle 소리가 3초 load되는데 artifact 보니까": naming the exact symptom (3 s before the music) led to prefetching the track and starting it at its first beat (1.54 s) instead of only raising volumes.
 - J2: "Average를 조금더 키워야 할듯" → "효과음중 가장 크면 안되지 그러면 차이가 없자나": the second prompt gave the constraint (Excellent > Good > Average), so the level was set just under Good.
 - J3: a 288-line paste reached Claude Code only as "[Pasted text #2 +288 lines]"; the user saved the document as a file and sent the path ("~/Downloads/GymRats-화면별-데이터-목록.md"), which worked.
+- J5: after a phone check, "글이 2줄로 되는것들이 있는데 … 싹다 한줄안에 들어가게": one prompt with the rule (no wrap anywhere) gave a one-line layout for every page, a test at 320×640, and shorter lines; shortening one line removed "너무" and made the Fail page contradict Average, which the reviewer caught.
 - J5: "3d 형식의 snap shot" → "앱 첫화면 들어가면 3d 스냅샷" → "홈화면에 3d rending 해놓은거": each prompt named the source more exactly until it pointed at the right picture.
 
 ## 6. Manual Fixes and Why

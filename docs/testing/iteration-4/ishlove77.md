@@ -6,6 +6,20 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-15 · code at commit `e1289f7` · step `feat/tutorial` (team plan #16, one-line follow-up after the phone check)
+After trying the tutorial on the S23 Ultra, the user asked that no title or description wrap. Titles, lines and the
+first-use hint are now one line, shrunk to fit (`FittedBox` scale-down, `maxLines: 1`); long lines were shortened; the
+hint moved out of the 완료 button to a caption above it.
+
+- **Tests:** `flutter test` 2768 passed, 0 failed, 10 skipped (pre-existing). `flutter analyze` no issues. Coverage of
+  the J5 files unchanged at 100% (the new `_OneLine` is reached by every help screen test); layers as in the entry
+  below.
+- **New test:** `test/screens/help_screen_test.dart` `titles, lines and the hint stay on one line, shrunk to fit`
+  (320×640, all 19 pages and the hint); `test/widgets/help_rules_test.dart` updated for the new report title.
+- **Manual check:** all 19 pages rendered at 412×915 with the app's fonts fit on one line without shrinking; the build
+  was installed on the phone and checked by the user before this push.
+- **Reviewer:** APPROVE (round 3); its Minor (the push-up Fail line contradicted Average) fixed.
+
 #### 2026-11-15 · code at commit `3850426` · step `feat/tutorial` (team plan #16, P19 tutorial)
 The 3-page game rules screen becomes the tutorial (PM update 2026-11-15; content from the team's mock: game rules only,
 every push-up page then every squat page, one picture and one or two lines each). `TutorialViewModel` keeps the order
