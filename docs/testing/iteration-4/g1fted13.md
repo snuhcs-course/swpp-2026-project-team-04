@@ -554,15 +554,15 @@ This step redraws 기록보관소 and adds the 기간별 통계 screen. Both par
   - The archive gets a lime "기간별 통계" pill at the right of its header (only when the account can give statistics). The 7-day card is named "최근 7일 · M/D ~ 오늘", and a day without battles is a thin 3-high line.
 - **Merge:** `origin/main` with J4 (#57) merged as `a2724d0`. No conflict, and no W7 file changed by the merge. J4's new squat titles in `form_analyzer.dart` keep the six titles the statistics screen repeats; the test that reads them from that file still passes.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on `a2724d0`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `a2724d0`, without coverage. The coverage comes from the PR's CI comment on the pushed head `a3c6680` (the code of `a2724d0` plus these notes), [run 43618528652](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43618528652).
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
-| ViewModel | flutter_test, fakes | 90% | same TODO | 11/15 | same CI comment |
-| Service | flutter_test, MockClient, fakes | 85% | same TODO | 11/15 | same CI comment |
-| View | flutter_test (widget) | 75% | same TODO | 11/15 | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/15 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 99.3% (545/549) | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on PR #61, commit `a3c6680`, [run 43618528652](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43618528652) |
+| ViewModel | flutter_test, fakes | 90% | 97.4% (1430/1468) | 11/15 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 93.1% (2559/2750) | 11/15 | same CI comment |
+| View | flutter_test (widget) | 75% | 97.0% (7980/8231) | 11/15 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` unchanged) | 11/15 | same CI comment |
 
 - **Tests:** `flutter test` had 2891 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as before, and W7 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
@@ -581,13 +581,25 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `a2724d0`, wit
 - **Other checks:**
   - `ownership_guard.py --check-diff`: ok on `a2724d0`, 25 changed files. All are W7's own files or under the user's one-off exceptions: the theme's new colors and text styles, one line in `test/auth_flow_test.dart` ('경기 기록' → '기록보관소'), and one deleted group in `test/widgets/match_record_card_test.dart` (it showed `MatchRecordCard` on the old history list, which no screen uses now).
   - Server `pytest` was not run, because `server/` did not change.
+- **Coverage:** from the CI comment on PR #61 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/61#issuecomment-6881251918)), commit `a3c6680` (2026-11-15 02:12 KST; the app and server jobs both succeeded; [run 43618528652](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43618528652)). `a3c6680` changes only these notes on top of `a2724d0`.
+  - App total 96.0% (12770/13308); Other 82.6% (256/310).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2891 passed, 10 skipped, 0 failed), the same as on this PC.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` and `test/services/audio/background_music_test.dart` (neither is a W7 file). Their tests still ran and passed in `flutter test`.
 - **Known limitation (user, 2026-11-14):** battles stored before the issue codes were saved have a form record but no `issues`. They count in '자세 기록 있는 N판' without adding issue counts; battles after the server redeploy are exact. Left as is.
-- **Shortfalls:** coverage is a TODO until the CI comment. A row without form feedback still does nothing when tapped (a past battle's report from the archive comes after J4's data, in a later step).
+- **Shortfalls:** none in coverage; every layer and the server meet their targets. A row without form feedback still does nothing when tapped (a past battle's report from the archive comes after J4's data, in a later step).
 - **Screen readers:**
   - Widget tests check the spoken lines: the tabs and chips with their selected state, the summary as one line, the graph as one sentence with the dates spelled out, and each issue row as one line.
   - They also check the live regions of the loading, failed and empty states, the 다시 시도 button, the expanded state of 더 보기, and the pill's name.
   - TalkBack on a real phone was **not** checked.
-- **Manual check (the user, on the phone):** in progress together with the PR's CI run. TODO(Woohyun Song): the result, phone model and Android version.
+- **Manual check (2026-11-15, the user, on the Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17 from my earlier notes):** all passed. The user checked:
+  - 기록보관소: the two cards and the newest 3 battles, the name "최근 7일 · M/D ~ 오늘" and today's bar, and the thin line on a day without battles;
+  - 점수 성장: the 푸쉬업 / 스쿼트 tabs and the empty-state line;
+  - 전체 보기: loading more battles and going back;
+  - the 기간별 통계 pill opening 이번 주 · 둘 다, and switching the tabs and chips;
+  - 이번 달's dashed days to come, and 전체's slots by day and by week;
+  - 자세 문제's 더 보기 and 접기;
+  - after two or more battles in the order of UAT-4 step 3, the statistics match each battle's report;
+  - large text and a long online nickname.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |

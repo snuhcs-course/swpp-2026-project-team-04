@@ -945,3 +945,24 @@ W7 마무리: 1부와 2부를 W7 PR 하나로 올린다
 
 <!-- Left out on purpose: the session summary written when this session ran out of context (11-15 00:44; not a prompt). Its key stays so a later export does not add it again. Cut: the client's injected browser notice in front of 1 prompt (11-14 22:47; not the user's text). Four answers in the agent's question dialogs (11-14: 전체 보기, the app_theme exception, the auth_flow_test line, the match_record_card_test group) are not in the export as prompts. -->
 <!-- 048f8135 2026-11-14T15:44:11.441Z -->
+
+<!-- 048f8135 2026-11-14T21:12:43.708Z -->
+[Woohyun Song, 11-15 06:12] "<pasted_content id=\"9c4a\">
+W7 테스트 노트 빈칸 채우기
+
+feat/ui_archive 로 돌아가 테스트 노트의 TODO 두 개를 채운다.
+- 커버리지: PR #61 의 CI 코멘트에 나온 숫자를 넣는다. 코멘트가 아직 없으면 그 칸은 그대로 두고 보고한다.
+- 폰 확인(2026-11-15): 기기는 기존 노트에 적힌 본인 폰 정보를 그대로 쓴다. 결과는 모두 통과다. 확인한 항목은 다음과 같다.
+  - 기록보관소의 두 카드와 최근 3경기, \"최근 7일 · M/D ~ 오늘\" 이름과 오늘 칸, 경기 없던 날의 얇은 줄
+  - 점수 성장의 푸쉬업/스쿼트 탭과 빈 상태 문구
+  - \"전체 보기\"의 더 불러오기와 뒤로 가기
+  - \"기간별 통계\" 알약으로 이번 주 · 둘 다가 열리는 것, 탭과 칩 전환
+  - 이번 달의 점선, 전체의 날마다·주 묶음 칸
+  - 자세 문제의 \"더 보기\"와 \"접기\"
+  - UAT-4 3번 순서대로 두 판 이상 한 뒤 통계 숫자가 각 경기 리포트와 맞는 것
+  - 큰 글씨와 긴 온라인 닉네임
+커밋하고 푸시한다. 그 밖의 작업은 하지 않고, 끝나면 메인 폴더를 비워 둔다.
+</pasted_content id=\"9c4a\">"
+
+<!-- Left out on purpose: the session summary written when this session ran out of context again (11-15 02:55; not a prompt). Its key stays so a later export does not add it again. -->
+<!-- 048f8135 2026-11-14T17:55:33.911Z -->
