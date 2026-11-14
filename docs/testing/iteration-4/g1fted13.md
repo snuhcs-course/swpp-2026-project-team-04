@@ -534,3 +534,81 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, wit
 - Tapping the character opens 캐릭터 선택, with the spec's name; reduced motion does not move. Tests: `'tapping the character opens 캐릭터 선택; back returns home (W4 spec 6)'`, `'the whole room is one button that opens 캐릭터 선택, named for the character (W4 spec 6)'`, `'with less motion it shows the rest picture and stays still'`
 - Home fits without scrolling (part 1's tests, kept). Tests: `'a $label phone shows it all without scrolling'` (five phones, with and without the note)
 - Part 1: four menu rows, 캐릭터 opens 캐릭터 선택, 게임 시작 has no 캐릭터 row, the logo reads GYMMOUSE, no character covers the band or its line. Tests: `'the menu: 게임 시작, 캐릭터, 기록보관소, 환경설정, all alike'`, `'캐릭터 opens 캐릭터 선택; back returns home'`, `"no 캐릭터 row: the character is picked from home's menu"`, `'for all five, at every extreme of their idle motion (rig …'`
+
+#### 2026-11-15 · code at commit `a2724d0` · step W7 `feat/ui_archive` (archive and statistics screens in the B palette, UAT-4 AC3, team order #17)
+This step redraws 기록보관소 and adds the 기간별 통계 screen. Both parts go up in one PR. The screens only draw what J3's view models give (`HistoryViewModel`, `FeedbackStatsViewModel`); J3's data code is unchanged.
+- **Part 1, the archive (2026-11-14, from the BArchive mockup):**
+  - The header has the back button, "03 / ARCHIVE", a faint "LOG" and the slanted title 기록보관소.
+  - The "최근 7일" card shows the week's reps and battles, the streak chip (hidden at 0) and 7 bars, today's in ink.
+  - The "점수 성장" card has 푸쉬업 / 스쿼트 tabs, the score line, the rise chip and an empty line when the exercise has no score yet.
+  - Below them come the newest 3 battles and "전체 보기", which opens every battle on the same view model with the old paging footer. A row shows the result, time, opponent, score, the "↑N" chip when the battle raised the best, and "상대 나감".
+  - Without a summary the cards hide; a failed summary shows 다시 시도 in their place.
+- **Part 2, the statistics (2026-11-14, from the W7-STATS mockup and its `w7_golden.json`):**
+  - Period tabs 전체 / 이번 달 / 이번 주 (this week first) and exercise chips 푸쉬업 / 스쿼트 / 둘 다 (both first). Tabs and chips change the numbers at once, without loading again.
+  - The summary card shows the range, the average counted reps per battle, battles and total reps, and the date–reps graph:
+    - this week: by day;
+    - this month: the month's days, the days to come dashed;
+    - all records: by day up to 14 days, else by week with a note.
+  - The form-issue card lists the rejected reps by reason and the form-report issues by how many battles had them. "나머지 N개 더 보기" opens a group of more than five rows.
+  - Loading, failed and empty states.
+  - The archive gets a lime "기간별 통계" pill at the right of its header (only when the account can give statistics). The 7-day card is named "최근 7일 · M/D ~ 오늘", and a day without battles is a thin 3-high line.
+- **Merge:** `origin/main` with J4 (#57) merged as `a2724d0`. No conflict, and no W7 file changed by the merge. J4's new squat titles in `form_analyzer.dart` keep the six titles the statistics screen repeats; the test that reads them from that file still passes.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `a2724d0`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
+| ViewModel | flutter_test, fakes | 90% | same TODO | 11/15 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | same TODO | 11/15 | same CI comment |
+| View | flutter_test (widget) | 75% | same TODO | 11/15 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/15 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` had 2891 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W7 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W7 adds 8 test files and 2 test data files, rewrites `test/screens/history_screen_test.dart`, and changes 3 more test files (the table below). Its 12 test files have 280 tests, all passing.
+- **The design checks:**
+  - `test/widgets/feedback_stats_golden.json` is a copy of the mockup's `w7_golden.json` (tests cannot read the design folder). The graph's slots and the screen's words are pure functions. All 11 golden cases match on the first run: the summary, every slot's label, reps, look and bar height, the empty notice, and the issue rows' names, counts and bar widths.
+  - Part 1's growth chart uses the mockup's own math (padding, headroom, dot limit), checked point by point.
+  - Renders with the app's fonts at 360 × 780 were compared with the mockup's shots by eye. The differences are the missing 24 px status bar in the test and the title's font (the app's page title, the user's choice).
+- **Mutation checks (by me, files restored byte for byte):** 32 deliberate faults were all caught.
+  - Part 1 (14): the streak chip at 0, today's bar color, the rise chip at 0, the gain not passed, the failed-summary branch, the number of recent rows, 전체 보기 without older pages, the KO word, an unknown online flag, the chart's headroom, and 4 in the time / opponent line.
+  - Part 2 (18):
+    - the graph: by day or by week, the 14-day cut, a day to come's bar height and dashes, the zero bar's color, the month labels near today, the week labels every other slot;
+    - the words and cards: the form-record base, unknown issue codes skipped, the 4% bar floor, the more button, the average's dash;
+    - the screen: the more rows reset on a new period, the loading skeleton's period, the tab order, the tabs' selected state, the pill without a statistics source, the archive's zero-day color.
+  - The 2 that first survived (the 4% floor, the more button with one hidden row) led to two edge tests.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `a2724d0`, 25 changed files. All are W7's own files or under the user's one-off exceptions: the theme's new colors and text styles, one line in `test/auth_flow_test.dart` ('경기 기록' → '기록보관소'), and one deleted group in `test/widgets/match_record_card_test.dart` (it showed `MatchRecordCard` on the old history list, which no screen uses now).
+  - Server `pytest` was not run, because `server/` did not change.
+- **Known limitation (user, 2026-11-14):** battles stored before the issue codes were saved have a form record but no `issues`. They count in '자세 기록 있는 N판' without adding issue counts; battles after the server redeploy are exact. Left as is.
+- **Shortfalls:** coverage is a TODO until the CI comment. A row without form feedback still does nothing when tapped (a past battle's report from the archive comes after J4's data, in a later step).
+- **Screen readers:**
+  - Widget tests check the spoken lines: the tabs and chips with their selected state, the summary as one line, the graph as one sentence with the dates spelled out, and each issue row as one line.
+  - They also check the live regions of the loading, failed and empty states, the 다시 시도 button, the expanded state of 더 보기, and the pill's name.
+  - TalkBack on a real phone was **not** checked.
+- **Manual check (the user, on the phone):** in progress together with the PR's CI run. TODO(Woohyun Song): the result, phone model and Android version.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/archive_chart_test.dart` (new) | the growth chart's layout from the mockup's math (padding, headroom, dots up to 12 points), the week's bar heights incl. the 3-high line for a day without battles, the exercise icons and the pill's icon |
+| View | `test/widgets/archive_cards_test.dart` (new) | the 7-day card (totals, streak chip hidden at 0, bars, 오늘 in ink, the "최근 7일 · M/D ~ 오늘" name), the growth card (tabs, rise chip, caption, first-played date, empty line), the retry card |
+| View | `test/widgets/archive_match_row_test.dart` (new, real fonts) | the result line (KO, 승 / 패 / 무), time (오늘, 어제, date), online opponent, score, the gain chip, 상대 나감; one line when it fits, else the opponent under the time with no dangling dot, at larger text |
+| View | `test/screens/history_screen_test.dart` (rewritten) | the header, the pill (place, look, opens 이번 주 · 둘 다, hidden without a source, a narrow phone at 1.3× text), both cards, the newest 3 battles, gain chips, the tabs, the summary missing / loading / failed, the empty and failed states, 전체 보기 and its paging, rows opening feedback, fit at 360 × 780, no overflow at larger text |
+| View | `test/widgets/feedback_stats_slots_test.dart` (new) + `feedback_stats_golden.json`, `feedback_stats_golden.dart` (new) | the 11 golden cases × summary, chart, empty notice and issue rows; the slot edge cases (over 26 weeks still by week, a 28-day February, one slot, the least bar), the loading skeletons, the calendar helpers; the spoken summary and graph sentences, the row labels, the six form-report titles read from `form_analyzer.dart` |
+| View | `test/widgets/feedback_stats_chart_test.dart` (new) | bars by look (value, today, zero, dashed future, skeleton), values and labels, the spoken sentence, a notice taller than the graph makes room, repaint rules |
+| View | `test/widgets/feedback_stats_filters_test.dart` (new) | the period tabs and exercise chips: order, names, selection, taps, 44 touch areas, screen-reader groups and selected state |
+| View | `test/widgets/feedback_stats_cards_test.dart` (new) | the summary card's numbers and their place, the empty notice over or under the plot, the issue card's groups, bar widths (4% floor, 100% cap), "나머지 N개 더 보기" / 접기 and its expanded state, the loading and failed cards |
+| View | `test/screens/feedback_stats_screen_test.dart` (new) | the W7-STATS section 10 list: opening on 이번 주 · 둘 다 with the mockup's numbers, switching without loading again, loading (a tab picked meanwhile, reduced motion), failed (the reasons, 다시 시도), empty (this week, this month, all, no form records), more rows closing on a new period or exercise, graph slots by day / week, the spoken lines, the first screen at 360 × 780, no overflow at larger text in every state |
+| App flow | `test/auth_flow_test.dart` (updated) | one check: the archive's title is now 기록보관소 |
+| View | `test/widgets/match_record_card_test.dart` (updated) | the group that showed `MatchRecordCard` on the old history list removed (no screen uses it now) |
+| Design | `test/design_tokens_test.dart` (updated) | the 9 new screen and widget files in the token check |
+
+### Acceptance criteria → tests
+- UAT-4 AC3: from the archive the statistics open on this week and both exercises. Tests: `'it opens the statistics on this week and both exercises'`, `"this week and both exercises are picked, with the mockup's week_both numbers"`
+- All records, this month and this week narrow the battles; push-ups and squats are listed apart. Tests: `'tabs and chips switch the values without loading again'`, `'summary: range, average, battles, reps, with a form record'` (11 golden cases)
+- The average counted reps, a date–reps graph and how often each form issue occurred. Tests: `'chart: kind, slots, gap, and per slot the label, reps, future, now, value, bar height and look'`, `'form issues: base, blank line, and both groups in order with names, counts and bar widths'`, `'every record: by week over 14 days, with the note'`, `'every record: by day up to 14 days, no note'`
+- Loading, failed and empty states. Tests: `'gray boxes and 불러오는 중; a tab picked meanwhile stays picked once loaded'`, `'the reason, 다시 시도 and the note; the tabs stay, and 다시 시도 loads again'`, `"this week without battles: the notice over the plot, the dashes, and the form card's one line"`, `'every record without battles: the notice under the numbers, no graph'`
+- The archive (part 1): the last 7 days, the growth and the newest battles, and 다시 시도 when the summary fails. Tests: `'the last 7 days, the growth and the newest three battles'`, `'the gain chip only on the battles that raised the best'`, `'the 스쿼트 tab switches the graph to squats'`, `"a failed summary: 다시 시도 in the cards' place, the list stays, and the retry brings the cards"`
+- Readable at larger text on a 360-wide phone. Tests: `'no overflow at ${scale}x text on a 360 wide phone, in every state'`, `'on a narrow phone with large text the tag is cut, the pill stays whole'`

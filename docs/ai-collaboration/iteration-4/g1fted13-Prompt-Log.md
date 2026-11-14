@@ -860,3 +860,88 @@ Claude Design 묶음을 .claude/design/gymrats-w4-home/ 에 풀어 두었다. W4
 
 <!-- Left out on purpose: the session summary written when this session ran out of context (11-14 15:20; not a prompt). Its key stays so a later export does not add it again. Cut: the client's injected browser notice in front of 2 prompts (11-14 13:53, 11-14 15:30; not the user's text). Two later answers in the agent's question dialogs (11-14: the band and line text sizes after review run 1, the home-only styles) are not in the export as prompts; the 10:34 dialog answers are. -->
 <!-- 21f5e71e 2026-11-14T06:20:20.758Z -->
+
+## 2026-11-15 · Woohyun Song · feat/ui_archive
+<!-- 048f8135 2026-11-14T11:44:44.411Z -->
+[Woohyun Song, 11-14 20:44] "<pasted_content id=\"9c4a\">
+W7(feat/ui_archive)를 시작해. 하네스 규칙과 .claude/team-plan.md를 따른다.
+
+[시작]
+git fetch origin 후 최신 origin/main(690c873, J3 머지됨)에서 feat/ui_archive 브랜치를 만든다. python3 .claude/hooks/ownership_guard.py --status 로 W7을 시작할 수 있는지 확인하고, task.md와 progress.md를 W7로 준비한다.
+
+[이번에 할 일: 1부, 기록보관소]
+캔버스 시안 BArchive(B 색배합)대로 기록보관소 화면(history_screen)을 다시 만든다. 값은 J3의 HistoryViewModel에서 받는다.
+- 머리줄: 뒤로 버튼과 태그 \"03 / ARCHIVE\". 홈 메뉴가 네 줄이 되면서 기록보관소가 03이 됐다. 뒤에 흐린 큰 글자 \"LOG\", 기울인 제목 \"기록보관소\".
+- \"최근 7일\" 카드: state.archive.weekReps(\"123회\")와 weekMatches(\"· 11판\"), 오른쪽에 연속 칩(\"8일 연속\", streakDays). 0이면 칩을 숨긴다. 아래에 weekDaily 7칸 막대(오래된 날부터, 마지막 칸은 \"오늘\"이고 진하게)와 요일 글자.
+- \"점수 성장\" 카드: 푸쉬업/스쿼트 탭, growth[종목]의 scores로 선 그래프, 상승폭 칩(\"+160점\" = bestScore − firstScore), 설명 \"첫 기록 80점 → 최고 240점\", 그래프 아래에 firstPlayedAt 날짜와 \"오늘\". 그 종목에 점수 있는 경기가 없으면(firstScore 등이 null) 짧은 빈 상태 문구를 보여 준다.
+- \"최근 경기\" 목록과 \"전체 보기\": 줄마다 종목 아이콘, \"푸쉬업 · KO 승\"(gameEnd가 KO면 KO), 시각과 상대(\"vs RepBot 고수\" 또는 \"온라인 vs 닉네임\", isOnline 사용, null이면 지금 앱의 방식대로), 점수, 그리고 최고 기록이 오른 경기에만 라임 칩 \"↑55\"(state.bestGainOf(match), null이면 칩 없음). opponentLeft인 경기는 승패 옆에 짧게 표시한다. 줄을 누르면 지금 앱이 여는 화면을 그대로 연다(지난 경기 리포트는 J4 뒤에 연결).
+- 상태: archive가 null이면(불러오기 전, 경기 없음, 실패) 위 두 카드를 숨기거나 빈 상태로 보여 준다. statsFailed면 목록은 그대로 두고 카드 자리에 \"다시 시도\"를 둔다. 목록의 loadMore/hasMore는 지금처럼 동작한다.
+- 통계 화면(UAT-4 AC3: 전체/이번 달/이번 주)과 기록보관소에서 거기로 가는 입구는 Claude Design 시안이 오면 2부로 한다. 지금은 만들지 않고 progress.md에 남은 일로 적는다.
+- 색과 폰트는 app_theme.dart의 토큰만 쓴다. 새 위젯 파일은 W7 허용 범위(archive_* 등) 안에서 이름을 정하고 design_tokens_test.dart에 더한다.
+
+[마무리]
+화면 테스트(값이 있을 때, archive가 null일 때, statsFailed일 때, bestGain 칩 유무, 탭 전환)를 더하고, 전체 테스트, flutter analyze, --check-diff 를 돌린 뒤 리뷰어 APPROVE 뒤에 커밋한다. 푸시하지 않는다. 끝나면 폰으로 확인할 것을 짧게 적어 준다.
+</pasted_content id=\"9c4a\">"
+
+<!-- 048f8135 2026-11-14T13:47:52.203Z -->
+[Woohyun Song, 11-14 22:47] "<pasted_content id=\"9c4a\">
+W7 2부: 기간별 통계 화면
+
+1부(기록보관소, feat/ui_archive 의 be4ee29, eb2887a)는 끝났다. 이번에는 2부인 \"기간별 통계\" 화면과 기록보관소에서 그 화면으로 가는 입구를 만든다. Claude Design 시안 묶음이 .claude/design/W7-STATS/ 에 있다.
+
+[브랜치]
+- feat/ui_archive 에서 새 브랜치 feat/ui_stats 를 만들어 작업한다. 1부는 따로 폰 확인 뒤 PR로 올리므로 feat/ui_archive 에는 커밋을 더하지 않는다.
+- 푸시하지 않는다.
+
+[기준]
+- .claude/design/W7-STATS/W7-STATS-SPEC.md 를 처음부터 끝까지 읽는다. 배치, 그래프 칸, 문구의 원본은 dc/W7A.dc.html 의 스크립트다. w7_golden.json 은 대조 값이고 shots/*.png 는 폭 360 실제 크기 화면이다. 명세의 표와 원본이 다르면 원본이 맞다. 파일 주인과 범위는 task.md 와 .claude/ownership.json 이 명세보다 우선한다.
+- J3 데이터 코드(FeedbackStatsViewModel, FeedbackStatsCalculator, PeriodStats, ArchiveStats, 서버 API)는 고치지 않는다. 화면은 FeedbackStatsState 를 읽기만 한다.
+
+[명세 12절 질문의 답: 2026-11-14 사용자 결정. 다시 묻지 말고 task.md Decisions 에 날짜와 함께 적는다]
+1. 제목 글꼴: lobbyPageTitle. 1부 기록보관소 제목이 다른 스타일이면 둘을 lobbyPageTitle 로 맞추고 보고에 적는다.
+2. 종목 칩 이름: ExerciseType.label 을 그대로 쓴다(\"푸쉬업\").
+3. 막대 회색: 1부에서 더한 AppColors.chartBar 토큰을 쓴다. 따로 상수를 두지 않는다.
+4. 전체가 26주를 넘는 경우: 이번에는 만들지 않는다. 주 묶음 그대로 두고 task.md 에 나중 일로 적는다.
+5. 앱이 모르는 자세 문제 코드: 화면에 그리지 않고 건너뛴다. 기준 경기 수에는 그대로 들어간다.
+6. 기록보관소는 1부에서 BArchive 모양으로 바꿨으므로 6절의 두 가지만 더한다.
+   (가) 머리줄 오른쪽 라임 알약 \"기간별 통계\". 누르면 이번 주, 둘 다로 열린다. 저장소가 FeedbackStatsSource 가 아니면 그리지 않는다.
+   (나) 카드 이름 \"최근 7일 · {월/일} ~ 오늘\". 날짜는 ArchiveStats.weekDaily 의 첫 날이다.
+   6절의 나머지(막대 색, 경기 없던 날의 높이 3 줄)가 1부와 다르면 6절에 맞춘다.
+7. 자세 코드가 없던 옛 경기: 그대로 두고 테스트 노트에 적는다.
+8. 당겨서 새로고침: 넣지 않는다.
+9. 기간 탭: 전체 / 이번 달 / 이번 주 순서이고 처음에는 이번 주가 골라져 있다.
+
+[진행 방식]
+- 사용자가 회의 중이라 한동안 답을 못 한다. 위 답으로 정해지지 않은 결정은 명세의 권장안이나 가장 무난한 쪽으로 정하고 멈추지 않는다. 그렇게 정한 것은 보고의 \"질문하지 않고 정한 기본값\"에 적는다.
+- W7 소유가 아닌 파일을 고쳐야 하면 최소한의 예외를 더해 처리하고, 보고에 무엇을 왜 고쳤는지 적는다.
+- 그래프 칸 만들기는 위젯과 떨어진 순수 함수로 두고 w7_golden.json 의 11가지 경우로 대조한다. 화면 테스트는 명세 10절 목록을 모두 넣는다.
+- 1부처럼 실제 글꼴로 렌더해 shots 와 견주고 결과를 .claude/design/out/w7/ 에 둔다.
+- 끝나면 flutter analyze, 전체 flutter test, 리뷰어 APPROVE, ownership_guard --check-diff 를 통과시킨 뒤 커밋한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다.
+
+[보고]
+1부 보고와 같은 모양으로 쓴다: 브랜치와 커밋, 만든 것, 질문하지 않고 정한 기본값, 확인 결과, 알아 둘 점, 폰에서 확인할 것.
+</pasted_content id=\"9c4a\">"
+
+<!-- 048f8135 2026-11-14T16:37:49.975Z -->
+[Woohyun Song, 11-15 01:37] "<pasted_content id=\"9c4a\">
+W7 마무리: 1부와 2부를 W7 PR 하나로 올린다
+
+하네스가 2026-11-15에 업데이트되어 .claude/ownership.json 과 .claude/team-plan.md 가 새 파일로 바뀌었다. 다시 읽는다. W7의 범위와 순서(#17, J3 뒤 머지)는 그대로다. 바뀐 점은 규칙 화면이 없어지고 튜토리얼로 합쳐진 것이다. 그래서 help_screen, help_*, tutorial_* 는 J5(박진영) 소유다. W7은 이 파일들을 건드리지 않는다.
+
+푸시 방법은 첫 번째 안(2부를 1부 브랜치에 합쳐 PR 하나)으로 정했다.
+1. feat/ui_archive 로 돌아가 git merge --ff-only feat/ui_stats 로 합친다. fast-forward가 안 되면 멈추고 알린다.
+2. feat/ui_stats 때문에 .claude/ownership-exceptions.txt 에 임시로 더한 줄을 지운다. 1부 때부터 있던 예외(auth_flow_test 한 줄, match_record_card_test 그룹 삭제)는 남긴다.
+3. git fetch origin 후 origin/main 을 merge 한다(rebase 금지). J4가 머지되어 있다. 충돌은 W7 파일 안에서만 푼다. W7 파일이 아닌 곳에서 충돌하면 멈추고 알린다.
+4. flutter analyze, 전체 flutter test, ownership_guard.py --check-diff 를 다시 통과시킨다. 머지로 W7 파일 내용이 바뀌었으면 리뷰어에게 다시 확인받는다.
+5. 테스트 노트에 2부 항목을 넣는다. 답 7(자세 코드가 없던 옛 경기)의 문구도 포함한다.
+6. 푸시하고 PR을 연다. PR 본문에는 다음을 넣는다.
+   - Merge order: #17 (team plan); merge after: #9 feat/cumulative_feedback (merged)
+   - 1부(기록보관소)와 2부(기간별 통계)를 한 PR로 올린다는 것
+   - PM이 알아야 할 것: auth_flow_test.dart 의 '경기 기록' → '기록보관소' 한 줄(일회성 예외), match_record_card_test.dart 의 옛 화면 그룹 삭제, 이제 어느 화면에서도 쓰이지 않는 MatchRecordCard 는 마감 뒤 정리
+   - 폰 확인은 CI와 함께 진행 중이고, 커버리지는 CI 코멘트로 확인한다는 것
+
+끝나면 PR 번호, 머지 결과, 테스트 결과, 지운 예외 줄을 짧게 보고한다. 보고한 뒤에는 다른 세션이 메인 폴더를 써야 하니 새 작업을 시작하지 않는다.
+</pasted_content id=\"9c4a\">"
+
+<!-- Left out on purpose: the session summary written when this session ran out of context (11-15 00:44; not a prompt). Its key stays so a later export does not add it again. Cut: the client's injected browser notice in front of 1 prompt (11-14 22:47; not the user's text). Four answers in the agent's question dialogs (11-14: 전체 보기, the app_theme exception, the auth_flow_test line, the match_record_card_test group) are not in the export as prompts. -->
+<!-- 048f8135 2026-11-14T15:44:11.441Z -->

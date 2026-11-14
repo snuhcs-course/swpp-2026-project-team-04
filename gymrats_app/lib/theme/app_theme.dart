@@ -89,6 +89,15 @@ abstract final class AppColors {
   /// Text on an [ink] fill, such as the 대결 시작 button: the one exception
   /// to ink text, since a dark fill needs light text (palette B).
   static const onInk = Color(0xFFFFFFFF);
+
+  /// Quiet marks that only fill or hint, never text: the days of a chart
+  /// that have not come yet. Under 3:1 on white, so never the only mark of
+  /// a value; values use [chartBar].
+  static const inactive = Color(0xFFA9B0BE);
+
+  /// A chart's past values beside the one in [ink]: the archive's day bars
+  /// and its graph's base line (3:1 on [card]).
+  static const chartBar = Color(0xFF8A93A5);
 }
 
 /// RepBot, the robot doing push-ups in the lobby, as designed: its own
@@ -497,6 +506,108 @@ extension CharacterText on TextTheme {
     fontWeight: FontWeight.w700,
     height: 16 / 13,
     color: AppColors.ink,
+  );
+}
+
+/// The text styles of the archive (기록보관소, BArchive) that the theme's
+/// own sizes lack. Screens change only their color or weight.
+extension ArchiveText on TextTheme {
+  /// The last 7 days' reps, e.g. "123": Oxanium 800, 32.
+  TextStyle get archiveTotal => displaySmall!.copyWith(
+    fontSize: 32,
+    fontWeight: FontWeight.w800,
+    height: 1.05,
+  );
+
+  /// The score's rise on the growth card, e.g. "160": Oxanium 800, 26.
+  TextStyle get archiveGain => displaySmall!.copyWith(
+    fontSize: 26,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// A battle's score in its row: Oxanium 800, 18.
+  TextStyle get archiveScore => displaySmall!.copyWith(
+    fontSize: 18,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// The newest score at the graph's last point: Oxanium 800, 13.
+  TextStyle get archiveChartValue => displaySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// The new-best chip in a battle's row, e.g. "55": Oxanium 700, 12.
+  TextStyle get archiveRowGain =>
+      displaySmall!.copyWith(fontSize: 12, fontWeight: FontWeight.w700);
+
+  /// The small bold labels: the exercise tabs, "전체 보기", the "점" after
+  /// the rise: 13 bold.
+  TextStyle get archiveLabel =>
+      bodyMedium!.copyWith(fontSize: 13, fontWeight: FontWeight.w700);
+}
+
+/// The text styles of the statistics screen (기간별 통계, W7-STATS) that the
+/// theme's own sizes lack. Screens change only their color or weight.
+extension StatsText on TextTheme {
+  /// The average counted reps, e.g. "13.8": Oxanium 800, 40.
+  TextStyle get statsAverage => displaySmall!.copyWith(
+    fontSize: 40,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// The "회" after the average, and the 다시 시도 button: 15 bold.
+  TextStyle get statsStrong =>
+      bodyLarge!.copyWith(fontSize: 15, fontWeight: FontWeight.w700);
+
+  /// The battles and the total reps beside the average: Oxanium 800, 20.
+  TextStyle get statsCount => displaySmall!.copyWith(
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// A form issue's count: Oxanium 800, 15 on a 20 line.
+  TextStyle get statsIssueCount => displaySmall!.copyWith(
+    fontSize: 15,
+    fontWeight: FontWeight.w800,
+    height: 20 / 15,
+  );
+
+  /// The reps over a bar: Oxanium 700, 11 on a 12 line.
+  TextStyle get statsBarValue => displaySmall!.copyWith(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    height: 12 / 11,
+  );
+
+  /// The letters under the bars: 11 on a 14 line.
+  TextStyle get statsAxis =>
+      bodySmall!.copyWith(fontSize: 11, height: 14 / 11, letterSpacing: 0);
+
+  /// The empty notice's second line: 13 on a 1.45 line.
+  TextStyle get statsDetail => bodyMedium!.copyWith(fontSize: 13, height: 1.45);
+
+  /// A small note under a card's content: the weeks' note, the failed
+  /// card's last line: 12 on a 1.5 line.
+  TextStyle get statsNote => bodySmall!.copyWith(height: 1.5);
+
+  /// A sentence in a card: the form card's only line, the failed card's
+  /// reason: 14 on a 1.5 line.
+  TextStyle get statsSentence => bodyMedium!.copyWith(height: 1.5);
+
+  /// A form issue's name: 14 on a 20 line.
+  TextStyle get statsIssueName => bodyMedium!.copyWith(height: 20 / 14);
+
+  /// The "!" in the failed card's circle: Oxanium 800, 22.
+  TextStyle get statsMark => displaySmall!.copyWith(
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
+    height: 1,
   );
 }
 
