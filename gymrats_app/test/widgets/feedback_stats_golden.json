@@ -1,0 +1,3055 @@
+{
+ "meta": {
+  "source": "dc/W7A.dc.html",
+  "note": "points are every stored battle the cases start from; since drops the battles before it (a demo of a shorter history, not an app value). today is the phone date. Bar heights are px in the 92-high plot (77 is the tallest bar).",
+  "plot": {
+   "height": 92,
+   "maxBar": 77,
+   "valueLine": 12,
+   "valueGap": 3,
+   "zeroBar": 3,
+   "futureBar": 4
+  },
+  "cutPerGroup": 5
+ },
+ "points": [
+  {
+   "id": 1,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-07T12:00:00",
+   "reps": 6,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "reject.incompleteExtension": 1,
+    "imbalance": 1
+   }
+  },
+  {
+   "id": 2,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-08T13:07:00",
+   "reps": 7,
+   "hasFeedback": true,
+   "issues": {}
+  },
+  {
+   "id": 3,
+   "exercise": "squat",
+   "playedAt": "2026-09-08T14:14:00",
+   "reps": 18,
+   "hasFeedback": true,
+   "issues": {}
+  },
+  {
+   "id": 4,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-10T15:21:00",
+   "reps": 8,
+   "hasFeedback": true,
+   "issues": {
+    "reject.incompleteExtension": 1,
+    "hand_width": 1
+   }
+  },
+  {
+   "id": 5,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-12T16:28:00",
+   "reps": 9,
+   "hasFeedback": true,
+   "issues": {
+    "reject.kneesDown": 1,
+    "reject.incompleteExtension": 1,
+    "elbow_flare": 1
+   }
+  },
+  {
+   "id": 6,
+   "exercise": "squat",
+   "playedAt": "2026-09-12T17:35:00",
+   "reps": 14,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 2
+   }
+  },
+  {
+   "id": 7,
+   "exercise": "squat",
+   "playedAt": "2026-09-13T18:42:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 8,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-16T19:49:00",
+   "reps": 12,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "elbow_flare": 1,
+    "imbalance": 1
+   }
+  },
+  {
+   "id": 9,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-18T12:56:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shouldersNotLevel": 1,
+    "imbalance": 1,
+    "head_lead": 1
+   }
+  },
+  {
+   "id": 10,
+   "exercise": "squat",
+   "playedAt": "2026-09-18T13:03:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {}
+  },
+  {
+   "id": 11,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-19T14:10:00",
+   "reps": 15,
+   "hasFeedback": false,
+   "issues": {}
+  },
+  {
+   "id": 12,
+   "exercise": "squat",
+   "playedAt": "2026-09-19T15:17:00",
+   "reps": 12,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 2,
+    "reject.phoneMoved": 1
+   }
+  },
+  {
+   "id": 13,
+   "exercise": "squat",
+   "playedAt": "2026-09-19T16:24:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 2,
+    "reject.standUpFully": 1,
+    "reject.phoneMoved": 1
+   }
+  },
+  {
+   "id": 14,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-20T17:31:00",
+   "reps": 14,
+   "hasFeedback": true,
+   "issues": {
+    "reject.armsStraight": 1,
+    "head_lead": 1
+   }
+  },
+  {
+   "id": 15,
+   "exercise": "squat",
+   "playedAt": "2026-09-21T18:38:00",
+   "reps": 14,
+   "hasFeedback": false,
+   "issues": {}
+  },
+  {
+   "id": 16,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-22T19:45:00",
+   "reps": 9,
+   "hasFeedback": true,
+   "issues": {
+    "reject.incompleteExtension": 2,
+    "reject.insufficientDepth": 2,
+    "hand_width": 1
+   }
+  },
+  {
+   "id": 17,
+   "exercise": "squat",
+   "playedAt": "2026-09-26T12:52:00",
+   "reps": 20,
+   "hasFeedback": true,
+   "issues": {
+    "reject.standUpFully": 3,
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 18,
+   "exercise": "pushUp",
+   "playedAt": "2026-09-26T13:59:00",
+   "reps": 8,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 2,
+    "elbow_flare": 1
+   }
+  },
+  {
+   "id": 19,
+   "exercise": "squat",
+   "playedAt": "2026-09-27T14:06:00",
+   "reps": 10,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 20,
+   "exercise": "squat",
+   "playedAt": "2026-09-30T15:13:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.standUpFully": 1
+   }
+  },
+  {
+   "id": 21,
+   "exercise": "squat",
+   "playedAt": "2026-10-01T16:20:00",
+   "reps": 16,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 22,
+   "exercise": "squat",
+   "playedAt": "2026-10-02T17:27:00",
+   "reps": 16,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 23,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-03T18:34:00",
+   "reps": 15,
+   "hasFeedback": false,
+   "issues": {}
+  },
+  {
+   "id": 24,
+   "exercise": "squat",
+   "playedAt": "2026-10-03T19:41:00",
+   "reps": 13,
+   "hasFeedback": false,
+   "issues": {}
+  },
+  {
+   "id": 25,
+   "exercise": "squat",
+   "playedAt": "2026-10-06T12:48:00",
+   "reps": 14,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 2
+   }
+  },
+  {
+   "id": 26,
+   "exercise": "squat",
+   "playedAt": "2026-10-11T13:55:00",
+   "reps": 20,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 27,
+   "exercise": "squat",
+   "playedAt": "2026-10-12T14:02:00",
+   "reps": 13,
+   "hasFeedback": true,
+   "issues": {
+    "reject.standUpFully": 1
+   }
+  },
+  {
+   "id": 28,
+   "exercise": "squat",
+   "playedAt": "2026-10-14T15:09:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {}
+  },
+  {
+   "id": 29,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-14T16:16:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shouldersNotLevel": 1,
+    "reject.bellyDown": 1
+   }
+  },
+  {
+   "id": 30,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-14T17:23:00",
+   "reps": 13,
+   "hasFeedback": true,
+   "issues": {}
+  },
+  {
+   "id": 31,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-18T18:30:00",
+   "reps": 13,
+   "hasFeedback": true,
+   "issues": {
+    "reject.incompleteExtension": 2,
+    "reject.notFloorPushUp": 1,
+    "depth_loss": 1
+   }
+  },
+  {
+   "id": 32,
+   "exercise": "squat",
+   "playedAt": "2026-10-20T19:37:00",
+   "reps": 20,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 3,
+    "reject.phoneMoved": 1
+   }
+  },
+  {
+   "id": 33,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-20T12:44:00",
+   "reps": 8,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shouldersNotLevel": 1,
+    "reject.incompleteExtension": 1,
+    "reject.notFloorPushUp": 1,
+    "depth_loss": 1,
+    "head_lead": 1
+   }
+  },
+  {
+   "id": 34,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-21T13:51:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "depth_loss": 1,
+    "imbalance": 1
+   }
+  },
+  {
+   "id": 35,
+   "exercise": "squat",
+   "playedAt": "2026-10-23T14:58:00",
+   "reps": 18,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 2
+   }
+  },
+  {
+   "id": 36,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-23T15:05:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "reject.kneesDown": 1,
+    "depth_loss": 1
+   }
+  },
+  {
+   "id": 37,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-24T16:12:00",
+   "reps": 8,
+   "hasFeedback": true,
+   "issues": {
+    "reject.incompleteExtension": 2
+   }
+  },
+  {
+   "id": 38,
+   "exercise": "squat",
+   "playedAt": "2026-10-24T17:19:00",
+   "reps": 10,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 39,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-24T18:26:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {
+    "reject.bellyDown": 1,
+    "reject.insufficientDepth": 2,
+    "reject.phoneMoved": 1,
+    "head_lead": 1
+   }
+  },
+  {
+   "id": 40,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-25T19:33:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shouldersNotLevel": 1,
+    "hand_width": 1
+   }
+  },
+  {
+   "id": 41,
+   "exercise": "squat",
+   "playedAt": "2026-10-25T12:40:00",
+   "reps": 13,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 42,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-26T13:47:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shouldersNotLevel": 1
+   }
+  },
+  {
+   "id": 43,
+   "exercise": "squat",
+   "playedAt": "2026-10-28T14:54:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {
+    "reject.phoneMoved": 1
+   }
+  },
+  {
+   "id": 44,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-28T15:01:00",
+   "reps": 9,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "reject.shouldersNotLevel": 1,
+    "depth_loss": 1
+   }
+  },
+  {
+   "id": 45,
+   "exercise": "squat",
+   "playedAt": "2026-10-28T16:08:00",
+   "reps": 18,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 2
+   }
+  },
+  {
+   "id": 46,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-30T17:15:00",
+   "reps": 8,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shouldersNotLevel": 1,
+    "reject.incompleteExtension": 1
+   }
+  },
+  {
+   "id": 47,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-30T18:22:00",
+   "reps": 11,
+   "hasFeedback": false,
+   "issues": {}
+  },
+  {
+   "id": 48,
+   "exercise": "pushUp",
+   "playedAt": "2026-10-31T19:29:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.armsStraight": 1,
+    "elbow_flare": 1
+   }
+  },
+  {
+   "id": 49,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-01T12:36:00",
+   "reps": 9,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1
+   }
+  },
+  {
+   "id": 50,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-02T13:43:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "reject.incompleteExtension": 1,
+    "elbow_flare": 1
+   }
+  },
+  {
+   "id": 51,
+   "exercise": "squat",
+   "playedAt": "2026-11-02T14:50:00",
+   "reps": 14,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 52,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-04T15:57:00",
+   "reps": 8,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 2,
+    "reject.kneesDown": 1,
+    "depth_loss": 1
+   }
+  },
+  {
+   "id": 53,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-05T16:04:00",
+   "reps": 12,
+   "hasFeedback": true,
+   "issues": {
+    "reject.incompleteExtension": 1,
+    "imbalance": 1
+   }
+  },
+  {
+   "id": 54,
+   "exercise": "squat",
+   "playedAt": "2026-11-05T17:11:00",
+   "reps": 13,
+   "hasFeedback": false,
+   "issues": {}
+  },
+  {
+   "id": 55,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-07T18:18:00",
+   "reps": 10,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "elbow_flare": 1
+   }
+  },
+  {
+   "id": 56,
+   "exercise": "squat",
+   "playedAt": "2026-11-07T19:25:00",
+   "reps": 17,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 2,
+    "reject.standUpFully": 1
+   }
+  },
+  {
+   "id": 57,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-07T12:32:00",
+   "reps": 12,
+   "hasFeedback": true,
+   "issues": {
+    "reject.armsStraight": 1,
+    "elbow_flare": 1,
+    "head_lead": 1
+   }
+  },
+  {
+   "id": 58,
+   "exercise": "squat",
+   "playedAt": "2026-11-08T13:39:00",
+   "reps": 12,
+   "hasFeedback": true,
+   "issues": {
+    "reject.standUpFully": 1
+   }
+  },
+  {
+   "id": 59,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-09T14:46:00",
+   "reps": 12,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 2,
+    "reject.incompleteExtension": 1,
+    "elbow_flare": 1,
+    "head_lead": 1
+   }
+  },
+  {
+   "id": 60,
+   "exercise": "squat",
+   "playedAt": "2026-11-09T15:53:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 2,
+    "reject.standUpFully": 1
+   }
+  },
+  {
+   "id": 61,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-11T16:00:00",
+   "reps": 10,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "reject.kneesDown": 2,
+    "imbalance": 1
+   }
+  },
+  {
+   "id": 62,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-12T17:07:00",
+   "reps": 14,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 2,
+    "reject.incompleteExtension": 1,
+    "elbow_flare": 1
+   }
+  },
+  {
+   "id": 63,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-12T18:14:00",
+   "reps": 11,
+   "hasFeedback": true,
+   "issues": {
+    "reject.incompleteExtension": 1,
+    "depth_loss": 1
+   }
+  },
+  {
+   "id": 64,
+   "exercise": "squat",
+   "playedAt": "2026-11-12T19:21:00",
+   "reps": 18,
+   "hasFeedback": true,
+   "issues": {
+    "reject.shallowSquat": 1
+   }
+  },
+  {
+   "id": 65,
+   "exercise": "squat",
+   "playedAt": "2026-11-13T12:28:00",
+   "reps": 16,
+   "hasFeedback": false,
+   "issues": {}
+  },
+  {
+   "id": 66,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-14T13:35:00",
+   "reps": 13,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "depth_loss": 1
+   }
+  },
+  {
+   "id": 67,
+   "exercise": "pushUp",
+   "playedAt": "2026-11-14T14:42:00",
+   "reps": 15,
+   "hasFeedback": true,
+   "issues": {
+    "reject.insufficientDepth": 1,
+    "reject.incompleteExtension": 1,
+    "elbow_flare": 1,
+    "imbalance": 1
+   }
+  }
+ ],
+ "cases": [
+  {
+   "id": "week_both",
+   "input": {
+    "id": "week_both",
+    "period": "week",
+    "exercise": "both",
+    "today": "2026-11-14"
+   },
+   "summary": {
+    "range": "이번 주 · 11/9 월 ~ 11/15 일",
+    "average": "13.8",
+    "matches": 9,
+    "totalReps": 124,
+    "matchesWithFeedback": 8
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 7,
+    "gap": "8px",
+    "note": "",
+    "slots": [
+     {
+      "label": "월",
+      "reps": 27,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "48px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "화",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "수",
+      "reps": 10,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "18px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "목",
+      "reps": 43,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "77px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "금",
+      "reps": 16,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "29px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 28,
+      "future": false,
+      "now": true,
+      "valueShown": true,
+      "barHeight": "50px",
+      "color": "#141A26",
+      "border": "0"
+     },
+     {
+      "label": "일",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     }
+    ]
+   },
+   "empty": null,
+   "issues": {
+    "base": "경기 9판 중 자세 기록 8판 기준",
+    "blank": null,
+    "rejected": [
+     {
+      "code": "reject.insufficientDepth",
+      "label": "가슴을 더 내려요",
+      "count": 7,
+      "unit": "회",
+      "widthPct": 100
+     },
+     {
+      "code": "reject.incompleteExtension",
+      "label": "팔을 끝까지 펴요",
+      "count": 4,
+      "unit": "회",
+      "widthPct": 57
+     },
+     {
+      "code": "reject.shallowSquat",
+      "label": "엉덩이를 무릎 높이까지 내려요",
+      "count": 3,
+      "unit": "회",
+      "widthPct": 43
+     },
+     {
+      "code": "reject.kneesDown",
+      "label": "무릎을 바닥에서 떼요",
+      "count": 2,
+      "unit": "회",
+      "widthPct": 29
+     },
+     {
+      "code": "reject.standUpFully",
+      "label": "끝까지 일어나요",
+      "count": 1,
+      "unit": "회",
+      "widthPct": 14
+     }
+    ],
+    "report": [
+     {
+      "code": "elbow_flare",
+      "label": "팔꿈치 벌어짐",
+      "count": 3,
+      "of": 8,
+      "unit": "판",
+      "widthPct": 38
+     },
+     {
+      "code": "depth_loss",
+      "label": "후반 깊이 감소",
+      "count": 2,
+      "of": 8,
+      "unit": "판",
+      "widthPct": 25
+     },
+     {
+      "code": "imbalance",
+      "label": "좌우 불균형",
+      "count": 2,
+      "of": 8,
+      "unit": "판",
+      "widthPct": 25
+     },
+     {
+      "code": "head_lead",
+      "label": "고개가 먼저 내려감",
+      "count": 1,
+      "of": 8,
+      "unit": "판",
+      "widthPct": 13
+     }
+    ]
+   }
+  },
+  {
+   "id": "week_push",
+   "input": {
+    "id": "week_push",
+    "period": "week",
+    "exercise": "push",
+    "today": "2026-11-14"
+   },
+   "summary": {
+    "range": "이번 주 · 11/9 월 ~ 11/15 일",
+    "average": "12.5",
+    "matches": 6,
+    "totalReps": 75,
+    "matchesWithFeedback": 6
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 7,
+    "gap": "8px",
+    "note": "",
+    "slots": [
+     {
+      "label": "월",
+      "reps": 12,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "33px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "화",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "수",
+      "reps": 10,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "28px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "목",
+      "reps": 25,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "69px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "금",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 28,
+      "future": false,
+      "now": true,
+      "valueShown": true,
+      "barHeight": "77px",
+      "color": "#141A26",
+      "border": "0"
+     },
+     {
+      "label": "일",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     }
+    ]
+   },
+   "empty": null,
+   "issues": {
+    "base": "자세 기록 있는 6판 기준",
+    "blank": null,
+    "rejected": [
+     {
+      "code": "reject.insufficientDepth",
+      "label": "가슴을 더 내려요",
+      "count": 7,
+      "unit": "회",
+      "widthPct": 100
+     },
+     {
+      "code": "reject.incompleteExtension",
+      "label": "팔을 끝까지 펴요",
+      "count": 4,
+      "unit": "회",
+      "widthPct": 57
+     },
+     {
+      "code": "reject.kneesDown",
+      "label": "무릎을 바닥에서 떼요",
+      "count": 2,
+      "unit": "회",
+      "widthPct": 29
+     }
+    ],
+    "report": [
+     {
+      "code": "elbow_flare",
+      "label": "팔꿈치 벌어짐",
+      "count": 3,
+      "of": 6,
+      "unit": "판",
+      "widthPct": 50
+     },
+     {
+      "code": "depth_loss",
+      "label": "후반 깊이 감소",
+      "count": 2,
+      "of": 6,
+      "unit": "판",
+      "widthPct": 33
+     },
+     {
+      "code": "imbalance",
+      "label": "좌우 불균형",
+      "count": 2,
+      "of": 6,
+      "unit": "판",
+      "widthPct": 33
+     },
+     {
+      "code": "head_lead",
+      "label": "고개가 먼저 내려감",
+      "count": 1,
+      "of": 6,
+      "unit": "판",
+      "widthPct": 17
+     }
+    ]
+   }
+  },
+  {
+   "id": "week_squat",
+   "input": {
+    "id": "week_squat",
+    "period": "week",
+    "exercise": "squat",
+    "today": "2026-11-14"
+   },
+   "summary": {
+    "range": "이번 주 · 11/9 월 ~ 11/15 일",
+    "average": "16.3",
+    "matches": 3,
+    "totalReps": 49,
+    "matchesWithFeedback": 2
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 7,
+    "gap": "8px",
+    "note": "",
+    "slots": [
+     {
+      "label": "월",
+      "reps": 15,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "64px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "화",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "수",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "목",
+      "reps": 18,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "77px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "금",
+      "reps": 16,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "68px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 0,
+      "future": false,
+      "now": true,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "일",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     }
+    ]
+   },
+   "empty": null,
+   "issues": {
+    "base": "경기 3판 중 자세 기록 2판 기준",
+    "blank": null,
+    "rejected": [
+     {
+      "code": "reject.shallowSquat",
+      "label": "엉덩이를 무릎 높이까지 내려요",
+      "count": 3,
+      "unit": "회",
+      "widthPct": 100
+     },
+     {
+      "code": "reject.standUpFully",
+      "label": "끝까지 일어나요",
+      "count": 1,
+      "unit": "회",
+      "widthPct": 33
+     }
+    ],
+    "report": []
+   }
+  },
+  {
+   "id": "month_both",
+   "input": {
+    "id": "month_both",
+    "period": "month",
+    "exercise": "both",
+    "today": "2026-11-14"
+   },
+   "summary": {
+    "range": "이번 달 · 11/1 ~ 11/30",
+    "average": "12.7",
+    "matches": 19,
+    "totalReps": 242,
+    "matchesWithFeedback": 17
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 30,
+    "gap": "3px",
+    "note": "",
+    "slots": [
+     {
+      "label": "1",
+      "reps": 9,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "16px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 25,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "45px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 8,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "14px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 25,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "45px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 39,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "70px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "8",
+      "reps": 12,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "21px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 27,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "48px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 10,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "18px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 43,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "77px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 16,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "29px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 28,
+      "future": false,
+      "now": true,
+      "valueShown": true,
+      "barHeight": "50px",
+      "color": "#141A26",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "22",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "29",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     }
+    ]
+   },
+   "empty": null,
+   "issues": {
+    "base": "경기 19판 중 자세 기록 17판 기준",
+    "blank": null,
+    "rejected": [
+     {
+      "code": "reject.insufficientDepth",
+      "label": "가슴을 더 내려요",
+      "count": 12,
+      "unit": "회",
+      "widthPct": 100
+     },
+     {
+      "code": "reject.incompleteExtension",
+      "label": "팔을 끝까지 펴요",
+      "count": 6,
+      "unit": "회",
+      "widthPct": 50
+     },
+     {
+      "code": "reject.shallowSquat",
+      "label": "엉덩이를 무릎 높이까지 내려요",
+      "count": 6,
+      "unit": "회",
+      "widthPct": 50
+     },
+     {
+      "code": "reject.kneesDown",
+      "label": "무릎을 바닥에서 떼요",
+      "count": 3,
+      "unit": "회",
+      "widthPct": 25
+     },
+     {
+      "code": "reject.standUpFully",
+      "label": "끝까지 일어나요",
+      "count": 3,
+      "unit": "회",
+      "widthPct": 25
+     },
+     {
+      "code": "reject.armsStraight",
+      "label": "팔을 굽혀서 내려요",
+      "count": 1,
+      "unit": "회",
+      "widthPct": 8
+     }
+    ],
+    "report": [
+     {
+      "code": "elbow_flare",
+      "label": "팔꿈치 벌어짐",
+      "count": 6,
+      "of": 17,
+      "unit": "판",
+      "widthPct": 35
+     },
+     {
+      "code": "depth_loss",
+      "label": "후반 깊이 감소",
+      "count": 3,
+      "of": 17,
+      "unit": "판",
+      "widthPct": 18
+     },
+     {
+      "code": "imbalance",
+      "label": "좌우 불균형",
+      "count": 3,
+      "of": 17,
+      "unit": "판",
+      "widthPct": 18
+     },
+     {
+      "code": "head_lead",
+      "label": "고개가 먼저 내려감",
+      "count": 2,
+      "of": 17,
+      "unit": "판",
+      "widthPct": 12
+     }
+    ]
+   }
+  },
+  {
+   "id": "month_both_oct31",
+   "input": {
+    "id": "month_both_oct31",
+    "period": "month",
+    "exercise": "both",
+    "today": "2026-10-31"
+   },
+   "summary": {
+    "range": "이번 달 · 10/1 ~ 10/31",
+    "average": "13.4",
+    "matches": 28,
+    "totalReps": 375,
+    "matchesWithFeedback": 25
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 31,
+    "gap": "3px",
+    "note": "",
+    "slots": [
+     {
+      "label": "1",
+      "reps": 16,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "29px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 16,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "29px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 28,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "51px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 14,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "26px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "8",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 20,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "37px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 13,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "24px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 39,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "72px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "15",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 13,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "24px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 28,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "51px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 11,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "20px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "22",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 33,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "61px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 33,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "61px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 28,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "51px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 11,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "20px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 42,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "77px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 19,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "35px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 11,
+      "future": false,
+      "now": true,
+      "valueShown": true,
+      "barHeight": "20px",
+      "color": "#141A26",
+      "border": "0"
+     }
+    ]
+   },
+   "empty": null,
+   "issues": {
+    "base": "경기 28판 중 자세 기록 25판 기준",
+    "blank": null,
+    "rejected": [
+     {
+      "code": "reject.shallowSquat",
+      "label": "엉덩이를 무릎 높이까지 내려요",
+      "count": 14,
+      "unit": "회",
+      "widthPct": 100
+     },
+     {
+      "code": "reject.incompleteExtension",
+      "label": "팔을 끝까지 펴요",
+      "count": 6,
+      "unit": "회",
+      "widthPct": 43
+     },
+     {
+      "code": "reject.shouldersNotLevel",
+      "label": "어깨를 수평으로 맞춰요",
+      "count": 6,
+      "unit": "회",
+      "widthPct": 43
+     },
+     {
+      "code": "reject.insufficientDepth",
+      "label": "가슴을 더 내려요",
+      "count": 5,
+      "unit": "회",
+      "widthPct": 36
+     },
+     {
+      "code": "reject.phoneMoved",
+      "label": "폰을 고정해 주세요",
+      "count": 3,
+      "unit": "회",
+      "widthPct": 21
+     },
+     {
+      "code": "reject.bellyDown",
+      "label": "배를 바닥에서 떼요",
+      "count": 2,
+      "unit": "회",
+      "widthPct": 14
+     },
+     {
+      "code": "reject.notFloorPushUp",
+      "label": "바닥에서 푸시업해요",
+      "count": 2,
+      "unit": "회",
+      "widthPct": 14
+     },
+     {
+      "code": "reject.armsStraight",
+      "label": "팔을 굽혀서 내려요",
+      "count": 1,
+      "unit": "회",
+      "widthPct": 7
+     },
+     {
+      "code": "reject.kneesDown",
+      "label": "무릎을 바닥에서 떼요",
+      "count": 1,
+      "unit": "회",
+      "widthPct": 7
+     },
+     {
+      "code": "reject.standUpFully",
+      "label": "끝까지 일어나요",
+      "count": 1,
+      "unit": "회",
+      "widthPct": 7
+     }
+    ],
+    "report": [
+     {
+      "code": "depth_loss",
+      "label": "후반 깊이 감소",
+      "count": 5,
+      "of": 25,
+      "unit": "판",
+      "widthPct": 20
+     },
+     {
+      "code": "head_lead",
+      "label": "고개가 먼저 내려감",
+      "count": 2,
+      "of": 25,
+      "unit": "판",
+      "widthPct": 8
+     },
+     {
+      "code": "elbow_flare",
+      "label": "팔꿈치 벌어짐",
+      "count": 1,
+      "of": 25,
+      "unit": "판",
+      "widthPct": 4
+     },
+     {
+      "code": "hand_width",
+      "label": "손 간격",
+      "count": 1,
+      "of": 25,
+      "unit": "판",
+      "widthPct": 4
+     },
+     {
+      "code": "imbalance",
+      "label": "좌우 불균형",
+      "count": 1,
+      "of": 25,
+      "unit": "판",
+      "widthPct": 4
+     }
+    ]
+   }
+  },
+  {
+   "id": "all_both_weeks",
+   "input": {
+    "id": "all_both_weeks",
+    "period": "all",
+    "exercise": "both",
+    "today": "2026-11-14"
+   },
+   "summary": {
+    "range": "전체 · 9/7 첫 경기부터",
+    "average": "12.8",
+    "matches": 67,
+    "totalReps": 856,
+    "matchesWithFeedback": 60
+   },
+   "chart": {
+    "kind": "week",
+    "columns": 10,
+    "gap": "6px",
+    "note": "경기한 날이 14일을 넘어서 한 주씩 묶었어요. 막대 하나가 월요일부터 일요일까지예요.",
+    "slots": [
+     {
+      "label": "",
+      "reps": 73,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "42px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "9/14",
+      "reps": 94,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "54px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 61,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "35px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "9/28",
+      "reps": 71,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "41px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 34,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "20px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "10/12",
+      "reps": 65,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "38px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 133,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "77px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "10/26",
+      "reps": 92,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "53px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 109,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "63px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "이번 주",
+      "reps": 124,
+      "future": false,
+      "now": true,
+      "valueShown": true,
+      "barHeight": "72px",
+      "color": "#141A26",
+      "border": "0"
+     }
+    ]
+   },
+   "empty": null,
+   "issues": {
+    "base": "경기 67판 중 자세 기록 60판 기준",
+    "blank": null,
+    "rejected": [
+     {
+      "code": "reject.shallowSquat",
+      "label": "엉덩이를 무릎 높이까지 내려요",
+      "count": 29,
+      "unit": "회",
+      "widthPct": 100
+     },
+     {
+      "code": "reject.insufficientDepth",
+      "label": "가슴을 더 내려요",
+      "count": 23,
+      "unit": "회",
+      "widthPct": 79
+     },
+     {
+      "code": "reject.incompleteExtension",
+      "label": "팔을 끝까지 펴요",
+      "count": 17,
+      "unit": "회",
+      "widthPct": 59
+     },
+     {
+      "code": "reject.standUpFully",
+      "label": "끝까지 일어나요",
+      "count": 9,
+      "unit": "회",
+      "widthPct": 31
+     },
+     {
+      "code": "reject.shouldersNotLevel",
+      "label": "어깨를 수평으로 맞춰요",
+      "count": 7,
+      "unit": "회",
+      "widthPct": 24
+     },
+     {
+      "code": "reject.kneesDown",
+      "label": "무릎을 바닥에서 떼요",
+      "count": 5,
+      "unit": "회",
+      "widthPct": 17
+     },
+     {
+      "code": "reject.phoneMoved",
+      "label": "폰을 고정해 주세요",
+      "count": 5,
+      "unit": "회",
+      "widthPct": 17
+     },
+     {
+      "code": "reject.armsStraight",
+      "label": "팔을 굽혀서 내려요",
+      "count": 3,
+      "unit": "회",
+      "widthPct": 10
+     },
+     {
+      "code": "reject.bellyDown",
+      "label": "배를 바닥에서 떼요",
+      "count": 2,
+      "unit": "회",
+      "widthPct": 7
+     },
+     {
+      "code": "reject.notFloorPushUp",
+      "label": "바닥에서 푸시업해요",
+      "count": 2,
+      "unit": "회",
+      "widthPct": 7
+     }
+    ],
+    "report": [
+     {
+      "code": "elbow_flare",
+      "label": "팔꿈치 벌어짐",
+      "count": 10,
+      "of": 60,
+      "unit": "판",
+      "widthPct": 17
+     },
+     {
+      "code": "depth_loss",
+      "label": "후반 깊이 감소",
+      "count": 8,
+      "of": 60,
+      "unit": "판",
+      "widthPct": 13
+     },
+     {
+      "code": "imbalance",
+      "label": "좌우 불균형",
+      "count": 7,
+      "of": 60,
+      "unit": "판",
+      "widthPct": 12
+     },
+     {
+      "code": "head_lead",
+      "label": "고개가 먼저 내려감",
+      "count": 6,
+      "of": 60,
+      "unit": "판",
+      "widthPct": 10
+     },
+     {
+      "code": "hand_width",
+      "label": "손 간격",
+      "count": 3,
+      "of": 60,
+      "unit": "판",
+      "widthPct": 5
+     }
+    ]
+   }
+  },
+  {
+   "id": "all_both_days",
+   "input": {
+    "id": "all_both_days",
+    "period": "all",
+    "exercise": "both",
+    "today": "2026-11-14",
+    "since": "2026-11-02"
+   },
+   "summary": {
+    "range": "전체 · 11/2 첫 경기부터",
+    "average": "12.9",
+    "matches": 18,
+    "totalReps": 233,
+    "matchesWithFeedback": 16
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 10,
+    "gap": "6px",
+    "note": "",
+    "slots": [
+     {
+      "label": "11/2",
+      "reps": 25,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "45px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "4",
+      "reps": 8,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "14px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "5",
+      "reps": 25,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "45px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "7",
+      "reps": 39,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "70px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "8",
+      "reps": 12,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "21px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "9",
+      "reps": 27,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "48px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "11",
+      "reps": 10,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "18px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "12",
+      "reps": 43,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "77px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "13",
+      "reps": 16,
+      "future": false,
+      "now": false,
+      "valueShown": true,
+      "barHeight": "29px",
+      "color": "#8A93A5",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 28,
+      "future": false,
+      "now": true,
+      "valueShown": true,
+      "barHeight": "50px",
+      "color": "#141A26",
+      "border": "0"
+     }
+    ]
+   },
+   "empty": null,
+   "issues": {
+    "base": "경기 18판 중 자세 기록 16판 기준",
+    "blank": null,
+    "rejected": [
+     {
+      "code": "reject.insufficientDepth",
+      "label": "가슴을 더 내려요",
+      "count": 11,
+      "unit": "회",
+      "widthPct": 100
+     },
+     {
+      "code": "reject.incompleteExtension",
+      "label": "팔을 끝까지 펴요",
+      "count": 6,
+      "unit": "회",
+      "widthPct": 55
+     },
+     {
+      "code": "reject.shallowSquat",
+      "label": "엉덩이를 무릎 높이까지 내려요",
+      "count": 6,
+      "unit": "회",
+      "widthPct": 55
+     },
+     {
+      "code": "reject.kneesDown",
+      "label": "무릎을 바닥에서 떼요",
+      "count": 3,
+      "unit": "회",
+      "widthPct": 27
+     },
+     {
+      "code": "reject.standUpFully",
+      "label": "끝까지 일어나요",
+      "count": 3,
+      "unit": "회",
+      "widthPct": 27
+     },
+     {
+      "code": "reject.armsStraight",
+      "label": "팔을 굽혀서 내려요",
+      "count": 1,
+      "unit": "회",
+      "widthPct": 9
+     }
+    ],
+    "report": [
+     {
+      "code": "elbow_flare",
+      "label": "팔꿈치 벌어짐",
+      "count": 6,
+      "of": 16,
+      "unit": "판",
+      "widthPct": 38
+     },
+     {
+      "code": "depth_loss",
+      "label": "후반 깊이 감소",
+      "count": 3,
+      "of": 16,
+      "unit": "판",
+      "widthPct": 19
+     },
+     {
+      "code": "imbalance",
+      "label": "좌우 불균형",
+      "count": 3,
+      "of": 16,
+      "unit": "판",
+      "widthPct": 19
+     },
+     {
+      "code": "head_lead",
+      "label": "고개가 먼저 내려감",
+      "count": 2,
+      "of": 16,
+      "unit": "판",
+      "widthPct": 13
+     }
+    ]
+   }
+  },
+  {
+   "id": "empty_week",
+   "input": {
+    "id": "empty_week",
+    "period": "week",
+    "exercise": "both",
+    "today": "2026-11-17"
+   },
+   "summary": {
+    "range": "이번 주 · 11/16 월 ~ 11/22 일",
+    "average": "–",
+    "matches": 0,
+    "totalReps": 0,
+    "matchesWithFeedback": 0
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 7,
+    "gap": "8px",
+    "note": "",
+    "slots": [
+     {
+      "label": "월",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 0,
+      "future": false,
+      "now": true,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "수",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "목",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "금",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "토",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "일",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     }
+    ]
+   },
+   "empty": {
+    "title": "이번 주에는 아직 경기가 없어요",
+    "detail": "대결을 마치면 여기에 날짜별로 쌓여요.",
+    "place": "plot"
+   },
+   "issues": {
+    "base": "",
+    "blank": "경기를 마치면 자세 문제가 여기에 모여요.",
+    "rejected": [],
+    "report": []
+   }
+  },
+  {
+   "id": "empty_month_squat",
+   "input": {
+    "id": "empty_month_squat",
+    "period": "month",
+    "exercise": "squat",
+    "today": "2026-11-17",
+    "since": "2026-11-15"
+   },
+   "summary": {
+    "range": "이번 달 · 11/1 ~ 11/30",
+    "average": "–",
+    "matches": 0,
+    "totalReps": 0,
+    "matchesWithFeedback": 0
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 30,
+    "gap": "3px",
+    "note": "",
+    "slots": [
+     {
+      "label": "1",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "8",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 0,
+      "future": false,
+      "now": true,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "22",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "29",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     }
+    ]
+   },
+   "empty": {
+    "title": "이번 달에는 아직 스쿼트 경기가 없어요",
+    "detail": "대결을 마치면 여기에 날짜별로 쌓여요.",
+    "place": "plot"
+   },
+   "issues": {
+    "base": "",
+    "blank": "경기를 마치면 자세 문제가 여기에 모여요.",
+    "rejected": [],
+    "report": []
+   }
+  },
+  {
+   "id": "empty_all",
+   "input": {
+    "id": "empty_all",
+    "period": "all",
+    "exercise": "both",
+    "today": "2026-11-14",
+    "since": "2026-12-01"
+   },
+   "summary": {
+    "range": "전체",
+    "average": "–",
+    "matches": 0,
+    "totalReps": 0,
+    "matchesWithFeedback": 0
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 0,
+    "gap": "8px",
+    "note": "",
+    "slots": []
+   },
+   "empty": {
+    "title": "아직 경기 기록이 없어요",
+    "detail": "첫 대결을 마치면 여기에 날짜별로 쌓여요.",
+    "place": "below"
+   },
+   "issues": {
+    "base": "",
+    "blank": "경기를 마치면 자세 문제가 여기에 모여요.",
+    "rejected": [],
+    "report": []
+   }
+  },
+  {
+   "id": "no_report",
+   "input": {
+    "id": "no_report",
+    "period": "week",
+    "exercise": "squat",
+    "today": "2026-11-13",
+    "since": "2026-11-13"
+   },
+   "summary": {
+    "range": "이번 주 · 11/9 월 ~ 11/15 일",
+    "average": "16.0",
+    "matches": 1,
+    "totalReps": 16,
+    "matchesWithFeedback": 0
+   },
+   "chart": {
+    "kind": "day",
+    "columns": 7,
+    "gap": "8px",
+    "note": "",
+    "slots": [
+     {
+      "label": "월",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "화",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "수",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "목",
+      "reps": 0,
+      "future": false,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "3px",
+      "color": "#D5DAE3",
+      "border": "0"
+     },
+     {
+      "label": "오늘",
+      "reps": 16,
+      "future": false,
+      "now": true,
+      "valueShown": true,
+      "barHeight": "77px",
+      "color": "#141A26",
+      "border": "0"
+     },
+     {
+      "label": "토",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     },
+     {
+      "label": "일",
+      "reps": 0,
+      "future": true,
+      "now": false,
+      "valueShown": false,
+      "barHeight": "4px",
+      "color": "transparent",
+      "border": "1px dashed #A9B0BE"
+     }
+    ]
+   },
+   "empty": null,
+   "issues": {
+    "base": "경기 1판 중 자세 기록 0판 기준",
+    "blank": "이 기간 경기에는 자세 기록이 없어요.",
+    "rejected": [],
+    "report": []
+   }
+  }
+ ]
+}
