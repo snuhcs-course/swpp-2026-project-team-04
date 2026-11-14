@@ -549,3 +549,16 @@ opponentReps, departure, history 상태, 첫 판 isNewBest가 false인 것까지
 
 <!-- c0caf4e4 2026-11-14T17:06:17.697Z -->
 [Jinyoung Park, 11-15 02:06] "ㄱㄱㄱ"
+
+## 2026-11-15 · Jinyoung Park · feat/tutorial
+<!-- c0caf4e4 2026-11-14T17:10:48.993Z -->
+[Jinyoung Park, 11-15 02:10] "codex 리뷰 확인해봐"
+
+<!-- c0caf4e4 2026-11-14T17:19:06.189Z -->
+[Jinyoung Park, 11-15 02:19] "무거 ㅏ바뀐거임? 정확히?"
+
+<!-- c0caf4e4 2026-11-14T17:19:56.840Z -->
+[Jinyoung Park, 11-15 02:19] "아 그니까 KO 점수가 바뀌면 그때따라 바뀌게 ?"
+
+<!-- c0caf4e4 2026-11-14T17:20:03.102Z -->
+[Jinyoung Park, 11-15 02:20] "ㅇㅇ ㄱㄱㄱ"

@@ -6,6 +6,17 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-15 · code at commit `1b8bd87` · step `feat/tutorial` (team plan #16, Codex review of PR #60)
+Codex (on 8e53def) found one P2: the KO picture showed fixed scores (245 vs 145) while its label and bar follow
+`battleRules.koLead`. The leader's score is now the loser's plus `koLead` (`HelpPicture.koLoserScore`), so the label,
+the scores and the full bar agree for any lead; the screen is unchanged at today's 100.
+
+- **Tests:** `flutter test` 2768 passed, 0 failed, 10 skipped (pre-existing). `flutter analyze` no issues. J5 files still
+  100% line coverage.
+- **Changed test:** `test/widgets/help_pictures_test.dart` `the battle pages use the stage's characters` now checks the
+  label, both derived scores and the drawn bar (lime 100, pink 0).
+- **Reviewer:** APPROVE (round 4); its Minor (test the drawn bar, not the rule) done.
+
 #### 2026-11-15 · code at commit `e1289f7` · step `feat/tutorial` (team plan #16, one-line follow-up after the phone check)
 After trying the tutorial on the S23 Ultra, the user asked that no title or description wrap. Titles, lines and the
 first-use hint are now one line, shrunk to fit (`FittedBox` scale-down, `maxLines: 1`); long lines were shortened; the

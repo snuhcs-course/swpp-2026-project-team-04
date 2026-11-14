@@ -93,6 +93,8 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J5: the first mock wrote a quote as `\u0027` inside a string; the canvas turned it into a real quote and the page failed to load ("Unexpected identifier '자세'"). Fixed by quoting the string with double quotes.
 - J5: the reviewer (round 1) found that the rules-only tutorial does not cover all of the frozen UAT-6 criteria, including the combo, a game rule; the team chose to keep the scope (recorded in the task), so the gap is a decision, not a bug. It also found a hard-coded fever multiplier and example numbers that did not add up (17 reps and 245 points for tiles worth 190); fixed with the numbers taken from the game rules.
 
+- J5: Codex's second pass on PR #60 found that the KO picture's scores were fixed numbers while its label and bar followed `koLead`, the same "every number from the rules" gap the reviewer had found for the fever multiplier; fixed in 1b8bd87. Our own test had checked only the label.
+
 ## 5. Prompt Revisions
 - 11-11: added a standing rule to the harness after the Codex findings ("codex review PR 댓글도 반영해야"): Codex findings on every open PR are read at session start and before every push, fixed or answered with a reason, and replied to on their threads.
 - Before that, none: the one prompt was the task start; the open decision was asked and answered through a question dialog (flutter_tts vs recorded clips).
