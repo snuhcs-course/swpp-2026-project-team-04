@@ -155,7 +155,12 @@ class _Header extends StatelessWidget {
 }
 
 /// The picked character in my color at 1.5 times, idling with its feet on
-/// a lime floor, over the stage's grid; its name and line at the top left.
+/// a lime floor, over the stage's grid; its name at the top left and its
+/// line under the floor.
+///
+/// The line sits under the floor, not under the name band as in the design:
+/// at the top of a hop or a rock, 그루's ears and the headbands of 펭뚱이 and
+/// 물렁범 reached the line there (user, 2026-11-14).
 class _Preview extends StatelessWidget {
   const _Preview({required this.art, required this.caption});
 
@@ -171,6 +176,14 @@ class _Preview extends StatelessWidget {
   static const _floorSize = Size(192, 18);
   static const _floorTop = 244.0;
   static const _bandTop = 14.0;
+
+  /// The line's top: a little under the floor, so a larger text size grows
+  /// it down, away from the floor and the feet.
+  static final _captionTop = _floorTop + _floorSize.height + AppSpacing.s4;
+
+  /// The line grows with the text size up to this; beyond it, it would run
+  /// past the preview's bottom edge (user, 2026-11-14).
+  static const _captionMaxTextScale = 1.5;
 
   @override
   Widget build(BuildContext context) {
@@ -191,16 +204,16 @@ class _Preview extends StatelessWidget {
                 Positioned(
                   left: AppSpacing.s16,
                   top: _bandTop,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _NameBand(name: art.name),
-                      const SizedBox(height: AppSpacing.s8),
-                      Text(
-                        caption,
-                        style: Theme.of(context).textTheme.characterCaption,
-                      ),
-                    ],
+                  child: _NameBand(name: art.name),
+                ),
+                Positioned(
+                  left: AppSpacing.s16,
+                  top: _captionTop,
+                  child: Text(
+                    caption,
+                    textScaler: MediaQuery.textScalerOf(context)
+                        .clamp(maxScaleFactor: _captionMaxTextScale),
+                    style: Theme.of(context).textTheme.characterCaption,
                   ),
                 ),
                 Positioned(
@@ -238,6 +251,10 @@ class _Preview extends StatelessWidget {
 }
 
 /// The name on a white band slanted like the stage's, with an ink edge.
+///
+/// The name keeps the design's 30 at any system text size: a larger band
+/// reached the mouse's ears at the top of its hop (user, 2026-11-14). It is
+/// large already; the rest of the screen still follows the text size.
 class _NameBand extends StatelessWidget {
   const _NameBand({required this.name});
 
@@ -268,6 +285,7 @@ class _NameBand extends StatelessWidget {
           child: Text(
             name,
             maxLines: 1,
+            textScaler: TextScaler.noScaling,
             style: Theme.of(context).textTheme.characterName,
           ),
         ),
