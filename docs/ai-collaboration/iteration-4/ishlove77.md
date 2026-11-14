@@ -27,12 +27,21 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - A temporary dummy-data demo (34 battles) run on the Android emulator to see the values, then deleted (never committed): Claude Code.
 - Not used: the definitions of `weekDaily`, `streakDays` and `bestGain` (from 송우현, forwarded by the user) and the value names (송우현's data list document).
 
+### J4 `feat/squat_feedback` (team plan #12, P15 squat feedback, 2026-11-14)
+- Squat form analysis in `gymrats_app/lib/services/feedback/form_analyzer.dart` (squat branch: rejections with squat titles and tips, late depth loss with its own 0.15 line; push-up arm/hand/head rules skipped; `DepthTrend`, `ArmBalance`, `depthTrend`, `armBalance`), `FormReport.exercise` in `lib/models/form_report.dart`, and squat reports saved in `battle_viewmodel.dart` / `online_battle_screen.dart` (report lines only): Claude Code.
+- `FormFeedback` and `FeedbackViewModel.fromReport` (`lib/viewmodels/feedback_viewmodel.dart`), moving the chart values out of `FeedbackScreen`; the new `lib/viewmodels/result_viewmodel.dart` (previous best, recent 8, recent-5 average, next tip): Claude Code, from 송우현's data list.
+- Tests `test/models/feedback_form_report_test.dart`, `test/services/feedback/squat_form_analyzer_test.dart`, `test/viewmodels/result_viewmodel_test.dart`, the new group in `feedback_viewmodel_test.dart`, the `squatReport` fixture, and one test each in 송우현's `battle_viewmodel_test.dart` / `online_preparation_test.dart` (approved one-off exceptions): Claude Code.
+- Django API redeploy for J3 at the PM's request (rsync of the four changed server files, `gymrats-api` restart, checks): Claude Code, each step approved by the user.
+- Not used: how to compute the previous best (from the match list, user's choice) and leaving the bot squat judge to S4 (user's choice).
+
 ## 2. Prompt History
 [Jinyoung Park, 11-07] "task 수행해"
 [Jinyoung Park, 11-11] "그리고 이제 codex review PR 댓글도 반영해야 하거든? 그것도 harness에 추가하고"
 [Jinyoung Park, 11-14] "J3 task 수행해보자"
 [Jinyoung Park, 11-14] "아티팩트를 못본다고?"
 [Jinyoung Park, 11-14] "더미 데이터 만들어서 android studi에서 확인할 수 있게 해주삼"
+[Jinyoung Park, 11-14] "J4 task 수행해보자"
+[Jinyoung Park, 11-14] "다 되면 commit, push, pr"
 (Full log: [ishlove77-Prompt-Log.md](ishlove77-Prompt-Log.md))
 [Jinyoung Park, 11-12] "세팅할떄만 voice 놓고 게임도중에는 voice를 빼고 대신 점수에 따라나 실패 할떄 효과음을 넣는 식으로 하자. 때리는 효과음으로 하고, 죽기 직전이면 경고음 효과음을 넣을건데 시안을 몇개 뽑아줘. 브금도 포함해서"
 [Jinyoung Park, 11-12] "battle 소리가 3초 load되는데 artifact 보니까"
@@ -46,6 +55,8 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J2: the screen-recording analysis settled a disputed bug in minutes: the result screen frame showed Average 0 and the audio showed the buzz, alarm and gong at the right times, so the "missing Average sound" was a rep that was never graded Average, not an audio fault.
 - J3: server API, calculator, two view models and their tests in one session; every J3 client file at 100 % line coverage except the untouched lines of `form_analyzer.dart`, and the server stats tests pass on the first full run after one status-code fix.
 - J3: the emulator demo showed the values computed from 34 dummy battles (7-day 136 reps / 10 battles, 8-day streak, this-week average 13.8 = 124 / 9), which matched counting the dummy data by hand.
+- J4: before writing code, reading the judges showed that bot squat battles use `SquatDemoJudge`, which never rejects a rep, so the UAT-4 squat run (2 rejected) can only reproduce online for now; this was raised as a question instead of being found on the phone.
+- J4: the redeploy dry run (`rsync -n --checksum`) showed exactly the four J3 server files differing and no pending migration before anything on the shared server changed.
 
 ## 4. Hallucinations / Errors
 - `TtsSpeechEngine` first relied only on `flutter_tts`'s `awaitSpeakCompletion(true)` to learn when a line ends. The reviewer subagent read the plugin's Android source (`FlutterTtsPlugin.kt`) and found that the awaited `speak` never returns on a TTS error, which would have left every later setup hint pending. Fixed the same session: the engine also ends the utterance from the plugin's completion/cancel/error callbacks, and the service waits at most 8 s per line (`voice_guidance.dart`, `maxUtterance`), with tests for both. Cost: ~20 min.
@@ -60,6 +71,9 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J3: 송우현's data list is a Claude Docs document shared only with his account. Claude Code tried the artifact reader (it returned only the title "Claude Docs") and the docs reader (access denied), said so, and built from the task file and his three forwarded answers. When the document arrived as a file, comparing it found two gaps the build had missed: the growth type is `ScoreGrowth` in the document, and J3 also owes `opponentLeft` for past battles (a paragraph in the result-report section, not the archive table). Both fixed before the commit. Cost: one extra review round.
 - J3: the first server tests expected HTTP 400 for bad input; this API returns 422 (`gymrats/exceptions.py`). Caught by the test run. Cost: ~2 min.
 - J3: the reviewer found the day cut used the time's own zone (a UTC time would split days at 09:00 in Korea), that a battle stamped after now (phone clock ahead) counted in totals without a bar, that the stats view built an `IN` list as long as the user's battles (SQLite parameter limit), and in round 2 that `firstPlayedAt` could name a battle without a score. All fixed with tests.
+- J4: the squat branch reused the push-up good points, so a squat with evenly hanging arms got the push-up praise "양팔 균형 … 고르게 밀었어요", contradicting `armBalance` (unknown for squats). The reviewer subagent reproduced it with a scratch test; our fixture used very uneven arms and missed it. Fixed: the praise needs `armBalance == even`, +2 tests. Cost: one review round.
+- J4: a squat depth-loss test sat exactly on the 0.15 line (0.95 − 0.8 = 0.1499… in floating point) and failed; the test data was moved off the boundary. Cost: ~2 min.
+- J4: changing squat battles to save a report broke two of 송우현's tests that asserted the old behavior; they were fixed only after the user's approval and 송우현's agreement (one-off exceptions), not silently.
 
 ## 5. Prompt Revisions
 - 11-11: added a standing rule to the harness after the Codex findings ("codex review PR 댓글도 반영해야"): Codex findings on every open PR are read at session start and before every push, fixed or answered with a reason, and replied to on their threads.
@@ -72,6 +86,7 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - None so far in J1 (no manual-fix marker added).
 - None in J2 (no manual-fix marker added).
 - None in J3 (no manual-fix marker added).
+- None in J4 (no manual-fix marker added).
 
 ## 7. Takeaway for Iteration 5
 - TODO(Jinyoung Park): fill when the iteration closes.

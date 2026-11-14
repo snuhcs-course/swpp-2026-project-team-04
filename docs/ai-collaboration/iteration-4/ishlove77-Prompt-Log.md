@@ -352,3 +352,35 @@ branch 'docs/rename_gymmouse' set up to track 'origin/docs/rename_gymmouse'.</ba
 
 <!-- 2bd9fff5 2026-11-14T08:10:23.221Z -->
 [Jinyoung Park, 11-14 17:10] "다 되면 commit, push, pr"
+
+## 2026-11-14 · Jinyoung Park · feat/squat_feedback
+<!-- 154bbf4f 2026-11-13T19:21:07.960Z -->
+[Jinyoung Park, 11-14 04:21] "그 혹시 codex 지금 모델 뭐쓰지?"
+
+<!-- 2bd9fff5 2026-11-14T08:26:34.361Z -->
+[Jinyoung Park, 11-14 17:26] "ㅇㅋ 끝나면 알려줘"
+
+<!-- 2bd9fff5 2026-11-14T08:30:29.054Z -->
+[Jinyoung Park, 11-14 17:30] "우현이한테 보낼 메시지 써줘"
+
+<!-- 2bd9fff5 2026-11-14T08:30:50.878Z -->
+[Jinyoung Park, 11-14 17:30] "현우한테 보낼 재배포 메시지도 써줘"
+
+<!-- 2bd9fff5 2026-11-14T08:37:05.218Z -->
+[Jinyoung Park, 11-14 17:37] "codex 리뷰 끝난듯"
+
+<!-- 3a04aaa8 2026-11-14T08:45:29.998Z -->
+[Jinyoung Park, 11-14 17:45] "J4 task 수행해보자"
+
+<!-- 3a04aaa8 2026-11-14T09:08:34.244Z -->
+[Jinyoung Park, 11-14 18:08] "응 J4 진행하자"
+
+<!-- 3a04aaa8 2026-11-14T10:52:44.381Z -->
+[Jinyoung Park, 11-14 19:52] "형, 그 테스트(online_preparation_test.dart의 'squat result does not save or carry push-up form feedback')는 J4에서 스쿼트도 리포트를 저장하게 바뀌어서 옛 동작을 검사하고 있는 게 맞아요. 제 파일이지만 J4 PR 안에서 형이 새 동작에 맞게 고쳐 주세요. 일회성 예외로 해 주시면 돼요(예외 줄이랑 Decisions에 적어 주세요). 제가 따로 고치면 J4 머지 전에는 main에서 깨져서, 동작이랑 테스트가 같이 들어가야 해요.
+우현 message"
+
+<!-- 3a04aaa8 2026-11-14T10:56:39.825Z -->
+[Jinyoung Park, 11-14 19:56] "다 되면 commit, push, pr"
+
+<!-- 3a04aaa8 2026-11-14T10:57:21.574Z -->
+[Jinyoung Park, 11-14 19:57] "그전에 작동 확인을 할 수 는 없나"
