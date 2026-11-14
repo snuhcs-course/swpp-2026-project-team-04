@@ -336,6 +336,11 @@ void main() {
       expect(model.state.history, ResultHistoryPhase.failed);
       expect(model.state.recentScores, isEmpty);
       expect(model.state.myScore, 240);
+      // Everything the battle itself has stays, the bot rematch included.
+      expect(model.state.rematch?.difficulty, BotDifficulty.expert);
+      expect(model.state.nextTip, isNotNull);
+      expect(model.state.form, isNotNull);
+      expect(model.state.opponentReps, 5);
     });
 
     test('a retry after a failure loads again', () async {
