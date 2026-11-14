@@ -860,3 +860,49 @@ Claude Design 묶음을 .claude/design/gymrats-w4-home/ 에 풀어 두었다. W4
 
 <!-- Left out on purpose: the session summary written when this session ran out of context (11-14 15:20; not a prompt). Its key stays so a later export does not add it again. Cut: the client's injected browser notice in front of 2 prompts (11-14 13:53, 11-14 15:30; not the user's text). Two later answers in the agent's question dialogs (11-14: the band and line text sizes after review run 1, the home-only styles) are not in the export as prompts; the 10:34 dialog answers are. -->
 <!-- 21f5e71e 2026-11-14T06:20:20.758Z -->
+
+## 2026-11-15 · Woohyun Song · feat/ui_form_feedback
+<!-- ad2fd8c1 2026-11-14T21:55:00.981Z -->
+[Woohyun Song, 11-15 06:55] "<pasted_content id=\"668f\">
+W8 1부: 자세 피드백 화면을 B 색배합으로 다시 만들고 #58을 해결한다
+
+[배경]
+하네스가 2026-11-15에 업데이트됐다. .claude/ownership.json 과 .claude/team-plan.md 를 읽는다. W8(#18 feat/ui_form_feedback)은 자세 피드백 화면을 먼저 하고, 튜토리얼 디자인은 J5(feat/tutorial)가 머지된 뒤에 연다. 마감(2026-11-15 밤)까지 튜토리얼이 안 되면 W8은 피드백 화면만으로 PR을 연다. 이번 작업은 피드백 화면만 다룬다. help_*, tutorial_* 파일은 잠겨 있으니 건드리지 않는다.
+
+[브랜치]
+git fetch origin 후 최신 origin/main 에서 feat/ui_form_feedback 을 만든다.
+
+[기준]
+- 시안: .claude/design 아래 b-screens 폴더의 BFeedback.dc.html 이다(\"자세 피드백 전체 보기\", 폭 360·길이 2620 한 장 스크롤, 지금 코드를 B 색배합으로 다시 그린 것). 같은 폴더 README 의 근사 설명(손으로 그린 아이콘, 레이더 한 프레임, 그래프 계열은 실선·점선으로 구분, 그래서 그래프 아래 문장 두 개가 코드와 다르다는 것)도 읽는다.
+- B 색배합: 라임·주황 같은 강조색은 칸·막대·칩 같은 면에만 쓰고 글씨는 잉크다. 색·글꼴·간격은 app_theme.dart 토큰을 쓴다. app_theme.dart 는 W8 허용 파일이 아니므로, 새 토큰이나 글자 스타일이 꼭 필요하면 파일 끝에 더하는 최소 예외로 처리하고 보고한다.
+- 화면은 뷰모델이 준 값을 그리기만 한다. J4 코드는 고치지 않는다.
+
+[고칠 문제]
+1. 이슈 #58 (GitHub 이슈 본문도 gh 로 읽는다). J4(#57) 이후 스쿼트 판도 리포트를 저장해서 FeedbackScreen 이 스쿼트에도 열린다. 그런데 그래프 문장은 분석기의 판단을 쓰지 않고 화면이 푸쉬업 규칙으로 다시 판정한다.
+   - _depthSentence: 후반에 0.25(푸쉬업 기준선) 이상 줄지 않으면 깊이가 \"유지\"됐다고 쓴다. 스쿼트 분석기의 기준선은 선 자세 허벅지 길이의 0.15다. 그래서 0.15~0.25 줄어든 스쿼트는 카드에 \"후반 깊이 감소\", 그래프 아래에 \"깊이는 끝까지 유지됐어요\"가 함께 나온다.
+   - _elbowSentence: 모든 샘플로 양팔 각도를 비교해서, 팔을 늘어뜨린 스쿼트에도 \"좌우 각도가 비슷해요\"라고 쓴다. 분석기는 스쿼트에서 팔을 판단하지 않는다(ArmBalance.unknown).
+   - 섹션 제목이 스쿼트에서도 \"머리 하강 깊이 / 팔꿈치 각도\"다.
+   고치는 방법:
+   - 문장을 화면에서 다시 계산하지 않고 뷰모델 값으로 고른다. 값은 FeedbackViewModel / FeedbackViewModel.fromReport → state.form 이다(FormFeedback 의 depthTrend, armBalance, meanDepth, paceBuckets, sliceSeconds, repsPerSecond). sliceSeconds 는 KO로 짧아진 판 때문에 double 이다.
+   - armBalance 가 ArmBalance.unknown 이면 팔에 대해 판단하는 문장을 쓰지 않는다. 스쿼트에서 팔 칸을 어떻게 둘지(빼기 또는 짧은 안내)는 무난한 쪽으로 정하고 보고한다.
+   - 섹션 제목은 report.exercise 에 따라 스쿼트에 맞는 말로 바꾼다. 앱에 이미 있는 스쿼트 표현을 먼저 쓴다.
+   - 재현 테스트를 넣는다. 인정 회차 깊이가 0.95, 0.95, 0.80, 0.80인 스쿼트 리포트에서 카드와 그래프 문장이 모두 후반 깊이 감소를 말해야 한다. 같은 판정이 푸쉬업에서는 예전처럼 동작하는지도 테스트한다.
+2. 이슈 #59의 영향: AI 대결 스쿼트(SquatDemoJudge)는 프레임별 깊이를 넣지 않아 깊이 그래프 자료가 비어 있다. 회차별 최대 깊이는 있어서 분석과 표는 정상이다. 판정기는 상우가 고치므로 손대지 않고, 자료가 비면 그래프 자리가 깨지지 않게 처리한다(그래프를 숨기거나 짧은 안내).
+3. 푸쉬업과 스쿼트 둘 다 UAT-4 AC2(자세 피드백)를 만족해야 한다.
+
+[진행 방식]
+- 사용자가 자는 동안 돌 수 있다. 정해지지 않은 결정은 시안의 권장안이나 가장 무난한 쪽으로 정하고 멈추지 않는다. 그렇게 정한 것은 보고에 적는다.
+- W8 소유가 아닌 파일을 꼭 고쳐야 하면 최소 예외로 처리하고 보고한다.
+- 가능하면 실제 글꼴로 렌더해 BFeedback 과 견주고 결과를 .claude/design/out/w8/ 에 둔다.
+- 위젯 테스트: 푸쉬업·스쿼트, KO로 짧아진 판, 깊이 자료가 빈 스쿼트, 위의 #58 재현 경우, 스쿼트의 팔 칸과 제목, 큰 글씨 넘침.
+- flutter analyze, 전체 flutter test, 리뷰어 APPROVE, ownership_guard.py --check-diff 를 통과시키고 커밋한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다.
+- 푸시하고 PR을 연다. PR 본문에는 다음을 넣는다.
+  - Merge order: #18 (team plan); merge after: #12 feat/squat_feedback (merged), #16 feat/tutorial (대기 중)
+  - 튜토리얼 디자인은 J5 머지 뒤 이어서 한다는 것
+  - Fixes #58
+
+[보고]
+브랜치와 커밋, PR 번호, 만든 것, 질문하지 않고 정한 기본값, 확인 결과, 알아 둘 점, 폰에서 확인할 것.
+</pasted_content id=\"668f\">"
+
+<!-- Cut: the client's injected browser notice in front of the 11-15 06:55 prompt (not the user's text). -->

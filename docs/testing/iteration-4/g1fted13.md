@@ -534,3 +534,55 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, wit
 - Tapping the character opens 캐릭터 선택, with the spec's name; reduced motion does not move. Tests: `'tapping the character opens 캐릭터 선택; back returns home (W4 spec 6)'`, `'the whole room is one button that opens 캐릭터 선택, named for the character (W4 spec 6)'`, `'with less motion it shows the rest picture and stays still'`
 - Home fits without scrolling (part 1's tests, kept). Tests: `'a $label phone shows it all without scrolling'` (five phones, with and without the note)
 - Part 1: four menu rows, 캐릭터 opens 캐릭터 선택, 게임 시작 has no 캐릭터 row, the logo reads GYMMOUSE, no character covers the band or its line. Tests: `'the menu: 게임 시작, 캐릭터, 기록보관소, 환경설정, all alike'`, `'캐릭터 opens 캐릭터 선택; back returns home'`, `"no 캐릭터 row: the character is picked from home's menu"`, `'for all five, at every extreme of their idle motion (rig …'`
+
+#### 2026-11-15 · code at commit `8204458` · step W8 `feat/ui_form_feedback` part 1 (the form feedback screen in palette B, team order #18; issues #58 and #59)
+- **What changed:**
+  - The form feedback screen is redrawn from the palette B mockup (BFeedback): ink text on white panels, color only in the badges, swatches, reject squares and bars.
+  - It draws what `FeedbackViewModel` gives (`state.form`) and computes no verdict itself. Before, the chart sentences judged the report again with the push-up rules, so a squat that lost 0.15 of its depth read 후반 깊이 감소 on the card and 깊이는 끝까지 유지됐어요 under the chart (#58).
+  - Squats: 앉은 깊이 (서 있을 때 허벅지 길이 기준) and a new 엉덩이 각도 chart (the shoulder–hip–knee angle the app already saves) in place of 머리 하강 깊이 and the elbows; no elbow column. The arm sentence appears only when the analyzer judged the arms.
+  - An AI squat saves no depth over time (#59, the judge is S4's): a short note takes the depth chart's place and still gives the verdict.
+  - A round cut short by a KO is read in its own slices ("2.8초").
+  - The fault examples keep their shape at any width, a thin ink figure with the faulty part in amber.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `8204458`, without coverage: collecting coverage over the full suite hangs on this PC (a run over a few test files works). The layer numbers come from the PR's CI comment "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not measured on this Windows PC (full-suite coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
+| ViewModel | flutter_test, fakes | 90% | same TODO | 11/15 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | same TODO | 11/15 | same CI comment |
+| View | flutter_test (widget) | 75% | same TODO for the layer (the reviewer's coverage run of only the 5 W8 test files, on the tree committed as `8204458`: the W8 files 649 / 654 lines, 99.2%) | 11/15 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/15 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter test` had 2807 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W8 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W8 adds 4 test files (3 test files and 1 file of report builders) and changes 3 (the table below): 85 tests in the W8 files, plus the token check.
+- **The design check:** the mockup was rendered in headless Chrome with the app's own font files and compared side by side with the screen rendered by a temporary widget test with the same fonts and the mockup's numbers (the push-up page, a squat, an AI squat without depth, a 17 s KO round, 1.3× text). They match apart from the token roundings; the renders are local only.
+- **Mutation checks (by me, files restored):** the depth chart with a clip again (the end square cut, 261 < 266), the angle charts' floor fixed at 60, and the right inset at 0 were each caught by a test.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `8204458`: 13 changed files, all owned by W8 or under the user's one-off `app_theme.dart` exception (a `FeedbackText` extension appended at the end).
+  - The middle commit `06f2160` (the fault examples) was checked alone in a temporary worktree: `flutter analyze` clean, the 59 tests of the affected files pass.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Shortfalls:** layer coverage is a TODO until the CI comment. The tutorial screens (W8 part 2, UAT-6) wait for J5 `feat/tutorial`.
+- **Screen readers:** widget tests check that each chart is one picture with its name (머리 하강 깊이 그래프, 앉은 깊이 그래프, 엉덩이 각도 그래프, 팔꿈치 각도 그래프), the section titles as headers, and each badge's kind (고칠 점, 잘한 점, 참고). TalkBack on a real phone was **not** checked.
+- **Manual check:** TODO(Woohyun Song): the phone check (a push-up and a squat battle against the AI, then 자세 피드백 전체 보기 and a battle from 기록보관소), the phone model and the Android version.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/feedback_screen_test.dart` (updated: imports and one group at the end) | UAT-4 AC2 for push-ups and squats (4 counted, 2 rejected, the issue with its tip, a row per rep); #58: the squat with 0.95, 0.95, 0.80, 0.80 says the late loss on the card and under the chart, the same depths in a push-up stay kept, a push-up that lost 0.3 says so; too few reps: no verdict; squat titles, no elbow chart, sentence or column, the 엉덩이 각도 chart and its camera note; the push-up's elbow chart, legend and column; the arm sentence follows the analyzer (even, left, right, none when it cannot tell); the screen words the values it is given, never its own; opened with only a report it shows the view model's findings and follows a new report; a 17 s KO round; #59 with and without a verdict; nothing judged and nothing seen; palette B (no text in a fill color); push-up and squat at 1.3× / 2× on 360 × 780 with no overflow and the reason not cut |
+| View | `test/screens/match_feedback_screen_test.dart` (updated: +1) | the loaded report and the view model's feedback reach the screen as they are |
+| View | `test/widgets/feedback_charts_test.dart` (new) | the seconds' wording; the depth chart's span, scale (push-up and squat), dashed rep marks, amber squares only for rejected reps, a KO round, gaps, axis numbers not scaled; the elbow lines (solid ink, dashed gray); the hip line; the angle charts' floor under 60; the room on the right with the end square drawn whole and not clipped; the pace bars (lime, ink edge, none for an empty slice, at least 2, slice labels); the reject square's paint; the legend |
+| View | `test/widgets/feedback_parts_test.dart` (new) | the panel, the section title (header, the unit on the right or under the title), the stat (swatch only when given, the number shrinks on one line), the swatch, the three badges (colors, marks, screen-reader kinds, the mark not scaled), the finding card (ink title and numbers, quieter fix, the example only with a demo), the chart panel (one picture, the sentence, the legend), the note, the rep table (columns, swatches, ink verdicts, dashes for missing values, no elbow column for squats, fixed column widths and the whole reason wrapped at 2×, a gap before the right columns) |
+| View | `test/widgets/feedback_fault_clip_test.dart` (new) | every example in ink, amber only at fault, no pink; drawn to scale and standing on the bottom; the floor line; the amber part inside its ink edge and the line widths (6 and 9); the head at fault; the wall of the standing push-up; tap to pause and play |
+| View | `test/widgets/feedback_test_reports.dart` (new) | report builders for these tests (not a test file) |
+| Design | `test/design_tokens_test.dart` (updated) | `feedback_screen.dart`, `feedback_charts.dart`, `feedback_parts.dart` and `form_fault_clip.dart` in the token check |
+
+### Acceptance criteria → tests
+- UAT-4 AC2 (push-up and squat): counted and rejected reps, the top issues each with one fix, a per-rep record. Tests: `'UAT-4 AC2 (${exercise.name}): 4 counted and 2 rejected reps, the issue with its tip, and one row per rep'` (push-up and squat)
+- Requirements 5.6: depth and joint-angle charts and reps over time, for both exercises. Tests: `'a push-up keeps 머리 하강 깊이, the elbow chart, its legend and the elbow column'`, `'a squat shows its hip angle as its joint-angle chart, without a verdict'`, `'a round cut short by a KO is read in its own slices'`
+- #58: the chart sentences agree with the cards. Tests: `'#58: a squat that lost 0.15 says so on the card and under the chart'`, `'#58: the same depths in a push-up stay within its 0.25 line, on the card and under the chart'`, `'a push-up that lost 0.3 says so on the card and under the chart, as before'`, `'the screen words the values it is given, never its own'`
+- #58: no sentence judges the arms when the analyzer did not; squat titles. Tests: `'a squat is titled 앉은 깊이 and has no elbow chart, arm sentence or elbow column'`, `'when the analyzer cannot tell the arms apart, the sentence does not judge them'`, `'the arm sentence follows the analyzer: even, left or right bent more, as the cards say'`
+- #59: the chart's place does not break without depth over time. Tests: `'#59: an AI squat without depth over time says where the depths are and still gives the verdict'`, `'#59 with too few reps to judge: only where the depths are'`
+- Large text does not overflow or cut the reason. Tests: `'${exercise.name} at ${scale}x text on a 360 x 780 phone: nothing overflows down to the last rep'` (push-up and squat, 1.3× and 2×), `'with large text the number columns keep their widths and the whole reason wraps; nothing overflows'`
+- Palette B. Tests: `'palette B: every word is ink; color only fills badges, swatches, squares and bars'`, `'every example is ink on a light floor, amber only at fault, and nothing pink'`
