@@ -1272,7 +1272,7 @@ PR, 이슈, CI 코멘트를 읽거나 고칠 때는 gh CLI 를 쓴다. Chrome �
 [Woohyun Song, 11-15 19:35] "PR을 열기 전에 git fetch origin 후 origin/main 을 한 번 더 merge 한다(rebase 금지). 그 사이 main 에 #63(W8 피드백 화면), #65(스쿼트 실루엣, 대결 화면 파일 수정), #67(홈 다시하기 수정)이 머지됐다. 충돌 규칙은 처음과 같다. 코스 노트 세 파일은 양쪽 내용을 모두 남기고, design_tokens_test.dart 는 양쪽 경로를 모두 남겨 알파벳 순서를 지키고, app_theme.dart 는 서로 다른 추가를 모두 남긴다. 그 밖의 파일에서 충돌하면 멈추고 알린다. 머지 뒤 flutter analyze, 전체 flutter test, ownership_guard.py --check-diff 를 다시 통과시킨 다음 푸시하고 PR 을 연다."
 
 ## 2026-11-15 · Woohyun Song · feat/victory_animation (A6: no button in the battle setup)
-<!-- Cut: the client's injected browser notice in front of 1 prompt (11-15 21:28; not the user's text). -->
+<!-- Cut: the client's injected browser notice in front of 1 prompt (11-15 21:28; not the user's text). Two answers in the agent's question dialog (11-15 22:17: a new PR from the same branch; PR #68's body left as is) are not in the export as prompts. -->
 <!-- a200a357 2026-11-15T12:28:31.583Z -->
 [Woohyun Song, 11-15 21:28] "<pasted_content id=\"2e03\">
 A6(계획 외 작업): 대결 준비 화면의 버튼 없애기, AI 대결 '시작'과 온라인 '준비/준비 취소' (PR #68 에 더함)
