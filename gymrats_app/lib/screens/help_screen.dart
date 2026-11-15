@@ -134,7 +134,10 @@ class _HelpScreenState extends State<HelpScreen> {
                     _PageDots(
                       count: count,
                       current: number - 1,
-                      exercise: HelpRules.exerciseName(_tutorial.exercise),
+                      label: _tutorial.exercise == null
+                          ? '${HelpRules.sectionName(null)} 페이지'
+                          : '${HelpRules.sectionName(_tutorial.exercise)} '
+                                '$count장 중 $number장',
                     ),
                     if (_tutorial.isLast && onStart != null)
                       Padding(
@@ -194,7 +197,8 @@ class _HelpScreenState extends State<HelpScreen> {
 class _ExerciseTabs extends StatelessWidget {
   const _ExerciseTabs({required this.selected, required this.onSelected});
 
-  final ExerciseType selected;
+  /// Null on the page about the game: neither tab is chosen.
+  final ExerciseType? selected;
   final ValueChanged<ExerciseType> onSelected;
 
   @override
@@ -210,8 +214,12 @@ class _ExerciseTabs extends StatelessWidget {
               label: Text(HelpRules.exerciseName(exercise)),
             ),
         ],
-        selected: {selected},
-        onSelectionChanged: (choice) => onSelected(choice.single),
+        selected: {?selected},
+        emptySelectionAllowed: true,
+        // Tapping the chosen tab empties the choice: it stays where it is.
+        onSelectionChanged: (choice) {
+          if (choice.isNotEmpty) onSelected(choice.single);
+        },
       ),
     );
   }
@@ -249,7 +257,9 @@ class _Page extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.s20),
         Text(
-          '${HelpRules.exerciseName(page.exercise)} $number / $count',
+          page.exercise == null
+              ? HelpRules.sectionName(null)
+              : '${HelpRules.sectionName(page.exercise)} $number / $count',
           style: text.labelLarge?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.s4),
@@ -288,17 +298,19 @@ class _PageDots extends StatelessWidget {
   const _PageDots({
     required this.count,
     required this.current,
-    required this.exercise,
+    required this.label,
   });
 
   final int count;
   final int current;
-  final String exercise;
+
+  /// What a screen reader says, e.g. "푸시업 11장 중 3장".
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '$exercise $count장 중 ${current + 1}장',
+      label: label,
       child: ExcludeSemantics(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),

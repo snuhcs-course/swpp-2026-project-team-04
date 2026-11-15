@@ -38,16 +38,17 @@ class HelpPicture extends StatelessWidget {
   static const squatPassDepth = 0.75;
 
   /// The stage's characters for the battle pages: (mine, the opponent's).
-  static (String, String) charactersOf(ExerciseType exercise) =>
+  static (String, String) charactersOf(ExerciseType? exercise) =>
       switch (exercise) {
-        ExerciseType.pushUp => ('mouse', 'seal'),
         ExerciseType.squat => ('penguin', 'kangaroo'),
+        _ => ('mouse', 'seal'),
       };
 
   @override
   Widget build(BuildContext context) {
     final squat = page.exercise == ExerciseType.squat;
     final children = switch (page.step) {
+      TutorialStep.welcome => _welcome(),
       TutorialStep.intro => _intro(context, squat),
       TutorialStep.setup =>
         squat ? _squatSetup(context) : _pushUpSetup(context),
@@ -56,6 +57,7 @@ class HelpPicture extends StatelessWidget {
       TutorialStep.good ||
       TutorialStep.average ||
       TutorialStep.fail => _grade(context, squat),
+      TutorialStep.combo => _combo(context),
       TutorialStep.fever => _battle(context, fever: true),
       TutorialStep.ko => _ko(context),
       TutorialStep.report => _report(context, squat),
@@ -73,6 +75,110 @@ class HelpPicture extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// The whole game: RepBot squatting and doing a push-up toward the phone
+  /// between them.
+  List<Widget> _welcome() => [
+    const Positioned(left: 0, right: 0, top: 204, child: _Floor()),
+    const Positioned(
+      left: 16,
+      top: 34,
+      width: 100,
+      height: 172,
+      child: TutorialRepBot(figure: RepBotFigure.squatFront, depth: 0.5),
+    ),
+    const Positioned(left: 128, top: 140, child: _Phone()),
+    const Positioned(
+      left: 150,
+      top: 82,
+      width: 150,
+      height: 124,
+      child: TutorialRepBot(figure: RepBotFigure.pushUpSide, depth: 0.5),
+    ),
+    const Positioned(
+      left: 0,
+      right: 0,
+      top: 12,
+      child: Center(
+        child: _Pill(
+          label: '1:1 대결',
+          color: AppColors.ink,
+          textColor: AppColors.onInk,
+        ),
+      ),
+    ),
+  ];
+
+  /// A good rep and the next one close behind it, which adds the bonus.
+  List<Widget> _combo(BuildContext context) {
+    final (mine, theirs) = charactersOf(page.exercise);
+    return [
+      const Positioned(
+        left: 16,
+        right: 16,
+        top: 8,
+        child: _Hud(mine: 120, theirs: 85, time: '0:15', fever: false),
+      ),
+      const Positioned(left: 0, right: 0, top: 200, child: _Floor()),
+      Positioned(
+        left: 16,
+        top: 100,
+        child: CharacterFigure(
+          characterId: mine,
+          pose: BattlePose.attack,
+          scale: 0.65,
+        ),
+      ),
+      Positioned(
+        right: 16,
+        top: 100,
+        child: Transform.flip(
+          flipX: true,
+          child: CharacterFigure(
+            characterId: theirs,
+            side: BattleSide.opponent,
+            scale: 0.65,
+          ),
+        ),
+      ),
+      Positioned(
+        left: 0,
+        right: 0,
+        top: 92,
+        child: Center(
+          child: _Pill(
+            label: '+${HelpRules.good}',
+            color: AppColors.accent,
+            textColor: AppColors.ink,
+          ),
+        ),
+      ),
+      Positioned(
+        left: 0,
+        right: 0,
+        top: 124,
+        child: Center(
+          child: _Pill(
+            label: 'COMBO +${HelpRules.comboBonus}',
+            color: AppColors.warning,
+            textColor: AppColors.ink,
+          ),
+        ),
+      ),
+      Positioned(
+        left: 0,
+        right: 0,
+        top: 206,
+        child: Center(
+          child: Text(
+            '${HelpRules.comboSeconds}초 안에 다음 동작',
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: AppColors.textSecondary),
+          ),
+        ),
+      ),
+    ];
   }
 
   List<Widget> _intro(BuildContext context, bool squat) => [
@@ -430,7 +536,7 @@ class HelpPicture extends StatelessWidget {
   /// A result card in small, with the way to the form feedback.
   List<Widget> _report(BuildContext context, bool squat) {
     final text = Theme.of(context).textTheme;
-    final name = HelpRules.exerciseName(page.exercise);
+    final name = HelpRules.sectionName(page.exercise);
     final tiles = squat
         ? const [('5', 'Excellent'), ('8', 'Good'), ('3', '무효')]
         : const [('6', 'Excellent'), ('9', 'Good'), ('2', 'Average')];

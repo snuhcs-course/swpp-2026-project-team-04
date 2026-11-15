@@ -4,8 +4,9 @@ import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/tutorial_page.dart';
 
-/// The tutorial's pages and which one shows: every push-up page, then every
-/// squat page, each in the order a battle goes (team chat, 2026-11-14).
+/// The tutorial's pages and which one shows: one page about the game, then
+/// every push-up page, then every squat page, each in the order a battle
+/// goes (team chat 2026-11-14; the first page and combo, user 2026-11-15).
 ///
 /// The screen turns the pages and words them; this keeps the order and the
 /// place, so a swipe, 이전/다음 and the exercise tabs all agree.
@@ -16,11 +17,13 @@ class TutorialViewModel extends ChangeNotifier {
   /// The exercises in the order they are told.
   static const exercises = [ExerciseType.pushUp, ExerciseType.squat];
 
-  /// Every page for [rules], push-ups first.
+  /// Every page for [rules]: the game, then push-ups, then squats.
   static List<TutorialPage> pagesFor(BattleRules rules) => [
+    TutorialPage.welcome,
     for (final exercise in exercises)
       for (final step in TutorialStep.values)
-        if (step != TutorialStep.average || earnsAverage(exercise, rules))
+        if (step != TutorialStep.welcome &&
+            (step != TutorialStep.average || earnsAverage(exercise, rules)))
           TutorialPage(exercise, step),
   ];
 
@@ -38,7 +41,9 @@ class TutorialViewModel extends ChangeNotifier {
   int get index => _index;
 
   TutorialPage get page => pages[_index];
-  ExerciseType get exercise => page.exercise;
+
+  /// The exercise told on this page; null on the page about the game.
+  ExerciseType? get exercise => page.exercise;
   bool get isFirst => _index == 0;
   bool get isLast => _index == pages.length - 1;
 
@@ -51,9 +56,10 @@ class TutorialViewModel extends ChangeNotifier {
       pages.where((page) => page.exercise == exercise).length;
 
   /// Page [index] as its exercise counts it: (number from 1, count), e.g.
-  /// (3, 10) for "푸시업 3 / 10".
+  /// (3, 11) for "푸시업 3 / 11"; (1, 1) for the page about the game.
   (int, int) positionOf(int index) {
     final exercise = pages[index].exercise;
+    if (exercise == null) return (1, 1);
     return (index - firstIndexOf(exercise) + 1, countOf(exercise));
   }
 

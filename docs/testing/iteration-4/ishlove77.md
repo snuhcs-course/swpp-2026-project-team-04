@@ -6,6 +6,25 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-15 · code at commit `71f73aa` · step `feat/tutorial` (team plan #16, follow-up after #60: game page and combo pages)
+After #60 merged, the user and the PM asked for a first page about the whole game (push-ups or squats, 1v1 against a
+person or the bot) and a combo page per exercise, on the same branch with a new PR. The game page belongs to neither
+exercise (`TutorialPage.welcome`, counter "게임 소개", no tab chosen); the combo page sits after the grades and before
+fever, with the window and bonus from `battleRules` ("Good 이상을 1.5초 안에 이어서 하면 +5점이에요."; Average reps do not
+chain, `PlayerGameScore.addAverage`). 22 pages: game 1, push-up 11, squat 10. Branch at origin/main 665aa17.
+
+- **Tests:** `flutter test` 2771 passed, 0 failed, 10 skipped (pre-existing). `flutter analyze` no issues. J5 files 100%
+  line coverage (`tutorial_page` 7/7, `tutorial_viewmodel` 30/30, `help_rules` 49/49, `help_pictures` 228/228,
+  `help_screen` 122/122, `tutorial_rep_bot` 121/121); other layers unchanged.
+- **Changed tests:** `tutorial_page_test` (steps incl. welcome and combo, the game page), `tutorial_viewmodel_test` (22 and
+  21 pages, combo after Fail and before fever for both exercises, start on the game page, positions), `help_rules_test`
+  (game and combo words, `secondsText`), `help_pictures_test` (game page RepBots, combo pills and caption for both),
+  `help_screen_test` (walk through 22 pages, "게임 소개" counter and dots label, no tab chosen on the game page).
+- **Manual check:** all 22 pages rendered at 412×915 with the app's fonts: every line fits on one line; the combo caption
+  was moved below the floor after it overlapped a character. Not installed on the phone (not connected).
+- **Reviewer:** APPROVE with three Minor (combo line implied Average reps chain; the task file still listed the combo as
+  left out; the game page's dots label), all fixed.
+
 #### 2026-11-15 · code at commit `1b8bd87` · step `feat/tutorial` (team plan #16, Codex review of PR #60)
 Codex (on 8e53def) found one P2: the KO picture showed fixed scores (245 vs 145) while its label and bar follow
 `battleRules.koLead`. The leader's score is now the loser's plus `koLead` (`HelpPicture.koLoserScore`), so the label,

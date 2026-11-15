@@ -5,6 +5,7 @@ import 'package:gymrats_app/models/tutorial_page.dart';
 void main() {
   test('the steps go in the order of a battle', () {
     expect(TutorialStep.values, [
+      TutorialStep.welcome,
       TutorialStep.intro,
       TutorialStep.setup,
       TutorialStep.battle,
@@ -12,6 +13,7 @@ void main() {
       TutorialStep.good,
       TutorialStep.average,
       TutorialStep.fail,
+      TutorialStep.combo,
       TutorialStep.fever,
       TutorialStep.ko,
       TutorialStep.report,
@@ -30,5 +32,8 @@ void main() {
     expect(a, isNot(const TutorialPage(ExerciseType.squat, TutorialStep.ko)));
     expect(a == Object(), isFalse);
     expect(a.toString(), 'TutorialPage(squat, fever)');
+    expect(TutorialPage.welcome.exercise, isNull);
+    expect(TutorialPage.welcome.step, TutorialStep.welcome);
+    expect(TutorialPage.welcome.toString(), 'TutorialPage(null, welcome)');
   });
 }

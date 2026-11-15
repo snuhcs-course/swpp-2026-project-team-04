@@ -562,3 +562,33 @@ opponentReps, departure, history 상태, 첫 판 isNewBest가 false인 것까지
 
 <!-- c0caf4e4 2026-11-14T17:20:03.102Z -->
 [Jinyoung Park, 11-15 02:20] "ㅇㅇ ㄱㄱㄱ"
+
+## 2026-11-15 · Jinyoung Park · feat/tutorial
+<!-- c0caf4e4 2026-11-14T17:24:09.911Z -->
+[Jinyoung Park, 11-15 02:24] "codex 리뷰 확인해봐"
+
+<!-- c0caf4e4 2026-11-14T17:24:49.475Z -->
+[Jinyoung Park, 11-15 02:24] "<pasted_content id=\"a5fc\">
+Codex Review Summary: ❌ Failed
+This comment shows the latest Codex review activity on this pull request.
+
+Review    Status    Commit    Review trigger
+📝 Code Review    ❌ Failed 1 minute ago
+We couldn’t complete this review. Comment @codex review to try again.    0a48118    Manual request
+ℹ️ About Codex in GitHub
+</pasted_content id=\"a5fc\">"
+
+<!-- c0caf4e4 2026-11-14T17:29:32.528Z -->
+[Jinyoung Park, 11-15 02:29] "PM한테 보낼 메세지 다시 적어줘"
+
+<!-- c0caf4e4 2026-11-15T05:17:11.712Z -->
+[Jinyoung Park, 11-15 14:17] "푸쉬업 스쿼트 운동을 해서 다른 사람이나 봇하고 1v1대결이다가  이거 맨 앞에 한장 정도 추가하고, 콤보 기능도 설명해줘(이거는 다른 page에)"
+
+<!-- c0caf4e4 2026-11-15T05:24:06.090Z -->
+[Jinyoung Park, 11-15 14:24] "메세지 보낼거 보내줘"
+
+<!-- c0caf4e4 2026-11-15T05:48:06.657Z -->
+[Jinyoung Park, 11-15 14:48] "그냥 기존 브랜치에서 한다음 다시 pr d올리래"
+
+<!-- c0caf4e4 2026-11-15T06:15:35.060Z -->
+[Jinyoung Park, 11-15 15:15] "다 1줄안에 뜨지? 그러면 바로 push후 PR 생성"

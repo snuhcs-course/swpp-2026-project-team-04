@@ -71,24 +71,32 @@ void main() {
   final order = HelpRules.order;
   final pages = HelpRules.pages;
 
-  testWidgets('다음 turns through every push-up page, then every squat page', (
-    tester,
-  ) async {
+  testWidgets('다음 turns through the game page, every push-up page, then '
+      'every squat page', (tester) async {
     final handle = tester.ensureSemantics();
     await show(tester, HelpScreen(onStart: () {}));
     expect(find.text('게임 규칙'), findsOneWidget);
     for (var index = 0; index < pages.length; index++) {
       if (index > 0) await tapNext(tester);
       final page = order[index];
-      final name = HelpRules.exerciseName(page.exercise);
+      final name = HelpRules.sectionName(page.exercise);
       final first = order.indexWhere((p) => p.exercise == page.exercise);
       final count = order.where((p) => p.exercise == page.exercise).length;
       expect(shownPage(tester), page);
       expect(find.text(pages[index].title), findsOneWidget);
       expect(find.text(pages[index].body), findsOneWidget);
-      expect(find.text('$name ${index - first + 1} / $count'), findsOneWidget);
       expect(
-        find.bySemanticsLabel('$name $count장 중 ${index - first + 1}장'),
+        find.text(
+          page.exercise == null ? name : '$name ${index - first + 1} / $count',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(
+          page.exercise == null
+              ? '$name 페이지'
+              : '$name $count장 중 ${index - first + 1}장',
+        ),
         findsOneWidget,
       );
     }
@@ -101,10 +109,10 @@ void main() {
     await show(tester, HelpScreen(onStart: () {}));
     expect(find.text('이전'), findsNothing);
     await tapNext(tester);
-    expect(shownPage(tester).step, TutorialStep.setup);
+    expect(shownPage(tester).step, TutorialStep.intro);
     await tester.tap(find.text('이전'));
     await tester.pumpAndSettle();
-    expect(shownPage(tester).step, TutorialStep.intro);
+    expect(shownPage(tester), TutorialPage.welcome);
     expect(find.text('이전'), findsNothing);
   });
 
@@ -117,7 +125,9 @@ void main() {
         );
 
     await show(tester, HelpScreen(onStart: () {}));
-    expect(tabs().selected, {ExerciseType.pushUp});
+    // The page about the game belongs to neither exercise.
+    expect(find.text('게임 소개'), findsOneWidget);
+    expect(tabs().selected, isEmpty);
 
     await tester.tap(find.text('스쿼트'));
     await tester.pumpAndSettle();
@@ -126,7 +136,7 @@ void main() {
       const TutorialPage(ExerciseType.squat, TutorialStep.intro),
     );
     expect(tabs().selected, {ExerciseType.squat});
-    expect(find.text('스쿼트 1 / 9'), findsOneWidget);
+    expect(find.text('스쿼트 1 / 10'), findsOneWidget);
 
     // Back from the squat's first page is the push-up's last.
     await tester.tap(find.text('이전'));

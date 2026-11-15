@@ -95,6 +95,8 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 
 - J5: Codex's second pass on PR #60 found that the KO picture's scores were fixed numbers while its label and bar followed `koLead`, the same "every number from the rules" gap the reviewer had found for the fever multiplier; fixed in 1b8bd87. Our own test had checked only the label.
 
+- J5 follow-up: the first combo line ('1.5초 안에 이어서 하면 +5점') was written from the rule's numbers alone; the reviewer read `PlayerGameScore` and found that an Average rep neither earns nor keeps a combo, so the line now says 'Good 이상을'. A `dart format lib` also reformatted two teammates' files; the change was spotted in `git status` and reverted before any commit.
+
 ## 5. Prompt Revisions
 - 11-11: added a standing rule to the harness after the Codex findings ("codex review PR 댓글도 반영해야"): Codex findings on every open PR are read at session start and before every push, fixed or answered with a reason, and replied to on their threads.
 - Before that, none: the one prompt was the task start; the open decision was asked and answered through a question dialog (flutter_tts vs recorded clips).
