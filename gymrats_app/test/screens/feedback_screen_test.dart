@@ -244,6 +244,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('vs RepBot'));
+    await tester.pumpAndSettle();
+    // Since W5 (team decision 2026-11-08) the row opens the battle's report;
+    // its 자세 피드백 전체 보기 opens the feedback.
+    expect(find.byType(ResultScreen), findsOneWidget);
+    await tester.ensureVisible(find.text('자세 피드백 전체 보기'));
+    await tester.tap(find.text('자세 피드백 전체 보기'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(FeedbackScreen), findsOneWidget);

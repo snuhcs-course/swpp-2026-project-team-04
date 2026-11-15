@@ -10,7 +10,7 @@ import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/screens/feedback_stats_screen.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
-import 'package:gymrats_app/screens/match_feedback_screen.dart';
+import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
@@ -19,10 +19,12 @@ import 'package:gymrats_app/viewmodels/history_viewmodel.dart';
 import 'package:gymrats_app/widgets/archive_cards.dart';
 import 'package:gymrats_app/widgets/archive_match_row.dart';
 import 'package:gymrats_app/widgets/lobby_parts.dart';
+import 'package:gymrats_app/widgets/victory_overlay.dart';
 import 'package:provider/provider.dart';
 
 import '../support/feedback_fakes.dart';
 import '../support/fakes.dart';
+import '../support/form_report_fixtures.dart';
 import '../widgets/battle_test_support.dart';
 
 /// Saturday 2026-11-14, 15:00.
@@ -655,36 +657,65 @@ void main() {
       ),
     );
 
-    testWidgets('a row with feedback opens it; one without does nothing', (
-      tester,
-    ) async {
+    // Since W5 (team decision 2026-11-08): a row opens its battle's report,
+    // with the victory scene's end look only; the report links to the
+    // feedback when the battle has one.
+    MatchRecord? shownRecord(WidgetTester tester) =>
+        tester.widget<ResultScreen>(find.byType(ResultScreen)).record;
+
+    void expectEndLookOnly(WidgetTester tester) {
+      expect(find.byType(VictorySeat), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is VictoryOverlay && w.play),
+        findsNothing,
+      );
+    }
+
+    testWidgets('a row opens its battle\'s report, with the end look only: '
+        'with feedback the report links to it; without, the report opens '
+        'too', (tester) async {
+      final without = _record(9, 9, day: 14);
       repository
         ..historyPages = [
-          [withFeedback(2), _record(9, 9, day: 14)],
+          [withFeedback(2), without],
         ]
-        ..feedbackError = Exception('offline');
+        ..reports = {2: sampleReport()};
       await open(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.byType(ArchiveMatchRow).last);
       await tester.pumpAndSettle();
-      expect(find.byType(MatchFeedbackScreen), findsNothing);
+      expect(shownRecord(tester), same(without));
+      expectEndLookOnly(tester);
+      expect(find.text('자세 피드백 전체 보기'), findsNothing);
+      expect(repository.feedbackRequests, isEmpty);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(ArchiveMatchRow).first);
       await tester.pumpAndSettle();
-      expect(find.byType(MatchFeedbackScreen), findsOneWidget);
+      expect(shownRecord(tester)!.id, 2);
+      expectEndLookOnly(tester);
+      expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
       expect(repository.feedbackRequests, [2]);
     });
 
-    testWidgets('the full list opens feedback the same way', (tester) async {
-      repository.historyPages = [
-        [for (var id = 4; id >= 1; id--) withFeedback(id)],
-      ];
+    testWidgets('the full list opens a battle\'s report the same way', (
+      tester,
+    ) async {
+      repository
+        ..historyPages = [
+          [for (var id = 4; id >= 1; id--) withFeedback(id)],
+        ]
+        ..reports = {1: sampleReport()};
       await open(tester);
       await tester.pumpAndSettle();
       await tester.tap(find.text('전체 보기'));
       await tester.pumpAndSettle();
       await tester.tap(find.byType(ArchiveMatchRow).last);
       await tester.pumpAndSettle();
-      expect(find.byType(MatchFeedbackScreen), findsOneWidget);
+      expect(shownRecord(tester)!.id, 1);
+      expectEndLookOnly(tester);
+      expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
       expect(repository.feedbackRequests, [1]);
     });
   });

@@ -7,6 +7,7 @@ import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
@@ -1200,5 +1201,316 @@ void main() {
         CharacterRig.defaultId,
       );
     });
+  });
+
+  group('a past battle from 기록보관소 (W5, team decision 2026-11-08)', () {
+    setUpAll(loadBattleFonts);
+
+    /// A past battle as J4's record view model gives it.
+    ResultState past({
+      required String name,
+      bool? isOnline,
+      ExerciseType exercise = ExerciseType.squat,
+    }) => ResultState(
+      endedAt: _endedAt,
+      outcome: MatchOutcome.win,
+      exercise: exercise,
+      opponentName: name,
+      isOnline: isOnline,
+      myScore: 240,
+      opponentScore: 125,
+      myReps: 12,
+      opponentReps: 6,
+    );
+
+    test('다시 대결: a battle just played keeps J4\'s rematch; a past bot '
+        'battle reads the level from the bot\'s name, else 고수; a past '
+        'online battle opens the lobby', () {
+      const rematch = BotMatchRequest(
+        exercise: ExerciseType.pushUp,
+        difficulty: BotDifficulty.intermediate,
+      );
+      final played = ResultState(
+        endedAt: _endedAt,
+        outcome: MatchOutcome.win,
+        exercise: ExerciseType.pushUp,
+        opponent: const Opponent(name: 'RepBot', isBot: true),
+        opponentName: 'RepBot',
+        myScore: 1,
+        opponentScore: 0,
+        myReps: 1,
+        opponentReps: 0,
+        rematch: rematch,
+      );
+      expect(ResultScreen.rematchOf(played), same(rematch));
+      expect(ResultScreen.rematchOf(_state()), isNull);
+
+      for (final level in BotDifficulty.values) {
+        final again = ResultScreen.rematchOf(
+          past(name: level.opponentName, isOnline: false),
+        )!;
+        expect(again.difficulty, level);
+        expect(again.exercise, ExerciseType.squat);
+      }
+      expect(
+        ResultScreen.rematchOf(past(name: 'RepBot', isOnline: false))!
+            .difficulty,
+        BotDifficulty.expert,
+      );
+      expect(ResultScreen.rematchOf(past(name: '진영', isOnline: true)), isNull);
+      // Not known as online or not: a bot's name says it was a bot.
+      expect(
+        ResultScreen.rematchOf(past(name: BotDifficulty.beginner.opponentName))!
+            .difficulty,
+        BotDifficulty.beginner,
+      );
+      expect(ResultScreen.rematchOf(past(name: '진영')), isNull);
+    });
+
+    late _Routes routes;
+
+    /// Home, then 기록보관소's stand-in on top of it: a page whose button
+    /// opens [record]'s report as a row does ([reportTap]), with the app's
+    /// [repository].
+    Future<void> openPast(
+      WidgetTester tester,
+      MatchRecord record, {
+      UserRepository? repository,
+      String character = 'penguin',
+    }) async {
+      tester.view
+        ..physicalSize = const Size(360, 780)
+        ..devicePixelRatio = 1
+        ..padding = const FakeViewPadding(top: 24);
+      addTearDown(tester.view.reset);
+      routes = _Routes();
+      final characters = CharacterViewModel(store: MemoryCharacterStore());
+      addTearDown(characters.dispose);
+      await characters.choose(character);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<UserRepository>.value(
+              value: repository ?? FakeUserRepository(),
+            ),
+            ChangeNotifierProvider<CharacterViewModel>.value(value: characters),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            navigatorObservers: [routes],
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => Scaffold(
+                        body: TextButton(
+                          onPressed: reportTap(context, record),
+                          child: const Text('archive'),
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: const Text('home'),
+                ),
+              ),
+            ),
+            onGenerateRoute: (settings) => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => Scaffold(body: Text('${settings.name}')),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('home'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('archive'));
+      await tester.pump();
+    }
+
+    final sceneOverlay = find.byWidgetPredicate(
+      (widget) => widget is VictoryOverlay && widget.play,
+    );
+
+    for (final (name, record, scene) in [
+      (
+        'a KO win',
+        MatchRecord(
+          id: 7,
+          exercise: ExerciseType.pushUp,
+          opponentName: BotDifficulty.beginner.opponentName,
+          myReps: 12,
+          opponentReps: 6,
+          myScore: 240,
+          opponentScore: 125,
+          playedAt: _endedAt,
+          gameEnd: GameEnd.ko,
+          isOnline: false,
+        ),
+        VictoryResult.koWin,
+      ),
+      (
+        'an online win because the opponent left',
+        MatchRecord(
+          exercise: ExerciseType.squat,
+          opponentName: '진영',
+          myReps: 5,
+          opponentReps: 3,
+          playedAt: _endedAt,
+          isOnline: true,
+          opponentLeft: true,
+        ),
+        VictoryResult.leftWin,
+      ),
+      (
+        'a loss',
+        MatchRecord(
+          exercise: ExerciseType.pushUp,
+          opponentName: 'RepBot',
+          myReps: 4,
+          opponentReps: 9,
+          playedAt: _endedAt,
+        ),
+        VictoryResult.lose,
+      ),
+    ]) {
+      testWidgets('$name: the report opens on top with the end look only, '
+          'from its first frame; system back returns to 기록보관소', (tester) async {
+        await openPast(tester, record);
+        // The page's first frame, and every one after it.
+        for (var i = 0; i < 4; i++) {
+          expect(sceneOverlay, findsNothing);
+          await tester.pump(const Duration(milliseconds: 150));
+        }
+        await tester.pumpAndSettle();
+        final screen = tester.widget<ResultScreen>(find.byType(ResultScreen));
+        expect(screen.record, same(record));
+        expect(screen.result, isNull);
+        final seat = tester.widget<VictorySeat>(find.byType(VictorySeat));
+        expect(seat.result, scene);
+        expect(seat.characterId, 'penguin');
+        // On the seat, as after a battle.
+        expect(
+          tester.getTopLeft(find.byType(VictorySeat)),
+          Offset(
+            200,
+            tester.getRect(find.byType(ResultScoreRow)).top -
+                VictoryOverlay.seatSize.height,
+          ),
+        );
+        expect(find.bySemanticsLabel(RegExp('연출 건너뛰기')), findsNothing);
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text('archive'), findsOneWidget);
+      });
+    }
+
+    testWidgets('its values come from J4\'s record view model: the form '
+        'report from the app\'s repository, so the feedback link shows', (
+      tester,
+    ) async {
+      final report = sampleReport();
+      final repository = FakeUserRepository()..reports = {7: report};
+      await openPast(
+        tester,
+        MatchRecord(
+          id: 7,
+          exercise: ExerciseType.pushUp,
+          opponentName: BotDifficulty.beginner.opponentName,
+          myReps: 3,
+          opponentReps: 1,
+          playedAt: _endedAt,
+          isOnline: false,
+          feedbackSummary: const FeedbackSummary(
+            validReps: 3,
+            invalidReps: 0,
+            issueCount: 0,
+          ),
+        ),
+        repository: repository,
+      );
+      await tester.pumpAndSettle();
+      expect(repository.feedbackRequests, [7]);
+      expect(find.text('AI 봇 · 초보'), findsOneWidget);
+      routes.settings.clear();
+      await tester.tap(find.text('자세 피드백 전체 보기'));
+      await tester.pumpAndSettle();
+      expect(routes.names, [GymRatsApp.feedbackRoute]);
+      expect(routes.settings.single.arguments, same(report));
+    });
+
+    for (final myScore in [240, null]) {
+      testWidgets(
+        'a past battle ${myScore == null ? 'without a score '
+                  'leaves the latest battles out' : 'with a score is compared '
+                  'with the battles before it'}',
+        (tester) async {
+          final repository = FakeStatsUserRepository();
+          repository.stats.points = [
+            for (final (i, score) in const [80, 95, 110].indexed)
+              statsPoint(100 + i, DateTime(2026, 10, 28 + i, 20), score: score),
+          ];
+          await openPast(
+            tester,
+            MatchRecord(
+              id: 9,
+              exercise: ExerciseType.pushUp,
+              opponentName: 'RepBot',
+              myReps: 12,
+              opponentReps: 6,
+              myScore: myScore,
+              opponentScore: myScore == null ? null : 125,
+              playedAt: _endedAt,
+              isOnline: false,
+            ),
+            repository: repository,
+          );
+          await tester.pumpAndSettle();
+          expect(
+            find.byType(ResultRecentCard),
+            myScore == null ? findsNothing : findsOneWidget,
+          );
+        },
+      );
+    }
+
+    for (final (name, isOnline, route) in const [
+      ('a past bot battle', false, GymRatsApp.matchingRoute),
+      ('a past online battle', true, GymRatsApp.onlineBattleRoute),
+    ]) {
+      testWidgets('다시 대결 after $name opens $route from home', (tester) async {
+        await openPast(
+          tester,
+          MatchRecord(
+            exercise: ExerciseType.squat,
+            opponentName: isOnline ? '진영' : BotDifficulty.beginner.opponentName,
+            myReps: 5,
+            opponentReps: 3,
+            playedAt: _endedAt,
+            isOnline: isOnline,
+          ),
+        );
+        await tester.pumpAndSettle();
+        routes.settings.clear();
+        await tester.tap(find.text('다시 대결'));
+        await tester.pumpAndSettle();
+        expect(routes.names, [route]);
+        final argument = routes.settings.single.arguments;
+        if (isOnline) {
+          expect(argument, ExerciseType.squat);
+        } else {
+          final request = argument! as BotMatchRequest;
+          expect(request.exercise, ExerciseType.squat);
+          expect(request.difficulty, BotDifficulty.beginner);
+        }
+        // It starts from home, as any battle: 기록보관소 is not left under it.
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text('home'), findsOneWidget);
+        expect(find.text('archive'), findsNothing);
+      });
+    }
   });
 }
