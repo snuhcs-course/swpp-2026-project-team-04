@@ -487,15 +487,15 @@ This step puts the account's character on home and tidies home around it, in thr
   - A small room shrinks the character rather than scrolling the menu (question 10.2).
   - RepBot's widget and its test are deleted. The login page's logo reads GYMMOUSE too.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, without coverage. The coverage comes from the PR's CI comment on the pushed head `53ea881` (the code of `80b00d7` plus these notes), [run 43573595867](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43573595867).
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
-| ViewModel | flutter_test, fakes | 90% | same TODO | 11/14 | same CI comment |
-| Service | flutter_test, MockClient, fakes | 85% | same TODO | 11/14 | same CI comment |
-| View | flutter_test (widget) | 75% | same TODO | 11/14 | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 99.2% (510/514) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #55, commit `53ea881`, [run 43573595867](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43573595867) |
+| ViewModel | flutter_test, fakes | 90% | 96.8% (1189/1228) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 92.6% (2414/2606) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.4% (6761/7012) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/14 | same CI comment |
 
 - **Tests:** `flutter test` had 2606 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as before, and W4 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
@@ -508,9 +508,13 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, wit
 - **Other checks:**
   - `ownership_guard.py --check-diff`: ok on `80b00d7`: 36 changed files, all owned by W4 or under the user's one-off exceptions (W1 / W3 files of the user, `app_theme.dart`'s home styles, the login page and its test).
   - Server `pytest` was not run, because `server/` did not change.
-- **Shortfalls:** coverage is a TODO until the CI comment.
+- **Coverage:** from the CI comment on PR #55 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/55#issuecomment-6874331984)), commit `53ea881` (2026-11-14 17:09 KST; the app and server jobs both succeeded; [run 43573595867](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43573595867)). `53ea881` changes only these notes on top of `80b00d7`, and it is the head PR #55 was merged with.
+  - App total 95.7% (11144/11647); Other 94.1% (270/287).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2606 passed, 10 skipped, 0 failed), the same as on this PC.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` and `test/services/audio/background_music_test.dart`. Their tests still ran and passed in `flutter test`. So W4's one-line change to `settings_screen.dart` (the tag '03 / SETTINGS' → '04 / SETTINGS', under its exception) is not in the View number.
+- **Shortfalls:** none in coverage; every layer and the server meet their targets.
 - **Screen readers:** widget tests check the character button's name and role, that the drawing itself is not read, the '?' button's 게임 규칙, and the 캐릭터 row's name without the character. TalkBack on a real phone was **not** checked.
-- **Manual check (the user, on the phone, 2026-11-14):** the ears on 캐릭터 선택 were found during W2b's phone check; after part 1, home still scrolled (also on the S26+), which led to the home fit. The final build (part 2, with W2b and J2 from the merge) passed with no problems. TODO(Woohyun Song): the phone model and Android version of the final check, if not W2's record (Galaxy S26+, Android 17).
+- **Manual check (the user, 2026-11-14, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17, the same phone as W2's):** the ears on 캐릭터 선택 were found during W2b's phone check; after part 1, home still scrolled (also on the S26+), which led to the home fit. The final build (part 2, with W2b and J2 from the merge) passed with no problems.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
@@ -534,3 +538,147 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, wit
 - Tapping the character opens 캐릭터 선택, with the spec's name; reduced motion does not move. Tests: `'tapping the character opens 캐릭터 선택; back returns home (W4 spec 6)'`, `'the whole room is one button that opens 캐릭터 선택, named for the character (W4 spec 6)'`, `'with less motion it shows the rest picture and stays still'`
 - Home fits without scrolling (part 1's tests, kept). Tests: `'a $label phone shows it all without scrolling'` (five phones, with and without the note)
 - Part 1: four menu rows, 캐릭터 opens 캐릭터 선택, 게임 시작 has no 캐릭터 row, the logo reads GYMMOUSE, no character covers the band or its line. Tests: `'the menu: 게임 시작, 캐릭터, 기록보관소, 환경설정, all alike'`, `'캐릭터 opens 캐릭터 선택; back returns home'`, `"no 캐릭터 row: the character is picked from home's menu"`, `'for all five, at every extreme of their idle motion (rig …'`
+
+#### 2026-11-15 · code at commit `13afb2f` · step W6 `feat/ui_report_rules` (the result report in palette B, team order #13)
+This step redraws the result screen as the game report of the design (BResult, headline option A of BResultHeads). It was built on 2026-11-13 and 2026-11-14 against a list of values, and connected to 박진영's result view model (J4 #57) on 2026-11-15:
+- **The report:** the verdict on a marker band (KO 승리 / 승리 lime, KO 패배 / 패배 pink, 무승부 gray), the sub line (exercise, "vs RepBot <level>" or the nickname, the seconds), a reason line when the headline does not say it ("점수 같음 · 횟수로 승리/패배", "상대가 나갔어요", "연결이 끊겼어요"; no seconds when a player left), both scores with swatches and the user's reps, then the cards, and 홈으로 / 다시 대결. Accuracy and the grade counts left the screen (the design has neither).
+- **The cards, from J4's `ResultState`:** the personal best when this battle beat the best before it ("185점 → 240점 · 55점 올랐어요"), the latest battles (up to 8 bars, this one last, the mean of up to 5 battles before it as a dashed line, the same exercise, bot and online mixed), and the next tip (the first issue's fix and what it was, push-ups and squats), with 자세 피드백 전체 보기 when the battle has a form report.
+- **Empty and waiting states (my defaults, the design has none):** the first battle shows neither the best nor the latest battles (the user's rule of 2026-11-13: a card without values is left out); while the earlier battles load, one quiet card "이전 기록을 불러오는 중…" stands in their place (no 0, no empty chart); if they cannot be loaded, the comparison is left out and the rest stays. A battle without a game score (an old server) leaves out the latest battles too.
+- **Rules pages:** built here on 2026-11-13, then moved to 박진영's tutorial at the team meeting of 2026-11-15. Their files are back to `main`'s version on this branch, and the rules tests I had added (`test/widgets/help_pictures_test.dart`) left with them.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `13afb2f`, without coverage. The coverage comes from the PR's CI comment on the pushed head `bbba0c2` (the code of `13afb2f` plus these notes), [run 43640991023](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43640991023).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.3% (545/549) | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on PR #62, commit `bbba0c2`, [run 43640991023](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43640991023) |
+| ViewModel | flutter_test, fakes | 90% | 97.4% (1430/1468; W6 changes no view model) | 11/15 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 93.1% (2559/2750; W6 changes no service) | 11/15 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.5% (6935/7188) | 11/15 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` unchanged) | 11/15 | same CI comment |
+
+- **Tests:** `flutter test` had 2797 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W6 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - The review run measured the three result test files alone with `--coverage` (not the layer numbers): `result_screen.dart` 100%, `result_report.dart` 99.4%, `result_cards.dart` 99.3% (the two lines left are painters' `shouldRepaint`).
+- **Mutation checks (by me, 2026-11-14, before the J4 wiring; files restored byte for byte):** 9 deliberate faults in the reason line and the report were all caught.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `13afb2f`: 13 changed files, all owned by W6 or under the user's one-off W6 exceptions of 2026-11-13 (the old result words in `main_test.dart`, `battle_demo_test.dart`, `feedback_screen_test.dart`, the grade-count group of `game_panel_fonts_test.dart`, one comment in `battle_demo.dart`).
+  - Server `pytest` was not run, because `server/` did not change.
+- **Coverage:** from the CI comment on PR #62 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/62#issuecomment-6884336253)), commit `bbba0c2` (2026-11-15 06:17 KST; the app and server jobs both succeeded; [run 43640991023](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43640991023)). `bbba0c2` changes only these notes on top of `13afb2f`.
+  - App total 95.6% (11711/12251); Other 81.8% (242/296).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2797 passed, 10 skipped, 0 failed), the same as on this PC.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` and `test/services/audio/background_music_test.dart` (neither is a W6 file). Their tests still ran and passed in `flutter test`. The three result test files are in the numbers.
+- **Shortfalls:** none in coverage; every layer and the server meet their targets. J4 gives the best before and the average, not the gain and the difference: the screen subtracts them (noted for 박진영 after the cutoff).
+- **Screen readers:** widget tests check what the headline, the sub line (with its reason), the scores and the chart are read as. TalkBack on a real phone was **not** checked.
+- **Manual check:** at the team meeting of 2026-11-15 the result screen was checked in an online battle (before the J4 wiring) with no problem. This build (with the J4 wiring) has **not** been checked on a phone yet. It will be checked once, on a `main` build after the W5–W8 PRs are all merged: a new best, the latest battles, a squat tip and the loading line.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/result_screen_test.dart` (rewritten) | the mapping from J4's `ResultState` (outcome, KO from the end, a player leaving without seconds, a past battle's name, the new best and its gain, not beaten or matched, the latest battles and the difference, the first battle without them, no game score, loading, failed, the tip's headline / detail and no code, feedback); where the earlier battles come from (the app's repository when it keeps the list, else a source that fails); on the screen: time-up win / loss / draw for push-ups and squats with both scores, KO win / loss, equal scores decided by reps, the opponent leaving and the lost connection, the comparison as in the design, the first battle, the placeholder while loading and the cards in its place, a failed load, the push-up and squat tips, nothing to fix, the buttons (home, back, system back, 다시 대결 for a bot and online, one leaving button, the feedback and back), leaving while loading |
+| View | `test/widgets/result_report_test.dart` (new) | the headline's words, bands, slant and one line at larger text; the sub line (bot levels, a long nickname cut at 1.0 / 2×); the reason line and the seat at the right end; the score row (swatches, baseline, reps under the scores at 2×, rejected reps unknown); the header; the cards' order, gaps and the placeholder while loading; the buttons; no text in a fill color; a 360 × 780 and a short phone, 320 × 640 at 1.3 / 2× |
+| View | `test/widgets/result_cards_test.dart` (new) | the best card's words and colors; the latest-battles chart (bars from the right, this one in ink, the dashed average and its label above or below, the chip above / equal / below, dates, the screen-reader label); the tip card with and without a reason or the link; the placeholder (one muted line, no number, no chart) |
+| App flow | `test/main_test.dart`, `test/demo/battle_demo_test.dart`, `test/screens/feedback_screen_test.dart` (updated) | the result's new words only ('승리', 다시 대결, 자세 피드백 전체 보기) |
+| View | `test/widgets/game_panel_fonts_test.dart` (updated) | the group of the result's grade counts deleted (they left the screen) |
+| Design | `test/design_tokens_test.dart` (updated) | `result_screen.dart`, `result_cards.dart`, `result_report.dart` in the token check |
+
+### Acceptance criteria → tests
+- UAT-4 AC1: the result shows win, loss or draw with both scores, for push-ups and squats. Tests: `'a time-up ${squat ? 'squat' : 'push-up'} ${outcome.name}: "$headline", both scores, the seconds'` (6 cases), `'a KO ${outcome.name}: "$headline" and the time it took'`, `'${outcome.name}${byKo ? ' by KO' : ''}: "$word" in ink on …'`
+- An online battle a player left says why and shows no seconds. Tests: `'an online battle that ended by ${departure.name}: $headline, and why, without the seconds'`, `'a battle a player left, without its length: no seconds'`
+- The first battle does not look like a new best. Tests: `'the first battle: no new best and no comparison, the rest of the report as usual'`, `'no best card when the best was not beaten, or there was none (the first battle)'`
+- While loading, a placeholder, not 0 or an empty chart; a failed load leaves the comparison out. Tests: `'while they load: the placeholder, no 0 and no chart; then the cards in its place'`, `'a failed load: the comparison is left out, the rest of the report stays'`
+- The next tip shows for push-ups and squats. Tests: `"a push-up battle: its first issue's fix and what it was"`, `'a squat battle has its squat tip'`
+
+#### 2026-11-15 · code at commit `a2724d0` · step W7 `feat/ui_archive` (archive and statistics screens in the B palette, UAT-4 AC3, team order #17)
+This step redraws 기록보관소 and adds the 기간별 통계 screen. Both parts go up in one PR. The screens only draw what J3's view models give (`HistoryViewModel`, `FeedbackStatsViewModel`); J3's data code is unchanged.
+- **Part 1, the archive (2026-11-14, from the BArchive mockup):**
+  - The header has the back button, "03 / ARCHIVE", a faint "LOG" and the slanted title 기록보관소.
+  - The "최근 7일" card shows the week's reps and battles, the streak chip (hidden at 0) and 7 bars, today's in ink.
+  - The "점수 성장" card has 푸쉬업 / 스쿼트 tabs, the score line, the rise chip and an empty line when the exercise has no score yet.
+  - Below them come the newest 3 battles and "전체 보기", which opens every battle on the same view model with the old paging footer. A row shows the result, time, opponent, score, the "↑N" chip when the battle raised the best, and "상대 나감".
+  - Without a summary the cards hide; a failed summary shows 다시 시도 in their place.
+- **Part 2, the statistics (2026-11-14, from the W7-STATS mockup and its `w7_golden.json`):**
+  - Period tabs 전체 / 이번 달 / 이번 주 (this week first) and exercise chips 푸쉬업 / 스쿼트 / 둘 다 (both first). Tabs and chips change the numbers at once, without loading again.
+  - The summary card shows the range, the average counted reps per battle, battles and total reps, and the date–reps graph:
+    - this week: by day;
+    - this month: the month's days, the days to come dashed;
+    - all records: by day up to 14 days, else by week with a note.
+  - The form-issue card lists the rejected reps by reason and the form-report issues by how many battles had them. "나머지 N개 더 보기" opens a group of more than five rows.
+  - Loading, failed and empty states.
+  - The archive gets a lime "기간별 통계" pill at the right of its header (only when the account can give statistics). The 7-day card is named "최근 7일 · M/D ~ 오늘", and a day without battles is a thin 3-high line.
+- **Merge:** `origin/main` with J4 (#57) merged as `a2724d0`. No conflict, and no W7 file changed by the merge. J4's new squat titles in `form_analyzer.dart` keep the six titles the statistics screen repeats; the test that reads them from that file still passes.
+- **Second merge (2026-11-15):** `origin/main` with W6 (#62) and J5's tutorial follow-up (#64) merged as `837cb7c`.
+  - Conflicts only in `lib/theme/app_theme.dart` and in these three note files. W6 and W7 had both added `AppColors.inactive` (#A9B0BE): one token is kept, with one comment for both uses (W6's bars of the earlier battles, W7's dashed days to come). The notes keep both sides, W6 first.
+  - No W7 screen, widget or test file changed. `design_tokens_test.dart` and `auth_flow_test.dart` merged without a conflict (both sides kept).
+  - Checks on `837cb7c`: `flutter analyze` found no issues; `flutter test` had 2999 passed, 0 failed and 10 skipped (the same 10 as below); `ownership_guard.py --check-diff` ok (28 changed files); the reviewer subagent checked the resolution (APPROVE).
+  - Coverage on the new head: not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `a2724d0`, without coverage. The coverage comes from the PR's CI comment on the pushed head `a3c6680` (the code of `a2724d0` plus these notes), [run 43618528652](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43618528652).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.3% (545/549) | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on PR #61, commit `a3c6680`, [run 43618528652](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43618528652) |
+| ViewModel | flutter_test, fakes | 90% | 97.4% (1430/1468) | 11/15 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 93.1% (2559/2750) | 11/15 | same CI comment |
+| View | flutter_test (widget) | 75% | 97.0% (7980/8231) | 11/15 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` unchanged) | 11/15 | same CI comment |
+
+- **Tests:** `flutter test` had 2891 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W7 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - W7 adds 8 test files and 2 test data files, rewrites `test/screens/history_screen_test.dart`, and changes 3 more test files (the table below). Its 12 test files have 280 tests, all passing.
+- **The design checks:**
+  - `test/widgets/feedback_stats_golden.json` is a copy of the mockup's `w7_golden.json` (tests cannot read the design folder). The graph's slots and the screen's words are pure functions. All 11 golden cases match on the first run: the summary, every slot's label, reps, look and bar height, the empty notice, and the issue rows' names, counts and bar widths.
+  - Part 1's growth chart uses the mockup's own math (padding, headroom, dot limit), checked point by point.
+  - Renders with the app's fonts at 360 × 780 were compared with the mockup's shots by eye. The differences are the missing 24 px status bar in the test and the title's font (the app's page title, the user's choice).
+- **Mutation checks (by me, files restored byte for byte):** 32 deliberate faults were all caught.
+  - Part 1 (14): the streak chip at 0, today's bar color, the rise chip at 0, the gain not passed, the failed-summary branch, the number of recent rows, 전체 보기 without older pages, the KO word, an unknown online flag, the chart's headroom, and 4 in the time / opponent line.
+  - Part 2 (18):
+    - the graph: by day or by week, the 14-day cut, a day to come's bar height and dashes, the zero bar's color, the month labels near today, the week labels every other slot;
+    - the words and cards: the form-record base, unknown issue codes skipped, the 4% bar floor, the more button, the average's dash;
+    - the screen: the more rows reset on a new period, the loading skeleton's period, the tab order, the tabs' selected state, the pill without a statistics source, the archive's zero-day color.
+  - The 2 that first survived (the 4% floor, the more button with one hidden row) led to two edge tests.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `a2724d0`, 25 changed files. All are W7's own files or under the user's one-off exceptions: the theme's new colors and text styles, one line in `test/auth_flow_test.dart` ('경기 기록' → '기록보관소'), and one deleted group in `test/widgets/match_record_card_test.dart` (it showed `MatchRecordCard` on the old history list, which no screen uses now).
+  - Server `pytest` was not run, because `server/` did not change.
+- **Coverage:** from the CI comment on PR #61 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/61#issuecomment-6881251918)), commit `a3c6680` (2026-11-15 02:12 KST; the app and server jobs both succeeded; [run 43618528652](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43618528652)). `a3c6680` changes only these notes on top of `a2724d0`.
+  - App total 96.0% (12770/13308); Other 82.6% (256/310).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2891 passed, 10 skipped, 0 failed), the same as on this PC.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` and `test/services/audio/background_music_test.dart` (neither is a W7 file). Their tests still ran and passed in `flutter test`.
+- **Known limitation (user, 2026-11-14):** battles stored before the issue codes were saved have a form record but no `issues`. They count in '자세 기록 있는 N판' without adding issue counts; battles after the server redeploy are exact. Left as is.
+- **Shortfalls:** none in coverage; every layer and the server meet their targets. A row without form feedback still does nothing when tapped (a past battle's report from the archive comes after J4's data, in a later step).
+- **Screen readers:**
+  - Widget tests check the spoken lines: the tabs and chips with their selected state, the summary as one line, the graph as one sentence with the dates spelled out, and each issue row as one line.
+  - They also check the live regions of the loading, failed and empty states, the 다시 시도 button, the expanded state of 더 보기, and the pill's name.
+  - TalkBack on a real phone was **not** checked.
+- **Manual check (2026-11-15, the user, on the Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17 from my earlier notes):** all passed. The user checked:
+  - 기록보관소: the two cards and the newest 3 battles, the name "최근 7일 · M/D ~ 오늘" and today's bar, and the thin line on a day without battles;
+  - 점수 성장: the 푸쉬업 / 스쿼트 tabs and the empty-state line;
+  - 전체 보기: loading more battles and going back;
+  - the 기간별 통계 pill opening 이번 주 · 둘 다, and switching the tabs and chips;
+  - 이번 달's dashed days to come, and 전체's slots by day and by week;
+  - 자세 문제's 더 보기 and 접기;
+  - after two or more battles in the order of UAT-4 step 3, the statistics match each battle's report;
+  - large text and a long online nickname.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/archive_chart_test.dart` (new) | the growth chart's layout from the mockup's math (padding, headroom, dots up to 12 points), the week's bar heights incl. the 3-high line for a day without battles, the exercise icons and the pill's icon |
+| View | `test/widgets/archive_cards_test.dart` (new) | the 7-day card (totals, streak chip hidden at 0, bars, 오늘 in ink, the "최근 7일 · M/D ~ 오늘" name), the growth card (tabs, rise chip, caption, first-played date, empty line), the retry card |
+| View | `test/widgets/archive_match_row_test.dart` (new, real fonts) | the result line (KO, 승 / 패 / 무), time (오늘, 어제, date), online opponent, score, the gain chip, 상대 나감; one line when it fits, else the opponent under the time with no dangling dot, at larger text |
+| View | `test/screens/history_screen_test.dart` (rewritten) | the header, the pill (place, look, opens 이번 주 · 둘 다, hidden without a source, a narrow phone at 1.3× text), both cards, the newest 3 battles, gain chips, the tabs, the summary missing / loading / failed, the empty and failed states, 전체 보기 and its paging, rows opening feedback, fit at 360 × 780, no overflow at larger text |
+| View | `test/widgets/feedback_stats_slots_test.dart` (new) + `feedback_stats_golden.json`, `feedback_stats_golden.dart` (new) | the 11 golden cases × summary, chart, empty notice and issue rows; the slot edge cases (over 26 weeks still by week, a 28-day February, one slot, the least bar), the loading skeletons, the calendar helpers; the spoken summary and graph sentences, the row labels, the six form-report titles read from `form_analyzer.dart` |
+| View | `test/widgets/feedback_stats_chart_test.dart` (new) | bars by look (value, today, zero, dashed future, skeleton), values and labels, the spoken sentence, a notice taller than the graph makes room, repaint rules |
+| View | `test/widgets/feedback_stats_filters_test.dart` (new) | the period tabs and exercise chips: order, names, selection, taps, 44 touch areas, screen-reader groups and selected state |
+| View | `test/widgets/feedback_stats_cards_test.dart` (new) | the summary card's numbers and their place, the empty notice over or under the plot, the issue card's groups, bar widths (4% floor, 100% cap), "나머지 N개 더 보기" / 접기 and its expanded state, the loading and failed cards |
+| View | `test/screens/feedback_stats_screen_test.dart` (new) | the W7-STATS section 10 list: opening on 이번 주 · 둘 다 with the mockup's numbers, switching without loading again, loading (a tab picked meanwhile, reduced motion), failed (the reasons, 다시 시도), empty (this week, this month, all, no form records), more rows closing on a new period or exercise, graph slots by day / week, the spoken lines, the first screen at 360 × 780, no overflow at larger text in every state |
+| App flow | `test/auth_flow_test.dart` (updated) | one check: the archive's title is now 기록보관소 |
+| View | `test/widgets/match_record_card_test.dart` (updated) | the group that showed `MatchRecordCard` on the old history list removed (no screen uses it now) |
+| Design | `test/design_tokens_test.dart` (updated) | the 9 new screen and widget files in the token check |
+
+### Acceptance criteria → tests
+- UAT-4 AC3: from the archive the statistics open on this week and both exercises. Tests: `'it opens the statistics on this week and both exercises'`, `"this week and both exercises are picked, with the mockup's week_both numbers"`
+- All records, this month and this week narrow the battles; push-ups and squats are listed apart. Tests: `'tabs and chips switch the values without loading again'`, `'summary: range, average, battles, reps, with a form record'` (11 golden cases)
+- The average counted reps, a date–reps graph and how often each form issue occurred. Tests: `'chart: kind, slots, gap, and per slot the label, reps, future, now, value, bar height and look'`, `'form issues: base, blank line, and both groups in order with names, counts and bar widths'`, `'every record: by week over 14 days, with the note'`, `'every record: by day up to 14 days, no note'`
+- Loading, failed and empty states. Tests: `'gray boxes and 불러오는 중; a tab picked meanwhile stays picked once loaded'`, `'the reason, 다시 시도 and the note; the tabs stay, and 다시 시도 loads again'`, `"this week without battles: the notice over the plot, the dashes, and the form card's one line"`, `'every record without battles: the notice under the numbers, no graph'`
+- The archive (part 1): the last 7 days, the growth and the newest battles, and 다시 시도 when the summary fails. Tests: `'the last 7 days, the growth and the newest three battles'`, `'the gain chip only on the battles that raised the best'`, `'the 스쿼트 tab switches the graph to squats'`, `"a failed summary: 다시 시도 in the cards' place, the list stays, and the retry brings the cards"`
+- Readable at larger text on a 360-wide phone. Tests: `'no overflow at ${scale}x text on a 360 wide phone, in every state'`, `'on a narrow phone with large text the tag is cut, the pill stays whole'`
