@@ -6,9 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
+import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_phone_angle.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
 
 import '../support/fakes.dart';
@@ -25,7 +27,11 @@ class _PopCounter extends NavigatorObserver {
 
 void main() {
   late _PopCounter popCounter;
-  setUp(() => popCounter = _PopCounter());
+  setUp(() {
+    popCounter = _PopCounter();
+    PhoneTiltMonitor.debugUsePlatformStream(const Stream.empty());
+  });
+  tearDown(() => PhoneTiltMonitor.debugUsePlatformStream(null));
 
   late FakeCameraService camera;
   late FakePoseEstimator estimator;
@@ -90,6 +96,22 @@ void main() {
   FilledButton startButton(WidgetTester tester) => tester.widget(
     find.ancestor(of: find.text('Start'), matching: find.byType(FilledButton)),
   );
+
+  for (final exercise in ExerciseType.values) {
+    testWidgets('setup shows the phone angle only in UAT for $exercise', (
+      tester,
+    ) async {
+      await open(tester, exercise: exercise);
+      final angle = find.text('폰 각도: 측정 중');
+      expect(angle, uatPhoneAngleEnabled ? findsOneWidget : findsNothing);
+      if (uatPhoneAngleEnabled && exercise == ExerciseType.squat) {
+        final text = tester.getRect(angle);
+        final panel = tester.getRect(find.byType(PoseSetupPanel));
+        expect(text.overlaps(panel), isFalse);
+        expect(text.top, greaterThanOrEqualTo(0));
+      }
+    });
+  }
 
   testWidgets('push-up camera guide occupies the lower half in portrait', (
     tester,
