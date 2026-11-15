@@ -286,7 +286,10 @@ class _BattleScreenState extends State<BattleScreen>
     final guide = settingUp && running
         ? BattleCameraView.setupGuide(
             widget.matchup.exercise,
-            ready: state.setup.isReady,
+            ready:
+                state.setup.isReady &&
+                state.guideAligned &&
+                state.setup.reason == SetupReason.ready,
           )
         : null;
     final Widget camera = state.phase == BattlePhase.failed
@@ -333,7 +336,9 @@ class _BattleScreenState extends State<BattleScreen>
       onSwitchCamera: setup && running && counter.canSwitchCamera
           ? () => unawaited(counter.switchCamera())
           : null,
-      setupProgress: setup ? state.setup.readyProgress : null,
+      setupProgress: setup
+          ? (state.guideAligned ? state.setup.readyProgress : 0)
+          : null,
       onShowResult: _openResult,
     );
   }
@@ -346,7 +351,13 @@ class _BattleScreenState extends State<BattleScreen>
     BattleStagePhase phase,
   ) => switch (phase) {
     BattleStagePhase.setup =>
-      state.phase == BattlePhase.setup ? state.setup.message : null,
+      state.phase != BattlePhase.setup
+          ? null
+          : widget.matchup.exercise == ExerciseType.squat &&
+                state.setup.reason == SetupReason.ready &&
+                !state.guideAligned
+          ? '실루엣 안에 몸을 맞춰 주세요.'
+          : state.setup.message,
     BattleStagePhase.playing
         when widget.matchup.exercise == ExerciseType.squat &&
             state.phase == BattlePhase.playing =>

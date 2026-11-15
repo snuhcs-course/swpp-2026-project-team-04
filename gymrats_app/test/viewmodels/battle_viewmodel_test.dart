@@ -828,6 +828,149 @@ void main() {
     );
   });
 
+  test('squat battle requires a continuous aligned 3-second hold', () async {
+    const squatMatchup = Matchup(
+      exercise: ExerciseType.squat,
+      playerName: '우현',
+      opponent: Opponent(name: 'RepBot', isBot: true),
+    );
+    final phone = PhoneTiltMonitor(samples: const Stream.empty())
+      ..isPropped = true
+      ..isStill = true;
+    final squatCounter = RepCounterViewModel(
+      camera: camera,
+      estimator: estimator,
+      judge: judge,
+      clock: () => now,
+      roundLength: const Duration(days: 1),
+      phoneTilt: phone,
+    );
+    final squat = BattleViewModel(
+      matchup: squatMatchup,
+      counter: squatCounter,
+      opponent: opponent,
+      repository: repository,
+      sound: sound,
+      clock: () => now,
+      setup: SetupChecker(
+        exercise: ExerciseType.squat,
+        config: const SetupConfig(
+          readyDelay: Duration.zero,
+          dropDelay: Duration.zero,
+        ),
+        clock: () => now,
+      ),
+    );
+    await squat.start();
+    final good = standingFrame(showHips: true);
+    final outside = PoseFrame(
+      imageWidth: good.imageWidth,
+      imageHeight: good.imageHeight,
+      keypoints: {
+        for (final e in good.keypoints.entries)
+          e.key: Keypoint(
+            landmark: e.key,
+            x: e.value.x + 200,
+            y: e.value.y,
+            likelihood: e.value.likelihood,
+          ),
+      },
+    );
+    Future<void> send(int ms, PoseFrame pose) async {
+      now = Duration(milliseconds: ms);
+      estimator.frames.add(
+        PoseFrame(
+          imageWidth: pose.imageWidth,
+          imageHeight: pose.imageHeight,
+          keypoints: pose.keypoints,
+        ),
+      );
+      camera.emit();
+      await pumpEventQueue();
+    }
+
+    await send(0, outside);
+    expect(squat.state.setup.reason, SetupReason.ready);
+    expect(squat.state.guideAligned, isFalse);
+    expect(squat.state.setup.isReady, isFalse);
+    expect(squat.state.startIn, isNull);
+    for (final ms in [100, 600, 1100]) {
+      await send(ms, good);
+    }
+    expect(squat.state.guideAligned, isTrue);
+    squat.startNow();
+    expect(squat.state.started, isFalse);
+    await send(1200, outside);
+    expect(squat.state.startIn, isNull);
+    for (final ms in [1300, 1800, 2300, 2800, 3300, 3800, 4200]) {
+      await send(ms, good);
+    }
+    expect(squat.state.started, isFalse);
+    await send(4300, good);
+    expect(squat.state.started, isTrue);
+    squat.dispose();
+  });
+
+  test('a stalled squat battle stream clears readiness', () async {
+    const squatMatchup = Matchup(
+      exercise: ExerciseType.squat,
+      playerName: '우현',
+      opponent: Opponent(name: 'RepBot', isBot: true),
+    );
+    final phone = PhoneTiltMonitor(samples: const Stream.empty())
+      ..isPropped = true
+      ..isStill = true;
+    final squatCounter = RepCounterViewModel(
+      camera: camera,
+      estimator: estimator,
+      judge: judge,
+      clock: () => now,
+      roundLength: const Duration(days: 1),
+      phoneTilt: phone,
+    );
+    final squat = BattleViewModel(
+      matchup: squatMatchup,
+      counter: squatCounter,
+      opponent: opponent,
+      repository: repository,
+      sound: sound,
+      clock: () => now,
+      setup: SetupChecker(
+        exercise: ExerciseType.squat,
+        config: const SetupConfig(readyDelay: Duration.zero),
+        clock: () => now,
+      ),
+    );
+    await squat.start();
+    estimator.frames.add(standingFrame(showHips: true));
+    camera.emit();
+    await pumpEventQueue();
+    expect(squat.state.guideAligned, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 850));
+    expect(squat.state.guideAligned, isFalse);
+    expect(squat.state.startIn, isNull);
+    expect(squat.state.started, isFalse);
+    // Detector failures notify with the old lastFrame retained by the counter.
+    now = const Duration(milliseconds: 1000);
+    estimator.frames.add(null);
+    camera.emit();
+    await pumpEventQueue();
+    now = const Duration(milliseconds: 1600);
+    estimator.frames.add(null);
+    camera.emit();
+    await pumpEventQueue();
+    expect(squat.state.guideAligned, isFalse);
+    expect(squat.state.startIn, isNull);
+    expect(squat.state.setup.isReady, isFalse);
+    now = const Duration(milliseconds: 1700);
+    estimator.frames.add(standingFrame(showHips: true));
+    camera.emit();
+    await pumpEventQueue();
+    expect(squat.state.guideAligned, isTrue);
+    expect(squat.state.startIn, const Duration(seconds: 3));
+    squat.dispose();
+  });
+
   group('the setup before the round', () {
     late BattleViewModel battle;
     late RepCounterViewModel counter;
@@ -1240,10 +1383,13 @@ void main() {
         await frameAt(3, standingFrame());
         expect(battle.state.setup.isReady, isFalse);
         expect(battle.state.setup.reason, SetupReason.missingParts);
-        await frameAt(4, standingFrame(showHips: true));
-        await frameAt(5.5, standingFrame(showHips: true));
+        for (final t in [4.0, 4.5, 5.0, 5.5]) {
+          await frameAt(t, standingFrame(showHips: true));
+        }
         expect(battle.state.setup.isReady, isTrue);
-        await frameAt(8.5, standingFrame(showHips: true));
+        for (final t in [6.0, 6.5, 7.0]) {
+          await frameAt(t, standingFrame(showHips: true));
+        }
         expect(battle.state.started, isTrue);
       },
     );
@@ -1261,9 +1407,9 @@ void main() {
           BodyLandmark.rightHip: (470, 680),
         },
       );
-      await frameAt(1, standing());
-      await frameAt(2.5, standing());
-      await frameAt(5.5, standing());
+      for (final t in [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]) {
+        await frameAt(t, standing());
+      }
       expect(battle.state.started, isTrue);
       // Beginning the round took the phone's angle; it moves after that.
       phone.isDisturbed = true;

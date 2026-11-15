@@ -98,6 +98,9 @@ abstract final class AppColors {
   /// A chart's past values beside the one in [ink]: the archive's day bars
   /// and its graph's base line (3:1 on [card]).
   static const chartBar = Color(0xFF8A93A5);
+
+  /// Green outline for a valid standing setup silhouette.
+  static const squatGuideReady = Color(0xFF4CD964);
 }
 
 /// RepBot, the robot doing push-ups in the lobby, as designed: its own

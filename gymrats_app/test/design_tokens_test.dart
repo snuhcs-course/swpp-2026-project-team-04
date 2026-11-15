@@ -58,6 +58,7 @@ const _checked = [
   'lib/widgets/lobby_menu_item.dart',
   'lib/widgets/lobby_parts.dart',
   'lib/widgets/match_record_card.dart',
+  'lib/widgets/pose_silhouette_squat.dart',
   'lib/widgets/result_cards.dart',
   'lib/widgets/result_report.dart',
   'lib/widgets/safe_warning_dialog.dart',

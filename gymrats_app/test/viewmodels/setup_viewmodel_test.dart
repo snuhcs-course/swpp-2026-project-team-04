@@ -341,6 +341,97 @@ void main() {
     },
   );
 
+  test('squat alignment gates and resets the three-second countdown', () async {
+    final squat = SetupViewModel(
+      exercise: ExerciseType.squat,
+      camera: camera,
+      estimator: estimator,
+      clock: () => now,
+      phoneTilt: placedPhone(),
+    );
+    squat.setGuideViewport(const Size(400, 800));
+    await squat.start();
+    final good = standingFrame(showHips: true);
+    final outside = PoseFrame(
+      imageWidth: good.imageWidth,
+      imageHeight: good.imageHeight,
+      keypoints: {
+        for (final entry in good.keypoints.entries)
+          entry.key: Keypoint(
+            landmark: entry.key,
+            x: entry.value.x + 200,
+            y: entry.value.y,
+            likelihood: entry.value.likelihood,
+          ),
+      },
+    );
+    await feed(0, outside);
+    expect(squat.state.status.reason, SetupReason.ready);
+    expect(squat.state.guideAligned, isFalse);
+    expect(squat.state.autoStartIn, isNull);
+    await feed(100, good);
+    expect(squat.state.guideAligned, isTrue);
+    expect(squat.state.autoStartIn, const Duration(seconds: 3));
+    for (final ms in [600, 1100, 1600]) {
+      await feed(ms, good);
+    }
+    expect(squat.state.status.isReady, isTrue);
+    await feed(1700, outside);
+    expect(squat.state.autoStartIn, isNull);
+    expect(squat.state.canStart, isFalse);
+    for (final ms in [1800, 2300, 2800, 3300, 3800, 4300, 4700]) {
+      await feed(ms, good);
+    }
+    expect(squat.state.autoStarted, isFalse);
+    await feed(4800, good);
+    expect(squat.state.autoStarted, isTrue);
+    squat.dispose();
+  });
+
+  test('a long squat frame gap restarts the countdown', () async {
+    final squat = SetupViewModel(
+      exercise: ExerciseType.squat,
+      camera: camera,
+      estimator: estimator,
+      clock: () => now,
+      phoneTilt: placedPhone(),
+      guideMatcher: (_, _, _) => true,
+    );
+    squat.setGuideViewport(const Size(400, 800));
+    await squat.start();
+    final good = standingFrame(showHips: true);
+    await feed(0, good);
+    await feed(500, good);
+    await feed(3000, good);
+    expect(squat.state.autoStarted, isFalse);
+    expect(squat.state.autoStartIn, const Duration(seconds: 3));
+    squat.dispose();
+  });
+
+  test('a stalled squat stream clears the ready indication', () async {
+    final squat = SetupViewModel(
+      exercise: ExerciseType.squat,
+      camera: camera,
+      estimator: estimator,
+      clock: () => now,
+      phoneTilt: placedPhone(),
+      guideMatcher: (_, _, _) => true,
+    );
+    squat.setGuideViewport(const Size(400, 800));
+    await squat.start();
+    final good = standingFrame(showHips: true);
+    for (final ms in [0, 500, 1000, 1500]) {
+      await feed(ms, good);
+    }
+    expect(squat.state.status.isReady, isTrue);
+    now = const Duration(milliseconds: 2400);
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    expect(squat.state.status.isReady, isFalse);
+    expect(squat.state.guideAligned, isFalse);
+    expect(squat.state.autoStartIn, isNull);
+    squat.dispose();
+  });
+
   group('detector failures', () {
     setUp(() => vm.start());
 

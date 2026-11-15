@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import '../models/exercise_type.dart';
 import '../models/pose_frame.dart';
 import '../models/setup_silhouette_alignment.dart';
+import '../models/setup_squat_silhouette_alignment.dart';
 import '../services/device/phone_tilt.dart';
 import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
@@ -74,12 +75,13 @@ class SetupState {
   final bool autoStarted;
   final bool guideAligned;
 
-  bool get canStart => phase == SetupPhase.running && status.isReady;
+  bool get canStart =>
+      phase == SetupPhase.running && status.isReady && guideAligned;
 
   /// Message for the user, including the auto start countdown.
   String get message {
     if (!guideAligned && status.reason == SetupReason.ready) {
-      return '실루엣 안에 머리와 양손을 맞춰 주세요.';
+      return '실루엣 안에 몸을 맞춰 주세요.';
     }
     final left = autoStartIn;
     if (left == null) return status.message;
@@ -125,9 +127,12 @@ class SetupViewModel extends ChangeNotifier {
        _clock = clock ?? _stopwatchClock(),
        _guideMatcher =
            guideMatcher ??
-           ((frame, size, mirror) =>
-               SetupSilhouetteAlignment(minLikelihood: config.minLikelihood)
-                   .matches(frame, size, mirror: mirror)) {
+           ((frame, size, mirror) => exercise == ExerciseType.squat
+               ? StandingSilhouetteAlignment(
+                   minLikelihood: config.minLikelihood,
+                 ).matches(frame, size, mirror: mirror)
+               : SetupSilhouetteAlignment(minLikelihood: config.minLikelihood)
+                     .matches(frame, size, mirror: mirror)) {
     _checker = SetupChecker(exercise: exercise, config: config, clock: _clock);
   }
 
@@ -152,6 +157,9 @@ class SetupViewModel extends ChangeNotifier {
   bool _tiltHeld = false;
   Duration? _failingSince;
   Duration? _readySince;
+  Duration? _lastSquatFrame;
+  Timer? _squatFrameWatchdog;
+  static const _squatMaxFrameGap = Duration(milliseconds: 750);
   final Queue<Duration> _frameTimes = Queue();
 
   static Clock _stopwatchClock() {
@@ -217,6 +225,22 @@ class SetupViewModel extends ChangeNotifier {
     // here would close the camera that call opens.
     if (session != _session) return;
     _setState(_state.copyWith(phase: SetupPhase.running));
+    if (exercise == ExerciseType.squat && !_diagnosticMode) {
+      _squatFrameWatchdog = Timer.periodic(const Duration(milliseconds: 250), (
+        _,
+      ) {
+        final last = _lastSquatFrame;
+        if (session != _session ||
+            last == null ||
+            _clock() - last <= _squatMaxFrameGap) {
+          return;
+        }
+        _resetSquatReadiness();
+        _setState(
+          const SetupState(phase: SetupPhase.running, guideAligned: false),
+        );
+      });
+    }
   }
 
   /// Tries again after an error.
@@ -298,6 +322,13 @@ class SetupViewModel extends ChangeNotifier {
 
     _failingSince = null;
     final now = _clock();
+    if (exercise == ExerciseType.squat && !_diagnosticMode) {
+      final last = _lastSquatFrame;
+      if (last != null && (now < last || now - last > _squatMaxFrameGap)) {
+        _resetSquatReadiness();
+      }
+      _lastSquatFrame = now;
+    }
     _frameTimes.addLast(now);
     while (now - _frameTimes.first > const Duration(seconds: 1)) {
       _frameTimes.removeFirst();
@@ -310,7 +341,6 @@ class SetupViewModel extends ChangeNotifier {
     logPoseLive('setup', frame, tilt: _phoneTilt);
     final viewport = _guideViewport;
     final aligned =
-        exercise != ExerciseType.pushUp ||
         _diagnosticMode ||
         (viewport != null && _guideMatcher(frame, viewport, isFrontCamera));
     final (autoStartIn, autoStarted) = _autoStart(status, now, aligned);
@@ -327,12 +357,11 @@ class SetupViewModel extends ChangeNotifier {
     );
   }
 
-  /// For push-ups, count from the first valid frame so the readiness hold is
-  /// part of the countdown, rather than an additional delay. Any invalid
-  /// frame starts a fresh countdown. Squats retain their existing timing.
+  /// Count from the first aligned, valid frame; any invalid frame restarts
+  /// the countdown. Diagnostics keep their existing manual setup behavior.
   (Duration?, bool) _autoStart(SetupStatus status, Duration now, bool aligned) {
     if (_state.autoStarted) return (null, true);
-    final valid = exercise == ExerciseType.pushUp && !_diagnosticMode
+    final valid = !_diagnosticMode
         ? status.reason == SetupReason.ready && aligned
         : status.isReady;
     if (!valid) {
@@ -376,7 +405,17 @@ class SetupViewModel extends ChangeNotifier {
     }
   }
 
+  void _resetSquatReadiness() {
+    _checker.reset();
+    _readySince = null;
+    _lastSquatFrame = null;
+    _frameTimes.clear();
+  }
+
   void _resetTracking() {
+    _squatFrameWatchdog?.cancel();
+    _squatFrameWatchdog = null;
+    _lastSquatFrame = null;
     _checker.reset();
     _failingSince = null;
     _readySince = null;
@@ -398,6 +437,7 @@ class SetupViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _squatFrameWatchdog?.cancel();
     _session++;
     if (_tiltHeld) _phoneTilt.release();
     unawaited(_camera.stop());
