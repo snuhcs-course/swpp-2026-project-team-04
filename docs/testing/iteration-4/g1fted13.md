@@ -754,3 +754,68 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `8204458`, wit
 ### Acceptance criteria → tests (this follow-up)
 - A sample after the round does not change the chart. Tests: `'a sample after the round does not stretch the scale'`, `'a depth only after the round draws nothing'`, `'hasData: a depth at any moment of the round, not after it'`, `"a deep bend after the round does not lower the chart's floor"`
 - With depth only after the round, the note shows. Tests: `'a depth seen only after the round ends gives the note, not an empty chart (Codex review of #63)'`
+
+#### 2026-11-15 · code at commit `71b780e` · step W5 `feat/victory_animation` (P18 the victory animation after the battle, team order #15)
+This step adds the victory scene after a battle (the user's design package `W5-VICTORY-SPEC.md`, numbers from `w5_victory_rig.json`, test values from `victory_golden.json`). It was built in three parts:
+- **Part 1 (2026-11-14, `2403055`): the scene as `victory_*` widgets, apart from the report.**
+  - A win is a 2.1 s cut-in: a lime panel with stripes, 22 confetti, the band "KO 승리" / "판정승" / "기권승" (KO, time, the opponent left), my character's own celebration, a blend into its end pose, and a shrink onto its seat on a lime stand.
+  - A loss or a draw is one frustration on a white stand (760 ms; 물렁범 820 ms), then it stops.
+  - A tap jumps to the end look. Reduced motion, or "do not play" (a past report), shows only the end look. It plays once.
+- **Part 2 (2026-11-15, `3ef678f`): the scene on the result screen.**
+  - W6's report keeps a 144 × 148 seat at the right end of the headline's rows: its bottom is the score row's top, and it ends 4 into the margin (x 200–344 on a 360 phone, as in the spec). The headline, the sub line and the reason line keep left of it. When the sub line's words cannot fit beside it (2× text with seconds), the seat gets a row of its own above the headline.
+  - When the report opens after a battle, the scene plays over it once and ends on the seat. The end look then stays in the report, so it scrolls with the page.
+  - If the page moves while the scene plays (insets, text size, screen size, a screen reader's scroll), the scene follows the seat.
+- **Step 5 (2026-11-15, `167207c`, `71b780e`, after W7 #61 was merged): a battle in 기록보관소 opens its report** (team decision 2026-11-08), not the form feedback.
+  - The report comes from 박진영's record view model (J4) and shows only the end look, with no animation. Its 자세 피드백 전체 보기 opens the feedback when the battle has one.
+  - 다시 대결 on a past report starts the same kind of battle from home: a bot at the level its saved name gives (else 고수), or the online lobby.
+- **Merges of `main` (no rebase):** `49571d4` (W4 #55, J3 #56), `8ae9784` (J4 #57, J5 #60, W6 #62, J5 #64; only `design_tokens_test.dart` conflicted, both sides kept), `1ef6874` (W7 #61), `bfb4345` (W8 #63, S3 #65, the home replay fix #67); the last two had no conflict.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `71b780e`, without coverage. The coverage will come from the PR's CI comment.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on the W5 PR (commit and run link to add) |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the CI comment (W5 changes no view model) | 11/15 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | TODO(Woohyun Song): from the CI comment (W5 changes no service) | 11/15 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the CI comment | 11/15 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | TODO(Woohyun Song): from the CI comment (`server/` unchanged) | 11/15 | same CI comment |
+
+- **Tests:** `flutter test` had 3213 passed, 0 failed and 10 skipped on `71b780e`. `flutter analyze` found no issues. Part 1 alone (`2403055`): 2675 passed, 10 skipped, 0 failed.
+  - The 10 skipped tests are the same as before, and W5 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+  - The review runs measured the changed files alone with `--coverage` (not the layer numbers), on part 2's tree: `result_screen.dart` 100% (117/117), `result_report.dart` 99.6% (the line left is W6's painter `shouldRepaint`), `victory_overlay.dart` 100%, `victory_scene.dart` 99.2%.
+- **The design checks:** `test/widgets/victory_golden.json` is the bundle's golden file. Every pose sample (each character's poses, expression and whole-picture move, with the end blends 0.3 / 0.6 / 1, times past one loop, and the stills) matches within its tolerance 0.01. So does every scene sample (panel, band, stand, the character's feet / scale / opacity / motion time / end blend and its pose, the confetti where given). Every W4 and W5 drawPatch finds its shape, and the five stage effects are not drawn, for 5 characters × every key pose. With the app's fonts, renders of the result screen were compared with the design's stills by eye (local renders, not committed).
+- **Mutation checks (by me, files restored byte for byte):** all caught.
+  - Part 1: a restart after the end; reduced motion ignored.
+  - Part 2: each of the four re-measure triggers (insets, text size, screen size, scroll). A fifth one (a view-model listener) survived, because loading changes only the cards below the seat, so that code was removed.
+  - Step 5: a past report playing the scene; a past bot battle's 다시 대결 going to the online lobby; the past battle's "has a score" flag forced true and forced false (forced false survived at first, so a test was added); 다시 대결 starting from home for every battle, or for none.
+- **Other checks:**
+  - `ownership_guard.py --check-diff`: ok on `71b780e`, 19 changed files. They are W5's files plus the user's one-off W5 exceptions of 2026-11-15: `widgets/result_report.dart` (W6's file; the seat only), `screens/history_screen.dart` (W7's; the link to the report only), and in `test/screens/history_screen_test.dart` and `feedback_screen_test.dart` only the three tests that expected a row to open the feedback.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Coverage:** TODO(Woohyun Song): fill the table, the app total and the files CI leaves out from the W5 PR's CI comment (commit, run link).
+- **Shortfalls:** none known; the coverage numbers are still to come.
+- **Screen readers:** widget tests check the skip button's name ("승리 연출 건너뛰기" / "연출 건너뛰기"), that it goes once the scene ends, and that the seat's picture is not read. TalkBack on a real phone was **not** checked.
+- **Manual check:** not done on a phone yet. It will be checked once, on a `main` build after all the PRs are merged: a KO / time / opponent-left win, a loss and a draw, reduced motion, larger text, and a battle opened from 기록보관소.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/victory_motion_test.dart` (new) | the rig's data (the bundle's file, five characters, key poses alike in steps, timetables and ends that exist, one landing per motion, the expression map, RepBot / unknown ids as the default, malformed data rejected); every pose golden sample within 0.01 (end blends 0.3 / 0.6 / 1, wrapped times, stills); the end blend and the end expression from 0.5; blending tables; every W4 and W5 patch finds its shape, W5's before W4's paddle; every key pose painted; the stage effects marked and not drawn; the teeth, the grin and the tongue |
+| View | `test/widgets/victory_scene_test.dart` (new; updated in part 2) | the scene golden (5 × 17 KO times, 7 loss times, both stills; a draw is a loss's scene); the end times; the band by result; the layers' times; the seat, the stand and the panel's last box near the seat; every motion inside the seat; the colors are the palette's; another screen size; the confetti leaving the screen; the result kinds; `VictoryResult.decide` |
+| View | `test/widgets/victory_overlay_test.dart` (new; updated in part 2) | on a test backdrop: a win plays and ends at 2100 ms, a loss at 760 / 820 ms; the band's words; pixels of the panel, band, stand and seat; a tap skips and the button under it works after; the screen-reader skip; reduced motion (from the start and turned on while playing); `play: false`; plays once; play turned off; RepBot / unknown ids; the painter at every golden time on 360 × 780, 412 × 915 and 0 × 0; `onEnd` once when played out or skipped, never when it does not play or is stopped from outside |
+| View | `test/widgets/victory_seat_test.dart` (new) | with the app's fonts: the seat at x 200–344 on the score row (the design's place, a status bar lower), on a wider phone; the headline, sub line and reason line keep left of it for seven kinds of line at 1.0 / 1.3 / 1.5× text; a long nickname cut before it, the seconds whole; at 2× text the seat's own row (a line without seconds still fits beside it); the switch at the sub line's least width (±0.5); the least width itself; no seat, no cell; `VictorySeat`'s end look for each result (stand at +44 / +129, feet at +86 / +132), with no button, no frames and no taps |
+| View | `test/widgets/victory_test_support.dart`, `victory_golden.json` (new) | the golden file and its readers |
+| View | `test/screens/result_screen_test.dart` (updated) | the scene of J4's state; on the screen with the app's fonts: KO / time / opponent-left wins play the cut-in with their band and end on the seat, then the report's buttons work; a loss and a draw frustrate on the seat; a tap skips and does not reach the report's button; reduced motion (from the start, and turned on while playing, not replayed when off); plays once; data arriving while it plays; the scene follows the seat when insets, text size, screen size or the scroll change; leaving while it plays; the default character. A past battle: 다시 대결's battle (`rematchOf`); the report opened from the archive with the end look only from its first frame, system back to the archive; J4's record view model and the feedback link; the latest battles only with a score; 다시 대결 from home for a past battle, in the report's place for one just played |
+| View | `test/screens/history_screen_test.dart` (updated, two tests, exception) | a row opens its battle's report with the end look only (one without feedback too), and the report links to the feedback; the full list the same way |
+| View | `test/screens/feedback_screen_test.dart` (updated, one test, exception) | a battle in 기록보관소 opens its report, and its 자세 피드백 전체 보기 the same feedback screen |
+| Design | `test/design_tokens_test.dart` (updated) | `victory_motion.dart`, `victory_overlay.dart`, `victory_rig_data.dart`, `victory_scene.dart` in the token check |
+
+### Acceptance criteria → tests
+- Given I win, the animation plays and the result shows win, loss or draw with both scores (UAT-4 AC1). Tests: `'$name: the cut-in with "$band" over the report, then my character on its seat right of the headline; then the report\'s buttons work'` (KO, time, opponent left), `'a ${outcome.name}: no cut-in and no band; $character frustrates once on the seat on a white stand, then the end look stays ($endMs ms)'`, and W6's `'a time-up ${squat ? 'squat' : 'push-up'} ${outcome.name}: "$headline", both scores, the seconds'`
+- Each character's poses, expression and whole-picture move match the golden within 0.01. Tests: `'$id matches every golden sample within 0.01'`, `'the samples cover the end blends 0.3, 0.6 and 1, wrapped times …'`
+- Every scene sample matches. Tests: `'$id: a KO win matches every golden time'`, `'$id: a loss matches every golden time, and a draw is the same'`
+- Every W4 and W5 drawPatch target is found and the stage effects are not drawn. Tests: `'every W4 and W5 patch finds its W3 shape, W5\'s right after it …'`, `'the five stage effects are marked in every character\'s list'`
+- The band reads as the spec by result. Tests: `'the band reads the result (spec 4); a loss or a draw has none, …'`, `'${result.name}: the band reads "$words"'`
+- A tap jumps to the end; after the end the page under it takes taps. Tests: `'a tap anywhere skips to the end look on the seat; that tap does not reach the report\'s button, the next one does'`, `'a tap anywhere jumps to the end look, not to the report\'s button'`
+- Reduced motion and "do not play" show one still picture. Tests: `'with reduced motion a ${outcome.name} does not play: the seat shows the end look from the first frame'`, `'reduced motion turned on while it plays: the end look at once; turned off again, it does not play again'`, `'a past report (play: false) shows only the end look and its button works at once'`
+- The seat is the spec's 144 × 148 cell right of the headline (spec 2, 11.2). Tests: `'on a 360 x 780 phone the seat is x 200-344, 144 x 148, and ends on the score row\'s top: …'`, `'${result.name}: the stand and the end pose in a 144 x 148 box, …'`
+- A battle in 기록보관소 opens its report with only the end look. Tests: `'a row opens its battle\'s report, with the end look only: …'`, `'$name: the report opens on top with the end look only, from its first frame; system back returns to 기록보관소'`, `'a battle in 기록보관소 opens the same feedback screen'`

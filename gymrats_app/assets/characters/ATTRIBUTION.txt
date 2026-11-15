@@ -8,3 +8,14 @@ Use in the app: the rig is not bundled as an asset. lib/models/character_rig_dat
 holds the same JSON as a Dart string (test/models/character_rig_test.dart checks that
 they match) and lib/widgets/character_figure.dart (CharacterFigure) draws it. Change
 w3_rig.json first, then copy it into that Dart string.
+
+Victory scene (w5_victory_rig.json, W5)
+
+Origin: own work of SWPP 2026 team 04, made for this app by Woohyun Song on
+2026-11-14 (the characters' celebrations and frustrations, their extra faces, and
+the scene's panel, band, confetti and stand). No third-party art is used.
+
+Use in the app: not bundled as an asset either. lib/widgets/victory_rig_data.dart
+holds the same JSON as a Dart string (test/widgets/victory_motion_test.dart checks
+that they match) and lib/widgets/victory_overlay.dart (VictoryOverlay) draws it.
+Change w5_victory_rig.json first, then copy it into that Dart string.

@@ -12,12 +12,12 @@ import '../widgets/archive_match_row.dart';
 import '../widgets/auth_form.dart';
 import '../widgets/lobby_parts.dart';
 import 'feedback_stats_screen.dart';
-import 'match_feedback_screen.dart';
+import 'result_screen.dart';
 
 /// 기록보관소 (BArchive), opened from home's 03 / ARCHIVE: the last 7 days,
 /// the score growth per exercise, and the newest battles; "전체 보기" opens
-/// every battle, loaded page by page as that list scrolls. A row with
-/// feedback opens it. The lime "기간별 통계" pill in the header opens the
+/// every battle, loaded page by page as that list scrolls. A row opens its
+/// battle's report. The lime "기간별 통계" pill in the header opens the
 /// statistics (W7-STATS 6) when the repository is a statistics source.
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key, this.createViewModel, this.now});
@@ -163,7 +163,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           match: match,
           now: now,
           bestGain: state.bestGainOf(match),
-          onTap: feedbackTap(context, match),
+          onTap: reportTap(context, match),
         ),
       ],
     ];
@@ -371,7 +371,7 @@ class _AllMatchesPage extends StatelessWidget {
                           match: match,
                           now: today,
                           bestGain: state.bestGainOf(match),
-                          onTap: feedbackTap(context, match),
+                          onTap: reportTap(context, match),
                         );
                       }
                       if (state.loadMoreFailed) {
