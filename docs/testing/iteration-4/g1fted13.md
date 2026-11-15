@@ -487,15 +487,15 @@ This step puts the account's character on home and tidies home around it, in thr
   - A small room shrinks the character rather than scrolling the menu (question 10.2).
   - RepBot's widget and its test are deleted. The login page's logo reads GYMMOUSE too.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, without coverage. The coverage comes from the PR's CI comment on the pushed head `53ea881` (the code of `80b00d7` plus these notes), [run 43573595867](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43573595867).
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
-| ViewModel | flutter_test, fakes | 90% | same TODO | 11/14 | same CI comment |
-| Service | flutter_test, MockClient, fakes | 85% | same TODO | 11/14 | same CI comment |
-| View | flutter_test (widget) | 75% | same TODO | 11/14 | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/14 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 99.2% (510/514) | 11/14 | CI comment "Tests and coverage (GitHub Actions)" on PR #55, commit `53ea881`, [run 43573595867](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43573595867) |
+| ViewModel | flutter_test, fakes | 90% | 96.8% (1189/1228) | 11/14 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 92.6% (2414/2606) | 11/14 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.4% (6761/7012) | 11/14 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (101 passed; `server/` unchanged) | 11/14 | same CI comment |
 
 - **Tests:** `flutter test` had 2606 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as before, and W4 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
@@ -508,7 +508,11 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, wit
 - **Other checks:**
   - `ownership_guard.py --check-diff`: ok on `80b00d7`: 36 changed files, all owned by W4 or under the user's one-off exceptions (W1 / W3 files of the user, `app_theme.dart`'s home styles, the login page and its test).
   - Server `pytest` was not run, because `server/` did not change.
-- **Shortfalls:** coverage is a TODO until the CI comment.
+- **Coverage:** from the CI comment on PR #55 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/55#issuecomment-6874331984)), commit `53ea881` (2026-11-14 17:09 KST; the app and server jobs both succeeded; [run 43573595867](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43573595867)). `53ea881` changes only these notes on top of `80b00d7`, and it is the head PR #55 was merged with.
+  - App total 95.7% (11144/11647); Other 94.1% (270/287).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2606 passed, 10 skipped, 0 failed), the same as on this PC.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` and `test/services/audio/background_music_test.dart`. Their tests still ran and passed in `flutter test`. So W4's one-line change to `settings_screen.dart` (the tag '03 / SETTINGS' → '04 / SETTINGS', under its exception) is not in the View number.
+- **Shortfalls:** none in coverage; every layer and the server meet their targets.
 - **Screen readers:** widget tests check the character button's name and role, that the drawing itself is not read, the '?' button's 게임 규칙, and the 캐릭터 row's name without the character. TalkBack on a real phone was **not** checked.
 - **Manual check (the user, on the phone, 2026-11-14):** the ears on 캐릭터 선택 were found during W2b's phone check; after part 1, home still scrolled (also on the S26+), which led to the home fit. The final build (part 2, with W2b and J2 from the merge) passed with no problems. TODO(Woohyun Song): the phone model and Android version of the final check, if not W2's record (Galaxy S26+, Android 17).
 
@@ -542,15 +546,15 @@ This step redraws the result screen as the game report of the design (BResult, h
 - **Empty and waiting states (my defaults, the design has none):** the first battle shows neither the best nor the latest battles (the user's rule of 2026-11-13: a card without values is left out); while the earlier battles load, one quiet card "이전 기록을 불러오는 중…" stands in their place (no 0, no empty chart); if they cannot be loaded, the comparison is left out and the rest stays. A battle without a game score (an old server) leaves out the latest battles too.
 - **Rules pages:** built here on 2026-11-13, then moved to 박진영's tutorial at the team meeting of 2026-11-15. Their files are back to `main`'s version on this branch, and the rules tests I had added (`test/widgets/help_pictures_test.dart`) left with them.
 
-I ran the commands from the Plan in `gymrats_app/` on Windows, on `13afb2f`, without coverage. Coverage comes from the PR's CI comment "Tests and coverage (GitHub Actions)".
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `13afb2f`, without coverage. The coverage comes from the PR's CI comment on the pushed head `bbba0c2` (the code of `13afb2f` plus these notes), [run 43640991023](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43640991023).
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on the PR |
-| ViewModel | flutter_test, fakes | 90% | same TODO (W6 changes no view model) | 11/15 | same CI comment |
-| Service | flutter_test, MockClient, fakes | 85% | same TODO (W6 changes no service) | 11/15 | same CI comment |
-| View | flutter_test (widget) | 75% | same TODO | 11/15 | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | `server/` unchanged; TODO(Woohyun Song): fill from the CI comment | 11/15 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Model | flutter_test | 90% | 99.3% (545/549) | 11/15 | CI comment "Tests and coverage (GitHub Actions)" on PR #62, commit `bbba0c2`, [run 43640991023](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43640991023) |
+| ViewModel | flutter_test, fakes | 90% | 97.4% (1430/1468; W6 changes no view model) | 11/15 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 93.1% (2559/2750; W6 changes no service) | 11/15 | same CI comment |
+| View | flutter_test (widget) | 75% | 96.5% (6935/7188) | 11/15 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` unchanged) | 11/15 | same CI comment |
 
 - **Tests:** `flutter test` had 2797 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as before, and W6 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
@@ -559,9 +563,13 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `13afb2f`, wit
 - **Other checks:**
   - `ownership_guard.py --check-diff`: ok on `13afb2f`: 13 changed files, all owned by W6 or under the user's one-off W6 exceptions of 2026-11-13 (the old result words in `main_test.dart`, `battle_demo_test.dart`, `feedback_screen_test.dart`, the grade-count group of `game_panel_fonts_test.dart`, one comment in `battle_demo.dart`).
   - Server `pytest` was not run, because `server/` did not change.
-- **Shortfalls:** coverage is a TODO until the CI comment. J4 gives the best before and the average, not the gain and the difference: the screen subtracts them (noted for 박진영 after the cutoff).
+- **Coverage:** from the CI comment on PR #62 ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/62#issuecomment-6884336253)), commit `bbba0c2` (2026-11-15 06:17 KST; the app and server jobs both succeeded; [run 43640991023](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43640991023)). `bbba0c2` changes only these notes on top of `13afb2f`.
+  - App total 95.6% (11711/12251); Other 81.8% (242/296).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (2797 passed, 10 skipped, 0 failed), the same as on this PC.
+  - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` and `test/services/audio/background_music_test.dart` (neither is a W6 file). Their tests still ran and passed in `flutter test`. The three result test files are in the numbers.
+- **Shortfalls:** none in coverage; every layer and the server meet their targets. J4 gives the best before and the average, not the gain and the difference: the screen subtracts them (noted for 박진영 after the cutoff).
 - **Screen readers:** widget tests check what the headline, the sub line (with its reason), the scores and the chart are read as. TalkBack on a real phone was **not** checked.
-- **Manual check:** at the team meeting of 2026-11-15 the result screen was checked in an online battle (before the J4 wiring) with no problem. The check of this build on the phone runs with CI. TODO(Woohyun Song): the phone, Android version and what was seen on this build (a new best, the latest battles, a squat tip, the loading line).
+- **Manual check:** at the team meeting of 2026-11-15 the result screen was checked in an online battle (before the J4 wiring) with no problem. This build (with the J4 wiring) has **not** been checked on a phone yet. It will be checked once, on a `main` build after the W5–W8 PRs are all merged: a new best, the latest battles, a squat tip and the loading line.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |

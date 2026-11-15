@@ -472,7 +472,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
   - `13afb2f` (11-15): the screen on 박진영's `ResultViewModel` (J4 #57), with `ResultScreen.reportOf(ResultState)`, `historyOf`, and the loading placeholder `ResultComparisonPlaceholder`.
 - **The design came from the user:** the palette B mockups BResult and BResultHeads (`.claude/design/b-screens/`). The view model and its values are 박진영's (J4), from the list of values Claude Code drafted for the user to send on 11-13.
 - **Review:** the `reviewer` subagent reviewed W6 in four runs. Runs 1, 2 and 4 returned CHANGES_REQUESTED (item d); each ended with APPROVE.
-- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Course notes:** Claude Code drafted these notes and the testing notes. In a notes-only session on 11-15 it filled W6's and W4's coverage in the testing notes from the CI comments of #62 and #55 (read through GitHub's public API), and wrote the phone check as not done yet.
 - **Not done by AI:**
   - The scope and every choice were the user's: 8 + 3 answers on 11-13 (bands, the bot's name, a cut nickname, empty cards left out, large text), the reason line on its own line (11-14), and on 11-15 dropping the rules pages after the team meeting.
   - Sending the list of values to 박진영, and J4's code.

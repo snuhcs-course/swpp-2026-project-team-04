@@ -937,3 +937,23 @@ W6 마무리: 결과 리포트만 남기고 J4에 연결한 뒤 PR을 연다
 </pasted_content id=\"cb53\">"
 
 <!-- Cut: the client's injected browser notice in front of 2 prompts (11-13 17:20, 11-14 19:50; not the user's text). -->
+
+<!-- 7cce9fa8 2026-11-15T04:43:27.599Z -->
+[Woohyun Song, 11-15 13:43] "<pasted_content id=\"8f14\">
+W6 노트와 PR 마무리 (새 세션)
+
+[배경]
+나는 송우현([REDACTED:custom_term])이고, Iteration 4에서 W6(결과 리포트 화면, 브랜치 feat/ui_report_rules, PR #62)를 맡고 있다. W6 코드는 끝났고 PR #62가 열려 있다. 이번 세션은 노트와 PR 본문만 마무리한다. 코드는 고치지 않는다. 하네스(.claude/ 아래 ownership.json, team-plan.md, task.md, progress.md)의 규칙을 따른다. 푸시 전에 이번 프롬프트를 프롬프트 로그에 더하는 규칙도 포함한다.
+
+[할 일]
+1. feat/ui_report_rules 로 바꾼다. 작업 폴더에 커밋 안 된 변경이 있으면 멈추고 알린다.
+2. 테스트 노트 docs/testing/iteration-4/[REDACTED:custom_term].md 의 W6 항목에 남은 TODO 를 채운다.
+   - 커버리지: PR #62 의 CI 코멘트에 나온 층별 숫자(Model, ViewModel, Service, View, 앱 전체, 서버)와 출처(run 번호, 코멘트 링크)를 쓴다. 같은 노트의 W7 항목에 같은 형식의 예가 있다.
+   - 폰 확인: 아직 하지 않았고, W5~W8 PR이 모두 머지된 뒤 main 빌드로 한 번에 확인한다고 적는다.
+3. 같은 테스트 노트의 W4 항목(PR #55, 이미 머지됨)에 남은 커버리지 TODO 도 PR #55 의 CI 코멘트로 채운다.
+4. 커밋하고 feat/ui_report_rules 에 푸시한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다. 하네스 파일은 커밋하지 않는다.
+5. PR #62 본문의 \"Manual check\" 문단을 기존 양식대로 영어로 바꾼다. 폰 확인은 아직 하지 않았고 W5~W8 PR이 머지된 뒤 main 빌드로 확인한다는 것, TalkBack 도 확인하지 않았다는 것을 쓴다. GitHub 인증 문제로 PR 본문을 고칠 수 없으면 고치지 말고, 바꿀 영어 문단을 보고에 적는다.
+
+[보고]
+커밋 해시, 채운 커버리지 숫자, PR 본문을 고쳤는지(못 고쳤으면 바꿀 영어 문단), 남은 TODO 가 있으면 그 목록. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다.
+</pasted_content id=\"8f14\">"
