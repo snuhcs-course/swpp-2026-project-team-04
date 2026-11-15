@@ -36,3 +36,9 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 - Independent review and full interaction-history export remain TODO. Online battle uses a separate setup flow and is not included.
 
 - A full-suite run exposed diagnostic demo tests depending on manual setup. Codex preserved the existing diagnostic behavior and reran those suites; no human source edit was claimed.
+
+## S3 follow-up — squat silhouette (2026-11-15)
+- Codex adapted the standalone recorder's standing guide and landmark-region matcher to the common setup, bot battle and online preparation paths. The user confirmed owner/PM agreement for the battle files and their associated tests. No new pose model was trained.
+- An independent read-only Codex review found stale-frame reuse after bot detector errors, stale online readiness across reconnects, and a missing design token. Codex fixed these and added regression tests. The follow-up review approved the changes. Human manual source edits and time savings were not reported.
+- The recorded input for this PR is in the prompt log. Earlier standalone-recorder work is summarized in the local progress record; its complete conversation export has not been reviewed for publication.
+- The alignment regions are provisional; real-person calibration and real-phone auto-start validation were not performed. Clasping the hands is shown as guidance but is not checked.

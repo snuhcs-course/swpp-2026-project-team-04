@@ -27,3 +27,11 @@ These are the user inputs visible in the current conversation, not a complete se
 - 좋아.
 - 스마트폰에 다운로드해줘.
 - 좋아. 테스트 완료했어. 이거 PR 올려줘.
+
+## Squat silhouette integration, 2026-11-15
+
+The following are the user inputs visible for this PR task, not a complete session export.
+
+- 그리고 이 스쿼트 실루엣 판정기도 Gymrats에 넣고 PR까지 올려줘.
+- 네, 소유자 또는 PM이 동의했어요
+- 네, 해당 변경에도 동의했어요

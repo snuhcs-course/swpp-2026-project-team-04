@@ -9,6 +9,7 @@ import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
+import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/screens/battle_screen.dart'
     show BattleSetupListener;
@@ -30,6 +31,7 @@ import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
 import 'package:gymrats_app/widgets/squat_height_overlay.dart';
 
 import '../support/fakes.dart';
@@ -432,18 +434,19 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('a squat setup has no silhouette yet; the squat lines come '
+    testWidgets('a squat setup shows the silhouette; the squat lines come '
         'with the round', (tester) async {
       await open(tester, exercise: ExerciseType.squat);
       await pose(tester);
       expect(find.byType(PoseSilhouetteGuide), findsNothing);
-      expect(find.byType(BattleGuideOverlay), findsNothing);
+      expect(find.byType(StandingSilhouetteGuide), findsOneWidget);
+      expect(find.byType(BattleGuideOverlay), findsOneWidget);
       expect(find.byType(SquatHeightOverlay), findsNothing);
       session.scheduleStart(inMs: 5000);
       await wait(tester, 100);
       expect(find.byType(SquatHeightOverlay), findsNothing);
       await play(tester);
-      expect(find.byType(PoseSilhouetteGuide), findsNothing);
+      expect(find.byType(StandingSilhouetteGuide), findsNothing);
       expect(find.byType(SquatHeightOverlay), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });
@@ -1241,6 +1244,155 @@ void main() {
       expect(session.readyRequests, [true]);
       await tester.pumpWidget(const SizedBox());
     });
+  });
+
+  testWidgets(
+    'squat online readiness requires aligned fresh frames for 3 seconds',
+    (tester) async {
+      await open(tester, exercise: ExerciseType.squat);
+      final good = standingFrame(showHips: true);
+      final outside = standingFrame(
+        showHips: true,
+        move: {BodyLandmark.nose: (100, 150)},
+      );
+      Future<void> send(PoseFrame frame) async {
+        estimator.frames.add(
+          PoseFrame(
+            imageWidth: frame.imageWidth,
+            imageHeight: frame.imageHeight,
+            keypoints: frame.keypoints,
+          ),
+        );
+        camera.emit();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+
+      await send(outside);
+      await tester.pump(const Duration(seconds: 1));
+      expect(session.readyRequests, isEmpty);
+      await send(good);
+      expect(
+        tester
+            .widget<StandingSilhouetteGuide>(
+              find.byType(StandingSilhouetteGuide),
+            )
+            .ready,
+        isTrue,
+      );
+      expect(canPress(tester, '준비'), isFalse);
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+        await send(good);
+      }
+      await send(outside);
+      expect(
+        tester
+            .widget<StandingSilhouetteGuide>(
+              find.byType(StandingSilhouetteGuide),
+            )
+            .ready,
+        isFalse,
+      );
+      await send(good);
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+        await send(good);
+      }
+      expect(session.readyRequests, isEmpty);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('stalled squat video cancels online automatic readiness', (
+    tester,
+  ) async {
+    await open(tester, exercise: ExerciseType.squat);
+    estimator.frames.add(standingFrame(showHips: true));
+    camera.emit();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
+    expect(
+      tester
+          .widget<StandingSilhouetteGuide>(find.byType(StandingSilhouetteGuide))
+          .ready,
+      isFalse,
+    );
+    await tester.pump(const Duration(seconds: 3));
+    expect(session.readyRequests, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'online squat readiness does not reuse a stale frame after reconnecting',
+    (tester) async {
+      await open(tester, exercise: ExerciseType.squat);
+      estimator.frames.add(standingFrame(showHips: true));
+      camera.emit();
+      await tester.pump();
+      expect(
+        tester
+            .widget<StandingSilhouetteGuide>(
+              find.byType(StandingSilhouetteGuide),
+            )
+            .ready,
+        isTrue,
+      );
+      session.connected = false;
+      session.notifyListeners();
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(
+        tester
+            .widget<StandingSilhouetteGuide>(
+              find.byType(StandingSilhouetteGuide),
+            )
+            .ready,
+        isFalse,
+      );
+      session.connected = true;
+      session.notifyListeners();
+      await tester.pump(const Duration(milliseconds: 3100));
+      expect(session.readyRequests, isEmpty);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('online squat checks alignment while disconnected', (
+    tester,
+  ) async {
+    await open(tester, exercise: ExerciseType.squat);
+    session.connected = false;
+    session.notifyListeners();
+    final good = standingFrame(showHips: true);
+    final shifted = PoseFrame(
+      imageWidth: good.imageWidth,
+      imageHeight: good.imageHeight,
+      keypoints: {
+        for (final e in good.keypoints.entries)
+          e.key: Keypoint(
+            landmark: e.key,
+            x: e.value.x + 200,
+            y: e.value.y,
+            likelihood: e.value.likelihood,
+          ),
+      },
+    );
+    estimator.frames.add(shifted);
+    camera.emit();
+    await tester.pump();
+    session.connected = true;
+    session.notifyListeners();
+    await tester.pump();
+    expect(
+      tester
+          .widget<StandingSilhouetteGuide>(find.byType(StandingSilhouetteGuide))
+          .ready,
+      isFalse,
+    );
+    expect(session.readyRequests, isEmpty);
+    await tester.pumpWidget(const SizedBox());
   });
 
   group('sound hooks, as on the bot screen', () {
