@@ -92,6 +92,9 @@ abstract final class AppColors {
   /// Quiet marks that only fill, never lines or text: the result's bars of
   /// the earlier battles.
   static const inactive = Color(0xFFA9B0BE);
+
+  /// Green outline for a valid standing setup silhouette.
+  static const squatGuideReady = Color(0xFF4CD964);
 }
 
 /// RepBot, the robot doing push-ups in the lobby, as designed: its own
