@@ -27,10 +27,22 @@ enum VictoryResult {
 
   /// The scene for [result]: a win is by KO, by time, or (online) because
   /// the opponent left, whatever the clock showed.
-  static VictoryResult of(BattleResult result) => switch (result.outcome) {
-    MatchOutcome.win when result.departure == BattleDeparture.opponentLeft =>
-      leftWin,
-    MatchOutcome.win when result.end == GameEnd.ko => koWin,
+  static VictoryResult of(BattleResult result) => decide(
+    result.outcome,
+    byKo: result.end == GameEnd.ko,
+    opponentLeft: result.departure == BattleDeparture.opponentLeft,
+  );
+
+  /// The scene for a battle with [outcome]: a win because the opponent
+  /// left is that first, whatever ended the round; else a KO or a time-up
+  /// win. A loss or a draw has one scene whatever ended it.
+  static VictoryResult decide(
+    MatchOutcome outcome, {
+    required bool byKo,
+    required bool opponentLeft,
+  }) => switch (outcome) {
+    MatchOutcome.win when opponentLeft => leftWin,
+    MatchOutcome.win when byKo => koWin,
     MatchOutcome.win => timeWin,
     MatchOutcome.lose => lose,
     MatchOutcome.draw => draw,

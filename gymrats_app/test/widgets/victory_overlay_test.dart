@@ -22,6 +22,7 @@ class _Backdrop extends StatelessWidget {
     this.reduceMotion = false,
     this.onButton,
     this.pictureKey,
+    this.onEnd,
   });
 
   final VictoryResult result;
@@ -30,6 +31,7 @@ class _Backdrop extends StatelessWidget {
   final bool reduceMotion;
   final VoidCallback? onButton;
   final Key? pictureKey;
+  final VoidCallback? onEnd;
 
   static const buttonText = '홈으로';
 
@@ -62,6 +64,7 @@ class _Backdrop extends StatelessWidget {
                       characterId: characterId,
                       seat: designSeat,
                       play: play,
+                      onEnd: onEnd,
                     ),
                   ),
                 ],
@@ -430,6 +433,75 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(_isEnd(_frame(tester)), isTrue);
       expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+
+    group('onEnd (the result screen takes the overlay away then)', () {
+      testWidgets('is called once when the scene plays out', (tester) async {
+        var ended = 0;
+        await _show(
+          tester,
+          _Backdrop(result: VictoryResult.koWin, onEnd: () => ended++),
+        );
+        await tester.pump(const Duration(milliseconds: 2099));
+        expect(ended, 0);
+        await tester.pump(const Duration(milliseconds: 1));
+        expect(ended, 1);
+        await tester.pump(const Duration(seconds: 1));
+        expect(ended, 1);
+      });
+
+      testWidgets('is called once when a tap skips it; a second tap does '
+          'not call it again', (tester) async {
+        var ended = 0;
+        await _show(
+          tester,
+          _Backdrop(result: VictoryResult.lose, onEnd: () => ended++),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tapAt(const Offset(180, 400));
+        expect(ended, 1);
+        await tester.pump();
+        await tester.tapAt(const Offset(180, 400));
+        await tester.pump(const Duration(seconds: 1));
+        expect(ended, 1);
+      });
+
+      testWidgets('is not called when it never plays, nor when reduced '
+          'motion or play turned off stops it', (tester) async {
+        var ended = 0;
+        void onEnd() => ended++;
+        for (final still in [
+          _Backdrop(result: VictoryResult.koWin, play: false, onEnd: onEnd),
+          _Backdrop(
+            result: VictoryResult.koWin,
+            reduceMotion: true,
+            onEnd: onEnd,
+          ),
+        ]) {
+          await _show(tester, still);
+          await tester.pump(const Duration(seconds: 3));
+        }
+        expect(ended, 0);
+        for (final stopped in [
+          _Backdrop(result: VictoryResult.draw, play: false, onEnd: onEnd),
+          _Backdrop(
+            result: VictoryResult.draw,
+            reduceMotion: true,
+            onEnd: onEnd,
+          ),
+        ]) {
+          // A fresh overlay plays, then is stopped.
+          await tester.pumpWidget(const SizedBox.shrink());
+          await _show(
+            tester,
+            _Backdrop(result: VictoryResult.draw, onEnd: onEnd),
+          );
+          await tester.pump(const Duration(milliseconds: 200));
+          await tester.pumpWidget(stopped);
+          await tester.pump(const Duration(seconds: 1));
+        }
+        expect(ended, 0);
+      });
     });
 
     testWidgets('RepBot\'s or an unknown id draws the default character', (

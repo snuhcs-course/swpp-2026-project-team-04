@@ -96,9 +96,14 @@ class ResultReport extends StatelessWidget {
     required this.onGoHome,
     required this.onRematch,
     required this.onOpenFeedback,
+    this.seat,
   });
 
   final ResultReportData data;
+
+  /// What sits in the victory scene's seat (W5), as [ResultSeatRows] places
+  /// it at the right end of the headline's rows; null leaves no seat.
+  final Widget? seat;
 
   /// The back button and 홈으로.
   final VoidCallback onGoHome;
@@ -115,20 +120,42 @@ class ResultReport extends StatelessWidget {
     final recent = data.recent;
     final tip = data.tip;
     final feedback = data.hasFeedback ? onOpenFeedback : null;
+    final seat = this.seat;
+    final headline = ResultHeadline(outcome: data.outcome, byKo: data.byKo);
+    final subLine = ResultSubLine(
+      exercise: data.exercise,
+      opponent: data.opponent,
+      played: data.played,
+      reason: ResultSubLine.reasonOf(data),
+    );
     return LobbyPage.fill(
       behind: const ResultBackdrop(),
       above: [
         ResultHeader(endedAt: data.endedAt, onGoHome: onGoHome),
         const SizedBox(height: AppSpacing.s20),
-        ResultHeadline(outcome: data.outcome, byKo: data.byKo),
-        const SizedBox(height: AppSpacing.s8),
-        ResultSubLine(
-          exercise: data.exercise,
-          opponent: data.opponent,
-          played: data.played,
-          reason: ResultSubLine.reasonOf(data),
-        ),
-        const SizedBox(height: AppSpacing.s12),
+        if (seat == null) ...[
+          headline,
+          const SizedBox(height: AppSpacing.s8),
+          subLine,
+          const SizedBox(height: AppSpacing.s12),
+        ] else
+          ResultSeatRows(
+            seat: seat,
+            leastWidth: ResultSubLine.leastWidthIn(
+              context,
+              exercise: data.exercise,
+              played: data.played,
+            ),
+            rows: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                headline,
+                const SizedBox(height: AppSpacing.s8),
+                subLine,
+              ],
+            ),
+          ),
         ResultScoreRow(
           myScore: data.myScore,
           opponentScore: data.opponentScore,
@@ -357,6 +384,89 @@ class ResultHeadline extends StatelessWidget {
   }
 }
 
+/// The headline's [rows] with the victory scene's [seat] (W5) at their
+/// right end, as W5 spec 2 and 11.2 place it: a [seatSize] cell whose
+/// bottom meets the score row's top (the report's gap under the rows is
+/// part of this widget) and whose right end reaches [overhang] into the
+/// page's margin, so on a 360 phone it is x 200-344. The cell reaches up
+/// beside the header; the rows keep left of it, so a long nickname is cut
+/// and a large headline shrinks before they reach it.
+///
+/// When even the sub line's least width ([leastWidth]) does not fit left
+/// of the cell (very large text), the cell gets a row of its own above
+/// the rows, at the same right end, and the rows take the whole width.
+class ResultSeatRows extends StatelessWidget {
+  const ResultSeatRows({
+    super.key,
+    required this.seat,
+    required this.rows,
+    required this.leastWidth,
+  });
+
+  /// What sits in the cell; it is given the cell's size.
+  final Widget seat;
+
+  /// The headline, the sub line and the reason line.
+  final Widget rows;
+
+  /// The narrowest the rows may be beside the cell.
+  final double leastWidth;
+
+  /// The cell (W5 spec 2; the scene's `VictoryOverlay.seatSize`).
+  static const seatWidth = 144.0;
+  static const seatHeight = 148.0;
+  static const seatSize = Size(seatWidth, seatHeight);
+
+  /// How far the cell reaches past the column's right end: the design's
+  /// seat ends at x 344 of a 360 screen with 20-point margins.
+  static const overhang = 4.0;
+
+  /// The width the cell takes from the rows.
+  static const reserved = seatWidth - overhang;
+
+  /// The report's gap between the rows and the score row.
+  static const _gapBelow = AppSpacing.s12;
+
+  @override
+  Widget build(BuildContext context) {
+    final cell = SizedBox.fromSize(size: seatSize, child: seat);
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (box.maxWidth - reserved >= leastWidth) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                  right: reserved,
+                  bottom: _gapBelow,
+                ),
+                child: rows,
+              ),
+              Positioned(right: -overhang, bottom: 0, child: cell),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: seatHeight,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [Positioned(top: 0, right: -overhang, child: cell)],
+              ),
+            ),
+            rows,
+            const SizedBox(height: _gapBelow),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// "푸쉬업 · vs RepBot 고수 · 25초" on one line. A long nickname alone is
 /// cut with "…"; the exercise and the seconds stay whole. A [reason] goes
 /// on a line of its own below, so the line keeps clear of the right end of
@@ -379,6 +489,42 @@ class ResultSubLine extends StatelessWidget {
   /// Why the battle went as it did, when the headline and the scores do not
   /// say it; null for no second line.
   final String? reason;
+
+  /// The narrowest the line can be at [context]'s text size: its words but
+  /// the name whole, and the "…" a cut name shrinks to.
+  static double leastWidthIn(
+    BuildContext context, {
+    required ExerciseType exercise,
+    required Duration? played,
+  }) {
+    final style = _styleOf(context);
+    final scaler = MediaQuery.textScalerOf(context);
+    var width = 0.0;
+    for (final words in [
+      _before(exercise),
+      '…',
+      if (played != null) _after(played),
+    ]) {
+      final painter = TextPainter(
+        text: TextSpan(text: words, style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      width += painter.width;
+      painter.dispose();
+    }
+    return width;
+  }
+
+  static TextStyle _styleOf(BuildContext context) =>
+      Theme.of(context).textTheme.reportLine
+          .copyWith(color: AppColors.textSecondary);
+
+  /// The words before the name, and the seconds after it.
+  static String _before(ExerciseType exercise) =>
+      '${exercise.koreanName} · vs ';
+  static String _after(Duration played) => ' · ${played.inSeconds}초';
 
   /// A bot as "RepBot" and its level (a bot without one plays as 고수); a
   /// person by their nickname.
@@ -407,8 +553,7 @@ class ResultSubLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.reportLine
-        .copyWith(color: AppColors.textSecondary);
+    final style = _styleOf(context);
     final name = opponentText(opponent);
     final played = this.played;
     final seconds = played == null ? null : '${played.inSeconds}초';
@@ -427,7 +572,7 @@ class ResultSubLine extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text('${exercise.koreanName} · vs ', style: style),
+                Text(_before(exercise), style: style),
                 Flexible(
                   child: Text(
                     name,
@@ -436,7 +581,7 @@ class ResultSubLine extends StatelessWidget {
                     style: style,
                   ),
                 ),
-                if (seconds != null) Text(' · $seconds', style: style),
+                if (played != null) Text(_after(played), style: style),
               ],
             ),
             if (reason != null) Text(reason, style: style),

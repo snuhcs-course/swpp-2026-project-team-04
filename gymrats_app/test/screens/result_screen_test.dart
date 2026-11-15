@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/game_score.dart';
@@ -12,21 +13,27 @@ import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/services/feedback/feedback_stats.dart';
+import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/result_viewmodel.dart';
 import 'package:gymrats_app/widgets/result_cards.dart';
 import 'package:gymrats_app/widgets/result_report.dart';
+import 'package:gymrats_app/widgets/victory_overlay.dart';
+import 'package:gymrats_app/widgets/victory_scene.dart';
 import 'package:provider/provider.dart';
 
 import '../support/fakes.dart';
 import '../support/feedback_fakes.dart';
 import '../support/form_report_fixtures.dart';
+import '../widgets/battle_test_support.dart';
 
 // The drawing of the report is tested in test/widgets/result_report_test.dart
-// and result_cards_test.dart. This file checks only what the screen adds:
-// the values it takes from J4's result view model, and where its buttons
-// lead.
+// and result_cards_test.dart, the victory scene and its seat in
+// test/widgets/victory_*_test.dart. This file checks only what the screen
+// adds: the values it takes from J4's result view model, where its buttons
+// lead, and the victory scene over it (W5 part 2).
 
 final _endedAt = DateTime(2026, 11, 4, 14, 30);
 
@@ -755,6 +762,443 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('home'), findsOneWidget);
       });
+    });
+  });
+
+  group('the victory scene (W5 part 2)', () {
+    // The app's fonts, so the seat is where it is on the phone. The group
+    // runs last, so the tests above keep the test font.
+    setUpAll(loadBattleFonts);
+
+    test('the scene of J4\'s state: a win because the opponent left, by KO '
+        'or by time; a loss; a draw', () {
+      for (final (outcome, end, departure, scene) in const [
+        (
+          MatchOutcome.win,
+          GameEnd.ko,
+          BattleDeparture.none,
+          VictoryResult.koWin,
+        ),
+        (
+          MatchOutcome.win,
+          GameEnd.timeUp,
+          BattleDeparture.none,
+          VictoryResult.timeWin,
+        ),
+        (
+          MatchOutcome.win,
+          null,
+          BattleDeparture.opponentLeft,
+          VictoryResult.leftWin,
+        ),
+        (
+          MatchOutcome.lose,
+          GameEnd.ko,
+          BattleDeparture.none,
+          VictoryResult.lose,
+        ),
+        (
+          MatchOutcome.lose,
+          null,
+          BattleDeparture.myConnectionLost,
+          VictoryResult.lose,
+        ),
+        (
+          MatchOutcome.draw,
+          GameEnd.timeUp,
+          BattleDeparture.none,
+          VictoryResult.draw,
+        ),
+      ]) {
+        expect(
+          ResultScreen.sceneOf(
+            _state(outcome: outcome, end: end, departure: departure),
+          ),
+          scene,
+          reason: '$outcome $end $departure',
+        );
+      }
+    });
+
+    /// The scene's overlay over the whole screen; the seat's own (its end
+    /// look) does not play.
+    final sceneOverlay = find.byWidgetPredicate(
+      (widget) => widget is VictoryOverlay && widget.play,
+    );
+
+    VictoryFrame frameNow(WidgetTester tester) {
+      final painter =
+          tester
+                  .widget<CustomPaint>(
+                    find.descendant(
+                      of: sceneOverlay,
+                      matching: find.byType(CustomPaint),
+                    ),
+                  )
+                  .painter!
+              as VictoryPainter;
+      return painter.frameIn(tester.getSize(sceneOverlay));
+    }
+
+    /// Where the seat is: right of the headline, on the score row.
+    Offset seatPlace(WidgetTester tester) => Offset(
+      200,
+      tester.getRect(find.byType(ResultScoreRow)).top -
+          VictoryOverlay.seatSize.height,
+    );
+
+    /// ResultScreen as the app's first page on a 360 x 780 phone with a
+    /// status bar, after a battle; my character [character] when given.
+    /// Returns when the scene's clock is at 0 ms (unless reduced motion
+    /// keeps it from playing).
+    Future<void> openScene(
+      WidgetTester tester,
+      BattleResult result, {
+      String? character,
+      FeedbackStatsSource? history,
+      bool reduceMotion = false,
+    }) async {
+      tester.view
+        ..physicalSize = const Size(360, 780)
+        ..devicePixelRatio = 1
+        ..padding = const FakeViewPadding(top: 24);
+      addTearDown(tester.view.reset);
+      if (reduceMotion) {
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+      }
+      final app = MaterialApp(
+        theme: AppTheme.light,
+        home: ResultScreen(
+          result: result,
+          createViewModel: () =>
+              ResultViewModel.battle(result, history: history ?? _earlier()),
+        ),
+        onGenerateRoute: (settings) => MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => Scaffold(body: Text('${settings.name}')),
+        ),
+      );
+      if (character == null) {
+        await tester.pumpWidget(app);
+      } else {
+        final characters = CharacterViewModel(store: MemoryCharacterStore());
+        addTearDown(characters.dispose);
+        await characters.choose(character);
+        await tester.pumpWidget(
+          ChangeNotifierProvider<CharacterViewModel>.value(
+            value: characters,
+            child: app,
+          ),
+        );
+      }
+      // The seat is found after the first layout, then the clock ticks.
+      await tester.pump();
+      await tester.pump();
+    }
+
+    /// Fails unless the seat holds the end look of [scene] with [character].
+    void expectSeat(
+      WidgetTester tester,
+      VictoryResult scene,
+      String character,
+    ) {
+      expect(sceneOverlay, findsNothing);
+      final seat = tester.widget<VictorySeat>(find.byType(VictorySeat));
+      expect(seat.result, scene);
+      expect(seat.characterId, character);
+      expect(tester.getTopLeft(find.byType(VictorySeat)), seatPlace(tester));
+    }
+
+    for (final (name, result, scene, band) in [
+      ('a KO win', _result(end: GameEnd.ko), VictoryResult.koWin, 'KO 승리'),
+      ('a time-up win', _result(), VictoryResult.timeWin, '판정승'),
+      (
+        'an online win because the opponent left',
+        _result(
+          matchup: _online,
+          end: GameEnd.ko,
+          departure: BattleDeparture.opponentLeft,
+        ),
+        VictoryResult.leftWin,
+        '기권승',
+      ),
+    ]) {
+      testWidgets('$name: the cut-in with "$band" over the report, then my '
+          'character on its seat right of the headline; then the report\'s '
+          'buttons work', (tester) async {
+        final semantics = tester.ensureSemantics();
+        await openScene(tester, result, character: 'kangaroo');
+        final overlay = tester.widget<VictoryOverlay>(sceneOverlay);
+        expect(overlay.result, scene);
+        expect(overlay.characterId, 'kangaroo');
+        // It ends on the seat: x 200-344, its bottom on the score row: the
+        // design's (200, 36), a status bar lower; the reason line of a
+        // departure puts it one line lower still.
+        expect(overlay.seat, seatPlace(tester));
+        if (result.departure == BattleDeparture.none) {
+          expect(overlay.seat.dy, closeTo(36, 4));
+        }
+        expect(tester.getSize(sceneOverlay), const Size(360, 780));
+        expect(
+          find.bySemanticsLabel(VictoryOverlay.skipWinLabel),
+          findsOneWidget,
+        );
+        // Nothing in the seat while the scene draws it.
+        expect(find.byType(VictorySeat), findsNothing);
+
+        await tester.pump(const Duration(milliseconds: 1000));
+        final frame = frameNow(tester);
+        expect(frame.band!.text, band);
+        expect(frame.panel, isNotNull);
+        expect(frame.figure!.scale, greaterThan(1));
+
+        await tester.pump(const Duration(milliseconds: 1099));
+        expect(sceneOverlay, findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 1));
+        expectSeat(tester, scene, 'kangaroo');
+        expect(
+          find.bySemanticsLabel(VictoryOverlay.skipWinLabel),
+          findsNothing,
+        );
+
+        await tester.tap(find.text('다시 대결'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            result.matchup.opponent.isBot
+                ? GymRatsApp.matchingRoute
+                : GymRatsApp.onlineBattleRoute,
+          ),
+          findsOneWidget,
+        );
+        semantics.dispose();
+      });
+    }
+
+    for (final (outcome, character, endMs) in const [
+      (MatchOutcome.lose, 'bear', 760),
+      (MatchOutcome.draw, 'seal', 820),
+    ]) {
+      testWidgets('a ${outcome.name}: no cut-in and no band; $character '
+          'frustrates once on the seat on a white stand, then the end look '
+          'stays ($endMs ms)', (tester) async {
+        final semantics = tester.ensureSemantics();
+        final scene = outcome == MatchOutcome.lose
+            ? VictoryResult.lose
+            : VictoryResult.draw;
+        await openScene(
+          tester,
+          _result(
+            outcome: outcome,
+            opponentScore: outcome == MatchOutcome.lose ? 260 : 240,
+            opponentReps: 12,
+          ),
+          character: character,
+        );
+        expect(tester.widget<VictoryOverlay>(sceneOverlay).result, scene);
+        expect(find.bySemanticsLabel(VictoryOverlay.skipLabel), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 300));
+        final frame = frameNow(tester);
+        expect(frame.panel, isNull);
+        expect(frame.band, isNull);
+        expect(frame.confetti, isEmpty);
+        expect(frame.stand!.color, AppColors.card);
+        expect(frame.figure!.foot, seatPlace(tester) + const Offset(86, 132));
+        expect(frame.figure!.scale, closeTo(0.66, 0.001));
+
+        await tester.pump(Duration(milliseconds: endMs - 301));
+        expect(sceneOverlay, findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 1));
+        expectSeat(tester, scene, character);
+        semantics.dispose();
+      });
+    }
+
+    testWidgets('a tap anywhere skips to the end look on the seat; that tap '
+        'does not reach the report\'s button, the next one does', (
+      tester,
+    ) async {
+      await openScene(tester, _result(end: GameEnd.ko));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(find.text('다시 대결'), warnIfMissed: false);
+      await tester.pump();
+      expect(find.text(GymRatsApp.matchingRoute), findsNothing);
+      expectSeat(tester, VictoryResult.koWin, 'mouse');
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      await tester.tap(find.text('다시 대결'));
+      await tester.pumpAndSettle();
+      expect(find.text(GymRatsApp.matchingRoute), findsOneWidget);
+    });
+
+    for (final (outcome, scene) in const [
+      (MatchOutcome.win, VictoryResult.timeWin),
+      (MatchOutcome.lose, VictoryResult.lose),
+    ]) {
+      testWidgets('with reduced motion a ${outcome.name} does not play: the '
+          'seat shows the end look from the first frame', (tester) async {
+        await openScene(
+          tester,
+          _result(outcome: outcome),
+          character: 'penguin',
+          reduceMotion: true,
+        );
+        expectSeat(tester, scene, 'penguin');
+        await tester.pump(const Duration(seconds: 3));
+        expectSeat(tester, scene, 'penguin');
+        // The report takes taps at once.
+        await tester.tap(find.text('다시 대결'));
+        await tester.pumpAndSettle();
+        expect(find.text(GymRatsApp.matchingRoute), findsOneWidget);
+      });
+    }
+
+    testWidgets('reduced motion turned on while it plays: the end look at '
+        'once; turned off again, it does not play again', (tester) async {
+      await openScene(tester, _result(end: GameEnd.ko));
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(sceneOverlay, findsOneWidget);
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await tester.pump();
+      expectSeat(tester, VictoryResult.koWin, 'mouse');
+      tester.platformDispatcher.clearAccessibilityFeaturesTestValue();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expectSeat(tester, VictoryResult.koWin, 'mouse');
+    });
+
+    testWidgets('it plays once: the earlier battles arriving after the end '
+        'change the cards, not the seat', (tester) async {
+      final history = _earlier()..gate = Completer<void>();
+      await openScene(tester, _result(end: GameEnd.ko), history: history);
+      await tester.pump(const Duration(milliseconds: 2100));
+      expectSeat(tester, VictoryResult.koWin, 'mouse');
+      history.gate!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(ResultRecentCard), findsOneWidget);
+      expectSeat(tester, VictoryResult.koWin, 'mouse');
+    });
+
+    testWidgets('the earlier battles arriving while it plays change the cards '
+        'under it, not the scene: it ends on the seat at 2100 ms', (
+      tester,
+    ) async {
+      final history = _earlier()..gate = Completer<void>();
+      await openScene(tester, _result(end: GameEnd.ko), history: history);
+      final seat = tester.widget<VictoryOverlay>(sceneOverlay).seat;
+      await tester.pump(const Duration(milliseconds: 700));
+      history.gate!.complete();
+      await tester.pump();
+      expect(find.byType(ResultRecentCard), findsOneWidget);
+      expect(tester.widget<VictoryOverlay>(sceneOverlay).seat, seat);
+      await tester.pump(const Duration(milliseconds: 1399));
+      expect(sceneOverlay, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1));
+      expectSeat(tester, VictoryResult.koWin, 'mouse');
+    });
+
+    testWidgets('the scene follows the seat when the page moves while it '
+        'plays: new insets, or a scroll (a screen reader can scroll it)', (
+      tester,
+    ) async {
+      await openScene(tester, _result(end: GameEnd.ko));
+      await tester.pump(const Duration(milliseconds: 500));
+      Offset cell() => tester.getTopLeft(
+        find.descendant(
+          of: find.byType(ResultSeatRows),
+          matching: find.byType(KeyedSubtree),
+        ),
+      );
+      expect(tester.widget<VictoryOverlay>(sceneOverlay).seat, cell());
+
+      tester.view.padding = const FakeViewPadding(top: 48);
+      await tester.pump();
+      await tester.pump();
+      expect(cell().dy, seatPlace(tester).dy);
+      expect(tester.widget<VictoryOverlay>(sceneOverlay).seat, cell());
+
+      final atOne = cell();
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pump();
+      await tester.pump();
+      expect(cell(), isNot(atOne));
+      expect(tester.widget<VictoryOverlay>(sceneOverlay).seat, cell());
+
+      // A wider and shorter screen: the seat moves right, and the page
+      // scrolls.
+      tester.view.physicalSize = const Size(412, 560);
+      await tester.pump();
+      await tester.pump();
+      final before = cell();
+      expect(before.dx, 412 - 20 + ResultSeatRows.overhang - 144);
+      expect(tester.widget<VictoryOverlay>(sceneOverlay).seat, before);
+      final position = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      expect(position.maxScrollExtent, greaterThan(40));
+      position.jumpTo(40);
+      await tester.pump();
+      await tester.pump();
+      expect(cell(), before - const Offset(0, 40));
+      expect(tester.widget<VictoryOverlay>(sceneOverlay).seat, cell());
+    });
+
+    testWidgets('leaving while it plays (system back) goes home with nothing '
+        'left running', (tester) async {
+      tester.view
+        ..physicalSize = const Size(360, 780)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final result = _result(end: GameEnd.ko);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => ResultScreen(
+                      result: result,
+                      createViewModel: () =>
+                          ResultViewModel.battle(result, history: _earlier()),
+                    ),
+                  ),
+                ),
+                child: const Text('home'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('home'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(sceneOverlay, findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(ResultScreen), findsNothing);
+      expect(find.text('home'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('without the app\'s character the default character plays', (
+      tester,
+    ) async {
+      await openScene(tester, _result());
+      expect(
+        tester.widget<VictoryOverlay>(sceneOverlay).characterId,
+        CharacterRig.defaultId,
+      );
     });
   });
 }

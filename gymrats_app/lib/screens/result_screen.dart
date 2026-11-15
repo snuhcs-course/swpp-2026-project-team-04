@@ -3,16 +3,20 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_result.dart';
+import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/feedback_stats.dart';
 import '../models/game_score.dart';
 import '../models/matchup.dart';
 import '../services/feedback/feedback_stats.dart';
 import '../services/user/user_repository.dart';
+import '../viewmodels/character_viewmodel.dart';
 import '../viewmodels/result_viewmodel.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/result_cards.dart';
 import '../widgets/result_report.dart';
+import '../widgets/victory_overlay.dart';
+import '../widgets/victory_scene.dart';
 
 /// The result report of a battle (BResult): how it ended, both scores, the
 /// user's reps, and the cards its values allow.
@@ -21,6 +25,10 @@ import '../widgets/result_report.dart';
 /// (J4) and its only behavior is navigation. The battle was saved before
 /// this screen opened. The back button, 홈으로 and system back go home;
 /// 다시 대결 replaces this screen with a new search.
+///
+/// My character sits in the report's seat, right of the headline (W5). When
+/// the report opens, the victory scene ([sceneOf]) plays once over it; a tap
+/// skips it. With reduced motion the seat shows only its end look.
 class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key, required this.result, this.createViewModel});
 
@@ -100,6 +108,15 @@ class ResultScreen extends StatefulWidget {
     );
   }
 
+  /// The victory scene of [state] (W5 spec 1 and 4): a win because the
+  /// opponent left (기권승), by KO (KO 승리) or by time (판정승); a loss or a
+  /// draw.
+  static VictoryResult sceneOf(ResultState state) => VictoryResult.decide(
+    state.outcome,
+    byKo: state.end == GameEnd.ko,
+    opponentLeft: state.opponentLeft,
+  );
+
   @override
   State<ResultScreen> createState() => _ResultScreenState();
 }
@@ -109,6 +126,17 @@ class _ResultScreenState extends State<ResultScreen> {
 
   /// Set once a leaving button is pressed, so a second tap does nothing.
   bool _leaving = false;
+
+  /// The report's seat, to find where the scene ends.
+  final _seatKey = GlobalKey();
+
+  /// Where the seat is on this screen, once the report is laid out.
+  Offset? _seat;
+
+  /// Set when the scene is over (played out or skipped) or will not play
+  /// (reduced motion when the report opened, or turned on while it plays):
+  /// from then on the seat shows the end look. It plays once.
+  bool _sceneOver = false;
 
   @override
   void initState() {
@@ -121,6 +149,33 @@ class _ResultScreenState extends State<ResultScreen> {
         );
     _viewModel.load();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) _sceneOver = true;
+  }
+
+  /// Finds the seat after the next layout, while the scene plays: when the
+  /// screen is built or the page scrolls (a screen reader can scroll it; a
+  /// touch only skips). The report's values loading change only the cards
+  /// below the seat.
+  void _findSeatLater() {
+    if (_sceneOver) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _findSeat());
+  }
+
+  /// Where the seat is now, for the scene to end on it.
+  void _findSeat() {
+    if (!mounted || _sceneOver) return;
+    final cell = _seatKey.currentContext?.findRenderObject();
+    final screen = context.findRenderObject();
+    if (cell is! RenderBox || screen is! RenderBox || !cell.hasSize) return;
+    final seat = cell.localToGlobal(Offset.zero, ancestor: screen);
+    if (seat != _seat) setState(() => _seat = seat);
+  }
+
+  void _endScene() => setState(() => _sceneOver = true);
 
   @override
   void dispose() {
@@ -170,19 +225,60 @@ class _ResultScreenState extends State<ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<ResultViewModel>.value(
-      value: _viewModel,
-      child: Consumer<ResultViewModel>(
-        builder: (context, viewModel, _) => ResultReport(
-          data: ResultScreen.reportOf(
-            viewModel.state,
-            scored: widget.result.hasGame,
+    // The app's character; without one above (a test) the default, as for
+    // a character not known (W5 spec 8).
+    final character =
+        context.watch<CharacterViewModel?>()?.characterId ??
+        CharacterRig.defaultId;
+    final scene = ResultScreen.sceneOf(_viewModel.state);
+    final playing = !_sceneOver;
+    if (playing) {
+      // The seat moves with the screen's size, insets and text size: a
+      // change builds this screen again, and it looks again.
+      MediaQuery.sizeOf(context);
+      MediaQuery.paddingOf(context);
+      MediaQuery.textScalerOf(context);
+      _findSeatLater();
+    }
+    final seat = _seat;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: (_) {
+            _findSeatLater();
+            return false;
+          },
+          child: ChangeNotifierProvider<ResultViewModel>.value(
+            value: _viewModel,
+            child: Consumer<ResultViewModel>(
+              builder: (context, viewModel, _) => ResultReport(
+                data: ResultScreen.reportOf(
+                  viewModel.state,
+                  scored: widget.result.hasGame,
+                ),
+                onGoHome: _goHome,
+                onRematch: _matchAgain,
+                onOpenFeedback: _openFeedback,
+                // Empty while the scene plays: it draws the seat itself.
+                seat: KeyedSubtree(
+                  key: _seatKey,
+                  child: playing
+                      ? const SizedBox.expand()
+                      : VictorySeat(result: scene, characterId: character),
+                ),
+              ),
+            ),
           ),
-          onGoHome: _goHome,
-          onRematch: _matchAgain,
-          onOpenFeedback: _openFeedback,
         ),
-      ),
+        if (playing && seat != null)
+          VictoryOverlay(
+            result: scene,
+            characterId: character,
+            seat: seat,
+            onEnd: _endScene,
+          ),
+      ],
     );
   }
 }

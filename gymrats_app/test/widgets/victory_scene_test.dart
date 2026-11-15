@@ -446,5 +446,24 @@ void main() {
         [true, true, true, false, false],
       );
     });
+
+    test('decide: leaving comes first for a win, then a KO, else time; a '
+        'loss or a draw is one scene whatever ended it', () {
+      for (final (outcome, byKo, opponentLeft, scene) in const [
+        (MatchOutcome.win, true, false, VictoryResult.koWin),
+        (MatchOutcome.win, false, false, VictoryResult.timeWin),
+        (MatchOutcome.win, false, true, VictoryResult.leftWin),
+        (MatchOutcome.win, true, true, VictoryResult.leftWin),
+        (MatchOutcome.lose, true, false, VictoryResult.lose),
+        (MatchOutcome.lose, false, false, VictoryResult.lose),
+        (MatchOutcome.draw, false, false, VictoryResult.draw),
+      ]) {
+        expect(
+          VictoryResult.decide(outcome, byKo: byKo, opponentLeft: opponentLeft),
+          scene,
+          reason: '$outcome ko $byKo left $opponentLeft',
+        );
+      }
+    });
   });
 }

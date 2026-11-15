@@ -21,6 +21,10 @@ import 'victory_scene.dart';
 /// tap, so the report's buttons work. With reduced motion, or when [play]
 /// is false (a past report opened from 기록보관소, spec 11.1 answered
 /// 2026-11-14), it shows only the end look.
+///
+/// The result screen keeps the end look in the report itself ([VictorySeat]
+/// in the seat, so it scrolls with the page): it shows this overlay only
+/// while the scene plays and takes it away at [onEnd].
 class VictoryOverlay extends StatefulWidget {
   const VictoryOverlay({
     super.key,
@@ -28,6 +32,7 @@ class VictoryOverlay extends StatefulWidget {
     required this.characterId,
     required this.seat,
     this.play = true,
+    this.onEnd,
   });
 
   final VictoryResult result;
@@ -44,6 +49,11 @@ class VictoryOverlay extends StatefulWidget {
   /// Whether to play the scene (the report's first opening after a battle)
   /// or show only its end look.
   final bool play;
+
+  /// Called once when the scene it played ends: played out or skipped with
+  /// a tap. Not called when it never plays, nor when reduced motion or
+  /// [play] turned off stops it (whoever turned it off knows).
+  final VoidCallback? onEnd;
 
   /// The seat's size (spec 2).
   static const seatSize = Size(144, 148);
@@ -94,7 +104,7 @@ class _VictoryOverlayState extends State<VictoryOverlay>
   void _tick(Duration elapsed) {
     final ms = elapsed.inMicroseconds / 1000;
     if (ms >= _endMs) {
-      setState(_stop);
+      _end();
     } else {
       _clock.value = ms;
     }
@@ -106,8 +116,11 @@ class _VictoryOverlayState extends State<VictoryOverlay>
     _ticker.stop();
   }
 
-  void _skip() {
-    if (!_over) setState(_stop);
+  /// The scene ends while playing: played out or skipped.
+  void _end() {
+    if (_over) return;
+    setState(_stop);
+    widget.onEnd?.call();
   }
 
   @override
@@ -151,16 +164,44 @@ class _VictoryOverlayState extends State<VictoryOverlay>
             label: widget.result.isWin
                 ? VictoryOverlay.skipWinLabel
                 : VictoryOverlay.skipLabel,
-            onTap: _skip,
+            onTap: _end,
             excludeSemantics: true,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: _skip,
+              onTap: _end,
             ),
           ),
       ],
     );
   }
+}
+
+/// The scene's end look alone, in a [VictoryOverlay.seatSize] box: the
+/// stand and the end pose of [result] (spec 8). The result report keeps it
+/// in its seat after the scene, with reduced motion, and on a past report.
+/// It takes no taps and says nothing to screen readers.
+class VictorySeat extends StatelessWidget {
+  const VictorySeat({
+    super.key,
+    required this.result,
+    required this.characterId,
+  });
+
+  final VictoryResult result;
+
+  /// My character, as [VictoryOverlay.characterId].
+  final String characterId;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.fromSize(
+    size: VictoryOverlay.seatSize,
+    child: VictoryOverlay(
+      result: result,
+      characterId: characterId,
+      seat: Offset.zero,
+      play: false,
+    ),
+  );
 }
 
 /// Paints the victory scene's layers at the time [clock] holds (ms), or its
