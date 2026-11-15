@@ -33,8 +33,8 @@ import '../widgets/victory_scene.dart';
 /// skips it. With reduced motion the seat shows only its end look.
 ///
 /// [ResultScreen.record] is a past battle's report, opened from 기록보관소
-/// ([reportTap]): the seat shows only the end look, and system back returns
-/// to the archive.
+/// ([reportTap]): the seat shows only the end look, system back returns to
+/// the archive, and 다시 대결 starts the new battle from home.
 class ResultScreen extends StatefulWidget {
   const ResultScreen({
     super.key,

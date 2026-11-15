@@ -1476,6 +1476,63 @@ void main() {
       );
     }
 
+    testWidgets('a battle just played: 다시 대결 takes only the report\'s '
+        'place; the page under it stays', (tester) async {
+      tester.view
+        ..physicalSize = const Size(360, 780)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final result = _result();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Scaffold(
+                      body: TextButton(
+                        onPressed: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ResultScreen(
+                              result: result,
+                              createViewModel: () => ResultViewModel.battle(
+                                result,
+                                history: _earlier(),
+                              ),
+                            ),
+                          ),
+                        ),
+                        child: const Text('under'),
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('home'),
+              ),
+            ),
+          ),
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => Scaffold(body: Text('${settings.name}')),
+          ),
+        ),
+      );
+      await tester.tap(find.text('home'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('under'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('다시 대결'));
+      await tester.pumpAndSettle();
+      expect(find.text(GymRatsApp.matchingRoute), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('under'), findsOneWidget);
+    });
+
     for (final (name, isOnline, route) in const [
       ('a past bot battle', false, GymRatsApp.matchingRoute),
       ('a past online battle', true, GymRatsApp.onlineBattleRoute),
