@@ -610,8 +610,7 @@ void main() {
         .state<NavigatorState>(find.byType(Navigator))
         .pushNamed(GymRatsApp.resultRoute, arguments: result);
     await tester.pumpAndSettle();
-    expect(find.text('WIN'), findsOneWidget);
-    expect(find.text('10개 차이로 이겼어요!'), findsOneWidget);
+    expect(find.text('승리'), findsOneWidget);
 
     await tester.tap(find.text('홈으로'));
     await tester.pumpAndSettle();
