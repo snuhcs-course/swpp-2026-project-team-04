@@ -50,3 +50,18 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 ## S3 follow-up — main merge (2026-11-15)
 - Codex merged the current main into the squat silhouette branch, resolved the theme token conflict by preserving both owners' values, and reran the analyzer and full app tests. The local staged-file guard was corrected to compare a main merge's result with its incoming main parent; it still checks every change the branch introduces relative to main, including conflict resolutions. It is a local harness change and is not committed.
 - The user had earlier confirmed owner/PM agreement for the battle integration. A direct confirmation from Woohyun in the PR is not evidenced by the review records available at this point.
+
+## S4 follow-up — #59 and common squat judging (2026-11-14)
+- Tool: Codex. Base: main eb336c3, including J4 #57. Codex reproduced the missing per-frame depth and added regression tests before the fix.
+- The user chose to unify production AI/online squats through SquatRepJudge and confirmed owner/PM agreement for the bot factory and its existing test file. The prior demo type had also bypassed phone-movement rejection; using the normal factory removes that production bypass.
+- Codex supplied current depth and valid-side hip/knee coordinates, retained the legacy diagnostic judge's API, and verified 4 full + 2 shallow repetitions through real counter wiring, report serialization and the analyzer using fakes.
+- Verification: 92 targeted tests passed; Flutter analysis clean. Independent read-only Codex review found no actionable defects and approved this implementation scope. Full-suite results are in the personal testing notes. No physical-phone UAT or broad squat-accuracy result is claimed.
+- A coverage command initially referenced a nonexistent squat_error_cases_test.dart; the actual three service suites were rerun successfully. This was an agent command error, not a human manual fix. No human source edits or measured time savings were reported.
+- The issue handoff, actual decision replies and commit/push request for this task are recorded verbatim in the prompt log, reviewed for credentials and unrelated personal data before staging. Full-iteration session export and team-wide interaction-history review remain TODO; no assistant transcript or tool output is included.
+
+### S4 #59 current-main integration (2026-11-15)
+- On the user's request to handle the open issues, Codex merged current main into the existing #59 branch and verified the combined app suite. An independent reviewer approved the integration against that baseline and identified future conflicts with pending #65; those need resolution and re-verification after #65 is merged. No human source-code edits or real-person testing were reported.
+
+## S4 #59 merge after #65 (2026-11-15)
+- Codex merged main `95b6d97`, preserved both personal-note histories and updated the battle test for fresh setup frames and the shared judge. The user requested the conflict resolution and removal of Draft status.
+- The four scoped test suites, full Flutter suite and analyzer passed; details are in the personal testing notes. Independent read-only Codex review approved the resolution. No human manual code fix or device UAT was reported.

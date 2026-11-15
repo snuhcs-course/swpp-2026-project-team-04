@@ -27,6 +27,30 @@ PoseFrame pose(double hip, {double knee = 300, double ankle = 400}) {
 }
 
 void main() {
+  test('each tracked frame reports its current depth, not the rep peak', () {
+    final judge = SquatDemoJudge();
+    expect(judge.update(pose(280)).snapshot.depth, isNull);
+    expect(judge.update(pose(220)).snapshot.depth, 0);
+    expect(judge.update(pose(260)).snapshot.depth, closeTo(.5, .001));
+    expect(judge.update(pose(300)).snapshot.depth, closeTo(1, .001));
+    expect(judge.update(pose(280)).snapshot.depth, closeTo(.75, .001));
+    final closed = judge.update(pose(220));
+    expect(closed.snapshot.depth, 0);
+    expect(closed.event!.maxDepth, closeTo(1, .001));
+    expect(
+      judge
+          .update(const PoseFrame.empty(imageWidth: 400, imageHeight: 600))
+          .snapshot
+          .depth,
+      isNull,
+    );
+    judge.abandon();
+    expect(judge.update(pose(280)).snapshot.depth, isNull);
+    expect(judge.update(pose(220)).snapshot.depth, 0);
+    judge.reset();
+    expect(judge.update(pose(280)).snapshot.depth, isNull);
+  });
+
   test('one rep records peak depth and earns Good or Excellent on its own', () {
     var now = Duration.zero;
     final judge = SquatDemoJudge(clock: () => now);
