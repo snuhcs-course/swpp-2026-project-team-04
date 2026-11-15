@@ -1,5 +1,9 @@
 # AI Collaboration Report — Iteration 4: S3
 
+## Issue #47: replay stored match mode (2026-11-15)
+- Codex added the `isOnline` mode check to `BattleSetup.of` and regression cases for bot-like online nicknames, stored bot levels, unknown bot names and old records. The first targeted test run reproduced the two defects; the fixed tests and full suite passed. The user confirmed owner/PM agreement for the two home files and explicitly allowed a separate branch restricted to those source/test files. Personal course notes remain the normal exception.
+- Independent read-only Codex review approved the change and noted that a deployed server or legacy record without the mode retains the name-based ambiguity. No real-server check, human source-code edit or time-saving estimate was reported.
+
 Author: Sangwoo Hahn. Status: draft; team-wide interaction review remains pending.
 
 ## 1. Where AI was used

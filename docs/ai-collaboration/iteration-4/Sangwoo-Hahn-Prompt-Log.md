@@ -1,5 +1,28 @@
 # Selected User Input Prompts — Iteration 4 S3
 
+## Issue #47 request and approvals, 2026-11-15
+
+```text
+github에서 이슈 읽어줘.
+```
+
+```text
+이슈 처리하고, 다음 답변에 대해 PR 충돌도 해결해줘.
+
+상우 #65(스쿼트 실루엣) 확인했는데 두 가지만 부탁해.\
+1\. 우현 형 대결 화면 파일(battle_screen, online_battle_screen, battle_viewmodel, battle_camera_view + 테스트)을 고쳐서, 우현 형 OK가 필요해. 우현 형, 스쿼트 실루엣을 대결 화면 세팅에 연결하는 수정인데 괜찮은지 한마디 부탁드려요.\
+2\. #61이 들어가서 app_theme.dart에 충돌이 났어. git fetch origin && git merge origin/main 하고, 충돌 나면 양쪽 값 다 살려서 올려 줘.\
+두 가지 되면 바로 머지할게!
+```
+
+```text
+네, 동의했어요
+```
+
+```text
+네, 별도 브랜치를 허용해요
+```
+
 Author: Sangwoo Hahn. Dates: 2026-11-07 through 2026-11-12 (individual timestamps not verified). These are verbatim prompts visible in the current chat, selected for this task; this is not a complete session export. No assistant responses or private images are included. A complete privacy-reviewed export remains TODO.
 
 - 일단 자세 설정 실루엣부터 빠르게 완료해보자. 카메라 화면에서 사람이 엎드려서 준비하는 자세가 전부 카메라에 나오도록 하려고 해. 먼저 새로운 브랜치를 판 후, 에뮬레이터에서 자세 설정 실루엣 적용된 화면 띄워줘.
