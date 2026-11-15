@@ -1,5 +1,9 @@
 # AI Collaboration Report — Iteration 4: S3
 
+## Issue #47: replay stored match mode (2026-11-15)
+- Codex added the `isOnline` mode check to `BattleSetup.of` and regression cases for bot-like online nicknames, stored bot levels, unknown bot names and old records. The first targeted test run reproduced the two defects; the fixed tests and full suite passed. The user confirmed owner/PM agreement for the two home files and explicitly allowed a separate branch restricted to those source/test files. Personal course notes remain the normal exception.
+- Independent read-only Codex review approved the change and noted that a deployed server or legacy record without the mode retains the name-based ambiguity. No real-server check, human source-code edit or time-saving estimate was reported.
+
 Author: Sangwoo Hahn. Status: draft; team-wide interaction review remains pending.
 
 ## 1. Where AI was used
@@ -37,6 +41,16 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 
 - A full-suite run exposed diagnostic demo tests depending on manual setup. Codex preserved the existing diagnostic behavior and reran those suites; no human source edit was claimed.
 
+## S3 follow-up — squat silhouette (2026-11-15)
+- Codex adapted the standalone recorder's standing guide and landmark-region matcher to the common setup, bot battle and online preparation paths. The user confirmed owner/PM agreement for the battle files and their associated tests. No new pose model was trained.
+- An independent read-only Codex review found stale-frame reuse after bot detector errors, stale online readiness across reconnects, and a missing design token. Codex fixed these and added regression tests. The follow-up review approved the changes. Human manual source edits and time savings were not reported.
+- The recorded input for this PR is in the prompt log. Earlier standalone-recorder work is summarized in the local progress record; its complete conversation export has not been reviewed for publication.
+- The alignment regions are provisional; real-person calibration and real-phone auto-start validation were not performed. Clasping the hands is shown as guidance but is not checked.
+
+## S3 follow-up — main merge (2026-11-15)
+- Codex merged the current main into the squat silhouette branch, resolved the theme token conflict by preserving both owners' values, and reran the analyzer and full app tests. The local staged-file guard was corrected to compare a main merge's result with its incoming main parent; it still checks every change the branch introduces relative to main, including conflict resolutions. It is a local harness change and is not committed.
+- The user had earlier confirmed owner/PM agreement for the battle integration. A direct confirmation from Woohyun in the PR is not evidenced by the review records available at this point.
+
 ## S4 follow-up — #59 and common squat judging (2026-11-14)
 - Tool: Codex. Base: main eb336c3, including J4 #57. Codex reproduced the missing per-frame depth and added regression tests before the fix.
 - The user chose to unify production AI/online squats through SquatRepJudge and confirmed owner/PM agreement for the bot factory and its existing test file. The prior demo type had also bypassed phone-movement rejection; using the normal factory removes that production bypass.
@@ -47,3 +61,7 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 
 ### S4 #59 current-main integration (2026-11-15)
 - On the user's request to handle the open issues, Codex merged current main into the existing #59 branch and verified the combined app suite. An independent reviewer approved the integration against that baseline and identified future conflicts with pending #65; those need resolution and re-verification after #65 is merged. No human source-code edits or real-person testing were reported.
+
+## S4 #59 merge after #65 (2026-11-15)
+- Codex merged main `95b6d97`, preserved both personal-note histories and updated the battle test for fresh setup frames and the shared judge. The user requested the conflict resolution and removal of Draft status.
+- The four scoped test suites, full Flutter suite and analyzer passed; details are in the personal testing notes. Independent read-only Codex review approved the resolution. No human manual code fix or device UAT was reported.

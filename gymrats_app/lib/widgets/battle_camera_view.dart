@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import 'chest_height_overlay.dart';
 import 'pose_camera_view.dart';
 import 'pose_silhouette_guide.dart';
+import 'pose_silhouette_squat.dart';
 import 'squat_height_overlay.dart';
 
 /// Where the arena lays the camera picture out (W2b 3-B), for a
@@ -106,9 +107,8 @@ class BattleCameraView extends StatelessWidget {
 
   /// The setup's guide over the camera for [exercise], and the camera box it
   /// was drawn for ([guideFit]), for the bot and the online battle alike:
-  /// 한상우's push-up silhouette fills a cropping camera box. Squats have
-  /// none yet: the standing silhouette (UAT-1 step 5) goes into their case
-  /// when it comes.
+  /// The squat guide covers the whole contained picture so that the head
+  /// and feet remain visible during setup.
   static ({Widget widget, BoxFit fit})? setupGuide(
     ExerciseType exercise, {
     required bool ready,
@@ -117,7 +117,10 @@ class BattleCameraView extends StatelessWidget {
       widget: PoseSilhouetteGuide(ready: ready),
       fit: BoxFit.cover,
     ),
-    ExerciseType.squat => null,
+    ExerciseType.squat => (
+      widget: StandingSilhouetteGuide(ready: ready),
+      fit: BoxFit.contain,
+    ),
   };
 
   /// The part of a picture of [shape] (width over height) that a camera
@@ -147,11 +150,16 @@ class BattleCameraView extends StatelessWidget {
     required Size setupBox,
     required Size battleBox,
     required double progress,
+    BoxFit setupFit = BoxFit.cover,
   }) {
     if (shape <= 0 || setupBox.isEmpty || battleBox.isEmpty) return Size.zero;
-    final filling = shape > setupBox.width / setupBox.height
-        ? setupBox.height
-        : setupBox.width / shape;
+    final filling = setupFit == BoxFit.contain
+        ? (shape > setupBox.width / setupBox.height
+              ? setupBox.width / shape
+              : setupBox.height)
+        : (shape > setupBox.width / setupBox.height
+              ? setupBox.height
+              : setupBox.width / shape);
     final whole = shape > battleBox.width / battleBox.height
         ? battleBox.width / shape
         : battleBox.height;
@@ -184,6 +192,7 @@ class BattleCameraView extends StatelessWidget {
           setupBox: layout.setupBox,
           battleBox: layout.battleBox,
           progress: layout.progress,
+          setupFit: guide != null ? guideFit : BoxFit.cover,
         );
         // Centered in the box, and what does not fit is cut off.
         return ClipRect(

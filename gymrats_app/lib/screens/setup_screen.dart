@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/exercise_type.dart';
+import '../models/setup_squat_silhouette_alignment.dart';
 import '../services/pose/setup_checker.dart';
 import '../viewmodels/setup_viewmodel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
 import '../widgets/pose_silhouette_guide.dart';
+import '../widgets/pose_silhouette_squat.dart';
 
 const _readyColor = Colors.greenAccent;
 
@@ -285,19 +287,53 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
               fit: StackFit.expand,
               children: [
                 if (running)
-                  PoseAvatarToggleView(
-                    controller: vm.cameraController,
-                    cameraFit: widget.exercise == ExerciseType.squat
-                        ? BoxFit.contain
-                        : BoxFit.cover,
-                    frame: state.lastFrame,
-                    mirror: vm.isFrontCamera,
-                    showLandmarks: showDebug,
-                    isVisible: vm.isVisible,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final viewport = constraints.biggest;
+                      vm.setGuideViewport(viewport);
+                      final frame = state.lastFrame;
+                      final previewSize =
+                          vm.cameraController?.value.previewSize;
+                      final landscape =
+                          MediaQuery.orientationOf(context) ==
+                          Orientation.landscape;
+                      final image = frame != null
+                          ? Size(frame.imageWidth, frame.imageHeight)
+                          : previewSize != null
+                          ? (landscape
+                                ? previewSize
+                                : Size(previewSize.height, previewSize.width))
+                          : viewport;
+                      final ready =
+                          state.status.isReady &&
+                          state.guideAligned &&
+                          state.status.reason == SetupReason.ready;
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          PoseAvatarToggleView(
+                            controller: vm.cameraController,
+                            cameraFit: BoxFit.contain,
+                            frame: frame,
+                            mirror: vm.isFrontCamera,
+                            showLandmarks: showDebug,
+                            isVisible: vm.isVisible,
+                            cameraOverlay: Stack(
+                              children: [
+                                Positioned.fromRect(
+                                  rect: squatPreviewRect(image, viewport),
+                                  child: StandingSilhouetteGuide(ready: ready),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PoseReadyBorder(ready: ready),
+                        ],
+                      );
+                    },
                   )
                 else
                   _PhaseMessage(viewModel: vm),
-                if (running) PoseReadyBorder(ready: state.status.isReady),
                 SafeArea(
                   child: Column(
                     children: [
@@ -311,7 +347,9 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                           state: state,
                           exercise: widget.exercise,
                           autoStartDelay: vm.config.autoStartDelay,
-                          onStart: state.canStart ? _finish : null,
+                          onStart: widget.showDebugTools && state.canStart
+                              ? _finish
+                              : null,
                         ),
                     ],
                   ),

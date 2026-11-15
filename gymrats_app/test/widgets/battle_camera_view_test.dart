@@ -7,6 +7,7 @@ import 'package:gymrats_app/widgets/battle_camera_view.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
 import 'package:gymrats_app/widgets/squat_height_overlay.dart';
 
 import '../support/pose_fixtures.dart';
@@ -448,11 +449,27 @@ void main() {
       }
     });
 
-    test('squats have none yet', () {
-      expect(
-        BattleCameraView.setupGuide(ExerciseType.squat, ready: false),
-        isNull,
+    test('squats show the standing guide over the entire camera picture', () {
+      for (final ready in [false, true]) {
+        final guide = BattleCameraView.setupGuide(
+          ExerciseType.squat,
+          ready: ready,
+        )!;
+        expect(
+          guide.widget,
+          isA<StandingSilhouetteGuide>().having((g) => g.ready, 'ready', ready),
+        );
+        expect(guide.fit, BoxFit.contain);
+      }
+      final size = BattleCameraView.pictureSize(
+        .75,
+        setupBox: const Size(360, 200),
+        battleBox: const Size(360, 300),
+        progress: 0,
+        setupFit: BoxFit.contain,
       );
+      expect(size.width, lessThanOrEqualTo(360));
+      expect(size.height, lessThanOrEqualTo(200));
     });
   });
 

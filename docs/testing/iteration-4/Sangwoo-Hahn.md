@@ -1,5 +1,10 @@
 # Testing — Iteration 4: S3 push-up silhouette draft
 
+## Issue #47: replay the stored match mode (2026-11-15)
+- Based on `origin/main` f652bc1. `flutter analyze --no-pub`: no issues. `flutter test --no-pub`: 3,002 passed, 10 existing skips, 0 failed. The home ViewModel and home screen suites passed 97 tests. Individually collecting coverage for `test/viewmodels/home_viewmodel_test.dart` passed 24 tests and covered 55/55 executable lines (100%) of `home_viewmodel.dart`; this is a scoped file result, not full ViewModel-layer coverage.
+- Cases: an online opponent named `RepBot` or an AI difficulty name remains online; stored bot mode and named levels are retained; unknown bot names fall back to the legacy expert level; records without a mode preserve the former name-based behavior. An independent read-only Codex reviewer approved the change. The currently deployed server was not checked, so a server or older record lacking `is_online` retains the legacy ambiguity.
+- The user confirmed owner/PM agreement and a narrowly scoped separate branch. Server files did not change and server tests were not run.
+
 ## Scope
 Push-up setup framing overlay, portrait/landscape setup layout, and matching-screen controls. Camera, detector and network are faked in widget tests. Online setup, squat silhouettes, distance/angle guidance and alignment validation are not implemented by this draft.
 
@@ -16,6 +21,17 @@ Push-up setup framing overlay, portrait/landscape setup layout, and matching-scr
 - The guide alignment thresholds are initial heuristics and need calibration across devices, body shapes and poses. Online setup follows a separate path and is not changed. An independent reviewer was not available in this session.
 
 - Subsequent regression run: the five setup suites plus both diagnostic demo suites passed 94 tests after preserving diagnostic manual-start behavior. Full app suite: 2,119 passed, 10 skipped, 0 failed. Full `flutter analyze --no-pub`: no issues.
+
+## S3 follow-up: squat silhouette in setup and battles (2026-11-15)
+- Base: `origin/main` 8c8757a. `flutter analyze --no-pub`: no issues. `flutter test --no-pub`: 2,853 passed, 10 existing skips, 0 failed. Nine skipped recorded-pose cases document known push-up classification limitations; the public WebSocket smoke test is disabled unless explicitly enabled. See test source for individual reasons. No server files changed, so server tests were not run.
+- Relevant tests: `flutter test --no-pub` with the eight changed setup/battle model, widget, ViewModel and screen suites plus `test/design_tokens_test.dart`: 289 passed, 0 failed. These use fake cameras, pose detectors and online sessions. They cover contained-image projection, mirrored poses, missing landmarks, valid and invalid holds, dropped frames, reconnects, AI and online readiness, UI guide states and existing push-up paths.
+- Whole-suite `flutter test --coverage` failed to collect coverage because the VM service disappeared; a combined scoped coverage run encountered the same issue. Eight scoped test files were then run one at a time with `--coverage`: all 244 tests passed and their LCOV data was merged by line. Changed-file line coverage: squat alignment model 100% (44/44); squat guide widget 100% (82/82); BattleCameraView 97.2% (105/108); SetupViewModel 95.2% (177/186); BattleViewModel 98.8% (317/321); SetupScreen 97.7% (256/262); BattleScreen 93.7% (164/175); OnlineBattleScreen 98.1% (316/322). These are scoped, not whole-layer coverage; team-wide layer targets were not measured.
+- Independent read-only Codex review: APPROVE after fixes to stale bot frames, online reconnect freshness and theme tokens. The setup landmark regions remain provisional. No physical-person pose calibration, online two-device session, or real-device auto-start test was performed for this PR; hands are illustrated but not checked for clasping.
+
+## S3 follow-up: merge current main into squat silhouette PR (2026-11-15)
+- Merged `origin/main` f652bc1 into PR #65 and resolved the `AppColors` conflict by retaining both `chartBar` from main and `squatGuideReady` from the PR. The resulting diff against main adds only the squat token to this theme file.
+- `flutter analyze --no-pub`: no issues. `flutter test --no-pub`: 3,014 passed, 10 skipped, 0 failed. The existing skips comprise the public-server smoke test and nine known push-up pose cases. Tests ran on the resolved merge tree before its merge commit; subsequent edits are documentation only.
+- Earlier physical-device and two-person online verification limitations still apply. Full layer coverage was not remeasured locally for this merge.
 
 ## S4 / issue #59 — depth reports and shared AI/online squat judge (2026-11-14)
 
@@ -58,3 +74,8 @@ Unchanged Model/View and server layers were not separately measured for this fix
 ### S4 #59 current-main integration (2026-11-15)
 - Merged current `origin/main` f652bc1 into the existing `fix/squat_judge_accuracy` branch (merge 38b2e06). `flutter analyze --no-pub` found no issues; `flutter test --no-pub` passed 3,003 tests with 10 pre-existing skips and zero failures. Tests ran on the merge tree before the merge commit; later changes are documentation only.
 - An independent read-only Codex reviewer approved the #59 implementation against this main baseline. The same reviewer identified conflicts if the pending S3 squat silhouette PR #65 enters main: preserve both sides of the personal course notes and `battle_viewmodel_test.dart`, merge main again and rerun affected checks after #65 merges. Previous physical-person and real-camera accuracy limitations still apply.
+
+### S4 #59 integration after #65 (2026-11-15)
+- Merged main `95b6d97` into PR #66. Both personal-note histories were retained; the battle test now supplies continuously fresh setup frames before checking the shared squat judge's `phoneMoved` rejection.
+- `flutter analyze --no-pub`: no issues. Four scoped battle/squat suites: 67 passed. Full `flutter test --no-pub --reporter expanded`: 3,102 passed, 10 pre-existing skips, 0 failed. No full-layer coverage was remeasured for this merge. No server changes.
+- Independent read-only Codex review approved the merge resolution. Physical-device and real-person UAT remain unverified.

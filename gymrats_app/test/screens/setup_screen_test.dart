@@ -9,6 +9,7 @@ import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
 
 import '../support/fakes.dart';
 import '../support/placed_phone.dart';
@@ -39,7 +40,11 @@ void main() {
   });
 
   /// Opens SetupScreen on top of a host page so it can pop a result.
-  Future<void> open(WidgetTester tester, {bool debug = false}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    bool debug = false,
+    ExerciseType exercise = ExerciseType.pushUp,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         navigatorObservers: [popCounter],
@@ -50,10 +55,10 @@ void main() {
                 context,
                 MaterialPageRoute(
                   builder: (_) => SetupScreen(
-                    exercise: ExerciseType.pushUp,
+                    exercise: exercise,
                     showDebugTools: debug,
                     createViewModel: () => SetupViewModel(
-                      exercise: ExerciseType.pushUp,
+                      exercise: exercise,
                       camera: camera,
                       estimator: estimator,
                       clock: () => now,
@@ -98,6 +103,45 @@ void main() {
     expect(guide.top, 400);
     expect(guide.bottom, 800);
     expect(tester.getBottomLeft(find.text('Start')).dy, lessThanOrEqualTo(400));
+  });
+
+  testWidgets('squat guide turns ready and starts only after three seconds', (
+    tester,
+  ) async {
+    await open(tester, exercise: ExerciseType.squat);
+    expect(
+      tester
+          .widget<StandingSilhouetteGuide>(find.byType(StandingSilhouetteGuide))
+          .ready,
+      isFalse,
+    );
+    final pose = standingFrame(showHips: true);
+    for (final ms in [0, 500, 1000, 1500]) {
+      await feed(tester, ms, pose);
+    }
+    expect(
+      tester
+          .widget<StandingSilhouetteGuide>(find.byType(StandingSilhouetteGuide))
+          .ready,
+      isTrue,
+    );
+    expect(
+      tester.widget<PoseReadyBorder>(find.byType(PoseReadyBorder)).ready,
+      isTrue,
+    );
+    expect(startButton(tester).onPressed, isNull);
+    await feed(tester, 2000, emptyFrame());
+    expect(
+      tester.widget<PoseReadyBorder>(find.byType(PoseReadyBorder)).ready,
+      isFalse,
+    );
+    for (final ms in [2100, 2600, 3100, 3600, 4100, 4600, 5000]) {
+      await feed(tester, ms, pose);
+    }
+    expect(popped, isNull);
+    await feed(tester, 5100, pose);
+    await tester.pumpAndSettle();
+    expect(popped, ExerciseType.squat);
   });
 
   testWidgets('no guide text bar, only floating back and switch buttons', (
