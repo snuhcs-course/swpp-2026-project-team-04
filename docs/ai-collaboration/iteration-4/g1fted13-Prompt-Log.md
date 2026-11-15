@@ -861,6 +861,115 @@ Claude Design 묶음을 .claude/design/gymrats-w4-home/ 에 풀어 두었다. W4
 <!-- Left out on purpose: the session summary written when this session ran out of context (11-14 15:20; not a prompt). Its key stays so a later export does not add it again. Cut: the client's injected browser notice in front of 2 prompts (11-14 13:53, 11-14 15:30; not the user's text). Two later answers in the agent's question dialogs (11-14: the band and line text sizes after review run 1, the home-only styles) are not in the export as prompts; the 10:34 dialog answers are. -->
 <!-- 21f5e71e 2026-11-14T06:20:20.758Z -->
 
+## 2026-11-15 · Woohyun Song · feat/ui_report_rules
+<!-- 6fe932af 2026-11-13T08:20:12.079Z -->
+[Woohyun Song, 11-13 17:20] "<pasted_content id=\"8d00\">
+W6 시작하자 (feat/ui_report_rules, 팀 계획 #13: 결과 리포트와 규칙 화면을 B 색배합으로). 작업 트리가 깨끗한지 확인하고 최신 origin/main에서 feat/ui_report_rules를 새로 만들어. W2·W2b·W3 위에 쌓지 마.
+
+기준 자료는 .claude/design/b-screens/이고 README.md부터 읽어. README의 Owner 칸은 11/8 기준이라 틀렸어. 지금은 규칙 화면과 결과 화면 모두 W6, 즉 내 몫이야.
+1. 규칙 화면 (screens/help_screen.dart, widgets/help_*): BRules1~3.dc.html. BRules1은 체력 바를 실제 높이로 그려 높이 0 버그를 고친 버전이야. 문구와 숫자는 지금 코드가 battle_rules 값을 읽는 방식 그대로 둬.
+2. 결과 리포트 (screens/result_screen.dart, widgets/result_*): BResult.dc.html. 제목은 BResultHeads.dc.html의 A안(밑줄 띠: KO 승리·승리는 라임 띠, 패배는 분홍 띠, 46px 한 줄)이고, 온라인 대결도 같은 리포트로 간다. 리포트 값은 진영이형 J4(feat/squat_feedback, 아직 안 올라옴)의 뷰모델이 줄 거야. 지금은 main에 있는 값으로 그리되, 화면이 값을 받는 곳을 한 군데로 모아서 J4가 들어오면 그 부분만 바꾸게 해. 화면은 뷰모델이 준 값만 그린다(팀 계획 \"Contracts between people\" 마지막 줄). 뷰모델과 모델 파일은 W6 몫이 아니니 고치지 마. main에 없는 값이 필요하면 멈추고 목록으로 알려줘. 진영이형에게 보낼 거야.
+3. result_screen_test.dart가 CI 240초 제한에 걸려 커버리지에서 빠졌던 문제가 있으니, 이번에 이 테스트를 가볍게 만들어.
+
+명세에 없는 결정(빈 기록, 긴 닉네임, 동작 줄이기 등)은 2~3개 선택지로 나한테 묻고 task.md Decisions에 적어. 테스트, analyze, check-diff, reviewer APPROVE까지 하고 보고해. PR은 J4가 올라온 뒤에 올리고, 커밋은 단계마다 해도 되지만 push는 내가 말할 때 해.
+</pasted_content id=\"8d00\">"
+
+<!-- 6fe932af 2026-11-13T12:17:20.454Z -->
+[Woohyun Song, 11-13 21:17] "중단된 작업 이어서 진행해줘"
+
+<!-- 65c1e773 2026-11-14T10:50:17.347Z -->
+[Woohyun Song, 11-14 19:50] "<pasted_content id=\"8753\">
+W6는 어제 다른 세션에서 커밋 두 개(937966e 규칙 화면, b57cd08 결과 리포트)까지 진행했다. 시작하기 전에 .claude/task.md와 progress.md의 W6 부분을 먼저 읽고 지금까지 정한 것을 파악한 뒤 아래를 진행한다.
+
+W6(feat/ui_report_rules)를 이어서 한다. 하네스 규칙과 .claude/team-plan.md를 따른다.
+
+[시작]
+1. git fetch origin 후 feat/ui_report_rules로 바꾸고 git merge origin/main 으로 최신 main(690c873)을 합친다. 그 사이 main에 W2b·J2·W3·W4·J3가 들어왔다.
+   - app_theme.dart: J2·W2b가 끝에 더한 토큰과 W4가 더한 홈 전용 스타일, W6의 변경을 모두 살린다(이 파일은 내 것이다).
+   - result_screen.dart와 규칙 화면: main에 있는 동작(온라인 대결의 \"다시 대결\", 상대가 나간 경기의 사유 표시 등)이 W6의 새 화면에서도 그대로 되게 맞춘다.
+   - design_tokens_test.dart: 양쪽 줄을 모두 남긴다.
+   - 그 밖의 파일에서 충돌이 나면 멈추고 알려 준다.
+2. 합친 뒤 전체 테스트와 flutter analyze를 돌린다.
+
+[할 일]
+1. 동점 판정 문구: 시간이 끝나 점수가 같고 인정 횟수로 승패가 갈린 경기는, 승패 제목 아래 부제에 \"점수 같음 · 횟수로 승리\" 또는 \"점수 같음 · 횟수로 패배\"를 보여 준다. 점수와 횟수가 모두 같은 무승부는 지금처럼 둔다. 값은 결과 데이터(점수, 인정 횟수, 승패)에서 화면이 문구만 정한다.
+2. 규칙 설명 화면(BRules1~3 다시 그린 것)은 지금 모습 그대로 둔다. 튜토리얼과 합칠지는 오늘 밤 팀 회의에서 정한다.
+3. W5가 W6 머지 뒤에 승패 제목 줄 오른쪽 끝에 144×148 칸을 쓸 예정이다(승리 연출 캐릭터 자리). 그 자리에 다른 요소를 두지 않는다. 이미 두었다면 알려 준다.
+4. J4(진영이형)는 아직 머지 전이다. J4 값이 필요한 칸은 지금처럼 값이 없으면 숨긴다. progress.md에 현우에게 물었던 질문 중 답을 못 받은 것이 남아 있으면 목록으로 보여 준다.
+
+[마무리]
+전체 테스트, analyze, --check-diff 를 돌리고 리뷰어 APPROVE 뒤에 커밋한다. 푸시하지 않는다(PR은 J4 머지 뒤). 끝나면 폰으로 확인할 것을 짧게 적어 준다.
+</pasted_content id=\"8753\">"
+
+<!-- 65c1e773 2026-11-14T11:48:44.424Z -->
+[Woohyun Song, 11-14 20:48] "progress.md의 \"Messages for teammates\"에서 진영이형에게 보낼 메시지를 카톡에 그대로 붙일 수 있게 한 덩어리로 보여 줘(J4에 새로 필요해진 값 두 개 포함). 지금 다른 세션이 같은 폴더에서 W7을 작업 중이니, 파일을 고치거나 git 명령을 실행하지 말고 읽어서 보여 주기만 해."
+
+<!-- 16d95e61 2026-11-14T20:14:59.995Z -->
+[Woohyun Song, 11-15 05:14] "<pasted_content id=\"cb53\">
+W6 마무리: 결과 리포트만 남기고 J4에 연결한 뒤 PR을 연다
+
+[바뀐 것]
+하네스가 2026-11-15에 업데이트됐다. .claude/ownership.json 과 .claude/team-plan.md 를 다시 읽는다. 팀 회의에서 규칙 화면을 없애고 튜토리얼로 합치기로 해서, W6는 결과 리포트 화면만 맡는다(#13, merge after #12 feat/squat_feedback). help_screen.dart, help_*, tutorial_* 와 그 테스트는 이제 J5(박진영) 소유다. J4(#57)는 main에 머지됐다. 결과 화면 디자인 자체는 바꾸지 않는다. 회의 때 온라인 대결로 확인한 결과 화면에도 문제는 없었다.
+
+[순서]
+1. 지금 HEAD에서 로컬 백업 브랜치 backup/w6-rules 를 만든다. 규칙 화면 작업을 나중에 튜토리얼 디자인(W8)에서 다시 쓰려는 것이다. 푸시하지 않는다.
+2. git fetch origin 후 origin/main 을 feat/ui_report_rules 에 merge 한다(rebase 금지). 충돌은 W6 파일 안에서만 푼다. design_tokens_test 는 양쪽을 다 남긴다. W7이 먼저 머지되어 app_theme.dart 의 inactive 토큰이 겹치면 토큰은 하나만 남기고 설명 주석은 합친다. W6 파일이 아닌 곳에서 충돌하면 멈추고 알린다.
+3. 규칙 화면 작업을 브랜치에서 뺀다. help_screen.dart, help_* 와 그 테스트를 origin/main 상태로 되돌리고(git checkout origin/main -- <경로>), W6가 새로 만든 help_* 파일은 지운다. main과 차이를 없애는 것이라 J5 파일을 고치는 일이 아니다. 가드가 막으면 이 되돌림에 한해 예외 줄을 더해 처리하고 보고한다. app_theme.dart 에 규칙 화면만 쓰던 것이 남으면 지운다. 규칙 화면용으로 더했던 예외 줄이 있으면 지운다.
+4. 결과 화면을 J4의 실제 값에 연결한다. reportOf 처럼 J4를 기다리며 임시로 둔 연결을 모두 바꾼다. 머지된 J4 코드가 기준이고, 데이터 목록 문서와 다르면 코드를 따른 뒤 보고에 적는다. 진영이 알려준 J4 값은 다음과 같다.
+   - 상대 인정 횟수: ResultState.opponentReps (int)
+   - 퇴장: ResultState.departure (BattleDeparture). opponentLeft 는 여기서 계산되는 getter로 남아 있다. 지난 경기는 서버 기록에 \"상대가 나감\"만 있어서 opponentLeft 아니면 none 이다. 지금의 이유 줄(두 번째 줄, 나간 경우 초 표시 없음)을 이 값으로 그린다.
+   - recentScores 와 평균은 같은 종목이면 봇과 온라인을 섞어 계산한다. 그대로 쓴다.
+   - 스쿼트도 자세 리포트를 저장하므로 스쿼트 판에도 nextTip 이 나온다. 예: \"엉덩이를 뒤로 빼며 허벅지가 바닥과 나란해질 때까지 앉아요.\"
+   - NextTip 에는 code 가 더 있다. 화면에는 headline, detail 만 쓰면 된다.
+   - 첫 판은 이전 기록이 없어 isNewBest 가 false 다. 첫 판이 신기록처럼 보이지 않게 하고, 이전 기록 비교 자리는 시안의 빈 상태 규칙을 따른다. 시안에 규칙이 없으면 가장 무난하게 정하고 보고한다.
+   - history(loading/ready/failed)로 비교 값을 불러오는 중인지, 실패했는지 알 수 있다. 불러오는 중에는 0이나 빈 그래프 대신 자리 표시를 쓴다. 실패하면 비교 부분만 숨기거나 짧은 문구로 처리한다(시안 규칙 우선).
+   - opponent(Opponent?, 봇 난이도 포함)와 opponentName 이 함께 있다.
+5. 승리 연출 자리(W5 칸)와 겹치는 문제는 W5 2부에서 다루므로 이번에는 손대지 않는다.
+6. result_screen_test 에 J4 상태별 테스트를 더한다: 승·패·무, KO, 상대 나감, 첫 판, history 불러오는 중·실패, 푸쉬업·스쿼트 nextTip. flutter analyze, 전체 flutter test, 리뷰어 APPROVE, ownership_guard.py --check-diff 를 통과시키고 커밋한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다.
+7. progress.md 에서 진영이형에게 보낼 J4 값 메시지는 보냄으로 표시하고, 답이 J4(#57)로 반영됐다고 적는다.
+8. 오늘 밤이 기능 머지 마감이라 푸시하고 PR을 연다. PR 본문에는 다음을 넣는다.
+   - Merge order: #13 (team plan); merge after: #12 feat/squat_feedback (merged)
+   - 2026-11-15 회의 결정으로 규칙 화면은 빼고(J5 튜토리얼로 이동) 결과 리포트만 남겼다는 것
+   - 폰 확인은 CI와 함께 진행 중이라는 것
+
+[보고]
+브랜치와 커밋, PR 번호, 만든 것, 질문하지 않고 정한 기본값, 확인 결과, 알아 둘 점, 폰에서 확인할 것.
+</pasted_content id=\"cb53\">"
+
+<!-- Cut: the client's injected browser notice in front of 2 prompts (11-13 17:20, 11-14 19:50; not the user's text). -->
+
+<!-- 7cce9fa8 2026-11-15T04:43:27.599Z -->
+[Woohyun Song, 11-15 13:43] "<pasted_content id=\"8f14\">
+W6 노트와 PR 마무리 (새 세션)
+
+[배경]
+나는 송우현([REDACTED:custom_term])이고, Iteration 4에서 W6(결과 리포트 화면, 브랜치 feat/ui_report_rules, PR #62)를 맡고 있다. W6 코드는 끝났고 PR #62가 열려 있다. 이번 세션은 노트와 PR 본문만 마무리한다. 코드는 고치지 않는다. 하네스(.claude/ 아래 ownership.json, team-plan.md, task.md, progress.md)의 규칙을 따른다. 푸시 전에 이번 프롬프트를 프롬프트 로그에 더하는 규칙도 포함한다.
+
+[할 일]
+1. feat/ui_report_rules 로 바꾼다. 작업 폴더에 커밋 안 된 변경이 있으면 멈추고 알린다.
+2. 테스트 노트 docs/testing/iteration-4/[REDACTED:custom_term].md 의 W6 항목에 남은 TODO 를 채운다.
+   - 커버리지: PR #62 의 CI 코멘트에 나온 층별 숫자(Model, ViewModel, Service, View, 앱 전체, 서버)와 출처(run 번호, 코멘트 링크)를 쓴다. 같은 노트의 W7 항목에 같은 형식의 예가 있다.
+   - 폰 확인: 아직 하지 않았고, W5~W8 PR이 모두 머지된 뒤 main 빌드로 한 번에 확인한다고 적는다.
+3. 같은 테스트 노트의 W4 항목(PR #55, 이미 머지됨)에 남은 커버리지 TODO 도 PR #55 의 CI 코멘트로 채운다.
+4. 커밋하고 feat/ui_report_rules 에 푸시한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다. 하네스 파일은 커밋하지 않는다.
+5. PR #62 본문의 \"Manual check\" 문단을 기존 양식대로 영어로 바꾼다. 폰 확인은 아직 하지 않았고 W5~W8 PR이 머지된 뒤 main 빌드로 확인한다는 것, TalkBack 도 확인하지 않았다는 것을 쓴다. GitHub 인증 문제로 PR 본문을 고칠 수 없으면 고치지 말고, 바꿀 영어 문단을 보고에 적는다.
+
+[보고]
+커밋 해시, 채운 커버리지 숫자, PR 본문을 고쳤는지(못 고쳤으면 바꿀 영어 문단), 남은 TODO 가 있으면 그 목록. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다.
+</pasted_content id=\"8f14\">"
+
+<!-- 7cce9fa8 2026-11-15T05:48:21.375Z -->
+[Woohyun Song, 11-15 14:48] "<pasted_content id=\"8f14\">
+이어서 네 가지만 더 한다.
+1. 테스트 노트 W4 항목의 폰 TODO: W4 폰 확인도 같은 폰이었다. Galaxy S26+ (SM-S947N), One UI 9.0, Android 17 로 채운다. 커밋하고 feat/ui_report_rules 에 푸시한다(프롬프트 로그 규칙 포함).
+2. PR #62 본문 Summary 의 \"Phone check: running together with CI (see Manual check).\" 줄을 새 Manual check 와 맞게 고친다. 예: \"Phone check: not yet; it will be done on a main build after the W5–W8 PRs are merged (see Manual check).\"
+3. PR #62 본문 Results 의 \"Client line coverage by layer: TODO ...\" 줄을 이번에 노트에 채운 W6 숫자(층별 %, 앱 전체, 서버)와 출처(run 43640991023)로 바꾼다.
+4. PR #61(W7) 본문 Summary 에도 \"Phone check: running together with CI\" 같은 줄이 남아 있으면 \"Phone check: done on 2026-11-15 (see Manual check).\" 로 고친다. W7 의 Manual check 문단은 이미 고쳐져 있으니 건드리지 않는다.
+PR 본문은 지난번처럼 Chrome 에서 고치고 API 로 다시 받아 확인한다. 끝나면 짧게 보고하고 메인 폴더를 비워 둔다.
+</pasted_content id=\"8f14\">"
+
+<!-- Cut: the client's injected browser notice in front of 1 prompt (11-15 14:48; not the user's text). -->
+
 ## 2026-11-15 · Woohyun Song · feat/ui_archive
 <!-- 048f8135 2026-11-14T11:44:44.411Z -->
 [Woohyun Song, 11-14 20:44] "<pasted_content id=\"9c4a\">
