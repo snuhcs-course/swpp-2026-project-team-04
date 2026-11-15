@@ -461,6 +461,133 @@ team plan, one day before the iteration's official start. Its prompts from that 
 - For anything driven by a clock, test the path where the screen is covered or the app is paused, not only the visible screen.
 - When a pixel comparison with the design is off, look for a systematic cause (here the design's rounding) before loosening the tolerance.
 
+## W6 `feat/ui_report_rules` – the result report (P15 screens, team order #13), 2026-11-13 ~ 2026-11-15
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W6's code and tests on `feat/ui_report_rules`, and merged `main` twice (`970369b`, `40fe312`):
+  - `937966e` (11-13): the rules pages in palette B, reverted by `df08927`.
+  - `b57cd08` (11-13): the report widgets `lib/widgets/result_report.dart` and `result_cards.dart`, the screen `lib/screens/result_screen.dart`, the `ReportText` styles in `app_theme.dart`, and the tests that looked for the old result's words.
+  - `9f4aee8` (11-14): the reason line under the sub line (`ResultSubLine.reasonOf`).
+  - `df08927` (11-15): the rules pages back to `main`'s version.
+  - `13afb2f` (11-15): the screen on 박진영's `ResultViewModel` (J4 #57), with `ResultScreen.reportOf(ResultState)`, `historyOf`, and the loading placeholder `ResultComparisonPlaceholder`.
+- **The design came from the user:** the palette B mockups BResult and BResultHeads (`.claude/design/b-screens/`). The view model and its values are 박진영's (J4), from the list of values Claude Code drafted for the user to send on 11-13.
+- **Review:** the `reviewer` subagent reviewed W6 in four runs. Runs 1, 2 and 4 returned CHANGES_REQUESTED (item d); each ended with APPROVE.
+- **Course notes:** Claude Code drafted these notes and the testing notes. In a notes-only session on 11-15 it filled W6's and W4's coverage in the testing notes from the CI comments of #62 and #55 (read through GitHub's public API), and wrote the phone check as not done yet.
+- **Not done by AI:**
+  - The scope and every choice were the user's: 8 + 3 answers on 11-13 (bands, the bot's name, a cut nickname, empty cards left out, large text), the reason line on its own line (11-14), and on 11-15 dropping the rules pages after the team meeting.
+  - Sending the list of values to 박진영, and J4's code.
+  - The check in an online battle at the team meeting of 11-15 (before the J4 wiring).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-13 17:20] (the start, pasted; excerpt) "2. 결과 리포트 (screens/result_screen.dart, widgets/result_*): BResult.dc.html. 제목은 BResultHeads.dc.html의 A안(밑줄 띠: KO 승리·승리는 라임 띠, 패배는 분홍 띠, 46px 한 줄)이고, 온라인 대결도 같은 리포트로 간다."
+- [Woohyun Song, 11-14 19:50] (the resume after the merges, pasted; excerpt) "result_screen.dart와 규칙 화면: main에 있는 동작(온라인 대결의 \"다시 대결\", 상대가 나간 경기의 사유 표시 등)이 W6의 새 화면에서도 그대로 되게 맞춘다."
+- [Woohyun Song, 11-15 05:14] (the finish, pasted; excerpt) "첫 판은 이전 기록이 없어 isNewBest 가 false 다. 첫 판이 신기록처럼 보이지 않게 하고, 이전 기록 비교 자리는 시안의 빈 상태 규칙을 따른다. 시안에 규칙이 없으면 가장 무난하게 정하고 보고한다."
+- The 11-13 answers to the 8 + 3 open choices were given in the agent's question dialog, so they are not in the Prompt Log; they are in `task.md`'s W6 decisions (not committed).
+
+### c. What AI did well
+- **One place for the values, built before they existed.** On 11-13 the screen took every value through one function, and the three cards J4 would fill were drawn but hidden. On 11-15 the J4 wiring rewrote `result_screen.dart` and added to the widgets only the loading placeholder, a count of rejected reps that may be unknown, and an optional tip reason. The drawing and its tests stayed.
+- **The merged code read as the contract, and the differences reported.** J4's `ResultState` gives the best before this battle and the average, not the gain and the difference the list asked for. The agent subtracted them in the screen, wrote it into `task.md` as a default for the user, and drafted a follow-up for 박진영.
+- **States tested at the screen, not only the mapping.** The fetch was held on a gate to test the placeholder and the cards that take its place, a failed fetch, the first battle, and a late answer after leaving (`test/screens/result_screen_test.dart`).
+
+### d. Hallucinations / errors
+- **Review run 1 (11-13, the rules pages, now reverted): CHANGES_REQUESTED.** 1 Major: no design-doc rows for the new token and public classes. 4 Minor: three in tests and one stale comment. All fixed.
+- **Review run 2 (11-13, the report): CHANGES_REQUESTED.**
+  - 1 Critical: the full suite failed 9 tests outside W6 (`main_test`, `battle_demo_test`, `feedback_screen_test`, `game_panel_fonts_test`) that still looked for the old result's words. The reviewer found them by running the full suite. The user approved five one-off exceptions to update them.
+  - 1 Major (design-doc rows) and 2 Minor (an empty score list would throw; a 0 difference read "+0점"). All fixed. The re-check left one Minor open on purpose: `feedback_screen_test.dart:207-208` still checks that the old '자세 피드백 보기' is absent, so it cannot fail; it is outside the approved lines (for W8).
+- **Review run 4 (11-15, the J4 wiring): CHANGES_REQUESTED.**
+  - 1 Major: the "Design doc changes" rows still described the reverted rules classes and "no view model until J4", and missed the new public API.
+  - 4 Minor: the placeholder showed for a battle without a game score, though no card could follow; the screen does arithmetic the contract gives to view models; the win / loss / draw test ran for push-ups only; the checklist had the old team number.
+  - All fixed or recorded as defaults. The re-check returned APPROVE.
+- **Wrong expectations in new tests (one caught while writing the test, one on the first run; fixed in the test):** a draw shows '240' twice; Material's `Card` paints with its own `CustomPaint`, so "no chart" had to look for the chart itself.
+
+### e. Prompt revisions
+- **Where the reason goes:**
+  - Before (11-13, answer 8 in the question dialog): the reason for an online departure ends the sub line, in place of the seconds.
+  - After (11-14, the user's choice when asked again): the reasons go on a line of their own under the sub line.
+  - Why it worked: W5's victory scene needs the right end of the headline rows. The agent measured that cell (x 196-340) and asked again with the numbers, and the second answer kept the sub line out of it.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W6 was edited by hand, so W6 has no manual-fix markers.
+- The user's corrections came as answers and as the 11-15 scope change.
+
+### Takeaway
+- When a screen's words change, run the whole suite before review: other flow tests read them.
+- When a view model lands after the screen, read its merged code as the contract and list each difference from the agreed list, rather than bending either side.
+
+## W7 `feat/ui_archive` – the archive and the statistics screens (UAT-4 AC3, team order #17), 2026-11-14 ~ 2026-11-15
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of W7's code and tests, in five commits, and merged `main` twice: `a2724d0` (J4 #57, no conflict) and `837cb7c` (W6 #62 and J5 #64; Claude Code resolved the conflicts: one `AppColors.inactive` with one comment for W6's and W7's uses, and both sides of the three note files kept, W6 first):
+  - Part 1, the archive: `be4ee29` (`AppColors.inactive`, `chartBar` and `ArchiveText` in `app_theme.dart`) and `eb2887a`. The second rewrites `lib/screens/history_screen.dart` and adds `lib/widgets/archive_chart.dart`, `archive_cards.dart` and `archive_match_row.dart`.
+  - Part 2, the statistics: `439f0f0` (`StatsText`), `fb96683` (`lib/screens/feedback_stats_screen.dart` and five `lib/widgets/feedback_stats_*.dart` files) and `fcd648a` (the archive's pill, card name and zero-day bars). Part 2 was built on its own branch `feat/ui_stats` and fast-forwarded into `feat/ui_archive` for one PR (the user, 11-15).
+- **The design came from the user:** the BArchive mockup (part 1) and the Claude Design package W7-STATS (part 2: the spec, the W7A script, `w7_golden.json` with 11 cases, and 360-wide shots). Claude Code ported them and checked the port against the golden values and the shots, rendered with the app's fonts.
+- **Review:** the `reviewer` subagent reviewed each part. Part 1 run 1 returned APPROVE with 4 Minor findings; part 2 run 1 returned CHANGES_REQUESTED (item d). Each ended with APPROVE on the re-check. The merge resolution of `837cb7c` returned APPROVE with 2 Minor findings (these notes had not recorded the merge yet; fixed).
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - The scope and every choice were the user's: four answers in part 1's question dialogs (the full list page, the theme exception with the new `chartBar` color, the `auth_flow_test` line, deleting the old `match_record_card_test` group), the nine answers to the spec's section 12 in part 2, and one PR for both parts.
+  - J3's data code (view models, calculator, server) was not touched; the screens only read it.
+  - The phone check is the user's and runs with the PR's CI.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-14 20:44] (part 1, pasted; excerpt) "\"최근 경기\" 목록과 \"전체 보기\": 줄마다 종목 아이콘, \"푸쉬업 · KO 승\"(gameEnd가 KO면 KO), 시각과 상대(\"vs RepBot 고수\" 또는 \"온라인 vs 닉네임\", isOnline 사용, null이면 지금 앱의 방식대로), 점수, 그리고 최고 기록이 오른 경기에만 라임 칩 \"↑55\"(state.bestGainOf(match), null이면 칩 없음)."
+- [Woohyun Song, 11-14 22:47] (part 2, pasted; excerpt) "2. 종목 칩 이름: ExerciseType.label 을 그대로 쓴다(\"푸쉬업\")."
+- [Woohyun Song, 11-14 22:47] (part 2, excerpt) "사용자가 회의 중이라 한동안 답을 못 한다. 위 답으로 정해지지 않은 결정은 명세의 권장안이나 가장 무난한 쪽으로 정하고 멈추지 않는다."
+- [Woohyun Song, 11-15 01:37] (the PR, pasted; excerpt) "1. feat/ui_archive 로 돌아가 git merge --ff-only feat/ui_stats 로 합친다. fast-forward가 안 되면 멈추고 알린다."
+
+### c. What AI did well
+- **The port matched the design's numbers on the first run.** The graph's slots and the words are pure functions, apart from the widgets. All 11 golden cases matched on the first run: every slot's label, reps, look and bar height, the summary, the empty notice, and the issue rows' widths. Part 1's growth chart uses BArchive's own math, checked point by point.
+- **A long nickname without a dangling dot.** Review run 1 of part 1 found that a long name wrapped under the time left " · " at the end of the line. `LobbyPage` measures its child with `IntrinsicHeight`, so a `LayoutBuilder` was not allowed. The agent wrote a small render object instead (`ArchiveWhenAndOpponent` in `archive_match_row.dart`). It keeps one line when the name fits; otherwise the opponent goes under the time, and the dot is neither painted nor read. It has 5 tests, and 4 planted faults were caught.
+- **A bug in its own test, found while fixing a review finding.** The test helper `open()` reused the app, so the second screen of a test kept the first route. The 2× text loop of the statistics screen had never drawn the failed state. The helper now clears the app first, and the loop checks every state.
+- **Checks beyond the suite:**
+  - 32 planted faults (14 in part 1, 18 in part 2) were all caught. The 2 that first survived led to two edge tests.
+  - The middle commit `fb96683` was checked alone in a temporary worktree: analyze was clean and the 185 tests of its files passed.
+  - After J4's merge, the agent checked that J4's new squat titles in `form_analyzer.dart` keep the six titles the statistics screen repeats. A test reads them from that file.
+
+### d. Hallucinations / errors
+- **Review run 1 (part 2): CHANGES_REQUESTED, 5 Major and 4 Minor.**
+  - Major 1: the loading boxes passed bare radius numbers through a `radius:` parameter. That passes the token test's pattern but not its rule. They are now named shapes.
+  - Major 2: the agent had kept the mockup's off-grid gaps (6, 10, 14, 18, 28) as named constants, against wiki 2.5.5 and its own parts 1, W4 and W6. They are now on the `AppSpacing` steps.
+  - Major 3: line heights were changed inside widgets with `copyWith(height:)`. They are now `StatsText` styles.
+  - Major 4: the spec's list of spoken names was only partly tested: the by-week sentence, the live regions, the retry button, and a chip change closing the open group.
+  - Major 5: a design-doc row was missing for the pill's icon painter.
+  - 4 Minor: `expanded` sat on the wrong node; the empty notice was cut at 2× text; the graph read dates as "9/7", which a screen reader may say as a fraction; the six titles were not tied to `form_analyzer.dart`.
+  - All were fixed. The re-check returned APPROVE with 1 Minor finding (no test of the more button's expanded state), which was fixed before the commit.
+- **Review run 1 (part 1): APPROVE, 4 Minor.**
+  - The dangling dot (item c).
+  - A design-doc row gave the row gap as 4 instead of 8 and missed the tabs' 2 px inset.
+  - The default view model ran on its own clock, apart from the screen's, so "오늘" had two clocks.
+  - A row without feedback gives no response to a tap. It was kept as the spec says and put on the phone-check list.
+- **A prompt that did not match the code:** answer 2 said to use `ExerciseType.label` for "푸쉬업", but `label` is the English "Push-up". The agent used the app's Korean name (`koreanName`), which matches the example, and listed it under the defaults it chose without asking.
+- **The full suite caught what the W7 tests did not:** the first full run of part 1 had 40 failures, all in `match_record_card_test.dart`'s group that drew the old history list. The agent stopped and asked; the user chose to delete that group under a one-off exception.
+- **Wrong expectations in new tests**, found on the first run and fixed in the test:
+  - a 2 px border the card does not have;
+  - 25 squats where the test data gives 30;
+  - a stroke width compared exactly as a float.
+- **Wrong first tries in the code**, found by the agent's own tests:
+  - The pill's semantics hid its tap action.
+  - The "자세 문제" card was read twice, because a label sat on the card and on its header.
+  - The selected state of a tab sat on the outer node.
+  - Tests with the placeholder font measured the rows too wide, so the layout tests load the app's fonts.
+- **Tooling:** shell here-documents broke on quotes, `sed` on a back-reference, and this PC's console on Korean output. The edits were redone through script files, and the output written to UTF-8 files. No impact on the code.
+
+### e. Prompt revisions
+- **The statistics screen: deferred, then given whole.**
+  - Before (11-14 20:44, part 1): "통계 화면(UAT-4 AC3: 전체/이번 달/이번 주)과 기록보관소에서 거기로 가는 입구는 Claude Design 시안이 오면 2부로 한다." Part 1 then stopped for four question dialogs.
+  - After (11-14 22:47, part 2): the full design package, the nine answers to the spec's open questions in the prompt, and "위 답으로 정해지지 않은 결정은 명세의 권장안이나 가장 무난한 쪽으로 정하고 멈추지 않는다."
+  - Why it worked: part 2 needed no question dialog. The choices left open went into the report as a list of ten defaults the user could check later, and the golden values gave the agent a check it could run itself.
+- **The way to the PR:**
+  - Before (11-14, the agent's part 2 report): the pre-push hook blocks `feat/ui_stats`, which is not in the team plan; two options were given.
+  - After (11-15 01:37): option 1, in numbered steps with a stop rule: "fast-forward가 안 되면 멈추고 알린다."
+  - Why it worked: each step had a check (fast-forward, conflicts only in W7 files, the reviewer only if the merge changed W7 files), so the merge and the push needed no further question.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W7 was edited by hand, so W7 has no manual-fix markers.
+- The user's corrections came as prompts and answers: the four dialog answers, the nine spec answers, and the PR plan.
+
+### Takeaway
+- Put the answers to a design spec's open questions into the first prompt; the agent then builds without stopping and lists what it chose.
+- A token test that matches patterns can be passed by moving a number into a parameter. Review against the rule's intent, not only the test.
+
 ## W8 `feat/ui_form_feedback` part 1 – the form feedback screen in palette B, issues #58 and #59 (P15 screens, team order #18), 2026-11-15
 
 ### a. Where AI was used

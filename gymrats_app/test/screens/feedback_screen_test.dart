@@ -187,7 +187,7 @@ void main() {
       form: _report,
     );
     await tester.pumpWidget(app(ResultScreen(result: result)));
-    await tester.tap(find.text('자세 피드백 보기'));
+    await tester.tap(find.text('자세 피드백 전체 보기'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(FeedbackScreen), findsOneWidget);
@@ -196,7 +196,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(ResultScreen), findsOneWidget);
-    expect(find.text('WIN'), findsOneWidget);
+    expect(find.text('승리'), findsOneWidget);
   });
 
   testWidgets('a result without a form report has no feedback button', (

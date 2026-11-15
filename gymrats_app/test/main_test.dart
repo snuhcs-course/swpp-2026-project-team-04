@@ -541,7 +541,7 @@ void main() {
           await tester.pump();
           await tester.pump(const Duration(seconds: 1));
         }
-        await tester.tap(find.text('시작하기'));
+        await tester.tap(find.text('완료'));
         await tester.pump();
         await tester.pump(const Duration(seconds: 1));
         expect(find.byType(HelpScreen), findsNothing);
@@ -610,8 +610,7 @@ void main() {
         .state<NavigatorState>(find.byType(Navigator))
         .pushNamed(GymRatsApp.resultRoute, arguments: result);
     await tester.pumpAndSettle();
-    expect(find.text('WIN'), findsOneWidget);
-    expect(find.text('10개 차이로 이겼어요!'), findsOneWidget);
+    expect(find.text('승리'), findsOneWidget);
 
     await tester.tap(find.text('홈으로'));
     await tester.pumpAndSettle();
