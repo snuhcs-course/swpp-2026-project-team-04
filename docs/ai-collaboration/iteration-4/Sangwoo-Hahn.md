@@ -42,3 +42,7 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 - An independent read-only Codex review found stale-frame reuse after bot detector errors, stale online readiness across reconnects, and a missing design token. Codex fixed these and added regression tests. The follow-up review approved the changes. Human manual source edits and time savings were not reported.
 - The recorded input for this PR is in the prompt log. Earlier standalone-recorder work is summarized in the local progress record; its complete conversation export has not been reviewed for publication.
 - The alignment regions are provisional; real-person calibration and real-phone auto-start validation were not performed. Clasping the hands is shown as guidance but is not checked.
+
+## S3 follow-up — main merge (2026-11-15)
+- Codex merged the current main into the squat silhouette branch, resolved the theme token conflict by preserving both owners' values, and reran the analyzer and full app tests. The local staged-file guard was corrected to compare a main merge's result with its incoming main parent; it still checks every change the branch introduces relative to main, including conflict resolutions. It is a local harness change and is not committed.
+- The user had earlier confirmed owner/PM agreement for the battle integration. A direct confirmation from Woohyun in the PR is not evidenced by the review records available at this point.
