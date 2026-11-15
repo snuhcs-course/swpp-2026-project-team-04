@@ -587,3 +587,56 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - Put the answers to a design spec's open questions into the first prompt; the agent then builds without stopping and lists what it chose.
 - A token test that matches patterns can be passed by moving a number into a parameter. Review against the rule's intent, not only the test.
+
+## W8 `feat/ui_form_feedback` part 1 – the form feedback screen in palette B, issues #58 and #59 (P15 screens, team order #18), 2026-11-15
+
+### a. Where AI was used
+- **The code and tests:** Claude Code wrote all of part 1's code and tests, in three commits on `feat/ui_form_feedback`:
+  - `7682275`: the `FeedbackText` styles appended at the end of `app_theme.dart` (the user's one-off exception).
+  - `06f2160`: the fault examples in palette B (`lib/widgets/form_fault_clip.dart`).
+  - After the Codex review of PR #63: `be2c0a2`, the charts' data and scale from the samples within the round.
+  - `8204458`: the screen (`lib/screens/feedback_screen.dart`) drawn from `FeedbackViewModel`'s `state.form`, the new `lib/widgets/feedback_parts.dart` and `feedback_charts.dart` (including a squat hip-angle chart), `match_feedback_screen.dart` passing its view model's values, and the tests.
+- **The design came from the user:** the palette B mockup `BFeedback.dc.html` from the user's design canvas, with its README. The issues #58 and #59 were filed by 박진영 from the Codex review of #57.
+- **Design check:** Claude Code rendered the mockup in headless Chrome with the app's own font files, rendered the screen with a temporary widget test and the same fonts, and compared them side by side (not committed).
+- **Review:** the `reviewer` subagent reviewed part 1 three times: run 1 and its first re-check returned CHANGES_REQUESTED (item d), the second re-check APPROVE.
+- **Course notes:** Claude Code drafted these notes and the testing notes.
+- **Not done by AI:**
+  - The scope, the order (the feedback screen now, the tutorial after J5), the source mockup and the rules (palette B, view-model values only, no change to J4's code) were the user's, in one prompt. The user was away during the run, so the agent chose the open points itself and wrote each one down for the user (`task.md` W8 Decisions, items 1–14).
+  - The phone check is the user's (TODO in the testing notes).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-15 06:55] (the start, pasted; excerpt) "_depthSentence: 후반에 0.25(푸쉬업 기준선) 이상 줄지 않으면 깊이가 \"유지\"됐다고 쓴다. 스쿼트 분석기의 기준선은 선 자세 허벅지 길이의 0.15다."
+- [Woohyun Song, 11-15 06:55] (same prompt; excerpt) "사용자가 자는 동안 돌 수 있다. 정해지지 않은 결정은 시안의 권장안이나 가장 무난한 쪽으로 정하고 멈추지 않는다. 그렇게 정한 것은 보고에 적는다."
+
+### c. What AI did well
+- **The fix stayed in the view.** Reading `form_analyzer.dart` and `feedback_viewmodel.dart` showed that J4's view model already gives the analyzer's own verdicts (`depthTrend`, `armBalance`, the pace). So #58 needed no change to J4's files, only a screen that words those values. A test hands the screen invented values and checks it shows them, not its own.
+- **A like-for-like design check.** The mockup loads its fonts from Google Fonts; the agent pointed a local copy at the app's font files, so both renders used the same fonts. The comparison found the one real difference: the app stretched the fault figures to the clip's width with thick pink-haloed lines, while the mockup draws a thin figure to scale. The other differences were the token roundings, recorded in "Design doc changes".
+- **Conflicts avoided before they happened.** The agent checked the open W6 and W7 branches first. W7 adds `lib/widgets/feedback_stats_*`, so the new files are `feedback_parts` and `feedback_charts`. W6 edits two lines in the middle of `feedback_screen_test.dart`, so the new tests went at its end. W6 and W7 add to the middle of `app_theme.dart`, so `FeedbackText` went at its end. The reviewer confirmed no overlap.
+- **Mutation checks:** the depth chart clipped again, the angle floor fixed at 60, and the right inset at 0 were each caught by a test; the files were restored.
+
+### d. Hallucinations / errors
+- **Review run 1: CHANGES_REQUESTED.**
+  - 1 Critical: the `app_theme.dart` exception was in `.claude/ownership-exceptions.txt` but not in `progress.md`'s exception table.
+  - 3 Major:
+    - The agent's default 1 dropped the squat's joint-angle chart with the arms. The wiki Requirements 5.6 asks for "depth and joint-angle charts" for both exercises; the agent had checked only the frozen UAT-4 AC2 wording. Fixed with a 엉덩이 각도 chart from the hip angle the app already saves.
+    - Widgets set line heights and a font, beyond color and weight (Design Documentation 2.5.1 rule 3). These moved into `FeedbackText`.
+    - No W8 rows in "Design doc changes".
+  - 3 Minor: a rejected rep at the round's end showed half its square; at 1.3× text the grown number columns left "무효 · …" without its reason; the fault figure's thigh was 8 against the mockup's 9.
+- **Re-check 1: CHANGES_REQUESTED, on a fix the agent had reported as done.** For the end square the agent added room on the right and a test of the square's drawn position. The reviewer's probe showed fl_chart still clips to the plot's width whenever any clip is set, so the square stayed cut, and the test could not see a clip. Fixed by turning the depth chart's clip off (its scale holds every sample) and making the test check every clip too; with the old setting it now fails (261 < 266). Two Minor findings were fixed with it: the angle charts' 60° floor cut deep squats flat, and the two right-hand table heads read as one word at 1.3×.
+- **The Codex review of PR #63 (P2) found a gap the reviewer had not:** the depth chart drew only the samples within the round but scaled itself, and decided whether it had data at all, on every sample. One camera frame handled after the round could stretch the axis, or leave an empty chart where the note belonged. It came from an earlier change by the agent, which left samples after the round out of the line but not out of the scale. Fixed in `be2c0a2`: one rule (`_inRound`) for the line, the scale and `hasData` of all three line charts, with tests that fail without it (6 of them, checked).
+- **Wrong expectations in new tests:** found on the first runs and fixed in the tests, not the code. These were a painted color compared as an object, not its value; stroke widths stored in single precision; and render coordinates measured from the plot, not the chart.
+- **A real gap found by a new test:** inside the list, a chart's screen-reader label merged with the sentence under it. Fixed in the code: `FeedbackChartPanel` gives the chart its own node.
+- **Tooling:**
+  - `gh` is not installed. Reading the GitHub credential to call the API was refused by the session's auto-mode safety check, so the agent read the public issues without credentials.
+  - A shell here-document with Korean text broke its encoding once, so that edit was redone through a script file.
+  - No impact on the code.
+
+### e. Prompt revisions
+- None in this step: part 1 ran from one prompt, and the follow-up from a second one that passed on the Codex comment with the fix to make. The harness update earlier the same day had already changed the order (the feedback screen first, the tutorial after J5), and the prompt followed it.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W8 was edited by hand, so W8 has no manual-fix markers.
+
+### Takeaway
+- Check the Requirements text as well as the frozen UAT wording before dropping anything a screen used to show.
+- A test of a visual fix should look at what reaches the screen (here the clip), not only at the drawing call.

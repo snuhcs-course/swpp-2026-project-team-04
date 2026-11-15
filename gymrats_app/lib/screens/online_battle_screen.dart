@@ -8,6 +8,7 @@ import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/form_report.dart';
 import '../models/pose_frame.dart';
+import '../models/setup_squat_silhouette_alignment.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/game/online_battle_result.dart';
@@ -107,6 +108,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   /// [SetupConfig.autoStartDelay], like the bot setup's auto start. Losing
   /// the pose before then cancels it; the next ready pose starts it again.
   Timer? _autoReady;
+  Timer? _squatFrameWatchdog;
+  bool _squatAligned = false;
   DateTime? _autoReadyAt;
 
   /// The user cancelled ready: no auto ready until the pose is lost and
@@ -139,7 +142,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _autoReady = Timer(delay, () {
       _autoReady = null;
       _autoReadyAt = null;
-      if (mounted && session.canReady && _setupReady && !_iAmReady) {
+      if (mounted &&
+          session.canReady &&
+          _setupReady &&
+          (session.exercise != ExerciseType.squat || _setupStatus.isReady) &&
+          !_iAmReady) {
         _readySent = true;
         session.ready(true);
       }
@@ -323,11 +330,38 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
           phonePropped: _counter.isPhonePropped,
           phoneStill: _counter.isPhoneStill,
         );
-        _setupReady = _setupStatus.isReady;
+        if (session.exercise == ExerciseType.squat && !_roundStarted) {
+          _squatAligned =
+              StandingSilhouetteAlignment(
+                minLikelihood: widget.setupConfig.minLikelihood,
+              ).matches(
+                frame,
+                Size(frame.imageWidth, frame.imageHeight),
+                mirror: _counter.isFrontCamera,
+              );
+          _setupReady =
+              _setupStatus.reason == SetupReason.ready && _squatAligned;
+          _squatFrameWatchdog?.cancel();
+          _squatFrameWatchdog = Timer(const Duration(milliseconds: 750), () {
+            if (!mounted || _roundStarted) return;
+            _setup.reset();
+            _setupStatus = SetupStatus.initial;
+            _squatAligned = false;
+            _setupReady = false;
+            if (_iAmReady && session.canReady) session.ready(false);
+            _syncAutoReady();
+            _tellSetup();
+            setState(() {});
+          });
+        } else {
+          _setupReady = _setupStatus.isReady;
+        }
       }
     } else {
       session.publishPose(null);
       _setup.reset();
+      _squatFrameWatchdog?.cancel();
+      _squatAligned = false;
       _setupStatus = SetupStatus.initial;
       _setupReady = false;
     }
@@ -363,6 +397,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   String? get _setupHint {
     if (!session.connected) return '재연결 중 · 준비 상태 확인 중…';
     if (_iAmReady) return '상대 준비를 기다리는 중…';
+    if (session.exercise == ExerciseType.squat &&
+        _setupStatus.reason == SetupReason.ready &&
+        !_squatAligned) {
+      return '실루엣 안에 몸을 맞춰 주세요.';
+    }
     final seconds = _autoReadySeconds;
     if (seconds != null) return '자세 확인! $seconds초 후 자동으로 준비해요';
     return _setupStatus.message;
@@ -441,6 +480,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   @override
   void dispose() {
     _cancelAutoReady();
+    _squatFrameWatchdog?.cancel();
     unawaited(keepScreenOn(false));
     WidgetsBinding.instance.removeObserver(this);
     session.removeListener(_onSession);
@@ -478,7 +518,9 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     final guide = settingUp && running
         ? BattleCameraView.setupGuide(
             session.exercise,
-            ready: _setupStatus.isReady,
+            ready: pushUp
+                ? _setupStatus.isReady
+                : _setupReady && _setupStatus.isReady,
           )
         : null;
     return PopScope<Object?>(
@@ -518,7 +560,10 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
           onLeave: () => unawaited(_exit()),
           hint: setup ? _setupHint : _roundHint,
           readyLabel: setup ? (_iAmReady ? '준비 취소' : '준비') : null,
-          onReady: setup && session.canReady && (_iAmReady || _setupReady)
+          onReady:
+              setup &&
+                  session.canReady &&
+                  (_iAmReady || (pushUp && _setupReady))
               ? _toggleReady
               : null,
           readyPressed: _iAmReady,

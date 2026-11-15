@@ -34,6 +34,7 @@ import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
 import 'package:gymrats_app/widgets/squat_height_overlay.dart';
 
 import '../support/fakes.dart';
@@ -396,17 +397,28 @@ void main() {
       await close(tester);
     });
 
-    testWidgets('a squat setup has no silhouette yet; the round has the squat '
+    testWidgets('a squat setup has a silhouette; the round has the squat '
         'lines and its hint', (tester) async {
       await open(tester, matchup: _squat);
       await frame(tester, 0.5);
       expect(find.byType(PoseSilhouetteGuide), findsNothing);
       expect(find.byType(BattleCameraView), findsOneWidget);
+      expect(find.byType(StandingSilhouetteGuide), findsOneWidget);
+      expect(
+        tester
+            .widget<StandingSilhouetteGuide>(
+              find.byType(StandingSilhouetteGuide),
+            )
+            .ready,
+        isTrue,
+      );
       expect(find.byType(SquatHeightOverlay), findsNothing);
-      await frame(tester, 4);
+      for (final time in [1.0, 1.5, 2.0, 2.5, 3.0, 3.5]) {
+        await frame(tester, time);
+      }
       await tester.pump();
       expect(viewModel.state.started, isTrue);
-      expect(find.byType(PoseSilhouetteGuide), findsNothing);
+      expect(find.byType(StandingSilhouetteGuide), findsNothing);
       expect(find.byType(SquatHeightOverlay), findsOneWidget);
       expect(find.text('정면에서 전신이 보이도록 서 주세요'), findsOneWidget);
       judge.snapshot = const JudgeSnapshot(phase: RepPhase.bottom);
@@ -693,7 +705,7 @@ void main() {
 
     testWidgets('step 5 (squat): missing feet and standing too close are '
         'named, and nothing counts down; standing still then counts down and '
-        'starts. The standing silhouette is not there yet', (tester) async {
+        'starts with the standing silhouette', (tester) async {
       await open(tester, matchup: _squat, setupConfig: const SetupConfig());
       final noFeet = standingFrame(
         showHips: true,
@@ -716,9 +728,7 @@ void main() {
       expect(setupWords(tooClose, ExerciseType.squat), '조금 뒤로 물러나 주세요.');
       expect(find.text('조금 뒤로 물러나 주세요.'), findsOneWidget);
       notCounting(tester);
-      // #49 has only the push-up silhouette; the squat slot waits for
-      // the standing one.
-      expect(find.byType(PoseSilhouetteGuide), findsNothing);
+      expect(find.byType(StandingSilhouetteGuide), findsOneWidget);
 
       await hold(tester, standingFrame(showHips: true), from: 9, seconds: 4.5);
       expect(viewModel.state.started, isTrue);

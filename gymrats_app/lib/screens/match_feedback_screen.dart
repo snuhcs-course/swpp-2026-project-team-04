@@ -59,7 +59,7 @@ class _MatchFeedbackScreenState extends State<MatchFeedbackScreen> {
         builder: (context, vm, _) {
           final state = vm.state;
           if (state.phase == FeedbackPhase.ready) {
-            return FeedbackScreen(report: state.report!);
+            return FeedbackScreen(report: state.report!, form: state.form);
           }
           return Scaffold(
             body: GridBackground(

@@ -98,6 +98,9 @@ abstract final class AppColors {
   /// A chart's past values beside the one in [ink]: the archive's day bars
   /// and its graph's base line (3:1 on [card]).
   static const chartBar = Color(0xFF8A93A5);
+
+  /// Green outline for a valid standing setup silhouette.
+  static const squatGuideReady = Color(0xFF4CD964);
 }
 
 /// RepBot, the robot doing push-ups in the lobby, as designed: its own
@@ -938,5 +941,50 @@ abstract final class AppTheme {
       borderRadius: BorderRadius.all(Radius.circular(cardRadius)),
       side: BorderSide(color: AppColors.border),
     ),
+  );
+}
+
+/// The text styles of the form feedback screen (BFeedback) that the theme
+/// lacks, in ink or the quieter text colors. Like the rest of the app they
+/// follow the system text size.
+extension FeedbackText on TextTheme {
+  /// "FORM" at the top of the screen.
+  TextStyle get feedbackTag => bodySmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontWeight: FontWeight.w700,
+    fontSize: 13,
+    letterSpacing: 2.6,
+    color: AppColors.textSecondary,
+  );
+
+  /// The battle line beside "FORM", and the unit after a stat's number.
+  TextStyle get feedbackMeta =>
+      bodySmall!.copyWith(fontSize: 13, color: AppColors.textSecondary);
+
+  /// A stat's number: 인정, 무효, 평균 깊이.
+  TextStyle get feedbackStat => displaySmall!.copyWith(
+    fontSize: 24,
+    height: 1.25,
+    color: AppColors.textPrimary,
+  );
+
+  /// The numbers along a chart's axes.
+  TextStyle get feedbackAxis => bodySmall!.copyWith(
+    fontSize: 10,
+    height: 1.2,
+    color: AppColors.textMuted,
+  );
+
+  /// A finding's numbers and its fix, and a note where a chart has nothing.
+  TextStyle get feedbackBody => bodyMedium!.copyWith(height: 1.5);
+
+  /// The sentence under a chart.
+  TextStyle get feedbackCaption => bodySmall!.copyWith(height: 1.5);
+
+  /// The "!" and "i" in a finding's round badge.
+  TextStyle get feedbackBadgeMark => titleSmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontWeight: FontWeight.w700,
+    height: 1,
   );
 }
