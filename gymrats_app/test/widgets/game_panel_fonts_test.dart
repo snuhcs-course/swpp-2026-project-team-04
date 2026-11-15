@@ -39,8 +39,8 @@ void main() {
       tester.renderObject<RenderParagraph>(find.text(text)).didExceedMaxLines;
 
   for (final scale in const [1.0, 1.3, 1.5, 2.0]) {
-    testWidgets('at 360 wide and text scale $scale the rules page keeps each '
-        'of the four score tiles on one line', (tester) async {
+    testWidgets('at 360 wide and text scale $scale the tutorial\'s grade '
+        'pages keep each grade and its points on one line', (tester) async {
       await _loadAppFonts(tester);
       tester.platformDispatcher.textScaleFactorTestValue = scale;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -54,24 +54,20 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('다음'));
-      await tester.pumpAndSettle();
-      final lineHeight = tester.getSize(find.text('콤보')).height;
-      for (final label in const ['Average', 'Good', 'Excellent']) {
-        expect(
-          tester.getSize(find.text(label)).height,
-          lineHeight,
-          reason: label,
-        );
+      // The push-up's grade pages follow intro, setup and battle.
+      for (final label in const [
+        'EXCELLENT +15',
+        'GOOD +10',
+        'AVERAGE +5',
+        'FAIL 0점',
+      ]) {
+        while (find.text(label).hitTestable().evaluate().isEmpty) {
+          await tester.tap(find.text('다음'));
+          await tester.pumpAndSettle();
+        }
         expect(truncated(tester, label), isFalse, reason: label);
+        expect(tester.takeException(), isNull, reason: label);
       }
-      // +5 is short enough never to break: the others must match it.
-      final pointsHeight = tester.getSize(find.text('+5').first).height;
-      expect(tester.getSize(find.text('+10')).height, pointsHeight);
-      expect(tester.getSize(find.text('+15')).height, pointsHeight);
-      expect(truncated(tester, '+10'), isFalse);
-      expect(truncated(tester, '+15'), isFalse);
-      expect(tester.takeException(), isNull);
     });
   }
 

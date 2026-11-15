@@ -6,6 +6,84 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-15 · code at commit `1b8bd87` · step `feat/tutorial` (team plan #16, Codex review of PR #60)
+Codex (on 8e53def) found one P2: the KO picture showed fixed scores (245 vs 145) while its label and bar follow
+`battleRules.koLead`. The leader's score is now the loser's plus `koLead` (`HelpPicture.koLoserScore`), so the label,
+the scores and the full bar agree for any lead; the screen is unchanged at today's 100.
+
+- **Tests:** `flutter test` 2768 passed, 0 failed, 10 skipped (pre-existing). `flutter analyze` no issues. J5 files still
+  100% line coverage.
+- **Changed test:** `test/widgets/help_pictures_test.dart` `the battle pages use the stage's characters` now checks the
+  label, both derived scores and the drawn bar (lime 100, pink 0).
+- **Reviewer:** APPROVE (round 4); its Minor (test the drawn bar, not the rule) done.
+
+#### 2026-11-15 · code at commit `e1289f7` · step `feat/tutorial` (team plan #16, one-line follow-up after the phone check)
+After trying the tutorial on the S23 Ultra, the user asked that no title or description wrap. Titles, lines and the
+first-use hint are now one line, shrunk to fit (`FittedBox` scale-down, `maxLines: 1`); long lines were shortened; the
+hint moved out of the 완료 button to a caption above it.
+
+- **Tests:** `flutter test` 2768 passed, 0 failed, 10 skipped (pre-existing). `flutter analyze` no issues. Coverage of
+  the J5 files unchanged at 100% (the new `_OneLine` is reached by every help screen test); layers as in the entry
+  below.
+- **New test:** `test/screens/help_screen_test.dart` `titles, lines and the hint stay on one line, shrunk to fit`
+  (320×640, all 19 pages and the hint); `test/widgets/help_rules_test.dart` updated for the new report title.
+- **Manual check:** all 19 pages rendered at 412×915 with the app's fonts fit on one line without shrinking; the build
+  was installed on the phone and checked by the user before this push.
+- **Reviewer:** APPROVE (round 3); its Minor (the push-up Fail line contradicted Average) fixed.
+
+#### 2026-11-15 · code at commit `3850426` · step `feat/tutorial` (team plan #16, P19 tutorial)
+The 3-page game rules screen becomes the tutorial (PM update 2026-11-15; content from the team's mock: game rules only,
+every push-up page then every squat page, one picture and one or two lines each). `TutorialViewModel` keeps the order
+(19 pages; a squat has no Average page) and the place; `HelpRules` words the pages with the numbers of `battleRules`;
+`HelpPicture` draws them (home's former 3D RepBot in code, new front squat and front push-up figures, the setup guide
+line, the stage characters); `HelpScreen` keeps its name and `onStart`, so the first-run gate and every '?' entry open
+it unchanged. Branch based on `origin/main` eb336c3. Commands from the Plan in `gymrats_app/` on macOS (Flutter 3.47.5 /
+Dart 3.13.4).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.3% (552/556); `tutorial_page` 100% | 11/15 | `coverage_per_file.sh` + `coverage_by_layer.py` |
+| ViewModel | flutter_test, fakes | 90% | 97.5% (1459/1497); `tutorial_viewmodel`, `help_viewmodel` 100% | 11/15 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 95.9% (2637/2750); no service changed | 11/15 | same |
+| View | flutter_test (widget) | 75% | 95.3% (7032/7377); `help_screen`, `help_pictures`, `help_rules`, `tutorial_rep_bot` 100% | 11/15 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed in this step | – | – |
+
+- **Tests:** `flutter test` 2767 passed, 0 failed, 10 skipped (pre-existing, as in the J2 entry). `flutter analyze` no
+  issues. App total 95.9% (11724/12225).
+- **Not in the numbers:** `test/screens/online_preparation_test.dart` hit the script's 180-second limit again (it passes
+  in `flutter test`); no J5 file depends on it.
+- **Manual check:** every one of the 19 pages rendered offline at 412×915 with the app's fonts (a scratch test outside
+  the repo) and compared with the mock; the empty health bar of the battle pictures was found and fixed this way. Not
+  run on a phone yet.
+- **Reviewer:** CHANGES_REQUESTED in round 1 (Major: the rules-only tutorial leaves out parts of UAT-6 AC1–AC4, kept by
+  team decision; Major: missing Design doc rows; four Minor), APPROVE in round 2; its last Minor (a test with the literal
+  fever multiplier) fixed.
+
+Test cases added or changed:
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/tutorial_page_test.dart` (new, 2) | steps in battle order; page equality, hash and text |
+| ViewModel | `test/viewmodels/tutorial_viewmodel_test.dart` (new, 8) | push-up pages then squat pages (19), squat without Average, no Average page when the rules turn it off; start, next/previous, bounds without notifying, exercise tabs, per-exercise position |
+| View | `test/widgets/help_rules_test.dart` (rewritten, 5) | numbers from `battleRules`; words for every page; exercise names; grade points; push-up and squat in their own words |
+| View | `test/widgets/tutorial_rep_bot_test.dart` (new, 15) | bar ends and head move with depth; squat hip below/above the pass line; every figure paints at 3 depths; repaint rules; widget size and label |
+| View | `test/widgets/help_pictures_test.dart` (new, 8) | every page of both exercises draws and is named by its title; grade depths and badges; squat pass line; push-up guide waits/ready; squat setup without guide; stage characters, fever, KO; the report |
+| View | `test/screens/help_screen_test.dart` (rewritten, 11) | 다음 through all 19 pages with counter and dots; 이전; tabs; swipe; menu music; first use: no back, 건너뛰기, 완료 + hint; from home: back and 완료 return; every page fits 412×915 and 360×740 with one AccentButton |
+| View / Integration | `test/widgets/game_panel_fonts_test.dart`, `test/main_test.dart`, `test/auth_flow_test.dart` (approved one-off exceptions) | grade badges on one line with the real fonts; the flows end with 완료 |
+
+Acceptance criteria → tests (UAT-6 as narrowed by the team on 2026-11-15):
+- **AC1 (1:1 battle of 30 s, push-up and squat):** `every page has a title and a body, the grades with their points`,
+  `다음 turns through every push-up page, then every squat page`.
+- **AC2 (setup picture per exercise):** `push-up setup: outside the line waits, inside is ready`, `squat setup has no
+  guide line`.
+- **AC3 (grades, fever, KO in battle order):** `every push-up page, then every squat page, in battle order`, `the grades
+  show RepBot deeper for a better grade`, `the battle pages use the stage's characters`.
+- **AC4 (result and 자세 피드백 보기; 완료 goes home):** `the report shows the way to the form feedback`, `from home: the
+  last page's 완료 returns home`, `after sign-up: the last page has 완료 and its hint instead of 건너뛰기; it calls
+  onStart`.
+- Left out by the team's decision: the modes and AI levels, phone placement and setup messages, the combo, rejection
+  reasons, the time-up rule, the 기록 tab.
+
 #### 2026-11-14 · code at commit `87b8b8e` · step `feat/squat_feedback` (team plan #12, values for 송우현's W6)
 송우현 (W6, the result screen) asked for two more result-report values: `ResultState.opponentReps` (a time-up battle with
 equal scores is decided by reps) and `ResultState.departure` (`BattleDeparture`: the opponent left or the user's own

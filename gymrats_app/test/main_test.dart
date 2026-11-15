@@ -541,7 +541,7 @@ void main() {
           await tester.pump();
           await tester.pump(const Duration(seconds: 1));
         }
-        await tester.tap(find.text('시작하기'));
+        await tester.tap(find.text('완료'));
         await tester.pump();
         await tester.pump(const Duration(seconds: 1));
         expect(find.byType(HelpScreen), findsNothing);

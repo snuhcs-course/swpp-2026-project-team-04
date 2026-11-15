@@ -78,7 +78,7 @@ void main() {
       await tester.tap(find.text('다음'));
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.text('시작하기'));
+    await tester.tap(find.text('완료'));
     await tester.pumpAndSettle();
   }
 
@@ -199,7 +199,7 @@ void main() {
       await tester.tap(find.text('다음'));
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.text('확인'));
+    await tester.tap(find.text('완료'));
     await tester.pumpAndSettle();
     expect(find.byType(HelpScreen), findsNothing);
     expect(find.byType(HomeScreen), findsOneWidget);
