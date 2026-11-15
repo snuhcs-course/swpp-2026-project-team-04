@@ -50,3 +50,8 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 ## S3 follow-up — main merge (2026-11-15)
 - Codex merged the current main into the squat silhouette branch, resolved the theme token conflict by preserving both owners' values, and reran the analyzer and full app tests. The local staged-file guard was corrected to compare a main merge's result with its incoming main parent; it still checks every change the branch introduces relative to main, including conflict resolutions. It is a local harness change and is not committed.
 - The user had earlier confirmed owner/PM agreement for the battle integration. A direct confirmation from Woohyun in the PR is not evidenced by the review records available at this point.
+
+## S1 limited initial-hold change (2026-11-15)
+- Codex evaluated isolated push-up timing and pose thresholds, added synthetic 30 Hz tests and shortened the initial hold from 300 to 250 ms. The 172-degree lockout and the belly boundary remain unchanged because experimental relaxations produced an incorrect count or reason regressions.
+- An independent read-only Codex review found that the original change also cleared the knee latch early when hips were hidden. Codex added a reproducing test and retained the 300 ms minimum for latch release; the reviewer approved the corrected limited scope. Detailed commands and results are in the personal testing notes. No manual source-code fixes or real-device UAT were reported.
+- The user asked for S1 before the next build; the full S1 lockout-margin and recorded-video accuracy goals remain incomplete. These prompts are recorded as visible task inputs, not a complete session export.

@@ -16,7 +16,7 @@ class RepJudgeConfig {
   const RepJudgeConfig({
     this.minLikelihood = 0.6,
     this.topAngle = 155,
-    this.topHold = const Duration(milliseconds: 300),
+    this.topHold = const Duration(milliseconds: 250),
     this.enterDepth = 0.35,
     this.topDepth = 0.25,
     this.shallowDepth = 0.8,
@@ -672,7 +672,7 @@ class RepJudge {
   }
 
   /// A plank top, arms straight and hips open, forgets an earlier knee latch
-  /// so the next rep can count. Hidden hips do the same after [topHold]: a
+  /// so the next rep can count. Hidden hips do the same after a hold: a
   /// part that is not seen does not keep rejecting.
   void _clearKneeLatchIfPlank(
     Duration now,
@@ -695,7 +695,14 @@ class RepJudge {
       return;
     }
     _straightHipSince ??= now;
-    if (now - _straightHipSince! >= config.topHold) _kneesLatched = false;
+    // Keep the former 300 ms knee-latch release minimum even when the
+    // initial top-pose hold is shorter. Occluded hips alone must not clear a
+    // recent knee verdict any earlier.
+    const minimumKneeRelease = Duration(milliseconds: 300);
+    final releaseHold = config.topHold < minimumKneeRelease
+        ? minimumKneeRelease
+        : config.topHold;
+    if (now - _straightHipSince! >= releaseHold) _kneesLatched = false;
   }
 
   /// Records what the attempt showed of the hips and knees, raw: the cheat

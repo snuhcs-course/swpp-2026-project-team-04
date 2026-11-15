@@ -102,6 +102,52 @@ void main() {
     expect(update.snapshot.phase, RepPhase.up);
   });
 
+  test('a one-second full rep counts with the production smoothing', () {
+    final c = judge(config: const RepJudgeConfig());
+    calibrate(c);
+    final events = <RepEvent>[];
+    // 30 Hz samples: 0.4 s down, 0.4 s back up, then hold at the top.
+    for (var i = 0; i <= 30; i++) {
+      final fraction = i / 30;
+      final depth = fraction < 0.4
+          ? 1.5 * fraction / 0.4
+          : fraction < 0.8
+          ? 1.5 * (0.8 - fraction) / 0.4
+          : 0.0;
+      final update = at(
+        c,
+        400 + i * 33,
+        pose(depth: depth, elbow: 178 - depth * 18),
+      );
+      if (update.event != null) events.add(update.event!);
+    }
+    expect(events.where((e) => e.valid), hasLength(1));
+    expect(events.where((e) => !e.valid), isEmpty);
+  });
+
+  test('a full rep can start after a 250 ms top hold', () {
+    final c = judge(config: const RepJudgeConfig());
+    at(c, 0, pose());
+    expect(at(c, 250, pose()).snapshot.phase, RepPhase.up);
+    final events = <RepEvent>[];
+    for (var i = 1; i <= 30; i++) {
+      final fraction = i / 30;
+      final depth = fraction < 0.4
+          ? 1.5 * fraction / 0.4
+          : fraction < 0.8
+          ? 1.5 * (0.8 - fraction) / 0.4
+          : 0.0;
+      final update = at(
+        c,
+        250 + i * 33,
+        pose(depth: depth, elbow: 178 - depth * 18),
+      );
+      if (update.event != null) events.add(update.event!);
+    }
+    expect(events, hasLength(1));
+    expect(events.single.valid, isTrue);
+  });
+
   test('ten reps in a row each count', () {
     final c = judge();
     calibrate(c);
@@ -359,6 +405,29 @@ void main() {
     final locked = at(c, 2000, pose());
     expect(locked.event!.valid, isTrue);
     expect(locked.event!.index, 2);
+  });
+
+  test('a fast partial lockout is rejected when the next descent starts', () {
+    final c = judge(config: const RepJudgeConfig());
+    at(c, 0, pose());
+    at(c, 250, pose());
+    final events = <RepEvent>[];
+    for (var i = 1; i <= 36; i++) {
+      final f = i / 30;
+      final depth = f < .4
+          ? 1.5 * f / .4
+          : f < .8
+          ? 1.5 - 1.15 * (f - .4) / .4
+          : .35 + 1.15 * (f - .8) / .4;
+      final event = at(
+        c,
+        250 + i * 33,
+        pose(depth: depth, elbow: 165 - depth * 15),
+      ).event;
+      if (event != null) events.add(event);
+    }
+    expect(events, hasLength(1));
+    expect(events.single.reason, RejectReason.incompleteExtension);
   });
 
   test('a tilted shoulder line rejects the rep', () {
@@ -823,6 +892,97 @@ void main() {
       at(c, 1700, hipAt(1.5, 490));
       final next = at(c, 2100, hipAt(0, 610));
       expect(next.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('250 ms of hidden hips cannot clear a latched knee verdict', () {
+      final c = judge(config: const RepJudgeConfig());
+      PoseFrame hipFrame(double hipAngle) {
+        final r = hipAngle * math.pi / 180;
+        final kneeX = 90 * math.sin(r);
+        final kneeY = 470 - 90 * math.cos(r);
+        return pushUpFrame(
+          lowerBody: {
+            BodyLandmark.leftHip: (400, 470),
+            BodyLandmark.rightHip: (600, 470),
+            BodyLandmark.leftKnee: (400 + kneeX, kneeY),
+            BodyLandmark.rightKnee: (600 - kneeX, kneeY),
+          },
+        );
+      }
+
+      for (final t in [0, 300, 350, 400]) {
+        at(c, t, hipFrame(170));
+      }
+      at(c, 450, hipFrame(135));
+      at(c, 500, pushUpFrame());
+      at(c, 750, pushUpFrame());
+      at(c, 800, pushUpFrame(depth: .6, elbowAngle: 145));
+      at(c, 900, pushUpFrame(depth: 1.5, elbowAngle: 120));
+      at(c, 1000, pushUpFrame(depth: 1.5, elbowAngle: 120));
+      at(c, 1100, pushUpFrame(depth: .6, elbowAngle: 145));
+      final top = at(c, 1200, pushUpFrame()).event;
+      final later = at(c, 1250, pushUpFrame()).event;
+      expect((top ?? later)?.reason, RejectReason.kneesDown);
+    });
+
+    test('a one-second knee push-up is rejected at camera cadence', () {
+      final c = judge(config: const RepJudgeConfig());
+      PoseFrame frame(double depth) {
+        final wrist = wristY(depth);
+        return pushUpFrame(
+          depth: depth,
+          elbowAngle: 178 - depth * 18,
+          lowerBody: {
+            BodyLandmark.leftHip: (leftX, wrist - 140),
+            BodyLandmark.rightHip: (rightX, wrist - 140),
+            BodyLandmark.leftKnee: (leftX, wrist),
+            BodyLandmark.rightKnee: (rightX, wrist),
+          },
+        );
+      }
+
+      at(c, 0, frame(0));
+      at(c, 250, frame(0));
+      final events = <RepEvent>[];
+      for (var i = 1; i <= 30; i++) {
+        final f = i / 30;
+        final depth = f < .4
+            ? 1.5 * f / .4
+            : f < .8
+            ? 1.5 * (.8 - f) / .4
+            : 0.0;
+        final event = at(c, 250 + i * 33, frame(depth)).event;
+        if (event != null) events.add(event);
+      }
+      expect(events, hasLength(1));
+      expect(events.single.reason, RejectReason.kneesDown);
+    });
+
+    test('a one-second belly-down push-up is rejected at camera cadence', () {
+      final c = judge(config: const RepJudgeConfig());
+      PoseFrame frame(double depth) => pushUpFrame(
+        depth: depth,
+        elbowAngle: 178 - depth * 18,
+        lowerBody: {
+          BodyLandmark.leftHip: (leftX, wristY(depth)),
+          BodyLandmark.rightHip: (rightX, wristY(depth)),
+        },
+      );
+      at(c, 0, frame(0));
+      at(c, 250, frame(0));
+      final events = <RepEvent>[];
+      for (var i = 1; i <= 30; i++) {
+        final f = i / 30;
+        final depth = f < .4
+            ? 1.5 * f / .4
+            : f < .8
+            ? 1.5 * (.8 - f) / .4
+            : 0.0;
+        final event = at(c, 250 + i * 33, frame(depth)).event;
+        if (event != null) events.add(event);
+      }
+      expect(events, hasLength(1));
+      expect(events.single.reason, RejectReason.bellyDown);
     });
 
     test('hips that drop to the hands are a belly push-up', () {
