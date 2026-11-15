@@ -9,11 +9,14 @@ class ExitGameButton extends StatelessWidget {
 
   final VoidCallback onPressed;
 
+  static const _iconSize = 18.0;
+  static const _edge = 1.5;
+
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: const Icon(Icons.logout_rounded),
+      icon: const Icon(Icons.logout_rounded, size: _iconSize),
       label: const Text('게임 나가기'),
       style: OutlinedButton.styleFrom(
         // The tap target pads it to 48, as tall as SetupScreen's buttons.
@@ -21,7 +24,8 @@ class ExitGameButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         backgroundColor: AppColors.card,
         foregroundColor: AppColors.textPrimary,
-        side: const BorderSide(color: AppColors.border),
+        // A line, as the design's outlined buttons (palette B rule 3).
+        side: const BorderSide(color: AppColors.line, width: _edge),
         shape: const StadiumBorder(),
         textStyle: Theme.of(context).textTheme.titleSmall
             ?.copyWith(fontWeight: FontWeight.w700),

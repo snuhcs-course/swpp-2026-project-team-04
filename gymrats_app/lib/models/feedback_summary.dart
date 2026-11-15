@@ -10,6 +10,7 @@ class FeedbackSummary {
     required this.issueCount,
     this.accuracy,
     this.topIssue,
+    this.issues = const {},
   });
 
   final int validReps;
@@ -25,6 +26,11 @@ class FeedbackSummary {
   /// How many things to fix the feedback screen lists.
   final int issueCount;
 
+  /// Each issue's stable code with how often it came up, e.g.
+  /// `{'reject.insufficientDepth': 3, 'elbow_flare': 1}`; empty when the form
+  /// had nothing to fix or for a battle saved before the codes were kept.
+  final Map<String, int> issues;
+
   /// What the row says: the top issue, or praise when there is none.
   String get line => topIssue ?? '좋은 자세';
 
@@ -34,6 +40,7 @@ class FeedbackSummary {
     'accuracy': accuracy,
     'top_issue': topIssue,
     'issue_count': issueCount,
+    'issues': issues,
   };
 
   factory FeedbackSummary.fromJson(Map<String, Object?> json) =>
@@ -43,5 +50,14 @@ class FeedbackSummary {
         accuracy: (json['accuracy'] as num?)?.toDouble(),
         topIssue: json['top_issue'] as String?,
         issueCount: json['issue_count']! as int,
+        issues: readIssueCodes(json['issues']),
       );
 }
+
+/// The `issues` object of a summary; empty when it is missing (a battle
+/// saved before the codes were kept).
+Map<String, int> readIssueCodes(Object? json) => {
+  for (final MapEntry(:key, :value)
+      in ((json as Map?) ?? const {}).cast<String, Object?>().entries)
+    key: value! as int,
+};

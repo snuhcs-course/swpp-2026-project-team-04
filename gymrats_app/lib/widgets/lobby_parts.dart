@@ -73,10 +73,19 @@ class LobbyPage extends StatelessWidget {
     AppSpacing.s24,
   );
 
+  /// Home's: 8 above and below (its 76 px menu layout, 2026-11-14).
+  static const _fillPadding = EdgeInsets.fromLTRB(
+    AppSpacing.s20,
+    AppSpacing.s8,
+    AppSpacing.s20,
+    AppSpacing.s8,
+  );
+
   @override
   Widget build(BuildContext context) {
     final behind = this.behind;
     final fill = this.fill;
+    final padding = fill == null ? _padding : _fillPadding;
     return Scaffold(
       body: Stack(
         children: [
@@ -86,10 +95,10 @@ class LobbyPage extends StatelessWidget {
             // bar and any bar the page sits on.
             child: LayoutBuilder(
               builder: (context, box) => SingleChildScrollView(
-                padding: _padding,
+                padding: padding,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight: math.max(0, box.maxHeight - _padding.vertical),
+                    minHeight: math.max(0, box.maxHeight - padding.vertical),
                   ),
                   child: fill == null
                       ? IntrinsicHeight(

@@ -124,6 +124,26 @@ void main() {
     expect(_result().opponentScore, 0);
   });
 
+  test('no player left a battle unless told otherwise; leaving keeps the '
+      'two ends of the game and the outcome', () {
+    expect(_result().departure, BattleDeparture.none);
+    final left = BattleResult(
+      matchup: _matchup,
+      myReps: 3,
+      myInvalidReps: 0,
+      opponentReps: 1,
+      myScore: 30,
+      opponentScore: 40,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: DateTime(2026, 11, 12),
+      departure: BattleDeparture.opponentLeft,
+    );
+    expect(left.departure, BattleDeparture.opponentLeft);
+    expect(left.end, GameEnd.timeUp);
+    expect(left.outcome, MatchOutcome.win);
+    expect(left.record.gameEnd, GameEnd.timeUp);
+  });
+
   test('accuracy is counted reps over judged reps', () {
     expect(_result(mine: 26, invalid: 3).accuracy, closeTo(26 / 29, 1e-9));
     expect(_result(mine: 5).accuracy, 1);

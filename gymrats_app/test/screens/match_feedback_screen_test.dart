@@ -12,6 +12,7 @@ import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/viewmodels/feedback_viewmodel.dart';
 import 'package:provider/provider.dart';
 
 import '../support/fakes.dart';
@@ -68,6 +69,28 @@ void main() {
     await tester.pump();
     final screen = tester.widget<FeedbackScreen>(find.byType(FeedbackScreen));
     expect(screen.report, same(report));
+  });
+
+  testWidgets("the screen gets the view model's feedback as it is (W8)", (
+    tester,
+  ) async {
+    repository.reports = {7: sampleReport(endedAt: _endedAt)};
+    late FeedbackViewModel model;
+    await open(
+      tester,
+      MatchFeedbackScreen(
+        match: _match(summary: _summary),
+        createViewModel: () => model = FeedbackViewModel(
+          match: _match(summary: _summary),
+          repository: repository,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    final screen = tester.widget<FeedbackScreen>(find.byType(FeedbackScreen));
+    expect(screen.report, same(model.state.report));
+    expect(screen.form, same(model.state.form));
   });
 
   testWidgets('a failure shows why and retries', (tester) async {

@@ -3,17 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../config/server_config.dart';
-import '../models/avatar_model.dart';
+import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/matchup.dart';
 import '../services/auth/auth_repository.dart';
-import '../services/user/avatar_store.dart';
 import '../services/user/user_repository.dart';
 import '../services/online/online_battle_session.dart';
 import '../theme/app_theme.dart';
+import '../widgets/battle_stage_model.dart';
+import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
+import 'battle_screen.dart' show BattleSetupListener;
 import 'matching_screen.dart';
 import 'online_battle_screen.dart';
 import 'online_synthetic_battle_screen.dart';
@@ -22,7 +24,7 @@ import 'versus_screen.dart';
 typedef OnlineSessionFactory = OnlineBattleSession Function(
   Uri endpoint,
   String accessToken,
-  AvatarModel avatar,
+  String character,
 );
 
 /// Uses the existing signed-in account, with no second login or token editor.
@@ -34,22 +36,34 @@ class OnlineLobbyScreen extends StatefulWidget {
     this.createSession,
     this.onAuthenticationFailed,
     this.createCounter,
-    this.avatarStore,
+    this.myCharacter = CharacterRig.defaultId,
     this.autoJoin = true,
     this.userRepository,
+    this.onCue,
+    this.onSetup,
   });
   final AuthRepository auth;
   final ExerciseType exercise;
   final OnlineSessionFactory? createSession;
   final Future<void> Function()? onAuthenticationFailed;
   final RepCounterViewModel Function()? createCounter;
-  final AvatarStore? avatarStore;
+
+  /// The user's character id, sent to the server for the opponent's stage
+  /// (W3).
+  final String myCharacter;
   final bool autoJoin;
 
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
   /// Where the battle's form feedback is uploaded; null keeps it on the
   /// phone only.
   final UserRepository? userRepository;
+
+  /// Passed on to the battle it opens ([OnlineBattleScreen.onCue] and
+  /// [OnlineBattleScreen.onSetup]), so sound hooks in where the app builds
+  /// this lobby, without changing it.
+  final ValueChanged<BattleStageCue>? onCue;
+  final BattleSetupListener? onSetup;
+
   @override
   State<OnlineLobbyScreen> createState() => _OnlineLobbyScreenState();
 }
@@ -61,7 +75,6 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   /// takes at most this much of that time.
   static const _warningAutoClose = Duration(seconds: 5);
 
-  AvatarModel _avatar = AvatarModel.astronaut;
   OnlineBattleSession? _session;
   StreamSubscription<void>? _expiry;
   bool _opened = false;
@@ -71,13 +84,10 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   Timer? _elapsedTimer;
   final _searchClock = Stopwatch();
   bool _askingToLeave = false;
-  late final AvatarStore _avatars;
-  bool _loadingAvatar = true, _avatarLoadFailed = false;
 
   @override
   void initState() {
     super.initState();
-    _avatars = widget.avatarStore ?? MemoryAvatarStore();
     _radar = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
@@ -88,72 +98,61 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     _expiry = widget.auth.sessionExpired.listen((_) {
       if (!mounted) return;
       _release();
-      setState(() {
-        _loadingAvatar = false;
-        _error = '로그인이 만료됐어요. 다시 로그인해주세요.';
-      });
+      setState(() => _error = '로그인이 만료됐어요. 다시 로그인해주세요.');
     });
-    unawaited(_loadAvatar());
-  }
-
-  Future<void> _loadAvatar() async {
-    final account = widget.auth.session?.account;
-    if (account == null) {
-      setState(() => _loadingAvatar = false);
-      return;
-    }
-    setState(() {
-      _loadingAvatar = true;
-      _avatarLoadFailed = false;
-      _error = null;
-    });
-    try {
-      final avatar = await _avatars.read(account.id);
-      if (!mounted || widget.auth.session?.account.id != account.id) return;
-      setState(() {
-        _avatar = avatar;
-        _loadingAvatar = false;
-      });
-      if (widget.autoJoin) await _join();
-    } catch (_) {
-      if (!mounted || widget.auth.session?.account.id != account.id) return;
-      setState(() {
-        _loadingAvatar = false;
-        _avatarLoadFailed = true;
-        _error = '프로필 아바타를 불러오지 못했어요. 다시 시도해주세요.';
-      });
+    // Searching from the first frame. What connecting says before its first
+    // wait is read by that first build; what comes after reaches _changed.
+    final session = widget.autoJoin ? _start() : null;
+    if (session != null) {
+      unawaited(session.connect());
+      session.addListener(_changed);
+      _follow(session);
     }
   }
 
-  Future<void> _join() async {
-    if (_session != null || _loadingAvatar || _avatarLoadFailed) return;
+  /// Makes the session that searches with [OnlineLobbyScreen.myCharacter],
+  /// without connecting it or listening to it; null when there is no login
+  /// to search with.
+  OnlineBattleSession? _start() {
     final login = widget.auth.session;
     if (login == null || login.token.isEmpty) {
-      setState(() => _error = '먼저 로그인해주세요.');
-      return;
+      _error = '먼저 로그인해주세요.';
+      return null;
     }
     final endpoint = Uri.parse(gymratsBattleUrl);
     final session =
-        widget.createSession?.call(endpoint, login.token, _avatar) ??
+        widget.createSession?.call(endpoint, login.token, widget.myCharacter) ??
         OnlineBattleSession(
           endpoint: endpoint,
           accessToken: login.token,
-          avatar: _avatar,
+          character: widget.myCharacter,
           exercise: widget.exercise,
         );
     _session = session;
+    _error = null;
     _searchClock
       ..reset()
       ..start();
     _radar.repeat();
-    session.addListener(_changed);
-    setState(() => _error = null);
-    await session.connect();
+    return session;
+  }
+
+  Future<void> _join() async {
+    if (_session != null) return;
+    final session = _start()?..addListener(_changed);
+    setState(() {});
+    await session?.connect();
   }
 
   void _changed() {
     if (!mounted || _session == null) return;
-    final session = _session!;
+    _follow(_session!);
+    setState(() {});
+  }
+
+  /// Acts on what [session] says now: a refused login signs out, and a
+  /// found opponent or an ended search stops the radar and its clock.
+  void _follow(OnlineBattleSession session) {
     if (session.authenticationRejected && !_authFailureHandled) {
       _authFailureHandled = true;
       if (widget.onAuthenticationFailed case final signOut?) {
@@ -164,7 +163,6 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
       _radar.stop();
       _searchClock.stop();
     }
-    setState(() {});
   }
 
   Future<void> _openBattle(OnlineBattleSession session) async {
@@ -179,13 +177,25 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
                 session: session,
                 createCounter: widget.createCounter,
                 userRepository: widget.userRepository,
+                playerName: widget.auth.session?.account.nickname ?? '나',
+                onCue: widget.onCue,
+                onSetup: widget.onSetup,
               ),
       ),
     );
     if (!mounted) return;
     // The lobby is still underneath the setup/battle route. Close it too,
     // rather than exposing the old manual-entry screen after leaving a match.
-    await _cancelSearch();
+    // The battle may have handed over to the result screen, which then sits
+    // on top: only the lobby's own route goes.
+    _release();
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isActive) return;
+    if (route.isCurrent) {
+      Navigator.pop(context);
+    } else {
+      Navigator.removeRoute(context, route);
+    }
   }
 
   Future<void> _cancelSearch() async {
@@ -230,17 +240,18 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   Widget build(BuildContext context) {
     final session = _session, login = widget.auth.session;
     final busy = session != null && !session.terminal;
-    if (_loadingAvatar) {
-      return const Scaffold(
-        body: GridBackground(child: Center(child: CircularProgressIndicator())),
-      );
-    }
     if (busy && session.opponent != null) {
       return VersusScreen(
         matchup: Matchup(
           exercise: widget.exercise,
           playerName: login?.account.nickname ?? '나',
           opponent: Opponent(name: session.opponent!.name, isBot: false),
+        ),
+        // As the battle draws them: mine as sent, theirs as the server
+        // passed it on.
+        characters: BattleCharacters(
+          me: session.character,
+          opponent: session.opponent!.character,
         ),
         duration: Duration(milliseconds: session.durationMs),
         onStartSetup: () => _openBattle(session),
@@ -279,10 +290,11 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // Palette B: text is ink; lime only fills.
             Text(
               'LIVE BATTLE',
               style: Theme.of(context).textTheme.displaySmall
-                  ?.copyWith(color: AppColors.accent),
+                  ?.copyWith(color: AppColors.ink),
             ),
             const SizedBox(height: 16),
             Text(
@@ -293,16 +305,27 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
             ),
             const SizedBox(height: 12),
             const Text(
-              '상대 카메라 영상 대신 아바타만 표시해요. 관절 좌표·아바타 종류·판정만 전송하고 영상과 음성은 전송하지 않습니다.',
+              '상대 카메라 영상 대신 상대의 캐릭터만 표시해요. 관절 좌표·캐릭터 종류·판정만 전송하고 영상과 음성은 전송하지 않습니다.',
             ),
             const SizedBox(height: 24),
-            Text('프로필 아바타 · ${_avatar.label}'),
-            const Text('아바타는 홈의 프로필에서 변경할 수 있어요.'),
+            Text('캐릭터 · ${CharacterRig.standard.art(widget.myCharacter).name}'),
+            const Text('캐릭터는 게임 시작의 캐릭터 줄에서 바꿀 수 있어요.'),
             const SizedBox(height: 24),
+            // Ink words on an amber band (palette B: amber only fills).
             if (_error ?? session?.error case final text?)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(text, style: const TextStyle(color: Colors.amber)),
+                child: DecoratedBox(
+                  decoration: AppHighlight.band(AppColors.warning),
+                  child: Padding(
+                    padding: AppHighlight.bandPadding,
+                    child: Text(
+                      text,
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: AppColors.ink),
+                    ),
+                  ),
+                ),
               ),
             if (session?.terminal == true && session?.error == null)
               const Padding(
@@ -313,14 +336,10 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
               onPressed: login == null
                   ? null
                   : () {
-                      if (_avatarLoadFailed) {
-                        unawaited(_loadAvatar());
-                        return;
-                      }
                       if (_session != null) _release();
                       unawaited(_join());
                     },
-              child: Text(_avatarLoadFailed ? '다시 시도' : '온라인 상대 찾기'),
+              child: const Text('온라인 상대 찾기'),
             ),
             const SizedBox(height: 20),
             const Text(

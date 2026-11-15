@@ -116,18 +116,15 @@ void main() {
 
     testWidgets('the fill takes the height left on the screen', (tester) async {
       await show(tester, page());
-      // 780 less the two boxes and the page's top and bottom padding.
-      expect(fillHeight(tester), 780 - 200 - AppSpacing.s4 - AppSpacing.s24);
+      // 780 less the two boxes and home's 8 above and below (2026-11-14).
+      expect(fillHeight(tester), 780 - 200 - 2 * AppSpacing.s8);
       expect(scrollRoom(tester), 0);
     });
 
     testWidgets('the system bars are left out of the room', (tester) async {
       tester.view.padding = const FakeViewPadding(top: 24, bottom: 48);
       await show(tester, page());
-      expect(
-        fillHeight(tester),
-        780 - 24 - 48 - 200 - AppSpacing.s4 - AppSpacing.s24,
-      );
+      expect(fillHeight(tester), 780 - 24 - 48 - 200 - 2 * AppSpacing.s8);
       expect(scrollRoom(tester), 0);
     });
 
@@ -138,10 +135,7 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(fillHeight(tester), 100);
       // 400 + 100 + 300 and the padding, on a 780-tall screen.
-      expect(
-        scrollRoom(tester),
-        closeTo(800 + AppSpacing.s4 + AppSpacing.s24 - 780, 0.01),
-      );
+      expect(scrollRoom(tester), closeTo(800 + 2 * AppSpacing.s8 - 780, 0.01));
       expect(find.text('bottom').hitTestable(), findsNothing);
       await tester.drag(find.byType(Scrollable), const Offset(0, -200));
       await tester.pump();

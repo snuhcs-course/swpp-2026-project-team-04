@@ -8,10 +8,13 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/services/pose/setup_checker.dart';
+import 'package:gymrats_app/services/pose/squat_demo_judge.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 
@@ -121,7 +124,7 @@ void main() {
     expect(sound.played, 0);
   });
 
-  test('every opponent rep moves the mannequin; counted ones score', () async {
+  test('every opponent rep swings the opponent; counted ones score', () async {
     await vm.start();
     opponent
       ..emit()
@@ -185,7 +188,7 @@ void main() {
     expect(vm.state.result, same(result));
   });
 
-  test('a squat bot battle is saved too, with no form report', () async {
+  test('a squat bot battle is saved too, with a squat form report', () async {
     final squat = BattleViewModel(
       matchup: const Matchup(
         exercise: ExerciseType.squat,
@@ -221,7 +224,10 @@ void main() {
     expect(record.opponentReps, 1);
     expect(record.myScore, greaterThan(0));
     expect(record.opponentScore, greaterThan(0));
-    expect(repository.savedReports.single, isNull);
+    final report = repository.savedReports.single!;
+    expect(report.exercise, ExerciseType.squat);
+    expect(report.validReps, 1);
+    expect((await reports.list()).single.exercise, ExerciseType.squat);
   });
 
   test('a battle that runs its full time is saved once', () async {
@@ -655,7 +661,7 @@ void main() {
     });
 
     test(
-      'a rejected opponent rep moves the mannequin and scores nothing',
+      'a rejected opponent rep swings the opponent and scores nothing',
       () async {
         await battle.start();
         await theirRep(3, reason: RejectReason.bellyDown);
@@ -820,5 +826,621 @@ void main() {
         expect(battle.state.myLastScore!.combo, 1);
       },
     );
+  });
+
+  test('squat battle requires a continuous aligned 3-second hold', () async {
+    const squatMatchup = Matchup(
+      exercise: ExerciseType.squat,
+      playerName: '우현',
+      opponent: Opponent(name: 'RepBot', isBot: true),
+    );
+    final phone = PhoneTiltMonitor(samples: const Stream.empty())
+      ..isPropped = true
+      ..isStill = true;
+    final squatCounter = RepCounterViewModel(
+      camera: camera,
+      estimator: estimator,
+      judge: judge,
+      clock: () => now,
+      roundLength: const Duration(days: 1),
+      phoneTilt: phone,
+    );
+    final squat = BattleViewModel(
+      matchup: squatMatchup,
+      counter: squatCounter,
+      opponent: opponent,
+      repository: repository,
+      sound: sound,
+      clock: () => now,
+      setup: SetupChecker(
+        exercise: ExerciseType.squat,
+        config: const SetupConfig(
+          readyDelay: Duration.zero,
+          dropDelay: Duration.zero,
+        ),
+        clock: () => now,
+      ),
+    );
+    await squat.start();
+    final good = standingFrame(showHips: true);
+    final outside = PoseFrame(
+      imageWidth: good.imageWidth,
+      imageHeight: good.imageHeight,
+      keypoints: {
+        for (final e in good.keypoints.entries)
+          e.key: Keypoint(
+            landmark: e.key,
+            x: e.value.x + 200,
+            y: e.value.y,
+            likelihood: e.value.likelihood,
+          ),
+      },
+    );
+    Future<void> send(int ms, PoseFrame pose) async {
+      now = Duration(milliseconds: ms);
+      estimator.frames.add(
+        PoseFrame(
+          imageWidth: pose.imageWidth,
+          imageHeight: pose.imageHeight,
+          keypoints: pose.keypoints,
+        ),
+      );
+      camera.emit();
+      await pumpEventQueue();
+    }
+
+    await send(0, outside);
+    expect(squat.state.setup.reason, SetupReason.ready);
+    expect(squat.state.guideAligned, isFalse);
+    expect(squat.state.setup.isReady, isFalse);
+    expect(squat.state.startIn, isNull);
+    for (final ms in [100, 600, 1100]) {
+      await send(ms, good);
+    }
+    expect(squat.state.guideAligned, isTrue);
+    squat.startNow();
+    expect(squat.state.started, isFalse);
+    await send(1200, outside);
+    expect(squat.state.startIn, isNull);
+    for (final ms in [1300, 1800, 2300, 2800, 3300, 3800, 4200]) {
+      await send(ms, good);
+    }
+    expect(squat.state.started, isFalse);
+    await send(4300, good);
+    expect(squat.state.started, isTrue);
+    squat.dispose();
+  });
+
+  test('a stalled squat battle stream clears readiness', () async {
+    const squatMatchup = Matchup(
+      exercise: ExerciseType.squat,
+      playerName: '우현',
+      opponent: Opponent(name: 'RepBot', isBot: true),
+    );
+    final phone = PhoneTiltMonitor(samples: const Stream.empty())
+      ..isPropped = true
+      ..isStill = true;
+    final squatCounter = RepCounterViewModel(
+      camera: camera,
+      estimator: estimator,
+      judge: judge,
+      clock: () => now,
+      roundLength: const Duration(days: 1),
+      phoneTilt: phone,
+    );
+    final squat = BattleViewModel(
+      matchup: squatMatchup,
+      counter: squatCounter,
+      opponent: opponent,
+      repository: repository,
+      sound: sound,
+      clock: () => now,
+      setup: SetupChecker(
+        exercise: ExerciseType.squat,
+        config: const SetupConfig(readyDelay: Duration.zero),
+        clock: () => now,
+      ),
+    );
+    await squat.start();
+    estimator.frames.add(standingFrame(showHips: true));
+    camera.emit();
+    await pumpEventQueue();
+    expect(squat.state.guideAligned, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 850));
+    expect(squat.state.guideAligned, isFalse);
+    expect(squat.state.startIn, isNull);
+    expect(squat.state.started, isFalse);
+    // Detector failures notify with the old lastFrame retained by the counter.
+    now = const Duration(milliseconds: 1000);
+    estimator.frames.add(null);
+    camera.emit();
+    await pumpEventQueue();
+    now = const Duration(milliseconds: 1600);
+    estimator.frames.add(null);
+    camera.emit();
+    await pumpEventQueue();
+    expect(squat.state.guideAligned, isFalse);
+    expect(squat.state.startIn, isNull);
+    expect(squat.state.setup.isReady, isFalse);
+    now = const Duration(milliseconds: 1700);
+    estimator.frames.add(standingFrame(showHips: true));
+    camera.emit();
+    await pumpEventQueue();
+    expect(squat.state.guideAligned, isTrue);
+    expect(squat.state.startIn, const Duration(seconds: 3));
+    squat.dispose();
+  });
+
+  group('the setup before the round', () {
+    late BattleViewModel battle;
+    late RepCounterViewModel counter;
+    late PhoneTiltMonitor phone;
+
+    setUp(() {
+      phone = PhoneTiltMonitor(samples: const Stream.empty())
+        ..isPropped = true
+        ..isStill = true;
+      counter = RepCounterViewModel(
+        camera: camera,
+        estimator: estimator,
+        judge: judge,
+        clock: () => now,
+        // As the screen makes it: its clock also runs through the setup.
+        roundLength: const Duration(days: 1),
+        phoneTilt: phone,
+      );
+      battle = BattleViewModel(
+        matchup: _matchup,
+        counter: counter,
+        opponent: opponent,
+        repository: repository,
+        sound: sound,
+        formReports: reports,
+        setup: SetupChecker(
+          exercise: ExerciseType.pushUp,
+          config: const SetupConfig(
+            readyDelay: Duration.zero,
+            dropDelay: Duration.zero,
+          ),
+          clock: () => now,
+        ),
+        clock: () => now,
+        now: () => _endedAt,
+      );
+    });
+
+    tearDown(() => battle.dispose());
+
+    /// A camera frame at [seconds], with the setup pose found or not.
+    Future<void> pose(double seconds, {bool found = true}) async {
+      now = Duration(milliseconds: (seconds * 1000).round());
+      estimator.frames.add(found ? standingFrame() : emptyFrame());
+      camera.emit();
+      await pumpEventQueue();
+    }
+
+    /// Sets up and counts down from [seconds]: the round begins 3 s later.
+    Future<void> begin(double seconds) async {
+      await battle.start();
+      await pose(seconds);
+      await pose(seconds + 3);
+      expect(battle.state.started, isTrue);
+    }
+
+    test('the camera runs in the setup: the pose is checked while the '
+        'opponent and the round clock wait', () async {
+      await battle.start();
+      expect(battle.state.phase, BattlePhase.setup);
+      expect(battle.state.started, isFalse);
+      await pose(1, found: false);
+      expect(battle.state.setup.isReady, isFalse);
+      expect(battle.state.setup.reason, SetupReason.noPerson);
+      expect(battle.state.startIn, isNull);
+      expect(battle.state.canStart, isFalse);
+      // A minute of setting up takes nothing off the round.
+      await pose(61, found: false);
+      expect(battle.state.phase, BattlePhase.setup);
+      expect(battle.state.remaining, battleDuration);
+      expect(opponent.startCount, 0);
+      expect(counter.state.phase, CounterPhase.running);
+    });
+
+    test('a ready pose counts down 3 seconds, then the round begins: the '
+        'opponent starts and the clock runs from 30', () async {
+      await battle.start();
+      await pose(1);
+      expect(battle.state.setup.isReady, isTrue);
+      expect(battle.state.startIn, const Duration(seconds: 3));
+      expect(battle.state.canStart, isTrue);
+      await pose(2.25);
+      expect(battle.state.startIn, const Duration(milliseconds: 1750));
+      expect(battle.state.started, isFalse);
+      expect(opponent.startCount, 0);
+
+      await pose(4);
+      expect(battle.state.started, isTrue);
+      expect(battle.state.phase, BattlePhase.playing);
+      expect(battle.state.startIn, isNull);
+      expect(opponent.startCount, 1);
+      expect(opponent.running, isTrue);
+      expect(battle.state.remaining, battleDuration);
+      await pose(14);
+      expect(battle.state.remaining, const Duration(seconds: 20));
+      // Fever by the round's clock, from 20 s into it: not since the camera.
+      await pose(23.9);
+      expect(battle.state.fever, isFalse);
+      await pose(24);
+      expect(battle.state.fever, isTrue);
+    });
+
+    test(
+      'losing the pose stops the count; found again, it starts over',
+      () async {
+        await battle.start();
+        await pose(1);
+        await pose(3);
+        expect(battle.state.startIn, const Duration(seconds: 1));
+        await pose(3.5, found: false);
+        expect(battle.state.startIn, isNull);
+        expect(battle.state.setup.isReady, isFalse);
+        await pose(5);
+        expect(battle.state.startIn, const Duration(seconds: 3));
+        await pose(7);
+        expect(battle.state.started, isFalse);
+        await pose(8);
+        expect(battle.state.started, isTrue);
+      },
+    );
+
+    test(
+      'Start begins the round at once, only while the pose is ready',
+      () async {
+        await battle.start();
+        battle.startNow();
+        expect(battle.state.started, isFalse);
+        await pose(1, found: false);
+        battle.startNow();
+        expect(battle.state.started, isFalse);
+        await pose(2);
+        battle.startNow();
+        expect(battle.state.started, isTrue);
+        expect(battle.state.canStart, isFalse);
+        expect(opponent.startCount, 1);
+        // Once begun, pressing again changes nothing.
+        battle.startNow();
+        expect(opponent.startCount, 1);
+      },
+    );
+
+    test('reps in the setup count for nothing: no score, no banner, no beep; '
+        'the round counts from zero', () async {
+      await battle.start();
+      judge.closeRep();
+      await pose(1);
+      judge.closeRep(reason: RejectReason.tooFast);
+      await pose(2);
+      expect(counter.history, hasLength(2));
+      expect(battle.state.myReps, 0);
+      expect(battle.state.myInvalidReps, 0);
+      expect(battle.state.myScore, 0);
+      expect(battle.state.feedbackCount, 0);
+      expect(sound.played, 0);
+
+      await pose(4);
+      expect(battle.state.started, isTrue);
+      expect(counter.history, isEmpty);
+      judge.closeRep();
+      await pose(10);
+      expect(battle.state.myReps, 1);
+      expect(battle.state.myScore, 10);
+      expect(battle.state.feedbackCount, 1);
+      expect(sound.played, 1);
+    });
+
+    test("the opponent's reps before the round count for nothing", () async {
+      await battle.start();
+      await pose(1);
+      opponent.emit();
+      await pumpEventQueue();
+      expect(battle.state.opponentReps, 0);
+      expect(battle.state.opponentMoves, 0);
+      expect(battle.state.opponentScore, 0);
+    });
+
+    test("the round ends by its own clock, 30 s after it began, though the "
+        "counter's would run a day; the rep times are the round's", () async {
+      await begin(1);
+      judge.closeRep();
+      await pose(10);
+      await pose(33.9);
+      expect(battle.state.phase, BattlePhase.playing);
+      expect(battle.state.remaining, const Duration(milliseconds: 100));
+      await pose(34);
+      await pumpEventQueue();
+      expect(battle.state.phase, BattlePhase.timeUp);
+      expect(battle.state.remaining, Duration.zero);
+      final result = battle.state.result!;
+      expect(result.roundLength, battleDuration);
+      expect(result.myReps, 1);
+      expect(result.form!.reps.single.at, const Duration(seconds: 6));
+      expect(counter.state.phase, CounterPhase.finished);
+      expect(opponent.stopped, isTrue);
+      expect(repository.saved, hasLength(1));
+    });
+
+    test(
+      'a KO counts its round length from the start, not from the setup',
+      () async {
+        await begin(1);
+        await pose(9.5);
+        for (var i = 0; i < 10; i++) {
+          opponent.emit();
+        }
+        await pumpEventQueue();
+        expect(battle.state.phase, BattlePhase.timeUp);
+        expect(battle.state.result!.end, GameEnd.ko);
+        // 5.5 s into the round, rounded up.
+        expect(battle.state.result!.roundLength, const Duration(seconds: 6));
+      },
+    );
+
+    test('the watchdog ends a round without frames 2 s after its time', () {
+      fakeAsync((async) {
+        unawaited(battle.start());
+        async.flushMicrotasks();
+        unawaited(pose(1));
+        async.flushMicrotasks();
+        unawaited(pose(4));
+        async.flushMicrotasks();
+        expect(battle.state.started, isTrue);
+        // No frames from here: the counter never sees its time run out.
+        now = const Duration(seconds: 36);
+        async.elapse(const Duration(seconds: 31));
+        expect(battle.state.phase, BattlePhase.playing);
+        async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+        expect(battle.state.phase, BattlePhase.timeUp);
+      });
+    });
+
+    test('the app in the background starts the setup over', () async {
+      await battle.start();
+      await pose(1);
+      await pose(2);
+      expect(battle.state.startIn, const Duration(seconds: 2));
+      await battle.pause();
+      expect(battle.state.phase, BattlePhase.paused);
+      expect(battle.state.startIn, isNull);
+      expect(battle.state.setup.isReady, isFalse);
+      await battle.resume();
+      await pumpEventQueue();
+      expect(battle.state.phase, BattlePhase.setup);
+      await pose(3);
+      expect(battle.state.startIn, const Duration(seconds: 3));
+      expect(opponent.startCount, 0);
+    });
+
+    test('a camera failure in the round: retry sets up again, then plays '
+        'from zero', () async {
+      await begin(1);
+      judge.closeRep();
+      await pose(6);
+      expect(battle.state.myScore, 10);
+      now = const Duration(seconds: 7);
+      estimator.frames.add(null);
+      camera.emit();
+      await pumpEventQueue();
+      now = const Duration(seconds: 11);
+      estimator.frames.add(null);
+      camera.emit();
+      await pumpEventQueue();
+      expect(battle.state.phase, BattlePhase.failed);
+      expect(opponent.running, isFalse);
+
+      await battle.retry();
+      expect(battle.state.started, isFalse);
+      expect(battle.state.phase, BattlePhase.setup);
+      expect(battle.state.myScore, 0);
+      expect(opponent.stopped, isTrue);
+      await pose(12);
+      await pose(15);
+      expect(battle.state.started, isTrue);
+      expect(opponent.startCount, 2);
+      expect(battle.state.remaining, battleDuration);
+    });
+
+    test(
+      'leaving in the setup never starts the opponent and keeps nothing',
+      () async {
+        await battle.start();
+        await pose(1);
+        battle.leave();
+        await pumpEventQueue();
+        expect(battle.state.phase, BattlePhase.left);
+        await pose(5);
+        expect(opponent.startCount, 0);
+        expect(battle.state.started, isFalse);
+        expect(repository.saved, isEmpty);
+      },
+    );
+
+    test('a phone that is not propped up keeps the setup waiting', () async {
+      phone.isPropped = false;
+      await battle.start();
+      await pose(1);
+      expect(battle.state.setup.reason, SetupReason.phoneTooFlat);
+      expect(battle.state.startIn, isNull);
+      await pose(5);
+      expect(battle.state.started, isFalse);
+    });
+
+    test("a rep closed on the frame that ends the count is the setup's: no "
+        'banner, no beep, no score', () async {
+      await battle.start();
+      await pose(1);
+      judge.closeRep();
+      // This frame ends the count and closes the rep; the rep reaches the
+      // view model only after the round has begun.
+      await pose(4);
+      expect(battle.state.started, isTrue);
+      expect(counter.history, isEmpty);
+      expect(battle.state.feedbackCount, 0);
+      expect(battle.state.feedback, isNull);
+      expect(sound.played, 0);
+      expect((battle.state.myScore, battle.state.myReps), (0, 0));
+    });
+  });
+
+  group('BattleViewModel.bot, as the battle screen makes it', () {
+    late PhoneTiltMonitor phone;
+    late BattleViewModel battle;
+
+    setUp(() {
+      phone = PhoneTiltMonitor(samples: const Stream.empty())
+        ..isPropped = true
+        ..isStill = true;
+    });
+
+    tearDown(() => battle.dispose());
+
+    BattleViewModel make(ExerciseType exercise) => BattleViewModel.bot(
+      matchup: Matchup(
+        exercise: exercise,
+        playerName: '우현',
+        opponent: const Opponent(name: 'RepBot', isBot: true),
+      ),
+      counter: BattleViewModel.botCounter(
+        exercise,
+        camera: camera,
+        estimator: estimator,
+        phoneTilt: phone,
+        clock: () => now,
+      ),
+      opponent: opponent,
+      repository: repository,
+      sound: sound,
+      formReports: reports,
+      clock: () => now,
+    );
+
+    Future<void> frameAt(double seconds, PoseFrame pose) async {
+      now = Duration(milliseconds: (seconds * 1000).round());
+      estimator.frames.add(pose);
+      camera.emit();
+      await pumpEventQueue();
+    }
+
+    test('a push-up battle sets up first with the setup\'s own times: held '
+        '1.5 s, then 3, 2, 1; the counter runs a day and the round ends 30 s '
+        'after it began', () async {
+      battle = make(ExerciseType.pushUp);
+      expect(battle.counter.roundLength, BattleViewModel.counterRound);
+      expect(battle.counter.exercise, ExerciseType.pushUp);
+      expect(battle.roundLength, battleDuration);
+      await battle.start();
+      expect(battle.state.phase, BattlePhase.setup);
+      // Forty seconds of setting up take nothing off the round.
+      await frameAt(40, emptyFrame());
+      expect(battle.state.started, isFalse);
+      expect(battle.state.remaining, battleDuration);
+      expect(battle.counter.state.phase, CounterPhase.running);
+      expect(opponent.startCount, 0);
+
+      await frameAt(41, standingFrame());
+      expect(battle.state.setup.isReady, isFalse);
+      await frameAt(42.5, standingFrame());
+      expect(battle.state.setup.isReady, isTrue);
+      expect(battle.state.startIn, const Duration(seconds: 3));
+      await frameAt(45.4, standingFrame());
+      expect(battle.state.started, isFalse);
+      await frameAt(45.5, standingFrame());
+      expect(battle.state.started, isTrue);
+      expect(opponent.startCount, 1);
+
+      await frameAt(75.4, standingFrame());
+      expect(battle.state.phase, BattlePhase.playing);
+      expect(battle.state.remaining, const Duration(milliseconds: 100));
+      await frameAt(75.5, standingFrame());
+      await pumpEventQueue();
+      expect(battle.state.phase, BattlePhase.timeUp);
+      expect(battle.state.result!.roundLength, battleDuration);
+      // The battle and its form report are kept, as the result screen and
+      // the feedback need.
+      await pumpEventQueue();
+      expect(repository.saved, hasLength(1));
+      expect(await reports.list(), hasLength(1));
+    });
+
+    test(
+      'a squat battle checks the whole body standing and judges squats',
+      () async {
+        battle = make(ExerciseType.squat);
+        expect(battle.counter.exercise, ExerciseType.squat);
+        expect(battle.counter.passDepth, SquatDemoJudge().passDepth);
+        await battle.start();
+        // Legs hidden, as in a push-up seen from the floor: not a squat setup.
+        await frameAt(1, standingFrame());
+        await frameAt(3, standingFrame());
+        expect(battle.state.setup.isReady, isFalse);
+        expect(battle.state.setup.reason, SetupReason.missingParts);
+        for (final t in [4.0, 4.5, 5.0, 5.5]) {
+          await frameAt(t, standingFrame(showHips: true));
+        }
+        expect(battle.state.setup.isReady, isTrue);
+        for (final t in [6.0, 6.5, 7.0]) {
+          await frameAt(t, standingFrame(showHips: true));
+        }
+        expect(battle.state.started, isTrue);
+      },
+    );
+
+    test('a squat counts by the lenient squat judge of the bot battle, which '
+        'a moved phone does not overrule', () async {
+      battle = make(ExerciseType.squat);
+      await battle.start();
+      PoseFrame standing() => standingFrame(showHips: true);
+      // The hips down at the knees: the bottom of a squat.
+      PoseFrame down() => standingFrame(
+        showHips: true,
+        move: {
+          BodyLandmark.leftHip: (530, 680),
+          BodyLandmark.rightHip: (470, 680),
+        },
+      );
+      for (final t in [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]) {
+        await frameAt(t, standing());
+      }
+      expect(battle.state.started, isTrue);
+      // Beginning the round took the phone's angle; it moves after that.
+      phone.isDisturbed = true;
+      await frameAt(6, standing());
+      await frameAt(6.8, down());
+      await frameAt(7.6, standing());
+      expect(battle.state.myReps, 1);
+      expect(battle.state.myInvalidReps, 0);
+      expect(battle.state.feedback!.valid, isTrue);
+    });
+
+    test("the app in the background starts the setup's hold over, with the "
+        "setup's own times", () async {
+      battle = make(ExerciseType.pushUp);
+      await battle.start();
+      await frameAt(1, standingFrame());
+      await frameAt(2.5, standingFrame());
+      expect(battle.state.setup.isReady, isTrue);
+      expect(battle.state.startIn, const Duration(seconds: 3));
+      await battle.pause();
+      await battle.resume();
+      await pumpEventQueue();
+      expect(battle.state.phase, BattlePhase.setup);
+      await frameAt(3, standingFrame());
+      // Held again from here: not ready, nothing counting down.
+      expect(battle.state.setup.isReady, isFalse);
+      expect(battle.state.setup.readyProgress, 0);
+      expect(battle.state.startIn, isNull);
+      await frameAt(4.5, standingFrame());
+      expect(battle.state.setup.isReady, isTrue);
+      expect(battle.state.startIn, const Duration(seconds: 3));
+    });
   });
 }

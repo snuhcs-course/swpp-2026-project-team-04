@@ -78,7 +78,7 @@ void main() {
       await tester.tap(find.text('다음'));
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.text('시작하기'));
+    await tester.tap(find.text('완료'));
     await tester.pumpAndSettle();
   }
 
@@ -199,7 +199,7 @@ void main() {
       await tester.tap(find.text('다음'));
       await tester.pumpAndSettle();
     }
-    await tester.tap(find.text('확인'));
+    await tester.tap(find.text('완료'));
     await tester.pumpAndSettle();
     expect(find.byType(HelpScreen), findsNothing);
     expect(find.byType(HomeScreen), findsOneWidget);
@@ -325,7 +325,7 @@ void main() {
     await tester.tap(find.text('기록보관소'));
     await tester.pumpAndSettle();
     expect(find.byType(HistoryScreen), findsOneWidget);
-    expect(find.text('경기 기록'), findsOneWidget);
+    expect(find.text('기록보관소'), findsOneWidget);
     expect(find.byTooltip('뒤로'), findsOneWidget);
   });
 }

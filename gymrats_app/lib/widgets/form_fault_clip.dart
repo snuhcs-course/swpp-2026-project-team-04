@@ -11,6 +11,9 @@ import '../theme/app_theme.dart';
 /// The figure is prepared for that fault. It is not redrawn from the
 /// user's joints, so a plank fault is not shown as a kneel. Knees stay
 /// off the floor except for [FormDemo.knees].
+///
+/// Palette B (BFeedback): a thin ink figure on a light floor line, kept in
+/// shape at any width; the part at fault is amber with an ink edge.
 class FormFaultClip extends StatefulWidget {
   const FormFaultClip({super.key, required this.demo});
 
@@ -23,6 +26,7 @@ class FormFaultClip extends StatefulWidget {
 class _FormFaultClipState extends State<FormFaultClip>
     with SingleTickerProviderStateMixin {
   static const _length = Duration(milliseconds: 2500);
+  static const _height = 150.0;
 
   late final AnimationController _play;
 
@@ -61,7 +65,7 @@ class _FormFaultClipState extends State<FormFaultClip>
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              height: 150,
+              height: _height,
               width: double.infinity,
               child: AnimatedBuilder(
                 animation: _play,
@@ -88,21 +92,54 @@ class _FaultPainter extends CustomPainter {
   final FormDemo demo;
   final double t;
 
+  /// The figure's own units; it is scaled to fit, keeping its shape, and
+  /// stands on the clip's bottom.
   static const _design = Size(150, 110);
+
+  /// The floor's height in figure units.
+  static const _floorY = 104.0;
+
+  /// The floor line's distance from the clip's sides, in pixels.
+  static const _floorInset = 20.0;
+
+  /// Line widths and the head in pixels, whatever the scale (BFeedback):
+  /// a 9 px body from the shoulder to the knee, 6 px for the shins, the
+  /// arms and the neck, an 8.2 px head; the part at fault keeps its width
+  /// in amber inside a 1.5 px ink edge.
+  static const _floorWidth = 1.5;
+  static const _bodyWidth = 9.0;
+  static const _limbWidth = 6.0;
+  static const _headRadius = 8.2;
+  static const _hotEdge = 1.5;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final scale = math.min(
+      size.width / _design.width,
+      size.height / _design.height,
+    );
+    final left = (size.width - _design.width * scale) / 2;
+    final top = size.height - _design.height * scale;
+    final floor = Paint()
+      ..color = AppColors.pictogramFloor
+      ..strokeWidth = _floorWidth
+      ..strokeCap = StrokeCap.round;
+    final floorY = top + _floorY * scale;
     canvas
       ..clipRect(Offset.zero & size)
-      ..scale(size.width / _design.width, size.height / _design.height);
-
-    final floor = Paint()
-      ..color = AppColors.border
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(const Offset(8, 104), const Offset(146, 104), floor);
+      ..drawLine(
+        Offset(_floorInset, floorY),
+        Offset(size.width - _floorInset, floorY),
+        floor,
+      )
+      ..translate(left, top)
+      ..scale(scale);
     if (demo == FormDemo.upright) {
-      canvas.drawLine(const Offset(28, 18), const Offset(28, 104), floor);
+      canvas.drawLine(
+        const Offset(28, 18),
+        const Offset(28, _floorY),
+        floor..strokeWidth = _floorWidth / scale,
+      );
     }
 
     final pose = _pose(demo, t);
@@ -115,45 +152,63 @@ class _FaultPainter extends CustomPainter {
     }
 
     final parts = <_Limb>[
-      _Limb(pose.hip, pose.knee, 9, _hot(demo, 'knee')),
-      _Limb(pose.knee, pose.foot, 6.5, _hot(demo, 'knee')),
+      // The neck: with thin lines the small head would float off the body.
+      _Limb(pose.shoulder, pose.head, _limbWidth, false),
+      _Limb(pose.hip, pose.knee, _bodyWidth, _hot(demo, 'knee')),
+      _Limb(pose.knee, pose.foot, _limbWidth, _hot(demo, 'knee')),
       _Limb(
         pose.shoulder,
         pose.hip,
-        18,
+        _bodyWidth,
         _hot(demo, 'hip') || _hot(demo, 'shoulder'),
       ),
-      _Limb(pose.shoulder, pose.elbow, 7, _hot(demo, 'elbow')),
+      _Limb(pose.shoulder, pose.elbow, _limbWidth, _hot(demo, 'elbow')),
       _Limb(
         pose.elbow,
         pose.wrist,
-        6,
+        _limbWidth,
         _hot(demo, 'elbow') || _hot(demo, 'wrist'),
       ),
     ];
 
+    final px = 1 / scale;
     for (final limb in parts) {
-      canvas.drawLine(
-        limb.from,
-        limb.to,
-        _stroke(AppColors.opponent.withValues(alpha: 0.35), limb.width + 8),
-      );
-    }
-    for (final limb in parts) {
-      final color = limb.hot ? AppColors.warning : AppColors.textPrimary;
-      canvas.drawLine(limb.from, limb.to, _stroke(color, limb.width));
+      if (limb.hot) {
+        canvas
+          ..drawLine(
+            limb.from,
+            limb.to,
+            _stroke(AppColors.ink, (limb.width + _hotEdge * 2) * px),
+          )
+          ..drawLine(
+            limb.from,
+            limb.to,
+            _stroke(AppColors.warning, limb.width * px),
+          );
+      } else {
+        canvas.drawLine(
+          limb.from,
+          limb.to,
+          _stroke(AppColors.ink, limb.width * px),
+        );
+      }
     }
 
-    final headColor = _hot(demo, 'head')
-        ? AppColors.warning
-        : AppColors.textPrimary;
-    canvas
-      ..drawCircle(pose.head, 8.2, Paint()..color = headColor)
-      ..drawLine(
-        pose.head + const Offset(-6, -1),
-        pose.head + const Offset(-7.2, 0.4),
-        _stroke(AppColors.opponent, 2.6),
-      );
+    final head = _headRadius * px;
+    if (_hot(demo, 'head')) {
+      canvas
+        ..drawCircle(pose.head, head, Paint()..color = AppColors.warning)
+        ..drawCircle(
+          pose.head,
+          head,
+          Paint()
+            ..color = AppColors.ink
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = _hotEdge * px,
+        );
+    } else {
+      canvas.drawCircle(pose.head, head, Paint()..color = AppColors.ink);
+    }
   }
 
   @override

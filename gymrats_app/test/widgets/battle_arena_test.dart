@@ -1,0 +1,1966 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/widgets/battle_arena.dart';
+import 'package:gymrats_app/widgets/battle_banner.dart';
+import 'package:gymrats_app/widgets/battle_camera_area.dart';
+import 'package:gymrats_app/widgets/battle_camera_view.dart';
+import 'package:gymrats_app/widgets/battle_fighter.dart';
+import 'package:gymrats_app/widgets/battle_fx_motion.dart';
+import 'package:gymrats_app/widgets/battle_reject_sign.dart';
+import 'package:gymrats_app/widgets/battle_stage.dart';
+import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/widgets/pose_camera_view.dart';
+
+import 'battle_test_support.dart';
+
+BattleStageState _state({
+  BattleStagePhase phase = BattleStagePhase.playing,
+  int me = 0,
+  int op = 0,
+  int myReps = 0,
+  int opReps = 0,
+  bool fever = false,
+  bool danger = false,
+  bool meReady = false,
+  bool opReady = false,
+  Duration? countdown,
+  bool reconnecting = false,
+  bool opponentDisconnected = false,
+  BattleStageEnd? end,
+}) => BattleStageState(
+  phase: phase,
+  myName: 'hellohello',
+  opponentName: 'AI 봇 · 고수',
+  remaining: const Duration(seconds: 18),
+  roundLength: const Duration(seconds: 30),
+  myScore: me,
+  opponentScore: op,
+  myReps: myReps,
+  opponentReps: opReps,
+  barShare: (0.5 + (me - op) / 200).clamp(0.0, 1.0),
+  fever: fever,
+  danger: danger,
+  meReady: meReady,
+  opponentReady: opReady,
+  countdown: countdown,
+  reconnecting: reconnecting,
+  opponentDisconnected: opponentDisconnected,
+  end: end,
+);
+
+const _myGood = BattleStageEvent(
+  side: BattleSide.me,
+  grade: GameGrade.good,
+  points: 10,
+  combo: 1,
+);
+
+const _koEnd = BattleStageEnd(
+  kind: BattleEndKind.knockout,
+  winner: BattleSide.me,
+);
+
+const _camera = Key('camera');
+
+/// How often the camera picture was tapped.
+int _cameraTaps = 0;
+
+/// Builds the arena as a whole screen of [size] with a status bar [top]
+/// tall. Pump it again with another state to change the battle.
+Future<void> _pump(
+  WidgetTester tester,
+  BattleStageController controller,
+  BattleStageState state, {
+  Size size = const Size(360, 780),
+  double top = 26,
+  bool reducedMotion = false,
+  ValueChanged<BattleStageCue>? onCue,
+  VoidCallback? onLeave,
+  VoidCallback? onShowResult,
+  String? hint,
+  String? readyLabel,
+  VoidCallback? onReady,
+  bool readyPressed = false,
+  VoidCallback? onSwitchCamera,
+  double? setupProgress,
+  Widget? camera,
+  BattleCharacters? characters,
+}) async {
+  // The test's screen is the phone's.
+  await tester.binding.setSurfaceSize(size);
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+  await tester.pumpWidget(
+    battleTestApp(
+      MediaQuery(
+        data: MediaQueryData(
+          size: size,
+          padding: EdgeInsets.only(top: top),
+          disableAnimations: reducedMotion,
+        ),
+        child: Material(
+          child: BattleArena(
+            controller: controller,
+            state: state,
+            camera:
+                camera ??
+                AspectRatio(
+                  aspectRatio: 3 / 4,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _cameraTaps++,
+                    child: const ColoredBox(
+                      key: _camera,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+            onCue: onCue,
+            onLeave: onLeave,
+            onShowResult: onShowResult,
+            hint: hint,
+            readyLabel: readyLabel,
+            onReady: onReady,
+            readyPressed: readyPressed,
+            onSwitchCamera: onSwitchCamera,
+            setupProgress: setupProgress,
+            characters: characters,
+          ),
+        ),
+      ),
+      size: size,
+    ),
+  );
+}
+
+Future<void> _wait(WidgetTester tester, int milliseconds) =>
+    tester.pump(Duration(milliseconds: milliseconds));
+
+BattleFxFrame _frame(WidgetTester tester) =>
+    tester.widget<BattleStage>(find.byType(BattleStage)).frame;
+
+/// The pose [side] is drawn in. A flashing fighter is in the tree more than
+/// once (the white shape and its edge); all of them are the same picture.
+BattlePose _pose(WidgetTester tester, BattleSide side) => tester
+    .widget<BattleFighter>(
+      find.byWidgetPredicate((w) => w is BattleFighter && w.side == side).first,
+    )
+    .pose;
+
+Finder _dangerEdge() => find.byWidgetPredicate(
+  (w) =>
+      w is DecoratedBox &&
+      w.decoration is BoxDecoration &&
+      (w.decoration as BoxDecoration).border is Border &&
+      ((w.decoration as BoxDecoration).border! as Border).top.width == 10,
+);
+
+void main() {
+  setUpAll(loadBattleFonts);
+
+  /// What a screen reader was told, in order.
+  late List<String> said;
+
+  setUp(() {
+    said = [];
+    _cameraTaps = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, (
+          message,
+        ) async {
+          final event = message as Map<dynamic, dynamic>;
+          if (event['type'] == 'announce') {
+            said.add(
+              (event['data'] as Map<dynamic, dynamic>)['message'] as String,
+            );
+          }
+          return null;
+        });
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockDecodedMessageHandler<dynamic>(
+          SystemChannels.accessibility,
+          null,
+        );
+  });
+
+  group('BattleArena, laid out', () {
+    testWidgets('on the design\'s 360 x 780 phone the stage fills the upper '
+        'half and the camera the lower', (tester) async {
+      await _pump(tester, BattleStageController(), _state());
+      expect(
+        tester.getRect(find.byType(BattleStage)),
+        const Rect.fromLTWH(0, 0, 360, 390),
+      );
+      expect(
+        tester.getRect(find.byType(BattleCameraArea)),
+        const Rect.fromLTWH(0, 390, 360, 390),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('on a taller phone the stage is sized as a whole to the room '
+        'under the status bar, standing on the line', (tester) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(),
+        size: const Size(393, 852),
+        top: 30,
+      );
+      // The line is half way down; 364 design points must fit above it and
+      // below the status bar.
+      const scale = (426 - 30) / 364;
+      final stage = tester.getRect(find.byType(BattleStage));
+      expect(stage.width, closeTo(360 * scale, 0.01));
+      expect(stage.height, closeTo(390 * scale, 0.01));
+      expect(stage.bottom, closeTo(426, 0.01));
+      expect(stage.center.dx, closeTo(393 / 2, 0.01));
+      // The HUD starts below the status bar.
+      expect(
+        tester.getRect(find.text('hellohello')).top,
+        greaterThanOrEqualTo(30),
+      );
+      expect(tester.getRect(find.byType(BattleCameraArea)).top, 426);
+    });
+
+    testWidgets('on a narrow phone the width decides', (tester) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(),
+        size: const Size(320, 800),
+        top: 24,
+      );
+      final stage = tester.getRect(find.byType(BattleStage));
+      expect(stage.width, closeTo(320, 0.01));
+      expect(stage.bottom, closeTo(400, 0.01));
+      expect(stage.left, closeTo(0, 0.01));
+    });
+
+    testWidgets('the ground fills the whole upper half, behind the status '
+        'bar and beside a narrower stage', (tester) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(),
+        size: const Size(800, 600),
+        top: 0,
+      );
+      expect(
+        tester.getRect(find.byType(BattleStageBackdrop)),
+        const Rect.fromLTWH(0, 0, 800, 300),
+      );
+      final stage = tester.getRect(find.byType(BattleStage));
+      expect(stage.width, lessThan(800));
+      expect(stage.center.dx, closeTo(400, 0.01));
+      final backdrop = tester.widget<BattleStageBackdrop>(
+        find.byType(BattleStageBackdrop),
+      );
+      expect(backdrop.scale, closeTo(300 / 364, 1e-9));
+      expect(backdrop.origin.dx, closeTo(stage.left, 0.01));
+      expect(backdrop.origin.dy, closeTo(stage.top, 0.01));
+    });
+
+    testWidgets('the stage is clipped to the upper half: a fighter knocked '
+        'out of the ring is never drawn over the camera', (tester) async {
+      await _pump(tester, BattleStageController(), _state());
+      final clip = find.ancestor(
+        of: find.byType(BattleStage),
+        matching: find.byType(ClipRect),
+      );
+      expect(clip, findsOneWidget);
+      expect(tester.getRect(clip), const Rect.fromLTWH(0, 0, 360, 390));
+    });
+
+    testWidgets('the camera is shown in the lower half', (tester) async {
+      await _pump(tester, BattleStageController(), _state());
+      final camera = tester.getRect(find.byKey(_camera));
+      expect(camera.top, greaterThanOrEqualTo(390));
+      expect(camera.bottom, lessThanOrEqualTo(780));
+    });
+  });
+
+  group('BattleArena, playing', () {
+    testWidgets('stands where the score is from the first frame, then glides '
+        'when the score changes', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(me: 60));
+      expect(_frame(tester).meetX, 240);
+      await _wait(tester, 500);
+      expect(_frame(tester).meetX, 240);
+      await _pump(tester, controller, _state(me: 100));
+      await _wait(tester, 110);
+      expect(_frame(tester).meetX, greaterThan(250));
+      expect(_frame(tester).meetX, lessThan(275));
+      await _wait(tester, 2000);
+      expect(_frame(tester).meetX, closeTo(280, 0.01));
+    });
+
+    testWidgets('a rep given to the controller plays on the stage: the lunge, '
+        'then the blow 80 ms later', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _wait(tester, 1000);
+      controller.rep(_myGood);
+      await _wait(tester, 40);
+      expect(_pose(tester, BattleSide.me), BattlePose.attack);
+      expect(_pose(tester, BattleSide.opponent), BattlePose.idle);
+      await _wait(tester, 60);
+      expect(_pose(tester, BattleSide.opponent), BattlePose.hit);
+      expect(_frame(tester).star, isNotNull);
+      await _wait(tester, 1500);
+      expect(_pose(tester, BattleSide.me), BattlePose.idle);
+      expect(_pose(tester, BattleSide.opponent), BattlePose.idle);
+    });
+
+    testWidgets('characters reach the stage with their idle motions, the '
+        'opponent\'s 230 ms later, and blows land under the star', (
+      tester,
+    ) async {
+      const characters = BattleCharacters(me: 'kangaroo', opponent: 'kangaroo');
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(), characters: characters);
+      expect(
+        tester.widget<BattleStage>(find.byType(BattleStage)).characters,
+        characters,
+      );
+      expect(find.byType(CharacterFigure), findsNWidgets(2));
+      // A new state rebuilds the arena, as every second of a battle does;
+      // the characters' motions stay.
+      await _pump(tester, controller, _state(me: 10), characters: characters);
+      await _wait(tester, 100);
+      // The clock started at 0 with the first frame.
+      final hop = 6 * math.sin(math.pi * 100 / 460).abs();
+      final late = 6 * math.sin(math.pi * 330 / 460).abs();
+      expect(_frame(tester).me.footY, closeTo(BattleFx.groundY - hop, 1e-6));
+      expect(
+        _frame(tester).opponent.footY,
+        closeTo(BattleFx.groundY - late, 1e-6),
+      );
+      controller.rep(_myGood);
+      await _wait(tester, 100);
+      final frame = _frame(tester);
+      expect(frame.star!.centerX, frame.meetX + 48);
+      expect(frame.star!.centerY, BattleFx.groundY - 58);
+    });
+
+    testWidgets('without characters the stand-ins breathe in step', (
+      tester,
+    ) async {
+      await _pump(tester, BattleStageController(), _state());
+      expect(find.byType(CharacterFigure), findsNothing);
+      expect(find.byType(BattleFighter), findsNWidgets(2));
+      await _wait(tester, 100);
+      final frame = _frame(tester);
+      expect(frame.me.scaleY, frame.opponent.scaleY);
+      expect(frame.me.scaleY, closeTo(1 + 0.02 * math.sin(100 / 280), 1e-9));
+    });
+
+    testWidgets('gives each cue once, when it shows', (tester) async {
+      final cues = <String>[];
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(), onCue: (c) => cues.add('$c'));
+      await _wait(tester, 500);
+      controller.rep(_myGood);
+      await _wait(tester, 70);
+      expect(cues, isEmpty);
+      await _wait(tester, 20);
+      expect(cues, ['hit me good']);
+      controller.rep(
+        const BattleStageEvent(side: BattleSide.opponent, grade: null),
+      );
+      await _wait(tester, 16);
+      await _wait(tester, 3000);
+      expect(cues, ['hit me good', 'miss opponent']);
+    });
+
+    testWidgets('a combo shows "2 HIT" over the camera, 14 under the line on '
+        'the left, and under the reconnect band while it is up', (
+      tester,
+    ) async {
+      Future<double> markTop(bool reconnecting) async {
+        final controller = BattleStageController();
+        final state = _state(reconnecting: reconnecting);
+        await _pump(tester, controller, state);
+        await _wait(tester, 500);
+        controller.rep(_myGood);
+        await _wait(tester, 500);
+        controller.rep(
+          const BattleStageEvent(
+            side: BattleSide.me,
+            grade: GameGrade.good,
+            points: 15,
+            combo: 2,
+          ),
+        );
+        await _wait(tester, 400);
+        final mark = find.descendant(
+          of: find.byType(BattleCameraArea),
+          matching: find.text('2 HIT'),
+        );
+        expect(mark, findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byType(BattleStage),
+            matching: find.text('2 HIT'),
+          ),
+          findsNothing,
+        );
+        // Turned around its outer end, 6 from the left: the band's middle
+        // there stays at 14 + half its height under the line.
+        final band = find.ancestor(of: mark, matching: find.byType(BattleBand));
+        final outer = Offset.lerp(
+          tester.getTopLeft(band),
+          tester.getBottomLeft(band),
+          0.5,
+        )!;
+        expect(outer.dx, closeTo(6, 0.01));
+        return outer.dy - BattleFx.bandBox(44).height / 2;
+      }
+
+      // On the design's phone the line is at 390 and the stage at scale 1.
+      expect(await markTop(false), closeTo(390 + 14, 0.01));
+      expect(await markTop(true), closeTo(390 + 14 + 34, 0.5));
+    });
+
+    testWidgets('a blow shows its grade word as it lands, then its points '
+        '(UAT-5 "the label appears at once")', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _wait(tester, 500);
+      controller.rep(_myGood);
+      await _pump(tester, controller, _state(me: 10, myReps: 1));
+      await _wait(tester, 60);
+      expect(find.text('GOOD'), findsNothing);
+      await _wait(tester, 40);
+      expect(find.text('GOOD'), findsOneWidget);
+      expect(find.text('+10'), findsNothing);
+      // The score is already up; the band repeats it.
+      expect(find.text('10'), findsOneWidget);
+      await _wait(tester, 400);
+      expect(find.text('+10'), findsOneWidget);
+      expect(find.text('GOOD'), findsNothing);
+      await _wait(tester, 1000);
+      expect(find.text('+10'), findsNothing);
+    });
+
+    testWidgets('on a larger phone the combo mark is sized with the stage', (
+      tester,
+    ) async {
+      const size = Size(393, 852);
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(), size: size);
+      await _wait(tester, 500);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.good,
+          points: 15,
+          combo: 2,
+        ),
+      );
+      await _wait(tester, 400);
+      // The line is half way down; the stage is as large as the width lets
+      // it be here (393 / 360 < (426 - 26) / 364).
+      const line = 852 / 2;
+      const scale = 393 / 360;
+      final band = find.ancestor(
+        of: find.text('2 HIT'),
+        matching: find.byType(BattleBand),
+      );
+      final outer = Offset.lerp(
+        tester.getTopLeft(band),
+        tester.getBottomLeft(band),
+        0.5,
+      )!;
+      final height = BattleFx.bandBox(44).height * scale;
+      expect(outer.dx, closeTo(6 * scale, 0.01));
+      expect(outer.dy - height / 2, closeTo(line + 14 * scale, 0.01));
+      expect(
+        (tester.getBottomLeft(band) - tester.getTopLeft(band)).distance,
+        closeTo(height, 0.01),
+      );
+    });
+
+    testWidgets('a three-digit score shrinks when it bumps; a two-digit one '
+        'grows', (tester) async {
+      for (final (score, bump) in [(120, 0.9), (60, 1.2)]) {
+        final controller = BattleStageController();
+        await _pump(tester, controller, _state(me: score, op: 30));
+        await _wait(tester, 500);
+        controller.rep(_myGood);
+        await _wait(tester, 80 + 140);
+        expect(_frame(tester).myScoreBump, closeTo(bump, 0.01));
+      }
+    });
+
+    testWidgets('fever turns the ground cyan and puts an aura on both', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _wait(tester, 100);
+      expect(
+        tester
+            .widget<BattleStageBackdrop>(find.byType(BattleStageBackdrop))
+            .feverOpacity,
+        0,
+      );
+      await _pump(tester, controller, _state(fever: true));
+      await _wait(tester, 300);
+      expect(
+        tester
+            .widget<BattleStageBackdrop>(find.byType(BattleStageBackdrop))
+            .feverOpacity,
+        1,
+      );
+      expect(_frame(tester).me.glow, isTrue);
+      expect(find.text('FEVER ×2'), findsNWidgets(2));
+    });
+
+    testWidgets('while I am about to lose a 10 wide red edge blinks around '
+        'the whole screen', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(op: 65, danger: true));
+      await _wait(tester, 16);
+      expect(
+        tester.getRect(_dangerEdge()),
+        const Rect.fromLTWH(0, 0, 360, 780),
+      );
+      Color edge() =>
+          ((tester.widget<DecoratedBox>(_dangerEdge()).decoration
+                          as BoxDecoration)
+                      .border!
+                  as Border)
+              .top
+              .color;
+      expect(edge(), AppColors.danger.withValues(alpha: 0.3));
+      await _wait(tester, 240);
+      expect(edge(), AppColors.danger.withValues(alpha: 0.95));
+      // It takes no taps.
+      await _pump(tester, controller, _state());
+      await _wait(tester, 16);
+      expect(_dangerEdge(), findsNothing);
+    });
+
+    testWidgets('no red edge before the start, whatever the state says', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(phase: BattleStagePhase.setup, danger: true),
+      );
+      await _wait(tester, 16);
+      expect(_dangerEdge(), findsNothing);
+    });
+
+    testWidgets('my rejected rep raises the sign across the line, in the '
+        'middle, and it takes no taps', (tester) async {
+      var left = 0;
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(),
+        size: const Size(393, 852),
+        top: 30,
+        onLeave: () => left++,
+      );
+      await _wait(tester, 100);
+      expect(find.byType(BattleRejectSignView), findsNothing);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: null,
+          reason: RejectReason.kneesDown,
+        ),
+      );
+      await _wait(tester, 400);
+      const scale = (426 - 30) / 364;
+      final sign = find.byType(BattleRejectSignView);
+      expect(tester.getTopLeft(sign).dy, closeTo(426 - 50 * scale, 0.5));
+      expect(
+        (tester.getTopLeft(sign).dx + tester.getTopRight(sign).dx) / 2,
+        closeTo(393 / 2, 0.5),
+      );
+      expect(
+        (tester.getTopRight(sign) - tester.getTopLeft(sign)).distance,
+        closeTo(176 * scale, 0.5),
+      );
+      expect(find.text('무릎 떼기'), findsOneWidget);
+      await _wait(tester, 1000);
+      expect(find.byType(BattleRejectSignView), findsNothing);
+      expect(left, 0);
+    });
+
+    testWidgets('the opponent\'s lost connection shows as a tag over a faded '
+        'fighter', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _wait(tester, 16);
+      expect(find.text('연결 끊김'), findsNothing);
+      await _pump(tester, controller, _state(opponentDisconnected: true));
+      await _wait(tester, 16);
+      expect(find.text('연결 끊김'), findsOneWidget);
+      expect(_frame(tester).opponent.opacity, 0.45);
+    });
+
+    testWidgets('the reconnect band shows only while the round is on', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      const band = '재연결 중 · 경기 시간은 계속 진행됩니다.';
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, reconnecting: true),
+      );
+      await _wait(tester, 16);
+      expect(find.text(band), findsNothing);
+      await _pump(tester, controller, _state(reconnecting: true));
+      await _wait(tester, 500);
+      expect(find.text(band), findsOneWidget);
+      expect(
+        tester.widget<BattleCameraArea>(find.byType(BattleCameraArea)).spin,
+        isNot(0),
+      );
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          reconnecting: true,
+          end: const BattleStageEnd(kind: BattleEndKind.timeUp),
+        ),
+      );
+      await _wait(tester, 16);
+      expect(find.text(band), findsNothing);
+    });
+
+    testWidgets('the leave button asks to leave', (tester) async {
+      var asked = 0;
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(),
+        onLeave: () => asked++,
+      );
+      await tester.tap(find.byIcon(Icons.logout_rounded));
+      expect(asked, 1);
+    });
+  });
+
+  group('BattleArena, the setup\'s layout (W2b 3-B)', () {
+    final w2b = jsonDecode(
+      File('test/widgets/battle_w2b_golden.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final tolerance =
+        (w2b['meta'] as Map<String, dynamic>)['tolerance']
+            as Map<String, dynamic>;
+    final position = (tolerance['position'] as num).toDouble();
+    final scale = (tolerance['scale'] as num).toDouble();
+    final transition = w2b['setupTransition'] as Map<String, dynamic>;
+    final samples = (transition['samples'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    // The design's picture, 290 x 387 in the battle's layout.
+    const shape = 290 / 387;
+
+    test('every sample\'s line, camera box and picture match the design '
+        'on its 360 x 780 screen', () {
+      final layout = BattleArenaLayout(const Size(360, 780), statusBar: 26);
+      final problems = <String>[];
+      void near(String what, num actual, Object? expected, double within) {
+        final want = (expected! as num).toDouble();
+        if ((actual - want).abs() > within + 1e-9) {
+          problems.add('$what: $actual, golden $want');
+        }
+      }
+
+      final battle = BattleCameraView.pictureSize(
+        shape,
+        setupBox: layout.cameraBox(0),
+        battleBox: layout.cameraBox(1),
+        progress: 1,
+      );
+      for (final sample in samples) {
+        final at = 'tMs ${sample['tMs']}';
+        final progress = (sample['progress'] as num).toDouble();
+        final top = layout.lineTop(progress);
+        near('$at line', top, sample['boundaryY'], position);
+        final box = sample['cameraBox'] as Map<String, dynamic>;
+        near(
+          '$at box top',
+          top + BattleCameraArea.lineWidth,
+          box['top'],
+          position,
+        );
+        near(
+          '$at box height',
+          layout.cameraBox(progress).height,
+          box['height'],
+          position,
+        );
+        final picture = sample['picture'] as Map<String, dynamic>;
+        final size = BattleCameraView.pictureSize(
+          shape,
+          setupBox: layout.cameraBox(0),
+          battleBox: layout.cameraBox(1),
+          progress: progress,
+        );
+        near('$at width', size.width, picture['width'], position);
+        near('$at height', size.height, picture['height'], position);
+        near('$at left', (360 - size.width) / 2, picture['left'], position);
+        near('$at scale', size.height / battle.height, picture['scale'], scale);
+      }
+      expect(problems, isEmpty, reason: problems.join('\n'));
+      final end = transition['reducedMotion'] as Map<String, dynamic>;
+      expect(layout.lineTop(1), end['boundaryY']);
+      expect(battle.height, (end['picture'] as Map)['height']);
+    });
+
+    test('on another phone the setup\'s line stands 234 stage points above '
+        'the middle, as the stage is sized (W2B-SPEC 4.5)', () {
+      final layout = BattleArenaLayout(const Size(412, 915), statusBar: 24);
+      expect(layout.line, 457.5);
+      // As wide as the screen allows: the width is the limit here.
+      expect(layout.scale, closeTo(412 / 360, 1e-9));
+      expect(layout.lineTop(0), closeTo(457.5 - 234 * layout.scale, 1e-9));
+      expect(layout.lineTop(1), 457.5);
+      expect(layout.lineTop(0.5), closeTo(457.5 - 117 * layout.scale, 1e-9));
+      expect(
+        layout.cameraBox(0),
+        Size(412, 915 - layout.lineTop(0) - BattleCameraArea.lineWidth),
+      );
+      expect(layout.cameraBox(1), const Size(412, 915 - 457.5 - 3));
+    });
+
+    /// Where the camera area begins on screen: the top of the ink line.
+    double lineTop(WidgetTester tester) =>
+        tester.getTopLeft(find.byType(BattleCameraArea)).dy;
+
+    testWidgets('setting up, the camera takes the screen from 156 down, over '
+        'the stage, the picture fills it, and no fighter is drawn', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(phase: BattleStagePhase.setup, opReady: true),
+        camera: const BattleCameraView(controller: null),
+      );
+      await _wait(tester, 16);
+      expect(lineTop(tester), closeTo(156, 1e-9));
+      expect(find.byType(BattleFighter), findsNothing);
+      expect(find.text('유효 횟수'), findsNothing);
+      // A 3 : 4 picture as tall as the box, cut at both sides.
+      final picture = tester.getRect(find.byType(PoseCameraView));
+      expect(picture.top, closeTo(159, 0.01));
+      expect(picture.height, closeTo(621, 0.01));
+      expect(picture.width, closeTo(621 * 3 / 4, 0.01));
+      expect(picture.center.dx, closeTo(180, 0.01));
+    });
+
+    testWidgets('the countdown brings the line down in 350 ms, then the '
+        'fighters pop up, as the design times it', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, meReady: true, opReady: true),
+        camera: const BattleCameraView(controller: null),
+      );
+      await _wait(tester, 16);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        camera: const BattleCameraView(controller: null),
+      );
+      final byTime = {for (final s in samples) (s['tMs'] as num).toInt(): s};
+      var elapsed = 0;
+      for (final t in [100, 175, 250, 350, 400, 450, 600]) {
+        await _wait(tester, t - elapsed);
+        elapsed = t;
+        final sample = byTime[t]!;
+        expect(
+          lineTop(tester),
+          closeTo((sample['boundaryY'] as num).toDouble(), position),
+          reason: 'line at $t',
+        );
+        final fighter = sample['fighter'] as Map<String, dynamic>;
+        final frame = _frame(tester);
+        expect(
+          frame.me.opacity,
+          closeTo((fighter['opacity'] as num).toDouble(), 0.02),
+          reason: 'fighter at $t',
+        );
+        final picture = tester.getRect(find.byType(PoseCameraView));
+        expect(
+          picture.height,
+          closeTo(((sample['picture'] as Map)['height'] as num).toDouble(), 1),
+          reason: 'picture at $t',
+        );
+      }
+      // In the end the battle's layout: a whole 3 : 4 picture under the
+      // middle, and both fighters.
+      expect(lineTop(tester), 390);
+      expect(find.byType(BattleFighter), findsNWidgets(2));
+      expect(
+        tester.getRect(find.byType(PoseCameraView)),
+        rectMoreOrLessEquals(const Rect.fromLTWH(34.875, 393, 290.25, 387)),
+      );
+    });
+
+    testWidgets('with reduced motion the countdown jumps to the battle\'s '
+        'layout, and back', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup),
+        reducedMotion: true,
+      );
+      await _wait(tester, 16);
+      expect(lineTop(tester), 156);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        reducedMotion: true,
+      );
+      // On the very frame the phase changes (W2B-SPEC 9).
+      expect(lineTop(tester), 390);
+      expect(_frame(tester).me.opacity, 1);
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup),
+        reducedMotion: true,
+      );
+      // On the very frame the phase changes, back as well.
+      expect(lineTop(tester), 156);
+      expect(find.byType(BattleFighter), findsNothing);
+    });
+
+    testWidgets('back to the setup during the countdown, the fighters fade '
+        'out and the line goes back up', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(phase: BattleStagePhase.setup));
+      await _wait(tester, 16);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+      );
+      await _wait(tester, 800);
+      expect(lineTop(tester), 390);
+      await _pump(tester, controller, _state(phase: BattleStagePhase.setup));
+      await _wait(tester, 50);
+      expect(_frame(tester).me.opacity, closeTo(0.5, 0.02));
+      expect(lineTop(tester), lessThan(390));
+      await _wait(tester, 60);
+      expect(find.byType(BattleFighter), findsNothing);
+      await _wait(tester, 300);
+      expect(lineTop(tester), closeTo(156, 1e-9));
+      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(find.text('3'), findsNothing);
+    });
+
+    testWidgets('a screen that opens on the round, or on its countdown, '
+        'stands in the battle\'s layout from the first frame', (tester) async {
+      for (final state in [
+        _state(),
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 2),
+        ),
+      ]) {
+        await _pump(tester, BattleStageController(), state);
+        await _wait(tester, 16);
+        expect(lineTop(tester), 390, reason: state.phase.name);
+        expect(_frame(tester).me.opacity, 1, reason: state.phase.name);
+        expect(find.text('유효 횟수'), findsOneWidget);
+      }
+    });
+
+    testWidgets('the large hint, the camera switch and the large ready button '
+        'sit where the design has them on an S22', (tester) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(phase: BattleStagePhase.setup),
+        hint: '카메라 앞에 서 주세요.',
+        readyLabel: '준비',
+        onReady: () {},
+        onSwitchCamera: () {},
+        setupProgress: 0.5,
+        onLeave: () {},
+      );
+      await _wait(tester, 16);
+      final band = find.ancestor(
+        of: find.text('카메라 앞에 서 주세요.'),
+        matching: find.byType(SizedBox),
+      );
+      expect(
+        tester.getRect(band.first),
+        rectMoreOrLessEquals(const Rect.fromLTWH(12, 173, 336, 54)),
+      );
+      final ready = find.ancestor(
+        of: find.text('준비'),
+        matching: find.byType(Material),
+      );
+      expect(
+        tester.getRect(ready.first),
+        rectMoreOrLessEquals(const Rect.fromLTRB(216, 714, 348, 766)),
+      );
+      final circle = find.descendant(
+        of: find.bySemanticsLabel('카메라 전환'),
+        matching: find.byWidgetPredicate(
+          (w) => w is SizedBox && w.width == 44 && w.height == 44,
+        ),
+      );
+      expect(
+        tester.getRect(circle),
+        rectMoreOrLessEquals(const Rect.fromLTWH(304, 237, 44, 44)),
+      );
+    });
+
+    testWidgets('the setup\'s large things take no taps while they fade out; '
+        'the countdown\'s 시작 does', (tester) async {
+      var ready = 0;
+      var start = 0;
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, opReady: true),
+        readyLabel: '시작',
+        onReady: () => ready++,
+      );
+      await _wait(tester, 16);
+      final at = tester.getCenter(find.text('시작'));
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        readyLabel: '시작',
+        onReady: () => start++,
+      );
+      await _wait(tester, 50);
+      // The large 시작 is still fading where it was; the small one comes in.
+      expect(find.text('시작'), findsNWidgets(2));
+      await tester.tapAt(at);
+      expect((ready, start), (0, 0));
+      await _wait(tester, 150);
+      expect(find.text('시작'), findsOneWidget);
+      await tester.tap(find.text('시작'));
+      expect((ready, start), (0, 1));
+    });
+  });
+
+  group('BattleArena, before the start', () {
+    testWidgets('setting up: the ready chips, the band, and the camera '
+        'area\'s large hint and ready button', (tester) async {
+      var ready = 0;
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(phase: BattleStagePhase.setup, opReady: true),
+        hint: '폰을 더 세워 주세요.',
+        readyLabel: '준비',
+        onReady: () => ready++,
+      );
+      await _wait(tester, 16);
+      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(find.text('세팅 중'), findsOneWidget);
+      expect(find.text('준비 완료'), findsOneWidget);
+      expect(find.text('폰을 더 세워 주세요.'), findsOneWidget);
+      expect(
+        tester.widget<BattleCameraArea>(find.byType(BattleCameraArea)),
+        isA<BattleCameraArea>()
+            .having((a) => a.settingUp, 'setting up', isTrue)
+            .having((a) => a.setupLook, 'setup look', 1),
+      );
+      // No chip before the start.
+      expect(find.text('동점'), findsNothing);
+      await tester.tap(find.text('준비'));
+      expect(ready, 1);
+    });
+
+    testWidgets('waiting for the opponent says so', (tester) async {
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(phase: BattleStagePhase.setup, meReady: true),
+      );
+      await _wait(tester, 16);
+      expect(find.text('상대를 기다리는 중'), findsOneWidget);
+    });
+
+    testWidgets('the countdown shows 3, 2, 1 and GO!, gives their cues, and '
+        'the chip appears at the start', (tester) async {
+      final cues = <String>[];
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, meReady: true, opReady: true),
+        onCue: (c) => cues.add('$c'),
+      );
+      await _wait(tester, 500);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        onCue: (c) => cues.add('$c'),
+      );
+      await _wait(tester, 16);
+      expect(find.text('3'), findsOneWidget);
+      // The ready chips fade out as the line comes down.
+      expect(find.text('준비 완료'), findsNWidgets(2));
+      await _wait(tester, 150);
+      expect(find.text('준비 완료'), findsNothing);
+      await _wait(tester, 1000 - 150);
+      expect(find.text('2'), findsOneWidget);
+      await _wait(tester, 1000);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('동점'), findsNothing);
+      await _wait(tester, 1000);
+      await _pump(tester, controller, _state(), onCue: (c) => cues.add('$c'));
+      await _wait(tester, 16);
+      expect(find.text('GO!'), findsOneWidget);
+      expect(find.text('동점'), findsOneWidget);
+      expect(cues, ['countdown 3', 'countdown 2', 'countdown 1', 'go']);
+      await _wait(tester, 800);
+      expect(find.text('GO!'), findsNothing);
+    });
+
+    testWidgets('go() cuts a countdown short: GO! at once, said once, and no '
+        'number after it', (tester) async {
+      final cues = <String>[];
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+        onCue: (c) => cues.add('$c'),
+      );
+      await _wait(tester, 600);
+      expect(find.text('3'), findsOneWidget);
+      controller.go();
+      await _pump(tester, controller, _state(), onCue: (c) => cues.add('$c'));
+      await _wait(tester, 16);
+      expect(find.text('GO!'), findsOneWidget);
+      expect(find.text('3'), findsNothing);
+      await _wait(tester, 3000);
+      expect(cues, ['countdown 3', 'go']);
+    });
+
+    testWidgets('go() with no countdown before it still shows GO!', (
+      tester,
+    ) async {
+      final cues = <String>[];
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup),
+        onCue: (c) => cues.add('$c'),
+      );
+      await _wait(tester, 100);
+      controller.go();
+      await _pump(tester, controller, _state(), onCue: (c) => cues.add('$c'));
+      await _wait(tester, 16);
+      expect(find.text('GO!'), findsOneWidget);
+      expect(find.text('동점'), findsOneWidget);
+      await _wait(tester, 1000);
+      expect(cues, ['go']);
+    });
+
+    testWidgets('losing the pose during the countdown stops it', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+      );
+      await _wait(tester, 500);
+      expect(find.text('3'), findsOneWidget);
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, opReady: true),
+      );
+      await _wait(tester, 3000);
+      expect(find.text('GO!'), findsNothing);
+      expect(find.text('자세 세팅 중'), findsOneWidget);
+    });
+  });
+
+  group('BattleArena, at the end', () {
+    testWidgets('the controller says when 결과 보기 is up, for the system\'s '
+        'back gesture', (tester) async {
+      final controller = BattleStageController();
+      expect(controller.resultReady, isFalse);
+      await _pump(tester, controller, _state());
+      await _wait(tester, 500);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 1700);
+      expect(controller.resultReady, isFalse);
+      expect(find.text('결과 보기'), findsNothing);
+      await _wait(tester, 150);
+      expect(controller.resultReady, isTrue);
+      expect(find.text('결과 보기'), findsOneWidget);
+    });
+
+    testWidgets('a knockout: the loser flies off, K.O., then 결과 보기, which '
+        'cannot be pressed before it is up', (tester) async {
+      var opened = 0;
+      var asked = 0;
+      final controller = BattleStageController();
+      Future<void> pump(BattleStageState state) => _pump(
+        tester,
+        controller,
+        state,
+        onLeave: () => asked++,
+        onShowResult: () => opened++,
+      );
+      await pump(_state(me: 85));
+      await _wait(tester, 1000);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.excellent,
+          points: 15,
+          combo: 1,
+          knockout: true,
+        ),
+      );
+      await pump(_state(phase: BattleStagePhase.ended, me: 100, end: _koEnd));
+      await _wait(tester, 16);
+      // The leave button goes at once.
+      expect(find.byIcon(Icons.logout_rounded), findsNothing);
+      await _wait(tester, 1000);
+      expect(find.text('K.O.'), findsNothing);
+      await _wait(tester, 400);
+      expect(find.text('K.O.'), findsOneWidget);
+      expect(_pose(tester, BattleSide.me), BattlePose.win);
+      expect(find.text('결과 보기'), findsNothing);
+      // Where the button will be: nothing to press yet.
+      await tester.tapAt(const Offset(180, 390 + 195));
+      expect(opened, 0);
+      await _wait(tester, 1000);
+      expect(find.text('결과 보기'), findsOneWidget);
+      await tester.tap(find.text('결과 보기'));
+      expect(opened, 1);
+      // The ending stays on the stage until the button is pressed.
+      await _wait(tester, 5000);
+      expect(find.text('K.O.'), findsOneWidget);
+      expect(asked, 0);
+    });
+
+    testWidgets('time-up waiting for the server: TIME!, then nothing until '
+        'the result comes, then WIN! and 결과 보기', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(me: 30, op: 20));
+      await _wait(tester, 500);
+      const waiting = BattleStageEnd(
+        kind: BattleEndKind.timeUp,
+        decided: false,
+      );
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.ended, me: 30, op: 20, end: waiting),
+      );
+      await _wait(tester, 300);
+      expect(find.text('TIME!'), findsOneWidget);
+      await _wait(tester, 4000);
+      expect(find.text('TIME!'), findsNothing);
+      expect(find.text('WIN!'), findsNothing);
+      expect(find.text('결과 보기'), findsNothing);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 30,
+          op: 20,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 100);
+      expect(find.text('WIN!'), findsOneWidget);
+      expect(find.text('결과 보기'), findsNothing);
+      await _wait(tester, 800);
+      expect(find.text('결과 보기'), findsOneWidget);
+    });
+
+    testWidgets('the opponent leaving: they vanish, the band says so, I '
+        'celebrate', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(me: 60, op: 45));
+      await _wait(tester, 500);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 60,
+          op: 45,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 600);
+      expect(find.text('상대가 나가서 이겼어요'), findsOneWidget);
+      expect(_pose(tester, BattleSide.me), BattlePose.win);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is BattleFighter && w.side == BattleSide.opponent,
+        ),
+        findsNothing,
+      );
+    });
+  });
+
+  group('BattleArena, after the battle (W2b end screen, option A)', () {
+    /// Where the camera area begins on screen: the top of the ink line.
+    double lineTop(WidgetTester tester) =>
+        tester.getTopLeft(find.byType(BattleCameraArea)).dy;
+
+    Finder scrim() => find.byWidgetPredicate(
+      (w) =>
+          w is ColoredBox &&
+          w.color.a < 1 &&
+          w.color.withValues(alpha: 1) == AppColors.background,
+    );
+
+    test('the line goes from where the layout puts it to the bottom as the '
+        'end progress goes from 0 to 1', () {
+      final layout = BattleArenaLayout(const Size(360, 780), statusBar: 26);
+      expect(layout.lineTop(1, end: 0), 390);
+      expect(layout.lineTop(1, end: 0.5), 585);
+      expect(layout.lineTop(1, end: 1), 780);
+      // Ended while setting up, e.g. a player who left: from the setup's
+      // line.
+      expect(layout.lineTop(0), 156);
+      expect(layout.lineTop(0, end: 0.5), 468);
+      expect(layout.lineTop(0, end: 1), 780);
+      final other = BattleArenaLayout(const Size(412, 915), statusBar: 24);
+      expect(other.lineTop(1, end: 1), 915);
+      expect(other.lineTop(1, end: 0.25), 457.5 + 457.5 * 0.25);
+    });
+
+    testWidgets('a knockout: once the blow lands the line goes down in '
+        '450 ms, the camera with it, the ground fills the screen and the '
+        'stage stays; 결과 보기 comes up in the middle of the lower half, '
+        'with no dimming', (tester) async {
+      var opened = 0;
+      final controller = BattleStageController();
+      Future<void> pump(BattleStageState state) => _pump(
+        tester,
+        controller,
+        state,
+        onLeave: () {},
+        onShowResult: () => opened++,
+      );
+      await pump(_state(me: 85));
+      await _wait(tester, 1000);
+      final stage = tester.getRect(find.byType(BattleStage));
+      expect(lineTop(tester), 390);
+      expect(tester.getSize(find.byType(BattleStageBackdrop)).height, 390);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.excellent,
+          points: 15,
+          combo: 1,
+          knockout: true,
+        ),
+      );
+      await pump(_state(phase: BattleStagePhase.ended, me: 100, end: _koEnd));
+      await _wait(tester, 40);
+      // The blow has not landed yet.
+      expect(lineTop(tester), 390);
+      await _wait(tester, 40 + 225);
+      expect(lineTop(tester), closeTo(585, 4));
+      await _wait(tester, 225);
+      expect(lineTop(tester), 780);
+      expect(tester.getSize(find.byType(BattleCameraArea)).height, 0);
+      expect(tester.getSize(find.byType(BattleStageBackdrop)).height, 780);
+      expect(tester.getRect(find.byType(BattleStage)), stage);
+      expect(tester.takeException(), isNull);
+      await _wait(tester, 2000);
+      expect(find.text('결과 보기'), findsOneWidget);
+      final button = tester.getRect(
+        find
+            .ancestor(of: find.text('결과 보기'), matching: find.byType(Material))
+            .first,
+      );
+      // Where it was over the camera, under the 3 wide line.
+      expect(button.center.dx, closeTo(180, 0.01));
+      expect(button.center.dy, closeTo(390 + 3 + 387 / 2, 0.01));
+      expect(scrim(), findsNothing);
+      await tester.tap(find.text('결과 보기'));
+      expect(opened, 1);
+    });
+
+    testWidgets('online, a time-up waiting for the server keeps the camera '
+        'and the way out until the result comes, then the line goes down', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      Future<void> pump(BattleStageState state) =>
+          _pump(tester, controller, state, onLeave: () {});
+      await pump(_state(me: 30, op: 20));
+      await _wait(tester, 500);
+      await pump(
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 30,
+          op: 20,
+          end: const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+        ),
+      );
+      await _wait(tester, 3000);
+      expect(lineTop(tester), 390);
+      expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
+      await pump(
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 30,
+          op: 20,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 16);
+      expect(find.byIcon(Icons.logout_rounded), findsNothing);
+      await _wait(tester, 450);
+      expect(lineTop(tester), 780);
+    });
+
+    testWidgets('in fever, as a bot battle always is at its time-up, the '
+        'cyan wash goes down with the ground and fills the screen', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(me: 60, op: 40, fever: true));
+      await _wait(tester, 500);
+      Finder wash() => find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == AppColors.fever,
+      );
+      expect(tester.getRect(wash()).height, 390);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 60,
+          op: 40,
+          fever: true,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 500);
+      expect(tester.getRect(wash()), const Rect.fromLTWH(0, 0, 360, 780));
+    });
+
+    testWidgets('with reduced motion the camera is gone at once', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(me: 30), reducedMotion: true);
+      await _wait(tester, 500);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          me: 30,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.me,
+          ),
+        ),
+        reducedMotion: true,
+      );
+      expect(lineTop(tester), 780);
+      expect(tester.getSize(find.byType(BattleStageBackdrop)).height, 780);
+    });
+
+    testWidgets('an end during the setup takes the line from the setup\'s '
+        'place down', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, opReady: true),
+        onLeave: () {},
+      );
+      await _wait(tester, 500);
+      expect(lineTop(tester), 156);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.me,
+          ),
+        ),
+      );
+      await _wait(tester, 225);
+      expect(lineTop(tester), greaterThan(390));
+      await _wait(tester, 250);
+      expect(lineTop(tester), 780);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('BattleArena, for a screen reader', () {
+    testWidgets('a blow says the new score and valid count; my rejected rep '
+        'its reason; an average rep its reason and points', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _wait(tester, 500);
+      controller.rep(_myGood);
+      await _pump(tester, controller, _state(me: 10, myReps: 1));
+      await _wait(tester, 100);
+      expect(said, ['내 점수 10점, 유효 1회']);
+
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: null,
+          reason: RejectReason.kneesDown,
+        ),
+      );
+      await _wait(tester, 16);
+      expect(said.last, '무릎을 바닥에서 떼요');
+
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.average,
+          points: 5,
+          reason: RejectReason.insufficientDepth,
+        ),
+      );
+      await _pump(tester, controller, _state(me: 15, myReps: 1));
+      await _wait(tester, 100);
+      expect(said.sublist(2), ['가슴을 더 내려요 · +5점', '내 점수 15점, 유효 1회']);
+
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.opponent,
+          grade: GameGrade.good,
+          points: 10,
+          combo: 1,
+        ),
+      );
+      await _pump(
+        tester,
+        controller,
+        _state(me: 15, myReps: 1, op: 10, opReps: 1),
+      );
+      await _wait(tester, 100);
+      expect(said.last, '상대 점수 10점, 유효 1회');
+    });
+
+    testWidgets('the opponent\'s miss is not read out', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _wait(tester, 100);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.opponent,
+          grade: null,
+          reason: RejectReason.tooFast,
+        ),
+      );
+      await _wait(tester, 1000);
+      expect(said, isEmpty);
+    });
+
+    testWidgets('the countdown and the start are read out', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+      );
+      await _wait(tester, 16);
+      await _wait(tester, 1000);
+      await _wait(tester, 1000);
+      await _wait(tester, 1000);
+      expect(said, ['3', '2', '1', '시작']);
+    });
+
+    testWidgets('fever, my reconnecting and the opponent\'s lost connection '
+        'are read out when they begin', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _pump(tester, controller, _state(fever: true));
+      await _pump(tester, controller, _state(fever: true, reconnecting: true));
+      await _pump(tester, controller, _state(fever: true));
+      await _pump(
+        tester,
+        controller,
+        _state(fever: true, opponentDisconnected: true),
+      );
+      await _pump(
+        tester,
+        controller,
+        _state(fever: true, opponentDisconnected: true),
+      );
+      expect(said, ['피버, 점수 2배', '재연결 중', '다시 연결됐어요', '상대 연결이 끊겼어요']);
+    });
+
+    testWidgets('the ending is read out: K.O., time-up and its verdict, a '
+        'player leaving', (tester) async {
+      final ko = BattleStageController();
+      await _pump(tester, ko, _state());
+      await _pump(
+        tester,
+        ko,
+        _state(phase: BattleStagePhase.ended, me: 100, end: _koEnd),
+      );
+      await _wait(tester, 16);
+      // The score that brought it is said once, as it changes.
+      expect(said, ['내 점수 100점, 유효 0회', 'K.O. 이겼어요']);
+
+      final time = BattleStageController();
+      await _pump(tester, time, _state(op: 10));
+      // A new battle on the same arena: only its ending counts here.
+      said.clear();
+      await _pump(
+        tester,
+        time,
+        _state(
+          phase: BattleStagePhase.ended,
+          op: 10,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.timeUp,
+            winner: BattleSide.opponent,
+          ),
+        ),
+      );
+      await _wait(tester, 16);
+      await _wait(tester, 1100);
+      expect(said, ['시간 종료', '졌어요']);
+
+      final left = BattleStageController();
+      await _pump(tester, left, _state());
+      said.clear();
+      await _pump(
+        tester,
+        left,
+        _state(
+          phase: BattleStagePhase.ended,
+          end: const BattleStageEnd(
+            kind: BattleEndKind.playerLeft,
+            winner: BattleSide.opponent,
+          ),
+        ),
+      );
+      await _wait(tester, 16);
+      expect(said, ['연결이 끊겨서 졌어요']);
+    });
+  });
+
+  group('BattleArena, with reduced motion', () {
+    testWidgets('a blow still changes the poses, but nothing shakes, flashes '
+        'or breathes, and the reconnect arc holds still', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(reconnecting: true),
+        reducedMotion: true,
+      );
+      await _wait(tester, 1000);
+      expect(_frame(tester).me.scaleY, 1);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.opponent,
+          grade: GameGrade.excellent,
+          points: 15,
+          combo: 1,
+        ),
+      );
+      await _wait(tester, 100);
+      final frame = _frame(tester);
+      expect(frame.me.pose, BattlePose.hit);
+      expect(frame.opponent.pose, BattlePose.attack);
+      expect(frame.shakeX, 0);
+      expect(frame.shakeY, 0);
+      expect(frame.me.flash, isFalse);
+      expect(
+        tester.widget<BattleCameraArea>(find.byType(BattleCameraArea)).spin,
+        0,
+      );
+    });
+  });
+
+  group('battleAnnouncement', () {
+    final state = _state(me: 40, op: 25, myReps: 3, opReps: 2);
+
+    test('a blow says nothing itself: the score is said as it changes', () {
+      for (final side in BattleSide.values) {
+        expect(
+          battleAnnouncement(
+            BattleStageCue(BattleCueKind.hit, side: side),
+            state,
+          ),
+          isNull,
+        );
+      }
+    });
+
+    test('a change of the standing says the score and valid reps of each '
+        'player once, the user first', () {
+      expect(battleStandingAnnouncements(state, state), isEmpty);
+      expect(
+        battleStandingAnnouncements(
+          state,
+          _state(me: 50, op: 25, myReps: 4, opReps: 2),
+        ),
+        ['내 점수 50점, 유효 4회'],
+      );
+      // An average rep: points without a valid rep.
+      expect(
+        battleStandingAnnouncements(
+          state,
+          _state(me: 45, op: 25, myReps: 3, opReps: 2),
+        ),
+        ['내 점수 45점, 유효 3회'],
+      );
+      // A valid rep without points: an older server, or a snapshot.
+      expect(
+        battleStandingAnnouncements(
+          state,
+          _state(me: 40, op: 25, myReps: 3, opReps: 3),
+        ),
+        ['상대 점수 25점, 유효 3회'],
+      );
+      expect(
+        battleStandingAnnouncements(
+          state,
+          _state(me: 41, op: 26, myReps: 3, opReps: 2),
+        ),
+        ['내 점수 41점, 유효 3회', '상대 점수 26점, 유효 2회'],
+      );
+    });
+
+    test('says nothing for a miss', () {
+      expect(
+        battleAnnouncement(
+          const BattleStageCue(BattleCueKind.miss, side: BattleSide.me),
+          state,
+        ),
+        isNull,
+      );
+    });
+
+    test('says every way a battle ends, from the user\'s side', () {
+      String? say(BattleCueKind kind, BattleSide? side) =>
+          battleAnnouncement(BattleStageCue(kind, side: side), state);
+      expect(say(BattleCueKind.knockout, BattleSide.me), 'K.O. 이겼어요');
+      expect(say(BattleCueKind.knockout, BattleSide.opponent), 'K.O. 졌어요');
+      expect(say(BattleCueKind.timeUp, null), '시간 종료');
+      expect(say(BattleCueKind.verdict, BattleSide.me), '이겼어요');
+      expect(say(BattleCueKind.verdict, BattleSide.opponent), '졌어요');
+      expect(say(BattleCueKind.verdict, null), '비겼어요');
+      expect(say(BattleCueKind.playerLeft, BattleSide.me), '상대가 나가서 이겼어요');
+      expect(say(BattleCueKind.playerLeft, BattleSide.opponent), '연결이 끊겨서 졌어요');
+    });
+
+    test('says the countdown and the start', () {
+      expect(
+        battleAnnouncement(
+          const BattleStageCue(BattleCueKind.countdown, number: 2),
+          state,
+        ),
+        '2',
+      );
+      expect(
+        battleAnnouncement(const BattleStageCue(BattleCueKind.go), state),
+        '시작',
+      );
+    });
+  });
+
+  group('BattleArena, things a mistake would break', () {
+    testWidgets('the red edge takes no taps: I can still leave while I am '
+        'about to lose', (tester) async {
+      var asked = 0;
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(op: 65, danger: true),
+        onLeave: () => asked++,
+      );
+      await _wait(tester, 16);
+      expect(_dangerEdge(), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.logout_rounded));
+      expect(asked, 1);
+      await tester.tapAt(tester.getCenter(find.byKey(_camera)));
+      expect(_cameraTaps, 1);
+    });
+
+    testWidgets('the reject sign takes no taps: what is under it still does', (
+      tester,
+    ) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _wait(tester, 100);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: null,
+          reason: RejectReason.kneesDown,
+        ),
+      );
+      await _wait(tester, 400);
+      // The label of the sign lies over the camera.
+      final label = tester.getCenter(find.text('무릎 떼기'));
+      expect(label.dy, greaterThan(390));
+      await tester.tapAt(label);
+      expect(_cameraTaps, 1);
+    });
+
+    testWidgets('the clock goes on when another arena takes the controller: '
+        'an ending that has played stays played', (tester) async {
+      final controller = BattleStageController();
+      final ended = _state(phase: BattleStagePhase.ended, me: 100, end: _koEnd);
+      await _pump(tester, controller, _state(me: 85));
+      await _wait(tester, 5000);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.excellent,
+          points: 15,
+          combo: 1,
+          knockout: true,
+        ),
+      );
+      await _pump(tester, controller, ended, onShowResult: () {});
+      await _wait(tester, 3000);
+      expect(find.text('결과 보기'), findsOneWidget);
+      // The screen shows something else for a moment, then the arena again.
+      await tester.pumpWidget(battleTestApp(const SizedBox()));
+      await _wait(tester, 500);
+      await _pump(tester, controller, ended, onShowResult: () {});
+      await _wait(tester, 16);
+      expect(find.text('결과 보기'), findsOneWidget);
+      expect(find.text('K.O.'), findsOneWidget);
+      expect(_pose(tester, BattleSide.me), BattlePose.win);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is BattleFighter && w.side == BattleSide.opponent,
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('fever, and the opponent\'s lost connection, are said when '
+        'they begin, not when they end', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(fever: true, opponentDisconnected: true),
+      );
+      said.clear();
+      await _pump(tester, controller, _state(fever: true));
+      await _pump(tester, controller, _state());
+      expect(said, isEmpty);
+    });
+
+    testWidgets('the fever band and chip take the multiplier of the '
+        'battle\'s rules', (tester) async {
+      final controller = BattleStageController();
+      BattleStageState triple({required bool fever}) => BattleStageState(
+        phase: BattleStagePhase.playing,
+        myName: 'A',
+        opponentName: 'B',
+        remaining: const Duration(seconds: 9),
+        roundLength: const Duration(seconds: 30),
+        fever: fever,
+        feverMultiplier: 3,
+      );
+      await _pump(tester, controller, triple(fever: false));
+      await _wait(tester, 100);
+      await _pump(tester, controller, triple(fever: true));
+      await _wait(tester, 400);
+      // The band crossing the stage, and the chip beside the clock.
+      expect(find.text('FEVER ×3'), findsNWidgets(2));
+      expect(said, ['피버, 점수 3배']);
+    });
+
+    testWidgets('a round that starts without a countdown takes the setup\'s '
+        'chips and band away as the line comes down', (tester) async {
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup, opReady: true),
+      );
+      await _wait(tester, 16);
+      expect(find.text('자세 세팅 중'), findsOneWidget);
+      await _pump(tester, controller, _state());
+      await _wait(tester, 16);
+      expect(find.text('동점'), findsOneWidget);
+      await _wait(tester, 150);
+      expect(find.text('자세 세팅 중'), findsNothing);
+      expect(find.text('준비 완료'), findsNothing);
+      expect(find.text('동점'), findsOneWidget);
+    });
+
+    testWidgets('while a time-up waits for its result I can still leave; '
+        'once it is decided the button goes', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state(), onLeave: () {});
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          end: const BattleStageEnd(kind: BattleEndKind.timeUp, decided: false),
+        ),
+        onLeave: () {},
+      );
+      await _wait(tester, 16);
+      expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.ended,
+          end: const BattleStageEnd(kind: BattleEndKind.timeUp),
+        ),
+        onLeave: () {},
+      );
+      await _wait(tester, 16);
+      expect(find.byIcon(Icons.logout_rounded), findsNothing);
+    });
+
+    testWidgets('a rejected rep that comes after the end is neither played '
+        'nor read out', (tester) async {
+      final controller = BattleStageController();
+      await _pump(tester, controller, _state());
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.ended, me: 100, end: _koEnd),
+      );
+      await _wait(tester, 16);
+      said.clear();
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: null,
+          reason: RejectReason.kneesDown,
+        ),
+      );
+      await _wait(tester, 400);
+      expect(said, isEmpty);
+      expect(find.byType(BattleRejectSignView), findsNothing);
+    });
+
+    testWidgets('a knockout the screen reports just before its blow still '
+        'shows the blow, and is read out once', (tester) async {
+      final cues = <String>[];
+      final controller = BattleStageController();
+      await _pump(
+        tester,
+        controller,
+        _state(me: 85),
+        onCue: (c) => cues.add('$c'),
+      );
+      await _wait(tester, 1000);
+      // The game's order: the result first, the rep a moment later.
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.ended, me: 100, end: _koEnd),
+        onCue: (c) => cues.add('$c'),
+      );
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.excellent,
+          points: 15,
+          combo: 1,
+          knockout: true,
+        ),
+      );
+      await _wait(tester, 40);
+      expect(_pose(tester, BattleSide.me), BattlePose.attack);
+      await _wait(tester, 100);
+      expect(cues, ['knockout me excellent']);
+      expect(said, ['내 점수 100점, 유효 0회', 'K.O. 이겼어요']);
+    });
+  });
+}
