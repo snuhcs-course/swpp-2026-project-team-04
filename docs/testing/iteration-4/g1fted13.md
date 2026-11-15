@@ -586,3 +586,21 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `8204458`, wit
 - #59: the chart's place does not break without depth over time. Tests: `'#59: an AI squat without depth over time says where the depths are and still gives the verdict'`, `'#59 with too few reps to judge: only where the depths are'`
 - Large text does not overflow or cut the reason. Tests: `'${exercise.name} at ${scale}x text on a 360 x 780 phone: nothing overflows down to the last rep'` (push-up and squat, 1.3× and 2×), `'with large text the number columns keep their widths and the whole reason wraps; nothing overflows'`
 - Palette B. Tests: `'palette B: every word is ink; color only fills badges, swatches, squares and bars'`, `'every example is ink on a light floor, amber only at fault, and nothing pink'`
+
+#### 2026-11-15 · code at commit `be2c0a2` · step W8 `feat/ui_form_feedback`, follow-up to the Codex review of PR #63 (team order #18)
+- **What changed:** the review's P2 comment ("Filter post-round samples before scaling"). A camera frame handled just after the round ended was not drawn, but it still set the depth chart's scale, and when only that frame had a depth the screen showed an empty chart instead of the note. Now whether a chart has data and how far its scale reaches come from the samples inside the round, the same ones the line draws, for the depth, elbow and hip charts (`hasData` takes the slice length).
+- **Tests:** `flutter test` had 2811 passed, 0 failed and 10 skipped (the same 10 as before); `flutter analyze` found no issues. The W8 files now have 89 tests (+4 new, 3 rewritten), plus the token check. Coverage: TODO(Woohyun Song): from the CI comment on the PR's new head (the reviewer's coverage run on this PC did not finish while the full suite ran beside it).
+- **Mutation check (by me, file restored):** with every sample counted as within the round, 6 of the new and rewritten tests fail.
+- **Other checks:** the reviewer returned APPROVE (one Minor: the line repeated the in-round rule; it now uses the same helper). `ownership_guard.py --check-diff`: ok. Server `pytest` was not run, because `server/` did not change.
+- **Manual check:** none for this change (a frame after the round is hard to produce on purpose); it is covered by the tests below.
+
+### Test cases added or changed in this follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/feedback_charts_test.dart` (updated) | the three `hasData` checks count only the round (30 s counts, 30.1 s does not, a 12 s KO round drops 13 s); a sample after the round neither stretches the depth scale (push-up up and down, squat) nor is drawn; a depth only after the round draws nothing; a deep bend after the round leaves the angle floor at 60 |
+| View | `test/screens/feedback_screen_test.dart` (updated: +1 in the W8 group) | an AI squat whose only depth is a frame at 30.2 s gives the note and the verdict, not an empty chart |
+| View | `test/widgets/feedback_test_reports.dart` (updated) | `extraSamples` for samples after the round |
+
+### Acceptance criteria → tests (this follow-up)
+- A sample after the round does not change the chart. Tests: `'a sample after the round does not stretch the scale'`, `'a depth only after the round draws nothing'`, `'hasData: a depth at any moment of the round, not after it'`, `"a deep bend after the round does not lower the chart's floor"`
+- With depth only after the round, the note shows. Tests: `'a depth seen only after the round ends gives the note, not an empty chart (Codex review of #63)'`

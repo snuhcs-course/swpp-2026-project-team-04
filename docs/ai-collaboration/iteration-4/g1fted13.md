@@ -467,6 +467,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
 - **The code and tests:** Claude Code wrote all of part 1's code and tests, in three commits on `feat/ui_form_feedback`:
   - `7682275`: the `FeedbackText` styles appended at the end of `app_theme.dart` (the user's one-off exception).
   - `06f2160`: the fault examples in palette B (`lib/widgets/form_fault_clip.dart`).
+  - After the Codex review of PR #63: `be2c0a2`, the charts' data and scale from the samples within the round.
   - `8204458`: the screen (`lib/screens/feedback_screen.dart`) drawn from `FeedbackViewModel`'s `state.form`, the new `lib/widgets/feedback_parts.dart` and `feedback_charts.dart` (including a squat hip-angle chart), `match_feedback_screen.dart` passing its view model's values, and the tests.
 - **The design came from the user:** the palette B mockup `BFeedback.dc.html` from the user's design canvas, with its README. The issues #58 and #59 were filed by 박진영 from the Codex review of #57.
 - **Design check:** Claude Code rendered the mockup in headless Chrome with the app's own font files, rendered the screen with a temporary widget test and the same fonts, and compared them side by side (not committed).
@@ -495,6 +496,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
     - No W8 rows in "Design doc changes".
   - 3 Minor: a rejected rep at the round's end showed half its square; at 1.3× text the grown number columns left "무효 · …" without its reason; the fault figure's thigh was 8 against the mockup's 9.
 - **Re-check 1: CHANGES_REQUESTED, on a fix the agent had reported as done.** For the end square the agent added room on the right and a test of the square's drawn position. The reviewer's probe showed fl_chart still clips to the plot's width whenever any clip is set, so the square stayed cut, and the test could not see a clip. Fixed by turning the depth chart's clip off (its scale holds every sample) and making the test check every clip too; with the old setting it now fails (261 < 266). Two Minor findings were fixed with it: the angle charts' 60° floor cut deep squats flat, and the two right-hand table heads read as one word at 1.3×.
+- **The Codex review of PR #63 (P2) found a gap the reviewer had not:** the depth chart drew only the samples within the round but scaled itself, and decided whether it had data at all, on every sample. One camera frame handled after the round could stretch the axis, or leave an empty chart where the note belonged. It came from an earlier change by the agent, which left samples after the round out of the line but not out of the scale. Fixed in `be2c0a2`: one rule (`_inRound`) for the line, the scale and `hasData` of all three line charts, with tests that fail without it (6 of them, checked).
 - **Wrong expectations in new tests:** found on the first runs and fixed in the tests, not the code. These were a painted color compared as an object, not its value; stroke widths stored in single precision; and render coordinates measured from the plot, not the chart.
 - **A real gap found by a new test:** inside the list, a chart's screen-reader label merged with the sentence under it. Fixed in the code: `FeedbackChartPanel` gives the chart its own node.
 - **Tooling:**
@@ -503,7 +505,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
   - No impact on the code.
 
 ### e. Prompt revisions
-- None in this step: part 1 ran from one prompt. The harness update earlier the same day had already changed the order (the feedback screen first, the tutorial after J5), and the prompt followed it.
+- None in this step: part 1 ran from one prompt, and the follow-up from a second one that passed on the Codex comment with the fix to make. The harness update earlier the same day had already changed the order (the feedback screen first, the tutorial after J5), and the prompt followed it.
 
 ### f. Manual fixes and why
 - None. No AI-generated line in W8 was edited by hand, so W8 has no manual-fix markers.

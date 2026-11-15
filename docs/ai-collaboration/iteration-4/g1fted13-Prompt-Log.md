@@ -906,3 +906,22 @@ git fetch origin 후 최신 origin/main 에서 feat/ui_form_feedback 을 만든�
 </pasted_content id=\"668f\">"
 
 <!-- Cut: the client's injected browser notice in front of the 11-15 06:55 prompt (not the user's text). -->
+
+<!-- ad2fd8c1 2026-11-15T04:15:49.465Z -->
+[Woohyun Song, 11-15 13:15] "<pasted_content id=\"668f\">
+W8: Codex 리뷰 반영 (PR #63)
+
+feat/ui_form_feedback 로 바꾼다. PR #63 의 Codex 리뷰(P2, gymrats_app/lib/widgets/feedback_charts.dart 53~55줄, \"Filter post-round samples before scaling\")를 반영한다.
+
+문제: _line 은 라운드 길이(span)를 넘는 샘플을 그리지 않는데, FeedbackDepthPlot 의 축 범위(depths, deepest, bottom)와 hasData 는 모든 샘플을 본다. 라운드가 끝난 뒤 처리된 마지막 카메라 프레임 하나가 축을 늘릴 수 있다. 그 샘플에만 깊이가 있으면 안내 문장 대신 빈 그래프가 나온다.
+
+고치는 방법:
+- 그래프에 실제로 그리는 샘플(시각이 span 이하)만으로 자료 유무와 축 범위를 정한다.
+- hasData 도 같은 기준을 쓰도록 sliceSeconds(또는 span)를 받게 하고, feedback_screen 의 호출도 맞춘다.
+- 같은 문제가 FeedbackHipPlot, FeedbackElbowPlot 의 hasData 와 축 범위에도 있으면 함께 고친다.
+- \"none after the round\"라고 적힌 코드 주석을 실제 동작에 맞게 고친다.
+
+테스트: span 뒤 샘플 하나가 축을 늘리지 않는 경우, span 뒤 샘플에만 깊이가 있을 때 안내 문장이 나오는 경우를 더한다.
+
+flutter analyze, 전체 flutter test, 리뷰어 확인, ownership_guard.py --check-diff 를 통과시키고 커밋·푸시한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다. PR 스레드에는 답글을 달지 않는다. 고친 커밋 해시를 보고하고, 끝나면 메인 폴더를 비워 둔다.
+</pasted_content id=\"668f\">"
