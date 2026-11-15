@@ -606,6 +606,11 @@ This step redraws 기록보관소 and adds the 기간별 통계 screen. Both par
   - Loading, failed and empty states.
   - The archive gets a lime "기간별 통계" pill at the right of its header (only when the account can give statistics). The 7-day card is named "최근 7일 · M/D ~ 오늘", and a day without battles is a thin 3-high line.
 - **Merge:** `origin/main` with J4 (#57) merged as `a2724d0`. No conflict, and no W7 file changed by the merge. J4's new squat titles in `form_analyzer.dart` keep the six titles the statistics screen repeats; the test that reads them from that file still passes.
+- **Second merge (2026-11-15):** `origin/main` with W6 (#62) and J5's tutorial follow-up (#64) merged as `837cb7c`.
+  - Conflicts only in `lib/theme/app_theme.dart` and in these three note files. W6 and W7 had both added `AppColors.inactive` (#A9B0BE): one token is kept, with one comment for both uses (W6's bars of the earlier battles, W7's dashed days to come). The notes keep both sides, W6 first.
+  - No W7 screen, widget or test file changed. `design_tokens_test.dart` and `auth_flow_test.dart` merged without a conflict (both sides kept).
+  - Checks on `837cb7c`: `flutter analyze` found no issues; `flutter test` had 2999 passed, 0 failed and 10 skipped (the same 10 as below); `ownership_guard.py --check-diff` ok (28 changed files); the reviewer subagent checked the resolution (APPROVE).
+  - Coverage on the new head: not measured on this Windows PC (coverage collection hangs); TODO(Woohyun Song): fill from the PR's CI coverage comment.
 
 I ran the commands from the Plan in `gymrats_app/` on Windows, on `a2724d0`, without coverage. The coverage comes from the PR's CI comment on the pushed head `a3c6680` (the code of `a2724d0` plus these notes), [run 43618528652](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/43618528652).
 

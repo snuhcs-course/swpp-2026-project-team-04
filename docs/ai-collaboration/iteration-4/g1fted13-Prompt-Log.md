@@ -1075,3 +1075,29 @@ feat/ui_archive 로 돌아가 테스트 노트의 TODO 두 개를 채운다.
 
 <!-- Left out on purpose: the session summary written when this session ran out of context again (11-15 02:55; not a prompt). Its key stays so a later export does not add it again. -->
 <!-- 048f8135 2026-11-14T17:55:33.911Z -->
+
+<!-- 4d6a09d4 2026-11-15T06:56:54.839Z -->
+[Woohyun Song, 11-15 15:56] "W7: main 합치기 (PR #61, 새 세션)
+
+[배경]
+나는 송우현([REDACTED:custom_term])이고 Iteration 4에서 W7(기록보관소와 기간별 통계, 브랜치 feat/ui_archive, PR #61)을 맡고 있다. W7 코드는 끝났고 PR #61이 열려 있다. 그 사이 main 에 W6(#62)와 J5 튜토리얼 후속(#64)이 머지되어 PR #61 이 충돌한다. 이번 세션은 main 을 합쳐 충돌만 푼다. 새 기능은 만들지 않는다. 하네스(.claude/ 아래 ownership.json, team-plan.md, task.md, progress.md, ownership-exceptions.txt)의 규칙을 따른다.
+
+[GitHub 작업 규칙]
+PR, 이슈, CI 코멘트를 읽거나 고칠 때는 gh CLI 를 쓴다. Chrome 같은 브라우저로 GitHub 를 조작하지 않는다. gh 가 없거나 인증·권한 문제로 막히면 다른 방법으로 우회하지 말고 멈춘다. 그리고 무엇을 시도했고 어떤 명령에서 어떤 오류가 났는지 보고한다. git push 는 평소처럼 git 으로 한다.
+
+[할 일]
+1. feat/ui_archive 로 바꾼다. 커밋 안 된 변경이 있으면 멈추고 알린다.
+2. git fetch origin 후 origin/main 을 merge 한다(rebase 금지).
+3. 충돌 해결 규칙:
+   - 코스 노트 세 파일(docs/testing/iteration-4/[REDACTED:custom_term].md, docs/ai-collaboration/iteration-4/[REDACTED:custom_term].md, docs/ai-collaboration/iteration-4/[REDACTED:custom_term]-Prompt-Log.md)은 양쪽 내용을 모두 남긴다. main 쪽(W6, W4) 항목을 앞에, W7 항목을 뒤에 둔다. 번호나 목차가 있으면 합친 뒤 맞춘다.
+   - app_theme.dart 는 W6와 W7이 둘 다 더한 inactive 토큰을 하나만 남기고 설명 주석은 합친다. 서로 다른 추가(ArchiveText, StatsText 등)는 모두 남긴다.
+   - design_tokens_test.dart 가 충돌하면 양쪽 경로를 모두 남기고 알파벳 순서를 지킨다.
+   - 그 밖의 파일에서 충돌하면 멈추고 알린다.
+4. flutter analyze, 전체 flutter test, ownership_guard.py --check-diff 를 통과시킨다. 머지로 W7 코드 파일 내용이 바뀌었으면 리뷰어에게 다시 확인받는다.
+5. 커밋하고 feat/ui_archive 에 푸시한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다. 하네스 파일은 커밋하지 않는다. 푸시 전 프롬프트 로그 규칙을 따른다.
+6. 푸시한 뒤 PR #61 의 CI 가 새로 돌기 시작했는지 GitHub 스킬이나 MCP 로 확인한다. 막히면 위 규칙대로 보고만 한다.
+
+[보고]
+머지 커밋 해시, 충돌이 난 파일과 푼 방법, 테스트 결과, CI 상태. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다."
+
+<!-- Cut: the client's injected browser notice in front of 1 prompt (11-15 15:56; not the user's text). -->

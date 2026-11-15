@@ -517,11 +517,11 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ## W7 `feat/ui_archive` – the archive and the statistics screens (UAT-4 AC3, team order #17), 2026-11-14 ~ 2026-11-15
 
 ### a. Where AI was used
-- **The code and tests:** Claude Code wrote all of W7's code and tests, in five commits, and merged `main` once (`a2724d0`, J4 #57, no conflict):
+- **The code and tests:** Claude Code wrote all of W7's code and tests, in five commits, and merged `main` twice: `a2724d0` (J4 #57, no conflict) and `837cb7c` (W6 #62 and J5 #64; Claude Code resolved the conflicts: one `AppColors.inactive` with one comment for W6's and W7's uses, and both sides of the three note files kept, W6 first):
   - Part 1, the archive: `be4ee29` (`AppColors.inactive`, `chartBar` and `ArchiveText` in `app_theme.dart`) and `eb2887a`. The second rewrites `lib/screens/history_screen.dart` and adds `lib/widgets/archive_chart.dart`, `archive_cards.dart` and `archive_match_row.dart`.
   - Part 2, the statistics: `439f0f0` (`StatsText`), `fb96683` (`lib/screens/feedback_stats_screen.dart` and five `lib/widgets/feedback_stats_*.dart` files) and `fcd648a` (the archive's pill, card name and zero-day bars). Part 2 was built on its own branch `feat/ui_stats` and fast-forwarded into `feat/ui_archive` for one PR (the user, 11-15).
 - **The design came from the user:** the BArchive mockup (part 1) and the Claude Design package W7-STATS (part 2: the spec, the W7A script, `w7_golden.json` with 11 cases, and 360-wide shots). Claude Code ported them and checked the port against the golden values and the shots, rendered with the app's fonts.
-- **Review:** the `reviewer` subagent reviewed each part. Part 1 run 1 returned APPROVE with 4 Minor findings; part 2 run 1 returned CHANGES_REQUESTED (item d). Each ended with APPROVE on the re-check.
+- **Review:** the `reviewer` subagent reviewed each part. Part 1 run 1 returned APPROVE with 4 Minor findings; part 2 run 1 returned CHANGES_REQUESTED (item d). Each ended with APPROVE on the re-check. The merge resolution of `837cb7c` returned APPROVE with 2 Minor findings (these notes had not recorded the merge yet; fixed).
 - **Course notes:** Claude Code drafted these notes and the testing notes.
 - **Not done by AI:**
   - The scope and every choice were the user's: four answers in part 1's question dialogs (the full list page, the theme exception with the new `chartBar` color, the `auth_flow_test` line, deleting the old `match_record_card_test` group), the nine answers to the spec's section 12 in part 2, and one PR for both parts.
