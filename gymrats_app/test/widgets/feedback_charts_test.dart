@@ -214,13 +214,80 @@ void main() {
       );
     });
 
-    test('hasData: a depth at any moment', () {
-      expect(FeedbackDepthPlot.hasData(feedbackReport().samples), isTrue);
+    test('hasData: a depth at any moment of the round, not after it', () {
+      bool has(List<FormSample> samples) =>
+          FeedbackDepthPlot.hasData(samples, sliceSeconds: 5);
+      expect(has(feedbackReport().samples), isTrue);
+      expect(has(feedbackReport(depthSamples: false).samples), isFalse);
+      expect(has(const []), isFalse);
+      // The round's last moment counts; a frame handled after it does not.
       expect(
-        FeedbackDepthPlot.hasData(feedbackReport(depthSamples: false).samples),
+        has(const [FormSample(at: Duration(seconds: 30), depth: 1)]),
+        isTrue,
+      );
+      expect(
+        has(const [FormSample(at: Duration(milliseconds: 30100), depth: 1)]),
         isFalse,
       );
-      expect(FeedbackDepthPlot.hasData(const []), isFalse);
+      // A KO round of 12 s ends its round at 12 s.
+      expect(
+        FeedbackDepthPlot.hasData(const [
+          FormSample(at: Duration(seconds: 13), depth: 1),
+        ], sliceSeconds: 2),
+        isFalse,
+      );
+    });
+
+    testWidgets('a sample after the round does not stretch the scale', (
+      tester,
+    ) async {
+      Future<(double, double)> scale(
+        List<double> inRound,
+        double after, {
+        bool squat = false,
+      }) async {
+        await tester.pumpWidget(
+          _host(
+            FeedbackDepthPlot(
+              samples: [
+                ..._depths(inRound),
+                FormSample(at: const Duration(seconds: 31), depth: after),
+              ],
+              reps: const [],
+              sliceSeconds: 5,
+              squat: squat,
+            ),
+          ),
+        );
+        return (_line(tester).minY, _line(tester).maxY);
+      }
+
+      expect(await scale([0.2, 1.2], 3.5), (0, 2));
+      expect(await scale([0.2, 1.2], -1.5), (0, 2));
+      expect(await scale([0.2, 0.9], 1.6, squat: true), (0, 1));
+      // And it is not drawn.
+      expect(
+        _line(tester).lineBarsData.first.spots
+            .where((s) => s.isNotNull())
+            .map((s) => s.x),
+        [0, 1],
+      );
+    });
+
+    testWidgets('a depth only after the round draws nothing', (tester) async {
+      await tester.pumpWidget(
+        _host(
+          const FeedbackDepthPlot(
+            samples: [
+              FormSample(at: Duration(seconds: 1)),
+              FormSample(at: Duration(seconds: 31), depth: 1.4),
+            ],
+            reps: [],
+            sliceSeconds: 5,
+          ),
+        ),
+      );
+      expect(find.byType(LineChart), findsNothing);
     });
   });
 
@@ -259,20 +326,51 @@ void main() {
       expect(find.text('30s'), findsNothing);
     });
 
-    test('hasData: either arm seen at any moment', () {
-      expect(FeedbackElbowPlot.hasData(feedbackReport().samples), isTrue);
+    test('hasData: either arm seen at any moment of the round, not after '
+        'it', () {
+      bool has(List<FormSample> samples) =>
+          FeedbackElbowPlot.hasData(samples, sliceSeconds: 5);
+      expect(has(feedbackReport().samples), isTrue);
       expect(
-        FeedbackElbowPlot.hasData(
-          feedbackReport(leftElbow: null, rightElbow: 150).samples,
-        ),
+        has(feedbackReport(leftElbow: null, rightElbow: 150).samples),
         isTrue,
       );
       expect(
-        FeedbackElbowPlot.hasData(
-          feedbackReport(leftElbow: null, rightElbow: null).samples,
+        has(feedbackReport(leftElbow: null, rightElbow: null).samples),
+        isFalse,
+      );
+      expect(
+        has(
+          feedbackReport(
+            leftElbow: null,
+            rightElbow: null,
+            extraSamples: const [
+              FormSample(at: Duration(seconds: 31), leftElbow: 90),
+            ],
+          ).samples,
         ),
         isFalse,
       );
+    });
+
+    testWidgets("a deep bend after the round does not lower the chart's "
+        'floor', (tester) async {
+      await tester.pumpWidget(
+        _host(
+          const FeedbackElbowPlot(
+            samples: [
+              FormSample(at: Duration.zero, leftElbow: 150, rightElbow: 150),
+              FormSample(
+                at: Duration(seconds: 31),
+                leftElbow: 20,
+                rightElbow: 20,
+              ),
+            ],
+            sliceSeconds: 5,
+          ),
+        ),
+      );
+      expect(_line(tester).minY, 60);
     });
   });
 
@@ -335,10 +433,20 @@ void main() {
       expect(_line(tester).minY, 30);
     });
 
-    test('hasData: a hip angle at any moment', () {
-      expect(FeedbackHipPlot.hasData(feedbackReport().samples), isTrue);
+    test('hasData: a hip angle at any moment of the round, not after it', () {
+      bool has(List<FormSample> samples) =>
+          FeedbackHipPlot.hasData(samples, sliceSeconds: 5);
+      expect(has(feedbackReport().samples), isTrue);
+      expect(has(feedbackReport(hipAngle: null).samples), isFalse);
       expect(
-        FeedbackHipPlot.hasData(feedbackReport(hipAngle: null).samples),
+        has(
+          feedbackReport(
+            hipAngle: null,
+            extraSamples: const [
+              FormSample(at: Duration(seconds: 31), hipAngle: 100),
+            ],
+          ).samples,
+        ),
         isFalse,
       );
     });

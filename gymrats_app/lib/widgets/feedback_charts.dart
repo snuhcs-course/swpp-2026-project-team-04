@@ -22,6 +22,12 @@ double _span(double sliceSeconds) => sliceSeconds * battleTimeSlices;
 
 double _seconds(Duration d) => d.inMilliseconds / 1000;
 
+/// The samples a chart draws: those taken within the round's [span]. A
+/// frame handled just after the round ended is left out, so it neither
+/// shows nor stretches the scale, and data only there counts as none.
+Iterable<FormSample> _inRound(List<FormSample> samples, double span) =>
+    samples.where((s) => _seconds(s.at) <= span);
+
 /// The depth over the round (BFeedback): an ink line, a gray dashed mark at
 /// each judged rep, and an amber square on top of a rejected rep's mark.
 /// Gaps in the line are where the depth was not seen.
@@ -44,20 +50,23 @@ class FeedbackDepthPlot extends StatelessWidget {
 
   static const double height = 180;
 
-  /// Whether [samples] hold a depth to draw.
-  static bool hasData(List<FormSample> samples) =>
-      samples.any((s) => s.depth != null);
+  /// Whether [samples] hold a depth to draw within the round of
+  /// [sliceSeconds] slices.
+  static bool hasData(
+    List<FormSample> samples, {
+    required double sliceSeconds,
+  }) => _inRound(samples, _span(sliceSeconds)).any((s) => s.depth != null);
 
   @override
   Widget build(BuildContext context) {
-    final depths = [for (final s in samples) ?s.depth];
+    final span = _span(sliceSeconds);
+    final depths = [for (final s in _inRound(samples, span)) ?s.depth];
     if (depths.isEmpty) return const SizedBox(height: height);
     final deepest = depths.reduce(math.max);
     final top = squat
         ? math.max(1.0, (deepest * 2).ceil() / 2)
         : math.max(2.0, deepest).ceilToDouble();
     final bottom = math.min(0.0, depths.reduce(math.min)).floorToDouble();
-    final span = _span(sliceSeconds);
     final rejected = [
       for (final r in reps)
         if (!r.valid) FlSpot(math.min(_seconds(r.at), span), top),
@@ -70,9 +79,10 @@ class FeedbackDepthPlot extends StatelessWidget {
           maxX: span,
           minY: bottom,
           maxY: top,
-          // No clip: the scale already holds every sample (top at or above
-          // the deepest, bottom at or below the shallowest, none after the
-          // round), and a clip would cut a rejected rep's square at the
+          // No clip: the scale already holds every sample the line draws
+          // (top at or above the deepest, bottom at or below the shallowest
+          // of the samples within the round; a sample after the round is
+          // not drawn), and a clip would cut a rejected rep's square at the
           // round's end, which hangs into the room on the right.
           clipData: const FlClipData.none(),
           lineBarsData: [
@@ -127,9 +137,15 @@ class FeedbackElbowPlot extends StatelessWidget {
 
   static const double height = 180;
 
-  /// Whether [samples] saw either arm.
-  static bool hasData(List<FormSample> samples) =>
-      samples.any((s) => s.leftElbow != null || s.rightElbow != null);
+  /// Whether [samples] saw either arm within the round of [sliceSeconds]
+  /// slices.
+  static bool hasData(
+    List<FormSample> samples, {
+    required double sliceSeconds,
+  }) => _inRound(
+    samples,
+    _span(sliceSeconds),
+  ).any((s) => s.leftElbow != null || s.rightElbow != null);
 
   @override
   Widget build(BuildContext context) {
@@ -164,9 +180,12 @@ class FeedbackHipPlot extends StatelessWidget {
   final List<FormSample> samples;
   final double sliceSeconds;
 
-  /// Whether [samples] hold a hip angle.
-  static bool hasData(List<FormSample> samples) =>
-      samples.any((s) => s.hipAngle != null);
+  /// Whether [samples] hold a hip angle within the round of
+  /// [sliceSeconds] slices.
+  static bool hasData(
+    List<FormSample> samples, {
+    required double sliceSeconds,
+  }) => _inRound(samples, _span(sliceSeconds)).any((s) => s.hipAngle != null);
 
   @override
   Widget build(BuildContext context) => _AngleChart(
@@ -191,7 +210,8 @@ class _AngleChart extends StatelessWidget {
   final List<LineChartBarData> lines;
   final double sliceSeconds;
 
-  /// The chart's floor for the smallest angle in [lines].
+  /// The chart's floor for the smallest angle in [lines] (their spots are
+  /// already only the samples within the round).
   static double floorOf(List<LineChartBarData> lines) {
     var lowest = 60.0;
     for (final line in lines) {
@@ -424,7 +444,8 @@ class FeedbackLegendLine extends CustomPainter {
 }
 
 /// A line through [value] of [samples] over the round's [span] seconds,
-/// broken where the value is missing. A sample after the round is left out.
+/// broken where the value is missing. Only the samples within the round are
+/// drawn ([_inRound], the same rule as the scale and `hasData`).
 LineChartBarData _line(
   List<FormSample> samples,
   double? Function(FormSample) value,
@@ -433,12 +454,11 @@ LineChartBarData _line(
   List<int>? dashes,
 }) => LineChartBarData(
   spots: [
-    for (final s in samples)
-      if (_seconds(s.at) <= span)
-        if (value(s) case final v?)
-          FlSpot(_seconds(s.at), v)
-        else
-          FlSpot.nullSpot,
+    for (final s in _inRound(samples, span))
+      if (value(s) case final v?)
+        FlSpot(_seconds(s.at), v)
+      else
+        FlSpot.nullSpot,
   ],
   color: color,
   barWidth: 2,

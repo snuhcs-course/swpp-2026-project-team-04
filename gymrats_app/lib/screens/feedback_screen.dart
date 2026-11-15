@@ -172,7 +172,10 @@ String? _trendSentence(DepthTrend trend) => switch (trend) {
 /// where the depths are and still gives the verdict.
 Widget _depthBlock(FormReport report, FormFeedback form, String title) {
   final verdict = _trendSentence(form.depthTrend);
-  if (FeedbackDepthPlot.hasData(report.samples)) {
+  if (FeedbackDepthPlot.hasData(
+    report.samples,
+    sliceSeconds: form.sliceSeconds,
+  )) {
     return FeedbackChartPanel(
       label: '$title 그래프',
       chart: FeedbackDepthPlot(
@@ -197,7 +200,10 @@ Widget _depthBlock(FormReport report, FormFeedback form, String title) {
 /// analyzer does not judge for a squat. The analyzer has no verdict on the
 /// hip either, so the sentence only says how to read the line.
 Widget _hipBlock(FormReport report, FormFeedback form) {
-  if (!FeedbackHipPlot.hasData(report.samples)) {
+  if (!FeedbackHipPlot.hasData(
+    report.samples,
+    sliceSeconds: form.sliceSeconds,
+  )) {
     return const FeedbackNote(_unseen);
   }
   return FeedbackChartPanel(
@@ -215,7 +221,10 @@ Widget _hipBlock(FormReport report, FormFeedback form) {
 /// The elbow chart of a push-up. The sentence judges the arms only as the
 /// analyzer did: nothing when it could not tell ([ArmBalance.unknown]).
 Widget _elbowBlock(FormReport report, FormFeedback form) {
-  if (!FeedbackElbowPlot.hasData(report.samples)) {
+  if (!FeedbackElbowPlot.hasData(
+    report.samples,
+    sliceSeconds: form.sliceSeconds,
+  )) {
     return const FeedbackNote(_unseen);
   }
   final verdict = switch (form.armBalance) {

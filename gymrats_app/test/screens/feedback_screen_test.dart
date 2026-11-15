@@ -529,6 +529,34 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('a depth seen only after the round ends gives the note, '
+        'not an empty chart (Codex review of #63)', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await show(
+        tester,
+        feedbackReport(
+          exercise: ExerciseType.squat,
+          depths: const [0.95, 0.95, 0.80, 0.80],
+          depthSamples: false,
+          hipAngle: null,
+          // The last camera frame, handled just after the 30 s round.
+          extraSamples: const [
+            FormSample(at: Duration(milliseconds: 30200), depth: 1.6),
+          ],
+        ),
+      );
+      expect(find.bySemanticsLabel('앉은 깊이 그래프'), findsNothing);
+      expect(find.byType(LineChart), findsNothing);
+      expect(
+        find.text(
+          '시간별 깊이는 저장되지 않았어요. 횟수별 깊이는 아래 표에 있어요. '
+          '후반으로 갈수록 깊이가 줄었어요.',
+        ),
+        findsOneWidget,
+      );
+      semantics.dispose();
+    });
+
     testWidgets('#59 with too few reps to judge: only where the depths are', (
       tester,
     ) async {

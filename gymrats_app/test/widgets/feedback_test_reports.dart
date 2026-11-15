@@ -9,7 +9,8 @@ import 'package:gymrats_app/models/rep_event.dart';
 /// The samples hold a depth (unless [depthSamples] is false, like an AI
 /// squat's, issue #59) deep enough for the push-up arm rules, and the
 /// elbows [leftElbow] / [rightElbow] and the [hipAngle] (null: not seen).
-/// [samples] caps how many there are.
+/// [samples] caps how many there are; [extraSamples] are added after them,
+/// e.g. a frame handled after the round ended.
 FormReport feedbackReport({
   ExerciseType exercise = ExerciseType.pushUp,
   List<double> depths = const [1.2, 1.2, 1.2, 1.2],
@@ -23,6 +24,7 @@ FormReport feedbackReport({
   int? samples,
   double? minElbowAngle = 90,
   DateTime? endedAt,
+  List<FormSample> extraSamples = const [],
 }) {
   final count = samples ?? round.inMilliseconds ~/ 500 + 1;
   return FormReport(
@@ -58,6 +60,7 @@ FormReport feedbackReport({
           rightElbow: rightElbow,
           hipAngle: hipAngle,
         ),
+      ...extraSamples,
     ],
   );
 }
