@@ -1,6 +1,7 @@
 // AI-assisted: Cursor, Grok 4.7, 2026-10-16, 송현우
 import 'dart:math' as math;
 
+import 'exercise_type.dart';
 import 'pose_frame.dart';
 import 'rep_event.dart';
 
@@ -300,6 +301,7 @@ class FormReport {
     required this.roundLength,
     required this.reps,
     required this.samples,
+    this.exercise = ExerciseType.pushUp,
     this.poses = const [],
     this.leftFlarePose,
     this.rightFlarePose,
@@ -314,6 +316,13 @@ class FormReport {
   final Duration roundLength;
   final List<RepRecord> reps;
   final List<FormSample> samples;
+
+  /// Which exercise the battle was. A report saved before squats kept a
+  /// report has no such field and reads as a push-up.
+  ///
+  /// For a squat, [FormSample.depth] and [RepRecord.maxDepth] are how far
+  /// the hips sank, as a share of the standing thigh, not a head drop.
+  final ExerciseType exercise;
 
   /// Deepest moment of each judged rep, when the shoulders were visible.
   final List<FormPose> poses;
@@ -336,6 +345,7 @@ class FormReport {
     'version': 1,
     'endedAt': endedAt.millisecondsSinceEpoch,
     'opponentName': opponentName,
+    'exercise': exercise.name,
     'roundMs': roundLength.inMilliseconds,
     'reps': [for (final r in reps) r.toJson()],
     'samples': [for (final s in samples) s.toJson()],
@@ -349,6 +359,11 @@ class FormReport {
   factory FormReport.fromJson(Map<String, Object?> json) => FormReport(
     endedAt: DateTime.fromMillisecondsSinceEpoch(json['endedAt']! as int),
     opponentName: json['opponentName']! as String,
+    exercise:
+        ExerciseType.values
+            .where((e) => e.name == json['exercise'])
+            .firstOrNull ??
+        ExerciseType.pushUp,
     roundLength: Duration(milliseconds: json['roundMs']! as int),
     reps: [
       for (final r in json['reps']! as List)

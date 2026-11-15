@@ -103,7 +103,7 @@ void main() {
     expect(find.text('배틀 시작'), findsOneWidget);
   });
 
-  testWidgets('the result screen shows; 다시 매칭 opens the next battle', (
+  testWidgets('the result screen shows; 다시 대결 opens the next battle', (
     tester,
   ) async {
     await tester.pumpWidget(const BattleDemoApp());
@@ -129,9 +129,9 @@ void main() {
         );
     await tester.pumpAndSettle();
     expect(find.byType(ResultScreen), findsOneWidget);
-    expect(find.text('WIN'), findsOneWidget);
+    expect(find.text('승리'), findsOneWidget);
 
-    await tester.tap(find.text('다시 매칭'));
+    await tester.tap(find.text('다시 대결'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(find.byType(ResultScreen), findsNothing);

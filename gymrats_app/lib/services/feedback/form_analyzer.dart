@@ -1,6 +1,7 @@
 // AI-assisted: Cursor, Grok 4.7, 2026-10-16, 송현우
 import 'dart:math' as math;
 
+import '../../models/exercise_type.dart';
 import '../../models/form_report.dart';
 import '../../models/reject_reason_korean.dart';
 import '../../models/rep_event.dart';
@@ -19,6 +20,36 @@ enum FormDemo {
   headFirst,
   uneven,
   fastDrop,
+}
+
+/// Whether the counted reps kept their depth from the first half of the
+/// battle to the second, by the analyzer's own late-depth rule.
+enum DepthTrend {
+  /// The second half stayed within [FormRules.maxDepthLoss] (squats:
+  /// [FormRules.squatMaxDepthLoss]) of the first.
+  kept,
+
+  /// The second half lost at least that much: the late-depth issue.
+  dropped,
+
+  /// Fewer than [FormRules.minRepsForTrend] counted reps with a depth.
+  tooFew,
+}
+
+/// How the two arms compared while the head was down, by the analyzer's own
+/// balance rule.
+enum ArmBalance {
+  /// The mean gap stayed within [FormRules.maxElbowGap].
+  even,
+
+  /// The left arm bent more: the imbalance issue.
+  leftDeeper,
+
+  /// The right arm bent more: the imbalance issue.
+  rightDeeper,
+
+  /// Too few samples with both arms seen, or a squat.
+  unknown,
 }
 
 /// How a finding reads on the feedback screen.
@@ -85,6 +116,7 @@ class FormRules {
     this.workingDepth = formWorkingDepth,
     this.minRepsForTrend = 4,
     this.maxDepthLoss = 0.25,
+    this.squatMaxDepthLoss = 0.15,
     this.fastDescent = const Duration(milliseconds: 300),
     this.maxElbowSpread = formMaxElbowSpread,
     this.maxHandSpan = formMaxHandSpan,
@@ -109,6 +141,11 @@ class FormRules {
   /// The second half of the valid reps averaging this much shallower than
   /// the first half, in shoulder widths, is a loss of depth.
   final double maxDepthLoss;
+
+  /// The same for squats, in shares of the standing thigh: a squat's depth
+  /// runs from 0 (standing) to about 1 (thighs level), a smaller range than
+  /// a push-up's head drop.
+  final double squatMaxDepthLoss;
 
   /// A descent from the start of the attempt to the bottom shorter than
   /// this is fast. The rep still counts. The rule speaks only when at
@@ -138,7 +175,17 @@ class FormAnalyzer {
 
   final FormRules rules;
 
+  /// The findings of [report], by the rules of its exercise.
+  ///
+  /// A squat is judged on its rejected reps (too shallow, not standing back
+  /// up, a moved phone) and on depth lost late in the battle. The push-up
+  /// rules on arms, hands and head stay quiet for a squat: the arms do not
+  /// carry it, so their numbers say nothing about the form.
   List<FormFinding> analyze(FormReport report) {
+    if (report.exercise == ExerciseType.squat) {
+      final issues = [..._rejections(report), ?_lateDepthLoss(report)];
+      return [...issues, ..._goodPoints(report, hasIssues: issues.isNotEmpty)];
+    }
     final issues = [
       ..._rejections(report),
       ?_imbalance(report),
@@ -199,17 +246,12 @@ class FormAnalyzer {
   }
 
   FormFinding? _imbalance(FormReport report) {
-    final both = [
-      for (final s in _working(report))
-        if (s.leftElbow != null && s.rightElbow != null) s,
-    ];
-    final gap = elbowGap(report);
-    if (gap == null || gap <= rules.maxElbowGap) return null;
-    final leftMean =
-        both.map((s) => s.leftElbow!).reduce((a, b) => a + b) / both.length;
-    final rightMean =
-        both.map((s) => s.rightElbow!).reduce((a, b) => a + b) / both.length;
-    final bentSide = leftMean < rightMean ? '왼팔' : '오른팔';
+    final balance = armBalance(report);
+    if (balance != ArmBalance.leftDeeper && balance != ArmBalance.rightDeeper) {
+      return null;
+    }
+    final gap = elbowGap(report)!;
+    final bentSide = balance == ArmBalance.leftDeeper ? '왼팔' : '오른팔';
     return FormFinding(
       kind: FindingKind.issue,
       code: 'imbalance',
@@ -222,7 +264,10 @@ class FormAnalyzer {
     );
   }
 
-  FormFinding? _lateDepthLoss(FormReport report) {
+  /// Mean depth of the first and of the last half of the counted reps with
+  /// a depth (the middle rep of an odd count is in neither). Null with fewer
+  /// than [FormRules.minRepsForTrend] such reps.
+  ({double early, double late})? depthHalves(FormReport report) {
     final depths = [
       for (final r in report.reps)
         if (r.valid && r.maxDepth != null) r.maxDepth!,
@@ -230,9 +275,72 @@ class FormAnalyzer {
     if (depths.length < rules.minRepsForTrend) return null;
     final half = depths.length ~/ 2;
     double mean(Iterable<double> xs) => xs.reduce((a, b) => a + b) / xs.length;
-    final early = mean(depths.take(half));
-    final late = mean(depths.skip(depths.length - half));
-    if (early - late < rules.maxDepthLoss) return null;
+    return (
+      early: mean(depths.take(half)),
+      late: mean(depths.skip(depths.length - half)),
+    );
+  }
+
+  /// Depth lost from the first half to the second at or above which the
+  /// late-depth rule speaks, for [exercise].
+  double depthLossLimit(ExerciseType exercise) => exercise == ExerciseType.squat
+      ? rules.squatMaxDepthLoss
+      : rules.maxDepthLoss;
+
+  /// Whether the counted reps kept their depth: [DepthTrend.dropped] exactly
+  /// when [analyze] reports the late-depth issue.
+  ///
+  /// A loss within [_depthTolerance] of the limit counts as reaching it, so
+  /// 0.95 → 0.80 is the 0.15 it reads as, not the 0.1499… that binary
+  /// subtraction gives.
+  DepthTrend depthTrend(FormReport report) {
+    final halves = depthHalves(report);
+    if (halves == null) return DepthTrend.tooFew;
+    final loss = halves.early - halves.late;
+    return loss >= depthLossLimit(report.exercise) - _depthTolerance
+        ? DepthTrend.dropped
+        : DepthTrend.kept;
+  }
+
+  /// Far below any depth the camera can tell apart, far above the rounding
+  /// error of a subtraction.
+  static const _depthTolerance = 1e-9;
+
+  /// Which arm bent more while the head was down: [ArmBalance.leftDeeper] or
+  /// [ArmBalance.rightDeeper] exactly when [analyze] reports the imbalance
+  /// issue. Always [ArmBalance.unknown] for a squat.
+  ArmBalance armBalance(FormReport report) {
+    if (report.exercise == ExerciseType.squat) return ArmBalance.unknown;
+    final gap = elbowGap(report);
+    if (gap == null) return ArmBalance.unknown;
+    if (gap <= rules.maxElbowGap) return ArmBalance.even;
+    final both = [
+      for (final s in _working(report))
+        if (s.leftElbow != null && s.rightElbow != null) s,
+    ];
+    final leftMean =
+        both.map((s) => s.leftElbow!).reduce((a, b) => a + b) / both.length;
+    final rightMean =
+        both.map((s) => s.rightElbow!).reduce((a, b) => a + b) / both.length;
+    return leftMean < rightMean
+        ? ArmBalance.leftDeeper
+        : ArmBalance.rightDeeper;
+  }
+
+  FormFinding? _lateDepthLoss(FormReport report) {
+    if (depthTrend(report) != DepthTrend.dropped) return null;
+    final (:early, :late) = depthHalves(report)!;
+    if (report.exercise == ExerciseType.squat) {
+      return FormFinding(
+        kind: FindingKind.issue,
+        code: 'depth_loss',
+        title: '후반 깊이 감소',
+        detail:
+            '앉은 깊이가 전반 평균 ${early.toStringAsFixed(2)} → 후반 '
+            '${late.toStringAsFixed(2)} (서 있을 때 허벅지 길이 기준).',
+        fix: '지쳐도 속도를 줄이고, 매번 허벅지가 바닥과 나란해질 때까지 앉아요.',
+      );
+    }
     return FormFinding(
       kind: FindingKind.issue,
       code: 'depth_loss',
@@ -426,7 +534,7 @@ class FormAnalyzer {
           title: '정확도 ${(accuracy * 100).round()}%',
           detail: '$judged회 중 ${report.validReps}회가 카운트됐어요.',
         ),
-      if (gap != null && gap <= rules.maxElbowGap)
+      if (gap != null && armBalance(report) == ArmBalance.even)
         FormFinding(
           kind: FindingKind.good,
           title: '양팔 균형',
@@ -471,6 +579,8 @@ class FormAnalyzer {
     RejectReason.bellyDown: '배 대고 함',
     RejectReason.notFloorPushUp: '바닥 푸시업 아님',
     RejectReason.phoneMoved: '폰이 움직임',
+    RejectReason.shallowSquat: '얕은 스쿼트',
+    RejectReason.standUpFully: '덜 일어남',
   };
 
   static const _demos = {
@@ -493,6 +603,8 @@ class FormAnalyzer {
     RejectReason.bellyDown: '배와 엉덩이에 힘을 줘 몸을 일자로 들고 내려가요.',
     RejectReason.notFloorPushUp: '벽이나 높은 곳 말고 바닥에 손을 짚고 해요.',
     RejectReason.phoneMoved: '폰을 세워 두고, 흔들리지 않게 고정한 뒤 해요.',
+    RejectReason.shallowSquat: '엉덩이를 뒤로 빼며 허벅지가 바닥과 나란해질 때까지 앉아요.',
+    RejectReason.standUpFully: '다음 회로 가기 전에 무릎과 엉덩이를 끝까지 펴고 일어나요.',
   };
 
   static const _rejectHighlight = {
@@ -509,6 +621,8 @@ class FormAnalyzer {
     RejectReason.bellyDown: ['leftHip', 'rightHip'],
     RejectReason.notFloorPushUp: ['leftHip', 'rightHip'],
     RejectReason.phoneMoved: <String>[],
+    RejectReason.shallowSquat: ['leftHip', 'rightHip', 'leftKnee', 'rightKnee'],
+    RejectReason.standUpFully: ['leftKnee', 'rightKnee'],
   };
 }
 
