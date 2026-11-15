@@ -711,3 +711,32 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - Measure the real layout (fonts, status bar, text size) before placing a fixed-size cell in someone else's screen.
 - Before changing where a button leads, search the tests that check the old route, so every exception can be asked for at once.
+
+## A6 (unplanned, added to PR #68) – no button in the battle setup, 2026-11-15
+
+### a. Where AI was used
+- Claude Code (Opus 5.5, VS Code) in one session. It removed the setup's 시작 button from the AI battle (`gymrats_app/lib/screens/battle_screen.dart`) and the 준비 / 준비 취소 button from the online battle (`online_battle_screen.dart`, together with `_toggleReady` and `_autoReadyPaused`). It rewrote the button checks in `test/screens/battle_screen_test.dart`, `online_preparation_test.dart` and `online_lobby_screen_test.dart`, ran the mutation checks, and drafted these notes, the testing notes and the PR line. Commit `cf801f0`. Review: run 1 CHANGES_REQUESTED, re-check APPROVE.
+- **Not done by AI:** the decision (team, 2026-11-15), the scope (keep the arena's button inputs, `startNow` and the demo; push-up and squat both), and the approval of the five exception lines (the user's own W2 files).
+
+### b. Prompt history (the input prompt is in the Prompt Log)
+- [Woohyun Song, 11-15 21:28] (pasted; excerpt) "두 화면 모두 자세가 잡히면 이미 저절로 시작되거나 준비되는데, 버튼이 있으면 처음 보는 사람은 눌러야 하는 줄 알고 오히려 헷갈린다."
+
+### c. What AI did well
+- **Checked that the removed flag could not matter.** `_autoReadyPaused` was set to true only by the button's toggle, so without the button it was always false. Review run 1 confirmed this (the re-check looked only at the fixes), and the auto ready was left untouched.
+- **Kept the start cue apart from the button.** The new AI test listens to screen-reader announcements. It checks that the stage's start is still said as 시작 while no 시작 text shows anywhere.
+- **Mutation checks for the removal and each kept behavior:** the AI button back (7 tests fail in the file), the online button back (8 in the two files), no take-back on a lost pose (3 of the tests run by name), the count kept through a lost connection (1 of the tests run by name).
+
+### d. Hallucinations / errors
+- **Review run 1: CHANGES_REQUESTED** with 1 Critical and 4 Minor findings.
+  - The Critical one was a missing bookkeeping row for the exception lines.
+  - One rewritten check could not fail: the test's fake session drops ready while disconnected, so "nothing is sent" was always true. The test now drops the connection in the middle of the count and checks that a new count runs after reconnecting.
+  - A new test block was not in `dart format` layout.
+  - Two docs still named the button. The local design-doc change list (not committed) was corrected. The view model's docs were left for a later step, because that file is outside A6's exceptions.
+  - The re-check returned APPROVE.
+- **One edit joined two doc-comment lines into one long line;** the agent saw it on re-reading and re-wrapped it before running analyze.
+
+### e. Prompt revisions
+- None. The single prompt was followed as written.
+
+### f. Manual fixes and why
+- None. No AI-generated line was edited by hand, so A6 adds no manual-fix marker.

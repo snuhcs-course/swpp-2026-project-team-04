@@ -1270,3 +1270,37 @@ PR, 이슈, CI 코멘트를 읽거나 고칠 때는 gh CLI 를 쓴다. Chrome �
 <!-- Added by hand from the same redacted export: sent while the agent was working, so it is stored as a queued message, which extract_prompts.py skips. -->
 <!-- 19e5c5ca 2026-11-15T10:35:53.053Z -->
 [Woohyun Song, 11-15 19:35] "PR을 열기 전에 git fetch origin 후 origin/main 을 한 번 더 merge 한다(rebase 금지). 그 사이 main 에 #63(W8 피드백 화면), #65(스쿼트 실루엣, 대결 화면 파일 수정), #67(홈 다시하기 수정)이 머지됐다. 충돌 규칙은 처음과 같다. 코스 노트 세 파일은 양쪽 내용을 모두 남기고, design_tokens_test.dart 는 양쪽 경로를 모두 남겨 알파벳 순서를 지키고, app_theme.dart 는 서로 다른 추가를 모두 남긴다. 그 밖의 파일에서 충돌하면 멈추고 알린다. 머지 뒤 flutter analyze, 전체 flutter test, ownership_guard.py --check-diff 를 다시 통과시킨 다음 푸시하고 PR 을 연다."
+
+## 2026-11-15 · Woohyun Song · feat/victory_animation (A6: no button in the battle setup)
+<!-- Cut: the client's injected browser notice in front of 1 prompt (11-15 21:28; not the user's text). -->
+<!-- a200a357 2026-11-15T12:28:31.583Z -->
+[Woohyun Song, 11-15 21:28] "<pasted_content id=\"2e03\">
+A6(계획 외 작업): 대결 준비 화면의 버튼 없애기, AI 대결 '시작'과 온라인 '준비/준비 취소' (PR #68 에 더함)
+
+[배경]
+나는 송우현([REDACTED:custom_term])이다. 내 마지막 PR #68(W5, 브랜치 feat/victory_animation)이 머지를 기다리고 있다. 2026-11-15 팀 의견으로, 대결의 자세 준비 단계에서 카메라 칸에 뜨는 버튼을 없애기로 했다. AI 대결의 '시작' 버튼과 온라인 대결의 '준비 / 준비 취소' 버튼 둘 다 대상이다. 두 화면 모두 자세가 잡히면 이미 저절로 시작되거나 준비되는데, 버튼이 있으면 처음 보는 사람은 눌러야 하는 줄 알고 오히려 헷갈린다. 푸쉬업과 스쿼트 둘 다 해당한다. 새 PR 을 만들지 않고 PR #68 에 커밋으로 더한다(팀과 합의). 하네스(.claude/ 아래 ownership.json, team-plan.md, task.md, progress.md, ownership-exceptions.txt)의 규칙을 따른다.
+
+[GitHub 작업 규칙]
+PR, 이슈, CI 코멘트를 읽거나 고칠 때는 gh CLI 를 쓴다. Chrome 같은 브라우저로 GitHub 를 조작하지 않는다. gh 가 없거나 인증·권한 문제로 막히면 다른 방법으로 우회하지 말고 멈춘다. 그리고 무엇을 시도했고 어떤 명령에서 어떤 오류가 났는지 보고한다. git push 는 평소처럼 git 으로 한다.
+
+[할 일]
+1. feat/victory_animation 으로 바꾼다. 커밋 안 된 변경이 있으면 멈추고 알린다. git fetch origin 후 origin/main 에 이 브랜치에 없는 커밋이 있으면 merge 한다(rebase 금지). 코스 노트 세 파일은 양쪽 내용을 모두 남기고, design_tokens_test.dart 는 양쪽 경로를 모두 남겨 알파벳 순서를 지킨다. 그 밖의 파일에서 충돌하면 멈추고 알린다.
+2. AI 대결(lib/screens/battle_screen.dart): 설정 단계에서 BattleArena 에 넘기는 readyLabel('시작')과 onReady(viewModel.startNow)를 넘기지 않아서 버튼이 아예 안 보이게 한다. 자동 시작(SetupConfig.autoStartDelay 뒤 시작, \"준비 완료! N초 뒤 시작해요.\" 안내)은 그대로 둔다.
+3. 온라인 대결(lib/screens/online_battle_screen.dart): 설정 단계에서 넘기는 readyLabel('준비' / '준비 취소'), onReady(_toggleReady), readyPressed 를 넘기지 않아서 버튼이 아예 안 보이게 한다.
+   - 자동 준비(자세가 잡히면 autoStartDelay 뒤 session.ready(true), \"자세 확인! N초 후 자동으로 준비해요\" 안내)와 자세가 풀리면 준비가 풀리는 동작, \"상대 준비를 기다리는 중…\" 안내는 그대로 둔다.
+   - 버튼이 없어져 쓰이지 않게 된 코드(_toggleReady, 그 때문에만 있던 _autoReadyPaused 처리 등)는 정리해서 analyze 경고가 없게 한다. 자동 준비 흐름이 바뀌지 않게 조심한다.
+4. 공용 위젯(BattleArena, BattleCameraArea)의 readyLabel·onReady 기능과 BattleViewModel.startNow 는 지우지 않는다. 데모(lib/demo/battle_demo.dart)도 건드리지 않는다.
+5. 바꾸는 화면 파일과 테스트 파일 중 W5 허용 범위 밖인 것은, 이 변경에 한해 ownership-exceptions.txt 에 날짜와 이유(A6, 2026-11-15 팀 합의)를 적은 예외 줄을 더한다. battle_screen.dart, online_battle_screen.dart 는 W2 파일(같은 본인 소유)이다. 다른 사람 소유 파일을 고쳐야 하면 최소한으로 고치고 보고에 따로 적는다.
+6. 테스트를 새 동작에 맞게 고친다(test/screens/battle_screen_test.dart, test/screens/online_preparation_test.dart 등 '시작'이나 '준비'/'준비 취소' 버튼을 찾거나 누르던 곳).
+   - 설정 단계에 버튼이 없어야 한다.
+   - AI 대결은 준비 자세가 유지되면 자동으로 라운드가 시작되고, 온라인은 자동으로 준비되고 자세가 풀리면 준비가 풀려야 한다.
+   - 라운드가 시작될 때 '시작' 글자가 뜨는 신호(BattleCueKind.go)는 그대로이니 헷갈리지 않게 구분한다.
+   - 푸쉬업과 스쿼트 둘 다 확인한다.
+7. flutter analyze, 전체 flutter test, ownership_guard.py --check-diff 를 통과시키고 리뷰어에게 확인받는다.
+8. 코스 노트(테스트, AI 협업, 프롬프트 로그)에 A6 항목을 짧게 더한다.
+9. 커밋하고 feat/victory_animation 에 푸시한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다. 하네스 파일은 커밋하지 않는다. 푸시 전 프롬프트 로그 규칙을 따른다.
+10. gh 로 PR #68 본문 Summary 에 영어로 한 줄을 더한다. 예: \"The setup no longer shows a 시작 button in AI battles or 준비 / 준비 취소 in online battles (team decision, 11-15); the round starts, or the player becomes ready, by itself once the pose is held.\"
+
+[보고]
+커밋 해시, 바꾼 파일, 더한 예외 줄(다른 사람 파일이 있었다면 따로), 정리한 코드, 테스트 결과, PR 본문 수정 여부, CI 상태. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다.
+</pasted_content id=\"2e03\">"
