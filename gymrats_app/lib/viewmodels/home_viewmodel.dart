@@ -26,14 +26,15 @@ enum HomePhase {
 class BattleSetup {
   const BattleSetup({required this.exercise, this.difficulty});
 
-  /// The setup of [match]: a battle with the bot when the opponent is one of
-  /// its levels, an online battle otherwise.
-  ///
-  /// A record keeps no mode, only the opponent's name, so a person who took
-  /// a bot's name (e.g. "RepBot") reads as that bot.
+  /// Uses the recorded mode when available. Older records without a mode
+  /// retain the opponent-name fallback so their replay behavior is unchanged.
   factory BattleSetup.of(MatchRecord match) => BattleSetup(
     exercise: match.exercise,
-    difficulty: _botLevelNamed(match.opponentName),
+    difficulty: switch (match.isOnline) {
+      true => null,
+      false => _botLevelNamed(match.opponentName) ?? BotDifficulty.expert,
+      null => _botLevelNamed(match.opponentName),
+    },
   );
 
   /// The bot from before there were levels saved its battles under this
