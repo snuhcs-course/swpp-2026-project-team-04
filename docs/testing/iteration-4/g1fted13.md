@@ -514,7 +514,7 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `80b00d7`, wit
   - Left out of the coverage numbers by CI's 240 s limit per file: `test/screens/settings_screen_test.dart` and `test/services/audio/background_music_test.dart`. Their tests still ran and passed in `flutter test`. So W4's one-line change to `settings_screen.dart` (the tag '03 / SETTINGS' → '04 / SETTINGS', under its exception) is not in the View number.
 - **Shortfalls:** none in coverage; every layer and the server meet their targets.
 - **Screen readers:** widget tests check the character button's name and role, that the drawing itself is not read, the '?' button's 게임 규칙, and the 캐릭터 row's name without the character. TalkBack on a real phone was **not** checked.
-- **Manual check (the user, on the phone, 2026-11-14):** the ears on 캐릭터 선택 were found during W2b's phone check; after part 1, home still scrolled (also on the S26+), which led to the home fit. The final build (part 2, with W2b and J2 from the merge) passed with no problems. TODO(Woohyun Song): the phone model and Android version of the final check, if not W2's record (Galaxy S26+, Android 17).
+- **Manual check (the user, 2026-11-14, on a Galaxy S26+ (SM-S947N) with One UI 9.0 and Android 17, the same phone as W2's):** the ears on 캐릭터 선택 were found during W2b's phone check; after part 1, home still scrolled (also on the S26+), which led to the home fit. The final build (part 2, with W2b and J2 from the merge) passed with no problems.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |

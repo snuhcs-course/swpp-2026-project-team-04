@@ -957,3 +957,15 @@ W6 노트와 PR 마무리 (새 세션)
 [보고]
 커밋 해시, 채운 커버리지 숫자, PR 본문을 고쳤는지(못 고쳤으면 바꿀 영어 문단), 남은 TODO 가 있으면 그 목록. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다.
 </pasted_content id=\"8f14\">"
+
+<!-- 7cce9fa8 2026-11-15T05:48:21.375Z -->
+[Woohyun Song, 11-15 14:48] "<pasted_content id=\"8f14\">
+이어서 네 가지만 더 한다.
+1. 테스트 노트 W4 항목의 폰 TODO: W4 폰 확인도 같은 폰이었다. Galaxy S26+ (SM-S947N), One UI 9.0, Android 17 로 채운다. 커밋하고 feat/ui_report_rules 에 푸시한다(프롬프트 로그 규칙 포함).
+2. PR #62 본문 Summary 의 \"Phone check: running together with CI (see Manual check).\" 줄을 새 Manual check 와 맞게 고친다. 예: \"Phone check: not yet; it will be done on a main build after the W5–W8 PRs are merged (see Manual check).\"
+3. PR #62 본문 Results 의 \"Client line coverage by layer: TODO ...\" 줄을 이번에 노트에 채운 W6 숫자(층별 %, 앱 전체, 서버)와 출처(run 43640991023)로 바꾼다.
+4. PR #61(W7) 본문 Summary 에도 \"Phone check: running together with CI\" 같은 줄이 남아 있으면 \"Phone check: done on 2026-11-15 (see Manual check).\" 로 고친다. W7 의 Manual check 문단은 이미 고쳐져 있으니 건드리지 않는다.
+PR 본문은 지난번처럼 Chrome 에서 고치고 API 로 다시 받아 확인한다. 끝나면 짧게 보고하고 메인 폴더를 비워 둔다.
+</pasted_content id=\"8f14\">"
+
+<!-- Cut: the client's injected browser notice in front of 1 prompt (11-15 14:48; not the user's text). -->
