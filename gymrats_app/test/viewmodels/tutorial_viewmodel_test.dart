@@ -9,14 +9,33 @@ void main() {
   const squat = ExerciseType.squat;
 
   group('pages', () {
-    test('every push-up page, then every squat page, in battle order', () {
+    test('the game page, then every push-up page, then every squat page, '
+        'in battle order', () {
       final pages = TutorialViewModel().pages;
       expect(pages, [
-        for (final step in TutorialStep.values) TutorialPage(pushUp, step),
+        TutorialPage.welcome,
         for (final step in TutorialStep.values)
-          if (step != TutorialStep.average) TutorialPage(squat, step),
+          if (step != TutorialStep.welcome) TutorialPage(pushUp, step),
+        for (final step in TutorialStep.values)
+          if (step != TutorialStep.welcome && step != TutorialStep.average)
+            TutorialPage(squat, step),
       ]);
-      expect(pages, hasLength(19));
+      expect(pages, hasLength(22));
+      // Combo comes after the grades and before fever, for both.
+      for (final exercise in [pushUp, squat]) {
+        final steps = [
+          for (final page in pages)
+            if (page.exercise == exercise) page.step,
+        ];
+        expect(
+          steps.indexOf(TutorialStep.combo),
+          steps.indexOf(TutorialStep.fail) + 1,
+        );
+        expect(
+          steps.indexOf(TutorialStep.fever),
+          steps.indexOf(TutorialStep.combo) + 1,
+        );
+      }
     });
 
     test('a squat has no average page: its grade needs the elbow angle', () {
@@ -29,7 +48,7 @@ void main() {
       expect(TutorialViewModel.earnsAverage(pushUp, rules), isFalse);
       final pages = TutorialViewModel(rules: rules).pages;
       expect(pages.where((page) => page.step == TutorialStep.average), isEmpty);
-      expect(pages, hasLength(18));
+      expect(pages, hasLength(21));
     });
   });
 
@@ -45,17 +64,17 @@ void main() {
 
     tearDown(() => tutorial.dispose());
 
-    test('starts on the first push-up page', () {
+    test('starts on the page about the game, no exercise yet', () {
       expect(tutorial.index, 0);
-      expect(tutorial.page, const TutorialPage(pushUp, TutorialStep.intro));
-      expect(tutorial.exercise, pushUp);
+      expect(tutorial.page, TutorialPage.welcome);
+      expect(tutorial.exercise, isNull);
       expect(tutorial.isFirst, isTrue);
       expect(tutorial.isLast, isFalse);
     });
 
     test('next and previous turn one page and tell the screen', () {
       expect(tutorial.next(), isTrue);
-      expect(tutorial.page.step, TutorialStep.setup);
+      expect(tutorial.page, const TutorialPage(pushUp, TutorialStep.intro));
       expect(tutorial.isFirst, isFalse);
       expect(tutorial.previous(), isTrue);
       expect(tutorial.index, 0);
@@ -78,23 +97,24 @@ void main() {
 
     test('an exercise tab jumps to that exercise\'s first page', () {
       expect(tutorial.showExercise(squat), isTrue);
-      expect(tutorial.index, 10);
+      expect(tutorial.index, 12);
       expect(tutorial.page, const TutorialPage(squat, TutorialStep.intro));
       expect(tutorial.exercise, squat);
       expect(tutorial.showExercise(squat), isFalse);
       expect(tutorial.showExercise(pushUp), isTrue);
-      expect(tutorial.index, 0);
+      expect(tutorial.index, 1);
     });
 
-    test('counts pages per exercise, as "푸시업 3 / 10" does', () {
-      expect(tutorial.firstIndexOf(pushUp), 0);
-      expect(tutorial.firstIndexOf(squat), 10);
-      expect(tutorial.countOf(pushUp), 10);
-      expect(tutorial.countOf(squat), 9);
-      expect(tutorial.positionOf(0), (1, 10));
-      expect(tutorial.positionOf(9), (10, 10));
-      expect(tutorial.positionOf(10), (1, 9));
-      expect(tutorial.positionOf(18), (9, 9));
+    test('counts pages per exercise, as "푸시업 3 / 11" does', () {
+      expect(tutorial.firstIndexOf(pushUp), 1);
+      expect(tutorial.firstIndexOf(squat), 12);
+      expect(tutorial.countOf(pushUp), 11);
+      expect(tutorial.countOf(squat), 10);
+      expect(tutorial.positionOf(0), (1, 1));
+      expect(tutorial.positionOf(1), (1, 11));
+      expect(tutorial.positionOf(11), (11, 11));
+      expect(tutorial.positionOf(12), (1, 10));
+      expect(tutorial.positionOf(21), (10, 10));
     });
   });
 }

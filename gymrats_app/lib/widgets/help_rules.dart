@@ -25,6 +25,19 @@ abstract final class HelpRules {
   static int get average => battleRules.averagePoints;
   static int get koLead => battleRules.koLead;
 
+  static int get comboBonus => battleRules.comboBonus;
+
+  /// The combo window in seconds as the page writes it: "1.5".
+  static String get comboSeconds => secondsText(battleRules.comboWindow);
+
+  /// [time] in seconds: "1.5", or "2" when whole.
+  static String secondsText(Duration time) {
+    final seconds = time.inMilliseconds / Duration.millisecondsPerSecond;
+    return seconds == seconds.truncateToDouble()
+        ? '${seconds.toInt()}'
+        : '$seconds';
+  }
+
   /// An excellent rep in fever, as the fever page shows it.
   static int get feverExcellent => excellent * feverMultiplier;
 
@@ -41,10 +54,19 @@ abstract final class HelpRules {
     ExerciseType.squat => '스쿼트',
   };
 
+  /// What the counter above the title names: the exercise, or the game on
+  /// the first page.
+  static String sectionName(ExerciseType? exercise) =>
+      exercise == null ? '게임 소개' : exerciseName(exercise);
+
   /// The words of [page].
   static HelpPage of(TutorialPage page) {
     final squat = page.exercise == ExerciseType.squat;
     return switch (page.step) {
+      TutorialStep.welcome => const HelpPage(
+        title: '운동으로 겨루는 1:1 대결',
+        body: '푸시업이나 스쿼트로 사람이나 봇과 겨뤄요.',
+      ),
       TutorialStep.intro => HelpPage(
         title: squat ? '스쿼트로 1:1 대결해요' : '푸시업으로 1:1 대결해요',
         body: squat
@@ -82,6 +104,10 @@ abstract final class HelpRules {
       TutorialStep.fail => HelpPage(
         title: squat ? '얕게 앉으면 Fail' : '자세가 무너지면 Fail',
         body: squat ? '기준선보다 얕게 앉으면 0점이에요.' : '너무 얕거나 흐트러지면 0점이에요.',
+      ),
+      TutorialStep.combo => HelpPage(
+        title: '이어서 하면 콤보',
+        body: 'Good 이상을 $comboSeconds초 안에 이어서 하면 +$comboBonus점이에요.',
       ),
       TutorialStep.fever => HelpPage(
         title: '마지막 $feverSeconds초는 피버 타임',

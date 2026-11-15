@@ -147,6 +147,38 @@ void main() {
     expect(barFlex(AppColors.opponent), 0);
   });
 
+  testWidgets('the game page shows RepBot squatting and doing a push-up', (
+    tester,
+  ) async {
+    await show(tester, TutorialPage.welcome);
+    final figures = tester
+        .widgetList<TutorialRepBot>(find.byType(TutorialRepBot))
+        .map((repBot) => repBot.figure);
+    expect(figures, [RepBotFigure.squatFront, RepBotFigure.pushUpSide]);
+    expect(find.text('1:1 대결'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the combo page adds the bonus to a rep within the window', (
+    tester,
+  ) async {
+    for (final exercise in ExerciseType.values) {
+      await show(tester, TutorialPage(exercise, TutorialStep.combo));
+      expect(find.text('+${HelpRules.good}'), findsOneWidget);
+      expect(find.text('COMBO +${HelpRules.comboBonus}'), findsOneWidget);
+      expect(find.text('${HelpRules.comboSeconds}초 안에 다음 동작'), findsOneWidget);
+      expect(
+        tester
+            .widgetList<CharacterFigure>(find.byType(CharacterFigure))
+            .map((figure) => figure.characterId),
+        [
+          HelpPicture.charactersOf(exercise).$1,
+          HelpPicture.charactersOf(exercise).$2,
+        ],
+      );
+    }
+  });
+
   testWidgets('the report shows the way to the form feedback', (tester) async {
     await show(tester, const TutorialPage(pushUp, TutorialStep.report));
     expect(find.text('자세 피드백 보기'), findsOneWidget);
@@ -159,5 +191,6 @@ void main() {
   test('each exercise has its own pair of characters', () {
     expect(HelpPicture.charactersOf(pushUp), ('mouse', 'seal'));
     expect(HelpPicture.charactersOf(squat), ('penguin', 'kangaroo'));
+    expect(HelpPicture.charactersOf(null), ('mouse', 'seal'));
   });
 }

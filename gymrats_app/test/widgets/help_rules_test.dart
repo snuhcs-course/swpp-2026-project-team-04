@@ -26,8 +26,24 @@ void main() {
   test('one set of words per page, in the tutorial\'s order', () {
     expect(HelpRules.order, TutorialViewModel.pagesFor(battleRules));
     expect(HelpRules.pages, hasLength(HelpRules.order.length));
-    expect(HelpRules.pages.first.title, '푸시업으로 1:1 대결해요');
+    expect(HelpRules.pages.first.title, '운동으로 겨루는 1:1 대결');
     expect(HelpRules.pages.last.title, '끝나면 리포트를 받아요');
+  });
+
+  test('the game page and the combo page, with the rule\'s numbers', () {
+    expect(HelpRules.sectionName(null), '게임 소개');
+    expect(HelpRules.sectionName(ExerciseType.squat), '스쿼트');
+    expect(HelpRules.of(TutorialPage.welcome).body, contains('푸시업이나 스쿼트'));
+    expect(HelpRules.comboBonus, battleRules.comboBonus);
+    expect(HelpRules.secondsText(const Duration(seconds: 2)), '2');
+    expect(HelpRules.secondsText(const Duration(milliseconds: 1500)), '1.5');
+    expect(HelpRules.comboSeconds, '1.5');
+    for (final exercise in ExerciseType.values) {
+      expect(
+        words(exercise, TutorialStep.combo).body,
+        'Good 이상을 1.5초 안에 이어서 하면 +5점이에요.',
+      );
+    }
   });
 
   test('the exercises by name', () {
