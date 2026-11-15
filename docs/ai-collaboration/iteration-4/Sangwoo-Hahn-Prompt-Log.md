@@ -82,3 +82,14 @@ AI·온라인 판정도 SquatRepJudge로 통일
 ```text
 커밋과 푸쉬 해줘.
 ```
+
+## Issue handling request, 2026-11-15
+
+```text
+이슈 처리하고, 다음 답변에 대해 PR 충돌도 해결해줘.
+
+상우 #65(스쿼트 실루엣) 확인했는데 두 가지만 부탁해.\
+1\. 우현 형 대결 화면 파일(battle_screen, online_battle_screen, battle_viewmodel, battle_camera_view + 테스트)을 고쳐서, 우현 형 OK가 필요해. 우현 형, 스쿼트 실루엣을 대결 화면 세팅에 연결하는 수정인데 괜찮은지 한마디 부탁드려요.\
+2\. #61이 들어가서 app_theme.dart에 충돌이 났어. git fetch origin && git merge origin/main 하고, 충돌 나면 양쪽 값 다 살려서 올려 줘.\
+두 가지 되면 바로 머지할게!
+```
