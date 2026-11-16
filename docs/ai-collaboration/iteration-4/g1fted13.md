@@ -640,3 +640,108 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - Check the Requirements text as well as the frozen UAT wording before dropping anything a screen used to show.
 - A test of a visual fix should look at what reaches the screen (here the clip), not only at the drawing call.
+
+## W5 `feat/victory_animation` – the victory animation after the battle (P18, team order #15), 2026-11-14 ~ 2026-11-15
+
+### a. Where AI was used
+- **The code and tests:** Claude Code (Opus 5.5) wrote all of W5's code and tests, in four commits on `feat/victory_animation`, and merged `main` four times (`49571d4`, `8ae9784`, `1ef6874`, `bfb4345`; only `design_tokens_test.dart` conflicted once, both sides kept):
+  - Part 1, `2403055`: the scene as widgets: `lib/widgets/victory_rig_data.dart` (the rig as a Dart string), `victory_motion.dart` (W4's readers, the end blend, W4's then W5's drawPatch), `victory_scene.dart` (the values per time, the layout), `victory_overlay.dart` (`VictoryOverlay`, `VictoryPainter`); a copy of the bundle's rig in `gymrats_app/assets/characters/w5_victory_rig.json` (not bundled), with a note in `ATTRIBUTION.txt`.
+  - Part 2, `3ef678f`: the seat in W6's report (`lib/widgets/result_report.dart`: `ResultSeatRows`, `ResultSubLine.leastWidthIn`, under an exception), `VictorySeat` and `VictoryOverlay.onEnd`, and the scene on `lib/screens/result_screen.dart`.
+  - Step 5, `167207c` and `71b780e`: `ResultScreen.record`, `rematchOf`, `reportTap`; `lib/screens/history_screen.dart`'s two rows call `reportTap` (exception).
+- **The design came from the user:** the design canvas package `W5-VICTORY-SPEC.md` with `w5_victory_rig.json` and `victory_golden.json`. Claude Code ported it and checked it against the golden values and the design's stills.
+- **Measuring before building:** before placing the seat, Claude Code measured W6's real report with the app's fonts in a temporary probe test (not committed), and rendered the result screen at several times and text sizes (`.claude/design/out/w5/part2/`, not committed).
+- **Review:** the `reviewer` subagent reviewed part 1 (APPROVE, 5 Minor), part 2 (APPROVE, 4 Minor; re-check APPROVE, 1 Minor) and step 5 (APPROVE, 1 Minor; a narrow re-check APPROVE, 2 Minor). All findings were fixed (item d).
+- **Course notes:** Claude Code drafted these notes, the testing notes and the PR body.
+- **Not done by AI:**
+  - The scope and the choices were the user's: the answer to the spec's question 11.1 (a past report shows only the end look), keeping the two choices not in the spec (the scaled big scene on other screens, the scene's colors read from the rig), the order of the work (part 2 after W6, step 5 only if W7 was merged, a second merge of `main` before the PR), and every exception line.
+  - The phone check is the user's, once, on a `main` build after all PRs are merged.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-14 16:36] (the start, pasted; excerpt) "3. 명세 11절 1번의 답: 기록보관소에서 지난 리포트를 열 때는 연출을 돌리지 않고 끝 모습만 보여 준다."
+- [Woohyun Song, 11-14 18:46] (excerpt) "명세에 없어서 정한 두 가지(360×780이 아닌 화면의 큰 장면 비율 맞춤, 장면 색을 리그에서 읽고 AppColors와 같은지 테스트로 확인)는 그대로 간다."
+- [Woohyun Song, 11-15 16:46] (part 2, pasted; excerpt) "3. 연출 자리를 넣으려면 W6 의 widgets/result_report.dart 도 고쳐야 한다. … W6 가 W5 자리 근처에 남긴 겹침(두 번째 이유 줄 등)도 정리한다."
+- [Woohyun Song, 11-15 19:32] (an answer in the agent's question dialog, so not in the Prompt Log) "두 파일에 예외 줄 추가 (Recommended)"
+- [Woohyun Song, 11-15 19:35] (sent while the agent worked; excerpt) "PR을 열기 전에 git fetch origin 후 origin/main 을 한 번 더 merge 한다(rebase 금지)."
+
+### c. What AI did well
+- **Measured the real report before placing the seat.** A probe with the app's fonts put the score row's top at y 187 under a 24 status bar, so a seat ending there sits at y 39–187, 3 px under the design's 36–184. The same probe showed that at 2× text the sub line's fixed words (201 px) no longer fit in the 180 px left of the seat. That led to a fallback row for very large text, tested at its threshold (±0.5 px), before any overflow could reach a phone.
+- **The end look lives in the report.** The full-screen overlay is shown only while the scene plays. At its end, the report's own seat shows the same end look, so it scrolls with the page. The reviewer checked that both draw the stand and the feet at the same place, and the tests pin the scene's seat to the cell.
+- **Mutation checks found weak spots, not only confirmed tests.** A view-model listener whose mutant survived turned out to be dead code (loading changes only the cards below the seat) and was removed. A surviving "has a score" mutant for past reports got its own test.
+- **The golden data held through two merges.** Part 1's pose and scene samples all match within 0.01, and they still pass after W6, J4, W7 and W8 reached `main`.
+
+### d. Hallucinations / errors
+- **Review of part 1: APPROVE with 5 Minor findings**, all fixed before its commit; the re-check returned APPROVE.
+  - The "plays once" test pumped the same const widget again, so it could not fail.
+  - The check that the band is not read ran in a loss, which has no band, and no test turned reduced motion on while the scene played.
+  - The scene's colors came from the rig with no Design doc row.
+  - A checklist line gave the merge order as #14 (W5 is #15).
+  - `VictoryMotion.bounds` was unused, and the seat fit (spec 2, `scene.fit`) was not checked.
+- **Review of part 2: APPROVE with 4 Minor findings.**
+  - The seat was measured only when the screen itself rebuilt. The reviewer's probe changed the top inset from 24 to 48 at 500 ms, and the character would jump 24 px at the end. Now the screen re-measures on size, insets, text size and scroll while playing, and each trigger has a killed mutant.
+  - No test had data arriving, or the user leaving, while the scene plays. Both were added.
+  - A test name claimed it covered "an unknown character", which the view model cannot hold. It was renamed.
+  - The past report had no "end look only" input yet; it came with step 5.
+  - Re-check, 1 Minor: an assertion right after `pumpAndSettle` could never fail. It was removed.
+- **Review of step 5: APPROVE with 1 Minor.** 다시 대결 on a past report replaced only the report, so 기록보관소 stayed under the new battle. It now starts from home. The narrow re-check added a test that a battle just played still keeps the page under its report, and a doc line.
+- **Wrong expectations in new tests, found on the first run and fixed in the tests:**
+  - At 1.5× the seat slides down with the taller rows, so "the seat's top is above the headline" was the wrong check.
+  - At 2× a departure's line has no seconds and still fits beside the seat.
+  - "KO 승리" is also the headline's own text, so "the band is not a text widget" could not be checked with that word.
+  - A departure's reason line moves the seat one line lower.
+  - The test font (Ahem) made the sub line too wide, so the scene tests load the app's fonts.
+  - One timing was 1 ms short (2098 for 2099).
+- **Step 5 broke three tests in other steps' files:** two in W7's `history_screen_test.dart` and one in W8's `feedback_screen_test.dart` expected a row to open the feedback. The agent stopped and asked for the two exception lines with the tests named (item e).
+- **Tooling:**
+  - A heredoc lost a backslash, and a `sed` for CRLF output broke a script line; both were redone safely.
+  - The git guard hook blocked a commit whose command text named harness files in a check; the check was run separately.
+  - The harness refused a reviewer's second report, so a fresh reviewer re-checked the last fix.
+  - The session exporter's prompt extraction skips a prompt sent while the agent works (a queued message). It was added to the Prompt Log by hand from the redacted export.
+
+### e. Prompt revisions
+- **The exceptions for step 5:**
+  - Before (11-15 16:46): "history_screen.dart 는 W7 파일(같은 본인 소유)이라 이 연결 부분만 예외 줄을 더해 처리한다."
+  - After (11-15 19:32, the question dialog, with the three failing tests named): "두 파일에 예외 줄 추가 (Recommended)".
+  - Why it worked: the first scope did not foresee that two other files tested the old row → feedback path. The agent changed only the allowed file, ran the full suite, and asked once with the exact test names, so the answer took one click.
+- **The reply language (part 1):** "영어로 답하도록 해." was a typo; the next prompt fixed it: "너가 영어로 잘못 응답해서 내가 한국어로 답하라고 한 거를 잘못 타이핑했어. 다시 규칙을 원래대로 돌려". The agent restored the rule.
+
+### f. Manual fixes and why
+- None. No AI-generated line in W5 was edited by hand, so W5 has no manual-fix markers.
+- The user's corrections came as prompts and answers: the spec's question 11.1, the two kept choices, the order of the work, the exceptions, and the second merge before the PR.
+
+### Takeaway
+- Measure the real layout (fonts, status bar, text size) before placing a fixed-size cell in someone else's screen.
+- Before changing where a button leads, search the tests that check the old route, so every exception can be asked for at once.
+
+## A6 (unplanned; a follow-up PR to #68) – no button in the battle setup, 2026-11-15
+
+### a. Where AI was used
+- Claude Code (Opus 5.5, VS Code) in one session. It removed the setup's 시작 button from the AI battle (`gymrats_app/lib/screens/battle_screen.dart`) and the 준비 / 준비 취소 button from the online battle (`online_battle_screen.dart`, together with `_toggleReady` and `_autoReadyPaused`). It rewrote the button checks in `test/screens/battle_screen_test.dart`, `online_preparation_test.dart` and `online_lobby_screen_test.dart`, ran the mutation checks, and drafted these notes, the testing notes and the PR line. Commit `cf801f0`. Review: run 1 CHANGES_REQUESTED, re-check APPROVE.
+- **Not done by AI:** the decision (team, 2026-11-15), the scope (keep the arena's button inputs, `startNow` and the demo; push-up and squat both), and the approval of the five exception lines (the user's own W2 files).
+
+### b. Prompt history (the input prompt is in the Prompt Log)
+- [Woohyun Song, 11-15 21:28] (pasted; excerpt) "두 화면 모두 자세가 잡히면 이미 저절로 시작되거나 준비되는데, 버튼이 있으면 처음 보는 사람은 눌러야 하는 줄 알고 오히려 헷갈린다."
+- [Woohyun Song, 11-15 22:17] (answers in the agent's question dialog; not in the Prompt Log as prompts, noted in its A6 comment) "같은 브랜치로 새 PR (Recommended)", "#68은 그대로 (Recommended)"
+
+### c. What AI did well
+- **Checked that the removed flag could not matter.** `_autoReadyPaused` was set to true only by the button's toggle, so without the button it was always false. Review run 1 confirmed this (the re-check looked only at the fixes), and the auto ready was left untouched.
+- **Kept the start cue apart from the button.** The new AI test listens to screen-reader announcements. It checks that the stage's start is still said as 시작 while no 시작 text shows anywhere.
+- **Mutation checks for the removal and each kept behavior:** the AI button back (7 tests fail in the file), the online button back (8 in the two files), no take-back on a lost pose (3 of the tests run by name), the count kept through a lost connection (1 of the tests run by name).
+
+### d. Hallucinations / errors
+- **Review run 1: CHANGES_REQUESTED** with 1 Critical and 4 Minor findings.
+  - The Critical one was a missing bookkeeping row for the exception lines.
+  - One rewritten check could not fail: the test's fake session drops ready while disconnected, so "nothing is sent" was always true. The test now drops the connection in the middle of the count and checks that a new count runs after reconnecting.
+  - A new test block was not in `dart format` layout.
+  - Two docs still named the button. The local design-doc change list (not committed) was corrected. The view model's docs were left for a later step, because that file is outside A6's exceptions.
+  - The re-check returned APPROVE.
+- **Pushed onto a PR that was already merged.** The prompt said to add A6 to PR #68 as commits. The PM merged #68 at 22:13, after the session's first fetch (21:28). The agent ran the last fetch and the push in one command, so A6 (`cf801f0`, `145a3f9`) went to the branch of a merged PR before the new `main` was seen; no CI ran on it. The agent then stopped, checked that A6 merges into `main` without conflict and that no other change touched its files, left #68's body as it was, and asked. Lesson: fetch, check, and only then push, in separate steps.
+- **One edit joined two doc-comment lines into one long line;** the agent saw it on re-reading and re-wrapped it before running analyze.
+
+### e. Prompt revisions
+- **How A6 reaches `main`:**
+  - Before (11-15 21:28): "새 PR 을 만들지 않고 PR #68 에 커밋으로 더한다(팀과 합의)."
+  - After (11-15 22:17, the question dialog, once #68 was found merged): "같은 브랜치로 새 PR (Recommended)", and for #68's body "#68은 그대로 (Recommended)".
+  - Why: #68 was merged before A6 was pushed, so the first plan could no longer work. The branch got `main` merged in (`23a00ce`, no conflict), and the follow-up PR is to carry the Summary line meant for #68.
+
+### f. Manual fixes and why
+- None. No AI-generated line was edited by hand, so A6 adds no manual-fix marker.

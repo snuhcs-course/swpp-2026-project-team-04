@@ -530,7 +530,11 @@ class RepJudge {
                 start,
                 now,
                 notBefore: primaryOnset,
+                lockout: config.lockoutArmAngle > 0
+                    ? math.max(165, config.lockoutArmAngle)
+                    : 165,
               ),
+          lockoutAngle: config.lockoutArmAngle,
         );
         head = RepUpdate(snapshot: head.snapshot, event: calibrated);
       }
@@ -1641,6 +1645,7 @@ RepEvent calibratePushupPrimary(
   RepEvent event,
   List<double?>? values, {
   required bool observedReturn,
+  double lockoutAngle = 172,
 }) {
   if (values == null ||
       values.length != 96 ||
@@ -1673,8 +1678,8 @@ RepEvent calibratePushupPrimary(
       meanLow <= 140 &&
       meanHigh != null &&
       meanHigh - meanLow >= 20 &&
-      (event.reason != RejectReason.incompleteExtension ||
-          weakerFinish != null && weakerFinish >= 168) &&
+      (lockoutAngle <= 0 ||
+          weakerFinish != null && weakerFinish >= lockoutAngle) &&
       handHigh != null &&
       handHigh >= .35 &&
       travel != null &&

@@ -51,11 +51,35 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 - Codex merged the current main into the squat silhouette branch, resolved the theme token conflict by preserving both owners' values, and reran the analyzer and full app tests. The local staged-file guard was corrected to compare a main merge's result with its incoming main parent; it still checks every change the branch introduces relative to main, including conflict resolutions. It is a local harness change and is not committed.
 - The user had earlier confirmed owner/PM agreement for the battle integration. A direct confirmation from Woohyun in the PR is not evidenced by the review records available at this point.
 
+## S4 follow-up — #59 and common squat judging (2026-11-14)
+- Tool: Codex. Base: main eb336c3, including J4 #57. Codex reproduced the missing per-frame depth and added regression tests before the fix.
+- The user chose to unify production AI/online squats through SquatRepJudge and confirmed owner/PM agreement for the bot factory and its existing test file. The prior demo type had also bypassed phone-movement rejection; using the normal factory removes that production bypass.
+- Codex supplied current depth and valid-side hip/knee coordinates, retained the legacy diagnostic judge's API, and verified 4 full + 2 shallow repetitions through real counter wiring, report serialization and the analyzer using fakes.
+- Verification: 92 targeted tests passed; Flutter analysis clean. Independent read-only Codex review found no actionable defects and approved this implementation scope. Full-suite results are in the personal testing notes. No physical-phone UAT or broad squat-accuracy result is claimed.
+- A coverage command initially referenced a nonexistent squat_error_cases_test.dart; the actual three service suites were rerun successfully. This was an agent command error, not a human manual fix. No human source edits or measured time savings were reported.
+- The issue handoff, actual decision replies and commit/push request for this task are recorded verbatim in the prompt log, reviewed for credentials and unrelated personal data before staging. Full-iteration session export and team-wide interaction-history review remain TODO; no assistant transcript or tool output is included.
+
+### S4 #59 current-main integration (2026-11-15)
+- On the user's request to handle the open issues, Codex merged current main into the existing #59 branch and verified the combined app suite. An independent reviewer approved the integration against that baseline and identified future conflicts with pending #65; those need resolution and re-verification after #65 is merged. No human source-code edits or real-person testing were reported.
+
+## S4 #59 merge after #65 (2026-11-15)
+- Codex merged main `95b6d97`, preserved both personal-note histories and updated the battle test for fresh setup frames and the shared judge. The user requested the conflict resolution and removal of Draft status.
+- The four scoped test suites, full Flutter suite and analyzer passed; details are in the personal testing notes. Independent read-only Codex review approved the resolution. No human manual code fix or device UAT was reported.
+
+## S3 UAT phone angle (2026-11-16)
+- Codex added an explicitly enabled UAT-only gravity angle chip for the common preparation and bot/online battle setup camera. Ordinary builds do not start the extra display or sensor subscription.
+- Independent read-only Codex review found initial overlaps with the setup panel and the battle leave button. Codex moved the display into visible camera/setup space and added geometry and sensor-lifecycle tests; the reviewer approved the corrected implementation. Local test evidence is in the personal testing notes. No human manual source fixes or real-device UAT were reported.
+
 ## S1 limited initial-hold change (2026-11-15)
 - Codex evaluated isolated push-up timing and pose thresholds, added synthetic 30 Hz tests and shortened the initial hold from 300 to 250 ms. The 172-degree lockout and the belly boundary remain unchanged because experimental relaxations produced an incorrect count or reason regressions.
 - An independent read-only Codex review found that the original change also cleared the knee latch early when hips were hidden. Codex added a reproducing test and retained the 300 ms minimum for latch release; the reviewer approved the corrected limited scope. Detailed commands and results are in the personal testing notes. No manual source-code fixes or real-device UAT were reported.
 - The user asked for S1 before the next build; the full S1 lockout-margin and recorded-video accuracy goals remain incomplete. These prompts are recorded as visible task inputs, not a complete session export.
 
+## S1 push-up algorithm integration (2026-11-16)
+- At the user's request, Codex prepared an isolated snapshot of the S1 work from the other project chat for the existing PR, leaving that chat's worktree untouched. The default pose-geometry changes, opt-in MLP/knee experiments and contact diagnostic retain their separate modes; the research reports describe their measured tradeoffs.
+- The earlier video validation used sampled proposed labels rather than independently adjudicated ground truth; physical exercise accuracy and multi-person tracking are not established. The user previously reported the experimental knee classifier performed worse on their phone. See the testing notes and the individual benchmark reports for exact runs and limitations.
+
+- A read-only Codex reviewer reproduced an insufficient-lockout promotion in the S1 snapshot. Codex added a test and corrected promotion to respect the configured lockout; the reviewer confirmed that correction and identified the separate custom-injected tilt-monitor limitation, which is disclosed for review. No physical-user test or manual human source edit was reported for this integration. Final test evidence and the failed coverage collection are in the testing notes.
 
 ## S1 follow-up — mobile pose comparison and knee forest (2026-11-16)
 

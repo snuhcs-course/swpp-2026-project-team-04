@@ -1040,7 +1040,7 @@ void _spanCycleTests() {
     set(PushupSpanSignal.elbow, PushupSpanStat.high, 172);
     set(PushupSpanSignal.elbow, PushupSpanStat.bottom, 100);
     set(PushupSpanSignal.weakerElbow, PushupSpanStat.high, 170);
-    set(PushupSpanSignal.weakerElbow, PushupSpanStat.finish, 170);
+    set(PushupSpanSignal.weakerElbow, PushupSpanStat.finish, 174);
     set(PushupSpanSignal.handShoulderY, PushupSpanStat.high, .8);
     set(PushupSpanSignal.handShoulderY, PushupSpanStat.low, .3);
     set(PushupSpanSignal.handShoulderY, PushupSpanStat.bottom, .4);
@@ -1055,6 +1055,43 @@ void _spanCycleTests() {
       maxTilt: 8,
       descent: Duration(milliseconds: 420),
     );
+    for (final short in [168.0, 171.9]) {
+      set(PushupSpanSignal.weakerElbow, PushupSpanStat.finish, short);
+      expect(
+        calibratePushupPrimary(prior, values, observedReturn: true),
+        same(prior),
+      );
+      const incomplete = RepEvent(
+        index: 1,
+        valid: false,
+        at: Duration.zero,
+        reason: RejectReason.incompleteExtension,
+      );
+      expect(
+        calibratePushupPrimary(incomplete, values, observedReturn: true),
+        same(incomplete),
+      );
+    }
+    set(PushupSpanSignal.weakerElbow, PushupSpanStat.finish, 171);
+    expect(
+      calibratePushupPrimary(
+        prior,
+        values,
+        observedReturn: true,
+        lockoutAngle: 170,
+      ).valid,
+      isTrue,
+    );
+    expect(
+      calibratePushupPrimary(
+        prior,
+        values,
+        observedReturn: true,
+        lockoutAngle: 0,
+      ).valid,
+      isTrue,
+    );
+    set(PushupSpanSignal.weakerElbow, PushupSpanStat.finish, 174);
     final valid = calibratePushupPrimary(prior, values, observedReturn: true);
     expect(valid.valid, isTrue);
     expect(valid.reason, isNull);

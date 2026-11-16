@@ -8,6 +8,7 @@ import '../services/pose/setup_checker.dart';
 import '../viewmodels/setup_viewmodel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
 import '../widgets/pose_silhouette_guide.dart';
+import '../widgets/pose_silhouette_phone_angle.dart';
 import '../widgets/pose_silhouette_squat.dart';
 
 const _readyColor = Colors.greenAccent;
@@ -240,6 +241,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                                     state.status.reason == SetupReason.ready,
                               ),
                             ),
+                            const UatPhoneAngle(),
                             PoseReadyBorder(
                               ready:
                                   state.status.isReady &&
@@ -341,6 +343,7 @@ class _SetupScreenState extends State<SetupScreen> with WidgetsBindingObserver {
                         canSwitchCamera: running && vm.canSwitchCamera,
                         onSwitchCamera: vm.switchCamera,
                       ),
+                      if (running) const UatPhoneAngle(),
                       const Spacer(),
                       if (running)
                         _BottomPanel(

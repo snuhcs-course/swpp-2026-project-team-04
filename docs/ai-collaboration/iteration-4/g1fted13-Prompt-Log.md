@@ -1166,3 +1166,141 @@ feat/ui_form_feedback 로 바꾼다. PR #63 의 Codex 리뷰(P2, gymrats_app/lib
 
 flutter analyze, 전체 flutter test, 리뷰어 확인, ownership_guard.py --check-diff 를 통과시키고 커밋·푸시한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다. PR 스레드에는 답글을 달지 않는다. 고친 커밋 해시를 보고하고, 끝나면 메인 폴더를 비워 둔다.
 </pasted_content id=\"668f\">"
+
+## 2026-11-15 · Woohyun Song · feat/victory_animation
+<!-- Left out on purpose: the session summary written when the part 1 session ran out of context (11-14 18:39; not a prompt). Its key stays so a later export does not add it again. Cut: the client's injected browser notice in front of 2 prompts (11-14 16:36, 11-15 19:35; not the user's text). One answer in the agent's question dialog (11-15 19:32: the two test exception lines) is not in the export. -->
+<!-- 18fe9cd6 2026-11-14T07:36:33.556Z -->
+[Woohyun Song, 11-14 16:36] "<pasted_content id=\"24a0\">
+W5(feat/victory_animation, 시트 P18)를 시작해. 하네스 규칙과 .claude/team-plan.md를 따른다.
+
+[시작]
+1. git fetch origin 후 최신 origin/main에서 feat/victory_animation 브랜치를 만든다. python3 .claude/hooks/ownership_guard.py --status 로 확인하고, task.md와 progress.md를 W5로 준비한다.
+2. W5는 W4(feat/home_character, 아직 PR 전)가 넓힌 캐릭터 화가를 써야 한다. 그래서 로컬 브랜치 feat/home_character를 이 브랜치에 합친다(git merge feat/home_character).
+   - W4는 머지 순서상 W5보다 먼저 main에 들어간다. W4가 머지된 뒤 origin/main을 다시 합치면 W4 커밋은 W5의 차이에서 사라진다.
+   - 그 전까지는 --check-diff에 W4 파일이 섞여 나오는 것이 정상이고, 그래서 푸시하지 않는다.
+   - 이 사정을 task.md Decisions에 적는다. W4 브랜치에 새 커밋이 생기면 다시 합친다.
+
+[자료]
+.claude/design/gymrats-w5-victory/ 의 W5-VICTORY-SPEC.md를 먼저 읽는다. 값의 원본은 w5_victory_rig.json이고, victory_golden.json은 테스트용이다. 보간·시간 계산·그리기 규칙은 .claude/design/gymrats-w4-home/W4-HOME-SPEC.md 5절을 따른다.
+
+[지금 할 일]
+1. victory_* 위젯으로 연출 층 전체를 만든다(명세 2~8절).
+   - 이길 때: 2.1초 컷인. 라임 판, 색종이 22장, 띠(KO 승리 \"KO 승리\", 시간 종료 승리 \"판정승\", 상대 퇴장 승리 \"기권승\"), 캐릭터별 기뻐하기, 끝 자세 섞기, 자리로 줄어들어 앉기, 라임 받침.
+   - 지거나 비길 때: 흰 받침 위에서 좌절 동작을 한 번 하고 멈춘다.
+   - 누르면 끝 모습으로 건너뛰고, 애니메이션 줄이기를 켜면 끝 모습 한 장만 보인다. 연출은 한 번만 돈다.
+   리포트 화면과 떼어 놓은 위젯으로 만들고, 결과 종류, 내 캐릭터 id, 캐릭터 자리(144×148 칸)의 위치를 입력으로 받는다.
+2. 데이터는 W3·W4처럼 Dart 상수 문자열로 victory_* 파일 안에 넣는다. 원본 JSON 사본은 assets/characters/ 에 둬도 된다(W5 허용 범위).
+3. 명세 11절 1번의 답: 기록보관소에서 지난 리포트를 열 때는 연출을 돌리지 않고 끝 모습만 보여 준다. 위젯에 이 선택을 받는 입력을 둔다.
+4. 테스트는 명세 9절 그대로다(데이터, 포즈 대조, 장면 대조, 그리기, 화면 검사). 화면 검사는 리포트 대신 테스트용 바탕 위에서 한다.
+
+[나중에, 지금은 하지 않는다]
+result_screen.dart는 W6(feat/ui_report_rules)가 머지된 뒤에 열린다. 그때 origin/main을 합치고 세 가지를 한다.
+- 승패 제목 줄 오른쪽 끝에 144×148 칸을 만들고, 그 칸 기준으로 받침과 캐릭터 자리를 옮긴다(명세 11절 2번).
+- 리포트가 대결 직후 처음 열릴 때 연출을 겹친다.
+- 기록보관소에서 연 리포트는 끝 모습만 보여 준다.
+이 일은 progress.md에 남은 일로 적어 둔다.
+
+[마무리]
+전체 테스트, flutter analyze, --check-diff 를 돌리고(W4 파일이 섞여 나오는 것은 위 사정 그대로), 리뷰어 APPROVE 뒤에 커밋한다. 푸시하지 않는다.
+</pasted_content id=\"24a0\">"
+
+<!-- 18fe9cd6 2026-11-14T08:05:01.122Z -->
+[Woohyun Song, 11-14 17:05] "<pasted_content id=\"24a0\">
+아까 정지 버튼으로 멈췄던 작업을 이어서 한다. 멈춘 동안 바뀐 것이 있으니 아래를 먼저 확인한다.
+
+[멈춘 동안 바뀐 것]
+W4 세션이 같은 작업 폴더에서 feat/home_character로 바꿔 origin/main을 합치고, 코스 기록 커밋을 더한 뒤 푸시해서 PR #55를 열었다. 끝나고 폴더를 다시 feat/victory_animation으로 돌려놓기로 했다.
+
+[먼저 확인]
+1. git branch --show-current 가 feat/victory_animation인지 본다. 아니면 아무것도 고치지 말고 멈춰서 알려 준다.
+2. git status 로 커밋 안 된 변경이 있는지 본다. 내가 모르는 변경이 있으면 멈춰서 알려 준다.
+3. .claude/task.md와 progress.md에서 W5 내용(시작할 때 준비한 것)이 그대로인지 본다. W4 Decisions(10.1·10.2 답, RepBotColors 토큰 결정, design_tokens_test 줄)도 남아 있는지 함께 본다. 빠진 것이 있으면 알려 준다.
+
+[그다음]
+4. git merge feat/home_character 로 W4 브랜치에 새로 생긴 커밋(main 합치기, 기록 커밋)을 합친다. 충돌이 나면 멈추고 알려 준다.
+5. 처음 받은 W5 지시대로 이어서 한다. victory_* 위젯으로 승리·좌절 연출 층을 만들고, 리포트 화면에 붙이는 일은 W6가 머지된 뒤로 미룬다. 명세는 .claude/design/gymrats-w5-victory/W5-VICTORY-SPEC.md이고, W4가 넓힌 CharacterFigurePainter에 W5의 drawPatch를 이어 붙인다.
+
+W4 PR #55는 리뷰 중이라 Codex 코멘트로 W4 브랜치가 다시 바뀔 수 있다. 그러면 내가 알려 줄 테니 그때 feat/home_character를 다시 합친다. 푸시는 하지 않는다.
+</pasted_content id=\"24a0\">"
+
+<!-- 18fe9cd6 2026-11-14T09:39:24.548Z -->
+
+<!-- 18fe9cd6 2026-11-14T09:46:19.081Z -->
+[Woohyun Song, 11-14 18:46] "명세에 없어서 정한 두 가지(360×780이 아닌 화면의 큰 장면 비율 맞춤, 장면 색을 리그에서 읽고 AppColors와 같은지 테스트로 확인)는 그대로 간다. task.md Decisions에 날짜와 함께 적어 줘.
+
+W4(PR #55)와 J3(PR #56)가 main에 머지됐다(690c873). git fetch origin 후 git merge origin/main 으로 합친다. 이제 W4 커밋이 main에 있으니 --check-diff에는 W5 파일만 나와야 한다. 그렇게 나오는지 확인하고, task.md의 \"W4를 합친 사정\" 메모를 정리한다. 충돌이 나면 멈추고 알려 준다. 전체 테스트와 analyze를 다시 돌리고 커밋한다. 2부(result_screen 연결)는 여전히 W6 머지 뒤이므로 푸시하지 않는다."
+
+<!-- 18fe9cd6 2026-11-14T09:49:25.798Z -->
+[Woohyun Song, 11-14 18:49] "영어로 답하도록 해."
+
+<!-- 18fe9cd6 2026-11-14T09:53:54.333Z -->
+[Woohyun Song, 11-14 18:53] "너가 영어로 잘못 응답해서 내가 한국어로 답하라고 한 거를 잘못 타이핑했어. 다시 규칙을 원래대로 돌려"
+
+<!-- 19e5c5ca 2026-11-15T07:46:21.395Z -->
+[Woohyun Song, 11-15 16:46] "<pasted_content id=\"a95d\">
+W5 2부: 결과 화면에 승리 연출을 붙인다 (새 세션)
+
+[배경]
+나는 송우현([REDACTED:custom_term])이고 Iteration 4에서 W5(대결 뒤 승리 연출, 브랜치 feat/victory_animation, 스케줄 P18)를 맡고 있다. 1부(victory_* 위젯과 캐릭터별 연출 데이터)는 이 브랜치에 로컬로 커밋되어 있고 아직 푸시하지 않았다. 2부는 그 연출을 결과 화면에 붙이는 일이다. 결과 화면(result_screen.dart)은 W6(#62)가 main에 머지되어 이제 W5에 열렸다. 하네스(.claude/ 아래 ownership.json, team-plan.md, task.md, progress.md, ownership-exceptions.txt)의 규칙을 따른다. progress.md 에 2부 계획이 적혀 있다.
+기준 문서는 .claude/design/gymrats-w5-victory/ 의 W5-VICTORY-SPEC.md, w5_victory_rig.json, victory_golden.json 이다. 명세의 요점은 다음과 같다.
+- 결과 화면의 캐릭터 자리는 x 200~344, y 36~184(144×148)이고, 발 기준점은 (286,168), 배율은 0.66이다.
+- 승리하면 리포트가 열릴 때 큰 컷인이 나오고 약 2.1초에 걸쳐 그 자리로 줄어든다.
+- 띠 문구는 \"KO 승리\", \"판정승\", \"기권승\"이다.
+- 패배와 무승부는 모든 캐릭터가 같은 좌절 포즈다.
+숫자와 동작은 명세와 golden 이 기준이다.
+
+[GitHub 작업 규칙]
+PR, 이슈, CI 코멘트를 읽거나 고칠 때는 gh CLI 를 쓴다. Chrome 같은 브라우저로 GitHub 를 조작하지 않는다. gh 가 없거나 인증·권한 문제로 막히면 다른 방법으로 우회하지 말고 멈춘다. 그리고 무엇을 시도했고 어떤 명령에서 어떤 오류가 났는지 보고한다. git push 는 평소처럼 git 으로 한다.
+
+[할 일]
+1. feat/victory_animation 으로 바꾼다. 커밋 안 된 변경이 있으면 멈추고 알린다. git fetch origin 후 origin/main 을 merge 한다(rebase 금지). 충돌은 W5 파일 안에서만 푼다. 코스 노트 세 파일(docs/testing/iteration-4/[REDACTED:custom_term].md, docs/ai-collaboration/iteration-4/[REDACTED:custom_term].md, docs/ai-collaboration/iteration-4/[REDACTED:custom_term]-Prompt-Log.md)은 양쪽 내용을 모두 남기고, design_tokens_test.dart 는 양쪽 경로를 모두 남겨 알파벳 순서를 지킨다. 그 밖의 파일에서 충돌하면 멈추고 알린다.
+2. 명세와 progress.md 의 2부 계획대로 결과 화면에 승리 연출을 붙인다.
+3. 연출 자리를 넣으려면 W6 의 widgets/result_report.dart 도 고쳐야 한다. 이 파일(W6 파일, 같은 본인 소유)에 한해 .claude/ownership-exceptions.txt 에 예외 줄을 날짜와 이유와 함께 더해 처리하고 보고한다. W6 가 W5 자리 근처에 남긴 겹침(두 번째 이유 줄 등)도 정리한다.
+4. 테스트: 승·KO·판정승·기권승, 패배·무승부, 애니메이션 줄이기 설정. flutter analyze, 전체 flutter test, 리뷰어 APPROVE, ownership_guard.py --check-diff 를 통과시키고 커밋한다.
+5. 마지막으로, git fetch origin 을 다시 해서 W7(#61, feat/ui_archive)이 main 에 머지됐는지 확인한다.
+   - 머지됐으면 origin/main 을 한 번 더 merge 하고(규칙은 1번과 같다), 기록보관소에서 지난 경기를 누르면 자세 피드백이 아니라 그 경기의 결과 리포트가 열리게 한다(2026-11-08 팀 결정). J4 의 지난 경기용 결과 뷰모델(MatchRecord 로 만드는 경로)을 쓰고, 이때는 애니메이션 없이 마지막 자세로 바로 보이게 한다. history_screen.dart 는 W7 파일(같은 본인 소유)이라 이 연결 부분만 예외 줄을 더해 처리한다. 테스트를 더하고 4번의 확인을 다시 통과시킨다.
+   - 아직 머지되지 않았거나 J4 에 지난 경기용 경로가 없으면 이 단계는 건너뛰고 보고한다.
+6. 코스 노트(테스트, AI 협업, 프롬프트 로그)에 W5 항목을 쓴다. 커버리지는 PR CI 코멘트가 오면 채우게 TODO 로 두고, 폰 확인은 \"모든 PR 머지 뒤 main 빌드로 확인\"으로 적는다.
+7. 커밋하고 feat/victory_animation 을 푸시한 뒤, gh 로 PR 을 연다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다. 하네스 파일은 커밋하지 않는다. 푸시 전 프롬프트 로그 규칙을 따른다. PR 본문은 기존 내 PR 양식대로 영어로 쓴다. 첫 줄은 Merge order: #15 (team plan); merge after: #13 feat/ui_report_rules (merged), #11 feat/characters (merged) 이다. Manual check 에는 폰 확인을 모든 PR 머지 뒤 main 빌드로 한다고 적는다.
+
+[보고]
+브랜치와 커밋, PR 번호, 만든 것, 5번을 했는지 건너뛰었는지, 질문하지 않고 정한 기본값, 확인 결과, 알아 둘 점. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다.
+</pasted_content id=\"a95d\">"
+
+<!-- Added by hand from the same redacted export: sent while the agent was working, so it is stored as a queued message, which extract_prompts.py skips. -->
+<!-- 19e5c5ca 2026-11-15T10:35:53.053Z -->
+[Woohyun Song, 11-15 19:35] "PR을 열기 전에 git fetch origin 후 origin/main 을 한 번 더 merge 한다(rebase 금지). 그 사이 main 에 #63(W8 피드백 화면), #65(스쿼트 실루엣, 대결 화면 파일 수정), #67(홈 다시하기 수정)이 머지됐다. 충돌 규칙은 처음과 같다. 코스 노트 세 파일은 양쪽 내용을 모두 남기고, design_tokens_test.dart 는 양쪽 경로를 모두 남겨 알파벳 순서를 지키고, app_theme.dart 는 서로 다른 추가를 모두 남긴다. 그 밖의 파일에서 충돌하면 멈추고 알린다. 머지 뒤 flutter analyze, 전체 flutter test, ownership_guard.py --check-diff 를 다시 통과시킨 다음 푸시하고 PR 을 연다."
+
+## 2026-11-15 · Woohyun Song · feat/victory_animation (A6: no button in the battle setup)
+<!-- Cut: the client's injected browser notice in front of 1 prompt (11-15 21:28; not the user's text). Two answers in the agent's question dialog (11-15 22:17: a new PR from the same branch; PR #68's body left as is) are not in the export as prompts. -->
+<!-- a200a357 2026-11-15T12:28:31.583Z -->
+[Woohyun Song, 11-15 21:28] "<pasted_content id=\"2e03\">
+A6(계획 외 작업): 대결 준비 화면의 버튼 없애기, AI 대결 '시작'과 온라인 '준비/준비 취소' (PR #68 에 더함)
+
+[배경]
+나는 송우현([REDACTED:custom_term])이다. 내 마지막 PR #68(W5, 브랜치 feat/victory_animation)이 머지를 기다리고 있다. 2026-11-15 팀 의견으로, 대결의 자세 준비 단계에서 카메라 칸에 뜨는 버튼을 없애기로 했다. AI 대결의 '시작' 버튼과 온라인 대결의 '준비 / 준비 취소' 버튼 둘 다 대상이다. 두 화면 모두 자세가 잡히면 이미 저절로 시작되거나 준비되는데, 버튼이 있으면 처음 보는 사람은 눌러야 하는 줄 알고 오히려 헷갈린다. 푸쉬업과 스쿼트 둘 다 해당한다. 새 PR 을 만들지 않고 PR #68 에 커밋으로 더한다(팀과 합의). 하네스(.claude/ 아래 ownership.json, team-plan.md, task.md, progress.md, ownership-exceptions.txt)의 규칙을 따른다.
+
+[GitHub 작업 규칙]
+PR, 이슈, CI 코멘트를 읽거나 고칠 때는 gh CLI 를 쓴다. Chrome 같은 브라우저로 GitHub 를 조작하지 않는다. gh 가 없거나 인증·권한 문제로 막히면 다른 방법으로 우회하지 말고 멈춘다. 그리고 무엇을 시도했고 어떤 명령에서 어떤 오류가 났는지 보고한다. git push 는 평소처럼 git 으로 한다.
+
+[할 일]
+1. feat/victory_animation 으로 바꾼다. 커밋 안 된 변경이 있으면 멈추고 알린다. git fetch origin 후 origin/main 에 이 브랜치에 없는 커밋이 있으면 merge 한다(rebase 금지). 코스 노트 세 파일은 양쪽 내용을 모두 남기고, design_tokens_test.dart 는 양쪽 경로를 모두 남겨 알파벳 순서를 지킨다. 그 밖의 파일에서 충돌하면 멈추고 알린다.
+2. AI 대결(lib/screens/battle_screen.dart): 설정 단계에서 BattleArena 에 넘기는 readyLabel('시작')과 onReady(viewModel.startNow)를 넘기지 않아서 버튼이 아예 안 보이게 한다. 자동 시작(SetupConfig.autoStartDelay 뒤 시작, \"준비 완료! N초 뒤 시작해요.\" 안내)은 그대로 둔다.
+3. 온라인 대결(lib/screens/online_battle_screen.dart): 설정 단계에서 넘기는 readyLabel('준비' / '준비 취소'), onReady(_toggleReady), readyPressed 를 넘기지 않아서 버튼이 아예 안 보이게 한다.
+   - 자동 준비(자세가 잡히면 autoStartDelay 뒤 session.ready(true), \"자세 확인! N초 후 자동으로 준비해요\" 안내)와 자세가 풀리면 준비가 풀리는 동작, \"상대 준비를 기다리는 중…\" 안내는 그대로 둔다.
+   - 버튼이 없어져 쓰이지 않게 된 코드(_toggleReady, 그 때문에만 있던 _autoReadyPaused 처리 등)는 정리해서 analyze 경고가 없게 한다. 자동 준비 흐름이 바뀌지 않게 조심한다.
+4. 공용 위젯(BattleArena, BattleCameraArea)의 readyLabel·onReady 기능과 BattleViewModel.startNow 는 지우지 않는다. 데모(lib/demo/battle_demo.dart)도 건드리지 않는다.
+5. 바꾸는 화면 파일과 테스트 파일 중 W5 허용 범위 밖인 것은, 이 변경에 한해 ownership-exceptions.txt 에 날짜와 이유(A6, 2026-11-15 팀 합의)를 적은 예외 줄을 더한다. battle_screen.dart, online_battle_screen.dart 는 W2 파일(같은 본인 소유)이다. 다른 사람 소유 파일을 고쳐야 하면 최소한으로 고치고 보고에 따로 적는다.
+6. 테스트를 새 동작에 맞게 고친다(test/screens/battle_screen_test.dart, test/screens/online_preparation_test.dart 등 '시작'이나 '준비'/'준비 취소' 버튼을 찾거나 누르던 곳).
+   - 설정 단계에 버튼이 없어야 한다.
+   - AI 대결은 준비 자세가 유지되면 자동으로 라운드가 시작되고, 온라인은 자동으로 준비되고 자세가 풀리면 준비가 풀려야 한다.
+   - 라운드가 시작될 때 '시작' 글자가 뜨는 신호(BattleCueKind.go)는 그대로이니 헷갈리지 않게 구분한다.
+   - 푸쉬업과 스쿼트 둘 다 확인한다.
+7. flutter analyze, 전체 flutter test, ownership_guard.py --check-diff 를 통과시키고 리뷰어에게 확인받는다.
+8. 코스 노트(테스트, AI 협업, 프롬프트 로그)에 A6 항목을 짧게 더한다.
+9. 커밋하고 feat/victory_animation 에 푸시한다. 커밋 작성자는 [REDACTED:custom_term]이고 메시지에 AI 관련 문구를 넣지 않는다. 하네스 파일은 커밋하지 않는다. 푸시 전 프롬프트 로그 규칙을 따른다.
+10. gh 로 PR #68 본문 Summary 에 영어로 한 줄을 더한다. 예: \"The setup no longer shows a 시작 button in AI battles or 준비 / 준비 취소 in online battles (team decision, 11-15); the round starts, or the player becomes ready, by itself once the pose is held.\"
+
+[보고]
+커밋 해시, 바꾼 파일, 더한 예외 줄(다른 사람 파일이 있었다면 따로), 정리한 코드, 테스트 결과, PR 본문 수정 여부, CI 상태. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다.
+</pasted_content id=\"2e03\">"
