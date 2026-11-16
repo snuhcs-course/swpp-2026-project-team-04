@@ -65,36 +65,33 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 
 제어 요청은 동일한 `request_id`와 동일한 내용으로 재시도하면 같은 처리 결과를 반환한다. 같은 ID에 다른 내용을 보내면 `REQUEST_ID_REUSED`다. 상태를 바꾸는 요청의 ID는 최소 해당 매칭 종료까지 보관한다.
 
-## 4. 아바타 목록과 설정
+## 4. 캐릭터 (`avatar_id`)
 
-기존 4종의 식별자는 유지하며, 2026-10-19에 전체 목록을 25종으로 확장했다. 서버와 앱은 같은 허용 목록을 사용한다. 모든 모델은 로컬 GLB와 썸네일로 포함하고, 기존 ML Kit 관절 좌표로 구동한다.
+2026-11-13(W3)부터 `avatar_id`에는 선수의 캐릭터 id가 들어간다. 옛 앱과 맞추려고 필드 이름은 그대로 둔다. 3D 아바타 28종(`avatar_01`~`avatar_25`, `soma_*` 3종)의 모델과 에셋은 W3에서 앱에서 뺐다(이전 목록은 이 문서의 git 기록에 있다). 이 문서의 다른 절에 나오는 아바타 표시와 선택(받은 관절로 움직이는 상대의 3D 아바타, 본인 카메라와 아바타 전환, 아바타 선택 화면)은 Iteration 2의 설계다. Iteration 4부터 앱은 상대를 그 캐릭터로 무대에 그린다(Requirements 5.5 rev. 2.3). `pose.frame`은 그대로 오간다.
 
-| avatar_id | 설정 표시 이름 | 원본 | 라이선스 기록 |
-|---|---|---|---|
-| `avatar_01` | 우주비행사 | [Rigged Low Poly Astronaut](https://mrlentereng.itch.io/rigged-low-poly-astronaut) | 제작자 페이지 CC0. 원 제작자 ThunderWare Games, 리깅 MrLentereng |
-| `avatar_02` | 로봇 | [Corebreaker Robot](https://donitz.itch.io/corebreaker-robot-model) | 제작자 Donitz, CC0 |
-| `avatar_03` | 마네킹 | [GDQuest Mannequiny](https://github.com/gdquest-demos/godot-3d-mannequin) | 저장소 기준 아트 CC BY 4.0, 코드 MIT. 사용 파일별 LICENSE 확인 및 출처 표시 |
-| `avatar_04` | 휴머노이드 | [XCVG Rigged Humanoid](https://opengameart.org/content/rigged-and-animated-humanoid) | 제작자 XCVG, CC0 |
+| 캐릭터 id | 화면 이름 | 사람이 고를 수 있음 |
+|---|---|---|
+| `mouse` | GYM마우스 | 예 (기본값) |
+| `kangaroo` | 그루 | 예 |
+| `bear` | 곰탱이 | 예 |
+| `penguin` | 펭뚱이 | 예 |
+| `seal` | 물렁범 | 예 |
+| `bot` | RepBot | 아니요 (AI 대결의 상대) |
 
-추가 목록: `avatar_05`~`08`은 Kenney Protagonists, `09`~`12`는 Retro, `13`~`16`은 Survivors의 저작자 제공 스킨이다. `17`~`21`은 KayKit Adventurers(기사·바바리안·메이지·로그·후드 로그), `22`~`25`는 KayKit Skeletons(메이지·미니언·로그·워리어)다. 추가 리소스는 CC0이며 원본 URL·라이선스·변환 사항은 `gymrats_app/assets/avatar/ATTRIBUTION.txt` 및 팩별 LICENSE에 기록한다. Kenney 12종은 공통 리그/메시에 서로 다른 원본 스킨을 적용한 외형이다.
+- 서버: `queue.join`의 `avatar_id`는 선택 항목이다. 보내면 소문자·숫자·`_` 1~32자의 문자열인지만 검사하고(아니면 `INVALID_AVATAR`), 값을 해석하지 않고 그대로 `match.found`·`match.snapshot`의 `players`와 결과(`match.finished` 등)의 `players`에 싣는다. 보내지 않은 선수의 항목에는 `avatar_id`가 없다. 서버에는 값 목록이 없어서 캐릭터를 더해도 서버를 다시 배포할 필요가 없다.
+- 앱: 매칭에 참가할 때 계정의 캐릭터 id를 보낸다. 상대의 `avatar_id`가 사람이 고를 수 있는 다섯 가운데 하나가 아니면(없음, 옛 앱의 `avatar_NN`, `bot`, 모르는 값) `mouse`로 그린다. 앱은 프로토콜에 없는 값을 지어내지 않는다.
+- 옛 앱과 새 서버: 옛 앱이 보내는 `avatar_01`~`avatar_25`, `soma_*`도 모양이 맞아서 그대로 받는다. 옛 앱은 상대의 캐릭터 id를 모르므로 이전처럼 기본 아바타로 그린다.
+- 새 앱과 옛 서버(W3 이전 배포본): 옛 서버는 아바타 목록에 없는 캐릭터 id를 `INVALID_AVATAR`로 거절한다. 새 앱은 매칭 전에 이 오류를 받으면 `avatar_01`로 한 번만 다시 참가하고, 그 세션의 재연결도 `avatar_01`로 참가한다. 상대에게는 `mouse`로 보인다. `avatar_01`도 거절되면 오류로 끝난다.
+- 배포 순서: 배틀 서버(`server/`와 서버가 가져다 쓰는 `gymrats_app/lib/shared`, `lib/models`, `lib/services/game`)를 진행 중인 대결이 없을 때 먼저 배포하고, 그다음 새 앱을 설치한다. 앱의 대비 동작이 있어서 순서가 바뀌어도 대결은 깨지지 않고, 그동안 상대가 `mouse`로만 보인다.
 
-프로필에서 썸네일·3D 미리보기·검색·분류 필터로 선택하며, ID는 계정별 기기 저장소에 유지된다. 새 ID를 온라인에서 사용하려면 서버의 이 허용 목록도 배포해야 한다. 알 수 없는 ID나 원격 모델 URL은 계속 거절한다.
-
-리소스를 도입할 때 배포본의 라이선스와 원본 URL을 함께 보관한다. Mannequiny는 앱의 크레딧 화면과 저장소의 제3자 리소스 고지에 `GDQuest and contributors (https://www.gdquest.com/)`, 원본 링크, CC BY 4.0 링크 및 변경 사항을 표시한다. 코드를 가져올 경우 MIT 고지도 보존한다. CC0 모델도 추적을 위해 제작자·출처를 기록한다.
-
-- 네 종류는 서로 다른 원본 뼈대를 가진다. 각 모델에 별도 뼈대 매핑·기준 자세·회전 보정을 두어 같은 33개 관절 입력을 공통 내부 리그로 변환한다. 원본 뼈대가 동일하다고 가정하지 않는다.
-- 이미지·모델 파일은 앱에 포함한다. 네트워크로 임의의 모델 URL이나 리소스 파일을 교환하지 않는다.
-- 기본값은 `avatar_01`. 알 수 없는 ID를 수신한 앱은 기본 아바타로 표시한다. 서버는 허용 목록 밖의 선택 요청을 거절한다.
-- 설정 화면에서 목록 미리보기, 선택 표시, 저장을 제공한다. 로컬 저장으로 앱 재시작 후에도 선택을 유지한다. 계정 간·기기 간 저장은 사용자 프로필 담당자와 별도 연동한다.
-
-클라이언트는 매칭 참가 때 현재 선택을 보낸다.
+클라이언트는 매칭에 참가할 때 현재 캐릭터를 보낸다.
 
 ```json
 {
   "v": 1,
   "type": "queue.join",
   "request_id": "join-001",
-  "payload": {"exercise": "push_up", "avatar_id": "avatar_02"}
+  "payload": {"exercise": "push_up", "avatar_id": "bear"}
 }
 ```
 
@@ -107,7 +104,7 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 | 방향 | 이벤트 | 주요 payload 및 동작 |
 |---|---|---|
 | 서버→앱 | `session.welcome` | `player_id`, `connection_id`, `heartbeat_interval_ms: 5000`, `heartbeat_timeout_ms: 15000` |
-| 앱→서버 | `queue.join` | `exercise`, `avatar_id`. v1은 `push_up`만 지원. 서버가 참가 요청을 수락한 순서(FIFO)대로 두 명씩 매칭 |
+| 앱→서버 | `queue.join` | `exercise`, `avatar_id`(선택, 캐릭터 id, 4절). v1은 `push_up`만 지원. 서버가 참가 요청을 수락한 순서(FIFO)대로 두 명씩 매칭 |
 | 서버→앱 | `queue.joined` | `queue_id`. 대기열 참가 확인, 상대를 찾을 때까지 유지. 취소·접속 종료 시 대기열에서 제거하며 재참가는 맨 뒤에 추가 |
 | 앱→서버 | `queue.cancel` | `queue_id` |
 | 서버→앱 | `queue.cancelled` | `queue_id`. 실제 대기열에서 제거 완료 |
@@ -127,7 +124,7 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 | 앱→서버 | `match.resume` | 재인증된 연결에서 이전 `match_id` 재참가 요청 |
 | 서버→앱 | `match.snapshot` | 현재 상태·참가자·아바타·점수·시각·마지막 수락 `rep_seq`·연결 상태 |
 
-`players`는 정확히 두 명의 `{player_id, display_name, avatar_id}` 배열이다. 사용자명은 인증 프로필에서 가져온다. 한 사용자는 대기열 또는 활성 매칭 하나에만 속한다. 자기 자신과의 매칭, 같은 사용자의 중복 참가를 막는다.
+`players`는 정확히 두 명의 `{player_id, display_name, avatar_id}` 배열이다. `avatar_id`는 그 선수가 `queue.join`에 보냈을 때만 있다(4절). 사용자명은 인증 프로필에서 가져온다. 한 사용자는 대기열 또는 활성 매칭 하나에만 속한다. 자기 자신과의 매칭, 같은 사용자의 중복 참가를 막는다.
 
 준비 중 한 명이 나가면 상대도 취소 안내 후 홈으로 돌아간다. `match.start` 이후 준비 취소·카메라 오류가 나면 시작을 몰래 미루지 않고 해당 사용자의 `match.leave` 또는 연결 종료 정책으로 처리한다. 시작 전 상대가 나간 경우 서버가 `cancelled`로 확정할 수 있다.
 
@@ -222,8 +219,8 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
     "winner_id": "user-a",
     "ended_at_ms": 1792022460000,
     "players": [
-      {"player_id": "user-a", "avatar_id": "avatar_02", "valid_reps": 12, "invalid_reps": 2, "outcome": "win"},
-      {"player_id": "user-b", "avatar_id": "avatar_01", "valid_reps": 10, "invalid_reps": 1, "outcome": "loss"}
+      {"player_id": "user-a", "avatar_id": "bear", "valid_reps": 12, "invalid_reps": 2, "outcome": "win"},
+      {"player_id": "user-b", "avatar_id": "mouse", "valid_reps": 10, "invalid_reps": 1, "outcome": "loss"}
     ]
   }
 }
@@ -324,7 +321,7 @@ flutter run
 아직 완료하지 않은 범위:
 
 - 온라인 경기의 P11 DB 결과 저장·과거 경기 조회 연결, 강제 종료/프로세스 재시작 후 경기 복구. 기존 AI 경기 기록 기능은 유지하지만 온라인 결과는 아직 배틀 서버 메모리에서 최대 10분 유지한다. 앱 재시작 시 기존 로그인 저장소에서 로그인 세션을 복원한다.
-- 아바타 선택의 재시작 후 영구 저장. 현재 선택은 온라인 로비/해당 매칭에 한정한다.
+- 캐릭터 선택의 기기 간 동기화. W3부터 선택은 계정별로 이 기기에 저장되고, 다른 기기로 옮겨지지 않는다.
 - 서로 다른 외부 네트워크의 휴대폰 두 대로 종단 검증. 휴대폰 한 대와 합성 상대 에뮬레이터 간 연동은 사용자가 확인했다. 실제 휴대폰 두 대의 정상 종료·이탈·재접속 시나리오는 별도 최종 검증이 필요하다.
 - 운영 규모의 인증/접속 수/프록시 제한 및 느린 수신자 압력 테스트. 현재 일반 제어 요청 제한은 초당 15개이며, 초안 제안치 10개와 다르다.
 - 카메라/검출 오류 시 자동 기권 정책. 현재는 서버 시간이 계속 가고 자세/판정이 중단되며, 사용자가 나가면 기권 처리한다. 오류만으로 승패를 임의 결정하지 않는다.
@@ -335,13 +332,13 @@ flutter run
 - `gymrats_app/lib/shared/battle_protocol.dart`
 - `gymrats_app/lib/services/online/online_battle_session.dart`, `pose_wire.dart`
 - `gymrats_app/lib/screens/online_lobby_screen.dart`, `online_battle_screen.dart`
-- `gymrats_app/lib/widgets/opponent_avatar_panel.dart`
+- `gymrats_app/lib/models/character_rig.dart`, `gymrats_app/lib/widgets/character_figure.dart` (캐릭터, W3)
 
 회귀 테스트:
 
 ```powershell
 cd gymrats_app
-flutter test test/services/online/online_battle_integration_test.dart test/widgets/opponent_avatar_panel_test.dart
+flutter test test/services/online/online_battle_integration_test.dart test/widgets/character_figure_test.dart
 ```
 
 공유 서버에는 배포했지만 이 문서를 GitHub Wiki 등 공유 문서에 자동 게시하지는 않았다. 온라인 결과의 DB 저장은 아직 구현하지 않았다.

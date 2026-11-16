@@ -53,6 +53,12 @@ void main() {
       expect(restarted.enabled, isFalse);
     });
 
+    test('a failing store turns on a set that started silent', () async {
+      final settings = SoundSettings(store: _BrokenStore(), enabled: false);
+      await settings.load();
+      expect(settings.enabled, isTrue);
+    });
+
     test('a failing store keeps the default and still flips the switch for '
         'this run', () async {
       final settings = SoundSettings(store: _BrokenStore());
@@ -60,6 +66,28 @@ void main() {
       expect(settings.enabled, isTrue);
       await settings.setEnabled(false);
       expect(settings.enabled, isFalse);
+    });
+  });
+
+  group('voice switch', () {
+    test('on unless given; changes alone and tells the listeners once', () {
+      final settings = SoundSettings(store: MemorySoundSettingsStore());
+      expect(settings.voiceEnabled, isTrue);
+      expect(
+        SoundSettings(
+          store: MemorySoundSettingsStore(),
+          voiceEnabled: false,
+        ).voiceEnabled,
+        isFalse,
+      );
+      var calls = 0;
+      settings
+        ..addListener(() => calls++)
+        ..setVoiceEnabled(false)
+        ..setVoiceEnabled(false);
+      expect(settings.voiceEnabled, isFalse);
+      expect(settings.enabled, isTrue, reason: 'the sound switch stays');
+      expect(calls, 1);
     });
   });
 

@@ -41,27 +41,49 @@ class MemorySoundSettingsStore implements SoundSettingsStore {
   }
 }
 
-/// The one sound switch: voice guidance, BGM, and the rep beep all follow it.
+/// The app's two sound switches, as the audio services read them:
+/// [enabled] for the sound (BGM, effects, the rep beep) and [voiceEnabled]
+/// for the voice guidance. They match 환경설정's 효과음 and 음성 안내
+/// switches, which `SettingsViewModel` saves and passes on here.
 ///
-/// Starts on; [load] reads the saved value. Listeners (the audio services,
-/// a toggle) are notified on every change. Saved in [SecureSoundSettingsStore]
-/// unless another store is given; tests and demos pass a
-/// [MemorySoundSettingsStore].
+/// [enabled] starts on unless given; [load] reads a value saved in [store]
+/// ([SecureSoundSettingsStore] unless another is given; tests and demos pass
+/// a [MemorySoundSettingsStore]). Listeners (the audio services) are notified
+/// on every change.
 class SoundSettings extends ChangeNotifier {
-  SoundSettings({SoundSettingsStore? store, this._enabled = true})
-    : _store = store ?? SecureSoundSettingsStore();
+  SoundSettings({
+    SoundSettingsStore? store,
+    this._enabled = true,
+    this._voiceEnabled = true,
+  }) : _store = store ?? SecureSoundSettingsStore();
 
   final SoundSettingsStore _store;
   bool _enabled;
+  bool _voiceEnabled;
 
+  /// Whether the BGM and the sound effects play (and the rep beep where it is
+  /// given these settings).
   bool get enabled => _enabled;
 
-  /// Reads the saved switch. A failing store leaves the current value.
+  /// Whether the voice guidance speaks.
+  bool get voiceEnabled => _voiceEnabled;
+
+  /// Turns the voice guidance on or off for this run (`SettingsViewModel`
+  /// keeps it between launches).
+  void setVoiceEnabled(bool enabled) {
+    if (enabled == _voiceEnabled) return;
+    _voiceEnabled = enabled;
+    notifyListeners();
+  }
+
+  /// Reads the saved switch. A failing store means on, the default, so a
+  /// set started silent (`enabled: false`) until the saved value is known
+  /// still gets its sound.
   Future<void> load() async {
     try {
       _set(await _store.read());
     } catch (_) {
-      // The default (on) stands.
+      _set(true);
     }
   }
 

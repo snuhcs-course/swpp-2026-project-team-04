@@ -23,7 +23,12 @@ void main() {
     final style = tester.widget<OutlinedButton>(button).style!;
     expect(style.backgroundColor!.resolve({}), AppColors.card);
     expect(style.foregroundColor!.resolve({}), AppColors.textPrimary);
-    expect(style.side!.resolve({})!.color, AppColors.border);
+    // A line edge (palette B rule 3), and a smaller icon, as the design.
+    expect(
+      style.side!.resolve({}),
+      const BorderSide(color: AppColors.line, width: 1.5),
+    );
+    expect(tester.widget<Icon>(find.byIcon(Icons.logout_rounded)).size, 18);
     expect(style.shape!.resolve({}), isA<StadiumBorder>());
     // With its tap target, as tall as SetupScreen's round buttons.
     expect(tester.getSize(button).height, 48);

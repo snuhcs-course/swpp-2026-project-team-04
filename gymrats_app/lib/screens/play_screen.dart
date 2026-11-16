@@ -16,6 +16,7 @@ import 'ai_setup_screen.dart';
 
 /// 게임 시작, from home: online 1v1 and AI 1v1 as two big cards, the latest
 /// setup to play again in one tap, and the rules. Reads home's view model.
+/// The character is picked from home's 캐릭터 row (W4).
 class PlayScreen extends StatelessWidget {
   const PlayScreen({super.key});
 

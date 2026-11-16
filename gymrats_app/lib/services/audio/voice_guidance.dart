@@ -34,7 +34,7 @@ abstract interface class VoiceGuidance {
 /// - A cue equal to the newest requested cue is dropped (one line per change).
 /// - While a line is spoken, a hint waits as the single pending cue (the
 ///   newest wins); a cue with [VoiceCue.interrupts] cuts the line off.
-/// - [SoundSettings.enabled] false, or the app not in the foreground, stops
+/// - [SoundSettings.voiceEnabled] false, or the app not in the foreground, stops
 ///   the current line and silences new ones.
 /// - With [repeatAfter], the same cue is said again once that long has passed
 ///   since it was last started (a user stuck on one hint hears it again).
@@ -83,7 +83,7 @@ class VoiceGuidanceService
   /// Whether a line is being spoken right now.
   bool get isSpeaking => _speaking;
 
-  bool get _silenced => _disposed || !_settings.enabled || !_inForeground;
+  bool get _silenced => _disposed || !_settings.voiceEnabled || !_inForeground;
 
   @override
   void say(VoiceCue cue) {
@@ -159,7 +159,7 @@ class VoiceGuidanceService
   }
 
   void _onSettings() {
-    if (!_settings.enabled) stop();
+    if (!_settings.voiceEnabled) stop();
   }
 
   @override

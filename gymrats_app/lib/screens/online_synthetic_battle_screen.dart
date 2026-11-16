@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../models/pose_frame.dart';
 import '../models/rep_event.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/online/synthetic_battle_pose.dart';
-import '../widgets/opponent_avatar_panel.dart';
-import '../widgets/pose_avatar_view.dart';
+import '../widgets/battle_stage_model.dart';
+import '../widgets/character_figure.dart';
+import '../widgets/landmark_overlay.dart';
 
 const syntheticOnlineEnabled =
     !kReleaseMode && bool.fromEnvironment('BATTLE_SYNTHETIC_OPPONENT');
@@ -88,17 +90,19 @@ class _OnlineSyntheticBattleScreenState
             const Padding(
               padding: EdgeInsets.all(12),
               child: Text(
-                '위: 휴대폰에서 받은 실제 자세 아바타\n아래: 합성 자세 · 실제 운동 기록 아님',
+                '위: 휴대폰에서 받은 실제 자세\n아래: 합성 자세 · 실제 운동 기록 아님',
                 textAlign: TextAlign.center,
               ),
             ),
             Expanded(
               flex: 5,
-              child: OpponentAvatarPanel(
-                name: opponent.name,
-                model: opponent.avatar,
+              child: _PosePanel(
+                title: session.connected && session.opponentConnected
+                    ? opponent.name
+                    : '${opponent.name} · 연결 끊김',
+                character: opponent.character,
+                side: BattleSide.opponent,
                 frame: session.opponentFrame,
-                connected: session.connected && session.opponentConnected,
               ),
             ),
             Padding(
@@ -110,9 +114,10 @@ class _OnlineSyntheticBattleScreenState
             ),
             Expanded(
               flex: 3,
-              child: PoseAvatarView(
-                mirror: false,
-                model: session.avatar,
+              child: _PosePanel(
+                title: 'TEST',
+                character: session.character,
+                side: BattleSide.me,
                 frame: syntheticBattlePose(session.elapsedMs),
               ),
             ),
@@ -137,6 +142,48 @@ class _OnlineSyntheticBattleScreenState
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A player's character, with the pose frames that arrive drawn as
+/// landmark dots over it: enough to see the poses travel (debug only).
+class _PosePanel extends StatelessWidget {
+  const _PosePanel({
+    required this.title,
+    required this.character,
+    required this.side,
+    required this.frame,
+  });
+
+  final String title;
+  final String character;
+  final BattleSide side;
+  final PoseFrame? frame;
+
+  @override
+  Widget build(BuildContext context) {
+    final frame = this.frame;
+    return Column(
+      children: [
+        Text(title),
+        Expanded(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              FittedBox(
+                child: CharacterFigure(characterId: character, side: side),
+              ),
+              if (frame != null)
+                LandmarkOverlay(
+                  frame: frame,
+                  mirror: false,
+                  isVisible: (_) => true,
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

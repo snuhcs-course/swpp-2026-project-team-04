@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           children: [
                             Text(
-                              'GYMRATS',
+                              'GYMMOUSE',
                               style: text.titleLarge?.copyWith(
                                 color: AppColors.accent,
                               ),

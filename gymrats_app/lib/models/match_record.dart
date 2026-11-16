@@ -28,6 +28,8 @@ class MatchRecord {
     this.decidedOutcome,
     this.gameEnd,
     this.feedbackSummary,
+    this.isOnline,
+    this.opponentLeft = false,
   });
 
   final ExerciseType exercise;
@@ -59,8 +61,18 @@ class MatchRecord {
   /// loss whatever the reps, so it wins over [myReps] and [opponentReps].
   final MatchOutcome? decidedOutcome;
 
-  /// How a battle just played stopped, for its upload; null otherwise.
+  /// How the battle stopped: a battle just played sets it for its upload,
+  /// and a stored one reads it back (KO or time up). Null when it ended
+  /// another way (an online forfeit or disconnect) or is not known.
   final GameEnd? gameEnd;
+
+  /// Whether it was an online 1v1 (true) or a battle against the bot
+  /// (false); null when the server did not say.
+  final bool? isOnline;
+
+  /// An online battle won because the opponent forfeited or dropped out; the
+  /// result screen then says so instead of the score gap.
+  final bool opponentLeft;
 
   /// The battle's one-line form feedback; null when none was stored, e.g.
   /// for a battle saved before feedback was kept.

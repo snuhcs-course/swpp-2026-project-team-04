@@ -12,6 +12,7 @@ import 'package:gymrats_app/screens/play_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_mode_card.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:provider/provider.dart';
 
@@ -243,6 +244,15 @@ void main() {
       expect(find.text('규칙 보기').hitTestable(), findsOneWidget);
     });
   }
+
+  testWidgets('no 캐릭터 row: the character is picked from home\'s menu', (
+    tester,
+  ) async {
+    await open(tester);
+    expect(find.text('캐릭터'), findsNothing);
+    expect(find.byType(CharacterFigure), findsNothing);
+    expect(find.text('GYM마우스'), findsNothing);
+  });
 
   testWidgets('every button is big enough and has a name', (tester) async {
     final semantics = tester.ensureSemantics();

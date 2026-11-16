@@ -2,51 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
-import 'package:gymrats_app/widgets/battle_score_balance.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/pose_avatar_toggle_view.dart';
 
 import '../support/pose_fixtures.dart';
 
 void main() {
-  for (final (mine, theirs, expected) in [
-    (0, 0, .5),
-    (8, 2, .8),
-    (0, 5, 0.0),
-    (5, 0, 1.0),
-    (7, 7, .5),
-  ]) {
-    testWidgets('score bar $mine:$theirs uses exact ratio', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: BattleScoreBalance(mine: mine, theirs: theirs),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<FractionallySizedBox>(find.byKey(const Key('myScoreShare')))
-            .widthFactor,
-        expected,
-      );
-      expect(tester.takeException(), isNull);
-    });
-  }
-  testWidgets(
-    'one-rep difference is marked close with complementary percentages',
-    (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: BattleScoreBalance(mine: 10, theirs: 9)),
-        ),
-      );
-      expect(find.text('1회 차 · 박빙'), findsOneWidget);
-      expect(find.text('나 53%'), findsOneWidget);
-      expect(find.text('상대 47%'), findsOneWidget);
-    },
-  );
   const snapshot = JudgeSnapshot(
     phase: RepPhase.descending,
     shoulderDrop: .5,
@@ -106,7 +67,9 @@ void main() {
       isFalse,
     );
   });
-  testWidgets('avatar keeps gauge but not camera-space guide', (tester) async {
+  testWidgets('the camera view keeps the gauge and its camera-space guide', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -114,7 +77,6 @@ void main() {
             controller: null,
             frame: standingFrame(),
             chestSnapshot: snapshot,
-            avatarBuilder: (_, _, _) => const SizedBox(),
           ),
         ),
       ),
@@ -125,15 +87,15 @@ void main() {
           .drawGuide,
       isTrue,
     );
-    await tester.tap(find.byKey(const Key('avatarCameraToggle')));
-    await tester.pumpAndSettle();
+    // The guide line on the camera, and the words; the bar was the
+    // avatar's stand-in for the line.
     expect(
-      tester
-          .widget<ChestHeightOverlay>(find.byType(ChestHeightOverlay))
-          .drawGuide,
-      isFalse,
+      find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is ChestHeightGuidePainter,
+      ),
+      findsOneWidget,
     );
-    expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.text('하강 50% · 어깨 너비 기준'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 }

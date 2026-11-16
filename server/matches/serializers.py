@@ -1,8 +1,9 @@
 import json
+import re
 
 from rest_framework import serializers
 
-from .models import OUTCOMES, REASONS, Match
+from .models import OUTCOMES, REASONS, Match, OnlineBattle
 
 # AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
 # A 30 s round at 10 Hz is well under 100 KiB; nginx lets 1 MiB through.
@@ -10,6 +11,9 @@ MAX_REPORT_BYTES = 512 * 1024
 # Far above what a round can earn, because the game's numbers may be tuned and
 # the app drops an upload the server refuses.
 MAX_SCORE = 100_000
+# Issue codes: lowercase rule names, or "reject." and a reject reason.
+ISSUE_CODE = re.compile(r"[a-z][a-z_]{0,30}(\.[a-zA-Z]{1,40})?")
+MAX_ISSUE_CODES = 30
 
 
 class AwareDateTimeField(serializers.DateTimeField):
@@ -30,6 +34,19 @@ class FeedbackSummarySerializer(serializers.Serializer):
     accuracy = serializers.FloatField(min_value=0, max_value=1, allow_null=True)
     top_issue = serializers.CharField(max_length=80, allow_null=True)
     issue_count = serializers.IntegerField(min_value=0, max_value=100)
+    # Optional: stable issue codes with how often each came up, e.g.
+    # {"reject.insufficientDepth": 3, "elbow_flare": 1}, for the statistics.
+    # An app from before the codes sends none.
+    issues = serializers.DictField(
+        child=serializers.IntegerField(min_value=1, max_value=1000), required=False
+    )
+
+    def validate_issues(self, value):
+        if len(value) > MAX_ISSUE_CODES or any(
+            not ISSUE_CODE.fullmatch(code) for code in value
+        ):
+            raise serializers.ValidationError("bad issue codes")
+        return value
 
 
 # AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
@@ -95,6 +112,9 @@ class MatchInSerializer(serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
+    # Whether the battle server stored it (an online 1v1), not the app.
+    is_online = serializers.SerializerMethodField()
+
     class Meta:
         model = Match
         fields = [
@@ -108,7 +128,15 @@ class MatchSerializer(serializers.ModelSerializer):
             "played_at",
             "outcome",
             "reason",
+            "is_online",
         ]
+
+    def get_is_online(self, match) -> bool:
+        # A list annotates it in its one query; a single match looks it up.
+        known = getattr(match, "is_online", None)
+        if known is not None:
+            return known
+        return OnlineBattle.objects.filter(result_id=match.client_id).exists()
 
 
 # AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park

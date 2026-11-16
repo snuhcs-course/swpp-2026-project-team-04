@@ -95,12 +95,16 @@ void main() {
   });
 
   group('the latest setup, to play again', () {
-    Future<BattleSetup?> lastSetupAgainst(String opponentName) async {
+    Future<BattleSetup?> lastSetupAgainst(
+      String opponentName, {
+      bool? isOnline,
+    }) async {
       repository.profile = UserProfile(
         name: '우현',
         lastMatch: MatchRecord(
           exercise: ExerciseType.squat,
           opponentName: opponentName,
+          isOnline: isOnline,
           myReps: 10,
           opponentReps: 8,
         ),
@@ -134,7 +138,7 @@ void main() {
     });
 
     test(
-      'a person named like a bot reads as that bot: no mode is kept',
+      'a legacy record without a mode falls back to the opponent name',
       () async {
         expect(
           (await lastSetupAgainst(BotDifficulty.beginner.opponentName))!
@@ -149,6 +153,33 @@ void main() {
       expect(setup!.isOnline, isTrue);
       expect(setup.difficulty, isNull);
       expect(setup.exercise, ExerciseType.squat);
+    });
+
+    test('an online opponent with any bot name stays online', () async {
+      for (final name in [
+        'RepBot',
+        ...BotDifficulty.values.map((level) => level.opponentName),
+      ]) {
+        final setup = await lastSetupAgainst(name, isOnline: true);
+        expect(setup!.isOnline, isTrue, reason: name);
+        expect(setup.difficulty, isNull);
+      }
+    });
+
+    test('the stored bot mode wins even when the name is unfamiliar', () async {
+      final setup = await lastSetupAgainst('unknown bot', isOnline: false);
+      expect(setup!.isOnline, isFalse);
+      expect(setup.difficulty, BotDifficulty.expert);
+    });
+
+    test('stored bot modes preserve the named difficulty', () async {
+      for (final level in BotDifficulty.values) {
+        final setup = await lastSetupAgainst(
+          level.opponentName,
+          isOnline: false,
+        );
+        expect(setup!.difficulty, level);
+      }
     });
 
     test('a reload shows the battle played meanwhile', () async {

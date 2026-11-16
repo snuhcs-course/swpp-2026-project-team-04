@@ -4,6 +4,19 @@ import 'game_score.dart';
 import 'match_record.dart';
 import 'matchup.dart';
 
+/// How an online battle ended beyond its [GameEnd], for the result's words.
+/// [GameEnd] keeps its two values: other code switches over it.
+enum BattleDeparture {
+  /// Time ran out or a KO ended it.
+  none,
+
+  /// The opponent left or stayed disconnected too long: the user won.
+  opponentLeft,
+
+  /// The user's own connection stayed down too long: the user lost.
+  myConnectionLost,
+}
+
 /// A battle that ended by time or KO, as the result screen shows it.
 ///
 /// BattleViewModel builds it when the round ends. The result screen receives
@@ -21,6 +34,7 @@ class BattleResult {
     this.decidedOutcome,
     this.roundLength = battleDuration,
     this.form,
+    this.departure = BattleDeparture.none,
   });
 
   final Matchup matchup;
@@ -56,6 +70,10 @@ class BattleResult {
   /// The user's measurements in this battle, for the form feedback. Null
   /// when the battle was built without them.
   final FormReport? form;
+
+  /// Whether a player leaving ended an online battle; [end] is then
+  /// [GameEnd.timeUp].
+  final BattleDeparture departure;
 
   /// What the home screen keeps of this battle.
   MatchRecord get record => MatchRecord(
