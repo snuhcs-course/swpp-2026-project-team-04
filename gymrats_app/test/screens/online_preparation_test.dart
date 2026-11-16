@@ -52,6 +52,13 @@ class _Session extends OnlineBattleSession {
     phase = OnlinePhase.preparing;
     opponent = const OnlinePlayer('opponent', '상대사용자', 'seal');
   }
+  final publishedPoses = <PoseFrame?>[];
+  @override
+  void publishPose(PoseFrame? frame) {
+    publishedPoses.add(frame);
+    super.publishPose(frame);
+  }
+
   final readyRequests = <bool>[];
   var leaves = 0;
 
@@ -130,6 +137,7 @@ void main() {
     double textScale = 1,
     ValueChanged<BattleStageCue>? onCue,
     BattleSetupListener? onSetup,
+    bool personGuard = false,
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = const Size(360, 780);
@@ -150,6 +158,7 @@ void main() {
       estimator: estimator,
       judge: judge ?? FakeRepJudge(),
       phoneTilt: phone,
+      enablePersonGuard: personGuard,
       roundLength: const Duration(days: 1),
     );
     // As in the app, the battle opens over the lobby.
@@ -276,6 +285,45 @@ void main() {
     expect(find.text('결과 화면'), findsOneWidget);
     return results.single;
   }
+
+  testWidgets('experimental online guard pauses and requires confirmation', (
+    tester,
+  ) async {
+    final judge = FakeRepJudge();
+    await open(tester, judge: judge, personGuard: true);
+    await pose(tester);
+    await play(tester);
+    final original = standingFrame();
+    final shifted = PoseFrame(
+      imageWidth: original.imageWidth,
+      imageHeight: original.imageHeight,
+      keypoints: {
+        for (final entry in original.keypoints.entries)
+          entry.key: Keypoint(
+            landmark: entry.key,
+            x: entry.value.x + 300,
+            y: entry.value.y,
+            likelihood: entry.value.likelihood,
+          ),
+      },
+    );
+    judge.closeRep();
+    estimator.frames.add(shifted);
+    camera.emit();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 10));
+    expect(find.text('확인 후 계속'), findsOneWidget);
+    expect(session.publishedPoses.last, isNull);
+    expect(counter.state.validReps, 0);
+    await pose(tester);
+    expect(session.publishedPoses.last, isNull);
+    expect(counter.state.validReps, 0);
+    await tester.tap(find.text('확인 후 계속'));
+    await tester.pump();
+    await pose(tester);
+    expect(counter.state.validReps, 1);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   group('before the start', () {
     testWidgets('the stage draws my character and the one the opponent sent', (

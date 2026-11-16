@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show Size;
 
 import 'package:camera/camera.dart';
@@ -117,5 +118,154 @@ class PoseEstimator {
     return rotationDegrees == 90 || rotationDegrees == 270
         ? Size(h, w)
         : Size(w, h);
+  }
+}
+
+/// A conservative continuity check, not biometric identification.
+///
+/// ML Kit supplies one pose and no identity. Once a user has finished setup,
+/// an abrupt position/size change or prolonged loss suspends scoring until a
+/// person explicitly confirms who is in front of the camera. Similar or
+/// gradual substitutions cannot be distinguished by this geometry alone.
+class PersonContinuityGuard {
+  static const maxGap = Duration(milliseconds: 750);
+  _PersonAnchor? _previous;
+  _PersonAnchor? _candidate;
+  Duration? _lastGood;
+  Duration? _candidateAt;
+  bool _enabled = false;
+  bool needsConfirmation = false;
+  bool get enabled => _enabled;
+
+  /// Camera restarts cannot silently transfer the tracked person.
+  void invalidate() {
+    if (!_enabled) return;
+    needsConfirmation = true;
+    _candidate = null;
+    _candidateAt = null;
+  }
+
+  void begin(PoseFrame? frame, Duration now) {
+    _enabled = true;
+    _previous = frame == null ? null : _PersonAnchor.fromFrame(frame);
+    _candidate = _previous;
+    _lastGood = _previous == null ? null : now;
+    _candidateAt = _lastGood;
+    needsConfirmation = _previous == null;
+  }
+
+  /// False means do not score this frame. A brief partial pose is dropped;
+  /// a longer loss or large jump additionally requires user confirmation.
+  bool accepts(PoseFrame frame, Duration now) {
+    if (!_enabled) return true;
+    final next = _PersonAnchor.fromFrame(frame);
+    _candidate = next;
+    _candidateAt = next == null ? null : now;
+    if (needsConfirmation) return false;
+    final previous = _previous;
+    final lastGood = _lastGood;
+    if (next == null) {
+      if (lastGood == null || now - lastGood > maxGap) {
+        needsConfirmation = true;
+      }
+      return false;
+    }
+    if (previous == null ||
+        lastGood == null ||
+        now - lastGood > maxGap ||
+        now < lastGood ||
+        !previous.plausiblySame(next)) {
+      needsConfirmation = true;
+      return false;
+    }
+    _previous = next;
+    _lastGood = now;
+    return true;
+  }
+
+  /// Latch a stalled stream even when no further frame arrives.
+  bool expire(Duration now) {
+    final last = _lastGood;
+    if (!_enabled ||
+        needsConfirmation ||
+        last == null ||
+        (now >= last && now - last <= maxGap)) {
+      return false;
+    }
+    invalidate();
+    return true;
+  }
+
+  /// The user must verify the camera view; never silently adopt a new pose.
+  bool confirm(Duration now) {
+    final next = _candidate;
+    final at = _candidateAt;
+    if (next == null || at == null || now < at || now - at > maxGap) {
+      return false;
+    }
+    _previous = next;
+    _lastGood = now;
+    needsConfirmation = false;
+    return true;
+  }
+
+  void clear() {
+    _enabled = false;
+    _previous = _candidate = null;
+    _lastGood = _candidateAt = null;
+    needsConfirmation = false;
+  }
+}
+
+class _PersonAnchor {
+  const _PersonAnchor(this.x, this.y, this.width);
+  final double x, y, width;
+
+  static _PersonAnchor? fromFrame(PoseFrame frame) {
+    final l = frame[BodyLandmark.leftShoulder];
+    final r = frame[BodyLandmark.rightShoulder];
+    if (l == null ||
+        r == null ||
+        !l.likelihood.isFinite ||
+        !r.likelihood.isFinite ||
+        l.likelihood < .6 ||
+        r.likelihood < .6 ||
+        !l.x.isFinite ||
+        !l.y.isFinite ||
+        !r.x.isFinite ||
+        !r.y.isFinite ||
+        !frame.imageWidth.isFinite ||
+        !frame.imageHeight.isFinite ||
+        frame.imageWidth <= 0 ||
+        frame.imageHeight <= 0 ||
+        l.x < 0 ||
+        l.x > frame.imageWidth ||
+        l.y < 0 ||
+        l.y > frame.imageHeight ||
+        r.x < 0 ||
+        r.x > frame.imageWidth ||
+        r.y < 0 ||
+        r.y > frame.imageHeight) {
+      return null;
+    }
+    final scale = math.max(frame.imageWidth, frame.imageHeight);
+    final width =
+        math.sqrt(math.pow(l.x - r.x, 2) + math.pow(l.y - r.y, 2)) / scale;
+    if (width < .015) return null;
+    return _PersonAnchor(
+      (l.x + r.x) / 2 / scale,
+      (l.y + r.y) / 2 / scale,
+      width,
+    );
+  }
+
+  bool plausiblySame(_PersonAnchor other) {
+    final distance = math.sqrt(
+      math.pow(x - other.x, 2) + math.pow(y - other.y, 2),
+    );
+    final ratio = other.width / width;
+    return distance <= math.max(.08, math.max(width, other.width)) &&
+        ratio >= .5 &&
+        ratio <= 2.0;
   }
 }

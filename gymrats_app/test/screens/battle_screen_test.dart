@@ -84,6 +84,7 @@ void main() {
     SetupConfig setupConfig = _quickSetup,
     BattleSetupListener? onSetup,
     String? myCharacter,
+    bool personGuard = false,
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = size;
@@ -109,6 +110,7 @@ void main() {
             : null,
         exercise: matchup.exercise,
         phoneTilt: phone,
+        enablePersonGuard: personGuard,
         clock: () => now,
         roundLength: const Duration(days: 1),
       ),
@@ -214,6 +216,45 @@ void main() {
   /// Takes the screen down, so the stage's clock stops with the test.
   Future<void> close(WidgetTester tester) =>
       tester.pumpWidget(const SizedBox());
+
+  for (final matchup in [_pushUp, _squat]) {
+    testWidgets(
+      'experimental guard pauses ${matchup.exercise} battle until confirmation',
+      (tester) async {
+        await open(tester, matchup: matchup, personGuard: true);
+        for (var t = 1.0; t <= 4.0; t += .5) {
+          await frame(tester, t);
+        }
+        expect(viewModel.state.started, isTrue);
+        final original = setupPose();
+        final shifted = PoseFrame(
+          imageWidth: original.imageWidth,
+          imageHeight: original.imageHeight,
+          keypoints: {
+            for (final entry in original.keypoints.entries)
+              entry.key: Keypoint(
+                landmark: entry.key,
+                x: entry.value.x + 300,
+                y: entry.value.y,
+                likelihood: entry.value.likelihood,
+              ),
+          },
+        );
+        judge.closeRep();
+        await frame(tester, 4.2, pose: shifted);
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        expect(stage(tester).myReps, 0);
+        await frame(tester, 4.4, pose: original);
+        expect(stage(tester).myReps, 0);
+        await tester.tap(find.text('확인 후 계속'));
+        await tester.pump();
+        expect(find.text('확인 후 계속'), findsNothing);
+        await frame(tester, 4.6, pose: original);
+        expect(stage(tester).myReps, 1);
+        await close(tester);
+      },
+    );
+  }
 
   group('before the round', () {
     testWidgets('the stage shows my character against RepBot', (tester) async {

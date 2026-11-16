@@ -26,7 +26,8 @@ import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/sound_battle.dart';
-import 'battle_screen.dart' show BattleScreen, BattleSetupListener;
+import 'battle_screen.dart'
+    show BattleScreen, BattleSetupListener, PersonTrackingPauseNotice;
 
 /// An online battle, from the camera preparation to the end: the fighting
 /// stage above and the user's camera below (the battle arena), fed by the
@@ -304,7 +305,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _syncRound();
     final state = _counter.state, frame = state.lastFrame;
     if (state.phase == CounterPhase.running) {
-      session.publishPose(frame);
+      session.publishPose(
+        !state.trackingPaused && frame != null && frame.hasPerson
+            ? frame
+            : null,
+      );
       if (frame != null && !identical(frame, _seen)) {
         _seen = frame;
         _setupStatus = _setup.update(
@@ -347,6 +352,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       _setupStatus = SetupStatus.initial;
       _setupReady = false;
     }
+    if (state.trackingPaused) _setupReady = false;
+    if (_setupReady && !_roundStarted) _counter.lockTrackedPerson();
     if (session.canReady &&
         !_setupReady &&
         session.readyPlayers.contains(session.playerId)) {
@@ -528,16 +535,28 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                       ? _counter.openSettings
                       : _counter.retry,
                 )
-              : BattleCameraView(
-                  controller: _counter.cameraController,
-                  frame: running ? counter.lastFrame : null,
-                  mirror: _counter.isFrontCamera,
-                  chestSnapshot: pushUp && !settingUp ? counter.snapshot : null,
-                  squatSnapshot: !pushUp && !settingUp
-                      ? counter.snapshot
-                      : null,
-                  guide: guide?.widget,
-                  guideFit: guide?.fit ?? BoxFit.cover,
+              : Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    BattleCameraView(
+                      controller: _counter.cameraController,
+                      frame: running ? counter.lastFrame : null,
+                      mirror: _counter.isFrontCamera,
+                      chestSnapshot: pushUp && !settingUp
+                          ? counter.snapshot
+                          : null,
+                      squatSnapshot: !pushUp && !settingUp
+                          ? counter.snapshot
+                          : null,
+                      guide: guide?.widget,
+                      guideFit: guide?.fit ?? BoxFit.cover,
+                    ),
+                    if (counter.trackingPaused && !session.terminal)
+                      PersonTrackingPauseNotice(
+                        onConfirm: _counter.confirmTrackedPerson,
+                        roundStarted: _roundStarted,
+                      ),
+                  ],
                 ),
           onLeave: () => unawaited(_exit()),
           hint: setup ? _setupHint : _roundHint,

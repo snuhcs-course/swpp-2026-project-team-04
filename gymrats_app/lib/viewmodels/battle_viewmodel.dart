@@ -567,9 +567,11 @@ class BattleViewModel extends ChangeNotifier {
         });
       }
     }
-    final valid = squat
-        ? status.reason == SetupReason.ready && aligned
-        : status.isReady;
+    final valid =
+        !counterState.trackingPaused &&
+        (squat
+            ? status.reason == SetupReason.ready && aligned
+            : status.isReady);
     if (!valid) {
       _readySince = null;
       final displayStatus = squat && !aligned && status.isReady
@@ -588,6 +590,14 @@ class BattleViewModel extends ChangeNotifier {
           clearStartIn: true,
         ),
       );
+      return;
+    }
+    // Preserve the person who completed setup through the countdown.
+    counter.lockTrackedPerson();
+    // Locking may synchronously discover that the setup anchor is unusable.
+    if (counter.state.trackingPaused) {
+      _readySince = null;
+      _setState(_state.copyWith(clearStartIn: true));
       return;
     }
     final left = setup.config.autoStartDelay - (now - (_readySince ??= now));

@@ -828,6 +828,65 @@ void main() {
     );
   });
 
+  test(
+    'an unusable setup anchor never starts an experimental guarded round',
+    () async {
+      final phone = PhoneTiltMonitor(samples: const Stream.empty())
+        ..isPropped = true
+        ..isStill = true;
+      final guardedCounter = RepCounterViewModel(
+        camera: camera,
+        estimator: estimator,
+        judge: judge,
+        clock: () => now,
+        phoneTilt: phone,
+        enablePersonGuard: true,
+        roundLength: const Duration(days: 1),
+      );
+      final checker = SetupChecker(
+        exercise: ExerciseType.pushUp,
+        config: const SetupConfig(
+          readyDelay: Duration.zero,
+          dropDelay: Duration(seconds: 1),
+          autoStartDelay: Duration.zero,
+        ),
+        clock: () => now,
+      );
+      final battle = BattleViewModel(
+        matchup: _matchup,
+        counter: guardedCounter,
+        opponent: opponent,
+        repository: repository,
+        sound: sound,
+        setup: checker,
+        clock: () => now,
+      );
+      await battle.start();
+      // Ready may be retained during dropDelay even if the next frame cannot
+      // provide the guard's shoulder anchor.
+      expect(checker.update(standingFrame()).isReady, isTrue);
+      final good = standingFrame();
+      estimator.frames.add(
+        PoseFrame(
+          imageWidth: good.imageWidth,
+          imageHeight: good.imageHeight,
+          keypoints: {
+            for (final e in good.keypoints.entries)
+              if (e.key != BodyLandmark.leftShoulder &&
+                  e.key != BodyLandmark.rightShoulder)
+                e.key: e.value,
+          },
+        ),
+      );
+      camera.emit();
+      await pumpEventQueue();
+      expect(guardedCounter.state.trackingPaused, isTrue);
+      expect(battle.state.started, isFalse);
+      expect(battle.state.startIn, isNull);
+      battle.dispose();
+    },
+  );
+
   test('squat battle requires a continuous aligned 3-second hold', () async {
     const squatMatchup = Matchup(
       exercise: ExerciseType.squat,
