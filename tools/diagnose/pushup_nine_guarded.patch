@@ -1,0 +1,150 @@
+diff --git a/gymrats_app/lib/services/pose/pose_metrics.dart b/gymrats_app/lib/services/pose/pose_metrics.dart
+--- a/gymrats_app/lib/services/pose/pose_metrics.dart
++++ b/gymrats_app/lib/services/pose/pose_metrics.dart
+@@ -14,6 +14,7 @@
+     this.noseY,
+     this.shoulderWidth,
+     this.projectedArmHeight,
++    this.handsBelowShoulders = false,
+     this.tilt,
+     this.hipY,
+     this.torsoDrop,
+@@ -44,6 +45,7 @@
+   /// Wrist midpoint below the shoulder midpoint, in shoulder widths. Both
+   /// wrists must be visible to calibrate the vertical travel at the top.
+   final double? projectedArmHeight;
++  final bool handsBelowShoulders;
+ 
+   /// Absolute tilt of the shoulder line away from horizontal, in degrees.
+   ///
+@@ -252,6 +254,8 @@
+     rightElbowAngle: right,
+     noseY: noseY,
+     shoulderWidth: width,
++    handsBelowShoulders: leftWrist != null && rightWrist != null && width >= 1e-6 &&
++        leftWrist.y > leftShoulder.y && rightWrist.y > rightShoulder.y,
+     projectedArmHeight: leftWrist == null || rightWrist == null
+         ? null
+         : _overWidth(
+diff --git a/gymrats_app/lib/services/pose/rep_judge.dart b/gymrats_app/lib/services/pose/rep_judge.dart
+--- a/gymrats_app/lib/services/pose/rep_judge.dart
++++ b/gymrats_app/lib/services/pose/rep_judge.dart
+@@ -53,6 +53,7 @@
+     this.projectedArmScale = false,
+     this.elbowDrivenDepth = false,
+     this.elevatedViewTorsoDrop,
++    this.guardElevated = false,
+     this.requireViewFeet = true,
+     this.smallCycleDepth,
+     this.smallCycleKnees = false,
+@@ -272,6 +273,7 @@
+   /// Maximum top-pose hip height below the shoulders (in shoulder widths)
+   /// for using shorter travel thresholds. Null keeps floor-camera thresholds.
+   final double? elevatedViewTorsoDrop;
++  final bool guardElevated;
+   final bool requireViewFeet;
+ 
+   /// Additional feedback for a short but visibly articulated down/up cycle.
+@@ -410,6 +412,10 @@
+   double _maxPhaseDepth = 0;
+   double _maxDepth = 0;
+   double _highestSinceBottom = 0;
++  bool _ordinaryBottom = false;
++  bool _sawStraightAtBottom = false;
++  double? _bentAtBottom;
++  bool get _needsVisibleCycle => config.guardElevated && _travelScale < 1 && !_ordinaryBottom;
+   double? _minElbow;
+   double _maxTilt = 0;
+   double? _previousTilt;
+@@ -575,6 +581,7 @@
+       _shallowArmDip = true;
+     }
+     _watchLessArm(raw);
++    _observeBottom(depth, shoulderDrop, elbow, raw);
+     var event = _advance(
+       now,
+       phaseDepth,
+@@ -674,8 +681,8 @@
+       _highestSinceBottom = math.min(_highestSinceBottom, phaseDepth);
+       final armsExtended =
+           (elbow == null || elbow >= config.topAngle) && _lessArmLockedOut();
+-      if (phaseDepth <= _topDepth && armsExtended) {
+-        final event = _tooBrief(now) ? null : _complete(now);
++      if (phaseDepth <= _topDepth && armsExtended && _returnObserved) {
++        final event = _tooBrief(now) ? null : _closeAtTop(now);
+         _finishAtTop(elbow);
+         return event;
+       }
+@@ -703,6 +710,39 @@
+     return null;
+   }
+ 
++  void _observeBottom(double depth, double? shoulderDrop, double? elbow, PoseMetrics raw) {
++    if (!_needsVisibleCycle || (_phase != RepPhase.descending && _phase != RepPhase.bottom)) return;
++    // A rep reaching the original bottom still follows the original lockout
++    // rules, even if the camera briefly loses the wrists at full extension.
++    final elbowsDeep = config.deepElbowAngle > 0 && elbow != null && elbow <= config.deepElbowAngle;
++    if ((depth >= config.bottomDepth && (shoulderDrop == null || shoulderDrop >= config.minShoulderDrop)) ||
++        (depth >= config.shallowDepth && elbowsDeep)) {
++      _ordinaryBottom = true;
++      return;
++    }
++
++    // At the reduced depth a head-only dip is insufficient. Both arms must
++    // actually bend while the shoulders descend in that same visible frame.
++    if (shoulderDrop == null || shoulderDrop < config.minShoulderDrop * _travelScale ||
++        (depth < config.bottomDepth * _travelScale && !(depth >= config.shallowDepth * _travelScale && elbowsDeep))) return;
++    final left = raw.leftElbowAngle, right = raw.rightElbowAngle;
++    if (left == null || right == null) return;
++    final straighter = math.max(left, right);
++    if (straighter <= 150) {
++      _bentAtBottom = math.min(_bentAtBottom ?? straighter, straighter);
++    }
++    if (math.min(left, right) >= config.straightArmAngle) _sawStraightAtBottom = true;
++  }
++
++  /// A reduced-depth attempt must show the return of both arms. If the
++  /// bottom itself was unobserved, it can close only with a rejection.
++  bool get _returnObserved {
++    final bent = _bentAtBottom;
++    final arm = _lessArm;
++    return !_needsVisibleCycle || bent == null ||
++        (arm != null && arm >= config.topAngle && arm - bent >= 14);
++  }
++
+   /// The less extended arm in this frame, or null without both elbows.
+   void _watchLessArm(PoseMetrics raw) {
+     final left = raw.leftElbowAngle, right = raw.rightElbowAngle;
+@@ -775,6 +815,7 @@
+     }
+     final torsoDrop = raw.torsoDrop;
+     if (config.elevatedViewTorsoDrop != null &&
++        (!config.guardElevated || raw.handsBelowShoulders) &&
+         torsoDrop != null &&
+         (!config.requireViewFeet || raw.ankleKneeGap != null) &&
+         projectedArmHeight != null &&
+@@ -1059,6 +1100,9 @@
+   }
+ 
+   void _beginAttempt(Duration now, double depth) {
++    _ordinaryBottom = false;
++    _sawStraightAtBottom = false;
++    _bentAtBottom = null;
+     _phase = RepPhase.descending;
+     _shallowArmDip = false;
+     _maxPhaseDepth = depth;
+@@ -1097,6 +1141,14 @@
+   bool _tooBrief(Duration now) {
+     final started = _attemptStarted;
+     return started != null && now - started < config.noiseFloor;
++  }
++
++  RepEvent _closeAtTop(Duration now) {
++    if (_needsVisibleCycle && _bentAtBottom == null) {
++      final straight = _sawStraightAtBottom && _minElbow != null && _minElbow! >= config.straightArmAngle;
++      return _emit(now, straight ? RejectReason.armsStraight : RejectReason.insufficientDepth);
++    }
++    return _complete(now);
+   }
+ 
+   RepEvent _complete(Duration now) {

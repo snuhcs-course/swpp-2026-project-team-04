@@ -55,3 +55,13 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 - Codex evaluated isolated push-up timing and pose thresholds, added synthetic 30 Hz tests and shortened the initial hold from 300 to 250 ms. The 172-degree lockout and the belly boundary remain unchanged because experimental relaxations produced an incorrect count or reason regressions.
 - An independent read-only Codex review found that the original change also cleared the knee latch early when hips were hidden. Codex added a reproducing test and retained the 300 ms minimum for latch release; the reviewer approved the corrected limited scope. Detailed commands and results are in the personal testing notes. No manual source-code fixes or real-device UAT were reported.
 - The user asked for S1 before the next build; the full S1 lockout-margin and recorded-video accuracy goals remain incomplete. These prompts are recorded as visible task inputs, not a complete session export.
+
+
+## S1 follow-up — mobile pose comparison and knee forest (2026-11-16)
+
+- Codex compared ML Kit Accurate/Base and RTMPose-s/m using fixed source-group splits, then exported the selected depth-four forest into the local opt-in push-up judge. The comparison used 2,706 presegmented normal/knee intervals labelled by earlier Codex visual review. The testing notes and pushup-mobile-pose-comparison.md retain exact counts, provenance and limitations.
+- The user stopped the Sapiens2-5B investigation to prioritize low-latency phone execution, requested installation, and selected the new comparison build after the agent disclosed worse results on 32 recorded-phone sequences. The input prompts below document these decisions.
+- Codex automated same-frame inference, grouped evaluation, Python/Dart parity and Android installation. All 2,706 exported classifier decisions matched. Time savings were not measured.
+- Independent read-only Codex review found a microsecond truncation error in live attempt boundaries and a shared Android metadata label that incorrectly described ML Kit preprocessing. Codex corrected both. Native replay exposed weaker live-counter results despite the favorable presegmented benchmark. The report retains this contrary evidence.
+- The first recommendation based on clip-level scores required revision after live-counter replay. The user chose a comparison build with the known regression, rather than treating the benchmark as proof of improved live accuracy.
+- Human manual source-code edits were not reported. Codex performed the implementation and fixes. The user authorized publication in the existing S1 PR. The selected prompt record is incomplete as a full iteration-wide session export.
