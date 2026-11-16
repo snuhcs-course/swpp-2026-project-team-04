@@ -34,11 +34,15 @@ import '../screens/setup_screen.dart';
 import '../services/device/phone_tilt.dart';
 import '../services/pose/camera_service.dart';
 import '../services/pose/pose_estimator.dart';
+import '../services/pose/pose_metrics.dart';
+import '../services/pose/push_up_judge_adapter.dart';
 import '../services/pose/rep_judge.dart';
 import '../services/pose/setup_checker.dart';
+import '../theme/app_theme.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../viewmodels/setup_viewmodel.dart';
 import '../widgets/pose_avatar_toggle_view.dart';
+import '../widgets/pose_camera_view.dart';
 
 /// Keys the widget tests look up.
 const validRepsKey = Key('validReps');
@@ -65,7 +69,515 @@ const expectedResultKey = Key('expectedResult');
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  runApp(const RepJudgeDemoApp());
+  runApp(
+    const bool.fromEnvironment('KNEE_CONTACT_DEMO')
+        ? const KneeContactDemoApp()
+        : const RepJudgeDemoApp(),
+  );
+}
+
+/// Standalone, continuous image-based knee contact inspection.
+/// Build this entry point with --dart-define=KNEE_CONTACT_DEMO=true.
+class KneeContactDemoApp extends StatelessWidget {
+  const KneeContactDemoApp({
+    super.key,
+    this.viewModel,
+    this.clock,
+    this.phoneTilt,
+  });
+
+  final SetupViewModel? viewModel;
+  final Duration Function()? clock;
+  final PhoneTiltMonitor? phoneTilt;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: '무릎 접촉 확인',
+    theme: AppTheme.light,
+    home: _KneeContactScreen(
+      viewModel: viewModel,
+      clock: clock,
+      phoneTilt: phoneTilt,
+    ),
+  );
+}
+
+class _KneeContactScreen extends StatefulWidget {
+  const _KneeContactScreen({this.viewModel, this.clock, this.phoneTilt});
+
+  final SetupViewModel? viewModel;
+  final Duration Function()? clock;
+  final PhoneTiltMonitor? phoneTilt;
+
+  @override
+  State<_KneeContactScreen> createState() => _KneeContactScreenState();
+}
+
+class _KneeContactScreenState extends State<_KneeContactScreen>
+    with WidgetsBindingObserver {
+  final _tracker = KneeContactTracker();
+  final _watch = Stopwatch()..start();
+  late final SetupViewModel _viewModel;
+  late final PhoneTiltMonitor _phoneTilt;
+  late final Duration Function() _clock;
+  late final Timer _freshnessTimer;
+  KneeContactReading? _reading;
+  PoseFrame? _frame;
+  PoseFrame? _lastSourceFrame;
+  Duration? _receivedAt;
+  GravitySample? _referenceGravity;
+  Size? _referenceImageSize;
+  Duration? _movingSince;
+  Timer? _captureTimer;
+  int _captureSeconds = 0;
+  String _captureMessage = '두 기준 자세를 각각 저장해 주세요.';
+
+  @override
+  void initState() {
+    super.initState();
+    _clock = widget.clock ?? () => _watch.elapsed;
+    _phoneTilt = widget.phoneTilt ?? PhoneTiltMonitor.platform();
+    _viewModel =
+        widget.viewModel ??
+        SetupViewModel(exercise: ExerciseType.pushUp, phoneTilt: _phoneTilt);
+    _viewModel.enableDiagnosticMode();
+    _viewModel.addListener(_onFrame);
+    WidgetsBinding.instance.addObserver(this);
+    _freshnessTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      final received = _receivedAt;
+      if (received != null &&
+          (_clock() - received >= const Duration(milliseconds: 750))) {
+        setState(_clearReading);
+      }
+    });
+    unawaited(_viewModel.start());
+  }
+
+  void _clearReading() {
+    _tracker.reset();
+    _reading = null;
+    _frame = null;
+    _receivedAt = null;
+  }
+
+  void _clearReferences([String message = '두 기준 자세를 각각 저장해 주세요.']) {
+    _captureTimer?.cancel();
+    _captureSeconds = 0;
+    _tracker.resetCalibration();
+    _referenceGravity = null;
+    _referenceImageSize = null;
+    _movingSince = null;
+    _captureMessage = message;
+    _clearReading();
+  }
+
+  void _capture(KneeContactState target) {
+    final pose = target == KneeContactState.lifted ? '무릎을 떼고' : '무릎을 바닥에 대고';
+    setState(() {
+      _captureSeconds = 3;
+      _captureMessage = '$pose 유지해 주세요.';
+    });
+    _captureTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _captureSeconds--;
+        if (_captureSeconds > 0) return;
+        timer.cancel();
+        final saved = _tracker.calibrate(target);
+        if (saved) {
+          _referenceGravity ??= _phoneTilt.lastSample;
+          _referenceImageSize = Size(_frame!.imageWidth, _frame!.imageHeight);
+          if (!_tracker.hasLiftedReference || !_tracker.hasTouchingReference) {
+            _captureMessage = '저장했어요. 나머지 기준 자세도 저장해 주세요.';
+          } else if (_tracker.hasSeparableReferences) {
+            _captureMessage = '기준 저장 완료 · 폰 위치를 유지해 주세요.';
+          } else {
+            _captureMessage = '기준 저장 완료 · 두 자세의 차이가 작아 판정 신호가 약해요.';
+          }
+          _clearReading();
+        } else {
+          _captureMessage = switch (_tracker.lastCalibrationIssue) {
+            KneeCalibrationIssue.noVisiblePose =>
+              '저장 실패 · 필요한 관절이 안 보여요. 전신이 보이게 맞춰 주세요.',
+            KneeCalibrationIssue.insufficientSamples =>
+              '저장 실패 · 자세를 잡고 1초 이상 유지해 주세요.',
+            KneeCalibrationIssue.unstable => '저장 실패 · 몸을 잠깐 멈추고 다시 저장해 주세요.',
+            _ => '저장 실패 · 기준 자세를 다시 저장해 주세요.',
+          };
+        }
+      });
+    });
+  }
+
+  bool _phoneMoved(Duration now) {
+    final baseline = _referenceGravity;
+    final gravity = _phoneTilt.lastSample;
+    if (baseline == null || gravity == null) return false;
+    final dx = gravity.x - baseline.x;
+    final dy = gravity.y - baseline.y;
+    final dz = gravity.z - baseline.z;
+    final moving =
+        dx * dx + dy * dy + dz * dz > 2.25 || gravity.gyroSpeed > 1.2;
+    if (!moving) {
+      _movingSince = null;
+      return false;
+    }
+    return now - (_movingSince ??= now) >= const Duration(milliseconds: 400);
+  }
+
+  void _onFrame() {
+    if (!mounted) return;
+    setState(() {
+      final state = _viewModel.state;
+      if (state.phase != SetupPhase.running) {
+        _clearReferences();
+        _lastSourceFrame = null;
+        return;
+      }
+      final frame = state.lastFrame;
+      if (frame == null || identical(frame, _lastSourceFrame)) return;
+      if (_phoneMoved(_clock()) ||
+          (_referenceImageSize != null &&
+              (_referenceImageSize!.width != frame.imageWidth ||
+                  _referenceImageSize!.height != frame.imageHeight))) {
+        _clearReferences('카메라 구도가 바뀌었어요. 기준을 다시 저장해 주세요.');
+      }
+      _lastSourceFrame = frame;
+      _frame = frame;
+      _receivedAt = _clock();
+      _reading = _tracker.update(frame, _receivedAt!);
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        setState(() => _clearReferences());
+        unawaited(_viewModel.pause());
+      case AppLifecycleState.resumed:
+        unawaited(_viewModel.resume());
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    _freshnessTimer.cancel();
+    _captureTimer?.cancel();
+    _watch.stop();
+    WidgetsBinding.instance.removeObserver(this);
+    _viewModel.removeListener(_onFrame);
+    _viewModel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = _viewModel.state;
+    final status = _reading?.state ?? KneeContactState.unknown;
+    final running = state.phase == SetupPhase.running;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('무릎 접촉 확인'),
+        actions: [
+          IconButton(
+            key: const Key('resetKneeReferences'),
+            tooltip: '기준 초기화',
+            icon: const Icon(Icons.restart_alt),
+            onPressed: () => setState(() => _clearReferences()),
+          ),
+          if (running && _viewModel.canSwitchCamera)
+            IconButton(
+              tooltip: '카메라 전환',
+              icon: const Icon(Icons.cameraswitch),
+              onPressed: () => _viewModel.switchCamera(),
+            ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.s16),
+              color: _kneeColor(status),
+              child: Text(
+                _statusLabel(status),
+                key: const Key('kneeContactStatus'),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Expanded(
+              child: running
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        PoseCameraView(
+                          controller: _viewModel.cameraController,
+                          frame: _frame,
+                          mirror: _viewModel.isFrontCamera,
+                          fit: BoxFit.contain,
+                        ),
+                        if (_frame case final frame?)
+                          CustomPaint(
+                            painter: _KneeContactPainter(
+                              frame,
+                              _reading,
+                              _viewModel.isFrontCamera,
+                            ),
+                          ),
+                      ],
+                    )
+                  : _cameraMessage(state),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.s16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _sideCard('왼쪽', _reading?.left)),
+                      const SizedBox(width: AppSpacing.s8),
+                      Expanded(child: _sideCard('오른쪽', _reading?.right)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.s12),
+                  Text(
+                    _captureSeconds > 0
+                        ? '$_captureSeconds초 후 저장 · $_captureMessage'
+                        : _captureMessage,
+                    key: const Key('kneeCalibrationMessage'),
+                    textAlign: TextAlign.center,
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          key: const Key('captureKneesLifted'),
+                          onPressed: running && _captureSeconds == 0
+                              ? () => _capture(KneeContactState.lifted)
+                              : null,
+                          child: Text(
+                            '${_tracker.hasLiftedReference ? '✓ ' : ''}무릎 뗀 자세 저장',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.s8),
+                      Expanded(
+                        child: OutlinedButton(
+                          key: const Key('captureKneesTouching'),
+                          onPressed: running && _captureSeconds == 0
+                              ? () => _capture(KneeContactState.touching)
+                              : null,
+                          child: Text(
+                            '${_tracker.hasTouchingReference ? '✓ ' : ''}무릎 댄 자세 저장',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Text(
+                    '손목·무릎·발목이 함께 보이게 해 주세요.\n'
+                    '영상 기반 추정 · 선은 손목–발목 기준선',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _statusLabel(KneeContactState status) {
+    if (status == KneeContactState.touching) return '무릎 닿음 추정';
+    if (status == KneeContactState.lifted) return '무릎 떠 있음 추정';
+    final frame = _frame;
+    if (frame == null) return '관절 인식 대기';
+    if (!frame.hasPerson) return '사람이 보이지 않아요';
+    final issues = [_reading?.left.issue, _reading?.right.issue];
+    if (issues.contains(KneeContactIssue.missingJoints)) {
+      final missing = [
+        ...?_reading?.left.missingJoints,
+        ...?_reading?.right.missingJoints,
+      ];
+      return missing.isEmpty ? '어깨가 구분되게 맞춰 주세요' : '필요한 관절이 안 보여요';
+    }
+    if (!_tracker.hasLiftedReference || !_tracker.hasTouchingReference) {
+      return '기준 자세를 저장해 주세요';
+    }
+    if (issues.contains(KneeContactIssue.outsideReference)) {
+      return '저장한 자세와 달라요';
+    }
+    if (issues.contains(KneeContactIssue.ambiguous)) return '두 자세를 구분하기 어려워요';
+    return '자세를 잠깐 유지해 주세요';
+  }
+
+  Widget _sideCard(String label, KneeContactSideReading? reading) => Container(
+    padding: const EdgeInsets.all(AppSpacing.s12),
+    decoration: BoxDecoration(
+      color: _kneeColor(reading?.state ?? KneeContactState.unknown),
+      borderRadius: BorderRadius.circular(AppRadius.small),
+    ),
+    child: Column(
+      children: [
+        Text(
+          '$label 무릎 · ${switch (reading?.state) {
+            KneeContactState.touching => '닿음 추정',
+            KneeContactState.lifted => '떠 있음 추정',
+            _ => switch (reading?.issue) {
+              KneeContactIssue.missingReference => '기준 미저장',
+              KneeContactIssue.missingJoints => reading!.missingJoints.isEmpty ? '어깨 간격 확인 필요' : '관절 인식 부족',
+              KneeContactIssue.ambiguous => '중간 자세',
+              KneeContactIssue.outsideReference => '기준과 다른 자세',
+              KneeContactIssue.stabilizing => '자세 확인 중',
+              _ => '관절 인식 대기',
+            },
+          }}',
+          textAlign: TextAlign.center,
+        ),
+        if (reading != null && reading.missingJoints.isNotEmpty)
+          Text(
+            '${reading.missingJoints.map(_jointLabel).toSet().join('·')} 확인 필요',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        Text(
+          '높이 비율 ${reading?.clearance?.toStringAsFixed(2) ?? '—'}\n'
+          '무릎 각도 ${reading?.kneeAngle?.toStringAsFixed(0) ?? '—'}°',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    ),
+  );
+
+  static String _jointLabel(BodyLandmark joint) => switch (joint) {
+    BodyLandmark.leftShoulder || BodyLandmark.rightShoulder => '어깨',
+    BodyLandmark.leftWrist || BodyLandmark.rightWrist => '손목',
+    BodyLandmark.leftHip || BodyLandmark.rightHip => '골반',
+    BodyLandmark.leftKnee || BodyLandmark.rightKnee => '무릎',
+    BodyLandmark.leftAnkle || BodyLandmark.rightAnkle => '발목',
+    _ => '관절',
+  };
+
+  Widget _cameraMessage(SetupState state) {
+    if (state.phase == SetupPhase.starting ||
+        state.phase == SetupPhase.paused) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final denied = state.phase == SetupPhase.permissionDenied;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.s24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(denied ? '카메라 권한을 허용해 주세요.' : '카메라 인식을 다시 시작해 주세요.'),
+            if (denied)
+              TextButton(
+                onPressed: _viewModel.openSettings,
+                child: const Text('설정 열기'),
+              ),
+            TextButton(onPressed: _viewModel.start, child: const Text('다시 시도')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Color _kneeColor(KneeContactState state) => switch (state) {
+  KneeContactState.touching => AppColors.warning,
+  KneeContactState.lifted => AppColors.accent,
+  KneeContactState.unknown => AppColors.cardHigh,
+};
+
+class _KneeContactPainter extends CustomPainter {
+  const _KneeContactPainter(this.frame, this.reading, this.mirror);
+
+  final PoseFrame frame;
+  final KneeContactReading? reading;
+  final bool mirror;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (!frame.imageWidth.isFinite ||
+        !frame.imageHeight.isFinite ||
+        frame.imageWidth <= 0 ||
+        frame.imageHeight <= 0) {
+      return;
+    }
+    final source = Size(frame.imageWidth, frame.imageHeight);
+    final fitted = applyBoxFit(BoxFit.contain, source, size);
+    final target = Alignment.center.inscribe(
+      fitted.destination,
+      Offset.zero & size,
+    );
+    Offset point(Keypoint p) => Offset(
+      target.left +
+          (mirror ? 1 - p.x / source.width : p.x / source.width) * target.width,
+      target.top + p.y / source.height * target.height,
+    );
+    final line = Paint()
+      ..color = AppColors.onInk
+      ..strokeWidth = 2;
+    for (final (wrist, knee, ankle, state) in [
+      (
+        BodyLandmark.leftWrist,
+        BodyLandmark.leftKnee,
+        BodyLandmark.leftAnkle,
+        reading?.left.state,
+      ),
+      (
+        BodyLandmark.rightWrist,
+        BodyLandmark.rightKnee,
+        BodyLandmark.rightAnkle,
+        reading?.right.state,
+      ),
+    ]) {
+      final hand = frame[wrist];
+      final joint = frame[knee];
+      final foot = frame[ankle];
+      bool visible(Keypoint? p) =>
+          p != null &&
+          p.likelihood >= .65 &&
+          p.x.isFinite &&
+          p.y.isFinite &&
+          p.x >= 0 &&
+          p.x <= source.width &&
+          p.y >= 0 &&
+          p.y <= source.height;
+      if (visible(hand) && visible(foot)) {
+        canvas.drawLine(point(hand!), point(foot!), line);
+      }
+      if (visible(joint)) {
+        final position = point(joint!);
+        canvas.drawCircle(position, 11, Paint()..color = AppColors.ink);
+        canvas.drawCircle(
+          position,
+          8,
+          Paint()..color = _kneeColor(state ?? KneeContactState.unknown),
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_KneeContactPainter oldDelegate) =>
+      oldDelegate.frame != frame ||
+      oldDelegate.reading != reading ||
+      oldDelegate.mirror != mirror;
 }
 
 /// What a recorded set is meant to show. Each kind that is a cheat names
@@ -1249,7 +1761,10 @@ class _CounterPageState extends State<_CounterPage>
             ),
           ),
         ),
-        judge: args.judge,
+        exerciseJudge: PushUpJudgeAdapter(
+          args.judge,
+          phoneTilt: args.phoneTilt,
+        ),
         phoneTilt: args.phoneTilt,
         clock: args.clock,
         roundLength: args.setup.roundLength,

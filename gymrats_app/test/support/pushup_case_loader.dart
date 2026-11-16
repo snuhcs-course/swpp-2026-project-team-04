@@ -163,10 +163,12 @@ class CaseResult {
 
 /// Feeds [recording] to a fresh [RepJudge] the way the counter did: each
 /// frame at the time the judge read, an [FrameMark.abandon] where the
-/// counter abandoned, and the phone check on each closed rep.
+/// counter abandoned, its measured phone angle, and the phone check on each
+/// closed rep. Older recordings without sensor samples retain the visual path.
 CaseResult replay(
   PushUpRecording recording, {
   RepJudgeConfig config = const RepJudgeConfig(),
+  bool useRecordedTilt = true,
 }) {
   var now = Duration.zero;
   final judge = RepJudge(config: config, clock: () => now);
@@ -179,7 +181,8 @@ CaseResult replay(
     final pose = frame.pose;
     if (pose == null) continue;
     now = frame.at;
-    final event = judge.update(pose).event;
+    final tilt = useRecordedTilt && !frame.phoneMoved ? frame.phoneTilt : null;
+    final event = judge.updateWithPhoneTilt(pose, tilt).event;
     if (event != null) {
       events.add(rejectIfPhoneMoved(event, phoneMoved: frame.phoneMoved));
     }
