@@ -74,3 +74,10 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 ## S2 experimental continuity warning, 2026-11-16
 - At the user's request, Codex prepared S2 separately before S1 merged; the user confirmed owner/PM agreement for the affected battle and counter files. ML Kit poses do not provide person identity, so the default-off continuity warning is explicitly a prototype rather than a completed identity guarantee.
 - Independent read-only Codex review identified retry, stream-stall, setup transition, geometry validation, and stale online-publication risks. Codex corrected these cases and added regressions. The physical two-person scenario and the threshold need independent labels and device UAT. No human manual code fix was reported. User prompts in the personal log are limited to this visible task and consent; the complete iteration transcript remains TODO.
+
+### S2 review-ready publication, 2026-11-16
+
+- The user requested completion of the existing S1/S2 pull requests and removal of Draft status. Codex verified S2's current main ancestry, reran analysis and seven focused suites, and refreshed the English PR description and personal evidence. The exact request is recorded in the prompt log.
+- Serial coverage collection succeeded after the earlier VM-service failure. All 258 selected tests passed, and each changed file exceeded its layer target. The personal testing notes contain the counts and reproducible command.
+- Independent read-only Codex review found no actionable defects in the current opt-in prototype. Its review covered confirmation freshness, lifecycle/retry behavior, setup handoff and withheld online pose publication. Physical identity-retention efficacy and full-suite validation with the feature globally enabled remain open.
+- This publication pass changed documentation. Human manual source edits and measured time savings were not reported. The full-iteration transcript and team-wide interaction-history review remain pending.

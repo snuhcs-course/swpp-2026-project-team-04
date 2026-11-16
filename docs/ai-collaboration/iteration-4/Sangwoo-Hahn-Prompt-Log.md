@@ -179,3 +179,11 @@ The following input is visible in this chat; it is not a complete session export
 
 - 그럼 S1 개선 내용을 기존 PR에 반영하고 충돌 해결해줘. S2도 구현하고 검증해서 별도 PR 올려줘.
 - 네, 소유자 또는 PM이 동의했어요
+
+## S1/S2 PR completion request, 2026-11-16
+
+The following user input requested review-ready updates to the existing pull requests. The original wording is retained. This entry covers the visible completion request.
+
+```text
+지금 다른 채팅에서 S1과 S2를 draft 상태로 각각 PR 올렸는데 이걸 변경해서 PR 완성하고 draft 해제해줘.
+```

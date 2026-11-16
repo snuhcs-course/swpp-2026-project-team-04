@@ -98,3 +98,43 @@ Unchanged Model/View and server layers were not separately measured for this fix
 - No independently labelled two-person tracking/repetition dataset or physical-device UAT was available. The approximate 1,464-video landmark-stream screening has no true/false-positive labels and is not an accuracy measurement; details are in person-behind-findings.md.
 
 - Final code verification: `flutter analyze --no-pub` passed; `flutter test --no-pub --concurrency=4 --reporter expanded` passed 3,239 tests with 10 existing skips. A scoped coverage collection failed when the Dart VM service disappeared, so no new coverage percentage is claimed. The server was unchanged.
+
+### S2 review-ready verification, 2026-11-16
+
+Code verified at `992de85`, with current main `fe1aad1` already present. The subsequent publication update changes these personal notes only.
+
+```sh
+cd gymrats_app
+flutter analyze --no-pub
+flutter test --no-pub --coverage --concurrency=1 --reporter expanded test/services/pose/pose_estimator_test.dart test/services/pose/person_behind_estimator_test.dart test/viewmodels/rep_counter_viewmodel_test.dart test/viewmodels/battle_viewmodel_test.dart test/screens/battle_screen_test.dart test/screens/online_preparation_test.dart test/design_tokens_test.dart
+```
+
+- Analysis completed with zero issues. The seven-file regression run passed 258 tests, with zero failures and zero skips. Serial coverage collection succeeded and supersedes the earlier failed scoped collection.
+- The existing full-suite result on this code remains 3,239 passed and 10 existing skips. This publication pass reran the seven selected suites. Dedicated widget tests enable the guard through constructor injection for AI push-up, AI squat and online push-up.
+- The earlier globally forced-on run produced 47 failures. Full-suite validation with `S2_PERSON_GUARD=true` remains open. The experimental build flag defaults to false.
+- An independent read-only Codex reviewer inspected the current diff, guard lifecycle, setup handoff and online publication. It found no actionable defects within the opt-in prototype scope. The reviewer used source inspection and the author's test evidence.
+- Physical two-person UAT, identity-labelled video replay, and missed/extra-repetition rates remain open. Similar or gradual person substitution can pass the geometry check. S1 PR #69 remains the prerequisite for merging S2 PR #72.
+
+#### Changed-file line coverage
+
+| Layer / file | Covered / executable | Coverage | Target | Met |
+|---|---:|---:|---:|---|
+| Service / pose_estimator.dart | 134 / 136 | 98.53% | 85% | yes |
+| ViewModel / rep_counter_viewmodel.dart | 338 / 356 | 94.94% | 90% | yes |
+| ViewModel / battle_viewmodel.dart | 320 / 324 | 98.77% | 90% | yes |
+| View / battle_screen.dart | 184 / 195 | 94.36% | 75% | yes |
+| View / online_battle_screen.dart | 309 / 315 | 98.10% | 75% | yes |
+
+The continuity guard and its anchor implementation cover 84/84 executable lines. Across changed files, ViewModel coverage is 658/680 (96.76%) and View coverage is 493/510 (96.67%). These measurements concern changed files exercised by the seven selected suites. Whole-project layer coverage and server coverage were outside this rerun.
+
+#### Test cases and acceptance mapping
+
+| Layer | Updated or added test file | Verified behavior |
+|---|---|---|
+| Service | person_behind_estimator_test.dart | Synthetic detector target changes, identical-geometry limitation, abrupt jump, short/long loss, explicit fresh confirmation |
+| ViewModel | rep_counter_viewmodel_test.dart | Scoring stops on suspected change, stale anchor, stream watchdog, retry failure preserves score and confirmation |
+| ViewModel | battle_viewmodel_test.dart | Setup-to-round guard handoff and setup re-entry |
+| View | battle_screen_test.dart | AI push-up and squat warning and confirmation |
+| View | online_preparation_test.dart | Online warning, confirmation and withheld pose publication |
+
+The prototype pause-and-confirm path maps to `a suspected person change stops scoring until explicit confirmation`, `a stalled stream warns and requires a fresh confirmed person`, and `experimental online guard pauses and requires confirmation`. The original-user identity-retention acceptance criterion still requires labelled physical testing.
