@@ -30,9 +30,10 @@ import '../widgets/sound_battle.dart';
 ///
 /// It opens on the setup, in the same layout: the user's pose is checked
 /// while the bot stands ready, and once the pose holds, the setup's count to
-/// the start is the stage's 3, 2, 1 and GO!. 시작 begins the round at once.
-/// The screen stays upright throughout. Back and the leave button ask before
-/// leaving, and leaving keeps nothing. When a KO or the time ends the battle
+/// the start is the stage's 3, 2, 1 and GO!. The round starts by itself: the
+/// setup has no button to press (team decision 2026-11-15). The screen
+/// stays upright throughout. Back and the leave button ask before leaving,
+/// and leaving keeps nothing. When a KO or the time ends the battle
 /// and its ending has played, 결과 보기 opens the result screen in this one's
 /// place; back then does the same, and nothing before.
 ///
@@ -331,8 +332,6 @@ class _BattleScreenState extends State<BattleScreen>
       onCue: widget.onCue ?? _sounds.cue,
       onLeave: () => unawaited(_askToLeave()),
       hint: _hint(state, counterState, stage.phase),
-      readyLabel: settingUp ? '시작' : null,
-      onReady: settingUp && state.canStart ? viewModel.startNow : null,
       onSwitchCamera: setup && running && counter.canSwitchCamera
           ? () => unawaited(counter.switchCamera())
           : null,

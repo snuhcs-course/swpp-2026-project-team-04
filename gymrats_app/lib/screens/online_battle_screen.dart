@@ -112,10 +112,6 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   bool _squatAligned = false;
   DateTime? _autoReadyAt;
 
-  /// The user cancelled ready: no auto ready until the pose is lost and
-  /// found again, or they press 준비.
-  bool _autoReadyPaused = false;
-
   /// Ready was sent and the server has not confirmed it yet, so it is not
   /// sent again while the confirmation is on its way.
   bool _readySent = false;
@@ -124,14 +120,9 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   bool get _iAmReady => session.readyPlayers.contains(session.playerId);
 
   void _syncAutoReady() {
-    if (!_setupReady) _autoReadyPaused = false;
     if (_iAmReady || !_setupReady || !session.canReady) _readySent = false;
     final waiting =
-        session.canReady &&
-        _setupReady &&
-        !_iAmReady &&
-        !_autoReadyPaused &&
-        !_readySent;
+        session.canReady && _setupReady && !_iAmReady && !_readySent;
     if (!waiting) {
       _cancelAutoReady();
       return;
@@ -157,15 +148,6 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     _autoReady?.cancel();
     _autoReady = null;
     _autoReadyAt = null;
-  }
-
-  /// 준비 or 준비 취소. Cancelling pauses the auto ready.
-  void _toggleReady() {
-    final cancelling = _iAmReady;
-    _autoReadyPaused = cancelling;
-    _readySent = !cancelling;
-    _cancelAutoReady();
-    session.ready(!cancelling);
   }
 
   /// Whole seconds left before the auto ready; null when not counting.
@@ -559,14 +541,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                 ),
           onLeave: () => unawaited(_exit()),
           hint: setup ? _setupHint : _roundHint,
-          readyLabel: setup ? (_iAmReady ? '준비 취소' : '준비') : null,
-          onReady:
-              setup &&
-                  session.canReady &&
-                  (_iAmReady || (pushUp && _setupReady))
-              ? _toggleReady
-              : null,
-          readyPressed: _iAmReady,
+          // No ready button (team decision 2026-11-15): ready is sent by
+          // itself once the pose holds, and taken back when it is lost.
           onSwitchCamera: setup && running && _counter.canSwitchCamera
               ? () => unawaited(_counter.switchCamera())
               : null,

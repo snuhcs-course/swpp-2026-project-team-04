@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import 'chest_height_overlay.dart';
 import 'pose_camera_view.dart';
 import 'pose_silhouette_guide.dart';
+import 'pose_silhouette_phone_angle.dart';
 import 'pose_silhouette_squat.dart';
 import 'squat_height_overlay.dart';
 
@@ -184,7 +185,14 @@ class BattleCameraView extends StatelessWidget {
         if (layout == null) {
           return AspectRatio(
             aspectRatio: shape,
-            child: _picture(_guideShare(shape, constraints.biggest)),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _picture(_guideShare(shape, constraints.biggest)),
+                if (guide != null && uatPhoneAngleEnabled)
+                  const UatPhoneAngle(alignment: Alignment.centerLeft),
+              ],
+            ),
           );
         }
         final size = pictureSize(
@@ -196,12 +204,19 @@ class BattleCameraView extends StatelessWidget {
         );
         // Centered in the box, and what does not fit is cut off.
         return ClipRect(
-          child: OverflowBox(
-            minWidth: size.width,
-            maxWidth: size.width,
-            minHeight: size.height,
-            maxHeight: size.height,
-            child: _picture(_guideShare(shape, layout.battleBox)),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              OverflowBox(
+                minWidth: size.width,
+                maxWidth: size.width,
+                minHeight: size.height,
+                maxHeight: size.height,
+                child: _picture(_guideShare(shape, layout.battleBox)),
+              ),
+              if (guide != null && uatPhoneAngleEnabled)
+                const UatPhoneAngle(alignment: Alignment.centerLeft),
+            ],
           ),
         );
       },

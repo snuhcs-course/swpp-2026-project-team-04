@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/widgets/battle_camera_area.dart';
 import 'package:gymrats_app/widgets/battle_camera_view.dart';
 import 'package:gymrats_app/widgets/chest_height_overlay.dart';
 import 'package:gymrats_app/widgets/pose_camera_view.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_phone_angle.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
 import 'package:gymrats_app/widgets/squat_height_overlay.dart';
 
@@ -432,6 +435,62 @@ void main() {
       ));
     });
   });
+
+  for (final exercise in ExerciseType.values) {
+    testWidgets(
+      'UAT angle stays visible and clear of setup controls for $exercise',
+      (tester) async {
+        if (!uatPhoneAngleEnabled) return;
+        PhoneTiltMonitor.debugUsePlatformStream(const Stream.empty());
+        addTearDown(() => PhoneTiltMonitor.debugUsePlatformStream(null));
+        await tester.binding.setSurfaceSize(const Size(360, 780));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final guide = BattleCameraView.setupGuide(exercise, ready: false)!;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: 360,
+                  height: 621,
+                  child: BattleCameraArea(
+                    settingUp: true,
+                    setupLook: 1,
+                    hint: '자세를 맞춰 주세요',
+                    onLeave: () {},
+                    onSwitchCamera: () {},
+                    camera: BattleCameraLayout(
+                      setupBox: const Size(360, 621),
+                      battleBox: const Size(360, 387),
+                      progress: 0,
+                      child: BattleCameraView(
+                        controller: null,
+                        guide: guide.widget,
+                        guideFit: guide.fit,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        final angle = tester.getRect(find.text('폰 각도: 측정 중'));
+        final area = tester.getRect(find.byType(BattleCameraArea));
+        final leave = tester
+            .getRect(find.byIcon(Icons.logout_rounded))
+            .inflate(12);
+        final hint = tester.getRect(find.text('자세를 맞춰 주세요'));
+        expect(
+          area.contains(angle.topLeft) && area.contains(angle.bottomRight),
+          isTrue,
+        );
+        expect(angle.overlaps(leave), isFalse);
+        expect(angle.overlaps(hint), isFalse);
+      },
+    );
+  }
 
   group("the setup's guide for each exercise", () {
     test('push-ups get the silhouette, drawn for a cropping camera box, '

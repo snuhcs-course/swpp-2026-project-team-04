@@ -454,12 +454,14 @@ void main() {
       expect(find.byType(BattleArena), findsOneWidget);
       expect(find.text('실제상대'), findsOneWidget);
       expect(find.text('세팅 중'), findsNWidgets(2));
-      expect(find.text('준비'), findsOneWidget);
+      // No 준비 / 준비 취소 button (team decision 2026-11-15): ready goes
+      // by itself once the pose holds.
+      expect(find.text('준비'), findsNothing);
       expect(camera.startCount, 1);
       session.ready(true);
       await tester.pump();
       expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
-      expect(find.text('준비 취소'), findsOneWidget);
+      expect(find.text('준비 취소'), findsNothing);
       expect(session.phase, OnlinePhase.preparing);
       expect(session.startAtMs, isNull);
       expect(tester.takeException(), isNull);

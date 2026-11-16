@@ -213,15 +213,6 @@ void main() {
   BattleFxFrame frame(WidgetTester tester) =>
       tester.widget<BattleStage>(find.byType(BattleStage)).frame;
 
-  /// Whether the ready button with [label] can be pressed.
-  bool canPress(WidgetTester tester, String label) =>
-      tester
-          .widget<InkWell>(
-            find.ancestor(of: find.text(label), matching: find.byType(InkWell)),
-          )
-          .onTap !=
-      null;
-
   /// Lets a camera frame through, with the setup pose found or not.
   Future<void> pose(WidgetTester tester, {bool found = true}) async {
     estimator.frames.add(found ? standingFrame() : emptyFrame());
@@ -309,7 +300,8 @@ void main() {
     });
 
     testWidgets('both players set up on the stage; the camera area has the '
-        'setup bar, the hint and 준비, which waits for a valid pose', (
+        'setup bar and the hint, and no 준비 / 준비 취소 button (team '
+        'decision 2026-11-15): the pose held, ready goes by itself', (
       tester,
     ) async {
       await open(tester);
@@ -318,30 +310,20 @@ void main() {
       expect(stage(tester).opponentName, '상대사용자');
       expect(find.text('자세 세팅 중'), findsOneWidget);
       expect(find.text('세팅 중'), findsNWidgets(2));
-      expect(canPress(tester, '준비'), isFalse);
+      expect(find.text('준비'), findsNothing);
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
-      // The large ready button (W2b 3-B): white and gray while it waits for
-      // the pose, lime once it can be pressed, white again to take it back.
-      Color fill(String label) => tester
-          .widget<Material>(
-            find
-                .ancestor(of: find.text(label), matching: find.byType(Material))
-                .first,
-          )
-          .color!;
-      expect(fill('준비'), AppColors.card);
       await pose(tester);
-      expect(canPress(tester, '준비'), isTrue);
-      expect(fill('준비'), AppColors.accent);
-      await tester.tap(find.text('준비'));
-      await tester.pump();
+      expect(find.text('자세 확인! 3초 후 자동으로 준비해요'), findsOneWidget);
+      expect(find.text('준비'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 3100));
       expect(session.readyRequests, [true]);
+      await tester.pump();
       expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
       await wait(tester, 100);
       expect(find.text('상대를 기다리는 중'), findsOneWidget);
       expect(find.text('준비 완료'), findsOneWidget);
-      expect(canPress(tester, '준비 취소'), isTrue);
-      expect(fill('준비 취소'), AppColors.card);
+      expect(find.text('준비'), findsNothing);
+      expect(find.text('준비 취소'), findsNothing);
       expect(session.startAtMs, isNull);
       expect(counter.history, isEmpty);
       expect(counter.roundLength, const Duration(days: 1));
@@ -357,15 +339,17 @@ void main() {
       phone.isPropped = false;
       await pose(tester);
       expect(find.text('폰을 더 세워 주세요.'), findsOneWidget);
-      expect(canPress(tester, '준비'), isFalse);
+      await tester.pump(const Duration(milliseconds: 3100));
+      expect(session.readyRequests, isEmpty);
       phone.isPropped = true;
       phone.isStill = false;
       await pose(tester);
       expect(find.text('폰이 흔들리지 않게 두세요.'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 3100));
+      expect(session.readyRequests, isEmpty);
       phone.isStill = true;
       await pose(tester);
-      await tester.tap(find.text('준비'));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 3100));
       expect(session.readyRequests, [true]);
       phone.isStill = false;
       await pose(tester);
@@ -377,13 +361,14 @@ void main() {
         'round', (tester) async {
       await open(tester);
       await pose(tester);
-      await tester.tap(find.text('준비'));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 3100));
+      expect(session.readyRequests, [true]);
       await pose(tester, found: false);
       expect(session.readyRequests, [true, false]);
       expect(session.phase, OnlinePhase.preparing);
       expect(session.startAtMs, isNull);
-      expect(canPress(tester, '준비'), isFalse);
+      expect(find.text('상대 준비를 기다리는 중…'), findsNothing);
+      expect(find.text('준비'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -486,16 +471,28 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('a lost connection is said in the hint, and 준비 waits', (
-      tester,
-    ) async {
+    testWidgets('a lost connection is said in the hint, and the auto ready '
+        'starts over once it is back', (tester) async {
       await open(tester);
       await pose(tester);
+      await tester.pump(const Duration(seconds: 1));
       session.connected = false;
       session.notifyListeners();
       await tester.pump();
       expect(find.text('재연결 중 · 준비 상태 확인 중…'), findsOneWidget);
-      expect(canPress(tester, '준비'), isFalse);
+      await tester.pump(const Duration(seconds: 1));
+      session.connected = true;
+      session.notifyListeners();
+      await tester.pump();
+      // 3.1 s after the pose: the count from before the loss was dropped,
+      // so nothing is sent yet; a full new count runs from the reconnect.
+      await tester.pump(const Duration(milliseconds: 1100));
+      expect(session.readyRequests, isEmpty);
+      await tester.pump(const Duration(seconds: 2));
+      expect(session.readyRequests, [true]);
+      session.connected = false;
+      session.notifyListeners();
+      await tester.pump();
       // The round's band is for the round only.
       expect(find.text('재연결 중 · 경기 시간은 계속 진행됩니다.'), findsNothing);
       await tester.pumpWidget(const SizedBox());
@@ -509,10 +506,10 @@ void main() {
       await wait(tester, 100);
       expect(stage(tester).phase, BattleStagePhase.countdown);
       expect(find.text('5초 후 함께 시작'), findsOneWidget);
-      // The setup's large button fades out with the line coming down (no
-      // taps meanwhile); the two ready chips say both are ready as they go.
-      expect(find.text('준비'), findsOneWidget);
-      expect(canPress(tester, '준비'), isFalse);
+      // The setup's things fade out with the line coming down, with no
+      // ready button among them; the two ready chips say both are ready as
+      // they go.
+      expect(find.text('준비'), findsNothing);
       expect(find.text('준비 완료'), findsNWidgets(2));
       await wait(tester, 600);
       expect(find.text('준비'), findsNothing);
@@ -550,7 +547,7 @@ void main() {
       await open(tester, denied: true);
       expect(find.text('카메라 권한 또는 자세 인식을 확인해주세요.'), findsOneWidget);
       expect(find.text('카메라 다시 준비'), findsOneWidget);
-      expect(canPress(tester, '준비'), isFalse);
+      expect(find.text('준비'), findsNothing);
       expect(session.readyRequests, isEmpty);
       await tester.pumpWidget(const SizedBox());
     });
@@ -1200,24 +1197,62 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('after 준비 취소 it waits until the pose is found again', (
-      tester,
-    ) async {
-      await open(tester);
-      await pose(tester);
-      await tester.tap(find.text('준비'));
-      await tester.pump();
-      expect(session.readyRequests, [true]);
-      await tester.tap(find.text('준비 취소'));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 4));
-      expect(session.readyRequests, [true, false]);
-      await pose(tester, found: false);
-      await pose(tester);
-      await tester.pump(const Duration(milliseconds: 3100));
-      expect(session.readyRequests, [true, false, true]);
-      await tester.pumpWidget(const SizedBox());
-    });
+    for (final (name, exercise) in const [
+      ('push-up', ExerciseType.pushUp),
+      ('squat', ExerciseType.squat),
+    ]) {
+      testWidgets('$name: no 준비 / 준비 취소 button (team decision '
+          '2026-11-15); the pose held, ready goes once by itself; losing '
+          'the pose takes it back, and holding it again sends it again', (
+        tester,
+      ) async {
+        await open(tester, exercise: exercise);
+
+        /// Holds the setup pose for [ms], a fresh frame every half second
+        /// (a squat's silhouette check wants fresh frames).
+        Future<void> hold(int ms) async {
+          for (var left = ms; left > 0; left -= 500) {
+            estimator.frames.add(
+              exercise == ExerciseType.squat
+                  ? standingFrame(showHips: true)
+                  : standingFrame(),
+            );
+            camera.emit();
+            await tester.pump();
+            await tester.pump(Duration(milliseconds: left < 500 ? left : 500));
+          }
+        }
+
+        void noButton() {
+          expect(find.text('준비'), findsNothing);
+          expect(find.text('준비 취소'), findsNothing);
+        }
+
+        noButton();
+        await hold(2500);
+        expect(find.textContaining('초 후 자동으로 준비해요'), findsOneWidget);
+        expect(session.readyRequests, isEmpty);
+        noButton();
+        await hold(1000);
+        expect(session.readyRequests, [true]);
+        await tester.pump();
+        expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
+        noButton();
+        // Held on, ready is not sent again.
+        await hold(4000);
+        expect(session.readyRequests, [true]);
+        await pose(tester, found: false);
+        expect(session.readyRequests, [true, false]);
+        expect(find.text('상대 준비를 기다리는 중…'), findsNothing);
+        noButton();
+        await hold(2500);
+        expect(session.readyRequests, [true, false]);
+        await hold(1000);
+        expect(session.readyRequests, [true, false, true]);
+        noButton();
+        await tester.pumpWidget(const SizedBox());
+      });
+    }
 
     testWidgets('a slow confirmation does not send ready again', (
       tester,
@@ -1232,15 +1267,6 @@ void main() {
         await pose(tester);
         await tester.pump(const Duration(seconds: 1));
       }
-      expect(session.readyRequests, [true]);
-      await tester.pumpWidget(const SizedBox());
-    });
-
-    testWidgets('준비 during the countdown sends ready once', (tester) async {
-      await open(tester);
-      await pose(tester);
-      await tester.tap(find.text('준비'));
-      await tester.pump(const Duration(seconds: 4));
       expect(session.readyRequests, [true]);
       await tester.pumpWidget(const SizedBox());
     });
@@ -1280,7 +1306,7 @@ void main() {
             .ready,
         isTrue,
       );
-      expect(canPress(tester, '준비'), isFalse);
+      expect(find.text('준비'), findsNothing);
       for (var i = 0; i < 3; i++) {
         await tester.pump(const Duration(milliseconds: 500));
         await send(good);

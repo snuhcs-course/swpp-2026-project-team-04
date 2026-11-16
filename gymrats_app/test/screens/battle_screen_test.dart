@@ -205,15 +205,6 @@ void main() {
   BattleFxFrame stageFrame(WidgetTester tester) =>
       tester.widget<BattleStage>(find.byType(BattleStage)).frame;
 
-  /// Whether the ready button with [label] can be pressed.
-  bool canPress(WidgetTester tester, String label) =>
-      tester
-          .widget<InkWell>(
-            find.ancestor(of: find.text(label), matching: find.byType(InkWell)),
-          )
-          .onTap !=
-      null;
-
   /// The dialog's 게임 나가기.
   final dialogExit = find.descendant(
     of: find.byType(ExitDialog),
@@ -254,8 +245,8 @@ void main() {
     });
 
     testWidgets('opens on the setup: the band, my tag setting up and the '
-        "bot's ready, the setup bar, the hint, and 시작, which waits for a "
-        'ready pose', (tester) async {
+        "bot's ready, the setup bar and the hint, and no 시작 button (team "
+        'decision 2026-11-15)', (tester) async {
       await open(tester);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect(stage(tester).myName, '우현');
@@ -268,10 +259,10 @@ void main() {
       expect(find.text('0:30'), findsOneWidget);
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
       expect(find.bySemanticsLabel('카메라 전환'), findsOneWidget);
-      expect(canPress(tester, '시작'), isFalse);
+      expect(find.text('시작'), findsNothing);
       await frame(tester, 1, found: false);
       expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
-      expect(canPress(tester, '시작'), isFalse);
+      expect(find.text('시작'), findsNothing);
       expect(opponent.startCount, 0);
       await captureFlowSnapshot('ai-battle-setup');
       expect(tester.takeException(), isNull);
@@ -437,15 +428,13 @@ void main() {
       expect(find.text('3'), findsOneWidget);
       expect(find.text('세팅 중'), findsNothing);
       // The setup bar and the camera switch are for setting up; the stage
-      // counts now. They fade out with the large 시작 as the line comes
-      // down, read by no one, while the countdown's small 시작 comes in.
+      // counts now. They fade out as the line comes down, read by no one.
+      // No 시작 button comes in: the count runs to the start by itself.
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsNothing);
       expect(find.bySemanticsLabel('카메라 전환'), findsNothing);
-      expect(find.text('시작'), findsNWidgets(2));
+      expect(find.text('시작'), findsNothing);
       await wait(tester, 150);
-      // 시작 may still begin the round at once.
-      expect(find.text('시작'), findsOneWidget);
-      expect(canPress(tester, '시작'), isTrue);
+      expect(find.text('시작'), findsNothing);
       expect(find.byIcon(Icons.cameraswitch_outlined), findsNothing);
       await wait(tester, 1000 - 150);
       await frame(tester, 2);
@@ -471,22 +460,60 @@ void main() {
       await close(tester);
     });
 
-    testWidgets('시작 in the countdown begins the round at once, with GO!', (
-      tester,
-    ) async {
-      await open(tester);
-      await frame(tester, 1);
-      await wait(tester, 300);
-      expect(find.text('3'), findsOneWidget);
-      await tester.tap(find.text('시작'));
-      await wait(tester, 50);
-      expect(viewModel.state.started, isTrue);
-      expect(find.text('GO!'), findsOneWidget);
-      expect(find.text('3'), findsNothing);
-      await wait(tester, 3000);
-      expect(cues, ['countdown 3', 'go']);
-      await close(tester);
-    });
+    for (final (name, matchup) in const [
+      ('push-up', _pushUp),
+      ('squat', _squat),
+    ]) {
+      testWidgets('$name: no 시작 button in the setup or the countdown; the '
+          'pose held, the round starts by itself, and the start is still '
+          'told as 시작 to a screen reader', (tester) async {
+        final said = <String>[];
+        tester.binding.defaultBinaryMessenger.setMockDecodedMessageHandler<
+          dynamic
+        >(SystemChannels.accessibility, (message) async {
+          final event = message as Map<dynamic, dynamic>;
+          if (event['type'] == 'announce') {
+            said.add(
+              (event['data'] as Map<dynamic, dynamic>)['message'] as String,
+            );
+          }
+          return null;
+        });
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger
+              .setMockDecodedMessageHandler<dynamic>(
+                SystemChannels.accessibility,
+                null,
+              ),
+        );
+        await open(tester, matchup: matchup);
+        expect(find.text('시작'), findsNothing);
+        // The pose held, a frame every half second.
+        await frame(tester, 0.5);
+        await wait(tester, 16);
+        expect(stage(tester).phase, BattleStagePhase.countdown);
+        for (final time in [1.0, 1.5, 2.0, 2.5, 3.0]) {
+          await frame(tester, time);
+          expect(find.text('시작'), findsNothing);
+          expect(viewModel.state.started, isFalse);
+          expect(opponent.startCount, 0);
+        }
+        // Three seconds after the pose was ready, with nothing pressed.
+        await frame(tester, 3.5);
+        expect(viewModel.state.started, isTrue);
+        await wait(tester, 100);
+        expect(find.text('GO!'), findsOneWidget);
+        expect(stage(tester).phase, BattleStagePhase.playing);
+        expect(opponent.startCount, 1);
+        await wait(tester, 900);
+        // The stage's start (the go cue) is no button: a screen reader
+        // hears it as 시작, while no 시작 shows anywhere.
+        expect(cues, contains('go'));
+        expect(said, contains('시작'));
+        expect(find.text('시작'), findsNothing);
+        await close(tester);
+      });
+    }
 
     testWidgets('losing the pose in the countdown goes back to setting up', (
       tester,
@@ -591,12 +618,13 @@ void main() {
             .update(frame, phonePropped: propped)
             .message;
 
-    /// Nothing counts down, nor has the round begun, and 시작 waits.
+    /// Nothing counts down, nor has the round begun, and no 시작 button
+    /// shows.
     void notCounting(WidgetTester tester) {
       expect(viewModel.state.startIn, isNull);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect(viewModel.state.started, isFalse);
-      expect(canPress(tester, '시작'), isFalse);
+      expect(find.text('시작'), findsNothing);
       expect(opponent.startCount, 0);
     }
 

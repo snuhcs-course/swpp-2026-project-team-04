@@ -92,17 +92,19 @@ class SquatDemoJudge extends RepJudge implements ExerciseRepJudge {
     final standing = gap <= -.60;
     final bottom = gap >= -.25;
     RepEvent? event;
+    double? depth;
     if (_phase == RepPhase.idle || _phase == RepPhase.lost) {
       if (standing) {
         _standingGap = gap;
         _maxDepth = 0;
         _phase = RepPhase.up;
+        depth = 0;
       }
     } else {
       // Approximate SquatRepJudge's standing-relative depth using the
       // hip-to-knee gap already normalized by visible shin length.
       final top = _standingGap!;
-      final depth = (gap - top) / -top;
+      depth = (gap - top) / -top;
       _maxDepth = math.max(_maxDepth, depth);
       if (_phase == RepPhase.up && bottom) {
         _phase = RepPhase.bottom;
@@ -128,6 +130,7 @@ class SquatDemoJudge extends RepJudge implements ExerciseRepJudge {
     return RepUpdate(
       snapshot: JudgeSnapshot(
         phase: _phase,
+        depth: depth,
         squatHipY:
             sides.map((p) => p.$3).reduce((a, b) => a + b) / sides.length,
         squatKneeY:
