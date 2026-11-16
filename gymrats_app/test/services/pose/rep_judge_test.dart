@@ -1,13 +1,19 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/demo/rep_judge_demo.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/services/pose/push_up_judge_adapter.dart';
+import 'package:gymrats_app/services/pose/pose_metrics.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 
 import '../../support/pose_fixtures.dart';
 
 void main() {
+  _kneeSpecialistIntegrationTests();
+  _wideProposalTests();
   late Duration now;
 
   /// No smoothing, so a frame's value is the value the state machine sees.
@@ -100,6 +106,422 @@ void main() {
     expect(update.event!.minElbowAngle, closeTo(150, 0.5));
     expect(update.event!.descent, const Duration(milliseconds: 400));
     expect(update.snapshot.phase, RepPhase.up);
+  });
+
+  PoseFrame fixedHands(double elbowAngle, {double? noseDrop}) {
+    final halfAngle = elbowAngle * math.pi / 360;
+    final halfHeight = 100 * math.sin(halfAngle);
+    final offset = 100 * math.cos(halfAngle);
+    return PoseFrame(
+      imageWidth: 800,
+      imageHeight: 600,
+      keypoints: {
+        if (noseDrop != null)
+          BodyLandmark.nose: kp(BodyLandmark.nose, 400, 180 + noseDrop),
+        for (final (s, e, w, x, side) in [
+          (
+            BodyLandmark.leftShoulder,
+            BodyLandmark.leftElbow,
+            BodyLandmark.leftWrist,
+            300.0,
+            -1,
+          ),
+          (
+            BodyLandmark.rightShoulder,
+            BodyLandmark.rightElbow,
+            BodyLandmark.rightWrist,
+            500.0,
+            1,
+          ),
+        ]) ...{
+          s: kp(s, x, 400 - 2 * halfHeight),
+          e: kp(e, x + side * offset, 400 - halfHeight),
+          w: kp(w, x, 400),
+        },
+      },
+    );
+  }
+
+  test('MLP judge emits sequential binary verdicts and resets a new round', () {
+    final c = RepJudge(useMlp: true, clock: () => now);
+    List<RepEvent> run(int offset) {
+      final events = <RepEvent>[];
+      for (var i = 0; i < 96; i++) {
+        final bend = (1 - ((i % 32) - 16).abs() / 8).clamp(0.0, 1.0);
+        final event = at(c, offset + i * 60, fixedHands(175 - 85 * bend)).event;
+        if (event != null) events.add(event);
+      }
+      return events;
+    }
+
+    final first = run(0);
+    expect(first.map((e) => e.index), [1, 2, 3]);
+    expect(first.map((e) => e.at.inMilliseconds), [1260, 3180, 5100]);
+    // Frozen model output for these visible synthetic arm cycles.
+    expect(first.every((e) => !e.valid), isTrue);
+    expect(first.every((e) => e.reason != null), isTrue);
+    c.abandon();
+    expect(run(6000).map((e) => e.index), [4, 5, 6]);
+    c.reset();
+    expect(run(12000).map((e) => e.index), [1, 2, 3]);
+  });
+
+  test('MLP judge cannot turn missing or stationary landmarks into a rep', () {
+    final c = RepJudge(useMlp: true, clock: () => now);
+    for (var i = 0; i < 50; i++) {
+      expect(at(c, i * 60, fixedHands(175)).event, isNull);
+    }
+    for (var i = 50; i < 100; i++) {
+      expect(at(c, i * 60, emptyFrame()).event, isNull);
+    }
+  });
+
+  test('MLP judge discards a half-finished attempt when the camera pauses', () {
+    final c = RepJudge(useMlp: true, clock: () => now);
+    for (var i = 0; i <= 17; i++) {
+      final bend = (1 - (i - 16).abs() / 8).clamp(0.0, 1.0);
+      expect(at(c, i * 60, fixedHands(175 - 85 * bend)).event, isNull);
+    }
+    for (var i = 0; i < 24; i++) {
+      expect(at(c, 2000 + i * 60, fixedHands(175)).event, isNull);
+    }
+  });
+
+  test(
+    'a visible partial 2D cycle gives feedback without a head calibration',
+    () {
+      for (final angle in <double?>[null, 60, 80]) {
+        final c = judge();
+        final events = <RepEvent>[];
+        void frame(int i, double movement) {
+          now = Duration(milliseconds: i * 60);
+          final sample = fixedHands(153 - 60 * movement);
+          final value = c.updateWithPhoneTilt(sample, angle);
+          if (value.event != null) events.add(value.event!);
+        }
+
+        for (var i = 0; i < 17; i++) {
+          final movement = (1 - (i - 7).abs() / 4).clamp(0.0, 1.0);
+          frame(i, movement);
+        }
+        expect(events.map((v) => v.valid), [false], reason: 'tilt $angle');
+        expect(events.single.index, 1);
+        expect(events.single.reason, RejectReason.insufficientDepth);
+        c.abandon();
+        // A fresh top cannot finish the already judged movement.
+        for (var i = 17; i < 25; i++) {
+          frame(i, 0);
+        }
+        expect(events.length, 1);
+      }
+    },
+  );
+
+  test(
+    'one shallow rep gives one verdict when wrists recover before the head',
+    () {
+      final c = judge(config: const RepJudgeConfig());
+      final closed = <int>[];
+      for (var i = 0; i < 32; i++) {
+        final arm = (1 - (i - 12).abs() / 6).clamp(0.0, 1.0);
+        final head = (1 - (i - 13).abs() / 6).clamp(0.0, 1.0);
+        final frame = fixedHands(175 - 90 * arm, noseDrop: 68 * head);
+        final result = at(c, i * 60, frame);
+        if (result.event != null) {
+          expect(result.event!.valid, isFalse);
+          closed.add(i);
+        }
+      }
+      expect(closed, [19]);
+    },
+  );
+
+  test('the default judge rejects a small dip once and leaves a full rep to the counter', () {
+    final c = judge(config: const RepJudgeConfig());
+    calibrate(c);
+    final rejected = <RepEvent>[];
+    for (final (ms, frame) in [
+      (450, pose(depth: .34, shoulderDrop: .22, elbow: 130)),
+      (650, pose(depth: .34, shoulderDrop: .22, elbow: 130)),
+      (900, pose()),
+      (1000, pose()),
+    ]) {
+      final event = at(c, ms, frame).event;
+      if (event != null) rejected.add(event);
+    }
+    final dip = rejected.single;
+    expect(dip.valid, isFalse);
+    expect(dip.reason, RejectReason.insufficientDepth);
+    expect(dip.index, 1);
+    final next = perform(c, 1150).event!;
+    expect(next.valid, isTrue);
+    expect(next.index, 2);
+  });
+
+  test(
+    'a small dip needs a visible chest descent, elbow bend and reopening',
+    () {
+      final c = judge();
+      calibrate(c);
+      at(c, 450, pose(depth: .33, shoulderDrop: .03, elbow: 132));
+      expect(at(c, 650, pose()).event, isNull);
+      at(c, 800, pose(depth: .33, shoulderDrop: .21, elbow: 176));
+      expect(at(c, 1000, pose()).event, isNull);
+      at(c, 1200, pose(depth: .33, shoulderDrop: .21, elbow: 132));
+      expect(at(c, 1400, pose(hide: arms)).event, isNull);
+    },
+  );
+
+  test('a small dip reports supported knees or sustained tilt before shallow depth', () {
+    RepEvent verdict({required int supportedFrames, required double tilt}) {
+      final c = judge();
+      calibrate(c);
+      for (var i = 0; i < 3; i++) {
+        at(
+          c,
+          400 + 100 * i,
+          pushUpFrame(
+            depth: .33,
+            shoulderDrop: .20,
+            elbowAngle: 130,
+            tiltDeg: tilt,
+            lowerBody: i < supportedFrames
+                ? {
+                    BodyLandmark.leftKnee: (405, 690),
+                    BodyLandmark.rightKnee: (595, 690),
+                    BodyLandmark.leftAnkle: (405, 610),
+                    BodyLandmark.rightAnkle: (595, 610),
+                  }
+                : {},
+          ),
+        );
+      }
+      return at(c, 850, pose()).event!;
+    }
+
+    expect(verdict(supportedFrames: 3, tilt: 0).reason, RejectReason.kneesDown);
+    expect(
+      verdict(supportedFrames: 1, tilt: 0).reason,
+      RejectReason.insufficientDepth,
+    );
+    expect(
+      verdict(supportedFrames: 0, tilt: 22).reason,
+      RejectReason.shouldersNotLevel,
+    );
+  });
+
+  test('an elevated top calibrates with visible hips and wrists and keeps the grading threshold fixed', () {
+    RepUpdate run({
+      required double hipY,
+      bool hideWrist = false,
+      bool hideHips = false,
+    }) {
+      final c = judge();
+      final ui = PushUpJudgeAdapter(c);
+      final top = pushUpFrame(
+        hide: {
+          if (hideWrist) BodyLandmark.leftWrist,
+          if (hideHips) ...hipLandmarks,
+        },
+        lowerBody: {
+          BodyLandmark.leftHip: (410, hipY),
+          BodyLandmark.rightHip: (590, hipY),
+        },
+      );
+      at(c, 0, top);
+      at(c, 300, top);
+      at(c, 500, pose(depth: .45, elbow: 146));
+      at(c, 650, pose(depth: .85, shoulderDrop: .52, elbow: 135));
+      expect(ui.passDepth, 1.1);
+      return at(c, 900, pose());
+    }
+
+    expect(run(hipY: 470).event?.valid, isTrue);
+    expect(run(hipY: 590).event?.reason, RejectReason.insufficientDepth);
+    expect(
+      run(hipY: 470, hideWrist: true).event?.reason,
+      RejectReason.insufficientDepth,
+    );
+    expect(
+      run(hipY: 470, hideHips: true).event?.reason,
+      RejectReason.insufficientDepth,
+    );
+  });
+
+  test('relaxed depth needs both wrists below their shoulders and a fully observed bend and return', () {
+    List<RepEvent> replay({
+      bool hiddenBottom = false,
+      bool hiddenReturn = false,
+      bool straight = false,
+      bool raisedWrist = false,
+      bool full = false,
+    }) {
+      final c = judge(config: const RepJudgeConfig());
+      final top = pushUpFrame(
+        lowerBody: {
+          BodyLandmark.leftHip: (410, 470),
+          BodyLandmark.rightHip: (590, 470),
+        },
+      );
+      if (raisedWrist) {
+        final shoulder = top[BodyLandmark.leftShoulder]!;
+        for (final joint in [BodyLandmark.leftWrist, BodyLandmark.leftElbow]) {
+          final point = top[joint]!;
+          top.keypoints[joint] = kp(
+            joint,
+            point.x,
+            shoulder.y - .6 * (point.y - shoulder.y),
+          );
+        }
+      }
+      final bottom = pose(
+        depth: full ? 1.5 : .85,
+        shoulderDrop: full ? .9 : .52,
+        elbow: straight ? 178 : 135,
+        hide: hiddenBottom
+            ? {...arms, BodyLandmark.leftShoulder, BodyLandmark.rightShoulder}
+            : {},
+      );
+      final returned = pose(hide: hiddenReturn ? arms : {});
+      final frames = [
+        ...List.filled(7, top),
+        ...List.filled(6, bottom),
+        ...List.filled(6, returned),
+      ];
+      return [
+        for (var i = 0; i < frames.length; i++) ?at(c, 70 * i, frames[i]).event,
+      ];
+    }
+
+    expect(
+      replay(hiddenBottom: true).single.reason,
+      RejectReason.insufficientDepth,
+    );
+    expect(replay(hiddenReturn: true), isEmpty);
+    expect(replay(straight: true).single.reason, RejectReason.armsStraight);
+    expect(
+      replay(raisedWrist: true).single.reason,
+      RejectReason.insufficientDepth,
+    );
+    expect(replay().single.valid, isTrue);
+    expect(replay(full: true, hiddenReturn: true).single.valid, isTrue);
+  });
+
+  test('moderate shoulder tilt refines feedback on both short and ordinary attempts', () {
+    for (final depth in [.33, .90]) {
+      final c = judge();
+      calibrate(c);
+      final dip = pose(
+        depth: depth,
+        shoulderDrop: depth * .6,
+        elbow: 130,
+        tilt: 10,
+      );
+      for (final ms in [440, 530, 640]) {
+        expect(at(c, ms, dip).event, isNull);
+      }
+      final feedback = at(c, 820, pose()).event!;
+      expect(feedback.reason, RejectReason.shouldersNotLevel);
+      expect(feedback.valid, isFalse);
+      expect(feedback.index, 1);
+      expect(at(c, 920, pose()).event, isNull);
+      final full = perform(c, 1100).event!;
+      expect(full.valid, isTrue);
+      expect(full.index, 2);
+    }
+  });
+
+  test('partial rep feedback uses observed knee support and elbow angle', () {
+    RepEvent partial({
+      required bool visibleTopHips,
+      required bool supported,
+      required double elbow,
+    }) {
+      final c = judge();
+      final top = pushUpFrame(
+        lowerBody: {
+          if (visibleTopHips) ...{
+            BodyLandmark.leftHip: (410, 590),
+            BodyLandmark.rightHip: (590, 590),
+          },
+        },
+      );
+      for (final ms in [0, 300, 355, 410]) {
+        at(c, ms, top);
+      }
+      final dip = pushUpFrame(
+        depth: .90,
+        elbowAngle: elbow,
+        lowerBody: {
+          if (supported) ...{
+            BodyLandmark.leftKnee: (410, 750),
+            BodyLandmark.rightKnee: (590, 750),
+          },
+        },
+      );
+      for (final ms in [500, 610, 720]) {
+        at(c, ms, dip);
+      }
+      return at(c, 900, top).event!;
+    }
+
+    // Missing hip observations do not invent knee contact. With real support,
+    // the top and bottom hip readings distinguish bent knees from stiff arms.
+    expect(
+      partial(visibleTopHips: false, supported: false, elbow: 165).reason,
+      RejectReason.insufficientDepth,
+    );
+    expect(
+      partial(visibleTopHips: false, supported: true, elbow: 135).reason,
+      RejectReason.insufficientDepth,
+    );
+    expect(
+      partial(visibleTopHips: false, supported: true, elbow: 165).reason,
+      RejectReason.armsStraight,
+    );
+    expect(
+      partial(visibleTopHips: true, supported: true, elbow: 155).reason,
+      RejectReason.kneesDown,
+    );
+  });
+
+  test('reset and camera tracking loss discard an open short dip', () {
+    for (final reset in [true, false]) {
+      final c = judge();
+      calibrate(c);
+      at(c, 500, pose(depth: .33, shoulderDrop: .20, elbow: 130));
+      if (reset) {
+        c.reset();
+      } else {
+        c.abandon();
+      }
+      expect(at(c, 700, pose()).event, isNull);
+      expect(at(c, 1000, pose()).event, isNull);
+      at(c, 1200, pose(depth: .33, shoulderDrop: .20, elbow: 130));
+      final first = at(c, 1450, pose()).event!;
+      expect(first.reason, RejectReason.insufficientDepth);
+      expect(first.index, 1);
+    }
+  });
+
+  test('a new setup discards a previous camera height after tracking loss', () {
+    final c = judge();
+    final elevated = pushUpFrame(
+      lowerBody: {
+        BodyLandmark.leftHip: (410, 470),
+        BodyLandmark.rightHip: (590, 470),
+      },
+    );
+    at(c, 0, elevated);
+    at(c, 300, elevated);
+    at(c, 550, pose(depth: .85, shoulderDrop: .52, elbow: 135));
+    expect(at(c, 800, pose()).event?.valid, isTrue);
+    // The gap resets calibration. With the hips now hidden, the ordinary
+    // depth target applies to the same movement.
+    at(c, 1500, pose());
+    at(c, 1800, pose());
+    at(c, 2050, pose(depth: .85, shoulderDrop: .52, elbow: 135));
+    expect(at(c, 2300, pose()).event?.reason, RejectReason.insufficientDepth);
   });
 
   test('a one-second full rep counts with the production smoothing', () {
@@ -1143,24 +1565,35 @@ void main() {
       expect(update.event!.reason, RejectReason.armsStraight);
     });
 
-    test('a shallow knee push-up is still too shallow', () {
-      final c = judge();
-      PoseFrame frame(double depth) => pushUpFrame(
-        depth: depth,
-        lowerBody: {
-          BodyLandmark.leftHip: (leftX, 500),
-          BodyLandmark.rightHip: (rightX, 500),
-          BodyLandmark.leftKnee: (leftX, 640),
-          BodyLandmark.rightKnee: (rightX, 640),
-        },
-      );
-      at(c, 0, frame(0));
-      at(c, 300, frame(0));
-      at(c, 500, frame(0.6));
-      at(c, 800, frame(0.9));
-      final update = at(c, 1200, frame(0));
-      expect(update.event!.reason, RejectReason.insufficientDepth);
-    });
+    test(
+      'shallow knee push-ups are rejected at both calibrated camera heights',
+      () {
+        RepEvent kneeDip(double hipY) {
+          final c = judge();
+          PoseFrame frame(double depth) => pushUpFrame(
+            depth: depth,
+            lowerBody: {
+              BodyLandmark.leftHip: (leftX, hipY),
+              BodyLandmark.rightHip: (rightX, hipY),
+              BodyLandmark.leftKnee: (leftX, 640),
+              BodyLandmark.rightKnee: (rightX, 640),
+            },
+          );
+          at(c, 0, frame(0));
+          at(c, 300, frame(0));
+          at(c, 500, frame(0.6));
+          at(c, 800, frame(0.9));
+          return at(c, 1200, frame(0)).event!;
+        }
+
+        // At the ordinary depth target .90 is shallow. In the elevated
+        // setup it reaches the calibrated bottom, but the arms never bent.
+        expect(kneeDip(590).reason, RejectReason.insufficientDepth);
+        final elevated = kneeDip(500);
+        expect(elevated.valid, isFalse);
+        expect(elevated.reason, RejectReason.armsStraight);
+      },
+    );
 
     test('an upright body is a wall push-up', () {
       final update = repWithHips(judge(), (d) => 840 + 0.5 * d * 200);
@@ -1472,5 +1905,195 @@ void main() {
     expect(dip.event, isNull);
     expect(dip.snapshot.phase, RepPhase.up);
     expect(dip.snapshot.depth, lessThan(0.35));
+  });
+}
+
+void _kneeSpecialistIntegrationTests() {
+  List<({RepEvent event, double baseProbability, double kneeProbability})> run(
+    String fileName,
+  ) {
+    final recording = PushUpRecording.decode(
+      File('test/ai_eval/cases/HSW/$fileName.json').readAsStringSync(),
+    );
+    var now = Duration.zero;
+    Duration? previous;
+    final judge = RepJudge(useMlp: true, clock: () => now);
+    final history = PushupMlpHistory();
+    final results =
+        <({RepEvent event, double baseProbability, double kneeProbability})>[];
+    for (final frame in recording.frames) {
+      if (frame.mark == FrameMark.abandon) {
+        judge.abandon();
+        history.reset();
+        previous = null;
+        continue;
+      }
+      final pose = frame.pose;
+      if (pose == null) continue;
+      now = frame.at;
+      if (previous != null &&
+          (now <= previous ||
+              now - previous > const RepJudgeConfig().maxFrameGap)) {
+        history.reset();
+      }
+      previous = now;
+      history.add(pose, now);
+      final event = judge.update(pose).event;
+      if (event == null) continue;
+      final features = history.featuresForProposal(now);
+      results.add((
+        event: event,
+        baseProbability: PushupMlpModel.normalProbability(features),
+        kneeProbability: PushupKneeModel.probability(features),
+      ));
+    }
+    return results;
+  }
+
+  test(
+    'MLP knee specialist vetoes formerly accepted recorded knee motions',
+    () {
+      // These fitting-data fixtures check wiring, not model generalization.
+      final results = run('20261101-204453_SM-S901N_knees');
+      final previouslyAccepted = results.where((r) => r.baseProbability > .5);
+      expect(previouslyAccepted.length, 5);
+      expect(results, isNotEmpty);
+      expect(results.every((r) => !r.event.valid), isTrue);
+      for (final result in previouslyAccepted) {
+        expect(result.kneeProbability, greaterThan(PushupKneeModel.threshold));
+        expect(result.event.reason, RejectReason.kneesDown);
+      }
+    },
+  );
+
+  test(
+    'MLP knee specialist preserves the recorded normal-motion acceptances',
+    () {
+      final results = run('20261101-204311_SM-S901N_normal');
+      final previouslyAccepted = results.where((r) => r.baseProbability > .5);
+      expect(previouslyAccepted.length, 4);
+      expect(results.where((r) => r.event.valid).length, 4);
+      for (final result in previouslyAccepted) {
+        expect(
+          result.kneeProbability,
+          lessThanOrEqualTo(PushupKneeModel.threshold),
+        );
+        expect(result.event.valid, isTrue);
+        expect(result.event.reason, isNull);
+      }
+    },
+  );
+}
+
+void _wideProposalTests() {
+  group('experimental wide motion proposals', () {
+    PoseFrame arm(double angle, {double shift = 0}) {
+      final half = angle * math.pi / 360;
+      final h = 90 * math.sin(half), dx = 90 * math.cos(half);
+      // Only one arm is visible at this confidence. The soft branch can
+      // observe it independently of the stricter bilateral span branch.
+      return PoseFrame(
+        imageWidth: 800,
+        imageHeight: 600,
+        keypoints: {
+          BodyLandmark.leftShoulder: kp(
+            BodyLandmark.leftShoulder,
+            300 + shift,
+            400 - 2 * h + shift,
+            likelihood: .57,
+          ),
+          BodyLandmark.leftElbow: kp(
+            BodyLandmark.leftElbow,
+            300 - dx + shift,
+            400 - h + shift,
+            likelihood: .57,
+          ),
+          BodyLandmark.leftWrist: kp(
+            BodyLandmark.leftWrist,
+            300 + shift,
+            400 + shift,
+            likelihood: .57,
+          ),
+        },
+      );
+    }
+
+    const empty = PoseFrame.empty(imageWidth: 800, imageHeight: 600);
+
+    test('same-frame primary metadata wins and exact cooldown is 800 ms', () {
+      final d = PushupWideProposalDetector();
+      RepEvent primary(int ms) =>
+          RepEvent(index: 1, at: Duration(milliseconds: ms), valid: true);
+      final first = primary(0);
+      expect(
+        d.update(empty, Duration.zero, primary: first)?.primary,
+        same(first),
+      );
+      expect(
+        d.update(
+          empty,
+          const Duration(milliseconds: 799),
+          primary: primary(799),
+        ),
+        isNull,
+      );
+      final next = primary(800);
+      expect(
+        d
+            .update(empty, const Duration(milliseconds: 800), primary: next)
+            ?.primary,
+        same(next),
+      );
+      d.reset();
+      expect(d.update(empty, Duration.zero, primary: first), isNotNull);
+    });
+
+    test(
+      'a single observed arm flexes and returns without a primary event',
+      () {
+        final d = PushupWideProposalDetector();
+        final at = <int>[];
+        for (var i = 0; i < 18; i++) {
+          final value = i < 5 || i > 10 ? 175.0 : 90.0;
+          final result = d.update(arm(value), Duration(milliseconds: i * 80));
+          if (result != null) {
+            expect(result.primary, isNull);
+            at.add(i);
+          }
+        }
+        expect(at.length, 1);
+        expect(at.single, greaterThan(10));
+      },
+    );
+
+    test(
+      'rigid translation and a long occlusion do not manufacture a return',
+      () {
+        final translated = PushupWideProposalDetector();
+        for (var i = 0; i < 24; i++) {
+          expect(
+            translated.update(
+              arm(175, shift: i * 3),
+              Duration(milliseconds: i * 80),
+            ),
+            isNull,
+          );
+        }
+        final gap = PushupWideProposalDetector();
+        for (var i = 0; i < 8; i++) {
+          expect(
+            gap.update(arm(i < 3 ? 175 : 90), Duration(milliseconds: i * 80)),
+            isNull,
+          );
+        }
+        expect(gap.update(empty, const Duration(milliseconds: 800)), isNull);
+        expect(
+          gap.update(arm(175), const Duration(milliseconds: 1200)),
+          isNull,
+        );
+        gap.reset();
+        expect(gap.update(arm(175), Duration.zero), isNull);
+      },
+    );
   });
 }

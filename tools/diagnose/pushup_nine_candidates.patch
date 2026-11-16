@@ -1,0 +1,689 @@
+diff --git a/gymrats_app/lib/services/pose/pose_metrics.dart b/gymrats_app/lib/services/pose/pose_metrics.dart
+index 88d585a..42559fa 100644
+--- a/gymrats_app/lib/services/pose/pose_metrics.dart
++++ b/gymrats_app/lib/services/pose/pose_metrics.dart
+@@ -13,6 +13,7 @@ class PoseMetrics {
+     this.rightElbowAngle,
+     this.noseY,
+     this.shoulderWidth,
++    this.projectedArmHeight,
+     this.tilt,
+     this.hipY,
+     this.torsoDrop,
+@@ -40,6 +41,10 @@ class PoseMetrics {
+   /// depth does not depend on how far away the phone is.
+   final double? shoulderWidth;
+ 
++  /// Wrist midpoint below the shoulder midpoint, in shoulder widths. Both
++  /// wrists must be visible to calibrate the vertical travel at the top.
++  final double? projectedArmHeight;
++
+   /// Absolute tilt of the shoulder line away from horizontal, in degrees.
+   ///
+   /// This is the front-view stand-in for a body line: the hips are hidden
+@@ -247,6 +252,13 @@ PoseMetrics measurePose(PoseFrame frame, {double minLikelihood = 0.6}) {
+     rightElbowAngle: right,
+     noseY: noseY,
+     shoulderWidth: width,
++    projectedArmHeight: leftWrist == null || rightWrist == null
++        ? null
++        : _overWidth(
++            width,
++            (leftWrist.y + rightWrist.y) / 2,
++            (leftShoulder.y + rightShoulder.y) / 2,
++          ),
+     tilt: math.atan2(dy.abs(), dx.abs()) * 180 / math.pi,
+     shoulderY: (leftShoulder.y + rightShoulder.y) / 2,
+     leftElbowSpread: spread(usable(BodyLandmark.leftElbow), leftShoulder),
+diff --git a/gymrats_app/lib/services/pose/rep_judge.dart b/gymrats_app/lib/services/pose/rep_judge.dart
+index c435f8f..067ab21 100644
+--- a/gymrats_app/lib/services/pose/rep_judge.dart
++++ b/gymrats_app/lib/services/pose/rep_judge.dart
+@@ -50,6 +50,14 @@ class RepJudgeConfig {
+     this.bowTorsoDrop = 0.3,
+     this.maxShinLiftGap = -0.2,
+     this.bowHipRise = -1.5,
++    this.projectedArmScale = false,
++    this.elbowDrivenDepth = false,
++    this.elevatedViewTorsoDrop,
++    this.requireViewFeet = true,
++    this.smallCycleDepth,
++    this.smallCycleKnees = false,
++    this.shallowElbowExcursion = 0,
++    this.shallowTiltReasonDegrees = 0,
+   });
+ 
+   /// Minimum ML Kit likelihood for a landmark to be used.
+@@ -252,6 +260,32 @@ class RepJudgeConfig {
+   /// knee push-ups +0.11 or more, head-nod half reps -0.08 or more. Any
+   /// line from -0.8 to -2.0 gave the same verdicts.
+   final double bowHipRise;
++
++  /// Scale the vertical phase thresholds to the camera's view of a straight
++  /// arm at setup. A foreshortened arm has less visible travel available.
++  final bool projectedArmScale;
++
++  /// In a foreshortened view, use the combination of elbow flexion and
++  /// shoulder descent as a second observation of movement through a cycle.
++  final bool elbowDrivenDepth;
++
++  /// Maximum top-pose hip height below the shoulders (in shoulder widths)
++  /// for using shorter travel thresholds. Null keeps floor-camera thresholds.
++  final double? elevatedViewTorsoDrop;
++  final bool requireViewFeet;
++
++  /// Additional feedback for a short but visibly articulated down/up cycle.
++  /// It cannot count a rep or lower the normal judge's pass requirements.
++  final double? smallCycleDepth;
++  final bool smallCycleKnees;
++
++  /// If positive, report a short dip as shallow when the chest visibly drops
++  /// and the elbows flex then reopen by at least this many degrees.
++  final double shallowElbowExcursion;
++
++  /// On a rejected partial rep, a sustained tilt with visible arm flexion
++  /// can give a more specific correction. Zero keeps the depth message.
++  final double shallowTiltReasonDegrees;
+ }
+ 
+ /// Where the user is in a push-up.
+@@ -337,13 +371,26 @@ class RepUpdate {
+ /// usually hidden, so knees, belly, and an upright body are judged only in
+ /// attempts where those parts were seen. Otherwise the rep stands.
+ class RepJudge {
+-  RepJudge({this.config = const RepJudgeConfig(), RepClock? clock})
+-    : _clock = clock ?? _stopwatchClock(),
+-      _smoother = MetricSmoother(tau: config.smoothingTau);
++  RepJudge({
++    this.config = const RepJudgeConfig(),
++    RepClock? clock,
++    this.onAttemptEvidence,
++  }) : _clock = clock ?? _stopwatchClock(),
++       _shortCycle = config.smallCycleDepth == null
++           ? null
++           : _ShortCycleFeedback(config),
++       _smoother = MetricSmoother(tau: config.smoothingTau);
+ 
+   final RepJudgeConfig config;
++
++  /// Head-travel target in the same shoulder-width units as the live depth.
++  double get passDepth => config.bottomDepth * _travelScale;
++
++  /// Optional diagnostic for local landmark replays. Called at verdict time.
++  final void Function(List<double?>)? onAttemptEvidence;
+   final RepClock _clock;
+   final MetricSmoother _smoother;
++  final _ShortCycleFeedback? _shortCycle;
+ 
+   RepPhase _phase = RepPhase.idle;
+   Duration? _lastAt;
+@@ -352,6 +399,15 @@ class RepJudge {
+   double? _topNoseY;
+   double? _topShoulderY;
+   double? _topWidth;
++  double _travelScale = 1;
++  double _sumArmHeights = 0;
++  int _armHeightSamples = 0;
++  double? _lastTopElbow;
++  bool _shallowArmDip = false;
++  double? _foreshortenedArmHeight;
++  double _sumTopTorsoDrop = 0;
++  int _topTorsoSamples = 0;
++  double _maxPhaseDepth = 0;
+   double _maxDepth = 0;
+   double _highestSinceBottom = 0;
+   double? _minElbow;
+@@ -395,6 +451,7 @@ class RepJudge {
+     _topNoseY = null;
+     _topShoulderY = null;
+     _topWidth = null;
++    _resetTravelCalibration();
+     _kneesLatched = false;
+     _straightHipSince = null;
+     _baselineHip = null;
+@@ -414,6 +471,7 @@ class RepJudge {
+     _topNoseY = null;
+     _topShoulderY = null;
+     _topWidth = null;
++    _resetTravelCalibration();
+     _kneesLatched = false;
+     _straightHipSince = null;
+     _baselineHip = null;
+@@ -441,7 +499,7 @@ class RepJudge {
+     final tilt = raw.tilt == null ? null : smoothed.tilt;
+ 
+     if (_phase == RepPhase.idle || _phase == RepPhase.lost) {
+-      _holdTop(now, elbow, smoothed);
++      _holdTop(now, elbow, smoothed, raw);
+       // The frame that becomes ready is already a straight-arm top. Judge
+       // it now, so a kneel from the first moment latches before the descent.
+       if (_phase != RepPhase.up) {
+@@ -451,15 +509,25 @@ class RepJudge {
+     }
+ 
+     final depth = _depth(smoothed)!;
++    final shoulderDrop = raw.shoulderY == null ? null : _shoulderDrop(smoothed);
++    final articulatedDepth = _articulatedDepth(raw, elbow, shoulderDrop);
++    final phaseDepth = articulatedDepth > 0
++        ? math.max(depth, articulatedDepth)
++        : depth;
+     _watchKnees(raw);
+     if (_phase == RepPhase.up) {
++      if (phaseDepth <= _topDepth &&
++          elbow != null &&
++          elbow >= config.topAngle) {
++        _lastTopElbow = elbow;
++      }
+       _followTop(elbow, depth, smoothed, dt);
+       _lockSetupHip(elbow, depth, raw);
+       _watchKneeFromSetup(elbow, depth, raw);
+       _clearKneeLatchIfPlank(now, elbow, depth, raw);
+       _watchShinsAtTop(elbow, depth, raw);
+       _watchHipsAtTop(depth, raw);
+-      if (depth >= config.enterDepth) {
++      if (phaseDepth >= _enterDepth) {
+         final count = _topShins.where((l) => l).length;
+         final lifted =
+             count >= config.minCheatFrames && count * 2 >= _topShins.length;
+@@ -471,6 +539,7 @@ class RepJudge {
+     }
+ 
+     if (_phase == RepPhase.descending || _phase == RepPhase.bottom) {
++      _maxPhaseDepth = math.max(_maxPhaseDepth, phaseDepth);
+       if (depth >= _maxDepth) {
+         // Hidden hips at the deepest frame leave no bow reading.
+         _deepHipHandGap = raw.hipHandGap;
+@@ -487,6 +556,7 @@ class RepJudge {
+         _clearAttempt();
+         _phase = RepPhase.idle;
+         _topSince = null;
++        _resetTravelCalibration();
+         _previousTilt = tilt;
+         return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt));
+       }
+@@ -495,63 +565,136 @@ class RepJudge {
+ 
+     // A hidden shoulder keeps its last smoothed value; it must not hold the
+     // rep above the bottom.
+-    final shoulderDrop = raw.shoulderY == null ? null : _shoulderDrop(smoothed);
++    if (_phase == RepPhase.descending &&
++        config.shallowElbowExcursion > 0 &&
++        shoulderDrop != null &&
++        shoulderDrop >= _enterDepth &&
++        _lastTopElbow != null &&
++        elbow != null &&
++        _lastTopElbow! - elbow >= config.shallowElbowExcursion) {
++      _shallowArmDip = true;
++    }
+     _watchLessArm(raw);
+-    final event = _advance(now, depth, shoulderDrop, elbow);
++    var event = _advance(
++      now,
++      phaseDepth,
++      depth,
++      articulatedDepth,
++      shoulderDrop,
++      elbow,
++    );
++    final shortCycle = _shortCycle;
++    if (shortCycle != null) {
++      if (event != null ||
++          _phase == RepPhase.bottom ||
++          depth >= config.shallowDepth) {
++        shortCycle.reset();
++      } else {
++        event = shortCycle.update(
++          now,
++          depth,
++          shoulderDrop,
++          elbow,
++          raw,
++          _nextIndex,
++        );
++        if (event != null) {
++          _nextIndex++;
++          onAttemptEvidence?.call([
++            event.maxDepth,
++            event.minElbowAngle,
++            event.maxTilt,
++            null,
++            null,
++            null,
++            null,
++            _lessArm,
++            null,
++            event.reason == RejectReason.kneesDown ? 1.0 : null,
++            null,
++          ]);
++        }
++      }
++    }
+     return RepUpdate(snapshot: _snapshot(elbow, smoothed, tilt), event: event);
+   }
+ 
+   RepEvent? _advance(
+     Duration now,
+-    double depth,
++    double phaseDepth,
++    double noseDepth,
++    double articulatedDepth,
+     double? shoulderDrop,
+     double? elbow,
+   ) {
+     if (_phase == RepPhase.descending) {
+       final shouldersDown =
+-          shoulderDrop == null || shoulderDrop >= config.minShoulderDrop;
++          shoulderDrop == null ||
++          shoulderDrop >= config.minShoulderDrop * _travelScale;
+       final elbowsDeep =
+           config.deepElbowAngle > 0 &&
+           elbow != null &&
+           elbow <= config.deepElbowAngle &&
+-          depth >= config.shallowDepth;
+-      if ((depth >= config.bottomDepth && shouldersDown) || elbowsDeep) {
++          noseDepth >= config.shallowDepth * _travelScale;
++      final bottom = passDepth;
++      if (articulatedDepth >= bottom ||
++          (noseDepth >= bottom && shouldersDown) ||
++          elbowsDeep) {
+         _phase = RepPhase.bottom;
+-        _highestSinceBottom = depth;
++        _highestSinceBottom = phaseDepth;
+         _descent ??= now - _attemptStarted!;
+-      } else if (depth <= config.topDepth) {
+-        final event = _tooBrief(now) || _maxDepth < config.shallowDepth
+-            ? null
+-            : _emit(now, RejectReason.insufficientDepth);
+-        _finishAtTop();
++      } else if (phaseDepth <= _topDepth) {
++        final armsReopened =
++            _shallowArmDip &&
++            elbow != null &&
++            _minElbow != null &&
++            elbow - _minElbow! >= config.shallowElbowExcursion;
++        final observedDip =
++            _maxPhaseDepth >= config.shallowDepth * _travelScale ||
++            armsReopened;
++        final hasTilt =
++            config.shallowTiltReasonDegrees > 0 &&
++            _maxTilt > config.shallowTiltReasonDegrees &&
++            _minElbow != null &&
++            _minElbow! <= 140;
++        final event = observedDip && !_tooBrief(now)
++            ? _emit(
++                now,
++                hasTilt
++                    ? RejectReason.shouldersNotLevel
++                    : RejectReason.insufficientDepth,
++              )
++            : null;
++        _finishAtTop(elbow);
+         return event;
+       }
+     }
+ 
+     if (_phase == RepPhase.bottom) {
+-      _highestSinceBottom = math.min(_highestSinceBottom, depth);
++      _highestSinceBottom = math.min(_highestSinceBottom, phaseDepth);
+       final armsExtended =
+           (elbow == null || elbow >= config.topAngle) && _lessArmLockedOut();
+-      if (depth <= config.topDepth && armsExtended) {
++      if (phaseDepth <= _topDepth && armsExtended) {
+         final event = _tooBrief(now) ? null : _complete(now);
+-        _finishAtTop();
++        _finishAtTop(elbow);
+         return event;
+       }
+-      if (_highestSinceBottom <= config.partialDepth &&
+-          depth - _highestSinceBottom >= config.reDescentDepth) {
++      if (_highestSinceBottom <= config.partialDepth * _travelScale &&
++          phaseDepth - _highestSinceBottom >=
++              config.reDescentDepth * _travelScale) {
+         // A flicker this short is not a missed lockout. Keep judging.
+         // The re-attempt sees no top frames, so it keeps the shin verdict
+         // as it keeps the knee latch.
+         final shinsLifted = _shinsLifted;
+         final topHipHand = _attemptTopHipHand;
+         if (_tooBrief(now)) {
+-          _beginAttempt(now, depth);
++          _beginAttempt(now, noseDepth);
+           _shinsLifted = shinsLifted;
+           _attemptTopHipHand = topHipHand;
+           return null;
+         }
+         final event = _emit(now, _withKnees(RejectReason.incompleteExtension));
+-        _beginAttempt(now, depth);
++        _beginAttempt(now, noseDepth);
+         _shinsLifted = shinsLifted;
+         _attemptTopHipHand = topHipHand;
+         return event;
+@@ -573,14 +716,93 @@ class RepJudge {
+         arm >= config.lockoutArmAngle;
+   }
+ 
+-  void _holdTop(Duration now, double? elbow, PoseMetrics smoothed) {
++  double get _enterDepth => config.enterDepth * _travelScale;
++  double get _topDepth => config.topDepth * _travelScale;
++
++  double _articulatedDepth(
++    PoseMetrics raw,
++    double? elbow,
++    double? shoulderDrop,
++  ) {
++    final height = _foreshortenedArmHeight;
++    final extended = _lastTopElbow;
++    if (height == null ||
++        extended == null ||
++        elbow == null ||
++        shoulderDrop == null ||
++        raw.leftElbowAngle == null ||
++        raw.rightElbowAngle == null) {
++      return 0;
++    }
++    // The two signals must agree. Small changes in elbow angle or a nod
++    // with stationary shoulders are insufficient. Distances reported in
++    // JudgeSnapshot and RepEvent remain measured nose travel.
++    final flexion = (extended - elbow - 8) / 50;
++    final travel = shoulderDrop / math.max(0.18, height * 0.38);
++    return math.max(0.0, math.min(flexion, travel)) * passDepth;
++  }
++
++  void _resetTravelCalibration() {
++    _shortCycle?.reset();
++    _travelScale = 1;
++    _sumArmHeights = 0;
++    _armHeightSamples = 0;
++    _lastTopElbow = null;
++    _foreshortenedArmHeight = null;
++    _sumTopTorsoDrop = 0;
++    _topTorsoSamples = 0;
++  }
++
++  void _holdTop(
++    Duration now,
++    double? elbow,
++    PoseMetrics smoothed,
++    PoseMetrics raw,
++  ) {
+     if (elbow == null) return;
+     if (elbow < config.topAngle || smoothed.shoulderWidth == null) {
+       _topSince = null;
++      _resetTravelCalibration();
+       return;
+     }
+     _topSince ??= now;
+-    if (now - _topSince! >= config.topHold) {
++    final projectedArmHeight = raw.projectedArmHeight;
++    if ((config.projectedArmScale || config.elbowDrivenDepth) &&
++        projectedArmHeight != null &&
++        projectedArmHeight > 0) {
++      _sumArmHeights += projectedArmHeight;
++      _armHeightSamples++;
++    }
++    final torsoDrop = raw.torsoDrop;
++    if (config.elevatedViewTorsoDrop != null &&
++        torsoDrop != null &&
++        (!config.requireViewFeet || raw.ankleKneeGap != null) &&
++        projectedArmHeight != null &&
++        projectedArmHeight > 0) {
++      _sumTopTorsoDrop += torsoDrop;
++      _topTorsoSamples++;
++    }
++    final height = _armHeightSamples > 0
++        ? _sumArmHeights / _armHeightSamples
++        : null;
++    final useElbows = config.elbowDrivenDepth && height != null && height < 0.9;
++    const briefHold = Duration(milliseconds: 67);
++    final hold = useElbows && config.topHold > briefHold
++        ? briefHold
++        : config.topHold;
++    if (now - _topSince! >= hold) {
++      // Only reliable measurements from this straight-arm hold contribute.
++      // A near-overhead view still needs appreciable motion to beat jitter.
++      if (config.projectedArmScale && height != null) {
++        _travelScale = height.clamp(0.45, 1.0);
++      }
++      final viewThreshold = config.elevatedViewTorsoDrop;
++      if (viewThreshold != null &&
++          _topTorsoSamples >= 2 &&
++          _sumTopTorsoDrop / _topTorsoSamples <= viewThreshold) {
++        _travelScale = 0.64;
++      }
++      _foreshortenedArmHeight = useElbows ? height : null;
+       _topNoseY = smoothed.noseY;
+       _topShoulderY = smoothed.shoulderY ?? _topShoulderY;
+       _topWidth = smoothed.shoulderWidth;
+@@ -598,7 +820,7 @@ class RepJudge {
+     Duration dt,
+   ) {
+     if (elbow == null || elbow < config.topAngle) return;
+-    if (depth >= config.enterDepth) return;
++    if (depth >= _enterDepth) return;
+     final alpha = config.baselineTau.inMicroseconds == 0
+         ? 1.0
+         : 1 - math.exp(-dt.inMicroseconds / config.baselineTau.inMicroseconds);
+@@ -621,7 +843,7 @@ class RepJudge {
+     final openTop =
+         elbow != null &&
+         elbow >= config.topAngle &&
+-        depth < config.topDepth &&
++        depth < _topDepth &&
+         hip != null &&
+         hip >= config.adoptHipAngle;
+     if (!openTop) return;
+@@ -648,7 +870,7 @@ class RepJudge {
+   void _watchKneeFromSetup(double? elbow, double depth, PoseMetrics raw) {
+     final hip = raw.hipAngle;
+     if (hip == null || elbow == null) return;
+-    if (elbow < config.topAngle || depth >= config.topDepth) return;
++    if (elbow < config.topAngle || depth >= _topDepth) return;
+     final base = _baselineHip;
+     if (base != null) {
+       if (hip <= base - _foldMargin) _kneesLatched = true;
+@@ -688,7 +910,7 @@ class RepJudge {
+     final plank =
+         elbow != null &&
+         elbow >= config.topAngle &&
+-        depth < config.topDepth &&
++        depth < _topDepth &&
+         backToSetup;
+     if (!plank) {
+       _straightHipSince = null;
+@@ -774,7 +996,7 @@ class RepJudge {
+       _kneesDown() &&
+       _minElbow != null &&
+       _minElbow! >= config.straightArmAngle &&
+-      _maxDepth >= config.bottomDepth;
++      _maxDepth >= passDepth;
+ 
+   bool _uprightTorso() =>
+       _torsoFrames >= config.minCheatFrames &&
+@@ -811,7 +1033,7 @@ class RepJudge {
+   /// their shins read lifted.
+   void _watchShinsAtTop(double? elbow, double depth, PoseMetrics raw) {
+     if (elbow == null || elbow < config.topAngle) return;
+-    if (depth >= config.enterDepth) return;
++    if (depth >= _enterDepth) return;
+     // Hidden ankles push out older readings, so a part no longer seen
+     // cannot reject the rep.
+     final gap = raw.ankleKneeGap;
+@@ -823,7 +1045,7 @@ class RepJudge {
+   /// hips are skipped: an older reading left in the window sat lower, so it
+   /// can only make the rise smaller, never reject a rep.
+   void _watchHipsAtTop(double depth, PoseMetrics raw) {
+-    if (depth >= config.enterDepth) return;
++    if (depth >= _enterDepth) return;
+     final gap = raw.hipHandGap;
+     if (gap == null) return;
+     _topHipHand.add(gap);
+@@ -838,6 +1060,8 @@ class RepJudge {
+ 
+   void _beginAttempt(Duration now, double depth) {
+     _phase = RepPhase.descending;
++    _shallowArmDip = false;
++    _maxPhaseDepth = depth;
+     _attemptStarted = now;
+     _maxDepth = depth;
+     _highestSinceBottom = depth;
+@@ -862,8 +1086,9 @@ class RepJudge {
+     _deepTorsoDrop = null;
+   }
+ 
+-  void _finishAtTop() {
++  void _finishAtTop(double? elbow) {
+     _phase = RepPhase.up;
++    _lastTopElbow = elbow;
+     _clearAttempt();
+   }
+ 
+@@ -887,16 +1112,31 @@ class RepJudge {
+     return _emit(now, reason);
+   }
+ 
+-  RepEvent _emit(Duration now, RejectReason? reason) => RepEvent(
+-    index: _nextIndex++,
+-    valid: reason == null,
+-    reason: reason,
+-    at: now,
+-    maxDepth: _maxDepth,
+-    minElbowAngle: _minElbow,
+-    maxTilt: _maxTilt,
+-    descent: _descent,
+-  );
++  RepEvent _emit(Duration now, RejectReason? reason) {
++    onAttemptEvidence?.call([
++      _maxDepth,
++      _minElbow,
++      _maxTilt,
++      _deepHipHandGap,
++      _deepTorsoDrop,
++      if (_minTorsoDrop.isFinite) _minTorsoDrop else null,
++      if (_maxTorsoDrop.isFinite) _maxTorsoDrop else null,
++      _lessArm,
++      _attemptTopHipHand,
++      _kneesDown() ? 1.0 : 0.0,
++      _kneeFloorFrames >= config.minCheatFrames ? 1.0 : 0.0,
++    ]);
++    return RepEvent(
++      index: _nextIndex++,
++      valid: reason == null,
++      reason: reason,
++      at: now,
++      maxDepth: _maxDepth,
++      minElbowAngle: _minElbow,
++      maxTilt: _maxTilt,
++      descent: _descent,
++    );
++  }
+ 
+   void _clearAttempt() {
+     _attemptStarted = null;
+@@ -939,3 +1179,108 @@ class RepJudge {
+         topShoulderY: _topShoulderY,
+       );
+ }
++
++/// Observes smaller cycles alongside the scoring state machine. A full
++/// attempt or an event from that judge discards this observation.
++class _ShortCycleFeedback {
++  _ShortCycleFeedback(this.config)
++    : minDepth = config.smallCycleDepth!,
++      entry = (config.smallCycleDepth! * 0.6).clamp(0.18, 0.25);
++
++  final RepJudgeConfig config;
++  final double minDepth;
++  final double entry;
++  double? topElbow;
++  Duration? start;
++  double peak = 0, minArm = 180;
++  double? maxTilt;
++  double? previousTilt;
++  bool bentWithChest = false, supported = false;
++  int supportedFrames = 0;
++
++  void reset() {
++    topElbow = null;
++    start = null;
++    peak = 0;
++    minArm = 180;
++    maxTilt = null;
++    previousTilt = null;
++    bentWithChest = false;
++    supportedFrames = 0;
++    supported = false;
++  }
++
++  RepEvent? update(
++    Duration now,
++    double depth,
++    double? chest,
++    double? elbow,
++    PoseMetrics raw,
++    int index,
++  ) {
++    final atTop = depth <= entry * 0.5;
++    if (start == null) {
++      if (atTop && elbow != null && elbow >= config.topAngle) topElbow = elbow;
++      if (topElbow == null || depth < entry) return null;
++      start = now;
++    }
++    if (now - start! > config.maxAttempt) {
++      reset();
++      return null;
++    }
++    peak = math.max(peak, depth);
++    if (elbow != null) {
++      minArm = math.min(minArm, elbow);
++      if (chest != null && chest >= minDepth * 0.5 && topElbow! - elbow >= 14) {
++        bentWithChest = true;
++      }
++    }
++    if (raw.tilt != null && previousTilt != null) {
++      maxTilt = math.max(maxTilt ?? 0, math.min(previousTilt!, raw.tilt!));
++    }
++    previousTilt = raw.tilt;
++    if (config.smallCycleKnees) {
++      final knee = raw.kneeHandGap;
++      final hip = raw.hipAngle;
++      final shin = raw.ankleKneeGap;
++      final onFloor =
++          knee != null &&
++          knee >= config.minKneeHandGap &&
++          knee <= config.maxKneeHandGap;
++      final folded =
++          (hip != null && hip < 145) ||
++          (shin != null && shin <= config.maxShinLiftGap);
++      supportedFrames = onFloor && folded ? supportedFrames + 1 : 0;
++      if (supportedFrames >= config.minCheatFrames) supported = true;
++    }
++    if (!atTop) return null;
++    final completed =
++        now - start! >= config.noiseFloor &&
++        peak >= minDepth &&
++        bentWithChest &&
++        elbow != null &&
++        elbow - minArm >= 14;
++    final tilted =
++        config.shallowTiltReasonDegrees > 0 &&
++        (maxTilt ?? 0) > config.shallowTiltReasonDegrees &&
++        minArm <= 140;
++    final event = completed
++        ? RepEvent(
++            index: index,
++            valid: false,
++            at: now,
++            reason: supported
++                ? RejectReason.kneesDown
++                : tilted
++                ? RejectReason.shouldersNotLevel
++                : RejectReason.insufficientDepth,
++            maxDepth: peak,
++            minElbowAngle: minArm,
++            maxTilt: maxTilt,
++          )
++        : null;
++    reset();
++    if (elbow != null && elbow >= config.topAngle) topElbow = elbow;
++    return event;
++  }
++}
