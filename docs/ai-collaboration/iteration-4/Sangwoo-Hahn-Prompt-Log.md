@@ -173,3 +173,9 @@ The following input is visible in this chat; it is not a complete session export
 \
 [송현우] [오후 11:14] @한상우 이거 추가 가능? 빡세면 내일은 그냥하고 다음주 사이클때하는 방법도 있음\
 ```
+
+
+## S1/S2 integration, 2026-11-16
+
+- 그럼 S1 개선 내용을 기존 PR에 반영하고 충돌 해결해줘. S2도 구현하고 검증해서 별도 PR 올려줘.
+- 네, 소유자 또는 PM이 동의했어요

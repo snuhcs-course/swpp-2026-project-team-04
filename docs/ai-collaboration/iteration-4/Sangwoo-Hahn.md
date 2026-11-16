@@ -69,3 +69,8 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 ## S3 UAT phone angle (2026-11-16)
 - Codex added an explicitly enabled UAT-only gravity angle chip for the common preparation and bot/online battle setup camera. Ordinary builds do not start the extra display or sensor subscription.
 - Independent read-only Codex review found initial overlaps with the setup panel and the battle leave button. Codex moved the display into visible camera/setup space and added geometry and sensor-lifecycle tests; the reviewer approved the corrected implementation. Local test evidence is in the personal testing notes. No human manual source fixes or real-device UAT were reported.
+
+
+## S2 experimental continuity warning, 2026-11-16
+- At the user's request, Codex prepared S2 separately before S1 merged; the user confirmed owner/PM agreement for the affected battle and counter files. ML Kit poses do not provide person identity, so the default-off continuity warning is explicitly a prototype rather than a completed identity guarantee.
+- Independent read-only Codex review identified retry, stream-stall, setup transition, geometry validation, and stale online-publication risks. Codex corrected these cases and added regressions. The physical two-person scenario and the threshold need independent labels and device UAT. No human manual code fix was reported. User prompts in the personal log are limited to this visible task and consent; the complete iteration transcript remains TODO.
