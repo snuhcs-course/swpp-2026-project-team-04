@@ -70,6 +70,31 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 - Codex added an explicitly enabled UAT-only gravity angle chip for the common preparation and bot/online battle setup camera. Ordinary builds do not start the extra display or sensor subscription.
 - Independent read-only Codex review found initial overlaps with the setup panel and the battle leave button. Codex moved the display into visible camera/setup space and added geometry and sensor-lifecycle tests; the reviewer approved the corrected implementation. Local test evidence is in the personal testing notes. No human manual source fixes or real-device UAT were reported.
 
+## S1 limited initial-hold change (2026-11-15)
+- Codex evaluated isolated push-up timing and pose thresholds, added synthetic 30 Hz tests and shortened the initial hold from 300 to 250 ms. The 172-degree lockout and the belly boundary remain unchanged because experimental relaxations produced an incorrect count or reason regressions.
+- An independent read-only Codex review found that the original change also cleared the knee latch early when hips were hidden. Codex added a reproducing test and retained the 300 ms minimum for latch release; the reviewer approved the corrected limited scope. Detailed commands and results are in the personal testing notes. No manual source-code fixes or real-device UAT were reported.
+- The user asked for S1 before the next build; the full S1 lockout-margin and recorded-video accuracy goals remain incomplete. These prompts are recorded as visible task inputs, not a complete session export.
+
+## S1 push-up algorithm integration (2026-11-16)
+- At the user's request, Codex prepared an isolated snapshot of the S1 work from the other project chat for the existing PR, leaving that chat's worktree untouched. The default pose-geometry changes, opt-in MLP/knee experiments and contact diagnostic retain their separate modes; the research reports describe their measured tradeoffs.
+- The earlier video validation used sampled proposed labels rather than independently adjudicated ground truth; physical exercise accuracy and multi-person tracking are not established. The user previously reported the experimental knee classifier performed worse on their phone. See the testing notes and the individual benchmark reports for exact runs and limitations.
+
+- A read-only Codex reviewer reproduced an insufficient-lockout promotion in the S1 snapshot. Codex added a test and corrected promotion to respect the configured lockout; the reviewer confirmed that correction and identified the separate custom-injected tilt-monitor limitation, which is disclosed for review. No physical-user test or manual human source edit was reported for this integration. Final test evidence and the failed coverage collection are in the testing notes.
+
+## S1 follow-up — mobile pose comparison and knee forest (2026-11-16)
+
+- Codex compared ML Kit Accurate/Base and RTMPose-s/m using fixed source-group splits, then exported the selected depth-four forest into the local opt-in push-up judge. The comparison used 2,706 presegmented normal/knee intervals labelled by earlier Codex visual review. The testing notes and pushup-mobile-pose-comparison.md retain exact counts, provenance and limitations.
+- The user stopped the Sapiens2-5B investigation to prioritize low-latency phone execution, requested installation, and selected the new comparison build after the agent disclosed worse results on 32 recorded-phone sequences. The input prompts below document these decisions.
+- Codex automated same-frame inference, grouped evaluation, Python/Dart parity and Android installation. All 2,706 exported classifier decisions matched. Time savings were not measured.
+- Independent read-only Codex review found a microsecond truncation error in live attempt boundaries and a shared Android metadata label that incorrectly described ML Kit preprocessing. Codex corrected both. Native replay exposed weaker live-counter results despite the favorable presegmented benchmark. The report retains this contrary evidence.
+- The first recommendation based on clip-level scores required revision after live-counter replay. The user chose a comparison build with the known regression and requested a phone trial.
+- Human manual source-code edits were not reported. Codex performed the implementation and fixes. The user authorized publication in the existing S1 PR. The selected prompt record is incomplete as a full iteration-wide session export.
+
+### PR integration and review readiness, 2026-11-16
+
+The user requested updating the existing S1 and S2 PRs and releasing their Draft status. Codex committed the five-phase forest work as 89403cb and merged the current remote S1 branch into it as c940d09. The resulting tree includes main fe1aad1 and the remote 327a9ff lockout correction. Conflict resolution preserved both personal-note histories and the new forest tests. An independent read-only Codex reviewer checked the resolved source and found no actionable implementation defects. The default counter's lockout guard and the opt-in model decision path are described separately in the comparison report.
+
+The local staged-file guard was corrected to compare a merge result with main when the incoming branch already contains that main revision. Its path ownership map was preserved. This local harness change is excluded from the commit. Verified test results are recorded in the personal testing notes. Model accuracy limitations and pending real-person validation remain explicitly documented for reviewers.
 
 ## S2 experimental continuity warning, 2026-11-16
 - At the user's request, Codex prepared S2 separately before S1 merged; the user confirmed owner/PM agreement for the affected battle and counter files. ML Kit poses do not provide person identity, so the default-off continuity warning is explicitly a prototype rather than a completed identity guarantee.
@@ -81,3 +106,9 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 - Serial coverage collection succeeded after the earlier VM-service failure. All 258 selected tests passed, and each changed file exceeded its layer target. The personal testing notes contain the counts and reproducible command.
 - Independent read-only Codex review found no actionable defects in the current opt-in prototype. Its review covered confirmation freshness, lifecycle/retry behavior, setup handoff and withheld online pose publication. Physical identity-retention efficacy and full-suite validation with the feature globally enabled remain open.
 - This publication pass changed documentation. Human manual source edits and measured time savings were not reported. The full-iteration transcript and team-wide interaction-history review remain pending.
+
+### S2 integration after S1 PR #69, 2026-11-16
+
+Codex integrated main `d188240` after the PM merged S1, preserving both branches' personal notes and prompt history. Source files merged automatically. Independent read-only review checked the S1 forest-history interaction with S2 abandonment and reset, and found no actionable integration defect. The resolved tree passed application analysis, 3,329 ordinary-build tests with 10 existing skips, and 258 focused tests with changed-file coverage above target.
+
+An initial analysis command ran from the repository root and reported package-import errors in standalone diagnostic scripts. Codex corrected the working directory to `gymrats_app` and reran analysis successfully. Human manual source changes were not reported. The opt-in prototype's physical identity-retention limitations remain documented.

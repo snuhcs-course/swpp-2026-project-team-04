@@ -345,7 +345,7 @@ void main() {
       expect(copy.label.note, 'one rep with the knees up');
       final config = copy.judge['config']! as Map<String, Object?>;
       expect(config['bottomDepth'], 1.1);
-      expect(config['topHoldMs'], 300);
+      expect(config['topHoldMs'], 250);
       expect(config, hasLength(36));
       expect(copy.judge['commit'], isNull);
       expect(copy.setup.device, 'test');

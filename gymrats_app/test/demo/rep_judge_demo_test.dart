@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:gymrats_app/demo/rep_judge_demo.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
@@ -26,6 +27,7 @@ import '../support/pushup_case_loader.dart';
 const _fast = RepJudgeConfig(smoothingTau: Duration.zero);
 
 void main() {
+  _kneeDiagnosticTests();
   testWidgets('the recorder form offers push-up sets only', (tester) async {
     await tester.pumpWidget(const RepJudgeDemoApp());
     expect(find.text('Push-up recorder'), findsOneWidget);
@@ -417,6 +419,453 @@ void main() {
 }
 
 final _recordedAt = DateTime(2026, 10, 25, 14, 3, 12);
+
+void _kneeDiagnosticTests() {
+  group('live knee contact diagnostic', () {
+    testWidgets('opens the camera without a set form or a rep counter', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      expect(harness.camera.isStreaming, isTrue);
+      expect(find.text('무릎 접촉 확인'), findsOneWidget);
+      expect(find.byKey(const Key('kneeContactStatus')), findsOneWidget);
+      expect(find.text('관절 인식 대기'), findsOneWidget);
+      expect(find.byKey(startRecordingKey), findsNothing);
+      expect(find.byKey(validRepsKey), findsNothing);
+      expect(find.byKey(remainingTimeKey), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(harness.camera.isStreaming, isFalse);
+      expect(harness.estimator.closed, isTrue);
+    });
+
+    testWidgets(
+      'shows stable lifted and touching knees and clears on no pose',
+      (tester) async {
+        final harness = _KneeDiagnosticHarness();
+        await harness.open(tester);
+        await harness.calibrate(tester);
+        await harness.settle(tester);
+        expect(find.text('무릎 떠 있음 추정'), findsOneWidget);
+        await harness.feed(
+          tester,
+          harness.now.inMilliseconds + 125,
+          touching: true,
+        );
+        expect(find.text('자세를 잠깐 유지해 주세요'), findsOneWidget);
+        await harness.feed(
+          tester,
+          harness.now.inMilliseconds + 125,
+          touching: true,
+        );
+        await harness.feed(
+          tester,
+          harness.now.inMilliseconds + 125,
+          touching: true,
+        );
+        expect(find.text('무릎 닿음 추정'), findsOneWidget);
+        expect(find.text('왼쪽 무릎 · 닿음 추정'), findsOneWidget);
+        harness.estimator.frames.add(
+          const PoseFrame.empty(imageWidth: 1200, imageHeight: 1000),
+        );
+        harness.camera.emit();
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('사람이 보이지 않아요'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets('an expired camera sample cannot keep a contact verdict', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      await harness.calibrate(tester);
+      await harness.settle(tester, touching: true);
+      expect(find.text('무릎 닿음 추정'), findsOneWidget);
+      harness.now += const Duration(milliseconds: 750);
+      await tester.pump(const Duration(milliseconds: 750));
+      expect(find.text('관절 인식 대기'), findsOneWidget);
+      expect(find.textContaining('높이 비율 —'), findsNWidgets(2));
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('camera switching clears the preceding contact estimate', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      await harness.calibrate(tester);
+      await harness.settle(tester, touching: true);
+      await tester.tap(find.byTooltip('카메라 전환'));
+      await tester.pump();
+      await tester.pump();
+      expect(harness.camera.switchCount, 1);
+      expect(harness.camera.startCount, 2);
+      expect(find.text('관절 인식 대기'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('permission settings and retry recover the camera', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      harness.camera.permission = CameraPermission.denied;
+      await harness.open(tester);
+      expect(find.text('카메라 권한을 허용해 주세요.'), findsOneWidget);
+      await tester.tap(find.text('설정 열기'));
+      await tester.pump();
+      expect(harness.camera.settingsCount, 1);
+      harness.camera.permission = CameraPermission.granted;
+      await tester.tap(find.text('다시 시도'));
+      await tester.pump();
+      await tester.pump();
+      expect(harness.camera.isStreaming, isTrue);
+      expect(find.text('다시 시도'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('camera startup failure offers a working retry', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      harness.camera.startError = const CameraUnavailableException(
+        'unavailable',
+      );
+      await harness.open(tester);
+      expect(find.text('카메라 인식을 다시 시작해 주세요.'), findsOneWidget);
+      harness.camera.startError = null;
+      await tester.tap(find.text('다시 시도'));
+      await tester.pump();
+      await tester.pump();
+      expect(harness.camera.isStreaming, isTrue);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('backgrounding releases the camera and drops the verdict', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      await harness.calibrate(tester);
+      await harness.settle(tester, touching: true);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      await tester.pump();
+      expect(harness.camera.isStreaming, isFalse);
+      // Paused apps do not render frames. Verify the cleared view on resume.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump();
+      expect(harness.camera.isStreaming, isTrue);
+      expect(find.text('관절 인식 대기'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('the diagnostic fits a compact portrait phone', (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      await harness.calibrate(tester);
+      await harness.settle(tester, touching: true);
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('영상 기반 추정'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('both references are required and reset removes them', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      await harness.settle(tester);
+      expect(find.text('기준 자세를 저장해 주세요'), findsOneWidget);
+      await harness.capture(tester, touching: false);
+      await harness.settle(tester);
+      expect(find.text('기준 자세를 저장해 주세요'), findsOneWidget);
+      await harness.capture(tester, touching: true);
+      await harness.settle(tester);
+      expect(find.text('무릎 떠 있음 추정'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('resetKneeReferences')));
+      await tester.pump();
+      await harness.settle(tester);
+      expect(find.text('기준 자세를 저장해 주세요'), findsOneWidget);
+      expect(find.text('두 기준 자세를 각각 저장해 주세요.'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('reference capture fails visibly when no pose arrives', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      await tester.tap(find.byKey(const Key('captureKneesLifted')));
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.textContaining('저장 실패'), findsOneWidget);
+      expect(find.text('관절 인식 대기'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a changed phone angle invalidates both references', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      harness.gravity.add(const GravitySample(0, 9.8, 0));
+      await harness.calibrate(tester);
+      await harness.settle(tester);
+      expect(find.text('무릎 떠 있음 추정'), findsOneWidget);
+      harness.gravity.add(const GravitySample(0, 8, 5));
+      await harness.feed(tester, harness.now.inMilliseconds + 250);
+      await harness.feed(tester, harness.now.inMilliseconds + 500);
+      expect(find.text('기준 자세를 저장해 주세요'), findsOneWidget);
+      expect(find.textContaining('카메라 구도가 바뀌었어요.'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('missing knee and ankle names explain why detection waits', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      await harness.calibrate(tester);
+      final keypoints =
+          Map<BodyLandmark, Keypoint>.of(_kneeDiagnosticPose(false).keypoints)
+            ..remove(BodyLandmark.leftKnee)
+            ..remove(BodyLandmark.leftAnkle);
+      harness.estimator.frames.add(
+        PoseFrame(imageWidth: 1200, imageHeight: 1000, keypoints: keypoints),
+      );
+      harness.camera.emit();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('필요한 관절이 안 보여요'), findsOneWidget);
+      expect(find.text('왼쪽 무릎 · 관절 인식 부족'), findsOneWidget);
+      expect(find.text('무릎·발목 확인 필요'), findsOneWidget);
+      expect(find.text('기준 자세를 저장해 주세요'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('overlapping shoulders show a framing instruction', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      final keypoints = Map<BodyLandmark, Keypoint>.of(
+        _kneeDiagnosticPose(false).keypoints,
+      );
+      final left = keypoints[BodyLandmark.leftShoulder]!;
+      keypoints[BodyLandmark.rightShoulder] = Keypoint(
+        landmark: BodyLandmark.rightShoulder,
+        x: left.x + 2,
+        y: left.y,
+        likelihood: 1,
+      );
+      harness.estimator.frames.add(
+        PoseFrame(imageWidth: 1200, imageHeight: 1000, keypoints: keypoints),
+      );
+      harness.camera.emit();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('어깨가 구분되게 맞춰 주세요'), findsOneWidget);
+      expect(find.textContaining('어깨 간격 확인 필요'), findsNWidgets(2));
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets(
+      'identical references save and report a weak signal without a verdict',
+      (tester) async {
+        final harness = _KneeDiagnosticHarness();
+        await harness.open(tester);
+        await harness.capture(tester, touching: false);
+        await harness.capture(tester, touching: true, postureTouching: false);
+        expect(
+          find.text('기준 저장 완료 · 두 자세의 차이가 작아 판정 신호가 약해요.'),
+          findsOneWidget,
+        );
+        expect(find.text('✓ 무릎 뗀 자세 저장'), findsOneWidget);
+        expect(find.text('✓ 무릎 댄 자세 저장'), findsOneWidget);
+        await harness.settle(tester);
+        expect(find.text('두 자세를 구분하기 어려워요'), findsOneWidget);
+        expect(find.text('무릎 떠 있음 추정'), findsNothing);
+        expect(find.text('무릎 닿음 추정'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets('small repeatable knee differences can be saved and detected', (
+      tester,
+    ) async {
+      final harness = _KneeDiagnosticHarness();
+      await harness.open(tester);
+      final lifted = _kneeDiagnosticPose(false);
+      final keypoints = Map<BodyLandmark, Keypoint>.of(lifted.keypoints);
+      for (final landmark in [BodyLandmark.leftKnee, BodyLandmark.rightKnee]) {
+        final original = keypoints[landmark]!;
+        keypoints[landmark] = Keypoint(
+          landmark: landmark,
+          x: original.x,
+          y: original.y + 6,
+          z: original.z,
+          likelihood: original.likelihood,
+        );
+      }
+      final touching = PoseFrame(
+        imageWidth: lifted.imageWidth,
+        imageHeight: lifted.imageHeight,
+        keypoints: keypoints,
+      );
+      await harness.capture(tester, touching: false, frame: lifted);
+      await harness.capture(tester, touching: true, frame: touching);
+      expect(find.text('✓ 무릎 뗀 자세 저장'), findsOneWidget);
+      expect(find.text('✓ 무릎 댄 자세 저장'), findsOneWidget);
+      expect(find.text('기준 저장 완료 · 폰 위치를 유지해 주세요.'), findsOneWidget);
+      await harness.settle(tester, frame: touching);
+      expect(find.text('무릎 닿음 추정'), findsOneWidget);
+      await harness.settle(tester, frame: lifted);
+      expect(find.text('무릎 떠 있음 추정'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
+}
+
+class _KneeDiagnosticHarness {
+  final camera = FakeCameraService();
+  final estimator = FakePoseEstimator();
+  final gravity = StreamController<GravitySample>(sync: true);
+  late final phoneTilt = PhoneTiltMonitor(samples: gravity.stream);
+  Duration now = Duration.zero;
+
+  Future<void> open(WidgetTester tester) async {
+    final viewModel = SetupViewModel(
+      exercise: ExerciseType.pushUp,
+      camera: camera,
+      estimator: estimator,
+      phoneTilt: phoneTilt,
+      clock: () => now,
+    );
+    await tester.pumpWidget(
+      KneeContactDemoApp(
+        viewModel: viewModel,
+        phoneTilt: phoneTilt,
+        clock: () => now,
+      ),
+    );
+    addTearDown(gravity.close);
+    await tester.pump();
+    await tester.pump();
+  }
+
+  Future<void> settle(
+    WidgetTester tester, {
+    bool touching = false,
+    PoseFrame? frame,
+  }) async {
+    final start = now.inMilliseconds + 1;
+    for (final milliseconds in [0, 125, 250]) {
+      await feed(
+        tester,
+        start + milliseconds,
+        touching: touching,
+        frame: frame,
+      );
+    }
+  }
+
+  Future<void> calibrate(WidgetTester tester) async {
+    await capture(tester, touching: false);
+    await capture(tester, touching: true);
+  }
+
+  Future<void> capture(
+    WidgetTester tester, {
+    required bool touching,
+    bool? postureTouching,
+    PoseFrame? frame,
+  }) async {
+    await tester.tap(
+      find.byKey(Key(touching ? 'captureKneesTouching' : 'captureKneesLifted')),
+    );
+    await tester.pump();
+    for (var sample = 0; sample < 12; sample++) {
+      await feed(
+        tester,
+        now.inMilliseconds + 250,
+        touching: postureTouching ?? touching,
+        frame: frame,
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    await tester.pump();
+  }
+
+  Future<void> feed(
+    WidgetTester tester,
+    int milliseconds, {
+    bool touching = false,
+    PoseFrame? frame,
+  }) async {
+    now = Duration(milliseconds: milliseconds);
+    final pose = frame ?? _kneeDiagnosticPose(touching);
+    estimator.frames.add(
+      PoseFrame(
+        imageWidth: pose.imageWidth,
+        imageHeight: pose.imageHeight,
+        keypoints: pose.keypoints,
+      ),
+    );
+    camera.emit();
+    await tester.pump();
+    await tester.pump();
+  }
+}
+
+PoseFrame _kneeDiagnosticPose(bool touching) {
+  final keypoints = <BodyLandmark, Keypoint>{};
+  void point(BodyLandmark landmark, double x, double y) {
+    keypoints[landmark] = Keypoint(
+      landmark: landmark,
+      x: x + (landmark.name.startsWith('right') ? 100 : 0),
+      y: y,
+      likelihood: 1,
+    );
+  }
+
+  for (final left in [true, false]) {
+    final offset = left ? 0.0 : 15.0;
+    point(
+      left ? BodyLandmark.leftShoulder : BodyLandmark.rightShoulder,
+      120,
+      400 + offset,
+    );
+    point(
+      left ? BodyLandmark.leftWrist : BodyLandmark.rightWrist,
+      100,
+      700 + offset,
+    );
+    point(
+      left ? BodyLandmark.leftHip : BodyLandmark.rightHip,
+      touching ? 500 : 550,
+      500 + offset,
+    );
+    point(
+      left ? BodyLandmark.leftKnee : BodyLandmark.rightKnee,
+      touching ? 700 : 750,
+      (touching ? 690 : 625) + offset,
+    );
+    point(
+      left ? BodyLandmark.leftAnkle : BodyLandmark.rightAnkle,
+      900,
+      700 + offset,
+    );
+  }
+  return PoseFrame(imageWidth: 1200, imageHeight: 1000, keypoints: keypoints);
+}
 
 /// The form is a list taller than the test screen.
 Future<void> _enter(WidgetTester tester, Finder field, String text) async {
