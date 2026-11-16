@@ -1,5 +1,7 @@
 # Nine-way push-up judging on the Iteration 4 recuts
 
+> Historical experiment before the later span calibration and PR-integration lockout correction; see `pushup-span-benchmark.md` for the latest replay.
+
 ## Result on the Android landmark stream
 
 The app uses `tree5_small30_elev60_knees_tilt15_guarded`. It ranked first among 71 evaluated settings, with development macro F1 of 18.97% against the old judge's 11.38%. Thirty-six settings passed the phone-recording and visibility controls. The Android replay covered 133,327 sampled frames across all 1,464 originals. ML Kit returned no person on 1,911 frames. Those frames remained in the stream.

@@ -524,6 +524,87 @@ void main() {
     expect(at(c, 2300, pose()).event?.reason, RejectReason.insufficientDepth);
   });
 
+  test('a 168 degree partial return is never promoted to a valid rep', () {
+    PoseFrame frame(double depth, double angle, {double? bodyDepth}) {
+      final body = bodyDepth ?? depth;
+      final sy = 400 + .6732139131660497 * body * 200;
+      final wy = 640 + .06788671109571764 * body * 200;
+      final d = (wy - sy).abs();
+      final length = d / (2 * math.sin(angle * math.pi / 360));
+      final h = math.sqrt(math.max(0, length * length - d * d / 4));
+      final positions = <BodyLandmark, (double, double)>{
+        BodyLandmark.nose: (500, 360 + depth * 200),
+        BodyLandmark.leftShoulder: (400, sy),
+        BodyLandmark.rightShoulder: (600, sy),
+        BodyLandmark.leftElbow: (400 + h, (sy + wy) / 2),
+        BodyLandmark.rightElbow: (600 - h, (sy + wy) / 2),
+        BodyLandmark.leftWrist: (400, wy),
+        BodyLandmark.rightWrist: (600, wy),
+        BodyLandmark.leftHip: (
+          400 - .06348361145797995 * 200,
+          sy + .1297483602508122 * 200,
+        ),
+        BodyLandmark.rightHip: (
+          600 - .06348361145797995 * 200,
+          sy + .1297483602508122 * 200,
+        ),
+      };
+      return PoseFrame(
+        imageWidth: 1000,
+        imageHeight: 1000,
+        keypoints: {
+          for (final e in positions.entries)
+            e.key: Keypoint(
+              landmark: e.key,
+              x: e.value.$1,
+              y: e.value.$2,
+              likelihood: .99,
+            ),
+        },
+      );
+    }
+
+    final c = judge(config: const RepJudgeConfig());
+    final events = <RepEvent>[];
+    for (var i = 0; i < 95; i++) {
+      final t = i - 12;
+      double depth, angle;
+      if (t < 0) {
+        depth = 0;
+        angle = 178;
+      } else if (t < 17) {
+        final f = t / 17;
+        depth = 1.5685349628609495 * f;
+        angle = 178 + (96.91476272478336 - 178) * f;
+      } else if (t < 34) {
+        final f = (t - 17) / 17;
+        depth =
+            1.5685349628609495 + (.146102932143259 - 1.5685349628609495) * f;
+        angle = 96.91476272478336 + (168.4207876440463 - 96.91476272478336) * f;
+      } else if (t < 35) {
+        depth = .146102932143259;
+        angle = 168.4207876440463;
+      } else if (t < 55) {
+        depth = .146102932143259 + .5977130317970312 * (t - 35) / 20;
+        angle = 168.4207876440463;
+      } else {
+        depth = .146102932143259 + .5977130317970312;
+        angle = 168.4207876440463;
+      }
+      final event = at(
+        c,
+        i * 33,
+        frame(depth, angle, bodyDepth: t >= 35 ? .146102932143259 : null),
+      ).event;
+      if (event != null) events.add(event);
+    }
+    expect(events.where((e) => e.valid), isEmpty);
+    expect(
+      events.any((e) => e.reason == RejectReason.incompleteExtension),
+      isTrue,
+    );
+  });
+
   test('a one-second full rep counts with the production smoothing', () {
     final c = judge(config: const RepJudgeConfig());
     calibrate(c);

@@ -1,5 +1,7 @@
 # Push-up recognition from screen coordinates and phone inclination
 
+> **2026-11-16 PR integration correction:** Independent review reproduced a previously rejected 168.42° incomplete lockout being counted by the soft-decision calibration. The app now requires the configured lockout angle both on the actual return frame and for any invalid-to-valid promotion. On the same previously inspected held-out split, the corrected app counts 106/378 normal attempts, explicitly rejects 189/470 invalid attempts, awards 18/470 invalid attempts, and produces 16 extra events (3 accepted). Before this fix the respective values were 108/378, 188/470, 19/470 and 16 (3 accepted). All 44 recorded phone-fixture event sequences remained identical to the prior local app. The table below records the earlier experiment and is not the corrected current result. Labels remain unadjudicated proposals; no physical UAT is claimed.
+
 The two primary outcomes are the proportion of normal repetitions awarded a point and the proportion of faulty repetitions receiving an explicit rejection. Both use all labelled repetitions of that kind as their denominator. Their arithmetic mean is the balanced accuracy. A rep without any verdict is a miss in either class. A fault that does not earn a point is a separate gameplay statistic, since it can include a missing verdict. An extra verdict is also reported separately. A wrong explanation still counts as a correct binary rejection.
 
 ## Data and split
@@ -43,7 +45,7 @@ All rows use the same 378 normal and 470 faulty attempts. Extra points count nor
 
 The wide proposal finder combines normal judge events with cycles detected from arm span and from elbow flexion or shoulder height. It uses only frames already received. The minimum spacing and movement thresholds were fixed on development footage. It matched 735 of the 848 test attempts and produced 86 unmatched events. The binary MLP gave 126 of the 470 faults a point, correctly rejected 271 and missed 73. The selected app gave 19 of those faults a point, rejected 188 and missed 263. It also missed 128 normal attempts and rejected 142. Its reason-level macro F1 was 20.88% on the six represented labels (previously 19.08%). It matched the exact reason and time for 207/848 attempts (previously 192).
 
-The app's compact calibrated model was chosen on development folds subject to the phone regression cases. The wide-proposal binary MLP maximized the average of the two recognition rates on continuous web video. The saved MLP is an offline hypothesis for the video corpus. It failed the phone regression criterion for previously rejected critical faults and is excluded from the battle scoring path.
+The app's compact calibrated model was chosen on development folds subject to the phone regression cases. The wide-proposal binary MLP maximized the average of the two recognition rates on continuous web video. The saved MLP is excluded from the default battle scoring path. A later explicitly opt-in phone trial can enable it with `PUSHUP_MLP=true`; see `pushup-mlp-device-test.md` for its known phone regressions.
 
 ## Recorded phone performance
 

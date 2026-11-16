@@ -209,3 +209,12 @@ Stable, sufficiently observed references now save even when similar. Each side c
 - The ARM64 debug diagnostic build succeeded and was installed with adb install -r on SM-S901N. MainActivity, camera preview, status and capture controls were visually verified. Filtered app-process logs had no fatal, unhandled, missing-plugin or overflow match.
 - Installed and local APK SHA-256 matched `76a949c137bf18a02df89210dcacb3ecb7eef056c9c1ac3f5dc0281c66d8c1c8`. Evidence files are contact-close-reference-tests.log, contact-close-reference-analyze.log, contact-close-reference-build.log and contact-close-reference-screen.png under C:/SWPP/iter4/pushup-nine-benchmark/knee-device/.
 - The app still uses ML Kit Accurate. This change addresses reference capture and comparison. The sensitivity constants and physical knee-contact accuracy require real-person validation. All changes remain local and uncommitted.
+
+
+### S1 PR integration and lockout regression, 2026-11-16
+
+- Merged current main into an isolated snapshot of the S1 branch, preserving both histories of the three personal course notes. The separate research worktree remained in use by the other chat.
+- Independent read-only review found that the span calibration could promote an incomplete 168.42-degree lockout. Codex added a reproducing regression and required the configured lockout for promotion; subsequent review confirmed that case is fixed. Synthetic threshold and custom-config cases were also added.
+- Flutter analyzer passed and the full suite passed 3,306 tests with 10 existing skips. A scoped coverage run failed because the Dart VM service disappeared during collection; no coverage number is claimed for this final run.
+- Existing 32-video frozen replay: 50/63, 188/207 and 124/207 by the documented three measurements. A separate weakly-labelled 848-attempt holdout after the fix detected 106/378 normal attempts and rejected 189/470 invalid attempts, accepting 18/470 invalid attempts; 16 additional events occurred, 3 accepted. Labels are automated review proposals, not independently adjudicated truth. Forty-four old phone sequences were unchanged by the lockout fix.
+- No fresh real-person UAT was performed. The opt-in MLP and knee-contact experiments are not established as accurate; a previously reported phone trial worsened. A custom-injected phone tilt monitor is not propagated to the adapter, although normal production uses the same singleton.
