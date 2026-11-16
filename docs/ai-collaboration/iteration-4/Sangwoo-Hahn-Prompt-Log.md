@@ -158,3 +158,18 @@ The following is the user input visible for this task, not a complete session ex
 그리고 S1(푸시업 판정 완화)이 아직 없어. UAT-2랑 바로 이어지고 내일 아침 빌드해야 해서, 오늘 밤 안에 꼭 부탁해!\
 [송우현] [오후 7:36] @한상우 상우 님, #65 대결 화면 변경 확인했어요. 스쿼트는 실루엣 안에 맞춰야 준비되게 한 거라 방향 좋아요! 하나만, 온라인에서 카메라 프레임이 0.75초 끊기면 준비가 풀리게 돼 있던데, 느린 폰에서 준비가 들락날락하지 않는지 폰 테스트 때 같이 봐요. #63 충돌도 대신 풀어 줘서 고마워요!\
 ```
+
+## UAT phone angle, 2026-11-16
+
+The following input is visible in this chat; it is not a complete session export. The teammate name is relevant to the task. No credentials were present.
+
+```text
+다음 요청에 대해 해결하고 PR까지 올려줘. draft로 올리지 마.
+
+[송현우] [오후 11:13] 폰 세팅 각도 60도 테스트해야하는데 유저 입장에서 알수가 없음\
+\
+-> UAT용 빌드에서만 세팅 화면에 현재 폰 각도를 숫자로 표시합니다. 상우 S3 파일이고, 빌드 옵션으로만 켜지게 하는 작은 수정입니다\
+\
+\
+[송현우] [오후 11:14] @한상우 이거 추가 가능? 빡세면 내일은 그냥하고 다음주 사이클때하는 방법도 있음\
+```

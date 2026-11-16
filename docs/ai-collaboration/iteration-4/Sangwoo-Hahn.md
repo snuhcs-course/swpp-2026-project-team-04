@@ -65,3 +65,7 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 ## S4 #59 merge after #65 (2026-11-15)
 - Codex merged main `95b6d97`, preserved both personal-note histories and updated the battle test for fresh setup frames and the shared judge. The user requested the conflict resolution and removal of Draft status.
 - The four scoped test suites, full Flutter suite and analyzer passed; details are in the personal testing notes. Independent read-only Codex review approved the resolution. No human manual code fix or device UAT was reported.
+
+## S3 UAT phone angle (2026-11-16)
+- Codex added an explicitly enabled UAT-only gravity angle chip for the common preparation and bot/online battle setup camera. Ordinary builds do not start the extra display or sensor subscription.
+- Independent read-only Codex review found initial overlaps with the setup panel and the battle leave button. Codex moved the display into visible camera/setup space and added geometry and sensor-lifecycle tests; the reviewer approved the corrected implementation. Local test evidence is in the personal testing notes. No human manual source fixes or real-device UAT were reported.
