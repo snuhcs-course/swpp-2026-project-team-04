@@ -228,3 +228,9 @@ Selected user inputs from the visible conversation, including selected answers t
 ```text
 이대로 PR 올려줘.
 ```
+
+### Existing S1 and S2 PR readiness request, 2026-11-16
+
+```text
+지금 다른 채팅에서 S1과 S2를 draft 상태로 각각 PR 올렸는데 이걸 변경해서 PR 완성하고 draft 해제해줘.
+```

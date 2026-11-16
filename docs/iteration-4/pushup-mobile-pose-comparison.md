@@ -124,4 +124,14 @@ The report generator requires all three completed accuracy comparisons, all four
 
 After reviewing the recorded-phone regression, the user explicitly chose the new knee-classifier comparison build. A fresh sequential build of lib/main.dart with PUSHUP_KNEE_FOREST=true succeeded and was installed with adb install -r on SM-S901N. The app launched successfully, the signed-in home screen was observed, and the AI push-up matching flow opened. The local APK and installed base.apk both have SHA256 ad65a33899b7727bcc1f5efc4af40a4f62dfac68eb46bbcc213bc0eb8f6a59c0.
 
-The USB connection ended after installation, launch, and hash verification, during the follow-up pose-setup screenshot. Live exercise performance and the runtime activation log were therefore not captured. The selected build flag and its constructor activation are verified by the build command and focused tests. The artifact is C:/SWPP/iter4/mobile-pose-benchmark/gymrats-knee-forest-trial.apk. Source changes remain local and uncommitted.
+The USB connection ended after installation, launch, and hash verification, during the follow-up pose-setup screenshot. Live exercise performance and the runtime activation log were therefore not captured. The selected build flag and its constructor activation are verified by the build command and focused tests. The artifact is C:/SWPP/iter4/mobile-pose-benchmark/gymrats-knee-forest-trial.apk. The installation preceded the PR integration commits.
+
+Run the following command from `gymrats_app` to build the comparison variant.
+
+```powershell
+flutter build apk --debug --target-platform android-arm64 -t lib/main.dart --dart-define=PUSHUP_KNEE_FOREST=true --no-pub
+```
+
+The flag enables the existing general binary-MLP proposal path and the new knee-specific forest. The ordinary build leaves both paths disabled unless their respective build flags are supplied. Earlier S1 calibration, short-cycle, joint-span and shared phone-angle changes also affect the ordinary build. Its configured 172-degree lockout check is preserved by the PR integration. The experimental MLP path derives validity from its model score and knee veto, so that angle check does not describe the trial's decision rule.
+
+Paths beginning with `C:/SWPP/` refer to local evidence files on the author's computer. The repository includes the inference code, exported forest, regression fixtures and comparison scripts. The video corpus, full benchmark outputs and installed APK remain local artifacts.

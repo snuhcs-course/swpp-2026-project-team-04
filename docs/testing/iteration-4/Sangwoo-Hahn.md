@@ -249,4 +249,34 @@ The user explicitly selected the new knee-classifier comparison build after rece
 
 After reviewing the recorded-phone regression, the user explicitly chose the new knee-classifier comparison build. A fresh sequential build of lib/main.dart with PUSHUP_KNEE_FOREST=true succeeded and was installed with adb install -r on SM-S901N. The app launched successfully, the signed-in home screen was observed, and the AI push-up matching flow opened. The local APK and installed base.apk both have SHA256 ad65a33899b7727bcc1f5efc4af40a4f62dfac68eb46bbcc213bc0eb8f6a59c0.
 
-The USB connection ended after installation, launch, and hash verification, during the follow-up pose-setup screenshot. Live exercise performance and the runtime activation log were therefore not captured. The selected build flag and its constructor activation are verified by the build command and focused tests. The artifact is C:/SWPP/iter4/mobile-pose-benchmark/gymrats-knee-forest-trial.apk. Source changes remain local and uncommitted.
+The USB connection ended after installation, launch, and hash verification, during the follow-up pose-setup screenshot. Live exercise performance and the runtime activation log were therefore not captured. The selected build flag and its constructor activation are verified by the build command and focused tests. The artifact is C:/SWPP/iter4/mobile-pose-benchmark/gymrats-knee-forest-trial.apk. The installation preceded the PR integration commits.
+
+### S1 post-merge verification for PR #69, 2026-11-16
+
+Implementation commit 89403cb and merge c940d09 integrate the five-phase knee forest with remote S1 correction 327a9ff and main fe1aad1. An independent read-only Codex reviewer verified the resolved default counter and forest implementation with no actionable findings. The default counter retains its configured lockout guard. The optional model path retains its model-based validity rule. The known native-recording regression remains documented above.
+
+Commands run from `gymrats_app` on c940d09
+
+```powershell
+flutter analyze --no-pub
+flutter test --no-pub --coverage --concurrency=1 test/services/pose/pose_metrics_test.dart test/services/pose/rep_judge_test.dart test/services/pose/push_up_judge_adapter_test.dart test/services/pose/pushup_error_cases_test.dart
+```
+
+Analysis passed. The four-file coverage run passed 194 tests with nine existing known-error recording skips.
+
+| Changed service | Covered lines | Coverage | Target |
+| --- | ---: | ---: | ---: |
+| pose_metrics.dart | 813/823 | 98.78% | 85% |
+| rep_judge.dart | 779/800 | 97.38% | 85% |
+| push_up_judge_adapter.dart | 36/40 | 90.00% | 85% |
+
+| Test file | Verified behavior |
+| --- | --- |
+| pose_metrics_test.dart | Exact five-phase history, missing data, reset, dimension changes, exported forest examples and feature validation |
+| rep_judge_test.dart | Optional forest activation, event sequencing, fractional timestamps and configured lockout regression |
+| push_up_judge_adapter_test.dart | Existing judge-adapter behavior and phone-angle forwarding |
+| pushup_error_cases_test.dart | Existing recorded and synthetic error-case expectations |
+
+These are changed-service coverage measurements. Full-project layer coverage requires the separate CI coverage run. The logs are local files under C:/SWPP/iter4/mobile-pose-benchmark. Physical exercise validation after the merge has not been performed.
+
+The complete ordinary-build suite then passed 3,316 tests with ten existing skips using `flutter test --no-pub --concurrency=1`. The comparison helper's 13 self-tests and mobile preparation/inference helper's five self-tests also passed after the merge. These results cover code commit c940d09. The following publication commit updates documentation only.
