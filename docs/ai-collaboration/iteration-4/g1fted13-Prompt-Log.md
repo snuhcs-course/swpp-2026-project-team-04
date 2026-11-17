@@ -1304,3 +1304,23 @@ PR, 이슈, CI 코멘트를 읽거나 고칠 때는 gh CLI 를 쓴다. Chrome �
 [보고]
 커밋 해시, 바꾼 파일, 더한 예외 줄(다른 사람 파일이 있었다면 따로), 정리한 코드, 테스트 결과, PR 본문 수정 여부, CI 상태. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다.
 </pasted_content id=\"2e03\">"
+
+## 2026-11-17 · Woohyun Song · feat/setup_readability
+<!-- 6489ba5c 2026-11-17T02:57:10.512Z -->
+[Woohyun Song, 11-17 11:57] "하네스 갱신이야. .claude/update-1117/README.md 를 읽고 2·3번만 해 줘.
+task.md는 \"PR plan\" 표를 task-add-W9-W11.md의 표로 바꾸고, W9·W10·W11 절을 \"Files you must not edit this iteration\" 바로 앞에 붙여. progress.md는 progress-add-W9-W11.md를 \"Checklist\" 아래 W8 블록 뒤에 붙여. 나머지 내용은 건드리지 말고, 끝나면 ownership_guard.py --status 결과를 보여 줘."
+
+<!-- 6489ba5c 2026-11-17T03:00:06.157Z -->
+[Woohyun Song, 11-17 12:00] "<pasted_content id=\"3f17\">
+W9 시작하자. 명세는 .claude/design/uat1/A9-SETUP-READABILITY-SPEC.md 이고 디자인 원본은 같은 폴더의 design/ 아래에 있어.
+1. 명세 전체와 INDEX.md를 먼저 읽어.
+2. 명세의 \"고칠 파일\"을 ownership.json 허용 목록과 맞춰 보고, 막히는 파일이 있으면 코드를 쓰기 전에 목록으로 알려 줘. 상우 파일은 그리는 값만 고칠 수 있다는 조건도 지켜.
+3. 명세 끝의 \"사용자에게 물어볼 것\"을 하나씩 물어보고, 답은 task.md \"Decisions\"에 오늘 날짜로 적어.
+4. 그다음 구현하고, 테스트와 reviewer까지 마친 뒤 보고해. 커밋과 push는 내가 말할 때만 해.
+</pasted_content id=\"3f17\">"
+
+<!-- 6489ba5c 2026-11-17T07:10:04.506Z -->
+[Woohyun Song, 11-17 16:10] "커밋하고 푸시해. 이어서 PR 올려"
+
+<!-- 6489ba5c 2026-11-17T07:10:44.171Z -->
+[Woohyun Song, 11-17 16:10] "커밋하고 푸시까지만 해."
