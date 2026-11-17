@@ -16,6 +16,7 @@ import '../support/audio_fakes.dart';
 import '../support/fakes.dart';
 import '../support/placed_phone.dart';
 import '../support/pose_fixtures.dart';
+import '../services/pose/person_behind_test_support.dart';
 
 /// The bot battle screen with nothing hooked in from outside: its own sound
 /// (J2's `BattleSounds`) plays through the shared sound set.
@@ -29,8 +30,9 @@ void main() {
   late SoundServices sound;
   late FakeCameraService camera;
   late FakePoseEstimator estimator;
-  late FakeRepJudge judge;
+  late CadencedRepJudge judge;
   late Duration now;
+  bool receivedPose = false;
 
   FakeBackgroundMusic music() => sound.music as FakeBackgroundMusic;
   FakeSoundEffects effects() => sound.effects as FakeSoundEffects;
@@ -43,7 +45,19 @@ void main() {
   }
 
   Future<void> frame(WidgetTester tester, double seconds) async {
-    now = Duration(milliseconds: (seconds * 1000).round());
+    final target = Duration(milliseconds: (seconds * 1000).round());
+    // Music and hit timing are tested with a healthy camera stream. Explicit
+    // stalls and person changes are covered by the S2 screen tests.
+    judge.holdVerdicts = true;
+    while (receivedPose && target - now > const Duration(milliseconds: 500)) {
+      now += const Duration(milliseconds: 500);
+      estimator.frames.add(standingFrame());
+      camera.emit();
+      await tester.pump();
+    }
+    judge.holdVerdicts = false;
+    now = target;
+    receivedPose = true;
     estimator.frames.add(standingFrame());
     camera.emit();
     await tester.pump();
@@ -59,8 +73,9 @@ void main() {
     addTearDown(() => SoundServices.shared = null);
     camera = FakeCameraService();
     estimator = FakePoseEstimator();
-    judge = FakeRepJudge();
+    judge = CadencedRepJudge();
     now = Duration.zero;
+    receivedPose = false;
     final viewModel = BattleViewModel(
       matchup: matchup,
       counter: RepCounterViewModel(

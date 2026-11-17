@@ -129,10 +129,12 @@ class PoseEstimator {
 /// gradual substitutions cannot be distinguished by this geometry alone.
 class PersonContinuityGuard {
   static const maxGap = Duration(milliseconds: 750);
+  static const _scaleChangeHold = Duration(milliseconds: 200);
   _PersonAnchor? _previous;
   _PersonAnchor? _candidate;
   Duration? _lastGood;
   Duration? _candidateAt;
+  Duration? _scaleMismatchSince;
   bool _enabled = false;
   bool needsConfirmation = false;
   bool get enabled => _enabled;
@@ -143,6 +145,7 @@ class PersonContinuityGuard {
     needsConfirmation = true;
     _candidate = null;
     _candidateAt = null;
+    _scaleMismatchSince = null;
   }
 
   void begin(PoseFrame? frame, Duration now) {
@@ -151,6 +154,7 @@ class PersonContinuityGuard {
     _candidate = _previous;
     _lastGood = _previous == null ? null : now;
     _candidateAt = _lastGood;
+    _scaleMismatchSince = null;
     needsConfirmation = _previous == null;
   }
 
@@ -165,6 +169,7 @@ class PersonContinuityGuard {
     final previous = _previous;
     final lastGood = _lastGood;
     if (next == null) {
+      _scaleMismatchSince = null;
       if (lastGood == null || now - lastGood > maxGap) {
         needsConfirmation = true;
       }
@@ -174,10 +179,22 @@ class PersonContinuityGuard {
         lastGood == null ||
         now - lastGood > maxGap ||
         now < lastGood ||
-        !previous.plausiblySame(next)) {
+        !previous.near(next)) {
       needsConfirmation = true;
       return false;
     }
+    if (!previous.similarScale(next)) {
+      // ML Kit can briefly collapse one shoulder into the other during a
+      // normal rep. Never score that frame or adopt its scale as the anchor.
+      // A persistent scale change still needs explicit user confirmation;
+      // position jumps and long losses above remain immediately latched.
+      _scaleMismatchSince ??= now;
+      if (now - _scaleMismatchSince! >= _scaleChangeHold) {
+        needsConfirmation = true;
+      }
+      return false;
+    }
+    _scaleMismatchSince = null;
     _previous = next;
     _lastGood = now;
     return true;
@@ -205,6 +222,7 @@ class PersonContinuityGuard {
     }
     _previous = next;
     _lastGood = now;
+    _scaleMismatchSince = null;
     needsConfirmation = false;
     return true;
   }
@@ -213,6 +231,7 @@ class PersonContinuityGuard {
     _enabled = false;
     _previous = _candidate = null;
     _lastGood = _candidateAt = null;
+    _scaleMismatchSince = null;
     needsConfirmation = false;
   }
 }
@@ -259,13 +278,15 @@ class _PersonAnchor {
     );
   }
 
-  bool plausiblySame(_PersonAnchor other) {
+  bool near(_PersonAnchor other) {
     final distance = math.sqrt(
       math.pow(x - other.x, 2) + math.pow(y - other.y, 2),
     );
+    return distance <= math.max(.08, math.max(width, other.width));
+  }
+
+  bool similarScale(_PersonAnchor other) {
     final ratio = other.width / width;
-    return distance <= math.max(.08, math.max(width, other.width)) &&
-        ratio >= .5 &&
-        ratio <= 2.0;
+    return ratio >= .5 && ratio <= 2.0;
   }
 }

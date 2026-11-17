@@ -124,4 +124,67 @@ void main() {
     );
     expect(guard.confirm(const Duration(milliseconds: 50)), isTrue);
   });
+
+  PoseFrame narrowShoulders(PoseFrame frame) {
+    final left = frame[BodyLandmark.leftShoulder]!;
+    final right = frame[BodyLandmark.rightShoulder]!;
+    final center = (left.x + right.x) / 2;
+    return PoseFrame(
+      imageWidth: frame.imageWidth,
+      imageHeight: frame.imageHeight,
+      keypoints: {
+        ...frame.keypoints,
+        for (final p in [left, right])
+          p.landmark: Keypoint(
+            landmark: p.landmark,
+            x: center + (p.x - center) * .3,
+            y: p.y,
+            likelihood: p.likelihood,
+          ),
+      },
+    );
+  }
+
+  test('an isolated shoulder-width outlier is withheld then recovers', () {
+    final guard = PersonContinuityGuard();
+    final original = pushUpFrame();
+    guard.begin(original, Duration.zero);
+    expect(
+      guard.accepts(
+        narrowShoulders(original),
+        const Duration(milliseconds: 100),
+      ),
+      isFalse,
+    );
+    expect(guard.needsConfirmation, isFalse);
+    expect(guard.accepts(original, const Duration(milliseconds: 167)), isTrue);
+    expect(guard.needsConfirmation, isFalse);
+  });
+
+  test('a sustained size change is blocked and requires confirmation', () {
+    final guard = PersonContinuityGuard();
+    final original = pushUpFrame();
+    final changed = narrowShoulders(original);
+    guard.begin(original, Duration.zero);
+    for (final ms in [100, 167, 233, 300]) {
+      expect(guard.accepts(changed, Duration(milliseconds: ms)), isFalse);
+    }
+    expect(guard.needsConfirmation, isTrue);
+    expect(guard.accepts(original, const Duration(milliseconds: 400)), isFalse);
+    expect(guard.confirm(const Duration(milliseconds: 400)), isTrue);
+  });
+
+  test('a width outlier cannot conceal a position jump', () {
+    final guard = PersonContinuityGuard();
+    final original = pushUpFrame();
+    guard.begin(original, Duration.zero);
+    expect(
+      guard.accepts(
+        narrowShoulders(moved(original, 300)),
+        const Duration(milliseconds: 100),
+      ),
+      isFalse,
+    );
+    expect(guard.needsConfirmation, isTrue);
+  });
 }
