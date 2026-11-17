@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/models/setup_hint_short.dart';
+import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/battle_arena.dart';
 import 'package:gymrats_app/widgets/battle_banner.dart';
@@ -87,6 +89,7 @@ Future<void> _pump(
   VoidCallback? onLeave,
   VoidCallback? onShowResult,
   String? hint,
+  SetupHintShort? setupCue,
   String? readyLabel,
   VoidCallback? onReady,
   bool readyPressed = false,
@@ -127,6 +130,7 @@ Future<void> _pump(
             onLeave: onLeave,
             onShowResult: onShowResult,
             hint: hint,
+            setupCue: setupCue,
             readyLabel: readyLabel,
             onReady: onReady,
             readyPressed: readyPressed,
@@ -590,14 +594,15 @@ void main() {
       await _wait(tester, 400);
       const scale = (426 - 30) / 364;
       final sign = find.byType(BattleRejectSignView);
-      expect(tester.getTopLeft(sign).dy, closeTo(426 - 50 * scale, 0.5));
+      // A9 spec 5: the larger sign, 76 above the line.
+      expect(tester.getTopLeft(sign).dy, closeTo(426 - 76 * scale, 0.5));
       expect(
         (tester.getTopLeft(sign).dx + tester.getTopRight(sign).dx) / 2,
         closeTo(393 / 2, 0.5),
       );
       expect(
         (tester.getTopRight(sign) - tester.getTopLeft(sign)).distance,
-        closeTo(176 * scale, 0.5),
+        closeTo(216 * scale, 0.5),
       );
       expect(find.text('무릎 떼기'), findsOneWidget);
       await _wait(tester, 1000);
@@ -904,46 +909,95 @@ void main() {
       }
     });
 
-    testWidgets('the large hint, the camera switch and the large ready button '
-        'sit where the design has them on an S22', (tester) async {
+    testWidgets("the setup cue's band, the camera switch and the leave "
+        'button sit where the A9 design has them on an S22 (no ready button, '
+        'as since A6)', (tester) async {
       await _pump(
         tester,
         BattleStageController(),
         _state(phase: BattleStagePhase.setup),
-        hint: '카메라 앞에 서 주세요.',
-        readyLabel: '준비',
-        onReady: () {},
+        setupCue: SetupHintShort.of(SetupStatus.initial),
         onSwitchCamera: () {},
         setupProgress: 0.5,
         onLeave: () {},
       );
       await _wait(tester, 16);
-      final band = find.ancestor(
-        of: find.text('카메라 앞에 서 주세요.'),
-        matching: find.byType(SizedBox),
-      );
-      expect(
-        tester.getRect(band.first),
-        rectMoreOrLessEquals(const Rect.fromLTWH(12, 173, 336, 54)),
-      );
-      final ready = find.ancestor(
-        of: find.text('준비'),
-        matching: find.byType(Material),
-      );
-      expect(
-        tester.getRect(ready.first),
-        rectMoreOrLessEquals(const Rect.fromLTRB(216, 714, 348, 766)),
-      );
-      final circle = find.descendant(
-        of: find.bySemanticsLabel('카메라 전환'),
+      // The camera area from the line at 156, 3 wide: the band 18 under it.
+      // The band: white with a 3 ink edge, around the cue's lines.
+      final band = find
+          .ancestor(
+            of: find.text('카메라'),
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is DecoratedBox &&
+                  w.decoration is BoxDecoration &&
+                  (w.decoration as BoxDecoration).color == AppColors.card &&
+                  (w.decoration as BoxDecoration).border ==
+                      Border.all(color: AppColors.ink, width: 3),
+            ),
+          )
+          .first;
+      final rect = tester.getRect(band);
+      expect(rect.left, 12);
+      expect(rect.top, closeTo(156 + 3 + 18, 0.01));
+      expect(rect.width, 336);
+      expect(find.text('앞으로'), findsOneWidget);
+      Finder circle(String label) => find.descendant(
+        of: find.bySemanticsLabel(label),
         matching: find.byWidgetPredicate(
           (w) => w is SizedBox && w.width == 44 && w.height == 44,
         ),
       );
+      // Bottom right, level with the leave button at the bottom left.
       expect(
-        tester.getRect(circle),
-        rectMoreOrLessEquals(const Rect.fromLTWH(304, 237, 44, 44)),
+        tester.getRect(circle('카메라 전환')),
+        rectMoreOrLessEquals(const Rect.fromLTWH(304, 780 - 14 - 44, 44, 44)),
       );
+      expect(
+        tester.getRect(circle('게임 나가기')),
+        rectMoreOrLessEquals(const Rect.fromLTWH(12, 780 - 14 - 44, 44, 44)),
+      );
+    });
+
+    testWidgets("the camera area gets the setup cue while setting up, and the "
+        "round's status frame from the stage: green after my good rep, red "
+        'while the sign of my rejected one is up (A9 spec 3)', (tester) async {
+      final controller = BattleStageController();
+      final cue = SetupHintShort.of(SetupStatus.initial);
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup),
+        setupCue: cue,
+      );
+      await _wait(tester, 16);
+      BattleCameraArea area() =>
+          tester.widget<BattleCameraArea>(find.byType(BattleCameraArea));
+      expect(area().setupCue, cue);
+      expect(area().frame, isNull);
+      await _pump(tester, controller, _state());
+      await _wait(tester, 16);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: GameGrade.good,
+          points: 10,
+          combo: 1,
+        ),
+      );
+      await _wait(tester, 100);
+      expect(area().frame, BattleFxCameraFrame.good);
+      controller.rep(
+        const BattleStageEvent(
+          side: BattleSide.me,
+          grade: null,
+          reason: RejectReason.kneesDown,
+        ),
+      );
+      await _wait(tester, 100);
+      expect(area().frame, BattleFxCameraFrame.rejected);
+      await _wait(tester, 1300);
+      expect(area().frame, isNull);
     });
 
     testWidgets('the setup\'s large things take no taps while they fade out; '
@@ -984,13 +1038,19 @@ void main() {
 
   group('BattleArena, before the start', () {
     testWidgets('setting up: the ready chips, the band, and the camera '
-        'area\'s large hint and ready button', (tester) async {
+        "area's setup cue and large ready button", (tester) async {
       var ready = 0;
       await _pump(
         tester,
         BattleStageController(),
         _state(phase: BattleStagePhase.setup, opReady: true),
-        hint: '폰을 더 세워 주세요.',
+        setupCue: SetupHintShort.of(
+          const SetupStatus(
+            reason: SetupReason.phoneTooFlat,
+            isReady: false,
+            readyProgress: 0,
+          ),
+        ),
         readyLabel: '준비',
         onReady: () => ready++,
       );
@@ -998,7 +1058,9 @@ void main() {
       expect(find.text('자세 세팅 중'), findsOneWidget);
       expect(find.text('세팅 중'), findsOneWidget);
       expect(find.text('준비 완료'), findsOneWidget);
-      expect(find.text('폰을 더 세워 주세요.'), findsOneWidget);
+      expect(find.text('폰을 더'), findsOneWidget);
+      expect(find.text('세워요'), findsOneWidget);
+      expect(find.text('폰을 더 세워 주세요.'), findsNothing);
       expect(
         tester.widget<BattleCameraArea>(find.byType(BattleCameraArea)),
         isA<BattleCameraArea>()

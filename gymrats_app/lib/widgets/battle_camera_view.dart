@@ -243,6 +243,7 @@ class BattleCameraView extends StatelessWidget {
           frame: frame,
           mirror: mirror,
           showLandmarks: true,
+          boldLandmarks: true,
         ),
         if (chest != null)
           ChestHeightOverlay(frame: frame, snapshot: chest, mirror: mirror),

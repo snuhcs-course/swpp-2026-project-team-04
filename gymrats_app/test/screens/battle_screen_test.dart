@@ -12,6 +12,7 @@ import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/voice_cue.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/models/setup_hint_short.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/services/audio/voice_cue_table.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
@@ -202,6 +203,22 @@ void main() {
   BattleStageState stage(WidgetTester tester) =>
       tester.widget<BattleArena>(find.byType(BattleArena)).state;
 
+  /// The setup cue on screen (A9): its two short lines, and its whole
+  /// [sentence] only for a screen reader.
+  void showsCue(
+    WidgetTester tester,
+    String first,
+    String second,
+    String sentence,
+  ) {
+    expect(find.text(first), findsOneWidget, reason: sentence);
+    expect(find.text(second), findsOneWidget, reason: sentence);
+    expect(find.text(sentence), findsNothing, reason: sentence);
+    final handle = tester.ensureSemantics();
+    expect(find.bySemanticsLabel(sentence), findsOneWidget, reason: sentence);
+    handle.dispose();
+  }
+
   BattleFxFrame stageFrame(WidgetTester tester) =>
       tester.widget<BattleStage>(find.byType(BattleStage)).frame;
 
@@ -245,8 +262,8 @@ void main() {
     });
 
     testWidgets('opens on the setup: the band, my tag setting up and the '
-        "bot's ready, the setup bar and the hint, and no 시작 button (team "
-        'decision 2026-11-15)', (tester) async {
+        "bot's ready, the setup bar and the setup cue, and no 시작 button "
+        '(team decision 2026-11-15)', (tester) async {
       await open(tester);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect(stage(tester).myName, '우현');
@@ -261,7 +278,7 @@ void main() {
       expect(find.bySemanticsLabel('카메라 전환'), findsOneWidget);
       expect(find.text('시작'), findsNothing);
       await frame(tester, 1, found: false);
-      expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
+      showsCue(tester, '카메라', '앞으로', '카메라 앞에 서 주세요.');
       expect(find.text('시작'), findsNothing);
       expect(opponent.startCount, 0);
       await captureFlowSnapshot('ai-battle-setup');
@@ -324,7 +341,7 @@ void main() {
     });
 
     testWidgets('while the app is away or the camera reopens in the setup: '
-        'the spinner, no silhouette and no hint; the front camera mirrored', (
+        'the spinner, no silhouette and no cue; the front camera mirrored', (
       tester,
     ) async {
       await open(tester);
@@ -334,7 +351,8 @@ void main() {
         tester.widget<PoseCameraView>(find.byType(PoseCameraView)).mirror,
         isTrue,
       );
-      const noOne = '카메라 앞에 서 주세요.';
+      // The cue's second line, "카메라 / 앞으로".
+      const noOne = '앞으로';
       expect(find.text(noOne), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
@@ -389,7 +407,7 @@ void main() {
     });
 
     testWidgets('a squat setup has a silhouette; the round has the squat '
-        'lines and its hint', (tester) async {
+        'lines and no line of words (A9 spec 6)', (tester) async {
       await open(tester, matchup: _squat);
       await frame(tester, 0.5);
       expect(find.byType(PoseSilhouetteGuide), findsNothing);
@@ -411,10 +429,22 @@ void main() {
       expect(viewModel.state.started, isTrue);
       expect(find.byType(StandingSilhouetteGuide), findsNothing);
       expect(find.byType(SquatHeightOverlay), findsOneWidget);
-      expect(find.text('정면에서 전신이 보이도록 서 주세요'), findsOneWidget);
-      judge.snapshot = const JudgeSnapshot(phase: RepPhase.bottom);
-      await frame(tester, 5);
-      expect(find.text('앉은 상태 · 이제 일어서세요'), findsOneWidget);
+      const squatLines = [
+        '정면에서 전신이 보이도록 서 주세요',
+        '일어선 상태 · 무릎 가까이 앉아 주세요',
+        '앉은 상태 · 이제 일어서세요',
+      ];
+      BattleCameraArea area() =>
+          tester.widget<BattleCameraArea>(find.byType(BattleCameraArea));
+      for (final phase in [RepPhase.idle, RepPhase.up, RepPhase.bottom]) {
+        judge.snapshot = JudgeSnapshot(phase: phase);
+        await frame(tester, 5);
+        expect(area().hint, isNull, reason: phase.name);
+        expect(area().setupCue, isNull, reason: phase.name);
+        for (final line in squatLines) {
+          expect(find.text(line), findsNothing, reason: '$phase: $line');
+        }
+      }
       await close(tester);
     });
 
@@ -670,7 +700,7 @@ void main() {
       await open(tester, setupConfig: const SetupConfig());
       phone.isPropped = false;
       await hold(tester, standingFrame(), from: 1, seconds: 5);
-      expect(find.text('폰을 더 세워 주세요.'), findsOneWidget);
+      showsCue(tester, '폰을 더', '세워요', '폰을 더 세워 주세요.');
       expect(
         setupWords(standingFrame(), ExerciseType.pushUp, propped: false),
         '폰을 더 세워 주세요.',
@@ -681,7 +711,7 @@ void main() {
       final noWrist = standingFrame(move: {BodyLandmark.leftWrist: (999, 700)});
       await hold(tester, noWrist, from: 7, seconds: 5);
       expect(setupWords(noWrist, ExerciseType.pushUp), '손이 화면에 안 보여요.');
-      expect(find.text('손이 화면에 안 보여요.'), findsOneWidget);
+      showsCue(tester, '손이', '안 보여요', '손이 화면에 안 보여요.');
       notCounting(tester);
       await close(tester);
     });
@@ -703,7 +733,8 @@ void main() {
       expect(status.isReady, isFalse);
       expect(status.reason, isNot(SetupReason.noPerson));
       await hold(tester, moved, from: 2, seconds: 5);
-      expect(find.text(status.message), findsOneWidget);
+      final cue = SetupHintShort.of(status);
+      showsCue(tester, cue.first, cue.second, status.message);
       notCounting(tester);
       await close(tester);
     });
@@ -741,7 +772,7 @@ void main() {
       );
       await hold(tester, noFeet, from: 1, seconds: 3);
       expect(setupWords(noFeet, ExerciseType.squat), '발목이 화면에 안 보여요.');
-      expect(find.text('발목이 화면에 안 보여요.'), findsOneWidget);
+      showsCue(tester, '발목이', '안 보여요', '발목이 화면에 안 보여요.');
       notCounting(tester);
 
       final tooClose = standingFrame(
@@ -754,13 +785,33 @@ void main() {
       );
       await hold(tester, tooClose, from: 5, seconds: 3);
       expect(setupWords(tooClose, ExerciseType.squat), '조금 뒤로 물러나 주세요.');
-      expect(find.text('조금 뒤로 물러나 주세요.'), findsOneWidget);
+      showsCue(tester, '한 걸음', '뒤로', '조금 뒤로 물러나 주세요.');
       notCounting(tester);
       expect(find.byType(StandingSilhouetteGuide), findsOneWidget);
 
       await hold(tester, standingFrame(showHips: true), from: 9, seconds: 4.5);
       expect(viewModel.state.started, isTrue);
       expect(cues, ['countdown 3', 'countdown 2', 'countdown 1', 'go']);
+      await close(tester);
+    });
+
+    testWidgets('a squat whose pose is right but which is not in the '
+        'silhouette says 실루엣에 / 맞춰요 in red, and nothing counts down '
+        '(A9 spec 2)', (tester) async {
+      await open(tester, matchup: _squat, setupConfig: const SetupConfig());
+      final outside = aside(standingFrame(showHips: true), 200);
+      await hold(tester, outside, from: 1, seconds: 3);
+      expect(viewModel.state.setup.reason, SetupReason.ready);
+      expect(viewModel.state.guideAligned, isFalse);
+      showsCue(tester, '실루엣에', '맞춰요', '실루엣 안에 몸을 맞춰 주세요.');
+      expect(
+        tester
+            .widget<BattleCameraArea>(find.byType(BattleCameraArea))
+            .setupCue!
+            .state,
+        SetupCueState.mismatch,
+      );
+      notCounting(tester);
       await close(tester);
     });
   });

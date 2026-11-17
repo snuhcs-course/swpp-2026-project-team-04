@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/semantics.dart';
 
 import '../models/reject_reason_korean.dart';
+import '../models/setup_hint_short.dart';
 import '../theme/app_theme.dart';
 import 'battle_camera_area.dart';
 import 'battle_camera_view.dart';
@@ -226,6 +227,7 @@ class BattleArena extends StatefulWidget {
     this.onCue,
     this.onLeave,
     this.hint,
+    this.setupCue,
     this.readyLabel,
     this.onReady,
     this.readyPressed = false,
@@ -256,8 +258,12 @@ class BattleArena extends StatefulWidget {
   /// Asks to leave; the button hides once the battle has ended.
   final VoidCallback? onLeave;
 
-  /// The camera area's one line of guidance.
+  /// The camera area's one line of guidance, from the countdown on.
   final String? hint;
+
+  /// The setup's short cue while setting up (A9); see
+  /// [BattleCameraArea.setupCue].
+  final SetupHintShort? setupCue;
 
   /// The ready button before the start; see [BattleCameraArea].
   final String? readyLabel;
@@ -470,6 +476,8 @@ class _BattleArenaState extends State<BattleArena>
                         ? null
                         : widget.onLeave,
                     hint: widget.hint,
+                    setupCue: widget.setupCue,
+                    frame: frame.cameraFrame,
                     readyLabel: widget.readyLabel,
                     onReady: widget.onReady,
                     readyPressed: widget.readyPressed,

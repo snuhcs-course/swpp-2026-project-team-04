@@ -11,6 +11,7 @@ import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/models/setup_hint_short.dart';
 import 'package:gymrats_app/screens/battle_screen.dart'
     show BattleSetupListener;
 import 'package:gymrats_app/screens/online_battle_screen.dart';
@@ -23,6 +24,7 @@ import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/widgets/battle_arena.dart';
+import 'package:gymrats_app/widgets/battle_camera_area.dart';
 import 'package:gymrats_app/widgets/battle_camera_view.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage.dart';
@@ -207,6 +209,26 @@ void main() {
     }
   }
 
+  /// The setup cue the screen gives the camera area (A9); null for none.
+  SetupHintShort? cueOf(WidgetTester tester) =>
+      tester.widget<BattleCameraArea>(find.byType(BattleCameraArea)).setupCue;
+
+  /// The setup cue on screen (A9): its two short lines, and its whole
+  /// [sentence] only for a screen reader.
+  void showsCue(
+    WidgetTester tester,
+    String first,
+    String second,
+    String sentence,
+  ) {
+    expect(find.text(first), findsOneWidget, reason: sentence);
+    expect(find.text(second), findsOneWidget, reason: sentence);
+    expect(find.text(sentence), findsNothing, reason: sentence);
+    final handle = tester.ensureSemantics();
+    expect(find.bySemanticsLabel(sentence), findsOneWidget, reason: sentence);
+    handle.dispose();
+  }
+
   BattleStageState stage(WidgetTester tester) =>
       tester.widget<BattleArena>(find.byType(BattleArena)).state;
 
@@ -300,7 +322,7 @@ void main() {
     });
 
     testWidgets('both players set up on the stage; the camera area has the '
-        'setup bar and the hint, and no 준비 / 준비 취소 button (team '
+        'setup bar and the setup cue, and no 준비 / 준비 취소 button (team '
         'decision 2026-11-15): the pose held, ready goes by itself', (
       tester,
     ) async {
@@ -313,12 +335,14 @@ void main() {
       expect(find.text('준비'), findsNothing);
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
       await pose(tester);
-      expect(find.text('자세 확인! 3초 후 자동으로 준비해요'), findsOneWidget);
+      showsCue(tester, '그대로', '멈춰요', '자세 확인! 3초 후 자동으로 준비해요');
+      expect(cueOf(tester)!.holding, isTrue);
       expect(find.text('준비'), findsNothing);
       await tester.pump(const Duration(milliseconds: 3100));
       expect(session.readyRequests, [true]);
       await tester.pump();
-      expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
+      showsCue(tester, '상대를', '기다려요', '상대 준비를 기다리는 중…');
+      expect(cueOf(tester)!.state, SetupCueState.match);
       await wait(tester, 100);
       expect(find.text('상대를 기다리는 중'), findsOneWidget);
       expect(find.text('준비 완료'), findsOneWidget);
@@ -338,13 +362,15 @@ void main() {
       await open(tester);
       phone.isPropped = false;
       await pose(tester);
-      expect(find.text('폰을 더 세워 주세요.'), findsOneWidget);
+      // The cue from the open, 카메라 / 앞으로, keeps the band for its hold.
+      await tester.pump(BattleCameraArea.cueHold);
+      showsCue(tester, '폰을 더', '세워요', '폰을 더 세워 주세요.');
       await tester.pump(const Duration(milliseconds: 3100));
       expect(session.readyRequests, isEmpty);
       phone.isPropped = true;
       phone.isStill = false;
       await pose(tester);
-      expect(find.text('폰이 흔들리지 않게 두세요.'), findsOneWidget);
+      showsCue(tester, '폰을', '고정해요', '폰이 흔들리지 않게 두세요.');
       await tester.pump(const Duration(milliseconds: 3100));
       expect(session.readyRequests, isEmpty);
       phone.isStill = true;
@@ -367,7 +393,10 @@ void main() {
       expect(session.readyRequests, [true, false]);
       expect(session.phase, OnlinePhase.preparing);
       expect(session.startAtMs, isNull);
-      expect(find.text('상대 준비를 기다리는 중…'), findsNothing);
+      expect(cueOf(tester), isNot(const SetupHintShort.waitingForOpponent()));
+      // Once the band's hold is over it no longer says so either.
+      await tester.pump(BattleCameraArea.cueHold);
+      expect(find.text('기다려요'), findsNothing);
       expect(find.text('준비'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
@@ -420,7 +449,7 @@ void main() {
     });
 
     testWidgets('a squat setup shows the silhouette; the squat lines come '
-        'with the round', (tester) async {
+        'with the round, and no line of words (A9 spec 6)', (tester) async {
       await open(tester, exercise: ExerciseType.squat);
       await pose(tester);
       expect(find.byType(PoseSilhouetteGuide), findsNothing);
@@ -433,6 +462,23 @@ void main() {
       await play(tester);
       expect(find.byType(StandingSilhouetteGuide), findsNothing);
       expect(find.byType(SquatHeightOverlay), findsOneWidget);
+      // Through the round's frames: neither a hint nor a setup cue, none of
+      // the squat lines the bot battle used to show.
+      for (var i = 0; i < 3; i++) {
+        await pose(tester);
+        final area = tester.widget<BattleCameraArea>(
+          find.byType(BattleCameraArea),
+        );
+        expect(area.hint, isNull);
+        expect(area.setupCue, isNull);
+        for (final line in const [
+          '정면에서 전신이 보이도록 서 주세요',
+          '일어선 상태 · 무릎 가까이 앉아 주세요',
+          '앉은 상태 · 이제 일어서세요',
+        ]) {
+          expect(find.text(line), findsNothing);
+        }
+      }
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -471,15 +517,18 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('a lost connection is said in the hint, and the auto ready '
-        'starts over once it is back', (tester) async {
+    testWidgets('a lost connection is said in the setup cue, in amber with no '
+        'frame, and the auto ready starts over once it is back', (
+      tester,
+    ) async {
       await open(tester);
       await pose(tester);
       await tester.pump(const Duration(seconds: 1));
       session.connected = false;
       session.notifyListeners();
       await tester.pump();
-      expect(find.text('재연결 중 · 준비 상태 확인 중…'), findsOneWidget);
+      showsCue(tester, '연결', '확인 중', '재연결 중 · 준비 상태 확인 중…');
+      expect(cueOf(tester)!.state, SetupCueState.notice);
       await tester.pump(const Duration(seconds: 1));
       session.connected = true;
       session.notifyListeners();
@@ -1168,13 +1217,13 @@ void main() {
     ) async {
       await open(tester);
       await pose(tester);
-      expect(find.textContaining('초 후 자동으로 준비해요'), findsOneWidget);
+      expect(cueOf(tester)!.message, contains('초 후 자동으로 준비해요'));
       await tester.pump(const Duration(milliseconds: 2900));
       expect(session.readyRequests, isEmpty);
       await tester.pump(const Duration(milliseconds: 200));
       expect(session.readyRequests, [true]);
       await tester.pump();
-      expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
+      showsCue(tester, '상대를', '기다려요', '상대 준비를 기다리는 중…');
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -1185,7 +1234,7 @@ void main() {
       await pose(tester);
       await tester.pump(const Duration(seconds: 2));
       await pose(tester, found: false);
-      expect(find.textContaining('초 후 자동으로 준비해요'), findsNothing);
+      expect(cueOf(tester)!.message, isNot(contains('초 후 자동으로 준비해요')));
       await tester.pump(const Duration(seconds: 2));
       expect(session.readyRequests, isEmpty);
       // Ready again: a full new 3 seconds.
@@ -1230,20 +1279,20 @@ void main() {
 
         noButton();
         await hold(2500);
-        expect(find.textContaining('초 후 자동으로 준비해요'), findsOneWidget);
+        expect(cueOf(tester)!.message, contains('초 후 자동으로 준비해요'));
         expect(session.readyRequests, isEmpty);
         noButton();
         await hold(1000);
         expect(session.readyRequests, [true]);
         await tester.pump();
-        expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
+        showsCue(tester, '상대를', '기다려요', '상대 준비를 기다리는 중…');
         noButton();
         // Held on, ready is not sent again.
         await hold(4000);
         expect(session.readyRequests, [true]);
         await pose(tester, found: false);
         expect(session.readyRequests, [true, false]);
-        expect(find.text('상대 준비를 기다리는 중…'), findsNothing);
+        expect(cueOf(tester), isNot(const SetupHintShort.waitingForOpponent()));
         noButton();
         await hold(2500);
         expect(session.readyRequests, [true, false]);

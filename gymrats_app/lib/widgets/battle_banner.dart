@@ -32,6 +32,7 @@ class BattleBand extends StatelessWidget {
     required this.color,
     this.sidePadding = _koreanSidePadding,
     this.topPadding = 0,
+    this.edge = _edge,
   }) : height = null,
        textTop = 0;
 
@@ -50,7 +51,8 @@ class BattleBand extends StatelessWidget {
        height = BattleFx.bandBox(size).height,
        sidePadding = BattleFx.bandBox(size).padX,
        textTop = BattleFx.bandBox(size).baseline - _numberAscent * size,
-       topPadding = 0;
+       topPadding = 0,
+       edge = _edge;
 
   /// A band of Korean with text [size] design points tall: as tall as its
   /// line ([BattleFx.koreanBandBox]).
@@ -66,7 +68,8 @@ class BattleBand extends StatelessWidget {
        height = null,
        sidePadding = BattleFx.koreanBandBox(size).padX,
        textTop = 0,
-       topPadding = 0;
+       topPadding = 0,
+       edge = _edge;
 
   final String text;
   final TextStyle style;
@@ -83,6 +86,9 @@ class BattleBand extends StatelessWidget {
   /// The room beside the text, and above and below it, in design points.
   final double sidePadding;
   final double topPadding;
+
+  /// The ink edge, inside the band: 3, or the reject sign's 4 (A9 spec 5).
+  final double edge;
 
   /// How far below the top of a line 1.0 tall Oxanium's letters stand: its
   /// ascent, 790 of 1000.
@@ -123,7 +129,7 @@ class BattleBand extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: color,
-                border: Border.all(color: AppColors.ink, width: _edge),
+                border: Border.all(color: AppColors.ink, width: edge),
               ),
             ),
           ),

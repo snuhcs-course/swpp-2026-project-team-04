@@ -8,10 +8,10 @@ import '../main.dart';
 import '../models/exercise_type.dart';
 import '../models/character_rig.dart';
 import '../models/matchup.dart';
+import '../models/setup_hint_short.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/opponent/bot_opponent.dart';
-import '../services/pose/rep_judge.dart';
 import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
@@ -331,7 +331,7 @@ class _BattleScreenState extends State<BattleScreen>
       ),
       onCue: widget.onCue ?? _sounds.cue,
       onLeave: () => unawaited(_askToLeave()),
-      hint: _hint(state, counterState, stage.phase),
+      setupCue: _setupCue(state, stage.phase),
       onSwitchCamera: setup && running && counter.canSwitchCamera
           ? () => unawaited(counter.switchCamera())
           : null,
@@ -342,31 +342,22 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
-  /// The camera area's one line: what the setup wants before the round,
-  /// and for squats in the round, where the user is in the rep.
-  String? _hint(
-    BattleState state,
-    RepCounterState counterState,
-    BattleStagePhase phase,
-  ) => switch (phase) {
-    BattleStagePhase.setup =>
-      state.phase != BattlePhase.setup
-          ? null
-          : widget.matchup.exercise == ExerciseType.squat &&
-                state.setup.reason == SetupReason.ready &&
-                !state.guideAligned
-          ? '실루엣 안에 몸을 맞춰 주세요.'
-          : state.setup.message,
-    BattleStagePhase.playing
-        when widget.matchup.exercise == ExerciseType.squat &&
-            state.phase == BattlePhase.playing =>
-      switch (counterState.snapshot.phase) {
-        RepPhase.up || RepPhase.descending => '일어선 상태 · 무릎 가까이 앉아 주세요',
-        RepPhase.bottom => '앉은 상태 · 이제 일어서세요',
-        RepPhase.idle || RepPhase.lost => '정면에서 전신이 보이도록 서 주세요',
-      },
-    _ => null,
-  };
+  /// The setup's short cue before the round (A9): what the setup wants, a
+  /// squat that is not in the silhouette yet first. The round has no line
+  /// of its own: the camera's frame and the bold lines say how a rep went
+  /// (A9 spec 6).
+  SetupHintShort? _setupCue(BattleState state, BattleStagePhase phase) {
+    if (phase != BattleStagePhase.setup || state.phase != BattlePhase.setup) {
+      return null;
+    }
+    return SetupHintShort.of(
+      state.setup,
+      outsideSilhouette:
+          widget.matchup.exercise == ExerciseType.squat &&
+          state.setup.reason == SetupReason.ready &&
+          !state.guideAligned,
+    );
+  }
 }
 
 /// Why the camera stopped, where the camera would be, and the way back:
