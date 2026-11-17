@@ -6,13 +6,18 @@ import '../models/battle_result.dart';
 import '../models/bot_difficulty.dart';
 import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
+import '../models/exercise_type_korean.dart';
 import '../models/feedback_stats.dart';
+import '../models/form_report.dart';
 import '../models/game_score.dart';
 import '../models/match_record.dart';
 import '../models/matchup.dart';
 import '../services/feedback/feedback_stats.dart';
+import '../services/feedback/goal_store.dart';
 import '../services/user/user_repository.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/character_viewmodel.dart';
+import '../viewmodels/coach_viewmodel.dart';
 import '../viewmodels/result_viewmodel.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/result_cards.dart';
@@ -35,11 +40,17 @@ import '../widgets/victory_scene.dart';
 /// [ResultScreen.record] is a past battle's report, opened from 기록보관소
 /// ([reportTap]): the seat shows only the end look, system back returns to
 /// the archive, and 다시 대결 starts the new battle from home.
+///
+/// A battle with a form report gets the character card (A10; online and
+/// past battles too): the screen makes the talk's [CoachViewModel] once the
+/// form report is in, and opens the talk screen on it
+/// ([GymRatsApp.coachRoute]).
 class ResultScreen extends StatefulWidget {
   const ResultScreen({
     super.key,
     required BattleResult this.result,
     this.createViewModel,
+    this.createCoachViewModel,
   }) : record = null;
 
   /// The report of [record], a past battle (team decision 2026-11-08: a
@@ -49,6 +60,7 @@ class ResultScreen extends StatefulWidget {
     super.key,
     required MatchRecord this.record,
     this.createViewModel,
+    this.createCoachViewModel,
   }) : result = null;
 
   /// The battle just played; null for a past one.
@@ -62,6 +74,11 @@ class ResultScreen extends StatefulWidget {
   /// [record] with the app's repository for its form report, on
   /// [historyOf].
   final ResultViewModel Function()? createViewModel;
+
+  /// Builds the talk's view model for the battle's form report, for tests.
+  /// Null builds one on the app's repository, goal store, account and
+  /// character.
+  final CoachViewModel Function(FormReport form)? createCoachViewModel;
 
   /// Where the earlier battles come from: the app's [UserRepository] when it
   /// can give them (the server one can). Otherwise none, and the comparison
@@ -77,12 +94,15 @@ class ResultScreen extends StatefulWidget {
   /// are missing is left out; [scored] false (a battle without a game score,
   /// from a server without the game) leaves out the latest battles and the
   /// placeholder too, as their last bar would not be this battle.
-  static ResultReportData reportOf(ResultState state, {bool scored = true}) {
+  static ResultReportData reportOf(
+    ResultState state, {
+    bool scored = true,
+    ResultCoachEntry? coach,
+  }) {
     final ready = state.history == ResultHistoryPhase.ready;
     final previous = state.previousBest;
     final average = state.recentAverage;
     final from = state.recentFrom;
-    final tip = state.nextTip;
     return ResultReportData(
       outcome: state.outcome,
       byKo: state.end == GameEnd.ko,
@@ -127,11 +147,31 @@ class ResultScreen extends StatefulWidget {
               difference: state.myScore - average,
             )
           : null,
-      tip: tip == null
-          ? null
-          : ResultTip(title: tip.headline, reason: tip.detail),
+      // The tip is said in the talk's form step now (task.md W10
+      // decision 4).
+      coach: state.form == null ? null : coach,
     );
   }
+
+  /// The talk screen's pill: the exercise, the opponent and the result in
+  /// the headline's words, e.g. "스쿼트 · RepBot 중수 · 승리" (task.md W10
+  /// decision 5).
+  static String summaryOf(ResultState state) => [
+    state.exercise.koreanName,
+    ResultSubLine.opponentText(
+      state.opponent ?? Opponent(name: state.opponentName, isBot: false),
+    ),
+    ResultHeadline.wordFor(state.outcome, byKo: state.end == GameEnd.ko),
+  ].join(' · ');
+
+  /// The character card's values for [coach]'s talk.
+  static ResultCoachEntry coachEntryOf(CoachViewModel coach) =>
+      ResultCoachEntry(
+        characterId: coach.voice.characterId,
+        name: coach.voice.name,
+        ending: coach.voice.ending,
+        lineCount: coach.lineCount,
+      );
 
   /// The victory scene of [state] (W5 spec 1 and 4): a win because the
   /// opponent left (기권승), by KO (KO 승리) or by time (판정승); a loss or a
@@ -181,6 +221,13 @@ VoidCallback reportTap(BuildContext context, MatchRecord match) =>
 class _ResultScreenState extends State<ResultScreen> {
   late final ResultViewModel _viewModel;
 
+  /// The talk about this battle, once its form report is in.
+  CoachViewModel? _coach;
+
+  /// The talk's line count the card last showed: the card is redrawn only
+  /// when it changes, not on every typed letter.
+  int? _coachLines;
+
   /// Set once a leaving button is pressed, so a second tap does nothing.
   bool _leaving = false;
 
@@ -216,7 +263,39 @@ class _ResultScreenState extends State<ResultScreen> {
               ));
     // A past report shows only the scene's end look.
     if (record != null) _sceneOver = true;
-    _viewModel.load();
+    _viewModel
+      ..addListener(_makeCoach)
+      ..load();
+    _makeCoach();
+  }
+
+  /// Makes the talk once the battle's form report is in: a past battle's
+  /// arrives after the report opens.
+  void _makeCoach() {
+    final form = _viewModel.state.form;
+    if (_coach != null || form == null || !mounted) return;
+    final coach = widget.createCoachViewModel?.call(form) ?? _coachOf(form);
+    _coach = coach..addListener(_onCoachChanged);
+    coach.load();
+  }
+
+  CoachViewModel _coachOf(FormReport form) => CoachViewModel(
+    report: form,
+    characterId:
+        Provider.of<CharacterViewModel?>(context, listen: false)?.characterId ??
+        CharacterRig.defaultId,
+    summary: ResultScreen.summaryOf(_viewModel.state),
+    history: ResultScreen.historyOf(context),
+    repository: Provider.of<UserRepository?>(context, listen: false),
+    goalStore: Provider.of<GoalStore?>(context, listen: false),
+    accountId: Provider.of<AuthViewModel?>(context, listen: false)?.account?.id,
+    matchId: widget.record?.id,
+  );
+
+  void _onCoachChanged() {
+    final lines = _coach?.lineCount;
+    if (!mounted || lines == _coachLines) return;
+    setState(() => _coachLines = lines);
   }
 
   @override
@@ -248,7 +327,12 @@ class _ResultScreenState extends State<ResultScreen> {
 
   @override
   void dispose() {
-    _viewModel.dispose();
+    _viewModel
+      ..removeListener(_makeCoach)
+      ..dispose();
+    _coach
+      ?..removeListener(_onCoachChanged)
+      ..dispose();
     super.dispose();
   }
 
@@ -261,6 +345,17 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   void _goHome() => _leaveOnce(() => popToHome(context));
+
+  /// The talk, from its first line or ([atGoal], 건너뛰기) at the goal
+  /// question. Opens on top, so back and 리포트로 come here again.
+  void _openCoach({required bool atGoal}) {
+    final coach = _coach;
+    if (_leaving || coach == null || coach.lineCount == null) return;
+    coach
+      ..setInstant(MediaQuery.disableAnimationsOf(context))
+      ..start(atGoal: atGoal);
+    Navigator.pushNamed(context, GymRatsApp.coachRoute, arguments: coach);
+  }
 
   /// Opens on top, so back comes here again. Not one of the leaving buttons.
   void _openFeedback() {
@@ -329,10 +424,16 @@ class _ResultScreenState extends State<ResultScreen> {
                   // J4 compares a past battle by its score, when it has one.
                   scored:
                       widget.result?.hasGame ?? widget.record!.myScore != null,
+                  coach: switch (_coach) {
+                    final coach? => ResultScreen.coachEntryOf(coach),
+                    null => null,
+                  },
                 ),
                 onGoHome: _goHome,
                 onRematch: _matchAgain,
                 onOpenFeedback: _openFeedback,
+                onHearCoach: () => _openCoach(atGoal: false),
+                onSkipCoach: () => _openCoach(atGoal: true),
                 // Empty while the scene plays: it draws the seat itself.
                 seat: KeyedSubtree(
                   key: _seatKey,

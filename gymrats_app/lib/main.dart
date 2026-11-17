@@ -8,6 +8,7 @@ import 'models/form_report.dart';
 import 'models/matchup.dart';
 import 'screens/battle_screen.dart';
 import 'screens/character_select_screen.dart';
+import 'screens/coach_screen.dart';
 import 'screens/feedback_screen.dart';
 import 'screens/help_screen.dart';
 import 'screens/history_screen.dart';
@@ -24,6 +25,7 @@ import 'services/api/api_client.dart';
 import 'services/auth/auth_repository.dart';
 import 'services/auth/token_store.dart';
 import 'services/feedback/form_report_store.dart';
+import 'services/feedback/goal_store.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
 import 'services/user/character_store.dart';
@@ -35,6 +37,7 @@ import 'services/user/avatar_store.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/character_viewmodel.dart';
+import 'viewmodels/coach_viewmodel.dart';
 import 'viewmodels/help_viewmodel.dart';
 import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/signup_viewmodel.dart';
@@ -127,6 +130,10 @@ class GymRatsApp extends StatefulWidget {
   /// The form feedback of one battle, from the result screen or home.
   static const feedbackRoute = '/feedback';
 
+  /// The character's talk about one battle, from the result screen's
+  /// character card; its argument is the report's [CoachViewModel].
+  static const coachRoute = '/coach';
+
   /// Tells HomeScreen when it shows again, so it reloads the latest battle.
   static final routeObserver = RouteObserver<ModalRoute<void>>();
 
@@ -206,6 +213,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ChangeNotifierProvider<SettingsViewModel>.value(value: _settings),
         ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
+        Provider<GoalStore>(create: (_) => SecureGoalStore()),
       ],
       child: MaterialApp(
         title: 'GymRats',
@@ -313,6 +321,11 @@ class _GymRatsAppState extends State<GymRatsApp> {
             settings: settings,
             builder: (_) =>
                 FeedbackScreen(report: settings.arguments! as FormReport),
+          ),
+          GymRatsApp.coachRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) =>
+                CoachScreen(viewModel: settings.arguments! as CoachViewModel),
           ),
           _ => null,
         },

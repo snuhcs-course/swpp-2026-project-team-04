@@ -14,10 +14,13 @@ import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
 import 'package:gymrats_app/services/feedback/feedback_stats.dart';
+import 'package:gymrats_app/services/feedback/goal_store.dart';
 import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/coach_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/result_viewmodel.dart';
 import 'package:gymrats_app/widgets/result_cards.dart';
 import 'package:gymrats_app/widgets/result_report.dart';
@@ -25,6 +28,7 @@ import 'package:gymrats_app/widgets/victory_overlay.dart';
 import 'package:gymrats_app/widgets/victory_scene.dart';
 import 'package:provider/provider.dart';
 
+import '../support/auth_fakes.dart';
 import '../support/fakes.dart';
 import '../support/feedback_fakes.dart';
 import '../support/form_report_fixtures.dart';
@@ -304,25 +308,53 @@ void main() {
       expect(data.recent, isNull);
     });
 
-    test('the tip: its headline as the title and its detail as the reason; '
-        'the code is not shown', () {
-      final tip = ResultScreen.reportOf(
+    test('the tip leaves the report (task.md W10 decision 4); the character '
+        'card shows only with a form report', () {
+      const entry = ResultCoachEntry(
+        characterId: 'seal',
+        name: '물렁범',
+        ending: '범',
+        lineCount: 3,
+      );
+      final withForm = ResultScreen.reportOf(
         _state(
           form: _form,
           nextTip: const NextTip(
             headline: '가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.',
             detail: '깊이 부족 2회',
-            code: 'reject.insufficientDepth',
           ),
         ),
-      ).tip!;
-      expect(tip.title, '가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.');
-      expect(tip.reason, '깊이 부족 2회');
-      final bare = ResultScreen.reportOf(
-        _state(nextTip: const NextTip(headline: '천천히 내려가요.')),
-      ).tip!;
-      expect(bare.reason, isNull);
-      expect(ResultScreen.reportOf(_state()).tip, isNull);
+        coach: entry,
+      );
+      expect(withForm.coach, same(entry));
+      expect(ResultScreen.reportOf(_state(), coach: entry).coach, isNull);
+      expect(ResultScreen.reportOf(_state(form: _form)).coach, isNull);
+    });
+
+    test('the talk\'s pill: exercise, opponent and result in the '
+        'headline\'s words (task.md W10 decision 5)', () {
+      expect(ResultScreen.summaryOf(_state()), '푸쉬업 · 진영 · 승리');
+      expect(
+        ResultScreen.summaryOf(
+          _state(
+            outcome: MatchOutcome.lose,
+            end: GameEnd.ko,
+            opponent: const Opponent(
+              name: 'AI 봇 · 중수',
+              isBot: true,
+              difficulty: BotDifficulty.intermediate,
+            ),
+          ),
+        ),
+        '푸쉬업 · RepBot 중수 · KO 패배',
+      );
+      // A past battle keeps only the opponent's name.
+      expect(
+        ResultScreen.summaryOf(
+          _state(outcome: MatchOutcome.draw, opponent: null),
+        ),
+        '푸쉬업 · 진영 · 무승부',
+      );
     });
 
     test('feedback only with a form report', () {
@@ -379,6 +411,8 @@ void main() {
       BattleResult result, {
       FeedbackStatsSource? history,
       UserRepository? repository,
+      CoachViewModel Function(FormReport form)? coach,
+      Widget Function(Widget app)? around,
     }) async {
       tester.view.physicalSize = const Size(360, 780);
       tester.view.devicePixelRatio = 1;
@@ -399,6 +433,7 @@ void main() {
                         ? null
                         : () =>
                               ResultViewModel.battle(result, history: history),
+                    createCoachViewModel: coach,
                   ),
                 ),
               ),
@@ -412,11 +447,10 @@ void main() {
               Scaffold(body: Text('${settings.name} ${settings.arguments}')),
         ),
       );
-      await tester.pumpWidget(
-        repository == null
-            ? app
-            : Provider<UserRepository>.value(value: repository, child: app),
-      );
+      final provided = repository == null
+          ? app
+          : Provider<UserRepository>.value(value: repository, child: app);
+      await tester.pumpWidget(around?.call(provided) ?? provided);
       await tester.tap(find.text('home'));
       await tester.pumpAndSettle();
       routes.settings.clear();
@@ -559,7 +593,7 @@ void main() {
         expect(find.byType(ResultRecentCard), findsNothing);
         expect(find.byType(ResultComparisonPlaceholder), findsNothing);
         expect(find.text('승리'), findsOneWidget);
-        expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
+        expect(find.text('자세 기록 표로 보기'), findsOneWidget);
       });
 
       testWidgets('while they load: the placeholder, no 0 and no chart; then '
@@ -574,7 +608,7 @@ void main() {
         expect(find.text('0'), findsNothing);
         final top = tester.getRect(placeholder).top;
         // The feedback link does not wait for them.
-        expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
+        expect(find.text('자세 기록 표로 보기'), findsOneWidget);
 
         history.gate!.complete();
         await tester.pumpAndSettle();
@@ -599,8 +633,8 @@ void main() {
         expect(find.byType(ResultRecentCard), findsNothing);
         expect(find.text('승리'), findsOneWidget);
         expect(find.text('240'), findsOneWidget);
-        expect(find.text('다음 판 한 가지'), findsOneWidget);
-        expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
+        expect(find.byType(ResultCoachCard), findsOneWidget);
+        expect(find.text('자세 기록 표로 보기'), findsOneWidget);
       });
 
       testWidgets('from the app\'s repository, of this battle\'s exercise', (
@@ -641,37 +675,129 @@ void main() {
       });
     });
 
-    group('the next tip', () {
-      testWidgets('a push-up battle: its first issue\'s fix and what it was', (
+    group('the character card (A10)', () {
+      /// The label the card's sentence reads.
+      final cardLine = RegExp(r'^GYM마우스, 이번 판 이야기해 줄게찍! 할 말이 \d+개 있어\.$');
+
+      testWidgets('a battle with a form report: the card in place of the '
+          'tip, with the talk\'s line count (task.md W10 decision 4)', (
         tester,
       ) async {
+        late CoachViewModel made;
         await open(
           tester,
           _result(form: sampleReport(valid: 12, rejected: 2)),
           history: _earlier(),
+          coach: (form) => made = CoachViewModel(
+            report: form,
+            characterId: 'seal',
+            summary: '푸쉬업 · RepBot 고수 · 승리',
+          ),
         );
-        expect(find.text('다음 판 한 가지'), findsOneWidget);
-        expect(find.text('가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.'), findsOneWidget);
-        expect(find.text('깊이 부족 2회'), findsOneWidget);
-        expect(find.text('reject.insufficientDepth'), findsNothing);
+        expect(find.byType(ResultCoachCard), findsOneWidget);
+        expect(find.text('다음 판 한 가지'), findsNothing);
+        expect(find.text('가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.'), findsNothing);
+        expect(made.lineCount, greaterThanOrEqualTo(3));
+        expect(
+          find.bySemanticsLabel(
+            '물렁범, 이번 판 이야기해 줄게범! 할 말이 ${made.lineCount}개 있어.',
+          ),
+          findsOneWidget,
+        );
       });
 
-      testWidgets('a squat battle has its squat tip', (tester) async {
+      testWidgets('nothing to fix: the card all the same, and its link', (
+        tester,
+      ) async {
+        await open(tester, _result(form: sampleReport()), history: _earlier());
+        expect(find.bySemanticsLabel(cardLine), findsOneWidget);
+        expect(find.text('자세 기록 표로 보기'), findsOneWidget);
+      });
+
+      testWidgets('without a form report there is no card', (tester) async {
+        await open(tester, _result(), history: _earlier());
+        expect(find.byType(ResultCoachCard), findsNothing);
+      });
+
+      testWidgets('이야기 듣기 opens the talk from its first line; back comes '
+          'here again', (tester) async {
+        await open(tester, _result(form: _form), history: _earlier());
+        await tester.tap(find.text('이야기 듣기'));
+        await tester.pumpAndSettle();
+        expect(routes.names, [GymRatsApp.coachRoute]);
+        final talk = routes.settings.single.arguments! as CoachViewModel;
+        expect(talk.state.index, 0);
+        expect(talk.state.ended, isFalse);
+        expect(talk.summary, '푸쉬업 · RepBot 초보 · 승리');
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(ResultScreen), findsOneWidget);
+      });
+
+      testWidgets('건너뛰기 opens it at the goal question', (tester) async {
+        await open(tester, _result(form: _form), history: _earlier());
+        await tester.tap(find.text('건너뛰기'));
+        await tester.pumpAndSettle();
+        final talk = routes.settings.single.arguments! as CoachViewModel;
+        expect(talk.state.onQuestion, isTrue);
+      });
+
+      testWidgets('with reduced motion the talk shows each line whole', (
+        tester,
+      ) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+        await open(tester, _result(form: _form), history: _earlier());
+        await tester.tap(find.text('이야기 듣기'));
+        await tester.pumpAndSettle();
+        final talk = routes.settings.single.arguments! as CoachViewModel;
+        expect(talk.state.fullyShown, isTrue);
+      });
+
+      testWidgets('the talk takes the app\'s goal store, account and '
+          'character: a picked goal is saved for this account with it', (
+        tester,
+      ) async {
+        final store = MemoryGoalStore();
+        final auth = ScriptedAuthRepository();
+        await auth.logIn(loginId: 'woohyun', password: 'pw');
+        final characters = CharacterViewModel(store: MemoryCharacterStore());
+        await characters.load(1);
+        await characters.choose('penguin');
         await open(
           tester,
-          _result(matchup: _squatBot, form: squatReport()),
+          _result(form: _form),
           history: _earlier(),
+          around: (app) => MultiProvider(
+            providers: [
+              Provider<GoalStore>.value(value: store),
+              ChangeNotifierProvider<AuthViewModel>.value(
+                value: AuthViewModel(repository: auth),
+              ),
+              ChangeNotifierProvider<CharacterViewModel>.value(
+                value: characters,
+              ),
+            ],
+            child: app,
+          ),
         );
-        expect(find.text('다음 판 한 가지'), findsOneWidget);
-        expect(find.text('엉덩이를 뒤로 빼며 허벅지가 바닥과 나란해질 때까지 앉아요.'), findsOneWidget);
-        expect(find.text('얕은 스쿼트 2회'), findsOneWidget);
-        expect(find.text('RepBot 고수'), findsOneWidget);
-      });
-
-      testWidgets('nothing to fix: the feedback link alone', (tester) async {
-        await open(tester, _result(form: sampleReport()), history: _earlier());
-        expect(find.text('다음 판 한 가지'), findsNothing);
-        expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(RegExp('^펭뚱이, 이번 판 이야기해 줄게펭!')),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('건너뛰기'));
+        await tester.pumpAndSettle();
+        final talk = routes.settings.single.arguments! as CoachViewModel;
+        talk.setInstant(true);
+        final goal = talk.state.script!.suggestions.first;
+        await talk.choose(goal);
+        final saved = store.goals[(1, ExerciseType.pushUp)]!;
+        expect(saved.title, goal.title);
+        expect(saved.characterId, 'penguin');
+        expect(saved.fromMatch, _form.id);
       });
     });
 
@@ -733,10 +859,10 @@ void main() {
         expect(routes.names, [GymRatsApp.matchingRoute]);
       });
 
-      testWidgets('자세 피드백 전체 보기 opens this battle\'s feedback on top; '
+      testWidgets('자세 기록 표로 보기 opens this battle\'s feedback on top; '
           'back comes here again', (tester) async {
         await open(tester, _result(form: _form));
-        await tester.tap(find.text('자세 피드백 전체 보기'));
+        await tester.tap(find.text('자세 기록 표로 보기'));
         await tester.pumpAndSettle();
         expect(routes.names, [GymRatsApp.feedbackRoute]);
         expect(routes.settings.single.arguments, same(_form));
@@ -749,7 +875,7 @@ void main() {
         tester,
       ) async {
         await open(tester, _result());
-        expect(find.text('자세 피드백 전체 보기'), findsNothing);
+        expect(find.text('자세 기록 표로 보기'), findsNothing);
       });
 
       testWidgets('leaving while the earlier battles load: the late answer '
@@ -1434,8 +1560,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(repository.feedbackRequests, [7]);
       expect(find.text('AI 봇 · 초보'), findsOneWidget);
+      // The character card comes with the form report (A10).
+      expect(find.byType(ResultCoachCard), findsOneWidget);
       routes.settings.clear();
-      await tester.tap(find.text('자세 피드백 전체 보기'));
+      await tester.tap(find.text('자세 기록 표로 보기'));
       await tester.pumpAndSettle();
       expect(routes.names, [GymRatsApp.feedbackRoute]);
       expect(routes.settings.single.arguments, same(report));
