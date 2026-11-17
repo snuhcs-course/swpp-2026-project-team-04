@@ -267,3 +267,46 @@ S2 PR 올리면 끝나느거야?
 ```text
 그럼 S2 수정한 내용 커밋하고 푸시해줘. 기존 PR #72 본문에 영상 검증 결과도 반영하고 CI 통과까지 확인해줘.
 ```
+
+
+## Knee endpoint rule and phone trial, 2026-11-18
+
+These are the relevant visible user inputs for the knee-rule follow-up. The original wording is preserved. The request and question from the combined installation are included with their pasted state definitions. No unrelated transcript is published.
+
+```text
+그럼 S2 기능을 켠 버전으로 연결된 휴대폰에 설치해줘. 직접 테스트해볼게.
+
+다음 기능도 추가된 버전이지?
+
+
+
+**들어오는 관절 프레임마다** 다음 중 하나를 반환하도록 로컬 코드를 수정했어.
+
+- `touching` — 무릎댐
+- `lifted` — 무릎뗌
+- `occluded` — 무릎가려짐·추적 불확실
+```
+
+```text
+연결하고 허용했어
+```
+
+```text
+추가 무릎 기각 옵션을 꺼뒀다는게 무슨 뜻이야?
+```
+
+```text
+"? -> 무릎댐 -> 푸쉬업 1회 진행 -> 무릎댐 -> ?"의 과정을 무릎댐으로 인식하는게 맞아?
+```
+
+```text
+아니 새 분류기가 이 과정을 확인하냐는 뜻이었어.
+```
+
+```text
+그럼 그 순서를 확인하는 로직을 추가해서 푸쉬업 전후에 무릎댐이 확인되면 기각하도록 해줘. 무릎 기각 옵션도 켜서 휴대폰에 다시 설치해줘. 커밋과 푸시는 아직 하지 말고.
+```
+
+```text
+좋아. 이제 이 기준으로 PR 올려줘. draft로 올리지 마. 전부 동의받았으니까 바로 올리면 돼.
+```

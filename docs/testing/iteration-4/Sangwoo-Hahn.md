@@ -428,3 +428,95 @@ report. No population accuracy or general identity-retention rate is claimed.
 
 Logs and local source/capture/observation artifacts:
 `C:/SWPP/iter4/s2-validation/`. Server unchanged; server tests not run.
+
+
+### Per-frame knee observation, 2026-11-16
+
+The user clarified that knee support must be classified continuously on every pose frame with touching, lifted or occluded output. The local implementation at base 4edc96a adds KneeFrameClassifier and snapshot.knee, independently of repetition completion. The diagnostic HUD shows the current state. The comparison build flag PUSHUP_FRAME_KNEE=true enables accumulated stable evidence as a repetition veto. Observations are available in ordinary builds too. This local experiment does not measure physical floor contact directly.
+
+A new 32-tree, depth-four model uses 48 single-frame features. Five source-group development folds select threshold 0.67. Actual Dart evaluation covers 13,185 frames after two contradictory inherited labels are excluded. On the reused holdout, normal frames emit lifted 1001/1837, touching 18/1837, and occluded 818/1837. Knee-supported frames emit touching 279/523, lifted 169/523, and occluded 75/523. The occluded state includes low-confidence, missing or out-of-frame observations and a torso-overlap heuristic. Independent frame-level occlusion labels remain unavailable. These frame results do not establish completed-repetition accuracy. See pushup-frame-knee.md for the full method and reproduction.
+
+- Flutter analyze --no-pub passed after the final correction.
+- Five-file sequential coverage run passed 251 tests with nine existing known-error recording skips. Command from gymrats_app was flutter test --no-pub --coverage --concurrency=1 test/services/pose/pose_metrics_test.dart test/services/pose/rep_judge_test.dart test/services/pose/push_up_judge_adapter_test.dart test/services/pose/pushup_error_cases_test.dart test/demo/rep_judge_demo_test.dart.
+- Changed-file coverage was pose_metrics.dart 912/923 (98.81%), rep_judge.dart 836/857 (97.55%), rep_judge_demo.dart 963/1029 (93.59%), adapter 38/40 (95.00%). Service files exceed the 85% target. The diagnostic entry point is outside normal View layer aggregation. Full-project layer coverage was not collected.
+- Tests cover all three immediate states, low-confidence and overlapping joints, invalid model output, forty actual golden frames, stable evidence across hidden frames, a subsequent lifted rep, reset and camera gaps, no-face/no-event frames, the MLP path and the diagnostic status label.
+- Independent read-only Codex review reproduced evidence leaking from an eventless short dip into the next normal repetition. Codex corrected eventless attempt completion and added the exact regression. The reviewer verified the corrected output. Eight dedicated integration tests passed.
+- Forty golden probabilities match Python within 1.45e-15 and every expected state matches. Desktop classification timing was 4 microseconds median and 15 microseconds p95. Physical-device timing and live movement validation remain unmeasured for this model.
+- The full Flutter suite was outside this scoped verification. The work is a local working-tree change. Logs and model artifacts are under C:/SWPP/iter4/frame-knee.
+
+### Before/after knee sequence, 2026-11-18
+
+The user requested the sequence `? -> touching -> full push-up -> touching -> ?`
+as an additional knee veto and a phone build with that option enabled. Changes
+are local on S1 base `4edc96a`. The phone build also includes S2 `212323a`.
+
+- Preparation is sampled before the current movement frame is classified.
+  It needs three distinct observations spanning 100 ms and a recent confirmed
+  touching state, no older than `config.maxFrameGap` (500 ms by default).
+  A current lifted preparation prevents reuse of an older touching state.
+- Occluded frames during the attempt preserve the captured preparation.
+  The closing top frame must also return touching. This endpoint uses one
+  current classifier result. Repetition emission retains its existing timing.
+- Missing/stale preparation, a hidden/lifted return, same-frame begin/finish,
+  reset, S2 abandonment and camera gaps cannot manufacture the sequence.
+  An eventless short attempt releases its preparation evidence.
+- Three new endpoint regressions failed against the previous code. After the
+  fix, the five S1 suites passed 260 tests with nine existing skips. A later
+  added MLP sequence regression is included in the final combined run below.
+- Final combined build analysis passed. Nine suites with both
+  `S2_PERSON_GUARD=true` and `PUSHUP_FRAME_KNEE=true` passed **434 tests**
+  with zero failures and zero skips. These include the actual-video S2 replay,
+  both pose services, counter, AI/online screens, demo and design tokens.
+- One initial combined failure came from a test of the older MLP knee model
+  implicitly inheriting the new comparison flag. That fixture now explicitly
+  selects its intended model, preserving its recorded-event assertions.
+  A separate full-recording test verifies that the new sequence converts all
+  four binary-accepted events to kneesDown with touching endpoint input.
+- Separate enabled coverage runs of pose_metrics_test and rep_judge_test
+  succeeded. Their merged line results are **915/935 (97.86%)** for
+  pose_metrics.dart and **827/861 (96.05%)** for rep_judge.dart, exceeding
+  the 85% service target. Full-project coverage was not collected.
+- Independent read-only Codex review returned APPROVE for the sequence logic.
+  Physical knee-contact accuracy remains a user phone test.
+
+Commands ran from the corresponding gymrats_app directory. Test logs are
+`C:/SWPP/iter4/frame-knee/sequence-*.log`, with two LCOV files in the same
+folder. Combined analysis, test and build logs are in
+`C:/SWPP/iter4/s2-frame-knee-phone-20261118/`.
+
+The combined ARM64 release was installed over GymRats on SM-S901N with both
+S2_PERSON_GUARD and PUSHUP_FRAME_KNEE enabled. MainActivity launched successfully
+and the logged-in home screen was visible. Local and installed APK SHA-256
+matched 24378d9f21faf9fbe4d69f734413b4c230e74367a0ff52316401be3555a4d808.
+Filtered startup error logs were empty. Physical repetitions remain the user's
+manual test. No commit or push was performed.
+
+### Knee sequence PR publication, 2026-11-18
+
+App, tests and model note are committed as3668908 on codex/pushup-knee-sequence,
+based on main e0bcae2 after S1#69 and S2#72 merged. The endpoint rule is now
+enabled by default with PUSHUP_FRAME_KNEE=false as comparison opt-out.
+
+- Final branch analysis passed with zero issues.
+- Before re-enabling one repaired label test, full ordinary and S2-enabled
+  runs each passed3,376 tests, zero failures, ten existing skips. Commands
+  were flutter test --no-pub --concurrency=4 --reporter expanded and the same
+  with --dart-define=S2_PERSON_GUARD=true.
+- Initial default run failed two recorded-output expectations. New endpoint
+  outputs reject the third head-nod event and first145535knees event. The
+  baseline tables and source labels are retained, with exact endpoint-mode
+  overrides. The now-repaired nine-knee label check runs in enabled mode.
+  Final focused error-case suite passed30tests/8existing skips by default and
+  29tests/9existing skips with PUSHUP_FRAME_KNEE=false. This last change adds
+  the repaired label assertion after the full runs above.
+- Both per-file coverage commands succeeded with --coverage --concurrency=1.
+  Merged service coverage remains915/935(97.86%) for pose_metrics.dart and
+  827/861(96.05%) for rep_judge.dart. The service target is85%.
+- Independent read-only Codex review approved source, model/golden provenance,
+  sequence behavior and expectation changes. User approval covers the immediate
+  non-draft PR. Physical contact accuracy remains the phone trial documented
+  above. Server unchanged, server tests not rerun locally for this follow-up.
+
+Logs are C:/SWPP/iter4/frame-knee/pr-final-analyze.log,
+pr-final-default-full.log, pr-final-s2-full.log, pr-error-final-default.log,
+pr-error-final-disabled.log, pr-metrics-final.log and pr-judge-final.log.
