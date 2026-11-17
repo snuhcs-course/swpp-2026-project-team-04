@@ -45,6 +45,7 @@ void main() {
     await harness.feed(1800, pushUpFrame());
     expect(find.byKey(repPhaseKey), findsOneWidget);
     expect(find.textContaining('UP'), findsOneWidget);
+    expect(find.textContaining('무릎가려짐'), findsOneWidget);
 
     await harness.feed(1900, pushUpFrame(depth: 0.6));
     await harness.feed(2300, pushUpFrame(depth: 1.5));

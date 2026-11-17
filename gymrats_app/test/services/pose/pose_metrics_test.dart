@@ -12,6 +12,7 @@ import 'package:gymrats_app/services/pose/rep_judge.dart';
 import '../../support/pose_fixtures.dart';
 
 void main() {
+  _kneeFrameTests();
   _kneeForestHistoryTests();
   _kneeContactTests();
   _mlpFeatureTests();
@@ -186,6 +187,415 @@ void main() {
     )!;
     expect(mirrored.points['leftShoulder']!.x, 0.5);
     expect(mirrored.points['leftElbow']!.x, closeTo(1.5, 0.01));
+  });
+}
+
+void _kneeFrameTests() {
+  final golden = jsonDecode(
+    File('test/fixtures/pushup_cases/frame_knee/golden_frames.json')
+        .readAsStringSync(),
+  ) as Map<String, dynamic>;
+  final goldenFrames = (golden['frames'] as List).cast<Map<String, dynamic>>();
+
+  PoseFrame goldenFrame(Map<String, dynamic> record) {
+    final points = record['points'] as List;
+    return PoseFrame(
+      imageWidth: (record['width'] as num).toDouble(),
+      imageHeight: (record['height'] as num).toDouble(),
+      keypoints: {
+        for (var index = 0; index < points.length; index++)
+          if (points[index] != null)
+            BodyLandmark.values[index]: Keypoint(
+              landmark: BodyLandmark.values[index],
+              x: (points[index][0] as num).toDouble(),
+              y: (points[index][1] as num).toDouble(),
+              likelihood: (points[index][2] as num).toDouble(),
+            ),
+      },
+    );
+  }
+
+  PoseFrame changePoint(
+    BodyLandmark landmark, {
+    double? x,
+    double? y,
+    double? likelihood,
+  }) {
+    final frame = standingFrame(showHips: true);
+    final original = frame[landmark]!;
+    return PoseFrame(
+      imageWidth: frame.imageWidth,
+      imageHeight: frame.imageHeight,
+      keypoints: {
+        ...frame.keypoints,
+        landmark: Keypoint(
+          landmark: landmark,
+          x: x ?? original.x,
+          y: y ?? original.y,
+          likelihood: likelihood ?? original.likelihood,
+        ),
+      },
+    );
+  }
+
+  group('current knee frame classification', () {
+    test('single-frame model matches forty exported probability fixtures', () {
+      expect(goldenFrames, hasLength(40));
+      expect(
+        SingleFrameKneeModel.rejectionThreshold,
+        golden['app_rejection_threshold'],
+      );
+      for (final record in goldenFrames) {
+        final expected = (record['probability'] as num).toDouble();
+        final features = (record['features'] as List)
+            .map((value) => (value as num).toDouble())
+            .toList();
+        expect(
+          SingleFrameKneeModel.probabilityFromFeatures(features),
+          closeTo(expected, 1e-12),
+          reason: record['key'] as String,
+        );
+        expect(
+          SingleFrameKneeModel.probability(goldenFrame(record)),
+          closeTo(expected, 1e-12),
+          reason: record['key'] as String,
+        );
+      }
+    });
+
+    test(
+      'observable and hidden golden frames reproduce exported app states',
+      () {
+        final classifier = KneeFrameClassifier();
+        final observedStates = <KneeFrameState>{};
+        for (final record in goldenFrames) {
+          final reading = classifier.classify(goldenFrame(record));
+          observedStates.add(reading.state);
+          expect(
+            reading.state.name,
+            record['app_expected_state'],
+            reason: record['key'] as String,
+          );
+          if (reading.state == KneeFrameState.occluded) {
+            expect(reading.touchingProbability, isNull);
+          } else {
+            expect(
+              reading.touchingProbability,
+              closeTo((record['probability'] as num).toDouble(), 1e-12),
+            );
+          }
+        }
+        expect(observedStates, KneeFrameState.values.toSet());
+      },
+    );
+
+    test('each observable frame is classified once with no temporal hold', () {
+      var calls = 0;
+      final classifier = KneeFrameClassifier(
+        probability: (_) => ++calls == 1 ? .8 : .2,
+      );
+      final touching = classifier.classify(standingFrame(showHips: true));
+      final lifted = classifier.classify(standingFrame(showHips: true));
+      expect(touching.state, KneeFrameState.touching);
+      expect(touching.touchingProbability, .8);
+      expect(touching.reason, isNull);
+      expect(lifted.state, KneeFrameState.lifted);
+      expect(lifted.touchingProbability, .2);
+      expect(calls, 2);
+    });
+
+    test('the exported decision threshold and its tie are respected', () {
+      final threshold = SingleFrameKneeModel.rejectionThreshold;
+      final classifier = KneeFrameClassifier(probability: (_) => threshold);
+      expect(
+        classifier.classify(standingFrame(showHips: true)).state,
+        KneeFrameState.lifted,
+      );
+      final above = KneeFrameClassifier(probability: (_) => threshold + .01);
+      expect(
+        above.classify(standingFrame(showHips: true)).state,
+        KneeFrameState.touching,
+      );
+      final custom = KneeFrameClassifier(probability: (_) => .6, threshold: .5);
+      expect(
+        custom.classify(standingFrame(showHips: true)).state,
+        KneeFrameState.touching,
+      );
+    });
+
+    test('support likelihood is gated without gating elbow likelihood', () {
+      var calls = 0;
+      final classifier = KneeFrameClassifier(
+        probability: (_) {
+          calls++;
+          return .8;
+        },
+      );
+      for (final landmark in [
+        BodyLandmark.leftWrist,
+        BodyLandmark.rightWrist,
+        BodyLandmark.leftHip,
+        BodyLandmark.rightHip,
+        BodyLandmark.leftKnee,
+        BodyLandmark.rightKnee,
+        BodyLandmark.leftAnkle,
+        BodyLandmark.rightAnkle,
+      ]) {
+        final reading = classifier.classify(
+          changePoint(landmark, likelihood: .64),
+        );
+        expect(reading.state, KneeFrameState.occluded);
+        expect(reading.touchingProbability, isNull);
+        expect(reading.reason, 'support_joints_unobservable');
+      }
+      expect(calls, 0);
+      expect(
+        classifier
+            .classify(changePoint(BodyLandmark.leftKnee, likelihood: .65))
+            .state,
+        KneeFrameState.touching,
+      );
+      expect(
+        classifier
+            .classify(changePoint(BodyLandmark.leftElbow, likelihood: .1))
+            .state,
+        KneeFrameState.touching,
+      );
+      expect(calls, 2);
+    });
+
+    test('missing or nonfinite support coordinates remain unobservable', () {
+      final classifier = KneeFrameClassifier(probability: (_) => .8);
+      final frame = standingFrame(showHips: true);
+      final missing = PoseFrame(
+        imageWidth: frame.imageWidth,
+        imageHeight: frame.imageHeight,
+        keypoints: Map.of(frame.keypoints)..remove(BodyLandmark.leftKnee),
+      );
+      for (final invalid in [
+        missing,
+        changePoint(BodyLandmark.leftKnee, x: double.nan),
+        changePoint(BodyLandmark.rightKnee, x: -1),
+        changePoint(BodyLandmark.rightAnkle, y: 1001),
+        changePoint(BodyLandmark.leftHip, likelihood: double.nan),
+      ]) {
+        expect(classifier.classify(invalid).state, KneeFrameState.occluded);
+      }
+    });
+
+    test(
+      'invalid image dimensions and missing torso have explicit reasons',
+      () {
+        final classifier = KneeFrameClassifier(probability: (_) => .8);
+        final frame = standingFrame(showHips: true);
+        expect(
+          classifier
+              .classify(
+                PoseFrame(
+                  imageWidth: 0,
+                  imageHeight: 1000,
+                  keypoints: frame.keypoints,
+                ),
+              )
+              .reason,
+          'invalid_frame_size',
+        );
+        expect(
+          classifier
+              .classify(
+                changePoint(BodyLandmark.leftShoulder, x: double.infinity),
+              )
+              .reason,
+          'torso_joints_unobservable',
+        );
+      },
+    );
+
+    test(
+      'a knee projected inside the torso is treated as uncertain evidence',
+      () {
+        var calls = 0;
+        final classifier = KneeFrameClassifier(
+          probability: (_) {
+            calls++;
+            return .8;
+          },
+        );
+        final reading = classifier.classify(
+          changePoint(BodyLandmark.leftKnee, x: 500, y: 400),
+        );
+        expect(reading.state, KneeFrameState.occluded);
+        expect(reading.reason, 'knee_torso_overlap');
+        expect(calls, 0);
+      },
+    );
+
+    test('unavailable and invalid probabilities remain occluded', () {
+      for (final probability in <double?>[null, double.nan, -0.1, 1.1]) {
+        final classifier = KneeFrameClassifier(probability: (_) => probability);
+        final reading = classifier.classify(standingFrame(showHips: true));
+        expect(reading.state, KneeFrameState.occluded);
+        expect(reading.reason, 'model_unavailable');
+      }
+    });
+  });
+
+  group('knee evidence within an attempt', () {
+    const down = KneeFrameReading(state: KneeFrameState.touching);
+    const up = KneeFrameReading(state: KneeFrameState.lifted);
+    const hidden = KneeFrameReading(state: KneeFrameState.occluded);
+
+    void hold(
+      KneeAttemptEvidence tracker,
+      KneeFrameReading reading,
+      int start,
+    ) {
+      for (final offset in [0, 50, 100]) {
+        tracker.update(reading, Duration(milliseconds: start + offset));
+      }
+    }
+
+    test('preparation down then hidden then down preserves current-attempt evidence', () {
+      final tracker = KneeAttemptEvidence();
+      hold(tracker, down, 0);
+      tracker.begin();
+      expect(tracker.hasConfirmedTouching, isTrue);
+      tracker.update(hidden, const Duration(milliseconds: 200));
+      expect(tracker.latest.state, KneeFrameState.occluded);
+      expect(tracker.confirmedState, KneeFrameState.touching);
+      expect(tracker.lastConfirmedAt, const Duration(milliseconds: 100));
+      expect(tracker.hasConfirmedTouching, isTrue);
+      hold(tracker, down, 250);
+      expect(tracker.finish(), isTrue);
+      expect(tracker.isAttemptActive, isFalse);
+      expect(tracker.hasConfirmedTouching, isFalse);
+      expect(tracker.finish(), isFalse);
+    });
+
+    test('up then hidden then up never manufactures touching evidence', () {
+      final tracker = KneeAttemptEvidence();
+      hold(tracker, up, 0);
+      tracker.begin();
+      tracker.update(hidden, const Duration(milliseconds: 200));
+      expect(tracker.latest.state, KneeFrameState.occluded);
+      expect(tracker.confirmedState, KneeFrameState.lifted);
+      hold(tracker, up, 250);
+      expect(tracker.finish(), isFalse);
+    });
+
+    test(
+      'visible down needs three distinct samples spanning one hundred ms',
+      () {
+        final tracker = KneeAttemptEvidence();
+        tracker.update(down, Duration.zero);
+        tracker.update(down, Duration.zero);
+        tracker.update(down, const Duration(milliseconds: 50));
+        expect(tracker.latest.state, KneeFrameState.touching);
+        expect(tracker.hasConfirmedTouching, isFalse);
+        tracker.update(down, const Duration(milliseconds: 99));
+        expect(tracker.hasConfirmedTouching, isFalse);
+        tracker.update(down, const Duration(milliseconds: 100));
+        expect(
+          tracker.hasTouchingPreparation(const Duration(milliseconds: 100)),
+          isTrue,
+        );
+        tracker.begin();
+        tracker.update(down, const Duration(milliseconds: 150));
+        expect(tracker.finish(), isTrue);
+      },
+    );
+
+    test('hidden evidence interrupts an unconfirmed down streak', () {
+      final tracker = KneeAttemptEvidence()..begin();
+      tracker.update(down, Duration.zero);
+      tracker.update(down, const Duration(milliseconds: 50));
+      tracker.update(hidden, const Duration(milliseconds: 100));
+      tracker.update(down, const Duration(milliseconds: 150));
+      expect(tracker.hasConfirmedTouching, isFalse);
+      expect(tracker.finish(), isFalse);
+    });
+
+    test(
+      'a later up preparation starts a new attempt without an old latch',
+      () {
+        final tracker = KneeAttemptEvidence();
+        hold(tracker, down, 0);
+        tracker.begin();
+        hold(tracker, up, 200);
+        expect(tracker.finish(), isFalse);
+        tracker.begin();
+        expect(tracker.finish(), isFalse);
+      },
+    );
+
+    test('reset removes current and remembered evidence', () {
+      final tracker = KneeAttemptEvidence();
+      hold(tracker, down, 0);
+      tracker.begin();
+      tracker.reset();
+      expect(tracker.latest.state, KneeFrameState.occluded);
+      expect(tracker.confirmedState, KneeFrameState.occluded);
+      expect(tracker.lastConfirmedAt, isNull);
+      expect(tracker.isAttemptActive, isFalse);
+      tracker.begin();
+      expect(tracker.finish(), isFalse);
+    });
+
+    test('a backwards timestamp clears earlier attempt evidence', () {
+      final tracker = KneeAttemptEvidence();
+      hold(tracker, down, 100);
+      tracker.begin();
+      tracker.update(up, Duration.zero);
+      expect(tracker.latest.state, KneeFrameState.lifted);
+      expect(tracker.confirmedState, KneeFrameState.occluded);
+      expect(tracker.isAttemptActive, isFalse);
+      expect(tracker.finish(), isFalse);
+    });
+
+    test('only touching after the attempt starts cannot match both ends', () {
+      final tracker = KneeAttemptEvidence()..begin();
+      hold(tracker, down, 0);
+      expect(tracker.hasConfirmedTouching, isFalse);
+      expect(tracker.finish(), isFalse);
+    });
+
+    test('hidden or lifted return does not complete the touching sequence', () {
+      for (final ending in [hidden, up]) {
+        final tracker = KneeAttemptEvidence();
+        hold(tracker, down, 0);
+        tracker.begin();
+        tracker.update(ending, const Duration(milliseconds: 200));
+        expect(tracker.finish(), isFalse);
+      }
+    });
+
+    test('old preparation cannot survive an extended hidden wait', () {
+      final tracker = KneeAttemptEvidence();
+      hold(tracker, down, 0);
+      tracker.update(hidden, const Duration(milliseconds: 400));
+      expect(
+        tracker.hasTouchingPreparation(const Duration(milliseconds: 400)),
+        isTrue,
+      );
+      expect(
+        tracker.hasTouchingPreparation(const Duration(milliseconds: 601)),
+        isFalse,
+      );
+      tracker.update(hidden, const Duration(milliseconds: 601));
+      tracker.begin();
+      tracker.update(down, const Duration(milliseconds: 700));
+      expect(tracker.finish(), isFalse);
+    });
+
+    test(
+      'begin and finish on the same frame cannot invent a full sequence',
+      () {
+        final tracker = KneeAttemptEvidence();
+        hold(tracker, down, 0);
+        tracker.begin();
+        expect(tracker.finish(), isFalse);
+      },
+    );
   });
 }
 

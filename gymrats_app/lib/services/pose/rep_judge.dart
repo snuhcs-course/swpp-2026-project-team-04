@@ -283,6 +283,10 @@ class JudgeSnapshot {
     this.topShoulderY,
     this.squatHipY,
     this.squatKneeY,
+    this.knee = const KneeFrameReading(
+      state: KneeFrameState.occluded,
+      reason: 'not_observed',
+    ),
   });
 
   static const initial = JudgeSnapshot(phase: RepPhase.idle);
@@ -309,6 +313,19 @@ class JudgeSnapshot {
   /// Mean heights of the usable sides in the current squat frame.
   final double? squatHipY;
   final double? squatKneeY;
+  final KneeFrameReading knee;
+
+  JudgeSnapshot withKnee(KneeFrameReading reading) => JudgeSnapshot(
+    phase: phase,
+    elbowAngle: elbowAngle,
+    depth: depth,
+    tilt: tilt,
+    shoulderDrop: shoulderDrop,
+    topShoulderY: topShoulderY,
+    squatHipY: squatHipY,
+    squatKneeY: squatKneeY,
+    knee: reading,
+  );
 }
 
 /// The result of feeding one frame to [RepJudge].
@@ -342,7 +359,13 @@ class RepJudge {
     RepClock? clock,
     bool useMlp = const bool.fromEnvironment('PUSHUP_MLP'),
     this.useKneeForest = const bool.fromEnvironment('PUSHUP_KNEE_FOREST'),
+    this.useFrameKnee = const bool.fromEnvironment(
+      'PUSHUP_FRAME_KNEE',
+      defaultValue: true,
+    ),
+    KneeFrameClassifier? kneeClassifier,
   }) : useMlp = useMlp || useKneeForest,
+       _kneeClassifier = kneeClassifier ?? KneeFrameClassifier(),
        _clock = clock ?? _stopwatchClock(),
        _smoother = MetricSmoother(tau: config.smoothingTau);
 
@@ -351,6 +374,13 @@ class RepJudge {
   /// Enables the user-requested local binary model experiment in this build.
   final bool useMlp;
   final bool useKneeForest;
+
+  /// Applies the per-frame evidence to completed reps in comparison builds.
+  final bool useFrameKnee;
+  final KneeFrameClassifier _kneeClassifier;
+  final _frameKneeEvidence = KneeAttemptEvidence();
+  Duration? _frameKneeAt;
+  double? _frameKneeWidth, _frameKneeHeight;
   final RepClock _clock;
   final MetricSmoother _smoother;
   double? _frameTiltDegrees;
@@ -424,6 +454,7 @@ class RepJudge {
 
   /// Clears the state machine and the rep index.
   void reset() {
+    _resetFrameKnee();
     if (useMlp) {
       _mlpHistory.reset();
       _kneeHistory.reset();
@@ -453,6 +484,7 @@ class RepJudge {
   ///
   /// Used when the camera hiccups: the next rep keeps the following index.
   void abandon() {
+    _resetFrameKnee();
     if (useMlp) {
       _mlpHistory.reset();
       _kneeHistory.reset();
@@ -501,6 +533,71 @@ class RepJudge {
   /// Judges [frame] and maybe closes one rep.
   RepUpdate update(PoseFrame frame) {
     final now = _clock();
+    final lastAt = _frameKneeAt;
+    if (lastAt != null &&
+        (now < lastAt ||
+            now - lastAt > config.maxFrameGap ||
+            frame.imageWidth != _frameKneeWidth ||
+            frame.imageHeight != _frameKneeHeight)) {
+      _resetFrameKnee();
+    }
+    _frameKneeAt = now;
+    _frameKneeWidth = frame.imageWidth;
+    _frameKneeHeight = frame.imageHeight;
+    final touchingBefore = _frameKneeEvidence.hasTouchingPreparation(
+      now,
+      maxAge: config.maxFrameGap,
+    );
+    final knee = _kneeClassifier.classify(frame);
+    _frameKneeEvidence.update(knee, now);
+    if (_hasFrameKneeAttempt) {
+      _frameKneeEvidence.begin(touchingBefore: touchingBefore);
+    }
+    final update = _updateCounter(frame, now);
+    if (_hasFrameKneeAttempt) {
+      _frameKneeEvidence.begin(touchingBefore: touchingBefore);
+    }
+    var event = update.event;
+    if (event != null) {
+      // A very short proposal may open and close on this same frame.
+      _frameKneeEvidence.begin(touchingBefore: touchingBefore);
+      final touching = _frameKneeEvidence.finish();
+      if (useFrameKnee && touching && event.valid) {
+        event = RepEvent(
+          index: event.index,
+          at: event.at,
+          valid: false,
+          reason: RejectReason.kneesDown,
+          maxDepth: event.maxDepth,
+          minElbowAngle: event.minElbowAngle,
+          maxTilt: event.maxTilt,
+          descent: event.descent,
+        );
+      }
+    } else if (update.snapshot.phase == RepPhase.lost &&
+        !_hasFrameKneeAttempt) {
+      _frameKneeEvidence.reset();
+    } else if (!_hasFrameKneeAttempt && _frameKneeEvidence.isAttemptActive) {
+      _frameKneeEvidence.finish();
+    }
+    return RepUpdate(snapshot: update.snapshot.withKnee(knee), event: event);
+  }
+
+  bool get _hasFrameKneeAttempt =>
+      openPrimaryAttempt != null ||
+      _spanDetector._bottom != null ||
+      (useMlp &&
+          (_mlpProposals._span._bottom != null ||
+              _mlpProposals._elbow._low != null ||
+              _mlpProposals._height._low != null));
+
+  void _resetFrameKnee() {
+    _frameKneeEvidence.reset();
+    _frameKneeAt = null;
+    _frameKneeWidth = _frameKneeHeight = null;
+  }
+
+  RepUpdate _updateCounter(PoseFrame frame, Duration now) {
     if (useMlp) return _updateMlp(frame, now);
     _spanHistory.add(frame, now);
     final cycle = _spanDetector.update(
@@ -596,7 +693,9 @@ class RepJudge {
     if (proposal == null) return RepUpdate(snapshot: primary.snapshot);
     final features = _mlpHistory.featuresForProposal(now);
     final probability = PushupMlpModel.normalProbability(features);
-    final kneesDown = useKneeForest
+    final kneesDown = useFrameKnee
+        ? false
+        : useKneeForest
         ? (KneeForestClassifier.kneeProbability(
                     _kneeHistory.phaseFrames(start: proposal.start, end: now),
                   ) ??
@@ -607,7 +706,8 @@ class RepJudge {
     final previous = primary.event;
     var fallbackReason =
         previous?.reason ?? _cheat() ?? RejectReason.insufficientDepth;
-    if (useKneeForest && fallbackReason == RejectReason.kneesDown) {
+    if ((useKneeForest || useFrameKnee) &&
+        fallbackReason == RejectReason.kneesDown) {
       fallbackReason = RejectReason.insufficientDepth;
     }
     final reason = valid
