@@ -342,3 +342,89 @@ The PM merged S1 into main as `d188240`. S2 merged that main revision into its p
 - This merge satisfies the S1 prerequisite. Physical two-person UAT, globally enabled S2 full-suite validation and independently labelled identity-retention measurements remain open.
 
 The earlier successful CI run belongs to `a0f5af6`; CI for the new merge must be checked separately. The local test logs are `C:/SWPP/iter4/s2-post-s1-full-tests.log`, `s2-post-s1-coverage.log` and `s2-post-s1-analyze.log`.
+
+### S2 enabled-build and actual-video follow-up, 2026-11-17
+
+The locally verified app and test files are in commit `f5c78e1` on
+`test/person_behind_user`, based on `6343b63`. Results below were collected
+on those files before committing. The associated PR is [#72](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/72).
+
+The pre-fix enabled full suite reproduced **3,315 passed / 14 failed / 10
+existing skipped**. The older 47-failure figure came from a scoped integration
+run. Four test files now model an ongoing camera stream, retain queued fake
+verdict timing, synchronize clocks and explicitly confirm after intentional
+loss/restart. Helpers that had forced the guard off now honor the build define.
+The sound-file fixture exception was explicitly approved by the user on behalf
+of its owner/PM. Intentional stalls and all original sound/result assertions
+remain covered.
+
+Real video showed a one-frame shoulder-width collapse permanently latching a
+false warning. A failing-before/fixed-after regression drove the service fix:
+withhold anomalous scale-only frames without changing the anchor, allow return
+to the old scale, and require confirmation for a sustained 200 ms change.
+Position jumps and the 750 ms loss threshold are unchanged.
+
+#### Test cases and acceptance mapping
+
+| Layer | File | Evidence |
+|---|---|---|
+| Service | `person_behind_estimator_test.dart` (updated) | Isolated width outlier recovery; sustained scale change; position jump remains latched |
+| ViewModel | `battle_viewmodel_test.dart` (updated) | Realistic camera cadence; explicit confirmation after restart/loss; setup holds and match-clock watchdog |
+| View | `battle_screen_test.dart` (updated) | Guard enabled by define; existing warning/recovery and UI assertions |
+| View | `online_preparation_test.dart` (updated) | Shared fake clock, continuous setup frames, deliberate loss and confirmation, blocked pose publication |
+| View | `sound_battle_screen_test.dart` (updated with approval) | Continuous camera input preserves original sound/result checks |
+| App counter/service replay | `person_behind_video_replay_test.dart` (new) | Nine actual native-video landmark streams through real counter/judges; guarded/unguarded event comparison; actual wrong-target withholding; confirmation restores publication |
+
+- No added/lost reps because of background person **or pause and notify**:
+  `real wrong-person stream is withheld until confirmation`,
+  `S2-SQUAT-MULTI retains the original user and judge events`, the D015G/D015B
+  counterparts, and existing AI/online tracking-warning widget tests.
+- Recovery: `explicit confirmation resumes a returned real-video user` plus
+  fake-camera UI/VM confirmation tests. The native clip proves publication
+  recovery; later poor poses prevent a claim of uninterrupted counting.
+- Transient and sustained scale behavior: the three new service regressions.
+
+#### Final local verification
+
+- `flutter analyze --no-pub`: zero issues.
+- `flutter test --no-pub --dart-define=S2_PERSON_GUARD=true --concurrency=4 --reporter expanded`:
+  **3,342 passed / 0 failed / 10 existing skipped**.
+- `flutter test --no-pub --concurrency=4 --reporter expanded` (ordinary build):
+  **3,342 passed / 0 failed / 10 existing skipped**.
+- New native-video and guard-service tests together: **18 passed**, no skips.
+- The combined coverage runs (parallel full suite and serial scoped suite)
+  lost the VM service while collecting coverage (`getSourceReport: (112)`).
+  Running the nine scoped files in separate processes with the guard enabled
+  yielded **272 passed, zero failed, zero skipped**. Eight files produced
+  nonempty LCOV data. The design-token suite checks source text and produced
+  no executable-line coverage. Each command used `flutter test --no-pub
+  --dart-define=S2_PERSON_GUARD=true --coverage --concurrency=1` with one file.
+- Independent read-only Codex review: **APPROVE for code/fixture/evidence
+  scope**, with final full-run/coverage results pending at review time. It
+  checked native fixture provenance and guard safety and did not rerun the
+  full suite independently. `git diff --check` and ownership checks passed.
+
+Line coverage from the successful scoped runs:
+
+| S2 production file | Covered / executable | Coverage | Layer target |
+|---|---:|---:|---:|
+| `pose_estimator.dart` | 144 / 146 | 98.63% | 85% |
+| `rep_counter_viewmodel.dart` | 345 / 356 | 96.91% | 90% |
+| `battle_viewmodel.dart` | 319 / 324 | 98.46% | 90% |
+| `battle_screen.dart` | 184 / 195 | 94.36% | 75% |
+| `online_battle_screen.dart` | 309 / 315 | 98.10% | 75% |
+
+Actual-video evidence is detailed in `docs/iteration-4/person-behind-findings.md`
+and the fixture README. Five fresh videos supplied 1,344 Android accurate/stream
+frames; four existing hash-matched native captures were reused. The replay
+fixture contains 2,751 frames / 2,685 at or after reviewed anchors. Eight source
+videos (2,528 original frames) were visually reviewed frame by frame by a
+separate Codex agent; O033 had sampled review. This is not human-adjudicated
+ground truth or physical-phone NV21 UAT. In O027, all 256 reviewed wrong-target
+frames were withheld; seven baseline *invalid* events were suppressed. The
+multi-person squat retained the same three valid reps. Blurred controls still
+cause visible pauses and interrupted attempts, explicitly included in the
+report. No population accuracy or general identity-retention rate is claimed.
+
+Logs and local source/capture/observation artifacts:
+`C:/SWPP/iter4/s2-validation/`. Server unchanged; server tests not run.
