@@ -59,6 +59,7 @@ class RepCounterState {
     this.fps = 0,
     this.remaining = battleDuration,
     this.roundEnd = RoundEnd.none,
+    this.trackingPaused = false,
   });
 
   final CounterPhase phase;
@@ -84,6 +85,9 @@ class RepCounterState {
   /// Why the round ended. [RoundEnd.none] until then.
   final RoundEnd roundEnd;
 
+  /// Scoring is suspended until the person in the camera is confirmed.
+  final bool trackingPaused;
+
   RepCounterState copyWith({
     CounterPhase? phase,
     int? validReps,
@@ -94,9 +98,11 @@ class RepCounterState {
     bool? permanentlyDenied,
     String? errorMessage,
     PoseFrame? lastFrame,
+    bool clearLastFrame = false,
     int? fps,
     Duration? remaining,
     RoundEnd? roundEnd,
+    bool? trackingPaused,
   }) => RepCounterState(
     phase: phase ?? this.phase,
     validReps: validReps ?? this.validReps,
@@ -105,10 +111,11 @@ class RepCounterState {
     snapshot: snapshot ?? this.snapshot,
     permanentlyDenied: permanentlyDenied ?? this.permanentlyDenied,
     errorMessage: errorMessage ?? this.errorMessage,
-    lastFrame: lastFrame ?? this.lastFrame,
+    lastFrame: clearLastFrame ? null : lastFrame ?? this.lastFrame,
     fps: fps ?? this.fps,
     remaining: remaining ?? this.remaining,
     roundEnd: roundEnd ?? this.roundEnd,
+    trackingPaused: trackingPaused ?? this.trackingPaused,
   );
 }
 
@@ -129,6 +136,7 @@ class RepCounterViewModel extends ChangeNotifier {
     this.detectorFailureTimeout = const Duration(seconds: 3),
     this.dropDelay = const Duration(milliseconds: 500),
     this.sampleInterval = const Duration(milliseconds: 100),
+    this.enablePersonGuard = const bool.fromEnvironment('S2_PERSON_GUARD'),
   }) : _camera = camera ?? CameraService(),
        _estimator = estimator ?? PoseEstimator(),
        _phoneTilt = phoneTilt ?? PhoneTiltMonitor.platform(),
@@ -146,6 +154,12 @@ class RepCounterViewModel extends ChangeNotifier {
   final PoseEstimator _estimator;
   final PhoneTiltMonitor _phoneTilt;
   late final ExerciseRepJudge _judge;
+
+  /// Experimental continuity guard; the default build leaves it disabled.
+  final bool enablePersonGuard;
+  final _personGuard = PersonContinuityGuard();
+  Timer? _personWatchdog;
+  Duration? _lastAcceptedFrameAt;
   final ExerciseType exercise;
   double get passDepth => _judge.passDepth;
   final RepClock _clock;
@@ -254,6 +268,10 @@ class RepCounterViewModel extends ChangeNotifier {
     _failingSince = null;
     _frameTimes.clear();
     if (!keepScore) {
+      _personGuard.clear();
+      _personWatchdog?.cancel();
+      _personWatchdog = null;
+      _lastAcceptedFrameAt = null;
       _clearRound();
       _roundStartedAt = null;
       _pausedAccumulated = Duration.zero;
@@ -264,6 +282,7 @@ class RepCounterViewModel extends ChangeNotifier {
         validReps: keepScore ? _state.validReps : 0,
         invalidReps: keepScore ? _state.invalidReps : 0,
         remaining: keepScore ? _state.remaining : roundLength,
+        trackingPaused: keepScore && _personGuard.needsConfirmation,
       ),
     );
 
@@ -271,7 +290,7 @@ class RepCounterViewModel extends ChangeNotifier {
     if (session != _session) return;
     if (permission != CameraPermission.granted) {
       _setState(
-        RepCounterState(
+        _state.copyWith(
           phase: CounterPhase.permissionDenied,
           permanentlyDenied: permission == CameraPermission.permanentlyDenied,
         ),
@@ -284,7 +303,7 @@ class RepCounterViewModel extends ChangeNotifier {
     } on CameraUnavailableException catch (e) {
       if (session == _session) {
         _setState(
-          RepCounterState(
+          _state.copyWith(
             phase: CounterPhase.cameraError,
             errorMessage: e.message,
           ),
@@ -305,7 +324,13 @@ class RepCounterViewModel extends ChangeNotifier {
   }
 
   /// Tries again after an error.
-  Future<void> retry() => start();
+  Future<void> retry() {
+    if (_personGuard.enabled) {
+      _personGuard.invalidate();
+      return start(keepScore: true);
+    }
+    return start();
+  }
 
   /// Opens the system settings so the user can allow the camera.
   Future<void> openSettings() => _camera.openSettings();
@@ -314,6 +339,7 @@ class RepCounterViewModel extends ChangeNotifier {
   Future<void> switchCamera() async {
     if (!_camera.canSwitchCamera) return;
     _camera.selectNextCamera();
+    _personGuard.invalidate();
     _judge.abandon();
     await start(keepScore: true);
   }
@@ -328,6 +354,7 @@ class RepCounterViewModel extends ChangeNotifier {
         _state.phase != CounterPhase.running) {
       return;
     }
+    _personGuard.invalidate();
     _judge.abandon();
     await start(keepScore: true);
   }
@@ -346,6 +373,8 @@ class RepCounterViewModel extends ChangeNotifier {
       return;
     }
     _finishing = true;
+    _personWatchdog?.cancel();
+    _personWatchdog = null;
     _session++;
     _failingSince = null;
     _frameTimes.clear();
@@ -368,6 +397,7 @@ class RepCounterViewModel extends ChangeNotifier {
     _judge.reset();
     _clearRound();
     if (restartClock) {
+      lockTrackedPerson();
       _roundStartedAt = _clock();
       _pausedAccumulated = Duration.zero;
       _pauseBegan = null;
@@ -379,8 +409,48 @@ class RepCounterViewModel extends ChangeNotifier {
         invalidReps: 0,
         clearLastEvent: true,
         snapshot: JudgeSnapshot.initial,
+        trackingPaused: _personGuard.needsConfirmation,
       ),
     );
+  }
+
+  /// Lock the person when setup first becomes ready, before any countdown.
+  void lockTrackedPerson() {
+    if (!enablePersonGuard || _personGuard.enabled || _disposed) return;
+    final now = _clock();
+    final at = _lastAcceptedFrameAt;
+    final fresh =
+        at != null && now >= at && now - at <= PersonContinuityGuard.maxGap;
+    _personGuard.begin(fresh ? _state.lastFrame : null, fresh ? at : now);
+    _personWatchdog?.cancel();
+    _personWatchdog = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (_disposed ||
+          _state.phase != CounterPhase.running ||
+          !_personGuard.expire(_clock())) {
+        return;
+      }
+      _judge.abandon();
+      _attemptPose = null;
+      _attemptPoseDepth = double.negativeInfinity;
+      _setState(
+        _state.copyWith(
+          trackingPaused: true,
+          snapshot: JudgeSnapshot.initial,
+          clearLastFrame: true,
+          remaining: _remaining(),
+        ),
+      );
+    });
+    if (_personGuard.needsConfirmation) {
+      _setState(_state.copyWith(trackingPaused: true, clearLastFrame: true));
+    }
+  }
+
+  /// Resume only after the user verifies the person in the camera.
+  void confirmTrackedPerson() {
+    if (!_state.trackingPaused || !_personGuard.confirm(_clock())) return;
+    _judge.abandon();
+    _setState(_state.copyWith(trackingPaused: false));
   }
 
   /// App moved to the background: stop the stream and release the camera.
@@ -391,6 +461,7 @@ class RepCounterViewModel extends ChangeNotifier {
       return;
     }
     _pausedByLifecycle = true;
+    _personGuard.invalidate();
     _session++;
     _failingSince = null;
     _frameTimes.clear();
@@ -447,6 +518,29 @@ class RepCounterViewModel extends ChangeNotifier {
         now - _frameTimes.first > const Duration(seconds: 1)) {
       _frameTimes.removeFirst();
     }
+    if (!_personGuard.accepts(frame, now)) {
+      // Do not score or publish a pose whose continuity is uncertain. A
+      // partial rep must not be completed using another person's landmarks.
+      _judge.abandon();
+      _attemptPose = null;
+      _attemptPoseDepth = double.negativeInfinity;
+      final remaining = _remaining();
+      _setState(
+        _state.copyWith(
+          trackingPaused: true,
+          snapshot: JudgeSnapshot.initial,
+          lastFrame: PoseFrame.empty(
+            imageWidth: frame.imageWidth,
+            imageHeight: frame.imageHeight,
+          ),
+          fps: _frameTimes.length,
+          remaining: remaining,
+        ),
+      );
+      if (remaining == Duration.zero) unawaited(finish());
+      return;
+    }
+    _lastAcceptedFrameAt = now;
     final update = _judge.update(frame);
     final event = update.event == null
         ? null
@@ -476,6 +570,7 @@ class RepCounterViewModel extends ChangeNotifier {
     _setState(
       _state.copyWith(
         phase: _state.phase,
+        trackingPaused: false,
         validReps: _state.validReps + (event != null && event.valid ? 1 : 0),
         invalidReps:
             _state.invalidReps + (event != null && !event.valid ? 1 : 0),
@@ -610,6 +705,7 @@ class RepCounterViewModel extends ChangeNotifier {
       _session++;
       _failingSince = null;
       _frameTimes.clear();
+      _personGuard.invalidate();
       _judge.abandon();
       unawaited(_camera.stop());
       _setState(
@@ -657,6 +753,7 @@ class RepCounterViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _personWatchdog?.cancel();
     _session++;
     if (_tiltHeld) _phoneTilt.release();
     unawaited(_reps.close());

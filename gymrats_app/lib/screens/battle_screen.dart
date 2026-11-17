@@ -318,6 +318,13 @@ class _BattleScreenState extends State<BattleScreen>
               if (state.phase == BattlePhase.starting ||
                   state.phase == BattlePhase.paused)
                 const CircularProgressIndicator(),
+              if (counterState.trackingPaused &&
+                  (state.phase == BattlePhase.setup ||
+                      state.phase == BattlePhase.playing))
+                PersonTrackingPauseNotice(
+                  onConfirm: counter.confirmTrackedPerson,
+                  roundStarted: state.started,
+                ),
             ],
           );
     return BattleArena(
@@ -420,4 +427,48 @@ class _CameraFailed extends StatelessWidget {
       ),
     );
   }
+}
+
+/// An ambiguous pose is never adopted until the player confirms the view.
+class PersonTrackingPauseNotice extends StatelessWidget {
+  const PersonTrackingPauseNotice({
+    super.key,
+    required this.onConfirm,
+    this.roundStarted = false,
+  });
+  final VoidCallback onConfirm;
+  final bool roundStarted;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.s16),
+      child: Material(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.small),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.s12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '사람을 다시 확인해 주세요. 횟수 기록이 일시 중단됐어요.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Text(
+                roundStarted
+                    ? '운동하는 사람만 카메라에 보이도록 해 주세요. 대결 시간은 계속 흘러요.'
+                    : '운동하는 사람만 카메라에 보이도록 해 주세요.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppSpacing.s8),
+              FilledButton(onPressed: onConfirm, child: const Text('확인 후 계속')),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

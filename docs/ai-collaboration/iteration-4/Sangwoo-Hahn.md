@@ -95,3 +95,28 @@ See [selected user prompts](Sangwoo-Hahn-Prompt-Log.md). This is not a complete 
 The user requested updating the existing S1 and S2 PRs and releasing their Draft status. Codex committed the five-phase forest work as 89403cb and merged the current remote S1 branch into it as c940d09. The resulting tree includes main fe1aad1 and the remote 327a9ff lockout correction. Conflict resolution preserved both personal-note histories and the new forest tests. An independent read-only Codex reviewer checked the resolved source and found no actionable implementation defects. The default counter's lockout guard and the opt-in model decision path are described separately in the comparison report.
 
 The local staged-file guard was corrected to compare a merge result with main when the incoming branch already contains that main revision. Its path ownership map was preserved. This local harness change is excluded from the commit. Verified test results are recorded in the personal testing notes. Model accuracy limitations and pending real-person validation remain explicitly documented for reviewers.
+
+## S2 experimental continuity warning, 2026-11-16
+- At the user's request, Codex prepared S2 separately before S1 merged; the user confirmed owner/PM agreement for the affected battle and counter files. ML Kit poses do not provide person identity, so the default-off continuity warning is explicitly a prototype rather than a completed identity guarantee.
+- Independent read-only Codex review identified retry, stream-stall, setup transition, geometry validation, and stale online-publication risks. Codex corrected these cases and added regressions. The physical two-person scenario and the threshold need independent labels and device UAT. No human manual code fix was reported. User prompts in the personal log are limited to this visible task and consent; the complete iteration transcript remains TODO.
+
+### S2 review-ready publication, 2026-11-16
+
+- The user requested completion of the existing S1/S2 pull requests and removal of Draft status. Codex verified S2's current main ancestry, reran analysis and seven focused suites, and refreshed the English PR description and personal evidence. The exact request is recorded in the prompt log.
+- Serial coverage collection succeeded after the earlier VM-service failure. All 258 selected tests passed, and each changed file exceeded its layer target. The personal testing notes contain the counts and reproducible command.
+- Independent read-only Codex review found no actionable defects in the current opt-in prototype. Its review covered confirmation freshness, lifecycle/retry behavior, setup handoff and withheld online pose publication. Physical identity-retention efficacy and full-suite validation with the feature globally enabled remain open.
+- This publication pass changed documentation. Human manual source edits and measured time savings were not reported. The full-iteration transcript and team-wide interaction-history review remain pending.
+
+### S2 integration after S1 PR #69, 2026-11-16
+
+Codex integrated main `d188240` after the PM merged S1, preserving both branches' personal notes and prompt history. Source files merged automatically. Independent read-only review checked the S1 forest-history interaction with S2 abandonment and reset, and found no actionable integration defect. The resolved tree passed application analysis, 3,329 ordinary-build tests with 10 existing skips, and 258 focused tests with changed-file coverage above target.
+
+An initial analysis command ran from the repository root and reported package-import errors in standalone diagnostic scripts. Codex corrected the working directory to `gymrats_app` and reran analysis successfully. Human manual source changes were not reported. The opt-in prototype's physical identity-retention limitations remain documented.
+
+### S2 enabled-build failures and real-video replay (2026-11-17, PR #72)
+
+Sangwoo asked Codex to reproduce the failures with `S2_PERSON_GUARD` enabled and verify what happens when someone moves behind the player. The current baseline had 14 failures. The earlier figure of 47 came from an older scoped run. Sangwoo confirmed owner or PM approval for the sound test’s camera input change. Codex supplied continuous camera frames in the affected tests and preserved the original sound assertions. No human manual source edit was reported. The dated inputs appear in the [prompt log](Sangwoo-Hahn-Prompt-Log.md).
+
+Codex replayed native Android ML Kit landmarks from nine videos through the app’s repetition counter. In O027 a separate Codex visual review identified 256 frames where ML Kit selected the background person. The guard withheld all 256 and suppressed seven invalid judgments. In the multi-person squat clip the counter accepted the same three repetitions at the same timestamps in both configurations. The fixture and observations are documented in the [video findings](../../iteration-4/person-behind-findings.md).
+
+A single-person control exposed an error in the original guard. A one-frame collapse in estimated shoulder width kept the game paused until confirmation. Codex added a regression test and changed the guard to withhold that frame while preserving the last reliable pose. The blurred control O033 still triggers a pause. Phone testing with two people and independent human labels remain outstanding. Both full app configurations passed 3,342 tests with ten existing skips each. A separate Codex reviewer checked the implementation and evidence. The [testing record](../../testing/iteration-4/Sangwoo-Hahn.md) includes the coverage collection retries and results.

@@ -21,6 +21,7 @@ import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import '../support/fakes.dart';
 import '../support/game_fakes.dart';
 import '../support/pose_fixtures.dart';
+import '../services/pose/person_behind_test_support.dart';
 
 const _matchup = Matchup(
   exercise: ExerciseType.pushUp,
@@ -33,7 +34,7 @@ final _endedAt = DateTime(2026, 10, 4, 14, 32);
 void main() {
   late FakeCameraService camera;
   late FakePoseEstimator estimator;
-  late FakeRepJudge judge;
+  late CadencedRepJudge judge;
   late FakeOpponentSource opponent;
   late FakeRepSound sound;
   late FakeUserRepository repository;
@@ -44,7 +45,7 @@ void main() {
   setUp(() {
     camera = FakeCameraService();
     estimator = FakePoseEstimator();
-    judge = FakeRepJudge();
+    judge = CadencedRepJudge();
     opponent = FakeOpponentSource();
     sound = FakeRepSound();
     repository = FakeUserRepository();
@@ -828,6 +829,65 @@ void main() {
     );
   });
 
+  test(
+    'an unusable setup anchor never starts an experimental guarded round',
+    () async {
+      final phone = PhoneTiltMonitor(samples: const Stream.empty())
+        ..isPropped = true
+        ..isStill = true;
+      final guardedCounter = RepCounterViewModel(
+        camera: camera,
+        estimator: estimator,
+        judge: judge,
+        clock: () => now,
+        phoneTilt: phone,
+        enablePersonGuard: true,
+        roundLength: const Duration(days: 1),
+      );
+      final checker = SetupChecker(
+        exercise: ExerciseType.pushUp,
+        config: const SetupConfig(
+          readyDelay: Duration.zero,
+          dropDelay: Duration(seconds: 1),
+          autoStartDelay: Duration.zero,
+        ),
+        clock: () => now,
+      );
+      final battle = BattleViewModel(
+        matchup: _matchup,
+        counter: guardedCounter,
+        opponent: opponent,
+        repository: repository,
+        sound: sound,
+        setup: checker,
+        clock: () => now,
+      );
+      await battle.start();
+      // Ready may be retained during dropDelay even if the next frame cannot
+      // provide the guard's shoulder anchor.
+      expect(checker.update(standingFrame()).isReady, isTrue);
+      final good = standingFrame();
+      estimator.frames.add(
+        PoseFrame(
+          imageWidth: good.imageWidth,
+          imageHeight: good.imageHeight,
+          keypoints: {
+            for (final e in good.keypoints.entries)
+              if (e.key != BodyLandmark.leftShoulder &&
+                  e.key != BodyLandmark.rightShoulder)
+                e.key: e.value,
+          },
+        ),
+      );
+      camera.emit();
+      await pumpEventQueue();
+      expect(guardedCounter.state.trackingPaused, isTrue);
+      expect(battle.state.started, isFalse);
+      expect(battle.state.startIn, isNull);
+      battle.dispose();
+    },
+  );
+
   test('squat battle requires a continuous aligned 3-second hold', () async {
     const squatMatchup = Matchup(
       exercise: ExerciseType.squat,
@@ -902,6 +962,12 @@ void main() {
     expect(squat.state.started, isFalse);
     await send(1200, outside);
     expect(squat.state.startIn, isNull);
+    await send(1300, good);
+    if (squatCounter.enablePersonGuard) {
+      expect(squatCounter.state.trackingPaused, isTrue);
+      squatCounter.confirmTrackedPerson();
+      await send(1300, good);
+    }
     for (final ms in [1300, 1800, 2300, 2800, 3300, 3800, 4200]) {
       await send(ms, good);
     }
@@ -966,6 +1032,13 @@ void main() {
     estimator.frames.add(standingFrame(showHips: true));
     camera.emit();
     await pumpEventQueue();
+    if (squatCounter.enablePersonGuard) {
+      expect(squatCounter.state.trackingPaused, isTrue);
+      squatCounter.confirmTrackedPerson();
+      estimator.frames.add(standingFrame(showHips: true));
+      camera.emit();
+      await pumpEventQueue();
+    }
     expect(squat.state.guideAligned, isTrue);
     expect(squat.state.startIn, const Duration(seconds: 3));
     squat.dispose();
@@ -975,8 +1048,10 @@ void main() {
     late BattleViewModel battle;
     late RepCounterViewModel counter;
     late PhoneTiltMonitor phone;
+    PoseFrame? previousPose;
 
     setUp(() {
+      previousPose = null;
       phone = PhoneTiltMonitor(samples: const Stream.empty())
         ..isPropped = true
         ..isStill = true;
@@ -1013,8 +1088,21 @@ void main() {
 
     /// A camera frame at [seconds], with the setup pose found or not.
     Future<void> pose(double seconds, {bool found = true}) async {
-      now = Duration(milliseconds: (seconds * 1000).round());
-      estimator.frames.add(found ? standingFrame() : emptyFrame());
+      final target = Duration(milliseconds: (seconds * 1000).round());
+      // A held pose is a live camera stream, not one frame followed by a
+      // multi-second camera outage. Keep queued verdicts at the named time.
+      judge.holdVerdicts = true;
+      while (previousPose != null &&
+          target - now > const Duration(milliseconds: 500)) {
+        now += const Duration(milliseconds: 500);
+        estimator.frames.add(freshPose(previousPose!));
+        camera.emit();
+        await pumpEventQueue();
+      }
+      judge.holdVerdicts = false;
+      now = target;
+      previousPose = found ? standingFrame() : emptyFrame();
+      estimator.frames.add(previousPose);
       camera.emit();
       await pumpEventQueue();
     }
@@ -1084,6 +1172,11 @@ void main() {
         expect(battle.state.startIn, isNull);
         expect(battle.state.setup.isReady, isFalse);
         await pose(5);
+        if (counter.enablePersonGuard) {
+          expect(counter.state.trackingPaused, isTrue);
+          counter.confirmTrackedPerson();
+          await pose(5);
+        }
         expect(battle.state.startIn, const Duration(seconds: 3));
         await pose(7);
         expect(battle.state.started, isFalse);
@@ -1184,20 +1277,29 @@ void main() {
       },
     );
 
-    test('the watchdog ends a round without frames 2 s after its time', () {
+    test('a round without frames ends no later than the watchdog grace', () {
       fakeAsync((async) {
         unawaited(battle.start());
         async.flushMicrotasks();
         unawaited(pose(1));
         async.flushMicrotasks();
+        async.elapse(Duration.zero);
         unawaited(pose(4));
         async.flushMicrotasks();
+        async.elapse(Duration.zero);
         expect(battle.state.started, isTrue);
         // No frames from here: the counter never sees its time run out.
         now = const Duration(seconds: 36);
-        async.elapse(const Duration(seconds: 31));
-        expect(battle.state.phase, BattlePhase.playing);
-        async.elapse(const Duration(seconds: 1));
+        if (counter.enablePersonGuard) {
+          // The tracking watchdog also publishes the expired round clock;
+          // the screen need not wait for the fallback watchdog's grace.
+          async.elapse(const Duration(milliseconds: 250));
+          expect(counter.state.trackingPaused, isTrue);
+        } else {
+          async.elapse(const Duration(seconds: 31));
+          expect(battle.state.phase, BattlePhase.playing);
+          async.elapse(const Duration(seconds: 1));
+        }
         async.flushMicrotasks();
         expect(battle.state.phase, BattlePhase.timeUp);
       });
@@ -1215,7 +1317,13 @@ void main() {
       await battle.resume();
       await pumpEventQueue();
       expect(battle.state.phase, BattlePhase.setup);
+      previousPose = null;
       await pose(3);
+      if (counter.enablePersonGuard) {
+        expect(counter.state.trackingPaused, isTrue);
+        counter.confirmTrackedPerson();
+        await pose(3);
+      }
       expect(battle.state.startIn, const Duration(seconds: 3));
       expect(opponent.startCount, 0);
     });
@@ -1242,7 +1350,13 @@ void main() {
       expect(battle.state.phase, BattlePhase.setup);
       expect(battle.state.myScore, 0);
       expect(opponent.stopped, isTrue);
+      previousPose = null;
       await pose(12);
+      if (counter.enablePersonGuard) {
+        expect(counter.state.trackingPaused, isTrue);
+        counter.confirmTrackedPerson();
+        await pose(12);
+      }
       await pose(15);
       expect(battle.state.started, isTrue);
       expect(opponent.startCount, 2);
@@ -1294,8 +1408,10 @@ void main() {
   group('BattleViewModel.bot, as the battle screen makes it', () {
     late PhoneTiltMonitor phone;
     late BattleViewModel battle;
+    PoseFrame? previousPose;
 
     setUp(() {
+      previousPose = null;
       phone = PhoneTiltMonitor(samples: const Stream.empty())
         ..isPropped = true
         ..isStill = true;
@@ -1324,7 +1440,16 @@ void main() {
     );
 
     Future<void> frameAt(double seconds, PoseFrame pose) async {
-      now = Duration(milliseconds: (seconds * 1000).round());
+      final target = Duration(milliseconds: (seconds * 1000).round());
+      while (previousPose != null &&
+          target - now > const Duration(milliseconds: 500)) {
+        now += const Duration(milliseconds: 500);
+        estimator.frames.add(freshPose(previousPose!));
+        camera.emit();
+        await pumpEventQueue();
+      }
+      now = target;
+      previousPose = pose;
       estimator.frames.add(pose);
       camera.emit();
       await pumpEventQueue();
@@ -1444,6 +1569,11 @@ void main() {
       await pumpEventQueue();
       expect(battle.state.phase, BattlePhase.setup);
       await frameAt(3, standingFrame());
+      if (battle.counter.enablePersonGuard) {
+        expect(battle.counter.state.trackingPaused, isTrue);
+        battle.counter.confirmTrackedPerson();
+        await frameAt(3, standingFrame());
+      }
       // Held again from here: not ready, nothing counting down.
       expect(battle.state.setup.isReady, isFalse);
       expect(battle.state.setup.readyProgress, 0);
