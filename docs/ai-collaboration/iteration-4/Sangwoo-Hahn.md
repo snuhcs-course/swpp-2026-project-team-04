@@ -176,3 +176,18 @@ configurations then passed13 tests. Final analysis/full-suite/publication
 checks are recorded in the personal testing note. No server deployment or
 new phone installation is part of this publication. Complete-iteration input
 export and human per-rep annotation remain TODO(Sangwoo/recorders/PM).
+
+
+Installed Session Exporter help confirms Codex support. Its local dry-run for
+2026-11-18 in this chat's supplied worktree returned no eligible sessions.
+The safe fallback is the reviewed selected visible user inputs in the personal
+prompt log; no empty export or complete-transcript review is claimed.
+
+
+After main0a17580 was merged, analysis and all3,751 default-build tests passed
+with10 existing skips. Additional S2+unified-ON checks yielded164 passes and one
+new main goal-camera-retry test failure. Codex independently reproduced that
+single failure in untouched main0a17580 with S2 enabled. It is disclosed as an
+inherited optional-configuration test failure; unrelated mission assertions
+were preserved. The independent read-only reviewer approved the final code,
+data and ON/OFF report consistency before publication.

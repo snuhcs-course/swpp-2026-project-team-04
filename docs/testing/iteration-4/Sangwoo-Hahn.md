@@ -983,3 +983,125 @@ Final local artifacts under `C:/SWPP/iter4/unified-knee-1118/` include
 `hyunwoo-per-attempt.csv`, `hyunwoo-per-frame.csv`, replay and summary scripts,
 the source/input/result hashes, `coverage-summary.json`, `scoped.lcov`,
 `analyze.log`, `scoped-coverage.log` and `s2-integration-final.log`.
+
+
+## 2026-11-18: PR75 coordinate-only Iteration4 evaluation publication
+
+Implementation commit: `707d7e1`. Latest main `0a17580` (PR76 feedback goals)
+merged without conflicts as `a9e6cd49`. Incoming changes do not modify the
+reviewed pose services, coordinate dataset, evaluator or importer.
+
+The user forwarded explicit PM authorization for16 coordinate JSONs, a
+separate new-set scorer and saved ON/OFF reports, with frozen cases untouched
+and no MP4 publication. The user resolved the participants to **Hyunwoo8 +
+Sangwoo8**, four push-up and four squat scenarios each. The user also confirmed
+chair use is allowed when depth and complete upright return are satisfied;
+both chair cases therefore use `range_only`.
+
+`cases_iter4` contains5,325 original-PTS native ML Kit Accurate/stream frames,
+including66 no-pose frames, full720x1280 coordinates, original-video hashes and
+native-capture provenance hashes. Independent read-only Codex review compared
+every frame/coordinate/timestamp with its native export and all16 source-video
+hashes with the private originals. No MP4, JPEG, zip or raw camera frame is
+committed. The four remaining Hyunwoo squat clips were captured in a dedicated
+local Android emulator; its prior data was restored and the task emulator
+closed. No physical phone was modified for this publication.
+
+**Ground truth remains pending for all16 cases.** Blank `record-sheet.md`
+files await actual counts/per-rep labels from the recorders/PM. Prior visual
+cycle estimates, filenames and judge predictions are not confirmed labels.
+The new-set M1/M2/M3 are N/A, with prediction diagnostics separated from scores.
+The parser requires a confirmer, exact per-rep count and exercise-specific
+reasons. A scoring window can exclude approach/recovery without discarding
+calibration frames. Chair repetitions use depth/full-standing labels only.
+
+| Frozen32 cases, unchanged labels/scorer | M1 valid counted | M2 invalid not counted | M3 exact reason |
+|---|---:|---:|---:|
+| Current main / rule OFF |50/63 =79.4%|188/207 =90.8%|124/207 =59.9%|
+| Unified rule ON |51/63 =81.0%|181/207 =87.4%|131/207 =63.3%|
+
+M2 includes missed invalid repetitions, following the original scorer. The new
+scorer separately reports explicit rejection, missed invalid, extra accepted
+and extra rejected events. Its alignment is checked against the unchanged
+frozen scorer on200 deterministic synthetic sequences. Frozen thresholds
+remain90%/90%/80%; OFF misses M1/M3 and ON misses all three. Test-suite success
+is not a claim that these accuracy targets were achieved.
+
+The ON M2 regression and absent confirmed new-set benefit mean
+`PUSHUP_FRAME_KNEE` defaults to **false**, as requested by the PM. Setting it
+true enables the unified policy. Both modes retain per-frame knee observation.
+No model weights were retrained. Hyunwoo clips informed the policy; both
+participants' videos were already inspected, so this is not a fresh holdout.
+
+Final checks:
+
+| Check | Result |
+|---|---|
+| Post-main `flutter analyze --no-pub` |Clean|
+| Post-main full ordinary-build suite |3,751 passed, 0 failed, 10 existing skips|
+| New evaluator/parser/scorer tests |13 passed OFF and13 passed ON before main; same code after merge|
+| Post-main fixed + new-set comparison |1 passed OFF,1 passed ON; matching revision/source blobs|
+| Unified-ON four scoped suites with coverage |249 passed,0 failed,0 skipped|
+| pose_metrics Service coverage |942/962 =97.92%, target85% met|
+| rep_judge Service coverage |838/870 =96.32%, target85% met|
+| adapter Service coverage (unchanged) |38/40 =95.00%, target85% met|
+| diagnostic View coverage (unchanged) |962/1029 =93.49%, target75% met|
+| Dataset importer verification |16 cases /5,325 frames; source/native hashes and LF/CRLF JSON hashing checked|
+| Independent read-only code/data/report review |APPROVE; no actionable findings|
+| Server pytest |Not run locally: no server changes|
+
+The initial former-default-ON full run had seven recorded-snapshot failures.
+After restoring default OFF, three failures remained because one existing
+test independently hardcoded default ON. It now reads `RepJudge().useFrameKnee`;
+all original labels and expected verdict arrays are preserved. Its scoped
+legacy check passed29 tests with9 existing skips, and the full default suite
+above passed with10 total existing skips. Two early synthetic parser tests
+failed due overly narrow mutable-map types; corrected inputs pass without
+changing label validation. Existing skips are documented known model errors
+and conditional evaluation cases; none were newly added to hide a failure.
+
+An additional post-main S2+unified-ON check passed164 tests and failed one newly
+merged PR76 goal-camera-retry UI test (`battle_screen_test.dart:1616`, expected
+mission chip missing). This optional-flag failure is tracked separately below;
+it is not a green S2-wide result. No unrelated goal-screen code or assertions
+were modified to hide it. The default suite and the scoped knee implementation
+remain green. Live two-person UAT and physical-contact/generalization accuracy
+remain unverified.
+
+Reports: `gymrats_app/test/ai_eval/results/2026-11-18_pr75_fixed_iter4_off.md`,
+`2026-11-18_pr75_fixed_iter4_on.md` and the paired `..._comparison.json` record
+code revision `a9e6cd49`, exact source blob IDs, both modes and pending status.
+The default recommendation is OFF, not an automatic code rewrite.
+
+Reproduction from `gymrats_app`:
+
+```sh
+flutter analyze --no-pub
+flutter test --no-pub --concurrency=4 --reporter expanded
+flutter test --no-pub --dart-define=PUSHUP_FRAME_KNEE=false test/ai_eval/iter4
+flutter test --no-pub --dart-define=PUSHUP_FRAME_KNEE=true test/ai_eval/iter4
+flutter test --no-pub --coverage --dart-define=PUSHUP_FRAME_KNEE=true test/services/pose/pose_metrics_test.dart test/services/pose/rep_judge_test.dart test/services/pose/push_up_judge_adapter_test.dart test/demo/rep_judge_demo_test.dart
+```
+
+From repo root, `python tools/diagnose/import_iter4_video_cases.py --verify-only
+--output gymrats_app/test/ai_eval/cases_iter4` verifies the public package.
+After human JSON label/window edits, use `--refresh-manifest` and rerun both
+comparison modes. This does not need private videos. Local evidence logs are
+under `C:/SWPP/iter4/pr75-publication-1118/`.
+
+Acceptance criteria map: continuous three-state evidence and all knee routes
+→ pose_metrics_test/rep_judge_test; preserved historical outcomes in default
+mode → pushup_error_cases_test; pending/confirmed counts, chair and coordinate
+validation → iter4_cases_test; M1/M2/M3 and misses/extras → iter4_scorer_test;
+actual push-up/squat replay and separated fixed/new ON/OFF artifacts →
+comparison_test. No new ViewModel/Model/server implementation is claimed.
+
+
+The optional S2 mission-retry failure was independently reproduced in a clean
+**unmodified main0a17580** detached worktree with S2_PERSON_GUARD=true and the
+same single test name (0 passed,1 failed; missing mission0/1 chip). That test
+uses an injected fake judge. Thus this is an inherited optional-configuration
+test failure, not introduced by the knee policy. No unrelated test expectations
+or mission code were changed. Baseline log: `main-s2-retry.log` in the local
+evidence folder. Default configuration CI is checked separately on the final
+published head.
