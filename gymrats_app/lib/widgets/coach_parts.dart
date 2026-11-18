@@ -348,3 +348,52 @@ class _TargetPainter extends CustomPainter {
   @override
   bool shouldRepaint(_TargetPainter oldDelegate) => false;
 }
+
+/// The mission's flag (MsGoal sticker, MsGfx tag): a pole and a pennant, in
+/// ink, drawn in the design's 24 box at [stroke].
+class CoachFlagIcon extends StatelessWidget {
+  const CoachFlagIcon({super.key, this.size = 18, this.stroke = 2.4});
+
+  final double size;
+
+  /// The line's width in the 24 box: 2.4 on a tag, 2.8 on the sticker.
+  final double stroke;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: CustomPaint(painter: _FlagPainter(stroke)),
+  );
+}
+
+class _FlagPainter extends CustomPainter {
+  const _FlagPainter(this.stroke);
+
+  final double stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // The design's paths: M6 21V4 and M6 4h11l-2.5 4 2.5 4H6.
+    final unit = size.width / 24;
+    final paint = Paint()
+      ..color = AppColors.ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke * unit
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    Offset at(double x, double y) => Offset(x * unit, y * unit);
+    canvas.drawLine(at(6, 21), at(6, 4), paint);
+    canvas.drawPath(
+      Path()
+        ..moveTo(at(6, 4).dx, at(6, 4).dy)
+        ..lineTo(at(17, 4).dx, at(17, 4).dy)
+        ..lineTo(at(14.5, 8).dx, at(14.5, 8).dy)
+        ..lineTo(at(17, 12).dx, at(17, 12).dy)
+        ..lineTo(at(6, 12).dx, at(6, 12).dy),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_FlagPainter oldDelegate) => oldDelegate.stroke != stroke;
+}

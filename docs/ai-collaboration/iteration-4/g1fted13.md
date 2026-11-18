@@ -899,3 +899,63 @@ team plan, one day before the iteration's official start. Its prompts from that 
 
 ### Takeaway
 - Fit tests should tap every control they claim fits, not only check that nothing throws. And a boundary test must use inputs where the boundary is really at risk.
+
+## W11 – the next battle's goal on the game choice, the battle and the next feedback, shown as a mission (A11), 2026-11-17 ~ 11-18
+
+### a. Where AI was used
+- **Tool:** Claude Code (Opus 5.5, VS Code), in one session over two days.
+- **What it did:** it read the A11 spec, the designs (UxGoal, UxGoalRow) and later MISSION-SPEC with its sources (MsGoal, MsDlg, MsGfx, MsWords). It checked the spec's files against W11's file list and asked the spec's questions. Then it wrote the code and the tests, ran the reviewer subagent, and drafted these notes, the testing notes and the PR body.
+- **Commits:**
+  - `4b7e112`: the goal's text styles (`GoalText` at the end of `gymrats_app/lib/theme/app_theme.dart`).
+  - `61b96f4`: `lib/services/feedback/goal_progress.dart`, the progress of a battle on its goal.
+  - `e1611f1`: the battle's chip and the reached band (`battle_stage_model.dart`, `battle_stage_hud.dart`, `battle_fx_motion.dart`, `battle_stage.dart`, both battle screens).
+  - `734d5c0`: the sticker and the goal row on the game choice (`exercise_sheet.dart`, `ai_setup_screen.dart`), and the match-found card (`versus_screen.dart`).
+  - `bc49c07`: the merge of `origin/main` (W9, W10), with 4 conflicts and both sides kept.
+  - `51b7c84`: `FormReport.characterId` and the battle view model's optional argument.
+  - `30b8f32`: the next feedback checks the last goal (`coach_script.dart`, `coach_viewmodel.dart`, `coach_graphics.dart`).
+  - `bfd9ac2`: the "미션" display (UAT feedback).
+- **The reviewer subagent** (same model) reviewed each part: part 1 APPROVE with 2 re-checks, part 2 APPROVE, the mission change APPROVE.
+- **Not done by AI:**
+  - choosing the mission design (canvas "미션 표시 시안" option C)
+  - the answers to the questions (task.md W11 decisions 1-16)
+  - the exception for `battle_viewmodel.dart`: the user's decision, which the user will share with the PM and 박진영 afterwards. TODO(Woohyun Song): confirm it was shared.
+  - the phone check
+
+### b. Prompt history (the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-17 19:53] (pasted; excerpt) "3. coach_script.dart 는 W10 머지 전까지 잠겨 있으니, 이번에는 2~5절(goal_progress.dart 목표 진행 계산, 운동 선택 스티커와 목표 줄, 매칭 성공 목표 카드, 대결 중 칩과 '목표 달성!' 띠)만 먼저 해. 6절(다음 피드백의 목표 확인)은 W10이 머지되고 허용 파일이 열린 뒤에 이어서 할 거야."
+- [Woohyun Song, 11-18 13:01] (pasted; excerpt) "(2) 기록의 캐릭터. 기록보관소에서 지난 리포트를 열면 그 판에 플레이한 캐릭터가 아니라 지금 고른 캐릭터가 승리 장면, 캐릭터 카드, 대화에 나와. 리포트는 그 판에 플레이한 캐릭터로 보여야 해."
+- [Woohyun Song, 11-18 14:06] (pasted; excerpt) "UAT 개선 하나 더 하자. 운동 선택의 목표 스티커가 잘 안 보여서 '미션'으로 바꿀 거야. 명세는 .claude/design/uat1/MISSION-SPEC.md 이고, 디자인 원본은 같은 폴더 design/ 아래의 Ms*.dc.html 이야."
+- [Woohyun Song, 11-18 13:12, 14:13] (answers in the agent's question dialogs; not prompts, so not in the Prompt Log; written in task.md W11 decisions 12 and 15) "battle_viewmodel 예외로 가. 승인은 내가 나중에 현우랑 진영이형한테 알릴 테니 기다리지 말고 바로 해." (13:12, excerpt; the answer goes on with how to record the exception) and "원본 그대로 (Recommended)" (14:13).
+
+### c. What AI did well
+- **Measured before asking.** With the app's fonts, the agent measured the mission sticker at the source's place against the chosen card's check circle:
+  - at rest, the body clears it by about 2 px
+  - the shadow touches it by about 1 px
+  - at the shake's peak, it covers 3-4 px
+
+  It asked with these numbers, and the user kept the source's place. A test checks the rest case: 'at rest the sticker\'s body leaves the chosen card\'s check circle free (MISSION-SPEC 2)'.
+- **Copied the shake from the source, not the summary.** The 2.5 s shake uses MsGoal's keyframes as they are, eased per segment. A unit test checks each keyframe, and a widget test follows the timeline: still for 1.9 s, then -6° and 1.1x, then 12°, again every 2.5 s.
+- **Listed the changes outside the spec's list.** The user asked for them separately. They included screen-reader labels, result-card lines the design does not show, and the talk's hint.
+- **One rule for the battle and the feedback.** `goal_progress.dart` counts the same rep records as the form report, so the battle's chip and the next feedback's check agree. The feedback reuses `GoalProgress.of(...).atEnd()`.
+
+### d. Hallucinations / errors
+- **A partial run of an edit script.** A Python edit script stopped when an anchor did not match the formatted code. Its `assert` caught it, and the rest was done in a second script.
+- **Escaping in shell heredocs.** `\'` and `\n` inside the heredoc broke Dart strings several times. `flutter analyze` caught each one, and the edits were redone with the Edit tool.
+- **The formatter touched other people's files.** `dart format lib/` also reformatted `character_motion.dart` and `player_avatar.dart`, which are not W11's. Both were restored with `git restore`; they had no other change.
+- **An endless animation broke the old tests.** The shaking sticker never settles, so the sheet tests' `pumpAndSettle` timed out. Those tests now use reduced motion, and new tests check the shake itself.
+- **Review findings:**
+  - Part 1: 5 Minor. The review's `IgnorePointer` fix then caused 6 app-flow failures in the full run, because the secure store's read never completes in those tests. It was replaced with a 300 ms read limit.
+  - Part 2: 3 Minor. The talk waited for the goal read without a limit (now 2 s).
+  - Mission change: 2 Minor. "미션!" was cut at 2x text inside the 32-high sticker.
+
+### e. Prompt revisions
+- **Asking only where the source cannot be followed:**
+  - Before (the W11 start, 11-17 19:53): "5. 명세 끝의 \"사용자에게 물어볼 것\"을 하나씩 물어보고, 답은 task.md W11 \"Decisions\"에 오늘 날짜로 적어."
+  - After (the mission change, 11-18 14:06): "명세의 숫자는 요약이고 원본이 우선이야." and "3. 원본과 다르게 해야 하는 곳이 생기면 코드를 쓰기 전에 물어봐."
+  - Why it worked: in part 1, the spec's rounded numbers met the screen's tokens, and the agent rounded several of them by itself (recorded afterwards as defaults). In the mission change, the sticker's size, place, shadow and keyframes came from MsGoal as they are. The agent asked only once, where the source's place lets the shadow touch the check circle (decision 15).
+
+### f. Manual fixes and why
+- None. No AI-generated line was edited by hand, so W11 adds no manual-fix marker.
+
+### Takeaway
+- An animation that never ends needs its tests planned with it (reduced motion in the old tests, a timeline test for the new one). A formatter run should name only the step's files.

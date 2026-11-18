@@ -2599,6 +2599,132 @@ void main() {
     });
   });
 
+  group("the goal band, '목표 달성!' (A11 spec 5)", () {
+    const reach = BattleStageEvent(
+      side: BattleSide.me,
+      grade: GameGrade.good,
+      points: 10,
+      combo: 1,
+      reachesGoal: true,
+    );
+
+    /// When the band of a Good rep at [at] pops up: its word and points
+    /// are over by then.
+    double bandAt(double at) =>
+        at +
+        BattleFx.impactDelay +
+        BattleFx.gradeWord(GameGrade.good).pointsAfter +
+        880;
+
+    test('follows the bands of the rep that reached the goal, pops in, and '
+        'stays 1600 ms', () {
+      final fx = BattleFxTimeline()..rep(reach, 1000);
+      final start = bandAt(1000);
+      expect(fx.frame(start - 1).goalBand, isNull);
+      expect(
+        fx
+            .frame(start)
+            .banners
+            .where((b) => b.text == '+10' || b.text == 'GOOD'),
+        isEmpty,
+      );
+      // It pops in as the other bands do.
+      final popping = fx.frame(start + 20).goalBand!.scale;
+      expect(popping, lessThan(1));
+      expect(popping, BattleFx.pop(20, BattleFxGoalBand.length)!.scale);
+      final shown = fx.frame(start + 600).goalBand!;
+      expect(shown.opacity, 1);
+      expect(shown.scale, 1);
+      expect(
+        fx.frame(start + BattleFxGoalBand.length - 60).goalBand!.opacity,
+        lessThan(1),
+      );
+      expect(fx.frame(start + BattleFxGoalBand.length + 1).goalBand, isNull);
+    });
+
+    test("an Excellent rep's band waits for its later points", () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          const BattleStageEvent(
+            side: BattleSide.me,
+            grade: GameGrade.excellent,
+            points: 20,
+            combo: 1,
+            reachesGoal: true,
+          ),
+          0,
+        );
+      final start =
+          BattleFx.impactDelay +
+          BattleFx.gradeWord(GameGrade.excellent).pointsAfter +
+          880;
+      expect(fx.frame(start - 1).goalBand, isNull);
+      expect(fx.frame(start + 200).goalBand, isNotNull);
+    });
+
+    test('plays once a battle', () {
+      final fx = BattleFxTimeline()
+        ..rep(reach, 0)
+        ..rep(reach, 5000);
+      expect(fx.frame(bandAt(0) + 200).goalBand, isNotNull);
+      expect(fx.frame(bandAt(5000) + 200).goalBand, isNull);
+    });
+
+    test("a rep without the mark, or the opponent's, brings none", () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          const BattleStageEvent(
+            side: BattleSide.me,
+            grade: GameGrade.good,
+            points: 10,
+            combo: 1,
+          ),
+          0,
+        )
+        ..rep(
+          const BattleStageEvent(
+            side: BattleSide.opponent,
+            grade: GameGrade.good,
+            points: 10,
+            combo: 1,
+            reachesGoal: true,
+          ),
+          100,
+        );
+      for (var t = 0.0; t < 4000; t += 100) {
+        expect(fx.frame(t).goalBand, isNull, reason: 'at $t ms');
+      }
+    });
+
+    test('the end of the battle takes it away: the ending has the stage', () {
+      final fx = BattleFxTimeline()..rep(reach, 0);
+      final start = bandAt(0);
+      fx.finish(
+        const BattleStageEnd(kind: BattleEndKind.timeUp, winner: BattleSide.me),
+        start + 300,
+      );
+      expect(fx.frame(start + 200).goalBand, isNotNull);
+      expect(fx.frame(start + 300).goalBand, isNull);
+      expect(fx.frame(start + 800).goalBand, isNull);
+    });
+
+    test('a KO blow that reaches the goal brings none', () {
+      final fx = BattleFxTimeline()
+        ..rep(
+          const BattleStageEvent(
+            side: BattleSide.me,
+            grade: GameGrade.good,
+            points: 10,
+            combo: 1,
+            knockout: true,
+            reachesGoal: true,
+          ),
+          0,
+        );
+      expect(fx.frame(bandAt(0) + 200).goalBand, isNull);
+    });
+  });
+
   group('the camera\'s status frame (A9 spec 3)', () {
     BattleStageEvent rejected() =>
         _rep(BattleSide.me, null, reason: RejectReason.kneesDown);

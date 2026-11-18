@@ -973,3 +973,94 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `71b780e`, wit
 - The lines follow the record (spec 8). Tests: the groups `'the design\'s battle against five earlier ones (spec 4.2)'`, `'no earlier battles (task.md W10 decision 2)'`, `'the form'`, `'the praise'`, `'the goals (spec 5.1)'` in `coach_script_test.dart`
 - The longest combo is the game's. Tests: the group `'the longest combo is the game\'s combo'`
 - Four lines at most. Test: `'every line of a squat and a push-up battle, for every character'`
+
+## W11 feedback-goal records
+
+#### 2026-11-18 · code at commits `4b7e112`, `61b96f4`, `e1611f1`, `734d5c0`, `51b7c84`, `30b8f32`, `bfd9ac2` · step W11 `feat/feedback_goals` (A11, the next battle's goal on the game choice, match found, the battle and the next feedback, team order #21)
+- **What changed:** A11 spec v1 (UAT cycle 1), designs UxGoal (scenes pick, found and battle) and UxGoalRow. After UAT feedback, the goal is now shown as a "mission" (MISSION-SPEC, canvas "미션 표시 시안" option C, sources MsGoal, MsDlg, MsGfx, MsWords). This covers push-ups and squats, in AI and online battles.
+  - **Game choice:** the exercise with a goal wears an orange "미션!" sticker with a flag. It shakes once every 2.5 s and holds still with reduced motion. AI 1v1 also shows the mission row ("물렁범이 준 이번 판 미션", the title, "지난 판 N"), and the line under 대결 시작 ends in " · 미션 20회".
+  - **Match found:** the mission card ("이번 판 미션!" on an orange band, the title, and the character that gave the mission) takes the rules card's place.
+  - **Battle:** a mission chip under the valid counts from the countdown on ("미션 12/20", "후반 미션 8"). The rep that first completes the mission brings up "미션 성공!" once.
+  - **Next feedback (spec 6):** the coach recalls the last mission of this exercise, and a result card shows the mission's number beside this battle's. Then the talk asks for the next mission (the same again, a step up or an easier one).
+  - **The record's character:** a form report now keeps the character played (`FormReport.characterId`), so the talk and 기록보관소 show that one.
+- **Commands (Windows, `gymrats_app/`):** `flutter analyze`; `flutter test`.
+- **Tests:** on `bfd9ac2`, `flutter test` had 3687 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W11 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+- **Coverage:** not measured on this Windows PC. TODO(Woohyun Song): fill in from the PR's CI comment (commit and run link).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/18 | CI comment "Tests and coverage (GitHub Actions)" on the W11 PR |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | TODO(Woohyun Song): from the CI comment (`server/` unchanged) | 11/18 | same CI comment |
+
+- **Other checks:**
+  - **Reviews:**
+    - Part 1 (spec 2-5), run 1: APPROVE with 5 Minor. 4 were fixed and 1 was kept with its reason (the goal test helpers belong to W10's `test/support/goal_*`). Two re-checks returned APPROVE.
+    - Part 2 (spec 6 and the record's character): APPROVE with 3 Minor, all fixed. The talk now waits at most 2 s for the goal read, and the old-report test uses a literal 11-17 JSON map.
+    - Mission change: APPROVE with 2 Minor, both fixed. "미션!" was cut at 2x text, so it now keeps the design size, with a test; the doc comments still had the old words.
+  - **Full-run failure after part 1's review:** the review's `IgnorePointer` (Minor 2) caused 6 app-flow failures in the full run. In those tests the secure store's read never completes. The fix was a 300 ms limit on the goal read, `GoalsOnce.readLimit`.
+  - **Merge of `origin/main`** (W9 #73, W10 #74) in `bc49c07`: 4 conflicts, with both sides kept. 3641 passed / 10 skipped / 0 failed after it.
+  - `ownership_guard.py --check-diff`: ok. The changed files include three exceptions:
+    - `lib/models/form_report.dart`: only the field and its JSON key.
+    - `lib/viewmodels/battle_viewmodel.dart` and its test: only the optional argument.
+    - `lib/theme/app_theme.dart`: only the `GoalText` styles.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Screen readers:** widget tests check what is read:
+  - the exercise card: "…, 미션 있음, {title}"
+  - the mission row: "이번 판 미션 {title}, 물렁범이 준 미션, 지난 판 18"
+  - the match-found card: "이번 판 미션, {title}" and "미션을 준 캐릭터 …"
+  - the battle chip: "이번 판 미션 20회 중 12회", ", 미션 성공"
+  - the result card as one sentence
+
+  TalkBack on a real phone was **not** checked.
+- **Manual check:** the user said "폰 확인 끝났어" (2026-11-18 16:52) after being given these checks. No per-item results were reported, and the phone model was not stated.
+  - Part 1 (11-18 10:18):
+    - From a cold start (the app killed, then opened), go straight to AI 1v1 and see the sticker and the row (the 300 ms read limit).
+    - The full flow: set a goal in the talk, change character, then AI 1v1 (sticker, row, summary) → match found (goal card) → battle (the chip from the countdown, the band once) → report.
+    - The online sheet's sticker and an online battle.
+    - Larger text.
+  - Part 2 (11-18 13:38):
+    - After changing character, a past report from 기록보관소 shows the character played in that battle.
+    - The next talk checks the goal, reached and missed.
+  - Mission change (11-18 14:28):
+    - On another exercise, the "미션!" sticker is easy to see and the shake is not distracting.
+    - On the chosen exercise, the shadow touching the check circle by about 1 px is acceptable.
+    - No '목표' is left from the talk to the next feedback.
+    - Larger text and reduced motion.
+
+### Test cases added or changed in W11
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/feedback/goal_progress_test.dart` (new) | the progress of each kind (reps, later half, combo, rejection limit); the chip's words and its screen-reader label; past the target the real count; the later half waits for the round's half; the short words after 미션; `GoalTracker` says true once and never for a rejection limit; reading the goals of an account (a failed read is no goal; another exercise's goal is not this one) |
+| Model | `test/models/form_report_character_test.dart` (new) | a report played as a character keeps it through its JSON; without one the JSON has no such key; a report saved before still loads, without one; a value of another kind reads as none |
+| ViewModel | `test/viewmodels/battle_viewmodel_test.dart` (updated) | the form report keeps the battle's character when one is given |
+| ViewModel | `test/viewmodels/coach_viewmodel_test.dart` (updated) | a goal set before the battle is read and checked first; one set after the battle, another account's, none or a failing store: nothing is checked; a store that never answers leaves the goal unchecked, not the talk unready; the battle's character talks and keeps the goal picked |
+| Service | `test/services/feedback/coach_script_test.dart` (updated) | the last goal checked (spec 6): recalled first in the goal's character's voice, reached and missed lines per kind, only this exercise's goal set before this battle ended, the summary after a reps check, the line count, the goal question after the check (the same again, this battle + 1, a step up, no duplicate choice); 이 / 가 after the character's name; the mission wording |
+| View | `test/widgets/coach_graphics_test.dart` (updated) | the last goal's result card (reached: two numbers, a full green bar, "성공!" on lime; missed: amber bar and "N회 / 남음"; each kind's line); the goal card's orange tag with the flag; recalled: "지난번 미션" |
+| View | `test/screens/coach_screen_test.dart` (updated) | the check of the last goal, reached and missed, of each kind, for every character (four lines at most); the hint "위에서 미션을 골라 줘"; the "다음 판 미션" card |
+| View | `test/screens/ai_setup_screen_test.dart` (updated) | the goal (spec 3): a sticker only on the exercise with a goal, the mission row only for the chosen one, the summary line, the screen-reader words, the 300 ms read limit; the mission sticker (MISSION-SPEC 2): the keyframes, the look and the shake over time, still with reduced motion, the design size at 2x text, 가 after a vowel; with the app's fonts: fits 360 x 780, at rest the sticker leaves the check circle free |
+| View | `test/widgets/exercise_sheet_test.dart` (updated) | the online sheet: only the card with a goal wears the sticker, no goal row; the screen reader hears the mission with its card and a tap still picks it; the cards wait hidden while the goals are read; the 300 ms read limit; without the store no sticker |
+| View | `test/screens/versus_screen_test.dart` (updated) | the goal card (spec 4): tag, title and character, the orange band, the screen reader, all five characters fit at 360 x 640 and 1.3x, the 300 ms read limit |
+| View | `test/screens/battle_screen_test.dart`, `test/screens/online_preparation_test.dart` (updated) | the goal (spec 5): the chip from the countdown, "미션 성공!" once, a rejection limit white then red, the check at the end, no store no chip, a retry is a new battle, a combo by the game's rule |
+| View | `test/widgets/battle_stage_model_test.dart`, `battle_stage_hud_test.dart`, `battle_fx_motion_test.dart`, `battle_stage_test.dart` (updated) | `withGoal` and `reachingGoal`, the chip under the counts and its label, the "미션 성공!" band's timing and look |
+| View | `test/screens/result_screen_test.dart` (updated) | the battle's own character: a past report shows the one played then (scene, card and talk), none while its form report is coming, the one chosen now for a report that kept none, a failed fetch or a battle without feedback |
+
+### Acceptance criteria → tests (W11)
+- The exercise with a goal is marked on the game choice (spec 2-3; MISSION-SPEC 2). Tests: the groups `'the goal (A11 spec 3)'` and `'the mission sticker (MISSION-SPEC 2, MsGoal C)'` in `ai_setup_screen_test.dart`
+- Match found shows the goal (spec 4). Test: the group `'the goal card (A11 spec 4)'` in `versus_screen_test.dart`
+- The battle shows the progress and the moment the goal is reached (spec 5). Tests: the group `'the goal (A11 spec 5)'` in `battle_screen_test.dart` and in `online_preparation_test.dart`, and `'says true once: on the rep that first reaches the goal'`
+- The next feedback checks the last goal (spec 6). Tests: the group `'the last goal checked (A11 spec 6)'` in `coach_script_test.dart`, `'a goal set before the battle is read and checked first; the talk has its two lines more'`, the group `'the last goal (A11 spec 6)'` in `coach_graphics_test.dart`
+- A report keeps the character played. Tests: the group `'FormReport.characterId (A11, the record'` (start of the name), `"the form report keeps the battle's character when one is given "` (start of the name), `'a past report shows the one played then (the bear), not the one chosen now (the penguin): scene, card and talk'`
+- UAT-3 and UAT-5 still pass (same start, scores and fever; the goal is only shown). Tests:
+  - `'the countdown: the time to the start in the hint, then 3, 2, 1 and GO! on the stage'` (online)
+  - `'my counted rep: GOOD, then +10, the score and my valid rep on the stage, the chest lines on the camera'`
+  - `'two counted reps within the combo window: the second earns the bonus and "2 HIT" shows over the camera (UAT-5 combo)'`
+  - `'fever turns the stage cyan 20 s into the round, counted from GO!, not from the camera'`
+  - `'the stage shows the server's scores, valid reps and bar, and the camera its chest lines'`
+  - `'fever turns the stage cyan with its chip; the danger edge is on from 60 behind'`
+
+  All of them pass unchanged in wording. The goal parts only read the rep records and never feed the game's points. **Gap:** no test plays the same battle with and without a goal to compare the scores. Plan: add one to `battle_screen_test.dart`'s goal group in the next change to these files.
+- UAT-4 still passes (the result and the form feedback are reachable). Tests: the W10 tests listed above, unchanged and passing
