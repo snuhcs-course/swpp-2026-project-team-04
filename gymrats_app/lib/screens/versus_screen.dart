@@ -11,21 +11,26 @@ import '../models/character_idle_motion.dart';
 import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
+import '../models/feedback_goal.dart';
 import '../models/matchup.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/character_viewmodel.dart';
 import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/accent_button.dart';
+import '../widgets/battle_banner.dart';
 import '../widgets/battle_fighter.dart';
 import '../widgets/battle_fx_motion.dart';
 import '../widgets/battle_stage_model.dart';
 import '../widgets/character_figure.dart';
+import '../widgets/coach_parts.dart';
+import '../widgets/exercise_sheet.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/safe_warning_dialog.dart';
 
-/// Shows who battles whom, the rules, and the button to the pose setup.
+/// Shows who battles whom, the rules (or the user's goal for this
+/// exercise, A11 spec 4), and the button to the pose setup.
 ///
 /// Who battles whom is one board (W2b 2-A3): the user's lime cell over the
 /// opponent's pink one, each player's character on a pedestal beside their
@@ -40,6 +45,12 @@ import '../widgets/safe_warning_dialog.dart';
 /// and the 게임 나가기 button at the top left both ask before going home. The setup
 /// button opens the battle screen, which starts with the pose setup, in
 /// this one's place, so going back from the battle leads home.
+///
+/// With a saved goal for the exercise, the goal card takes the rules
+/// card's place (task.md W11 decision 2). The screen reads the goal once
+/// and never changes it (decision 6); the screen's content waits for the
+/// moment the read takes ([GoalsOnce], at most its read limit), so the
+/// cards do not swap or jump.
 class VersusScreen extends StatefulWidget {
   const VersusScreen({
     super.key,
@@ -87,7 +98,8 @@ class VersusScreen extends StatefulWidget {
   State<VersusScreen> createState() => _VersusScreenState();
 }
 
-class _VersusScreenState extends State<VersusScreen> {
+class _VersusScreenState extends State<VersusScreen>
+    with GoalsOnce<VersusScreen> {
   /// Set once the setup button opened the battle (or, online, while the
   /// lobby's setup runs), so a second tap does nothing.
   bool _settingUp = false;
@@ -97,6 +109,13 @@ class _VersusScreenState extends State<VersusScreen> {
 
   /// Set once the warning has been scheduled, so it opens once per screen.
   bool _warningScheduled = false;
+
+  /// The user's goal for this exercise; null without one, and while the
+  /// goals are read ([GoalsOnce]).
+  FeedbackGoal? get _goal => goals?[widget.matchup.exercise];
+
+  /// Whether the goals are being read: the content waits, hidden.
+  bool get _readingGoal => goals == null;
 
   /// Opens the warning once this screen is on top. Online, a match can be
   /// found while the lobby's "cancel matching?" dialog is open; the warning
@@ -229,34 +248,41 @@ class _VersusScreenState extends State<VersusScreen> {
       child: Scaffold(
         body: GridBackground(
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.s20,
-                AppSpacing.s12,
-                AppSpacing.s20,
-                AppSpacing.s24,
-              ),
-              child: Column(
-                children: [
-                  _Header(
-                    exercise: matchup.exercise,
-                    onExit: _askToLeave,
-                    duration: widget.duration,
-                  ),
-                  const SizedBox(height: AppSpacing.s16),
-                  // Takes all the height the rules leave, so longer rules
-                  // (push-ups) make it lower.
-                  Expanded(
-                    child: _MatchupBoard(
-                      matchup: matchup,
-                      characters: characters,
+            // Unseen while the goal is read, at most [GoalsOnce.readLimit].
+            child: Opacity(
+              opacity: _readingGoal ? 0 : 1,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.s20,
+                  AppSpacing.s12,
+                  AppSpacing.s20,
+                  AppSpacing.s24,
+                ),
+                child: Column(
+                  children: [
+                    _Header(
+                      exercise: matchup.exercise,
+                      onExit: _askToLeave,
+                      duration: widget.duration,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.s16),
-                  _RulesCard(exercise: matchup.exercise),
-                  const SizedBox(height: AppSpacing.s16),
-                  AccentButton(title: '자세 세팅 시작', onPressed: _startSetup),
-                ],
+                    const SizedBox(height: AppSpacing.s16),
+                    // Takes all the height the rules leave, so longer rules
+                    // (push-ups) make it lower.
+                    Expanded(
+                      child: _MatchupBoard(
+                        matchup: matchup,
+                        characters: characters,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s16),
+                    if (_goal case final goal?)
+                      _GoalCard(goal: goal)
+                    else
+                      _RulesCard(exercise: matchup.exercise),
+                    const SizedBox(height: AppSpacing.s16),
+                    AccentButton(title: '자세 세팅 시작', onPressed: _startSetup),
+                  ],
+                ),
               ),
             ),
           ),
@@ -755,18 +781,23 @@ class _Figure extends StatelessWidget {
 /// draws it: the child turned all white and laid eight times, [width] away
 /// in each direction and diagonal, under the child itself.
 class _WhiteOutline extends StatelessWidget {
-  const _WhiteOutline({required this.child});
+  const _WhiteOutline({required this.child, this.width = boardWidth});
 
   final Widget child;
 
-  static const width = 2.5;
+  /// How wide the edge is: [boardWidth] on the board.
+  final double width;
 
-  /// The eight places the white copies lie.
-  static final directions = [
-    for (final dx in const [-width, 0.0, width])
-      for (final dy in const [-width, 0.0, width])
+  static const boardWidth = 2.5;
+
+  /// The eight places the white copies lie, [width] away.
+  static List<Offset> directionsOf(double width) => [
+    for (final dx in [-width, 0.0, width])
+      for (final dy in [-width, 0.0, width])
         if (dx != 0 || dy != 0) Offset(dx, dy),
   ];
+
+  static final _board = directionsOf(boardWidth);
 
   @override
   Widget build(BuildContext context) {
@@ -783,7 +814,8 @@ class _WhiteOutline extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                for (final offset in directions)
+                for (final offset
+                    in width == boardWidth ? _board : directionsOf(width))
                   Transform.translate(offset: offset, child: child),
               ],
             ),
@@ -818,9 +850,10 @@ class _VersusCharacter extends StatelessWidget {
   static const foot = BattleFighter.foot;
 
   /// How [idle] moves a character facing right, about its feet: as the
-  /// stage moves the user's (`BattleFxTimeline.frame`).
-  static Matrix4 motion(IdleSample idle) =>
-      Matrix4.translationValues(0, -idle.up, 0)
+  /// stage moves the user's (`BattleFxTimeline.frame`), for a character
+  /// drawn at [scale].
+  static Matrix4 motion(IdleSample idle, {double scale = 1}) =>
+      Matrix4.translationValues(0, -idle.up * scale, 0)
           .multiplied(Matrix4.rotationZ(idle.rockDeg * math.pi / 180))
           .multiplied(Matrix4.diagonal3Values(idle.scaleX, idle.scaleY, 1));
 
@@ -911,6 +944,186 @@ class _RuleRow extends StatelessWidget {
           child: Text.rich(rule, style: Theme.of(context).textTheme.bodyLarge),
         ),
       ],
+    );
+  }
+}
+
+/// "이번 판 목표!" (A11 spec 4, UxGoal found): the user's goal for this
+/// exercise in the rules card's place, on a white card turned -1.5° with a
+/// lime tag over its top left. On the right, the character the goal was set
+/// with (not the one chosen now: spec 1.3) in its win pose, white-edged and
+/// moving idle as on the board, kept inside its [_figureBox]. No line under
+/// the title (spec 1.4).
+class _GoalCard extends StatefulWidget {
+  const _GoalCard({required this.goal});
+
+  final FeedbackGoal goal;
+
+  /// The room above the card the tag rises into.
+  static const tagRoom = 10.0;
+
+  @override
+  State<_GoalCard> createState() => _GoalCardState();
+}
+
+class _GoalCardState extends State<_GoalCard>
+    with SingleTickerProviderStateMixin {
+  final _clock = ValueNotifier<double>(0);
+  late final Ticker _ticker = createTicker(
+    (elapsed) => _clock.value = elapsed.inMicroseconds / 1000,
+  );
+  bool _still = false;
+
+  static const _turn = -1.5 * math.pi / 180;
+  static const _tagTurn = -3 * math.pi / 180;
+  static const _edge = 2.5;
+  static const _corner = 20.0;
+
+  /// Inside the edge: 22 above the title, 16 beside, 14 below.
+  static const _padTop = 22.0;
+  static const _padSide = 16.0;
+  static const _padBottom = 14.0;
+
+  /// The title keeps clear of the character and is at least this tall.
+  static const _titleEnd = 100.0;
+  static const _titleMinHeight = 86.0;
+
+  /// The tag: from the card's top left, inside its edge.
+  static const _tagLeft = 14.0;
+  static const _tagTop = -20.0;
+  static const _tagSide = 16.0;
+
+  /// The character's box: from the card's top right, inside its edge.
+  static const figureBox = Size(90, 99);
+  static const _figureRight = 12.0;
+  static const _figureTop = 7.0;
+  static const _figureLeft = 1.0;
+  static const _figureScale = 0.62;
+  static const _outline = 2.0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _still = MediaQuery.disableAnimationsOf(context);
+    if (_still) {
+      _ticker.stop();
+    } else if (!_ticker.isActive) {
+      _ticker.start();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _clock.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final goal = widget.goal;
+    final rig = CharacterRig.standard;
+    final id = rig.selectableOrDefault(goal.characterId);
+    final art = rig.art(id);
+    final foot = _VersusCharacter.foot * _figureScale;
+    return Padding(
+      padding: const EdgeInsets.only(top: _GoalCard.tagRoom),
+      child: Transform.rotate(
+        angle: _turn,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              key: const ValueKey('goal-card'),
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(
+                _padSide,
+                _padTop,
+                _padSide,
+                _padBottom,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                border: Border.all(color: AppColors.ink, width: _edge),
+                borderRadius: const BorderRadius.all(Radius.circular(_corner)),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: _titleMinHeight),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: _titleEnd),
+                  child: Text(
+                    CoachMarkedText.keepWords(goal.title),
+                    semanticsLabel: '이번 판 목표, ${goal.title}',
+                    style: text.goalCardTitle,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: _edge + _tagLeft,
+              top: _edge + _tagTop,
+              child: ExcludeSemantics(
+                child: Transform.rotate(
+                  angle: _tagTurn,
+                  child: BattleBand(
+                    text: '이번 판 목표!',
+                    style: text.goalCardTag,
+                    color: AppColors.accent,
+                    sidePadding: _tagSide,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: _edge + _figureRight,
+              top: _edge + _figureTop,
+              width: figureBox.width,
+              height: figureBox.height,
+              child: Semantics(
+                image: true,
+                label: '목표를 함께 정한 캐릭터 ${art.name}',
+                child: ClipRect(
+                  key: const ValueKey('goal-card-figure'),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: _figureLeft,
+                        top: 0,
+                        child: RepaintBoundary(
+                          child: ValueListenableBuilder<double>(
+                            valueListenable: _clock,
+                            builder: (context, ms, _) {
+                              final idle = _still
+                                  ? IdleSample.rest
+                                  : art.idleMotion.sampleAt(ms);
+                              return _WhiteOutline(
+                                width: _outline,
+                                child: Transform(
+                                  origin: foot,
+                                  transform: _VersusCharacter.motion(
+                                    idle,
+                                    scale: _figureScale,
+                                  ),
+                                  child: CharacterFigure(
+                                    characterId: id,
+                                    pose: BattlePose.win,
+                                    scale: _figureScale,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

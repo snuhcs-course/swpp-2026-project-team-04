@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +8,12 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/services/feedback/goal_store.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
+import 'package:provider/provider.dart';
+
+import '../support/auth_fakes.dart';
 
 /// Tests otherwise draw every letter as the same square. The fonts stay loaded
 /// for the rest of the run, so the tests that load them come last in the file.
@@ -27,6 +35,42 @@ Future<void> _loadAppFonts(WidgetTester tester) => tester.runAsync(() async {
   }
 });
 
+/// A goal of [kind] for [exercise], titled [title], set with [characterId].
+FeedbackGoal _goal(
+  ExerciseType exercise, {
+  GoalKind kind = GoalKind.reps,
+  int target = 22,
+  String title = '푸쉬업 22회 인정받기',
+  String characterId = 'kangaroo',
+}) => FeedbackGoal(
+  exercise: exercise,
+  kind: kind,
+  target: target,
+  baseline: target - 2,
+  title: title,
+  setAt: DateTime(2026, 11, 17, 14),
+  characterId: characterId,
+  fromMatch: 'report-1',
+);
+
+/// The app's auth with account 1 signed in.
+Future<AuthViewModel> _signedIn() async {
+  final repository = ScriptedAuthRepository();
+  await repository.logIn(loginId: 'woohyun', password: 'pw');
+  return AuthViewModel(repository: repository);
+}
+
+/// A goal store whose reads wait for [release].
+class _SlowGoalStore extends MemoryGoalStore {
+  final release = Completer<void>();
+
+  @override
+  Future<FeedbackGoal?> read(int accountId, ExerciseType exercise) async {
+    await release.future;
+    return super.read(accountId, exercise);
+  }
+}
+
 void main() {
   // A tap that misses its target must fail here, not pass with nothing done.
   setUpAll(() => WidgetController.hitTestWarningShouldBeFatal = true);
@@ -39,34 +83,53 @@ void main() {
     WidgetTester tester, {
     UserProfile profile = const UserProfile(name: '우현'),
     Size size = const Size(360, 780),
+    GoalStore? goals,
+    AuthViewModel? auth,
+    bool settle = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     answer = null;
     answered = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.dark,
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () async {
-                answer = await showExerciseSheet(
-                  context,
-                  subtitle: '온라인 1v1 · 30초',
-                  profile: profile,
-                );
-                answered = true;
-              },
-              child: const Text('open'),
-            ),
+    final app = MaterialApp(
+      theme: AppTheme.dark,
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () async {
+              answer = await showExerciseSheet(
+                context,
+                subtitle: '온라인 1v1 · 30초',
+                profile: profile,
+              );
+              answered = true;
+            },
+            child: const Text('open'),
           ),
         ),
       ),
     );
+    await tester.pumpWidget(
+      goals == null
+          ? app
+          : MultiProvider(
+              providers: [
+                Provider<GoalStore>.value(value: goals),
+                if (auth != null)
+                  ChangeNotifierProvider<AuthViewModel>.value(value: auth),
+              ],
+              child: app,
+            ),
+    );
     await tester.tap(find.text('open'));
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      // Into the sheet's slide, before it ends.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+    }
     expect(find.byType(ExerciseSheet), findsOneWidget);
   }
 
@@ -421,5 +484,123 @@ void main() {
         }
       }
     }
+  });
+
+  group('the goal sticker (A11 spec 3, decision 1)', () {
+    late AuthViewModel auth;
+    late MemoryGoalStore store;
+
+    setUp(() async {
+      auth = await _signedIn();
+      addTearDown(auth.dispose);
+      store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.squat)] = _goal(
+          ExerciseType.squat,
+          kind: GoalKind.combo,
+          target: 5,
+          title: '콤보 5번 이상',
+        );
+    });
+
+    late WidgetTester current;
+
+    /// The cards' fade while the goals are read.
+    Opacity around() => current.widget<Opacity>(
+      find.ancestor(of: find.text('푸쉬업'), matching: find.byType(Opacity)).first,
+    );
+    Finder cardOf(String name) =>
+        find.ancestor(of: find.text(name), matching: find.byType(Card)).first;
+
+    testWidgets('only the card of the exercise with a goal wears it, over '
+        'its top right corner; no goal row on the sheet', (tester) async {
+      await open(tester, goals: store, auth: auth);
+      final sticker = find.byType(GoalSticker);
+      expect(sticker, findsOneWidget);
+      expect(
+        find.descendant(of: sticker, matching: find.text('콤보 5')),
+        findsOneWidget,
+      );
+      final card = tester.getRect(cardOf('스쿼트'));
+      final sticking = tester.getRect(
+        find.ancestor(of: sticker, matching: find.byType(Positioned)).first,
+      );
+      expect(sticking.right, closeTo(card.right + 8, 0.01));
+      expect(sticking.top, closeTo(card.top - 12, 0.01));
+      expect(
+        find.descendant(of: cardOf('푸쉬업'), matching: find.byType(GoalSticker)),
+        findsNothing,
+      );
+      expect(find.textContaining('이번 판 목표 ·'), findsNothing);
+      // The best is still on the card.
+      expect(find.text('개인 최고 —'), findsNWidgets(2));
+    });
+
+    testWidgets('a screen reader hears the goal with its card; a tap still '
+        'picks it', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await open(tester, goals: store, auth: auth);
+      expect(
+        find.bySemanticsLabel('스쿼트, 개인 최고 —, 이번 판 목표 콤보 5번 이상'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('푸쉬업, 개인 최고 —'), findsOneWidget);
+      semantics.dispose();
+      // The sticker lets the tap through to its card.
+      await tester.tapAt(tester.getCenter(find.byType(GoalSticker)));
+      await tester.pumpAndSettle();
+      expect(answered, isTrue);
+      expect(answer, ExerciseType.squat);
+    });
+
+    testWidgets('the cards wait hidden while the goals are read, then come '
+        'with their stickers', (tester) async {
+      current = tester;
+      final slow = _SlowGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
+      await open(tester, goals: slow, auth: auth, settle: false);
+      expect(around().opacity, 0);
+      slow.release.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(around().opacity, 1);
+      expect(find.byType(GoalSticker), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.text('푸쉬업').hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('a read slower than 300 ms shows the cards without '
+        'stickers; a goal that comes later stays away', (tester) async {
+      current = tester;
+      final slow = _SlowGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
+      await open(tester, goals: slow, auth: auth);
+      await tester.pump(GoalsOnce.readLimit);
+      expect(around().opacity, 1);
+      expect(find.text('푸쉬업').hitTestable(), findsOneWidget);
+      expect(find.byType(GoalSticker), findsNothing);
+      slow.release.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(GoalSticker), findsNothing);
+    });
+
+    testWidgets('without the store nothing waits and no sticker shows', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(find.byType(GoalSticker), findsNothing);
+      expect(
+        tester
+            .widget<Opacity>(
+              find
+                  .ancestor(
+                    of: find.text('푸쉬업'),
+                    matching: find.byType(Opacity),
+                  )
+                  .first,
+            )
+            .opacity,
+        1,
+      );
+    });
   });
 }

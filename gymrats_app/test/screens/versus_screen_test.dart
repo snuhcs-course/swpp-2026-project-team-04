@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -18,13 +19,19 @@ import 'package:gymrats_app/widgets/battle_fighter.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/exit_game_button.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/player_avatar.dart';
 import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
 import 'package:provider/provider.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/services/feedback/goal_store.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
+import 'package:gymrats_app/widgets/coach_parts.dart';
 
+import '../support/auth_fakes.dart';
 import '../support/fakes.dart';
 import '../widgets/battle_test_support.dart';
 
@@ -33,6 +40,42 @@ const _matchup = Matchup(
   playerName: '우현',
   opponent: Opponent(name: 'RepBot', isBot: true),
 );
+
+/// A goal of [kind] for [exercise], titled [title], set with [characterId].
+FeedbackGoal _goal(
+  ExerciseType exercise, {
+  GoalKind kind = GoalKind.reps,
+  int target = 22,
+  String title = '푸쉬업 22회 인정받기',
+  String characterId = 'kangaroo',
+}) => FeedbackGoal(
+  exercise: exercise,
+  kind: kind,
+  target: target,
+  baseline: target - 2,
+  title: title,
+  setAt: DateTime(2026, 11, 17, 14),
+  characterId: characterId,
+  fromMatch: 'report-1',
+);
+
+/// The app's auth with account 1 signed in.
+Future<AuthViewModel> _signedIn() async {
+  final repository = ScriptedAuthRepository();
+  await repository.logIn(loginId: 'woohyun', password: 'pw');
+  return AuthViewModel(repository: repository);
+}
+
+/// A goal store whose reads wait for [release].
+class _SlowGoalStore extends MemoryGoalStore {
+  final release = Completer<void>();
+
+  @override
+  Future<FeedbackGoal?> read(int accountId, ExerciseType exercise) async {
+    await release.future;
+    return super.read(accountId, exercise);
+  }
+}
 
 void main() {
   // The app's own fonts, so the rules card and the names measure as on a
@@ -66,6 +109,9 @@ void main() {
     BattleCharacters? characters,
     double textScale = 1,
     double top = 0,
+    GoalStore? goals,
+    AuthViewModel? auth,
+    bool settle = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -84,13 +130,25 @@ void main() {
             child: child,
           );
     // The app's character choice above the app, as main.dart has it.
-    Widget app(Widget child) => withSettings(
-      chosen == null
-          ? child
-          : ChangeNotifierProvider<CharacterViewModel>.value(
-              value: chosen,
-              child: child,
-            ),
+    Widget withGoals(Widget child) => goals == null
+        ? child
+        : MultiProvider(
+            providers: [
+              Provider<GoalStore>.value(value: goals),
+              if (auth != null)
+                ChangeNotifierProvider<AuthViewModel>.value(value: auth),
+            ],
+            child: child,
+          );
+    Widget app(Widget child) => withGoals(
+      withSettings(
+        chosen == null
+            ? child
+            : ChangeNotifierProvider<CharacterViewModel>.value(
+                value: chosen,
+                child: child,
+              ),
+      ),
     );
     await tester.pumpWidget(
       app(
@@ -131,6 +189,12 @@ void main() {
       ),
     );
     await tester.tap(find.text('home'));
+    if (!settle) {
+      // Into the page's entrance, before it ends.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      return;
+    }
     await tester.pumpAndSettle();
     if (seeWarning) {
       await tester.tap(warningButton);
@@ -1272,6 +1336,221 @@ void main() {
       await tester.pumpAndSettle();
       await nextMatch(tester);
       expect(find.byType(SafeWarningDialog), findsNothing);
+    });
+  });
+
+  group('the goal card (A11 spec 4)', () {
+    late AuthViewModel auth;
+
+    setUp(() async {
+      auth = await _signedIn();
+      addTearDown(auth.dispose);
+    });
+
+    final card = find.byKey(const ValueKey('goal-card'));
+    final figureBox = find.byKey(const ValueKey('goal-card-figure'));
+
+    /// [finder]'s box in the card's own (unturned) frame.
+    Rect inCard(WidgetTester tester, Finder finder) {
+      final box = tester.renderObject<RenderBox>(finder);
+      final frame = tester.renderObject<RenderBox>(
+        find.ancestor(of: card, matching: find.byType(Stack)).first,
+      );
+      return box.localToGlobal(Offset.zero, ancestor: frame) & box.size;
+    }
+
+    testWidgets("in the rules card's place: the tag, the title, and the "
+        'character the goal was set with in its win pose; no line under '
+        'the title', (tester) async {
+      final chosen = CharacterViewModel(store: MemoryCharacterStore());
+      await chosen.load(1);
+      await chosen.choose('bear');
+      final store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
+      await open(
+        tester,
+        size: const Size(360, 780),
+        goals: store,
+        auth: auth,
+        chosen: chosen,
+      );
+      expect(find.text('경기 규칙'), findsNothing);
+      expect(find.text('이번 판 목표!'), findsOneWidget);
+      expect(
+        find.text(CoachMarkedText.keepWords('푸쉬업 22회 인정받기')),
+        findsOneWidget,
+      );
+      // The card holds the title alone.
+      expect(
+        find.descendant(of: card, matching: find.byType(Text)),
+        findsOneWidget,
+      );
+      final figure = tester.widget<CharacterFigure>(
+        find
+            .descendant(of: figureBox, matching: find.byType(CharacterFigure))
+            .last,
+      );
+      expect((figure.characterId, figure.pose), ('kangaroo', BattlePose.win));
+      expect(figure.scale, 0.62);
+      // The board keeps the character chosen now.
+      expect(
+        tester
+            .widgetList<CharacterFigure>(find.byType(CharacterFigure))
+            .map((f) => f.characterId),
+        contains('bear'),
+      );
+      final title = tester.widget<Text>(
+        find.text(CoachMarkedText.keepWords('푸쉬업 22회 인정받기')),
+      );
+      expect(title.style!.fontFamily, AppFonts.display);
+      expect(title.style!.fontSize, 32);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a screen reader hears the goal and who set it', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
+      await open(tester, goals: store, auth: auth);
+      expect(find.bySemanticsLabel('이번 판 목표, 푸쉬업 22회 인정받기'), findsOneWidget);
+      expect(find.bySemanticsLabel('목표를 함께 정한 캐릭터 그루'), findsOneWidget);
+      semantics.dispose();
+    });
+
+    for (final id in const ['mouse', 'kangaroo', 'bear', 'penguin', 'seal']) {
+      testWidgets("the character's box stays inside the card: $id", (
+        tester,
+      ) async {
+        final store = MemoryGoalStore()
+          ..goals[(1, ExerciseType.pushUp)] = _goal(
+            ExerciseType.pushUp,
+            characterId: id,
+          );
+        await open(
+          tester,
+          size: const Size(360, 780),
+          goals: store,
+          auth: auth,
+          top: 24,
+        );
+        final cardRect = inCard(tester, card);
+        final boxRect = inCard(tester, figureBox);
+        expect(boxRect.size, const Size(90, 99));
+        expect(cardRect.contains(boxRect.topLeft), isTrue);
+        expect(cardRect.contains(boxRect.bottomRight), isTrue);
+        // What the character draws past its box is cut off.
+        expect(tester.widget(figureBox), isA<ClipRect>());
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    for (final (name, size, scale) in [
+      ('a small phone', const Size(360, 640), 1.0),
+      ('large system text on a Galaxy S22', const Size(360, 780), 1.3),
+    ]) {
+      testWidgets('$name: the goal card fits, its title keeps clear of the '
+          'character, and the setup can start', (tester) async {
+        const title = '후반 15초에 10회 이상';
+        final store = MemoryGoalStore()
+          ..goals[(1, ExerciseType.pushUp)] = _goal(
+            ExerciseType.pushUp,
+            kind: GoalKind.lateReps,
+            target: 10,
+            title: title,
+            characterId: 'bear',
+          );
+        await open(
+          tester,
+          size: size,
+          top: 26,
+          textScale: scale,
+          goals: store,
+          auth: auth,
+        );
+        expect(tester.takeException(), isNull);
+        final cardRect = inCard(tester, card);
+        final boxRect = inCard(tester, figureBox);
+        expect(cardRect.contains(boxRect.topLeft), isTrue);
+        expect(cardRect.contains(boxRect.bottomRight), isTrue);
+        final words = inCard(
+          tester,
+          find.text(CoachMarkedText.keepWords(title)),
+        );
+        expect(words.right, lessThanOrEqualTo(boxRect.left));
+        expect(cardRect.contains(words.bottomRight), isTrue);
+        expect(find.text('자세 세팅 시작').hitTestable(), findsOneWidget);
+      });
+    }
+
+    testWidgets('an id not in the list draws the mouse', (tester) async {
+      final store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(
+          ExerciseType.pushUp,
+          characterId: 'dragon',
+        );
+      await open(tester, goals: store, auth: auth);
+      expect(
+        tester
+            .widget<CharacterFigure>(
+              find
+                  .descendant(
+                    of: figureBox,
+                    matching: find.byType(CharacterFigure),
+                  )
+                  .last,
+            )
+            .characterId,
+        'mouse',
+      );
+    });
+
+    testWidgets("another exercise's goal leaves the rules card", (
+      tester,
+    ) async {
+      final store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.squat)] = _goal(ExerciseType.squat);
+      await open(tester, goals: store, auth: auth);
+      expect(find.text('경기 규칙'), findsOneWidget);
+      expect(card, findsNothing);
+    });
+
+    testWidgets('the screen waits hidden while the goal is read, so the '
+        'rules card never shows before the goal card', (tester) async {
+      final slow = _SlowGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
+      await open(tester, goals: slow, auth: auth, settle: false);
+      Opacity around() => tester.widget<Opacity>(
+        find
+            .ancestor(of: find.text('자세 세팅 시작'), matching: find.byType(Opacity))
+            .first,
+      );
+      expect(around().opacity, 0);
+      slow.release.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(around().opacity, 1);
+      expect(card, findsOneWidget);
+      expect(find.text('경기 규칙'), findsNothing);
+      await tester.pumpAndSettle();
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+      expect(find.text('자세 세팅 시작').hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('a read slower than 300 ms shows the rules card; a goal '
+        'that comes later stays away', (tester) async {
+      final slow = _SlowGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
+      await open(tester, goals: slow, auth: auth);
+      await tester.pump(GoalsOnce.readLimit);
+      expect(find.text('경기 규칙'), findsOneWidget);
+      expect(find.text('자세 세팅 시작').hitTestable(), findsOneWidget);
+      slow.release.complete();
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
+      expect(find.text('경기 규칙'), findsOneWidget);
     });
   });
 }

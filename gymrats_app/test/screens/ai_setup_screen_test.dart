@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
@@ -11,8 +14,59 @@ import 'package:gymrats_app/viewmodels/home_viewmodel.dart';
 import 'package:gymrats_app/widgets/accent_button.dart';
 import 'package:gymrats_app/widgets/lobby_parts.dart';
 import 'package:provider/provider.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/services/feedback/goal_store.dart';
+import 'package:gymrats_app/services/user/character_store.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/widgets/exercise_sheet.dart';
 
+import '../support/auth_fakes.dart';
 import '../support/fakes.dart';
+import '../widgets/battle_test_support.dart' show loadBattleFonts;
+
+/// The squat goal of the tests: 20 counted reps, set with the seal after 18.
+final _squatGoal = FeedbackGoal(
+  exercise: ExerciseType.squat,
+  kind: GoalKind.reps,
+  target: 20,
+  baseline: 18,
+  title: '스쿼트 20회 인정받기',
+  setAt: DateTime(2026, 11, 17, 14),
+  characterId: 'seal',
+  fromMatch: 'report-1',
+);
+
+/// A goal of [kind] and [target], for the summary line.
+FeedbackGoal _goalOf(GoalKind kind, int target) => FeedbackGoal(
+  exercise: ExerciseType.squat,
+  kind: kind,
+  target: target,
+  baseline: 0,
+  title: 'x',
+  setAt: DateTime(2026, 11, 17),
+  characterId: 'seal',
+  fromMatch: 'r',
+);
+
+/// The app's auth with account 1 signed in.
+Future<AuthViewModel> _signedIn() async {
+  final repository = ScriptedAuthRepository();
+  await repository.logIn(loginId: 'woohyun', password: 'pw');
+  return AuthViewModel(repository: repository);
+}
+
+/// A goal store whose reads wait for [release].
+class _SlowGoalStore extends MemoryGoalStore {
+  final release = Completer<void>();
+
+  @override
+  Future<FeedbackGoal?> read(int accountId, ExerciseType exercise) async {
+    await release.future;
+    return super.read(accountId, exercise);
+  }
+}
 
 void main() {
   late FakeUserRepository repository;
@@ -33,6 +87,9 @@ void main() {
   Future<HomeViewModel> open(
     WidgetTester tester, {
     Size size = const Size(412, 915),
+    GoalStore? goals,
+    AuthViewModel? auth,
+    CharacterViewModel? characters,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -43,8 +100,17 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
-        home: ChangeNotifierProvider.value(
-          value: vm,
+        home: MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: vm),
+            if (goals != null) Provider<GoalStore>.value(value: goals),
+            if (auth != null)
+              ChangeNotifierProvider<AuthViewModel>.value(value: auth),
+            if (characters != null)
+              ChangeNotifierProvider<CharacterViewModel>.value(
+                value: characters,
+              ),
+          ],
           child: const AiSetupScreen(),
         ),
         routes: {
@@ -272,4 +338,303 @@ void main() {
       expect(find.text('대결 시작').hitTestable(), findsOneWidget);
     });
   }
+
+  group('the goal (A11 spec 3)', () {
+    late AuthViewModel auth;
+    late MemoryGoalStore store;
+
+    setUp(() async {
+      auth = await _signedIn();
+      addTearDown(auth.dispose);
+      store = MemoryGoalStore()..goals[(1, ExerciseType.squat)] = _squatGoal;
+    });
+
+    Finder sticker() => find.byType(GoalSticker);
+    final rowLabel = find.text('이번 판 목표 · 물렁범과 정함');
+
+    testWidgets('a sticker only on the exercise with a goal, over its top '
+        'right corner, turned 6°; its best stays', (tester) async {
+      await open(tester, goals: store, auth: auth);
+      await tester.pump();
+      expect(sticker(), findsOneWidget);
+      expect(
+        find.descendant(of: sticker(), matching: find.text('목표 20회')),
+        findsOneWidget,
+      );
+      final card = tester.getRect(optionOf('스쿼트'));
+      final frame = find.ancestor(
+        of: sticker(),
+        matching: find.byType(GoalStickerFrame),
+      );
+      expect(tester.getRect(frame), card);
+      final sticking = tester.getRect(
+        find.ancestor(of: sticker(), matching: find.byType(Positioned)).first,
+      );
+      expect(sticking.right, closeTo(card.right + 8, 0.01));
+      expect(sticking.top, closeTo(card.top - 12, 0.01));
+      final turn = tester.widget<Transform>(
+        find.descendant(of: sticker(), matching: find.byType(Transform)).first,
+      );
+      expect(
+        math.atan2(turn.transform.entry(1, 0), turn.transform.entry(0, 0)),
+        closeTo(6 * math.pi / 180, 1e-6),
+      );
+      final pill = tester.widget<Container>(
+        find.descendant(of: sticker(), matching: find.byType(Container)),
+      );
+      final look = pill.decoration! as BoxDecoration;
+      expect(look.color, AppColors.accent);
+      expect(look.border, Border.all(color: AppColors.ink, width: 2));
+      // The card's own best is still there.
+      expect(find.text('기록 없음'), findsOneWidget);
+    });
+
+    testWidgets('the goal row shows only for the chosen exercise with a goal, '
+        'with the character it was set with, also after a change of '
+        'character', (tester) async {
+      final characters = CharacterViewModel(store: MemoryCharacterStore());
+      await characters.load(1);
+      await characters.choose('bear');
+      await open(tester, goals: store, auth: auth, characters: characters);
+      await tester.pump();
+      // Push-ups are chosen and have no goal.
+      expect(rowLabel, findsNothing);
+      await tester.tap(optionOf('스쿼트'));
+      await tester.pump();
+      expect(rowLabel, findsOneWidget);
+      expect(find.text('스쿼트 20회 인정받기'), findsOneWidget);
+      expect(find.text('지난 18'), findsOneWidget);
+      final face = tester.widget<CharacterFigure>(
+        find.descendant(
+          of: find.byKey(const ValueKey('goal-row-face')),
+          matching: find.byType(CharacterFigure),
+        ),
+      );
+      expect(face.characterId, 'seal');
+      expect(face.scale, 0.62);
+      expect(characters.characterId, 'bear');
+      // Under the cards, 12 below them.
+      final cards = tester.getRect(optionOf('스쿼트'));
+      final row = tester.getRect(
+        find.ancestor(of: rowLabel, matching: find.byType(Container)).first,
+      );
+      expect(row.top, closeTo(cards.bottom + 12, 0.01));
+      expect(
+        tester.getSize(find.byKey(const ValueKey('goal-row-face'))),
+        const Size(46, 46),
+      );
+      await tester.tap(optionOf('푸쉬업'));
+      await tester.pump();
+      expect(rowLabel, findsNothing);
+    });
+
+    testWidgets('the line under 대결 시작 ends in the goal', (tester) async {
+      final vm = await open(tester, goals: store, auth: auth);
+      await tester.pump();
+      vm.chooseBotExercise(ExerciseType.squat);
+      await tester.pump();
+      expect(find.text('스쿼트 · RepBot 중수 · 30초 대결 · 목표 20회'), findsOneWidget);
+      vm.chooseBotExercise(ExerciseType.pushUp);
+      await tester.pump();
+      expect(find.text('푸쉬업 · RepBot 중수 · 30초 대결'), findsOneWidget);
+    });
+
+    test('the summary words of each kind', () {
+      expect(AiSetupScreen.summaryGoal(null), '');
+      expect(
+        AiSetupScreen.summaryGoal(_goalOf(GoalKind.reps, 20)),
+        ' · 목표 20회',
+      );
+      expect(
+        AiSetupScreen.summaryGoal(_goalOf(GoalKind.lateReps, 8)),
+        ' · 목표 후반 8회',
+      );
+      expect(
+        AiSetupScreen.summaryGoal(_goalOf(GoalKind.combo, 5)),
+        ' · 목표 콤보 5',
+      );
+      expect(
+        AiSetupScreen.summaryGoal(_goalOf(GoalKind.maxRejects, 2)),
+        ' · 목표 무효 2회 이하',
+      );
+    });
+
+    testWidgets('a screen reader hears the goal with its exercise and on the '
+        'row', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final vm = await open(tester, goals: store, auth: auth);
+      vm.chooseBotExercise(ExerciseType.squat);
+      await tester.pump();
+      expect(
+        find.bySemanticsLabel('스쿼트, 기록 없음, 이번 판 목표 스쿼트 20회 인정받기'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel('이번 판 목표 스쿼트 20회 인정받기, 물렁범과 정함, 지난 판 18'),
+        findsOneWidget,
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('while the goals are read, the cards and what is under them '
+        'wait hidden; they come with the row at once, read once', (
+      tester,
+    ) async {
+      final slow = _SlowGoalStore()
+        ..goals[(1, ExerciseType.squat)] = _squatGoal;
+      final vm = await open(tester, goals: slow, auth: auth);
+      vm.chooseBotExercise(ExerciseType.squat);
+      await tester.pump();
+      Opacity around(Finder finder) => tester.widget<Opacity>(
+        find.ancestor(of: finder, matching: find.byType(Opacity)).first,
+      );
+      expect(around(find.text('대결 시작')).opacity, 0);
+      expect(around(find.text('스쿼트')).opacity, 0);
+      expect(rowLabel, findsNothing);
+      // The header does not wait.
+      expect(
+        find.ancestor(of: find.text('AI 1v1'), matching: find.byType(Opacity)),
+        findsNothing,
+      );
+      slow.release.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(rowLabel, findsOneWidget);
+      expect(
+        find.ancestor(of: find.text('대결 시작'), matching: find.byType(Opacity)),
+        findsNothing,
+      );
+      expect(find.text('대결 시작').hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('a read slower than 300 ms shows the page without the goal; '
+        'a goal that comes later stays away', (tester) async {
+      final slow = _SlowGoalStore()
+        ..goals[(1, ExerciseType.squat)] = _squatGoal;
+      final vm = await open(tester, goals: slow, auth: auth);
+      vm.chooseBotExercise(ExerciseType.squat);
+      final hidden = find.ancestor(
+        of: find.text('대결 시작'),
+        matching: find.byType(Opacity),
+      );
+      await tester.pump(GoalsOnce.readLimit - const Duration(milliseconds: 1));
+      expect(hidden, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(hidden, findsNothing);
+      expect(find.text('대결 시작').hitTestable(), findsOneWidget);
+      expect(sticker(), findsNothing);
+      slow.release.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(sticker(), findsNothing);
+      expect(rowLabel, findsNothing);
+    });
+
+    testWidgets('without a signed-in account nothing waits and nothing shows', (
+      tester,
+    ) async {
+      await open(tester, goals: store);
+      expect(sticker(), findsNothing);
+      expect(
+        find.ancestor(of: find.text('대결 시작'), matching: find.byType(Opacity)),
+        findsNothing,
+      );
+    });
+
+    group('with the app fonts', () {
+      setUpAll(loadBattleFonts);
+
+      /// Opens on squats, whose goal of [title] shows its row, on a 360 x 780
+      /// phone with system bars of [bars].
+      Future<ScrollPosition> openTall(
+        WidgetTester tester,
+        String title,
+        FakeViewPadding bars,
+      ) async {
+        tester.view.padding = bars;
+        tester.view.viewPadding = bars;
+        store.goals[(1, ExerciseType.squat)] = FeedbackGoal(
+          exercise: ExerciseType.squat,
+          kind: GoalKind.lateReps,
+          target: 10,
+          baseline: 8,
+          title: title,
+          setAt: DateTime(2026, 11, 17),
+          characterId: 'kangaroo',
+          fromMatch: 'r',
+        );
+        final vm = await open(
+          tester,
+          size: const Size(360, 780),
+          goals: store,
+          auth: auth,
+        );
+        vm.chooseBotExercise(ExerciseType.squat);
+        await tester.pump();
+        return tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      }
+
+      testWidgets('an exercise card is as tall as what it holds (decision 9): '
+          'the name is measured on its one line', (tester) async {
+        await openTall(
+          tester,
+          '스쿼트 20회 인정받기',
+          const FakeViewPadding(top: 24, bottom: 24),
+        );
+        final card = tester.getRect(optionOf('푸쉬업'));
+        final name = tester.getRect(find.text('푸쉬업'));
+        // 12 under the name, as above the drawing.
+        expect(card.bottom, closeTo(name.bottom + 12, 1));
+        expect(card.height, lessThan(100));
+        expect(
+          tester.getSize(
+            find
+                .ancestor(of: find.text('초보'), matching: find.byType(Material))
+                .first,
+          ),
+          const Size(320, 56),
+        );
+      });
+
+      testWidgets('with three-button bars (24 / 48) the page scrolls about '
+          '20 and every option is reached', (tester) async {
+        final scroll = await openTall(
+          tester,
+          '스쿼트 20회 인정받기',
+          const FakeViewPadding(top: 24, bottom: 48),
+        );
+        expect(tester.takeException(), isNull);
+        expect(scroll.maxScrollExtent, lessThanOrEqualTo(24));
+        await tester.dragUntilVisible(
+          find.text('대결 시작'),
+          find.byType(SingleChildScrollView),
+          const Offset(0, -100),
+        );
+        expect(find.text('대결 시작').hitTestable(), findsOneWidget);
+      });
+
+      for (final (name, title) in [
+        ('the design title', '스쿼트 20회 인정받기'),
+        ('a long weak-point title', '후반 15초에 10회 이상'),
+      ]) {
+        testWidgets(
+          'a 360 x 780 phone (S22) with gesture bars does not scroll with '
+          'the goal row: $name',
+          (tester) async {
+            final scroll = await openTall(
+              tester,
+              title,
+              const FakeViewPadding(top: 24, bottom: 24),
+            );
+            expect(find.text(title), findsOneWidget);
+            expect(tester.takeException(), isNull);
+            expect(scroll.maxScrollExtent, 0);
+            // The title keeps to one line.
+            final words = tester.getSize(find.text(title));
+            expect(words.height, lessThan(22 * 1.2 * 1.5));
+          },
+        );
+      }
+    });
+  });
 }
