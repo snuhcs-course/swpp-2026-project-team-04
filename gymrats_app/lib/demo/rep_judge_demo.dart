@@ -2070,6 +2070,11 @@ class _DebugPanel extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Text(
         '${_phaseLabel(snap.phase)}  '
+        '${switch (snap.knee.state) {
+          KneeFrameState.touching => '무릎댐',
+          KneeFrameState.lifted => '무릎뗌',
+          KneeFrameState.occluded => '무릎가려짐',
+        }}  '
         'depth ${snap.depth?.toStringAsFixed(2) ?? '-'}  '
         'elbow ${n(snap.elbowAngle)}°  '
         'tilt ${n(snap.tilt)}°  '
