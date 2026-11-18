@@ -34,6 +34,7 @@
 |Rev.2.8|2026-11-16|6.1 says how cycle 1 was run (in class, testers from other teams, one account per tester, sheet in app-flow order); 6.2 notes the cycle 2 date and the characters; UAT-5 procedure step 3 reads the countdown timer; 6.4 cycle 1 results (73/74 steps, 98.6 %), failure analysis and the changes planned from the comments|
 |Rev.2.9|2026-11-18|5.2: AI module evaluation re-run on main `9841a60` after the setup cue, the character's talk and the person check were merged (same numbers as Iteration 3); 6.4: cycle 2 plan (28 steps in user-flow order, the cycle 1 step UAT-1 step 4 split into B3 and D1, the setup cue wording in the expected results). Acceptance criteria unchanged|
 |Rev.2.10|2026-11-18|5.2: the unified push-up knee rule (build flag `PUSHUP_FRAME_KNEE`, off by default) measured off and on on the frozen set at `a9e6cd4`, and the new supplemental Iteration 4 set (16 coordinate-only cases, push-ups and squats, labels pending, M1–M3 N/A) with its commands. The frozen set and its thresholds unchanged|
+|Rev.2.12|2026-11-18|5.2: the supplemental Iteration 4 set scored with confirmed labels on main `7680df6`, knee rule off and on|
 |Rev.2.11|2026-11-18|4.2: Iteration 4 results on the final main `7680df6` (CI run on main: test counts, skips, coverage per layer; per-member summary from the members' notes, with the PM's notes); 5.2: final re-run of the frozen set on `7680df6` (rule off by default, same numbers as `9841a60`)|
 
 # 2. Overview
@@ -344,8 +345,25 @@ Final re-run (schedule P20) on main after every Iteration 4 pull request was mer
 | M3 Right reason | 59.9 % (124/207) | 63.3 % (131/207) | ≥ 80 % | **fail** |
 
 - The default build gives the same numbers as main `9841a60`, the off run of PR #75 at `a9e6cd4` and the Iteration 3 result after the tuning: with the flag off, the judge's verdicts on the frozen set do not change.
-- **Why the rule stays off:** with the rule on, M1 and M3 rise (one more normal rep counted, seven more rejections with the right reason), but M2 falls below its threshold (seven more incorrect reps not rejected), and the supplemental Iteration 4 set (`gymrats_app/test/ai_eval/cases_iter4/`, 16 cases; evaluator in `gymrats_app/test/ai_eval/iter4/`; reports `gymrats_app/test/ai_eval/results/2026-11-18_pr75_fixed_iter4_{on,off}.md`) has no confirmed labels yet, so its M1–M3 are N/A. Sangwoo Hahn's notes add that Hyunwoo's new clips informed the rule, so that set is not a fresh holdout for it (`docs/testing/iteration-4/Sangwoo-Hahn.md`).
-- **TODO(hyun-1210):** confirm the per-rep labels of the 16 Iteration 4 cases (record sheets of Hyunwoo and Sangwoo), then re-run both modes and add their M1–M3 here before deciding the default of `PUSHUP_FRAME_KNEE` (Iteration 5).
+- **Why the rule stays off:** with the rule on, M1 and M3 rise (one more normal rep counted, seven more rejections with the right reason), but M2 falls below its threshold (seven more incorrect reps not rejected), and the supplemental Iteration 4 set (`gymrats_app/test/ai_eval/cases_iter4/`, 16 cases; evaluator in `gymrats_app/test/ai_eval/iter4/`; reports `gymrats_app/test/ai_eval/results/2026-11-18_pr75_fixed_iter4_{on,off}.md`) now has confirmed labels: with the rule on its M1–M3 rise from 56.7 / 84.0 / 44.0 % to 70.0 / 90.0 / 50.0 % (entry below), but the set is small, not a fresh holdout, and the frozen-set M2 still falls below its threshold. Sangwoo Hahn's notes add that Hyunwoo's new clips informed the rule, so that set is not a fresh holdout for it (`docs/testing/iteration-4/Sangwoo-Hahn.md`).
+- The default of `PUSHUP_FRAME_KNEE` is decided in Iteration 5, after checking why Hyunwoo's clips are judged so much worse than Sangwoo's.
+
+#### 2026-11-18 · code at commit `7680df6` (final main) · supplemental Iteration 4 set with confirmed labels, knee rule off and on
+The recorders (Hyunwoo Song, Sangwoo Hahn) confirmed with the PM that every clip is five repetitions of its filmed scenario, so each case is labelled 5 × its scenario (`valid` for normal and chair, otherwise the reject reason; 80 labelled reps). The labels are in each case file and the record sheets, and the manifest is refreshed (`--verify-only` passes). Frozen-set numbers are the same as in the entry below.
+
+| Supplemental set (16 cases, 80 reps) | M1 rule off | M1 rule on | M2 rule off | M2 rule on | M3 rule off | M3 rule on |
+|---|---|---|---|---|---|---|
+| All | 56.7 % | 70.0 % | 84.0 % | 90.0 % | 44.0 % | 50.0 % |
+| Push-up (8 cases) | 60.0 % | 100.0 % | 73.3 % | 83.3 % | 40.0 % | 50.0 % |
+| Squat (8 cases) | 55.0 % | 55.0 % | 100.0 % | 100.0 % | 50.0 % | 50.0 % |
+| Hyunwoo (8 cases) | 13.3 % | 40.0 % | 88.0 % | 96.0 % | 12.0 % | 20.0 % |
+| Sangwoo (8 cases) | 100.0 % | 100.0 % | 80.0 % | 84.0 % | 76.0 % | 80.0 % |
+
+- On the new set the knee rule raises all three push-up metrics (M1 60 → 100 %); the squat judge does not use it.
+- The two recorders differ a lot: Sangwoo's clips are judged almost as filmed, while Hyunwoo's normal push-ups and squats are mostly missed (for example 1 of 5 normal squats counted, no event at all on the shallow squats), which points to the phone placement or framing of those clips; to check in Iteration 5.
+- The set is not a fresh holdout for the knee rule (Hyunwoo's push-up clips informed it), and on the frozen set the rule lowers M2 below its threshold, so the default stays off; the decision moves to Iteration 5.
+
+Run by the PM on 2026-11-18 (Windows, Flutter 3.47.5): `flutter test --no-pub --dart-define=PUSHUP_FRAME_KNEE=false test/ai_eval/iter4` and the same with `true`, 13 tests passed each; reports `gymrats_app/test/ai_eval/results/2026-11-18_main-7680df6_iter4_confirmed_{off,on}.{md,json}`.
 
 #### 2026-11-18 · code at commit `a9e6cd4` (the knee-evidence change with main `0a17580` merged in; merged to main as `82113be`) · unified knee rule off and on, and the supplemental Iteration 4 set
 The change adds a unified push-up knee rule behind the build flag `PUSHUP_FRAME_KNEE` (default false; [Design Documentation 2.3.2](Design-Documentation#232-rep-judging-on-device-ai-module)) and a separate supplemental set. Both modes were run on the same code; the frozen set of 5.1 and its scorer are unchanged.
