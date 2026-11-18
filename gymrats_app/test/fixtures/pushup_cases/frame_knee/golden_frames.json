@@ -236,7 +236,8 @@
       ],
       "probability": 0.3135591927845509,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000020",
@@ -473,7 +474,8 @@
       ],
       "probability": 0.36956533869156155,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000033",
@@ -710,7 +712,8 @@
       ],
       "probability": 0.43945846695392177,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000047",
@@ -947,7 +950,8 @@
       ],
       "probability": 0.11573394259368083,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000060",
@@ -1184,7 +1188,8 @@
       ],
       "probability": 0.32307430752383964,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000066",
@@ -1421,7 +1426,8 @@
       ],
       "probability": 0.3641507979989402,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000072",
@@ -1658,7 +1664,8 @@
       ],
       "probability": 0.12792507968627845,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000078",
@@ -1895,7 +1902,8 @@
       ],
       "probability": 0.13920879544693618,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "OLD-O001__f000085",
@@ -2132,7 +2140,8 @@
       ],
       "probability": 0.21875757630965295,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000091",
@@ -2369,7 +2378,8 @@
       ],
       "probability": 0.4145664586475694,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "lifted",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "OLD-O001__f000094",
@@ -2606,7 +2616,8 @@
       ],
       "probability": 0.5179797749996835,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "OLD-O001__f000101",
@@ -2843,7 +2854,8 @@
       ],
       "probability": 0.16620196757414696,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "Q00003772__f000006",
@@ -3080,7 +3092,8 @@
       ],
       "probability": 0.6604319432038586,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00050213__f000014",
@@ -3317,7 +3330,8 @@
       ],
       "probability": 0.6748775945586857,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00061161__f000036",
@@ -3554,7 +3568,8 @@
       ],
       "probability": 0.8886849769215278,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00061161__f000050",
@@ -3791,7 +3806,8 @@
       ],
       "probability": 0.5915929103312758,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00061161__f000066",
@@ -4028,7 +4044,8 @@
       ],
       "probability": 0.5544583925039631,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00061161__f000082",
@@ -4265,7 +4282,8 @@
       ],
       "probability": 0.876219645965524,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00061161__f000096",
@@ -4502,7 +4520,8 @@
       ],
       "probability": 0.8613009392277587,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00061161__f000102",
@@ -4739,7 +4758,8 @@
       ],
       "probability": 0.8886849769215278,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00061161__f000116",
@@ -4976,7 +4996,8 @@
       ],
       "probability": 0.5746882586738514,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00061161__f000130",
@@ -5213,7 +5234,8 @@
       ],
       "probability": 0.628890247353153,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00061161__f000144",
@@ -5450,7 +5472,8 @@
       ],
       "probability": 0.9072988636844445,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00061161__f000158",
@@ -5687,7 +5710,8 @@
       ],
       "probability": 0.8397073344855972,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00092227__f000058",
@@ -5924,7 +5948,8 @@
       ],
       "probability": 0.6768070706702468,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00092227__f000074",
@@ -6161,7 +6186,8 @@
       ],
       "probability": 0.664831278850791,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00101452__f000012",
@@ -6398,7 +6424,8 @@
       ],
       "probability": 0.9341495438488144,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00101452__f000036",
@@ -6635,7 +6662,8 @@
       ],
       "probability": 0.8997293128083687,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00104604__f000106",
@@ -6872,7 +6900,8 @@
       ],
       "probability": 0.6711471427396202,
       "expected_state": "kneesDown",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "Q00108742__f000072",
@@ -7109,7 +7138,8 @@
       ],
       "probability": 0.6732011107163458,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00109100__f000074",
@@ -7346,7 +7376,8 @@
       ],
       "probability": 0.6749420032074802,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00140177__f000056",
@@ -7583,7 +7614,8 @@
       ],
       "probability": 0.6703214172981351,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00140177__f000104",
@@ -7820,7 +7852,8 @@
       ],
       "probability": 0.6707967050421682,
       "expected_state": "kneesDown",
-      "app_expected_state": "touching"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "touching"
     },
     {
       "key": "Q00177390__f000010",
@@ -8057,7 +8090,8 @@
       ],
       "probability": 0.6587202795678891,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00179643__f000140",
@@ -8295,7 +8329,8 @@
       ],
       "probability": 0.6593629754045954,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00203989__f000168",
@@ -8532,7 +8567,8 @@
       ],
       "probability": 0.6620241299858636,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00256338__f000116",
@@ -8769,7 +8805,8 @@
       ],
       "probability": 0.679705892733154,
       "expected_state": "kneesDown",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "Q00256338__f000156",
@@ -9006,7 +9043,8 @@
       ],
       "probability": 0.6691989309562296,
       "expected_state": "kneesUp",
-      "app_expected_state": "occluded"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "occluded"
     },
     {
       "key": "Q00274573__f000028",
@@ -9243,7 +9281,8 @@
       ],
       "probability": 0.6651888555146601,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "touching",
+      "legacy_app_expected_state": "lifted"
     },
     {
       "key": "Q00274573__f000130",
@@ -9480,8 +9519,10 @@
       ],
       "probability": 0.6682752917754978,
       "expected_state": "kneesUp",
-      "app_expected_state": "lifted"
+      "app_expected_state": "occluded",
+      "legacy_app_expected_state": "lifted"
     }
   ],
-  "app_rejection_threshold": 0.67
+  "app_rejection_threshold": 0.67,
+  "app_policy": "unified-v2:12joint confidence; frontal arm mean>=150; gray(0.33,positive cutoff] needs bilateral shin corroboration; otherwise unavailable. Numeric goldens unchanged."
 }

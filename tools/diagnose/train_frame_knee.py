@@ -1,4 +1,9 @@
-"""Train a causal single-frame knee model from the existing paired-pose corpus.
+"""Train the historical v1 single-frame forest from the paired-pose corpus.
+
+This helper retains v1 binary selection/observability for model reproduction.
+The current unified Dart policy additionally checks all 12 feature joints,
+frontal arm-view reliability and gray-score bilateral corroboration. Old
+binary training scores are not measurements of that newer runtime policy.
 
 Each row contains one actual ML Kit Accurate frame and 48 geometric features.
 Clip labels are inherited weak labels. Grouped development predictions select
@@ -57,7 +62,7 @@ def visible(record, joints):
 
 
 def app_observable(record):
-    """Mirror KneeFrameClassifier's eight-support-joint and torso gate."""
+    """Historical v1 eight-joint/torso gate, not the current unified API."""
     if not visible(record, (15, 16, 23, 24, 25, 26, 27, 28)):
         return False
     points = record["points"]

@@ -28,6 +28,10 @@ void main() {
 
   RepJudge judge({RepJudgeConfig config = fast}) =>
       RepJudge(config: config, clock: () => now);
+  // Keep old geometric behavior covered only as the explicit comparison mode.
+  // The default unified policy is exercised by continuous-observation tests.
+  RepJudge legacyJudge({RepJudgeConfig config = fast}) =>
+      RepJudge(config: config, clock: () => now, useFrameKnee: false);
 
   setUp(() => now = Duration.zero);
 
@@ -158,6 +162,25 @@ void main() {
       ready(KneeFrameState.touching);
       classifier.state = KneeFrameState.occluded;
       expect(perform(counter, 400).event!.reason, RejectReason.kneesDown);
+    });
+
+    test('partial-cycle knee feedback also uses the shared support mode', () {
+      ready(KneeFrameState.touching);
+      for (final ms in [400, 500, 600]) {
+        at(counter, ms, pose(depth: .33, shoulderDrop: .20, elbow: 130));
+      }
+      expect(at(counter, 850, pose()).event!.reason, RejectReason.kneesDown);
+    });
+
+    test('unconfirmed partial-cycle support stays a depth fault', () {
+      ready(KneeFrameState.lifted);
+      for (final ms in [400, 500, 600]) {
+        at(counter, ms, pose(depth: .33, shoulderDrop: .20, elbow: 130));
+      }
+      expect(
+        at(counter, 850, pose()).event!.reason,
+        RejectReason.insufficientDepth,
+      );
     });
 
     test('touching only during and after a rep cannot supply preparation', () {
@@ -511,9 +534,9 @@ void main() {
     },
   );
 
-  test('a small dip reports supported knees or sustained tilt before shallow depth', () {
+  test('legacy comparison: small dips report support or sustained tilt', () {
     RepEvent verdict({required int supportedFrames, required double tilt}) {
-      final c = judge();
+      final c = legacyJudge();
       calibrate(c);
       for (var i = 0; i < 3; i++) {
         at(
@@ -670,13 +693,13 @@ void main() {
     }
   });
 
-  test('partial rep feedback uses observed knee support and elbow angle', () {
+  test('legacy comparison: partial feedback uses support and elbow angle', () {
     RepEvent partial({
       required bool visibleTopHips,
       required bool supported,
       required double elbow,
     }) {
-      final c = judge();
+      final c = legacyJudge();
       final top = pushUpFrame(
         lowerBody: {
           if (visibleTopHips) ...{
@@ -1312,7 +1335,9 @@ void main() {
     expect(at(c, 400, pose(depth: 0.6)).snapshot.depth, closeTo(0.6, 0.01));
   });
 
-  group('cheats, judged only when seen', () {
+  group('legacy geometry comparison, judged only when seen', () {
+    RepJudge judge({RepJudgeConfig config = fast}) =>
+        legacyJudge(config: config);
     // Shoulders of pushUpFrame are at y = 400, 200 px apart.
     const leftX = 400.0;
     const rightX = 600.0;
@@ -2181,6 +2206,26 @@ void main() {
       at(c, 900, hipFrame(160, depth: 1.4, elbow: 120));
       final update = at(c, 1300, hipFrame(170));
       expect(update.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('unified lifted evidence overrides a legacy one-frame hip latch', () {
+      final classifier = _FrameKneeFake()..state = KneeFrameState.lifted;
+      final c = RepJudge(
+        config: noBow,
+        clock: () => now,
+        useFrameKnee: true,
+        kneeClassifier: classifier,
+      );
+      at(c, 0, hipFrame(170));
+      at(c, 150, hipFrame(170));
+      at(c, 300, hipFrame(170));
+      at(c, 400, hipFrame(135));
+      at(c, 600, hipFrame(160, depth: .6, elbow: 140));
+      at(c, 900, hipFrame(160, depth: 1.4, elbow: 120));
+      final result = at(c, 1300, hipFrame(170));
+      expect(result.event, isNotNull);
+      expect(result.event!.valid, isTrue);
+      expect(result.event!.reason, isNull);
     });
 
     test('three normal tops tighten the knee line', () {

@@ -361,7 +361,8 @@ class RepJudge {
     this.useKneeForest = const bool.fromEnvironment('PUSHUP_KNEE_FOREST'),
     this.useFrameKnee = const bool.fromEnvironment(
       'PUSHUP_FRAME_KNEE',
-      defaultValue: true,
+      // Pending confirmed Iteration4 per-rep labels and on/off benefit review.
+      defaultValue: false,
     ),
     KneeFrameClassifier? kneeClassifier,
   }) : useMlp = useMlp || useKneeForest,
@@ -632,9 +633,30 @@ class RepJudge {
                     : 165,
               ),
           lockoutAngle: config.lockoutArmAngle,
+          kneeSupport: useFrameKnee
+              ? _frameKneeEvidence.matchesCompletedAttempt
+              : null,
         );
         head = RepUpdate(snapshot: head.snapshot, event: calibrated);
       }
+    }
+    var spanReason = cycle == null
+        ? null
+        : _spanHistory.reasonFor(
+            start: cycle.start,
+            bottom: cycle.bottom,
+            end: cycle.end,
+            phoneAngleDegrees: switch (_spanDetector.band) {
+              PushupPhoneBand.near60 => 60,
+              PushupPhoneBand.near80 => 80,
+              PushupPhoneBand.unknown => null,
+            },
+          );
+    if (useFrameKnee &&
+        spanReason == RejectReason.kneesDown &&
+        !_frameKneeEvidence.matchesCompletedAttempt) {
+      // A projected span cannot independently establish floor contact.
+      spanReason = null;
     }
     final extra = _spanArbiter.update(
       now,
@@ -643,18 +665,7 @@ class RepJudge {
       // arm span recovers while the main phase already reports "up".
       primaryAttemptStarted: openPrimaryAttempt,
       cycle: cycle,
-      reason: cycle == null
-          ? null
-          : _spanHistory.reasonFor(
-              start: cycle.start,
-              bottom: cycle.bottom,
-              end: cycle.end,
-              phoneAngleDegrees: switch (_spanDetector.band) {
-                PushupPhoneBand.near60 => 60,
-                PushupPhoneBand.near80 => 80,
-                PushupPhoneBand.unknown => null,
-              },
-            ),
+      reason: spanReason,
     );
     if (extra == null) return head;
     return RepUpdate(
@@ -819,6 +830,9 @@ class RepJudge {
         elbow,
         raw,
         _nextIndex,
+        kneeSupport: useFrameKnee
+            ? _frameKneeEvidence.matchesCompletedAttempt
+            : null,
       );
       if (event != null) _nextIndex++;
     }
@@ -1142,6 +1156,7 @@ class RepJudge {
   /// consecutive frames, either folded or sitting next to the hands, or the
   /// hips sat back in a kneeling bow.
   bool _kneesDown() {
+    if (useFrameKnee) return _frameKneeEvidence.matchesCompletedAttempt;
     final frames = config.minCheatFrames;
     return _kneesLatched ||
         _kneeBentFrames >= frames ||
@@ -1412,8 +1427,9 @@ class _ShortCycleFeedback {
     double? chest,
     double? elbow,
     PoseMetrics raw,
-    int index,
-  ) {
+    int index, {
+    bool? kneeSupport,
+  }) {
     final atTop = depth <= _entryDepth / 2;
     if (_started == null) {
       if (atTop && elbow != null && elbow >= config.topAngle) _topElbow = elbow;
@@ -1464,13 +1480,13 @@ class _ShortCycleFeedback {
             at: now,
             valid: false,
             reason: _refinePartial(
-              _supported
+              (kneeSupport ?? _supported)
                   ? RejectReason.kneesDown
                   : _shallowReason(_maxTilt, _minElbow),
               maxDepth: _peakDepth,
               minElbow: _minElbow,
               maxTilt: _maxTilt,
-              supportedKnee: _supported ? true : null,
+              supportedKnee: kneeSupport ?? (_supported ? true : null),
             ),
             maxDepth: _peakDepth,
             minElbowAngle: _minElbow,
@@ -1746,6 +1762,7 @@ RepEvent calibratePushupPrimary(
   List<double?>? values, {
   required bool observedReturn,
   double lockoutAngle = 172,
+  bool? kneeSupport,
 }) {
   if (values == null ||
       values.length != 96 ||
@@ -1798,7 +1815,8 @@ RepEvent calibratePushupPrimary(
       shoulders != null &&
       shoulders >= .28) {
     visibleFault = RejectReason.shouldersNotLevel;
-  } else if (knee != null &&
+  } else if (kneeSupport != false &&
+      knee != null &&
       knee < 140 &&
       hip != null &&
       hip < 147 &&

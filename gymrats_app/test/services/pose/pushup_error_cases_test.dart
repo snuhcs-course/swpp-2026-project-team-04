@@ -155,10 +155,7 @@ const endpointKnownVerdicts = <String, List<String>>{
 };
 
 void main() {
-  const endpointEnabled = bool.fromEnvironment(
-    'PUSHUP_FRAME_KNEE',
-    defaultValue: true,
-  );
+  final endpointEnabled = RepJudge().useFrameKnee;
   group('recorded push-up cases', () {
     final cases = loadPushUpCases();
 

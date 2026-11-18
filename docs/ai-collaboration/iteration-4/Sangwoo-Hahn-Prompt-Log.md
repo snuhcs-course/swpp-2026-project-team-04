@@ -327,3 +327,58 @@ The following exact visible inputs cover the state-retention decision and public
 ```text
 좋아. 연속 3프레임 기준으로 수정하고, 2번 평가 수치도 PR #75에 반영해서 커밋하고 푸시해줘.
 ```
+
+
+## Knee audit, unified policy and supplemental evaluation publication, 2026-11-18
+
+Selected visible user inputs for this phase are preserved below. Forwarded PM
+instructions are user-provided task context, not a fabricated assistant prompt.
+No assistant transcript, credentials or unrelated chat was exported.
+
+```text
+무릎 판정기 전체를 다시 검토해줘.
+```
+
+```text
+그럼 제안한 방식으로 무릎 판정기를 통합해서 수정하고, gymrats-recordings-1118 영상들로 다시 테스트해줘. 커밋과 푸시는 아직 하지 말고.
+```
+
+```text
+"C:\Users\sangw\OneDrive\\\_서울대학교\3 - 2\소개원실\gymrats-recordings-1118\2_hyunwoo_1407-1409"만 사용해줘.
+```
+
+```text
+이 형태를 PR 75로 올려주고, "C:\Users\sangw\OneDrive\\\_서울대학교\3 - 2\소개원실\gymrats-recordings-1118\2_hyunwoo_1407-1409"
+"C:\Users\sangw\OneDrive\\\_서울대학교\3 - 2\소개원실\gymrats-recordings-1118\sangwoo"를 AI eval dataset으로 오려줘.
+```
+
+```text
+다음 지시사항을 참고해서 작업해줘.
+
+상우야 #75 머지하려고 하는데, 같이 올려줬으면 하는 게 있어!
+
+1. 새 테스트 세트 (오늘 11/18 촬영 16개: 진영이형 8 + 현우 8, 푸시업 4동작 + 스쿼트 4동작)
+   - 영상 zip은 따로 보낼게 (gymrats-recordings-1118.zip)
+   - 영상 → 좌표 JSON 변환해서, 고정 세트(test/ai_eval/cases)는 건드리지 말고 새 폴더로 (예: test/ai_eval/cases_iter4/<사람>/)
+   - 사람별 record-sheet.md(회당 라벨)도 같이. 실제 횟수는 진영이형이랑 내가 채워서 줄게
+   - repo가 공개라 mp4는 올리지 말고 좌표 JSON만!
+
+2. AI 평가 코드
+   - 지금 ai_eval은 푸시업 고정 세트만 보니까, 새 세트도 같은 M1/M2/M3로 따로 나오게
+   - 스쿼트 4동작(정상/얕은/안 일어서기/의자)도 채점되게 (스쿼트 기준 정의 포함)
+   - 결과를 test/ai_eval/results/ 에 남겨줘: 고정 세트 + 새 세트, 무릎 규칙 켜고/끄고
+
+3. 무릎 규칙 기본값
+   - 고정 세트에서는 켜면 M1 79.4 → 77.8(정상 1회 오거부)이라, 새 세트에서 켜는 게 이득일 때만 기본 켜짐으로 하자
+   - 새 세트에서도 이득이 없으면 PUSHUP_FRAME_KNEE 기본 false로
+
+#75에 같이 넣어도 되고, 양이 많으면 #75 먼저 머지하고 바로 뒤에 새 PR(test/ai_eval_iter4)로 올려도 돼. 편한 쪽으로 말해줘!
+```
+
+```text
+현우 8개 + sangwoo 8개 — 앞서 지정한 폴더 기준
+```
+
+```text
+깊이와 완전 기립을 충족하면 인정
+```

@@ -29,12 +29,21 @@ class KneeFrameClassifier {
   KneeFrameClassifier({
     double? Function(PoseFrame)? probability,
     double? threshold,
+    this.liftedThreshold = .33,
   }) : _probability = probability ?? SingleFrameKneeModel.probability,
        _threshold = threshold ?? SingleFrameKneeModel.rejectionThreshold;
 
   final double? Function(PoseFrame) _probability;
   final double _threshold;
+
+  /// A positive cutoff failing is not affirmative evidence of lifted knees.
+  /// Scores between the two confidence boundaries remain unavailable.
+  final double liftedThreshold;
   static const _supportJoints = <BodyLandmark>[
+    BodyLandmark.leftShoulder,
+    BodyLandmark.rightShoulder,
+    BodyLandmark.leftElbow,
+    BodyLandmark.rightElbow,
     BodyLandmark.leftWrist,
     BodyLandmark.rightWrist,
     BodyLandmark.leftHip,
@@ -65,6 +74,25 @@ class KneeFrameClassifier {
           reason: 'support_joints_unobservable',
         );
       }
+    }
+    final leftArm = angleDegrees(
+      frame[BodyLandmark.leftShoulder],
+      frame[BodyLandmark.leftElbow],
+      frame[BodyLandmark.leftWrist],
+    );
+    final rightArm = angleDegrees(
+      frame[BodyLandmark.rightShoulder],
+      frame[BodyLandmark.rightElbow],
+      frame[BodyLandmark.rightWrist],
+    );
+    // In the supported frontal floor view, the descending torso hides the
+    // support anatomy. Do not let projected joints during this phase assert
+    // a lifted state and clear a previously observed touching posture.
+    if (leftArm == null || rightArm == null || (leftArm + rightArm) / 2 < 150) {
+      return const KneeFrameReading(
+        state: KneeFrameState.occluded,
+        reason: 'support_view_unreliable',
+      );
     }
     final leftShoulder = frame[BodyLandmark.leftShoulder];
     final rightShoulder = frame[BodyLandmark.rightShoulder];
@@ -98,12 +126,55 @@ class KneeFrameClassifier {
         reason: 'model_unavailable',
       );
     }
+    if (probability <= _threshold && probability > liftedThreshold) {
+      final projected = _projectedSupport(frame);
+      if (probability > .5 && projected == KneeFrameState.touching ||
+          probability < .5 && projected == KneeFrameState.lifted) {
+        return KneeFrameReading(
+          state: projected!,
+          touchingProbability: probability,
+          reason: 'corroborated_projection',
+        );
+      }
+      return KneeFrameReading(
+        state: KneeFrameState.occluded,
+        touchingProbability: probability,
+        reason: 'ambiguous_support',
+      );
+    }
     return KneeFrameReading(
       state: probability > _threshold
           ? KneeFrameState.touching
           : KneeFrameState.lifted,
       touchingProbability: probability,
     );
+  }
+
+  /// A corroborating image-space cue, never an independent rep veto.
+  /// Both legs must agree; the gap is normalized by the shoulder span.
+  /// The intervening band abstains rather than asserting physical contact.
+  static KneeFrameState? _projectedSupport(PoseFrame frame) {
+    final leftShoulder = frame[BodyLandmark.leftShoulder]!;
+    final rightShoulder = frame[BodyLandmark.rightShoulder]!;
+    final width = math.sqrt(
+      math.pow(leftShoulder.x - rightShoulder.x, 2) +
+          math.pow(leftShoulder.y - rightShoulder.y, 2),
+    );
+    if (width < 1) return null;
+    final left =
+        (frame[BodyLandmark.leftAnkle]!.y - frame[BodyLandmark.leftKnee]!.y) /
+        width;
+    final right =
+        (frame[BodyLandmark.rightAnkle]!.y - frame[BodyLandmark.rightKnee]!.y) /
+        width;
+    final mean = (left + right) / 2;
+    if (mean <= -.15 && left <= -.08 && right <= -.08) {
+      return KneeFrameState.touching;
+    }
+    if (mean >= -.10 && left >= -.16 && right >= -.16) {
+      return KneeFrameState.lifted;
+    }
+    return null;
   }
 
   static bool _insideImage(Keypoint? point, PoseFrame frame) =>
@@ -154,6 +225,14 @@ class KneeAttemptEvidence {
   Duration? get lastConfirmedAt => _lastConfirmedAt;
   bool get isAttemptActive => _active;
   bool get hasConfirmedTouching => _active && _touchingBeforeAttempt;
+
+  /// The only knee-support predicate consumed by unified repetition paths.
+  bool get matchesCompletedAttempt =>
+      hasConfirmedTouching &&
+      _confirmedState == KneeFrameState.touching &&
+      _attemptBeganAt != null &&
+      _lastAt != null &&
+      _lastAt! > _attemptBeganAt!;
 
   /// Read before the current motion frame is added so touching discovered
   /// during descent cannot be used as preparation for that same repetition.
@@ -206,14 +285,7 @@ class KneeAttemptEvidence {
   /// uses the three-frame confirmed state on a later frame. One or two
   /// opposite readings and hidden frames preserve that state.
   bool finish() {
-    final beganAt = _attemptBeganAt;
-    final at = _lastAt;
-    final touching =
-        hasConfirmedTouching &&
-        _confirmedState == KneeFrameState.touching &&
-        beganAt != null &&
-        at != null &&
-        at > beganAt;
+    final touching = matchesCompletedAttempt;
     _active = false;
     _touchingBeforeAttempt = false;
     _attemptBeganAt = null;

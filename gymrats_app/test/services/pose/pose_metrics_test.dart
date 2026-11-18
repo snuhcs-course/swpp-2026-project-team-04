@@ -239,6 +239,105 @@ void _kneeFrameTests() {
   }
 
   group('current knee frame classification', () {
+    test('an uncertain support score does not assert lifted knees', () {
+      final classifier = KneeFrameClassifier(probability: (_) => .5);
+      final reading = classifier.classify(standingFrame(showHips: true));
+      expect(reading.state, KneeFrameState.occluded);
+      expect(reading.reason, 'ambiguous_support');
+      expect(reading.touchingProbability, .5);
+    });
+
+    test('all feature joints require usable confidence', () {
+      var calls = 0;
+      final classifier = KneeFrameClassifier(
+        probability: (_) {
+          calls++;
+          return .9;
+        },
+      );
+      for (final joint in [
+        BodyLandmark.leftShoulder,
+        BodyLandmark.rightShoulder,
+        BodyLandmark.leftElbow,
+        BodyLandmark.rightElbow,
+      ]) {
+        expect(
+          classifier.classify(changePoint(joint, likelihood: .1)).state,
+          KneeFrameState.occluded,
+        );
+      }
+      expect(calls, 0);
+    });
+
+    PoseFrame supportFrame(
+      double leftGap,
+      double rightGap, {
+      bool bent = false,
+    }) {
+      final frame = standingFrame(showHips: true);
+      final points = Map<BodyLandmark, Keypoint>.of(frame.keypoints);
+      void set(BodyLandmark joint, double x, double y) {
+        points[joint] = Keypoint(landmark: joint, x: x, y: y, likelihood: 1);
+      }
+
+      set(BodyLandmark.leftAnkle, 530, 700 + leftGap * 120);
+      set(BodyLandmark.rightAnkle, 470, 700 + rightGap * 120);
+      if (bent) {
+        set(BodyLandmark.leftElbow, 750, 380);
+        set(BodyLandmark.rightElbow, 250, 380);
+      }
+      return PoseFrame(
+        imageWidth: frame.imageWidth,
+        imageHeight: frame.imageHeight,
+        keypoints: points,
+      );
+    }
+
+    test('bilateral projection can corroborate a gray support score', () {
+      final classifier = KneeFrameClassifier(probability: (_) => .6);
+      final reading = classifier.classify(supportFrame(-.20, -.20));
+      expect(reading.state, KneeFrameState.touching);
+      expect(reading.reason, 'corroborated_projection');
+      expect(reading.touchingProbability, .6);
+    });
+
+    test('flat bilateral projection can corroborate a gray lifted score', () {
+      final classifier = KneeFrameClassifier(probability: (_) => .4);
+      expect(
+        classifier.classify(supportFrame(-.02, -.02)).state,
+        KneeFrameState.lifted,
+      );
+    });
+
+    test('conflicting leg projections and neutral scores abstain', () {
+      expect(
+        KneeFrameClassifier(probability: (_) => .6)
+            .classify(supportFrame(-.50, .10))
+            .state,
+        KneeFrameState.occluded,
+      );
+      expect(
+        KneeFrameClassifier(probability: (_) => .5)
+            .classify(supportFrame(-.20, -.20))
+            .state,
+        KneeFrameState.occluded,
+      );
+    });
+
+    test('bent frontal arms cannot supply a lifted support observation', () {
+      var calls = 0;
+      final classifier = KneeFrameClassifier(
+        probability: (_) {
+          calls++;
+          return .1;
+        },
+      );
+      final result = classifier.classify(supportFrame(0, 0, bent: true));
+      expect(result.state, KneeFrameState.occluded);
+      expect(result.reason, 'support_view_unreliable');
+      expect(calls, 0);
+    });
+
     test('single-frame model matches forty exported probability fixtures', () {
       expect(goldenFrames, hasLength(40));
       expect(
@@ -277,7 +376,14 @@ void _kneeFrameTests() {
             reason: record['key'] as String,
           );
           if (reading.state == KneeFrameState.occluded) {
-            expect(reading.touchingProbability, isNull);
+            if (reading.reason == 'ambiguous_support') {
+              expect(
+                reading.touchingProbability,
+                closeTo((record['probability'] as num).toDouble(), 1e-12),
+              );
+            } else {
+              expect(reading.touchingProbability, isNull);
+            }
           } else {
             expect(
               reading.touchingProbability,
@@ -309,7 +415,7 @@ void _kneeFrameTests() {
       final classifier = KneeFrameClassifier(probability: (_) => threshold);
       expect(
         classifier.classify(standingFrame(showHips: true)).state,
-        KneeFrameState.lifted,
+        KneeFrameState.occluded,
       );
       final above = KneeFrameClassifier(probability: (_) => threshold + .01);
       expect(
@@ -323,7 +429,7 @@ void _kneeFrameTests() {
       );
     });
 
-    test('support likelihood is gated without gating elbow likelihood', () {
+    test('support and feature likelihoods are all gated', () {
       var calls = 0;
       final classifier = KneeFrameClassifier(
         probability: (_) {
@@ -359,9 +465,9 @@ void _kneeFrameTests() {
         classifier
             .classify(changePoint(BodyLandmark.leftElbow, likelihood: .1))
             .state,
-        KneeFrameState.touching,
+        KneeFrameState.occluded,
       );
-      expect(calls, 2);
+      expect(calls, 1);
     });
 
     test('missing or nonfinite support coordinates remain unobservable', () {
@@ -406,7 +512,7 @@ void _kneeFrameTests() {
                 changePoint(BodyLandmark.leftShoulder, x: double.infinity),
               )
               .reason,
-          'torso_joints_unobservable',
+          'support_joints_unobservable',
         );
       },
     );
