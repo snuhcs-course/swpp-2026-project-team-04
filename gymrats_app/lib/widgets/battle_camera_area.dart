@@ -26,21 +26,23 @@ import 'battle_stage_model.dart';
 /// above it goes down and it gets shorter until it is gone (W2b end screen,
 /// option A); 결과 보기 is the screen's ([BattleArena]), not its own.
 ///
-/// While [settingUp] (W2b 3-B, A9) the setup's things are drawn large
-/// instead: the progress bar along the top, under it the band of the
-/// [setupCue] (two short lines read from where the user exercises, an icon,
-/// and a hold bar while the pose is held), the camera switch at the bottom
-/// right, level with the leave button, and a status frame around the
-/// camera in the cue's color. A new cue waits until the one shown has been
-/// up for [cueHold], unless it says the setup is right. When the countdown
+/// While [settingUp] (W2b 3-B, A9, A12) the setup's things are drawn large
+/// instead: the progress bar along the top, the board of the [setupCue]
+/// (two short lines read from where the user exercises, an icon, and a hold
+/// bar while the pose is held) above the camera, out of its box, at
+/// [boardOffset] (the arena puts it in the top area, over the stage, so it
+/// covers nothing of the user), the camera switch at the bottom right,
+/// level with the leave button, and a status frame around the camera in
+/// the cue's color. A new cue waits until the one shown has been up for
+/// [cueHold], unless it says the setup is right. When the countdown
 /// begins they fade out as [setupLook] falls, keeping how the setup last
 /// gave them, and take no taps meanwhile; the countdown's own guidance and
 /// button fade in in their usual places.
 ///
 /// Unlike the stage above it, its texts follow the system text size, and
 /// its buttons grow with them; the setup cue does not (it is already
-/// large), and keeps each line to one line, shrinking a band's lines alike
-/// to fit ([cueTextSize]).
+/// large, in the stage's design points), and keeps each line to one line,
+/// shrinking a board's lines alike to fit ([cueTextSize]).
 class BattleCameraArea extends StatefulWidget {
   const BattleCameraArea({
     super.key,
@@ -60,6 +62,11 @@ class BattleCameraArea extends StatefulWidget {
     this.combos = const [],
     this.stageScale = 1,
     this.frame,
+    this.boardOffset = const Offset(
+      BattleCameraArea.boardInset,
+      BattleCameraArea.boardInset,
+    ),
+    this.boardScale = 1,
   });
 
   /// The camera picture with whatever is drawn on it. It is centered, and
@@ -74,9 +81,18 @@ class BattleCameraArea extends StatefulWidget {
   /// [settingUp]: the [setupCue] says it then.
   final String? hint;
 
-  /// The setup's short cue while [settingUp]: the band at the top, and the
-  /// camera's status frame in its color (none for a notice).
+  /// The setup's short cue while [settingUp]: the board above the camera,
+  /// and the camera's status frame in its color (none for a notice).
   final SetupHintShort? setupCue;
+
+  /// Where the setup cue's board's top left corner is, from the top left of
+  /// the camera under the line: above it, a negative height, under the
+  /// arena (A12 spec 2). Alone (the default) it is inside the camera's top.
+  final Offset boardOffset;
+
+  /// What the board's design points ([boardSize]) are sized by: the
+  /// stage's.
+  final double boardScale;
 
   /// The ready button's words; null hides it. [onReady] null shows it but
   /// it cannot be pressed.
@@ -131,16 +147,19 @@ class BattleCameraArea extends StatefulWidget {
   /// the new one says the setup is right (task.md W9 decision 1).
   static const cueHold = Duration(milliseconds: 600);
 
-  /// The setup cue's text size, and the least it keeps while that fits.
-  static const cueMaxSize = 76.0;
-  static const cueMinSize = 56.0;
+  /// The setup cue's text size, and the least it keeps (A12 spec 2) for
+  /// every cue but the one naming two missing parts.
+  static const cueMaxSize = 58.0;
+  static const cueMinSize = 44.0;
 
   /// The setup cue's text size for lines whose widest is [widestAtMax] at
   /// [cueMaxSize], in [room]: [cueMaxSize] when it fits, otherwise as large
-  /// as fits, so a line never wraps. That keeps [cueMinSize] or more for
-  /// every cue on a phone 360 wide but the one naming two missing parts
-  /// (task.md W9 decision 7), and for the longer cues on narrower phones.
-  /// Cut to a tenth, so the text never ends a fraction past its room.
+  /// as fits, so a line never wraps or is cut. The board's room is the same
+  /// on every phone (its design points): every cue of the short table fits
+  /// there at [cueMinSize] or more but the one naming two missing parts
+  /// (task.md W9 decision 7), which alone goes about 0.3 under it to fit
+  /// (task.md W12 decision 3). Cut to a tenth, so the text never ends a
+  /// fraction past its room.
   static double cueTextSize({
     required double widestAtMax,
     required double room,
@@ -148,6 +167,12 @@ class BattleCameraArea extends StatefulWidget {
     if (widestAtMax <= room || widestAtMax <= 0) return cueMaxSize;
     return (cueMaxSize * room / widestAtMax * 10).floorToDouble() / 10;
   }
+
+  /// The setup cue's board (A12, SfSq top), in its own design points: its
+  /// size, and how far it is from the camera's sides and top when alone.
+  static const boardInset = 12.0;
+  static const boardWidth = BattleFx.stageWidth - 2 * boardInset;
+  static const boardSize = Size(boardWidth, 140);
 
   /// A round button as it looks, and the room it takes for a finger.
   static const _buttonSize = 44.0;
@@ -161,25 +186,27 @@ class BattleCameraArea extends StatefulWidget {
   static const _setupButtonSize = Size(132, 52);
   static const _setupEdge = 2.0;
 
-  /// The setup cue's band (A9 spec 2): how far under the camera area's top
-  /// it starts, its ink edge and corner, and the room inside its edge.
-  static const _cueTop = 18.0;
+  /// The board's ink edge and corner, and the room beside its edge.
   static const _cueEdge = 3.0;
   static const _cueCorner = 22.0;
-  static const _cueInsetStart = 14.0;
-  static const _cueInsetEnd = 16.0;
-  static const _cueInsetY = 14.0;
+  static const _cueInset = 14.0;
 
-  /// The cue's icon box, its corner and icon, and the room after it.
-  static const _cueIconBox = 68.0;
+  /// The cue's icon box, its corner, its icons (the check a little
+  /// smaller), and the room after it.
+  static const _cueIconBox = 72.0;
   static const _cueIconCorner = 18.0;
-  static const _cueIconSize = 44.0;
+  static const _cueIconSize = 48.0;
+  static const _cueCheckSize = 46.0;
   static const _cueIconGap = 14.0;
 
-  /// The hold bar under the cue while the pose is held.
-  static const _holdHeight = 18.0;
+  /// The hold bar along the board's bottom while the pose is held, and its
+  /// ink line on top.
+  static const _holdHeight = 12.0;
   static const _holdEdge = 2.5;
-  static const _holdCorner = 9.0;
+
+  /// The room the cue's lines have on the board.
+  static const cueRoom =
+      boardWidth - 2 * _cueEdge - 2 * _cueInset - _cueIconBox - _cueIconGap;
 
   /// How far a round button's circle is from the edge of its finger room.
   static const _circleInset = (_tapSize - _buttonSize) / 2;
@@ -198,7 +225,7 @@ class _SetupLook {
       canSwitch = area.onSwitchCamera != null,
       progress = area.setupProgress;
 
-  /// The cue as the band showed it last.
+  /// The cue as the board showed it last.
   final SetupHintShort? cue;
   final String? readyLabel;
   final bool readyEnabled;
@@ -210,7 +237,7 @@ class _SetupLook {
 class _BattleCameraAreaState extends State<BattleCameraArea> {
   _SetupLook? _last;
 
-  /// The setup cue the band shows, and the hold that keeps it up a moment
+  /// The setup cue the board shows, and the hold that keeps it up a moment
   /// before a different one may replace it.
   SetupHintShort? _cue;
   Timer? _hold;
@@ -330,6 +357,8 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
         padding: const EdgeInsets.only(top: BattleCameraArea.lineWidth),
         child: Stack(
           fit: StackFit.expand,
+          // The setup's board is drawn above the camera's box.
+          clipBehavior: Clip.none,
           children: [
             ClipRect(child: Center(child: area.camera)),
             // Over the camera and what is drawn on it, under the rest.
@@ -448,8 +477,9 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
     );
   }
 
-  /// The setup's things, large (W2b 3-B, A9): the progress bar along the
-  /// top, the cue's band under it, the camera switch at the bottom right,
+  /// The setup's things, large (W2b 3-B, A9, A12): the progress bar along
+  /// the top, the cue's board at [BattleCameraArea.boardOffset] (above the
+  /// camera under the arena), the camera switch at the bottom right,
   /// its circle level with the leave button's, and the ready button there,
   /// the switch then over it (no screen gives one since A6). [live] says
   /// they can be pressed; otherwise they only show.
@@ -466,6 +496,7 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
     final bottom = AppSpacing.s12 + bottomInset;
     return Stack(
       fit: StackFit.expand,
+      clipBehavior: Clip.none,
       children: [
         if (progress != null && !area.reconnecting)
           Positioned(
@@ -476,13 +507,18 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
           ),
         if (cue != null)
           Positioned(
-            left: AppSpacing.s12,
-            right: AppSpacing.s12,
-            top: BattleCameraArea._cueTop,
-            child: _SetupCueBand(
-              cue: cue,
-              progress: progress ?? 0,
-              style: text.cameraSetupCue,
+            left: area.boardOffset.dx,
+            top: area.boardOffset.dy,
+            width: BattleCameraArea.boardSize.width,
+            height: BattleCameraArea.boardSize.height,
+            child: Transform.scale(
+              scale: area.boardScale,
+              alignment: Alignment.topLeft,
+              child: _SetupCueBoard(
+                cue: cue,
+                progress: progress ?? 0,
+                style: text.cameraSetupCue,
+              ),
             ),
           ),
         if (setup.canSwitch)
@@ -740,12 +776,14 @@ class _ReadyButton extends StatelessWidget {
   }
 }
 
-/// The setup cue's band (A9 spec 2, design UxSq variant A2): ink on white
-/// with an ink edge, the icon box in the cue's color, two short lines, and
-/// while the pose is held the hold bar filling with [progress]. A screen
-/// reader hears the cue's whole sentence, once for each new one.
-class _SetupCueBand extends StatelessWidget {
-  const _SetupCueBand({
+/// The setup cue's board (A12 spec 2, design SfSq `cue="top"`): ink on
+/// white with an ink edge, the icon box in the cue's color, two short lines
+/// beside it, and while the pose is held the hold bar along its bottom
+/// filling with [progress]. [BattleCameraArea.boardSize] in its own design
+/// points. A screen reader hears the cue's whole sentence, once for each
+/// new one.
+class _SetupCueBoard extends StatelessWidget {
+  const _SetupCueBoard({
     required this.cue,
     required this.progress,
     required this.style,
@@ -757,49 +795,56 @@ class _SetupCueBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const edge = BattleCameraArea._cueEdge;
+    const corner = BorderRadius.all(
+      Radius.circular(BattleCameraArea._cueCorner),
+    );
     return Semantics(
       container: true,
       liveRegion: true,
       label: cue.message,
       child: ExcludeSemantics(
         child: DecoratedBox(
+          // The edge over the box, so the hold bar runs under it.
+          position: DecorationPosition.foreground,
           decoration: BoxDecoration(
-            color: AppColors.card,
-            border: Border.all(
-              color: AppColors.ink,
-              width: BattleCameraArea._cueEdge,
-            ),
-            borderRadius: const BorderRadius.all(
-              Radius.circular(BattleCameraArea._cueCorner),
-            ),
+            border: Border.all(color: AppColors.ink, width: edge),
+            borderRadius: corner,
           ),
-          child: Padding(
-            // The design's room inside the edge, which is painted inside the
-            // box here.
-            padding: const EdgeInsets.fromLTRB(
-              BattleCameraArea._cueEdge + BattleCameraArea._cueInsetStart,
-              BattleCameraArea._cueEdge + BattleCameraArea._cueInsetY,
-              BattleCameraArea._cueEdge + BattleCameraArea._cueInsetEnd,
-              BattleCameraArea._cueEdge + BattleCameraArea._cueInsetY,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+          child: ClipRRect(
+            borderRadius: corner,
+            child: ColoredBox(
+              color: AppColors.card,
+              child: Padding(
+                padding: const EdgeInsets.all(edge),
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    _CueIconBox(cue: cue),
-                    const SizedBox(width: BattleCameraArea._cueIconGap),
-                    Expanded(
-                      child: _CueLines(cue: cue, style: style),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: BattleCameraArea._cueInset,
+                      ),
+                      child: Row(
+                        children: [
+                          _CueIconBox(cue: cue),
+                          const SizedBox(width: BattleCameraArea._cueIconGap),
+                          Expanded(
+                            child: _CueLines(cue: cue, style: style),
+                          ),
+                        ],
+                      ),
                     ),
+                    if (cue.holding)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: BattleCameraArea._holdHeight,
+                        child: _HoldBar(progress: progress),
+                      ),
                   ],
                 ),
-                if (cue.holding) ...[
-                  const SizedBox(height: AppSpacing.s12),
-                  _HoldBar(progress: progress),
-                ],
-              ],
+              ),
             ),
           ),
         ),
@@ -834,6 +879,10 @@ class _CueIconBox extends StatelessWidget {
         size: size,
         color: AppColors.ink,
       ),
+      SetupCueIcon.check => const CustomPaint(
+        size: Size.square(BattleCameraArea._cueCheckSize),
+        painter: SetupCueIconPainter(SetupCueIcon.check),
+      ),
       final drawn => CustomPaint(
         size: const Size.square(size),
         painter: SetupCueIconPainter(drawn),
@@ -866,13 +915,16 @@ class _CueLines extends StatelessWidget {
 
   final SetupHintShort cue;
 
-  /// The cue's style at [BattleCameraArea.cueMaxSize]
-  /// ([BattleCameraText.cameraSetupCue]).
+  /// The cue's style ([BattleCameraText.cameraSetupCue]), drawn at
+  /// [BattleCameraArea.cueMaxSize] or less.
   final TextStyle style;
+
+  TextStyle _at(double size) =>
+      style.apply(fontSizeFactor: size / style.fontSize!);
 
   double _widthAtMax(String line) {
     final painter = TextPainter(
-      text: TextSpan(text: line, style: style),
+      text: TextSpan(text: line, style: _at(BattleCameraArea.cueMaxSize)),
       textDirection: TextDirection.ltr,
       textScaler: TextScaler.noScaling,
       maxLines: 1,
@@ -893,9 +945,7 @@ class _CueLines extends StatelessWidget {
           ),
           room: constraints.maxWidth,
         );
-        final sized = style.apply(
-          fontSizeFactor: size / BattleCameraArea.cueMaxSize,
-        );
+        final sized = _at(size);
         Text line(String words) => Text(
           words,
           maxLines: 1,
@@ -913,8 +963,8 @@ class _CueLines extends StatelessWidget {
   }
 }
 
-/// The bar under a held cue: white with an ink edge, filling with status
-/// green as the pose holds.
+/// The bar along the board's bottom while a cue is held: white under an
+/// ink line, filling with status green as the pose holds.
 class _HoldBar extends StatelessWidget {
   const _HoldBar({required this.progress});
 
@@ -922,34 +972,23 @@ class _HoldBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: BattleCameraArea._holdHeight,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          border: Border.all(
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.card,
+        border: Border(
+          top: BorderSide(
             color: AppColors.ink,
             width: BattleCameraArea._holdEdge,
           ),
-          borderRadius: const BorderRadius.all(
-            Radius.circular(BattleCameraArea._holdCorner),
-          ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(BattleCameraArea._holdEdge),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.all(
-              Radius.circular(
-                BattleCameraArea._holdCorner - BattleCameraArea._holdEdge,
-              ),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: progress.clamp(0.0, 1.0),
-              heightFactor: 1,
-              child: const ColoredBox(color: AppColors.statusGood),
-            ),
-          ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: BattleCameraArea._holdEdge),
+        child: FractionallySizedBox(
+          alignment: Alignment.centerLeft,
+          widthFactor: progress.clamp(0.0, 1.0),
+          heightFactor: 1,
+          child: const ColoredBox(color: AppColors.statusGood),
         ),
       ),
     );

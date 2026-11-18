@@ -294,11 +294,11 @@ void main() {
       await open(tester);
       await press(tester, '자세 세팅');
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
       expect(find.text('준비'), findsOneWidget);
       await press(tester, '상대 대기');
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('상대를 기다리는 중'), findsOneWidget);
+      expect(find.text('나 · 준비 완료'), findsOneWidget);
       expect(find.text('준비 취소'), findsOneWidget);
       await press(tester, '카운트다운');
       await tester.pump(const Duration(milliseconds: 50));

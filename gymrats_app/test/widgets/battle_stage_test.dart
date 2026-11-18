@@ -53,6 +53,7 @@ Future<void> _pump(
   BattleStageState state, {
   BattleFighterBuilder fighterBuilder = BattleFighter.standIn,
   BattleCharacters? characters,
+  double setupShift = 0,
 }) => tester.pumpWidget(
   battleTestApp(
     Stack(
@@ -65,6 +66,7 @@ Future<void> _pump(
             state: state,
             fighterBuilder: fighterBuilder,
             characters: characters,
+            setupShift: setupShift,
           ),
         ),
       ],
@@ -394,8 +396,8 @@ void main() {
       );
     });
 
-    testWidgets('while setting up: no fighters and no tags, the ready chips '
-        'between the scores in the valid counts\' place (W2b 3-B 4.2)', (
+    testWidgets('while setting up: no fighters and no tags, and the ready '
+        'chips under the cue board, at the stage\'s sides (A12 SfSq top)', (
       tester,
     ) async {
       final fx = BattleFxTimeline(setup: true)
@@ -405,29 +407,140 @@ void main() {
       expect(_fighter(BattleSide.me), findsNothing);
       expect(_fighter(BattleSide.opponent), findsNothing);
       expect(find.text('유효 횟수'), findsNothing);
-      final mine = find.text('세팅 중');
-      final theirs = find.text('준비 완료');
+      final mine = find.text('나 · 세팅 중');
+      final theirs = find.text('상대 · 준비 완료');
       expect(mine, findsOneWidget);
       expect(theirs, findsOneWidget);
-      expect(_pillRect(tester, mine).left, 72);
-      expect(_pillRect(tester, theirs).right, 288);
-      expect(_pillRect(tester, mine).top, 106);
-      expect(_pillRect(tester, theirs).top, 106);
+      // In a row 24 tall from 162, 12 from the sides.
+      expect(_pillRect(tester, mine).left, 12);
+      expect(_pillRect(tester, theirs).right, 348);
+      expect(_pillRect(tester, mine).center.dy, closeTo(162 + 12, 0.01));
+      expect(_pillRect(tester, theirs).center.dy, closeTo(162 + 12, 0.01));
       expect(_pillRect(tester, mine).height, 16 + 2 * (2 + 1.5));
-      // The design's widths with the app's fonts: 59 and 71.
-      expect(_pillRect(tester, mine).width, closeTo(59, 1));
-      expect(_pillRect(tester, theirs).width, closeTo(71, 1));
+      // The design's room: 10 beside the edge, the square 10 and 6 after it.
+      for (final chip in [mine, theirs]) {
+        expect(
+          _pillRect(tester, chip).width,
+          closeTo(tester.getSize(chip).width + 10 + 6 + 2 * (10 + 1.5), 0.01),
+        );
+      }
       expect(_pillLook(tester, mine).color, AppColors.card);
       expect(_pillLook(tester, theirs).color, AppColors.opponent);
+      expect(_pillLook(tester, mine).borderRadius, BorderRadius.circular(11));
+      // The squares: the user's first, lime on white; the opponent's last,
+      // white on its pink once ready.
+      Rect square(Finder chip) => tester.getRect(
+        find
+            .descendant(
+              of: find.ancestor(of: chip, matching: find.byType(Row)).first,
+              matching: find.byWidgetPredicate(
+                (w) => w is SizedBox && w.width == 10 && w.height == 10,
+              ),
+            )
+            .first,
+      );
+      Color squareColor(Finder chip) =>
+          (tester
+                      .widget<DecoratedBox>(
+                        find
+                            .descendant(
+                              of: find
+                                  .ancestor(
+                                    of: chip,
+                                    matching: find.byType(Row),
+                                  )
+                                  .first,
+                              matching: find.byType(DecoratedBox),
+                            )
+                            .first,
+                      )
+                      .decoration
+                  as BoxDecoration)
+              .color!;
+      expect(square(mine).size, const Size.square(10));
+      expect(square(mine).right, lessThan(tester.getRect(mine).left));
+      expect(square(theirs).left, greaterThan(tester.getRect(theirs).right));
+      expect(squareColor(mine), AppColors.accent);
+      expect(squareColor(theirs), AppColors.card);
       // Whose each is, for a screen reader.
       expect(find.bySemanticsLabel('나 세팅 중'), findsOneWidget);
       expect(find.bySemanticsLabel('상대 준비 완료'), findsOneWidget);
-      // Waiting for the opponent: mine lime.
+      // Waiting for the opponent: mine lime with a white square, theirs
+      // white with a pink one.
       fx.setSetup(active: true, meReady: true, now: 10);
       await _pump(tester, fx.frame(10), _state(phase: BattleStagePhase.setup));
-      expect(_pillLook(tester, find.text('준비 완료')).color, AppColors.accent);
-      expect(_pillRect(tester, find.text('준비 완료')).left, 72);
+      final ready = find.text('나 · 준비 완료');
+      final waiting = find.text('상대 · 세팅 중');
+      expect(_pillLook(tester, ready).color, AppColors.accent);
+      expect(squareColor(ready), AppColors.card);
+      expect(_pillLook(tester, waiting).color, AppColors.card);
+      expect(squareColor(waiting), AppColors.opponent);
+      expect(_pillRect(tester, ready).left, 12);
       handle.dispose();
+    });
+
+    testWidgets('while setting up the top holds only the chips: the names, '
+        'the clock, the scores and the time bar are hidden, from a screen '
+        'reader too, and come back as the line comes down (A12 spec 2)', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      Opacity around(Finder finder) => tester
+          .widgetList<Opacity>(
+            find.ancestor(of: finder, matching: find.byType(Opacity)),
+          )
+          .first;
+      final fx = BattleFxTimeline(setup: true)..setSetup(active: true, now: 0);
+      await _pump(tester, fx.frame(0), _state(phase: BattleStagePhase.setup));
+      for (final text in ['0:18', 'hellohello', 'AI 봇 · 고수', '0']) {
+        final found = find.text(text);
+        expect(found, findsWidgets, reason: text);
+        for (final element in found.evaluate()) {
+          expect(
+            around(find.byWidget(element.widget)).opacity,
+            0,
+            reason: text,
+          );
+        }
+      }
+      expect(find.bySemanticsLabel(RegExp('남은 시간')), findsNothing);
+      expect(find.bySemanticsLabel(RegExp('내 점수')), findsNothing);
+      expect(find.bySemanticsLabel(RegExp('상대 점수')), findsNothing);
+      fx.countDown(3000, 1000);
+      // Half way through the setup's 150 ms fade.
+      await _pump(
+        tester,
+        fx.frame(1075),
+        _state(phase: BattleStagePhase.countdown),
+      );
+      expect(
+        around(find.bySemanticsLabel(RegExp('남은 시간'))).opacity,
+        closeTo(0.5, 1e-9),
+      );
+      await _pump(
+        tester,
+        fx.frame(1400),
+        _state(phase: BattleStagePhase.countdown),
+      );
+      expect(around(find.bySemanticsLabel(RegExp('남은 시간'))).opacity, 1);
+      expect(find.bySemanticsLabel(RegExp('내 점수')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('상대 점수')), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('under a status bar the chips move down with the setup\'s '
+        'top (task.md W12 decision 1)', (tester) async {
+      final fx = BattleFxTimeline(setup: true)..setSetup(active: true, now: 0);
+      await _pump(
+        tester,
+        fx.frame(0),
+        _state(phase: BattleStagePhase.setup),
+        setupShift: 24,
+      );
+      expect(
+        _pillRect(tester, find.text('나 · 세팅 중')).center.dy,
+        closeTo(162 + 24 + 12, 0.01),
+      );
     });
 
     testWidgets('the valid counts fade in as the line comes down, and the '
@@ -444,13 +557,13 @@ void main() {
           )
           .first;
       expect(around(find.text('유효 횟수')).opacity, closeTo(0.5, 1e-9));
-      expect(around(find.text('준비 완료').first).opacity, closeTo(1 / 3, 1e-9));
+      expect(around(find.text('나 · 준비 완료')).opacity, closeTo(1 / 3, 1e-9));
       await _pump(
         tester,
         fx.frame(200),
         _state(phase: BattleStagePhase.countdown),
       );
-      expect(find.text('준비 완료'), findsNothing);
+      expect(find.text('나 · 준비 완료'), findsNothing);
       expect(around(find.text('유효 횟수')).opacity, 1);
     });
 

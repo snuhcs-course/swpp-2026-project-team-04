@@ -382,7 +382,7 @@ void main() {
       (tester) async {
         await open(tester, personGuard: true, textScale: textScale);
         final band = find.byWidgetPredicate(
-          (w) => w.runtimeType.toString() == '_SetupCueBand',
+          (w) => w.runtimeType.toString() == '_SetupCueBoard',
         );
         final statusFrame = find.byWidgetPredicate(
           (w) =>
@@ -524,8 +524,10 @@ void main() {
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect(stage(tester).myName, '우현');
       expect(stage(tester).opponentName, '상대사용자');
-      expect(find.text('자세 세팅 중'), findsOneWidget);
-      expect(find.text('세팅 중'), findsNWidgets(2));
+      // No status band (A12): the two chips say it.
+      expect(find.text('자세 세팅 중'), findsNothing);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
+      expect(find.text('상대 · 세팅 중'), findsOneWidget);
       expect(find.text('준비'), findsNothing);
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
       await pose(tester);
@@ -538,8 +540,9 @@ void main() {
       showsCue(tester, '상대를', '기다려요', '상대 준비를 기다리는 중…');
       expect(cueOf(tester)!.state, SetupCueState.match);
       await wait(tester, 100);
-      expect(find.text('상대를 기다리는 중'), findsOneWidget);
-      expect(find.text('준비 완료'), findsOneWidget);
+      expect(find.text('상대를 기다리는 중'), findsNothing);
+      expect(find.text('나 · 준비 완료'), findsOneWidget);
+      expect(find.text('상대 · 세팅 중'), findsOneWidget);
       expect(find.text('준비'), findsNothing);
       expect(find.text('준비 취소'), findsNothing);
       expect(session.startAtMs, isNull);
@@ -753,7 +756,8 @@ void main() {
       // ready button among them; the two ready chips say both are ready as
       // they go.
       expect(find.text('준비'), findsNothing);
-      expect(find.text('준비 완료'), findsNWidgets(2));
+      expect(find.text('나 · 준비 완료'), findsOneWidget);
+      expect(find.text('상대 · 준비 완료'), findsOneWidget);
       await wait(tester, 600);
       expect(find.text('준비'), findsNothing);
       // Then the fighters stand, both tagged ready until the numbers.

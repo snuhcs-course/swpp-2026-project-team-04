@@ -412,7 +412,7 @@ class _BattleScreenState extends State<BattleScreen>
       onCue: widget.onCue ?? _sounds.cue,
       onLeave: () => unawaited(_askToLeave()),
       // While the person check asks for a tap, it is the only thing to do:
-      // no band over it, and no cue that says something else.
+      // no board over it, and no cue that says something else.
       setupCue: counterState.trackingPaused
           ? null
           : _setupCue(state, stage.phase),

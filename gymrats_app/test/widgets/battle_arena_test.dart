@@ -682,14 +682,18 @@ void main() {
     // The design's picture, 290 x 387 in the battle's layout.
     const shape = 290 / 387;
 
-    test('every sample\'s line, camera box and picture match the design '
-        'on its 360 x 780 screen', () {
-      final layout = BattleArenaLayout(const Size(360, 780), statusBar: 26);
+    test('every sample\'s line, camera box and picture follow the design\'s '
+        'progress, between the setup\'s line under the cue board (A12 SfSq '
+        'top: 196 on its 360 x 780 screen, the box 581) and the middle', () {
+      // The design has no status bar (task.md W12 decision 1).
+      final layout = BattleArenaLayout(const Size(360, 780), statusBar: 0);
+      expect(layout.setupShift, 0);
+      expect(layout.lineTop(0), 196);
+      expect(layout.cameraBox(0), const Size(360, 581));
       final problems = <String>[];
-      void near(String what, num actual, Object? expected, double within) {
-        final want = (expected! as num).toDouble();
+      void near(String what, num actual, num want, double within) {
         if ((actual - want).abs() > within + 1e-9) {
-          problems.add('$what: $actual, golden $want');
+          problems.add('$what: $actual, wanted $want');
         }
       }
 
@@ -703,31 +707,45 @@ void main() {
         final at = 'tMs ${sample['tMs']}';
         final progress = (sample['progress'] as num).toDouble();
         final top = layout.lineTop(progress);
-        near('$at line', top, sample['boundaryY'], position);
-        final box = sample['cameraBox'] as Map<String, dynamic>;
+        // The design's line went from 156 to 390 at this progress; A12's
+        // goes from 196, the same share of the way.
+        final designTop = (sample['boundaryY'] as num).toDouble();
         near(
-          '$at box top',
-          top + BattleCameraArea.lineWidth,
-          box['top'],
+          '$at line',
+          top,
+          196 + (designTop - 156) / (390 - 156) * (390 - 196),
           position,
         );
         near(
           '$at box height',
           layout.cameraBox(progress).height,
-          box['height'],
-          position,
+          780 - top - 3,
+          1e-9,
         );
-        final picture = sample['picture'] as Map<String, dynamic>;
         final size = BattleCameraView.pictureSize(
           shape,
           setupBox: layout.cameraBox(0),
           battleBox: layout.cameraBox(1),
           progress: progress,
         );
-        near('$at width', size.width, picture['width'], position);
-        near('$at height', size.height, picture['height'], position);
-        near('$at left', (360 - size.width) / 2, picture['left'], position);
-        near('$at scale', size.height / battle.height, picture['scale'], scale);
+        // Its height evenly from the setup box's 581 to the battle's 387.
+        near('$at height', size.height, 581 + (387 - 581) * progress, 1e-9);
+        // In the picture's own shape, in the middle of the screen; against
+        // the design's battle picture, as large as the design's sample.
+        near('$at width', size.width, size.height * shape, 1e-9);
+        near(
+          '$at left',
+          (360 - size.width) / 2,
+          180 - size.height * shape / 2,
+          1e-9,
+        );
+        final designScale = (sample['picture'] as Map)['scale'] as num;
+        near(
+          '$at scale',
+          (size.height - battle.height) / (581 - 387),
+          (designScale * 387 - 387) / (621 - 387),
+          scale,
+        );
       }
       expect(problems, isEmpty, reason: problems.join('\n'));
       final end = transition['reducedMotion'] as Map<String, dynamic>;
@@ -735,15 +753,40 @@ void main() {
       expect(battle.height, (end['picture'] as Map)['height']);
     });
 
-    test('on another phone the setup\'s line stands 234 stage points above '
-        'the middle, as the stage is sized (W2B-SPEC 4.5)', () {
+    test('under a status bar the setup\'s top moves down by as much as the '
+        'bar reaches over the stage (task.md W12 decision 1)', () {
+      // An S22: the stage from the screen's top, the bar over its first 26.
+      final s22 = BattleArenaLayout(const Size(360, 780), statusBar: 26);
+      expect(s22.setupShift, 26);
+      expect(s22.lineTop(0), 196 + 26);
+      expect(s22.cameraBox(0), const Size(360, 780 - 222 - 3));
+      expect(s22.boardOrigin, const Offset(12, 26 + 12));
+      // The battle's layout does not move.
+      expect(s22.lineTop(1), 390);
+      // A taller screen whose stage starts under the bar: no shift.
+      final tall = BattleArenaLayout(const Size(360, 900), statusBar: 24);
+      expect(tall.origin.dy, 60);
+      expect(tall.setupShift, 0);
+      expect(tall.boardOrigin, const Offset(12, 60 + 12));
+    });
+
+    test('on another phone the setup\'s line stands where the stage is '
+        'sized, under the cue board moved down by the status bar '
+        '(W2B-SPEC 4.5, A12)', () {
       final layout = BattleArenaLayout(const Size(412, 915), statusBar: 24);
       expect(layout.line, 457.5);
       // As wide as the screen allows: the width is the limit here.
-      expect(layout.scale, closeTo(412 / 360, 1e-9));
-      expect(layout.lineTop(0), closeTo(457.5 - 234 * layout.scale, 1e-9));
+      final scale = layout.scale;
+      expect(scale, closeTo(412 / 360, 1e-9));
+      final stageTop = 457.5 - 390 * scale;
+      expect(layout.setupShift, closeTo((24 - stageTop) / scale, 1e-9));
+      final above = 390 - 196 - layout.setupShift;
+      expect(layout.lineTop(0), closeTo(457.5 - above * scale, 1e-9));
       expect(layout.lineTop(1), 457.5);
-      expect(layout.lineTop(0.5), closeTo(457.5 - 117 * layout.scale, 1e-9));
+      expect(layout.lineTop(0.5), closeTo(457.5 - above / 2 * scale, 1e-9));
+      // The board 12 under the status bar, 12 in from the stage's side.
+      expect(layout.boardOrigin.dy, closeTo(24 + 12 * scale, 1e-9));
+      expect(layout.boardOrigin.dx, closeTo(12 * scale, 1e-9));
       expect(
         layout.cameraBox(0),
         Size(412, 915 - layout.lineTop(0) - BattleCameraArea.lineWidth),
@@ -755,10 +798,9 @@ void main() {
     double lineTop(WidgetTester tester) =>
         tester.getTopLeft(find.byType(BattleCameraArea)).dy;
 
-    testWidgets('setting up, the camera takes the screen from 156 down, over '
-        'the stage, the picture fills it, and no fighter is drawn', (
-      tester,
-    ) async {
+    testWidgets('setting up, the camera takes the screen from 196 down '
+        '(here 26 lower under the status bar), over the stage, the picture '
+        'fills it, and no fighter is drawn', (tester) async {
       await _pump(
         tester,
         BattleStageController(),
@@ -766,14 +808,14 @@ void main() {
         camera: const BattleCameraView(controller: null),
       );
       await _wait(tester, 16);
-      expect(lineTop(tester), closeTo(156, 1e-9));
+      expect(lineTop(tester), closeTo(222, 1e-9));
       expect(find.byType(BattleFighter), findsNothing);
       expect(find.text('유효 횟수'), findsNothing);
       // A 3 : 4 picture as tall as the box, cut at both sides.
       final picture = tester.getRect(find.byType(PoseCameraView));
-      expect(picture.top, closeTo(159, 0.01));
-      expect(picture.height, closeTo(621, 0.01));
-      expect(picture.width, closeTo(621 * 3 / 4, 0.01));
+      expect(picture.top, closeTo(225, 0.01));
+      expect(picture.height, closeTo(555, 0.01));
+      expect(picture.width, closeTo(555 * 3 / 4, 0.01));
       expect(picture.center.dx, closeTo(180, 0.01));
     });
 
@@ -797,14 +839,16 @@ void main() {
         camera: const BattleCameraView(controller: null),
       );
       final byTime = {for (final s in samples) (s['tMs'] as num).toInt(): s};
+      final layout = BattleArenaLayout(const Size(360, 780), statusBar: 26);
       var elapsed = 0;
       for (final t in [100, 175, 250, 350, 400, 450, 600]) {
         await _wait(tester, t - elapsed);
         elapsed = t;
         final sample = byTime[t]!;
+        final progress = (sample['progress'] as num).toDouble();
         expect(
           lineTop(tester),
-          closeTo((sample['boundaryY'] as num).toDouble(), position),
+          closeTo(layout.lineTop(progress), position),
           reason: 'line at $t',
         );
         final fighter = sample['fighter'] as Map<String, dynamic>;
@@ -817,7 +861,15 @@ void main() {
         final picture = tester.getRect(find.byType(PoseCameraView));
         expect(
           picture.height,
-          closeTo(((sample['picture'] as Map)['height'] as num).toDouble(), 1),
+          closeTo(
+            BattleCameraView.pictureSize(
+              3 / 4,
+              setupBox: layout.cameraBox(0),
+              battleBox: layout.cameraBox(1),
+              progress: progress,
+            ).height,
+            1,
+          ),
           reason: 'picture at $t',
         );
       }
@@ -841,7 +893,7 @@ void main() {
         reducedMotion: true,
       );
       await _wait(tester, 16);
-      expect(lineTop(tester), 156);
+      expect(lineTop(tester), 222);
       await _pump(
         tester,
         controller,
@@ -861,7 +913,7 @@ void main() {
         reducedMotion: true,
       );
       // On the very frame the phase changes, back as well.
-      expect(lineTop(tester), 156);
+      expect(lineTop(tester), 222);
       expect(find.byType(BattleFighter), findsNothing);
     });
 
@@ -887,8 +939,8 @@ void main() {
       await _wait(tester, 60);
       expect(find.byType(BattleFighter), findsNothing);
       await _wait(tester, 300);
-      expect(lineTop(tester), closeTo(156, 1e-9));
-      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(lineTop(tester), closeTo(222, 1e-9));
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
       expect(find.text('3'), findsNothing);
     });
 
@@ -909,9 +961,10 @@ void main() {
       }
     });
 
-    testWidgets("the setup cue's band, the camera switch and the leave "
-        'button sit where the A9 design has them on an S22 (no ready button, '
-        'as since A6)', (tester) async {
+    testWidgets("the setup cue's board is above the camera, in the top "
+        'area with the two chips (A12 SfSq top), and the camera switch and '
+        'the leave button sit where the A9 design has them on an S22 (no '
+        'ready button, as since A6)', (tester) async {
       await _pump(
         tester,
         BattleStageController(),
@@ -922,8 +975,9 @@ void main() {
         onLeave: () {},
       );
       await _wait(tester, 16);
-      // The camera area from the line at 156, 3 wide: the band 18 under it.
-      // The band: white with a 3 ink edge, around the cue's lines.
+      // The board: a 3 ink edge around the cue's lines, 12 under the
+      // status bar (26 here), 336 x 140, over the stage, wholly above the
+      // line at 222 where the camera begins.
       final band = find
           .ancestor(
             of: find.text('카메라'),
@@ -931,16 +985,43 @@ void main() {
               (w) =>
                   w is DecoratedBox &&
                   w.decoration is BoxDecoration &&
-                  (w.decoration as BoxDecoration).color == AppColors.card &&
                   (w.decoration as BoxDecoration).border ==
                       Border.all(color: AppColors.ink, width: 3),
             ),
           )
           .first;
       final rect = tester.getRect(band);
-      expect(rect.left, 12);
-      expect(rect.top, closeTo(156 + 3 + 18, 0.01));
-      expect(rect.width, 336);
+      expect(rect, rectMoreOrLessEquals(const Rect.fromLTWH(12, 38, 336, 140)));
+      expect(rect.bottom, lessThan(lineTop(tester)));
+      // A screen reader still hears the cue's whole sentence from there,
+      // out of the camera area's box.
+      final handle = tester.ensureSemantics();
+      await tester.pump();
+      expect(
+        tester.getSemantics(
+          find.bySemanticsLabel(SetupHintShort.of(SetupStatus.initial).message),
+        ),
+        matchesSemantics(
+          label: SetupHintShort.of(SetupStatus.initial).message,
+          isLiveRegion: true,
+        ),
+      );
+      handle.dispose();
+      expect(lineTop(tester), 222);
+      // Under it the two chips, in a row 24 tall from 162 + 26.
+      for (final chip in ['나 · 세팅 중', '상대 · 세팅 중']) {
+        final box = tester.getRect(
+          find
+              .ancestor(
+                of: find.text(chip),
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
+        );
+        expect(box.center.dy, closeTo(162 + 26 + 12, 0.01), reason: chip);
+        expect(box.top, greaterThan(rect.bottom), reason: chip);
+        expect(box.bottom, lessThan(lineTop(tester)), reason: chip);
+      }
       expect(find.text('앞으로'), findsOneWidget);
       Finder circle(String label) => find.descendant(
         of: find.bySemanticsLabel(label),
@@ -1037,7 +1118,7 @@ void main() {
   });
 
   group('BattleArena, before the start', () {
-    testWidgets('setting up: the ready chips, the band, and the camera '
+    testWidgets('setting up: the ready chips, no band, and the camera '
         "area's setup cue and large ready button", (tester) async {
       var ready = 0;
       await _pump(
@@ -1055,9 +1136,10 @@ void main() {
         onReady: () => ready++,
       );
       await _wait(tester, 16);
-      expect(find.text('자세 세팅 중'), findsOneWidget);
-      expect(find.text('세팅 중'), findsOneWidget);
-      expect(find.text('준비 완료'), findsOneWidget);
+      // No status band: the chips say who is ready (A12 spec 2).
+      expect(find.text('자세 세팅 중'), findsNothing);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
+      expect(find.text('상대 · 준비 완료'), findsOneWidget);
       expect(find.text('폰을 더'), findsOneWidget);
       expect(find.text('세워요'), findsOneWidget);
       expect(find.text('폰을 더 세워 주세요.'), findsNothing);
@@ -1073,6 +1155,56 @@ void main() {
       expect(ready, 1);
     });
 
+    testWidgets('while setting up the top area holds only the cue board and '
+        'the two chips: no names, clock or scores, for the eye or a screen '
+        'reader; once the countdown has brought the line down the top is '
+        'back and the board and chips are gone (A12 spec 2)', (tester) async {
+      final handle = tester.ensureSemantics();
+      final controller = BattleStageController();
+      final cue = SetupHintShort.of(SetupStatus.initial);
+      await _pump(
+        tester,
+        controller,
+        _state(phase: BattleStagePhase.setup),
+        setupCue: cue,
+      );
+      await _wait(tester, 16);
+      double shown(String text) => tester
+          .widgetList<Opacity>(
+            find.ancestor(of: find.text(text), matching: find.byType(Opacity)),
+          )
+          .first
+          .opacity;
+      expect(find.text('카메라'), findsOneWidget);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
+      expect(find.text('상대 · 세팅 중'), findsOneWidget);
+      for (final text in ['hellohello', 'AI 봇 · 고수', '0:18']) {
+        expect(shown(text), 0, reason: text);
+      }
+      expect(find.bySemanticsLabel(RegExp('내 점수')), findsNothing);
+      expect(find.bySemanticsLabel(RegExp('남은 시간')), findsNothing);
+      expect(find.text('자세 세팅 중'), findsNothing);
+
+      await _pump(
+        tester,
+        controller,
+        _state(
+          phase: BattleStagePhase.countdown,
+          countdown: const Duration(seconds: 3),
+        ),
+      );
+      await _wait(tester, 400);
+      expect(find.text('카메라'), findsNothing);
+      expect(find.textContaining('세팅 중'), findsNothing);
+      for (final text in ['hellohello', 'AI 봇 · 고수', '0:18']) {
+        expect(shown(text), 1, reason: text);
+      }
+      expect(find.bySemanticsLabel('내 점수 0점'), findsOneWidget);
+      expect(find.bySemanticsLabel('상대 점수 0점'), findsOneWidget);
+      expect(find.bySemanticsLabel('남은 시간 18초'), findsOneWidget);
+      handle.dispose();
+    });
+
     testWidgets('waiting for the opponent says so', (tester) async {
       await _pump(
         tester,
@@ -1080,7 +1212,10 @@ void main() {
         _state(phase: BattleStagePhase.setup, meReady: true),
       );
       await _wait(tester, 16);
-      expect(find.text('상대를 기다리는 중'), findsOneWidget);
+      // The chips say so (A12 spec 2: no status band).
+      expect(find.text('나 · 준비 완료'), findsOneWidget);
+      expect(find.text('상대 · 세팅 중'), findsOneWidget);
+      expect(find.text('상대를 기다리는 중'), findsNothing);
     });
 
     testWidgets('the countdown shows 3, 2, 1 and GO!, gives their cues, and '
@@ -1106,9 +1241,9 @@ void main() {
       await _wait(tester, 16);
       expect(find.text('3'), findsOneWidget);
       // The ready chips fade out as the line comes down.
-      expect(find.text('준비 완료'), findsNWidgets(2));
+      expect(find.textContaining('준비 완료'), findsNWidgets(2));
       await _wait(tester, 150);
-      expect(find.text('준비 완료'), findsNothing);
+      expect(find.textContaining('준비 완료'), findsNothing);
       await _wait(tester, 1000 - 150);
       expect(find.text('2'), findsOneWidget);
       await _wait(tester, 1000);
@@ -1190,7 +1325,7 @@ void main() {
       );
       await _wait(tester, 3000);
       expect(find.text('GO!'), findsNothing);
-      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
     });
   });
 
@@ -1356,8 +1491,8 @@ void main() {
       expect(layout.lineTop(1, end: 1), 780);
       // Ended while setting up, e.g. a player who left: from the setup's
       // line.
-      expect(layout.lineTop(0), 156);
-      expect(layout.lineTop(0, end: 0.5), 468);
+      expect(layout.lineTop(0), 222);
+      expect(layout.lineTop(0, end: 0.5), 501);
       expect(layout.lineTop(0, end: 1), 780);
       final other = BattleArenaLayout(const Size(412, 915), statusBar: 24);
       expect(other.lineTop(1, end: 1), 915);
@@ -1517,7 +1652,7 @@ void main() {
         onLeave: () {},
       );
       await _wait(tester, 500);
-      expect(lineTop(tester), 156);
+      expect(lineTop(tester), 222);
       await _pump(
         tester,
         controller,
@@ -1922,7 +2057,7 @@ void main() {
     });
 
     testWidgets('a round that starts without a countdown takes the setup\'s '
-        'chips and band away as the line comes down', (tester) async {
+        'chips away as the line comes down', (tester) async {
       final controller = BattleStageController();
       await _pump(
         tester,
@@ -1930,13 +2065,13 @@ void main() {
         _state(phase: BattleStagePhase.setup, opReady: true),
       );
       await _wait(tester, 16);
-      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
       await _pump(tester, controller, _state());
       await _wait(tester, 16);
       expect(find.text('동점'), findsOneWidget);
       await _wait(tester, 150);
-      expect(find.text('자세 세팅 중'), findsNothing);
-      expect(find.text('준비 완료'), findsNothing);
+      expect(find.text('나 · 세팅 중'), findsNothing);
+      expect(find.textContaining('준비 완료'), findsNothing);
       expect(find.text('동점'), findsOneWidget);
     });
 

@@ -147,9 +147,10 @@ List<String> battleStandingAnnouncements(
 /// fits the width and the room between the status bar and the line
 /// ([scale]); and the line between the stage and the camera, which stands
 /// there from the countdown on but higher while setting up (W2b 3-B), at
-/// [BattleFx.setupLineY] on the stage, the camera over the stage below it.
-/// Once the result is known the line goes on down to the screen's bottom,
-/// and the camera is gone (W2b end screen, option A).
+/// [BattleFx.setupLineY] on the stage (moved down by [setupShift]), the
+/// camera over the stage below it. Once the result is known the line goes on
+/// down to the screen's bottom, and the camera is gone (W2b end screen,
+/// option A).
 class BattleArenaLayout {
   factory BattleArenaLayout(Size size, {required double statusBar}) {
     final line = size.height / 2;
@@ -160,10 +161,17 @@ class BattleArenaLayout {
         (line - statusBar) / BattleArena._stageBelowStatusBar,
       ),
     );
-    return BattleArenaLayout._(size, line, scale);
+    final top = line - BattleFx.stageHeight * scale;
+    final shift = scale <= 0
+        ? 0.0
+        : ((statusBar - top) / scale).clamp(
+            0.0,
+            BattleFx.stageHeight - BattleFx.setupLineY,
+          );
+    return BattleArenaLayout._(size, line, scale, shift);
   }
 
-  const BattleArenaLayout._(this.size, this.line, this.scale);
+  const BattleArenaLayout._(this.size, this.line, this.scale, this.setupShift);
 
   final Size size;
 
@@ -172,6 +180,21 @@ class BattleArenaLayout {
 
   /// What the stage's design points are sized by.
   final double scale;
+
+  /// How far, in stage points, the setup's top (its cue board, the ready
+  /// chips and the line under them) moves down: as far as the status bar
+  /// reaches over the stage, so the board starts its inset under it
+  /// (task.md W12 decision 1). The design has no status bar: 0 there.
+  final double setupShift;
+
+  /// Where the setup's cue board is on the screen, its top left corner: in
+  /// stage points [BattleCameraArea.boardInset] from the stage's side and
+  /// top, moved down by [setupShift]; [BattleCameraArea.boardSize] large.
+  Offset get boardOrigin =>
+      origin +
+      const Offset(BattleCameraArea.boardInset, BattleCameraArea.boardInset) *
+          scale +
+      Offset(0, setupShift * scale);
 
   /// The stage's size on screen, and where its top left corner is.
   Size get stage =>
@@ -186,7 +209,9 @@ class BattleArenaLayout {
   double lineTop(double progress, {double end = 0}) {
     final top =
         line -
-        (BattleFx.stageHeight - BattleFx.setupLineY) * scale * (1 - progress);
+        (BattleFx.stageHeight - BattleFx.setupLineY - setupShift) *
+            scale *
+            (1 - progress);
     return top + (size.height - top) * end;
   }
 
@@ -446,6 +471,7 @@ class _BattleArenaState extends State<BattleArena>
                             child: BattleStage(
                               frame: frame,
                               state: state,
+                              setupShift: layout.setupShift,
                               fighterBuilder: widget.fighterBuilder,
                               characters: widget.characters,
                             ),
@@ -477,6 +503,12 @@ class _BattleArenaState extends State<BattleArena>
                         : widget.onLeave,
                     hint: widget.hint,
                     setupCue: widget.setupCue,
+                    // Above the camera, in the top area: the board keeps
+                    // its place on the stage while the line moves.
+                    boardOffset:
+                        layout.boardOrigin -
+                        Offset(0, lineTop + BattleCameraArea.lineWidth),
+                    boardScale: scale,
                     frame: frame.cameraFrame,
                     readyLabel: widget.readyLabel,
                     onReady: widget.onReady,

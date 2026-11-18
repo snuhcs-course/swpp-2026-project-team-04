@@ -36,6 +36,8 @@ Future<void> _pump(
   List<BattleFxCombo> combos = const [],
   double stageScale = 1,
   BattleFxCameraFrame? frame,
+  Offset? boardOffset,
+  double boardScale = 1,
 }) async {
   // The test's screen is the area's, also when it is taller than the
   // default window, as while setting up.
@@ -70,6 +72,8 @@ Future<void> _pump(
             combos: combos,
             stageScale: stageScale,
             frame: frame,
+            boardOffset: boardOffset ?? const Offset(12, 12),
+            boardScale: boardScale,
           ),
         ),
       ),
@@ -628,14 +632,14 @@ void main() {
     }
   });
 
-  group('the setup\'s large look (W2b 3-B, A9 spec 2)', () {
+  group('the setup\'s large look (W2b 3-B, A9 spec 2, A12 spec 2)', () {
     // The camera's box while setting up on an S22, with the line on top.
     const setupSize = Size(360, 624);
     final tooClose = SetupHintShort.of(_status(SetupReason.tooClose));
     final noPerson = SetupHintShort.of(_status(SetupReason.noPerson));
     final held = SetupHintShort.of(_status(SetupReason.ready));
 
-    /// The cue's band: the white box with the 3 ink edge around its lines.
+    /// The cue's board: the box with the 3 ink edge around its lines.
     Finder band(String line) => find
         .ancestor(
           of: find.text(line),
@@ -643,7 +647,6 @@ void main() {
             (w) =>
                 w is DecoratedBox &&
                 w.decoration is BoxDecoration &&
-                (w.decoration as BoxDecoration).color == AppColors.card &&
                 (w.decoration as BoxDecoration).border ==
                     Border.all(color: AppColors.ink, width: 3),
           ),
@@ -655,9 +658,9 @@ void main() {
         .ancestor(of: find.text(label), matching: find.byType(Material))
         .first;
 
-    /// The icon box: the 68 square in the cue's color.
+    /// The icon box: the 72 square in the cue's color.
     Finder iconBox() => find.byWidgetPredicate(
-      (w) => w is SizedBox && w.width == 68 && w.height == 68,
+      (w) => w is SizedBox && w.width == 72 && w.height == 72,
     );
 
     Color iconFill(WidgetTester tester) =>
@@ -684,9 +687,10 @@ void main() {
       setupLook: 1,
     );
 
-    testWidgets('the bar on top, the cue\'s band 18 under the line with its '
-        'icon box and two lines, the camera switch bottom right level with '
-        'the leave button; no small hint', (tester) async {
+    testWidgets('the bar on top, the cue\'s board alone 12 into the camera '
+        'with its icon box and two lines (its place under the arena is above '
+        'the camera), the camera switch bottom right level with the leave '
+        'button; no small hint', (tester) async {
       await _pump(
         tester,
         size: setupSize,
@@ -697,34 +701,41 @@ void main() {
         onSwitchCamera: () {},
         setupProgress: 0.4,
       );
-      // Inside the box under the 3 wide line: the band from 18, 12 from the
-      // sides; two lines of 76 on a 0.98 line, 14 above and below them
-      // inside its 3 edge: about 183 tall.
+      // The design's board (SfSq top): 336 x 140, 12 from the sides.
       final rect = tester.getRect(band('카메라'));
-      expect(rect.left, 12);
-      expect(rect.top, 3 + 18);
-      expect(rect.width, 336);
-      // (Each line laid out to whole points: 74 of 74.48.)
-      expect(rect.height, closeTo(3 + 14 + 2 * 0.98 * 76 + 14 + 3, 1.5));
+      expect(rect, const Rect.fromLTWH(12, 3 + 12, 336, 140));
       final look =
           tester.widget<DecoratedBox>(band('카메라')).decoration as BoxDecoration;
       expect(look.borderRadius, const BorderRadius.all(Radius.circular(22)));
-      // The icon box: 68 square, 14 + 3 in from the band's left.
+      expect(
+        find.descendant(
+          of: band('카메라'),
+          matching: find.byWidgetPredicate(
+            (w) => w is ColoredBox && w.color == AppColors.card,
+          ),
+        ),
+        findsWidgets,
+      );
+      // The icon box: 72 square, 14 + 3 in from the board's left, in the
+      // middle of its height.
       expect(tester.getRect(iconBox()).left, 12 + 3 + 14);
-      expect(tester.getSize(iconBox()), const Size(68, 68));
+      expect(tester.getSize(iconBox()), const Size(72, 72));
+      expect(tester.getCenter(iconBox()).dy, closeTo(rect.center.dy, 0.01));
       expect(iconFill(tester), AppColors.danger);
-      // The two short lines, 14 after the icon box, in Do Hyeon 76.
+      // The two short lines, 14 after the icon box, in Do Hyeon 58.
       for (final line in ['카메라', '앞으로']) {
         final text = tester.widget<Text>(find.text(line));
         expect(text.style!.fontFamily, AppFonts.display, reason: line);
-        expect(text.style!.fontSize, 76, reason: line);
+        expect(text.style!.fontSize, 58, reason: line);
+        expect(text.style!.height, 0.98, reason: line);
         expect(text.maxLines, 1, reason: line);
         expect(
           tester.getRect(find.text(line)).left,
-          12 + 3 + 14 + 68 + 14,
+          12 + 3 + 14 + 72 + 14,
           reason: line,
         );
       }
+      expect(BattleCameraArea.cueRoom, 216);
       // The long sentence is not on screen; there is no small hint.
       expect(find.text(noPerson.message), findsNothing);
       expect(
@@ -739,8 +750,26 @@ void main() {
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
     });
 
-    testWidgets('the hold bar only while the pose is held: 18 tall under the '
-        'lines, filling with status green as the setup says', (tester) async {
+    testWidgets('the board goes where it is given, above the camera\'s box, '
+        'sized with the stage', (tester) async {
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        setupCue: noPerson,
+        boardOffset: const Offset(12, -184),
+        boardScale: 1.1,
+      );
+      final rect = tester.getRect(band('카메라'));
+      expect(rect.topLeft, const Offset(12, 3 - 184));
+      expect(rect.size, const Size(336 * 1.1, 140 * 1.1));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the hold bar only while the pose is held: 12 tall along the '
+        'board\'s bottom under an ink line, filling with status green as the '
+        'setup says', (tester) async {
       Finder holdFill(String line) => find.descendant(
         of: band(line),
         matching: find.byWidgetPredicate(
@@ -768,18 +797,32 @@ void main() {
         AppColors.statusGood,
       );
       final bar = find
-          .ancestor(of: holdFill('그대로'), matching: find.byType(SizedBox))
+          .ancestor(
+            of: holdFill('그대로'),
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is DecoratedBox &&
+                  w.decoration is BoxDecoration &&
+                  (w.decoration as BoxDecoration).border ==
+                      const Border(
+                        top: BorderSide(color: AppColors.ink, width: 2.5),
+                      ),
+            ),
+          )
           .first;
-      expect(tester.getSize(bar).height, 18);
+      final board = tester.getRect(band('그대로'));
+      // Inside the board's 3 edge, along its bottom, its whole width.
       expect(
-        tester.getRect(bar).top,
-        greaterThan(tester.getRect(find.text('멈춰요')).bottom),
+        tester.getRect(bar),
+        Rect.fromLTRB(
+          board.left + 3,
+          board.bottom - 3 - 12,
+          board.right - 3,
+          board.bottom - 3,
+        ),
       );
-      // About 213 tall with it.
-      expect(
-        tester.getSize(band('그대로')).height,
-        closeTo(3 + 14 + 2 * 0.98 * 76 + 12 + 18 + 14 + 3, 1.5),
-      );
+      // The board keeps its size with it.
+      expect(board.size, const Size(336, 140));
       expect(iconFill(tester), AppColors.statusGood);
 
       // Not for a cue that is not held; the top bar alone shows the 0.6.
@@ -811,10 +854,13 @@ void main() {
       );
       expect(iconFill(tester), AppColors.warning);
       expect(find.byIcon(Icons.wifi_rounded), findsOneWidget);
+      expect(tester.widget<Icon>(find.byIcon(Icons.wifi_rounded)).size, 48);
     });
 
     testWidgets('each icon: the hand and the connection from Material, the '
-        'others drawn in ink lines', (tester) async {
+        'others drawn in ink lines; the check 46, the others 48', (
+      tester,
+    ) async {
       final cues = {
         SetupCueIcon.check: held,
         SetupCueIcon.person: noPerson,
@@ -846,7 +892,8 @@ void main() {
           tester.getSize(
             find.descendant(of: iconBox(), matching: find.byType(CustomPaint)),
           ),
-          const Size.square(44),
+          Size.square(icon == SetupCueIcon.check ? 46 : 48),
+          reason: '$icon',
         );
         expect(
           find.descendant(of: iconBox(), matching: find.byType(CustomPaint)),
@@ -864,6 +911,10 @@ void main() {
         ),
       );
       expect(find.byIcon(Icons.back_hand_outlined), findsOneWidget);
+      expect(
+        tester.widget<Icon>(find.byIcon(Icons.back_hand_outlined)).size,
+        48,
+      );
       expect(
         const SetupCueIconPainter(SetupCueIcon.check)
             .shouldRepaint(const SetupCueIconPainter(SetupCueIcon.check)),
@@ -894,32 +945,31 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('with no cue there is no band, and no frame', (tester) async {
+    testWidgets('with no cue there is no board, and no frame', (tester) async {
       await _pump(tester, size: setupSize, settingUp: true, setupLook: 1);
       expect(iconBox(), findsNothing);
       expect(_frame(), findsNothing);
     });
 
-    group('a cue keeps to its two lines on a 360-wide phone', () {
-      test('as large as fits, up to 76: the size from the widest line', () {
+    group('a cue keeps to its two lines on the board', () {
+      test('as large as fits, up to 58: the size from the widest line', () {
         expect(
-          BattleCameraArea.cueTextSize(widestAtMax: 200, room: 218),
+          BattleCameraArea.cueTextSize(widestAtMax: 200, room: 216),
           BattleCameraArea.cueMaxSize,
         );
-        expect(BattleCameraArea.cueTextSize(widestAtMax: 218, room: 218), 76);
-        // 76 x 218 / 256.3: cut to a tenth.
-        expect(
-          BattleCameraArea.cueTextSize(widestAtMax: 256.3, room: 218),
-          64.6,
-        );
-        expect(BattleCameraArea.cueTextSize(widestAtMax: 0, room: 218), 76);
-        expect(BattleCameraArea.cueMinSize, 56);
+        expect(BattleCameraArea.cueTextSize(widestAtMax: 216, room: 216), 58);
+        // 58 x 216 / 250: cut to a tenth.
+        expect(BattleCameraArea.cueTextSize(widestAtMax: 250, room: 216), 50.1);
+        expect(BattleCameraArea.cueTextSize(widestAtMax: 0, room: 216), 58);
+        // 58 x 216 / 400 = 31.32: never more than fits.
+        expect(BattleCameraArea.cueTextSize(widestAtMax: 400, room: 216), 31.3);
+        expect(BattleCameraArea.cueMinSize, 44);
       });
 
       for (final textScale in [1.0, 1.3, 2.0]) {
         testWidgets('every cue at ${textScale}x text: one line each, the two '
-            'alike, inside the band, at least 56 but for two missing parts '
-            '(task.md W9 decision 7), nothing overflows', (tester) async {
+            'alike, inside the board, 44 to 58 but for two missing parts '
+            '(task.md W12 decision 3), nothing overflows', (tester) async {
           for (final cue in _setupCues) {
             await clear(tester, textScale: textScale);
             await _pump(
@@ -942,7 +992,8 @@ void main() {
               expect(paragraph.maxLines, 1, reason: line);
               expect(paragraph.didExceedMaxLines, isFalse, reason: line);
               final drawn = tester.getRect(find.text(line));
-              // The text's own width, all of it inside the band's edge.
+              // The text's own width, all of it inside the board's edge
+              // and its 14 of room.
               expect(
                 paragraph.getMaxIntrinsicWidth(double.infinity),
                 lessThanOrEqualTo(drawn.width + 0.01),
@@ -951,25 +1002,31 @@ void main() {
               expect(drawn.left, greaterThanOrEqualTo(room.left), reason: line);
               expect(
                 drawn.left + paragraph.getMaxIntrinsicWidth(double.infinity),
-                lessThanOrEqualTo(room.right - 16 + 0.01),
+                lessThanOrEqualTo(room.right - 14 + 0.01),
+                reason: line,
+              );
+              expect(drawn.top, greaterThanOrEqualTo(room.top), reason: line);
+              expect(
+                drawn.bottom,
+                lessThanOrEqualTo(room.bottom),
                 reason: line,
               );
             }
             final size = sizeOf(tester, cue.first);
             expect(sizeOf(tester, cue.second), size, reason: '$cue');
             final twoParts = cue.first.contains('·');
-            if (!twoParts) {
-              expect(size, greaterThanOrEqualTo(56), reason: '$cue');
-            }
-            expect(size, lessThanOrEqualTo(76), reason: '$cue');
+            expect(
+              size,
+              greaterThanOrEqualTo(twoParts ? 43 : 44),
+              reason: '$cue',
+            );
+            expect(size, lessThanOrEqualTo(58), reason: '$cue');
           }
         });
       }
 
-      testWidgets('with the real Do Hyeon: short lines stay 76, 몸 전체가 / '
-          '보이게 shrinks to about 64.6, 어깨·팔꿈치가 / 안 보여요 to about 44', (
-        tester,
-      ) async {
+      testWidgets('with the real Do Hyeon: short lines stay 58, 몸 전체가 / '
+          '보이게 too, and only 어깨·팔꿈치가 / 안 보여요 shrinks', (tester) async {
         Future<double> sized(SetupHintShort cue) async {
           await clear(tester);
           await _pump(
@@ -982,7 +1039,7 @@ void main() {
           return sizeOf(tester, cue.first);
         }
 
-        expect(await sized(tooClose), 76);
+        expect(await sized(tooClose), 58);
         expect(
           await sized(
             SetupHintShort.of(
@@ -992,7 +1049,7 @@ void main() {
               ),
             ),
           ),
-          closeTo(64.6, 0.3),
+          58,
         );
         expect(
           await sized(
@@ -1000,19 +1057,19 @@ void main() {
               _status(SetupReason.missingParts, parts: [BodyPart.hips]),
             ),
           ),
-          greaterThanOrEqualTo(56),
+          58,
         );
-        expect(
-          await sized(
-            SetupHintShort.of(
-              _status(
-                SetupReason.missingParts,
-                parts: [BodyPart.shoulders, BodyPart.elbows],
-              ),
+        final twoParts = await sized(
+          SetupHintShort.of(
+            _status(
+              SetupReason.missingParts,
+              parts: [BodyPart.shoulders, BodyPart.elbows],
             ),
           ),
-          closeTo(44.1, 0.3),
         );
+        // 217.1 wide at 44 in the room of 216: about 43.7 (decision 3).
+        expect(twoParts, closeTo(43.7, 0.2));
+        expect(twoParts, lessThan(BattleCameraArea.cueMinSize));
       });
     });
 
