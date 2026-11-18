@@ -287,6 +287,89 @@ void main() {
     );
   }
 
+  // At 2.0x text the band (y 177-353 on a 360 x 780 phone) used to cover the
+  // check's first line; at 1.0x it did not.
+  for (final textScale in [1.0, 2.0]) {
+    testWidgets(
+      'while the person check asks for a tap in the setup, the setup band and '
+      'its frame step aside, at ${textScale}x text; the check is clear of the '
+      'camera switch, and once it is confirmed the countdown starts (A9 with S2)',
+      (tester) async {
+        await open(tester, personGuard: true, textScale: textScale);
+        BattleCameraArea area() =>
+            tester.widget<BattleCameraArea>(find.byType(BattleCameraArea));
+        final band = find.byWidgetPredicate(
+          (w) => w.runtimeType.toString() == '_SetupCueBand',
+        );
+        final statusFrame = find.byWidgetPredicate(
+          (w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).border is Border &&
+              ((w.decoration as BoxDecoration).border! as Border).left.width ==
+                  BattleCameraArea.frameWidth,
+        );
+        await frame(tester, 1);
+        await frame(tester, 1.5);
+        expect(band, findsOneWidget);
+        final original = setupPose();
+        await frame(
+          tester,
+          2,
+          pose: PoseFrame(
+            imageWidth: original.imageWidth,
+            imageHeight: original.imageHeight,
+            keypoints: {
+              for (final entry in original.keypoints.entries)
+                entry.key: Keypoint(
+                  landmark: entry.key,
+                  x: entry.value.x + 300,
+                  y: entry.value.y,
+                  likelihood: entry.value.likelihood,
+                ),
+            },
+          ),
+        );
+        expect(viewModel.state.phase, BattlePhase.setup);
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        expect(area().setupCue, isNull);
+        await tester.pump(BattleCameraArea.cueHold);
+        expect(band, findsNothing);
+        expect(statusFrame, findsNothing);
+        final notice = tester.getRect(
+          find
+              .descendant(
+                of: find.byType(PersonTrackingPauseNotice),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        final camera = tester.getRect(find.byType(BattleCameraArea));
+        expect(camera.contains(notice.topLeft), isTrue);
+        expect(camera.contains(notice.bottomRight), isTrue);
+        final cameraSwitch = tester.getRect(
+          find.byIcon(Icons.cameraswitch_outlined),
+        );
+        expect(notice.overlaps(cameraSwitch), isFalse);
+        expect(
+          find.widgetWithText(FilledButton, '확인 후 계속').hitTestable(),
+          findsOneWidget,
+        );
+        // Back in view, then confirmed, as in the S2 test above.
+        await frame(tester, 2.5, pose: original);
+        await tester.tap(find.text('확인 후 계속'));
+        await tester.pump();
+        await frame(tester, 3, pose: original);
+        expect(find.text('확인 후 계속'), findsNothing);
+        // The pose holds, so the countdown starts and its green frame shows.
+        expect(stage(tester).phase, BattleStagePhase.countdown);
+        expect(statusFrame, findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await close(tester);
+      },
+    );
+  }
+
   group('before the round', () {
     testWidgets('the stage shows my character against RepBot', (tester) async {
       await open(tester, myCharacter: 'seal');

@@ -562,7 +562,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                 ),
           onLeave: () => unawaited(_exit()),
           hint: setup ? null : _roundHint,
-          setupCue: setup ? _setupCue : null,
+          // Not while the person check asks for a tap (as in the AI battle).
+          setupCue: setup && !counter.trackingPaused ? _setupCue : null,
           // No ready button (team decision 2026-11-15): ready is sent by
           // itself once the pose holds, and taken back when it is lost.
           onSwitchCamera: setup && running && _counter.canSwitchCamera

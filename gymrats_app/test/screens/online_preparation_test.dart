@@ -13,7 +13,7 @@ import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/models/setup_hint_short.dart';
 import 'package:gymrats_app/screens/battle_screen.dart'
-    show BattleSetupListener;
+    show BattleSetupListener, PersonTrackingPauseNotice;
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
@@ -332,6 +332,88 @@ void main() {
     await wait(tester, 400);
     expect(find.text('결과 화면'), findsOneWidget);
     return results.single;
+  }
+
+  // At 2.0x text the band (y 177-353 on a 360 x 780 phone) used to cover the
+  // check's first line; at 1.0x it did not.
+  for (final textScale in [1.0, 2.0]) {
+    testWidgets(
+      'while the person check asks for a tap in the setup, the setup band and '
+      'its frame step aside, at ${textScale}x text, and the check is clear of '
+      'the camera switch; once it is confirmed the band is back (A9 with S2)',
+      (tester) async {
+        await open(tester, personGuard: true, textScale: textScale);
+        final band = find.byWidgetPredicate(
+          (w) => w.runtimeType.toString() == '_SetupCueBand',
+        );
+        final statusFrame = find.byWidgetPredicate(
+          (w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).border is Border &&
+              ((w.decoration as BoxDecoration).border! as Border).left.width ==
+                  BattleCameraArea.frameWidth,
+        );
+        await pose(tester);
+        await wait(tester, 1000);
+        expect(band, findsOneWidget);
+        final original = standingFrame();
+        streamPose = null;
+        estimator.frames.add(
+          PoseFrame(
+            imageWidth: original.imageWidth,
+            imageHeight: original.imageHeight,
+            keypoints: {
+              for (final entry in original.keypoints.entries)
+                entry.key: Keypoint(
+                  landmark: entry.key,
+                  x: entry.value.x + 300,
+                  y: entry.value.y,
+                  likelihood: entry.value.likelihood,
+                ),
+            },
+          ),
+        );
+        camera.emit();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 10));
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        expect(cueOf(tester), isNull);
+        await tester.pump(BattleCameraArea.cueHold);
+        expect(band, findsNothing);
+        expect(statusFrame, findsNothing);
+        final notice = tester.getRect(
+          find
+              .descendant(
+                of: find.byType(PersonTrackingPauseNotice),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        final area = tester.getRect(find.byType(BattleCameraArea));
+        expect(area.contains(notice.topLeft), isTrue);
+        expect(area.contains(notice.bottomRight), isTrue);
+        final cameraSwitch = tester.getRect(
+          find.byIcon(Icons.cameraswitch_outlined),
+        );
+        expect(notice.overlaps(cameraSwitch), isFalse);
+        expect(
+          find.widgetWithText(FilledButton, '확인 후 계속').hitTestable(),
+          findsOneWidget,
+        );
+        // Back in view, then confirmed: the band and its frame are back.
+        await pose(tester);
+        await tester.tap(find.text('확인 후 계속'));
+        await tester.pump();
+        await pose(tester);
+        expect(find.text('확인 후 계속'), findsNothing);
+        expect(cueOf(tester), isNotNull);
+        expect(band, findsOneWidget);
+        expect(statusFrame, findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
   }
 
   testWidgets('experimental online guard pauses and requires confirmation', (
@@ -1308,7 +1390,9 @@ void main() {
       await pose(tester);
       await wait(tester, 2000);
       await pose(tester, found: false);
-      expect(cueOf(tester)!.message, isNot(contains('초 후 자동으로 준비해요')));
+      // With the person check on, losing the pose may pause tracking, and
+      // then no cue shows at all (A9 with S2).
+      expect(cueOf(tester)?.message ?? '', isNot(contains('초 후 자동으로 준비해요')));
       await wait(tester, 2000);
       expect(session.readyRequests, isEmpty);
       // Ready again: a full new 3 seconds.
