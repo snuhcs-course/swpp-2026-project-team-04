@@ -443,4 +443,98 @@ void main() {
       expect(told, 0);
     });
   });
+
+  group("the last goal (A11 spec 6) and the battle's character", () {
+    /// The account's squat goal of 20, set [before] the design battle ended.
+    FeedbackGoal goalSet({Duration before = const Duration(days: 1)}) =>
+        FeedbackGoal(
+          exercise: ExerciseType.squat,
+          kind: GoalKind.reps,
+          target: 20,
+          baseline: 16,
+          title: '스쿼트 20회 인정받기',
+          setAt: coachEndedAt.subtract(before),
+          characterId: 'kangaroo',
+          fromMatch: 'earlier',
+        );
+
+    test('a goal set before the battle is read and checked first; the talk '
+        'has its two lines more', () async {
+      final store = _Store()..goals[(7, ExerciseType.squat)] = goalSet();
+      final viewModel = _viewModel(store: store);
+      await viewModel.load();
+      final script = viewModel.state.script!;
+      expect(script.talk.first.text, startsWith('지난번 미션 기억나범?'));
+      expect(script.talk[1].text, '이번엔 18번이라서 딱 2번 모자랐어. 아깝다범!');
+      final plain = _viewModel();
+      await plain.load();
+      // Two check lines; the summary, its counted reps said already and
+      // no earlier battles to compare with, says nothing.
+      expect(viewModel.lineCount, plain.lineCount! + 2 - 1);
+    });
+
+    test("a goal set after the battle (in this talk), another account's, "
+        'none, or a store that fails: nothing is checked', () async {
+      for (final (store, account) in [
+        (
+          _Store()
+            ..goals[(7, ExerciseType.squat)] = goalSet(
+              before: const Duration(minutes: -1),
+            ),
+          7,
+        ),
+        (_Store()..goals[(8, ExerciseType.squat)] = goalSet(), 7),
+        (_Store(), 7),
+        (_FailingRead(), 7),
+      ]) {
+        final viewModel = _viewModel(store: store, accountId: account);
+        await viewModel.load();
+        expect(viewModel.state.script!.facts.lastResult, isNull);
+        expect(viewModel.state.script!.talk.first.text, startsWith('수고했다범!'));
+      }
+    });
+
+    testWidgets('a store that never answers leaves the goal unchecked, not '
+        'the talk unready', (tester) async {
+      final viewModel = _viewModel(store: _StuckRead());
+      var ready = false;
+      unawaited(viewModel.load().then((_) => ready = true));
+      await tester.pump(
+        CoachViewModel.lastGoalWait - const Duration(milliseconds: 1),
+      );
+      expect(ready, isFalse);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(ready, isTrue);
+      expect(viewModel.state.phase, CoachPhase.ready);
+      expect(viewModel.state.script!.facts.lastResult, isNull);
+    });
+
+    test("the battle's character talks and keeps the goal picked "
+        '(task.md W11 decision 11)', () async {
+      final store = _Store();
+      final viewModel = _viewModel(store: store, characterId: 'bear');
+      await viewModel.load();
+      viewModel
+        ..setInstant(true)
+        ..start(atGoal: true);
+      expect(viewModel.voice.characterId, 'bear');
+      expect(viewModel.state.line!.text, endsWith('곰?'));
+      await viewModel.choose(viewModel.state.script!.suggestions.first);
+      expect(store.goals[(7, ExerciseType.squat)]!.characterId, 'bear');
+    });
+  });
+}
+
+/// A goal store whose reads never answer.
+class _StuckRead extends _Store {
+  @override
+  Future<FeedbackGoal?> read(int accountId, ExerciseType exercise) =>
+      Completer<FeedbackGoal?>().future;
+}
+
+/// A goal store whose reads fail.
+class _FailingRead extends _Store {
+  @override
+  Future<FeedbackGoal?> read(int accountId, ExerciseType exercise) =>
+      Future.error(StateError('locked'));
 }
