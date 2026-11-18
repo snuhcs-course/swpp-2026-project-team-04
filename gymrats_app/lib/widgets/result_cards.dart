@@ -2,7 +2,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../models/character_rig.dart';
+import '../services/feedback/coach_script.dart';
 import '../theme/app_theme.dart';
+import 'character_figure.dart';
+import 'coach_parts.dart';
 
 /// A personal best the battle set, in points of its exercise.
 class ResultNewBest {
@@ -48,15 +52,28 @@ class ResultRecent {
   final int difference;
 }
 
-/// One thing to try in the next battle.
-class ResultTip {
-  const ResultTip({required this.title, this.reason});
+/// The character card's values (A10 spec 2): who talks and how many lines
+/// the talk has.
+class ResultCoachEntry {
+  const ResultCoachEntry({
+    required this.characterId,
+    required this.name,
+    required this.ending,
+    this.lineCount,
+  });
 
-  /// How to do it, e.g. "가슴이 바닥에 가까워질 때까지 내려간 뒤 올라와요.".
-  final String title;
+  /// The character the user has now, drawn idle on the card.
+  final String characterId;
 
-  /// One line on why, e.g. "깊이 부족 2회"; null leaves the line out.
-  final String? reason;
+  /// Its name on the tag, e.g. "물렁범".
+  final String name;
+
+  /// The ending after its sentences, e.g. "범".
+  final String ending;
+
+  /// The lines before the goal question; null while the talk loads, when
+  /// the card's buttons wait.
+  final int? lineCount;
 }
 
 /// Where the personal best and the latest battles go while the earlier
@@ -379,103 +396,236 @@ class ResultDashedLine extends CustomPainter {
   bool shouldRepaint(ResultDashedLine oldDelegate) => false;
 }
 
-/// "다음 판 한 가지": the tip's title and reason, then 자세 피드백 전체
-/// 보기. Without a tip only the link shows; without feedback only the tip.
-class ResultTipCard extends StatelessWidget {
-  const ResultTipCard({super.key, this.tip, this.onOpenFeedback})
-    : assert(tip != null || onOpenFeedback != null);
+/// The way into the character's talk (A10 spec 2, UxGoal report): the
+/// character idle on a lime disc and a white floor at the left, its name
+/// tag, "이번 판 이야기해 줄게! 할 말이 N개 있어.", and 이야기 듣기 and
+/// 건너뛰기 (straight to the goal question). The buttons wait while the
+/// talk loads.
+class ResultCoachCard extends StatelessWidget {
+  const ResultCoachCard({
+    super.key,
+    required this.entry,
+    required this.onListen,
+    required this.onSkip,
+  });
 
-  final ResultTip? tip;
+  final ResultCoachEntry entry;
+  final VoidCallback onListen;
+  final VoidCallback onSkip;
 
-  /// Null hides the link: the battle has no form feedback.
-  final VoidCallback? onOpenFeedback;
+  static const edge = 2.5;
+  static const radius = 22.0;
+  static const minHeight = 176.0;
 
-  static const _markSize = 22.0;
-  static const _targetSize = 15.0;
-  static const _chevronSize = 16.0;
-  static const _markStrength = 0.6;
+  /// The room the character takes at the left.
+  static const seatWidth = 128.0;
+  static const _padding = 14.0;
+  static const _discLeft = 12.0;
+  static const _discTop = 22.0;
+  static const _discSize = 104.0;
+  static const figureScale = 0.82;
+
+  /// Where the rig's feet land: the design's 140 x 160 box at (-6, -6),
+  /// feet at (70, 150) of it.
+  static const feet = Offset(64, 144);
+  static const _rigFeet = Offset(70, 150);
+  static const _floorLeft = 22.0;
+  static const _floorTop = 140.0;
+  static const _floorWidth = 84.0;
+  static const _floorHeight = 12.0;
+  static const _floorRadius = 6.0;
+  static const _tagIndent = AppSpacing.s4;
+  static const buttonHeight = 44.0;
+  static const _buttonEdge = 2.0;
+  static const _buttonRadius = 14.0;
+  static const _playSize = 16.0;
+  static const _skipSide = 6.0;
+
+  /// The card's sentence.
+  static List<CoachPiece> lineOf(ResultCoachEntry entry) => [
+    CoachPiece('이번 판 이야기해 줄게${entry.ending}!'),
+    if (entry.lineCount case final count?) ...[
+      const CoachPiece(' 할 말이 '),
+      CoachPiece('$count개', marked: true),
+      const CoachPiece(' 있어.'),
+    ],
+  ];
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final tip = this.tip;
-    final reason = tip?.reason;
-    final open = onOpenFeedback;
-    // The link brings its own room above and below: it is a full tap
-    // target tall.
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          AppSpacing.s16,
-          tip == null ? 0 : AppSpacing.s12,
-          AppSpacing.s16,
-          open == null ? AppSpacing.s12 : 0,
+    final ready = entry.lineCount != null;
+    final pieces = lineOf(entry);
+    final rig = CharacterRig.standard;
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      label: '캐릭터 피드백',
+      child: Container(
+        constraints: const BoxConstraints(minHeight: minHeight),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: const BorderRadius.all(Radius.circular(radius)),
+          border: Border.all(color: AppColors.ink, width: edge),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            if (tip != null) ...[
-              Row(
+            Positioned(
+              left: _discLeft,
+              top: _discTop,
+              width: _discSize,
+              height: _discSize,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.ink, width: edge),
+                ),
+              ),
+            ),
+            Positioned(
+              left: feet.dx - _rigFeet.dx * figureScale,
+              top: feet.dy - _rigFeet.dy * figureScale,
+              width: rig.boxWidth * figureScale,
+              height: rig.boxHeight * figureScale,
+              child: ExcludeSemantics(
+                child: CharacterFigure(
+                  key: const ValueKey('result-coach-character'),
+                  characterId: entry.characterId,
+                  scale: figureScale,
+                ),
+              ),
+            ),
+            Positioned(
+              left: _floorLeft,
+              top: _floorTop,
+              width: _floorWidth,
+              height: _floorHeight,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(_floorRadius),
+                  ),
+                  border: Border.all(color: AppColors.ink, width: edge),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                seatWidth,
+                _padding,
+                _padding,
+                _padding,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: _markStrength),
-                      borderRadius: const BorderRadius.all(
-                        Radius.circular(AppRadius.bar),
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: _tagIndent),
+                    child: ExcludeSemantics(
+                      child: CoachNameTag(name: entry.name, small: true),
                     ),
-                    child: const SizedBox.square(
-                      dimension: _markSize,
-                      child: Icon(
-                        Icons.track_changes_rounded,
-                        size: _targetSize,
-                        color: AppColors.ink,
+                  ),
+                  const SizedBox(height: AppSpacing.s8),
+                  Semantics(
+                    label: '${entry.name}, ${pieces.map((p) => p.text).join()}',
+                    child: ExcludeSemantics(
+                      child: CoachMarkedText(
+                        pieces: pieces,
+                        style: text.coachCardLine,
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.s8),
-                  Text(
-                    '다음 판 한 가지',
-                    style: text.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  const SizedBox(height: AppSpacing.s12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: ready ? onListen : null,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(buttonHeight),
+                            padding: EdgeInsets.zero,
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: AppColors.ink,
+                            disabledBackgroundColor: AppColors.border,
+                            disabledForegroundColor: AppColors.textMuted,
+                            side: const BorderSide(
+                              color: AppColors.ink,
+                              width: _buttonEdge,
+                            ),
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(_buttonRadius),
+                              ),
+                            ),
+                            textStyle: text.coachButton,
+                          ),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('이야기 듣기', maxLines: 1),
+                                SizedBox(width: _skipSide),
+                                Icon(Icons.play_arrow_rounded, size: _playSize),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.s8),
+                      TextButton(
+                        onPressed: ready ? onSkip : null,
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, buttonHeight),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: _skipSide,
+                          ),
+                          foregroundColor: AppColors.textSecondary,
+                          textStyle: text.coachLink,
+                        ),
+                        child: const Text('건너뛰기'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.s8),
-              Text(
-                tip.title,
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              if (reason != null)
-                Text(
-                  reason,
-                  style: text.lobbyCardLine.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-            ],
-            if (open != null)
-              TextButton.icon(
-                onPressed: open,
-                iconAlignment: IconAlignment.end,
-                icon: const Icon(
-                  Icons.chevron_right_rounded,
-                  size: _chevronSize,
-                ),
-                label: const Text('자세 피드백 전체 보기'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.ink,
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, AppSpacing.s48),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  alignment: Alignment.centerLeft,
-                  textStyle: text.reportLine.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "자세 기록 표로 보기 ›" at the right under the character card: the form
+/// feedback screen with its table (A10 spec 2).
+class ResultFeedbackLink extends StatelessWidget {
+  const ResultFeedbackLink({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  static const label = '자세 기록 표로 보기';
+  static const _chevronSize = 14.0;
+  static const height = 44.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        onPressed: onPressed,
+        iconAlignment: IconAlignment.end,
+        icon: const Icon(Icons.chevron_right_rounded, size: _chevronSize),
+        label: const Text(label),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.textSecondary,
+          padding: EdgeInsets.zero,
+          minimumSize: const Size(0, height),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: text.coachSmallBold,
         ),
       ),
     );

@@ -226,57 +226,99 @@ void main() {
     });
   });
 
-  group('the tip card', () {
-    const tip = ResultTip(
-      title: '팔꿈치를 90°까지 굽혀 보세요',
-      reason: '이번 판 평균 123° · 더 깊게 내려가면 Excellent +15',
+  group('the character card (A10 spec 2)', () {
+    const entry = ResultCoachEntry(
+      characterId: 'seal',
+      name: '물렁범',
+      ending: '범',
+      lineCount: 4,
     );
 
-    testWidgets('the tip, its reason, then the feedback link', (tester) async {
-      var opened = 0;
+    testWidgets('the name tag, the line with its count, and the buttons', (
+      tester,
+    ) async {
+      final taps = <String>[];
       await show(
         tester,
-        ResultTipCard(tip: tip, onOpenFeedback: () => opened++),
+        ResultCoachCard(
+          entry: entry,
+          onListen: () => taps.add('hear'),
+          onSkip: () => taps.add('skip'),
+        ),
       );
-      expect(find.text('다음 판 한 가지'), findsOneWidget);
-      expect(find.text(tip.title), findsOneWidget);
-      expect(find.text(tip.reason!), findsOneWidget);
-      final link = find.text('자세 피드백 전체 보기');
+      expect(find.text('물렁범'), findsOneWidget);
       expect(
-        tester.getRect(link).top,
-        greaterThan(tester.getRect(find.text(tip.reason!)).bottom),
+        find.bySemanticsLabel('물렁범, 이번 판 이야기해 줄게범! 할 말이 4개 있어.'),
+        findsOneWidget,
       );
+      expect(find.byKey(const ValueKey('result-coach-character')), findsOne);
+      await tester.tap(find.text('이야기 듣기'));
+      await tester.tap(find.text('건너뛰기'));
+      expect(taps, ['hear', 'skip']);
+      final card = tester.getRect(find.byType(ResultCoachCard));
+      expect(card.height, greaterThanOrEqualTo(ResultCoachCard.minHeight));
+      // Every button is at least 44 high.
+      for (final button in [
+        find.byType(FilledButton),
+        find.byType(TextButton),
+      ]) {
+        expect(tester.getSize(button).height, greaterThanOrEqualTo(44));
+      }
+    });
+
+    testWidgets('the text starts right of the character\'s seat', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        ResultCoachCard(entry: entry, onListen: () {}, onSkip: () {}),
+      );
+      final card = tester.getRect(find.byType(ResultCoachCard));
+      expect(
+        tester.getRect(find.byType(FilledButton)).left,
+        greaterThanOrEqualTo(card.left + ResultCoachCard.seatWidth),
+      );
+    });
+
+    testWidgets('while the talk loads: no count, and the buttons wait', (
+      tester,
+    ) async {
+      final taps = <String>[];
+      await show(
+        tester,
+        ResultCoachCard(
+          entry: const ResultCoachEntry(
+            characterId: 'mouse',
+            name: 'GYM마우스',
+            ending: '찍',
+          ),
+          onListen: () => taps.add('hear'),
+          onSkip: () => taps.add('skip'),
+        ),
+      );
+      expect(find.bySemanticsLabel('GYM마우스, 이번 판 이야기해 줄게찍!'), findsOneWidget);
+      await tester.tap(find.text('이야기 듣기'));
+      await tester.tap(find.text('건너뛰기'));
+      expect(taps, isEmpty);
+    });
+
+    test('its line marks the count', () {
+      final pieces = ResultCoachCard.lineOf(entry);
+      expect(pieces.where((p) => p.marked).single.text, '4개');
+    });
+  });
+
+  group('the feedback link', () {
+    testWidgets('"자세 기록 표로 보기", 44 high, opens the feedback', (tester) async {
+      var opened = 0;
+      await show(tester, ResultFeedbackLink(onPressed: () => opened++));
+      expect(find.text('자세 기록 표로 보기'), findsOneWidget);
       expect(
         tester.getSize(find.byType(TextButton)).height,
-        greaterThanOrEqualTo(48),
+        greaterThanOrEqualTo(44),
       );
-      await tester.tap(link);
+      await tester.tap(find.text('자세 기록 표로 보기'));
       expect(opened, 1);
-    });
-
-    testWidgets('without feedback, no link', (tester) async {
-      await show(tester, const ResultTipCard(tip: tip));
-      expect(find.text(tip.title), findsOneWidget);
-      expect(find.byType(TextButton), findsNothing);
-    });
-
-    testWidgets('without a tip, the link alone', (tester) async {
-      await show(tester, ResultTipCard(onOpenFeedback: () {}));
-      expect(find.text('다음 판 한 가지'), findsNothing);
-      expect(find.text('자세 피드백 전체 보기'), findsOneWidget);
-    });
-
-    testWidgets('a tip without a reason: its title, then the link, and no '
-        'empty line between', (tester) async {
-      const bare = ResultTip(title: '엉덩이를 뒤로 빼며 허벅지가 바닥과 나란해질 때까지 앉아요.');
-      await show(tester, ResultTipCard(tip: bare, onOpenFeedback: () {}));
-      final title = tester.getRect(find.text(bare.title));
-      // 다음 판 한 가지, the title and the link's label: no reason line.
-      expect(find.byType(Text), findsNWidgets(3));
-      expect(
-        tester.getRect(find.byType(TextButton)).top,
-        moreOrLessEquals(title.bottom, epsilon: 0.5),
-      );
     });
   });
 

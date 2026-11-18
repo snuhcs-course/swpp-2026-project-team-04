@@ -848,3 +848,54 @@ team plan, one day before the iteration's official start. Its prompts from that 
 
 **Takeaway**
 - When a merge brings in a feature behind a build flag, run the full suite with the flag on as well.
+
+## W10 – the character's talk after a battle and the next goal (A10), 2026-11-17
+
+### a. Where AI was used
+- Claude Code (Opus 5.5, VS Code) in one session. It read the A10 spec and the designs (UxDlg variant A, UxGfx, UxGoal report), checked the spec's files against the step's file list, and asked the spec's five questions and three more. Then it wrote the code and the tests, ran the reviewer subagent, and drafted these notes, the testing notes and the PR body.
+  - `d3064dd`: the talk's text styles (`CoachText` at the end of `gymrats_app/lib/theme/app_theme.dart`).
+  - `6c1a50c`: the rules: `lib/services/feedback/coach_script.dart` (the talk as a list of steps, the pace per second, the two goals), `goal_store.dart`, `lib/models/feedback_goal.dart`, `lib/utils/korean_josa.dart`, and their tests.
+  - `4e467ff`: the talk screen (`lib/screens/coach_screen.dart`, `lib/viewmodels/coach_viewmodel.dart`, `lib/widgets/coach_stage.dart`, `coach_graphics.dart`, `coach_parts.dart`), the report's character card (`result_cards.dart`, `result_report.dart`, `result_screen.dart`), the `/coach` route and the goal store provider in `main.dart`, and the tests.
+- The reviewer subagent (same model) reviewed the change twice: run 1 CHANGES_REQUESTED, re-check APPROVE.
+- **Not done by AI:** choosing dialogue A in the design canvas (the user, with the team's OK), the nine answers (server history, first battle, online too, the tip moved into the talk, the pill, the two test-file exceptions, the card's place, two pages for the form step, the drop line), and the phone check (still to do).
+
+### b. Prompt history (the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-17 16:38] (pasted; excerpt) "4. W11에서 이 대본 함수에 \"지난번 목표 확인\" 단계를 더할 예정이니까, 단계를 나중에 끼워 넣기 쉬운 구조로 만들어. 5. 명세 끝의 \"사용자에게 물어볼 것\"을 하나씩 물어보고, 답은 task.md W10 \"Decisions\"에 오늘 날짜로 적어."
+- [Woohyun Song, 11-17 16:47, 16:50, 19:05] (answers in the agent's question dialogs; not prompts, so not in the Prompt Log; written in `task.md` W10 decisions 1–9) "서버 기록" (question 1, 16:47), "Split into two pages (Recommended)" (the form step, 16:50), "이번 판 초반과 비교한 대사로 (Recommended)" (after review run 1, 19:05).
+- [Woohyun Song, 11-17 19:46] "커밋하고 push해. 순서는 네가 말한 대로 해 줘(origin/main 머지 → 테스트 다시 → --check-diff → 수업 노트 → push)."
+
+### c. What AI did well
+- **Found the blocked files before writing code.** Renaming the report's link to '자세 기록 표로 보기' (spec 2) breaks five checks in two earlier test files (W7, W8). The agent listed them with line numbers first, and the user approved the two exceptions (link text only).
+- **Measured the four-line rule before building it.** Spec 4.2 item 3 put the rejection, the tiring sentence and the fix in one line. With the app's font that is about 80 characters, 5–6 lines in the 360 phone's box. The agent asked, and the user chose two pages. A widget test with the app's fonts now checks every line of a squat and a push-up battle, for all five characters (`coach_screen_test.dart`, 'every line of a squat and a push-up battle, for every character').
+- **The rules give the design's numbers.** The design's example battle, rebuilt in a test, gives "스쿼트 20회 인정받기" and "후반 15초에 8회 이상 / 이번 판 후반은 6회", as in UxDlg (`coach_script_test.dart`, group 'the design\'s battle against five earlier ones (spec 4.2)').
+- **Reused the game's combo rule** (`PlayerGameScore`) instead of writing a second one, and tested both on the same reps.
+- **A control test for the keep-all wrap.** Flutter breaks lines between any two Hangul syllables. The agent added word joiners and a test that shows both: without them the line breaks inside a word, with them only at spaces.
+
+### d. Hallucinations / errors
+- **A runtime type error in the first draft.** `_mean` used `reduce` with a `num` function on a list of `double`s, so the script threw and the report card never got its line count. The result screen's widget tests caught it (the count stayed null); fixed with `fold`.
+- **Wrong test data.** A combo-goal test put all six reps in the first 6 s, which is also "slowed down later", so it got the later-half goal. The test caught it; the data was changed.
+- **Layout misses caught by the agent's own fit tests:** the pace bars did not count their numbers growing with larger text (1 px and 4 px overflows), and the score card's number overflowed at 320 wide.
+- **Review run 1: CHANGES_REQUESTED** with 4 Major and 4 Minor findings, all real:
+  - The 30% and 10% rules missed exact boundaries by float rounding (`[5,5,4,4,3,3]` gave 0.7000…1).
+  - A goal choice had no screen-reader tap action.
+  - At 320 x 640 with 1.3x text the dialog box covered '사양할래'. The fit test only looked for exceptions and tapped the first goal, so it could not see it.
+  - The chips had gray text on amber and lime.
+  - One Minor was a gap in the spec (a 92% late drop praised as an even pace), which went to the user (decision 9).
+- **Re-check: APPROVE with 2 Minor.** One was a boundary test that could not fail: its inputs were exact in floating point, so removing the tolerance changed nothing. The agent searched for inputs that do round (33 vs 30 in 5 s slices, 297 vs 330 in 50 s slices). It then checked that removing the tolerance on each side fails the test.
+- **Process slip:** the extra question dialog after the file check was written in English, while the user's replies are in Korean.
+
+### e. Prompt revisions
+- **The first message (INDEX.md's template → the user's prompt):**
+  - Before (the template in `.claude/design/uat1/INDEX.md`): "명세의 \"고칠 파일\"을 ownership.json 허용 목록과 맞춰 보고, 막히는 파일이 있으면 코드를 쓰기 전에 목록으로 알려 줘."
+  - After (11-17 16:38): the same, plus where to branch from ("W9 브랜치가 아니라 최신 origin/main"), the three `task.md` conditions (`main.dart` only the route and the provider, new files only in 진영's folder, `lib/utils/` in the design-doc list), and "단계를 나중에 끼워 넣기 쉬운 구조로".
+  - Why it worked: the branch came from `main` though W9 was not merged yet, `main.dart` got only its two lines, and the talk became a list of steps, so W11 can put its check in front (`coach_script_test.dart`, 'a step put in front adds its lines first; one with nothing to say adds none').
+- **The pace rule (spec 4.2 item 2 → decision 9):**
+  - Before: "그 밖에는 \"처음부터 끝까지 고른 속도였어. 좋다{e}!\"".
+  - After (the user, after review run 1): a later part 30% or more slower than its own start gets the drop line, also with a usual pace.
+  - Why: the literal rule praised a battle whose weak-point goal was its later half.
+
+### f. Manual fixes and why
+- None. No AI-generated line was edited by hand, so W10 adds no manual-fix marker.
+
+### Takeaway
+- Fit tests should tap every control they claim fits, not only check that nothing throws. And a boundary test must use inputs where the boundary is really at risk.

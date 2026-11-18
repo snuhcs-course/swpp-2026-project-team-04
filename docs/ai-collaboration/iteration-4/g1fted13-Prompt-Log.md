@@ -1337,3 +1337,23 @@ W9 시작하자. 명세는 .claude/design/uat1/A9-SETUP-READABILITY-SPEC.md 이�
 [Woohyun Song, 11-18 11:37] "PR #72가 먼저 머지됐으니 하네스 규칙대로 W9가 origin/main을 합쳐야 해. feat/setup_readability 로 바꿔서 origin/main 머지하고, online_preparation_test.dart 충돌은 양쪽 다 살려.
 #72가 카메라 칸에 '사람을 다시 확인해 주세요' 안내와 '확인 후 계속' 버튼을 넣었으니, W9의 안내 띠·테두리·카메라 전환 버튼과 겹치지 않는지도 확인해.
 그다음 전체 테스트, --check-diff, 수업 노트 갱신 후 push해."
+
+## 2026-11-17 · Woohyun Song · feat/coach_feedback
+<!-- Cut: the client's injected browser notice in front of 2 prompts (11-17 16:38 and 19:46; not the user's text). The answers in the agent's question dialogs (11-17 16:47-16:50 and 19:05; written in task.md W10 decisions 1-9) are not in the export as prompts. -->
+<!-- 5cd16e35 2026-11-17T07:38:38.898Z -->
+[Woohyun Song, 11-17 16:38] "<pasted_content id=\"5381\">
+W10 시작하자. 명세는 .claude/design/uat1/A10-COACH-FEEDBACK-SPEC.md 이고 디자인 원본은 같은 폴더의 design/ 아래에 있어.
+1. 명세 전체와 INDEX.md를 먼저 읽어.
+2. 브랜치 feat/coach_feedback 은 W9 브랜치가 아니라 최신 origin/main 에서 만들어. --status 에 W10이 \"waiting for feat/setup_readability\"로 나오는 건 머지 순서 얘기라서 작업은 지금 해도 돼.
+3. 명세의 \"고칠 파일\"을 ownership.json 허용 목록과 맞춰 보고, 막히는 파일이 있으면 코드를 쓰기 전에 목록으로 알려 줘. task.md W10 절의 조건도 지켜:
+   - main.dart 는 대화 화면 경로와 목표 저장소 Provider만 더해.
+   - lib/services/feedback/ 에서는 새 파일만 만들고, 진영이형의 기존 파일은 읽기만 해.
+   - lib/utils/ 는 새 폴더라서 progress.md \"Design doc changes\"에 적어.
+4. W11에서 이 대본 함수에 \"지난번 목표 확인\" 단계를 더할 예정이니까, 단계를 나중에 끼워 넣기 쉬운 구조로 만들어.
+5. 명세 끝의 \"사용자에게 물어볼 것\"을 하나씩 물어보고, 답은 task.md W10 \"Decisions\"에 오늘 날짜로 적어.
+6. 그다음 구현하고, 테스트와 reviewer까지 마친 뒤 보고해. 커밋과 push는 내가 말할 때만 해.
+</pasted_content id=\"5381\">"
+
+<!-- 5cd16e35 2026-11-17T10:46:01.394Z -->
+[Woohyun Song, 11-17 19:46] "커밋하고 push해. 순서는 네가 말한 대로 해 줘(origin/main 머지 → 테스트 다시 → --check-diff → 수업 노트 → push).
+그다음 PR 올려. 첫 줄은 'Merge order: #20', merge-after는 #19 feat/setup_readability. 본문은 기존 양식대로 영어로 쓰고, Manual check 칸에는 \"Phone check in progress; do not merge yet\"라고 적어 둬. 끝나면 PR 링크 알려 줘."
