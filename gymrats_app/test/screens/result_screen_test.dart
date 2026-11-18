@@ -1569,6 +1569,104 @@ void main() {
       expect(routes.settings.single.arguments, same(report));
     });
 
+    group("the battle's own character (task.md W11 decision 11)", () {
+      /// A past push-up battle with feedback, id 7.
+      final pastWithFeedback = MatchRecord(
+        id: 7,
+        exercise: ExerciseType.pushUp,
+        opponentName: BotDifficulty.beginner.opponentName,
+        myReps: 3,
+        opponentReps: 1,
+        myScore: 60,
+        opponentScore: 20,
+        playedAt: _endedAt,
+        isOnline: false,
+        feedbackSummary: const FeedbackSummary(
+          validReps: 3,
+          invalidReps: 0,
+          issueCount: 0,
+        ),
+      );
+
+      /// [sampleReport] played as [characterId].
+      FormReport playedAs(String characterId) => FormReport.fromJson({
+        ...sampleReport().toJson(),
+        'characterId': characterId,
+      });
+
+      String seatCharacter(WidgetTester tester) =>
+          tester.widget<VictorySeat>(find.byType(VictorySeat)).characterId;
+      String cardCharacter(WidgetTester tester) => tester
+          .widget<ResultCoachCard>(find.byType(ResultCoachCard))
+          .entry
+          .characterId;
+
+      testWidgets('a past report shows the one played then (the bear), not '
+          'the one chosen now (the penguin): scene, card and talk', (
+        tester,
+      ) async {
+        final repository = FakeUserRepository()
+          ..reports = {7: playedAs('bear')};
+        await openPast(tester, pastWithFeedback, repository: repository);
+        await tester.pumpAndSettle();
+        expect(seatCharacter(tester), 'bear');
+        expect(cardCharacter(tester), 'bear');
+        expect(find.text('곰탱이'), findsWidgets);
+      });
+
+      testWidgets('while its form report is coming no character is drawn, '
+          'so none changes face; then the one played', (tester) async {
+        final gate = Completer<void>();
+        final repository = FakeUserRepository()
+          ..reports = {7: playedAs('bear')}
+          ..feedbackGate = gate;
+        await openPast(tester, pastWithFeedback, repository: repository);
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.byType(VictorySeat), findsNothing);
+        expect(find.byType(ResultCoachCard), findsNothing);
+        gate.complete();
+        await tester.pumpAndSettle();
+        expect(seatCharacter(tester), 'bear');
+      });
+
+      testWidgets('a report that kept none shows the one chosen now', (
+        tester,
+      ) async {
+        final repository = FakeUserRepository()..reports = {7: sampleReport()};
+        await openPast(tester, pastWithFeedback, repository: repository);
+        await tester.pumpAndSettle();
+        expect(seatCharacter(tester), 'penguin');
+        expect(cardCharacter(tester), 'penguin');
+      });
+
+      testWidgets('a failed fetch shows the one chosen now, without a card', (
+        tester,
+      ) async {
+        final failing = FakeUserRepository()
+          ..feedbackError = Exception('offline');
+        await openPast(tester, pastWithFeedback, repository: failing);
+        await tester.pumpAndSettle();
+        expect(seatCharacter(tester), 'penguin');
+        expect(find.byType(ResultCoachCard), findsNothing);
+      });
+
+      testWidgets('a past battle without feedback shows the one chosen now at '
+          'once', (tester) async {
+        await openPast(
+          tester,
+          MatchRecord(
+            exercise: ExerciseType.pushUp,
+            opponentName: 'RepBot',
+            myReps: 4,
+            opponentReps: 9,
+            playedAt: _endedAt,
+          ),
+        );
+        await tester.pump();
+        expect(seatCharacter(tester), 'penguin');
+      });
+    });
+
     for (final myScore in [240, null]) {
       testWidgets(
         'a past battle ${myScore == null ? 'without a score '

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/feedback_goal.dart';
 import '../models/feedback_stats.dart';
 import '../models/form_report.dart';
 import '../services/feedback/coach_script.dart';
@@ -152,7 +153,9 @@ class CoachViewModel extends ChangeNotifier {
   /// The battle talked about.
   final FormReport report;
 
-  /// The character the user has now; it talks, and a goal keeps it.
+  /// The character played in [report] ([FormReport.characterId]; the one
+  /// chosen now for a report that kept none): it talks, and a goal picked
+  /// here keeps it (task.md W11 decision 11).
   final String characterId;
 
   /// Who talks: the name tag and the sentence ending.
@@ -171,8 +174,8 @@ class CoachViewModel extends ChangeNotifier {
   /// combo.
   final UserRepository? _repository;
 
-  /// Where the picked goal goes; without it or [_accountId] nothing is
-  /// saved.
+  /// Where the picked goal goes, and where the last goal is read from to
+  /// check it (A11 spec 6); without it or [_accountId] neither happens.
   final GoalStore? _goalStore;
   final int? _accountId;
 
@@ -183,6 +186,11 @@ class CoachViewModel extends ChangeNotifier {
 
   /// How many earlier battles the talk compares with (A10 spec 4).
   static const earlierCount = 5;
+
+  /// How long the talk waits for the last goal: a read takes a few
+  /// milliseconds; a stuck one leaves the goal unchecked rather than the
+  /// talk unready.
+  static const lastGoalWait = Duration(seconds: 2);
 
   CoachState _state = const CoachState();
   bool _instant = false;
@@ -196,12 +204,13 @@ class CoachViewModel extends ChangeNotifier {
   int? get lineCount =>
       _state.phase == CoachPhase.ready ? _state.questionIndex : null;
 
-  /// Loads the earlier battles and builds the talk. A failed load builds it
-  /// as for a first battle. Does nothing once loading or ready.
+  /// Loads the earlier battles and the last goal, and builds the talk. A
+  /// failed load builds it as for a first battle, without a goal to check.
+  /// Does nothing once loading or ready.
   Future<void> load() async {
     if (_disposed || _loading || _state.phase == CoachPhase.ready) return;
     _loading = true;
-    final earlier = await _loadEarlier();
+    final (earlier, lastGoal) = await (_loadEarlier(), _loadLastGoal()).wait;
     _loading = false;
     if (_disposed) return;
     final feedback = FormFeedback.of(report, analyzer: analyzer);
@@ -215,9 +224,27 @@ class CoachViewModel extends ChangeNotifier {
         ),
         characterId: characterId,
         earlier: earlier,
+        lastGoal: lastGoal,
       ),
     );
     _set(CoachState(phase: CoachPhase.ready, script: script));
+  }
+
+  /// The account's goal for this exercise when it was set before this
+  /// battle ended, to check it (A11 spec 6); a goal set after it (picked in
+  /// this very talk) is not this battle's. Read only.
+  Future<FeedbackGoal?> _loadLastGoal() async {
+    final store = _goalStore, account = _accountId;
+    if (store == null || account == null) return null;
+    try {
+      final goal = await store
+          .read(account, report.exercise)
+          .timeout(lastGoalWait, onTimeout: () => null);
+      if (goal == null || !goal.setAt.isBefore(report.endedAt)) return null;
+      return goal;
+    } on Object {
+      return null;
+    }
   }
 
   /// The newest [earlierCount] battles of the same exercise played before

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -263,10 +265,31 @@ class _ResultScreenState extends State<ResultScreen> {
               ));
     // A past report shows only the scene's end look.
     if (record != null) _sceneOver = true;
-    _viewModel
-      ..addListener(_makeCoach)
-      ..load();
+    _viewModel.addListener(_makeCoach);
+    unawaited(
+      _viewModel.load().whenComplete(() {
+        if (mounted) setState(() => _formTried = true);
+      }),
+    );
     _makeCoach();
+  }
+
+  /// Whether the past battle's form report has been asked for and has come
+  /// or not: until then its character is not known.
+  bool _formTried = false;
+
+  /// The character played in this battle (task.md W11 decision 11): the
+  /// form report's; the one chosen now ([current]) for a report that kept
+  /// none, or for a past battle without one. Null while a past battle's
+  /// form report is still coming: nothing is drawn, so the character does
+  /// not change face.
+  String? _playedCharacter(String current) {
+    final form = _viewModel.state.form;
+    if (form?.characterId case final id?) return id;
+    final record = widget.record;
+    final waiting =
+        record != null && record.hasFeedback && form == null && !_formTried;
+    return waiting ? null : current;
   }
 
   /// Makes the talk once the battle's form report is in: a past battle's
@@ -281,7 +304,9 @@ class _ResultScreenState extends State<ResultScreen> {
 
   CoachViewModel _coachOf(FormReport form) => CoachViewModel(
     report: form,
+    // The battle's character talks; a report that kept none, the one now.
     characterId:
+        form.characterId ??
         Provider.of<CharacterViewModel?>(context, listen: false)?.characterId ??
         CharacterRig.defaultId,
     summary: ResultScreen.summaryOf(_viewModel.state),
@@ -391,11 +416,13 @@ class _ResultScreenState extends State<ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The app's character; without one above (a test) the default, as for
-    // a character not known (W5 spec 8).
-    final character =
-        context.watch<CharacterViewModel?>()?.characterId ??
-        CharacterRig.defaultId;
+    // The battle's character (W11 decision 11); for a report that kept none
+    // the app's, and without one above (a test) the default, as for a
+    // character not known (W5 spec 8).
+    final character = _playedCharacter(
+      context.watch<CharacterViewModel?>()?.characterId ??
+          CharacterRig.defaultId,
+    );
     final scene = ResultScreen.sceneOf(_viewModel.state);
     final playing = !_sceneOver;
     if (playing) {
@@ -437,7 +464,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 // Empty while the scene plays: it draws the seat itself.
                 seat: KeyedSubtree(
                   key: _seatKey,
-                  child: playing
+                  child: playing || character == null
                       ? const SizedBox.expand()
                       : VictorySeat(result: scene, characterId: character),
                 ),
@@ -445,7 +472,7 @@ class _ResultScreenState extends State<ResultScreen> {
             ),
           ),
         ),
-        if (playing && seat != null)
+        if (playing && seat != null && character != null)
           VictoryOverlay(
             result: scene,
             characterId: character,

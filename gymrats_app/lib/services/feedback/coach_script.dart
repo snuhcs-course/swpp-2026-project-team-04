@@ -13,14 +13,15 @@ import '../../utils/korean_josa.dart';
 import '../../widgets/battle_stage_model.dart';
 import '../game/player_game_score.dart';
 import 'form_analyzer.dart';
+import 'goal_progress.dart';
 
 // The character's talk after a battle (A10 spec 4): lines built by rules
 // from the battle's numbers, never by a language model.
 //
 // CoachScript.build is a pure function of CoachInput. The talk before the
 // goal question is a list of CoachTalkSteps run in order; a step adds its
-// lines, or none when its condition does not hold. W11 puts its check of
-// the last goal in front by passing its own list of steps.
+// lines, or none when its condition does not hold. The check of the last
+// goal (A11 spec 6) is the first step, and it changes the goal question.
 
 /// How the character stands while saying a line.
 enum CoachPose { idle, win, hit }
@@ -175,17 +176,42 @@ class CoachComboGraphic extends CoachGraphic {
   final int previousBest;
 }
 
-/// "다음 판 목표": the goal just picked.
+/// "다음 판 미션": the goal just picked; or, with [tag] "지난번 미션", the
+/// last goal recalled before it is checked (A11 spec 6).
 class CoachGoalGraphic extends CoachGraphic {
   const CoachGoalGraphic({
     required this.title,
     required this.subtitle,
     required this.exercise,
+    this.tag = nextTag,
+    this.showsWhere = true,
   });
 
   final String title;
   final String subtitle;
   final ExerciseType exercise;
+
+  /// The lime tag's words.
+  final String tag;
+
+  /// Whether the line under the dashed rule says where the goal will show.
+  final bool showsWhere;
+
+  static const nextTag = '다음 판 미션';
+  static const lastTag = '지난번 미션';
+}
+
+/// The last goal against this battle (A11 spec 6, UxGfx goalHit and
+/// goalMiss): the goal's number, this battle's, a bar, and a stamp,
+/// "달성!" or what was left.
+class CoachGoalResultGraphic extends CoachGraphic {
+  const CoachGoalResultGraphic({required this.title, required this.result});
+
+  /// The goal's title, e.g. "스쿼트 20회 인정받기".
+  final String title;
+
+  /// How this battle did on it, at its end.
+  final GoalProgress result;
 }
 
 /// Who talks: the character's name tag and the ending put after its
@@ -300,6 +326,29 @@ class CoachFacts {
   );
 
   final CoachInput input;
+
+  /// The last goal this battle is checked against (A11 spec 6): one of the
+  /// same exercise, set before the battle ended; null for none.
+  FeedbackGoal? get lastGoal {
+    final goal = input.lastGoal;
+    if (goal == null) return null;
+    final applies =
+        goal.exercise == report.exercise && goal.setAt.isBefore(report.endedAt);
+    return applies ? goal : null;
+  }
+
+  /// How this battle did on [lastGoal], counted as the battle's chip
+  /// counts it ([GoalProgress]); null without one.
+  GoalProgress? get lastResult {
+    final goal = lastGoal;
+    if (goal == null) return null;
+    return GoalProgress.of(goal, report.reps, roundLength: fullRound).atEnd();
+  }
+
+  /// The round's full length: a report of a battle ended by KO keeps only
+  /// the time played, and the later half is the full round's (A11 spec 2).
+  Duration get fullRound =>
+      roundLength < battleDuration ? battleDuration : roundLength;
 
   /// The findings to fix, in the analyzer's order.
   final List<FormFinding> issues;
@@ -492,11 +541,69 @@ class GoalSuggestion {
 
 /// The two goals offered after a battle (A10 spec 5.1).
 abstract final class CoachGoals {
-  /// A record goal and a goal on the weakest point, in that order.
-  static List<GoalSuggestion> suggest(CoachFacts facts) => [
-    record(facts),
-    weakPoint(facts),
-  ];
+  /// A record goal and a goal on the weakest point, in that order; after
+  /// the check of a last goal, the choices of A11 spec 6.4 ([afterCheck]).
+  static List<GoalSuggestion> suggest(CoachFacts facts) =>
+      facts.lastResult == null
+      ? [record(facts), weakPoint(facts)]
+      : afterCheck(facts);
+
+  /// A11 spec 6.4. Reached: the same kind one step up (+2 reps, +1 combo,
+  /// one rejection fewer, not below 0), then the weak-point goal. Missed:
+  /// the same goal again, then an easier one that still beats this battle
+  /// (this value + 1, or one rejection fewer than this battle) when it is
+  /// easier than the goal (task.md W11 decisions 13 and 14), else the
+  /// weak-point goal. A second choice the same as the first is the record
+  /// goal instead.
+  static List<GoalSuggestion> afterCheck(CoachFacts facts) {
+    final goal = facts.lastGoal!, result = facts.lastResult!;
+    final kind = goal.kind, value = result.value, target = goal.target;
+    GoalSuggestion of(int target, String subtitle) => GoalSuggestion(
+      kind: kind,
+      target: target,
+      baseline: value,
+      title: titleOf(facts, kind, target),
+      subtitle: subtitle,
+    );
+    final GoalSuggestion first;
+    GoalSuggestion? easier;
+    if (result.reached) {
+      final next = switch (kind) {
+        GoalKind.reps || GoalKind.lateReps => target + 2,
+        GoalKind.combo => target + 1,
+        GoalKind.maxRejects => math.max(0, target - 1),
+      };
+      first = of(next, next == target ? '같은 미션 그대로' : '한 단계 올리기');
+    } else {
+      first = GoalSuggestion(
+        kind: kind,
+        target: target,
+        baseline: value,
+        title: goal.title,
+        subtitle: '같은 미션 그대로',
+      );
+      if (kind == GoalKind.maxRejects) {
+        if (value - 1 > target) easier = of(value - 1, '이번 기록 넘기기');
+      } else if (value + 1 < target) {
+        easier = of(value + 1, '이번 기록 넘기기');
+      }
+    }
+    var second = easier ?? weakPoint(facts);
+    if (second.title == first.title) second = record(facts);
+    return [first, second];
+  }
+
+  /// A goal's title in the words the talk gives it, e.g. "스쿼트 22회
+  /// 인정받기".
+  static String titleOf(CoachFacts facts, GoalKind kind, int target) =>
+      switch (kind) {
+        GoalKind.reps => '${facts.exerciseName} $target회 인정받기',
+        GoalKind.lateReps =>
+          '후반 ${_seconds(GoalProgress.lateFrom(facts.fullRound))}초에 '
+              '$target회 이상',
+        GoalKind.combo => '콤보 $target번 이상',
+        GoalKind.maxRejects => '무효 $target회 이하',
+      };
 
   /// More counted reps: two above this battle or the recent average,
   /// whichever is higher.
@@ -556,14 +663,136 @@ typedef CoachTalkStep = List<CoachLine> Function(
   CoachVoice voice,
 );
 
-/// The talk's steps of A10 spec 4.2, items 1 to 4.
+/// The talk's steps of A10 spec 4.2, items 1 to 4, and A11's check of the
+/// last goal before them.
 abstract final class CoachSteps {
+  /// A11 spec 6.1 and 6.2, when there is a last goal: recalling it, then
+  /// how this battle did on it. The character talking is the one of this
+  /// battle; the card names the one the goal was set with.
+  static List<CoachLine> lastGoal(CoachFacts f, CoachVoice v) {
+    final goal = f.lastGoal, result = f.lastResult;
+    if (goal == null || result == null) return const [];
+    final e = v.ending;
+    final rig = CharacterRig.standard;
+    final setWith = rig.art(rig.selectableOrDefault(goal.characterId)).name;
+    final quoted = '‘${goal.title}’';
+    final recall = CoachLine(
+      pose: CoachPose.idle,
+      pieces: [
+        CoachPiece('지난번 미션 기억나$e? '),
+        CoachPiece(quoted, marked: true),
+        CoachPiece('${Josa.ieot.of(goal.title)}지.'),
+      ],
+      graphic: CoachGoalGraphic(
+        title: goal.title,
+        subtitle: '지난 판에 ${Josa.iGa.after(setWith)} 준 미션',
+        exercise: goal.exercise,
+        tag: CoachGoalGraphic.lastTag,
+        showsWhere: false,
+      ),
+    );
+    return [
+      recall,
+      CoachLine(
+        pose: result.reached ? CoachPose.win : CoachPose.hit,
+        pieces: result.reached ? _reached(result, e) : _missed(result, e),
+        graphic: CoachGoalResultGraphic(title: goal.title, result: result),
+      ),
+    ];
+  }
+
+  static List<CoachPiece> _reached(GoalProgress r, String e) {
+    final value = CoachPiece('${r.value}번', marked: true);
+    return [
+      ...switch (r.kind) {
+        GoalKind.reps => [
+          const CoachPiece('이번에 '),
+          value,
+          const CoachPiece(' 인정받았어. '),
+        ],
+        GoalKind.lateReps => [
+          const CoachPiece('이번엔 후반에 '),
+          value,
+          const CoachPiece(' 인정받았어. '),
+        ],
+        GoalKind.combo => [
+          const CoachPiece('이번엔 콤보를 '),
+          value,
+          const CoachPiece('까지 이어 갔어. '),
+        ],
+        GoalKind.maxRejects when r.value == 0 => [
+          const CoachPiece('이번엔 무효가 '),
+          const CoachPiece('한 번도', marked: true),
+          const CoachPiece(' 없었어. '),
+        ],
+        GoalKind.maxRejects => [
+          const CoachPiece('이번엔 무효가 '),
+          value,
+          const CoachPiece('뿐이었어. '),
+        ],
+      },
+      const CoachPiece('미션 성공', marked: true),
+      CoachPiece('이다$e!'),
+    ];
+  }
+
+  static List<CoachPiece> _missed(GoalProgress r, String e) {
+    final value = CoachPiece('${r.value}번', marked: true);
+    final gap = CoachPiece('${(r.value - r.target).abs()}번', marked: true);
+    // task.md W11 decision 14: too many rejections, not too few reps.
+    if (r.kind == GoalKind.maxRejects) {
+      return [
+        const CoachPiece('이번엔 무효가 '),
+        value,
+        const CoachPiece('이라 미션보다 '),
+        gap,
+        CoachPiece(' 많았어. 아깝다$e!'),
+      ];
+    }
+    return [
+      CoachPiece(switch (r.kind) {
+        GoalKind.lateReps => '이번엔 후반에 ',
+        GoalKind.combo => '이번엔 콤보가 ',
+        _ => '이번엔 ',
+      }),
+      value,
+      const CoachPiece('이라서 딱 '),
+      gap,
+      CoachPiece(' 모자랐어. 아깝다$e!'),
+    ];
+  }
+
   /// Item 1, always: the counted reps, and against the recent average.
+  /// After the check of a goal of counted reps, which said them already,
+  /// only the average is left (A11 spec 6.3), and nothing without one.
   static List<CoachLine> summary(CoachFacts f, CoachVoice v) {
     final e = v.ending;
     final reps = f.validReps;
     final average = f.average;
     final difference = average == null ? 0 : reps - average;
+    if (f.lastResult?.kind == GoalKind.reps) {
+      if (average == null) return const [];
+      final last = '최근 ${f.earlierReps.length}판 평균';
+      return [
+        CoachLine(
+          pose: difference >= 0 ? CoachPose.win : CoachPose.idle,
+          pieces: switch (difference) {
+            > 0 => [
+              CoachPiece('$last보다 '),
+              CoachPiece('$difference번 더', marked: true),
+              CoachPiece(' 했어. 좋다$e!'),
+            ],
+            0 => [CoachPiece('$last만큼 했어.')],
+            _ => [CoachPiece('$last보다는 ${-difference}번 적었지만 괜찮아.')],
+          },
+          graphic: CoachScoreGraphic(
+            reps: reps,
+            earlier: f.earlierReps,
+            average: average,
+          ),
+        ),
+      ];
+    }
     return [
       CoachLine(
         pose: average != null && difference >= 0
@@ -791,8 +1020,9 @@ class CoachScript {
     );
   }
 
-  /// A10 spec 4.2 items 1 to 4.
+  /// A11's check of the last goal, then A10 spec 4.2 items 1 to 4.
   static const defaultSteps = <CoachTalkStep>[
+    CoachSteps.lastGoal,
     CoachSteps.summary,
     CoachSteps.pace,
     CoachSteps.form,
@@ -808,12 +1038,22 @@ class CoachScript {
   /// The record goal and the weak-point goal.
   final List<GoalSuggestion> suggestions;
 
-  /// Item 5: the goal question.
-  CoachLine get question => CoachLine(
-    pose: CoachPose.idle,
-    pieces: [CoachPiece('다음 판 목표를 하나 세워 볼까${voice.ending}?')],
-    asksGoal: true,
-  );
+  /// Item 5: the goal question; after a check of the last goal, about the
+  /// next one (A11 spec 6.4).
+  CoachLine get question {
+    final e = voice.ending;
+    return CoachLine(
+      pose: CoachPose.idle,
+      pieces: [
+        CoachPiece(switch (facts.lastResult?.reached) {
+          null => '다음 판 미션, 뭐로 할까$e?',
+          true => '다음 미션은 뭐로 할까$e?',
+          false => '미션을 어떻게 할까$e?',
+        }),
+      ],
+      asksGoal: true,
+    );
+  }
 
   /// Item 6: the line after the user picked [goal], or declined (null).
   CoachLine answer(GoalSuggestion? goal) {
@@ -821,7 +1061,7 @@ class CoachScript {
     if (goal == null) {
       return CoachLine(
         pose: CoachPose.idle,
-        pieces: [CoachPiece('알겠어. 이번엔 목표 없이 편하게 해 보자. 다음에 또 이야기하자$e!')],
+        pieces: [CoachPiece('알겠어. 이번엔 미션 없이 편하게 해 보자. 다음에 또 이야기하자$e!')],
       );
     }
     final exercise = facts.exerciseName;
@@ -831,8 +1071,8 @@ class CoachScript {
         const CoachPiece('좋아! '),
         CoachPiece('‘${goal.title}’', marked: true),
         CoachPiece(
-          ' 목표로 적어 둘게. ${Josa.eulReul.after(exercise)} 고르면 '
-          '보여 줄 테니 다음 판에서 확인하자$e!',
+          ' 미션 접수! ${Josa.eulReul.after(exercise)} 고르면 '
+          '다시 보여 줄게. 다음 판에서 깨 보자$e!',
         ),
       ],
       graphic: CoachGoalGraphic(

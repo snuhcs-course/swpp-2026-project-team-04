@@ -120,7 +120,7 @@ class CoachStage extends StatelessWidget {
   /// The hint under the dots.
   static String hintOf(CoachState state) {
     if (state.onQuestion) {
-      return state.fullyShown ? '위에서 하나 골라 줘' : '대화창을 누르면 바로 다 보여요';
+      return state.fullyShown ? '위에서 미션을 골라 줘' : '대화창을 누르면 바로 다 보여요';
     }
     return '대화창을 누르면 다음으로';
   }

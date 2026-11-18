@@ -89,6 +89,7 @@ class BattleStage extends StatelessWidget {
               myRepsBump: frame.myRepsBump,
               opponentRepsBump: frame.opponentRepsBump,
               countsOpacity: frame.countsOpacity,
+              goal: state.goal,
             ),
           ),
           // In the valid counts' place while setting up, with the HUD: they
@@ -149,8 +150,80 @@ class BattleStage extends StatelessWidget {
               ),
             ),
           ),
+          if (frame.goalBand case final band?) _GoalBand(band: band),
           for (final banner in frame.banners) BattleStageBanner(banner: banner),
         ],
+      ),
+    );
+  }
+}
+
+/// '미션 성공!' over the stage, centered across it and turned around its own
+/// middle, as [BattleStageBanner] draws the other bands: ink words on a
+/// slanted lime band with its own [BattleFxGoalBand.edge] (a [BattleBand]'s
+/// is 3). A picture to a screen reader: the goal chip says it.
+class _GoalBand extends StatelessWidget {
+  const _GoalBand({required this.band});
+
+  final BattleFxGoalBand band;
+
+  @override
+  Widget build(BuildContext context) {
+    final transform = Matrix4.rotationZ(
+      BattleFxGoalBand.rotation * math.pi / 180,
+    ).multiplied(Matrix4.diagonal3Values(band.scale, band.scale, 1));
+    return Positioned(
+      left: 0,
+      top: BattleFxGoalBand.top,
+      width: BattleFx.stageWidth,
+      height: BattleFxGoalBand.height,
+      child: IgnorePointer(
+        child: ExcludeSemantics(
+          child: Opacity(
+            opacity: band.opacity.clamp(0.0, 1.0),
+            child: Transform(
+              transform: transform,
+              alignment: Alignment.center,
+              child: OverflowBox(
+                minWidth: 0,
+                maxWidth: double.infinity,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Transform(
+                        transform: AppHighlight.battleSlant,
+                        alignment: Alignment.center,
+                        child: const DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            border: Border.fromBorderSide(
+                              BorderSide(
+                                color: AppColors.ink,
+                                width: BattleFxGoalBand.edge,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: BattleFxGoalBand.padX,
+                      ),
+                      child: Text(
+                        BattleFxGoalBand.text,
+                        maxLines: 1,
+                        softWrap: false,
+                        textScaler: TextScaler.noScaling,
+                        style: Theme.of(context).textTheme.goalBand,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

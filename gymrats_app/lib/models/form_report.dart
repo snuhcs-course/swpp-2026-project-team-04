@@ -307,6 +307,7 @@ class FormReport {
     this.rightFlarePose,
     this.handsPose,
     this.headPose,
+    this.characterId,
   });
 
   final DateTime endedAt;
@@ -335,6 +336,10 @@ class FormReport {
   final FormPose? handsPose;
   final FormPose? headPose;
 
+  /// The user's character in this battle, so its report shows the one
+  /// played then; null in a report saved before it was kept.
+  final String? characterId;
+
   /// File name and identity: the end time is unique per battle.
   String get id => endedAt.millisecondsSinceEpoch.toString();
 
@@ -354,6 +359,7 @@ class FormReport {
     'rightFlarePose': rightFlarePose?.toJson(),
     'handsPose': handsPose?.toJson(),
     'headPose': headPose?.toJson(),
+    'characterId': ?characterId,
   };
 
   factory FormReport.fromJson(Map<String, Object?> json) => FormReport(
@@ -381,6 +387,10 @@ class FormReport {
     rightFlarePose: _pose(json['rightFlarePose']),
     handsPose: _pose(json['handsPose']),
     headPose: _pose(json['headPose']),
+    characterId: switch (json['characterId']) {
+      final String id => id,
+      _ => null,
+    },
   );
 }
 
