@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 import '../models/pose_frame.dart';
+import 'landmark_overlay.dart';
 
 const _visibleColor = Colors.greenAccent;
 
@@ -18,6 +19,7 @@ class PoseCameraView extends StatelessWidget {
     this.showLandmarks = false,
     this.fit = BoxFit.cover,
     this.isVisible,
+    this.boldLandmarks = false,
   });
 
   final CameraController? controller;
@@ -31,6 +33,10 @@ class PoseCameraView extends StatelessWidget {
   /// Paints a landmark green when this returns true. Defaults to a
   /// likelihood of at least 0.6.
   final bool Function(Keypoint keypoint, PoseFrame frame)? isVisible;
+
+  /// Draws the landmarks in the battle camera's bold look instead
+  /// ([LandmarkOverlay.bold], A9); off for the tutorial and the demos.
+  final bool boldLandmarks;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +62,15 @@ class PoseCameraView extends StatelessWidget {
           height: landscape ? previewSize.height : previewSize.width,
           child: CameraPreview(
             controller,
-            child: showLandmarks && frame != null
+            child: showLandmarks && frame != null && boldLandmarks
+                ? LandmarkOverlay(
+                    frame: frame,
+                    mirror: mirror,
+                    isVisible: (keypoint) =>
+                        (isVisible ?? _likely)(keypoint, frame),
+                    bold: true,
+                  )
+                : showLandmarks && frame != null
                 ? CustomPaint(
                     painter: _LandmarkPainter(
                       frame: frame,
