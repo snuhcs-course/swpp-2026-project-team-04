@@ -26,6 +26,19 @@ enum BattleFxTone { me, opponent, plain, average, fever, danger }
 /// Korean.
 enum BattleFxFont { number, display }
 
+/// The status frame around the user's camera from the countdown on (A9
+/// spec 3); before it the setup cue decides the frame. It never flashes.
+enum BattleFxCameraFrame {
+  /// Green: counting down, or the user's rep counted (good or excellent).
+  good,
+
+  /// Amber: the user's rep earned only average points, while its sign shows.
+  average,
+
+  /// Red: the user's rep earned nothing, while its sign shows.
+  rejected,
+}
+
 /// The numbers and curves of the battle stage's effects, ported from the
 /// design prototype (FxA). Lengths are in the stage's 360 x 390 design
 /// points, times in milliseconds, angles in degrees (clockwise positive).
@@ -100,6 +113,14 @@ abstract final class BattleFx {
   /// The setup's status band, "자세 세팅 중": its top and text size.
   static const setupBandTop = 71.0;
   static const setupBandSize = 24.0;
+
+  /// How long the reject sign stays up.
+  static const signMs = 1300.0;
+
+  /// How long the camera's frame stays green after the user's rep counted
+  /// (A9 spec 3); an average or rejected rep keeps its color while its sign
+  /// is up ([signMs]).
+  static const goodFrameMs = 700.0;
 
   /// 0 at [a], 1 at [b], straight in between.
   static double seg(double d, double a, double b) =>
@@ -529,6 +550,7 @@ class BattleFxFrame {
     this.countsOpacity = 1,
     this.readyChips = const [],
     this.goalBand,
+    this.cameraFrame,
   });
 
   /// Where the two fighters meet; also where the bar turns from lime to
@@ -605,6 +627,14 @@ class BattleFxFrame {
   /// '목표 달성!' while it shows; null otherwise. It is drawn under the
   /// rep bands ([banners]), so a later rep's grade still reads.
   final BattleFxGoalBand? goalBand;
+
+  /// The status frame around the user's camera (A9 spec 3): green while
+  /// counting down and for [BattleFx.goodFrameMs] after the user's rep
+  /// counted, amber or red while the sign of the user's average or rejected
+  /// rep is up; the latest rep replaces the one before. Null while setting
+  /// up (the setup cue decides it then), at other times in the round, and
+  /// once the battle has ended. The opponent's reps leave it alone.
+  final BattleFxCameraFrame? cameraFrame;
 }
 
 enum _ActKind { attack, miss, hit }
@@ -659,6 +689,18 @@ class _Sign {
   final double at;
   final RejectReason reason;
   final bool average;
+}
+
+/// The user's latest rep, for the camera's status frame.
+class _MyRep {
+  const _MyRep(this.at, this.frame, {required this.signed});
+
+  final double at;
+  final BattleFxCameraFrame frame;
+
+  /// Whether it put up a sign: an average or rejected rep keeps its color
+  /// only while its sign shows.
+  final bool signed;
 }
 
 /// What the fighters' characters change in the effects (W3 spec 6): how
@@ -740,6 +782,7 @@ class BattleFxTimeline {
   _Hit? _hit;
   int _hits = 0;
   _Sign? _sign;
+  _MyRep? _myRep;
 
   bool _fever = false;
   double _feverAt = double.negativeInfinity;
@@ -906,6 +949,18 @@ class BattleFxTimeline {
       _sign = reason == null
           ? null
           : _Sign(now, reason, event.grade == GameGrade.average);
+    }
+    // The camera's frame follows the user's latest rep only.
+    if (event.side == BattleSide.me) {
+      _myRep = _MyRep(
+        now,
+        event.counted
+            ? BattleFxCameraFrame.good
+            : (event.grade == GameGrade.average
+                  ? BattleFxCameraFrame.average
+                  : BattleFxCameraFrame.rejected),
+        signed: !event.counted && event.reason != null,
+      );
     }
     // Only a blow that lands can knock out.
     if (event.knockout && power > 0) {
@@ -1299,6 +1354,7 @@ class BattleFxTimeline {
     final mine = _sides[BattleSide.me]!;
     final theirs = _sides[BattleSide.opponent]!;
     return BattleFxFrame(
+      cameraFrame: _cameraFrame(now, counting),
       meetX: meetX,
       me: build(BattleSide.me),
       opponent: build(BattleSide.opponent),
@@ -1505,17 +1561,33 @@ class BattleFxTimeline {
     );
   }
 
+  /// The camera's status frame at [now]; see [BattleFxFrame.cameraFrame].
+  BattleFxCameraFrame? _cameraFrame(double now, bool counting) {
+    if (_end != null || _setup) return null;
+    if (counting) return BattleFxCameraFrame.good;
+    final rep = _myRep;
+    if (rep == null) return null;
+    final d = now - rep.at;
+    if (d < 0) return null;
+    return switch (rep.frame) {
+      BattleFxCameraFrame.good => d < BattleFx.goodFrameMs ? rep.frame : null,
+      _ => rep.signed && d < BattleFx.signMs ? rep.frame : null,
+    };
+  }
+
   BattleFxSign? _signAt(double now) {
     final sign = _sign;
     if (sign == null) return null;
     final d = now - sign.at;
-    if (d < 0 || d >= 1300) return null;
+    if (d < 0 || d >= BattleFx.signMs) return null;
     return BattleFxSign(
       reason: sign.reason,
       average: sign.average,
       scale: d < 130 ? 0.6 + 0.4 * BattleFx.back(d / 130) : 1,
       rotation: d < 280 ? math.sin(d / 40) * 3 * (1 - d / 280) : 0,
-      opacity: d > 1150 ? (1300 - d) / 150 : math.min(1, 0.5 + d / 80),
+      opacity: d > BattleFx.signMs - 150
+          ? (BattleFx.signMs - d) / 150
+          : math.min(1, 0.5 + d / 80),
     );
   }
 

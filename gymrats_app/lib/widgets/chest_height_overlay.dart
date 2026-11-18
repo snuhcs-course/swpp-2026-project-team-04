@@ -60,6 +60,7 @@ class ChestHeightOverlay extends StatelessWidget {
                 frame: frame!,
                 baselineY: snapshot.topShoulderY,
                 mirror: mirror,
+                phase: snapshot.phase,
               ),
             ),
           Positioned(
@@ -125,10 +126,64 @@ class ChestHeightGuidePainter extends CustomPainter {
     required this.frame,
     required this.baselineY,
     required this.mirror,
+    this.phase,
   });
   final PoseFrame frame;
   final double? baselineY;
   final bool mirror;
+
+  /// The judge's phase: the shoulder line turns status green at the bottom.
+  final RepPhase? phase;
+
+  /// A9 spec 4, in screen points: the shoulder line is [lineWidth] over
+  /// [outlineWidth] of ink, its dot [dotRadius] with an ink edge, and the
+  /// start height's dashes [dashWidth] over [dashOutlineWidth] of ink; the
+  /// names are pills [pillHeight] tall at the left, the lines starting after
+  /// the wider pill as in the design.
+  static const lineWidth = 8.0;
+  static const outlineWidth = 14.0;
+  static const dotRadius = 9.0;
+  static const _dotEdge = 3.0;
+  static const dashWidth = 3.0;
+  static const dashOutlineWidth = 6.0;
+  static const pillHeight = 22.0;
+  static const _pillEdge = 2.0;
+
+  /// The room between the start height's pill and the shoulder's.
+  static const _pillGap = 2.0;
+
+  /// A line's name, laid out.
+  static TextPainter _name(String words) => TextPainter(
+    text: TextSpan(text: words, style: BattleCameraText.cameraLineLabel),
+    textDirection: TextDirection.ltr,
+  )..layout();
+
+  /// A name in a pill of [color] with an ink edge, at the left of the line
+  /// at [y].
+  static void _pill(Canvas canvas, TextPainter text, double y, Color color) {
+    final pill = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        AppSpacing.s4,
+        y - pillHeight / 2,
+        text.width + 2 * AppSpacing.s8,
+        pillHeight,
+      ),
+      const Radius.circular(pillHeight / 2),
+    );
+    canvas
+      ..drawRRect(pill, Paint()..color = color)
+      ..drawRRect(
+        pill,
+        Paint()
+          ..color = AppColors.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _pillEdge,
+      );
+    text.paint(
+      canvas,
+      Offset(AppSpacing.s4 + AppSpacing.s8, y - text.height / 2),
+    );
+  }
 
   Offset project(Offset point, Size size) {
     final scale = math.max(
@@ -153,49 +208,88 @@ class ChestHeightGuidePainter extends CustomPainter {
     final paint = Paint()
       ..color = AppColors.accent
       ..strokeWidth = 2;
+    final lineColor = phase == RepPhase.bottom
+        ? AppColors.statusGood
+        : AppColors.card;
+    final ink = Paint()
+      ..color = AppColors.ink
+      ..strokeWidth = outlineWidth
+      ..strokeCap = StrokeCap.round;
+    final line = Paint()
+      ..color = lineColor
+      ..strokeWidth = lineWidth
+      ..strokeCap = StrokeCap.round;
+    final baseline = baselineY;
+    final hasBaseline = baseline != null && baseline.isFinite;
+    final shoulderName = _name('어깨');
+    final startName = _name('시작 높이');
+    final start =
+        AppSpacing.s4 +
+        [
+          shoulderName,
+          if (hasBaseline) startName,
+        ].map((name) => name.width + 2 * AppSpacing.s8).reduce(math.max) +
+        AppSpacing.s4;
     canvas.save();
     canvas.clipRect(Offset.zero & size);
-    canvas.drawLine(
-      Offset(12, current.dy),
-      Offset(size.width - 12, current.dy),
-      paint,
-    );
-    canvas.drawCircle(current, 5, paint);
-    final baseline = baselineY;
-    if (baseline != null && baseline.isFinite) {
+    if (hasBaseline) {
       final y = project(Offset(0, baseline), size).dy;
       final reference = Paint()
-        ..color = AppColors.textPrimary.withValues(alpha: .7)
-        ..strokeWidth = 1.5;
-      for (double x = 12; x < size.width - 12; x += 12) {
-        canvas.drawLine(
-          Offset(x, y),
-          Offset(math.min(x + 6, size.width - 12), y),
-          reference,
-        );
+        ..color = AppColors.card
+        ..strokeWidth = dashWidth;
+      final referenceInk = Paint()
+        ..color = AppColors.ink
+        ..strokeWidth = dashOutlineWidth;
+      for (double x = start; x < size.width - 12; x += 12) {
+        final from = Offset(x, y);
+        final to = Offset(math.min(x + 6, size.width - 12), y);
+        canvas
+          ..drawLine(from, to, referenceInk)
+          ..drawLine(from, to, reference);
       }
       final x = size.width - 22;
       canvas.drawLine(Offset(x, y), Offset(x, current.dy), paint);
       for (final lineY in [y, current.dy]) {
         canvas.drawLine(Offset(x - 4, lineY), Offset(x + 4, lineY), paint);
       }
-      final label = TextPainter(
-        text: const TextSpan(
-          text: '시작 높이',
-          style: TextStyle(
-            fontSize: 11,
-            fontFamily: AppFonts.body,
-            color: AppColors.textPrimary,
-            backgroundColor: AppColors.background,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      label.paint(
+    }
+    canvas.drawLine(
+      Offset(start, current.dy),
+      Offset(size.width - 12, current.dy),
+      ink,
+    );
+    canvas.drawLine(
+      Offset(start, current.dy),
+      Offset(size.width - 12, current.dy),
+      line,
+    );
+    canvas
+      ..drawCircle(current, dotRadius, Paint()..color = lineColor)
+      ..drawCircle(
+        current,
+        dotRadius,
+        Paint()
+          ..color = AppColors.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _dotEdge,
+      );
+    if (hasBaseline) {
+      // On its line, or above the shoulder's pill while the shoulders are
+      // near the start height (at the top of a rep), so neither covers the
+      // other.
+      final y = math.min(
+        project(Offset(0, baseline), size).dy,
+        current.dy - pillHeight - _pillGap,
+      );
+      const half = pillHeight / 2;
+      _pill(
         canvas,
-        Offset(14, (y - 16).clamp(0, math.max(0, size.height - label.height))),
+        startName,
+        y.clamp(half, math.max(half, size.height - half)),
+        AppColors.card,
       );
     }
+    _pill(canvas, shoulderName, current.dy, lineColor);
     canvas.restore();
   }
 
@@ -203,5 +297,6 @@ class ChestHeightGuidePainter extends CustomPainter {
   bool shouldRepaint(ChestHeightGuidePainter oldDelegate) =>
       oldDelegate.frame != frame ||
       oldDelegate.baselineY != baselineY ||
-      oldDelegate.mirror != mirror;
+      oldDelegate.mirror != mirror ||
+      oldDelegate.phase != phase;
 }

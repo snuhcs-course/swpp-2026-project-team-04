@@ -47,9 +47,10 @@ abstract final class AppColors {
   static const fever = Color(0xFF3DE8FF);
 
   /// Red fill, only for the battle's danger edge and its mark on the rules
-  /// screen (the user is about to lose), and the matching radar's blips
-  /// (W2b 1-A: a laser pointer's dots, decoration). Every other problem is
-  /// [warning].
+  /// screen (the user is about to lose), the matching radar's blips (W2b
+  /// 1-A: a laser pointer's dots, decoration), and on the battle's camera
+  /// (A9) the status frame and the setup cue's icon box when the setup is
+  /// not right or a rep earned nothing. Every other problem is [warning].
   static const danger = Color(0xFFFF3B30);
 
   /// Near-black of the game-style screens: edges and icons on a color fill,
@@ -99,8 +100,11 @@ abstract final class AppColors {
   /// and its graph's base line (3:1 on [card]).
   static const chartBar = Color(0xFF8A93A5);
 
-  /// Green outline for a valid standing setup silhouette.
-  static const squatGuideReady = Color(0xFF4CD964);
+  /// Status green on the battle's camera (A9): the frame, the setup cue's
+  /// icon box and hold bar when the setup is right or a rep counted, the
+  /// hip and shoulder lines at the bottom of a rep, and both setup
+  /// silhouettes once the pose fits. A fill or a line, never a text color.
+  static const statusGood = Color(0xFF1FC95B);
 }
 
 /// RepBot, the robot doing push-ups in the lobby, as designed: its own
@@ -352,12 +356,13 @@ extension StageText on TextTheme {
     height: 1.25,
   );
 
-  /// The short label under the reject sign's pictogram, e.g. "더 깊게".
+  /// The short label under the reject sign's pictogram, e.g. "더 깊게":
+  /// large enough to read from 2.5 m (A9 spec 5).
   TextStyle get stageSignLabel => _stage(
     family: AppFonts.display,
-    size: 40,
+    size: 66,
     weight: FontWeight.w400,
-    height: 1.2,
+    height: 1.12,
   );
 
   /// The size [stageBand] and [stageBandKorean] are given at.
@@ -415,6 +420,18 @@ extension VersusText on TextTheme {
 /// line, the buttons and the reconnect band. Unlike [StageText] these follow
 /// the system text size, like the rest of the app.
 extension BattleCameraText on TextTheme {
+  /// A name on a line drawn over the camera (A9 spec 4), e.g. "엉덩이",
+  /// "시작 높이": Plex 13 bold in ink, on a pill of the line's color. It is
+  /// painted on the camera's canvas with the lines, so it is a constant and,
+  /// like them, does not follow the system text size.
+  static const cameraLineLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 1,
+    color: AppColors.ink,
+  );
+
   /// The one-line hint under the camera, e.g. "폰을 더 세워 주세요."
   TextStyle get cameraHint => bodyMedium!.copyWith(
     fontSize: 14,
@@ -430,13 +447,15 @@ extension BattleCameraText on TextTheme {
     color: AppColors.ink,
   );
 
-  /// The large hint over the camera while setting up (W2b 3-B), e.g.
-  /// "팔을 펴고 푸시업 자세를 잡아 주세요.": one line, shrunk to fit its band.
-  TextStyle get cameraSetupHint => bodyMedium!.copyWith(
+  /// The setup cue's two short lines over the camera (A9 spec 2), e.g.
+  /// "한 걸음 / 뒤로": each one line, all of a band's lines shrunk alike to
+  /// fit its width. Read from where the user exercises, so it does not
+  /// follow the system text size.
+  TextStyle get cameraSetupCue => bodyMedium!.copyWith(
     fontFamily: AppFonts.display,
-    fontSize: 26,
+    fontSize: 76,
     fontWeight: FontWeight.w400,
-    height: 1.2,
+    height: 0.98,
     letterSpacing: 0,
     color: AppColors.ink,
     leadingDistribution: TextLeadingDistribution.even,

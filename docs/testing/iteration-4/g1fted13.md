@@ -840,6 +840,82 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `71b780e`, wit
 - AI: the pose held, the round starts by itself (push-up and squat). Tests: `'$name: no 시작 button in the setup or the countdown; the pose held, the round starts by itself, and the start is still told as 시작 to a screen reader'`
 - Online: ready by itself, taken back when the pose is lost (push-up and squat). Tests: `'$name: no 준비 / 준비 취소 button (team decision 2026-11-15); the pose held, ready goes once by itself; losing the pose takes it back, and holding it again sends it again'`, `'losing the valid pose revokes ready instead of starting the round'`, `'a lost connection is said in the hint, and the auto ready starts over once it is back'`
 
+## W9 setup-readability records
+
+#### 2026-11-17 · code at commits `a3db21a`, `20c623f` · step W9 `feat/setup_readability` (A9, setup and battle cues readable from a distance, squat and push-up, team order #19)
+- **What changed:** UAT cycle 1 comment 3 (the squat's words could not be read at 2.5 m). Design UxSq variant A2, for push-ups and squats, in AI and online battles.
+  - **Setup band:** two short lines in Do Hyeon 76, an icon box and a hold bar (`lib/models/setup_hint_short.dart`, new). A different cue waits 600 ms, unless it says the setup is right. The long sentence is the band's screen-reader name.
+  - **Status frame:** the camera area has a 12 wide frame. While setting up it has the cue's green or red. It is green in the countdown, green for 700 ms after my counted rep, and amber or red while the sign of my average or rejected rep is up.
+  - **Reject sign:** 216 x 250, label 66.
+  - **Lines and silhouettes:** bold squat and push-up lines with name pills, bold joints on the battle camera, and silhouettes twice as wide.
+  - **Removed:** the AI battle's squat line during the round.
+- **Commands (Windows, `gymrats_app/`):** `flutter analyze`; `flutter test`.
+- **Tests:** on the working tree committed as `20c623f`, `flutter test` had 3387 passed, 0 failed and 10 skipped (the same 10 as before). `flutter analyze` found no issues.
+- **Coverage (CI comment on PR #73, commit `ff2c961`, 2026-11-17 19:49 KST, [run log](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/44066504132)):** Model 99.4% (target 90%), ViewModel 97.6% (90%), Service 94.8% (85%), View 97.9% (75%); all met. Total 96.9%. CI's `flutter test` also had 3387 passed, 10 skipped, 0 failed. Two files timed out in CI's per-file coverage run and are not in the numbers (`test/screens/settings_screen_test.dart`, `test/services/audio/background_music_test.dart`); W9 changes neither. Server: 114 passed, 96% (not changed by W9).
+- **Other checks:**
+  - Reviewer run 1 returned CHANGES_REQUESTED: 1 Major (a raw `fontSize: 13` in the line-name pills) and 4 Minor (no check of the battle camera's bold flag; no online test that the squat round has no line; the silhouettes' under-line not ink; the pills covering the line starts). All were fixed, and the re-check returned APPROVE.
+  - `ownership_guard.py --check-diff`: ok, 32 changed files, among them the two exceptions approved on 11-17.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Manual check:** TODO(Woohyun Song): the phone check. Squat at 2.5 m and push-up at 1 m: the cue, the frame colors, the lines and the sign; whether the band hides the silhouette's head; whether the sign meets the opponent's combo mark.
+
+### Test cases added or changed in W9
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/setup_hint_short_test.dart` (new) | every row of the A9 short-cue table, ready and holding, a squat outside the silhouette; one, two, three or more and no missing parts with 이/가 and '안' on the second line; the hand icon only for arms; the online cues (waiting, the auto-ready count, reconnecting); a right cue always shows the check; `looksLike` and equality |
+| View | `test/widgets/battle_camera_area_test.dart` (updated) | the band's place, size, icon box, Do Hyeon 76 lines and hold bar; the sentence only as a live-region label; each icon; every cue on one line each, at 56 or more except two missing parts, at 1.0x, 1.3x and 2.0x text; the real-font sizes 76, 64.6 and 44.1; the 600 ms hold; the camera switch at the bottom right; the frame from the cue while setting up and from the round after; the frame under the buttons |
+| View | `test/widgets/battle_fx_motion_test.dart` (updated) | the camera frame: green for 700 ms after my counted rep, amber or red while its sign is up, none without a sign, the latest rep replaces, the opponent ignored, green in the countdown, none while setting up or after the end |
+| View | `test/widgets/battle_arena_test.dart` (updated) | the cue band and the camera switch on an S22; the cue and the stage's frame passed to the camera area; the larger sign 76 above the line |
+| View | `test/widgets/battle_reject_sign_test.dart` (updated) | the 216 x 250 sign: tile 156 with a 5 edge and corner 30, pictogram 136, label Do Hyeon 66 on a band with a 4 edge, the longest label inside 360, pivot and wobble |
+| View | `test/widgets/squat_height_overlay_test.dart` (new) | the lines as 8 of color over 14 of ink, the knee amber, the hip white and status green at the bottom over the knee line; the pills after the lines; the lines start after the wider pill; nothing without a frame or heights or when lost |
+| View | `test/widgets/chest_height_overlay_test.dart` (new) | the start-height dashes (white 3 over ink 6); the shoulder line (white 8 over ink 14) with a 9 dot, green at the bottom; the start pill lifted above the shoulder pill at the top of a rep; the phase passed to the painter |
+| View | `test/widgets/landmark_overlay_test.dart`, `test/widgets/pose_camera_view_test.dart` (new), `test/widgets/battle_camera_view_test.dart` (updated) | the bold look: white joints of 8 with a 2.5 ink edge and ink-edged bones only between likely joints; off by default (tutorial, demos); `PoseCameraView` passes the flag to `LandmarkOverlay`; the battle camera turns it on |
+| View | `test/widgets/pose_silhouette_guide_test.dart`, `test/widgets/pose_silhouette_squat_test.dart` (updated) | outlines twice as wide over ink, status green once the pose fits |
+| View | `test/screens/battle_screen_test.dart` (updated) | the UAT-1 setup checks through the short cue (phone angle, missing hand, missing feet, too close); a squat outside the silhouette says 실루엣에 / 맞춰요 in red; the squat round has no line of words |
+| View | `test/screens/online_preparation_test.dart` (updated) | the online cues (the auto-ready count with the hold bar, waiting for the opponent, the phone angle and shaking, reconnecting in amber); no line of words in the online squat round |
+| View | `test/screens/online_lobby_screen_test.dart` (updated, exception) | the waiting check reads the cue's lines and its sentence as the label |
+| Design | `test/theme/app_theme_test.dart` (updated) | `statusGood`, `cameraSetupCue` (76, line 0.98), `stageSignLabel` (66, line 1.12), `cameraLineLabel` |
+
+### Acceptance criteria → tests (W9)
+- UAT-1 AC1-AC3 still pass with the short cue: a wrong phone angle or a missing body part is named, and no countdown starts. Tests: `'AC1, step 2 (push-up): a phone lying almost flat, then the left wrist out of the picture: the hint says what to fix, and nothing counts down'`, `'step 5 (squat): missing feet and standing too close are named, and nothing counts down; standing still then counts down and starts with the standing silhouette'`, `'a squat whose pose is right but which is not in the silhouette says 실루엣에 / 맞춰요 in red, and nothing counts down (A9 spec 2)'`, `'online setup requires a propped and still phone'`
+- The camera frame shows green, red or orange as in spec 3. Tests: the groups `'the status frame (A9 spec 3)'` (camera area) and `"the camera's status frame (A9 spec 3)"` (stage)
+- The sign and the lines are larger. Tests: `battle_reject_sign_test.dart`, `squat_height_overlay_test.dart`, `chest_height_overlay_test.dart`, `landmark_overlay_test.dart` (group `'the bold look (A9 spec 4, the battle camera)'`). Whether they read at about 2.5 m and 1 m is the phone check (TODO above).
+- No squat line of words in the round, AI and online. Tests: `'a squat setup has a silhouette; the round has the squat lines and no line of words (A9 spec 6)'`, `'a squat setup shows the silhouette; the squat lines come with the round, and no line of words (A9 spec 6)'`
+
+#### 2026-11-18 · code at commits `b6bd3d3` (merge of `origin/main` `e0bcae2`, PR #72) and `79c2e80` · step W9 `feat/setup_readability` (team order #19): merging the S2 person check
+- **What changed:**
+  - PR #72 (S2, the person check) was merged first, so W9 merged `origin/main` in.
+  - The one conflict, in `test/screens/online_preparation_test.dart` (5 hunks), keeps both sides: W9's short-cue checks, and main's `wait()`, which keeps feeding camera frames while it waits.
+  - **Check of the overlap with the S2 notice** (사람을 다시 확인해 주세요 and its 확인 후 계속 button). It was measured with a temporary test on a 360 x 780 phone, which was removed afterwards:
+    - At 1.0x and 1.3x text, the notice met neither the setup band, nor the status frame, nor the camera switch.
+    - At 2.0x text in the setup, the band (y 177–353) covered the notice's first line (301–637). The button stayed visible and could be tapped.
+    - The band also said 카메라 / 앞으로 while the notice asks to confirm the person.
+  - **Fix (the user's choice, 2026-11-18):** while the notice is up, the AI and online setups pass no cue, so the band and its frame step aside until the user confirms.
+  - **Not fixed (S2's widget, outside W9):** at 2.0x text in the round, the notice itself overflows its 390-high camera area by 13.
+- **Commands (Windows, `gymrats_app/`):** `flutter analyze`; `flutter test`; `flutter test --dart-define=S2_PERSON_GUARD=true` (the notice shows only with this opt-in flag).
+- **Tests:** on `79c2e80`, `flutter test` had 3417 passed, 0 failed and 10 skipped (the same 10 as before). The run with the S2 flag on had the same counts: 3417 passed, 0 failed, 10 skipped. `flutter analyze` found no issues.
+- **Mutation check:** with the fix taken out of each screen (files restored afterwards), the new tests of that screen failed.
+- **Coverage:** not measured on this PC. TODO(Woohyun Song): fill in from PR #73's CI comment for `79c2e80` (or the docs commit after it).
+- **Other checks:**
+  - Reviewer run 1 returned CHANGES_REQUESTED.
+    - 1 Major: with the S2 flag on, one online test from main read the now-missing cue with `!`.
+    - 3 Minor: the decision was not recorded; no test showed the band coming back after confirming; the 2.0x case was not explained.
+  - All were fixed, and the re-check returned APPROVE.
+  - `ownership_guard.py --check-diff`: ok, 35 changed files.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Manual check:** TODO(Woohyun Song): the phone check from the W9 entry above. The S2 notice is not part of it, because it needs a build with the opt-in flag.
+
+### Test cases added or changed in this merge
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/battle_screen_test.dart` (updated) | At 1.0x and 2.0x text: while the person check asks for a tap in the setup, there is no setup band and no status frame. The check stays inside the camera area, clear of the camera switch, and its button can be tapped. Once confirmed, the countdown starts with its green frame |
+| View | `test/screens/online_preparation_test.dart` (merged, updated) | Both sides of the merge: W9's short cues with main's frame-feeding waits. The same checks as the AI battle at 1.0x and 2.0x text, and once confirmed the band and its frame are back. The auto-ready check also allows no cue, for when the S2 flag is on |
+
+### Acceptance criteria → tests (this merge)
+- The S2 notice and W9's band, frame and camera switch do not overlap (decision of 2026-11-18). Tests:
+  - `'while the person check asks for a tap in the setup, the setup band and its frame step aside, at ${textScale}x text; the check is clear of the camera switch, and once it is confirmed the countdown starts (A9 with S2)'`
+  - `'while the person check asks for a tap in the setup, the setup band and its frame step aside, at ${textScale}x text, and the check is clear of the camera switch; once it is confirmed the band is back (A9 with S2)'`
+- W9's tests still pass after the merge, with the S2 flag off and on: the full runs above.
+
 ## W10 coach-feedback records
 
 #### 2026-11-17 · code at commits `d3064dd`, `6c1a50c`, `4e467ff` · step W10 `feat/coach_feedback` (A10, the character's talk after a battle and the next goal, team order #20)

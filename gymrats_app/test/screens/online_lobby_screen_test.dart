@@ -460,7 +460,12 @@ void main() {
       expect(camera.startCount, 1);
       session.ready(true);
       await tester.pump();
-      expect(find.text('상대 준비를 기다리는 중…'), findsOneWidget);
+      // The setup cue (A9): its short lines, the sentence for a screen reader.
+      expect(find.text('상대를'), findsOneWidget);
+      expect(find.text('기다려요'), findsOneWidget);
+      final semantics = tester.ensureSemantics();
+      expect(find.bySemanticsLabel('상대 준비를 기다리는 중…'), findsOneWidget);
+      semantics.dispose();
       expect(find.text('준비 취소'), findsNothing);
       expect(session.phase, OnlinePhase.preparing);
       expect(session.startAtMs, isNull);

@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 /// Framing guide for the front-facing push-up setup.
 ///
 /// Dims the camera viewport outside one smooth rounded aperture that leaves
@@ -37,10 +39,12 @@ class _PushUpFramePainter extends CustomPainter {
 
   final bool ready;
 
-  static const Color _readyColor = Color(0xFF4CD964);
+  static const Color _readyColor = AppColors.statusGood;
   static const Color _idleColor = Colors.white;
   static const Color _scrimColor = Color(0x73000000);
-  static const double _borderWidth = 2.0;
+
+  /// Twice the outline it had before A9 (spec 4), to read from 1 m.
+  static const double _borderWidth = 4.0;
   static const double _verticalOffset = 0.03;
 
   // Front push-up body outline in unit space of the camera panel, traced
@@ -167,7 +171,8 @@ class _PushUpFramePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = _borderWidth * 2.5
         ..strokeJoin = StrokeJoin.round
-        ..color = Colors.black.withAlpha(60)
+        // An ink edge under the line (A9 spec 1.3, design A2).
+        ..color = AppColors.ink
         ..isAntiAlias = true,
     );
     canvas.drawPath(

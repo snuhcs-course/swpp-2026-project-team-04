@@ -100,4 +100,133 @@ void main() {
     // Nothing for the pinky.
     expect(overlay, paintsExactlyCountTimes(#drawCircle, 3));
   });
+
+  group('the bold look (A9 spec 4, the battle camera)', () {
+    // A box 290 wide, the design's battle camera, and a frame twice its size,
+    // so every size is the design's and every position exact.
+    final frame = PoseFrame(
+      imageWidth: 580,
+      imageHeight: 774,
+      keypoints: {
+        BodyLandmark.leftShoulder: kp(BodyLandmark.leftShoulder, 200, 200),
+        BodyLandmark.rightShoulder: kp(BodyLandmark.rightShoulder, 380, 200),
+        BodyLandmark.leftElbow: kp(BodyLandmark.leftElbow, 180, 400),
+        // Hardly seen: no bone reaches it.
+        BodyLandmark.leftWrist: kp(
+          BodyLandmark.leftWrist,
+          170,
+          560,
+          likelihood: 0.1,
+        ),
+      },
+    );
+
+    Future<RenderObject> pump(WidgetTester tester, {required bool bold}) async {
+      await tester.pumpWidget(
+        Center(
+          child: SizedBox(
+            width: 290,
+            height: 387,
+            child: LandmarkOverlay(
+              frame: frame,
+              mirror: false,
+              isVisible: (keypoint) => keypoint.likelihood >= 0.6,
+              bold: bold,
+            ),
+          ),
+        ),
+      );
+      return tester.renderObject(find.byType(CustomPaint));
+    }
+
+    testWidgets('the bones between likely joints: white 5 over 10 of ink, '
+        'all the ink first', (tester) async {
+      final overlay = await pump(tester, bold: true);
+      const shoulders = (Offset(100, 100), Offset(190, 100));
+      const upperArm = (Offset(100, 100), Offset(90, 200));
+      expect(
+        overlay,
+        paints
+          ..line(
+            p1: shoulders.$1,
+            p2: shoulders.$2,
+            color: AppColors.ink,
+            strokeWidth: 10,
+          )
+          ..line(
+            p1: upperArm.$1,
+            p2: upperArm.$2,
+            color: AppColors.ink,
+            strokeWidth: 10,
+          )
+          ..line(
+            p1: shoulders.$1,
+            p2: shoulders.$2,
+            color: AppColors.card,
+            strokeWidth: 5,
+          )
+          ..line(
+            p1: upperArm.$1,
+            p2: upperArm.$2,
+            color: AppColors.card,
+            strokeWidth: 5,
+          ),
+      );
+      // Nothing to the wrist, which is hardly seen.
+      expect(overlay, paintsExactlyCountTimes(#drawLine, 4));
+    });
+
+    testWidgets('likely joints are white dots of 8 with a 2.5 ink edge; an '
+        'unlikely one stays hollow', (tester) async {
+      final overlay = await pump(tester, bold: true);
+      expect(
+        overlay,
+        paints
+          ..circle(
+            x: 100,
+            y: 100,
+            radius: 8,
+            color: AppColors.card,
+            style: PaintingStyle.fill,
+          )
+          ..circle(
+            x: 100,
+            y: 100,
+            radius: 8,
+            color: AppColors.ink,
+            style: PaintingStyle.stroke,
+            strokeWidth: 2.5,
+          ),
+      );
+      // Three likely joints, two circles each, and the hollow wrist.
+      expect(overlay, paintsExactlyCountTimes(#drawCircle, 7));
+    });
+
+    testWidgets('off, as for the tutorial and the demos, no bones and the '
+        'lime dots as before', (tester) async {
+      final overlay = await pump(tester, bold: false);
+      expect(overlay, paintsExactlyCountTimes(#drawLine, 0));
+      expect(
+        overlay,
+        paints..circle(
+          x: 100,
+          y: 100,
+          color: AppColors.accent,
+          style: PaintingStyle.fill,
+        ),
+      );
+    });
+
+    test('the bones join the arms, the trunk and the legs', () {
+      expect(LandmarkOverlay.bones, hasLength(12));
+      expect(
+        LandmarkOverlay.bones,
+        contains((BodyLandmark.rightKnee, BodyLandmark.rightAnkle)),
+      );
+      expect(
+        LandmarkOverlay.bones,
+        contains((BodyLandmark.leftHip, BodyLandmark.rightHip)),
+      );
+    });
+  });
 }

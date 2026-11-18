@@ -12,6 +12,7 @@ import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/models/voice_cue.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/rep_event.dart';
+import 'package:gymrats_app/models/setup_hint_short.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/services/audio/voice_cue_table.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
@@ -48,6 +49,7 @@ import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
 import '../support/placed_phone.dart';
 import '../support/pose_fixtures.dart';
+import '../services/pose/person_behind_test_support.dart';
 
 const _pushUp = Matchup(
   exercise: ExerciseType.pushUp,
@@ -127,13 +129,14 @@ const _quickSetup = SetupConfig(
 void main() {
   late FakeCameraService camera;
   late FakePoseEstimator estimator;
-  late FakeRepJudge judge;
+  late CadencedRepJudge judge;
   late FakeOpponentSource opponent;
   late FakeUserRepository repository;
   late Duration now;
   late PhoneTiltMonitor phone;
   late BattleViewModel viewModel;
   late List<String> cues;
+  PoseFrame? previousPose;
 
   /// Opens BattleScreen from a home page, as the app does after the versus
   /// screen. The result route is a stub that shows the reps it received.
@@ -148,6 +151,7 @@ void main() {
     String? myCharacter,
     GoalStore? goals,
     AuthViewModel? auth,
+    bool personGuard = const bool.fromEnvironment('S2_PERSON_GUARD'),
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = size;
@@ -156,10 +160,11 @@ void main() {
     // Created here, inside the test's fake async zone.
     camera = FakeCameraService()..permission = permission;
     estimator = FakePoseEstimator();
-    judge = FakeRepJudge();
+    judge = CadencedRepJudge();
     opponent = FakeOpponentSource();
     repository = FakeUserRepository();
     now = Duration.zero;
+    previousPose = null;
     cues = [];
     phone = placedPhone();
     viewModel = BattleViewModel(
@@ -173,6 +178,7 @@ void main() {
             : null,
         exercise: matchup.exercise,
         phoneTilt: phone,
+        enablePersonGuard: personGuard,
         clock: () => now,
         roundLength: const Duration(days: 1),
       ),
@@ -250,8 +256,19 @@ void main() {
     bool found = true,
     PoseFrame? pose,
   }) async {
-    now = Duration(milliseconds: (seconds * 1000).round());
-    estimator.frames.add(pose ?? (found ? setupPose() : emptyFrame()));
+    final target = Duration(milliseconds: (seconds * 1000).round());
+    judge.holdVerdicts = true;
+    while (previousPose != null &&
+        target - now > const Duration(milliseconds: 500)) {
+      now += const Duration(milliseconds: 500);
+      estimator.frames.add(freshPose(previousPose!));
+      camera.emit();
+      await tester.pump();
+    }
+    judge.holdVerdicts = false;
+    now = target;
+    previousPose = pose ?? (found ? setupPose() : emptyFrame());
+    estimator.frames.add(previousPose);
     camera.emit();
     // One pump runs the frame's async work, the next renders the result.
     await tester.pump();
@@ -270,6 +287,22 @@ void main() {
   BattleStageState stage(WidgetTester tester) =>
       tester.widget<BattleArena>(find.byType(BattleArena)).state;
 
+  /// The setup cue on screen (A9): its two short lines, and its whole
+  /// [sentence] only for a screen reader.
+  void showsCue(
+    WidgetTester tester,
+    String first,
+    String second,
+    String sentence,
+  ) {
+    expect(find.text(first), findsOneWidget, reason: sentence);
+    expect(find.text(second), findsOneWidget, reason: sentence);
+    expect(find.text(sentence), findsNothing, reason: sentence);
+    final handle = tester.ensureSemantics();
+    expect(find.bySemanticsLabel(sentence), findsOneWidget, reason: sentence);
+    handle.dispose();
+  }
+
   BattleFxFrame stageFrame(WidgetTester tester) =>
       tester.widget<BattleStage>(find.byType(BattleStage)).frame;
 
@@ -282,6 +315,128 @@ void main() {
   /// Takes the screen down, so the stage's clock stops with the test.
   Future<void> close(WidgetTester tester) =>
       tester.pumpWidget(const SizedBox());
+
+  for (final matchup in [_pushUp, _squat]) {
+    testWidgets(
+      'experimental guard pauses ${matchup.exercise} battle until confirmation',
+      (tester) async {
+        await open(tester, matchup: matchup, personGuard: true);
+        for (var t = 1.0; t <= 4.0; t += .5) {
+          await frame(tester, t);
+        }
+        expect(viewModel.state.started, isTrue);
+        final original = setupPose();
+        final shifted = PoseFrame(
+          imageWidth: original.imageWidth,
+          imageHeight: original.imageHeight,
+          keypoints: {
+            for (final entry in original.keypoints.entries)
+              entry.key: Keypoint(
+                landmark: entry.key,
+                x: entry.value.x + 300,
+                y: entry.value.y,
+                likelihood: entry.value.likelihood,
+              ),
+          },
+        );
+        judge.closeRep();
+        await frame(tester, 4.2, pose: shifted);
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        expect(stage(tester).myReps, 0);
+        await frame(tester, 4.4, pose: original);
+        expect(stage(tester).myReps, 0);
+        await tester.tap(find.text('확인 후 계속'));
+        await tester.pump();
+        expect(find.text('확인 후 계속'), findsNothing);
+        await frame(tester, 4.6, pose: original);
+        expect(stage(tester).myReps, 1);
+        await close(tester);
+      },
+    );
+  }
+
+  // At 2.0x text the band (y 177-353 on a 360 x 780 phone) used to cover the
+  // check's first line; at 1.0x it did not.
+  for (final textScale in [1.0, 2.0]) {
+    testWidgets(
+      'while the person check asks for a tap in the setup, the setup band and '
+      'its frame step aside, at ${textScale}x text; the check is clear of the '
+      'camera switch, and once it is confirmed the countdown starts (A9 with S2)',
+      (tester) async {
+        await open(tester, personGuard: true, textScale: textScale);
+        BattleCameraArea area() =>
+            tester.widget<BattleCameraArea>(find.byType(BattleCameraArea));
+        final band = find.byWidgetPredicate(
+          (w) => w.runtimeType.toString() == '_SetupCueBand',
+        );
+        final statusFrame = find.byWidgetPredicate(
+          (w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).border is Border &&
+              ((w.decoration as BoxDecoration).border! as Border).left.width ==
+                  BattleCameraArea.frameWidth,
+        );
+        await frame(tester, 1);
+        await frame(tester, 1.5);
+        expect(band, findsOneWidget);
+        final original = setupPose();
+        await frame(
+          tester,
+          2,
+          pose: PoseFrame(
+            imageWidth: original.imageWidth,
+            imageHeight: original.imageHeight,
+            keypoints: {
+              for (final entry in original.keypoints.entries)
+                entry.key: Keypoint(
+                  landmark: entry.key,
+                  x: entry.value.x + 300,
+                  y: entry.value.y,
+                  likelihood: entry.value.likelihood,
+                ),
+            },
+          ),
+        );
+        expect(viewModel.state.phase, BattlePhase.setup);
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        expect(area().setupCue, isNull);
+        await tester.pump(BattleCameraArea.cueHold);
+        expect(band, findsNothing);
+        expect(statusFrame, findsNothing);
+        final notice = tester.getRect(
+          find
+              .descendant(
+                of: find.byType(PersonTrackingPauseNotice),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        final camera = tester.getRect(find.byType(BattleCameraArea));
+        expect(camera.contains(notice.topLeft), isTrue);
+        expect(camera.contains(notice.bottomRight), isTrue);
+        final cameraSwitch = tester.getRect(
+          find.byIcon(Icons.cameraswitch_outlined),
+        );
+        expect(notice.overlaps(cameraSwitch), isFalse);
+        expect(
+          find.widgetWithText(FilledButton, '확인 후 계속').hitTestable(),
+          findsOneWidget,
+        );
+        // Back in view, then confirmed, as in the S2 test above.
+        await frame(tester, 2.5, pose: original);
+        await tester.tap(find.text('확인 후 계속'));
+        await tester.pump();
+        await frame(tester, 3, pose: original);
+        expect(find.text('확인 후 계속'), findsNothing);
+        // The pose holds, so the countdown starts and its green frame shows.
+        expect(stage(tester).phase, BattleStagePhase.countdown);
+        expect(statusFrame, findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await close(tester);
+      },
+    );
+  }
 
   group('before the round', () {
     testWidgets('the stage shows my character against RepBot', (tester) async {
@@ -313,8 +468,8 @@ void main() {
     });
 
     testWidgets('opens on the setup: the band, my tag setting up and the '
-        "bot's ready, the setup bar and the hint, and no 시작 button (team "
-        'decision 2026-11-15)', (tester) async {
+        "bot's ready, the setup bar and the setup cue, and no 시작 button "
+        '(team decision 2026-11-15)', (tester) async {
       await open(tester);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect(stage(tester).myName, '우현');
@@ -329,7 +484,7 @@ void main() {
       expect(find.bySemanticsLabel('카메라 전환'), findsOneWidget);
       expect(find.text('시작'), findsNothing);
       await frame(tester, 1, found: false);
-      expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
+      showsCue(tester, '카메라', '앞으로', '카메라 앞에 서 주세요.');
       expect(find.text('시작'), findsNothing);
       expect(opponent.startCount, 0);
       await captureFlowSnapshot('ai-battle-setup');
@@ -392,7 +547,7 @@ void main() {
     });
 
     testWidgets('while the app is away or the camera reopens in the setup: '
-        'the spinner, no silhouette and no hint; the front camera mirrored', (
+        'the spinner, no silhouette and no cue; the front camera mirrored', (
       tester,
     ) async {
       await open(tester);
@@ -402,7 +557,8 @@ void main() {
         tester.widget<PoseCameraView>(find.byType(PoseCameraView)).mirror,
         isTrue,
       );
-      const noOne = '카메라 앞에 서 주세요.';
+      // The cue's second line, "카메라 / 앞으로".
+      const noOne = '앞으로';
       expect(find.text(noOne), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
@@ -457,7 +613,7 @@ void main() {
     });
 
     testWidgets('a squat setup has a silhouette; the round has the squat '
-        'lines and its hint', (tester) async {
+        'lines and no line of words (A9 spec 6)', (tester) async {
       await open(tester, matchup: _squat);
       await frame(tester, 0.5);
       expect(find.byType(PoseSilhouetteGuide), findsNothing);
@@ -479,10 +635,22 @@ void main() {
       expect(viewModel.state.started, isTrue);
       expect(find.byType(StandingSilhouetteGuide), findsNothing);
       expect(find.byType(SquatHeightOverlay), findsOneWidget);
-      expect(find.text('정면에서 전신이 보이도록 서 주세요'), findsOneWidget);
-      judge.snapshot = const JudgeSnapshot(phase: RepPhase.bottom);
-      await frame(tester, 5);
-      expect(find.text('앉은 상태 · 이제 일어서세요'), findsOneWidget);
+      const squatLines = [
+        '정면에서 전신이 보이도록 서 주세요',
+        '일어선 상태 · 무릎 가까이 앉아 주세요',
+        '앉은 상태 · 이제 일어서세요',
+      ];
+      BattleCameraArea area() =>
+          tester.widget<BattleCameraArea>(find.byType(BattleCameraArea));
+      for (final phase in [RepPhase.idle, RepPhase.up, RepPhase.bottom]) {
+        judge.snapshot = JudgeSnapshot(phase: phase);
+        await frame(tester, 5);
+        expect(area().hint, isNull, reason: phase.name);
+        expect(area().setupCue, isNull, reason: phase.name);
+        for (final line in squatLines) {
+          expect(find.text(line), findsNothing, reason: '$phase: $line');
+        }
+      }
       await close(tester);
     });
 
@@ -738,7 +906,7 @@ void main() {
       await open(tester, setupConfig: const SetupConfig());
       phone.isPropped = false;
       await hold(tester, standingFrame(), from: 1, seconds: 5);
-      expect(find.text('폰을 더 세워 주세요.'), findsOneWidget);
+      showsCue(tester, '폰을 더', '세워요', '폰을 더 세워 주세요.');
       expect(
         setupWords(standingFrame(), ExerciseType.pushUp, propped: false),
         '폰을 더 세워 주세요.',
@@ -749,7 +917,7 @@ void main() {
       final noWrist = standingFrame(move: {BodyLandmark.leftWrist: (999, 700)});
       await hold(tester, noWrist, from: 7, seconds: 5);
       expect(setupWords(noWrist, ExerciseType.pushUp), '손이 화면에 안 보여요.');
-      expect(find.text('손이 화면에 안 보여요.'), findsOneWidget);
+      showsCue(tester, '손이', '안 보여요', '손이 화면에 안 보여요.');
       notCounting(tester);
       await close(tester);
     });
@@ -771,7 +939,8 @@ void main() {
       expect(status.isReady, isFalse);
       expect(status.reason, isNot(SetupReason.noPerson));
       await hold(tester, moved, from: 2, seconds: 5);
-      expect(find.text(status.message), findsOneWidget);
+      final cue = SetupHintShort.of(status);
+      showsCue(tester, cue.first, cue.second, status.message);
       notCounting(tester);
       await close(tester);
     });
@@ -809,7 +978,7 @@ void main() {
       );
       await hold(tester, noFeet, from: 1, seconds: 3);
       expect(setupWords(noFeet, ExerciseType.squat), '발목이 화면에 안 보여요.');
-      expect(find.text('발목이 화면에 안 보여요.'), findsOneWidget);
+      showsCue(tester, '발목이', '안 보여요', '발목이 화면에 안 보여요.');
       notCounting(tester);
 
       final tooClose = standingFrame(
@@ -822,13 +991,33 @@ void main() {
       );
       await hold(tester, tooClose, from: 5, seconds: 3);
       expect(setupWords(tooClose, ExerciseType.squat), '조금 뒤로 물러나 주세요.');
-      expect(find.text('조금 뒤로 물러나 주세요.'), findsOneWidget);
+      showsCue(tester, '한 걸음', '뒤로', '조금 뒤로 물러나 주세요.');
       notCounting(tester);
       expect(find.byType(StandingSilhouetteGuide), findsOneWidget);
 
       await hold(tester, standingFrame(showHips: true), from: 9, seconds: 4.5);
       expect(viewModel.state.started, isTrue);
       expect(cues, ['countdown 3', 'countdown 2', 'countdown 1', 'go']);
+      await close(tester);
+    });
+
+    testWidgets('a squat whose pose is right but which is not in the '
+        'silhouette says 실루엣에 / 맞춰요 in red, and nothing counts down '
+        '(A9 spec 2)', (tester) async {
+      await open(tester, matchup: _squat, setupConfig: const SetupConfig());
+      final outside = aside(standingFrame(showHips: true), 200);
+      await hold(tester, outside, from: 1, seconds: 3);
+      expect(viewModel.state.setup.reason, SetupReason.ready);
+      expect(viewModel.state.guideAligned, isFalse);
+      showsCue(tester, '실루엣에', '맞춰요', '실루엣 안에 몸을 맞춰 주세요.');
+      expect(
+        tester
+            .widget<BattleCameraArea>(find.byType(BattleCameraArea))
+            .setupCue!
+            .state,
+        SetupCueState.mismatch,
+      );
+      notCounting(tester);
       await close(tester);
     });
   });
@@ -1246,6 +1435,11 @@ void main() {
       expect(find.text('자세 세팅 중'), findsOneWidget);
       cues.clear();
       await frame(tester, 12);
+      if (viewModel.counter.enablePersonGuard) {
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        await tester.tap(find.text('확인 후 계속'));
+        await frame(tester, 12);
+      }
       await frame(tester, 15);
       await wait(tester, 100);
       expect(find.text('GO!'), findsOneWidget);

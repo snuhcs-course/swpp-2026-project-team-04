@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../models/setup_hint_short.dart';
 import '../theme/app_theme.dart';
+import 'battle_art_path.dart';
 import 'battle_banner.dart';
 import 'battle_fx_motion.dart';
 import 'battle_stage_model.dart';
@@ -17,28 +20,34 @@ import 'battle_stage_model.dart';
 /// - along the top: the setup progress before the start, or the reconnect
 ///   band while the user's own connection is down
 /// - in the top corners while the round is on: the combo marks ("2 HIT")
+/// - around it, from the countdown on: the status frame of [frame] (A9)
 ///
 /// Once the result is known the battle screen takes it away: the line
 /// above it goes down and it gets shorter until it is gone (W2b end screen,
 /// option A); 결과 보기 is the screen's ([BattleArena]), not its own.
 ///
-/// While [settingUp] (W2b 3-B) the setup's things are drawn large instead:
-/// the progress bar along the top, the guidance in a large band under it,
-/// the camera switch under that, and a large ready button bottom right; the
-/// leave button stays. When the countdown begins they fade out as
-/// [setupLook] falls, keeping how the setup last gave them, and take no
-/// taps meanwhile; the countdown's own guidance and button fade in in
-/// their usual places.
+/// While [settingUp] (W2b 3-B, A9) the setup's things are drawn large
+/// instead: the progress bar along the top, under it the band of the
+/// [setupCue] (two short lines read from where the user exercises, an icon,
+/// and a hold bar while the pose is held), the camera switch at the bottom
+/// right, level with the leave button, and a status frame around the
+/// camera in the cue's color. A new cue waits until the one shown has been
+/// up for [cueHold], unless it says the setup is right. When the countdown
+/// begins they fade out as [setupLook] falls, keeping how the setup last
+/// gave them, and take no taps meanwhile; the countdown's own guidance and
+/// button fade in in their usual places.
 ///
 /// Unlike the stage above it, its texts follow the system text size, and
-/// its buttons grow with them; the large band's guidance keeps to one line
-/// and shrinks to fit.
+/// its buttons grow with them; the setup cue does not (it is already
+/// large), and keeps each line to one line, shrinking a band's lines alike
+/// to fit ([cueTextSize]).
 class BattleCameraArea extends StatefulWidget {
   const BattleCameraArea({
     super.key,
     required this.camera,
     this.onLeave,
     this.hint,
+    this.setupCue,
     this.readyLabel,
     this.onReady,
     this.readyPressed = false,
@@ -50,6 +59,7 @@ class BattleCameraArea extends StatefulWidget {
     this.spin = 0,
     this.combos = const [],
     this.stageScale = 1,
+    this.frame,
   });
 
   /// The camera picture with whatever is drawn on it. It is centered, and
@@ -59,9 +69,14 @@ class BattleCameraArea extends StatefulWidget {
   /// Asks to leave the battle. Null hides the button: the battle has ended.
   final VoidCallback? onLeave;
 
-  /// The guidance, when there is something to say: in the large band while
-  /// [settingUp], otherwise one line of at most two lines at the bottom.
+  /// The guidance from the countdown on, when there is something to say:
+  /// one line of at most two lines at the bottom. Not shown while
+  /// [settingUp]: the [setupCue] says it then.
   final String? hint;
+
+  /// The setup's short cue while [settingUp]: the band at the top, and the
+  /// camera's status frame in its color (none for a notice).
+  final SetupHintShort? setupCue;
 
   /// The ready button's words; null hides it. [onReady] null shows it but
   /// it cannot be pressed.
@@ -78,8 +93,8 @@ class BattleCameraArea extends StatefulWidget {
   /// How far the setup has come, from 0 to 1; null hides the bar.
   final double? setupProgress;
 
-  /// Whether the battle is setting up now, so [hint], the ready button, the
-  /// camera switch and [setupProgress] are the setup's, drawn large.
+  /// Whether the battle is setting up now, so [setupCue], the ready button,
+  /// the camera switch and [setupProgress] are the setup's, drawn large.
   final bool settingUp;
 
   /// How strongly the setup's large look shows: 1 while setting up, falling
@@ -102,8 +117,37 @@ class BattleCameraArea extends StatefulWidget {
   /// What the stage above is sized by; the combo marks are sized with it.
   final double stageScale;
 
+  /// The status frame from the countdown on ([BattleFxFrame.cameraFrame]);
+  /// while [settingUp] the [setupCue] decides it instead.
+  final BattleFxCameraFrame? frame;
+
   /// The line between the stage and the camera.
   static const lineWidth = 3.0;
+
+  /// The status frame's width, inside the camera area under the line.
+  static const frameWidth = 12.0;
+
+  /// How long a setup cue stays before a different one replaces it, unless
+  /// the new one says the setup is right (task.md W9 decision 1).
+  static const cueHold = Duration(milliseconds: 600);
+
+  /// The setup cue's text size, and the least it keeps while that fits.
+  static const cueMaxSize = 76.0;
+  static const cueMinSize = 56.0;
+
+  /// The setup cue's text size for lines whose widest is [widestAtMax] at
+  /// [cueMaxSize], in [room]: [cueMaxSize] when it fits, otherwise as large
+  /// as fits, so a line never wraps. That keeps [cueMinSize] or more for
+  /// every cue on a phone 360 wide but the one naming two missing parts
+  /// (task.md W9 decision 7), and for the longer cues on narrower phones.
+  /// Cut to a tenth, so the text never ends a fraction past its room.
+  static double cueTextSize({
+    required double widestAtMax,
+    required double room,
+  }) {
+    if (widestAtMax <= room || widestAtMax <= 0) return cueMaxSize;
+    return (cueMaxSize * room / widestAtMax * 10).floorToDouble() / 10;
+  }
 
   /// A round button as it looks, and the room it takes for a finger.
   static const _buttonSize = 44.0;
@@ -112,11 +156,30 @@ class BattleCameraArea extends StatefulWidget {
   static const _progressHeight = 6.0;
   static const _bandHeight = 34.0;
 
-  /// While setting up: the large band's height, the large ready button's
-  /// least size, and their ink edges.
-  static const _setupHintHeight = 54.0;
+  /// While setting up: the large ready button's least size, and its ink
+  /// edge.
   static const _setupButtonSize = Size(132, 52);
   static const _setupEdge = 2.0;
+
+  /// The setup cue's band (A9 spec 2): how far under the camera area's top
+  /// it starts, its ink edge and corner, and the room inside its edge.
+  static const _cueTop = 18.0;
+  static const _cueEdge = 3.0;
+  static const _cueCorner = 22.0;
+  static const _cueInsetStart = 14.0;
+  static const _cueInsetEnd = 16.0;
+  static const _cueInsetY = 14.0;
+
+  /// The cue's icon box, its corner and icon, and the room after it.
+  static const _cueIconBox = 68.0;
+  static const _cueIconCorner = 18.0;
+  static const _cueIconSize = 44.0;
+  static const _cueIconGap = 14.0;
+
+  /// The hold bar under the cue while the pose is held.
+  static const _holdHeight = 18.0;
+  static const _holdEdge = 2.5;
+  static const _holdCorner = 9.0;
 
   /// How far a round button's circle is from the edge of its finger room.
   static const _circleInset = (_tapSize - _buttonSize) / 2;
@@ -128,15 +191,15 @@ class BattleCameraArea extends StatefulWidget {
 /// What the setup last gave the camera area: its large things keep it while
 /// they fade out, once the countdown has given other things.
 class _SetupLook {
-  _SetupLook.of(BattleCameraArea area)
-    : hint = area.hint,
-      readyLabel = area.readyLabel,
+  _SetupLook.of(BattleCameraArea area, this.cue)
+    : readyLabel = area.readyLabel,
       readyEnabled = area.onReady != null,
       readyPressed = area.readyPressed,
       canSwitch = area.onSwitchCamera != null,
       progress = area.setupProgress;
 
-  final String? hint;
+  /// The cue as the band showed it last.
+  final SetupHintShort? cue;
   final String? readyLabel;
   final bool readyEnabled;
   final bool readyPressed;
@@ -147,21 +210,93 @@ class _SetupLook {
 class _BattleCameraAreaState extends State<BattleCameraArea> {
   _SetupLook? _last;
 
+  /// The setup cue the band shows, and the hold that keeps it up a moment
+  /// before a different one may replace it.
+  SetupHintShort? _cue;
+  Timer? _hold;
+
   @override
   void initState() {
     super.initState();
+    _takeCue();
     _remember();
   }
 
   @override
   void didUpdateWidget(BattleCameraArea oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _takeCue();
     _remember();
   }
 
-  void _remember() {
-    if (widget.settingUp) _last = _SetupLook.of(widget);
+  @override
+  void dispose() {
+    _hold?.cancel();
+    super.dispose();
   }
+
+  void _remember() {
+    if (widget.settingUp) _last = _SetupLook.of(widget, _cue);
+  }
+
+  /// Shows the setup's latest cue now, or after the hold of the one shown:
+  /// at once when nothing shows, when the hold is over, or when the new one
+  /// says the setup is right. The same cue with a new sentence (a count)
+  /// just takes the new sentence.
+  void _takeCue() {
+    if (!widget.settingUp) {
+      _hold?.cancel();
+      _hold = null;
+      return;
+    }
+    final next = widget.setupCue;
+    final shown = _cue;
+    if (next == null) {
+      _hold?.cancel();
+      _hold = null;
+      _cue = null;
+    } else if (shown != null && next.looksLike(shown)) {
+      _cue = next;
+    } else if (shown == null ||
+        _hold == null ||
+        next.state == SetupCueState.match) {
+      _show(next);
+    }
+  }
+
+  void _show(SetupHintShort cue) {
+    _cue = cue;
+    _hold?.cancel();
+    _hold = Timer(BattleCameraArea.cueHold, _holdOver);
+  }
+
+  /// The hold is over: the cue the setup gives now replaces the one shown.
+  void _holdOver() {
+    _hold = null;
+    if (!mounted || !widget.settingUp) return;
+    final next = widget.setupCue;
+    final shown = _cue;
+    if (next == null || (shown != null && next.looksLike(shown))) return;
+    setState(() {
+      _show(next);
+      _remember();
+    });
+  }
+
+  /// The status frame's color: the shown cue's while setting up, the
+  /// round's [BattleCameraArea.frame] from the countdown on; null for none.
+  Color? get _frameColor => widget.settingUp
+      ? switch (_cue?.state) {
+          SetupCueState.match => AppColors.statusGood,
+          SetupCueState.mismatch => AppColors.danger,
+          SetupCueState.notice || null => null,
+        }
+      : switch (widget.frame) {
+          BattleFxCameraFrame.good => AppColors.statusGood,
+          BattleFxCameraFrame.average => AppColors.warning,
+          BattleFxCameraFrame.rejected => AppColors.danger,
+          null => null,
+        };
 
   static void _none() {}
 
@@ -180,6 +315,7 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
     final roundOpacity = 1 - setupLook;
     final hint = area.hint;
     final readyLabel = area.readyLabel;
+    final frameColor = _frameColor;
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: AppColors.border,
@@ -196,6 +332,20 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
           fit: StackFit.expand,
           children: [
             ClipRect(child: Center(child: area.camera)),
+            // Over the camera and what is drawn on it, under the rest.
+            if (frameColor != null)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: frameColor,
+                        width: BattleCameraArea.frameWidth,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             if (round && progress != null && !area.reconnecting)
               Positioned(
                 left: 0,
@@ -298,11 +448,11 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
     );
   }
 
-  /// The setup's things, large (W2b 3-B): the progress bar along the top,
-  /// the guidance in a band under it, the camera switch under the band at
-  /// the right, and the ready button at the bottom right, its bottom level
-  /// with the leave button's circle. [live] says they can be
-  /// pressed; otherwise they only show.
+  /// The setup's things, large (W2b 3-B, A9): the progress bar along the
+  /// top, the cue's band under it, the camera switch at the bottom right,
+  /// its circle level with the leave button's, and the ready button there,
+  /// the switch then over it (no screen gives one since A6). [live] says
+  /// they can be pressed; otherwise they only show.
   Widget _setupLayer(
     _SetupLook setup,
     TextTheme text,
@@ -311,9 +461,9 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
   ) {
     final area = widget;
     final progress = setup.progress;
-    final hint = setup.hint;
+    final cue = setup.cue;
     final readyLabel = setup.readyLabel;
-    const hintTop = BattleCameraArea._progressHeight + AppSpacing.s8;
+    final bottom = AppSpacing.s12 + bottomInset;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -324,17 +474,26 @@ class _BattleCameraAreaState extends State<BattleCameraArea> {
             top: 0,
             child: _SetupProgress(progress: progress),
           ),
-        if (hint != null)
+        if (cue != null)
           Positioned(
             left: AppSpacing.s12,
             right: AppSpacing.s12,
-            top: hintTop,
-            child: _SetupHint(text: hint, style: text.cameraSetupHint),
+            top: BattleCameraArea._cueTop,
+            child: _SetupCueBand(
+              cue: cue,
+              progress: progress ?? 0,
+              style: text.cameraSetupCue,
+            ),
           ),
         if (setup.canSwitch)
           Positioned(
             right: AppSpacing.s12,
-            top: hintTop + BattleCameraArea._setupHintHeight + AppSpacing.s8,
+            bottom: readyLabel == null
+                ? bottom
+                : bottom +
+                      BattleCameraArea._circleInset +
+                      BattleCameraArea._setupButtonSize.height +
+                      AppSpacing.s8,
             child: _RoundButton(
               icon: Icons.cameraswitch_outlined,
               label: '카메라 전환',
@@ -581,57 +740,287 @@ class _ReadyButton extends StatelessWidget {
   }
 }
 
-/// The setup's guidance, large (W2b 3-B): ink on a white band with an ink
-/// edge, as wide as the area less its sides, one line that shrinks to fit
-/// the band, also at a large system text size. A screen reader hears it
-/// whole when it changes.
-class _SetupHint extends StatelessWidget {
-  const _SetupHint({required this.text, required this.style});
+/// The setup cue's band (A9 spec 2, design UxSq variant A2): ink on white
+/// with an ink edge, the icon box in the cue's color, two short lines, and
+/// while the pose is held the hold bar filling with [progress]. A screen
+/// reader hears the cue's whole sentence, once for each new one.
+class _SetupCueBand extends StatelessWidget {
+  const _SetupCueBand({
+    required this.cue,
+    required this.progress,
+    required this.style,
+  });
 
-  final String text;
+  final SetupHintShort cue;
+  final double progress;
   final TextStyle style;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      container: true,
       liveRegion: true,
-      child: SizedBox(
-        height: BattleCameraArea._setupHintHeight,
+      label: cue.message,
+      child: ExcludeSemantics(
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: AppColors.card,
             border: Border.all(
               color: AppColors.ink,
-              width: BattleCameraArea._setupEdge,
+              width: BattleCameraArea._cueEdge,
             ),
             borderRadius: const BorderRadius.all(
-              Radius.circular(AppRadius.small),
+              Radius.circular(BattleCameraArea._cueCorner),
             ),
           ),
           child: Padding(
             // The design's room inside the edge, which is painted inside the
             // box here.
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.s8 + BattleCameraArea._setupEdge,
-              vertical: BattleCameraArea._setupEdge,
+            padding: const EdgeInsets.fromLTRB(
+              BattleCameraArea._cueEdge + BattleCameraArea._cueInsetStart,
+              BattleCameraArea._cueEdge + BattleCameraArea._cueInsetY,
+              BattleCameraArea._cueEdge + BattleCameraArea._cueInsetEnd,
+              BattleCameraArea._cueEdge + BattleCameraArea._cueInsetY,
             ),
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  text,
-                  maxLines: 1,
-                  softWrap: false,
-                  textAlign: TextAlign.center,
-                  style: style,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    _CueIconBox(cue: cue),
+                    const SizedBox(width: BattleCameraArea._cueIconGap),
+                    Expanded(
+                      child: _CueLines(cue: cue, style: style),
+                    ),
+                  ],
                 ),
-              ),
+                if (cue.holding) ...[
+                  const SizedBox(height: AppSpacing.s12),
+                  _HoldBar(progress: progress),
+                ],
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// The cue's icon in a box of its state's color with an ink edge: green
+/// when right, red when not, amber for a notice.
+class _CueIconBox extends StatelessWidget {
+  const _CueIconBox({required this.cue});
+
+  final SetupHintShort cue;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (cue.state) {
+      SetupCueState.match => AppColors.statusGood,
+      SetupCueState.mismatch => AppColors.danger,
+      SetupCueState.notice => AppColors.warning,
+    };
+    const size = BattleCameraArea._cueIconSize;
+    final icon = switch (cue.icon) {
+      SetupCueIcon.hand => const Icon(
+        Icons.back_hand_outlined,
+        size: size,
+        color: AppColors.ink,
+      ),
+      SetupCueIcon.connection => const Icon(
+        Icons.wifi_rounded,
+        size: size,
+        color: AppColors.ink,
+      ),
+      final drawn => CustomPaint(
+        size: const Size.square(size),
+        painter: SetupCueIconPainter(drawn),
+      ),
+    };
+    return SizedBox.square(
+      dimension: BattleCameraArea._cueIconBox,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color,
+          border: Border.all(
+            color: AppColors.ink,
+            width: BattleCameraArea._cueEdge,
+          ),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(BattleCameraArea._cueIconCorner),
+          ),
+        ),
+        child: Center(child: icon),
+      ),
+    );
+  }
+}
+
+/// The cue's two lines, each one line, the two at the same size: as large
+/// as [BattleCameraArea.cueTextSize] lets them in the room they have,
+/// whatever the system text size.
+class _CueLines extends StatelessWidget {
+  const _CueLines({required this.cue, required this.style});
+
+  final SetupHintShort cue;
+
+  /// The cue's style at [BattleCameraArea.cueMaxSize]
+  /// ([BattleCameraText.cameraSetupCue]).
+  final TextStyle style;
+
+  double _widthAtMax(String line) {
+    final painter = TextPainter(
+      text: TextSpan(text: line, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: TextScaler.noScaling,
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = BattleCameraArea.cueTextSize(
+          widestAtMax: math.max(
+            _widthAtMax(cue.first),
+            _widthAtMax(cue.second),
+          ),
+          room: constraints.maxWidth,
+        );
+        final sized = style.apply(
+          fontSizeFactor: size / BattleCameraArea.cueMaxSize,
+        );
+        Text line(String words) => Text(
+          words,
+          maxLines: 1,
+          softWrap: false,
+          textScaler: TextScaler.noScaling,
+          style: sized,
+        );
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [line(cue.first), line(cue.second)],
+        );
+      },
+    );
+  }
+}
+
+/// The bar under a held cue: white with an ink edge, filling with status
+/// green as the pose holds.
+class _HoldBar extends StatelessWidget {
+  const _HoldBar({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: BattleCameraArea._holdHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          border: Border.all(
+            color: AppColors.ink,
+            width: BattleCameraArea._holdEdge,
+          ),
+          borderRadius: const BorderRadius.all(
+            Radius.circular(BattleCameraArea._holdCorner),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(BattleCameraArea._holdEdge),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.all(
+              Radius.circular(
+                BattleCameraArea._holdCorner - BattleCameraArea._holdEdge,
+              ),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: progress.clamp(0.0, 1.0),
+              heightFactor: 1,
+              child: const ColoredBox(color: AppColors.statusGood),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The cue icons drawn in ink lines from the design (A9, UxSq A2), in its
+/// 24 x 24 view: the check, the person, the phone, and the phone with an
+/// arrow going away from it or coming to it. The hand and the connection
+/// are Material icons.
+class SetupCueIconPainter extends CustomPainter {
+  const SetupCueIconPainter(this.icon)
+    : assert(
+        icon != SetupCueIcon.hand && icon != SetupCueIcon.connection,
+        'a Material icon',
+      );
+
+  final SetupCueIcon icon;
+
+  static const _view = 24.0;
+
+  /// The phone's outline: beside an arrow, or standing alone.
+  static const _sidePhone = Rect.fromLTWH(2.5, 5, 6, 11);
+  static const _phone = Rect.fromLTWH(7, 2.5, 10, 19);
+  static const _phoneCorner = 1.5;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / _view, size.height / _view);
+    Paint ink(double width) => Paint()
+      ..color = AppColors.ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    void phone(Rect box, Paint paint) => canvas.drawRRect(
+      RRect.fromRectAndRadius(box, const Radius.circular(_phoneCorner)),
+      paint,
+    );
+    switch (icon) {
+      case SetupCueIcon.check:
+        canvas.drawPath(battleArtPath('M4.5 12.5l5 5L19.5 7'), ink(3));
+      case SetupCueIcon.person:
+        final line = ink(2.4);
+        canvas.drawCircle(const Offset(12, 5), 2.2, line);
+        canvas.drawPath(
+          battleArtPath('M12 7.5v7M8 10.5h8M12 14.5l-2.5 6M12 14.5l2.5 6'),
+          line,
+        );
+      case SetupCueIcon.stepBack:
+        final line = ink(2.6);
+        phone(_sidePhone, line);
+        canvas.drawPath(battleArtPath('M11 10.5h9M17 7.5l3 3-3 3'), line);
+      case SetupCueIcon.stepCloser:
+        final line = ink(2.6);
+        phone(_sidePhone, line);
+        canvas.drawPath(battleArtPath('M20 10.5h-9M14 7.5l-3 3 3 3'), line);
+      case SetupCueIcon.phone:
+        final line = ink(2.4);
+        phone(_phone, line);
+        canvas.drawPath(battleArtPath('M10.5 18.5h3'), line);
+      case SetupCueIcon.hand || SetupCueIcon.connection:
+        break;
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(SetupCueIconPainter oldDelegate) =>
+      oldDelegate.icon != icon;
 }
 
 /// The setup's ready button, large (W2b 3-B): a pill with an ink edge,

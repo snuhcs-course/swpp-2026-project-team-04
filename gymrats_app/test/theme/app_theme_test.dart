@@ -46,6 +46,22 @@ void main() {
     }, hasLength(4));
   });
 
+  test('status green (A9) is its own color, apart from the lime, the danger '
+      'red and the warning amber, and an ink icon reads on it', () {
+    expect(AppColors.statusGood, const Color(0xFF1FC95B));
+    expect({
+      AppColors.statusGood,
+      AppColors.accent,
+      AppColors.danger,
+      AppColors.warning,
+    }, hasLength(4));
+    double luminance(Color c) => c.computeLuminance();
+    final ratio =
+        (luminance(AppColors.statusGood) + 0.05) /
+        (luminance(AppColors.ink) + 0.05);
+    expect(ratio, greaterThanOrEqualTo(3));
+  });
+
   test('text uses the primary text color', () {
     expect(theme.textTheme.bodyMedium!.color, AppColors.textPrimary);
     expect(theme.textTheme.displayLarge!.color, AppColors.textPrimary);
@@ -383,7 +399,7 @@ void main() {
         'sign label': (
           text.stageSignLabel,
           AppFonts.display,
-          40.0,
+          66.0,
           FontWeight.w400,
         ),
       };
@@ -416,7 +432,7 @@ void main() {
       expect(text.stageBand.height, 1);
       expect(text.stageBand.letterSpacing, -1);
       expect(text.stageBandKorean.height, 1.25);
-      expect(text.stageSignLabel.height, 1.2);
+      expect(text.stageSignLabel.height, 1.12);
       // Given in the design as a line height in points.
       expect(text.stageCount.fontSize! * text.stageCount.height!, 20);
       expect(
@@ -547,13 +563,14 @@ void main() {
       expect(text.cameraHint.fontFamily, AppFonts.body);
     });
 
-    test('the setup\'s large hint and ready button (W2b 3-B): Do Hyeon 26 on '
-        'a 1.2 line and Do Hyeon 22, ink, with no extra letter spacing', () {
-      final hint = text.cameraSetupHint;
+    test('the setup cue (A9) and the large ready button (W2b 3-B): Do Hyeon '
+        '76 on a 0.98 line and Do Hyeon 22, ink, with no extra letter '
+        'spacing', () {
+      final hint = text.cameraSetupCue;
       expect(hint.fontFamily, AppFonts.display);
-      expect(hint.fontSize, 26);
+      expect(hint.fontSize, 76);
       expect(hint.fontWeight, FontWeight.w400);
-      expect(hint.height, 1.2);
+      expect(hint.height, 0.98);
       expect(hint.leadingDistribution, TextLeadingDistribution.even);
       final button = text.cameraSetupButton;
       expect(button.fontFamily, AppFonts.display);
@@ -563,6 +580,16 @@ void main() {
         expect(style.letterSpacing, 0);
         expect(style.color, AppColors.ink);
       }
+    });
+
+    test("the names on the camera's lines (A9): Plex 13 bold in ink on a "
+        'line of its own height, a constant drawn with the lines', () {
+      const label = BattleCameraText.cameraLineLabel;
+      expect(label.fontFamily, AppFonts.body);
+      expect(label.fontSize, 13);
+      expect(label.fontWeight, FontWeight.w700);
+      expect(label.height, 1);
+      expect(label.color, AppColors.ink);
     });
 
     test('the leave dialog\'s title is Do Hyeon at the headline\'s size', () {

@@ -36,6 +36,8 @@ void main() {
     final camera = tester.widget<PoseCameraView>(find.byType(PoseCameraView));
     expect(camera.controller, isNull);
     expect(camera.showLandmarks, isTrue);
+    // The battle camera's bold joints and skeleton (A9 spec 4).
+    expect(camera.boldLandmarks, isTrue);
     expect(find.byType(ChestHeightOverlay), findsNothing);
     expect(find.byType(SquatHeightOverlay), findsNothing);
   });

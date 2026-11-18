@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/setup_hint_short.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/models/game_score.dart';
@@ -22,6 +23,7 @@ Future<void> _pump(
   double bottomInset = 0,
   VoidCallback? onLeave,
   String? hint,
+  SetupHintShort? setupCue,
   String? readyLabel,
   VoidCallback? onReady,
   bool readyPressed = false,
@@ -33,6 +35,7 @@ Future<void> _pump(
   double spin = 0,
   List<BattleFxCombo> combos = const [],
   double stageScale = 1,
+  BattleFxCameraFrame? frame,
 }) async {
   // The test's screen is the area's, also when it is taller than the
   // default window, as while setting up.
@@ -54,6 +57,7 @@ Future<void> _pump(
             ),
             onLeave: onLeave,
             hint: hint,
+            setupCue: setupCue,
             readyLabel: readyLabel,
             onReady: onReady,
             readyPressed: readyPressed,
@@ -65,6 +69,7 @@ Future<void> _pump(
             spin: spin,
             combos: combos,
             stageScale: stageScale,
+            frame: frame,
           ),
         ),
       ),
@@ -73,13 +78,16 @@ Future<void> _pump(
   );
 }
 
-String _words(SetupReason reason, [List<BodyPart> parts = const []]) =>
-    SetupStatus(
-      reason: reason,
-      isReady: false,
-      readyProgress: 0,
-      missingParts: parts,
-    ).message;
+SetupStatus _status(
+  SetupReason reason, {
+  bool ready = false,
+  List<BodyPart> parts = const [],
+}) => SetupStatus(
+  reason: reason,
+  isReady: ready,
+  readyProgress: 0,
+  missingParts: parts,
+);
 
 /// The parts the setup checks for each exercise, in the order it names
 /// them: the head first, then the exercise's own.
@@ -99,38 +107,48 @@ const _checked = {
   ],
 };
 
-/// The setup's lines: every reason the checker gives, every one- and
-/// two-part line of both exercises in its order and the whole-body line,
-/// the online setup's own lines; and the countdown's and the squat round's
-/// lines, shown in the small hint.
-final _setupHints = <String>{
-  for (final reason in SetupReason.values) _words(reason),
-  const SetupStatus(
-    reason: SetupReason.ready,
-    isReady: true,
-    readyProgress: 1,
-  ).message,
+/// Every setup cue (A9): every reason the checker gives, ready, a squat
+/// outside the silhouette, every one- and two-part cue of both exercises in
+/// its order and the whole-body one, and the online setup's own cues.
+final _setupCues = <SetupHintShort>{
+  for (final reason in SetupReason.values) SetupHintShort.of(_status(reason)),
+  SetupHintShort.of(_status(SetupReason.ready, ready: true)),
+  SetupHintShort.of(_status(SetupReason.ready), outsideSilhouette: true),
   for (final parts in _checked.values) ...[
     for (final (i, one) in parts.indexed) ...[
-      _words(SetupReason.missingParts, [one]),
+      SetupHintShort.of(_status(SetupReason.missingParts, parts: [one])),
       for (final two in parts.skip(i + 1))
-        _words(SetupReason.missingParts, [one, two]),
+        SetupHintShort.of(_status(SetupReason.missingParts, parts: [one, two])),
     ],
-    _words(SetupReason.missingParts, parts),
+    SetupHintShort.of(_status(SetupReason.missingParts, parts: parts)),
   ],
-  '재연결 중 · 준비 상태 확인 중…',
-  '상대 준비를 기다리는 중…',
-  '자세 확인! 3초 후 자동으로 준비해요',
+  const SetupHintShort.reconnecting(),
+  const SetupHintShort.waitingForOpponent(),
+  SetupHintShort.autoReady(3),
 };
 
-final _hints = <String>{
-  ..._setupHints,
-  // The online countdown's line and the squat round's.
-  '10초 후 함께 시작',
-  '일어선 상태 · 무릎 가까이 앉아 주세요',
-  '앉은 상태 · 이제 일어서세요',
-  '정면에서 전신이 보이도록 서 주세요',
-};
+/// The small hint's lines from the countdown on: the online countdown's.
+/// The setup's are cues now (A9), and the squat round has none (spec 6).
+final _hints = <String>{'재연결 중 · 준비 상태 확인 중…', '10초 후 함께 시작'};
+
+/// The status frame (A9 spec 3): the 12 wide edge with no fill.
+Finder _frame() => find.byWidgetPredicate(
+  (w) =>
+      w is DecoratedBox &&
+      w.decoration is BoxDecoration &&
+      (w.decoration as BoxDecoration).color == null &&
+      (w.decoration as BoxDecoration).border is Border &&
+      ((w.decoration as BoxDecoration).border! as Border).top.width ==
+          BattleCameraArea.frameWidth,
+);
+
+/// The status frame's color, or null when there is none.
+Color? _frameColor(WidgetTester tester) {
+  if (_frame().evaluate().isEmpty) return null;
+  final decoration =
+      tester.widget<DecoratedBox>(_frame()).decoration as BoxDecoration;
+  return (decoration.border! as Border).top.color;
+}
 
 /// The white circle of a round button, by its icon.
 Finder _circle(IconData icon) => find.ancestor(
@@ -542,17 +560,12 @@ void main() {
     }
   });
 
-  group('every setup hint fits its two lines at 1.3x text on a 360-wide '
-      'phone', () {
-    final hints = _hints;
-
-    test('the list holds every named line the checker can give', () {
-      expect(hints, contains('어깨, 팔꿈치가 화면에 안 보여요.'));
-      expect(hints, contains('어깨, 엉덩이가 화면에 안 보여요.'));
-      expect(hints, contains('몸 전체가 화면에 보이게 해 주세요.'));
-      // 4 + 5 single parts, 6 + 10 pairs, the whole-body line, 11 more
-      // reasons (ready twice) and 7 other lines.
-      expect(hints.length, greaterThanOrEqualTo(40));
+  group('every countdown and round line fits its two lines at 1.3x text on '
+      'a 360-wide phone', () {
+    test('the list holds the online countdown\'s lines; the squat round '
+        'has no line any more (A9 spec 6)', () {
+      expect(_hints, contains('10초 후 함께 시작'));
+      expect(_hints, isNot(contains('일어선 상태 · 무릎 가까이 앉아 주세요')));
     });
 
     // The online round's lines (`OnlineBattleScreen._roundHint`): there is
@@ -594,7 +607,7 @@ void main() {
 
     for (final readyLabel in ['시작', '준비', '준비 취소']) {
       testWidgets('beside "$readyLabel"', (tester) async {
-        for (final hint in hints) {
+        for (final hint in _hints) {
           await _pump(
             tester,
             textScale: 1.3,
@@ -615,81 +628,474 @@ void main() {
     }
   });
 
-  group('the setup\'s large look (W2b 3-B)', () {
+  group('the setup\'s large look (W2b 3-B, A9 spec 2)', () {
     // The camera's box while setting up on an S22, with the line on top.
     const setupSize = Size(360, 624);
+    final tooClose = SetupHintShort.of(_status(SetupReason.tooClose));
+    final noPerson = SetupHintShort.of(_status(SetupReason.noPerson));
+    final held = SetupHintShort.of(_status(SetupReason.ready));
 
-    /// The large hint's band, and the large ready button's pill.
-    Finder band(String hint) => find
-        .ancestor(of: find.text(hint), matching: find.byType(SizedBox))
+    /// The cue's band: the white box with the 3 ink edge around its lines.
+    Finder band(String line) => find
+        .ancestor(
+          of: find.text(line),
+          matching: find.byWidgetPredicate(
+            (w) =>
+                w is DecoratedBox &&
+                w.decoration is BoxDecoration &&
+                (w.decoration as BoxDecoration).color == AppColors.card &&
+                (w.decoration as BoxDecoration).border ==
+                    Border.all(color: AppColors.ink, width: 3),
+          ),
+        )
         .first;
+
+    /// The large ready button's pill.
     Finder pill(String label) => find
         .ancestor(of: find.text(label), matching: find.byType(Material))
         .first;
 
-    testWidgets('the bar on top, the guidance in a large band under it, the '
-        'camera switch under the band, the large ready button bottom right, '
-        'the leave button as before; no small hint or ready button', (
+    /// The icon box: the 68 square in the cue's color.
+    Finder iconBox() => find.byWidgetPredicate(
+      (w) => w is SizedBox && w.width == 68 && w.height == 68,
+    );
+
+    Color iconFill(WidgetTester tester) =>
+        (tester
+                    .widget<DecoratedBox>(
+                      find.descendant(
+                        of: iconBox(),
+                        matching: find.byType(DecoratedBox),
+                      ),
+                    )
+                    .decoration
+                as BoxDecoration)
+            .color!;
+
+    double sizeOf(WidgetTester tester, String line) =>
+        tester.widget<Text>(find.text(line)).style!.fontSize!;
+
+    /// Clears the band, so the next cue shows at once, not after the hold.
+    Future<void> clear(WidgetTester tester, {double textScale = 1}) => _pump(
       tester,
-    ) async {
+      size: setupSize,
+      textScale: textScale,
+      settingUp: true,
+      setupLook: 1,
+    );
+
+    testWidgets('the bar on top, the cue\'s band 18 under the line with its '
+        'icon box and two lines, the camera switch bottom right level with '
+        'the leave button; no small hint', (tester) async {
       await _pump(
         tester,
         size: setupSize,
         settingUp: true,
         setupLook: 1,
         onLeave: () {},
-        hint: '카메라 앞에 서 주세요.',
-        readyLabel: '준비',
-        onReady: () {},
+        setupCue: noPerson,
         onSwitchCamera: () {},
         setupProgress: 0.4,
       );
-      // Inside the box under the 3 wide line: the bar 0 to 6, the band 14
-      // to 68, 12 from the sides.
-      expect(
-        tester.getRect(band('카메라 앞에 서 주세요.')),
-        const Rect.fromLTWH(12, 3 + 14, 336, 54),
-      );
+      // Inside the box under the 3 wide line: the band from 18, 12 from the
+      // sides; two lines of 76 on a 0.98 line, 14 above and below them
+      // inside its 3 edge: about 183 tall.
+      final rect = tester.getRect(band('카메라'));
+      expect(rect.left, 12);
+      expect(rect.top, 3 + 18);
+      expect(rect.width, 336);
+      // (Each line laid out to whole points: 74 of 74.48.)
+      expect(rect.height, closeTo(3 + 14 + 2 * 0.98 * 76 + 14 + 3, 1.5));
       final look =
-          tester
-                  .widget<DecoratedBox>(
-                    find
-                        .ancestor(
-                          of: find.text('카메라 앞에 서 주세요.'),
-                          matching: find.byType(DecoratedBox),
-                        )
-                        .first,
-                  )
-                  .decoration
-              as BoxDecoration;
-      expect(look.color, AppColors.card);
-      expect(look.border, Border.all(color: AppColors.ink, width: 2));
-      expect(
-        tester.widget<Text>(find.text('카메라 앞에 서 주세요.')).style!.fontFamily,
-        AppFonts.display,
-      );
-      expect(
-        tester.widget<Text>(find.text('카메라 앞에 서 주세요.')).style!.fontSize,
-        26,
-      );
+          tester.widget<DecoratedBox>(band('카메라')).decoration as BoxDecoration;
+      expect(look.borderRadius, const BorderRadius.all(Radius.circular(22)));
+      // The icon box: 68 square, 14 + 3 in from the band's left.
+      expect(tester.getRect(iconBox()).left, 12 + 3 + 14);
+      expect(tester.getSize(iconBox()), const Size(68, 68));
+      expect(iconFill(tester), AppColors.danger);
+      // The two short lines, 14 after the icon box, in Do Hyeon 76.
+      for (final line in ['카메라', '앞으로']) {
+        final text = tester.widget<Text>(find.text(line));
+        expect(text.style!.fontFamily, AppFonts.display, reason: line);
+        expect(text.style!.fontSize, 76, reason: line);
+        expect(text.maxLines, 1, reason: line);
+        expect(
+          tester.getRect(find.text(line)).left,
+          12 + 3 + 14 + 68 + 14,
+          reason: line,
+        );
+      }
+      // The long sentence is not on screen; there is no small hint.
+      expect(find.text(noPerson.message), findsNothing);
       expect(
         tester.getRect(_circle(Icons.cameraswitch_outlined)),
-        const Rect.fromLTWH(304, 3 + 78, 44, 44),
+        const Rect.fromLTWH(360 - 12 - 44, 624 - 14 - 44, 44, 44),
       );
-      expect(
-        tester.getRect(pill('준비')),
-        const Rect.fromLTRB(216, 624 - 14 - 52, 348, 624 - 14),
-      );
-      expect(tester.widget<Text>(find.text('준비')).style!.fontSize, 22);
       expect(
         tester.getRect(_circle(Icons.logout_rounded)),
         const Rect.fromLTWH(12, 624 - 14 - 44, 44, 44),
       );
-      // Only one of each.
-      expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
-      expect(find.text('준비'), findsOneWidget);
       expect(find.byIcon(Icons.cameraswitch_outlined), findsOneWidget);
       expect(find.bySemanticsLabel('자세 세팅 진행'), findsOneWidget);
+    });
+
+    testWidgets('the hold bar only while the pose is held: 18 tall under the '
+        'lines, filling with status green as the setup says', (tester) async {
+      Finder holdFill(String line) => find.descendant(
+        of: band(line),
+        matching: find.byWidgetPredicate(
+          (w) => w is FractionallySizedBox && w.widthFactor == 0.6,
+        ),
+      );
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        setupCue: held,
+        setupProgress: 0.6,
+      );
+      expect(holdFill('그대로'), findsOneWidget);
+      expect(
+        tester
+            .widget<ColoredBox>(
+              find.descendant(
+                of: holdFill('그대로'),
+                matching: find.byType(ColoredBox),
+              ),
+            )
+            .color,
+        AppColors.statusGood,
+      );
+      final bar = find
+          .ancestor(of: holdFill('그대로'), matching: find.byType(SizedBox))
+          .first;
+      expect(tester.getSize(bar).height, 18);
+      expect(
+        tester.getRect(bar).top,
+        greaterThan(tester.getRect(find.text('멈춰요')).bottom),
+      );
+      // About 213 tall with it.
+      expect(
+        tester.getSize(band('그대로')).height,
+        closeTo(3 + 14 + 2 * 0.98 * 76 + 12 + 18 + 14 + 3, 1.5),
+      );
+      expect(iconFill(tester), AppColors.statusGood);
+
+      // Not for a cue that is not held; the top bar alone shows the 0.6.
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        setupCue: SetupHintShort.of(_status(SetupReason.ready, ready: true)),
+        setupProgress: 0.6,
+      );
+      expect(find.text('완료!'), findsOneWidget);
+      expect(holdFill('준비'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is FractionallySizedBox && w.widthFactor == 0.6,
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a notice is amber, with the connection icon', (tester) async {
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        setupCue: const SetupHintShort.reconnecting(),
+      );
+      expect(iconFill(tester), AppColors.warning);
+      expect(find.byIcon(Icons.wifi_rounded), findsOneWidget);
+    });
+
+    testWidgets('each icon: the hand and the connection from Material, the '
+        'others drawn in ink lines', (tester) async {
+      final cues = {
+        SetupCueIcon.check: held,
+        SetupCueIcon.person: noPerson,
+        SetupCueIcon.stepBack: tooClose,
+        SetupCueIcon.stepCloser: SetupHintShort.of(_status(SetupReason.tooFar)),
+        SetupCueIcon.phone: SetupHintShort.of(_status(SetupReason.phoneShaky)),
+      };
+      for (final MapEntry(key: icon, value: cue) in cues.entries) {
+        await clear(tester);
+        await _pump(
+          tester,
+          size: setupSize,
+          settingUp: true,
+          setupLook: 1,
+          setupCue: cue,
+        );
+        final painter =
+            tester
+                    .widget<CustomPaint>(
+                      find.descendant(
+                        of: iconBox(),
+                        matching: find.byType(CustomPaint),
+                      ),
+                    )
+                    .painter!
+                as SetupCueIconPainter;
+        expect(painter.icon, icon);
+        expect(
+          tester.getSize(
+            find.descendant(of: iconBox(), matching: find.byType(CustomPaint)),
+          ),
+          const Size.square(44),
+        );
+        expect(
+          find.descendant(of: iconBox(), matching: find.byType(CustomPaint)),
+          paints..path(color: AppColors.ink, style: PaintingStyle.stroke),
+        );
+      }
+      await clear(tester);
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        setupCue: SetupHintShort.of(
+          _status(SetupReason.missingParts, parts: [BodyPart.hands]),
+        ),
+      );
+      expect(find.byIcon(Icons.back_hand_outlined), findsOneWidget);
+      expect(
+        const SetupCueIconPainter(SetupCueIcon.check)
+            .shouldRepaint(const SetupCueIconPainter(SetupCueIcon.check)),
+        isFalse,
+      );
+      expect(
+        const SetupCueIconPainter(SetupCueIcon.check)
+            .shouldRepaint(const SetupCueIconPainter(SetupCueIcon.phone)),
+        isTrue,
+      );
+    });
+
+    testWidgets('a screen reader hears the cue\'s whole sentence, in a live '
+        'region, not its two short lines', (tester) async {
+      final handle = tester.ensureSemantics();
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        setupCue: tooClose,
+      );
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('조금 뒤로 물러나 주세요.')),
+        matchesSemantics(label: '조금 뒤로 물러나 주세요.', isLiveRegion: true),
+      );
+      expect(find.bySemanticsLabel('한 걸음'), findsNothing);
+      handle.dispose();
+    });
+
+    testWidgets('with no cue there is no band, and no frame', (tester) async {
+      await _pump(tester, size: setupSize, settingUp: true, setupLook: 1);
+      expect(iconBox(), findsNothing);
+      expect(_frame(), findsNothing);
+    });
+
+    group('a cue keeps to its two lines on a 360-wide phone', () {
+      test('as large as fits, up to 76: the size from the widest line', () {
+        expect(
+          BattleCameraArea.cueTextSize(widestAtMax: 200, room: 218),
+          BattleCameraArea.cueMaxSize,
+        );
+        expect(BattleCameraArea.cueTextSize(widestAtMax: 218, room: 218), 76);
+        // 76 x 218 / 256.3: cut to a tenth.
+        expect(
+          BattleCameraArea.cueTextSize(widestAtMax: 256.3, room: 218),
+          64.6,
+        );
+        expect(BattleCameraArea.cueTextSize(widestAtMax: 0, room: 218), 76);
+        expect(BattleCameraArea.cueMinSize, 56);
+      });
+
+      for (final textScale in [1.0, 1.3, 2.0]) {
+        testWidgets('every cue at ${textScale}x text: one line each, the two '
+            'alike, inside the band, at least 56 but for two missing parts '
+            '(task.md W9 decision 7), nothing overflows', (tester) async {
+          for (final cue in _setupCues) {
+            await clear(tester, textScale: textScale);
+            await _pump(
+              tester,
+              size: setupSize,
+              textScale: textScale,
+              settingUp: true,
+              setupLook: 1,
+              onLeave: () {},
+              setupCue: cue,
+              onSwitchCamera: () {},
+              setupProgress: 0.3,
+            );
+            expect(tester.takeException(), isNull, reason: '$cue');
+            final room = tester.getRect(band(cue.first)).deflate(3);
+            for (final line in [cue.first, cue.second]) {
+              final paragraph = tester.renderObject<RenderParagraph>(
+                find.text(line),
+              );
+              expect(paragraph.maxLines, 1, reason: line);
+              expect(paragraph.didExceedMaxLines, isFalse, reason: line);
+              final drawn = tester.getRect(find.text(line));
+              // The text's own width, all of it inside the band's edge.
+              expect(
+                paragraph.getMaxIntrinsicWidth(double.infinity),
+                lessThanOrEqualTo(drawn.width + 0.01),
+                reason: line,
+              );
+              expect(drawn.left, greaterThanOrEqualTo(room.left), reason: line);
+              expect(
+                drawn.left + paragraph.getMaxIntrinsicWidth(double.infinity),
+                lessThanOrEqualTo(room.right - 16 + 0.01),
+                reason: line,
+              );
+            }
+            final size = sizeOf(tester, cue.first);
+            expect(sizeOf(tester, cue.second), size, reason: '$cue');
+            final twoParts = cue.first.contains('·');
+            if (!twoParts) {
+              expect(size, greaterThanOrEqualTo(56), reason: '$cue');
+            }
+            expect(size, lessThanOrEqualTo(76), reason: '$cue');
+          }
+        });
+      }
+
+      testWidgets('with the real Do Hyeon: short lines stay 76, 몸 전체가 / '
+          '보이게 shrinks to about 64.6, 어깨·팔꿈치가 / 안 보여요 to about 44', (
+        tester,
+      ) async {
+        Future<double> sized(SetupHintShort cue) async {
+          await clear(tester);
+          await _pump(
+            tester,
+            size: setupSize,
+            settingUp: true,
+            setupLook: 1,
+            setupCue: cue,
+          );
+          return sizeOf(tester, cue.first);
+        }
+
+        expect(await sized(tooClose), 76);
+        expect(
+          await sized(
+            SetupHintShort.of(
+              _status(
+                SetupReason.missingParts,
+                parts: [BodyPart.shoulders, BodyPart.hips, BodyPart.knees],
+              ),
+            ),
+          ),
+          closeTo(64.6, 0.3),
+        );
+        expect(
+          await sized(
+            SetupHintShort.of(
+              _status(SetupReason.missingParts, parts: [BodyPart.hips]),
+            ),
+          ),
+          greaterThanOrEqualTo(56),
+        );
+        expect(
+          await sized(
+            SetupHintShort.of(
+              _status(
+                SetupReason.missingParts,
+                parts: [BodyPart.shoulders, BodyPart.elbows],
+              ),
+            ),
+          ),
+          closeTo(44.1, 0.3),
+        );
+      });
+    });
+
+    group('a new cue waits until the one shown has been up for 600 ms '
+        '(task.md W9 decision 1)', () {
+      Future<void> show(WidgetTester tester, SetupHintShort cue) => _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        setupCue: cue,
+        setupProgress: 0.5,
+      );
+
+      testWidgets('another cue that is not right shows only once the hold is '
+          'over', (tester) async {
+        await show(tester, tooClose);
+        await tester.pump(const Duration(milliseconds: 100));
+        await show(tester, noPerson);
+        expect(find.text('한 걸음'), findsOneWidget);
+        expect(find.text('카메라'), findsNothing);
+        expect(_frameColor(tester), AppColors.danger);
+        await tester.pump(const Duration(milliseconds: 499));
+        expect(find.text('한 걸음'), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 1));
+        expect(find.text('카메라'), findsOneWidget);
+        expect(find.text('한 걸음'), findsNothing);
+        expect(BattleCameraArea.cueHold, const Duration(milliseconds: 600));
+      });
+
+      testWidgets('the hold over, a new cue shows at once', (tester) async {
+        await show(tester, tooClose);
+        await tester.pump(const Duration(milliseconds: 700));
+        await show(tester, noPerson);
+        expect(find.text('카메라'), findsOneWidget);
+      });
+
+      testWidgets('a cue that says the setup is right shows at once, its '
+          'frame green', (tester) async {
+        await show(tester, tooClose);
+        await tester.pump(const Duration(milliseconds: 100));
+        await show(tester, held);
+        expect(find.text('그대로'), findsOneWidget);
+        expect(_frameColor(tester), AppColors.statusGood);
+        // And it is held in turn: losing the pose 100 ms later waits.
+        await tester.pump(const Duration(milliseconds: 100));
+        await show(tester, tooClose);
+        expect(find.text('그대로'), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.text('한 걸음'), findsOneWidget);
+        expect(_frameColor(tester), AppColors.danger);
+      });
+
+      testWidgets('a cue that came and went during the hold is never shown', (
+        tester,
+      ) async {
+        await show(tester, tooClose);
+        await tester.pump(const Duration(milliseconds: 100));
+        await show(tester, noPerson);
+        await tester.pump(const Duration(milliseconds: 100));
+        await show(tester, tooClose);
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('한 걸음'), findsOneWidget);
+        expect(find.text('카메라'), findsNothing);
+      });
+
+      testWidgets('the same cue with a new sentence takes it at once: the '
+          'count to the auto ready', (tester) async {
+        final handle = tester.ensureSemantics();
+        await show(tester, SetupHintShort.autoReady(3));
+        await tester.pump(const Duration(milliseconds: 100));
+        await show(tester, SetupHintShort.autoReady(2));
+        expect(find.bySemanticsLabel('자세 확인! 2초 후 자동으로 준비해요'), findsOneWidget);
+        handle.dispose();
+      });
+
+      testWidgets('no cue clears the band at once', (tester) async {
+        await show(tester, tooClose);
+        await _pump(tester, size: setupSize, settingUp: true, setupLook: 1);
+        expect(find.text('한 걸음'), findsNothing);
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(tester.takeException(), isNull);
+      });
     });
 
     testWidgets('the large ready button: lime to press, white to take the '
@@ -756,7 +1162,8 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('pressing them while setting up', (tester) async {
+    testWidgets('with a ready button (none since A6) the camera switch stands '
+        'over it, and both can be pressed', (tester) async {
       var ready = 0;
       var switched = 0;
       await _pump(
@@ -768,134 +1175,23 @@ void main() {
         onReady: () => ready++,
         onSwitchCamera: () => switched++,
       );
+      expect(
+        tester.getRect(pill('준비')),
+        const Rect.fromLTRB(216, 624 - 14 - 52, 348, 624 - 14),
+      );
+      expect(
+        tester.getRect(_circle(Icons.cameraswitch_outlined)).bottom,
+        lessThan(tester.getRect(pill('준비')).top),
+      );
+      expect(tester.getRect(_circle(Icons.cameraswitch_outlined)).right, 348);
       await tester.tap(find.text('준비'));
       await tester.tap(find.byIcon(Icons.cameraswitch_outlined));
       expect((ready, switched), (1, 1));
     });
 
-    testWidgets('with nothing to say there is no band', (tester) async {
-      await _pump(
-        tester,
-        size: setupSize,
-        settingUp: true,
-        setupLook: 1,
-        readyLabel: '시작',
-      );
-      expect(
-        find.byWidgetPredicate((w) => w is SizedBox && w.height == 54),
-        findsNothing,
-      );
-    });
-
-    testWidgets('a screen reader hears the large guidance whole when it '
-        'changes', (tester) async {
-      const longest = '팔을 펴고 푸시업 자세를 잡아 주세요.';
-      final handle = tester.ensureSemantics();
-      await _pump(
-        tester,
-        size: setupSize,
-        settingUp: true,
-        setupLook: 1,
-        hint: longest,
-      );
-      expect(
-        tester.getSemantics(find.text(longest)),
-        matchesSemantics(label: longest, isLiveRegion: true),
-      );
-      handle.dispose();
-    });
-
-    // W2B-SPEC 4.2: in DoHyeon 26 four lines are wider than the band's 316
-    // inside, and are shrunk to it on their one line; the rest fit as they
-    // are.
-    const tooWide = {
-      '팔을 펴고 푸시업 자세를 잡아 주세요.': 343.7,
-      '자세 확인! 3초 후 자동으로 준비해요': 339.5,
-      '카메라에 조금 더 가까이 와 주세요.': 323.8,
-      '몸 전체가 화면에 보이게 해 주세요.': 323.8,
-    };
-
-    testWidgets('the four wide lines measure as the design says and are '
-        'shrunk to the band; the longest to about 23.9', (tester) async {
-      for (final MapEntry(key: hint, value: width) in tooWide.entries) {
-        await _pump(
-          tester,
-          size: setupSize,
-          settingUp: true,
-          setupLook: 1,
-          hint: hint,
-        );
-        final natural = tester.getSize(find.text(hint)).width;
-        expect(natural, closeTo(width, 1.5), reason: hint);
-        final drawn = tester.getRect(find.text(hint));
-        expect(drawn.width, closeTo(316, 0.01), reason: hint);
-      }
-      const longest = '팔을 펴고 푸시업 자세를 잡아 주세요.';
-      await _pump(
-        tester,
-        size: setupSize,
-        settingUp: true,
-        setupLook: 1,
-        hint: longest,
-      );
-      final scale =
-          tester.getRect(find.text(longest)).width /
-          tester.getSize(find.text(longest)).width;
-      expect(26 * scale, closeTo(23.9, 0.15));
-    });
-
-    for (final textScale in [1.0, 1.3, 2.0]) {
-      testWidgets('every setup line keeps to one line inside the band at '
-          '${textScale}x text, and nothing overflows', (tester) async {
-        final bandRect = Rect.fromLTWH(12 + 2, 3 + 14 + 2, 336 - 4, 54 - 4);
-        for (final hint in _setupHints) {
-          await _pump(
-            tester,
-            size: setupSize,
-            textScale: textScale,
-            settingUp: true,
-            setupLook: 1,
-            onLeave: () {},
-            hint: hint,
-            readyLabel: '준비 취소',
-            onReady: () {},
-            readyPressed: true,
-            onSwitchCamera: () {},
-            setupProgress: 0.3,
-          );
-          expect(tester.takeException(), isNull, reason: hint);
-          final paragraph = tester.renderObject<RenderParagraph>(
-            find.text(hint),
-          );
-          // One line, and all of it: shrunk, never cut.
-          expect(paragraph.maxLines, 1, reason: hint);
-          expect(paragraph.didExceedMaxLines, isFalse, reason: hint);
-          final drawn = tester.getRect(find.text(hint));
-          expect(
-            bandRect.inflate(0.01).contains(drawn.topLeft) &&
-                bandRect.inflate(0.01).contains(drawn.bottomRight),
-            isTrue,
-            reason: '$hint at $textScale: $drawn',
-          );
-          if (textScale == 1 && !tooWide.containsKey(hint)) {
-            expect(
-              drawn.width,
-              closeTo(tester.getSize(find.text(hint)).width, 0.01),
-              reason: '$hint is not shrunk',
-            );
-          }
-          // The large ready button grows with the text, from 132 x 52.
-          final button = tester.getSize(pill('준비 취소'));
-          expect(button.width, greaterThanOrEqualTo(132), reason: hint);
-          expect(button.height, greaterThanOrEqualTo(52), reason: hint);
-        }
-      });
-    }
-
     testWidgets('as the countdown begins the large things keep the setup\'s '
         'look while they fade, take no taps and are not read; the '
         'countdown\'s own come in, small', (tester) async {
-      var ready = 0;
       var started = 0;
       var switched = 0;
       await _pump(
@@ -904,13 +1200,10 @@ void main() {
         settingUp: true,
         setupLook: 1,
         onLeave: () {},
-        hint: '그대로 잠시 유지하세요.',
-        readyLabel: '준비',
-        onReady: () => ready++,
+        setupCue: held,
         onSwitchCamera: () => switched++,
         setupProgress: 0.9,
       );
-      final bigReady = tester.getCenter(find.text('준비'));
       final bigSwitch = tester.getCenter(
         find.byIcon(Icons.cameraswitch_outlined),
       );
@@ -920,54 +1213,42 @@ void main() {
         size: setupSize,
         setupLook: 0.5,
         onLeave: () {},
+        setupCue: noPerson,
         hint: '10초 후 함께 시작',
         readyLabel: '시작',
         onReady: () => started++,
+        frame: BattleFxCameraFrame.good,
       );
-      // The setup's band, bar, switch and button as the setup left them.
-      expect(find.text('그대로 잠시 유지하세요.'), findsOneWidget);
-      expect(find.text('준비'), findsOneWidget);
+      // The setup's band, bar and switch as the setup left them.
+      expect(find.text('그대로'), findsOneWidget);
+      expect(find.text('카메라'), findsNothing);
       expect(find.byIcon(Icons.cameraswitch_outlined), findsOneWidget);
       // The bar is drawn as the setup left it (0.9 filled), half faded, and
       // read by no one.
       final bar = find.byWidgetPredicate(
         (w) => w is FractionallySizedBox && w.widthFactor == 0.9,
       );
-      expect(bar, findsOneWidget);
-      expect(
-        tester
-            .widgetList<Opacity>(
-              find.ancestor(of: bar, matching: find.byType(Opacity)),
-            )
-            .first
-            .opacity,
-        0.5,
-      );
-      expect(find.bySemanticsLabel('자세 세팅 진행'), findsNothing);
-      expect(
-        tester.widget<Material>(pill('준비')).color,
-        AppColors.accent,
-        reason: 'the look it had',
-      );
+      expect(bar, findsNWidgets(2), reason: 'the top bar and the hold bar');
       Opacity around(Finder finder) => tester
           .widgetList<Opacity>(
             find.ancestor(of: finder, matching: find.byType(Opacity)),
           )
           .first;
-      expect(around(find.text('준비')).opacity, 0.5);
-      // The countdown's small hint and button, coming in.
+      expect(around(bar.first).opacity, 0.5);
+      expect(around(find.text('그대로')).opacity, 0.5);
+      expect(find.bySemanticsLabel('자세 세팅 진행'), findsNothing);
+      // The countdown's small hint and button, coming in, and the round's
+      // frame: green while counting down.
       expect(find.text('10초 후 함께 시작'), findsOneWidget);
       expect(around(find.text('10초 후 함께 시작')).opacity, 0.5);
       expect(around(find.text('시작')).opacity, 0.5);
+      expect(_frameColor(tester), AppColors.statusGood);
       final handle = tester.ensureSemantics();
-      expect(find.bySemanticsLabel('준비'), findsNothing);
-      expect(find.bySemanticsLabel('그대로 잠시 유지하세요.'), findsNothing);
+      expect(find.bySemanticsLabel(held.message), findsNothing);
       handle.dispose();
-      await tester.tapAt(bigReady);
+      // Where the big switch was, the countdown's own button takes the tap.
       await tester.tapAt(bigSwitch);
-      expect((ready, switched), (0, 0));
-      await tester.tap(find.text('시작'));
-      expect(started, 1);
+      expect((switched, started), (0, 1));
       // Gone once faded.
       await _pump(
         tester,
@@ -977,34 +1258,36 @@ void main() {
         readyLabel: '시작',
         onReady: () => started++,
       );
-      expect(find.text('그대로 잠시 유지하세요.'), findsNothing);
-      expect(find.text('준비'), findsNothing);
+      expect(find.text('그대로'), findsNothing);
       expect(find.byIcon(Icons.cameraswitch_outlined), findsNothing);
+      expect(_frame(), findsNothing);
     });
 
-    testWidgets('back to the setup they come in with its words, and take '
+    testWidgets('back to the setup they come in with its cue, and take '
         'taps once all there', (tester) async {
-      var ready = 0;
+      var switched = 0;
       Future<void> setup(double look) => _pump(
         tester,
         size: setupSize,
         settingUp: true,
         setupLook: look,
-        hint: '카메라 앞에 서 주세요.',
-        readyLabel: '준비',
-        onReady: () => ready++,
+        setupCue: noPerson,
+        onSwitchCamera: () => switched++,
       );
       await setup(0.5);
-      expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
-      await tester.tap(find.text('준비'), warnIfMissed: false);
-      expect(ready, 0);
+      expect(find.text('카메라'), findsOneWidget);
+      await tester.tap(
+        find.byIcon(Icons.cameraswitch_outlined),
+        warnIfMissed: false,
+      );
+      expect(switched, 0);
       await setup(1);
-      await tester.tap(find.text('준비'));
-      expect(ready, 1);
+      await tester.tap(find.byIcon(Icons.cameraswitch_outlined));
+      expect(switched, 1);
     });
 
-    testWidgets('the large ready button stands above the system\'s bottom '
-        'bar', (tester) async {
+    testWidgets('the large ready button and the camera switch stand above '
+        'the system\'s bottom bar', (tester) async {
       await _pump(
         tester,
         size: setupSize,
@@ -1015,6 +1298,103 @@ void main() {
         onReady: () {},
       );
       expect(tester.getRect(pill('준비')).bottom, 624 - 24 - 14);
+      await _pump(
+        tester,
+        size: setupSize,
+        bottomInset: 24,
+        settingUp: true,
+        setupLook: 1,
+        onSwitchCamera: () {},
+      );
+      expect(
+        tester.getRect(_circle(Icons.cameraswitch_outlined)).bottom,
+        624 - 24 - 14,
+      );
+    });
+  });
+
+  group('the status frame (A9 spec 3)', () {
+    const setupSize = Size(360, 624);
+
+    testWidgets('while setting up it is the shown cue\'s: green when right, '
+        'red when not, none for a notice; 12 wide inside the camera area', (
+      tester,
+    ) async {
+      for (final (cue, color) in [
+        (SetupHintShort.of(_status(SetupReason.ready)), AppColors.statusGood),
+        (const SetupHintShort.waitingForOpponent(), AppColors.statusGood),
+        (SetupHintShort.of(_status(SetupReason.tooFar)), AppColors.danger),
+        (const SetupHintShort.reconnecting(), null),
+      ]) {
+        await _pump(
+          tester,
+          size: setupSize,
+          settingUp: true,
+          setupLook: 1,
+          setupCue: cue,
+          // The round's value is not used while setting up.
+          frame: BattleFxCameraFrame.rejected,
+        );
+        expect(_frameColor(tester), color, reason: '$cue');
+        await tester.pump(const Duration(milliseconds: 700));
+      }
+      await _pump(
+        tester,
+        size: setupSize,
+        settingUp: true,
+        setupLook: 1,
+        setupCue: SetupHintShort.of(_status(SetupReason.noPerson)),
+      );
+      // Under the line, the whole camera area.
+      expect(tester.getRect(_frame()), const Rect.fromLTWH(0, 3, 360, 621));
+      final border =
+          (tester.widget<DecoratedBox>(_frame()).decoration as BoxDecoration)
+                  .border!
+              as Border;
+      expect(border.top.width, BattleCameraArea.frameWidth);
+      expect(BattleCameraArea.frameWidth, 12);
+    });
+
+    testWidgets('from the countdown on it is the round\'s: green, amber, red '
+        'or none', (tester) async {
+      for (final (frame, color) in [
+        (BattleFxCameraFrame.good, AppColors.statusGood),
+        (BattleFxCameraFrame.average, AppColors.warning),
+        (BattleFxCameraFrame.rejected, AppColors.danger),
+        (null, null),
+      ]) {
+        await _pump(tester, onLeave: () {}, frame: frame);
+        expect(_frameColor(tester), color, reason: '$frame');
+      }
+    });
+
+    testWidgets('it lies over the camera, under the buttons, and takes no '
+        'taps', (tester) async {
+      var left = 0;
+      await _pump(
+        tester,
+        onLeave: () => left++,
+        frame: BattleFxCameraFrame.rejected,
+      );
+      final stack = tester.widget<Stack>(
+        find
+            .ancestor(of: find.byKey(_camera), matching: find.byType(Stack))
+            .first,
+      );
+      final order = stack.children;
+      final frameAt = order.indexWhere(
+        (w) =>
+            w is Positioned &&
+            w.child is IgnorePointer &&
+            (w.child as IgnorePointer).child is DecoratedBox,
+      );
+      expect(frameAt, 1, reason: 'right after the camera');
+      expect(
+        find.ancestor(of: _frame(), matching: find.byType(IgnorePointer)),
+        findsWidgets,
+      );
+      await tester.tap(find.byIcon(Icons.logout_rounded));
+      expect(left, 1);
     });
   });
 
