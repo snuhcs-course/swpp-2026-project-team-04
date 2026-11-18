@@ -136,14 +136,12 @@ class KneeFrameClassifier {
 /// Matches touching preparation and a touching return around one attempt.
 /// Callers reset this tracker on camera changes or excessive frame gaps.
 class KneeAttemptEvidence {
-  static const _confirmationTime = Duration(milliseconds: 100);
   KneeFrameReading _latest = const KneeFrameReading(
     state: KneeFrameState.occluded,
     reason: 'not_observed',
   );
   KneeFrameState _confirmedState = KneeFrameState.occluded;
   KneeFrameState _candidate = KneeFrameState.occluded;
-  Duration? _candidateSince;
   Duration? _lastAt;
   Duration? _lastConfirmedAt;
   int _candidateSamples = 0;
@@ -163,12 +161,11 @@ class KneeAttemptEvidence {
     Duration at, {
     Duration maxAge = const Duration(milliseconds: 500),
   }) {
-    final confirmedAt = _lastConfirmedAt;
+    final observedAt = _lastAt;
     return _confirmedState == KneeFrameState.touching &&
-        _latest.state != KneeFrameState.lifted &&
-        confirmedAt != null &&
-        at >= confirmedAt &&
-        at - confirmedAt <= maxAge;
+        observedAt != null &&
+        at >= observedAt &&
+        at - observedAt <= maxAge;
   }
 
   void update(KneeFrameReading reading, Duration at) {
@@ -179,17 +176,15 @@ class KneeAttemptEvidence {
     _lastAt = at;
     if (reading.state == KneeFrameState.occluded) {
       _candidate = KneeFrameState.occluded;
-      _candidateSince = null;
       _candidateSamples = 0;
       return;
     }
     if (reading.state != _candidate) {
       _candidate = reading.state;
-      _candidateSince = at;
       _candidateSamples = 0;
     }
     _candidateSamples++;
-    if (_candidateSamples < 3 || at - _candidateSince! < _confirmationTime) {
+    if (_candidateSamples < 3) {
       return;
     }
     _confirmedState = reading.state;
@@ -202,18 +197,20 @@ class KneeAttemptEvidence {
     _active = true;
     _attemptBeganAt = _lastAt;
     _touchingBeforeAttempt =
-        touchingBefore ?? (_lastAt != null && hasTouchingPreparation(_lastAt!));
+        (touchingBefore ??
+            (_lastAt != null && hasTouchingPreparation(_lastAt!))) &&
+        _confirmedState == KneeFrameState.touching;
   }
 
   /// The caller closes this at the full rep's return to the top. The return
-  /// must have a current touching observation after the attempt began.
-  /// Hidden observations inside the rep retain its preparation evidence.
+  /// uses the three-frame confirmed state on a later frame. One or two
+  /// opposite readings and hidden frames preserve that state.
   bool finish() {
     final beganAt = _attemptBeganAt;
     final at = _lastAt;
     final touching =
         hasConfirmedTouching &&
-        _latest.state == KneeFrameState.touching &&
+        _confirmedState == KneeFrameState.touching &&
         beganAt != null &&
         at != null &&
         at > beganAt;
@@ -229,7 +226,7 @@ class KneeAttemptEvidence {
       reason: 'not_observed',
     );
     _confirmedState = _candidate = KneeFrameState.occluded;
-    _candidateSince = _lastAt = _lastConfirmedAt = null;
+    _lastAt = _lastConfirmedAt = null;
     _candidateSamples = 0;
     _active = false;
     _touchingBeforeAttempt = false;

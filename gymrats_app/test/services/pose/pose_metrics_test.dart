@@ -445,6 +445,54 @@ void _kneeFrameTests() {
     const up = KneeFrameReading(state: KneeFrameState.lifted);
     const hidden = KneeFrameReading(state: KneeFrameState.occluded);
 
+    test('three consecutive samples confirm without a minimum time hold', () {
+      final tracker = KneeAttemptEvidence();
+      for (final ms in [0, 10, 20]) {
+        tracker.update(down, Duration(milliseconds: ms));
+      }
+      expect(tracker.confirmedState, KneeFrameState.touching);
+      expect(
+        tracker.hasTouchingPreparation(const Duration(milliseconds: 20)),
+        isTrue,
+      );
+    });
+
+    test('one lifted sample and occlusion keep the same confirmed mode', () {
+      final tracker = KneeAttemptEvidence();
+      for (final ms in [0, 50, 100]) {
+        tracker.update(down, Duration(milliseconds: ms));
+      }
+      tracker.update(up, const Duration(milliseconds: 150));
+      expect(
+        tracker.hasTouchingPreparation(const Duration(milliseconds: 150)),
+        isTrue,
+      );
+      tracker.update(hidden, const Duration(milliseconds: 200));
+      expect(
+        tracker.hasTouchingPreparation(const Duration(milliseconds: 200)),
+        isTrue,
+      );
+    });
+
+    test(
+      'three lifted samples clear touching through subsequent occlusion',
+      () {
+        final tracker = KneeAttemptEvidence();
+        for (final ms in [0, 50, 100]) {
+          tracker.update(down, Duration(milliseconds: ms));
+        }
+        for (final ms in [150, 160, 170]) {
+          tracker.update(up, Duration(milliseconds: ms));
+        }
+        expect(tracker.confirmedState, KneeFrameState.lifted);
+        tracker.update(hidden, const Duration(milliseconds: 200));
+        expect(
+          tracker.hasTouchingPreparation(const Duration(milliseconds: 200)),
+          isFalse,
+        );
+      },
+    );
+
     void hold(
       KneeAttemptEvidence tracker,
       KneeFrameReading reading,
@@ -484,16 +532,16 @@ void _kneeFrameTests() {
     });
 
     test(
-      'visible down needs three distinct samples spanning one hundred ms',
+      'three distinct consecutive samples confirm and duplicates do not count',
       () {
         final tracker = KneeAttemptEvidence();
         tracker.update(down, Duration.zero);
         tracker.update(down, Duration.zero);
         tracker.update(down, const Duration(milliseconds: 50));
         expect(tracker.latest.state, KneeFrameState.touching);
-        expect(tracker.hasConfirmedTouching, isFalse);
+        expect(tracker.confirmedState, KneeFrameState.occluded);
         tracker.update(down, const Duration(milliseconds: 99));
-        expect(tracker.hasConfirmedTouching, isFalse);
+        expect(tracker.confirmedState, KneeFrameState.touching);
         tracker.update(down, const Duration(milliseconds: 100));
         expect(
           tracker.hasTouchingPreparation(const Duration(milliseconds: 100)),
@@ -559,32 +607,71 @@ void _kneeFrameTests() {
       expect(tracker.finish(), isFalse);
     });
 
-    test('hidden or lifted return does not complete the touching sequence', () {
+    test('one hidden or lifted return retains the confirmed touching mode', () {
       for (final ending in [hidden, up]) {
         final tracker = KneeAttemptEvidence();
         hold(tracker, down, 0);
         tracker.begin();
         tracker.update(ending, const Duration(milliseconds: 200));
-        expect(tracker.finish(), isFalse);
+        expect(tracker.finish(), isTrue);
       }
     });
 
-    test('old preparation cannot survive an extended hidden wait', () {
+    test(
+      'continuous hidden frames retain mode while an absent stream expires',
+      () {
+        final tracker = KneeAttemptEvidence();
+        hold(tracker, down, 0);
+        tracker.update(hidden, const Duration(milliseconds: 400));
+        expect(
+          tracker.hasTouchingPreparation(const Duration(milliseconds: 400)),
+          isTrue,
+        );
+        expect(
+          tracker.hasTouchingPreparation(const Duration(milliseconds: 601)),
+          isTrue,
+        );
+        expect(
+          tracker.hasTouchingPreparation(const Duration(milliseconds: 901)),
+          isFalse,
+        );
+        tracker.update(hidden, const Duration(milliseconds: 601));
+        tracker.begin();
+        tracker.update(down, const Duration(milliseconds: 700));
+        expect(tracker.finish(), isTrue);
+      },
+    );
+
+    test('occlusion interrupts a lifted streak without changing the mode', () {
       final tracker = KneeAttemptEvidence();
       hold(tracker, down, 0);
-      tracker.update(hidden, const Duration(milliseconds: 400));
+      tracker.update(up, const Duration(milliseconds: 110));
+      tracker.update(up, const Duration(milliseconds: 120));
+      tracker.update(hidden, const Duration(milliseconds: 130));
+      tracker.update(up, const Duration(milliseconds: 140));
+      expect(tracker.confirmedState, KneeFrameState.touching);
+      tracker.update(up, const Duration(milliseconds: 150));
+      expect(tracker.confirmedState, KneeFrameState.touching);
+      tracker.update(up, const Duration(milliseconds: 160));
+      expect(tracker.confirmedState, KneeFrameState.lifted);
+    });
+
+    test('cleared touching needs a fresh three-frame touching streak', () {
+      final tracker = KneeAttemptEvidence();
+      hold(tracker, down, 0);
+      hold(tracker, up, 200);
+      tracker.update(hidden, const Duration(milliseconds: 310));
+      tracker.update(down, const Duration(milliseconds: 320));
+      tracker.update(down, const Duration(milliseconds: 330));
       expect(
-        tracker.hasTouchingPreparation(const Duration(milliseconds: 400)),
-        isTrue,
-      );
-      expect(
-        tracker.hasTouchingPreparation(const Duration(milliseconds: 601)),
+        tracker.hasTouchingPreparation(const Duration(milliseconds: 330)),
         isFalse,
       );
-      tracker.update(hidden, const Duration(milliseconds: 601));
-      tracker.begin();
-      tracker.update(down, const Duration(milliseconds: 700));
-      expect(tracker.finish(), isFalse);
+      tracker.update(down, const Duration(milliseconds: 340));
+      expect(
+        tracker.hasTouchingPreparation(const Duration(milliseconds: 340)),
+        isTrue,
+      );
     });
 
     test(

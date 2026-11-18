@@ -18,17 +18,19 @@ The existing repetition diagnostic HUD displays this state. `KneeFrameClassifier
 
 The new model consumes 48 features from one frame. It contains 32 depth-four random-forest trees and uses the development-selected threshold 0.67. It uses the existing normalized-joint feature extraction. The runtime checks both wrists, hips, knees and ankles for finite, in-frame coordinates and likelihood of at least 0.65. Shoulder positions define the torso polygon. Missing inputs produce an immediate unavailable reading.
 
-`KneeAttemptEvidence` receives every reading independently of the repetition result. Three distinct observations spanning at least 100 ms confirm the preparation state. At the start of an attempt, the judge records whether touching was confirmed before that frame, using preparation at most `config.maxFrameGap` old (500 ms by default). A current lifted preparation disqualifies the earlier touching state. Touching first discovered during descent cannot supply preparation for that same repetition.
+`KneeAttemptEvidence` receives every raw reading independently of the repetition result. Three consecutive distinct touching frames confirm touching. Three consecutive distinct lifted frames confirm lifted. There is no minimum time hold in addition to the frame count. One or two opposite observations retain the confirmed state. An occluded frame interrupts an unfinished streak while retaining the confirmed state.
 
-An unavailable observation inside the attempt preserves its captured preparation evidence. When the full repetition returns to the top and emits its event, a current `touching` reading completes the sequence. This return endpoint uses that frame's classifier output. It requires no additional hold or delayed repetition result. Leading/trailing unavailable frames are optional.
+At attempt start the judge captures the confirmed mode before processing that frame. Touching first confirmed during descent cannot become preparation for the same repetition. The confirmed mode persists through continuously delivered occluded frames. Reset, abandonment, image-coordinate changes and camera gaps over `config.maxFrameGap` (500 ms by default) clear it. Freshness refers to frame delivery, rather than the age of the last visible touching observation.
 
-| Preparation before attempt | Return frame | Additional veto |
+At the closing top frame the judge uses the current confirmed mode. Captured touching preparation and confirmed touching at completion reject an otherwise-valid repetition. This permits an occluded return or one/two lifted return observations while touching remains confirmed. Three consecutive lifted observations change that mode, and subsequent occlusion cannot restore old touching. A new three-frame touching streak is required to restore touching. Leading/trailing unavailable frames are optional.
+
+| Confirmed preparation before attempt | Confirmed mode at return | Additional veto |
 | --- | --- | --- |
 | Confirmed touching | Touching | Reject the otherwise-valid rep as knees down |
-| Confirmed touching | Lifted or unavailable | Use the base judge result |
-| Lifted, unavailable or stale | Any | Use the base judge result |
+| Confirmed touching | Lifted | Use the base judge result |
+| Lifted, unconfirmed or reset | Any | Use the base judge result |
 
-Reset, abandonment, camera-coordinate changes and excessive frame gaps clear tracking state. An eventless abandoned attempt also releases its captured preparation. The next attempt needs its own recent preparation.
+An eventless abandoned attempt also releases its captured preparation. The next attempt captures its own confirmed preparation. `JudgeSnapshot.knee` continues to report the raw current-frame observation, while the sequence uses the confirmed mode described above.
 
 The sequence veto is enabled by default. `PUSHUP_FRAME_KNEE=false` disables it for comparison while retaining current-frame readings. The rule works with the ordinary counter and with `PUSHUP_MLP=true`. In the latter combination it replaces the older knee-specific veto. A valid repetition with both endpoints matched becomes a `kneesDown` rejection. Existing invalid repetitions retain their reason.
 

@@ -154,10 +154,10 @@ void main() {
       expect(result.snapshot.knee.state, KneeFrameState.lifted);
     });
 
-    test('touching before a rep cannot veto an occluded return', () {
+    test('confirmed touching persists through an occluded return', () {
       ready(KneeFrameState.touching);
       classifier.state = KneeFrameState.occluded;
-      expect(perform(counter, 400).event!.valid, isTrue);
+      expect(perform(counter, 400).event!.reason, RejectReason.kneesDown);
     });
 
     test('touching only during and after a rep cannot supply preparation', () {
@@ -226,7 +226,7 @@ void main() {
     });
 
     test(
-      'unknown frames before descent expire the old touching preparation',
+      'continuous unknown frames before descent retain the confirmed mode',
       () {
         ready(KneeFrameState.touching);
         classifier.state = KneeFrameState.occluded;
@@ -236,7 +236,51 @@ void main() {
         at(counter, 1100, pose(depth: .6, elbow: 160));
         at(counter, 1400, pose(depth: 1.5, elbow: 150));
         classifier.state = KneeFrameState.touching;
-        expect(at(counter, 1700, pose()).event!.valid, isTrue);
+        expect(at(counter, 1700, pose()).event!.reason, RejectReason.kneesDown);
+      },
+    );
+
+    test('one lifted observation followed by hidden frames keeps touching', () {
+      ready(KneeFrameState.touching);
+      classifier.state = KneeFrameState.lifted;
+      at(counter, 350, pose());
+      classifier.state = KneeFrameState.occluded;
+      at(counter, 400, pose(depth: .6, elbow: 160));
+      at(counter, 700, pose(depth: 1.5, elbow: 150));
+      expect(at(counter, 1000, pose()).event!.reason, RejectReason.kneesDown);
+    });
+
+    test(
+      'three lifted frames cannot resurrect preparation after occlusion',
+      () {
+        ready(KneeFrameState.touching);
+        classifier.state = KneeFrameState.lifted;
+        for (final ms in [320, 340, 360]) {
+          at(counter, ms, pose());
+        }
+        classifier.state = KneeFrameState.occluded;
+        at(counter, 400, pose(depth: .6, elbow: 160));
+        at(counter, 700, pose(depth: 1.5, elbow: 150));
+        classifier.state = KneeFrameState.touching;
+        at(counter, 800, pose(depth: .9, elbow: 160));
+        at(counter, 850, pose(depth: .7, elbow: 170));
+        expect(at(counter, 1000, pose()).event!.valid, isTrue);
+      },
+    );
+
+    test(
+      'third lifted frame at descent invalidates prospective preparation',
+      () {
+        ready(KneeFrameState.touching);
+        classifier.state = KneeFrameState.lifted;
+        at(counter, 340, pose());
+        at(counter, 370, pose());
+        at(counter, 400, pose(depth: .6, elbow: 160));
+        at(counter, 700, pose(depth: 1.5, elbow: 150));
+        classifier.state = KneeFrameState.touching;
+        at(counter, 800, pose(depth: .9, elbow: 160));
+        at(counter, 850, pose(depth: .7, elbow: 170));
+        expect(at(counter, 1000, pose()).event!.valid, isTrue);
       },
     );
 
