@@ -24,11 +24,17 @@
     "note": "Offline video PTS, not live processing/sensor timing"
   },
   "label": {
-    "status": "pending",
-    "actualReps": null,
-    "perRep": null,
-    "confirmedBy": null,
-    "note": "Recorder/PM must confirm from actual motion; filename is intent only"
+    "status": "confirmed",
+    "actualReps": 5,
+    "perRep": [
+      "standUpFully",
+      "standUpFully",
+      "standUpFully",
+      "standUpFully",
+      "standUpFully"
+    ],
+    "confirmedBy": "송현우 (recorder), confirmed with the PM on 2026-11-18",
+    "note": "Each clip is five repetitions of its filmed scenario (standUpFully), as the recorders confirmed; labels follow the filming plan, not app predictions"
   },
   "chairPolicy": null,
   "evaluationWindowUs": null,
