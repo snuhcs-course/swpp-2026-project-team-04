@@ -30,10 +30,10 @@
       "exercise": "pushUp",
       "scenario": "normal",
       "file": "hyunwoo/20261118140716241591_normal_gymrats.json",
-      "jsonSha256": "705e171744b9e1428d6b9d1083df6055c10adef9f169c2d802a7ebf0f3ae7360",
+      "jsonSha256": "57a08e134af10cb09ab168a76459572391987f648188213c5ed22b2ad26daa3b",
       "sourceVideoSha256": "784d6a1f4e5748db894a421860e343a85dff3814bf5f4f59ac4d44ac8ccc12fd",
       "frameCount": 314,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118140732357228_knees_gymrats",
@@ -41,10 +41,10 @@
       "exercise": "pushUp",
       "scenario": "kneesDown",
       "file": "hyunwoo/20261118140732357228_knees_gymrats.json",
-      "jsonSha256": "8ea61b9d8427075482a457016784008e7fa881cd2b14022ec395ec67b8b5ba4e",
+      "jsonSha256": "9c6e547b39008b19a97db158a9e86d81971ded908b644d2b65e1dfa97f7bc9eb",
       "sourceVideoSha256": "d9c6cc76958ecea740a3313c473ffec939fbd99022a643fde3a31b3a40f3b9c1",
       "frameCount": 286,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118140748211269_bent_arms_gymrats",
@@ -52,10 +52,10 @@
       "exercise": "pushUp",
       "scenario": "incompleteExtension",
       "file": "hyunwoo/20261118140748211269_bent_arms_gymrats.json",
-      "jsonSha256": "159fd0cd091029576a8902184c7323f7e7c1c9c53efd4a970a217509146b1fb0",
+      "jsonSha256": "d854db9dc00c7f7d8013242b779dcc120f7381f610b8e9c2fc8b97acb10bb749",
       "sourceVideoSha256": "dc631a880d4b68d2cbfd1a43b2d9432ff60873370cdb94b4fb23fa7d99df656d",
       "frameCount": 237,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118140806566477_belly_gymrats",
@@ -63,10 +63,10 @@
       "exercise": "pushUp",
       "scenario": "bellyDown",
       "file": "hyunwoo/20261118140806566477_belly_gymrats.json",
-      "jsonSha256": "9e59c665fbc36bdb8ee15ea74edc5e6e45f3f60b73a7194b647b3eaa08077336",
+      "jsonSha256": "9d7316dd8f1003fa3cca3cff099f35e864f949b013269aeef62d710b8cadd74b",
       "sourceVideoSha256": "1561d19f9d0a8737388372d677ed90146ba163be766c06180a68d0bde285d3f5",
       "frameCount": 324,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118140831130646_squat_normal_gymrats",
@@ -74,10 +74,10 @@
       "exercise": "squat",
       "scenario": "normal",
       "file": "hyunwoo/20261118140831130646_squat_normal_gymrats.json",
-      "jsonSha256": "975d13049c48e60fb22d7c0cd6fd396ab0a230871aa01cb07959d07963c4395a",
+      "jsonSha256": "b8b48d708af7f3bd4b1967de62517d548de778e6e62500c6605c34d6e0c64632",
       "sourceVideoSha256": "a4523a24ec7804fa655bbebe616ec8435e4ebed3f17f56fb1df672d754c26d52",
       "frameCount": 425,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118140847280825_squat_shallow_gymrats",
@@ -85,10 +85,10 @@
       "exercise": "squat",
       "scenario": "shallowSquat",
       "file": "hyunwoo/20261118140847280825_squat_shallow_gymrats.json",
-      "jsonSha256": "8303d1636ca4936c6dfd7f5bc58cd65107d548d9df6c5193254c22bcb857ddf1",
+      "jsonSha256": "6eecddbff3921c87e80c97343266dd28cd93783f6c1833e68a032ea1501901a2",
       "sourceVideoSha256": "02d0ddc2db04cf393d7bd81328bc678662e2d477bfc1ae46046d27bc31b80b4b",
       "frameCount": 284,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118140901505813_squat_not_standing_gymrats",
@@ -96,10 +96,10 @@
       "exercise": "squat",
       "scenario": "standUpFully",
       "file": "hyunwoo/20261118140901505813_squat_not_standing_gymrats.json",
-      "jsonSha256": "7f1371ef1521de728da3a8fa725b4cf9949d038cbafd3287645bd8c41b474a43",
+      "jsonSha256": "c81740bcdfd97f07ad69794608a253c4b29432d0e21c951cfdc8d0a44b677afd",
       "sourceVideoSha256": "0e729c4540673f9bb83399e0927ea75ca2bbbb29a3366770684b03b4efc0a73b",
       "frameCount": 237,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118140919140749_squat_chair_gymrats",
@@ -107,10 +107,10 @@
       "exercise": "squat",
       "scenario": "chair",
       "file": "hyunwoo/20261118140919140749_squat_chair_gymrats.json",
-      "jsonSha256": "7695c926804a56b231a89d047dd8233c73eed9b10220d7be463544db1405e57b",
+      "jsonSha256": "b300bbc0d4a9c026235e387b5333d0e69466633119d916f2e8fdfe726943dcf1",
       "sourceVideoSha256": "0b57c75d2fce044450fa6e28c681fe6787739c5f2fe750fa0c06832b263f214e",
       "frameCount": 307,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118153146739950_normal_gymrats",
@@ -118,10 +118,10 @@
       "exercise": "pushUp",
       "scenario": "normal",
       "file": "sangwoo/20261118153146739950_normal_gymrats.json",
-      "jsonSha256": "429389936cc56a6b8c5b3afe219b263094a8c25f1615f53987cc551e727e6b8c",
+      "jsonSha256": "fbc4bed7b13fd8c9fbfa7b5bf390d2f2391fa7b6fbd9c4616dd063f68b3f3b1f",
       "sourceVideoSha256": "300b953a54e11330a72ed6b56c2a87e58020605f2cd9f36ed534731e8a94fc1a",
       "frameCount": 315,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118153203817106_knees_gymrats",
@@ -129,10 +129,10 @@
       "exercise": "pushUp",
       "scenario": "kneesDown",
       "file": "sangwoo/20261118153203817106_knees_gymrats.json",
-      "jsonSha256": "8ef6cb89286fdeb74092fdfa82ba378b800eb765989da3df5527454dbd9ec1f7",
+      "jsonSha256": "a6917a5e4bb50eb8e94378de5ef7f1c6e174a5b4340e6482bd41992ef08fd871",
       "sourceVideoSha256": "bf9958f743c611a4aeb3c2cec2cba9750d54aac7f2530379aec6f541e479a25c",
       "frameCount": 294,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118153221618003_bent_arms_gymrats",
@@ -140,10 +140,10 @@
       "exercise": "pushUp",
       "scenario": "incompleteExtension",
       "file": "sangwoo/20261118153221618003_bent_arms_gymrats.json",
-      "jsonSha256": "5a61172be8426961048ffe518d81be6efa3b279f53950e76a215c8e55328f533",
+      "jsonSha256": "5d86c52d2fe8bf23dbb51062614a3d1ee0e79807ef504042ef6e92c30e95c48a",
       "sourceVideoSha256": "a8ddb4942ab7900d421adcce9d2cd443862264c7aaefd56b55f80742dcc4c837",
       "frameCount": 275,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118153251158085_belly_gymrats",
@@ -151,10 +151,10 @@
       "exercise": "pushUp",
       "scenario": "bellyDown",
       "file": "sangwoo/20261118153251158085_belly_gymrats.json",
-      "jsonSha256": "8a43dc48c359bf63e647f0e479e007fe38b6c236d88c058829776040e89c0e3b",
+      "jsonSha256": "9831a4d410c5c253c0e2de6406c2cf8e53eec86f9483726ee2d41d6aa227fb35",
       "sourceVideoSha256": "c835216badd00aaa2afa8007dda203ff876ee46b1ea081846d82a7e301735cff",
       "frameCount": 387,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118153318437596_squat_normal_gymrats",
@@ -162,10 +162,10 @@
       "exercise": "squat",
       "scenario": "normal",
       "file": "sangwoo/20261118153318437596_squat_normal_gymrats.json",
-      "jsonSha256": "45d32917ef3d9afa286fd06b49851c931fa3a376ce2c5b308a293b992c5d454c",
+      "jsonSha256": "b8c64f2e7276d27a508807759b5f42fe8611f076fb0f267132c44eb93b820378",
       "sourceVideoSha256": "f9414968783d8052a4c4a5653a30b515cc892dad7ea821a96ee11ad4ae549fd1",
       "frameCount": 387,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118153357549759_squat_shallow_gymrats",
@@ -173,10 +173,10 @@
       "exercise": "squat",
       "scenario": "shallowSquat",
       "file": "sangwoo/20261118153357549759_squat_shallow_gymrats.json",
-      "jsonSha256": "94fcac70529e11b91a5b496fddca2504addfefc771e54380013ea7dac4579fb0",
+      "jsonSha256": "e1b679adcf15f49cdb147e8ad5d1f9f4f848dcff6f85f8750e1aa221d39c4875",
       "sourceVideoSha256": "494ef3cc251ecd94241ddc4e06e21f00d792ead9f5055bf29a09aa2b1f902c00",
       "frameCount": 340,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118153419912431_squat_not_standing_gymrats",
@@ -184,10 +184,10 @@
       "exercise": "squat",
       "scenario": "standUpFully",
       "file": "sangwoo/20261118153419912431_squat_not_standing_gymrats.json",
-      "jsonSha256": "6442477d3cc5f62f0854b66f43aef8c3264155794a96dff5d1c7a57378be1f0d",
+      "jsonSha256": "3f7e9769b4bb67bd54444451357615c8a2a4f6d91c580334c00f2634fced6198",
       "sourceVideoSha256": "d700e27a60869d1d3271c3042ae558dc39c270d54264f9c2361e109e958eeacb",
       "frameCount": 383,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     },
     {
       "id": "20261118153457145385_squat_chair_gymrats",
@@ -195,10 +195,10 @@
       "exercise": "squat",
       "scenario": "chair",
       "file": "sangwoo/20261118153457145385_squat_chair_gymrats.json",
-      "jsonSha256": "9be90cd31df9411205a176a596370142a875b134eb62efa7f508d1f938df597b",
+      "jsonSha256": "412781278ebf2ce263ea90fadf0b38f9bf77db4fb3eff3c4c8ba038962e8dec2",
       "sourceVideoSha256": "ab3953bac2b14d9827e3afea3547f1f3746180dd0ad9a73099adadb23e92ce06",
       "frameCount": 530,
-      "labelStatus": "pending"
+      "labelStatus": "confirmed"
     }
   ]
 }
