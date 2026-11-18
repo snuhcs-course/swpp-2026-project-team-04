@@ -1,5 +1,6 @@
 import '../models/game_score.dart';
 import '../models/rep_event.dart';
+import '../services/feedback/goal_progress.dart';
 
 /// A player on the battle stage. The user stands on the left and faces right.
 enum BattleSide {
@@ -24,6 +25,7 @@ class BattleStageEvent {
     this.fever = false,
     this.reason,
     this.knockout = false,
+    this.reachesGoal = false,
   });
 
   /// Who made the rep.
@@ -49,8 +51,25 @@ class BattleStageEvent {
   /// lands.
   final bool knockout;
 
+  /// Whether this rep of the user's first reached the battle's goal (A11
+  /// spec 5): '목표 달성!' follows its bands. The battle screen marks it
+  /// ([reachingGoal]); the game knows no goal.
+  final bool reachesGoal;
+
   /// Whether the rep counted as a valid rep: good or excellent.
   bool get counted => grade == GameGrade.good || grade == GameGrade.excellent;
+
+  /// This rep, marked as the one that reached the goal.
+  BattleStageEvent reachingGoal() => BattleStageEvent(
+    side: side,
+    grade: grade,
+    points: points,
+    combo: combo,
+    fever: fever,
+    reason: reason,
+    knockout: knockout,
+    reachesGoal: true,
+  );
 }
 
 /// How a battle ended, as the stage shows it.
@@ -118,6 +137,7 @@ class BattleStageState {
     this.reconnecting = false,
     this.opponentDisconnected = false,
     this.end,
+    this.goal,
   });
 
   final BattleStagePhase phase;
@@ -163,6 +183,35 @@ class BattleStageState {
 
   /// How the battle ended; null until it has.
   final BattleStageEnd? end;
+
+  /// The user's goal for this battle and how far they are, for the HUD's
+  /// chip (A11 spec 5); null without a goal.
+  final GoalProgress? goal;
+
+  /// This state with [goal]: the battle screen adds the goal to the state
+  /// the game's standing gives.
+  BattleStageState withGoal(GoalProgress? goal) => BattleStageState(
+    phase: phase,
+    myName: myName,
+    opponentName: opponentName,
+    remaining: remaining,
+    roundLength: roundLength,
+    myScore: myScore,
+    opponentScore: opponentScore,
+    myReps: myReps,
+    opponentReps: opponentReps,
+    barShare: barShare,
+    fever: fever,
+    feverMultiplier: feverMultiplier,
+    danger: danger,
+    meReady: meReady,
+    opponentReady: opponentReady,
+    countdown: countdown,
+    reconnecting: reconnecting,
+    opponentDisconnected: opponentDisconnected,
+    end: end,
+    goal: goal,
+  );
 
   /// The user's lead in points; negative while behind.
   int get lead => myScore - opponentScore;

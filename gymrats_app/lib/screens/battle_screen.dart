@@ -7,14 +7,18 @@ import 'package:provider/provider.dart';
 import '../main.dart';
 import '../models/exercise_type.dart';
 import '../models/character_rig.dart';
+import '../models/feedback_goal.dart';
 import '../models/matchup.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
+import '../services/feedback/goal_progress.dart';
+import '../services/feedback/goal_store.dart';
 import '../services/opponent/bot_opponent.dart';
 import '../services/pose/rep_judge.dart';
 import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../widgets/battle_arena.dart';
@@ -36,6 +40,11 @@ import '../widgets/sound_battle.dart';
 /// and leaving keeps nothing. When a KO or the time ends the battle
 /// and its ending has played, 결과 보기 opens the result screen in this one's
 /// place; back then does the same, and nothing before.
+///
+/// The user's goal for the exercise (A11 spec 5), when one is saved, shows
+/// as a chip under the valid counts from the countdown on, and the rep
+/// that first reaches it brings up '목표 달성!'. The screen reads the goal
+/// once and never changes it (task.md W11 decision 6).
 ///
 /// Sounds hook in from outside, without changing this screen: [onCue] for
 /// the stage's moments and [onSetup] for the setup's hints.
@@ -102,6 +111,13 @@ class _BattleScreenState extends State<BattleScreen>
   /// The state the stage was last given, to tell the new reps by.
   late BattleState _shown;
 
+  /// The user's goal for this exercise and how far this battle has come
+  /// on it; null without one, and until it has been read.
+  GoalTracker? _goal;
+
+  /// Set once the goal has been asked for: it is read once.
+  bool _goalAsked = false;
+
   @override
   void initState() {
     super.initState();
@@ -134,6 +150,10 @@ class _BattleScreenState extends State<BattleScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_goalAsked) {
+      _goalAsked = true;
+      unawaited(_readGoal());
+    }
     final orientation = MediaQuery.orientationOf(context);
     if (!_cameraStarted && orientation == Orientation.portrait) {
       // The camera reads the orientation when it opens, so the setup waits
@@ -146,6 +166,47 @@ class _BattleScreenState extends State<BattleScreen>
     _orientation = orientation;
   }
 
+  /// Reads the user's goal for this exercise (A11 spec 5): from the app's
+  /// goal store, for the signed-in account. Without either, or when the
+  /// store cannot be read, the battle has no goal. Setting up takes far
+  /// longer than the read, and the chip only shows from the countdown on,
+  /// so it never comes in late.
+  Future<void> _readGoal() async {
+    final store = Provider.of<GoalStore?>(context, listen: false);
+    final account = Provider.of<AuthViewModel?>(
+      context,
+      listen: false,
+    )?.account;
+    if (store == null || account == null) return;
+    final FeedbackGoal? goal;
+    try {
+      goal = await store.read(account.id, widget.matchup.exercise);
+    } on Object {
+      return;
+    }
+    if (goal == null || !mounted) return;
+    final tracker = GoalTracker(goal)
+      ..count(
+        _viewModel.counter.repRecords,
+        roundLength: _viewModel.roundLength,
+      );
+    setState(() => _goal = tracker);
+  }
+
+  /// [event], marked as the one that first reached the goal when it is.
+  /// The user's reps recount the goal from the counter's records: the
+  /// same reps, in round time, that the battle's form report keeps.
+  BattleStageEvent _withGoal(BattleStageEvent event) {
+    final goal = _goal;
+    if (goal == null || event.side != BattleSide.me) return event;
+    return goal.count(
+          _viewModel.counter.repRecords,
+          roundLength: _viewModel.roundLength,
+        )
+        ? event.reachingGoal()
+        : event;
+  }
+
   /// Gives the stage every rep at once, on every change: the game reports
   /// a KO one change before the rep that caused it.
   void _onViewModelChanged() {
@@ -156,7 +217,9 @@ class _BattleScreenState extends State<BattleScreen>
       passDepth: _viewModel.counter.passDepth,
       rules: _viewModel.rules,
     );
-    events.forEach(_stage.rep);
+    for (final event in events) {
+      _stage.rep(_withGoal(event));
+    }
     if (state.started && !_shown.started) _stage.go();
     _shown = state;
     if (!state.started && state.phase == BattlePhase.setup) {
@@ -232,6 +295,10 @@ class _BattleScreenState extends State<BattleScreen>
     setState(() {
       _try += 1;
       _stage = BattleStageController();
+      // A new try is a new battle: the goal starts over with it.
+      if (_goal case final goal?) {
+        _goal = GoalTracker(goal.goal);
+      }
     });
     unawaited(_viewModel.retry());
   }
@@ -273,11 +340,15 @@ class _BattleScreenState extends State<BattleScreen>
   Widget _arena(BattleViewModel viewModel, RepCounterViewModel counter) {
     final state = viewModel.state;
     final counterState = counter.state;
-    final stage = BattleStageEvents.stateOf(
+    final standing = BattleStageEvents.stateOf(
       state,
       widget.matchup,
       roundLength: viewModel.roundLength,
       rules: viewModel.rules,
+    );
+    final goal = _goal?.progress;
+    final stage = standing.withGoal(
+      standing.phase == BattleStagePhase.ended ? goal?.atEnd() : goal,
     );
     _sounds.show(stage);
     final pushUp = widget.matchup.exercise == ExerciseType.pushUp;

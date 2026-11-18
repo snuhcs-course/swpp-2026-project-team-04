@@ -13,6 +13,8 @@ import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_hud.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/services/feedback/goal_progress.dart';
 
 import 'battle_test_support.dart';
 
@@ -1119,6 +1121,95 @@ void main() {
       expect(striped(40, 0), isTrue);
       expect(striped(52, 0), isTrue);
       expect(striped(58, 0), isFalse);
+    });
+  });
+
+  group('the goal (A11 spec 5)', () {
+    testWidgets("the HUD shows the state's goal as a chip", (tester) async {
+      await _pump(
+        tester,
+        BattleFxTimeline().frame(0),
+        _state(myReps: 3).withGoal(
+          const GoalProgress(kind: GoalKind.reps, target: 20, value: 3),
+        ),
+      );
+      expect(find.byType(BattleGoalChip), findsOneWidget);
+      expect(find.text('목표 3/20'), findsOneWidget);
+    });
+
+    testWidgets("'목표 달성!' shows as the frame says: Do Hyeon 48 on a lime "
+        'band 64 tall at 148, turned -4°', (tester) async {
+      const reach = BattleStageEvent(
+        side: BattleSide.me,
+        grade: GameGrade.good,
+        points: 10,
+        combo: 1,
+        reachesGoal: true,
+      );
+      final fx = BattleFxTimeline()..rep(reach, 0);
+      final start =
+          BattleFx.impactDelay +
+          BattleFx.gradeWord(GameGrade.good).pointsAfter +
+          880;
+      await _pump(tester, fx.frame(0), _state());
+      expect(find.text('목표 달성!'), findsNothing);
+      await _pump(tester, fx.frame(start + 600), _state());
+      final words = find.text('목표 달성!');
+      expect(words, findsOneWidget);
+      final style = tester.widget<Text>(words).style!;
+      expect(style.fontFamily, AppFonts.display);
+      expect(style.fontSize, 48);
+      final band = find.ancestor(of: words, matching: find.byType(Stack)).first;
+      expect(tester.getSize(band).height, closeTo(64, 0.01));
+      // Lime with its own 3.5 ink edge (spec 5), slanted as the other bands.
+      final fill =
+          tester
+                  .widget<DecoratedBox>(
+                    find.descendant(
+                      of: band,
+                      matching: find.byType(DecoratedBox),
+                    ),
+                  )
+                  .decoration
+              as BoxDecoration;
+      expect(fill.color, AppColors.accent);
+      expect(
+        fill.border!.top,
+        const BorderSide(color: AppColors.ink, width: 3.5),
+      );
+      expect(
+        tester
+            .widget<Transform>(
+              find
+                  .ancestor(
+                    of: find.descendant(
+                      of: band,
+                      matching: find.byType(DecoratedBox),
+                    ),
+                    matching: find.byType(Transform),
+                  )
+                  .first,
+            )
+            .transform,
+        AppHighlight.battleSlant,
+      );
+      final turn = tester.widget<Transform>(
+        find.ancestor(of: band, matching: find.byType(Transform)).first,
+      );
+      expect(
+        math.atan2(turn.transform.entry(1, 0), turn.transform.entry(0, 0)),
+        closeTo(-4 * math.pi / 180, 1e-6),
+      );
+      expect(
+        tester
+            .getTopLeft(
+              find.ancestor(of: band, matching: find.byType(Positioned)).first,
+            )
+            .dy,
+        148,
+      );
+      // A picture to a screen reader: the chip says it.
+      expect(find.bySemanticsLabel('목표 달성!'), findsNothing);
     });
   });
 }

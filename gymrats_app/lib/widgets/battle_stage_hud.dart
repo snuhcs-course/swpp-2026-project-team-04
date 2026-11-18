@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../models/feedback_goal.dart';
+import '../services/feedback/goal_progress.dart';
 import '../theme/app_theme.dart';
 import 'battle_banner.dart';
 import 'battle_fx_motion.dart';
 
 /// The top of the battle stage: both nicknames, the clock with its chip, the
-/// two game scores, the valid rep counts between them, and the time bar.
+/// two game scores, the valid rep counts between them with the user's goal
+/// chip under them, and the time bar.
 ///
 /// It fills the stage's 360 x 390 design points and is laid out in them; the
 /// stage sizes it with everything else, so it does not follow the system
@@ -27,6 +30,7 @@ class BattleStageHud extends StatelessWidget {
     this.myRepsBump = 1,
     this.opponentRepsBump = 1,
     this.countsOpacity = 1,
+    this.goal,
   });
 
   final String myName;
@@ -59,6 +63,11 @@ class BattleStageHud extends StatelessWidget {
   /// them then either.
   final double countsOpacity;
 
+  /// The user's goal for this battle, as a chip under the valid counts
+  /// (A11 spec 5); null draws none. It shows with the counts: while setting
+  /// up the ready chips are in its place (task.md W11 decision 7).
+  final GoalProgress? goal;
+
   static const _side = 12.0;
   static const _nameTop = 26.0;
   static const _nameHeight = 28.0;
@@ -88,6 +97,9 @@ class BattleStageHud extends StatelessWidget {
   static const _countLabelGap = 2.0;
   static const _countWidth = 22.0;
   static const _countGap = 5.0;
+
+  /// The goal chip's distance under the valid counts.
+  static const _goalGap = 3.0;
   static const _barTop = 131.0;
   static const _barHeight = 5.0;
 
@@ -186,7 +198,15 @@ class BattleStageHud extends StatelessWidget {
               top: _countTop,
               child: Opacity(
                 opacity: countsOpacity.clamp(0.0, 1.0),
-                child: _counts(text),
+                child: Column(
+                  children: [
+                    _counts(text),
+                    if (goal case final goal?) ...[
+                      const SizedBox(height: _goalGap),
+                      BattleGoalChip(goal: goal, late: elapsed >= 0.5),
+                    ],
+                  ],
+                ),
               ),
             ),
           Positioned(
@@ -324,6 +344,94 @@ class BattleStageHud extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: _countWidth),
         child: Text('$reps', textAlign: align, style: text.stageCount),
+      ),
+    );
+  }
+}
+
+/// The user's goal on the battle HUD (A11 spec 5, UxGoal battle): its words
+/// (e.g. "목표 12/20") on a white pill filled with lime from the left as far
+/// as the goal has come. Reached, it is all lime with a check before the
+/// words; a [GoalKind.maxRejects] goal past its number is red. In the
+/// stage's design points, like the rest of the HUD.
+class BattleGoalChip extends StatelessWidget {
+  const BattleGoalChip({super.key, required this.goal, required this.late});
+
+  final GoalProgress goal;
+
+  /// Whether the round is in its later half, for a [GoalKind.lateReps]
+  /// goal's words.
+  final bool late;
+
+  static const height = 20.0;
+  static const _edge = 1.5;
+
+  /// The design's padding (8 beside) lies inside its edge; here the edge is
+  /// painted over the box, so the box makes room for it.
+  static const _side = 8.0 + _edge;
+  static const _check = 11.0;
+  static const _checkGap = 4.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final reached = goal.reached;
+    return Semantics(
+      container: true,
+      label: goal.chipLabel(late: late),
+      child: ExcludeSemantics(
+        child: SizedBox(
+          height: height,
+          child: DecoratedBox(
+            position: DecorationPosition.foreground,
+            decoration: const ShapeDecoration(
+              shape: StadiumBorder(
+                side: BorderSide(color: AppColors.ink, width: _edge),
+              ),
+            ),
+            child: ClipPath(
+              clipper: const ShapeBorderClipper(shape: StadiumBorder()),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: goal.over ? AppColors.danger : AppColors.card,
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: goal.fill,
+                      child: const ColoredBox(color: AppColors.accent),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: _side),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (reached) ...[
+                          const Icon(
+                            Icons.check_rounded,
+                            size: _check,
+                            color: AppColors.ink,
+                          ),
+                          const SizedBox(width: _checkGap),
+                        ],
+                        Text(
+                          goal.chipText(late: late),
+                          maxLines: 1,
+                          softWrap: false,
+                          style: text.goalChip,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

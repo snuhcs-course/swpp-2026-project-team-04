@@ -3,6 +3,8 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/services/feedback/goal_progress.dart';
 
 void main() {
   group('BattleSide', () {
@@ -188,6 +190,88 @@ void main() {
         'countdown 3',
       );
       expect(const BattleStageCue(BattleCueKind.go).toString(), 'go');
+    });
+  });
+
+  group('the goal (A11 spec 5)', () {
+    test('withGoal keeps every other value of the state', () {
+      const end = BattleStageEnd(
+        kind: BattleEndKind.timeUp,
+        winner: BattleSide.me,
+        decided: false,
+      );
+      const state = BattleStageState(
+        phase: BattleStagePhase.ended,
+        myName: '나',
+        opponentName: '너',
+        remaining: Duration(seconds: 3),
+        roundLength: Duration(seconds: 30),
+        myScore: 120,
+        opponentScore: 90,
+        myReps: 12,
+        opponentReps: 9,
+        barShare: 0.7,
+        fever: true,
+        feverMultiplier: 3,
+        danger: true,
+        meReady: true,
+        opponentReady: true,
+        countdown: Duration(seconds: 2),
+        reconnecting: true,
+        opponentDisconnected: true,
+        end: end,
+      );
+      const goal = GoalProgress(kind: GoalKind.reps, target: 20, value: 12);
+      final withGoal = state.withGoal(goal);
+      expect(withGoal.goal, goal);
+      expect(withGoal.phase, state.phase);
+      expect(withGoal.myName, state.myName);
+      expect(withGoal.opponentName, state.opponentName);
+      expect(withGoal.remaining, state.remaining);
+      expect(withGoal.roundLength, state.roundLength);
+      expect(withGoal.myScore, state.myScore);
+      expect(withGoal.opponentScore, state.opponentScore);
+      expect(withGoal.myReps, state.myReps);
+      expect(withGoal.opponentReps, state.opponentReps);
+      expect(withGoal.barShare, state.barShare);
+      expect(withGoal.fever, state.fever);
+      expect(withGoal.feverMultiplier, state.feverMultiplier);
+      expect(withGoal.danger, state.danger);
+      expect(withGoal.meReady, state.meReady);
+      expect(withGoal.opponentReady, state.opponentReady);
+      expect(withGoal.countdown, state.countdown);
+      expect(withGoal.reconnecting, state.reconnecting);
+      expect(withGoal.opponentDisconnected, state.opponentDisconnected);
+      expect(withGoal.end, same(end));
+      expect(withGoal.withGoal(null).goal, isNull);
+      expect(state.goal, isNull);
+    });
+
+    test('reachingGoal marks the rep and keeps the rest of it', () {
+      const rep = BattleStageEvent(
+        side: BattleSide.me,
+        grade: GameGrade.excellent,
+        points: 30,
+        combo: 4,
+        fever: true,
+        knockout: true,
+      );
+      expect(rep.reachesGoal, isFalse);
+      final marked = rep.reachingGoal();
+      expect(marked.reachesGoal, isTrue);
+      expect(marked.side, rep.side);
+      expect(marked.grade, rep.grade);
+      expect(marked.points, rep.points);
+      expect(marked.combo, rep.combo);
+      expect(marked.fever, rep.fever);
+      expect(marked.knockout, rep.knockout);
+      const average = BattleStageEvent(
+        side: BattleSide.me,
+        grade: GameGrade.average,
+        points: 5,
+        reason: RejectReason.insufficientDepth,
+      );
+      expect(average.reachingGoal().reason, RejectReason.insufficientDepth);
     });
   });
 }

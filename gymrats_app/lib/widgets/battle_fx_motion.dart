@@ -434,6 +434,34 @@ class BattleFxBanner {
       : BattleFx.koreanBandBox(textSize).padX;
 }
 
+/// '목표 달성!' once the user's goal for the battle is reached (A11 spec 5,
+/// UxGoal battle): a lime band of Do Hyeon 48 turned by [rotation], where
+/// the grade words show. It follows the bands of the rep that reached the
+/// goal and stays [length].
+class BattleFxGoalBand {
+  const BattleFxGoalBand({required this.opacity, required this.scale});
+
+  final double opacity;
+
+  /// Sized around the band's middle as it pops in.
+  final double scale;
+
+  static const text = '목표 달성!';
+
+  /// The band's top before it is turned, its height and the room beside
+  /// its text, as designed.
+  static const top = 148.0;
+  static const height = 64.0;
+  static const padX = 22.0;
+
+  /// Its ink edge, a little thicker than the other bands' 3.
+  static const edge = 3.5;
+  static const rotation = -4.0;
+
+  /// How long it stays, popping in and fading out as the other bands do.
+  static const length = 1600.0;
+}
+
 /// The combo mark of one side, "N HIT", in the camera area's top corner on
 /// that side: a white band of [BattleFx.comboTextSize] numbers.
 class BattleFxCombo {
@@ -500,6 +528,7 @@ class BattleFxFrame {
     this.setupLook = 0,
     this.countsOpacity = 1,
     this.readyChips = const [],
+    this.goalBand,
   });
 
   /// Where the two fighters meet; also where the bar turns from lime to
@@ -572,6 +601,10 @@ class BattleFxFrame {
   /// The two ready chips while setting up, the user's first; empty when
   /// they are gone.
   final List<BattleFxReadyChip> readyChips;
+
+  /// '목표 달성!' while it shows; null otherwise. It is drawn under the
+  /// rep bands ([banners]), so a later rep's grade still reads.
+  final BattleFxGoalBand? goalBand;
 }
 
 enum _ActKind { attack, miss, hit }
@@ -715,6 +748,10 @@ class BattleFxTimeline {
   double _endAt = 0;
   double? _decidedAt;
 
+  /// When '목표 달성!' pops up: after the bands of the rep that reached the
+  /// goal. Null until one has; it plays once a battle.
+  double? _goalAt;
+
   /// Whether the knockout came with the blow that caused it.
   bool _endByBlow = false;
 
@@ -844,6 +881,9 @@ class BattleFxTimeline {
       _hit = _Hit(event.side, impact, power, event.fever, _hits);
       side.scoreBumpAt = impact;
       side.pop = _Pop(impact, event.grade, event.points);
+      if (event.side == BattleSide.me && event.reachesGoal) {
+        _goalAt ??= impact + _bandsLength(event.grade!);
+      }
       if (cue) {
         _cues.add((
           impact,
@@ -1309,8 +1349,25 @@ class BattleFxTimeline {
                 opacity: setupLook,
               ),
             ],
+      goalBand: _goalBand(now),
     );
   }
+
+  /// '목표 달성!' at [now]: only while the battle runs. Once it is over the
+  /// ending's bands take the stage, so a band still showing goes.
+  BattleFxGoalBand? _goalBand(double now) {
+    final at = _goalAt;
+    if (at == null || (_end != null && now >= _endAt)) return null;
+    final shown = BattleFx.pop(now - at, BattleFxGoalBand.length);
+    if (shown == null) return null;
+    return BattleFxGoalBand(opacity: shown.opacity, scale: shown.scale);
+  }
+
+  /// How long the bands of a blow of [grade] show from its impact: the
+  /// grade word, then its points (see [frame]).
+  static double _bandsLength(GameGrade grade) =>
+      BattleFx.gradeWord(grade).pointsAfter +
+      (grade == GameGrade.average ? 720 : 880);
 
   /// A number growing by [extra] and back over [length].
   static double _bump(double d, double length, double extra) =>
