@@ -136,6 +136,8 @@ class _BattleScreenState extends State<BattleScreen>
         repository: context.read<UserRepository>(),
         sound: const NoRepBeep(),
         formReports: context.read<FormReportStore>(),
+        // Kept in the battle's report, so 기록보관소 shows it later.
+        characterId: widget.myCharacter,
       );
     }
     _shown = _viewModel.state;

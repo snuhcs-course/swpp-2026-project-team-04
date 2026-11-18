@@ -305,6 +305,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         rightFlarePose: _counter.rightFlarePose,
         handsPose: _counter.handsPose,
         headPose: _counter.headPose,
+        // Mine as sent, so 기록보관소 shows it later.
+        characterId: session.character,
       );
       _formReport = report;
       unawaited(_saveReport(report));

@@ -278,6 +278,35 @@ void main() {
     expect(await reports.list(), [same(form)]);
   });
 
+  test("the form report keeps the battle's character when one is given "
+      '(A11), and none without', () async {
+    final played = BattleViewModel(
+      matchup: _matchup,
+      counter: RepCounterViewModel(
+        camera: camera,
+        estimator: estimator,
+        judge: judge,
+        clock: () => now,
+        roundLength: battleDuration,
+        phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
+      ),
+      opponent: opponent,
+      repository: repository,
+      sound: sound,
+      formReports: reports,
+      now: () => _endedAt,
+      characterId: 'bear',
+    );
+    addTearDown(played.dispose);
+    expect(vm.characterId, isNull);
+    await played.start();
+    await frame(60);
+    await pumpEventQueue();
+    final form = played.state.result!.form!;
+    expect(form.characterId, 'bear');
+    expect(repository.savedReports.single!.characterId, 'bear');
+  });
+
   test('a battle left early is not saved', () async {
     await vm.start();
     judge.closeRep();
