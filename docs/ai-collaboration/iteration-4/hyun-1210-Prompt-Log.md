@@ -170,7 +170,7 @@ Redacted for the public repo: pasted text inside a prompt (team chats, meeting t
 [Hyunwoo Song, 11-10 17:47] "우현이 형이야. 이슈로 올려둬. 3번은 빼도 될 것 같아."
 
 <!-- 5c4721ef 2026-11-11T14:26:20.219Z -->
-[Hyunwoo Song, 11-11 23:26] "최근 2~3일 내용만 확인해서 해야할 일 정리해봐d:\Users\82102\Downloads\KakaoTalk_20261111_2325_41_958_group.txt"
+[Hyunwoo Song, 11-11 23:26] "최근 2~3일 내용만 확인해서 해야할 일 정리해봐d:\Users\[REDACTED:username]\Downloads\KakaoTalk_20261111_2325_41_958_group.txt"
 
 <!-- 5c4721ef 2026-11-11T14:34:00.445Z -->
 [Hyunwoo Song, 11-11 23:34] "다 승인하면 되지 않나 댓글달고"
