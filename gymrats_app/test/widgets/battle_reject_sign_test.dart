@@ -34,12 +34,15 @@ BattleFxSign _sign(
   opacity: opacity,
 );
 
-/// Where the design's 360 x 780 frame has the sign's box: in the middle,
-/// [BattleRejectSignView.riseAboveLine] above the line at 390.
-const _signAt = Offset(92, 340);
+/// Where the design's 360 x 780 frame has the sign's box (A9, UxSq A2): in
+/// the middle, [BattleRejectSignView.riseAboveLine] above the line at 390.
+const _signAt = Offset(72, 314);
 
 /// The point the sign grows and turns around, in the frame.
-const _pivot = Offset(92 + 88, 340 + 86);
+const _pivot = Offset(72 + 108, 314 + 107.5);
+
+/// The tile as the A9 design has it: 156 square from y 314, in the middle.
+const _wholeTile = Rect.fromLTWH(102, 314, 156, 156);
 
 Future<void> _pumpSign(WidgetTester tester, BattleFxSign sign) =>
     tester.pumpWidget(
@@ -193,8 +196,8 @@ void main() {
       );
     });
 
-    testWidgets('sits where the design puts it: a 128 tile from y 340, in '
-        'the middle, the label 6 below', (tester) async {
+    testWidgets('sits where the A9 design puts it: a 156 tile from y 314, '
+        'in the middle, the label 8 below', (tester) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown));
       final tile = tester.getRect(
         find
@@ -204,15 +207,15 @@ void main() {
             )
             .first,
       );
-      expect(tile, const Rect.fromLTWH(116, 340, 128, 128));
+      expect(tile, _wholeTile);
       final label = tester.getRect(find.byType(BattleBand));
-      expect(label.top, 340 + 128 + 6);
+      expect(label.top, 314 + 156 + 8);
+      expect(label.top - _signAt.dy, BattleRejectSignView.labelTop);
       expect(label.center.dx, 180);
     });
 
-    testWidgets('the tile is white with a thick ink edge and round corners', (
-      tester,
-    ) async {
+    testWidgets('the tile is white with a 5 ink edge and round corners, the '
+        'pictogram 136 wide (A9 spec 5)', (tester) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown));
       final box = tester.widget<DecoratedBox>(
         find
@@ -224,15 +227,18 @@ void main() {
       );
       final decoration = box.decoration as BoxDecoration;
       expect(decoration.color, AppColors.card);
-      expect(decoration.border, Border.all(color: AppColors.ink, width: 4));
+      expect(decoration.border, Border.all(color: AppColors.ink, width: 5));
       expect(
         decoration.borderRadius,
-        const BorderRadius.all(Radius.circular(26)),
+        const BorderRadius.all(Radius.circular(30)),
       );
       expect(
         tester.getSize(find.byType(CustomPaint).last),
-        const Size.square(112),
+        const Size.square(136),
       );
+      expect(BattleRejectSignView.tileSize, 156);
+      expect(BattleRejectSignView.tileEdge, 5);
+      expect(BattleRejectSignView.iconSize, 136);
     });
 
     testWidgets('a reason with no picture shows only its label', (
@@ -249,22 +255,24 @@ void main() {
       );
     });
 
-    testWidgets('a long label is not squeezed into the sign\'s box', (
-      tester,
-    ) async {
+    testWidgets('a long label is not squeezed into the sign\'s box, and the '
+        'longest still fits the 360 screen', (tester) async {
       await _pumpSign(tester, _sign(RejectReason.standUpFully, average: true));
       expect(tester.takeException(), isNull);
+      expect(find.text('끝까지 서기'), findsOneWidget);
       final label = tester.getRect(find.byType(BattleBand));
       expect(label.width, greaterThan(BattleRejectSignView.size.width));
       expect(label.center.dx, closeTo(180, 0.01));
+      expect(label.left, greaterThanOrEqualTo(0));
+      expect(label.right, lessThanOrEqualTo(360));
     });
 
-    testWidgets('grows around the design\'s pivot, (88, 86) of its box', (
+    testWidgets('grows around its pivot, (108, 107.5) of its box', (
       tester,
     ) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown, scale: 0.6));
       // Every point moves 0.6 of its way from the pivot.
-      const whole = Rect.fromLTWH(116, 340, 128, 128);
+      const whole = _wholeTile;
       final tile = _tile(tester);
       expect(
         tile.left,
@@ -274,33 +282,50 @@ void main() {
         tile.top,
         closeTo(_pivot.dy + 0.6 * (whole.top - _pivot.dy), 0.01),
       );
-      expect(tile.width, closeTo(0.6 * 128, 0.01));
-      expect(tile.height, closeTo(0.6 * 128, 0.01));
+      expect(tile.width, closeTo(0.6 * 156, 0.01));
+      expect(tile.height, closeTo(0.6 * 156, 0.01));
     });
 
     testWidgets('wobbles by turning around the same pivot, clockwise for a '
         'positive angle', (tester) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown, rotation: 90));
-      // The tile's middle is 22 above the pivot; a quarter turn clockwise
-      // puts it 22 to the right of it.
+      // The tile's middle is 29.5 above the pivot; a quarter turn clockwise
+      // puts it 29.5 to the right of it.
       final center = _tile(tester).center;
-      expect(center.dx, closeTo(_pivot.dx + 22, 0.01));
+      expect(center.dx, closeTo(_pivot.dx + 29.5, 0.01));
       expect(center.dy, closeTo(_pivot.dy, 0.01));
 
       await _pumpSign(tester, _sign(RejectReason.kneesDown, rotation: 3));
       expect(_tile(tester).center.dx, greaterThan(_pivot.dx));
     });
 
-    testWidgets('the label has 2 above and below its line and 16 beside it', (
+    testWidgets('the label is Do Hyeon 66 with 2 above and below its line '
+        'and 22 beside it, on a band with a 4 ink edge (A9 spec 5)', (
       tester,
     ) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown));
       final band = tester.getSize(find.byType(BattleBand));
       final label = tester.getSize(find.text('무릎 떼기'));
-      // A 40 point line 1.2 high.
-      expect(label.height, 48);
-      expect(band.height, 48 + 2 * 2);
-      expect(band.width, closeTo(label.width + 2 * 16, 0.01));
+      final style = tester.widget<Text>(find.text('무릎 떼기')).style!;
+      expect(style.fontFamily, AppFonts.display);
+      expect(style.fontSize, 66);
+      // A 66 point line 1.12 high (laid out to whole points).
+      expect(label.height, closeTo(66 * 1.12, 0.1));
+      expect(band.height, closeTo(label.height + 2 * 2, 0.01));
+      expect(band.width, closeTo(label.width + 2 * 22, 0.01));
+      expect(tester.widget<BattleBand>(find.byType(BattleBand)).edge, 4);
+      final edge = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find.byType(BattleBand),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      expect(
+        (edge.decoration as BoxDecoration).border,
+        Border.all(color: AppColors.ink, width: 4),
+      );
     });
 
     testWidgets('fades as the effect says', (tester) async {
@@ -332,9 +357,11 @@ void main() {
       handle.dispose();
     });
 
-    test('rises 50 above the line between the stage and the camera', () {
+    test('rises 76 above the line between the stage and the camera, in a '
+        '216 x 250 box', () {
+      expect(BattleRejectSignView.riseAboveLine, 76);
       expect(BattleRejectSignView.riseAboveLine, 390 - _signAt.dy);
-      expect(BattleRejectSignView.size, const Size(176, 200));
+      expect(BattleRejectSignView.size, const Size(216, 250));
       // Centered across the stage's 360.
       expect(_signAt.dx, (360 - BattleRejectSignView.size.width) / 2);
     });

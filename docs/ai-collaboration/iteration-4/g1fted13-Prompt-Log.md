@@ -1305,6 +1305,39 @@ PR, 이슈, CI 코멘트를 읽거나 고칠 때는 gh CLI 를 쓴다. Chrome �
 커밋 해시, 바꾼 파일, 더한 예외 줄(다른 사람 파일이 있었다면 따로), 정리한 코드, 테스트 결과, PR 본문 수정 여부, CI 상태. 끝나면 메인 폴더를 비워 두고 다른 작업은 시작하지 않는다.
 </pasted_content id=\"2e03\">"
 
+## 2026-11-17 · Woohyun Song · feat/setup_readability
+<!-- 6489ba5c 2026-11-17T02:57:10.512Z -->
+[Woohyun Song, 11-17 11:57] "하네스 갱신이야. .claude/update-1117/README.md 를 읽고 2·3번만 해 줘.
+task.md는 \"PR plan\" 표를 task-add-W9-W11.md의 표로 바꾸고, W9·W10·W11 절을 \"Files you must not edit this iteration\" 바로 앞에 붙여. progress.md는 progress-add-W9-W11.md를 \"Checklist\" 아래 W8 블록 뒤에 붙여. 나머지 내용은 건드리지 말고, 끝나면 ownership_guard.py --status 결과를 보여 줘."
+
+<!-- 6489ba5c 2026-11-17T03:00:06.157Z -->
+[Woohyun Song, 11-17 12:00] "<pasted_content id=\"3f17\">
+W9 시작하자. 명세는 .claude/design/uat1/A9-SETUP-READABILITY-SPEC.md 이고 디자인 원본은 같은 폴더의 design/ 아래에 있어.
+1. 명세 전체와 INDEX.md를 먼저 읽어.
+2. 명세의 \"고칠 파일\"을 ownership.json 허용 목록과 맞춰 보고, 막히는 파일이 있으면 코드를 쓰기 전에 목록으로 알려 줘. 상우 파일은 그리는 값만 고칠 수 있다는 조건도 지켜.
+3. 명세 끝의 \"사용자에게 물어볼 것\"을 하나씩 물어보고, 답은 task.md \"Decisions\"에 오늘 날짜로 적어.
+4. 그다음 구현하고, 테스트와 reviewer까지 마친 뒤 보고해. 커밋과 push는 내가 말할 때만 해.
+</pasted_content id=\"3f17\">"
+
+<!-- 6489ba5c 2026-11-17T07:10:04.506Z -->
+[Woohyun Song, 11-17 16:10] "커밋하고 푸시해. 이어서 PR 올려"
+
+<!-- 6489ba5c 2026-11-17T07:10:44.171Z -->
+[Woohyun Song, 11-17 16:10] "커밋하고 푸시까지만 해."
+
+## 2026-11-17 ~ 11-18 · Woohyun Song · feat/setup_readability
+<!-- 6489ba5c 2026-11-17T10:34:03.104Z -->
+[Woohyun Song, 11-17 19:34] "W9 PR 올려 줘. 지금 작업 폴더에는 W10 브랜치(feat/coach_feedback)의 커밋 안 한 변경이 있으니까 브랜치를 바꾸거나 checkout 하지 말고, 이미 push된 feat/setup_readability 로 PR만 만들어.
+- 첫 줄은 'Merge order: #19', merge-after 없음
+- 본문은 기존 PR 양식대로 영어로
+- task.md W9 Decisions의 예외 두 건(내 W2 파일 battle_banner.dart, 로비 테스트 한 줄)을 본문에 적어
+- PR #72와 battle_screen / online_battle_screen 이 겹치고, 나중에 머지하는 쪽이 양쪽을 살린다는 하네스 규칙도 적어"
+
+<!-- 6489ba5c 2026-11-18T02:37:54.097Z -->
+[Woohyun Song, 11-18 11:37] "PR #72가 먼저 머지됐으니 하네스 규칙대로 W9가 origin/main을 합쳐야 해. feat/setup_readability 로 바꿔서 origin/main 머지하고, online_preparation_test.dart 충돌은 양쪽 다 살려.
+#72가 카메라 칸에 '사람을 다시 확인해 주세요' 안내와 '확인 후 계속' 버튼을 넣었으니, W9의 안내 띠·테두리·카메라 전환 버튼과 겹치지 않는지도 확인해.
+그다음 전체 테스트, --check-diff, 수업 노트 갱신 후 push해."
+
 ## 2026-11-17 · Woohyun Song · feat/coach_feedback
 <!-- Cut: the client's injected browser notice in front of 2 prompts (11-17 16:38 and 19:46; not the user's text). The answers in the agent's question dialogs (11-17 16:47-16:50 and 19:05; written in task.md W10 decisions 1-9) are not in the export as prompts. -->
 <!-- 5cd16e35 2026-11-17T07:38:38.898Z -->

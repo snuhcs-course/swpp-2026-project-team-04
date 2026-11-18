@@ -229,8 +229,41 @@ Selected user inputs from the visible conversation, including selected answers t
 이대로 PR 올려줘.
 ```
 
-### Existing S1 and S2 PR readiness request, 2026-11-16
+## S1/S2 integration, 2026-11-16
+
+- 그럼 S1 개선 내용을 기존 PR에 반영하고 충돌 해결해줘. S2도 구현하고 검증해서 별도 PR 올려줘.
+- 네, 소유자 또는 PM이 동의했어요
+
+## S1/S2 PR completion request, 2026-11-16
+
+The following user input requested review-ready updates to the existing pull requests. The original wording is retained. This entry covers the visible completion request.
 
 ```text
 지금 다른 채팅에서 S1과 S2를 draft 상태로 각각 PR 올렸는데 이걸 변경해서 PR 완성하고 draft 해제해줘.
+```
+
+## S2 video verification and PR #72 publication, 2026-11-17 — Sangwoo Hahn
+
+```text
+S2는 어떻게 작업이 진행되었어?
+```
+
+```text
+그럼 S2 기능을 켠 상태에서 실패하는 테스트를 해결하고, 실제 영상으로 검증해서 마무리해줘.
+```
+
+```text
+응, 동의받았어
+```
+
+```text
+continue
+```
+
+```text
+S2 PR 올리면 끝나느거야?
+```
+
+```text
+그럼 S2 수정한 내용 커밋하고 푸시해줘. 기존 PR #72 본문에 영상 검증 결과도 반영하고 CI 통과까지 확인해줘.
 ```

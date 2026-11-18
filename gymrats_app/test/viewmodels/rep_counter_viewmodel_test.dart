@@ -33,6 +33,7 @@ void main() {
       clock: () => now,
       phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
       judge: RepJudge(config: fast, clock: () => now),
+      enablePersonGuard: true,
     );
     vm.reps.listen(events.add);
   });
@@ -157,6 +158,120 @@ void main() {
     expect(vm.state.validReps, 1);
     expect(events.last.index, 1);
   });
+
+  test(
+    'a suspected person change stops scoring until explicit confirmation',
+    () async {
+      PoseFrame shifted(PoseFrame frame, double dx) => PoseFrame(
+        imageWidth: frame.imageWidth,
+        imageHeight: frame.imageHeight,
+        keypoints: {
+          for (final entry in frame.keypoints.entries)
+            entry.key: Keypoint(
+              landmark: entry.key,
+              x: entry.value.x + dx,
+              y: entry.value.y,
+              z: entry.value.z,
+              likelihood: entry.value.likelihood,
+            ),
+        },
+      );
+      await vm.start();
+      await feed(0, pose());
+      await feed(300, pose());
+      vm.reset(restartClock: true);
+      expect(vm.state.trackingPaused, isFalse);
+      await feed(400, pose(depth: .6));
+      final stranger = shifted(pose(depth: 1.5), 300);
+      await feed(500, stranger);
+      expect(vm.state.trackingPaused, isTrue);
+      expect(vm.state.lastFrame!.hasPerson, isFalse);
+      expect(vm.state.validReps, 0);
+      expect(events, isEmpty);
+      await feed(600, pose());
+      expect(vm.state.trackingPaused, isTrue);
+      expect(events, isEmpty);
+      vm.confirmTrackedPerson();
+      expect(vm.state.trackingPaused, isFalse);
+      await feed(650, pose());
+      await feed(950, pose());
+      await feed(1050, pose(depth: .6));
+      await feed(1450, pose(depth: 1.5));
+      await feed(1850, pose());
+      expect(vm.state.validReps, 1);
+      expect(events, hasLength(1));
+    },
+  );
+
+  test('locking a stale frame clears it and requires confirmation', () async {
+    await vm.start();
+    await feed(0, pose());
+    now = const Duration(milliseconds: 1000);
+    vm.lockTrackedPerson();
+    expect(vm.state.trackingPaused, isTrue);
+    expect(vm.state.lastFrame, isNull);
+    vm.confirmTrackedPerson();
+    expect(vm.state.trackingPaused, isTrue);
+  });
+
+  test(
+    'a stalled stream warns and requires a fresh confirmed person',
+    () async {
+      await vm.start();
+      await feed(0, pose());
+      await feed(300, pose());
+      vm.lockTrackedPerson();
+      now = const Duration(milliseconds: 1100);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(vm.state.trackingPaused, isTrue);
+      expect(vm.state.lastFrame, isNull);
+      vm.confirmTrackedPerson();
+      expect(vm.state.trackingPaused, isTrue);
+      await feed(1200, pose());
+      expect(vm.state.trackingPaused, isTrue);
+      vm.confirmTrackedPerson();
+      expect(vm.state.trackingPaused, isFalse);
+    },
+  );
+
+  test(
+    'retry preserves round guard and score after a detector failure',
+    () async {
+      await vm.start();
+      await feed(0, pose());
+      await feed(300, pose());
+      vm.reset(restartClock: true);
+      await feed(350, pose());
+      await feed(650, pose());
+      await feed(700, pose(depth: .6));
+      await feed(900, pose(depth: 1.5));
+      await feed(1100, pose());
+      expect(vm.state.validReps, 1);
+      await feed(1200, null);
+      await feed(4300, null);
+      expect(vm.state.phase, CounterPhase.detectorError);
+      camera.permission = CameraPermission.denied;
+      await vm.retry();
+      expect(vm.state.phase, CounterPhase.permissionDenied);
+      expect(vm.state.validReps, 1);
+      expect(vm.state.trackingPaused, isTrue);
+      camera.permission = CameraPermission.granted;
+      camera.startError = const CameraUnavailableException('camera failed');
+      await vm.retry();
+      expect(vm.state.phase, CounterPhase.cameraError);
+      expect(vm.state.validReps, 1);
+      expect(vm.state.trackingPaused, isTrue);
+      camera.startError = null;
+      await vm.retry();
+      expect(vm.state.phase, CounterPhase.running);
+      expect(vm.state.validReps, 1);
+      expect(vm.state.trackingPaused, isTrue);
+      await feed(4400, pose());
+      expect(vm.state.trackingPaused, isTrue);
+      vm.confirmTrackedPerson();
+      expect(vm.state.trackingPaused, isFalse);
+    },
+  );
 
   test('online reset restarts feedback clock after preparation', () async {
     await vm.start();

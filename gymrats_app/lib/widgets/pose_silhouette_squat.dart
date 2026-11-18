@@ -84,20 +84,20 @@ class _StandingPainter extends CustomPainter {
       ..addRect(Offset.zero & size)
       ..addPath(path, Offset.zero);
     canvas.drawPath(scrim, Paint()..color = AppColors.setupGuideScrim);
+    // Twice the outline it had before A9 (spec 4), to read from 2.5 m.
     final dark = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      // An ink edge under the line (A9 spec 1.3, design A2).
+      ..color = AppColors.ink;
+    final light = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..color = AppColors.setupGuideScrim.withAlpha(60);
-    final light = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..color = (ready ? AppColors.squatGuideReady : AppColors.onInk).withAlpha(
-        220,
-      );
+      ..color = (ready ? AppColors.statusGood : AppColors.onInk).withAlpha(220);
     for (final outline in [path, arms, hands, clasp]) {
       canvas.drawPath(outline, dark);
       canvas.drawPath(outline, light);
