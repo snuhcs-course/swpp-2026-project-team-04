@@ -41,9 +41,10 @@ import '../support/flow_snapshot.dart';
 import '../support/game_fakes.dart';
 import '../support/pose_fixtures.dart';
 import '../support/placed_phone.dart';
+import '../services/pose/person_behind_test_support.dart';
 
 class _Session extends OnlineBattleSession {
-  _Session({super.exercise})
+  _Session({super.exercise, required this.now})
     : super(
         endpoint: Uri.parse('wss://example.com/ws/v1/battle'),
         accessToken: 'test-only',
@@ -54,6 +55,17 @@ class _Session extends OnlineBattleSession {
     phase = OnlinePhase.preparing;
     opponent = const OnlinePlayer('opponent', '상대사용자', 'seal');
   }
+  final int Function() now;
+
+  @override
+  int get serverNow => now();
+  final publishedPoses = <PoseFrame?>[];
+  @override
+  void publishPose(PoseFrame? frame) {
+    publishedPoses.add(frame);
+    super.publishPose(frame);
+  }
+
   final readyRequests = <bool>[];
   var leaves = 0;
 
@@ -123,6 +135,7 @@ void main() {
   late FakeUserRepository repository;
   late List<BattleResult> results;
   late _Replacements replacements;
+  PoseFrame? streamPose;
 
   Future<void> open(
     WidgetTester tester, {
@@ -132,26 +145,34 @@ void main() {
     double textScale = 1,
     ValueChanged<BattleStageCue>? onCue,
     BattleSetupListener? onSetup,
+    bool personGuard = const bool.fromEnvironment('S2_PERSON_GUARD'),
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    session = _Session(exercise: exercise);
+    session = _Session(
+      exercise: exercise,
+      now: () => tester.binding.clock.now().millisecondsSinceEpoch,
+    );
     addTearDown(session.dispose);
     camera = FakeCameraService();
     if (denied) camera.permission = CameraPermission.denied;
     estimator = FakePoseEstimator();
+    streamPose = null;
     phone = placedPhone();
     reports = InMemoryFormReportStore();
     repository = FakeUserRepository();
     results = [];
     replacements = _Replacements();
+    final clockStart = tester.binding.clock.now();
     counter = RepCounterViewModel(
       camera: camera,
       estimator: estimator,
       judge: judge ?? FakeRepJudge(),
       phoneTilt: phone,
+      enablePersonGuard: personGuard,
+      clock: () => tester.binding.clock.now().difference(clockStart),
       roundLength: const Duration(days: 1),
     );
     // As in the app, the battle opens over the lobby.
@@ -205,6 +226,13 @@ void main() {
   /// settles: its fighters breathe.
   Future<void> wait(WidgetTester tester, int ms) async {
     for (var left = ms; left > 0; left -= 50) {
+      // An ordinary animation wait keeps receiving camera frames. Tests of a
+      // deliberately stalled stream use tester.pump directly instead.
+      if (streamPose case final current? when camera.isStreaming) {
+        estimator.frames.add(freshPose(current));
+        camera.emit();
+        await tester.pump();
+      }
       await tester.pump(Duration(milliseconds: left < 50 ? left : 50));
     }
   }
@@ -237,7 +265,10 @@ void main() {
 
   /// Lets a camera frame through, with the setup pose found or not.
   Future<void> pose(WidgetTester tester, {bool found = true}) async {
-    estimator.frames.add(found ? standingFrame() : emptyFrame());
+    streamPose = found
+        ? standingFrame(showHips: session.exercise == ExerciseType.squat)
+        : emptyFrame();
+    estimator.frames.add(streamPose);
     camera.emit();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 10));
@@ -250,6 +281,9 @@ void main() {
     int leftMs = 15000,
     BattleRules? rules = battleRules,
   }) async {
+    // Online rounds follow a fresh setup observation, even when the test
+    // fast-forwards the server's countdown.
+    await pose(tester);
     session.rules = rules;
     session.startAtMs = session.serverNow - elapsedMs;
     session.endAtMs = session.serverNow + leftMs;
@@ -259,7 +293,7 @@ void main() {
     await pose(tester);
     // From the setup the line comes down and the fighters pop up (W2b 3-B,
     // 600 ms); the round's checks begin once they stand.
-    await tester.pump(const Duration(milliseconds: 600));
+    await wait(tester, 600);
   }
 
   /// Plays a short online round and ends it with the server's [result],
@@ -269,6 +303,7 @@ void main() {
     Map<String, dynamic> result, {
     int? endedAfterMs,
   }) async {
+    await pose(tester);
     session.durationMs = 30000;
     session.startAtMs = session.serverNow - 100;
     session.endAtMs = session.serverNow + 29900;
@@ -298,6 +333,45 @@ void main() {
     expect(find.text('결과 화면'), findsOneWidget);
     return results.single;
   }
+
+  testWidgets('experimental online guard pauses and requires confirmation', (
+    tester,
+  ) async {
+    final judge = FakeRepJudge();
+    await open(tester, judge: judge, personGuard: true);
+    await pose(tester);
+    await play(tester);
+    final original = standingFrame();
+    final shifted = PoseFrame(
+      imageWidth: original.imageWidth,
+      imageHeight: original.imageHeight,
+      keypoints: {
+        for (final entry in original.keypoints.entries)
+          entry.key: Keypoint(
+            landmark: entry.key,
+            x: entry.value.x + 300,
+            y: entry.value.y,
+            likelihood: entry.value.likelihood,
+          ),
+      },
+    );
+    judge.closeRep();
+    estimator.frames.add(shifted);
+    camera.emit();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 10));
+    expect(find.text('확인 후 계속'), findsOneWidget);
+    expect(session.publishedPoses.last, isNull);
+    expect(counter.state.validReps, 0);
+    await pose(tester);
+    expect(session.publishedPoses.last, isNull);
+    expect(counter.state.validReps, 0);
+    await tester.tap(find.text('확인 후 계속'));
+    await tester.pump();
+    await pose(tester);
+    expect(counter.state.validReps, 1);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   group('before the start', () {
     testWidgets('the stage draws my character and the one the opponent sent', (
@@ -338,7 +412,7 @@ void main() {
       showsCue(tester, '그대로', '멈춰요', '자세 확인! 3초 후 자동으로 준비해요');
       expect(cueOf(tester)!.holding, isTrue);
       expect(find.text('준비'), findsNothing);
-      await tester.pump(const Duration(milliseconds: 3100));
+      await wait(tester, 3100);
       expect(session.readyRequests, [true]);
       await tester.pump();
       showsCue(tester, '상대를', '기다려요', '상대 준비를 기다리는 중…');
@@ -363,19 +437,19 @@ void main() {
       phone.isPropped = false;
       await pose(tester);
       // The cue from the open, 카메라 / 앞으로, keeps the band for its hold.
-      await tester.pump(BattleCameraArea.cueHold);
+      await wait(tester, BattleCameraArea.cueHold.inMilliseconds);
       showsCue(tester, '폰을 더', '세워요', '폰을 더 세워 주세요.');
-      await tester.pump(const Duration(milliseconds: 3100));
+      await wait(tester, 3100);
       expect(session.readyRequests, isEmpty);
       phone.isPropped = true;
       phone.isStill = false;
       await pose(tester);
       showsCue(tester, '폰을', '고정해요', '폰이 흔들리지 않게 두세요.');
-      await tester.pump(const Duration(milliseconds: 3100));
+      await wait(tester, 3100);
       expect(session.readyRequests, isEmpty);
       phone.isStill = true;
       await pose(tester);
-      await tester.pump(const Duration(milliseconds: 3100));
+      await wait(tester, 3100);
       expect(session.readyRequests, [true]);
       phone.isStill = false;
       await pose(tester);
@@ -387,7 +461,7 @@ void main() {
         'round', (tester) async {
       await open(tester);
       await pose(tester);
-      await tester.pump(const Duration(milliseconds: 3100));
+      await wait(tester, 3100);
       expect(session.readyRequests, [true]);
       await pose(tester, found: false);
       expect(session.readyRequests, [true, false]);
@@ -523,21 +597,21 @@ void main() {
     ) async {
       await open(tester);
       await pose(tester);
-      await tester.pump(const Duration(seconds: 1));
+      await wait(tester, 1000);
       session.connected = false;
       session.notifyListeners();
       await tester.pump();
       showsCue(tester, '연결', '확인 중', '재연결 중 · 준비 상태 확인 중…');
       expect(cueOf(tester)!.state, SetupCueState.notice);
-      await tester.pump(const Duration(seconds: 1));
+      await wait(tester, 1000);
       session.connected = true;
       session.notifyListeners();
       await tester.pump();
       // 3.1 s after the pose: the count from before the loss was dropped,
       // so nothing is sent yet; a full new count runs from the reconnect.
-      await tester.pump(const Duration(milliseconds: 1100));
+      await wait(tester, 1100);
       expect(session.readyRequests, isEmpty);
-      await tester.pump(const Duration(seconds: 2));
+      await wait(tester, 2000);
       expect(session.readyRequests, [true]);
       session.connected = false;
       session.notifyListeners();
@@ -1125,7 +1199,7 @@ void main() {
         expect(results, isEmpty);
         await tester.tap(find.text('홈으로 돌아가기'));
         await tester.pump();
-        await tester.pump(const Duration(seconds: 1));
+        await wait(tester, 1000);
         expect(find.text('로비'), findsOneWidget);
         expect(find.byType(OnlineBattleScreen), findsNothing);
       });
@@ -1218,9 +1292,9 @@ void main() {
       await open(tester);
       await pose(tester);
       expect(cueOf(tester)!.message, contains('초 후 자동으로 준비해요'));
-      await tester.pump(const Duration(milliseconds: 2900));
+      await wait(tester, 2900);
       expect(session.readyRequests, isEmpty);
-      await tester.pump(const Duration(milliseconds: 200));
+      await wait(tester, 200);
       expect(session.readyRequests, [true]);
       await tester.pump();
       showsCue(tester, '상대를', '기다려요', '상대 준비를 기다리는 중…');
@@ -1232,16 +1306,21 @@ void main() {
     ) async {
       await open(tester);
       await pose(tester);
-      await tester.pump(const Duration(seconds: 2));
+      await wait(tester, 2000);
       await pose(tester, found: false);
       expect(cueOf(tester)!.message, isNot(contains('초 후 자동으로 준비해요')));
-      await tester.pump(const Duration(seconds: 2));
+      await wait(tester, 2000);
       expect(session.readyRequests, isEmpty);
       // Ready again: a full new 3 seconds.
       await pose(tester);
-      await tester.pump(const Duration(seconds: 2));
+      if (counter.enablePersonGuard) {
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        await tester.tap(find.text('확인 후 계속'));
+        await pose(tester);
+      }
+      await wait(tester, 2000);
       expect(session.readyRequests, isEmpty);
-      await tester.pump(const Duration(milliseconds: 1100));
+      await wait(tester, 1100);
       expect(session.readyRequests, [true]);
       await tester.pumpWidget(const SizedBox());
     });
@@ -1309,12 +1388,12 @@ void main() {
       await open(tester);
       session.confirmReady = false;
       await pose(tester);
-      await tester.pump(const Duration(milliseconds: 3100));
+      await wait(tester, 3100);
       expect(session.readyRequests, [true]);
       // More frames while the confirmation is on its way.
       for (var i = 0; i < 5; i++) {
         await pose(tester);
-        await tester.pump(const Duration(seconds: 1));
+        await wait(tester, 1000);
       }
       expect(session.readyRequests, [true]);
       await tester.pumpWidget(const SizedBox());

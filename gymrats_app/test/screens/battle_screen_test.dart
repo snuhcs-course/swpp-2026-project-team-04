@@ -42,6 +42,7 @@ import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
 import '../support/placed_phone.dart';
 import '../support/pose_fixtures.dart';
+import '../services/pose/person_behind_test_support.dart';
 
 const _pushUp = Matchup(
   exercise: ExerciseType.pushUp,
@@ -66,13 +67,14 @@ const _quickSetup = SetupConfig(
 void main() {
   late FakeCameraService camera;
   late FakePoseEstimator estimator;
-  late FakeRepJudge judge;
+  late CadencedRepJudge judge;
   late FakeOpponentSource opponent;
   late FakeUserRepository repository;
   late Duration now;
   late PhoneTiltMonitor phone;
   late BattleViewModel viewModel;
   late List<String> cues;
+  PoseFrame? previousPose;
 
   /// Opens BattleScreen from a home page, as the app does after the versus
   /// screen. The result route is a stub that shows the reps it received.
@@ -85,6 +87,7 @@ void main() {
     SetupConfig setupConfig = _quickSetup,
     BattleSetupListener? onSetup,
     String? myCharacter,
+    bool personGuard = const bool.fromEnvironment('S2_PERSON_GUARD'),
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = size;
@@ -93,10 +96,11 @@ void main() {
     // Created here, inside the test's fake async zone.
     camera = FakeCameraService()..permission = permission;
     estimator = FakePoseEstimator();
-    judge = FakeRepJudge();
+    judge = CadencedRepJudge();
     opponent = FakeOpponentSource();
     repository = FakeUserRepository();
     now = Duration.zero;
+    previousPose = null;
     cues = [];
     phone = placedPhone();
     viewModel = BattleViewModel(
@@ -110,6 +114,7 @@ void main() {
             : null,
         exercise: matchup.exercise,
         phoneTilt: phone,
+        enablePersonGuard: personGuard,
         clock: () => now,
         roundLength: const Duration(days: 1),
       ),
@@ -183,8 +188,19 @@ void main() {
     bool found = true,
     PoseFrame? pose,
   }) async {
-    now = Duration(milliseconds: (seconds * 1000).round());
-    estimator.frames.add(pose ?? (found ? setupPose() : emptyFrame()));
+    final target = Duration(milliseconds: (seconds * 1000).round());
+    judge.holdVerdicts = true;
+    while (previousPose != null &&
+        target - now > const Duration(milliseconds: 500)) {
+      now += const Duration(milliseconds: 500);
+      estimator.frames.add(freshPose(previousPose!));
+      camera.emit();
+      await tester.pump();
+    }
+    judge.holdVerdicts = false;
+    now = target;
+    previousPose = pose ?? (found ? setupPose() : emptyFrame());
+    estimator.frames.add(previousPose);
     camera.emit();
     // One pump runs the frame's async work, the next renders the result.
     await tester.pump();
@@ -231,6 +247,45 @@ void main() {
   /// Takes the screen down, so the stage's clock stops with the test.
   Future<void> close(WidgetTester tester) =>
       tester.pumpWidget(const SizedBox());
+
+  for (final matchup in [_pushUp, _squat]) {
+    testWidgets(
+      'experimental guard pauses ${matchup.exercise} battle until confirmation',
+      (tester) async {
+        await open(tester, matchup: matchup, personGuard: true);
+        for (var t = 1.0; t <= 4.0; t += .5) {
+          await frame(tester, t);
+        }
+        expect(viewModel.state.started, isTrue);
+        final original = setupPose();
+        final shifted = PoseFrame(
+          imageWidth: original.imageWidth,
+          imageHeight: original.imageHeight,
+          keypoints: {
+            for (final entry in original.keypoints.entries)
+              entry.key: Keypoint(
+                landmark: entry.key,
+                x: entry.value.x + 300,
+                y: entry.value.y,
+                likelihood: entry.value.likelihood,
+              ),
+          },
+        );
+        judge.closeRep();
+        await frame(tester, 4.2, pose: shifted);
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        expect(stage(tester).myReps, 0);
+        await frame(tester, 4.4, pose: original);
+        expect(stage(tester).myReps, 0);
+        await tester.tap(find.text('확인 후 계속'));
+        await tester.pump();
+        expect(find.text('확인 후 계속'), findsNothing);
+        await frame(tester, 4.6, pose: original);
+        expect(stage(tester).myReps, 1);
+        await close(tester);
+      },
+    );
+  }
 
   group('before the round', () {
     testWidgets('the stage shows my character against RepBot', (tester) async {
@@ -1229,6 +1284,11 @@ void main() {
       expect(find.text('자세 세팅 중'), findsOneWidget);
       cues.clear();
       await frame(tester, 12);
+      if (viewModel.counter.enablePersonGuard) {
+        expect(find.text('확인 후 계속'), findsOneWidget);
+        await tester.tap(find.text('확인 후 계속'));
+        await frame(tester, 12);
+      }
       await frame(tester, 15);
       await wait(tester, 100);
       expect(find.text('GO!'), findsOneWidget);

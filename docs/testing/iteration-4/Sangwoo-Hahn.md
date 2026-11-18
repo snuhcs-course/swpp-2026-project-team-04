@@ -280,3 +280,151 @@ Analysis passed. The four-file coverage run passed 194 tests with nine existing 
 These are changed-service coverage measurements. Full-project layer coverage requires the separate CI coverage run. The logs are local files under C:/SWPP/iter4/mobile-pose-benchmark. Physical exercise validation after the merge has not been performed.
 
 The complete ordinary-build suite then passed 3,316 tests with ten existing skips using `flutter test --no-pub --concurrency=1`. The comparison helper's 13 self-tests and mobile preparation/inference helper's five self-tests also passed after the merge. These results cover code commit c940d09. The following publication commit updates documentation only.
+
+### S2 experimental continuity warning, 2026-11-16
+
+- Main fe1aad1 merged into the separate S2 branch. The user confirmed owner/PM agreement for the battle and counter files; this prototype is disabled unless `S2_PERSON_GUARD=true` is supplied as a Dart define. No real-person identity guarantee is claimed.
+- Fake-camera tests exercise abrupt changes and confirmation in AI push-up/squat and online push-up, withheld online pose publication, stale or invalid anchors, no-frame watchdog, failed camera retry without losing score, and setup re-entry with zero start delay. An identical-pose test demonstrates why geometric continuity cannot verify identity.
+- Independent read-only Codex review reproduced paths involving stale online publication, failed-retry score loss and setup re-entry; subsequent changes and their tests were rechecked by the reviewer without independently rerunning tests. The author's focused regression run passed 129 tests before the final setup regression was added; that additional regression passed independently.
+- An earlier full test run overlapped source edits and failed two cases against stale compiled code; the corresponding focused tests passed after the fixes. For the final results see the subsequent entry. A previous forced-on integration experiment failed 47 cases; the full suite with the experimental flag enabled has not been established as passing.
+- No independently labelled two-person tracking/repetition dataset or physical-device UAT was available. The approximate 1,464-video landmark-stream screening has no true/false-positive labels and is not an accuracy measurement; details are in person-behind-findings.md.
+
+- Final code verification: `flutter analyze --no-pub` passed; `flutter test --no-pub --concurrency=4 --reporter expanded` passed 3,239 tests with 10 existing skips. A scoped coverage collection failed when the Dart VM service disappeared, so no new coverage percentage is claimed. The server was unchanged.
+
+### S2 review-ready verification, 2026-11-16
+
+Code verified at `992de85`, with current main `fe1aad1` already present. The subsequent publication update changes these personal notes only.
+
+```sh
+cd gymrats_app
+flutter analyze --no-pub
+flutter test --no-pub --coverage --concurrency=1 --reporter expanded test/services/pose/pose_estimator_test.dart test/services/pose/person_behind_estimator_test.dart test/viewmodels/rep_counter_viewmodel_test.dart test/viewmodels/battle_viewmodel_test.dart test/screens/battle_screen_test.dart test/screens/online_preparation_test.dart test/design_tokens_test.dart
+```
+
+- Analysis completed with zero issues. The seven-file regression run passed 258 tests, with zero failures and zero skips. Serial coverage collection succeeded and supersedes the earlier failed scoped collection.
+- The existing full-suite result on this code remains 3,239 passed and 10 existing skips. This publication pass reran the seven selected suites. Dedicated widget tests enable the guard through constructor injection for AI push-up, AI squat and online push-up.
+- The earlier globally forced-on run produced 47 failures. Full-suite validation with `S2_PERSON_GUARD=true` remains open. The experimental build flag defaults to false.
+- An independent read-only Codex reviewer inspected the current diff, guard lifecycle, setup handoff and online publication. It found no actionable defects within the opt-in prototype scope. The reviewer used source inspection and the author's test evidence.
+- Physical two-person UAT, identity-labelled video replay, and missed/extra-repetition rates remain open. Similar or gradual person substitution can pass the geometry check. S1 PR #69 remains the prerequisite for merging S2 PR #72.
+
+#### Changed-file line coverage
+
+| Layer / file | Covered / executable | Coverage | Target | Met |
+|---|---:|---:|---:|---|
+| Service / pose_estimator.dart | 134 / 136 | 98.53% | 85% | yes |
+| ViewModel / rep_counter_viewmodel.dart | 338 / 356 | 94.94% | 90% | yes |
+| ViewModel / battle_viewmodel.dart | 320 / 324 | 98.77% | 90% | yes |
+| View / battle_screen.dart | 184 / 195 | 94.36% | 75% | yes |
+| View / online_battle_screen.dart | 309 / 315 | 98.10% | 75% | yes |
+
+The continuity guard and its anchor implementation cover 84/84 executable lines. Across changed files, ViewModel coverage is 658/680 (96.76%) and View coverage is 493/510 (96.67%). These measurements concern changed files exercised by the seven selected suites. Whole-project layer coverage and server coverage were outside this rerun.
+
+#### Test cases and acceptance mapping
+
+| Layer | Updated or added test file | Verified behavior |
+|---|---|---|
+| Service | person_behind_estimator_test.dart | Synthetic detector target changes, identical-geometry limitation, abrupt jump, short/long loss, explicit fresh confirmation |
+| ViewModel | rep_counter_viewmodel_test.dart | Scoring stops on suspected change, stale anchor, stream watchdog, retry failure preserves score and confirmation |
+| ViewModel | battle_viewmodel_test.dart | Setup-to-round guard handoff and setup re-entry |
+| View | battle_screen_test.dart | AI push-up and squat warning and confirmation |
+| View | online_preparation_test.dart | Online warning, confirmation and withheld pose publication |
+
+The prototype pause-and-confirm path maps to `a suspected person change stops scoring until explicit confirmation`, `a stalled stream warns and requires a fresh confirmed person`, and `experimental online guard pauses and requires confirmation`. The original-user identity-retention acceptance criterion still requires labelled physical testing.
+
+### S2 integration after S1 PR #69, 2026-11-16
+
+The PM merged S1 into main as `d188240`. S2 merged that main revision into its previously verified head `a0f5af6`. The three personal-note conflicts were resolved by retaining both histories and the original prompt wording. Source files merged automatically.
+
+- `flutter analyze --no-pub`, run from `gymrats_app`, passed with zero issues.
+- `flutter test --no-pub --concurrency=1 --reporter expanded` passed 3,329 tests with 10 existing skips and zero failures on the resolved merge tree.
+- The seven-suite serial coverage command from the previous entry passed 258 tests with zero failures and zero skips. Changed-file results remained 134/136 for `pose_estimator.dart`, 338/356 for `rep_counter_viewmodel.dart`, 320/324 for `battle_viewmodel.dart`, 184/195 for `battle_screen.dart`, and 309/315 for `online_battle_screen.dart`. Every changed file remains above its layer target.
+- Independent read-only review confirmed that the S1 judge, adapter and metrics files match incoming main, and that S2 abandonment/reset clears the newly integrated knee-forest history. The reviewer found no actionable integration defect. Both staged-file and branch-diff ownership checks passed for the 14 S2 paths.
+- This merge satisfies the S1 prerequisite. Physical two-person UAT, globally enabled S2 full-suite validation and independently labelled identity-retention measurements remain open.
+
+The earlier successful CI run belongs to `a0f5af6`; CI for the new merge must be checked separately. The local test logs are `C:/SWPP/iter4/s2-post-s1-full-tests.log`, `s2-post-s1-coverage.log` and `s2-post-s1-analyze.log`.
+
+### S2 enabled-build and actual-video follow-up, 2026-11-17
+
+The locally verified app and test files are in commit `f5c78e1` on
+`test/person_behind_user`, based on `6343b63`. Results below were collected
+on those files before committing. The associated PR is [#72](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/72).
+
+The pre-fix enabled full suite reproduced **3,315 passed / 14 failed / 10
+existing skipped**. The older 47-failure figure came from a scoped integration
+run. Four test files now model an ongoing camera stream, retain queued fake
+verdict timing, synchronize clocks and explicitly confirm after intentional
+loss/restart. Helpers that had forced the guard off now honor the build define.
+The sound-file fixture exception was explicitly approved by the user on behalf
+of its owner/PM. Intentional stalls and all original sound/result assertions
+remain covered.
+
+Real video showed a one-frame shoulder-width collapse permanently latching a
+false warning. A failing-before/fixed-after regression drove the service fix:
+withhold anomalous scale-only frames without changing the anchor, allow return
+to the old scale, and require confirmation for a sustained 200 ms change.
+Position jumps and the 750 ms loss threshold are unchanged.
+
+#### Test cases and acceptance mapping
+
+| Layer | File | Evidence |
+|---|---|---|
+| Service | `person_behind_estimator_test.dart` (updated) | Isolated width outlier recovery; sustained scale change; position jump remains latched |
+| ViewModel | `battle_viewmodel_test.dart` (updated) | Realistic camera cadence; explicit confirmation after restart/loss; setup holds and match-clock watchdog |
+| View | `battle_screen_test.dart` (updated) | Guard enabled by define; existing warning/recovery and UI assertions |
+| View | `online_preparation_test.dart` (updated) | Shared fake clock, continuous setup frames, deliberate loss and confirmation, blocked pose publication |
+| View | `sound_battle_screen_test.dart` (updated with approval) | Continuous camera input preserves original sound/result checks |
+| App counter/service replay | `person_behind_video_replay_test.dart` (new) | Nine actual native-video landmark streams through real counter/judges; guarded/unguarded event comparison; actual wrong-target withholding; confirmation restores publication |
+
+- No added/lost reps because of background person **or pause and notify**:
+  `real wrong-person stream is withheld until confirmation`,
+  `S2-SQUAT-MULTI retains the original user and judge events`, the D015G/D015B
+  counterparts, and existing AI/online tracking-warning widget tests.
+- Recovery: `explicit confirmation resumes a returned real-video user` plus
+  fake-camera UI/VM confirmation tests. The native clip proves publication
+  recovery; later poor poses prevent a claim of uninterrupted counting.
+- Transient and sustained scale behavior: the three new service regressions.
+
+#### Final local verification
+
+- `flutter analyze --no-pub`: zero issues.
+- `flutter test --no-pub --dart-define=S2_PERSON_GUARD=true --concurrency=4 --reporter expanded`:
+  **3,342 passed / 0 failed / 10 existing skipped**.
+- `flutter test --no-pub --concurrency=4 --reporter expanded` (ordinary build):
+  **3,342 passed / 0 failed / 10 existing skipped**.
+- New native-video and guard-service tests together: **18 passed**, no skips.
+- The combined coverage runs (parallel full suite and serial scoped suite)
+  lost the VM service while collecting coverage (`getSourceReport: (112)`).
+  Running the nine scoped files in separate processes with the guard enabled
+  yielded **272 passed, zero failed, zero skipped**. Eight files produced
+  nonempty LCOV data. The design-token suite checks source text and produced
+  no executable-line coverage. Each command used `flutter test --no-pub
+  --dart-define=S2_PERSON_GUARD=true --coverage --concurrency=1` with one file.
+- Independent read-only Codex review: **APPROVE for code/fixture/evidence
+  scope**, with final full-run/coverage results pending at review time. It
+  checked native fixture provenance and guard safety and did not rerun the
+  full suite independently. `git diff --check` and ownership checks passed.
+
+Line coverage from the successful scoped runs:
+
+| S2 production file | Covered / executable | Coverage | Layer target |
+|---|---:|---:|---:|
+| `pose_estimator.dart` | 144 / 146 | 98.63% | 85% |
+| `rep_counter_viewmodel.dart` | 345 / 356 | 96.91% | 90% |
+| `battle_viewmodel.dart` | 319 / 324 | 98.46% | 90% |
+| `battle_screen.dart` | 184 / 195 | 94.36% | 75% |
+| `online_battle_screen.dart` | 309 / 315 | 98.10% | 75% |
+
+Actual-video evidence is detailed in `docs/iteration-4/person-behind-findings.md`
+and the fixture README. Five fresh videos supplied 1,344 Android accurate/stream
+frames; four existing hash-matched native captures were reused. The replay
+fixture contains 2,751 frames / 2,685 at or after reviewed anchors. Eight source
+videos (2,528 original frames) were visually reviewed frame by frame by a
+separate Codex agent; O033 had sampled review. This is not human-adjudicated
+ground truth or physical-phone NV21 UAT. In O027, all 256 reviewed wrong-target
+frames were withheld; seven baseline *invalid* events were suppressed. The
+multi-person squat retained the same three valid reps. Blurred controls still
+cause visible pauses and interrupted attempts, explicitly included in the
+report. No population accuracy or general identity-retention rate is claimed.
+
+Logs and local source/capture/observation artifacts:
+`C:/SWPP/iter4/s2-validation/`. Server unchanged; server tests not run.
