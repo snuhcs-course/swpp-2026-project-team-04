@@ -310,3 +310,20 @@ These are the relevant visible user inputs for the knee-rule follow-up. The orig
 ```text
 좋아. 이제 이 기준으로 PR 올려줘. draft로 올리지 마. 전부 동의받았으니까 바로 올리면 돼.
 ```
+
+
+## PR #75 three-frame clarification and evaluation request, 2026-11-18
+
+The following exact visible inputs cover the state-retention decision and publication request.
+
+```text
+근데 오직 한프레임만 무릎뗌이 관측되면 그건 그냥 오류로 보는게 맞지 않을까?
+```
+
+```text
+3프레임간 무릎댐이 인식되면 무릎댐으로 하다가 3프레임 이상 무릎뗌이 없으면 무릎댐으로 작동하는거 맞지?
+```
+
+```text
+좋아. 연속 3프레임 기준으로 수정하고, 2번 평가 수치도 PR #75에 반영해서 커밋하고 푸시해줘.
+```

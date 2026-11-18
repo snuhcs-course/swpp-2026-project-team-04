@@ -520,3 +520,84 @@ enabled by default with PUSHUP_FRAME_KNEE=false as comparison opt-out.
 Logs are C:/SWPP/iter4/frame-knee/pr-final-analyze.log,
 pr-final-default-full.log, pr-final-s2-full.log, pr-error-final-default.log,
 pr-error-final-disabled.log, pr-metrics-final.log and pr-judge-final.log.
+
+
+### PR #75 three-consecutive-frame rule and fixed evaluation, 2026-11-18
+
+Baseline main `9841a60` was replayed in an isolated detached worktree. The frozen
+32 cases and scorer were preserved. All three runs used
+flutter test --no-pub --concurrency=1 --reporter expanded test/ai_eval,
+with PUSHUP_FRAME_KNEE=false added for the disabled variant.
+These are reused in-sample development diagnostics. The original target
+thresholds remain M1>=90%, M2>=90%, M3>=80%.
+
+| Variant | M1 normal counted | M2 incorrect not counted | M3 correct reason |
+|---|---:|---:|---:|
+| main `9841a60` |79.4%(50/63)|90.8%(188/207)|59.9%(124/207)|
+| PR rule disabled |79.4%(50/63)|90.8%(188/207)|59.9%(124/207)|
+| PR three-frame rule enabled |77.8%(49/63)|90.8%(188/207)|59.9%(124/207)|
+
+Each frozen evaluation run passed27 tests. This confirms computation and data
+integrity. The runner's strict threshold mode was off. M1 and M3 remain below
+target. The enabled rule rejects one additional labelled-normal repetition in
+JP/20261101-003825_S23-Ultra_normal. The earlier phone trial used the previous
+endpoint rule. The three-frame retained-mode change has not been phone-tested.
+
+M2 includes one incorrect repetition never closed by the judge. The baseline
+explicitly rejects 187/207 and misses 1/207. Frozen extra events are 0 accepted and
+5 rejected. Historical results below separate misses from explicit rejections.
+
+The old 12 recordings contain 35 normal and 59 incorrect labelled repetitions,
+using mixed label.perRep whenever present and the homogeneous case label
+otherwise. The helper tools/diagnose/knee_rule_eval_test.dart reuses the frozen
+scorer's minimum-edit alignment. No recording labels were edited.
+
+| Historical counts | main | Rule disabled | Rule enabled |
+|---|---:|---:|---:|
+| Normal reps counted /35 |28|28|28|
+| Incorrect reps accepted /59 |3|3|1|
+| Incorrect reps explicitly rejected /59 |56|56|58|
+| Incorrect reps never closed /59 |0|0|0|
+| Incorrect reps with right reason /59 |51|51|52|
+| Extra accepted / rejected |0 /1|0 /1|0 /1|
+
+Per recording, each cell below is accepted/rejected event count. These raw
+counts can include extras and are distinct from the aligned labelled totals.
+
+| Recording | Labelled normal / incorrect | main | Rule disabled | Rule enabled |
+|---|---:|---:|---:|---:|
+|20261026-000317_normal|4/1|4/1|4/1|4/1|
+|20261026-000418_normal|6/0|1/5|1/5|1/5|
+|20261026-000522_normal|7/0|6/1|6/1|6/1|
+|20261026-000615_knees|0/5|0/5|0/5|0/5|
+|20261027-142000_halfRepHeadNod|0/5|2/3|2/3|1/4|
+|20261027-142116_bellyDown|0/5|0/5|0/5|0/5|
+|20261027-142240_knees|5/4|5/4|5/4|5/4|
+|20261027-142341_normal|8/0|8/0|8/0|8/0|
+|20261027-142432_normal|5/0|4/0|4/0|4/0|
+|20261027-145535_knees|0/9|1/8|1/8|0/9|
+|20261027-145620_knees|0/11|0/11|0/11|0/11|
+|20261027-222907_knees|0/19|0/20|0/20|0/20|
+
+Only two historical recording outputs change relative to main. The partial/head
+nod recording rejects one additional event with kneesDown, and the `20261027-145535_knees`
+recording rejects its first previously-accepted event. The latter retains the
+re-enabled nine-knee label assertion. Correct-normal acceptance on these old
+recordings remains 28/35.
+
+Raw reports and logs are in C:/SWPP/iter4/frame-knee/three-frame-review/.
+The main/on/off-report.md files contain every frozen case. The corresponding
+*-old-cases.json files contain aligned historical totals and per-case outputs.
+
+
+Final code verification on the tree committed as `6dad304` after main `9841a60`
+was integrated. `flutter analyze --no-pub` passed. The full default suite passed
+3,602 tests with zero failures and nine existing skips. The S2-enabled focused
+counter/service/battle/online suites passed 147 tests with zero failures and
+zero skips. Separate service coverage runs passed 82 and 123 tests. Merged line
+coverage is 913/933 (97.86%) for pose_metrics.dart and 827/861 (96.05%) for
+rep_judge.dart, above the 85% service target. The three key new regressions
+failed before the fix. Independent read-only Codex review returned APPROVE.
+The added historical evaluator passed against main, enabled and disabled
+variants and also confirmed frozen explicit-reject/miss totals. Frozen test
+files and labels remain byte-identical to main.
