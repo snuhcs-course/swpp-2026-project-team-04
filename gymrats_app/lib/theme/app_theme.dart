@@ -47,9 +47,10 @@ abstract final class AppColors {
   static const fever = Color(0xFF3DE8FF);
 
   /// Red fill, only for the battle's danger edge and its mark on the rules
-  /// screen (the user is about to lose), and the matching radar's blips
-  /// (W2b 1-A: a laser pointer's dots, decoration). Every other problem is
-  /// [warning].
+  /// screen (the user is about to lose), the matching radar's blips (W2b
+  /// 1-A: a laser pointer's dots, decoration), and on the battle's camera
+  /// (A9) the status frame and the setup cue's icon box when the setup is
+  /// not right or a rep earned nothing. Every other problem is [warning].
   static const danger = Color(0xFFFF3B30);
 
   /// Near-black of the game-style screens: edges and icons on a color fill,
@@ -99,8 +100,11 @@ abstract final class AppColors {
   /// and its graph's base line (3:1 on [card]).
   static const chartBar = Color(0xFF8A93A5);
 
-  /// Green outline for a valid standing setup silhouette.
-  static const squatGuideReady = Color(0xFF4CD964);
+  /// Status green on the battle's camera (A9): the frame, the setup cue's
+  /// icon box and hold bar when the setup is right or a rep counted, the
+  /// hip and shoulder lines at the bottom of a rep, and both setup
+  /// silhouettes once the pose fits. A fill or a line, never a text color.
+  static const statusGood = Color(0xFF1FC95B);
 }
 
 /// RepBot, the robot doing push-ups in the lobby, as designed: its own
@@ -352,12 +356,13 @@ extension StageText on TextTheme {
     height: 1.25,
   );
 
-  /// The short label under the reject sign's pictogram, e.g. "더 깊게".
+  /// The short label under the reject sign's pictogram, e.g. "더 깊게":
+  /// large enough to read from 2.5 m (A9 spec 5).
   TextStyle get stageSignLabel => _stage(
     family: AppFonts.display,
-    size: 40,
+    size: 66,
     weight: FontWeight.w400,
-    height: 1.2,
+    height: 1.12,
   );
 
   /// The size [stageBand] and [stageBandKorean] are given at.
@@ -415,6 +420,18 @@ extension VersusText on TextTheme {
 /// line, the buttons and the reconnect band. Unlike [StageText] these follow
 /// the system text size, like the rest of the app.
 extension BattleCameraText on TextTheme {
+  /// A name on a line drawn over the camera (A9 spec 4), e.g. "엉덩이",
+  /// "시작 높이": Plex 13 bold in ink, on a pill of the line's color. It is
+  /// painted on the camera's canvas with the lines, so it is a constant and,
+  /// like them, does not follow the system text size.
+  static const cameraLineLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 1,
+    color: AppColors.ink,
+  );
+
   /// The one-line hint under the camera, e.g. "폰을 더 세워 주세요."
   TextStyle get cameraHint => bodyMedium!.copyWith(
     fontSize: 14,
@@ -430,13 +447,15 @@ extension BattleCameraText on TextTheme {
     color: AppColors.ink,
   );
 
-  /// The large hint over the camera while setting up (W2b 3-B), e.g.
-  /// "팔을 펴고 푸시업 자세를 잡아 주세요.": one line, shrunk to fit its band.
-  TextStyle get cameraSetupHint => bodyMedium!.copyWith(
+  /// The setup cue's two short lines over the camera (A9 spec 2), e.g.
+  /// "한 걸음 / 뒤로": each one line, all of a band's lines shrunk alike to
+  /// fit its width. Read from where the user exercises, so it does not
+  /// follow the system text size.
+  TextStyle get cameraSetupCue => bodyMedium!.copyWith(
     fontFamily: AppFonts.display,
-    fontSize: 26,
+    fontSize: 76,
     fontWeight: FontWeight.w400,
-    height: 1.2,
+    height: 0.98,
     letterSpacing: 0,
     color: AppColors.ink,
     leadingDistribution: TextLeadingDistribution.even,
@@ -987,4 +1006,152 @@ extension FeedbackText on TextTheme {
     fontWeight: FontWeight.w700,
     height: 1,
   );
+}
+
+/// The text styles of the character's talk (A10: the report's character
+/// card, the talk screen and its cards, UxDlg / UxGfx / UxGoal), in ink
+/// unless a screen picks a quieter color. Like the rest of the app they
+/// follow the system text size.
+extension CoachText on TextTheme {
+  /// The name tag over the dialog box: Do Hyeon 25 on a 40 band.
+  TextStyle get coachName => headlineSmall!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 25,
+    fontWeight: FontWeight.w400,
+    height: 1.6,
+    color: AppColors.ink,
+  );
+
+  /// The name tag on the report's card: Do Hyeon 19 on a 28 band.
+  TextStyle get coachCardName =>
+      coachName.copyWith(fontSize: 19, height: 28 / 19);
+
+  /// A line of the talk: 17.5, semibold, loose lines, a little tight.
+  TextStyle get coachLine => bodyLarge!.copyWith(
+    fontSize: 17.5,
+    fontWeight: FontWeight.w600,
+    height: 1.62,
+    letterSpacing: -0.2,
+    color: AppColors.ink,
+  );
+
+  /// The report card's sentence: 15, semibold.
+  TextStyle get coachCardLine => bodyLarge!.copyWith(
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 1.5,
+    color: AppColors.ink,
+  );
+
+  /// The pill at the top and the report card's link: 12, bold.
+  TextStyle get coachSmallBold => bodySmall!.copyWith(
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
+  /// The hint under the dots and a card's small line: 12.
+  TextStyle get coachSmall =>
+      bodySmall!.copyWith(fontSize: 12, height: 1.35, color: AppColors.ink);
+
+  /// A button's label: 건너뛰기 at the top, 이야기 듣기, the end buttons.
+  TextStyle get coachButton => bodyMedium!.copyWith(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
+  /// The report card's 건너뛰기: 13, bold, underlined.
+  TextStyle get coachLink => bodySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    decoration: TextDecoration.underline,
+    color: AppColors.textSecondary,
+  );
+
+  /// A goal choice's title: 15, bold.
+  TextStyle get coachChoice => bodyLarge!.copyWith(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
+    color: AppColors.ink,
+  );
+
+  /// A card's label, e.g. "이번 판 인정 횟수": 13, bold.
+  TextStyle get coachCardLabel => bodySmall!.copyWith(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textSecondary,
+  );
+
+  /// The axis and legend letters of a card: 11.
+  TextStyle get coachAxis => bodySmall!.copyWith(
+    fontSize: 11,
+    height: 1.3,
+    color: AppColors.textMuted,
+  );
+
+  /// The big count on the score card: Oxanium 800, 64.
+  TextStyle get coachBigNumber => displayLarge!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 64,
+    fontWeight: FontWeight.w800,
+    height: 0.9,
+    letterSpacing: -2,
+    color: AppColors.ink,
+  );
+
+  /// A number on a chip or over a bar: Oxanium 700, 13.
+  TextStyle get coachChipNumber => bodySmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 16 / 13,
+    color: AppColors.ink,
+  );
+
+  /// The chip against the average on the score card, e.g. "+2회": Oxanium
+  /// 700, 15.
+  TextStyle get coachDifference =>
+      coachChipNumber.copyWith(fontSize: 15, height: 1.3);
+
+  /// The "회" after the big count on the score card: 18, bold.
+  TextStyle get coachUnit => titleMedium!.copyWith(
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
+  /// "× 3" on the form card: Oxanium 800, 20.
+  TextStyle get coachTimes => titleMedium!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
+    color: AppColors.ink,
+  );
+
+  /// The rejection's short words on the form card: Do Hyeon 28.
+  TextStyle get coachRejectWord =>
+      coachName.copyWith(fontSize: 28, height: 1.2);
+
+  /// A card's sentence: 13, loose lines.
+  TextStyle get coachCardSentence => bodySmall!.copyWith(
+    fontSize: 13,
+    height: 1.45,
+    color: AppColors.textSecondary,
+  );
+
+  /// "6 HIT" on the combo card: Oxanium 800, 62.
+  TextStyle get coachHit => displayLarge!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 62,
+    fontWeight: FontWeight.w800,
+    height: 74 / 62,
+    letterSpacing: 1,
+    color: AppColors.ink,
+  );
+
+  /// The goal's title on the goal card: Do Hyeon 32.
+  TextStyle get coachGoalTitle =>
+      coachName.copyWith(fontSize: 32, height: 1.15);
 }

@@ -745,3 +745,157 @@ team plan, one day before the iteration's official start. Its prompts from that 
 
 ### f. Manual fixes and why
 - None. No AI-generated line was edited by hand, so A6 adds no manual-fix marker.
+
+## W9 `feat/setup_readability` – setup and battle cues readable from a distance (A9, UAT cycle 1, team order #19), 2026-11-17
+
+### a. Where AI was used
+- Claude Code (Opus 5.5, VS Code), in one session on 11-17.
+  - It applied the 11-17 harness update to the local `task.md` and `progress.md`.
+  - It read the A9 spec and design UxSq A2 and checked the spec's file list against the step's allowed files. It found two blocked files before writing code.
+  - It asked the spec's four questions and three more, and wrote the answers into `task.md`.
+  - It wrote the code: the short-cue model `gymrats_app/lib/models/setup_hint_short.dart` (commit `a3db21a`), and in `20c623f` the setup band, 600 ms hold, status frame and moved camera switch (`battle_camera_area.dart`), the round's frame (`battle_fx_motion.dart`), the larger reject sign, the screens' wiring, the theme tokens, and the bold lines, joints and silhouettes in 한상우's files (drawing values only).
+  - It wrote the tests: 4 new test files and 12 changed ones.
+  - It ran the reviewer subagent and drafted these notes and the testing notes.
+- **Not done by AI:**
+  - The look itself: the user chose variant A2 in Claude Design before the session.
+  - All seven decisions and the two exception approvals (the user's own W2 files).
+  - The phone check, which is still to do.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-17 12:00] (pasted; item 2 of the prompt) "2. 명세의 "고칠 파일"을 ownership.json 허용 목록과 맞춰 보고, 막히는 파일이 있으면 코드를 쓰기 전에 목록으로 알려 줘. 상우 파일은 그리는 값만 고칠 수 있다는 조건도 지켜."
+- [Woohyun Song, 11-17] This was an answer in the agent's question dialog, so it is not in the Prompt Log: "시안대로 위쪽, 시안을 지금 확인해보니까 최근 업데이트에서 삭제했던 '준비' 버튼이 다시 들어가있는데, '준비' 버튼이 없는 현재 main 상태대로 만들어줘."
+- [Woohyun Song, 11-17 16:10] "커밋하고 푸시해. 이어서 PR 올려", then "커밋하고 푸시까지만 해."
+
+### c. What AI did well
+- **Found the blocked files before writing code.** The spec asks for a 4 ink edge on the sign's label band, but `BattleBand`'s edge was a constant 3 in `battle_banner.dart`, outside W9's list. It also found that one lobby test check would break. Both became exceptions the user approved, and nothing had to be undone later.
+- **Answered spec question 3 by reading the judge.**
+  - In `rep_judge.dart`, the push-up bottom is a nose drop of 1.1 shoulder widths and a shoulder drop of 0.68, both scaled by a per-user `_travelScale` (1 or 0.64), or a deep elbow.
+  - The snapshot does not expose that scale, so an exact target line would need 한상우's file.
+  - The user then chose to leave the target line out.
+- **Measured with the real fonts before building on the spec's floor.** A test with Do Hyeon loaded showed that the text room is 218 on a 360-wide phone. The missing-part cues do not fit there at the spec's least size of 56. The agent asked instead of overflowing or quietly going below 56. That became decision 7: '안' moves to the second line.
+- **Saw a hidden fact the spec assumed wrongly.** The battle camera's dots were `PoseCameraView`'s own painter, not `LandmarkOverlay`, so the bold flag had to switch `PoseCameraView` over to the overlay.
+- **Caught two drawing problems in its own diff before the review.**
+  - The amber knee line was drawn over the green hip line, so the bottom of a squat would not have shown green.
+  - At the top of a push-up the "어깨" pill covered the "시작 높이" pill.
+
+### d. Hallucinations / errors
+- **A wrong width in a question to the user.** The first measurement drew '·' in the test placeholder font, because Do Hyeon has no '·'. So the agent told the user that '어깨·팔꿈치가' is 299 at 56, and that the two-part cue would shrink to about 41.
+  - With the dot in Plex the real values are about 270 and 44.1.
+  - The real-font widget test caught it, and `task.md` and the report were corrected.
+  - The decision did not change: 270 still does not fit in 218.
+- **The first edit of the local `task.md` / `progress.md` turned every line ending into CRLF,** because Python's text mode on Windows writes CRLF. The diff check caught it at once; the files were restored from the backup and rewritten with LF.
+- **Its own tests ignored its own 600 ms hold.** In the first run of the new camera-area tests 8 failed: 5 because the loops pumped one cue after another faster than the hold, so they saw the old cue; 2 on line-height tolerances (each line is laid out to whole points); 1 on a tap where the moved camera switch had been. The loops now clear the band between cues, and the hold has tests of its own.
+- **A full test run gave 4 false failures** in the two overlay test files, because the agent edited those files while the run was going. A clean full run after the review had 3387 passed, 0 failed and 10 skipped.
+- **Review run 1: CHANGES_REQUESTED.**
+  - 1 Major: a raw `fontSize: 13` for the pill names in two painters. The fix is a theme constant, `BattleCameraText.cameraLineLabel`, plus `AppSpacing` insets.
+  - 4 Minor: the bold flag was untested; the online squat round had no test for its missing line; the silhouettes' under-line was translucent black instead of ink; the pills covered the line starts.
+  - The re-check returned APPROVE.
+
+### e. Prompt revisions
+- **The band's place and the design's button:**
+  - Before (the spec's question 2): keep the band at the top as in the design.
+  - After (the user's dialog answer above): the design still drew the 준비 button that A6 removed, so the user told the agent to follow `main` instead.
+  - Why it worked: the design file is meant to win over the spec's tables. Without this answer, the agent would have had to guess between the design and A6.
+- **The end of the task:**
+  - Before (11-17 16:10): "커밋하고 푸시해. 이어서 PR 올려". The user stopped it while the agent was loading the commit rules.
+  - After: "커밋하고 푸시까지만 해."
+  - The PR waits for the user.
+
+### f. Manual fixes and why
+- None. No AI-generated line was edited by hand, so W9 adds no manual-fix marker.
+
+### Takeaway
+- Before writing a size floor into a spec, check it with the real fonts and the narrowest target phone.
+- Do not edit files while a full test run is going.
+
+### W9 follow-up, 2026-11-17 ~ 11-18: PR #73 and the merge of PR #72 (S2 person check)
+**a. Where AI was used** (Claude Code, Opus 5.5, the same session)
+- It wrote the body of PR #73 and opened the PR with `gh`, from the pushed branch, without switching branches. The user's W10 work was uncommitted in the working tree at the time.
+- It merged `origin/main` (`e0bcae2`, PR #72) into W9 (`b6bd3d3`) and resolved the conflict in `test/screens/online_preparation_test.dart`.
+- It measured the S2 notice against W9's band, frame and camera switch with a temporary test, which it removed afterwards.
+- It wrote the fix and four tests (`79c2e80`), ran the reviewer, and wrote these notes.
+- **Not done by AI:** the choice of the fix (the user's answer in the question dialog).
+
+**b. Prompt history** (the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-17 19:34] (excerpt) "W9 PR 올려 줘. 지금 작업 폴더에는 W10 브랜치(feat/coach_feedback)의 커밋 안 한 변경이 있으니까 브랜치를 바꾸거나 checkout 하지 말고, 이미 push된 feat/setup_readability 로 PR만 만들어. …"
+- [Woohyun Song, 11-18 11:37] (excerpt) "… #72가 카메라 칸에 '사람을 다시 확인해 주세요' 안내와 '확인 후 계속' 버튼을 넣었으니, W9의 안내 띠·테두리·카메라 전환 버튼과 겹치지 않는지도 확인해. …"
+- [Woohyun Song, 11-18] Answer in the agent's question dialog (not in the Prompt Log): "안내 중엔 띠 숨김 (Recommended)".
+
+**c. What AI did well**
+- **It measured the layout instead of reading the code and assuming.**
+  - At 1.0x and 1.3x text, nothing overlapped. Only at 2.0x text in the setup did the band cover the notice's first line.
+  - It also found that the band contradicted the notice (카메라 / 앞으로).
+  - The user then had a concrete case to decide on.
+- **It kept both sides of the conflict.** It used main's frame-feeding `wait()` around W9's cue checks, and the reviewer found nothing lost.
+- **It made sure the new tests can fail.** With the fix taken out of each screen, that screen's new tests failed.
+
+**d. Hallucinations / errors**
+- **Its first AI-battle test was wrong about what follows the confirmation.**
+  - It expected the band to come back after 확인 후 계속. The pose was already held, so the countdown started at once and the band was correctly gone.
+  - It also tapped before the pose was back in view, while the S2 test does it the other way round.
+  - Both were caught when the test ran and fixed the same way the S2 test does them.
+- **Its change made one of main's tests fail when the S2 flag is on.**
+  - The online test 'losing the pose within 3 seconds cancels; it starts over' read the cue with `!`, and the cue can now be missing while tracking is paused.
+  - The agent had run the suite only with the flag off. The reviewer ran `online_preparation_test.dart` with `--dart-define=S2_PERSON_GUARD=true` and caught it (Major).
+  - The fix makes the check null-safe. The agent then ran the full suite with the flag off and on, and both runs passed: 3417 passed, 0 failed, 10 skipped.
+- **A `sed -i` edit rewrote a CRLF test file with LF line endings.** This was harmless, because the index is LF.
+
+**e. Prompt revisions**
+- None in this follow-up. The user's first prompt said only "check" the overlap. The agent measured the overlap and asked what to do before changing anything.
+
+**f. Manual fixes and why**
+- None.
+
+**Takeaway**
+- When a merge brings in a feature behind a build flag, run the full suite with the flag on as well.
+
+## W10 – the character's talk after a battle and the next goal (A10), 2026-11-17
+
+### a. Where AI was used
+- Claude Code (Opus 5.5, VS Code) in one session. It read the A10 spec and the designs (UxDlg variant A, UxGfx, UxGoal report), checked the spec's files against the step's file list, and asked the spec's five questions and three more. Then it wrote the code and the tests, ran the reviewer subagent, and drafted these notes, the testing notes and the PR body.
+  - `d3064dd`: the talk's text styles (`CoachText` at the end of `gymrats_app/lib/theme/app_theme.dart`).
+  - `6c1a50c`: the rules: `lib/services/feedback/coach_script.dart` (the talk as a list of steps, the pace per second, the two goals), `goal_store.dart`, `lib/models/feedback_goal.dart`, `lib/utils/korean_josa.dart`, and their tests.
+  - `4e467ff`: the talk screen (`lib/screens/coach_screen.dart`, `lib/viewmodels/coach_viewmodel.dart`, `lib/widgets/coach_stage.dart`, `coach_graphics.dart`, `coach_parts.dart`), the report's character card (`result_cards.dart`, `result_report.dart`, `result_screen.dart`), the `/coach` route and the goal store provider in `main.dart`, and the tests.
+- The reviewer subagent (same model) reviewed the change twice: run 1 CHANGES_REQUESTED, re-check APPROVE.
+- **Not done by AI:** choosing dialogue A in the design canvas (the user, with the team's OK), the nine answers (server history, first battle, online too, the tip moved into the talk, the pill, the two test-file exceptions, the card's place, two pages for the form step, the drop line), and the phone check (still to do).
+
+### b. Prompt history (the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-17 16:38] (pasted; excerpt) "4. W11에서 이 대본 함수에 \"지난번 목표 확인\" 단계를 더할 예정이니까, 단계를 나중에 끼워 넣기 쉬운 구조로 만들어. 5. 명세 끝의 \"사용자에게 물어볼 것\"을 하나씩 물어보고, 답은 task.md W10 \"Decisions\"에 오늘 날짜로 적어."
+- [Woohyun Song, 11-17 16:47, 16:50, 19:05] (answers in the agent's question dialogs; not prompts, so not in the Prompt Log; written in `task.md` W10 decisions 1–9) "서버 기록" (question 1, 16:47), "Split into two pages (Recommended)" (the form step, 16:50), "이번 판 초반과 비교한 대사로 (Recommended)" (after review run 1, 19:05).
+- [Woohyun Song, 11-17 19:46] "커밋하고 push해. 순서는 네가 말한 대로 해 줘(origin/main 머지 → 테스트 다시 → --check-diff → 수업 노트 → push)."
+
+### c. What AI did well
+- **Found the blocked files before writing code.** Renaming the report's link to '자세 기록 표로 보기' (spec 2) breaks five checks in two earlier test files (W7, W8). The agent listed them with line numbers first, and the user approved the two exceptions (link text only).
+- **Measured the four-line rule before building it.** Spec 4.2 item 3 put the rejection, the tiring sentence and the fix in one line. With the app's font that is about 80 characters, 5–6 lines in the 360 phone's box. The agent asked, and the user chose two pages. A widget test with the app's fonts now checks every line of a squat and a push-up battle, for all five characters (`coach_screen_test.dart`, 'every line of a squat and a push-up battle, for every character').
+- **The rules give the design's numbers.** The design's example battle, rebuilt in a test, gives "스쿼트 20회 인정받기" and "후반 15초에 8회 이상 / 이번 판 후반은 6회", as in UxDlg (`coach_script_test.dart`, group 'the design\'s battle against five earlier ones (spec 4.2)').
+- **Reused the game's combo rule** (`PlayerGameScore`) instead of writing a second one, and tested both on the same reps.
+- **A control test for the keep-all wrap.** Flutter breaks lines between any two Hangul syllables. The agent added word joiners and a test that shows both: without them the line breaks inside a word, with them only at spaces.
+
+### d. Hallucinations / errors
+- **A runtime type error in the first draft.** `_mean` used `reduce` with a `num` function on a list of `double`s, so the script threw and the report card never got its line count. The result screen's widget tests caught it (the count stayed null); fixed with `fold`.
+- **Wrong test data.** A combo-goal test put all six reps in the first 6 s, which is also "slowed down later", so it got the later-half goal. The test caught it; the data was changed.
+- **Layout misses caught by the agent's own fit tests:** the pace bars did not count their numbers growing with larger text (1 px and 4 px overflows), and the score card's number overflowed at 320 wide.
+- **Review run 1: CHANGES_REQUESTED** with 4 Major and 4 Minor findings, all real:
+  - The 30% and 10% rules missed exact boundaries by float rounding (`[5,5,4,4,3,3]` gave 0.7000…1).
+  - A goal choice had no screen-reader tap action.
+  - At 320 x 640 with 1.3x text the dialog box covered '사양할래'. The fit test only looked for exceptions and tapped the first goal, so it could not see it.
+  - The chips had gray text on amber and lime.
+  - One Minor was a gap in the spec (a 92% late drop praised as an even pace), which went to the user (decision 9).
+- **Re-check: APPROVE with 2 Minor.** One was a boundary test that could not fail: its inputs were exact in floating point, so removing the tolerance changed nothing. The agent searched for inputs that do round (33 vs 30 in 5 s slices, 297 vs 330 in 50 s slices). It then checked that removing the tolerance on each side fails the test.
+- **Process slip:** the extra question dialog after the file check was written in English, while the user's replies are in Korean.
+
+### e. Prompt revisions
+- **The first message (INDEX.md's template → the user's prompt):**
+  - Before (the template in `.claude/design/uat1/INDEX.md`): "명세의 \"고칠 파일\"을 ownership.json 허용 목록과 맞춰 보고, 막히는 파일이 있으면 코드를 쓰기 전에 목록으로 알려 줘."
+  - After (11-17 16:38): the same, plus where to branch from ("W9 브랜치가 아니라 최신 origin/main"), the three `task.md` conditions (`main.dart` only the route and the provider, new files only in 진영's folder, `lib/utils/` in the design-doc list), and "단계를 나중에 끼워 넣기 쉬운 구조로".
+  - Why it worked: the branch came from `main` though W9 was not merged yet, `main.dart` got only its two lines, and the talk became a list of steps, so W11 can put its check in front (`coach_script_test.dart`, 'a step put in front adds its lines first; one with nothing to say adds none').
+- **The pace rule (spec 4.2 item 2 → decision 9):**
+  - Before: "그 밖에는 \"처음부터 끝까지 고른 속도였어. 좋다{e}!\"".
+  - After (the user, after review run 1): a later part 30% or more slower than its own start gets the drop line, also with a usual pace.
+  - Why: the literal rule praised a battle whose weak-point goal was its later half.
+
+### f. Manual fixes and why
+- None. No AI-generated line was edited by hand, so W10 adds no manual-fix marker.
+
+### Takeaway
+- Fit tests should tap every control they claim fits, not only check that nothing throws. And a boundary test must use inputs where the boundary is really at risk.

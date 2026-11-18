@@ -13,7 +13,7 @@ import 'result_cards.dart';
 /// Everything the result report draws, as the screen is given it. The
 /// report computes nothing: it only words and draws these values.
 ///
-/// A null [best], [recent] or [tip] leaves its card out; while
+/// A null [best], [recent] or [coach] leaves its card out; while
 /// [comparisonLoading], one placeholder stands where [best] and [recent] go.
 class ResultReportData {
   const ResultReportData({
@@ -33,7 +33,7 @@ class ResultReportData {
     this.comparisonLoading = false,
     this.best,
     this.recent,
-    this.tip,
+    this.coach,
   });
 
   final MatchOutcome outcome;
@@ -82,13 +82,16 @@ class ResultReportData {
   /// empty list of scores leaves the card out too.
   final ResultRecent? recent;
 
-  /// One thing to try next time; null without one.
-  final ResultTip? tip;
+  /// The character card (A10): the way into the talk about this battle;
+  /// null without a form report.
+  final ResultCoachEntry? coach;
 }
 
 /// The result report (BResult): the verdict, both scores and the user's
-/// reps, then the cards the data has, and 홈으로 / 다시 대결 at the bottom.
-/// On a short screen or with large text the page scrolls.
+/// reps, the character card with 자세 기록 표로 보기 under it (A10, as the
+/// UxGoal report places it), then the cards the data has, and 홈으로 /
+/// 다시 대결 at the bottom. On a short screen or with large text the page
+/// scrolls.
 class ResultReport extends StatelessWidget {
   const ResultReport({
     super.key,
@@ -96,6 +99,8 @@ class ResultReport extends StatelessWidget {
     required this.onGoHome,
     required this.onRematch,
     required this.onOpenFeedback,
+    this.onHearCoach,
+    this.onSkipCoach,
     this.seat,
   });
 
@@ -111,14 +116,20 @@ class ResultReport extends StatelessWidget {
   /// 다시 대결.
   final VoidCallback onRematch;
 
-  /// 자세 피드백 전체 보기, shown when [ResultReportData.hasFeedback].
+  /// 자세 기록 표로 보기, shown when [ResultReportData.hasFeedback].
   final VoidCallback onOpenFeedback;
+
+  /// The character card's 이야기 듣기 and 건너뛰기 (to the goal question);
+  /// the card shows with [ResultReportData.coach] when both are given.
+  final VoidCallback? onHearCoach;
+  final VoidCallback? onSkipCoach;
 
   @override
   Widget build(BuildContext context) {
     final best = data.best;
     final recent = data.recent;
-    final tip = data.tip;
+    final coach = data.coach;
+    final hear = onHearCoach, skip = onSkipCoach;
     final feedback = data.hasFeedback ? onOpenFeedback : null;
     final seat = this.seat;
     final headline = ResultHeadline(outcome: data.outcome, byKo: data.byKo);
@@ -162,21 +173,28 @@ class ResultReport extends StatelessWidget {
           validReps: data.myValidReps,
           invalidReps: data.myInvalidReps,
         ),
+        if (coach != null && hear != null && skip != null) ...[
+          const SizedBox(height: AppSpacing.s16),
+          ResultCoachCard(entry: coach, onListen: hear, onSkip: skip),
+        ],
+        if (feedback != null) ResultFeedbackLink(onPressed: feedback),
+        // The link is a tap target tall: the next card sits close under it,
+        // as in the design (UxGoal report).
         if (data.comparisonLoading) ...[
-          const SizedBox(height: AppSpacing.s12),
+          SizedBox(height: feedback != null ? AppSpacing.s4 : AppSpacing.s12),
           const ResultComparisonPlaceholder(),
         ],
         if (best != null) ...[
-          const SizedBox(height: AppSpacing.s12),
+          SizedBox(height: feedback != null ? AppSpacing.s4 : AppSpacing.s12),
           ResultBestCard(best),
         ],
         if (recent != null && recent.scores.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s12),
+          SizedBox(
+            height: feedback != null && best == null
+                ? AppSpacing.s4
+                : AppSpacing.s12,
+          ),
           ResultRecentCard(recent),
-        ],
-        if (tip != null || feedback != null) ...[
-          const SizedBox(height: AppSpacing.s12),
-          ResultTipCard(tip: tip, onOpenFeedback: feedback),
         ],
       ],
       fill: const SizedBox.shrink(),

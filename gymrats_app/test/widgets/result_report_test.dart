@@ -36,7 +36,7 @@ ResultReportData _data({
   int? myInvalidReps = 0,
   ResultNewBest? best,
   ResultRecent? recent,
-  ResultTip? tip,
+  ResultCoachEntry? coach,
 }) => ResultReportData(
   outcome: outcome,
   byKo: byKo,
@@ -54,7 +54,7 @@ ResultReportData _data({
   comparisonLoading: comparisonLoading,
   best: best,
   recent: recent,
-  tip: tip,
+  coach: coach,
 );
 
 const _best = ResultNewBest(previous: 185, current: 240, gain: 55);
@@ -65,14 +65,16 @@ final _recent = ResultRecent(
   averageCount: 5,
   difference: 104,
 );
-const _tip = ResultTip(
-  title: '팔꿈치를 90°까지 굽혀 보세요',
-  reason: '이번 판 평균 123° · 더 깊게 내려가면 Excellent +15',
+const _coach = ResultCoachEntry(
+  characterId: 'seal',
+  name: '물렁범',
+  ending: '범',
+  lineCount: 4,
 );
 
 /// The design's whole report, every card on.
 ResultReportData _full() =>
-    _data(hasFeedback: true, best: _best, recent: _recent, tip: _tip);
+    _data(hasFeedback: true, best: _best, recent: _recent, coach: _coach);
 
 var _fontsLoaded = false;
 
@@ -135,6 +137,8 @@ void main() {
           onGoHome: () => taps.add('home'),
           onRematch: () => taps.add('rematch'),
           onOpenFeedback: () => taps.add('feedback'),
+          onHearCoach: () => taps.add('hear'),
+          onSkipCoach: () => taps.add('skip'),
         ),
       ),
     );
@@ -625,37 +629,62 @@ void main() {
       await show(tester, _data());
       expect(find.byType(ResultBestCard), findsNothing);
       expect(find.byType(ResultRecentCard), findsNothing);
-      expect(find.byType(ResultTipCard), findsNothing);
-      expect(find.text('자세 피드백 전체 보기'), findsNothing);
+      expect(find.byType(ResultCoachCard), findsNothing);
+      expect(find.text(ResultFeedbackLink.label), findsNothing);
     });
 
-    testWidgets('with feedback and no tip, only the feedback link shows', (
+    testWidgets('with feedback and no character card, only the link shows', (
       tester,
     ) async {
       await show(tester, _data(hasFeedback: true));
-      expect(find.byType(ResultTipCard), findsOneWidget);
-      expect(find.text('다음 판 한 가지'), findsNothing);
-      await tester.tap(find.text('자세 피드백 전체 보기'));
+      expect(find.byType(ResultCoachCard), findsNothing);
+      await tester.tap(find.text(ResultFeedbackLink.label));
       expect(taps, ['feedback']);
     });
 
-    testWidgets('each card the values have, in the design\'s order', (
+    testWidgets('the character card goes right under the scores, its link '
+        'under it at the right, then the other cards (UxGoal report, task.md '
+        'W10 decision 7)', (tester) async {
+      await show(tester, _full());
+      final scores = tester.getRect(find.byType(ResultScoreRow));
+      final coach = tester.getRect(find.byType(ResultCoachCard));
+      final link = tester.getRect(find.byType(TextButton).last);
+      final best = tester.getRect(find.byType(ResultBestCard));
+      final recent = tester.getRect(find.byType(ResultRecentCard));
+      expect(coach.top, closeTo(scores.bottom + AppSpacing.s16, 0.5));
+      expect(
+        tester.getRect(find.byType(ResultFeedbackLink)).top,
+        closeTo(coach.bottom, 0.5),
+      );
+      expect(link.right, closeTo(coach.right, 0.5));
+      // The link is a tap target tall; the next card sits close under it.
+      expect(
+        best.top,
+        closeTo(
+          tester.getRect(find.byType(ResultFeedbackLink)).bottom +
+              AppSpacing.s4,
+          0.5,
+        ),
+      );
+      expect(recent.top, best.bottom + AppSpacing.s12);
+      // The tip left the report: the talk says it (task.md W10 decision 4).
+      expect(find.text('다음 판 한 가지'), findsNothing);
+    });
+
+    testWidgets('이야기 듣기 and 건너뛰기 on the card call their actions', (
       tester,
     ) async {
       await show(tester, _full());
-      final best = tester.getRect(find.byType(ResultBestCard));
-      final recent = tester.getRect(find.byType(ResultRecentCard));
-      final tip = tester.getRect(find.byType(ResultTipCard));
-      expect(best.top, greaterThan(tester.getRect(find.text('240')).bottom));
-      expect(recent.top, best.bottom + AppSpacing.s12);
-      expect(tip.top, recent.bottom + AppSpacing.s12);
-      expect(find.text('팔꿈치를 90°까지 굽혀 보세요'), findsOneWidget);
+      await tester.tap(find.text('이야기 듣기'));
+      await tester.tap(find.text('건너뛰기'));
+      await tester.tap(find.text(ResultFeedbackLink.label));
+      expect(taps, ['hear', 'skip', 'feedback']);
     });
 
     testWidgets('a card without a value leaves no gap: the next moves up', (
       tester,
     ) async {
-      await show(tester, _data(recent: _recent, tip: _tip));
+      await show(tester, _data(recent: _recent));
       expect(find.byType(ResultBestCard), findsNothing);
       expect(
         tester.getRect(find.byType(ResultRecentCard)).top,
@@ -667,10 +696,10 @@ void main() {
     });
 
     testWidgets('while the earlier battles load, one placeholder stands under '
-        'the scores, and the tip card follows it', (tester) async {
+        'the character card and its link', (tester) async {
       await show(
         tester,
-        _data(comparisonLoading: true, hasFeedback: true, tip: _tip),
+        _data(comparisonLoading: true, hasFeedback: true, coach: _coach),
       );
       final placeholder = tester.getRect(
         find.byType(ResultComparisonPlaceholder),
@@ -678,13 +707,10 @@ void main() {
       expect(
         placeholder.top,
         closeTo(
-          tester.getRect(find.byType(ResultScoreRow)).bottom + AppSpacing.s12,
+          tester.getRect(find.byType(ResultFeedbackLink)).bottom +
+              AppSpacing.s4,
           0.5,
         ),
-      );
-      expect(
-        tester.getRect(find.byType(ResultTipCard)).top,
-        closeTo(placeholder.bottom + AppSpacing.s12, 0.5),
       );
       expect(find.byType(ResultBestCard), findsNothing);
       expect(find.byType(ResultRecentCard), findsNothing);
@@ -766,12 +792,34 @@ void main() {
       }
     });
 
-    testWidgets('every card fits a 360x780 phone with the buttons at the '
-        'bottom, no scrolling', (tester) async {
-      await show(tester, _full());
+    // A10 put the 176-high character card where the shorter tip card was.
+    // The design's report (UxGoal report: the character card and the
+    // latest battles) still fits; with a new personal best as well the
+    // page scrolls a little (W6 had every card fit).
+    testWidgets('the design\'s report fits a 360x780 phone with the buttons '
+        'at the bottom, no scrolling', (tester) async {
+      await show(
+        tester,
+        _data(hasFeedback: true, recent: _recent, coach: _coach),
+      );
       expect(tester.takeException(), isNull);
       final scroll = tester.state<ScrollableState>(find.byType(Scrollable));
       expect(scroll.position.maxScrollExtent, 0);
+      expect(
+        tester.getRect(find.byType(ResultButtons)).bottom,
+        closeTo(780 - AppSpacing.s24, 0.5),
+      );
+    });
+
+    testWidgets('with a new best as well, it scrolls down to the buttons', (
+      tester,
+    ) async {
+      await show(tester, _full());
+      expect(tester.takeException(), isNull);
+      final scroll = tester.state<ScrollableState>(find.byType(Scrollable));
+      expect(scroll.position.maxScrollExtent, greaterThan(0));
+      scroll.position.jumpTo(scroll.position.maxScrollExtent);
+      await tester.pump();
       expect(
         tester.getRect(find.byType(ResultButtons)).bottom,
         closeTo(780 - AppSpacing.s24, 0.5),

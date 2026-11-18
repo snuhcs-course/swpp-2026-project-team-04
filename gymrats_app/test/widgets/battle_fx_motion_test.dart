@@ -2598,4 +2598,97 @@ void main() {
       }
     });
   });
+
+  group('the camera\'s status frame (A9 spec 3)', () {
+    BattleStageEvent rejected() =>
+        _rep(BattleSide.me, null, reason: RejectReason.kneesDown);
+    BattleStageEvent average() => _rep(
+      BattleSide.me,
+      GameGrade.average,
+      points: 5,
+      reason: RejectReason.insufficientDepth,
+    );
+
+    test('green for 700 ms after my rep counted, good or excellent', () {
+      for (final grade in [GameGrade.good, GameGrade.excellent]) {
+        final fx = BattleFxTimeline()
+          ..rep(_rep(BattleSide.me, grade, points: 10, combo: 1), 1000);
+        expect(fx.frame(999).cameraFrame, isNull);
+        expect(fx.frame(1000).cameraFrame, BattleFxCameraFrame.good);
+        expect(fx.frame(1699).cameraFrame, BattleFxCameraFrame.good);
+        expect(fx.frame(1700).cameraFrame, isNull);
+      }
+      expect(BattleFx.goodFrameMs, 700);
+    });
+
+    test('amber while the sign of my average rep is up, red while that of '
+        'my rejected one is', () {
+      final fx = BattleFxTimeline()..rep(average(), 0);
+      expect(fx.frame(0).cameraFrame, BattleFxCameraFrame.average);
+      expect(fx.frame(1299).sign, isNotNull);
+      expect(fx.frame(1299).cameraFrame, BattleFxCameraFrame.average);
+      expect(fx.frame(1300).sign, isNull);
+      expect(fx.frame(1300).cameraFrame, isNull);
+      fx.rep(rejected(), 2000);
+      expect(fx.frame(2000).cameraFrame, BattleFxCameraFrame.rejected);
+      expect(fx.frame(3299).cameraFrame, BattleFxCameraFrame.rejected);
+      expect(fx.frame(3300).cameraFrame, isNull);
+      expect(BattleFx.signMs, 1300);
+    });
+
+    test('a rep that did not count and put up no sign leaves no frame', () {
+      final fx = BattleFxTimeline()..rep(_rep(BattleSide.me, null), 0);
+      expect(fx.frame(100).sign, isNull);
+      expect(fx.frame(100).cameraFrame, isNull);
+    });
+
+    test('the next rep of mine replaces it at once, even while the sign '
+        'stays up', () {
+      final fx = BattleFxTimeline()
+        ..rep(rejected(), 0)
+        ..rep(_good(BattleSide.me), 300);
+      expect(fx.frame(300).cameraFrame, BattleFxCameraFrame.good);
+      // The sign of the rep before is still up, the frame is the new rep's.
+      expect(fx.frame(400).sign, isNotNull);
+      fx.rep(average(), 500);
+      expect(fx.frame(500).cameraFrame, BattleFxCameraFrame.average);
+    });
+
+    test('the opponent\'s reps leave it alone', () {
+      final fx = BattleFxTimeline()
+        ..rep(_good(BattleSide.me), 0)
+        ..rep(
+          _rep(BattleSide.opponent, null, reason: RejectReason.kneesDown),
+          100,
+        )
+        ..rep(_good(BattleSide.opponent), 200);
+      expect(fx.frame(300).cameraFrame, BattleFxCameraFrame.good);
+      final theirs = BattleFxTimeline()..rep(_good(BattleSide.opponent), 0);
+      expect(theirs.frame(100).cameraFrame, isNull);
+    });
+
+    test('green through the countdown; none while setting up (the setup cue '
+        'decides it then)', () {
+      final fx = BattleFxTimeline(setup: true)
+        ..setSetup(active: true, meReady: true, now: 0);
+      expect(fx.frame(100).cameraFrame, isNull);
+      fx.countDown(3000, 200);
+      expect(fx.frame(200).cameraFrame, BattleFxCameraFrame.good);
+      expect(fx.frame(3199).cameraFrame, BattleFxCameraFrame.good);
+      // From the start, only reps make it.
+      expect(fx.frame(3200).cameraFrame, isNull);
+      fx.setSetup(active: true, now: 4000);
+      expect(fx.frame(4000).cameraFrame, isNull);
+    });
+
+    test('none once the battle has ended, from the knockout blow on', () {
+      final timeUp = BattleFxTimeline()
+        ..rep(_good(BattleSide.me), 0)
+        ..finish(const BattleStageEnd(kind: BattleEndKind.timeUp), 100);
+      expect(timeUp.frame(200).cameraFrame, isNull);
+      final knockout = BattleFxTimeline()
+        ..rep(_good(BattleSide.me, knockout: true), 0);
+      expect(knockout.frame(200).cameraFrame, isNull);
+    });
+  });
 }

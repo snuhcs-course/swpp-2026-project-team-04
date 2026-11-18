@@ -10,6 +10,7 @@ import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/screens/character_select_screen.dart';
+import 'package:gymrats_app/screens/coach_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
@@ -18,6 +19,7 @@ import 'package:gymrats_app/screens/online_lobby_screen.dart';
 import 'package:gymrats_app/screens/play_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
+import 'package:gymrats_app/services/feedback/goal_store.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
@@ -28,6 +30,7 @@ import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/coach_viewmodel.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
@@ -35,6 +38,7 @@ import 'package:gymrats_app/widgets/help_rules.dart';
 import 'package:provider/provider.dart';
 
 import 'support/fakes.dart';
+import 'support/form_report_fixtures.dart';
 
 /// Stays in the queue, with no server behind it.
 class _QueuedSession extends OnlineBattleSession {
@@ -391,6 +395,34 @@ void main() {
       isA<BattleScreen>()
           .having((screen) => screen.matchup, 'matchup', same(matchup))
           .having((screen) => screen.myCharacter, 'my character', 'mouse'),
+    );
+  });
+
+  testWidgets('the talk route (A10) opens the talk on the report\'s view '
+      'model, and every screen gets one goal store', (tester) async {
+    await _openApp(tester);
+    final home = tester.element(find.byType(HomeScreen));
+    expect(home.read<GoalStore>(), isA<SecureGoalStore>());
+    final generate = tester
+        .widget<MaterialApp>(find.byType(MaterialApp))
+        .onGenerateRoute!;
+    final talk = CoachViewModel(
+      report: sampleReport(),
+      characterId: 'seal',
+      summary: '푸쉬업 · RepBot 초보 · 승리',
+    );
+    addTearDown(talk.dispose);
+    final route = generate(
+      RouteSettings(name: GymRatsApp.coachRoute, arguments: talk),
+    );
+    expect(route, isA<MaterialPageRoute<void>>());
+    expect(
+      (route! as MaterialPageRoute<void>).builder(home),
+      isA<CoachScreen>().having(
+        (screen) => screen.viewModel,
+        'view model',
+        same(talk),
+      ),
     );
   });
 

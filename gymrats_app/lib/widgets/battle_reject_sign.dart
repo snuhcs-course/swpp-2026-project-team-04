@@ -274,23 +274,29 @@ class BattleRejectSignView extends StatelessWidget {
 
   final BattleFxSign sign;
 
-  /// The sign's box, in design points.
-  static const size = Size(176, 200);
+  /// The sign's box, in design points: large enough to read from 2.5 m
+  /// (A9 spec 5, design UxSq variant A2).
+  static const size = Size(216, 250);
 
   /// The sign sits across the line between the stage and the camera, in the
   /// middle: its box starts this many stage points above that line. (In the
-  /// design's 360 x 780 frame, where the line is at 390: at (92, 340).)
-  static const riseAboveLine = 50.0;
+  /// design's 360 x 780 frame, where the line is at 390: at (72, 314).)
+  static const riseAboveLine = 76.0;
 
-  /// The point the sign grows and wobbles around.
-  static const _pivot = Offset(88, 86);
+  /// The point the sign grows and wobbles around: where it was in the
+  /// smaller box before A9, the box grown around it.
+  static const _pivot = Offset(108, 107.5);
 
-  static const _tileSize = 128.0;
-  static const _tileEdge = 4.0;
-  static const _tileCorner = 26.0;
-  static const _iconSize = 112.0;
-  static const _labelTop = 134.0;
+  static const tileSize = 156.0;
+  static const tileEdge = 5.0;
+  static const _tileCorner = 30.0;
+  static const iconSize = 136.0;
+  static const labelTop = 164.0;
   static const _labelTopPadding = 2.0;
+  static const _labelSidePadding = 22.0;
+
+  /// The label band's ink edge, a step heavier than the stage's bands.
+  static const labelEdge = 4.0;
 
   @override
   Widget build(BuildContext context) {
@@ -313,16 +319,16 @@ class BattleRejectSignView extends StatelessWidget {
                 children: [
                   if (icon != null)
                     Positioned(
-                      left: (size.width - _tileSize) / 2,
+                      left: (size.width - tileSize) / 2,
                       top: 0,
-                      width: _tileSize,
-                      height: _tileSize,
+                      width: tileSize,
+                      height: tileSize,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: AppColors.card,
                           border: Border.all(
                             color: AppColors.ink,
-                            width: _tileEdge,
+                            width: tileEdge,
                           ),
                           borderRadius: const BorderRadius.all(
                             Radius.circular(_tileCorner),
@@ -330,7 +336,7 @@ class BattleRejectSignView extends StatelessWidget {
                         ),
                         child: Center(
                           child: CustomPaint(
-                            size: const Size.square(_iconSize),
+                            size: const Size.square(iconSize),
                             painter: BattleRejectIconPainter(icon),
                           ),
                         ),
@@ -339,7 +345,7 @@ class BattleRejectSignView extends StatelessWidget {
                   Positioned(
                     left: 0,
                     right: 0,
-                    top: _labelTop,
+                    top: labelTop,
                     // A long label is wider than the sign's box.
                     child: OverflowBox(
                       fit: OverflowBoxFit.deferToChild,
@@ -349,7 +355,9 @@ class BattleRejectSignView extends StatelessWidget {
                         text: sign.text,
                         style: theme.stageSignLabel,
                         color: sign.tone.color,
+                        sidePadding: _labelSidePadding,
                         topPadding: _labelTopPadding,
+                        edge: labelEdge,
                       ),
                     ),
                   ),

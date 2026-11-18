@@ -8,6 +8,7 @@ import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/form_report.dart';
 import '../models/pose_frame.dart';
+import '../models/setup_hint_short.dart';
 import '../models/setup_squat_silhouette_alignment.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
@@ -381,19 +382,20 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       session.terminal &&
       (session.phase != OnlinePhase.finished || session.matchUnconfirmed);
 
-  /// The camera area's one line before the start: what the setup wants, or
-  /// that the user waits for the opponent.
-  String? get _setupHint {
-    if (!session.connected) return '재연결 중 · 준비 상태 확인 중…';
-    if (_iAmReady) return '상대 준비를 기다리는 중…';
-    if (session.exercise == ExerciseType.squat &&
+  /// The setup's short cue before the start (A9): that the connection is
+  /// being checked, that the user waits for the opponent, a squat that is
+  /// not in the silhouette yet, the count to the auto ready, or what the
+  /// setup wants.
+  SetupHintShort get _setupCue {
+    if (!session.connected) return const SetupHintShort.reconnecting();
+    if (_iAmReady) return const SetupHintShort.waitingForOpponent();
+    final outside =
+        session.exercise == ExerciseType.squat &&
         _setupStatus.reason == SetupReason.ready &&
-        !_squatAligned) {
-      return '실루엣 안에 몸을 맞춰 주세요.';
-    }
+        !_squatAligned;
     final seconds = _autoReadySeconds;
-    if (seconds != null) return '자세 확인! $seconds초 후 자동으로 준비해요';
-    return _setupStatus.message;
+    if (!outside && seconds != null) return SetupHintShort.autoReady(seconds);
+    return SetupHintShort.of(_setupStatus, outsideSilhouette: outside);
   }
 
   /// The camera area's one line once the setup is over.
@@ -559,7 +561,9 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                   ],
                 ),
           onLeave: () => unawaited(_exit()),
-          hint: setup ? _setupHint : _roundHint,
+          hint: setup ? null : _roundHint,
+          // Not while the person check asks for a tap (as in the AI battle).
+          setupCue: setup && !counter.trackingPaused ? _setupCue : null,
           // No ready button (team decision 2026-11-15): ready is sent by
           // itself once the pose holds, and taken back when it is lost.
           onSwitchCamera: setup && running && _counter.canSwitchCamera
