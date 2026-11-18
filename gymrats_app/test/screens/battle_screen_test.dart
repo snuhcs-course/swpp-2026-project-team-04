@@ -367,7 +367,7 @@ void main() {
         BattleCameraArea area() =>
             tester.widget<BattleCameraArea>(find.byType(BattleCameraArea));
         final band = find.byWidgetPredicate(
-          (w) => w.runtimeType.toString() == '_SetupCueBand',
+          (w) => w.runtimeType.toString() == '_SetupCueBoard',
         );
         final statusFrame = find.byWidgetPredicate(
           (w) =>
@@ -467,16 +467,17 @@ void main() {
       );
     });
 
-    testWidgets('opens on the setup: the band, my tag setting up and the '
-        "bot's ready, the setup bar and the setup cue, and no 시작 button "
-        '(team decision 2026-11-15)', (tester) async {
+    testWidgets('opens on the setup: my chip setting up and the bot\'s '
+        'ready (no status band, A12), the setup bar and the setup cue, and no '
+        '시작 button (team decision 2026-11-15)', (tester) async {
       await open(tester);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect(stage(tester).myName, '우현');
       expect(stage(tester).opponentName, 'RepBot');
-      expect(find.text('자세 세팅 중'), findsOneWidget);
-      expect(find.text('세팅 중'), findsOneWidget);
-      expect(find.text('준비 완료'), findsOneWidget);
+      expect(find.text('자세 세팅 중'), findsNothing);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
+      // The bot's chip, as the app has it.
+      expect(find.text('상대 · 준비 완료'), findsOneWidget);
       // The bot never keeps anyone waiting.
       expect(find.text('상대를 기다리는 중'), findsNothing);
       expect(find.text('0:30'), findsOneWidget);
@@ -501,14 +502,15 @@ void main() {
       final guide = find.byType(PoseSilhouetteGuide);
       expect(guide, findsOneWidget);
       expect(tester.widget<PoseSilhouetteGuide>(guide).ready, isFalse);
-      // Setting up (W2b 3-B): 360 x 621 below the line, the 3 : 4 picture
-      // filling it, cut at the sides. The guide keeps the share a cropping
-      // camera would show in the battle's 360 x 387 box (option 가).
+      // Setting up (W2b 3-B, A12): 360 x 581 below the line at 196, the
+      // 3 : 4 picture filling it, cut at the sides. The guide keeps the
+      // share a cropping camera would show in the battle's 360 x 387 box
+      // (option 가).
       var picture = tester.getRect(find.byType(PoseCameraView));
       final area = BattleCameraView.coverShare(3 / 4, const Size(360, 387));
-      expect(picture.top, closeTo(159, .01));
-      expect(picture.height, closeTo(621, .01));
-      expect(picture.width, closeTo(621 * 3 / 4, .01));
+      expect(picture.top, closeTo(199, .01));
+      expect(picture.height, closeTo(581, .01));
+      expect(picture.width, closeTo(581 * 3 / 4, .01));
       void guideOn(Rect picture) {
         expect(tester.getSize(guide).width, closeTo(picture.width, .01));
         expect(
@@ -662,7 +664,7 @@ void main() {
       await wait(tester, 16);
       expect(stage(tester).phase, BattleStagePhase.countdown);
       expect(find.text('3'), findsOneWidget);
-      expect(find.text('세팅 중'), findsNothing);
+      expect(find.text('나 · 세팅 중'), findsNothing);
       // The setup bar and the camera switch are for setting up; the stage
       // counts now. They fade out as the line comes down, read by no one.
       // No 시작 button comes in: the count runs to the start by itself.
@@ -762,16 +764,15 @@ void main() {
       await wait(tester, 16);
       expect(stage(tester).phase, BattleStagePhase.setup);
       // W2b 3-B 4.6: the fighters fade out in 0.1 s and the line goes back
-      // up in 0.35 s; the setup's band and chips come back with it.
+      // up in 0.35 s; the setup's chips come back with it.
       await wait(tester, 100);
       expect(find.byType(BattleFighter), findsNothing);
       await wait(tester, 250);
       expect(
         tester.getTopLeft(find.byType(BattleCameraArea)).dy,
-        closeTo(156, 1e-9),
+        closeTo(196, 1e-9),
       );
-      expect(find.text('자세 세팅 중'), findsOneWidget);
-      expect(find.text('세팅 중'), findsOneWidget);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
       expect(find.text('3'), findsNothing);
       await wait(tester, 3000);
       expect(find.text('GO!'), findsNothing);
@@ -1432,7 +1433,7 @@ void main() {
       expect(viewModel.state.started, isFalse);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect((stage(tester).myScore, stage(tester).myReps), (0, 0));
-      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
       cues.clear();
       await frame(tester, 12);
       if (viewModel.counter.enablePersonGuard) {

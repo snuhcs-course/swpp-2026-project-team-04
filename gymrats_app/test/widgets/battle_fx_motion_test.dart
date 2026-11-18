@@ -102,13 +102,12 @@ Map<String, dynamic> _w2b(String scenario, Map<String, dynamic> sample) {
   final out = Map<String, dynamic>.of(sample);
   switch (scenario) {
     case 'pre_setup_then_waiting':
-      // The status band higher and smaller, no tags, no fighters yet.
+      // No status band (A12 spec 2: the top area holds only the cue board
+      // and the ready chips), no tags, no fighters yet.
       out['banners'] = [
         for (final b
             in (sample['banners'] as List).cast<Map<String, dynamic>>())
-          b['font'] == 'display'
-              ? {...b, 'top': 71, 'fontSize': 24, 'bandHeight': 30}
-              : b,
+          if (b['font'] != 'display') b,
       ];
       out['meTag'] = null;
       out['opTag'] = null;
@@ -765,7 +764,11 @@ void main() {
       expect(w2bMeta['version'], 'w2b-golden-1');
       expect(samples, hasLength(39));
       final constants = transition['constants'] as Map<String, dynamic>;
-      expect(constants['boundarySetupY'], BattleFx.setupLineY);
+      // The design's 156; A12 moved the setup's line under the cue board
+      // and the chips (SfSq top: the camera from 196). The samples below
+      // check the line's progress, which A12 left alone.
+      expect(constants['boundarySetupY'], 156);
+      expect(BattleFx.setupLineY, 196);
       expect(constants['boundaryBattleY'], BattleFx.stageHeight);
       expect(constants['boundaryMs'], BattleFx.layoutMs);
       expect(constants['setupOverlayFadeMs'], BattleFx.setupFadeMs);
@@ -932,8 +935,8 @@ void main() {
         (setup.battleLayout, setup.setupLook, setup.countsOpacity),
         (0, 1, 0),
       );
-      expect(setup.banners.single.text, '자세 세팅 중');
-      expect(setup.readyChips.map((c) => c.text), ['세팅 중', '준비 완료']);
+      expect(setup.banners, isEmpty);
+      expect(setup.readyChips.map((c) => c.text), ['나 · 세팅 중', '상대 · 준비 완료']);
     });
 
     test('back to the setup while the line comes down: it turns where it '
@@ -953,47 +956,42 @@ void main() {
       expect(fx.frame(785).me.opacity, closeTo(0.5, 1e-9));
     });
 
-    test('the status band fades out with its words as the line comes down, '
-        'and the chips say both are ready', () {
+    test('no status band while setting up (A12 spec 2), and the chips say '
+        'both are ready as they fade out with the line coming down', () {
       // The bot: the user is setting up, the bot is ready, and the count
       // begins as the pose holds.
       final fx = BattleFxTimeline(setup: true)
         ..setSetup(active: true, opponentReady: true, now: 0);
       final setup = fx.frame(500);
-      final band = setup.banners.single;
-      expect(
-        (band.text, band.top, band.textSize, band.bandHeight, band.font),
-        ('자세 세팅 중', 71, 24, 30, BattleFxFont.display),
-      );
-      expect(band.rotation, -3);
-      expect(band.opacity, 1);
+      expect(setup.banners, isEmpty);
       expect(setup.readyChips.map((c) => (c.side, c.text, c.tone)), [
-        (BattleSide.me, '세팅 중', BattleFxTone.plain),
-        (BattleSide.opponent, '준비 완료', BattleFxTone.opponent),
+        (BattleSide.me, '나 · 세팅 중', BattleFxTone.plain),
+        (BattleSide.opponent, '상대 · 준비 완료', BattleFxTone.opponent),
       ]);
       fx.countDown(3000, 1000);
       final fading = fx.frame(1075);
-      final words = fading.banners.where((b) => b.font == BattleFxFont.display);
-      expect(words.single.text, '자세 세팅 중');
-      expect(words.single.opacity, closeTo(0.5, 1e-9));
+      expect(
+        fading.banners.where((b) => b.font == BattleFxFont.display),
+        isEmpty,
+      );
       expect(fading.readyChips.map((c) => (c.text, c.opacity)), [
-        ('준비 완료', 0.5),
-        ('준비 완료', 0.5),
+        ('나 · 준비 완료', 0.5),
+        ('상대 · 준비 완료', 0.5),
       ]);
       final gone = fx.frame(1150);
       expect(gone.banners.map((b) => b.text), ['3']);
       expect(gone.readyChips, isEmpty);
     });
 
-    test('waiting for the opponent: my chip lime, theirs white, and the '
-        'band says whom it waits for; both ready, no band', () {
+    test('waiting for the opponent: my chip lime, theirs white, and no '
+        'band (the chips say whom it waits for); both ready, no band', () {
       final fx = BattleFxTimeline(setup: true)
         ..setSetup(active: true, meReady: true, now: 0);
       final waiting = fx.frame(0);
-      expect(waiting.banners.single.text, '상대를 기다리는 중');
+      expect(waiting.banners, isEmpty);
       expect(waiting.readyChips.map((c) => (c.text, c.tone)), [
-        ('준비 완료', BattleFxTone.me),
-        ('세팅 중', BattleFxTone.plain),
+        ('나 · 준비 완료', BattleFxTone.me),
+        ('상대 · 세팅 중', BattleFxTone.plain),
       ]);
       fx.setSetup(active: true, meReady: true, opponentReady: true, now: 10);
       expect(fx.frame(10).banners, isEmpty);
@@ -1505,8 +1503,13 @@ void main() {
         ..setSetup(active: true, meReady: true, opponentReady: true, now: 0);
       final frame = fx.frame(0);
       expect(frame.readyChips.map((c) => (c.side, c.text, c.tone, c.opacity)), [
-        (BattleSide.me, '준비 완료', BattleFxTone.me, 1),
-        (BattleSide.opponent, '준비 완료', BattleFxTone.opponent, 1),
+        (BattleSide.me, '나 · 준비 완료', BattleFxTone.me, 1),
+        (BattleSide.opponent, '상대 · 준비 완료', BattleFxTone.opponent, 1),
+      ]);
+      // Whose it is and its state, apart, for a screen reader.
+      expect(frame.readyChips.map((c) => (c.who, c.state)), [
+        ('나', '준비 완료'),
+        ('상대', '준비 완료'),
       ]);
       expect(frame.myTag, isNull);
       expect(frame.opponentTag, isNull);
@@ -2035,10 +2038,10 @@ void main() {
       expect(fx.frame(500).banners.single.text, '3');
       fx.setSetup(active: true, opponentReady: true, now: 1000);
       final again = fx.frame(1500);
-      expect(again.banners.single.text, '자세 세팅 중');
-      expect(again.readyChips.first.text, '세팅 중');
+      expect(again.banners, isEmpty);
+      expect(again.readyChips.first.text, '나 · 세팅 중');
       final later = fx.frame(3000);
-      expect(later.banners.single.text, '자세 세팅 중');
+      expect(later.banners, isEmpty);
       expect(later.beforeStart, isTrue);
     });
 
@@ -2047,8 +2050,8 @@ void main() {
         ..countDown(3000, 0)
         ..setSetup(active: true, now: 2000)
         ..countDown(3000, 4000);
-      // The setup's band fades out over the first 150 ms of the new count.
-      expect(fx.frame(4000).banners.map((b) => b.text), ['자세 세팅 중', '3']);
+      // No setup band to fade out (A12 spec 2): the number at once.
+      expect(fx.frame(4000).banners.map((b) => b.text), ['3']);
       expect(fx.frame(4150).banners.single.text, '3');
       expect(fx.frame(7000).banners.single.text, 'GO!');
       expect(fx.frame(7000).beforeStart, isFalse);

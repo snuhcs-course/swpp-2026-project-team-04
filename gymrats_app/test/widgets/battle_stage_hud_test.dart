@@ -28,6 +28,7 @@ Future<void> _pumpHud(
   double myRepsBump = 1,
   double opponentRepsBump = 1,
   TextScaler textScaler = TextScaler.noScaling,
+  double topOpacity = 1,
 }) => tester.pumpWidget(
   battleTestApp(
     MediaQuery(
@@ -53,6 +54,7 @@ Future<void> _pumpHud(
               opponentScoreBump: opponentScoreBump,
               myRepsBump: myRepsBump,
               opponentRepsBump: opponentRepsBump,
+              topOpacity: topOpacity,
             ),
           ),
         ],
@@ -93,6 +95,53 @@ void main() {
   });
 
   group('BattleStageHud', () {
+    testWidgets('the top (names, clock and chip, scores, time bar) shows as '
+        'strongly as topOpacity says, and not at all at 0, for a screen '
+        'reader too; the valid counts go by their own (A12 spec 2)', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      double shown(Finder finder) => tester
+          .widgetList<Opacity>(
+            find.ancestor(of: finder, matching: find.byType(Opacity)),
+          )
+          .first
+          .opacity;
+      final parts = [
+        find.text('hellohello'),
+        find.text('AI 봇 · 고수'),
+        find.text('0:18'),
+        find.text('+15 앞섬'),
+        find.text('60'),
+        find.text('45'),
+      ];
+      final bar = find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == AppColors.ink,
+      );
+      await _pumpHud(tester, topOpacity: 0);
+      for (final part in [...parts, bar]) {
+        expect(shown(part), 0, reason: '$part');
+      }
+      expect(find.bySemanticsLabel('내 점수 60점'), findsNothing);
+      expect(find.bySemanticsLabel('남은 시간 18초'), findsNothing);
+      expect(find.bySemanticsLabel('나 hellohello'), findsNothing);
+      // The counts are not the top's: they keep their own opacity.
+      expect(find.bySemanticsLabel('유효 횟수 나 5회, 상대 4회'), findsOneWidget);
+
+      await _pumpHud(tester, topOpacity: 0.5);
+      for (final part in [...parts, bar]) {
+        expect(shown(part), 0.5, reason: '$part');
+      }
+      await _pumpHud(tester);
+      for (final part in [...parts, bar]) {
+        expect(shown(part), 1, reason: '$part');
+      }
+      expect(find.bySemanticsLabel('내 점수 60점'), findsOneWidget);
+      expect(find.bySemanticsLabel('상대 점수 45점'), findsOneWidget);
+      expect(find.bySemanticsLabel('남은 시간 18초'), findsOneWidget);
+      handle.dispose();
+    });
+
     testWidgets('shows both names, the clock, the chip, the scores and the '
         'valid counts', (tester) async {
       await _pumpHud(tester);

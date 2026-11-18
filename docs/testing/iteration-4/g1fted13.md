@@ -986,15 +986,15 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `71b780e`, wit
 - **Commands (Windows, `gymrats_app/`):** `flutter analyze`; `flutter test`.
 - **Tests:** on `bfd9ac2`, `flutter test` had 3687 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as before, and W11 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
-- **Coverage:** not measured on this Windows PC. TODO(Woohyun Song): fill in from the PR's CI comment (commit and run link).
+- **Coverage:** from PR #76's CI comment "Tests and coverage (GitHub Actions)" for `ba066ea` (2026-11-18 17:24 KST, [run 44264931668](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/44264931668), [comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/76#issuecomment-6973128450)). All layer targets met; total 97.4% (18205 / 18690). In CI `flutter test` had 3687 passed, 10 skipped, 0 failed. Four test files are left out of the coverage numbers because they time out after 240 s there (their tests still ran): `person_behind_video_replay_test.dart`, `pushup_error_cases_test.dart`, `settings_screen_test.dart`, `background_music_test.dart`.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/18 | CI comment "Tests and coverage (GitHub Actions)" on the W11 PR |
-| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
-| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | TODO(Woohyun Song): from the CI comment (`server/` unchanged) | 11/18 | same CI comment |
+| Model | flutter_test | 90% | 99.4% (693 / 697) | 11/18 | CI comment "Tests and coverage (GitHub Actions)" on PR #76, `ba066ea` |
+| ViewModel | flutter_test, fakes | 90% | 98.1% (1752 / 1786) | 11/18 | same CI comment |
+| Service | flutter_test, fakes | 85% | 95.4% (4322 / 4532) | 11/18 | same CI comment |
+| View | flutter_test (widget) | 75% | 98.0% (11068 / 11289) | 11/18 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` unchanged) | 11/18 | same CI comment |
 
 - **Other checks:**
   - **Reviews:**
@@ -1064,3 +1064,59 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `71b780e`, wit
 
   All of them pass unchanged in wording. The goal parts only read the rep records and never feed the game's points. **Gap:** no test plays the same battle with and without a goal to compare the scores. Plan: add one to `battle_screen_test.dart`'s goal group in the next change to these files.
 - UAT-4 still passes (the result and the form feedback are reachable). Tests: the W10 tests listed above, unchanged and passing
+
+## W12 setup-cue-board records
+
+#### 2026-11-18 · code at commits `2873610`, `dc3d3af` (after the merge of `origin/main` with W11, `a628cff`) · step W12 `feat/setup_cue_board` (A12, the setup cue board in the top area and no joint dots or skeleton, team order #22)
+- **What changed:** A12 (SETUP-FIX-SPEC), sources SfSq (`cue="top"`, `skel="off"`) and SfGrid, from the phone check of W9-W11. Push-ups and squats, AI and online battles.
+  - **Setup board:** the large cue board moved out of the camera into the top area over the stage: 336 x 140, 12 from the sides and 12 under the status bar, the icon box 72, two lines of Do Hyeon 58, the hold bar 12 along its bottom. The camera starts at 196 on a 360 x 780 screen without a status bar (581 tall), moved down by the status bar on a phone.
+  - **Top area while setting up:** only the board and the two ready chips ("나 · 세팅 중" / "상대 · 준비 완료" with a color square, at 162). The names, the clock, the scores and the time bar come back from the countdown on. The "자세 세팅 중" / "상대를 기다리는 중" band is removed.
+  - **Joints:** no joint dots or skeleton, setting up or in the battle. The setup keeps its silhouette, the battle its height lines.
+- **Commands (Windows, `gymrats_app/`):** `flutter analyze`; `flutter test`.
+- **Tests:** after the merge (`a628cff` with the W12 changes, the same files as `dc3d3af`), `flutter test` had 3694 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
+  - The 10 skipped tests are the same as before, and W12 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
+- **Coverage:** from PR #77's CI comment "Tests and coverage (GitHub Actions)" for `66d952b` (2026-11-18 19:23 KST, [run 44282772780](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/44282772780), [comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/77#issuecomment-6975725653)). All layer targets met; total 97.4% (18449 / 18936). In CI `flutter test` had 3758 passed, 10 skipped, 0 failed: 64 more than the local run, probably because the `pull_request` run tests the PR merged with `main`, which had #75 (merged 19:03 KST) by then. Four test files are left out of the coverage numbers because they time out after 240 s there (their tests still ran): `settings_screen_test.dart`, `background_music_test.dart`, `person_behind_video_replay_test.dart`, `pushup_error_cases_test.dart`.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.4% (693 / 697) | 11/18 | CI comment "Tests and coverage (GitHub Actions)" on PR #77, `66d952b` |
+| ViewModel | flutter_test, fakes | 90% | 98.1% (1752 / 1786) | 11/18 | same CI comment |
+| Service | flutter_test, fakes | 85% | 95.5% (4529 / 4741) | 11/18 | same CI comment |
+| View | flutter_test (widget) | 75% | 98.0% (11105 / 11326) | 11/18 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` unchanged) | 11/18 | same CI comment |
+
+- **Other checks:**
+  - **Review:** run 1 CHANGES_REQUESTED with 1 Major (the design-doc rows for the new and removed widget API were missing in the local notes) and 4 Minor (stale "band" comments; the board's size defined in two files; a golden scale check that could never fail; no screen-reader check for the board outside the camera's box). All fixed; the re-check returned APPROVE.
+  - **Measured with the app's fonts:** in the board's text room of 216, every cue fits at 58 or at 44 and more, but "어깨·팔꿈치가 / 안 보여요" (217.1 wide at 44). That cue alone goes to about 43.7 (the user's decision 3); a test checks it.
+  - **Merge of `origin/main`** (W11 #76) in `a628cff`: no file changed on `main` since the branch was made, so no conflict. 3694 passed / 10 skipped / 0 failed after it.
+  - `ownership_guard.py --check-diff`: ok (18 files, all W12's). Three of them are the user's own W2 tests, added to W12's list because they looked for the removed band or the old chip words: `test/demo/battle_demo_test.dart`, `test/widgets/battle_banner_test.dart`, `test/screens/online_lobby_screen_test.dart`.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Screen readers:** widget tests check that the board's whole sentence is read, in a live region, also from outside the camera's box; that the hidden top (names, clock, scores) is not read while setting up and is read again from the countdown; and the chips' "나 세팅 중" / "상대 준비 완료". TalkBack on a real phone was **not** checked.
+- **Manual check (the user, 2026-11-18, while recording the demo video):** Galaxy S26+ (SM-S947N), One UI 9.0, Android 17. All fine:
+  - the board's words read at 2.5 m (squat) and 1 m (push-up)
+  - with "머리가 안 보여요" the head's place is free
+  - the move to the battle's layout
+  - the joint dots are gone and the height lines stay
+
+  Not stated: the online opponent chip's states.
+
+### Test cases added or changed in W12
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/battle_camera_view_test.dart` (updated) | no joint dots or skeleton with the silhouette (setup) or the squat and chest lines (battle); the lines stay |
+| View | `test/widgets/battle_camera_area_test.dart` (updated) | the board's design values (336 x 140, edge 3, corner 22, icon box 72, icons 46 / 48, lines Do Hyeon 58 / 0.98, room 216); the board where it is given, above the camera, sized with the stage; the hold bar 12 along the bottom; every cue at 1.0x, 1.3x and 2.0x text inside the board, 44 to 58 but the two-part cue; with the real Do Hyeon the two-part cue at about 43.7 |
+| View | `test/widgets/battle_arena_test.dart` (updated) | the line over the design's progress samples now from 196 (box 581), the picture's shape, place and scale; the status-bar shift (S22: 222; a taller screen: none; a wider phone); the board above the camera with the two chips under it, its sentence read in a live region; the top area while setting up and after the countdown; the old 156 checks moved to 222 under the test's 26 status bar |
+| View | `test/widgets/battle_stage_test.dart` (updated) | the chips at 162, 12 from the sides, their squares and colors, their screen-reader words; moved down by the shift; the top hidden while setting up and back as the line comes down |
+| View | `test/widgets/battle_stage_hud_test.dart` (updated) | `topOpacity`: 0 hides the names, clock and chip, scores and time bar (and their screen-reader words), 0.5 half, 1 all; the valid counts keep their own |
+| View | `test/widgets/battle_fx_motion_test.dart` (updated) | no status band while setting up or waiting; the chips' words "나 · …" / "상대 · …" and their parts; the setup line 196 against the W2b golden's 156 |
+| View | `test/widgets/battle_banner_test.dart`, `test/demo/battle_demo_test.dart`, `test/screens/online_lobby_screen_test.dart` (updated) | no Korean band while setting up; the chips' new words in the demo and the lobby-to-setup flow |
+| View | `test/screens/battle_screen_test.dart`, `test/screens/online_preparation_test.dart` (updated) | the setup's chips instead of the band; the picture under the line at 196 (581 tall); the person check still hides the board (`_SetupCueBoard`) |
+
+### Acceptance criteria → tests (W12)
+- While setting up the board is outside the camera, in the top area (spec 2). Tests: `"the setup cue's board is above the camera, in the top "` (start of the name), `'the board goes where it is given, above the camera\'s box, sized with the stage'`
+- While setting up the top has no score, clock or tag, and has two chips (spec 5.3). Tests: `'while setting up the top area holds only the cue board and '` (start of the name), `'while setting up the top holds only the chips: the names, '` (start), `'no status band while setting up (A12 spec 2), and the chips say '` (start)
+- From the countdown the top is back (spec 5.3). Tests: the same arena and stage tests, and the `topOpacity` test in `battle_stage_hud_test.dart`
+- No joints in setup or battle; the lines stay (spec 3). Test: `'no joint dots or skeleton while setting up (the silhouette '` (start)
+- The board's words never overflow, at any text size (spec 5.3). Tests: `'every cue at ${textScale}x text: one line each, the two '` (start), `'with the real Do Hyeon: short lines stay 58, 몸 전체가 / '` (start)
+- The status bar shift (decision 1). Tests: `'under a status bar the setup\'s top moves down by as much as the '` (start), `'under a status bar the chips move down with the setup\'s '` (start)
+- UAT-3 and UAT-5 still pass (the same setup flow, start, scores and fever). Tests: the existing setup, countdown and round tests in `battle_screen_test.dart` and `online_preparation_test.dart` (e.g. `'the countdown: the time to the start in the hint, then 3, 2, 1 and GO! on the stage'`), unchanged in what they check apart from the chips' words and the line's place

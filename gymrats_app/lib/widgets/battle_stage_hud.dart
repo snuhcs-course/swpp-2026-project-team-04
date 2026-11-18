@@ -30,6 +30,7 @@ class BattleStageHud extends StatelessWidget {
     this.myRepsBump = 1,
     this.opponentRepsBump = 1,
     this.countsOpacity = 1,
+    this.topOpacity = 1,
     this.goal,
   });
 
@@ -62,6 +63,12 @@ class BattleStageHud extends StatelessWidget {
   /// where the ready chips take their place; a screen reader does not get
   /// them then either.
   final double countsOpacity;
+
+  /// How strongly the names, the clock with its chip, the two scores and
+  /// the time bar show: not at all while setting up, where the top area
+  /// holds only the cue board and the ready chips (A12 spec 2); a screen
+  /// reader does not get them then either.
+  final double topOpacity;
 
   /// The user's goal for this battle, as a chip under the valid counts
   /// (A11 spec 5); null draws none. It shows with the counts: while setting
@@ -113,6 +120,8 @@ class BattleStageHud extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final chip = this.chip;
+    final top = topOpacity.clamp(0.0, 1.0);
+    Widget shown(Widget child) => Opacity(opacity: top, child: child);
     return MediaQuery.withNoTextScaling(
       child: Stack(
         children: [
@@ -121,18 +130,20 @@ class BattleStageHud extends StatelessWidget {
             right: _side,
             top: _nameTop,
             height: _nameHeight,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _name(text, myName, AppColors.accent, who: '나', mine: true),
-                _name(
-                  text,
-                  opponentName,
-                  AppColors.opponent,
-                  who: '상대',
-                  mine: false,
-                ),
-              ],
+            child: shown(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _name(text, myName, AppColors.accent, who: '나', mine: true),
+                  _name(
+                    text,
+                    opponentName,
+                    AppColors.opponent,
+                    who: '상대',
+                    mine: false,
+                  ),
+                ],
+              ),
             ),
           ),
           // Centered on the stage whatever the names' lengths.
@@ -141,54 +152,61 @@ class BattleStageHud extends StatelessWidget {
             right: 0,
             top: _nameTop,
             height: _nameHeight,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  clockText(secondsLeft),
-                  style: text.stageClock,
-                  semanticsLabel: '남은 시간 ${secondsLeft < 0 ? 0 : secondsLeft}초',
-                ),
-                if (chip != null) ...[
-                  const SizedBox(width: _gap),
-                  DecoratedBox(
-                    decoration: ShapeDecoration(
-                      color: chip.tone.color,
-                      shape: const StadiumBorder(
-                        side: BorderSide(
-                          color: AppColors.ink,
-                          width: _chipEdge,
+            child: shown(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    clockText(secondsLeft),
+                    style: text.stageClock,
+                    semanticsLabel:
+                        '남은 시간 ${secondsLeft < 0 ? 0 : secondsLeft}초',
+                  ),
+                  if (chip != null) ...[
+                    const SizedBox(width: _gap),
+                    DecoratedBox(
+                      decoration: ShapeDecoration(
+                        color: chip.tone.color,
+                        shape: const StadiumBorder(
+                          side: BorderSide(
+                            color: AppColors.ink,
+                            width: _chipEdge,
+                          ),
                         ),
                       ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: _chipSide,
-                        vertical: _chipTop,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: _chipSide,
+                          vertical: _chipTop,
+                        ),
+                        child: Text(chip.text, style: text.stageChip),
                       ),
-                      child: Text(chip.text, style: text.stageChip),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           Positioned(
             left: _scoreSide,
             top: _scoreTop,
-            child: Transform.scale(
-              scale: myScoreBump,
-              alignment: Alignment.bottomLeft,
-              child: _score(text, myScore, AppColors.accent, '내 점수'),
+            child: shown(
+              Transform.scale(
+                scale: myScoreBump,
+                alignment: Alignment.bottomLeft,
+                child: _score(text, myScore, AppColors.accent, '내 점수'),
+              ),
             ),
           ),
           Positioned(
             right: _scoreSide,
             top: _scoreTop,
-            child: Transform.scale(
-              scale: opponentScoreBump,
-              alignment: Alignment.bottomRight,
-              child: _score(text, opponentScore, AppColors.opponent, '상대 점수'),
+            child: shown(
+              Transform.scale(
+                scale: opponentScoreBump,
+                alignment: Alignment.bottomRight,
+                child: _score(text, opponentScore, AppColors.opponent, '상대 점수'),
+              ),
             ),
           ),
           if (countsOpacity > 0)
@@ -214,17 +232,19 @@ class BattleStageHud extends StatelessWidget {
             right: _side,
             top: _barTop,
             height: _barHeight,
-            child: ExcludeSemantics(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(AppRadius.mark),
-                ),
-                child: ColoredBox(
-                  color: AppColors.border,
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: elapsed.clamp(0.0, 1.0),
-                    child: const ColoredBox(color: AppColors.ink),
+            child: shown(
+              ExcludeSemantics(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(AppRadius.mark),
+                  ),
+                  child: ColoredBox(
+                    color: AppColors.border,
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: elapsed.clamp(0.0, 1.0),
+                      child: const ColoredBox(color: AppColors.ink),
+                    ),
                   ),
                 ),
               ),

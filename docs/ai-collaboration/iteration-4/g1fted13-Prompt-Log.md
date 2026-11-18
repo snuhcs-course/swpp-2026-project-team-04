@@ -1439,3 +1439,27 @@ UAT 개선 하나 더 하자. 운동 선택의 목표 스티커가 잘 안 보�
 - Manual check 칸에는 폰에서 확인한 내용을 적어.
 끝나면 PR 링크 알려 줘.
 </pasted_content id=\"d1d5\">"
+
+## 2026-11-18 · Woohyun Song · feat/setup_cue_board
+<!-- 89f63724 2026-11-18T08:16:00.060Z -->
+[Woohyun Song, 11-18 17:16] "<pasted_content id=\"aa07\">
+새 작업 W12(A12)를 시작하자. 명세는 .claude/design/uat1/SETUP-FIX-SPEC.md 이고, 디자인 원본은 같은 폴더 design/ 아래의 SfSq.dc.html, SfGrid.dc.html 이야.
+1. 명세 전체를 읽고 원본 두 파일을 열어. 값은 원본에서 그대로 옮겨. 명세의 숫자는 요약이고 원본이 우선이야. 확정안은 SfSq의 cue=\"top\", skel=\"off\" 야.
+2. 하네스에 W12가 아직 없어. 현우한테는 내가 나중에 알릴 테니, 로컬 .claude/ownership.json과 task.md에 W12를 직접 넣어. 브랜치는 feat/setup_cue_board, 마감은 2026-11-18, 머지 순서는 W11 다음(#22)이야. 파일 목록은 명세 4절을 실제 코드와 맞춰 보고 정해. 상우 파일 pose_camera_view.dart 에는 '그리기 여부 값만'이라는 조건을 달아. task.md W12 Decisions와 progress.md에는 \"2026-11-18 사용자 결정으로 진행, PM에게 사후 공유\"라고 적어.
+3. W11이 아직 main에 머지되지 않았으면 feat/feedback_goals 에서 브랜치를 만들고, PR에 'depends on feat/feedback_goals'를 적어. 작업 폴더에 커밋 안 한 변경이 있으면 브랜치를 바꾸기 전에 알려 줘.
+4. 원본과 다르게 해야 할 곳이 생기면 코드를 쓰기 전에 물어봐.
+5. 구현하고 테스트와 reviewer까지 마친 뒤 보고해. 커밋과 push는 내가 말할 때만 해.
+</pasted_content id=\"aa07\">"
+
+<!-- 89f63724 2026-11-18T09:33:28.995Z -->
+[Woohyun Song, 11-18 18:33] "<pasted_content id=\"aa07\">
+W11(#76)이 오늘 17:24에 main에 머지됐어. 순서대로 해 줘.
+1. git fetch origin 하고 origin/main 을 feat/setup_cue_board 에 머지해. 충돌이 나면 양쪽 다 살리고, 합친 뒤 전체 테스트를 다시 돌려. --check-diff가 이제 W12 파일만 보는지도 확인해.
+2. PR에는 'depends on' 줄을 넣지 마. 첫 줄은 'Merge order: #22'야.
+3. 데모 영상 찍으면서 폰 확인했어. Galaxy S26+ (SM-S947N), One UI 9.0, Android 17에서 스쿼트 2.5m·푸시업 1m 안내판 글씨, \"머리가 안 보여요\"일 때 머리 자리가 비어 있는지, 대결 배치로 넘어가는 것, 관절 점이 사라지고 기준선은 남는 것까지 모두 괜찮았어.
+4. 노트를 쓸 때 W11 것도 같이 마무리해 줘. PR #76 CI 댓글의 커버리지로 W11 테스트 노트의 커버리지 칸을 채우고, AI 노트의 사후 공유 TODO는 \"2026-11-18 카톡으로 PM·진영에게 공유함\"으로 바꿔. W12 커버리지는 W12 PR의 CI 댓글이 오면 그때 채울게.
+5. 그다음 커밋하고 push한 다음, push가 문제없이 끝나면 PR까지 올려. push가 막히면 PR은 열지 말고 멈춰서 알려 줘.
+- PR 본문은 기존 양식대로 영어로 써. Review notes에는 세 가지를 적어. 하네스 W12는 로컬로 등록하고 PM에게 사후 공유한다는 것, W12 목록에 추가한 내 W2 테스트 파일 3개, landmark_overlay.dart의 W9 굵은 뼈대 그리기와 PoseCameraView.boldLandmarks가 이제 쓰이지 않는다는 것(지우지 않았고 상우와 정리 필요).
+- Manual check 칸에는 3번의 폰 확인 내용을 적어.
+끝나면 PR 링크 알려 줘.
+</pasted_content id=\"aa07\">"

@@ -453,7 +453,8 @@ void main() {
       // The setup is on the battle's stage: both still setting up.
       expect(find.byType(BattleArena), findsOneWidget);
       expect(find.text('실제상대'), findsOneWidget);
-      expect(find.text('세팅 중'), findsNWidgets(2));
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
+      expect(find.text('상대 · 세팅 중'), findsOneWidget);
       // No 준비 / 준비 취소 button (team decision 2026-11-15): ready goes
       // by itself once the pose holds.
       expect(find.text('준비'), findsNothing);
