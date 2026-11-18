@@ -9,7 +9,7 @@
 * [4. Unit & Integration Testing](#4-unit--integration-testing)
 > * [4.1 Plan](#41-plan)
 > * [4.2 Results](#42-results)
-* [5. AI Module Testing](#5-ai-module-testing) (Iteration 3)
+* [5. AI Module Testing](#5-ai-module-testing) (Iteration 3, re-run in Iteration 4)
 * [6. Acceptance Testing](#6-acceptance-testing) (Iteration 3 plan, Iteration 4 results)
 > * [6.1 How the UAT is run](#61-how-the-uat-is-run)
 > * [6.2 UAT stories](#62-uat-stories)
@@ -27,6 +27,7 @@
 |Rev.2.1|2026-11-03|Iteration 3 results in 4.2 (final main, CI coverage screenshot, who ran the suite); 5. AI Module Testing: the frozen set with its per-set table, labels, assertion per case and threshold commit (5.1), the first run and the re-run after the judge tuning with failure analyses (5.2), what the testing changed and what it leaves to Iteration 4 (5.3); 3.1, 3.2 and 4.1 Iteration 3 revisions; final guideline audit|
 |Rev.2.2|2026-11-04|6. Acceptance Testing follows Requirements Rev.2.3: UAT-1 pose guide, UAT-3 both-ready and live-opponent game elements (no avatar), UAT-4 feedback over time, UAT-5 game points and fever, UAT-6 tutorial; every story run with push-ups and squats. Readability: file paths, branch names and narrative PR numbers taken out; commands, result commits, the evaluation set path and the threshold commit kept|
 |Rev.2.3|2026-11-09|Project renamed from GymRats to GymMouse|
+|Rev.2.4|2026-11-18|Iteration 4 results in 4.2 on main `9841a60` (CI coverage of PR #74, test counts and skips, per-member summary from the members' notes); 5.2 re-run of the frozen set on `9841a60` (unchanged M1/M2/M3, setting changes since Iteration 3, open PR #75)|
 
 # 2. Overview
 
@@ -254,6 +255,49 @@ Commands as in 4.1, run by Jinyoung Park (PM) on a clean checkout of `f03a460` (
 
 - Test cases added or changed in Iteration 3 are listed per PR in the PR bodies and per push in each member's notes under `docs/testing/iteration-3/`.
 
+### Iteration 4
+
+#### 2026-11-18 · commit `9841a60` · main after PR #74 (the last Iteration 4 pull request merged so far)
+
+main after the last merged pull request of Iteration 4 so far (#74, the character's talk after a battle). Pull requests #45–#74 were merged between 2026-11-11 and 2026-11-18. Coverage and test counts come from the GitHub Actions comment "Tests and coverage (GitHub Actions)" on PR #74. Its head `d724c56` already contained main, and its tree is identical to main `9841a60` (`git rev-parse d724c56^{tree} 9841a60^{tree}` gives the same hash), so the numbers hold for `9841a60`. CI ran on ubuntu-latest with Flutter 3.47.5 / Dart 3.13.4 and Python 3.12, using the commands in 4.1: the per-file coverage script in four shards, merged with the per-layer coverage script. The plan and the targets are unchanged this iteration.
+
+- `flutter analyze`: no issues.
+- `flutter test`: **3559 passed, 0 failed, 10 skipped**. The skipped tests are the same 10 as at the end of Iteration 3. Nine are recorded push-up cases the judge still gets wrong, each skipped with its reason in code (the known-errors list of the push-up error-case test). The tenth is the live team-server check, which is skipped unless `RUN_PUBLIC_BATTLE_SMOKE` is set. Every member's notes report the same 10 skips throughout the iteration.
+- Server `pytest --cov=accounts --cov=matches --cov=gymrats`: **114 passed, 0 failed** (1 warning). The 13 new tests are the statistics endpoint tests of PR #56.
+- Run: [GitHub Actions run 44232414180](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/44232414180), 2026-11-18 12:56 KST; app and server jobs both succeeded.
+
+**Summary** (CI run on `d724c56`, which has the same tree as main `9841a60`)
+
+| Component | Frameworks | Target | Actual | Date | Commit | Command / Report |
+|---|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.4% (689 / 693 lines) | 11/18 | `d724c56` = `9841a60` | CI `Flutter coverage` shards (the per-file coverage script, merged by the per-layer coverage script) |
+| ViewModel | flutter_test, fakes | 90% | 98.1% (1746 / 1780) | 11/18 | same | same |
+| Service | flutter_test, MockClient, fakes | 85% | 95.2% (4158 / 4366) | 11/18 | same | same |
+| View | flutter_test (widget) | 75% | 98.0% (10614 / 10828) | 11/18 | same | same |
+| App, other (entry point, shared code, theme) | flutter_test | – | 95.6% (350 / 366) | 11/18 | same | same |
+| Total (app) | | – | 97.4% (17557 / 18033) | 11/18 | same | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% | 11/18 | same | CI `Django API` job: `pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Battle server (Dart) | flutter_test, loopback sockets | – | not measured | 11/18 | same | the online battle behavior tests (run inside `flutter test`) |
+
+Change since Iteration 3 (`a643088`, 4.2 above): 1476 → 3559 passing app tests, 101 → 114 server tests, and 8239 → 18033 measured app lines. Every layer went up: Model 97.4 → 99.4%, ViewModel 96.1 → 98.1%, Service 94.3 → 95.2%, View 91.0 → 98.0%.
+
+- **Left out of the client coverage numbers:** four test files hit CI's 240 s per-file limit: the settings screen test, the background music test, the person-behind video replay test and the push-up error-case test. Their tests still ran and passed in `flutter test` above. The lines they alone reach are therefore counted as not covered, so the layer numbers are a lower bound. Files that no test loads are interfaces or constant-only files, as in Iteration 2.
+- **Shortfalls:** none against the targets. Two gaps carry over. The Dart battle server still has no line coverage number (same reason and plan as in Iteration 2). Full-suite `flutter test --coverage` cannot be run on the members' Windows machines: it stops with "getSourceReport: Service has disappeared" or stalls. Members therefore measured coverage one file at a time or on the changed files only, and the team-level layer numbers come from CI.
+- **TODO(hyun-1210):** if any further pull request (for example #75) is merged before the Iteration 4 submission, re-take these numbers from the CI comment on that last pull request (or re-run 4.1 on the submitted commit) and update this entry.
+
+<!-- TODO(hyun-1210): add the screenshot of the PR #74 CI comment as images/testing/iter4-ci-coverage-d724c56.png -->
+
+**Per member** (each member's per-push notes are in `docs/testing/iteration-4/`; every pull request body also has its own results table with the head commit, the counts and the CI coverage)
+
+| Member | Pull requests (merged) | What their tests cover | Their runs (app `flutter test`, all 0 failed, 10 skipped) | Coverage they report |
+|---|---|---|---|---|
+| Woohyun Song (`g1fted13`) | #45, #50, #52, #54, #55, #61, #62, #63, #68, #70, #73, #74 | home lobby and settings, the one-stage battle screen, the drawn characters and character select, the matching and end screens, the result report, the archive and statistics, the form feedback screen, the victory scene, no ready button in setup, setup cues readable from a distance, the character's talk after a battle | 1490 on `38c44b1` (11-08) to 3458 on `4e467ff` (11-17); 3417 on `79c2e80` with the S2 person check on and off | CI comments on #45, #50, #52, #54, #55, #61, #62 and #73: every layer above target in each run (lowest: Service 92.6% on #55, View 92.3% on #45). For #63, #68, #70 and #74 the notes leave the layer numbers as TODOs for the CI comment. The team numbers above cover that code. |
+| Jinyoung Park (`ishlove77`) | #48, #53, #56, #57, #60, #64 | voice guidance and its settings, battle music and hit sounds, the cumulative statistics (app and the stats endpoint), squat form feedback and the result view model, the tutorial | 1525 on `4208543` (11-08) to 2771 on `71f73aa` (11-15); server 114 passed on `51052b7` | `coverage_per_file.sh` + `coverage_by_layer.py`: every layer above target in each step (e.g. on `3850426`: Model 99.3%, ViewModel 97.5%, Service 95.9%, View 95.3%); the new files of each step at or near 100%. |
+| Sangwoo Hahn (`Sangwoo-Hahn`) | #49, #51, #65, #66, #67, #69, #71, #72 | push-up and squat setup silhouettes and alignment, squat depth in bot reports and the shared squat judge, the replay of the stored match mode, the push-up judge (S1), the UAT phone-angle chip, the person continuity warning (S2, off by default) | 1557 on base `7e3dbcf` (11-12) to 3342 on `f5c78e1` (11-17), in both the ordinary build and the `S2_PERSON_GUARD=true` build | Changed files only (full-layer coverage not measured locally): all above their layer target, e.g. on `c940d09` `rep_judge.dart` 97.4%, `pose_metrics.dart` 98.8%, `push_up_judge_adapter.dart` 90.0%; on `f5c78e1` `rep_counter_viewmodel.dart` 96.9%, `battle_screen.dart` 94.4%. |
+| Hyunwoo Song (`hyun-1210`, PM) | – | TODO(hyun-1210): the PM's own testing notes (`docs/testing/iteration-4/hyun-1210.md`) are not written yet | – | – |
+
+- Test cases added or changed in Iteration 4 are listed per PR in the PR bodies and per push in each member's notes under `docs/testing/iteration-4/`.
+
 # 5. AI Module Testing
 
 *Required from Iteration 3 (thresholds declared and first results); kept up to date from Iteration 4.*
@@ -283,6 +327,20 @@ Plan committed before the first run: the evaluation plan and the README in the e
 - Settings under test: ML Kit pose detection 0.16.1, `accurate` model, the rep judge's default configuration at the commit (minLikelihood 0.6, bottomDepth 1.1, minShoulderDrop 0.68, maxTorsoDrop 1.2). The replay is deterministic: no model sampling, seed or prompt is involved, so two runs on the same commit give the same numbers.
 
 ## 5.2 Results
+
+#### 2026-11-18 · code at commit `9841a60` · AI module evaluation, Iteration 4 re-run on main (frozen set unchanged)
+Re-run of the frozen set (5.1) on main after PR #74. The 32 cases, 270 labelled reps and the thresholds are unchanged: no commit since the freeze at `dccd84a` touches the cases folder. Command, from `gymrats_app/`: `flutter pub get`, then `flutter test test/ai_eval/ai_eval_test.dart` (1 test passed; report printed and written to `build/ai_eval/report.md`). The PM ran it on 2026-11-18 (Windows, Flutter 3.47.5 / Dart 3.13.4; ML Kit pose detection 0.16.1, `accurate` model, the rep judge's default configuration at the commit). The replay is deterministic, so any machine gives the same numbers.
+
+| Metric | Iteration 3 after the tuning (`269eba7`) | Iteration 4 main (`9841a60`) | Threshold | Result |
+|---|---|---|---|---|
+| M1 Count accuracy | 79.4 % (50/63) | 79.4 % (50/63) | ≥ 90 % | **fail** |
+| M2 Rejection rate | 90.8 % (188/207) | 90.8 % (188/207) | ≥ 90 % | pass |
+| M3 Right reason | 59.9 % (124/207) | 59.9 % (124/207) | ≥ 80 % | **fail** |
+
+- **Setting changes since `269eba7`:** the push-up judge pull request S1 (#69, merged 2026-11-16) changed the default judge. The first top hold before counting is 250 ms instead of 300 ms, with 300 ms kept for clearing a knee latch. A span calibration was added, and it never promotes a rep below the configured lockout. Two opt-in models (`PUSHUP_MLP`, `PUSHUP_KNEE_FOREST`) and the person continuity warning (#72, `S2_PERSON_GUARD`) are compile-time flags that are off by default, so this run does not use them. Sangwoo Hahn's notes report the same M1/M2/M3 on the frozen set before and after each S1 change (`docs/testing/iteration-4/Sangwoo-Hahn.md`). This run confirms the numbers on main.
+- **Failure analysis:** unchanged from the 2026-11-03 run below. The open items of 5.3 are still open: the set 4 lock-out reason, the `armsStraight` reason of set 8, belly-down reps that are counted, and the normal reps of SWH set 7. Sangwoo Hahn's S1 work also measured the judge on a larger set of recorded videos with labels the agent proposed. Those numbers are not part of this plan (5.1): the labels were not adjudicated by people, and the set was not frozen before the run. They are reported in his notes and the push-up benchmark reports under `docs/iteration-4/`, not here.
+- **Open pull request, not merged:** #75 (push-up knee endpoint rule, on by default) scored M1 77.8 % (49/63) on the frozen set in its PR body, one more false rejection in JP's set 1 normal recording, with M2 and M3 unchanged. It is not in `9841a60`. The final re-run (schedule P20) follows the decision on #75.
+- **TODO(hyun-1210):** after the decision on #75, re-run the command above on the final main commit and add the run here (and file the report in the results folder of the evaluation set, if the team keeps doing that).
 
 #### 2026-11-03 · code at commit `269eba7` · AI module evaluation, re-run after the push-up judge tuning of 2026-11-03 (tuned on the same set)
 The four judge changes of that tuning (5.3) were chosen from these same 32 recordings, so this run is **in-sample**; it is reported beside the first run, not instead of it, and a check on new recordings at other phone angles is Iteration 4 work. Full report: in the results folder of the evaluation set (file named by the date and the commit); Hyunwoo's own run before the merge gave the same numbers.
