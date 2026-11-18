@@ -1136,3 +1136,71 @@ extension CoachText on TextTheme {
   TextStyle get coachGoalTitle =>
       coachName.copyWith(fontSize: 32, height: 1.15);
 }
+
+/// The text styles of the next battle's goal (A11: the game choice's
+/// sticker and goal row, the match-found goal card, the battle's goal chip
+/// and '목표 달성!' band; UxGoal scenes pick, found and battle), in ink
+/// unless a screen picks a quieter color. The screens' styles follow the
+/// system text size; the battle's two ([goalChip], [goalBand]) are in the
+/// stage's design points, which does not.
+extension GoalText on TextTheme {
+  /// The sticker on an exercise card, e.g. "목표 20회": 12, bold.
+  TextStyle get goalSticker => bodySmall!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    height: 16 / 12,
+    color: AppColors.ink,
+  );
+
+  /// "이번 판 목표 · 물렁범과 정함" over the goal row's title: 12, bold.
+  TextStyle get goalRowLabel =>
+      goalSticker.copyWith(color: AppColors.textSecondary);
+
+  /// The goal row's title, e.g. "스쿼트 20회 인정받기": Do Hyeon 22.
+  TextStyle get goalRowTitle => headlineSmall!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 22,
+    fontWeight: FontWeight.w400,
+    height: 1.2,
+    color: AppColors.ink,
+  );
+
+  /// "지난 18" at the goal row's end: Oxanium 700, 13.
+  TextStyle get goalRowBaseline => bodySmall!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 16 / 13,
+    color: AppColors.textSecondary,
+  );
+
+  /// "이번 판 목표!" on the match-found card's tag: Do Hyeon 24 on a 36 band.
+  TextStyle get goalCardTag => goalRowTitle.copyWith(fontSize: 24, height: 1.5);
+
+  /// The match-found card's title: Do Hyeon 32, tight lines.
+  TextStyle get goalCardTitle =>
+      goalRowTitle.copyWith(fontSize: 32, height: 1.12);
+
+  /// The battle HUD's goal chip, e.g. "목표 12/20": 11, bold, on a 14 line.
+  TextStyle get goalChip => bodySmall!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    height: 14 / 11,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// The battle's '목표 달성!' band: Do Hyeon 48 on a 64 line.
+  TextStyle get goalBand => bodyMedium!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 48,
+    fontWeight: FontWeight.w400,
+    height: 64 / 48,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+}
