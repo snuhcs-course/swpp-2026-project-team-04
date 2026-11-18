@@ -974,7 +974,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
   - the design (canvas "세팅 안내 자리 시안", option A) and the spec
   - the answers to the three questions (task.md W12 decisions 1-3)
   - the phone check (Galaxy S26+, while recording the demo video)
-  - telling the PM (현우) about the local harness entry for W12, which the user does afterwards. TODO(Woohyun Song): confirm it was shared.
+  - telling the PM (현우) about the local harness entry for W12, done by the user afterwards: "2026-11-18 카톡으로 PM에게 공유함".
 
 ### b. Prompt history (the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-18 17:16] (pasted; excerpt) "4. 원본과 다르게 해야 할 곳이 생기면 코드를 쓰기 전에 물어봐."
@@ -991,6 +991,7 @@ team plan, one day before the iteration's official start. Its prompts from that 
 - **Replies in the wrong language.** The agent wrote its messages to the user in English, although the user's saved preference is Korean. The user corrected it in the middle of the task ("영어 말고 한국어로 나한테 메시지 전달해").
 - **Shell quoting.** Three edit scripts written as shell heredocs failed on quotes; an `assert` in each stopped them before a partial write. They were rewritten as files. A commit command was blocked by the repo's git hook because its text named a `.claude/` path; nothing had been staged.
 - **Two old checks outside the list.** The first full run found two of the user's own W2 tests (`battle_banner_test.dart`, `online_lobby_screen_test.dart`) still looking for the removed band and the old chip words. They were added to W12's list and fixed.
+- **A Codex review finding that was a false positive (PR #77).** Codex (P2) said that the ready chips in `gymrats_app/lib/widgets/battle_stage.dart` set only one edge of their `Positioned`, so the `Center` inside would fill the rest of the width and both chips would meet in the middle. Checked: with only `left` or `right` and no `width`, a `Positioned` gives its child an unbounded width, and `Center` (an `Align`) shrinks to its child when its maximum width is unbounded, so each chip stays 12 from its own side. `test/widgets/battle_stage_test.dart` checks the drawn chips' places (mine at left 12, the opponent's at right 348) and passes. The code was not changed; the reason was left as a reply on the PR.
 - **Review findings:** 1 Major (the new and removed widget API was not in the local design-doc notes) and 4 Minor (stale comments; the board's size kept in two files; a golden scale check that could never fail; no screen-reader check for the board outside the camera's box). All fixed before the re-check.
 
 ### e. Prompt revisions

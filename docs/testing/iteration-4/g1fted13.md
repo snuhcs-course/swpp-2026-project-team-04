@@ -1075,15 +1075,15 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `71b780e`, wit
 - **Commands (Windows, `gymrats_app/`):** `flutter analyze`; `flutter test`.
 - **Tests:** after the merge (`a628cff` with the W12 changes, the same files as `dc3d3af`), `flutter test` had 3694 passed, 0 failed and 10 skipped. `flutter analyze` found no issues.
   - The 10 skipped tests are the same as before, and W12 does not touch them: the live server check in `test/services/online/public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 known push-up judge errors in `test/services/pose/pushup_error_cases_test.dart`, each with its reason.
-- **Coverage:** not measured on this Windows PC. TODO(Woohyun Song): fill in from the W12 PR's CI comment (commit and run link).
+- **Coverage:** from PR #77's CI comment "Tests and coverage (GitHub Actions)" for `66d952b` (2026-11-18 19:23 KST, [run 44282772780](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/44282772780), [comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/77#issuecomment-6975725653)). All layer targets met; total 97.4% (18449 / 18936). In CI `flutter test` had 3758 passed, 10 skipped, 0 failed: 64 more than the local run, probably because the `pull_request` run tests the PR merged with `main`, which had #75 (merged 19:03 KST) by then. Four test files are left out of the coverage numbers because they time out after 240 s there (their tests still ran): `settings_screen_test.dart`, `background_music_test.dart`, `person_behind_video_replay_test.dart`, `pushup_error_cases_test.dart`.
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/18 | CI comment "Tests and coverage (GitHub Actions)" on the W12 PR |
-| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
-| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the CI comment | 11/18 | same CI comment |
-| API server | pytest, pytest-django, pytest-cov | 90% | TODO(Woohyun Song): from the CI comment (`server/` unchanged) | 11/18 | same CI comment |
+| Model | flutter_test | 90% | 99.4% (693 / 697) | 11/18 | CI comment "Tests and coverage (GitHub Actions)" on PR #77, `66d952b` |
+| ViewModel | flutter_test, fakes | 90% | 98.1% (1752 / 1786) | 11/18 | same CI comment |
+| Service | flutter_test, fakes | 85% | 95.5% (4529 / 4741) | 11/18 | same CI comment |
+| View | flutter_test (widget) | 75% | 98.0% (11105 / 11326) | 11/18 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` unchanged) | 11/18 | same CI comment |
 
 - **Other checks:**
   - **Review:** run 1 CHANGES_REQUESTED with 1 Major (the design-doc rows for the new and removed widget API were missing in the local notes) and 4 Minor (stale "band" comments; the board's size defined in two files; a golden scale check that could never fail; no screen-reader check for the board outside the camera's box). All fixed; the re-check returned APPROVE.
