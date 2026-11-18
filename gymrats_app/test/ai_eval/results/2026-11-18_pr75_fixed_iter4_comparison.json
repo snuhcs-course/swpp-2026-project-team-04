@@ -1,0 +1,1686 @@
+{
+  "format": "gymrats-pr75-fixed-iter4-comparison",
+  "version": 1,
+  "recordedDate": "2026-11-18",
+  "codeRevision": "a9e6cd49f1a54cd70b71c67be2427c13a15edbdf",
+  "verification": {
+    "sameSourceBlobs": true,
+    "sameCaseLabels": true,
+    "bothCodeClean": true
+  },
+  "defaultRecommendation": {
+    "frameKnee": false,
+    "verifiedNewSetBenefit": false,
+    "reason": "All16 actual repetition labels pending; no new-set benefit established. Frozen M2 regresses188/207 to181/207 with unified ON."
+  },
+  "off": {
+    "runUtc": "2026-11-18T09:00:40.000529Z",
+    "revision": "a9e6cd49f1a54cd70b71c67be2427c13a15edbdf",
+    "codeModified": false,
+    "sourceBlobs": {
+      "lib/services/pose/pose_metrics.dart": "9a9a8ff8a7500ac137f43e83ed9bab3438535c8f",
+      "lib/services/pose/rep_judge.dart": "d19624c904193b06c890625451107fd1e7bd45a4",
+      "lib/services/pose/squat_rep_judge.dart": "d9803101177509d291f3ca49107141287acafdd5",
+      "test/ai_eval/eval_cases.dart": "935ccce661da3c0a115daf5c979ad4fd86d2e3ae",
+      "test/ai_eval/eval_scorer.dart": "79e375e88f2e3f8d37158963b4ceb0e4815c485d",
+      "test/ai_eval/iter4/iter4_cases.dart": "96f4a3bf22c944a1635a1fb9b8eb9af3cca3459b",
+      "test/ai_eval/iter4/iter4_scorer.dart": "bb1e8173054091bebfbf38b43a98436a45c50a25",
+      "test/ai_eval/iter4/comparison_test.dart": "c1ff7ed55ff75bc1ddb78a863be641e78219b360",
+      "test/ai_eval/cases_iter4/manifest.json": "f875609a9c2fd1805e17567eb0e221ed9bde3136"
+    },
+    "frameKnee": false,
+    "frozen": {
+      "caseCount": 32,
+      "m1": 0.7936507936507936,
+      "m2": 0.9082125603864735,
+      "m3": 0.5990338164251208,
+      "normal": 63,
+      "normalCounted": 50,
+      "incorrect": 207,
+      "incorrectNotCounted": 188,
+      "rightReason": 124,
+      "extraCounted": 0,
+      "extraRejected": 5
+    },
+    "iter4": {
+      "caseCount": 16,
+      "overall": {
+        "m1": null,
+        "m2": null,
+        "m3": null,
+        "normal": 0,
+        "normalCounted": 0,
+        "incorrect": 0,
+        "incorrectNotCounted": 0,
+        "rightReason": 0,
+        "explicitRejected": 0,
+        "missedIncorrect": 0,
+        "extraCounted": 0,
+        "extraRejected": 0,
+        "pendingCases": 16,
+        "scoredCases": 0
+      },
+      "byExercise": {
+        "pushUp": {
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "normal": 0,
+          "normalCounted": 0,
+          "incorrect": 0,
+          "incorrectNotCounted": 0,
+          "rightReason": 0,
+          "explicitRejected": 0,
+          "missedIncorrect": 0,
+          "extraCounted": 0,
+          "extraRejected": 0,
+          "pendingCases": 8,
+          "scoredCases": 0
+        },
+        "squat": {
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "normal": 0,
+          "normalCounted": 0,
+          "incorrect": 0,
+          "incorrectNotCounted": 0,
+          "rightReason": 0,
+          "explicitRejected": 0,
+          "missedIncorrect": 0,
+          "extraCounted": 0,
+          "extraRejected": 0,
+          "pendingCases": 8,
+          "scoredCases": 0
+        }
+      },
+      "byParticipant": {
+        "hyunwoo": {
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "normal": 0,
+          "normalCounted": 0,
+          "incorrect": 0,
+          "incorrectNotCounted": 0,
+          "rightReason": 0,
+          "explicitRejected": 0,
+          "missedIncorrect": 0,
+          "extraCounted": 0,
+          "extraRejected": 0,
+          "pendingCases": 8,
+          "scoredCases": 0
+        },
+        "sangwoo": {
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "normal": 0,
+          "normalCounted": 0,
+          "incorrect": 0,
+          "incorrectNotCounted": 0,
+          "rightReason": 0,
+          "explicitRejected": 0,
+          "missedIncorrect": 0,
+          "extraCounted": 0,
+          "extraRejected": 0,
+          "pendingCases": 8,
+          "scoredCases": 0
+        }
+      },
+      "cases": [
+        {
+          "id": "20261118140716241591_normal_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "pushUp",
+          "scenario": "normal",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "valid",
+            "kneesDown"
+          ],
+          "frameCount": 314,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 1967000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 3266000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 4633000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 6066000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 7433000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 10324000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140732357228_knees_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "pushUp",
+          "scenario": "kneesDown",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "valid"
+          ],
+          "frameCount": 286,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 1600000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 3400000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 5133000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 6966000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 8624000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140748211269_bent_arms_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "pushUp",
+          "scenario": "incompleteExtension",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "insufficientDepth",
+            "insufficientDepth",
+            "insufficientDepth"
+          ],
+          "frameCount": 237,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3923000,
+              "valid": false,
+              "reason": "insufficientDepth",
+              "insideWindow": true
+            },
+            {
+              "t": 5023000,
+              "valid": false,
+              "reason": "insufficientDepth",
+              "insideWindow": true
+            },
+            {
+              "t": 6023000,
+              "valid": false,
+              "reason": "insufficientDepth",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140806566477_belly_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "pushUp",
+          "scenario": "bellyDown",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "kneesDown",
+            "incompleteExtension",
+            "incompleteExtension",
+            "incompleteExtension",
+            "valid"
+          ],
+          "frameCount": 324,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2691000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 4366000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 6000000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 7733000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 9091000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140831130646_squat_normal_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "squat",
+          "scenario": "normal",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat"
+          ],
+          "frameCount": 425,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 4266000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6099000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 8066000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 10166000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140847280825_squat_shallow_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "squat",
+          "scenario": "shallowSquat",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [],
+          "frameCount": 284,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": []
+        },
+        {
+          "id": "20261118140901505813_squat_not_standing_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "squat",
+          "scenario": "standUpFully",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat"
+          ],
+          "frameCount": 237,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3866000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 5033000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 6299000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140919140749_squat_chair_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "squat",
+          "scenario": "chair",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "shallowSquat"
+          ],
+          "frameCount": 307,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2433000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153146739950_normal_gymrats",
+          "participant": "sangwoo",
+          "exercise": "pushUp",
+          "scenario": "normal",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "valid"
+          ],
+          "frameCount": 315,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2338000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 3641000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 5043000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6413000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 7949000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153203817106_knees_gymrats",
+          "participant": "sangwoo",
+          "exercise": "pushUp",
+          "scenario": "kneesDown",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "kneesDown"
+          ],
+          "frameCount": 294,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 1870000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 3273000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 4743000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 6045000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 7482000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153221618003_bent_arms_gymrats",
+          "participant": "sangwoo",
+          "exercise": "pushUp",
+          "scenario": "incompleteExtension",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "incompleteExtension",
+            "incompleteExtension",
+            "incompleteExtension",
+            "kneesDown",
+            "incompleteExtension"
+          ],
+          "frameCount": 275,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2639000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 3808000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 4876000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 6045000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 8350000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153251158085_belly_gymrats",
+          "participant": "sangwoo",
+          "exercise": "pushUp",
+          "scenario": "bellyDown",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "valid"
+          ],
+          "frameCount": 387,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2371000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 4275000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6379000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 8484000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 10822000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153318437596_squat_normal_gymrats",
+          "participant": "sangwoo",
+          "exercise": "squat",
+          "scenario": "normal",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "valid"
+          ],
+          "frameCount": 387,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3006000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 4776000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6613000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 8350000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 9987000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153357549759_squat_shallow_gymrats",
+          "participant": "sangwoo",
+          "exercise": "squat",
+          "scenario": "shallowSquat",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat"
+          ],
+          "frameCount": 340,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2438000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 3841000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 5144000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 6747000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 8183000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153419912431_squat_not_standing_gymrats",
+          "participant": "sangwoo",
+          "exercise": "squat",
+          "scenario": "standUpFully",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "standUpFully",
+            "standUpFully",
+            "standUpFully",
+            "standUpFully",
+            "standUpFully"
+          ],
+          "frameCount": 383,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3373000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            },
+            {
+              "t": 4743000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            },
+            {
+              "t": 6279000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            },
+            {
+              "t": 7916000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            },
+            {
+              "t": 9886000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153457145385_squat_chair_gymrats",
+          "participant": "sangwoo",
+          "exercise": "squat",
+          "scenario": "chair",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "valid"
+          ],
+          "frameCount": 530,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3440000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 5945000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 8317000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 11189000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 13894000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        }
+      ]
+    },
+    "defaultPolicy": "OFF until complete human labels and reviewed M1/M2 benefit",
+    "chairPolicy": "range_only: depth and full standing; chair use itself is allowed (user confirmed 2026-11-18)",
+    "limitations": [
+      "No source MP4s in repository.",
+      "New expected counts/labels are not inferred from filenames or predictions.",
+      "Pending cases have no M1/M2/M3 contribution; predictions are diagnostics only.",
+      "No IMU, real camera scheduling, setup or person guard in offline replay.",
+      "Hyunwoo push-up clips informed rule development; not an untouched holdout."
+    ]
+  },
+  "on": {
+    "runUtc": "2026-11-18T09:00:52.604931Z",
+    "revision": "a9e6cd49f1a54cd70b71c67be2427c13a15edbdf",
+    "codeModified": false,
+    "sourceBlobs": {
+      "lib/services/pose/pose_metrics.dart": "9a9a8ff8a7500ac137f43e83ed9bab3438535c8f",
+      "lib/services/pose/rep_judge.dart": "d19624c904193b06c890625451107fd1e7bd45a4",
+      "lib/services/pose/squat_rep_judge.dart": "d9803101177509d291f3ca49107141287acafdd5",
+      "test/ai_eval/eval_cases.dart": "935ccce661da3c0a115daf5c979ad4fd86d2e3ae",
+      "test/ai_eval/eval_scorer.dart": "79e375e88f2e3f8d37158963b4ceb0e4815c485d",
+      "test/ai_eval/iter4/iter4_cases.dart": "96f4a3bf22c944a1635a1fb9b8eb9af3cca3459b",
+      "test/ai_eval/iter4/iter4_scorer.dart": "bb1e8173054091bebfbf38b43a98436a45c50a25",
+      "test/ai_eval/iter4/comparison_test.dart": "c1ff7ed55ff75bc1ddb78a863be641e78219b360",
+      "test/ai_eval/cases_iter4/manifest.json": "f875609a9c2fd1805e17567eb0e221ed9bde3136"
+    },
+    "frameKnee": true,
+    "frozen": {
+      "caseCount": 32,
+      "m1": 0.8095238095238095,
+      "m2": 0.8743961352657005,
+      "m3": 0.6328502415458938,
+      "normal": 63,
+      "normalCounted": 51,
+      "incorrect": 207,
+      "incorrectNotCounted": 181,
+      "rightReason": 131,
+      "extraCounted": 0,
+      "extraRejected": 5
+    },
+    "iter4": {
+      "caseCount": 16,
+      "overall": {
+        "m1": null,
+        "m2": null,
+        "m3": null,
+        "normal": 0,
+        "normalCounted": 0,
+        "incorrect": 0,
+        "incorrectNotCounted": 0,
+        "rightReason": 0,
+        "explicitRejected": 0,
+        "missedIncorrect": 0,
+        "extraCounted": 0,
+        "extraRejected": 0,
+        "pendingCases": 16,
+        "scoredCases": 0
+      },
+      "byExercise": {
+        "pushUp": {
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "normal": 0,
+          "normalCounted": 0,
+          "incorrect": 0,
+          "incorrectNotCounted": 0,
+          "rightReason": 0,
+          "explicitRejected": 0,
+          "missedIncorrect": 0,
+          "extraCounted": 0,
+          "extraRejected": 0,
+          "pendingCases": 8,
+          "scoredCases": 0
+        },
+        "squat": {
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "normal": 0,
+          "normalCounted": 0,
+          "incorrect": 0,
+          "incorrectNotCounted": 0,
+          "rightReason": 0,
+          "explicitRejected": 0,
+          "missedIncorrect": 0,
+          "extraCounted": 0,
+          "extraRejected": 0,
+          "pendingCases": 8,
+          "scoredCases": 0
+        }
+      },
+      "byParticipant": {
+        "hyunwoo": {
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "normal": 0,
+          "normalCounted": 0,
+          "incorrect": 0,
+          "incorrectNotCounted": 0,
+          "rightReason": 0,
+          "explicitRejected": 0,
+          "missedIncorrect": 0,
+          "extraCounted": 0,
+          "extraRejected": 0,
+          "pendingCases": 8,
+          "scoredCases": 0
+        },
+        "sangwoo": {
+          "m1": null,
+          "m2": null,
+          "m3": null,
+          "normal": 0,
+          "normalCounted": 0,
+          "incorrect": 0,
+          "incorrectNotCounted": 0,
+          "rightReason": 0,
+          "explicitRejected": 0,
+          "missedIncorrect": 0,
+          "extraCounted": 0,
+          "extraRejected": 0,
+          "pendingCases": 8,
+          "scoredCases": 0
+        }
+      },
+      "cases": [
+        {
+          "id": "20261118140716241591_normal_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "pushUp",
+          "scenario": "normal",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "shouldersNotLevel"
+          ],
+          "frameCount": 314,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 1967000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 3266000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 4633000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6066000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 7433000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 10324000,
+              "valid": false,
+              "reason": "shouldersNotLevel",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140732357228_knees_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "pushUp",
+          "scenario": "kneesDown",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "kneesDown"
+          ],
+          "frameCount": 286,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 1600000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 3400000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 5133000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 6966000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 8624000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140748211269_bent_arms_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "pushUp",
+          "scenario": "incompleteExtension",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "insufficientDepth",
+            "insufficientDepth",
+            "insufficientDepth"
+          ],
+          "frameCount": 237,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3923000,
+              "valid": false,
+              "reason": "insufficientDepth",
+              "insideWindow": true
+            },
+            {
+              "t": 5023000,
+              "valid": false,
+              "reason": "insufficientDepth",
+              "insideWindow": true
+            },
+            {
+              "t": 6023000,
+              "valid": false,
+              "reason": "insufficientDepth",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140806566477_belly_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "pushUp",
+          "scenario": "bellyDown",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "incompleteExtension",
+            "incompleteExtension",
+            "incompleteExtension",
+            "incompleteExtension",
+            "valid"
+          ],
+          "frameCount": 324,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2691000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 4366000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 6000000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 7733000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 9091000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140831130646_squat_normal_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "squat",
+          "scenario": "normal",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat"
+          ],
+          "frameCount": 425,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 4266000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6099000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 8066000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 10166000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140847280825_squat_shallow_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "squat",
+          "scenario": "shallowSquat",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [],
+          "frameCount": 284,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": []
+        },
+        {
+          "id": "20261118140901505813_squat_not_standing_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "squat",
+          "scenario": "standUpFully",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat"
+          ],
+          "frameCount": 237,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3866000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 5033000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 6299000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118140919140749_squat_chair_gymrats",
+          "participant": "hyunwoo",
+          "exercise": "squat",
+          "scenario": "chair",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "shallowSquat"
+          ],
+          "frameCount": 307,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2433000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153146739950_normal_gymrats",
+          "participant": "sangwoo",
+          "exercise": "pushUp",
+          "scenario": "normal",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "valid"
+          ],
+          "frameCount": 315,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2338000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 3641000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 5043000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6413000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 7949000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153203817106_knees_gymrats",
+          "participant": "sangwoo",
+          "exercise": "pushUp",
+          "scenario": "kneesDown",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "kneesDown",
+            "kneesDown"
+          ],
+          "frameCount": 294,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 1870000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 3273000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 4743000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 6045000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            },
+            {
+              "t": 7482000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153221618003_bent_arms_gymrats",
+          "participant": "sangwoo",
+          "exercise": "pushUp",
+          "scenario": "incompleteExtension",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "incompleteExtension",
+            "incompleteExtension",
+            "incompleteExtension",
+            "incompleteExtension",
+            "incompleteExtension"
+          ],
+          "frameCount": 275,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2639000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 3808000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 4876000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 6045000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            },
+            {
+              "t": 8350000,
+              "valid": false,
+              "reason": "incompleteExtension",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153251158085_belly_gymrats",
+          "participant": "sangwoo",
+          "exercise": "pushUp",
+          "scenario": "bellyDown",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "kneesDown"
+          ],
+          "frameCount": 387,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2371000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 4275000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6379000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 8484000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 10822000,
+              "valid": false,
+              "reason": "kneesDown",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153318437596_squat_normal_gymrats",
+          "participant": "sangwoo",
+          "exercise": "squat",
+          "scenario": "normal",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "valid"
+          ],
+          "frameCount": 387,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3006000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 4776000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 6613000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 8350000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 9987000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153357549759_squat_shallow_gymrats",
+          "participant": "sangwoo",
+          "exercise": "squat",
+          "scenario": "shallowSquat",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat",
+            "shallowSquat"
+          ],
+          "frameCount": 340,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 2438000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 3841000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 5144000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 6747000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            },
+            {
+              "t": 8183000,
+              "valid": false,
+              "reason": "shallowSquat",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153419912431_squat_not_standing_gymrats",
+          "participant": "sangwoo",
+          "exercise": "squat",
+          "scenario": "standUpFully",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "standUpFully",
+            "standUpFully",
+            "standUpFully",
+            "standUpFully",
+            "standUpFully"
+          ],
+          "frameCount": 383,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3373000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            },
+            {
+              "t": 4743000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            },
+            {
+              "t": 6279000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            },
+            {
+              "t": 7916000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            },
+            {
+              "t": 9886000,
+              "valid": false,
+              "reason": "standUpFully",
+              "insideWindow": true
+            }
+          ]
+        },
+        {
+          "id": "20261118153457145385_squat_chair_gymrats",
+          "participant": "sangwoo",
+          "exercise": "squat",
+          "scenario": "chair",
+          "labelStatus": "pending",
+          "expected": null,
+          "predicted": [
+            "valid",
+            "valid",
+            "valid",
+            "valid",
+            "valid"
+          ],
+          "frameCount": 530,
+          "windowProvided": false,
+          "eventsOutsideWindow": 0,
+          "events": [
+            {
+              "t": 3440000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 5945000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 8317000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 11189000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            },
+            {
+              "t": 13894000,
+              "valid": true,
+              "reason": null,
+              "insideWindow": true
+            }
+          ]
+        }
+      ]
+    },
+    "defaultPolicy": "OFF until complete human labels and reviewed M1/M2 benefit",
+    "chairPolicy": "range_only: depth and full standing; chair use itself is allowed (user confirmed 2026-11-18)",
+    "limitations": [
+      "No source MP4s in repository.",
+      "New expected counts/labels are not inferred from filenames or predictions.",
+      "Pending cases have no M1/M2/M3 contribution; predictions are diagnostics only.",
+      "No IMU, real camera scheduling, setup or person guard in offline replay.",
+      "Hyunwoo push-up clips informed rule development; not an untouched holdout."
+    ]
+  }
+}

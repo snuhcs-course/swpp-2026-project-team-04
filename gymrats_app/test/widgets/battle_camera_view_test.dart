@@ -35,9 +35,8 @@ void main() {
     expect(box.width, closeTo(387 * 3 / 4, 0.01));
     final camera = tester.widget<PoseCameraView>(find.byType(PoseCameraView));
     expect(camera.controller, isNull);
-    expect(camera.showLandmarks, isTrue);
-    // The battle camera's bold joints and skeleton (A9 spec 4).
-    expect(camera.boldLandmarks, isTrue);
+    // No joint dots or skeleton (A12 spec 3).
+    expect(camera.showLandmarks, isFalse);
     expect(find.byType(ChestHeightOverlay), findsNothing);
     expect(find.byType(SquatHeightOverlay), findsNothing);
   });
@@ -78,6 +77,35 @@ void main() {
       tester.getRect(find.byType(SquatHeightOverlay)),
       tester.getRect(find.byType(PoseCameraView)),
     );
+  });
+
+  testWidgets('no joint dots or skeleton while setting up (the silhouette '
+      'only) or in the battle (the height lines only, A12 spec 3)', (
+    tester,
+  ) async {
+    final frame = standingFrame();
+    const snapshot = JudgeSnapshot(phase: RepPhase.idle);
+    final guide = BattleCameraView.setupGuide(
+      ExerciseType.squat,
+      ready: false,
+    )!;
+    for (final view in [
+      BattleCameraView(
+        controller: null,
+        frame: frame,
+        guide: guide.widget,
+        guideFit: guide.fit,
+      ),
+      BattleCameraView(controller: null, frame: frame, squatSnapshot: snapshot),
+      BattleCameraView(controller: null, frame: frame, chestSnapshot: snapshot),
+    ]) {
+      await _pump(tester, view);
+      final camera = tester.widget<PoseCameraView>(find.byType(PoseCameraView));
+      expect(camera.showLandmarks, isFalse);
+      expect(camera.frame, same(frame));
+    }
+    // The battle's lines stay: the last view's chest lines.
+    expect(find.byType(ChestHeightOverlay), findsOneWidget);
   });
 
   group('under the arena\'s layout (W2b 3-B, guide option 가)', () {

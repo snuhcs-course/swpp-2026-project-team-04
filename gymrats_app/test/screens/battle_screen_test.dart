@@ -37,7 +37,14 @@ import 'package:gymrats_app/widgets/pose_camera_view.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
 import 'package:gymrats_app/widgets/squat_height_overlay.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/services/feedback/goal_progress.dart';
+import 'package:gymrats_app/services/feedback/goal_store.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
+import 'package:gymrats_app/widgets/battle_stage_hud.dart';
+import 'package:provider/provider.dart';
 
+import '../support/auth_fakes.dart';
 import '../support/fakes.dart';
 import '../support/flow_snapshot.dart';
 import '../support/placed_phone.dart';
@@ -55,6 +62,61 @@ const _squat = Matchup(
   playerName: '우현',
   opponent: Opponent(name: 'RepBot', isBot: true),
 );
+
+/// A goal of [kind] and [target] for [exercise], set with the seal.
+FeedbackGoal _goal(
+  GoalKind kind,
+  int target, {
+  ExerciseType exercise = ExerciseType.pushUp,
+}) => FeedbackGoal(
+  exercise: exercise,
+  kind: kind,
+  target: target,
+  baseline: target - 2,
+  title: '목표 $target',
+  setAt: DateTime(2026, 11, 17, 14),
+  characterId: 'seal',
+  fromMatch: 'report-1',
+);
+
+/// The app's auth with account 1 signed in, whose goals the tests save.
+Future<AuthViewModel> _signedIn() async {
+  final repository = ScriptedAuthRepository();
+  await repository.logIn(loginId: 'woohyun', password: 'pw');
+  return AuthViewModel(repository: repository);
+}
+
+/// [app] under the goal store [goals] and [auth], as the app provides
+/// them; just [app] without a store.
+Widget _withGoals(Widget app, GoalStore? goals, AuthViewModel? auth) {
+  if (goals == null) return app;
+  return MultiProvider(
+    providers: [
+      Provider<GoalStore>.value(value: goals),
+      if (auth != null)
+        ChangeNotifierProvider<AuthViewModel>.value(value: auth),
+    ],
+    child: app,
+  );
+}
+
+/// A goal store that remembers what was read.
+class _CountingGoalStore extends MemoryGoalStore {
+  final reads = <(int, ExerciseType)>[];
+
+  @override
+  Future<FeedbackGoal?> read(int accountId, ExerciseType exercise) {
+    reads.add((accountId, exercise));
+    return super.read(accountId, exercise);
+  }
+}
+
+/// A goal store whose every read fails.
+class _BrokenGoalStore extends MemoryGoalStore {
+  @override
+  Future<FeedbackGoal?> read(int accountId, ExerciseType exercise) =>
+      Future.error(StateError('locked'));
+}
 
 /// A setup that takes a pose as ready on its first frame and drops it on
 /// the first frame without it, so a test need not hold a pose. The UAT-1
@@ -87,6 +149,8 @@ void main() {
     SetupConfig setupConfig = _quickSetup,
     BattleSetupListener? onSetup,
     String? myCharacter,
+    GoalStore? goals,
+    AuthViewModel? auth,
     bool personGuard = const bool.fromEnvironment('S2_PERSON_GUARD'),
   }) async {
     await prepareFlowSnapshotFonts(tester);
@@ -130,44 +194,48 @@ void main() {
       now: () => DateTime(2026, 11, 12, 14, 32),
     );
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: TextScaler.linear(textScale)),
-          child: child!,
-        ),
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => BattleScreen(
-                    matchup: matchup,
-                    myCharacter: myCharacter ?? CharacterRig.defaultId,
-                    createViewModel: () => viewModel,
-                    onCue: (cue) => cues.add('$cue'),
-                    onSetup: onSetup,
+      _withGoals(
+        MaterialApp(
+          theme: AppTheme.light,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => BattleScreen(
+                      matchup: matchup,
+                      myCharacter: myCharacter ?? CharacterRig.defaultId,
+                      createViewModel: () => viewModel,
+                      onCue: (cue) => cues.add('$cue'),
+                      onSetup: onSetup,
+                    ),
                   ),
                 ),
+                child: const Text('home'),
               ),
-              child: const Text('home'),
             ),
           ),
+          onGenerateRoute: (settings) => switch (settings.name) {
+            GymRatsApp.resultRoute => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) {
+                final result = settings.arguments! as BattleResult;
+                return Scaffold(
+                  body: Text('result ${result.myReps}:${result.opponentReps}'),
+                );
+              },
+            ),
+            _ => null,
+          },
         ),
-        onGenerateRoute: (settings) => switch (settings.name) {
-          GymRatsApp.resultRoute => MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) {
-              final result = settings.arguments! as BattleResult;
-              return Scaffold(
-                body: Text('result ${result.myReps}:${result.opponentReps}'),
-              );
-            },
-          ),
-          _ => null,
-        },
+        goals,
+        auth,
       ),
     );
     await tester.tap(find.text('home'));
@@ -299,7 +367,7 @@ void main() {
         BattleCameraArea area() =>
             tester.widget<BattleCameraArea>(find.byType(BattleCameraArea));
         final band = find.byWidgetPredicate(
-          (w) => w.runtimeType.toString() == '_SetupCueBand',
+          (w) => w.runtimeType.toString() == '_SetupCueBoard',
         );
         final statusFrame = find.byWidgetPredicate(
           (w) =>
@@ -399,16 +467,17 @@ void main() {
       );
     });
 
-    testWidgets('opens on the setup: the band, my tag setting up and the '
-        "bot's ready, the setup bar and the setup cue, and no 시작 button "
-        '(team decision 2026-11-15)', (tester) async {
+    testWidgets('opens on the setup: my chip setting up and the bot\'s '
+        'ready (no status band, A12), the setup bar and the setup cue, and no '
+        '시작 button (team decision 2026-11-15)', (tester) async {
       await open(tester);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect(stage(tester).myName, '우현');
       expect(stage(tester).opponentName, 'RepBot');
-      expect(find.text('자세 세팅 중'), findsOneWidget);
-      expect(find.text('세팅 중'), findsOneWidget);
-      expect(find.text('준비 완료'), findsOneWidget);
+      expect(find.text('자세 세팅 중'), findsNothing);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
+      // The bot's chip, as the app has it.
+      expect(find.text('상대 · 준비 완료'), findsOneWidget);
       // The bot never keeps anyone waiting.
       expect(find.text('상대를 기다리는 중'), findsNothing);
       expect(find.text('0:30'), findsOneWidget);
@@ -433,14 +502,15 @@ void main() {
       final guide = find.byType(PoseSilhouetteGuide);
       expect(guide, findsOneWidget);
       expect(tester.widget<PoseSilhouetteGuide>(guide).ready, isFalse);
-      // Setting up (W2b 3-B): 360 x 621 below the line, the 3 : 4 picture
-      // filling it, cut at the sides. The guide keeps the share a cropping
-      // camera would show in the battle's 360 x 387 box (option 가).
+      // Setting up (W2b 3-B, A12): 360 x 581 below the line at 196, the
+      // 3 : 4 picture filling it, cut at the sides. The guide keeps the
+      // share a cropping camera would show in the battle's 360 x 387 box
+      // (option 가).
       var picture = tester.getRect(find.byType(PoseCameraView));
       final area = BattleCameraView.coverShare(3 / 4, const Size(360, 387));
-      expect(picture.top, closeTo(159, .01));
-      expect(picture.height, closeTo(621, .01));
-      expect(picture.width, closeTo(621 * 3 / 4, .01));
+      expect(picture.top, closeTo(199, .01));
+      expect(picture.height, closeTo(581, .01));
+      expect(picture.width, closeTo(581 * 3 / 4, .01));
       void guideOn(Rect picture) {
         expect(tester.getSize(guide).width, closeTo(picture.width, .01));
         expect(
@@ -594,7 +664,7 @@ void main() {
       await wait(tester, 16);
       expect(stage(tester).phase, BattleStagePhase.countdown);
       expect(find.text('3'), findsOneWidget);
-      expect(find.text('세팅 중'), findsNothing);
+      expect(find.text('나 · 세팅 중'), findsNothing);
       // The setup bar and the camera switch are for setting up; the stage
       // counts now. They fade out as the line comes down, read by no one.
       // No 시작 button comes in: the count runs to the start by itself.
@@ -694,16 +764,15 @@ void main() {
       await wait(tester, 16);
       expect(stage(tester).phase, BattleStagePhase.setup);
       // W2b 3-B 4.6: the fighters fade out in 0.1 s and the line goes back
-      // up in 0.35 s; the setup's band and chips come back with it.
+      // up in 0.35 s; the setup's chips come back with it.
       await wait(tester, 100);
       expect(find.byType(BattleFighter), findsNothing);
       await wait(tester, 250);
       expect(
         tester.getTopLeft(find.byType(BattleCameraArea)).dy,
-        closeTo(156, 1e-9),
+        closeTo(196, 1e-9),
       );
-      expect(find.text('자세 세팅 중'), findsOneWidget);
-      expect(find.text('세팅 중'), findsOneWidget);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
       expect(find.text('3'), findsNothing);
       await wait(tester, 3000);
       expect(find.text('GO!'), findsNothing);
@@ -1364,7 +1433,7 @@ void main() {
       expect(viewModel.state.started, isFalse);
       expect(stage(tester).phase, BattleStagePhase.setup);
       expect((stage(tester).myScore, stage(tester).myReps), (0, 0));
-      expect(find.text('자세 세팅 중'), findsOneWidget);
+      expect(find.text('나 · 세팅 중'), findsOneWidget);
       cues.clear();
       await frame(tester, 12);
       if (viewModel.counter.enablePersonGuard) {
@@ -1388,6 +1457,196 @@ void main() {
       await tester.tap(find.text('설정 열기'));
       await tester.pump();
       expect(camera.settingsCount, 1);
+      await close(tester);
+    });
+  });
+
+  group('the goal (A11 spec 5)', () {
+    void descend() => judge.snapshot = const JudgeSnapshot(
+      phase: RepPhase.descending,
+      shoulderDrop: .5,
+      topShoulderY: 200,
+    );
+
+    Finder chip() => find.byType(BattleGoalChip);
+    Color chipGround(WidgetTester tester) => tester
+        .widget<ColoredBox>(
+          find.descendant(of: chip(), matching: find.byType(ColoredBox)).first,
+        )
+        .color;
+
+    testWidgets('read once for the account and the exercise: hidden while '
+        'setting up, 미션 0/2 from the countdown, my counted reps fill it, '
+        'and the rep that reaches it brings 미션 성공! once, after its '
+        'bands', (tester) async {
+      final store = _CountingGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(GoalKind.reps, 2);
+      final auth = await _signedIn();
+      addTearDown(auth.dispose);
+      await open(tester, goals: store, auth: auth);
+      expect(store.reads, [(1, ExerciseType.pushUp)]);
+      expect(
+        stage(tester).goal,
+        const GoalProgress(kind: GoalKind.reps, target: 2, value: 0),
+      );
+      // While setting up the ready chips are in its place (decision 7).
+      expect(chip(), findsNothing);
+      await frame(tester, 1);
+      await wait(tester, 600);
+      expect(stage(tester).phase, BattleStagePhase.countdown);
+      expect(find.text('미션 0/2'), findsOneWidget);
+      await frame(tester, 4);
+      await wait(tester, 800);
+      descend();
+      judge.closeRep();
+      await frame(tester, 6);
+      await wait(tester, 100);
+      expect(find.text('미션 1/2'), findsOneWidget);
+      judge.closeRep();
+      await frame(tester, 7);
+      await wait(tester, 100);
+      expect(find.text('미션 2/2'), findsOneWidget);
+      expect(
+        find.descendant(of: chip(), matching: find.byIcon(Icons.check_rounded)),
+        findsOneWidget,
+      );
+      // The rep's own bands first, then the goal's.
+      expect(find.text('GOOD'), findsOneWidget);
+      expect(find.text('미션 성공!'), findsNothing);
+      await wait(tester, 1300);
+      expect(find.text('미션 성공!'), findsOneWidget);
+      await wait(tester, 1700);
+      expect(find.text('미션 성공!'), findsNothing);
+      // Once a battle; the chip goes on counting.
+      judge.closeRep();
+      await frame(tester, 11);
+      await wait(tester, 2000);
+      expect(find.text('미션 성공!'), findsNothing);
+      expect(find.text('미션 3/2'), findsOneWidget);
+      // The screen never writes the goal.
+      expect(store.goals.values.single, _goal(GoalKind.reps, 2));
+      expect(store.reads, hasLength(1));
+      await close(tester);
+    });
+
+    testWidgets("only the battle's exercise: a squat goal shows nothing in a "
+        'push-up battle', (tester) async {
+      final store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.squat)] = _goal(
+          GoalKind.reps,
+          20,
+          exercise: ExerciseType.squat,
+        );
+      final auth = await _signedIn();
+      addTearDown(auth.dispose);
+      await open(tester, goals: store, auth: auth);
+      await begin(tester);
+      expect(stage(tester).goal, isNull);
+      expect(chip(), findsNothing);
+      await close(tester);
+    });
+
+    testWidgets('without a signed-in account nothing is read', (tester) async {
+      final store = _CountingGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(GoalKind.reps, 2);
+      await open(tester, goals: store);
+      await begin(tester);
+      expect(store.reads, isEmpty);
+      expect(chip(), findsNothing);
+      await close(tester);
+    });
+
+    testWidgets('a store that cannot be read is no goal', (tester) async {
+      final auth = await _signedIn();
+      addTearDown(auth.dispose);
+      await open(tester, goals: _BrokenGoalStore(), auth: auth);
+      await begin(tester);
+      expect(stage(tester).goal, isNull);
+      expect(tester.takeException(), isNull);
+      await close(tester);
+    });
+
+    testWidgets('a maxRejects goal: white in the round, red once a rejection '
+        'is past it; no band', (tester) async {
+      final store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(GoalKind.maxRejects, 0);
+      final auth = await _signedIn();
+      addTearDown(auth.dispose);
+      await open(tester, goals: store, auth: auth);
+      await begin(tester);
+      expect(find.text('무효 0/0'), findsOneWidget);
+      expect(chipGround(tester), AppColors.card);
+      judge.closeRep(reason: RejectReason.tooFast);
+      await frame(tester, 6);
+      await wait(tester, 2000);
+      expect(find.text('무효 1/0'), findsOneWidget);
+      expect(chipGround(tester), AppColors.danger);
+      expect(find.text('미션 성공!'), findsNothing);
+      await close(tester);
+    });
+
+    testWidgets('a retry after a camera failure is a new battle: the goal '
+        'starts over and its band can come again', (tester) async {
+      final store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(GoalKind.reps, 1);
+      final auth = await _signedIn();
+      addTearDown(auth.dispose);
+      await open(tester, goals: store, auth: auth);
+      await begin(tester);
+      descend();
+      judge.closeRep();
+      await frame(tester, 6);
+      await wait(tester, 1400);
+      expect(find.text('미션 성공!'), findsOneWidget);
+      // The camera fails in the round.
+      now = const Duration(seconds: 7);
+      estimator.frames.add(null);
+      camera.emit();
+      await tester.pump();
+      now = const Duration(seconds: 11);
+      estimator.frames.add(null);
+      camera.emit();
+      await wait(tester, 100);
+      await tester.tap(find.text('다시 시도'));
+      await tester.pump();
+      await wait(tester, 100);
+      expect(stage(tester).goal!.value, 0);
+      await frame(tester, 12);
+      await frame(tester, 15);
+      await wait(tester, 800);
+      expect(find.text('미션 0/1'), findsOneWidget);
+      descend();
+      judge.closeRep();
+      await frame(tester, 17);
+      await wait(tester, 1400);
+      expect(find.text('미션 1/1'), findsOneWidget);
+      expect(find.text('미션 성공!'), findsOneWidget);
+      await close(tester);
+    });
+
+    testWidgets('a maxRejects goal kept to the end: the check and all lime '
+        'once time is up', (tester) async {
+      final store = MemoryGoalStore()
+        ..goals[(1, ExerciseType.pushUp)] = _goal(GoalKind.maxRejects, 1);
+      final auth = await _signedIn();
+      addTearDown(auth.dispose);
+      await open(tester, goals: store, auth: auth);
+      await begin(tester);
+      judge.closeRep(reason: RejectReason.tooFast);
+      await frame(tester, 6);
+      await wait(tester, 100);
+      expect(
+        find.descendant(of: chip(), matching: find.byIcon(Icons.check_rounded)),
+        findsNothing,
+      );
+      await frame(tester, 34);
+      await wait(tester, 100);
+      expect(viewModel.state.phase, BattlePhase.timeUp);
+      expect(stage(tester).goal!.reached, isTrue);
+      expect(
+        find.descendant(of: chip(), matching: find.byIcon(Icons.check_rounded)),
+        findsOneWidget,
+      );
       await close(tester);
     });
   });

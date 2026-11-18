@@ -120,3 +120,74 @@ Sangwoo asked Codex to reproduce the failures with `S2_PERSON_GUARD` enabled and
 Codex replayed native Android ML Kit landmarks from nine videos through the app’s repetition counter. In O027 a separate Codex visual review identified 256 frames where ML Kit selected the background person. The guard withheld all 256 and suppressed seven invalid judgments. In the multi-person squat clip the counter accepted the same three repetitions at the same timestamps in both configurations. The fixture and observations are documented in the [video findings](../../iteration-4/person-behind-findings.md).
 
 A single-person control exposed an error in the original guard. A one-frame collapse in estimated shoulder width kept the game paused until confirmation. Codex added a regression test and changed the guard to withhold that frame while preserving the last reliable pose. The blurred control O033 still triggers a pause. Phone testing with two people and independent human labels remain outstanding. Both full app configurations passed 3,342 tests with ten existing skips each. A separate Codex reviewer checked the implementation and evidence. The [testing record](../../testing/iteration-4/Sangwoo-Hahn.md) includes the coverage collection retries and results.
+
+
+### Per-frame knee observations and endpoint sequence (2026-11-18)
+
+The user requested three knee states for each pose frame and then specified a completed-repetition sequence with touching before and after the push-up. Codex ported the previously fitted 48-feature, 32-tree single-frame model, added observable/occluded gates and temporal preparation evidence, and connected the reading to every RepJudge snapshot. The rule captures stable touching preparation before descent, allows occluded middle frames and requires a touching result on the actual closing frame. The preparation uses three samples spanning100ms with at most500ms age. The return uses one current result to preserve repetition timing. Reset and S2 abandonment clear sequence state.
+
+The initial phone build included the observer with its veto disabled. The user clarified the desired sequence and explicitly requested enabling rejection. Three endpoint regressions reproduced false vetoes in the earlier any-touch evidence, and Codex replaced that latch with endpoint matching. An independent read-only Codex review approved the sequence. The S2+frame-knee combined trial passed434 scoped tests and was installed as an ARM64 release with both options enabled. Visible home startup and installed/local APK identity were verified. No human manual source edits were reported. These actions are linked in the [testing notes](../../testing/iteration-4/Sangwoo-Hahn.md) and [prompt log](Sangwoo-Hahn-Prompt-Log.md).
+
+The user subsequently authorized immediate non-draft publication and confirmed all agreements. The follow-up starts from main e0bcae2 after S1#69 and S2#72 merged. It enables the endpoint veto by default with an explicit false opt-out. The model uses earlier weak clip-derived labels. Published per-frame evaluation includes unavailable frames and misses, and no completed-repetition generalization rate is claimed. The [model and sequence note](../../iteration-4/pushup-frame-knee.md) preserves the measured limits. Physical knee-contact accuracy remains a phone trial.
+
+
+### PR #75 retained knee mode and evaluation (2026-11-18)
+
+The user clarified that one or two lifted observations should retain confirmed touching. Codex changed confirmation to three consecutive distinct frames in either direction, removed the100msminimum, and retained the confirmed mode through occlusion. Three confirmed lifted frames prevent old touching from returning after occlusion. Raw snapshot readings remain per-frame observations. Reset, abandonment, image changes and missing camera delivery clear the mode. The closing repetition uses the confirmed mode, including an occluded closing frame. The user authorized updating PR75 and committing/pushing.
+
+Three new regressions failed against the previous implementation and passed after the change. Additional boundary and interruption tests passed. A separate read-only Codex reviewer approved the retained-mode contract and measurement formulas. Main9841a60 and the unchanged frozen set/scorer were replayed independently. Enabled M1 falls from50/63 to49/63, while M2=188/207 and M3=124/207 remain unchanged. Disabled mode matches main. Historical incorrect acceptances decrease3to1, explicit rejections increase56to58, and historical normal acceptance remains28/35. These reused in-sample results and the extra normal rejection are disclosed for review. No human manual source changes were reported. The [testing record](../../testing/iteration-4/Sangwoo-Hahn.md) and [input log](Sangwoo-Hahn-Prompt-Log.md) contain the evidence.
+
+
+### Unified knee policy and supplemental coordinate evaluation, 2026-11-18
+
+Following the user's full knee-judge audit request, Codex unified the primary,
+short-cycle, calibration, span and optional MLP knee decisions around one
+completed-attempt evidence predicate. The twelve-joint confidence gate,
+frontal bent-arm abstention and bilateral gray-band corroboration were developed
+using the inspected Hyunwoo clips. The existing forest weights were preserved.
+An independent read-only Codex reviewer approved that implementation and its
+single-participant development evidence. No human manual source fix was reported.
+
+The user subsequently authorized publication on existing PR #75 and forwarded
+the PM's coordinate-only evaluation requirements. The user explicitly selected
+Hyunwoo8 + Sangwoo8, overriding the participant names in the forwarded draft.
+Codex reused native push-up/Sangwoo observations and extracted the four remaining
+Hyunwoo squat clips on a dedicated local Android emulator. The public addition
+contains16 coordinate JSONs/5,325 frames, source hashes, capture metadata and
+blank per-person record sheets. No MP4, JPEG or raw camera frame is published.
+The frozen cases and scorer are unchanged. New tests replay the actual RepJudge
+or SquatRepJudge and preserve the original M1/M2/M3 alignment semantics.
+
+The user confirmed that chair use itself is permitted when squat depth and full
+standing are satisfied. Both chair cases therefore use range_only. Actual
+counts/per-rep labels remain pending recorder/PM confirmation; filename intent,
+prior visual cycle estimates and app predictions do not become ground truth.
+New-set metrics are N/A until that confirmation. The knee rule default is false
+because a new-set benefit is not established. Fixed-set OFF scores are
+50/63 M1,188/207 M2,124/207 M3; unified ON scores are51/63,181/207,131/207.
+The M2 regression is disclosed and not offset by a fabricated new-set score.
+
+The initial full run with the former default ON reproduced seven pinned legacy
+snapshot failures. The PM's conservative-default instruction restores OFF;
+those assertions and labels were not weakened. Two initial new parser-test
+failures came from over-narrow inferred types in synthetic mutable maps and
+were corrected without changing production outcomes. Both new evaluation
+configurations then passed13 tests. Final analysis/full-suite/publication
+checks are recorded in the personal testing note. No server deployment or
+new phone installation is part of this publication. Complete-iteration input
+export and human per-rep annotation remain TODO(Sangwoo/recorders/PM).
+
+
+Installed Session Exporter help confirms Codex support. Its local dry-run for
+2026-11-18 in this chat's supplied worktree returned no eligible sessions.
+The safe fallback is the reviewed selected visible user inputs in the personal
+prompt log; no empty export or complete-transcript review is claimed.
+
+
+After main0a17580 was merged, analysis and all3,751 default-build tests passed
+with10 existing skips. Additional S2+unified-ON checks yielded164 passes and one
+new main goal-camera-retry test failure. Codex independently reproduced that
+single failure in untouched main0a17580 with S2 enabled. It is disclosed as an
+inherited optional-configuration test failure; unrelated mission assertions
+were preserved. The independent read-only reviewer approved the final code,
+data and ON/OFF report consistency before publication.

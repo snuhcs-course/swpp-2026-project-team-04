@@ -130,7 +130,32 @@ const knownVerdicts = <String, List<String>>{
   ],
 };
 
+// Default endpoint evidence rejects two events that the earlier comparison
+// baseline accepted. Preserve both exact recordings instead of overwriting
+// their labels or treating these model-output changes as new ground truth.
+const endpointKnownVerdicts = <String, List<String>>{
+  '20261027-142000_halfRepHeadNod': [
+    'insufficientDepth',
+    'insufficientDepth',
+    'kneesDown',
+    'valid',
+    'insufficientDepth',
+  ],
+  '20261027-145535_knees': [
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+    'kneesDown',
+  ],
+};
+
 void main() {
+  final endpointEnabled = RepJudge().useFrameKnee;
   group('recorded push-up cases', () {
     final cases = loadPushUpCases();
 
@@ -173,11 +198,24 @@ void main() {
       final label = c.recording.label;
       // A free set has no label to check; it is kept for analysis.
       if (label.expected == null && label.perRep == null) continue;
-      test('${c.id} gives the labelled result', () {
-        final result = replay(c.recording);
-        expect(result.matches(label), isTrue, reason: describeCase(c, result));
-      }, skip: knownErrors[c.id]);
-      if (knownVerdicts[c.id] case final verdicts?) {
+      test(
+        '${c.id} gives the labelled result',
+        () {
+          final result = replay(c.recording);
+          expect(
+            result.matches(label),
+            isTrue,
+            reason: describeCase(c, result),
+          );
+        },
+        skip: endpointEnabled && c.id == '20261027-145535_knees'
+            ? false
+            : knownErrors[c.id],
+      );
+      final expectedVerdicts = endpointEnabled
+          ? endpointKnownVerdicts[c.id] ?? knownVerdicts[c.id]
+          : knownVerdicts[c.id];
+      if (expectedVerdicts case final verdicts?) {
         test('${c.id} still replays as known, rep by rep', () {
           final result = replay(c.recording);
           expect([

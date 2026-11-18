@@ -1338,6 +1338,8 @@ W9 시작하자. 명세는 .claude/design/uat1/A9-SETUP-READABILITY-SPEC.md 이�
 #72가 카메라 칸에 '사람을 다시 확인해 주세요' 안내와 '확인 후 계속' 버튼을 넣었으니, W9의 안내 띠·테두리·카메라 전환 버튼과 겹치지 않는지도 확인해.
 그다음 전체 테스트, --check-diff, 수업 노트 갱신 후 push해."
 
+<!-- 6489ba5c 2026-11-17T08:19:57.026Z -->
+
 ## 2026-11-17 · Woohyun Song · feat/coach_feedback
 <!-- Cut: the client's injected browser notice in front of 2 prompts (11-17 16:38 and 19:46; not the user's text). The answers in the agent's question dialogs (11-17 16:47-16:50 and 19:05; written in task.md W10 decisions 1-9) are not in the export as prompts. -->
 <!-- 5cd16e35 2026-11-17T07:38:38.898Z -->
@@ -1357,3 +1359,107 @@ W10 시작하자. 명세는 .claude/design/uat1/A10-COACH-FEEDBACK-SPEC.md 이�
 <!-- 5cd16e35 2026-11-17T10:46:01.394Z -->
 [Woohyun Song, 11-17 19:46] "커밋하고 push해. 순서는 네가 말한 대로 해 줘(origin/main 머지 → 테스트 다시 → --check-diff → 수업 노트 → push).
 그다음 PR 올려. 첫 줄은 'Merge order: #20', merge-after는 #19 feat/setup_readability. 본문은 기존 양식대로 영어로 쓰고, Manual check 칸에는 \"Phone check in progress; do not merge yet\"라고 적어 둬. 끝나면 PR 링크 알려 줘."
+
+## 2026-11-18 · Woohyun Song · feat/coach_feedback and feat/setup_readability (follow-ups from another session)
+<!-- 5cd16e35 2026-11-18T03:17:43.472Z -->
+[Woohyun Song, 11-18 12:17] "폰 확인했어. 브랜치 바꾸지 말고 gh pr edit 로 W10 PR(#74) Manual check 칸만 바꿔 줘. Galaxy S26+에서 스쿼트·푸시업을 한 판씩 확인했고, 지난 기록 리포트에 그 판이 아니라 지금 캐릭터가 나오는 문제는 W11에서 고친다고 적어. \"do not merge yet\" 문구는 지워."
+
+<!-- 5cd16e35 2026-11-18T03:37:04.308Z -->
+[Woohyun Song, 11-18 12:37] "origin/main 머지하고 app_theme.dart 는 양쪽 다 살린 뒤, 테스트 다시 돌리고 push해"
+
+<!-- 5cd16e35 2026-11-18T03:45:56.010Z -->
+[Woohyun Song, 11-18 12:45] "지금 바로 바꿔. 브랜치 바꾸지 말고 gh pr edit 로 PR #74 본문의 Results만 머지 커밋 d724c56 기준(analyze 문제 없음, 3559개 통과·10개 건너뜀·0개 실패, 소유권 검사 통과 33개 파일)으로 고쳐. 커버리지는 CI 댓글이 PR에 남으니 본문에 옮기지 말고, 노트도 다시 채우거나 push를 더 하지 마."
+
+## 2026-11-17 ~ 11-18 · Woohyun Song · feat/feedback_goals
+<!-- 1b951537 2026-11-17T10:53:34.959Z -->
+[Woohyun Song, 11-17 19:53] "<pasted_content id=\"d1d5\">
+W11 시작하자. 명세는 .claude/design/uat1/A11-FEEDBACK-GOALS-SPEC.md 이고 디자인 원본은 같은 폴더의 design/ 아래에 있어.
+1. 명세 전체와 INDEX.md를 먼저 읽어.
+2. W10(feat/coach_feedback)이 아직 main에 머지되지 않았으니, task.md 규칙대로 feat/feedback_goals 를 origin/main 이 아니라 feat/coach_feedback 에서 만들고, PR을 열 때 'depends on feat/coach_feedback' 를 적어.
+3. coach_script.dart 는 W10 머지 전까지 잠겨 있으니, 이번에는 2~5절(goal_progress.dart 목표 진행 계산, 운동 선택 스티커와 목표 줄, 매칭 성공 목표 카드, 대결 중 칩과 '목표 달성!' 띠)만 먼저 해. 6절(다음 피드백의 목표 확인)은 W10이 머지되고 허용 파일이 열린 뒤에 이어서 할 거야.
+4. 명세의 \"고칠 파일\"을 ownership.json 허용 목록과 맞춰 보고, 막히는 파일이 있으면 코드를 쓰기 전에 목록으로 알려 줘.
+5. 명세 끝의 \"사용자에게 물어볼 것\"을 하나씩 물어보고, 답은 task.md W11 \"Decisions\"에 오늘 날짜로 적어.
+6. 그다음 구현하고, 테스트와 reviewer까지 마친 뒤 보고해. 커밋과 push는 내가 말할 때만 해.
+7. 작업 중에 내가 \"stash해 둬\"라고 하면 하던 변경을 git stash로 보관하고 멈춰. checkout으로 변경을 버리면 안 돼.
+</pasted_content id=\"d1d5\">"
+
+<!-- 1b951537 2026-11-18T00:33:42.247Z -->
+[Woohyun Song, 11-18 09:33] "계속 진행해줘"
+
+<!-- 1b951537 2026-11-18T01:10:42.492Z -->
+[Woohyun Song, 11-18 10:10] "계속 진행해줘"
+
+<!-- 1b951537 2026-11-18T02:13:57.671Z -->
+[Woohyun Song, 11-18 11:13] "1부를 커밋만 해 줘. push는 하지 마. 다른 세션이 브랜치를 바꿀 거라서 커밋 안 한 변경이 남지 않게 해."
+
+<!-- 1b951537 2026-11-18T03:48:26.387Z -->
+[Woohyun Song, 11-18 12:48] "<pasted_content id=\"d1d5\">
+하네스 갱신이야(현우 11/18). .claude/update-1118/README.md 를 읽고 2번을 해 줘. 단 task.md의 W11 절을 통째로 바꾸지 마. 지금 W11 절의 \"Decisions\"에는 네가 1부에서 날짜를 붙여 적은 결정들이 있으니 그대로 두고, task-W11-replace.md 에서 새로 생긴 것만 합쳐.
+- \"Files this step may edit\" 목록은 task-W11-replace.md 의 목록으로 바꿔.
+- \"Decisions\"에는 \"Settled (PM 11-17)\"과 \"Settled (PM 11-18)\" 두 줄만 추가해.
+브랜치는 바꾸지 말고, 끝나면 백업과 비교해서 바뀐 부분과 --status 결과를 보여 줘.
+</pasted_content id=\"d1d5\">"
+
+<!-- 1b951537 2026-11-18T04:01:04.750Z -->
+[Woohyun Song, 11-18 13:01] "<pasted_content id=\"d1d5\">
+W10(#74)이 main에 머지됐어. 순서대로 해 줘.
+1. 지금 작업 폴더는 feat/setup_readability 에 있어. 커밋 안 한 변경이 있으면 바꾸기 전에 알려 주고, 없으면 feat/feedback_goals 로 돌아와. 1부 커밋이 이 브랜치에 있는지도 확인해.
+2. git fetch origin && git merge origin/main 해. 충돌이 나면 양쪽 다 살려. 내 노트 파일 세 개(docs/testing/iteration-4/[REDACTED:custom_term].md, docs/ai-collaboration/iteration-4/[REDACTED:custom_term].md, [REDACTED:custom_term]-Prompt-Log.md)는 W9 → W10 → W11 순서로 남기고, W9와 같이 고친 battle_screen / online_battle_screen / battle_fx_motion.dart 는 W9의 세팅 띠·사람 확인 안내 숨김과 W11의 목표 칩이 둘 다 동작하게 합쳐. 합친 뒤 전체 테스트를 한 번 돌려.
+3. --status 로 W11의 잠긴 파일들(coach_*, result_*, form_report.dart 등)이 열렸는지 확인해.
+4. 그다음 두 가지를 해.
+   (1) 명세 6절(다음 피드백의 목표 확인).
+   (2) 기록의 캐릭터. 기록보관소에서 지난 리포트를 열면 그 판에 플레이한 캐릭터가 아니라 지금 고른 캐릭터가 승리 장면, 캐릭터 카드, 대화에 나와. 리포트는 그 판에 플레이한 캐릭터로 보여야 해.
+   - 대결이 끝나 FormReport를 저장하거나 결과 화면으로 넘기기 전에, 그 판의 내 캐릭터 id를 FormReport에 넣어. form_report.dart에는 선택 필드 characterId와 JSON 키 하나만 더하고, 값이 없으면 JSON에 쓰지 마. 진영이형 파일이라 그 밖에는 건드리지 마. 테스트는 새 파일 test/models/form_report_character_test.dart 에 둬. 서버는 고치지 않아.
+   - 결과 리포트의 승리 장면, 캐릭터 입구 카드, 대화에서 말하는 캐릭터는 FormReport의 characterId를 써. 값이 없는 옛 기록은 지금 캐릭터로 대신하고, 지난 기록은 FormReport가 올 때까지 캐릭터를 그리지 말고 기다려서 캐릭터가 바뀌며 튀지 않게 해.
+   - 대화에서 고른 새 목표에는 말한 캐릭터, 곧 그 판의 캐릭터 id를 저장해.
+   - 방금 끝난 판은 플레이한 캐릭터와 지금 캐릭터가 같으니 동작이 바뀌면 안 돼.
+   - 명세 1절 5번 \"목표를 확인해 주는 캐릭터는 지금 고른 캐릭터\"는 \"그 판에 플레이한 캐릭터\"로 바뀐 것으로 task.md W11 Decisions에 적어.
+5. 명세 6절에 \"사용자에게 물어볼 것\"이 남아 있으면 하나씩 물어봐.
+6. 테스트와 reviewer까지 마친 뒤 보고해. 커밋과 push는 내가 말할 때만 해.
+</pasted_content id=\"d1d5\">"
+
+<!-- 1b951537 2026-11-18T05:06:43.242Z -->
+[Woohyun Song, 11-18 14:06] "<pasted_content id=\"d1d5\">
+UAT 개선 하나 더 하자. 운동 선택의 목표 스티커가 잘 안 보여서 '미션'으로 바꿀 거야. 명세는 .claude/design/uat1/MISSION-SPEC.md 이고, 디자인 원본은 같은 폴더 design/ 아래의 Ms*.dc.html 이야.
+1. 명세 전체를 먼저 읽고, 원본 파일(MsGoal, MsDlg, MsGfx, MsWords)을 열어서 값과 문구를 원본에서 그대로 옮겨. 명세의 숫자는 요약이고 원본이 우선이야. 확정안은 MsGoal의 copy=\"mission\", tone=\"orange\", wiggle=true 이고, 흔들림 주기는 2.5초야.
+2. 고칠 파일을 ownership.json 허용 목록과 맞춰 보고, 막히는 파일이 있으면 코드를 쓰기 전에 알려 줘.
+3. 원본과 다르게 해야 하는 곳이 생기면 코드를 쓰기 전에 물어봐.
+4. 테스트와 reviewer까지 마친 뒤 보고해. 보고에는 바꾼 문구 목록과, 명세 목록에 없었는데 바꾼 곳을 따로 적어 줘. 커밋과 push는 내가 말할 때만 해.
+</pasted_content id=\"d1d5\">"
+
+<!-- 1b951537 2026-11-18T06:24:11.468Z -->
+
+<!-- 1b951537 2026-11-18T07:52:16.507Z -->
+[Woohyun Song, 11-18 16:52] "<pasted_content id=\"d1d5\">
+폰 확인 끝났어. 커밋하고 push한 다음, push가 문제없이 끝나면 PR까지 올려. push가 훅에 막히거나 실패하면 PR은 열지 말고 거기서 멈춰서 알려 줘.
+- 노트의 커버리지는 PR CI 댓글이 오면 그때 채우고, 지금은 비워 둬.
+- PR 첫 줄은 'Merge order: #21'. W10(#74)이 이미 main에 머지됐으니 'depends on' 줄은 넣지 마.
+- 본문은 기존 양식대로 영어로 써. 이번 PR에 UAT 피드백으로 목표 표시를 '미션'으로 바꾼 것(캔버스 '미션 표시 시안' C안: 주황 '미션!' 스티커, 2.5초 흔들림, 화면 글자와 대사의 '목표' → '미션')도 들어 있다고 적어.
+- 예외 세 가지를 적어: form_report.dart(박진영 J4, characterId 필드와 JSON 키만, PM 11-18 승인), battle_viewmodel.dart와 그 테스트(박진영 J4, 선택 인자와 FormReport에 넣는 줄만, 사용자 결정으로 진행하고 PM·진영에게 사후 공유), app_theme.dart의 GoalText 예외(결과 카드 글자 스타일 4개와 미션 스티커 글자 스타일).
+- Manual check 칸에는 폰에서 확인한 내용을 적어.
+끝나면 PR 링크 알려 줘.
+</pasted_content id=\"d1d5\">"
+
+## 2026-11-18 · Woohyun Song · feat/setup_cue_board
+<!-- 89f63724 2026-11-18T08:16:00.060Z -->
+[Woohyun Song, 11-18 17:16] "<pasted_content id=\"aa07\">
+새 작업 W12(A12)를 시작하자. 명세는 .claude/design/uat1/SETUP-FIX-SPEC.md 이고, 디자인 원본은 같은 폴더 design/ 아래의 SfSq.dc.html, SfGrid.dc.html 이야.
+1. 명세 전체를 읽고 원본 두 파일을 열어. 값은 원본에서 그대로 옮겨. 명세의 숫자는 요약이고 원본이 우선이야. 확정안은 SfSq의 cue=\"top\", skel=\"off\" 야.
+2. 하네스에 W12가 아직 없어. 현우한테는 내가 나중에 알릴 테니, 로컬 .claude/ownership.json과 task.md에 W12를 직접 넣어. 브랜치는 feat/setup_cue_board, 마감은 2026-11-18, 머지 순서는 W11 다음(#22)이야. 파일 목록은 명세 4절을 실제 코드와 맞춰 보고 정해. 상우 파일 pose_camera_view.dart 에는 '그리기 여부 값만'이라는 조건을 달아. task.md W12 Decisions와 progress.md에는 \"2026-11-18 사용자 결정으로 진행, PM에게 사후 공유\"라고 적어.
+3. W11이 아직 main에 머지되지 않았으면 feat/feedback_goals 에서 브랜치를 만들고, PR에 'depends on feat/feedback_goals'를 적어. 작업 폴더에 커밋 안 한 변경이 있으면 브랜치를 바꾸기 전에 알려 줘.
+4. 원본과 다르게 해야 할 곳이 생기면 코드를 쓰기 전에 물어봐.
+5. 구현하고 테스트와 reviewer까지 마친 뒤 보고해. 커밋과 push는 내가 말할 때만 해.
+</pasted_content id=\"aa07\">"
+
+<!-- 89f63724 2026-11-18T09:33:28.995Z -->
+[Woohyun Song, 11-18 18:33] "<pasted_content id=\"aa07\">
+W11(#76)이 오늘 17:24에 main에 머지됐어. 순서대로 해 줘.
+1. git fetch origin 하고 origin/main 을 feat/setup_cue_board 에 머지해. 충돌이 나면 양쪽 다 살리고, 합친 뒤 전체 테스트를 다시 돌려. --check-diff가 이제 W12 파일만 보는지도 확인해.
+2. PR에는 'depends on' 줄을 넣지 마. 첫 줄은 'Merge order: #22'야.
+3. 데모 영상 찍으면서 폰 확인했어. Galaxy S26+ (SM-S947N), One UI 9.0, Android 17에서 스쿼트 2.5m·푸시업 1m 안내판 글씨, \"머리가 안 보여요\"일 때 머리 자리가 비어 있는지, 대결 배치로 넘어가는 것, 관절 점이 사라지고 기준선은 남는 것까지 모두 괜찮았어.
+4. 노트를 쓸 때 W11 것도 같이 마무리해 줘. PR #76 CI 댓글의 커버리지로 W11 테스트 노트의 커버리지 칸을 채우고, AI 노트의 사후 공유 TODO는 \"2026-11-18 카톡으로 PM·진영에게 공유함\"으로 바꿔. W12 커버리지는 W12 PR의 CI 댓글이 오면 그때 채울게.
+5. 그다음 커밋하고 push한 다음, push가 문제없이 끝나면 PR까지 올려. push가 막히면 PR은 열지 말고 멈춰서 알려 줘.
+- PR 본문은 기존 양식대로 영어로 써. Review notes에는 세 가지를 적어. 하네스 W12는 로컬로 등록하고 PM에게 사후 공유한다는 것, W12 목록에 추가한 내 W2 테스트 파일 3개, landmark_overlay.dart의 W9 굵은 뼈대 그리기와 PoseCameraView.boldLandmarks가 이제 쓰이지 않는다는 것(지우지 않았고 상우와 정리 필요).
+- Manual check 칸에는 3번의 폰 확인 내용을 적어.
+끝나면 PR 링크 알려 줘.
+</pasted_content id=\"aa07\">"

@@ -234,6 +234,7 @@ class BattleViewModel extends ChangeNotifier {
     this.rules = battleRules,
     this.roundLength = battleDuration,
     this._setup,
+    this.characterId,
     Clock? clock,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now,
@@ -270,6 +271,7 @@ class BattleViewModel extends ChangeNotifier {
     required UserRepository repository,
     required RepSound sound,
     FormReportStore? formReports,
+    String? characterId,
     Clock? clock,
   }) => BattleViewModel(
     matchup: matchup,
@@ -279,6 +281,7 @@ class BattleViewModel extends ChangeNotifier {
     sound: sound,
     formReports: formReports,
     setup: SetupChecker(exercise: matchup.exercise, clock: clock),
+    characterId: characterId,
     clock: clock,
   );
 
@@ -308,6 +311,10 @@ class BattleViewModel extends ChangeNotifier {
   static const counterRound = Duration(days: 1);
 
   final Matchup matchup;
+
+  /// The user's character in this battle, kept in its form report; null
+  /// keeps none.
+  final String? characterId;
 
   /// The user's camera, reps, and round clock. The screen shows its preview
   /// and landmarks directly.
@@ -811,6 +818,7 @@ class BattleViewModel extends ChangeNotifier {
         rightFlarePose: counter.rightFlarePose,
         handsPose: counter.handsPose,
         headPose: counter.headPose,
+        characterId: characterId,
       ),
     );
     _setState(

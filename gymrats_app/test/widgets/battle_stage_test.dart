@@ -13,6 +13,8 @@ import 'package:gymrats_app/widgets/battle_stage.dart';
 import 'package:gymrats_app/widgets/battle_stage_hud.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/services/feedback/goal_progress.dart';
 
 import 'battle_test_support.dart';
 
@@ -51,6 +53,7 @@ Future<void> _pump(
   BattleStageState state, {
   BattleFighterBuilder fighterBuilder = BattleFighter.standIn,
   BattleCharacters? characters,
+  double setupShift = 0,
 }) => tester.pumpWidget(
   battleTestApp(
     Stack(
@@ -63,6 +66,7 @@ Future<void> _pump(
             state: state,
             fighterBuilder: fighterBuilder,
             characters: characters,
+            setupShift: setupShift,
           ),
         ),
       ],
@@ -392,8 +396,8 @@ void main() {
       );
     });
 
-    testWidgets('while setting up: no fighters and no tags, the ready chips '
-        'between the scores in the valid counts\' place (W2b 3-B 4.2)', (
+    testWidgets('while setting up: no fighters and no tags, and the ready '
+        'chips under the cue board, at the stage\'s sides (A12 SfSq top)', (
       tester,
     ) async {
       final fx = BattleFxTimeline(setup: true)
@@ -403,29 +407,140 @@ void main() {
       expect(_fighter(BattleSide.me), findsNothing);
       expect(_fighter(BattleSide.opponent), findsNothing);
       expect(find.text('유효 횟수'), findsNothing);
-      final mine = find.text('세팅 중');
-      final theirs = find.text('준비 완료');
+      final mine = find.text('나 · 세팅 중');
+      final theirs = find.text('상대 · 준비 완료');
       expect(mine, findsOneWidget);
       expect(theirs, findsOneWidget);
-      expect(_pillRect(tester, mine).left, 72);
-      expect(_pillRect(tester, theirs).right, 288);
-      expect(_pillRect(tester, mine).top, 106);
-      expect(_pillRect(tester, theirs).top, 106);
+      // In a row 24 tall from 162, 12 from the sides.
+      expect(_pillRect(tester, mine).left, 12);
+      expect(_pillRect(tester, theirs).right, 348);
+      expect(_pillRect(tester, mine).center.dy, closeTo(162 + 12, 0.01));
+      expect(_pillRect(tester, theirs).center.dy, closeTo(162 + 12, 0.01));
       expect(_pillRect(tester, mine).height, 16 + 2 * (2 + 1.5));
-      // The design's widths with the app's fonts: 59 and 71.
-      expect(_pillRect(tester, mine).width, closeTo(59, 1));
-      expect(_pillRect(tester, theirs).width, closeTo(71, 1));
+      // The design's room: 10 beside the edge, the square 10 and 6 after it.
+      for (final chip in [mine, theirs]) {
+        expect(
+          _pillRect(tester, chip).width,
+          closeTo(tester.getSize(chip).width + 10 + 6 + 2 * (10 + 1.5), 0.01),
+        );
+      }
       expect(_pillLook(tester, mine).color, AppColors.card);
       expect(_pillLook(tester, theirs).color, AppColors.opponent);
+      expect(_pillLook(tester, mine).borderRadius, BorderRadius.circular(11));
+      // The squares: the user's first, lime on white; the opponent's last,
+      // white on its pink once ready.
+      Rect square(Finder chip) => tester.getRect(
+        find
+            .descendant(
+              of: find.ancestor(of: chip, matching: find.byType(Row)).first,
+              matching: find.byWidgetPredicate(
+                (w) => w is SizedBox && w.width == 10 && w.height == 10,
+              ),
+            )
+            .first,
+      );
+      Color squareColor(Finder chip) =>
+          (tester
+                      .widget<DecoratedBox>(
+                        find
+                            .descendant(
+                              of: find
+                                  .ancestor(
+                                    of: chip,
+                                    matching: find.byType(Row),
+                                  )
+                                  .first,
+                              matching: find.byType(DecoratedBox),
+                            )
+                            .first,
+                      )
+                      .decoration
+                  as BoxDecoration)
+              .color!;
+      expect(square(mine).size, const Size.square(10));
+      expect(square(mine).right, lessThan(tester.getRect(mine).left));
+      expect(square(theirs).left, greaterThan(tester.getRect(theirs).right));
+      expect(squareColor(mine), AppColors.accent);
+      expect(squareColor(theirs), AppColors.card);
       // Whose each is, for a screen reader.
       expect(find.bySemanticsLabel('나 세팅 중'), findsOneWidget);
       expect(find.bySemanticsLabel('상대 준비 완료'), findsOneWidget);
-      // Waiting for the opponent: mine lime.
+      // Waiting for the opponent: mine lime with a white square, theirs
+      // white with a pink one.
       fx.setSetup(active: true, meReady: true, now: 10);
       await _pump(tester, fx.frame(10), _state(phase: BattleStagePhase.setup));
-      expect(_pillLook(tester, find.text('준비 완료')).color, AppColors.accent);
-      expect(_pillRect(tester, find.text('준비 완료')).left, 72);
+      final ready = find.text('나 · 준비 완료');
+      final waiting = find.text('상대 · 세팅 중');
+      expect(_pillLook(tester, ready).color, AppColors.accent);
+      expect(squareColor(ready), AppColors.card);
+      expect(_pillLook(tester, waiting).color, AppColors.card);
+      expect(squareColor(waiting), AppColors.opponent);
+      expect(_pillRect(tester, ready).left, 12);
       handle.dispose();
+    });
+
+    testWidgets('while setting up the top holds only the chips: the names, '
+        'the clock, the scores and the time bar are hidden, from a screen '
+        'reader too, and come back as the line comes down (A12 spec 2)', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      Opacity around(Finder finder) => tester
+          .widgetList<Opacity>(
+            find.ancestor(of: finder, matching: find.byType(Opacity)),
+          )
+          .first;
+      final fx = BattleFxTimeline(setup: true)..setSetup(active: true, now: 0);
+      await _pump(tester, fx.frame(0), _state(phase: BattleStagePhase.setup));
+      for (final text in ['0:18', 'hellohello', 'AI 봇 · 고수', '0']) {
+        final found = find.text(text);
+        expect(found, findsWidgets, reason: text);
+        for (final element in found.evaluate()) {
+          expect(
+            around(find.byWidget(element.widget)).opacity,
+            0,
+            reason: text,
+          );
+        }
+      }
+      expect(find.bySemanticsLabel(RegExp('남은 시간')), findsNothing);
+      expect(find.bySemanticsLabel(RegExp('내 점수')), findsNothing);
+      expect(find.bySemanticsLabel(RegExp('상대 점수')), findsNothing);
+      fx.countDown(3000, 1000);
+      // Half way through the setup's 150 ms fade.
+      await _pump(
+        tester,
+        fx.frame(1075),
+        _state(phase: BattleStagePhase.countdown),
+      );
+      expect(
+        around(find.bySemanticsLabel(RegExp('남은 시간'))).opacity,
+        closeTo(0.5, 1e-9),
+      );
+      await _pump(
+        tester,
+        fx.frame(1400),
+        _state(phase: BattleStagePhase.countdown),
+      );
+      expect(around(find.bySemanticsLabel(RegExp('남은 시간'))).opacity, 1);
+      expect(find.bySemanticsLabel(RegExp('내 점수')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('상대 점수')), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets('under a status bar the chips move down with the setup\'s '
+        'top (task.md W12 decision 1)', (tester) async {
+      final fx = BattleFxTimeline(setup: true)..setSetup(active: true, now: 0);
+      await _pump(
+        tester,
+        fx.frame(0),
+        _state(phase: BattleStagePhase.setup),
+        setupShift: 24,
+      );
+      expect(
+        _pillRect(tester, find.text('나 · 세팅 중')).center.dy,
+        closeTo(162 + 24 + 12, 0.01),
+      );
     });
 
     testWidgets('the valid counts fade in as the line comes down, and the '
@@ -442,13 +557,13 @@ void main() {
           )
           .first;
       expect(around(find.text('유효 횟수')).opacity, closeTo(0.5, 1e-9));
-      expect(around(find.text('준비 완료').first).opacity, closeTo(1 / 3, 1e-9));
+      expect(around(find.text('나 · 준비 완료')).opacity, closeTo(1 / 3, 1e-9));
       await _pump(
         tester,
         fx.frame(200),
         _state(phase: BattleStagePhase.countdown),
       );
-      expect(find.text('준비 완료'), findsNothing);
+      expect(find.text('나 · 준비 완료'), findsNothing);
       expect(around(find.text('유효 횟수')).opacity, 1);
     });
 
@@ -1119,6 +1234,95 @@ void main() {
       expect(striped(40, 0), isTrue);
       expect(striped(52, 0), isTrue);
       expect(striped(58, 0), isFalse);
+    });
+  });
+
+  group('the goal (A11 spec 5)', () {
+    testWidgets("the HUD shows the state's goal as a chip", (tester) async {
+      await _pump(
+        tester,
+        BattleFxTimeline().frame(0),
+        _state(myReps: 3).withGoal(
+          const GoalProgress(kind: GoalKind.reps, target: 20, value: 3),
+        ),
+      );
+      expect(find.byType(BattleGoalChip), findsOneWidget);
+      expect(find.text('미션 3/20'), findsOneWidget);
+    });
+
+    testWidgets("'미션 성공!' shows as the frame says: Do Hyeon 48 on a lime "
+        'band 64 tall at 148, turned -4°', (tester) async {
+      const reach = BattleStageEvent(
+        side: BattleSide.me,
+        grade: GameGrade.good,
+        points: 10,
+        combo: 1,
+        reachesGoal: true,
+      );
+      final fx = BattleFxTimeline()..rep(reach, 0);
+      final start =
+          BattleFx.impactDelay +
+          BattleFx.gradeWord(GameGrade.good).pointsAfter +
+          880;
+      await _pump(tester, fx.frame(0), _state());
+      expect(find.text('미션 성공!'), findsNothing);
+      await _pump(tester, fx.frame(start + 600), _state());
+      final words = find.text('미션 성공!');
+      expect(words, findsOneWidget);
+      final style = tester.widget<Text>(words).style!;
+      expect(style.fontFamily, AppFonts.display);
+      expect(style.fontSize, 48);
+      final band = find.ancestor(of: words, matching: find.byType(Stack)).first;
+      expect(tester.getSize(band).height, closeTo(64, 0.01));
+      // Lime with its own 3.5 ink edge (spec 5), slanted as the other bands.
+      final fill =
+          tester
+                  .widget<DecoratedBox>(
+                    find.descendant(
+                      of: band,
+                      matching: find.byType(DecoratedBox),
+                    ),
+                  )
+                  .decoration
+              as BoxDecoration;
+      expect(fill.color, AppColors.accent);
+      expect(
+        fill.border!.top,
+        const BorderSide(color: AppColors.ink, width: 3.5),
+      );
+      expect(
+        tester
+            .widget<Transform>(
+              find
+                  .ancestor(
+                    of: find.descendant(
+                      of: band,
+                      matching: find.byType(DecoratedBox),
+                    ),
+                    matching: find.byType(Transform),
+                  )
+                  .first,
+            )
+            .transform,
+        AppHighlight.battleSlant,
+      );
+      final turn = tester.widget<Transform>(
+        find.ancestor(of: band, matching: find.byType(Transform)).first,
+      );
+      expect(
+        math.atan2(turn.transform.entry(1, 0), turn.transform.entry(0, 0)),
+        closeTo(-4 * math.pi / 180, 1e-6),
+      );
+      expect(
+        tester
+            .getTopLeft(
+              find.ancestor(of: band, matching: find.byType(Positioned)).first,
+            )
+            .dy,
+        148,
+      );
+      // A picture to a screen reader: the chip says it.
+      expect(find.bySemanticsLabel('미션 성공!'), findsNothing);
     });
   });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/screens/coach_screen.dart';
 import 'package:gymrats_app/services/feedback/coach_script.dart';
@@ -259,7 +260,7 @@ void main() {
       expect(find.text('대화창을 누르면 바로 다 보여요'), findsOneWidget);
       await showAll(tester);
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('위에서 하나 골라 줘'), findsOneWidget);
+      expect(find.text('위에서 미션을 골라 줘'), findsOneWidget);
       final [record, weak] = viewModel.state.script!.suggestions;
       expect(find.text(record.title), findsOneWidget);
       expect(find.text(record.subtitle), findsOneWidget);
@@ -332,7 +333,7 @@ void main() {
       expect(saved.title, goal.title);
       expect(saved.characterId, 'seal');
       expect(find.byType(CoachGoalCard), findsOneWidget);
-      expect(find.text('다음 판 목표'), findsOneWidget);
+      expect(find.text('다음 판 미션'), findsOneWidget);
       expect(find.text('스쿼트를 고르면 운동 선택과 대결 시작 화면에 떠요'), findsOneWidget);
     });
 
@@ -476,6 +477,58 @@ void main() {
             for (final goal in script.suggestions) script.answer(goal),
             script.answer(null),
             script.end,
+          ]) {
+            expect(
+              linesOf(tester, line),
+              lessThanOrEqualTo(4),
+              reason: line.text,
+            );
+          }
+        }
+      }
+    });
+
+    testWidgets('the check of the last goal (A11 spec 6), reached and '
+        'missed, of each kind, for every character', (tester) async {
+      await _loadFonts(tester);
+      FeedbackGoal goal(GoalKind kind, int target, String title) =>
+          FeedbackGoal(
+            exercise: ExerciseType.squat,
+            kind: kind,
+            target: target,
+            baseline: 0,
+            title: title,
+            setAt: coachEndedAt.subtract(const Duration(days: 1)),
+            // The longest name, 'GYM마우스', on the card.
+            characterId: 'mouse',
+            fromMatch: 'earlier',
+          );
+      final goals = [
+        goal(GoalKind.reps, 120, '스쿼트 120회 인정받기'),
+        goal(GoalKind.reps, 2, '스쿼트 2회 인정받기'),
+        goal(GoalKind.lateReps, 100, '후반 15초에 100회 이상'),
+        goal(GoalKind.lateReps, 1, '후반 15초에 1회 이상'),
+        goal(GoalKind.combo, 100, '콤보 100번 이상'),
+        goal(GoalKind.combo, 2, '콤보 2번 이상'),
+        goal(GoalKind.maxRejects, 0, '무효 0회 이하'),
+        goal(GoalKind.maxRejects, 10, '무효 10회 이하'),
+      ];
+      for (final id in const ['mouse', 'kangaroo', 'bear', 'penguin', 'seal']) {
+        for (final last in goals) {
+          final base = coachInputOf(_report, characterId: id);
+          final script = CoachScript.build(
+            CoachInput(
+              report: base.report,
+              findings: base.findings,
+              pace: base.pace,
+              characterId: id,
+              lastGoal: last,
+            ),
+          );
+          for (final line in [
+            ...script.talk.take(2),
+            script.question,
+            for (final goal in script.suggestions) script.answer(goal),
           ]) {
             expect(
               linesOf(tester, line),

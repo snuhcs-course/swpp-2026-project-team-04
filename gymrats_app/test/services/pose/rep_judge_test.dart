@@ -28,6 +28,10 @@ void main() {
 
   RepJudge judge({RepJudgeConfig config = fast}) =>
       RepJudge(config: config, clock: () => now);
+  // Keep old geometric behavior covered only as the explicit comparison mode.
+  // The default unified policy is exercised by continuous-observation tests.
+  RepJudge legacyJudge({RepJudgeConfig config = fast}) =>
+      RepJudge(config: config, clock: () => now, useFrameKnee: false);
 
   setUp(() => now = Duration.zero);
 
@@ -106,6 +110,230 @@ void main() {
     expect(update.event!.minElbowAngle, closeTo(150, 0.5));
     expect(update.event!.descent, const Duration(milliseconds: 400));
     expect(update.snapshot.phase, RepPhase.up);
+  });
+
+  group('continuous knee observations', () {
+    late _FrameKneeFake classifier;
+    late RepJudge counter;
+
+    setUp(() {
+      classifier = _FrameKneeFake();
+      counter = RepJudge(
+        config: fast,
+        clock: () => now,
+        useFrameKnee: true,
+        kneeClassifier: classifier,
+      );
+    });
+
+    void ready(KneeFrameState state, [int offset = 0]) {
+      classifier.state = state;
+      at(counter, offset, pose());
+      at(counter, offset + 150, pose());
+      at(counter, offset + 300, pose());
+    }
+
+    test('touching evidence survives hidden knees during a full rep', () {
+      ready(KneeFrameState.touching);
+      classifier.state = KneeFrameState.occluded;
+      final down = at(counter, 400, pose(depth: .6, elbow: 160));
+      expect(down.snapshot.knee.state, KneeFrameState.occluded);
+      expect(down.event, isNull);
+      at(counter, 700, pose(depth: 1.5, elbow: 150));
+      classifier.state = KneeFrameState.touching;
+      final result = at(counter, 1000, pose());
+      expect(result.snapshot.knee.state, KneeFrameState.touching);
+      expect(result.event!.valid, isFalse);
+      expect(result.event!.reason, RejectReason.kneesDown);
+    });
+
+    test('lifted hidden lifted does not create touching evidence', () {
+      ready(KneeFrameState.lifted);
+      classifier.state = KneeFrameState.occluded;
+      at(counter, 400, pose(depth: .6, elbow: 160));
+      at(counter, 700, pose(depth: 1.5, elbow: 150));
+      classifier.state = KneeFrameState.lifted;
+      final result = at(counter, 1000, pose());
+      expect(result.event!.valid, isTrue);
+      expect(result.snapshot.knee.state, KneeFrameState.lifted);
+    });
+
+    test('confirmed touching persists through an occluded return', () {
+      ready(KneeFrameState.touching);
+      classifier.state = KneeFrameState.occluded;
+      expect(perform(counter, 400).event!.reason, RejectReason.kneesDown);
+    });
+
+    test('partial-cycle knee feedback also uses the shared support mode', () {
+      ready(KneeFrameState.touching);
+      for (final ms in [400, 500, 600]) {
+        at(counter, ms, pose(depth: .33, shoulderDrop: .20, elbow: 130));
+      }
+      expect(at(counter, 850, pose()).event!.reason, RejectReason.kneesDown);
+    });
+
+    test('unconfirmed partial-cycle support stays a depth fault', () {
+      ready(KneeFrameState.lifted);
+      for (final ms in [400, 500, 600]) {
+        at(counter, ms, pose(depth: .33, shoulderDrop: .20, elbow: 130));
+      }
+      expect(
+        at(counter, 850, pose()).event!.reason,
+        RejectReason.insufficientDepth,
+      );
+    });
+
+    test('touching only during and after a rep cannot supply preparation', () {
+      ready(KneeFrameState.lifted);
+      classifier.state = KneeFrameState.touching;
+      at(counter, 400, pose(depth: .6, elbow: 160));
+      at(counter, 500, pose(depth: 1.2, elbow: 150));
+      at(counter, 600, pose(depth: 1.5, elbow: 150));
+      final event = at(counter, 900, pose()).event!;
+      expect(event.valid, isTrue);
+    });
+
+    test('touching preparation and a lifted return keep the base result', () {
+      ready(KneeFrameState.touching);
+      classifier.state = KneeFrameState.lifted;
+      expect(perform(counter, 400).event!.valid, isTrue);
+    });
+
+    test('a later confirmed lifted preparation clears the previous rep', () {
+      ready(KneeFrameState.touching);
+      expect(perform(counter, 400).event!.reason, RejectReason.kneesDown);
+      ready(KneeFrameState.lifted, 1300);
+      final next = perform(counter, 1700).event!;
+      expect(next.index, 2);
+      expect(next.valid, isTrue);
+    });
+
+    test('each input frame has a reading even without a nose or event', () {
+      for (final state in KneeFrameState.values) {
+        classifier.state = state;
+        final result = at(counter, state.index * 50, emptyFrame());
+        expect(result.snapshot.knee.state, state);
+        expect(result.event, isNull);
+      }
+      expect(classifier.calls, 3);
+    });
+
+    test('MLP path also returns a reading on every input frame', () {
+      final mlp = RepJudge(
+        useMlp: true,
+        useFrameKnee: true,
+        clock: () => now,
+        kneeClassifier: classifier,
+      );
+      for (final state in KneeFrameState.values) {
+        classifier.state = state;
+        final result = at(mlp, state.index * 50, emptyFrame());
+        expect(result.snapshot.knee.state, state);
+      }
+      expect(classifier.calls, 3);
+    });
+
+    test('reset and abandon clear confirmed touching history', () {
+      for (final reset in [counter.reset, counter.abandon]) {
+        ready(KneeFrameState.touching);
+        reset();
+        ready(KneeFrameState.occluded, 400);
+        expect(perform(counter, 800).event!.valid, isTrue);
+      }
+    });
+
+    test('a camera time gap clears previous touching evidence', () {
+      ready(KneeFrameState.touching);
+      ready(KneeFrameState.occluded, 10000);
+      expect(perform(counter, 10400).event!.valid, isTrue);
+    });
+
+    test(
+      'continuous unknown frames before descent retain the confirmed mode',
+      () {
+        ready(KneeFrameState.touching);
+        classifier.state = KneeFrameState.occluded;
+        for (final ms in [400, 600, 800, 1000]) {
+          at(counter, ms, pose());
+        }
+        at(counter, 1100, pose(depth: .6, elbow: 160));
+        at(counter, 1400, pose(depth: 1.5, elbow: 150));
+        classifier.state = KneeFrameState.touching;
+        expect(at(counter, 1700, pose()).event!.reason, RejectReason.kneesDown);
+      },
+    );
+
+    test('one lifted observation followed by hidden frames keeps touching', () {
+      ready(KneeFrameState.touching);
+      classifier.state = KneeFrameState.lifted;
+      at(counter, 350, pose());
+      classifier.state = KneeFrameState.occluded;
+      at(counter, 400, pose(depth: .6, elbow: 160));
+      at(counter, 700, pose(depth: 1.5, elbow: 150));
+      expect(at(counter, 1000, pose()).event!.reason, RejectReason.kneesDown);
+    });
+
+    test(
+      'three lifted frames cannot resurrect preparation after occlusion',
+      () {
+        ready(KneeFrameState.touching);
+        classifier.state = KneeFrameState.lifted;
+        for (final ms in [320, 340, 360]) {
+          at(counter, ms, pose());
+        }
+        classifier.state = KneeFrameState.occluded;
+        at(counter, 400, pose(depth: .6, elbow: 160));
+        at(counter, 700, pose(depth: 1.5, elbow: 150));
+        classifier.state = KneeFrameState.touching;
+        at(counter, 800, pose(depth: .9, elbow: 160));
+        at(counter, 850, pose(depth: .7, elbow: 170));
+        expect(at(counter, 1000, pose()).event!.valid, isTrue);
+      },
+    );
+
+    test(
+      'third lifted frame at descent invalidates prospective preparation',
+      () {
+        ready(KneeFrameState.touching);
+        classifier.state = KneeFrameState.lifted;
+        at(counter, 340, pose());
+        at(counter, 370, pose());
+        at(counter, 400, pose(depth: .6, elbow: 160));
+        at(counter, 700, pose(depth: 1.5, elbow: 150));
+        classifier.state = KneeFrameState.touching;
+        at(counter, 800, pose(depth: .9, elbow: 160));
+        at(counter, 850, pose(depth: .7, elbow: 170));
+        expect(at(counter, 1000, pose()).event!.valid, isTrue);
+      },
+    );
+
+    test(
+      'the comparison option controls only the additional endpoint veto',
+      () {
+        counter = RepJudge(
+          config: fast,
+          clock: () => now,
+          useFrameKnee: false,
+          kneeClassifier: classifier,
+        );
+        ready(KneeFrameState.touching);
+        classifier.state = KneeFrameState.occluded;
+        at(counter, 400, pose(depth: .6, elbow: 160));
+        at(counter, 700, pose(depth: 1.5, elbow: 150));
+        classifier.state = KneeFrameState.touching;
+        final result = at(counter, 1000, pose());
+        expect(result.event!.valid, isTrue);
+        expect(result.snapshot.knee.state, KneeFrameState.touching);
+      },
+    );
+
+    test('an abandoned short dip does not taint the next lifted rep', () {
+      ready(KneeFrameState.touching);
+      at(counter, 400, pose(depth: .6, elbow: 160));
+      expect(at(counter, 450, pose()).event, isNull);
+      ready(KneeFrameState.lifted, 600);
+      expect(perform(counter, 1000).event!.valid, isTrue);
+    });
   });
 
   PoseFrame fixedHands(double elbowAngle, {double? noseDrop}) {
@@ -306,9 +534,9 @@ void main() {
     },
   );
 
-  test('a small dip reports supported knees or sustained tilt before shallow depth', () {
+  test('legacy comparison: small dips report support or sustained tilt', () {
     RepEvent verdict({required int supportedFrames, required double tilt}) {
-      final c = judge();
+      final c = legacyJudge();
       calibrate(c);
       for (var i = 0; i < 3; i++) {
         at(
@@ -465,13 +693,13 @@ void main() {
     }
   });
 
-  test('partial rep feedback uses observed knee support and elbow angle', () {
+  test('legacy comparison: partial feedback uses support and elbow angle', () {
     RepEvent partial({
       required bool visibleTopHips,
       required bool supported,
       required double elbow,
     }) {
-      final c = judge();
+      final c = legacyJudge();
       final top = pushUpFrame(
         lowerBody: {
           if (visibleTopHips) ...{
@@ -1107,7 +1335,9 @@ void main() {
     expect(at(c, 400, pose(depth: 0.6)).snapshot.depth, closeTo(0.6, 0.01));
   });
 
-  group('cheats, judged only when seen', () {
+  group('legacy geometry comparison, judged only when seen', () {
+    RepJudge judge({RepJudgeConfig config = fast}) =>
+        legacyJudge(config: config);
     // Shoulders of pushUpFrame are at y = 400, 200 px apart.
     const leftX = 400.0;
     const rightX = 600.0;
@@ -1978,6 +2208,26 @@ void main() {
       expect(update.event!.reason, RejectReason.kneesDown);
     });
 
+    test('unified lifted evidence overrides a legacy one-frame hip latch', () {
+      final classifier = _FrameKneeFake()..state = KneeFrameState.lifted;
+      final c = RepJudge(
+        config: noBow,
+        clock: () => now,
+        useFrameKnee: true,
+        kneeClassifier: classifier,
+      );
+      at(c, 0, hipFrame(170));
+      at(c, 150, hipFrame(170));
+      at(c, 300, hipFrame(170));
+      at(c, 400, hipFrame(135));
+      at(c, 600, hipFrame(160, depth: .6, elbow: 140));
+      at(c, 900, hipFrame(160, depth: 1.4, elbow: 120));
+      final result = at(c, 1300, hipFrame(170));
+      expect(result.event, isNotNull);
+      expect(result.event!.valid, isTrue);
+      expect(result.event!.reason, isNull);
+    });
+
     test('three normal tops tighten the knee line', () {
       final c = judge(config: noBow);
       at(c, 0, hipFrame(170));
@@ -2025,14 +2275,23 @@ void main() {
 
 void _kneeSpecialistIntegrationTests() {
   List<({RepEvent event, double baseProbability, double kneeProbability})> run(
-    String fileName,
-  ) {
+    String fileName, {
+    bool frameKnee = false,
+    KneeFrameClassifier? classifier,
+  }) {
     final recording = PushUpRecording.decode(
       File('test/ai_eval/cases/HSW/$fileName.json').readAsStringSync(),
     );
     var now = Duration.zero;
     Duration? previous;
-    final judge = RepJudge(useMlp: true, clock: () => now);
+    // These recorded-model assertions select their intended knee model
+    // explicitly, independently of the application comparison build flag.
+    final judge = RepJudge(
+      useMlp: true,
+      useFrameKnee: frameKnee,
+      kneeClassifier: classifier,
+      clock: () => now,
+    );
     final history = PushupMlpHistory();
     final results =
         <({RepEvent event, double baseProbability, double kneeProbability})>[];
@@ -2098,6 +2357,21 @@ void _kneeSpecialistIntegrationTests() {
       }
     },
   );
+
+  test('MLP completion also applies the matched knee endpoint sequence', () {
+    final classifier = _FrameKneeFake()..state = KneeFrameState.touching;
+    final results = run(
+      '20261101-204311_SM-S901N_normal',
+      frameKnee: true,
+      classifier: classifier,
+    );
+    final acceptedByBinaryModel = results.where((r) => r.baseProbability > .5);
+    expect(acceptedByBinaryModel.length, 4);
+    for (final result in acceptedByBinaryModel) {
+      expect(result.event.valid, isFalse);
+      expect(result.event.reason, RejectReason.kneesDown);
+    }
+  });
 }
 
 void _wideProposalTests() {
@@ -2224,4 +2498,15 @@ void _wideProposalTests() {
       },
     );
   });
+}
+
+class _FrameKneeFake extends KneeFrameClassifier {
+  KneeFrameState state = KneeFrameState.occluded;
+  int calls = 0;
+
+  @override
+  KneeFrameReading classify(PoseFrame frame) {
+    calls++;
+    return KneeFrameReading(state: state);
+  }
 }

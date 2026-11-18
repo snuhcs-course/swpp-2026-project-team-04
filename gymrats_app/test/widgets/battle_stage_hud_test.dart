@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage_hud.dart';
+import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/services/feedback/goal_progress.dart';
 
 import 'battle_test_support.dart';
 
@@ -26,6 +28,7 @@ Future<void> _pumpHud(
   double myRepsBump = 1,
   double opponentRepsBump = 1,
   TextScaler textScaler = TextScaler.noScaling,
+  double topOpacity = 1,
 }) => tester.pumpWidget(
   battleTestApp(
     MediaQuery(
@@ -51,6 +54,7 @@ Future<void> _pumpHud(
               opponentScoreBump: opponentScoreBump,
               myRepsBump: myRepsBump,
               opponentRepsBump: opponentRepsBump,
+              topOpacity: topOpacity,
             ),
           ),
         ],
@@ -91,6 +95,53 @@ void main() {
   });
 
   group('BattleStageHud', () {
+    testWidgets('the top (names, clock and chip, scores, time bar) shows as '
+        'strongly as topOpacity says, and not at all at 0, for a screen '
+        'reader too; the valid counts go by their own (A12 spec 2)', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      double shown(Finder finder) => tester
+          .widgetList<Opacity>(
+            find.ancestor(of: finder, matching: find.byType(Opacity)),
+          )
+          .first
+          .opacity;
+      final parts = [
+        find.text('hellohello'),
+        find.text('AI 봇 · 고수'),
+        find.text('0:18'),
+        find.text('+15 앞섬'),
+        find.text('60'),
+        find.text('45'),
+      ];
+      final bar = find.byWidgetPredicate(
+        (w) => w is ColoredBox && w.color == AppColors.ink,
+      );
+      await _pumpHud(tester, topOpacity: 0);
+      for (final part in [...parts, bar]) {
+        expect(shown(part), 0, reason: '$part');
+      }
+      expect(find.bySemanticsLabel('내 점수 60점'), findsNothing);
+      expect(find.bySemanticsLabel('남은 시간 18초'), findsNothing);
+      expect(find.bySemanticsLabel('나 hellohello'), findsNothing);
+      // The counts are not the top's: they keep their own opacity.
+      expect(find.bySemanticsLabel('유효 횟수 나 5회, 상대 4회'), findsOneWidget);
+
+      await _pumpHud(tester, topOpacity: 0.5);
+      for (final part in [...parts, bar]) {
+        expect(shown(part), 0.5, reason: '$part');
+      }
+      await _pumpHud(tester);
+      for (final part in [...parts, bar]) {
+        expect(shown(part), 1, reason: '$part');
+      }
+      expect(find.bySemanticsLabel('내 점수 60점'), findsOneWidget);
+      expect(find.bySemanticsLabel('상대 점수 45점'), findsOneWidget);
+      expect(find.bySemanticsLabel('남은 시간 18초'), findsOneWidget);
+      handle.dispose();
+    });
+
     testWidgets('shows both names, the clock, the chip, the scores and the '
         'valid counts', (tester) async {
       await _pumpHud(tester);
@@ -469,6 +520,157 @@ void main() {
       expect(find.text('0:00'), findsOneWidget);
       expect(find.bySemanticsLabel('남은 시간 0초'), findsOneWidget);
       handle.dispose();
+    });
+  });
+
+  group('the goal chip (A11 spec 5)', () {
+    Future<void> pumpGoal(
+      WidgetTester tester,
+      GoalProgress? goal, {
+      double elapsed = 0.4,
+      double countsOpacity = 1,
+    }) => tester.pumpWidget(
+      battleTestApp(
+        Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              width: BattleFx.stageWidth,
+              height: BattleFx.stageHeight,
+              child: BattleStageHud(
+                myName: 'hellohello',
+                opponentName: 'AI 봇 · 중수',
+                secondsLeft: 6,
+                elapsed: elapsed,
+                chip: null,
+                myScore: 195,
+                opponentScore: 150,
+                myReps: 20,
+                opponentReps: 15,
+                countsOpacity: countsOpacity,
+                goal: goal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    Finder chip() => find.byType(BattleGoalChip);
+
+    /// How much of the chip is lime.
+    double fill(WidgetTester tester) => tester
+        .widget<FractionallySizedBox>(
+          find.descendant(
+            of: chip(),
+            matching: find.byType(FractionallySizedBox),
+          ),
+        )
+        .widthFactor!;
+
+    /// The chip's ground under the lime.
+    Color ground(WidgetTester tester) => tester
+        .widget<ColoredBox>(
+          find.descendant(of: chip(), matching: find.byType(ColoredBox)).first,
+        )
+        .color;
+
+    testWidgets('3 under the valid counts, in the middle, 20 tall, clear of '
+        'the time bar', (tester) async {
+      await pumpGoal(
+        tester,
+        const GoalProgress(kind: GoalKind.reps, target: 20, value: 12),
+      );
+      final counts = tester.getRect(find.text('15'));
+      final box = tester.getRect(chip());
+      expect(box.height, BattleGoalChip.height);
+      expect(box.top, closeTo(counts.bottom + 3, 0.5));
+      expect(box.center.dx, closeTo(BattleFx.stageWidth / 2, 0.5));
+      // The time bar is at 131.
+      expect(box.bottom, lessThanOrEqualTo(131));
+      expect(find.text('미션 12/20'), findsOneWidget);
+    });
+
+    testWidgets('white, filled with lime from the left as far as it has '
+        'come; no check yet', (tester) async {
+      await pumpGoal(
+        tester,
+        const GoalProgress(kind: GoalKind.reps, target: 20, value: 12),
+      );
+      expect(fill(tester), closeTo(0.6, 1e-9));
+      expect(ground(tester), AppColors.card);
+      expect(
+        find.descendant(of: chip(), matching: find.byIcon(Icons.check_rounded)),
+        findsNothing,
+      );
+      final text = tester.widget<Text>(find.text('미션 12/20'));
+      expect(text.style!.fontSize, 11);
+      expect(text.style!.fontWeight, FontWeight.w700);
+    });
+
+    testWidgets('reached: a check before the words and all lime', (
+      tester,
+    ) async {
+      await pumpGoal(
+        tester,
+        const GoalProgress(kind: GoalKind.reps, target: 20, value: 20),
+      );
+      expect(fill(tester), 1);
+      final check = find.descendant(
+        of: chip(),
+        matching: find.byIcon(Icons.check_rounded),
+      );
+      expect(check, findsOneWidget);
+      expect(
+        tester.getRect(check).right,
+        lessThan(tester.getRect(find.text('미션 20/20')).left),
+      );
+      expect(tester.getSemantics(chip()).label, '이번 판 미션 20회 중 20회, 미션 성공');
+    });
+
+    testWidgets('a maxRejects goal past its number is red', (tester) async {
+      await pumpGoal(
+        tester,
+        const GoalProgress(kind: GoalKind.maxRejects, target: 2, value: 3),
+      );
+      expect(ground(tester), AppColors.danger);
+      expect(fill(tester), 0);
+      expect(find.text('무효 3/2'), findsOneWidget);
+    });
+
+    testWidgets('a later-half goal waits for the half, then counts', (
+      tester,
+    ) async {
+      const goal = GoalProgress(kind: GoalKind.lateReps, target: 8, value: 0);
+      await pumpGoal(tester, goal, elapsed: 0.49);
+      expect(find.text('후반 미션 8'), findsOneWidget);
+      await pumpGoal(tester, goal, elapsed: 0.5);
+      expect(find.text('후반 0/8'), findsOneWidget);
+    });
+
+    testWidgets('no goal draws no chip; while setting up it is hidden with '
+        'the counts', (tester) async {
+      await pumpGoal(tester, null);
+      expect(chip(), findsNothing);
+      await pumpGoal(
+        tester,
+        const GoalProgress(kind: GoalKind.reps, target: 20, value: 0),
+        countsOpacity: 0,
+      );
+      expect(chip(), findsNothing);
+    });
+
+    testWidgets('the longest words fit the stage beside nothing else', (
+      tester,
+    ) async {
+      await pumpGoal(
+        tester,
+        const GoalProgress(kind: GoalKind.lateReps, target: 18, value: 0),
+      );
+      final box = tester.getRect(chip());
+      expect(box.width, lessThan(120));
+      expect(tester.takeException(), isNull);
     });
   });
 }

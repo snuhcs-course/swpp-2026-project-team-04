@@ -82,11 +82,13 @@ abstract final class BattleFx {
   static const leftBandAt = 400.0;
   static const resultButtonAt = 1800.0;
 
-  /// The setup's own layout (W2b 3-B): while the players set up, the line
-  /// between the stage and the camera stands this high on the stage, so the
-  /// camera takes most of the screen. From the countdown on it is at
-  /// [stageHeight], half way down the screen.
-  static const setupLineY = 156.0;
+  /// The setup's own layout (W2b 3-B, A12): while the players set up, the
+  /// line between the stage and the camera stands this high on the stage,
+  /// under the setup's cue board and the ready chips, so the camera takes
+  /// most of the screen. From the countdown on it is at [stageHeight], half
+  /// way down the screen. On a phone the status bar moves the setup's top
+  /// down ([BattleArenaLayout.setupShift]).
+  static const setupLineY = 196.0;
 
   /// How long the line takes to move the whole way between the two layouts.
   static const layoutMs = 350.0;
@@ -97,8 +99,8 @@ abstract final class BattleFx {
   static const endLayoutMs = 450.0;
 
   /// As the line comes down: how long the setup's own things take to fade
-  /// out (the status band, the ready chips, and the camera's large hint and
-  /// buttons), and how long the valid counts take to come in.
+  /// out (the cue board, the ready chips, and the camera's large buttons),
+  /// and how long the valid counts take to come in.
   static const setupFadeMs = 150.0;
   static const countsFadeMs = 200.0;
 
@@ -109,10 +111,6 @@ abstract final class BattleFx {
   static const fighterPopMs = 250.0;
   static const fighterFadeInMs = 70.0;
   static const fighterFadeOutMs = 100.0;
-
-  /// The setup's status band, "자세 세팅 중": its top and text size.
-  static const setupBandTop = 71.0;
-  static const setupBandSize = 24.0;
 
   /// How long the reject sign stays up.
   static const signMs = 1300.0;
@@ -317,9 +315,10 @@ class BattleFxTag {
   final double opacity;
 }
 
-/// A player's ready chip between the two scores while setting up (W2b 3-B):
-/// "세팅 중" on white, or "준비 완료" on the player's color. The user's chip
-/// is left of the middle, the opponent's right of it.
+/// A player's ready chip under the setup's cue board (W2b 3-B, A12 SfSq
+/// top): "나 · 세팅 중" on white with a square of the player's color, or
+/// "상대 · 준비 완료" on the player's color with a white square. The user's
+/// chip is at the left side, the opponent's at the right.
 class BattleFxReadyChip {
   const BattleFxReadyChip({
     required this.side,
@@ -331,7 +330,14 @@ class BattleFxReadyChip {
   final bool ready;
   final double opacity;
 
-  String get text => ready ? '준비 완료' : '세팅 중';
+  /// Whose chip it is, as it begins or ends: "나" or "상대".
+  String get who => side == BattleSide.me ? '나' : '상대';
+
+  /// The state's words, e.g. "세팅 중".
+  String get state => ready ? '준비 완료' : '세팅 중';
+
+  /// The chip's words, e.g. "나 · 세팅 중".
+  String get text => '$who · $state';
 
   BattleFxTone get tone => !ready
       ? BattleFxTone.plain
@@ -455,6 +461,34 @@ class BattleFxBanner {
       : BattleFx.koreanBandBox(textSize).padX;
 }
 
+/// '미션 성공!' once the user's goal for the battle is reached (A11 spec 5,
+/// UxGoal battle): a lime band of Do Hyeon 48 turned by [rotation], where
+/// the grade words show. It follows the bands of the rep that reached the
+/// goal and stays [length].
+class BattleFxGoalBand {
+  const BattleFxGoalBand({required this.opacity, required this.scale});
+
+  final double opacity;
+
+  /// Sized around the band's middle as it pops in.
+  final double scale;
+
+  static const text = '미션 성공!';
+
+  /// The band's top before it is turned, its height and the room beside
+  /// its text, as designed.
+  static const top = 148.0;
+  static const height = 64.0;
+  static const padX = 22.0;
+
+  /// Its ink edge, a little thicker than the other bands' 3.
+  static const edge = 3.5;
+  static const rotation = -4.0;
+
+  /// How long it stays, popping in and fading out as the other bands do.
+  static const length = 1600.0;
+}
+
 /// The combo mark of one side, "N HIT", in the camera area's top corner on
 /// that side: a white band of [BattleFx.comboTextSize] numbers.
 class BattleFxCombo {
@@ -521,6 +555,7 @@ class BattleFxFrame {
     this.setupLook = 0,
     this.countsOpacity = 1,
     this.readyChips = const [],
+    this.goalBand,
     this.cameraFrame,
   });
 
@@ -583,8 +618,10 @@ class BattleFxFrame {
   /// the screen.
   final double endLayout;
 
-  /// How strongly the setup's own things show, from 1 to 0: the status
-  /// band, the ready chips, and the camera's large hint and buttons.
+  /// How strongly the setup's own things show, from 1 to 0: the cue board,
+  /// the ready chips, and the camera's large buttons. The battle's top (the
+  /// names, the clock, the scores and the time bar) shows the other way
+  /// round (A12 spec 2).
   final double setupLook;
 
   /// How strongly the valid rep counts show: they are hidden while setting
@@ -594,6 +631,10 @@ class BattleFxFrame {
   /// The two ready chips while setting up, the user's first; empty when
   /// they are gone.
   final List<BattleFxReadyChip> readyChips;
+
+  /// '미션 성공!' while it shows; null otherwise. It is drawn under the
+  /// rep bands ([banners]), so a later rep's grade still reads.
+  final BattleFxGoalBand? goalBand;
 
   /// The status frame around the user's camera (A9 spec 3): green while
   /// counting down and for [BattleFx.goodFrameMs] after the user's rep
@@ -758,6 +799,10 @@ class BattleFxTimeline {
   double _endAt = 0;
   double? _decidedAt;
 
+  /// When '미션 성공!' pops up: after the bands of the rep that reached the
+  /// goal. Null until one has; it plays once a battle.
+  double? _goalAt;
+
   /// Whether the knockout came with the blow that caused it.
   bool _endByBlow = false;
 
@@ -769,10 +814,6 @@ class BattleFxTimeline {
   bool _meReady = false;
   bool _opponentReady = false;
   double? _countEnd;
-
-  /// The status band's words as the setup left them: it fades out with
-  /// them as the line comes down. Null when it showed none.
-  String? _leftWords;
 
   /// The layout around the stage (W2b 3-B), from 0 (the setup's) to 1 (the
   /// battle's): it moves toward the battle's while [_toBattle], back
@@ -887,6 +928,9 @@ class BattleFxTimeline {
       _hit = _Hit(event.side, impact, power, event.fever, _hits);
       side.scoreBumpAt = impact;
       side.pop = _Pop(impact, event.grade, event.points);
+      if (event.side == BattleSide.me && event.reachesGoal) {
+        _goalAt ??= impact + _bandsLength(event.grade!);
+      }
       if (cue) {
         _cues.add((
           impact,
@@ -1016,7 +1060,6 @@ class BattleFxTimeline {
     bool opponentReady = false,
     required double now,
   }) {
-    if (_setup && !active) _leftWords = _setupWords;
     _setup = active;
     _meReady = meReady;
     _opponentReady = opponentReady;
@@ -1040,7 +1083,6 @@ class BattleFxTimeline {
   void countDown(double remaining, double now) {
     final running = _countEnd;
     if (running != null && now >= running) return;
-    if (_setup) _leftWords = _setupWords;
     _setup = false;
     final end = now + remaining;
     if (running == null || (end - running).abs() > _countSlack) {
@@ -1048,11 +1090,6 @@ class BattleFxTimeline {
     }
     _layoutTo(battle: true, now: now);
   }
-
-  /// The status band's words while setting up: whom the setup waits for;
-  /// none once both are ready.
-  String? get _setupWords =>
-      _meReady && _opponentReady ? null : (_meReady ? '상대를 기다리는 중' : '자세 세팅 중');
 
   /// Turns the layout toward the battle's or back to the setup's from [now],
   /// from wherever it is: the line never jumps. Back to the setup the
@@ -1329,7 +1366,7 @@ class BattleFxTimeline {
       twinkle: twinkle,
       puff: puff,
       sign: _signAt(now),
-      banners: _banners(now, counting, reducedMotion, setupLook),
+      banners: _banners(now, counting, reducedMotion),
       combos: _combos(now),
       myScoreBump: _scoreBump(now - mine.scoreBumpAt, _myScore),
       opponentScoreBump: _scoreBump(now - theirs.scoreBumpAt, _opponentScore),
@@ -1365,8 +1402,25 @@ class BattleFxTimeline {
                 opacity: setupLook,
               ),
             ],
+      goalBand: _goalBand(now),
     );
   }
+
+  /// '미션 성공!' at [now]: only while the battle runs. Once it is over the
+  /// ending's bands take the stage, so a band still showing goes.
+  BattleFxGoalBand? _goalBand(double now) {
+    final at = _goalAt;
+    if (at == null || (_end != null && now >= _endAt)) return null;
+    final shown = BattleFx.pop(now - at, BattleFxGoalBand.length);
+    if (shown == null) return null;
+    return BattleFxGoalBand(opacity: shown.opacity, scale: shown.scale);
+  }
+
+  /// How long the bands of a blow of [grade] show from its impact: the
+  /// grade word, then its points (see [frame]).
+  static double _bandsLength(GameGrade grade) =>
+      BattleFx.gradeWord(grade).pointsAfter +
+      (grade == GameGrade.average ? 720 : 880);
 
   /// A number growing by [extra] and back over [length].
   static double _bump(double d, double length, double extra) =>
@@ -1534,12 +1588,7 @@ class BattleFxTimeline {
     );
   }
 
-  List<BattleFxBanner> _banners(
-    double now,
-    bool counting,
-    bool reducedMotion,
-    double setupLook,
-  ) {
+  List<BattleFxBanner> _banners(double now, bool counting, bool reducedMotion) {
     final end = _end;
     final sinceEnd = now - _endAt;
     final out = <BattleFxBanner>[];
@@ -1640,22 +1689,8 @@ class BattleFxTimeline {
       );
     }
 
-    // The setup's status band, between the scores; it fades out with the
-    // setup's other things, with the words it had.
-    final setupWords = _setup ? _setupWords : _leftWords;
-    if (setupWords != null) {
-      add(
-        BattleFxBanner(
-          text: setupWords,
-          top: BattleFx.setupBandTop,
-          textSize: BattleFx.setupBandSize,
-          tone: BattleFxTone.plain,
-          opacity: setupLook,
-          font: BattleFxFont.display,
-          rotation: -3,
-        ),
-      );
-    }
+    // No status band while setting up (A12 spec 2): the top area shows only
+    // the setup's cue board and the two ready chips.
 
     final countEnd = _countEnd;
     if (countEnd != null) {

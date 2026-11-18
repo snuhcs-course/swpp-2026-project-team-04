@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../models/exercise_type_korean.dart';
+import '../models/feedback_goal.dart';
 import '../services/feedback/coach_script.dart';
 import '../theme/app_theme.dart';
 import '../utils/korean_josa.dart';
@@ -35,8 +36,11 @@ class CoachGraphicCard extends StatelessWidget {
     ].join(', '),
     CoachComboGraphic(:final combo, :final previousBest) =>
       '가장 긴 콤보 $combo HIT, 지난 최고 $previousBest HIT',
-    CoachGoalGraphic(:final title, :final subtitle) =>
-      '다음 판 목표, $title, $subtitle',
+    CoachGoalGraphic(:final tag, :final title, :final subtitle) =>
+      '$tag, $title, $subtitle',
+    final CoachGoalResultGraphic result => CoachGoalResultCard.sentenceOf(
+      result,
+    ),
   };
 
   @override
@@ -60,6 +64,7 @@ class CoachGraphicCard extends StatelessWidget {
             final CoachFormGraphic form => CoachFormCard(form),
             final CoachComboGraphic combo => CoachComboCard(combo),
             final CoachGoalGraphic goal => CoachGoalCard(goal),
+            final CoachGoalResultGraphic result => CoachGoalResultCard(result),
           },
         ),
       ),
@@ -777,7 +782,7 @@ class CoachComboCard extends StatelessWidget {
   }
 }
 
-/// "다음 판 목표": a lime tag with the target icon, the goal big, its line,
+/// "다음 판 미션": an orange tag with the flag, the goal big, its line,
 /// and under a dashed rule where the goal will show.
 class CoachGoalCard extends StatelessWidget {
   const CoachGoalCard(this.goal, {super.key});
@@ -809,16 +814,17 @@ class CoachGoalCard extends StatelessWidget {
         Container(
           padding: _tagPadding,
           decoration: BoxDecoration(
-            color: AppColors.accent,
+            // The mission's orange, with its flag (MsGfx goal).
+            color: AppColors.warning,
             borderRadius: const BorderRadius.all(Radius.circular(_tagRadius)),
             border: Border.all(color: AppColors.ink, width: _tagEdge),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const CoachTargetIcon(),
+              const CoachFlagIcon(),
               const SizedBox(width: _iconGap),
-              Text('다음 판 목표', style: text.coachButton),
+              Text(goal.tag, style: text.coachButton),
             ],
           ),
         ),
@@ -826,13 +832,16 @@ class CoachGoalCard extends StatelessWidget {
         Text(goal.title, style: text.coachGoalTitle),
         const SizedBox(height: AppSpacing.s4),
         Text(goal.subtitle, style: text.coachCardSentence),
-        const SizedBox(height: AppSpacing.s12),
-        const CoachDashedLine(color: AppColors.border, width: 1.5),
-        const SizedBox(height: AppSpacing.s8),
-        Text(
-          whereText(goal),
-          style: text.coachSmallBold.copyWith(color: AppColors.textSecondary),
-        ),
+        // The last goal, recalled, needs no word on where it shows.
+        if (goal.showsWhere) ...[
+          const SizedBox(height: AppSpacing.s12),
+          const CoachDashedLine(color: AppColors.border, width: 1.5),
+          const SizedBox(height: AppSpacing.s8),
+          Text(
+            whereText(goal),
+            style: text.coachSmallBold.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
       ],
     );
   }
@@ -887,4 +896,167 @@ String _seconds(double seconds) {
   return tenths % 10 == 0
       ? '${tenths ~/ 10}'
       : (tenths / 10).toStringAsFixed(1);
+}
+
+/// The last goal checked (A11 spec 6.2, UxGfx goalHit and goalMiss):
+/// "지난번 미션 · {title}", the goal's number beside this battle's, a bar
+/// full and green when reached or amber as far as it came, a line on the
+/// difference, and a turned stamp: "달성!" on lime, or what was left on
+/// white.
+class CoachGoalResultCard extends StatelessWidget {
+  const CoachGoalResultCard(this.graphic, {super.key});
+
+  final CoachGoalResultGraphic graphic;
+
+  static const _numbersGap = 18.0;
+  static const _barHeight = 16.0;
+  static const _barEdge = 2.0;
+  static const _barRadius = 8.0;
+  static const _stamp = 104.0;
+  static const _stampEdge = 4.0;
+  static const _stampRight = 2.0;
+  static const _stampTop = 18.0;
+  static const _stampTurn = -12 * math.pi / 180;
+
+  /// The unit the card counts in: a combo in 번, the others in 회.
+  static String unitOf(CoachGoalResultGraphic g) =>
+      g.result.kind == GoalKind.combo ? '번' : '회';
+
+  /// How far the goal is from this battle's number, either way.
+  static int gapOf(CoachGoalResultGraphic g) =>
+      (g.result.value - g.result.target).abs();
+
+  /// The line under the bar, e.g. "미션보다 1회 더 해냈어요".
+  static String lineOf(CoachGoalResultGraphic g) {
+    final r = g.result, gap = gapOf(g), unit = unitOf(g);
+    final fewer = r.kind == GoalKind.maxRejects;
+    if (r.reached) {
+      if (gap == 0) return fewer ? '미션만큼 지켰어요' : '미션을 딱 채웠어요';
+      return fewer ? '미션보다 $gap$unit 적었어요' : '미션보다 $gap$unit 더 해냈어요';
+    }
+    return fewer ? '미션보다 $gap$unit 많았어요' : '미션까지 $gap$unit 남았어요';
+  }
+
+  /// The stamp's words.
+  static String stampOf(CoachGoalResultGraphic g) {
+    if (g.result.reached) return '성공!';
+    final left = g.result.kind == GoalKind.maxRejects ? '초과' : '남음';
+    return '${gapOf(g)}${unitOf(g)}\n$left';
+  }
+
+  /// How much of the bar is filled: all when reached; else how far this
+  /// battle came (a rejection limit: how much of this battle it allowed).
+  static double fillOf(CoachGoalResultGraphic g) {
+    final r = g.result;
+    if (r.reached) return 1;
+    final (part, whole) = r.kind == GoalKind.maxRejects
+        ? (r.target, r.value)
+        : (r.value, r.target);
+    return whole <= 0 ? 0 : (part / whole).clamp(0.0, 1.0);
+  }
+
+  /// The card in one sentence, for a screen reader.
+  static String sentenceOf(CoachGoalResultGraphic g) => [
+    '지난번 미션 ${g.title}',
+    '미션 ${g.result.target}, 이번 판 ${g.result.value}',
+    lineOf(g),
+    if (g.result.reached) '성공',
+  ].join(', ');
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final reached = graphic.result.reached;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('지난번 미션 · ${graphic.title}', style: text.coachCardLabel),
+            const SizedBox(height: AppSpacing.s12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('미션', style: text.coachSmall),
+                    Text(
+                      '${graphic.result.target}',
+                      style: text.goalResultTarget,
+                    ),
+                  ],
+                ),
+                const SizedBox(width: _numbersGap),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('이번 판', style: text.coachSmallBold),
+                    Text(
+                      '${graphic.result.value}',
+                      style: text.goalResultValue,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.s12),
+            Container(
+              key: const ValueKey('goal-result-bar'),
+              height: _barHeight,
+              decoration: BoxDecoration(
+                color: AppColors.facetLight,
+                borderRadius: const BorderRadius.all(
+                  Radius.circular(_barRadius),
+                ),
+                border: Border.all(color: AppColors.ink, width: _barEdge),
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.all(
+                  Radius.circular(_barRadius - _barEdge),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: fillOf(graphic),
+                  child: ColoredBox(
+                    color: reached ? AppColors.statusGood : AppColors.warning,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s12),
+            Text(
+              lineOf(graphic),
+              style: text.coachCardLabel.copyWith(color: AppColors.ink),
+            ),
+          ],
+        ),
+        Positioned(
+          right: _stampRight,
+          top: _stampTop,
+          child: Transform.rotate(
+            angle: _stampTurn,
+            child: Container(
+              key: const ValueKey('goal-result-stamp'),
+              width: _stamp,
+              height: _stamp,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: reached ? AppColors.accent : AppColors.card,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.ink, width: _stampEdge),
+              ),
+              child: Text(
+                stampOf(graphic),
+                textAlign: TextAlign.center,
+                textScaler: TextScaler.noScaling,
+                style: reached ? text.goalStamp : text.goalStampSmall,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_goal.dart';
+import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/feedback/coach_script.dart';
@@ -117,7 +118,7 @@ void main() {
 
     test('5, the question; its goals: 20 counted reps, and 8 in the later '
         '15 s (spec 5.1)', () {
-      expect(script.question.text, '다음 판 목표를 하나 세워 볼까범?');
+      expect(script.question.text, '다음 판 미션, 뭐로 할까범?');
       expect(script.question.asksGoal, isTrue);
       expect(script.question.pose, CoachPose.idle);
       final [record, weak] = script.suggestions;
@@ -140,8 +141,8 @@ void main() {
       final line = script.answer(goal);
       expect(
         line.text,
-        '좋아! ‘스쿼트 20회 인정받기’ 목표로 적어 둘게. 스쿼트를 고르면 보여 줄 '
-        '테니 다음 판에서 확인하자범!',
+        '좋아! ‘스쿼트 20회 인정받기’ 미션 접수! 스쿼트를 고르면 다시 보여 줄게. '
+        '다음 판에서 깨 보자범!',
       );
       expect(_marks(line), ['‘스쿼트 20회 인정받기’']);
       expect(line.pose, CoachPose.win);
@@ -154,7 +155,7 @@ void main() {
 
     test('6, the answer to 사양할래, and 7, the end', () {
       final declined = script.answer(null);
-      expect(declined.text, '알겠어. 이번엔 목표 없이 편하게 해 보자. 다음에 또 이야기하자범!');
+      expect(declined.text, '알겠어. 이번엔 미션 없이 편하게 해 보자. 다음에 또 이야기하자범!');
       expect(declined.pose, CoachPose.idle);
       expect(declined.graphic, isNull);
       expect(script.end.text, '오늘 이야기는 여기까지! 리포트로 돌아갈게범.');
@@ -737,7 +738,7 @@ void main() {
         coachInputOf(_designReport, characterId: 'kangaroo'),
       );
       expect(script.talk.first.text, startsWith('수고했다깡!'));
-      expect(script.question.text, endsWith('세워 볼까깡?'));
+      expect(script.question.text, endsWith('뭐로 할까깡?'));
       expect(script.end.text, endsWith('돌아갈게깡.'));
     });
 
@@ -832,6 +833,316 @@ void main() {
         script.suggestions.first.toString(),
         'GoalSuggestion(reps 20: 스쿼트 20회 인정받기)',
       );
+    });
+  });
+
+  group('the last goal checked (A11 spec 6)', () {
+    /// A goal of [kind] set the day before with the kangaroo (그루).
+    FeedbackGoal lastGoal(
+      GoalKind kind,
+      int target, {
+      String title = '스쿼트 20회 인정받기',
+      ExerciseType exercise = ExerciseType.squat,
+      DateTime? setAt,
+    }) => FeedbackGoal(
+      exercise: exercise,
+      kind: kind,
+      target: target,
+      baseline: target - 2,
+      title: title,
+      setAt: setAt ?? coachEndedAt.subtract(const Duration(days: 1)),
+      characterId: 'kangaroo',
+      fromMatch: 'earlier',
+    );
+
+    /// [report]'s talk input with [goal] to check, the seal talking.
+    CoachInput checking(
+      FormReport report,
+      FeedbackGoal? goal, {
+      List<CoachEarlier> earlier = const [],
+    }) {
+      final base = coachInputOf(report, earlier: earlier);
+      return CoachInput(
+        report: base.report,
+        findings: base.findings,
+        pace: base.pace,
+        characterId: base.characterId,
+        earlier: base.earlier,
+        lastGoal: goal,
+      );
+    }
+
+    test('recalled first: the seal talks, the card names who set it (그루), '
+        'then the reached result, marked, with the full result card', () {
+      final script = _build(
+        checking(coachReport(valid: evenly(21)), lastGoal(GoalKind.reps, 20)),
+      );
+      final recall = script.talk[0];
+      expect(recall.text, '지난번 미션 기억나범? ‘스쿼트 20회 인정받기’였지.');
+      expect(_marks(recall), ['‘스쿼트 20회 인정받기’']);
+      expect(recall.pose, CoachPose.idle);
+      final card = recall.graphic! as CoachGoalGraphic;
+      expect(card.tag, '지난번 미션');
+      expect(card.subtitle, '지난 판에 그루가 준 미션');
+      // 이 after a final consonant: the seal's 물렁범.
+      final seal = FeedbackGoal(
+        exercise: ExerciseType.squat,
+        kind: GoalKind.reps,
+        target: 20,
+        baseline: 18,
+        title: '스쿼트 20회 인정받기',
+        setAt: coachEndedAt.subtract(const Duration(days: 1)),
+        characterId: 'seal',
+        fromMatch: 'earlier',
+      );
+      expect(
+        (_build(checking(coachReport(valid: evenly(21)), seal)).talk[0].graphic!
+                as CoachGoalGraphic)
+            .subtitle,
+        '지난 판에 물렁범이 준 미션',
+      );
+      expect(card.showsWhere, isFalse);
+      final result = script.talk[1];
+      expect(result.text, '이번에 21번 인정받았어. 미션 성공이다범!');
+      expect(_marks(result), ['21번', '미션 성공']);
+      expect(result.pose, CoachPose.win);
+      final checked = result.graphic! as CoachGoalResultGraphic;
+      expect(checked.title, '스쿼트 20회 인정받기');
+      expect((checked.result.value, checked.result.reached), (21, true));
+    });
+
+    test('missed by one: how many, and how far, with the miss pose', () {
+      final line = _build(
+        checking(coachReport(valid: evenly(19)), lastGoal(GoalKind.reps, 20)),
+      ).talk[1];
+      expect(line.text, '이번엔 19번이라서 딱 1번 모자랐어. 아깝다범!');
+      expect(_marks(line), ['19번', '1번']);
+      expect(line.pose, CoachPose.hit);
+      expect((line.graphic! as CoachGoalResultGraphic).result.reached, isFalse);
+    });
+
+    for (final (name, report, goal, text) in [
+      (
+        'later half reached',
+        coachReport(valid: [2, 16, 18, 20]),
+        lastGoal(GoalKind.lateReps, 3, title: '후반 15초에 3회 이상'),
+        '이번엔 후반에 3번 인정받았어. 미션 성공이다범!',
+      ),
+      (
+        'later half missed',
+        coachReport(valid: [2, 4, 16]),
+        lastGoal(GoalKind.lateReps, 3, title: '후반 15초에 3회 이상'),
+        '이번엔 후반에 1번이라서 딱 2번 모자랐어. 아깝다범!',
+      ),
+      (
+        'combo reached',
+        coachReport(valid: [1, 2, 3, 10]),
+        lastGoal(GoalKind.combo, 3, title: '콤보 3번 이상'),
+        '이번엔 콤보를 3번까지 이어 갔어. 미션 성공이다범!',
+      ),
+      (
+        'combo missed',
+        coachReport(valid: [1, 2, 10]),
+        lastGoal(GoalKind.combo, 4, title: '콤보 4번 이상'),
+        '이번엔 콤보가 2번이라서 딱 2번 모자랐어. 아깝다범!',
+      ),
+      (
+        'no rejection at all',
+        coachReport(valid: [1, 2]),
+        lastGoal(GoalKind.maxRejects, 1, title: '무효 1회 이하'),
+        '이번엔 무효가 한 번도 없었어. 미션 성공이다범!',
+      ),
+      (
+        'rejections within the limit',
+        coachReport(
+          valid: [1],
+          rejected: const [(5, RejectReason.shallowSquat)],
+        ),
+        lastGoal(GoalKind.maxRejects, 1, title: '무효 1회 이하'),
+        '이번엔 무효가 1번뿐이었어. 미션 성공이다범!',
+      ),
+      (
+        'rejections past the limit (decision 14)',
+        coachReport(
+          valid: [1],
+          rejected: const [
+            (5, RejectReason.shallowSquat),
+            (6, RejectReason.shallowSquat),
+            (7, RejectReason.shallowSquat),
+          ],
+        ),
+        lastGoal(GoalKind.maxRejects, 2, title: '무효 2회 이하'),
+        '이번엔 무효가 3번이라 미션보다 1번 많았어. 아깝다범!',
+      ),
+    ]) {
+      test('$name: "$text"', () {
+        expect(_build(checking(report, goal)).talk[1].text, text);
+      });
+    }
+
+    test('a KO keeps the full round\'s half: reps after 15 s of a 20 s '
+        'round are the later half', () {
+      final line = _build(
+        checking(
+          coachReport(valid: [2, 12, 16, 18], roundSeconds: 20),
+          lastGoal(GoalKind.lateReps, 3, title: '후반 15초에 3회 이상'),
+        ),
+      ).talk[1];
+      // Its own half (10 s) would count three and reach it.
+      expect(line.text, '이번엔 후반에 2번이라서 딱 1번 모자랐어. 아깝다범!');
+    });
+
+    test('only a goal of this exercise, set before this battle ended, is '
+        'checked', () {
+      final report = coachReport(valid: evenly(21));
+      for (final goal in [
+        null,
+        lastGoal(GoalKind.reps, 20, exercise: ExerciseType.pushUp),
+        lastGoal(
+          GoalKind.reps,
+          20,
+          setAt: coachEndedAt.add(const Duration(minutes: 1)),
+        ),
+      ]) {
+        final script = _build(checking(report, goal));
+        expect(script.talk.first.text, startsWith('수고했다범!'));
+        expect(script.facts.lastResult, isNull);
+        expect(script.question.text, '다음 판 미션, 뭐로 할까범?');
+      }
+    });
+
+    test('after a reps goal the summary keeps only the average; without '
+        'earlier battles it has nothing left to say', () {
+      final report = coachReport(valid: evenly(21));
+      final goal = lastGoal(GoalKind.reps, 20);
+      final withAverage = _build(
+        checking(report, goal, earlier: _usualEarlier),
+      );
+      expect(withAverage.talk[2].text, '최근 5판 평균보다 5번 더 했어. 좋다범!');
+      final alone = _build(checking(report, goal));
+      expect(alone.talk.where((l) => l.text.contains('인정받았어')), hasLength(1));
+      expect(alone.talk.any((l) => l.graphic is CoachScoreGraphic), isFalse);
+    });
+
+    test('after another kind of goal the summary is whole', () {
+      final script = _build(
+        checking(
+          coachReport(valid: [1, 2, 3, 10]),
+          lastGoal(GoalKind.combo, 3, title: '콤보 3번 이상'),
+        ),
+      );
+      expect(script.talk[2].text, startsWith('수고했다범! 이번 스쿼트에서 4번'));
+    });
+
+    test('the two check lines count among the lines to say', () {
+      final report = coachReport(valid: evenly(21));
+      final plain = _build(checking(report, null)).talk.length;
+      final checked = _build(
+        checking(report, lastGoal(GoalKind.combo, 2, title: '콤보 2번 이상')),
+      ).talk.length;
+      expect(checked, plain + 2);
+    });
+
+    group('the goal question after the check (spec 6.4)', () {
+      List<GoalSuggestion> choices(FormReport report, FeedbackGoal goal) =>
+          _build(checking(report, goal)).suggestions;
+      GoalSuggestion weak(FormReport report, FeedbackGoal goal) =>
+          CoachGoals.weakPoint(CoachFacts.of(checking(report, goal)));
+
+      test('reached: one step up, then the weak point', () {
+        final report = coachReport(valid: evenly(21));
+        final goal = lastGoal(GoalKind.reps, 20);
+        final script = _build(checking(report, goal));
+        expect(script.question.text, '다음 미션은 뭐로 할까범?');
+        final [up, second] = script.suggestions;
+        expect((up.kind, up.target, up.baseline), (GoalKind.reps, 22, 21));
+        expect((up.title, up.subtitle), ('스쿼트 22회 인정받기', '한 단계 올리기'));
+        expect(second.title, weak(report, goal).title);
+      });
+
+      test('one step up for each kind: +2 later reps, +1 combo, one '
+          'rejection fewer but not below 0', () {
+        expect(
+          choices(
+            coachReport(valid: [16, 17, 18]),
+            lastGoal(GoalKind.lateReps, 3, title: '후반 15초에 3회 이상'),
+          ).first.title,
+          '후반 15초에 5회 이상',
+        );
+        expect(
+          choices(
+            coachReport(valid: [1, 2, 3]),
+            lastGoal(GoalKind.combo, 3, title: '콤보 3번 이상'),
+          ).first.title,
+          '콤보 4번 이상',
+        );
+        expect(
+          choices(
+            coachReport(valid: [1, 2]),
+            lastGoal(GoalKind.maxRejects, 1, title: '무효 1회 이하'),
+          ).first.title,
+          '무효 0회 이하',
+        );
+        final floor = choices(
+          coachReport(valid: [1, 2]),
+          lastGoal(GoalKind.maxRejects, 0, title: '무효 0회 이하'),
+        ).first;
+        expect((floor.target, floor.subtitle), (0, '같은 미션 그대로'));
+      });
+
+      test('missed: the same goal again, then this battle + 1 when that is '
+          'below the goal', () {
+        final report = coachReport(valid: evenly(15));
+        final script = _build(checking(report, lastGoal(GoalKind.reps, 20)));
+        expect(script.question.text, '미션을 어떻게 할까범?');
+        final [same, easier] = script.suggestions;
+        expect((same.title, same.target), ('스쿼트 20회 인정받기', 20));
+        expect(same.subtitle, '같은 미션 그대로');
+        expect((easier.title, easier.target), ('스쿼트 16회 인정받기', 16));
+        expect(easier.subtitle, '이번 기록 넘기기');
+      });
+
+      test('missed by one: no easier goal than the goal itself, so the '
+          'weak point (decision 13)', () {
+        final report = coachReport(valid: evenly(19));
+        final goal = lastGoal(GoalKind.reps, 20);
+        expect(choices(report, goal).last.title, weak(report, goal).title);
+      });
+
+      test('a rejection limit missed: one fewer than this battle when looser '
+          'than the goal, else the weak point (decision 14)', () {
+        FormReport rejecting(int count) => coachReport(
+          valid: [1],
+          rejected: [
+            for (var i = 0; i < count; i++)
+              (5.0 + i, RejectReason.shallowSquat),
+          ],
+        );
+        final goal = lastGoal(GoalKind.maxRejects, 1, title: '무효 1회 이하');
+        final easier = choices(rejecting(4), goal).last;
+        expect((easier.title, easier.target), ('무효 3회 이하', 3));
+        expect(
+          choices(rejecting(2), goal).last.title,
+          weak(rejecting(2), goal).title,
+        );
+      });
+
+      test('a second choice the same as the first becomes the record goal', () {
+        // Three in a row in each slice: an even pace, no rejection, so the
+        // weak point is a combo of 4, the same as one step up from 3.
+        final report = coachReport(
+          valid: [
+            for (var slice = 0; slice < 6; slice++)
+              for (var i = 0; i < 3; i++) slice * 5 + 0.5 + i,
+          ],
+        );
+        final goal = lastGoal(GoalKind.combo, 3, title: '콤보 3번 이상');
+        expect(weak(report, goal).title, '콤보 4번 이상');
+        final [first, second] = choices(report, goal);
+        expect(first.title, '콤보 4번 이상');
+        expect(second.kind, GoalKind.reps);
+        expect(second.title, '스쿼트 20회 인정받기');
+      });
     });
   });
 }

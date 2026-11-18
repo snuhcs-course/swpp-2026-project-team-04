@@ -46,10 +46,9 @@ class BattleCameraLayout extends InheritedWidget {
 }
 
 /// The user's camera on the battle screen, in the camera's own shape. Over
-/// it, as before the stage, the detected joints and the chest or squat
-/// height lines, and before the round the setup's guide, with the picture
-/// around the guide dimmed as the guide dims its own outside
-/// ([BattleGuideOverlay]).
+/// it the chest or squat height lines, and before the round the setup's
+/// guide, with the picture around the guide dimmed as the guide dims its own
+/// outside ([BattleGuideOverlay]). No joint dots or skeleton (A12).
 ///
 /// Under a [BattleCameraLayout] (the arena's) it fills the camera's box while
 /// setting up, cropping what does not fit, and shows the whole picture,
@@ -238,13 +237,9 @@ class BattleCameraView extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        PoseCameraView(
-          controller: controller,
-          frame: frame,
-          mirror: mirror,
-          showLandmarks: true,
-          boldLandmarks: true,
-        ),
+        // No joint dots or skeleton, setting up or in the battle (A12 spec
+        // 3): the setup shows its silhouette, the battle its height lines.
+        PoseCameraView(controller: controller, frame: frame, mirror: mirror),
         if (chest != null)
           ChestHeightOverlay(frame: frame, snapshot: chest, mirror: mirror),
         if (squat != null) SquatHeightOverlay(frame: frame, snapshot: squat),

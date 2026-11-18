@@ -1,22 +1,27 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
 import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
+import '../models/feedback_goal.dart';
 import '../models/form_report.dart';
 import '../models/pose_frame.dart';
 import '../models/setup_hint_short.dart';
 import '../models/setup_squat_silhouette_alignment.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
+import '../services/feedback/goal_progress.dart';
+import '../services/feedback/goal_store.dart';
 import '../services/game/online_battle_result.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../widgets/accent_button.dart';
 import '../widgets/battle_arena.dart';
@@ -98,6 +103,13 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   /// The stage's clock and what plays on it.
   final _stage = BattleStageController();
+
+  /// The user's goal for this exercise and how far this battle has come
+  /// on it (A11 spec 5); null without one, and until it has been read.
+  GoalTracker? _goal;
+
+  /// Set once the goal has been asked for: it is read once.
+  bool _goalAsked = false;
 
   /// What the stage has seen of the opponent's reps, to tell a new one by.
   late OnlineOpponentSeen _theirs;
@@ -198,16 +210,63 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         session.submitRep(rep, passDepth: _counter.passDepth);
         if (running) {
           _stage.rep(
-            OnlineStageEvents.myRep(
-              session,
-              rep,
-              passDepth: _counter.passDepth,
+            _withGoal(
+              OnlineStageEvents.myRep(
+                session,
+                rep,
+                passDepth: _counter.passDepth,
+              ),
             ),
           );
         }
       }
     });
     unawaited(_counter.start());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_goalAsked) {
+      _goalAsked = true;
+      unawaited(_readGoal());
+    }
+  }
+
+  /// Reads the user's goal for this exercise (A11 spec 5), as the bot
+  /// battle does: once, only reading (task.md W11 decision 6). The chip
+  /// shows from the countdown on, long after the read.
+  Future<void> _readGoal() async {
+    final store = Provider.of<GoalStore?>(context, listen: false);
+    final account = Provider.of<AuthViewModel?>(
+      context,
+      listen: false,
+    )?.account;
+    if (store == null || account == null) return;
+    final FeedbackGoal? goal;
+    try {
+      goal = await store.read(account.id, session.exercise);
+    } on Object {
+      return;
+    }
+    if (goal == null || !mounted) return;
+    final tracker = GoalTracker(goal)
+      ..count(_counter.repRecords, roundLength: _roundLength);
+    setState(() => _goal = tracker);
+  }
+
+  /// The round's full length, as the server set it.
+  Duration get _roundLength => Duration(milliseconds: session.durationMs);
+
+  /// [event], my rep, marked as the one that first reached the goal when
+  /// it is. The goal is counted from the counter's records: the same reps,
+  /// in round time, that the battle's form report keeps.
+  BattleStageEvent _withGoal(BattleStageEvent event) {
+    final goal = _goal;
+    if (goal == null) return event;
+    return goal.count(_counter.repRecords, roundLength: _roundLength)
+        ? event.reachingGoal()
+        : event;
   }
 
   void _syncRound() {
@@ -246,6 +305,8 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         rightFlarePose: _counter.rightFlarePose,
         handsPose: _counter.handsPose,
         headPose: _counter.headPose,
+        // Mine as sent, so 기록보관소 shows it later.
+        characterId: session.character,
       );
       _formReport = report;
       unawaited(_saveReport(report));
@@ -495,10 +556,14 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       CounterPhase.cameraError,
       CounterPhase.detectorError,
     }.contains(counter.phase);
-    final stage = OnlineStageEvents.stateOf(
+    final standing = OnlineStageEvents.stateOf(
       session,
       myName: widget.playerName,
       cameraFailed: cameraFailed,
+    );
+    final goal = _goal?.progress;
+    final stage = standing.withGoal(
+      standing.phase == BattleStagePhase.ended ? goal?.atEnd() : goal,
     );
     _sounds.show(stage);
     final setup = stage.phase == BattleStagePhase.setup;

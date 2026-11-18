@@ -27,10 +27,15 @@ class BattleStage extends StatelessWidget {
     required this.state,
     this.fighterBuilder = BattleFighter.standIn,
     this.characters,
+    this.setupShift = 0,
   });
 
   final BattleFxFrame frame;
   final BattleStageState state;
+
+  /// How far the setup's ready chips move down, in stage points, under a
+  /// status bar (the arena layout's setup shift); 0 in the design.
+  final double setupShift;
 
   /// Draws a fighter's picture for a pose when there are no [characters]:
   /// W2's stand-in by default.
@@ -89,11 +94,17 @@ class BattleStage extends StatelessWidget {
               myRepsBump: frame.myRepsBump,
               opponentRepsBump: frame.opponentRepsBump,
               countsOpacity: frame.countsOpacity,
+              // While setting up the top area holds only the cue board and
+              // the ready chips (A12 spec 2); the rest comes in with the
+              // countdown as the setup's things go.
+              topOpacity: 1 - frame.setupLook,
+              goal: state.goal,
             ),
           ),
-          // In the valid counts' place while setting up, with the HUD: they
-          // hold still.
-          for (final chip in frame.readyChips) _ReadyChip(chip: chip),
+          // Under the cue board while setting up, with the HUD: they hold
+          // still.
+          for (final chip in frame.readyChips)
+            _ReadyChip(chip: chip, shift: setupShift),
           Positioned.fill(
             child: Transform(
               transform: Matrix4.translationValues(
@@ -149,8 +160,80 @@ class BattleStage extends StatelessWidget {
               ),
             ),
           ),
+          if (frame.goalBand case final band?) _GoalBand(band: band),
           for (final banner in frame.banners) BattleStageBanner(banner: banner),
         ],
+      ),
+    );
+  }
+}
+
+/// '미션 성공!' over the stage, centered across it and turned around its own
+/// middle, as [BattleStageBanner] draws the other bands: ink words on a
+/// slanted lime band with its own [BattleFxGoalBand.edge] (a [BattleBand]'s
+/// is 3). A picture to a screen reader: the goal chip says it.
+class _GoalBand extends StatelessWidget {
+  const _GoalBand({required this.band});
+
+  final BattleFxGoalBand band;
+
+  @override
+  Widget build(BuildContext context) {
+    final transform = Matrix4.rotationZ(
+      BattleFxGoalBand.rotation * math.pi / 180,
+    ).multiplied(Matrix4.diagonal3Values(band.scale, band.scale, 1));
+    return Positioned(
+      left: 0,
+      top: BattleFxGoalBand.top,
+      width: BattleFx.stageWidth,
+      height: BattleFxGoalBand.height,
+      child: IgnorePointer(
+        child: ExcludeSemantics(
+          child: Opacity(
+            opacity: band.opacity.clamp(0.0, 1.0),
+            child: Transform(
+              transform: transform,
+              alignment: Alignment.center,
+              child: OverflowBox(
+                minWidth: 0,
+                maxWidth: double.infinity,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Transform(
+                        transform: AppHighlight.battleSlant,
+                        alignment: Alignment.center,
+                        child: const DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            border: Border.fromBorderSide(
+                              BorderSide(
+                                color: AppColors.ink,
+                                width: BattleFxGoalBand.edge,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: BattleFxGoalBand.padX,
+                      ),
+                      child: Text(
+                        BattleFxGoalBand.text,
+                        maxLines: 1,
+                        softWrap: false,
+                        textScaler: TextScaler.noScaling,
+                        style: Theme.of(context).textTheme.goalBand,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -386,30 +469,78 @@ class _Tag extends StatelessWidget {
   }
 }
 
-/// A player's ready chip between the scores while setting up (W2b 3-B):
-/// the user's begins [_inset] from the stage's left side, the opponent's
-/// ends as far from its right. A screen reader hears whose it is.
+/// A player's ready chip under the setup's cue board (A12, SfSq top): the
+/// user's at the stage's left side, the opponent's at its right, in a row
+/// [_height] tall from [_top] (moved down by [shift]). Its words beside a
+/// square: of the player's color on a white chip, white on a chip of the
+/// player's color once ready; the user's square first, the opponent's last.
+/// A screen reader hears whose it is and its state.
 class _ReadyChip extends StatelessWidget {
-  const _ReadyChip({required this.chip});
+  const _ReadyChip({required this.chip, required this.shift});
 
   final BattleFxReadyChip chip;
+  final double shift;
 
-  static const _top = 106.0;
-  static const _inset = 72.0;
+  static const _top = 162.0;
+  static const _height = 24.0;
+  static const _inset = 12.0;
+  static const _edge = 1.5;
+  static const _corner = 11.0;
+
+  /// The design's edge lies outside its padding (10 beside, 2 above and
+  /// below); here it is painted inside the box, so the box makes room.
+  static const _side = 10.0 + _edge;
+  static const _topPadding = 2.0 + _edge;
+  static const _gap = 6.0;
 
   @override
   Widget build(BuildContext context) {
     final mine = chip.side == BattleSide.me;
+    final square = SizedBox.square(
+      dimension: AppHighlight.swatchSize,
+      child: DecoratedBox(
+        decoration: AppHighlight.swatch(
+          chip.ready
+              ? AppColors.card
+              : (mine ? AppColors.accent : AppColors.opponent),
+        ),
+      ),
+    );
+    final words = Text(
+      chip.text,
+      maxLines: 1,
+      softWrap: false,
+      textScaler: TextScaler.noScaling,
+      semanticsLabel: '${chip.who} ${chip.state}',
+      style: Theme.of(context).textTheme.stageTag,
+    );
     return Positioned(
       left: mine ? _inset : null,
       right: mine ? null : _inset,
-      top: _top,
-      child: Opacity(
-        opacity: chip.opacity.clamp(0.0, 1.0),
-        child: _Pill(
-          text: chip.text,
-          tone: chip.tone,
-          semanticsLabel: '${mine ? '나' : '상대'} ${chip.text}',
+      top: _top + shift,
+      height: _height,
+      child: Center(
+        child: Opacity(
+          opacity: chip.opacity.clamp(0.0, 1.0),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: chip.tone.color,
+              border: Border.all(color: AppColors.ink, width: _edge),
+              borderRadius: BorderRadius.circular(_corner),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: _side,
+                vertical: _topPadding,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: mine
+                    ? [square, const SizedBox(width: _gap), words]
+                    : [words, const SizedBox(width: _gap), square],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -417,13 +548,12 @@ class _ReadyChip extends StatelessWidget {
 }
 
 /// The stage's small pill: ink words on a [tone] fill with an ink edge, as a
-/// tag over a fighter or a ready chip.
+/// tag over a fighter.
 class _Pill extends StatelessWidget {
-  const _Pill({required this.text, required this.tone, this.semanticsLabel});
+  const _Pill({required this.text, required this.tone});
 
   final String text;
   final BattleFxTone tone;
-  final String? semanticsLabel;
 
   static const _edge = 1.5;
   static const _corner = 11.0;
@@ -451,7 +581,6 @@ class _Pill extends StatelessWidget {
           maxLines: 1,
           softWrap: false,
           textScaler: TextScaler.noScaling,
-          semanticsLabel: semanticsLabel,
           style: Theme.of(context).textTheme.stageTag,
         ),
       ),
