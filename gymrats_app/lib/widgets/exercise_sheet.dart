@@ -144,7 +144,7 @@ class _ExerciseCard extends StatelessWidget {
       button: true,
       label: [
         '${exercise.koreanName}, 개인 최고 $value$unit',
-        if (goal != null) '이번 판 목표 ${goal.title}',
+        if (goal != null) '미션 있음, ${goal.title}',
       ].join(', '),
       onTap: choose,
       excludeSemantics: true,
@@ -283,66 +283,156 @@ class _ExercisePainter extends CustomPainter {
       oldDelegate.exercise != exercise || oldDelegate.color != color;
 }
 
-/// The lime sticker over an exercise card's top right corner when the user
-/// has a goal for that exercise (A11 spec 3, UxGoal pick): a target and the
-/// goal's short words, e.g. "목표 20회", turned 6°. It hangs over the card's
-/// edge, so it goes over the card in a [GoalStickerFrame]. A picture to a
-/// screen reader: the card says the goal.
-class GoalSticker extends StatelessWidget {
+/// The orange "미션!" sticker over an exercise card's top right corner when
+/// the user has a mission (a goal) for that exercise (MISSION-SPEC 2, MsGoal
+/// pick, copy "mission", tone "orange", wiggle on): a flag and "미션!" with
+/// an ink shadow, turned 6°, giving a short shake every [period]. It holds
+/// still with reduced motion, and its ticker stops off screen. It hangs over
+/// the card's edge, so it goes over the card in a [GoalStickerFrame]. A
+/// picture to a screen reader: the card says "미션 있음, {title}".
+class GoalSticker extends StatefulWidget {
   const GoalSticker({super.key, required this.goal});
 
   final FeedbackGoal goal;
 
-  static const _turn = 6 * math.pi / 180;
+  /// The sticker's words, whatever the mission: its number is in the row
+  /// and the summary.
+  static const text = '미션!';
+
+  /// One shake and the rest before it (MsGoal `msWiggle 2.5s`).
+  static const period = Duration(milliseconds: 2500);
+
+  /// The design's keyframes (MsGoal `@keyframes msWiggle`): when, as a
+  /// share of [period], and the turn in degrees and the size there. Each
+  /// step eases in and out, as the design's `ease-in-out`.
+  static const keyframes = <(double, double, double)>[
+    (0, 6, 1),
+    (0.76, 6, 1),
+    (0.80, -6, 1.1),
+    (0.84, 12, 1.1),
+    (0.88, 0, 1.05),
+    (0.92, 9, 1),
+    (1, 6, 1),
+  ];
+
+  /// The turn and the size at [t], from 0 to 1 through one [period].
+  static ({double degrees, double scale}) poseAt(double t) {
+    final at = t.clamp(0.0, 1.0);
+    for (var i = 1; i < keyframes.length; i++) {
+      final (end, degrees, scale) = keyframes[i];
+      if (at > end && i < keyframes.length - 1) continue;
+      final (start, fromDegrees, fromScale) = keyframes[i - 1];
+      final span = end - start;
+      final eased = Curves.easeInOut.transform(
+        span <= 0 ? 1 : ((at - start) / span).clamp(0.0, 1.0),
+      );
+      return (
+        degrees: fromDegrees + (degrees - fromDegrees) * eased,
+        scale: fromScale + (scale - fromScale) * eased,
+      );
+    }
+    return (degrees: 6, scale: 1);
+  }
+
+  /// The mission's short words for the summary line, e.g. "20회",
+  /// "콤보 6".
+  static String textOf(FeedbackGoal goal) =>
+      GoalProgress.shortText(goal.kind, goal.target);
+
+  @override
+  State<GoalSticker> createState() => _GoalStickerState();
+}
+
+class _GoalStickerState extends State<GoalSticker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shake = AnimationController(
+    vsync: this,
+    duration: GoalSticker.period,
+  );
+
+  static const _height = 32.0;
   static const _edge = 2.0;
   static const _corner = 10.0;
-  static const _icon = 14.0;
-  static const _iconGap = 4.0;
+  static const _icon = 16.0;
+  static const _iconStroke = 2.8;
+  static const _iconGap = 5.0;
 
-  /// Inside the edge: 6 before the target, 9 after the words, 3 above and
-  /// below, as designed.
-  static const _padStart = 6.0;
-  static const _padEnd = 9.0;
-  static const _padY = 3.0;
+  /// Inside the edge: 8 before the flag, 11 after the words, as designed.
+  static const _padStart = 8.0;
+  static const _padEnd = 11.0;
 
-  /// The sticker's words for [goal].
-  static String textOf(FeedbackGoal goal) =>
-      GoalProgress.stickerText(goal.kind, goal.target);
+  /// The ink shadow: 2 right, 3 down, no blur.
+  static const _shadow = Offset(2, 3);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _shake
+        ..stop()
+        ..value = 0;
+    } else if (!_shake.isAnimating) {
+      _shake.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _shake.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: Transform.rotate(
-        angle: _turn,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(_padStart, _padY, _padEnd, _padY),
-          decoration: BoxDecoration(
-            color: AppColors.accent,
-            border: Border.all(color: AppColors.ink, width: _edge),
-            borderRadius: const BorderRadius.all(Radius.circular(_corner)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CoachTargetIcon(size: _icon),
-              const SizedBox(width: _iconGap),
-              Text(
-                textOf(goal),
-                maxLines: 1,
-                softWrap: false,
-                style: Theme.of(context).textTheme.goalSticker,
-              ),
-            ],
-          ),
+    final sticker = Container(
+      height: _height,
+      padding: const EdgeInsets.fromLTRB(_padStart, 0, _padEnd, 0),
+      decoration: const BoxDecoration(
+        color: AppColors.warning,
+        border: Border.fromBorderSide(
+          BorderSide(color: AppColors.ink, width: _edge),
         ),
+        borderRadius: BorderRadius.all(Radius.circular(_corner)),
+        boxShadow: [BoxShadow(color: AppColors.ink, offset: _shadow)],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CoachFlagIcon(size: _icon, stroke: _iconStroke),
+          const SizedBox(width: _iconGap),
+          // At the design's size whatever the text size: the sticker is
+          // 32 high, and its card says the mission to a screen reader.
+          Text(
+            GoalSticker.text,
+            maxLines: 1,
+            softWrap: false,
+            textScaler: TextScaler.noScaling,
+            style: Theme.of(context).textTheme.goalMissionSticker,
+          ),
+        ],
+      ),
+    );
+    return ExcludeSemantics(
+      child: AnimatedBuilder(
+        animation: _shake,
+        child: sticker,
+        builder: (context, child) {
+          final pose = GoalSticker.poseAt(_shake.value);
+          return Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.rotationZ(pose.degrees * math.pi / 180)
+              ..scaleByDouble(pose.scale, pose.scale, 1, 1),
+            child: child,
+          );
+        },
       ),
     );
   }
 }
 
 /// An exercise card ([child]) with the [GoalSticker] of [goal] over its top
-/// right corner, 8 past its right edge and 12 above it; just the card
-/// without a goal.
+/// right corner, 8 past its right edge and 20 above it (above the card's
+/// check), as designed; just the card without a goal.
 class GoalStickerFrame extends StatelessWidget {
   const GoalStickerFrame({super.key, required this.goal, required this.child});
 
@@ -350,7 +440,7 @@ class GoalStickerFrame extends StatelessWidget {
   final Widget child;
 
   static const _right = -8.0;
-  static const _top = -12.0;
+  static const _top = -20.0;
 
   @override
   Widget build(BuildContext context) {

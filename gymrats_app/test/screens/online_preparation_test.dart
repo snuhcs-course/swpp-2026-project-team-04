@@ -1164,7 +1164,8 @@ void main() {
     });
 
     testWidgets('a KO from the server plays the ring-out; the result keeps '
-        'the time played, rounded up, and the report is sent', (tester) async {
+        'the time played, rounded up, and the report is sent with my '
+        'character', (tester) async {
       await open(tester);
       session.rules = battleRules;
       session.myScore = 120;
@@ -1182,6 +1183,10 @@ void main() {
       expect(result.roundLength, const Duration(seconds: 24));
       expect(result.form!.roundLength, const Duration(seconds: 24));
       expect(repository.savedFeedback.single.$1, 'r' * 32);
+      // Mine as sent (the bear), so 기록보관소 shows it later (A11).
+      expect(result.form!.characterId, 'bear');
+      expect(repository.savedFeedback.single.$2.characterId, 'bear');
+      expect((await reports.list()).single.characterId, 'bear');
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -1792,7 +1797,7 @@ void main() {
 
     testWidgets('read once for the account and the session\'s exercise: '
         'hidden while setting up, then my reps fill it, and the one that '
-        'reaches it brings 목표 달성! after its bands, once', (tester) async {
+        'reaches it brings 미션 성공! after its bands, once', (tester) async {
       final store = MemoryGoalStore()
         ..goals[(1, ExerciseType.pushUp)] = _goal(GoalKind.reps, 2);
       final auth = await _signedIn();
@@ -1805,26 +1810,26 @@ void main() {
       );
       expect(chip(), findsNothing);
       await play(tester);
-      expect(find.text('목표 0/2'), findsOneWidget);
+      expect(find.text('미션 0/2'), findsOneWidget);
       judge.closeRep(maxDepth: 1.9);
       await pose(tester);
       await wait(tester, 100);
-      expect(find.text('목표 1/2'), findsOneWidget);
+      expect(find.text('미션 1/2'), findsOneWidget);
       judge.closeRep(maxDepth: 1.9);
       await pose(tester);
       await wait(tester, 100);
-      expect(find.text('목표 2/2'), findsOneWidget);
+      expect(find.text('미션 2/2'), findsOneWidget);
       expect(find.text('EXCELLENT'), findsOneWidget);
-      expect(find.text('목표 달성!'), findsNothing);
+      expect(find.text('미션 성공!'), findsNothing);
       await wait(tester, 1400);
-      expect(find.text('목표 달성!'), findsOneWidget);
+      expect(find.text('미션 성공!'), findsOneWidget);
       await wait(tester, 1800);
-      expect(find.text('목표 달성!'), findsNothing);
+      expect(find.text('미션 성공!'), findsNothing);
       judge.closeRep(maxDepth: 1.9);
       await pose(tester);
       await wait(tester, 2000);
-      expect(find.text('목표 달성!'), findsNothing);
-      expect(find.text('목표 3/2'), findsOneWidget);
+      expect(find.text('미션 성공!'), findsNothing);
+      expect(find.text('미션 3/2'), findsOneWidget);
       expect(store.goals.values.single, _goal(GoalKind.reps, 2));
       await tester.pumpWidget(const SizedBox());
     });
@@ -1851,7 +1856,7 @@ void main() {
       await wait(tester, 2000);
       expect(find.text('무효 1/0'), findsOneWidget);
       expect(chipGround(tester), AppColors.danger);
-      expect(find.text('목표 달성!'), findsNothing);
+      expect(find.text('미션 성공!'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
 

@@ -540,7 +540,7 @@ void main() {
       expect(box.center.dx, closeTo(BattleFx.stageWidth / 2, 0.5));
       // The time bar is at 131.
       expect(box.bottom, lessThanOrEqualTo(131));
-      expect(find.text('목표 12/20'), findsOneWidget);
+      expect(find.text('미션 12/20'), findsOneWidget);
     });
 
     testWidgets('white, filled with lime from the left as far as it has '
@@ -555,7 +555,7 @@ void main() {
         find.descendant(of: chip(), matching: find.byIcon(Icons.check_rounded)),
         findsNothing,
       );
-      final text = tester.widget<Text>(find.text('목표 12/20'));
+      final text = tester.widget<Text>(find.text('미션 12/20'));
       expect(text.style!.fontSize, 11);
       expect(text.style!.fontWeight, FontWeight.w700);
     });
@@ -575,9 +575,9 @@ void main() {
       expect(check, findsOneWidget);
       expect(
         tester.getRect(check).right,
-        lessThan(tester.getRect(find.text('목표 20/20')).left),
+        lessThan(tester.getRect(find.text('미션 20/20')).left),
       );
-      expect(tester.getSemantics(chip()).label, '이번 판 목표 20회 중 20회, 목표 달성');
+      expect(tester.getSemantics(chip()).label, '이번 판 미션 20회 중 20회, 미션 성공');
     });
 
     testWidgets('a maxRejects goal past its number is red', (tester) async {
@@ -595,7 +595,7 @@ void main() {
     ) async {
       const goal = GoalProgress(kind: GoalKind.lateReps, target: 8, value: 0);
       await pumpGoal(tester, goal, elapsed: 0.49);
-      expect(find.text('후반 목표 8'), findsOneWidget);
+      expect(find.text('후반 미션 8'), findsOneWidget);
       await pumpGoal(tester, goal, elapsed: 0.5);
       expect(find.text('후반 0/8'), findsOneWidget);
     });

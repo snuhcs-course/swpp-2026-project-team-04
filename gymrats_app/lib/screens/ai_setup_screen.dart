@@ -31,15 +31,11 @@ class AiSetupScreen extends StatefulWidget {
   @override
   State<AiSetupScreen> createState() => _AiSetupScreenState();
 
-  /// The end of the line under the start button for [goal] (spec 3), e.g.
-  /// " · 목표 20회" or " · 목표 콤보 5"; empty without one.
+  /// The end of the line under the start button for [goal] (MISSION-SPEC
+  /// 3), e.g. " · 미션 20회" or " · 미션 콤보 6"; empty without one.
   @visibleForTesting
-  static String summaryGoal(FeedbackGoal? goal) {
-    if (goal == null) return '';
-    final sticker = GoalSticker.textOf(goal);
-    // The reps sticker already starts with 목표.
-    return goal.kind == GoalKind.reps ? ' · $sticker' : ' · 목표 $sticker';
-  }
+  static String summaryGoal(FeedbackGoal? goal) =>
+      goal == null ? '' : ' · 미션 ${GoalSticker.textOf(goal)}';
 }
 
 class _AiSetupScreenState extends State<AiSetupScreen>
@@ -293,7 +289,7 @@ class _ExerciseOption extends StatelessWidget {
     final option = _Option(
       label: [
         '${exercise.koreanName}, $_best',
-        if (goal != null) '이번 판 목표 ${goal.title}',
+        if (goal != null) '미션 있음, ${goal.title}',
       ].join(', '),
       selected: selected,
       onTap: onTap,
@@ -438,7 +434,7 @@ class _LevelOption extends StatelessWidget {
 
 /// The goal row under the exercise cards (A11 spec 3, UxGoal pick): the face
 /// of the character the goal was set with (not the one chosen now: spec 1.3),
-/// "이번 판 목표 · 물렁범과 정함" over the goal's title, and the value it was
+/// "물렁범이 준 이번 판 미션" over the goal's title, and the value it was
 /// set against, "지난 18".
 class _GoalRow extends StatelessWidget {
   const _GoalRow(this.goal);
@@ -471,10 +467,10 @@ class _GoalRow extends StatelessWidget {
     final id = rig.selectableOrDefault(goal.characterId);
     final name = rig.art(id).name;
     final center = _faceCenters[id] ?? _faceCenters[CharacterRig.defaultId]!;
-    final setWith = '${Josa.gwaWa.after(name)} 정함';
+    final gaveIt = '${Josa.iGa.after(name)} 준';
     return Semantics(
       container: true,
-      label: '이번 판 목표 ${goal.title}, $setWith, 지난 판 ${goal.baseline}',
+      label: '이번 판 미션 ${goal.title}, $gaveIt 미션, 지난 판 ${goal.baseline}',
       child: ExcludeSemantics(
         child: Container(
           padding: const EdgeInsets.symmetric(
@@ -528,7 +524,7 @@ class _GoalRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '이번 판 목표 · $setWith',
+                      '$gaveIt 이번 판 미션',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.goalRowLabel,

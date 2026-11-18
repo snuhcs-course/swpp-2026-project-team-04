@@ -30,6 +30,7 @@ import 'package:gymrats_app/models/feedback_goal.dart';
 import 'package:gymrats_app/services/feedback/goal_store.dart';
 import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/widgets/coach_parts.dart';
+import 'package:gymrats_app/widgets/battle_banner.dart';
 
 import '../support/auth_fakes.dart';
 import '../support/fakes.dart';
@@ -1375,7 +1376,19 @@ void main() {
         chosen: chosen,
       );
       expect(find.text('경기 규칙'), findsNothing);
-      expect(find.text('이번 판 목표!'), findsOneWidget);
+      expect(find.text('이번 판 미션!'), findsOneWidget);
+      // The mission's orange (MsGoal found).
+      expect(
+        tester
+            .widget<BattleBand>(
+              find.ancestor(
+                of: find.text('이번 판 미션!'),
+                matching: find.byType(BattleBand),
+              ),
+            )
+            .color,
+        AppColors.warning,
+      );
       expect(
         find.text(CoachMarkedText.keepWords('푸쉬업 22회 인정받기')),
         findsOneWidget,
@@ -1414,8 +1427,8 @@ void main() {
       final store = MemoryGoalStore()
         ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
       await open(tester, goals: store, auth: auth);
-      expect(find.bySemanticsLabel('이번 판 목표, 푸쉬업 22회 인정받기'), findsOneWidget);
-      expect(find.bySemanticsLabel('목표를 함께 정한 캐릭터 그루'), findsOneWidget);
+      expect(find.bySemanticsLabel('이번 판 미션, 푸쉬업 22회 인정받기'), findsOneWidget);
+      expect(find.bySemanticsLabel('미션을 준 캐릭터 그루'), findsOneWidget);
       semantics.dispose();
     });
 

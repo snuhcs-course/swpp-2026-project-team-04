@@ -455,7 +455,7 @@ class BattleFxBanner {
       : BattleFx.koreanBandBox(textSize).padX;
 }
 
-/// '목표 달성!' once the user's goal for the battle is reached (A11 spec 5,
+/// '미션 성공!' once the user's goal for the battle is reached (A11 spec 5,
 /// UxGoal battle): a lime band of Do Hyeon 48 turned by [rotation], where
 /// the grade words show. It follows the bands of the rep that reached the
 /// goal and stays [length].
@@ -467,7 +467,7 @@ class BattleFxGoalBand {
   /// Sized around the band's middle as it pops in.
   final double scale;
 
-  static const text = '목표 달성!';
+  static const text = '미션 성공!';
 
   /// The band's top before it is turned, its height and the room beside
   /// its text, as designed.
@@ -624,7 +624,7 @@ class BattleFxFrame {
   /// they are gone.
   final List<BattleFxReadyChip> readyChips;
 
-  /// '목표 달성!' while it shows; null otherwise. It is drawn under the
+  /// '미션 성공!' while it shows; null otherwise. It is drawn under the
   /// rep bands ([banners]), so a later rep's grade still reads.
   final BattleFxGoalBand? goalBand;
 
@@ -791,7 +791,7 @@ class BattleFxTimeline {
   double _endAt = 0;
   double? _decidedAt;
 
-  /// When '목표 달성!' pops up: after the bands of the rep that reached the
+  /// When '미션 성공!' pops up: after the bands of the rep that reached the
   /// goal. Null until one has; it plays once a battle.
   double? _goalAt;
 
@@ -1409,7 +1409,7 @@ class BattleFxTimeline {
     );
   }
 
-  /// '목표 달성!' at [now]: only while the battle runs. Once it is over the
+  /// '미션 성공!' at [now]: only while the battle runs. Once it is over the
   /// ending's bands take the stage, so a band still showing goes.
   BattleFxGoalBand? _goalBand(double now) {
     final at = _goalAt;

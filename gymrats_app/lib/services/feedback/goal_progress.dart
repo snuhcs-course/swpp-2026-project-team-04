@@ -114,34 +114,34 @@ class GoalProgress {
   GoalProgress atEnd() =>
       GoalProgress(kind: kind, target: target, value: value, ended: true);
 
-  /// The battle chip's words (spec 2), e.g. "목표 12/20". A
-  /// [GoalKind.lateReps] goal reads "후반 목표 8" until the round is in its
+  /// The battle chip's words (spec 2), e.g. "미션 12/20". A
+  /// [GoalKind.lateReps] goal reads "후반 미션 8" until the round is in its
   /// later half ([late]), then "후반 3/8".
   String chipText({required bool late}) => switch (kind) {
-    GoalKind.reps => '목표 $value/$target',
-    GoalKind.lateReps => late ? '후반 $value/$target' : '후반 목표 $target',
+    GoalKind.reps => '미션 $value/$target',
+    GoalKind.lateReps => late ? '후반 $value/$target' : '후반 미션 $target',
     GoalKind.combo => '콤보 $value/$target',
     GoalKind.maxRejects => '무효 $value/$target',
   };
 
-  /// What a screen reader says for the chip, e.g. "이번 판 목표 20회 중
+  /// What a screen reader says for the chip, e.g. "이번 판 미션 20회 중
   /// 12회".
   String chipLabel({required bool late}) {
     final words = switch (kind) {
-      GoalKind.reps => '이번 판 목표 $target회 중 $value회',
-      GoalKind.lateReps => late ? '후반 목표 $target회 중 $value회' : '후반 목표 $target회',
-      GoalKind.combo => '콤보 목표 $target 중 최고 $value',
-      GoalKind.maxRejects => '무효 $target회 이하 목표, 지금 $value회',
+      GoalKind.reps => '이번 판 미션 $target회 중 $value회',
+      GoalKind.lateReps => late ? '후반 미션 $target회 중 $value회' : '후반 미션 $target회',
+      GoalKind.combo => '콤보 미션 $target 중 최고 $value',
+      GoalKind.maxRejects => '무효 $target회 이하 미션, 지금 $value회',
     };
-    if (reached) return '$words, 목표 달성';
-    if (over) return '$words, 목표를 넘었어요';
+    if (reached) return '$words, 미션 성공';
+    if (over) return '$words, 미션보다 많아요';
     return words;
   }
 
-  /// The game choice's sticker words for a goal of [kind] and [target]
-  /// (spec 2), e.g. "목표 20회".
-  static String stickerText(GoalKind kind, int target) => switch (kind) {
-    GoalKind.reps => '목표 $target회',
+  /// The short words of a goal of [kind] and [target], after "미션" on
+  /// the game choice's summary line (MISSION-SPEC 3), e.g. "20회".
+  static String shortText(GoalKind kind, int target) => switch (kind) {
+    GoalKind.reps => '$target회',
     GoalKind.lateReps => '후반 $target회',
     GoalKind.combo => '콤보 $target',
     GoalKind.maxRejects => '무효 $target회 이하',
@@ -179,7 +179,7 @@ class GoalTracker {
 
   /// Counts the battle's [reps] so far in a round of [roundLength] (see
   /// [GoalProgress.of]). True only the first time a goal that shows
-  /// '목표 달성!' during the battle is reached: a [GoalKind.maxRejects] goal
+  /// '미션 성공!' during the battle is reached: a [GoalKind.maxRejects] goal
   /// is only decided at the end (spec 5).
   bool count(Iterable<RepRecord> reps, {required Duration roundLength}) {
     progress = GoalProgress.of(goal, reps, roundLength: roundLength);

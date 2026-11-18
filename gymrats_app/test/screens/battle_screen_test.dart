@@ -1475,8 +1475,8 @@ void main() {
         .color;
 
     testWidgets('read once for the account and the exercise: hidden while '
-        'setting up, 목표 0/2 from the countdown, my counted reps fill it, '
-        'and the rep that reaches it brings 목표 달성! once, after its '
+        'setting up, 미션 0/2 from the countdown, my counted reps fill it, '
+        'and the rep that reaches it brings 미션 성공! once, after its '
         'bands', (tester) async {
       final store = _CountingGoalStore()
         ..goals[(1, ExerciseType.pushUp)] = _goal(GoalKind.reps, 2);
@@ -1493,35 +1493,35 @@ void main() {
       await frame(tester, 1);
       await wait(tester, 600);
       expect(stage(tester).phase, BattleStagePhase.countdown);
-      expect(find.text('목표 0/2'), findsOneWidget);
+      expect(find.text('미션 0/2'), findsOneWidget);
       await frame(tester, 4);
       await wait(tester, 800);
       descend();
       judge.closeRep();
       await frame(tester, 6);
       await wait(tester, 100);
-      expect(find.text('목표 1/2'), findsOneWidget);
+      expect(find.text('미션 1/2'), findsOneWidget);
       judge.closeRep();
       await frame(tester, 7);
       await wait(tester, 100);
-      expect(find.text('목표 2/2'), findsOneWidget);
+      expect(find.text('미션 2/2'), findsOneWidget);
       expect(
         find.descendant(of: chip(), matching: find.byIcon(Icons.check_rounded)),
         findsOneWidget,
       );
       // The rep's own bands first, then the goal's.
       expect(find.text('GOOD'), findsOneWidget);
-      expect(find.text('목표 달성!'), findsNothing);
+      expect(find.text('미션 성공!'), findsNothing);
       await wait(tester, 1300);
-      expect(find.text('목표 달성!'), findsOneWidget);
+      expect(find.text('미션 성공!'), findsOneWidget);
       await wait(tester, 1700);
-      expect(find.text('목표 달성!'), findsNothing);
+      expect(find.text('미션 성공!'), findsNothing);
       // Once a battle; the chip goes on counting.
       judge.closeRep();
       await frame(tester, 11);
       await wait(tester, 2000);
-      expect(find.text('목표 달성!'), findsNothing);
-      expect(find.text('목표 3/2'), findsOneWidget);
+      expect(find.text('미션 성공!'), findsNothing);
+      expect(find.text('미션 3/2'), findsOneWidget);
       // The screen never writes the goal.
       expect(store.goals.values.single, _goal(GoalKind.reps, 2));
       expect(store.reads, hasLength(1));
@@ -1580,7 +1580,7 @@ void main() {
       await wait(tester, 2000);
       expect(find.text('무효 1/0'), findsOneWidget);
       expect(chipGround(tester), AppColors.danger);
-      expect(find.text('목표 달성!'), findsNothing);
+      expect(find.text('미션 성공!'), findsNothing);
       await close(tester);
     });
 
@@ -1596,7 +1596,7 @@ void main() {
       judge.closeRep();
       await frame(tester, 6);
       await wait(tester, 1400);
-      expect(find.text('목표 달성!'), findsOneWidget);
+      expect(find.text('미션 성공!'), findsOneWidget);
       // The camera fails in the round.
       now = const Duration(seconds: 7);
       estimator.frames.add(null);
@@ -1613,13 +1613,13 @@ void main() {
       await frame(tester, 12);
       await frame(tester, 15);
       await wait(tester, 800);
-      expect(find.text('목표 0/1'), findsOneWidget);
+      expect(find.text('미션 0/1'), findsOneWidget);
       descend();
       judge.closeRep();
       await frame(tester, 17);
       await wait(tester, 1400);
-      expect(find.text('목표 1/1'), findsOneWidget);
-      expect(find.text('목표 달성!'), findsOneWidget);
+      expect(find.text('미션 1/1'), findsOneWidget);
+      expect(find.text('미션 성공!'), findsOneWidget);
       await close(tester);
     });
 

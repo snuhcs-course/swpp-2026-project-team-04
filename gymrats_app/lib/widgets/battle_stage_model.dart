@@ -52,7 +52,7 @@ class BattleStageEvent {
   final bool knockout;
 
   /// Whether this rep of the user's first reached the battle's goal (A11
-  /// spec 5): '목표 달성!' follows its bands. The battle screen marks it
+  /// spec 5): '미션 성공!' follows its bands. The battle screen marks it
   /// ([reachingGoal]); the game knows no goal.
   final bool reachesGoal;
 

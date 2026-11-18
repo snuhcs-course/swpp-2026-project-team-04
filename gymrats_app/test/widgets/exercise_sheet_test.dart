@@ -504,6 +504,15 @@ void main() {
 
     late WidgetTester current;
 
+    /// Reduced motion: the stickers hold still, so the sheet settles.
+    void calm(WidgetTester tester) {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+    }
+
     /// The cards' fade while the goals are read.
     Opacity around() => current.widget<Opacity>(
       find.ancestor(of: find.text('푸쉬업'), matching: find.byType(Opacity)).first,
@@ -513,11 +522,12 @@ void main() {
 
     testWidgets('only the card of the exercise with a goal wears it, over '
         'its top right corner; no goal row on the sheet', (tester) async {
+      calm(tester);
       await open(tester, goals: store, auth: auth);
       final sticker = find.byType(GoalSticker);
       expect(sticker, findsOneWidget);
       expect(
-        find.descendant(of: sticker, matching: find.text('콤보 5')),
+        find.descendant(of: sticker, matching: find.text('미션!')),
         findsOneWidget,
       );
       final card = tester.getRect(cardOf('스쿼트'));
@@ -525,12 +535,12 @@ void main() {
         find.ancestor(of: sticker, matching: find.byType(Positioned)).first,
       );
       expect(sticking.right, closeTo(card.right + 8, 0.01));
-      expect(sticking.top, closeTo(card.top - 12, 0.01));
+      expect(sticking.top, closeTo(card.top - 20, 0.01));
       expect(
         find.descendant(of: cardOf('푸쉬업'), matching: find.byType(GoalSticker)),
         findsNothing,
       );
-      expect(find.textContaining('이번 판 목표 ·'), findsNothing);
+      expect(find.textContaining('이번 판 미션'), findsNothing);
       // The best is still on the card.
       expect(find.text('개인 최고 —'), findsNWidgets(2));
     });
@@ -538,15 +548,17 @@ void main() {
     testWidgets('a screen reader hears the goal with its card; a tap still '
         'picks it', (tester) async {
       final semantics = tester.ensureSemantics();
+      calm(tester);
       await open(tester, goals: store, auth: auth);
       expect(
-        find.bySemanticsLabel('스쿼트, 개인 최고 —, 이번 판 목표 콤보 5번 이상'),
+        find.bySemanticsLabel('스쿼트, 개인 최고 —, 미션 있음, 콤보 5번 이상'),
         findsOneWidget,
       );
       expect(find.bySemanticsLabel('푸쉬업, 개인 최고 —'), findsOneWidget);
       semantics.dispose();
-      // The sticker lets the tap through to its card.
-      await tester.tapAt(tester.getCenter(find.byType(GoalSticker)));
+      // The sticker lets a tap on its part over the card through to it.
+      final over = tester.getRect(find.byType(GoalSticker));
+      await tester.tapAt(Offset(over.center.dx, over.bottom - 4));
       await tester.pumpAndSettle();
       expect(answered, isTrue);
       expect(answer, ExerciseType.squat);
@@ -557,6 +569,7 @@ void main() {
       current = tester;
       final slow = _SlowGoalStore()
         ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
+      calm(tester);
       await open(tester, goals: slow, auth: auth, settle: false);
       expect(around().opacity, 0);
       slow.release.complete();
@@ -573,6 +586,7 @@ void main() {
       current = tester;
       final slow = _SlowGoalStore()
         ..goals[(1, ExerciseType.pushUp)] = _goal(ExerciseType.pushUp);
+      calm(tester);
       await open(tester, goals: slow, auth: auth);
       await tester.pump(GoalsOnce.readLimit);
       expect(around().opacity, 1);

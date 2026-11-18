@@ -948,7 +948,7 @@ class _RuleRow extends StatelessWidget {
   }
 }
 
-/// "이번 판 목표!" (A11 spec 4, UxGoal found): the user's goal for this
+/// "이번 판 미션!" (A11 spec 4, MsGoal found): the user's goal for this
 /// exercise in the rules card's place, on a white card turned -1.5° with a
 /// lime tag over its top left. On the right, the character the goal was set
 /// with (not the one chosen now: spec 1.3) in its win pose, white-edged and
@@ -1054,7 +1054,7 @@ class _GoalCardState extends State<_GoalCard>
                   padding: const EdgeInsets.only(right: _titleEnd),
                   child: Text(
                     CoachMarkedText.keepWords(goal.title),
-                    semanticsLabel: '이번 판 목표, ${goal.title}',
+                    semanticsLabel: '이번 판 미션, ${goal.title}',
                     style: text.goalCardTitle,
                   ),
                 ),
@@ -1067,9 +1067,9 @@ class _GoalCardState extends State<_GoalCard>
                 child: Transform.rotate(
                   angle: _tagTurn,
                   child: BattleBand(
-                    text: '이번 판 목표!',
+                    text: '이번 판 미션!',
                     style: text.goalCardTag,
-                    color: AppColors.accent,
+                    color: AppColors.warning,
                     sidePadding: _tagSide,
                   ),
                 ),
@@ -1082,7 +1082,7 @@ class _GoalCardState extends State<_GoalCard>
               height: figureBox.height,
               child: Semantics(
                 image: true,
-                label: '목표를 함께 정한 캐릭터 ${art.name}',
+                label: '미션을 준 캐릭터 ${art.name}',
                 child: ClipRect(
                   key: const ValueKey('goal-card-figure'),
                   child: Stack(

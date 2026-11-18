@@ -350,7 +350,7 @@ class BattleStageHud extends StatelessWidget {
 }
 
 /// The user's goal on the battle HUD (A11 spec 5, UxGoal battle): its words
-/// (e.g. "목표 12/20") on a white pill filled with lime from the left as far
+/// (e.g. "미션 12/20") on a white pill filled with lime from the left as far
 /// as the goal has come. Reached, it is all lime with a check before the
 /// words; a [GoalKind.maxRejects] goal past its number is red. In the
 /// stage's design points, like the rest of the HUD.

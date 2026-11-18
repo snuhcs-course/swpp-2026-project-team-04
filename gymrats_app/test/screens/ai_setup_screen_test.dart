@@ -21,6 +21,7 @@ import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
+import 'package:gymrats_app/widgets/coach_parts.dart';
 
 import '../support/auth_fakes.dart';
 import '../support/fakes.dart';
@@ -350,7 +351,7 @@ void main() {
     });
 
     Finder sticker() => find.byType(GoalSticker);
-    final rowLabel = find.text('이번 판 목표 · 물렁범과 정함');
+    final rowLabel = find.text('물렁범이 준 이번 판 미션');
 
     testWidgets('a sticker only on the exercise with a goal, over its top '
         'right corner, turned 6°; its best stays', (tester) async {
@@ -358,7 +359,7 @@ void main() {
       await tester.pump();
       expect(sticker(), findsOneWidget);
       expect(
-        find.descendant(of: sticker(), matching: find.text('목표 20회')),
+        find.descendant(of: sticker(), matching: find.text('미션!')),
         findsOneWidget,
       );
       final card = tester.getRect(optionOf('스쿼트'));
@@ -371,7 +372,7 @@ void main() {
         find.ancestor(of: sticker(), matching: find.byType(Positioned)).first,
       );
       expect(sticking.right, closeTo(card.right + 8, 0.01));
-      expect(sticking.top, closeTo(card.top - 12, 0.01));
+      expect(sticking.top, closeTo(card.top - 20, 0.01));
       final turn = tester.widget<Transform>(
         find.descendant(of: sticker(), matching: find.byType(Transform)).first,
       );
@@ -380,10 +381,10 @@ void main() {
         closeTo(6 * math.pi / 180, 1e-6),
       );
       final pill = tester.widget<Container>(
-        find.descendant(of: sticker(), matching: find.byType(Container)),
+        find.descendant(of: sticker(), matching: find.byType(Container)).first,
       );
       final look = pill.decoration! as BoxDecoration;
-      expect(look.color, AppColors.accent);
+      expect(look.color, AppColors.warning);
       expect(look.border, Border.all(color: AppColors.ink, width: 2));
       // The card's own best is still there.
       expect(find.text('기록 없음'), findsOneWidget);
@@ -433,7 +434,7 @@ void main() {
       await tester.pump();
       vm.chooseBotExercise(ExerciseType.squat);
       await tester.pump();
-      expect(find.text('스쿼트 · RepBot 중수 · 30초 대결 · 목표 20회'), findsOneWidget);
+      expect(find.text('스쿼트 · RepBot 중수 · 30초 대결 · 미션 20회'), findsOneWidget);
       vm.chooseBotExercise(ExerciseType.pushUp);
       await tester.pump();
       expect(find.text('푸쉬업 · RepBot 중수 · 30초 대결'), findsOneWidget);
@@ -443,19 +444,19 @@ void main() {
       expect(AiSetupScreen.summaryGoal(null), '');
       expect(
         AiSetupScreen.summaryGoal(_goalOf(GoalKind.reps, 20)),
-        ' · 목표 20회',
+        ' · 미션 20회',
       );
       expect(
         AiSetupScreen.summaryGoal(_goalOf(GoalKind.lateReps, 8)),
-        ' · 목표 후반 8회',
+        ' · 미션 후반 8회',
       );
       expect(
         AiSetupScreen.summaryGoal(_goalOf(GoalKind.combo, 5)),
-        ' · 목표 콤보 5',
+        ' · 미션 콤보 5',
       );
       expect(
         AiSetupScreen.summaryGoal(_goalOf(GoalKind.maxRejects, 2)),
-        ' · 목표 무효 2회 이하',
+        ' · 미션 무효 2회 이하',
       );
     });
 
@@ -466,11 +467,11 @@ void main() {
       vm.chooseBotExercise(ExerciseType.squat);
       await tester.pump();
       expect(
-        find.bySemanticsLabel('스쿼트, 기록 없음, 이번 판 목표 스쿼트 20회 인정받기'),
+        find.bySemanticsLabel('스쿼트, 기록 없음, 미션 있음, 스쿼트 20회 인정받기'),
         findsOneWidget,
       );
       expect(
-        find.bySemanticsLabel('이번 판 목표 스쿼트 20회 인정받기, 물렁범과 정함, 지난 판 18'),
+        find.bySemanticsLabel('이번 판 미션 스쿼트 20회 인정받기, 물렁범이 준 미션, 지난 판 18'),
         findsOneWidget,
       );
       semantics.dispose();
@@ -541,8 +542,193 @@ void main() {
       );
     });
 
+    group('the mission sticker (MISSION-SPEC 2, MsGoal C)', () {
+      /// The sticker's turn and size now, from its transform.
+      ({double degrees, double scale}) pose(WidgetTester tester) {
+        final m = tester
+            .widget<Transform>(
+              find
+                  .descendant(of: sticker(), matching: find.byType(Transform))
+                  .first,
+            )
+            .transform;
+        return (
+          degrees: math.atan2(m.entry(1, 0), m.entry(0, 0)) * 180 / math.pi,
+          scale: math.sqrt(
+            m.entry(0, 0) * m.entry(0, 0) + m.entry(1, 0) * m.entry(1, 0),
+          ),
+        );
+      }
+
+      test('the shake follows the design\'s keyframes over 2.5 s', () {
+        expect(GoalSticker.period, const Duration(milliseconds: 2500));
+        for (final (t, degrees, scale) in const [
+          (0.0, 6.0, 1.0),
+          (0.5, 6.0, 1.0),
+          (0.76, 6.0, 1.0),
+          (0.80, -6.0, 1.1),
+          (0.84, 12.0, 1.1),
+          (0.88, 0.0, 1.05),
+          (0.92, 9.0, 1.0),
+          (1.0, 6.0, 1.0),
+        ]) {
+          final p = GoalSticker.poseAt(t);
+          expect(p.degrees, closeTo(degrees, 1e-9), reason: 'at $t');
+          expect(p.scale, closeTo(scale, 1e-9), reason: 'at $t');
+        }
+        // Eased in and out between two keyframes: half way at the middle.
+        expect(GoalSticker.poseAt(0.82).degrees, closeTo(3, 1e-9));
+      });
+
+      testWidgets('"미션!" with a flag on orange, an ink edge and an ink '
+          'shadow, still at 6° for 1.9 s, then the shake, again every 2.5 s', (
+        tester,
+      ) async {
+        await open(tester, goals: store, auth: auth);
+        await tester.pump();
+        expect(
+          find.descendant(of: sticker(), matching: find.text('미션!')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: sticker(), matching: find.byType(CoachFlagIcon)),
+          findsOneWidget,
+        );
+        final look =
+            tester
+                    .widget<Container>(
+                      find
+                          .descendant(
+                            of: sticker(),
+                            matching: find.byType(Container),
+                          )
+                          .first,
+                    )
+                    .decoration!
+                as BoxDecoration;
+        expect(look.color, AppColors.warning);
+        expect(look.border, Border.all(color: AppColors.ink, width: 2));
+        expect(look.boxShadow, const [
+          BoxShadow(color: AppColors.ink, offset: Offset(2, 3)),
+        ]);
+        expect(pose(tester).degrees, closeTo(6, 1e-3));
+        await tester.pump(const Duration(milliseconds: 1900));
+        expect(pose(tester).degrees, closeTo(6, 1e-3));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(pose(tester).degrees, closeTo(-6, 1e-3));
+        expect(pose(tester).scale, closeTo(1.1, 1e-3));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(pose(tester).degrees, closeTo(12, 1e-3));
+        await tester.pump(const Duration(milliseconds: 2500));
+        expect(pose(tester).degrees, closeTo(12, 1e-3));
+        await tester.pumpWidget(const SizedBox());
+      });
+
+      testWidgets('at 2x text "미션!" keeps the design size and is not cut', (
+        tester,
+      ) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 2;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await open(tester, goals: store, auth: auth);
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        final words = find.descendant(
+          of: sticker(),
+          matching: find.text('미션!'),
+        );
+        expect(tester.getSize(words).height, closeTo(19, 0.5));
+        await tester.pumpWidget(const SizedBox());
+      });
+
+      testWidgets('with reduced motion it holds still at 6°', (tester) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+        await open(tester, goals: store, auth: auth);
+        await tester.pump();
+        for (final ms in const [1000, 1000, 100, 100]) {
+          await tester.pump(Duration(milliseconds: ms));
+          expect(pose(tester).degrees, closeTo(6, 1e-6));
+          expect(pose(tester).scale, closeTo(1, 1e-9));
+        }
+      });
+
+      testWidgets('a character ending in a vowel takes 가: "그루가 준 이번 판 '
+          '미션"', (tester) async {
+        store.goals[(1, ExerciseType.squat)] = FeedbackGoal(
+          exercise: ExerciseType.squat,
+          kind: GoalKind.reps,
+          target: 20,
+          baseline: 18,
+          title: '스쿼트 20회 인정받기',
+          setAt: DateTime(2026, 11, 17, 14),
+          characterId: 'kangaroo',
+          fromMatch: 'report-1',
+        );
+        final vm = await open(tester, goals: store, auth: auth);
+        vm.chooseBotExercise(ExerciseType.squat);
+        await tester.pump();
+        expect(find.text('그루가 준 이번 판 미션'), findsOneWidget);
+      });
+    });
+
     group('with the app fonts', () {
       setUpAll(loadBattleFonts);
+
+      testWidgets('at rest the sticker\'s body leaves the chosen card\'s check '
+          'circle free (MISSION-SPEC 2)', (tester) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+        final vm = await open(
+          tester,
+          size: const Size(360, 780),
+          goals: store,
+          auth: auth,
+        );
+        vm.chooseBotExercise(ExerciseType.squat);
+        await tester.pump();
+        final body = tester.renderObject<RenderBox>(
+          find
+              .descendant(
+                of: find.byType(GoalSticker),
+                matching: find.byType(Container),
+              )
+              .first,
+        );
+        final bottomLeft = body.localToGlobal(Offset(0, body.size.height));
+        final bottomRight = body.localToGlobal(
+          Offset(body.size.width, body.size.height),
+        );
+        final check = tester.getRect(
+          find.descendant(
+            of: optionOf('스쿼트'),
+            matching: find.byType(LobbyArrowChip),
+          ),
+        );
+        // The turned body's lower edge, over the circle's width.
+        double edgeAt(double x) =>
+            bottomLeft.dy +
+            (bottomRight.dy - bottomLeft.dy) *
+                (x - bottomLeft.dx) /
+                (bottomRight.dx - bottomLeft.dx);
+        for (var x = check.left; x <= check.right; x += 1) {
+          final circleTop =
+              check.center.dy -
+              math.sqrt(
+                math.max(
+                  0,
+                  math.pow(check.width / 2, 2) -
+                      math.pow(x - check.center.dx, 2),
+                ),
+              );
+          expect(edgeAt(x), lessThan(circleTop), reason: 'at x $x');
+        }
+      });
 
       /// Opens on squats, whose goal of [title] shows its row, on a 360 x 780
       /// phone with system bars of [bars].

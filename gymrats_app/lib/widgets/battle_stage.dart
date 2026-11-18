@@ -158,7 +158,7 @@ class BattleStage extends StatelessWidget {
   }
 }
 
-/// '목표 달성!' over the stage, centered across it and turned around its own
+/// '미션 성공!' over the stage, centered across it and turned around its own
 /// middle, as [BattleStageBanner] draws the other bands: ink words on a
 /// slanted lime band with its own [BattleFxGoalBand.edge] (a [BattleBand]'s
 /// is 3). A picture to a screen reader: the goal chip says it.

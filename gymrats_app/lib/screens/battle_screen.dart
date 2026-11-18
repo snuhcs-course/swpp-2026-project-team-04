@@ -43,7 +43,7 @@ import '../widgets/sound_battle.dart';
 ///
 /// The user's goal for the exercise (A11 spec 5), when one is saved, shows
 /// as a chip under the valid counts from the countdown on, and the rep
-/// that first reaches it brings up '목표 달성!'. The screen reads the goal
+/// that first reaches it brings up '미션 성공!'. The screen reads the goal
 /// once and never changes it (task.md W11 decision 6).
 ///
 /// Sounds hook in from outside, without changing this screen: [onCue] for

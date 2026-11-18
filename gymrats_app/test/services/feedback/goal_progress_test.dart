@@ -69,7 +69,7 @@ void main() {
       expect(two.value, 2);
       expect(two.reached, isFalse);
       expect(two.fill, closeTo(2 / 3, 1e-9));
-      expect(two.chipText(late: false), '목표 2/3');
+      expect(two.chipText(late: false), '미션 2/3');
 
       final three = GoalProgress.of(
         goal,
@@ -79,7 +79,7 @@ void main() {
       expect(three.value, 3);
       expect(three.reached, isTrue);
       expect(three.fill, 1);
-      expect(three.chipText(late: true), '목표 3/3');
+      expect(three.chipText(late: true), '미션 3/3');
     });
 
     test('past the target the chip says the real count, all lime', () {
@@ -88,7 +88,7 @@ void main() {
         reps(valid: [1, 2, 3, 4]),
         roundLength: round,
       );
-      expect(p.chipText(late: false), '목표 4/2');
+      expect(p.chipText(late: false), '미션 4/2');
       expect(p.fill, 1);
       expect(p.over, isFalse);
     });
@@ -101,7 +101,7 @@ void main() {
       );
       expect(p.value, 0);
       expect(p.fill, 0);
-      expect(p.chipText(late: false), '목표 0/20');
+      expect(p.chipText(late: false), '미션 0/20');
     });
   });
 
@@ -124,10 +124,10 @@ void main() {
         reps(valid: [16, 17, 18]),
         roundLength: round,
       );
-      expect(p.chipText(late: false), '후반 목표 8');
+      expect(p.chipText(late: false), '후반 미션 8');
       expect(p.chipText(late: true), '후반 3/8');
-      expect(p.chipLabel(late: false), '후반 목표 8회');
-      expect(p.chipLabel(late: true), '후반 목표 8회 중 3회');
+      expect(p.chipLabel(late: false), '후반 미션 8회');
+      expect(p.chipLabel(late: true), '후반 미션 8회 중 3회');
     });
 
     test('a KO at 20 s keeps the full round\'s half (15 s) and its reps '
@@ -181,7 +181,7 @@ void main() {
         roundLength: round,
       );
       expect(p.reached, isTrue);
-      expect(p.chipLabel(late: false), '콤보 목표 2 중 최고 2, 목표 달성');
+      expect(p.chipLabel(late: false), '콤보 미션 2 중 최고 2, 미션 성공');
     });
   });
 
@@ -197,7 +197,7 @@ void main() {
       expect(p.over, isFalse);
       expect(p.fill, 0);
       expect(p.chipText(late: false), '무효 2/3');
-      expect(p.chipLabel(late: false), '무효 3회 이하 목표, 지금 2회');
+      expect(p.chipLabel(late: false), '무효 3회 이하 미션, 지금 2회');
     });
 
     test('at the end, within the target: reached and all lime', () {
@@ -220,7 +220,7 @@ void main() {
       expect(p.over, isTrue);
       expect(p.atEnd().reached, isFalse);
       expect(p.atEnd().over, isTrue);
-      expect(p.chipLabel(late: false), '무효 1회 이하 목표, 지금 2회, 목표를 넘었어요');
+      expect(p.chipLabel(late: false), '무효 1회 이하 미션, 지금 2회, 미션보다 많아요');
     });
 
     test('a target of 0: no ratio, reached at the end without a rejection', () {
@@ -235,11 +235,11 @@ void main() {
     });
   });
 
-  test('the sticker words of each kind (spec 2)', () {
-    expect(GoalProgress.stickerText(GoalKind.reps, 20), '목표 20회');
-    expect(GoalProgress.stickerText(GoalKind.lateReps, 8), '후반 8회');
-    expect(GoalProgress.stickerText(GoalKind.combo, 5), '콤보 5');
-    expect(GoalProgress.stickerText(GoalKind.maxRejects, 2), '무효 2회 이하');
+  test('the short words of each kind, after 미션 (MISSION-SPEC 3)', () {
+    expect(GoalProgress.shortText(GoalKind.reps, 20), '20회');
+    expect(GoalProgress.shortText(GoalKind.lateReps, 8), '후반 8회');
+    expect(GoalProgress.shortText(GoalKind.combo, 5), '콤보 5');
+    expect(GoalProgress.shortText(GoalKind.maxRejects, 2), '무효 2회 이하');
   });
 
   test('the chip label of a reps goal says the count in words', () {
@@ -248,7 +248,7 @@ void main() {
       reps(valid: [1, 2]),
       roundLength: round,
     );
-    expect(p.chipLabel(late: false), '이번 판 목표 20회 중 2회');
+    expect(p.chipLabel(late: false), '이번 판 미션 20회 중 2회');
   });
 
   test('two progresses of the same values are equal', () {

@@ -1134,10 +1134,10 @@ void main() {
         ),
       );
       expect(find.byType(BattleGoalChip), findsOneWidget);
-      expect(find.text('목표 3/20'), findsOneWidget);
+      expect(find.text('미션 3/20'), findsOneWidget);
     });
 
-    testWidgets("'목표 달성!' shows as the frame says: Do Hyeon 48 on a lime "
+    testWidgets("'미션 성공!' shows as the frame says: Do Hyeon 48 on a lime "
         'band 64 tall at 148, turned -4°', (tester) async {
       const reach = BattleStageEvent(
         side: BattleSide.me,
@@ -1152,9 +1152,9 @@ void main() {
           BattleFx.gradeWord(GameGrade.good).pointsAfter +
           880;
       await _pump(tester, fx.frame(0), _state());
-      expect(find.text('목표 달성!'), findsNothing);
+      expect(find.text('미션 성공!'), findsNothing);
       await _pump(tester, fx.frame(start + 600), _state());
-      final words = find.text('목표 달성!');
+      final words = find.text('미션 성공!');
       expect(words, findsOneWidget);
       final style = tester.widget<Text>(words).style!;
       expect(style.fontFamily, AppFonts.display);
@@ -1209,7 +1209,7 @@ void main() {
         148,
       );
       // A picture to a screen reader: the chip says it.
-      expect(find.bySemanticsLabel('목표 달성!'), findsNothing);
+      expect(find.bySemanticsLabel('미션 성공!'), findsNothing);
     });
   });
 }
