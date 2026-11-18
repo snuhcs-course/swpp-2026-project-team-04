@@ -807,3 +807,44 @@ team plan, one day before the iteration's official start. Its prompts from that 
 ### Takeaway
 - Before writing a size floor into a spec, check it with the real fonts and the narrowest target phone.
 - Do not edit files while a full test run is going.
+
+### W9 follow-up, 2026-11-17 ~ 11-18: PR #73 and the merge of PR #72 (S2 person check)
+**a. Where AI was used** (Claude Code, Opus 5.5, the same session)
+- It wrote the body of PR #73 and opened the PR with `gh`, from the pushed branch, without switching branches. The user's W10 work was uncommitted in the working tree at the time.
+- It merged `origin/main` (`e0bcae2`, PR #72) into W9 (`b6bd3d3`) and resolved the conflict in `test/screens/online_preparation_test.dart`.
+- It measured the S2 notice against W9's band, frame and camera switch with a temporary test, which it removed afterwards.
+- It wrote the fix and four tests (`79c2e80`), ran the reviewer, and wrote these notes.
+- **Not done by AI:** the choice of the fix (the user's answer in the question dialog).
+
+**b. Prompt history** (the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-17 19:34] (excerpt) "W9 PR 올려 줘. 지금 작업 폴더에는 W10 브랜치(feat/coach_feedback)의 커밋 안 한 변경이 있으니까 브랜치를 바꾸거나 checkout 하지 말고, 이미 push된 feat/setup_readability 로 PR만 만들어. …"
+- [Woohyun Song, 11-18 11:37] (excerpt) "… #72가 카메라 칸에 '사람을 다시 확인해 주세요' 안내와 '확인 후 계속' 버튼을 넣었으니, W9의 안내 띠·테두리·카메라 전환 버튼과 겹치지 않는지도 확인해. …"
+- [Woohyun Song, 11-18] Answer in the agent's question dialog (not in the Prompt Log): "안내 중엔 띠 숨김 (Recommended)".
+
+**c. What AI did well**
+- **It measured the layout instead of reading the code and assuming.**
+  - At 1.0x and 1.3x text, nothing overlapped. Only at 2.0x text in the setup did the band cover the notice's first line.
+  - It also found that the band contradicted the notice (카메라 / 앞으로).
+  - The user then had a concrete case to decide on.
+- **It kept both sides of the conflict.** It used main's frame-feeding `wait()` around W9's cue checks, and the reviewer found nothing lost.
+- **It made sure the new tests can fail.** With the fix taken out of each screen, that screen's new tests failed.
+
+**d. Hallucinations / errors**
+- **Its first AI-battle test was wrong about what follows the confirmation.**
+  - It expected the band to come back after 확인 후 계속. The pose was already held, so the countdown started at once and the band was correctly gone.
+  - It also tapped before the pose was back in view, while the S2 test does it the other way round.
+  - Both were caught when the test ran and fixed the same way the S2 test does them.
+- **Its change made one of main's tests fail when the S2 flag is on.**
+  - The online test 'losing the pose within 3 seconds cancels; it starts over' read the cue with `!`, and the cue can now be missing while tracking is paused.
+  - The agent had run the suite only with the flag off. The reviewer ran `online_preparation_test.dart` with `--dart-define=S2_PERSON_GUARD=true` and caught it (Major).
+  - The fix makes the check null-safe. The agent then ran the full suite with the flag off and on, and both runs passed: 3417 passed, 0 failed, 10 skipped.
+- **A `sed -i` edit rewrote a CRLF test file with LF line endings.** This was harmless, because the index is LF.
+
+**e. Prompt revisions**
+- None in this follow-up. The user's first prompt said only "check" the overlap. The agent measured the overlap and asked what to do before changing anything.
+
+**f. Manual fixes and why**
+- None.
+
+**Takeaway**
+- When a merge brings in a feature behind a build flag, run the full suite with the flag on as well.

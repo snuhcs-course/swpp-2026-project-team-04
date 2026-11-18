@@ -1324,3 +1324,16 @@ W9 시작하자. 명세는 .claude/design/uat1/A9-SETUP-READABILITY-SPEC.md 이�
 
 <!-- 6489ba5c 2026-11-17T07:10:44.171Z -->
 [Woohyun Song, 11-17 16:10] "커밋하고 푸시까지만 해."
+
+## 2026-11-17 ~ 11-18 · Woohyun Song · feat/setup_readability
+<!-- 6489ba5c 2026-11-17T10:34:03.104Z -->
+[Woohyun Song, 11-17 19:34] "W9 PR 올려 줘. 지금 작업 폴더에는 W10 브랜치(feat/coach_feedback)의 커밋 안 한 변경이 있으니까 브랜치를 바꾸거나 checkout 하지 말고, 이미 push된 feat/setup_readability 로 PR만 만들어.
+- 첫 줄은 'Merge order: #19', merge-after 없음
+- 본문은 기존 PR 양식대로 영어로
+- task.md W9 Decisions의 예외 두 건(내 W2 파일 battle_banner.dart, 로비 테스트 한 줄)을 본문에 적어
+- PR #72와 battle_screen / online_battle_screen 이 겹치고, 나중에 머지하는 쪽이 양쪽을 살린다는 하네스 규칙도 적어"
+
+<!-- 6489ba5c 2026-11-18T02:37:54.097Z -->
+[Woohyun Song, 11-18 11:37] "PR #72가 먼저 머지됐으니 하네스 규칙대로 W9가 origin/main을 합쳐야 해. feat/setup_readability 로 바꿔서 origin/main 머지하고, online_preparation_test.dart 충돌은 양쪽 다 살려.
+#72가 카메라 칸에 '사람을 다시 확인해 주세요' 안내와 '확인 후 계속' 버튼을 넣었으니, W9의 안내 띠·테두리·카메라 전환 버튼과 겹치지 않는지도 확인해.
+그다음 전체 테스트, --check-diff, 수업 노트 갱신 후 push해."

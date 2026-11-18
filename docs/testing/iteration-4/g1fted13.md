@@ -851,7 +851,7 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `71b780e`, wit
   - **Removed:** the AI battle's squat line during the round.
 - **Commands (Windows, `gymrats_app/`):** `flutter analyze`; `flutter test`.
 - **Tests:** on the working tree committed as `20c623f`, `flutter test` had 3387 passed, 0 failed and 10 skipped (the same 10 as before). `flutter analyze` found no issues.
-- **Coverage:** not measured on this Windows PC. TODO(Woohyun Song): fill in from the CI comment once the PR is opened (CI runs on `pull_request` only).
+- **Coverage (CI comment on PR #73, commit `ff2c961`, 2026-11-17 19:49 KST, [run log](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/44066504132)):** Model 99.4% (target 90%), ViewModel 97.6% (90%), Service 94.8% (85%), View 97.9% (75%); all met. Total 96.9%. CI's `flutter test` also had 3387 passed, 10 skipped, 0 failed. Two files timed out in CI's per-file coverage run and are not in the numbers (`test/screens/settings_screen_test.dart`, `test/services/audio/background_music_test.dart`); W9 changes neither. Server: 114 passed, 96% (not changed by W9).
 - **Other checks:**
   - Reviewer run 1 returned CHANGES_REQUESTED: 1 Major (a raw `fontSize: 13` in the line-name pills) and 4 Minor (no check of the battle camera's bold flag; no online test that the squat round has no line; the silhouettes' under-line not ink; the pills covering the line starts). All were fixed, and the re-check returned APPROVE.
   - `ownership_guard.py --check-diff`: ok, 32 changed files, among them the two exceptions approved on 11-17.
@@ -880,3 +880,38 @@ I ran the commands from the Plan in `gymrats_app/` on Windows, on `71b780e`, wit
 - The camera frame shows green, red or orange as in spec 3. Tests: the groups `'the status frame (A9 spec 3)'` (camera area) and `"the camera's status frame (A9 spec 3)"` (stage)
 - The sign and the lines are larger. Tests: `battle_reject_sign_test.dart`, `squat_height_overlay_test.dart`, `chest_height_overlay_test.dart`, `landmark_overlay_test.dart` (group `'the bold look (A9 spec 4, the battle camera)'`). Whether they read at about 2.5 m and 1 m is the phone check (TODO above).
 - No squat line of words in the round, AI and online. Tests: `'a squat setup has a silhouette; the round has the squat lines and no line of words (A9 spec 6)'`, `'a squat setup shows the silhouette; the squat lines come with the round, and no line of words (A9 spec 6)'`
+
+#### 2026-11-18 · code at commits `b6bd3d3` (merge of `origin/main` `e0bcae2`, PR #72) and `79c2e80` · step W9 `feat/setup_readability` (team order #19): merging the S2 person check
+- **What changed:**
+  - PR #72 (S2, the person check) was merged first, so W9 merged `origin/main` in.
+  - The one conflict, in `test/screens/online_preparation_test.dart` (5 hunks), keeps both sides: W9's short-cue checks, and main's `wait()`, which keeps feeding camera frames while it waits.
+  - **Check of the overlap with the S2 notice** (사람을 다시 확인해 주세요 and its 확인 후 계속 button). It was measured with a temporary test on a 360 x 780 phone, which was removed afterwards:
+    - At 1.0x and 1.3x text, the notice met neither the setup band, nor the status frame, nor the camera switch.
+    - At 2.0x text in the setup, the band (y 177–353) covered the notice's first line (301–637). The button stayed visible and could be tapped.
+    - The band also said 카메라 / 앞으로 while the notice asks to confirm the person.
+  - **Fix (the user's choice, 2026-11-18):** while the notice is up, the AI and online setups pass no cue, so the band and its frame step aside until the user confirms.
+  - **Not fixed (S2's widget, outside W9):** at 2.0x text in the round, the notice itself overflows its 390-high camera area by 13.
+- **Commands (Windows, `gymrats_app/`):** `flutter analyze`; `flutter test`; `flutter test --dart-define=S2_PERSON_GUARD=true` (the notice shows only with this opt-in flag).
+- **Tests:** on `79c2e80`, `flutter test` had 3417 passed, 0 failed and 10 skipped (the same 10 as before). The run with the S2 flag on had the same counts: 3417 passed, 0 failed, 10 skipped. `flutter analyze` found no issues.
+- **Mutation check:** with the fix taken out of each screen (files restored afterwards), the new tests of that screen failed.
+- **Coverage:** not measured on this PC. TODO(Woohyun Song): fill in from PR #73's CI comment for `79c2e80` (or the docs commit after it).
+- **Other checks:**
+  - Reviewer run 1 returned CHANGES_REQUESTED.
+    - 1 Major: with the S2 flag on, one online test from main read the now-missing cue with `!`.
+    - 3 Minor: the decision was not recorded; no test showed the band coming back after confirming; the 2.0x case was not explained.
+  - All were fixed, and the re-check returned APPROVE.
+  - `ownership_guard.py --check-diff`: ok, 35 changed files.
+  - Server `pytest` was not run, because `server/` did not change.
+- **Manual check:** TODO(Woohyun Song): the phone check from the W9 entry above. The S2 notice is not part of it, because it needs a build with the opt-in flag.
+
+### Test cases added or changed in this merge
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/battle_screen_test.dart` (updated) | At 1.0x and 2.0x text: while the person check asks for a tap in the setup, there is no setup band and no status frame. The check stays inside the camera area, clear of the camera switch, and its button can be tapped. Once confirmed, the countdown starts with its green frame |
+| View | `test/screens/online_preparation_test.dart` (merged, updated) | Both sides of the merge: W9's short cues with main's frame-feeding waits. The same checks as the AI battle at 1.0x and 2.0x text, and once confirmed the band and its frame are back. The auto-ready check also allows no cue, for when the S2 flag is on |
+
+### Acceptance criteria → tests (this merge)
+- The S2 notice and W9's band, frame and camera switch do not overlap (decision of 2026-11-18). Tests:
+  - `'while the person check asks for a tap in the setup, the setup band and its frame step aside, at ${textScale}x text; the check is clear of the camera switch, and once it is confirmed the countdown starts (A9 with S2)'`
+  - `'while the person check asks for a tap in the setup, the setup band and its frame step aside, at ${textScale}x text, and the check is clear of the camera switch; once it is confirmed the band is back (A9 with S2)'`
+- W9's tests still pass after the merge, with the S2 flag off and on: the full runs above.
