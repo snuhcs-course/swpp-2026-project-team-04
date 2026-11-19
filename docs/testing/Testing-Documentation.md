@@ -15,6 +15,7 @@
 > * [6.2 UAT stories](#62-uat-stories)
 > * [6.3 Stories, acceptance criteria, and test procedures](#63-stories-acceptance-criteria-and-test-procedures)
 > * [6.4 Results](#64-results)
+> * [6.5 Usability improvements from the heuristic evaluation](#65-usability-improvements-from-the-heuristic-evaluation-iteration-3--4)
 * [7. Alpha & Beta Testing](#7-alpha--beta-testing) (Iteration 5)
 
 # 1. Document Revision History
@@ -34,8 +35,9 @@
 |Rev.2.8|2026-11-16|6.1 says how cycle 1 was run (in class, testers from other teams, one account per tester, sheet in app-flow order); 6.2 notes the cycle 2 date and the characters; UAT-5 procedure step 3 reads the countdown timer; 6.4 cycle 1 results (73/74 steps, 98.6 %), failure analysis and the changes planned from the comments|
 |Rev.2.9|2026-11-18|5.2: AI module evaluation re-run on main `9841a60` after the setup cue, the character's talk and the person check were merged (same numbers as Iteration 3); 6.4: cycle 2 plan (28 steps in user-flow order, the cycle 1 step UAT-1 step 4 split into B3 and D1, the setup cue wording in the expected results). Acceptance criteria unchanged|
 |Rev.2.10|2026-11-18|5.2: the unified push-up knee rule (build flag `PUSHUP_FRAME_KNEE`, off by default) measured off and on on the frozen set at `a9e6cd4`, and the new supplemental Iteration 4 set (16 coordinate-only cases, push-ups and squats, labels pending, M1–M3 N/A) with its commands. The frozen set and its thresholds unchanged|
-|Rev.2.12|2026-11-18|5.2: the supplemental Iteration 4 set scored with confirmed labels on main `7680df6`, knee rule off and on|
 |Rev.2.11|2026-11-18|4.2: Iteration 4 results on the final main `7680df6` (CI run on main: test counts, skips, coverage per layer; per-member summary from the members' notes, with the PM's notes); 5.2: final re-run of the frozen set on `7680df6` (rule off by default, same numbers as `9841a60`)|
+|Rev.2.12|2026-11-18|5.2: the supplemental Iteration 4 set scored with confirmed labels on main `7680df6`, knee rule off and on|
+|Rev.2.13|2026-11-19|6.5: usability improvements from the Iteration 3 heuristic evaluation: each issue, the change made, the UAT cycle 1 evidence and the open issues|
 
 # 2. Overview
 
@@ -636,6 +638,24 @@ Praised: the characters, the clean design, and the battles being fun even when t
 ### Cycle 2 · 2026-11-23
 
 To be completed in Iteration 5 (in class).
+
+## 6.5 Usability improvements from the heuristic evaluation (Iteration 3 → 4)
+
+The heuristic evaluation of 2026-11-04 (TA, evaluators and the professor; [Meeting Logs](Meeting-Logs) 2026-11-04) raised the issues below. Each row gives the change made in Iteration 4, the pull requests, the evidence from UAT cycle 1 (6.4) and the status.
+
+| # | Issue (source) | Change in Iteration 4 (pull requests) | Result and evidence | Status |
+|---|---|---|---|---|
+| 1 | Home looked like an ordinary app; the Home / History tabs were unclear (TA) | Game lobby with 게임 시작, 캐릭터, 기록보관소 and 환경설정; tabs removed; the chosen character works out on Home (#45, #55) | UAT cycle 1: every story starts from the lobby and passed except one test-data step; testers praised the design ("ready for release"); mean satisfaction 4.96 / 5 | Resolved |
+| 2 | The battle screen showed joints, the avatar, the score and the reasons all at once (TA) | One fighting stage with two drawn characters and a shared health bar instead of the 3D avatar; short reject signs (#50, #52, #54); joint dots and skeleton removed from the battle camera (#77) | UAT-5 12/12 and UAT-2 14/14 steps accepted | Resolved |
+| 3 | Only per-match feedback, no record over time (evaluators) | Game report after every battle (#62); 기록보관소 with statistics for all records, this month and this week (#56, #61); the character's talk and a mission for the next battle (#74, #76) | UAT-4 6/6, including the statistics criterion (AC3) | Resolved |
+| 4 | Weak pose setup guide; the setup turned green even with the hands out of view (evaluators) | Body silhouette per exercise and a stricter body check (#49, #51, #65); the battle starts by itself, no ready button (#70); phone angle shown in the UAT build (#71); a large two-line cue and a status frame readable from where the user exercises (#73, #77) | UAT-1 11/12: the one rejection came from our test data (the squat case written in brackets in a push-up row), not from the app. Tester comments: the setup passes too quickly, the hand message flickers, squat text unreadable from afar | Partly resolved: readability fixed after cycle 1 (#73, #77); a stricter silhouette check and steadier messages are planned for Iteration 5 (team meeting 2026-11-18) and are checked again in cycle 2 (steps B1–B4, D1–D2) |
+| 5 | Players did not notice the fever time (evaluators) | FEVER ×2 chip beside the timer (#50), faster fever music (#53), a tutorial page on fever (#60, #64) | UAT-5 step 3 (the fever start boundary) accepted by both testers | Resolved |
+| 6 | More exercises planned? (professor) | Not changed: the scope stays push-ups and squats so that both judges can reach their accuracy targets first | — | Open by decision |
+
+Further usability comments from UAT cycle 1 and their status:
+- The tutorial is a bit long: open; the team decided on 2026-11-18 to shorten the repeated push-up and squat pages in Iteration 5 without adding pages.
+- The "opponent left" label is unclear: open; cycle 2 checks it from the tester's side (step E6).
+- Squat text unreadable from afar: fixed after cycle 1 by the two-line cue and status frame (#73) and the cue board above the camera (#77).
 
 # 7. Alpha & Beta Testing
 
