@@ -40,6 +40,10 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - App code `gymrats_app/lib/models/tutorial_page.dart`, `lib/viewmodels/tutorial_viewmodel.dart`, `lib/widgets/tutorial_rep_bot.dart`, and the rewritten `lib/screens/help_screen.dart`, `lib/widgets/help_rules.dart`, `lib/widgets/help_pictures.dart`; the tests (`test/models/tutorial_page_test.dart`, `test/viewmodels/tutorial_viewmodel_test.dart`, `test/widgets/tutorial_rep_bot_test.dart`, `test/widgets/help_pictures_test.dart`, `test/widgets/help_rules_test.dart`, `test/screens/help_screen_test.dart`) and the one-off label/page updates in `main_test.dart`, `auth_flow_test.dart`, `game_panel_fonts_test.dart` (approved exceptions): Claude Code.
 - Not used: what the tutorial shows (the team chat and the user: rules only, push-up then squat, which pages and characters), '완료', the main-menu music, and keeping the rules-only scope against UAT-6 (team agreement).
 
+### feat/ios_build (outside the team plan, PM agreed, 2026-11-18 ~ 11-19)
+- The iOS build: Claude Code added the iOS platform in a local copy, the `AppDelegate` channels (gravity and gyro, beep, screen on, files folder), and the iOS branches in `camera_service.dart`, `pose_estimator.dart`, `pose_camera_view.dart`; it paired the iPhone over Wi-Fi, signed with a personal team and installed with `xcrun devicectl`, and diagnosed each failure from iPhone screenshots it took itself.
+- Not used: the decision to try iOS and to put it on a team branch (the user, PM agreed), the Apple ID, Mac and Xcode logins, and the on-phone checks.
+
 ## 2. Prompt History
 [Jinyoung Park, 11-07] "task 수행해"
 [Jinyoung Park, 11-11] "그리고 이제 codex review PR 댓글도 반영해야 하거든? 그것도 harness에 추가하고"
@@ -96,6 +100,7 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - J5: Codex's second pass on PR #60 found that the KO picture's scores were fixed numbers while its label and bar followed `koLead`, the same "every number from the rules" gap the reviewer had found for the fever multiplier; fixed in 1b8bd87. Our own test had checked only the label.
 
 - J5 follow-up: the first combo line ('1.5초 안에 이어서 하면 +5점') was written from the rule's numbers alone; the reviewer read `PlayerGameScore` and found that an Average rep neither earns nor keeps a combo, so the line now says 'Good 이상을'. A `dart format lib` also reformatted two teammates' files; the change was spotted in `git status` and reverted before any commit.
+- iOS build: three guesses at the camera rotation (lock the capture to portrait, the sensor angle, its opposite) changed nothing, because the ML Kit iOS plugin ignores the rotation entirely; reading the plugin's Swift source found it, and the fix turns the frames in Dart. The first version of that turn read the bytes as 32-bit words without copying and failed on an unaligned buffer ("자세 인식이 멈췄어요"). Before that, setup never passed because the phone-tilt check reads a native Android sensor channel that iOS did not have. Cost: about two hours of reinstall rounds; reading the plugin source first would have saved most of it.
 
 ## 5. Prompt Revisions
 - 11-11: added a standing rule to the harness after the Codex findings ("codex review PR 댓글도 반영해야"): Codex findings on every open PR are read at session start and before every push, fixed or answered with a reason, and replied to on their threads.

@@ -6,6 +6,13 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+### feat/ios_build (outside the team plan, PM agreed 2026-11-19)
+2026-11-19, code commit `d36ef52` (on main `9bcfe5d`), macOS 27.2.1, Flutter 3.47.5, Xcode 27.2:
+- Commands (inside `gymrats_app/`): `flutter analyze`, `flutter test`.
+- `flutter analyze`: no issues. `flutter test`: 3758 passed, 0 failed, 10 skipped (pre-existing).
+- What changed is iOS-only: the new `ios/` folder and `Platform.isIOS` branches in `camera_service.dart`, `pose_estimator.dart`, `pose_camera_view.dart`. The unit tests run on the host (not iOS), so they cover that the Android paths are unchanged; no new tests.
+- **Shortfalls:** the iOS branches (BGRA frame turning, front-camera un-mirroring, the `AppDelegate` channels) are not unit tested; they need an iOS device. Checked by hand on an iPhone (iOS 26.6.2) on 2026-11-19: the preview is upright, setup reaches ready, reps are counted. Plan: if iOS stays, add a host test for the frame-turning helper.
+
 #### 2026-11-15 · code at commit `71f73aa` · step `feat/tutorial` (team plan #16, follow-up after #60: game page and combo pages)
 After #60 merged, the user and the PM asked for a first page about the whole game (push-ups or squats, 1v1 against a
 person or the bot) and a combo page per exercise, on the same branch with a new PR. The game page belongs to neither
