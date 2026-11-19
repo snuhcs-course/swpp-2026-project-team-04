@@ -38,6 +38,7 @@
 |Rev.2.11|2026-11-18|4.2: Iteration 4 results on the final main `7680df6` (CI run on main: test counts, skips, coverage per layer; per-member summary from the members' notes, with the PM's notes); 5.2: final re-run of the frozen set on `7680df6` (rule off by default, same numbers as `9841a60`)|
 |Rev.2.12|2026-11-18|5.2: the supplemental Iteration 4 set scored with confirmed labels on main `7680df6`, knee rule off and on|
 |Rev.2.13|2026-11-19|6.5: usability improvements from the Iteration 3 heuristic evaluation: each issue, the change made, the UAT cycle 1 evidence and the open issues|
+|Rev.2.14|2026-11-19|Consistency fixes before the Iteration 4 submission: 3.1 Iteration 4 revision (PM Hyunwoo Song, Iteration 4 areas; the online battle row without avatars); 4.1 the avatar WebView marked as removed; 5.2 the `a9e6cd4` entry points to the confirmed labels of the `7680df6` entry; UAT-4 criterion 3 and procedure step 4 name the current place of the statistics (display wording only; the acceptance criteria are unchanged); 6.4 cycle 1 build commit and phones, the testers' teams, a 95 % interval for the acceptance rate, and the larger squat text and status frame marked done in Iteration 4 (#73, #77)|
 
 # 2. Overview
 
@@ -63,8 +64,8 @@ Each component has one owner who writes and maintains its tests. The areas match
 | Accounts, history, saved feedback (app) | Jinyoung Park |
 | REST API (Django) | Jinyoung Park |
 | Battle result saving (battle server ↔ Django) | Jinyoung Park |
-| Online battle and avatars (app and battle server) | Sangwoo Hahn |
-| Home, AI matching and versus screens, shared widgets, theme | Woohyun Song (PM) |
+| Online battle (app and battle server) | Sangwoo Hahn |
+| Home, AI matching and versus screens, shared widgets, theme | Woohyun Song |
 
 **Policy for new code**
 * The author of a feature or a fix writes its tests and submits them in the same pull request. A bug fix starts with a test that fails before the fix.
@@ -73,6 +74,8 @@ Each component has one owner who writes and maintains its tests. The areas match
 * The PM runs the full suite with coverage on the submitted commit at the end of each iteration and updates 4.2.
 
 *Revision (Iteration 3, 2026-11-03):* the PM role passed to Jinyoung Park for Iteration 3 (the end-of-iteration run in 4.2 and the AI module evaluation in 5 are his). Areas added in Iteration 3 and their test owners, as merged ([Design Documentation 2.3.11](Design-Documentation#2311-who-owns-what)): battle game rules, fever, KO and bot levels, the rules screen and the safety warning, score history and the new Home: Woohyun Song; squat judge and setup, squat battles and matching per exercise, SOMA avatars and the opponent view: Sangwoo Hahn; push-up recordings and judge accuracy: Hyunwoo Song; the CI workflow and the AI evaluation set and runner: Jinyoung Park. The rows above stay as planned; cross-owner edits were agreed in the PRs.
+
+*Revision (Iteration 4, 2026-11-19):* the PM role passed to Hyunwoo Song for Iteration 4 (the merges in the team-plan order, the end-of-iteration results in 4.2, the AI module re-runs in 5.2 and the acceptance tests in 6). "(PM)" is dropped from Woohyun Song's row (he was the PM in Iteration 2, when the table was written), and the row "Online battle and avatars" now reads "Online battle", because the drawn characters replaced the avatars (PR #52). Areas added in Iteration 4 and their test owners, as merged (4.2, Iteration 4 per member): the home lobby, the battle stage, the characters and character select, the matching and end screens, the result report, the archive and statistics screens, the form feedback screen, the setup cues readable from a distance, and the character's talk and mission after a battle: Woohyun Song; voice guidance, battle music and hit sounds, the cumulative statistics (app and the stats endpoint), squat form feedback and the tutorial: Jinyoung Park; the push-up and squat setup silhouettes, the push-up judge changes, the phone-angle display of the UAT build, the person continuity check and the unified knee rule (both off by default) and the Iteration 4 evaluation set: Sangwoo Hahn. The other rows stay as planned.
 
 ## 3.2 When
 
@@ -122,14 +125,14 @@ Most tests are unit tests of one class with fakes around it. These tests check s
 | Model | 90% | Plain data and JSON parsing; cheap to test fully |
 | ViewModel | 90% | Holds the app's logic and state transitions |
 | Service | 85% | Rep judging, networking and storage; a few platform calls need a real device |
-| View (screens, widgets) | 75% | Some widgets wrap platform views (camera preview, WebView) that widget tests cannot drive |
+| View (screens, widgets) | 75% | Some widgets wrap platform views (the camera preview; until Iteration 4 also the avatar WebView) that widget tests cannot drive |
 | REST API (Django: accounts, matches, project settings) | 90% | Business rules, authentication, and data integrity |
 | Battle server (Dart) | – (no number yet) | Behavior-tested through the integration tests above; line coverage once it has its own Dart package |
 
 ### Scope & exclusions
 
 * **Excluded from the numbers:** the demo entry points (manual testing). The app entry point, the config, the shared protocol code and the theme are counted in "Other", not in a layer. Files that no test loads (interfaces, constants) do not appear in lcov.
-* **Covered only by manual checks on a phone:** the device parts of the camera service, the pose estimator and the camera preview widget (real camera, ML Kit), the gravity and gyroscope channel on the Android side, and the three.js avatar page in the WebView. Their logic is tested through fakes.
+* **Covered only by manual checks on a phone:** the device parts of the camera service, the pose estimator and the camera preview widget (real camera, ML Kit), and the gravity and gyroscope channel on the Android side (until Iteration 4 also the three.js avatar page in the WebView, removed with the 3D avatars in PR #52). Their logic is tested through fakes.
 * **Server:** tests use an in-memory SQLite database and a fast password hasher (MD5, in the test settings); production uses bcrypt. The WSGI entry point is only loaded by gunicorn.
 
 ### Reproducible commands
@@ -368,6 +371,8 @@ The recorders (Hyunwoo Song, Sangwoo Hahn) confirmed with the PM that every clip
 Run by the PM on 2026-11-18 (Windows, Flutter 3.47.5): `flutter test --no-pub --dart-define=PUSHUP_FRAME_KNEE=false test/ai_eval/iter4` and the same with `true`, 13 tests passed each; reports `gymrats_app/test/ai_eval/results/2026-11-18_main-7680df6_iter4_confirmed_{off,on}.{md,json}`.
 
 #### 2026-11-18 · code at commit `a9e6cd4` (the knee-evidence change with main `0a17580` merged in; merged to main as `82113be`) · unified knee rule off and on, and the supplemental Iteration 4 set
+> **Superseded for the supplemental set:** its labels were confirmed later the same day, and the `7680df6` entry above scores it (M1–M3 there). "Labels pending" and "N/A" below describe this run only.
+
 The change adds a unified push-up knee rule behind the build flag `PUSHUP_FRAME_KNEE` (default false; [Design Documentation 2.3.2](Design-Documentation#232-rep-judging-on-device-ai-module)) and a separate supplemental set. Both modes were run on the same code; the frozen set of 5.1 and its scorer are unchanged.
 
 | Metric (frozen 32 cases) | Rule off (default build) | Rule on (`PUSHUP_FRAME_KNEE=true`) | Threshold | Result (off / on) |
@@ -540,13 +545,13 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.3): the se
 **Acceptance criteria**
 1. **Result.** Given a battle is running, when the round ends (time up, or a KO), then the app stops counting and shows win, loss, or draw with both final scores.
 2. **Form feedback.** Given the result of a push-up battle is shown, when I open the form feedback, then I see my counted and rejected reps, my top form issues each with one tip to fix it, and a per-rep record.
-3. **Feedback over time.** Given I have played several battles, when I open the feedback statistics from the History tab and choose all records, this month or this week, then I see my average counted reps, a date–reps graph and how often each form issue occurred in that period.
+3. **Feedback over time.** Given I have played several battles, when I open the feedback statistics from the History tab (now 기록보관소 → "기간별 통계") and choose all records, this month or this week, then I see my average counted reps, a date–reps graph and how often each form issue occurred in that period.
 
 **Test procedure**
 1. Run an "AI 1v1" push-up battle with account A to the end of the 30-second round, mixing 4 valid reps and 2 knee reps.
 2. (AC1) Check the result screen shows win, loss, or draw and both scores, and that the count no longer changes when you keep moving.
 3. (AC2) Open the form feedback → check it shows 4 counted and 2 rejected reps (with the knee reason), at least one form issue with a tip, and one row per rep.
-4. (AC3) Play two more battles on another day if possible; open the statistics from the History tab → "all records" lists the three battles in the graph, "this week" and "this month" narrow it to the battles in that period, and the issue counts match the feedback screens.
+4. (AC3) Play two more battles on another day if possible; open the statistics from the History tab (now 기록보관소 → "기간별 통계") → "all records" lists the three battles in the graph, "this week" and "this month" narrow it to the battles in that period, and the issue counts match the feedback screens.
 5. Squat run: repeat steps 1–4 with a squat battle (4 full squats and 2 shallow ones) → the feedback shows the squat issues with tips and the statistics are listed per exercise.
 
 ### UAT-5. Game points, the health bar and fever time
@@ -587,9 +592,9 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.3): the se
 
 ### Cycle 1 · 2026-11-16 · in class
 
-**Setup.** The in-class UAT of the course (Week 12): two testers from other teams ran the team's UAT sheet, and the team's other members acted as instructors (opponent phone, counting reps by eye, nudging the phone, timing the airplane mode). The sheet has 37 steps in the order a new user meets them: UAT-6 (tutorial, 6) → choosing a character (2, not a UAT key story) → UAT-1 (6) → UAT-3 (7) → UAT-5 (6) → UAT-2 (7) → UAT-4 (3). Each tester signed up a new account in UAT-6 step 1 and used it to the end; the online opponent was a team member on a team test account. Release build of main with the phone-angle display used by UAT-1 steps 2–3 (TODO(hyun-1210): build commit and the two phones used). The sheet snapshot of cycle 1 is part of the Iteration 4 submission.
+**Setup.** The in-class UAT of the course (Week 12): two testers from other teams ran the team's UAT sheet (the cycle 1 pairing in the course's Week 12 UAT Practice slides sends testers from Team 9 and Team 14 to Team 4), and the team's other members acted as instructors (opponent phone, counting reps by eye, nudging the phone, timing the airplane mode). The sheet has 37 steps in the order a new user meets them: UAT-6 (tutorial, 6) → choosing a character (2, not a UAT key story) → UAT-1 (6) → UAT-3 (7) → UAT-5 (6) → UAT-2 (7) → UAT-4 (3). Each tester signed up a new account in UAT-6 step 1 and used it to the end; the online opponent was a team member on a team test account. Release build of main at `d188240` (the merge of PR #69 on 2026-11-16) with the phone-angle display used by UAT-1 steps 2–3, handed out as the GitHub prerelease `uat-build` (that prerelease has since been rebuilt from a newer main). The sheet's testing device field names the Samsung Galaxy S22 and S23 (the tester phone and a team member's opponent phone) (TODO(hyun-1210): which phone each tester used). The sheet snapshot of cycle 1 is part of the Iteration 4 submission.
 
-**Acceptance rate: 73 of 74 steps accepted (98.6 %).** Tester 1: 37/37; tester 2: 36/37. Mean user satisfaction 4.96 of 5 (4 only on UAT-1 steps 4 and 5; every other step 5).
+**Acceptance rate: 73 of 74 steps accepted (98.6 %; 95 % confidence interval about 92–100 %).** Tester 1: 37/37; tester 2: 36/37. The interval is the adjusted Wald (Agresti–Coull) interval: add z²/2 = 1.92 accepted and 1.92 rejected steps (z = 1.96), so p̃ = 74.92 / 77.84 = 96.2 %, ± 1.96 × √(p̃(1 − p̃) / 77.84) = ± 4.2 points, 92.0 % to 100.5 %, capped at 100 %. The 74 steps come from two testers, so they are not independent trials, and the interval is only a rough guide. Mean user satisfaction 4.96 of 5 (4 only on UAT-1 steps 4 and 5; every other step 5).
 
 | Story | Steps | Tester 1 | Tester 2 | Result (pass rule of 6.1) |
 |---|---|---|---|---|
@@ -611,7 +616,7 @@ Revised 2026-11-04 after the heuristic evaluation (Requirements Rev.2.3): the se
 | UAT-1 step 5 | Close to the phone the hands must be placed narrower than the tester likes | Wider hand tolerance at short distance |
 | UAT-1 step 4 | "Hand not visible" and "hand and elbow not visible" switch quickly and are hard to read | Keep one message on screen for a minimum time |
 | UAT-1 step 2 | "Stand the phone up more" does not say how far | Show the target angle |
-| UAT-4 step 1, team | Squats are played far from the phone, so the feedback text is hard to read; detection was weaker in a crowded room | Larger text, a green or red frame, clearer hip and knee lines; the person-behind work (S2) |
+| UAT-4 step 1, team | Squats are played far from the phone, so the feedback text is hard to read; detection was weaker in a crowded room | Larger text and a green or red frame: done in Iteration 4 (#73, #77; 6.5). Still planned: clearer hip and knee lines; the person-behind work (S2) |
 | UAT-6 step 6 | The push-up pages run straight into the squat pages; the tutorial feels a little long | A "skip to squats" step, shorter pages; a clothing note |
 | Overall | The label shown when the opponent leaves and the match is canceled is unclear | Clearer wording |
 
@@ -645,8 +650,8 @@ The heuristic evaluation of 2026-11-04 (TA, evaluators and the professor; [Meeti
 
 | # | Issue (source) | Change in Iteration 4 (pull requests) | Result and evidence | Status |
 |---|---|---|---|---|
-| 1 | Home looked like an ordinary app; the Home / History tabs were unclear (TA) | Game lobby with 게임 시작, 캐릭터, 기록보관소 and 환경설정; tabs removed; the chosen character works out on Home (#45, #55) | UAT cycle 1: every story starts from the lobby and passed except one test-data step; testers praised the design ("ready for release"); mean satisfaction 4.96 / 5 | Resolved |
-| 2 | The battle screen showed joints, the avatar, the score and the reasons all at once (TA) | One fighting stage with two drawn characters and a shared health bar instead of the 3D avatar; short reject signs (#50, #52, #54); joint dots and skeleton removed from the battle camera (#77) | UAT-5 12/12 and UAT-2 14/14 steps accepted | Resolved |
+| 1 | Home looked like an ordinary app; the Home / History tabs were unclear (TA) | Game lobby with 게임 시작, 캐릭터, 기록보관소 and 환경설정; tabs removed; the chosen character works out on Home (#45, #55) | Not measured directly: the UAT stories do not test lobby navigation (6.2 leaves account and history flows out). Indirect only: the testers' overall comments praised the design (6.4) | Changed; not yet verified with users: to check in the alpha test with a navigation question |
+| 2 | The battle screen showed joints, the avatar, the score and the reasons all at once (TA) | One fighting stage with two drawn characters and a shared health bar instead of the 3D avatar; short reject signs (#50, #52, #54); joint dots and skeleton removed from the battle camera (#77) | Not measured directly: UAT-2 (14/14) and UAT-5 (12/12) check the rep, score, health-bar, fever and K.O. mechanics on the new screen, not whether it is easy to read. | Changed; not yet verified with users: to check in the alpha test with a question on the battle screen |
 | 3 | Only per-match feedback, no record over time (evaluators) | Game report after every battle (#62); 기록보관소 with statistics for all records, this month and this week (#56, #61); the character's talk and a mission for the next battle (#74, #76) | UAT-4 6/6, including the statistics criterion (AC3) | Resolved |
 | 4 | Weak pose setup guide; the setup turned green even with the hands out of view (evaluators) | Body silhouette per exercise and a stricter body check (#49, #51, #65); the battle starts by itself, no ready button (#70); phone angle shown in the UAT build (#71); a large two-line cue and a status frame readable from where the user exercises (#73, #77) | UAT-1 11/12: the one rejection came from our test data (the squat case written in brackets in a push-up row), not from the app. Tester comments: the setup passes too quickly, the hand message flickers, squat text unreadable from afar | Partly resolved: readability fixed after cycle 1 (#73, #77); a stricter silhouette check and steadier messages are planned for Iteration 5 (team meeting 2026-11-18) and are checked again in cycle 2 (steps B1–B4, D1–D2) |
 | 5 | Players did not notice the fever time (evaluators) | FEVER ×2 chip beside the timer (#50), faster fever music (#53), a tutorial page on fever (#60, #64) | UAT-5 step 3 (the fever start boundary) accepted by both testers | Resolved |
