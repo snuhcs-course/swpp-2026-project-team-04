@@ -1,6 +1,6 @@
 # iOS build (not in the team plan; Android stays the target)
 
-Added on `feat/ios_build` (2026-11-19, PM agreed) so the app can be installed on an iPhone for testing.
+Added on `demo/ios_build` (2026-11-19, PM agreed) so the app can be installed on an iPhone for testing.
 Checked on an iPhone with iOS 26 (setup, camera, pose detection).
 
 ## What iOS needs that Android does not

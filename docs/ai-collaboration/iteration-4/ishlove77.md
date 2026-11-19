@@ -40,7 +40,7 @@ These notes cover Jinyoung Park's Iteration 4 steps (team plan J1–J5), items a
 - App code `gymrats_app/lib/models/tutorial_page.dart`, `lib/viewmodels/tutorial_viewmodel.dart`, `lib/widgets/tutorial_rep_bot.dart`, and the rewritten `lib/screens/help_screen.dart`, `lib/widgets/help_rules.dart`, `lib/widgets/help_pictures.dart`; the tests (`test/models/tutorial_page_test.dart`, `test/viewmodels/tutorial_viewmodel_test.dart`, `test/widgets/tutorial_rep_bot_test.dart`, `test/widgets/help_pictures_test.dart`, `test/widgets/help_rules_test.dart`, `test/screens/help_screen_test.dart`) and the one-off label/page updates in `main_test.dart`, `auth_flow_test.dart`, `game_panel_fonts_test.dart` (approved exceptions): Claude Code.
 - Not used: what the tutorial shows (the team chat and the user: rules only, push-up then squat, which pages and characters), '완료', the main-menu music, and keeping the rules-only scope against UAT-6 (team agreement).
 
-### feat/ios_build (outside the team plan, PM agreed, 2026-11-18 ~ 11-19)
+### demo/ios_build (outside the team plan, PM agreed, 2026-11-18 ~ 11-19)
 - The iOS build: Claude Code added the iOS platform in a local copy, the `AppDelegate` channels (gravity and gyro, beep, screen on, files folder), and the iOS branches in `camera_service.dart`, `pose_estimator.dart`, `pose_camera_view.dart`; it paired the iPhone over Wi-Fi, signed with a personal team and installed with `xcrun devicectl`, and diagnosed each failure from iPhone screenshots it took itself.
 - Not used: the decision to try iOS and to put it on a team branch (the user, PM agreed), the Apple ID, Mac and Xcode logins, and the on-phone checks.
 

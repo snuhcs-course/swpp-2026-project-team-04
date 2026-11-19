@@ -6,7 +6,7 @@ The PM merges these notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
-### feat/ios_build (outside the team plan, PM agreed 2026-11-19)
+### demo/ios_build (outside the team plan, PM agreed 2026-11-19)
 2026-11-19, code commit `d36ef52` (on main `9bcfe5d`), macOS 27.2.1, Flutter 3.47.5, Xcode 27.2:
 - Commands (inside `gymrats_app/`): `flutter analyze`, `flutter test`.
 - `flutter analyze`: no issues. `flutter test`: 3758 passed, 0 failed, 10 skipped (pre-existing).
