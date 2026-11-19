@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'dart:typed_data';
 import 'dart:math' as math;
 import 'dart:ui' show Size;
 
@@ -5,6 +7,7 @@ import 'package:camera/camera.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 
 import '../../models/pose_frame.dart';
+import 'camera_service.dart' show iosFramesMirrored;
 
 /// Runs ML Kit pose detection on camera frames, one frame at a time.
 ///
@@ -93,7 +96,8 @@ class PoseEstimator {
     final rotation = InputImageRotationValue.fromRawValue(rotationDegrees);
     final format = InputImageFormatValue.fromRawValue(image.format.raw as int);
     if (rotation == null ||
-        format != InputImageFormat.nv21 ||
+        (format != InputImageFormat.nv21 &&
+            format != InputImageFormat.bgra8888) ||
         image.planes.length != 1) {
       throw UnsupportedError(
         'Unsupported camera frame: format ${image.format.raw}, '
@@ -101,6 +105,28 @@ class PoseEstimator {
       );
     }
     final plane = image.planes.first;
+    // The iOS plugin ignores the rotation, so turn the frame upright here.
+    if (Platform.isIOS && rotationDegrees != 0) {
+      final upright = _rotateBgra(
+        plane.bytes,
+        image.width,
+        image.height,
+        plane.bytesPerRow,
+        rotationDegrees,
+      );
+      final turned = rotationDegrees == 90 || rotationDegrees == 270;
+      final w = turned ? image.height : image.width;
+      final h = turned ? image.width : image.height;
+      return InputImage.fromBytes(
+        bytes: upright,
+        metadata: InputImageMetadata(
+          size: Size(w.toDouble(), h.toDouble()),
+          rotation: InputImageRotation.rotation0deg,
+          format: format!,
+          bytesPerRow: w * 4,
+        ),
+      );
+    }
     return InputImage.fromBytes(
       bytes: plane.bytes,
       metadata: InputImageMetadata(
@@ -110,6 +136,44 @@ class PoseEstimator {
         bytesPerRow: plane.bytesPerRow,
       ),
     );
+  }
+
+  /// BGRA [bytes] of a [width]x[height] frame turned [degrees] clockwise.
+  static Uint8List _rotateBgra(
+    Uint8List bytes,
+    int width,
+    int height,
+    int bytesPerRow,
+    int degrees,
+  ) {
+    // Copy first: the plane may not start on a 4-byte boundary.
+    final aligned = Uint8List(bytesPerRow * height)
+      ..setRange(0, bytesPerRow * height, bytes);
+    final src = aligned.buffer.asUint32List();
+    final stride = bytesPerRow ~/ 4;
+    final turned = degrees == 90 || degrees == 270;
+    final outW = turned ? height : width;
+    final out = Uint32List(width * height);
+    for (var y = 0; y < height; y++) {
+      final row = y * stride;
+      for (var x = 0; x < width; x++) {
+        final int nx, ny;
+        switch (degrees) {
+          case 90:
+            nx = height - 1 - y;
+            ny = x;
+          case 180:
+            nx = width - 1 - x;
+            ny = height - 1 - y;
+          default: // 270
+            nx = y;
+            ny = width - 1 - x;
+        }
+        out[ny * outW + (iosFramesMirrored ? outW - 1 - nx : nx)] =
+            src[row + x];
+      }
+    }
+    return out.buffer.asUint8List();
   }
 
   /// ML Kit reports landmarks in the rotated (upright) image.

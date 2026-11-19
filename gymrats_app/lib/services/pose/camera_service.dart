@@ -1,6 +1,12 @@
+import 'dart:io' show Platform;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+/// iOS mirrors the front camera's frames; PoseEstimator undoes it so the
+/// landmarks match Android's (unmirrored) frames.
+bool iosFramesMirrored = false;
 
 /// Camera permission result, independent of the permission plugin.
 enum CameraPermission { granted, denied, permanentlyDenied }
@@ -87,8 +93,10 @@ class CameraService {
         description,
         ResolutionPreset.medium,
         enableAudio: false,
-        // ML Kit on Android expects NV21 bytes.
-        imageFormatGroup: ImageFormatGroup.nv21,
+        // ML Kit expects NV21 bytes on Android and BGRA on iOS.
+        imageFormatGroup: Platform.isIOS
+            ? ImageFormatGroup.bgra8888
+            : ImageFormatGroup.nv21,
       );
 
   Future<void> _start(void Function(CameraImage image) onImage) async {
@@ -103,6 +111,9 @@ class CameraService {
         (c) => c.lensDirection == preferredLens,
         orElse: () => cameras.first,
       );
+      iosFramesMirrored =
+          Platform.isIOS &&
+          description.lensDirection == CameraLensDirection.front;
       final controller = _createController(description);
       _controller = controller;
       await controller.initialize();
@@ -164,6 +175,9 @@ class CameraService {
     required CameraLensDirection lens,
     required DeviceOrientation device,
   }) {
+    // iOS frames arrive lying down and need a quarter turn clockwise, like
+    // the preview; PoseEstimator turns them (the iOS plugin ignores it).
+    if (Platform.isIOS) return 90;
     final deviceDegrees = _deviceDegrees[device] ?? 0;
     return lens == CameraLensDirection.front
         ? (sensorOrientation + deviceDegrees) % 360

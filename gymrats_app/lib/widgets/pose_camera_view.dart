@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
@@ -54,33 +56,39 @@ class PoseCameraView extends StatelessWidget {
     // up with the box in both orientations.
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
+    final overlay = showLandmarks && frame != null && boldLandmarks
+        ? LandmarkOverlay(
+            frame: frame,
+            mirror: mirror,
+            isVisible: (keypoint) => (isVisible ?? _likely)(keypoint, frame),
+            bold: true,
+          )
+        : showLandmarks && frame != null
+        ? CustomPaint(
+            painter: _LandmarkPainter(
+              frame: frame,
+              mirror: mirror,
+              isVisible: isVisible ?? _likely,
+            ),
+          )
+        : null;
+    final width = landscape ? previewSize.width : previewSize.height;
+    final height = landscape ? previewSize.height : previewSize.width;
+    // iOS hands the preview over lying down; turn it upright here (Android's
+    // CameraPreview already does this itself).
+    final picture = Platform.isIOS && !landscape
+        ? Stack(
+            fit: StackFit.expand,
+            children: [
+              RotatedBox(quarterTurns: 1, child: CameraPreview(controller)),
+              ?overlay,
+            ],
+          )
+        : CameraPreview(controller, child: overlay);
     return ClipRect(
       child: FittedBox(
         fit: fit,
-        child: SizedBox(
-          width: landscape ? previewSize.width : previewSize.height,
-          height: landscape ? previewSize.height : previewSize.width,
-          child: CameraPreview(
-            controller,
-            child: showLandmarks && frame != null && boldLandmarks
-                ? LandmarkOverlay(
-                    frame: frame,
-                    mirror: mirror,
-                    isVisible: (keypoint) =>
-                        (isVisible ?? _likely)(keypoint, frame),
-                    bold: true,
-                  )
-                : showLandmarks && frame != null
-                ? CustomPaint(
-                    painter: _LandmarkPainter(
-                      frame: frame,
-                      mirror: mirror,
-                      isVisible: isVisible ?? _likely,
-                    ),
-                  )
-                : null,
-          ),
-        ),
+        child: SizedBox(width: width, height: height, child: picture),
       ),
     );
   }
