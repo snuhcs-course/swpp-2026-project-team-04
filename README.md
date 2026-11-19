@@ -2,6 +2,8 @@
 
 GymMouse is an Android app that turns push-ups and squats into a 30-second, real-time 1v1 battle game. The phone stands on the floor in front of you, and its camera counts your reps with an on-device pose model, so video never leaves the phone. Home is a game lobby where your character works out. You pick one of five characters (GYM마우스, 그루, 곰탱이, 펭뚱이, 물렁범), then battle the AI rival RepBot at one of three levels or another player online, in push-ups or squats. The battle plays on a fighting stage: every rep is graded **Good**, **Excellent** or **Average** and pushes the health bar, quick reps build a combo, the last 10 seconds are a **fever** that doubles the points, and a 100-point lead ends the round by **K.O.** After the battle, a game report compares it with your earlier battles, your character talks you through the round and gives you a mission for the next one, and the archive (기록보관소) shows your statistics over time.
 
+This branch, `iteration-4-demo`, holds the code shown in the **Iteration 4 demo** (pull requests #45 to #80 merged, `main` at `15c2270`; the app code is the same as the demo build `7680df6`). The team server runs the server code of this commit, so you only need to install the app.
+
 ## Demo video
 
 [Watch or download the Iteration 4 demo (3 min 15 s, 334 × 720 portrait)](demo-videos/iteration-4-demo-video.mp4)
@@ -99,9 +101,10 @@ The full design is in the [Design Documentation](https://github.com/snuhcs-cours
 ```sh
 git clone https://github.com/snuhcs-course/swpp-2026-project-team-04.git
 cd swpp-2026-project-team-04
+git checkout iteration-4-demo
 ```
 
-The demo was recorded on `main` at `7680df6`; the app code on `main` has not changed since.
+The demo was recorded on the release build of `7680df6`; the app code on this branch is the same.
 
 ### 2. Install the app
 
