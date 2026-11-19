@@ -2,8 +2,8 @@
 
 - **Written by:** Hyunwoo Song (PM)
 - **Contributors:** Woohyun Song, Jinyoung Park, Sangwoo Hahn, Hyunwoo Song
-- **Tools used:** Claude Code (Opus 5.5; Jinyoung also Fable 5.1), Claude Design, Codex, Claude CLI, the Codex PR bot
-- **Full input prompts:** [Prompt Logs](iteration-4/) (wiki sub-page "Prompt Log"); members' notes: `docs/ai-collaboration/iteration-4/`
+- **Tools used:** Claude Code (Opus 5.5; Jinyoung also Fable 5.1) with the repo's `reviewer` subagent; Claude Design (Woohyun's canvas); Codex and read-only Codex reviewers (Sangwoo); Claude CLI (Sangwoo, silhouette designs); the Codex PR review bot; for the PM, Claude Code with the Google Sheets connector and claude.ai artifacts
+- **Full input prompts:** [Prompt Logs](iteration-4/) (wiki sub-page "Prompt Log"); members' notes: `docs/ai-collaboration/iteration-4/` Sangwoo's log holds the prompts he selected; the review of his full session export is still open (his notes in `docs/ai-collaboration/iteration-4/`).
 
 ## 1. Where AI Was Used
 - **Lobby, battle stage, characters, report, archive, feedback, victory scene, setup cues** (Woohyun, Claude Code from his Claude Design canvas): #45, #50, #52, #54, #55, #61–#63, #68, #70, #73, #74, #76, #77.
