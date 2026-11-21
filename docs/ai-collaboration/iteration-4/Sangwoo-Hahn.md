@@ -207,3 +207,12 @@ No original video or raw image is included. Recent labels remain provisional pro
 The installed Session Exporter supports Codex. Dry runs for2026-11-21 through2026-11-22 returned zero eligible sessions for both the active worktree and this chat's supplied worktree. The latter reported ambiguous working-directory moves and session metadata exclusions. No ZIP or complete transcript review is claimed. The reviewed fallback is the three verbatim visible user inputs for this task.
 
 Publication-wide validation finished: full analysis clean,3768 tests passed with10 existing skips,236 scoped tests passed, and all three four-test configuration-override runs passed. The selected production-factory replay exactly matches all44 prior case outputs. The first full run's3 S2 legacy-golden failures are retained in the local evidence; original7/13/empty assertions remain on the old judge, and five production-policy scenarios now verify pause, wrong-person suppression and confirmation/resumption. The O033 pre-pause accepted candidate is disclosed in the evaluation note.
+
+## S3 follow-up — 2026-11-22 battle setup alignment
+
+- **Context and tools.** Codex continued the common setup change into the live AI and online modes. Sangwoo set the exercise-specific requirements and confirmed Song Woohyun's approval for the battle camera and setup changes.
+- **Inputs.** The prompt log records the two selected visible user inputs for this follow-up. Codex inspected the setup checker, crop layout, live controllers, and original tests before connecting the shared matcher.
+- **Implementation and supervision.** Codex used the painted outline and the stable setup clipping area to gate the existing bout flow, moved online readiness completion to a fresh sample, and used the detector-failure event only for setup. Existing server scheduling and exercise rep judges retain their contracts.
+- **Review and correction.** An independent Codex reviewer identified cropped-off landmarks, single detector failures, and the cue during online withdrawal as edge cases. Codex corrected those cases and added regression coverage. The reviewer returned APPROVE after checking the updated paths and ownership.
+- **Human contribution.** Human participation in this follow-up consisted of scope selection, publication authorization, and confirmation of the file owner's agreement. Codex authored the code and test revisions.
+- **Verification.** The personal testing note records the Flutter checks and open device UAT scenarios.

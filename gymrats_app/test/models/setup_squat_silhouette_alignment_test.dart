@@ -43,6 +43,36 @@ void main() {
       isFalse,
     );
   });
+  test('a wider stance is accepted within the existing ankle height band', () {
+    const viewport = Size(400, 800);
+    PoseFrame stance(double leftX, double rightX, double y) => standingFrame(
+      showHips: true,
+      move: {
+        BodyLandmark.leftAnkle: (leftX, y),
+        BodyLandmark.rightAnkle: (rightX, y),
+      },
+    );
+
+    for (final mirror in [false, true]) {
+      expect(
+        match.matches(stance(830, 170, 870), viewport, mirror: mirror),
+        isTrue,
+      );
+      expect(
+        match.matches(stance(860, 140, 870), viewport, mirror: mirror),
+        isFalse,
+      );
+      expect(
+        match.matches(stance(830, 170, 650), viewport, mirror: mirror),
+        isFalse,
+      );
+      expect(
+        match.matches(stance(1020, 170, 870), viewport, mirror: mirror),
+        isFalse,
+      );
+    }
+  });
+
   test(
     'guide uses the contained camera image rather than letterboxed viewport',
     () {

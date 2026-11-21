@@ -11,6 +11,8 @@ import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
+import 'package:gymrats_app/widgets/battle_camera_view.dart'
+    show BattleGuideOverlay;
 
 import '../support/audio_fakes.dart';
 import '../support/fakes.dart';
@@ -32,6 +34,7 @@ void main() {
   late FakePoseEstimator estimator;
   late CadencedRepJudge judge;
   late Duration now;
+  late Size pushUpCrop;
   bool receivedPose = false;
 
   FakeBackgroundMusic music() => sound.music as FakeBackgroundMusic;
@@ -51,14 +54,14 @@ void main() {
     judge.holdVerdicts = true;
     while (receivedPose && target - now > const Duration(milliseconds: 500)) {
       now += const Duration(milliseconds: 500);
-      estimator.frames.add(standingFrame());
+      estimator.frames.add(alignedPushUpSetupFrame(crop: pushUpCrop));
       camera.emit();
       await tester.pump();
     }
     judge.holdVerdicts = false;
     now = target;
     receivedPose = true;
-    estimator.frames.add(standingFrame());
+    estimator.frames.add(alignedPushUpSetupFrame(crop: pushUpCrop));
     camera.emit();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 10));
@@ -108,6 +111,10 @@ void main() {
       ),
     );
     await pass(tester, 400);
+    final guide = tester.widget<BattleGuideOverlay>(
+      find.byType(BattleGuideOverlay),
+    );
+    pushUpCrop = Size(guide.share.width, guide.share.height);
   }
 
   testWidgets('setup music through the setup and 3-2-1, then the battle '

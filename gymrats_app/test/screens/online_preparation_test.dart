@@ -163,6 +163,21 @@ void main() {
   late _Replacements replacements;
   PoseFrame? streamPose;
 
+  PoseFrame setupPose({double rightWristX = .20}) {
+    if (session.exercise == ExerciseType.squat) {
+      return standingFrame(showHips: true);
+    }
+    final overlays = find.byType(BattleGuideOverlay).evaluate();
+    final overlay = overlays.isEmpty
+        ? null
+        : overlays.single.widget as BattleGuideOverlay;
+    final share = overlay?.share;
+    return alignedPushUpSetupFrame(
+      crop: share == null ? const Size(1, 1) : Size(share.width, share.height),
+      rightWristX: rightWristX,
+    );
+  }
+
   Future<void> open(
     WidgetTester tester, {
     bool denied = false,
@@ -246,6 +261,7 @@ void main() {
             userRepository: repository,
             createCounter: () => counter,
             playerName: '우현',
+            setupClock: () => tester.binding.clock.now().difference(clockStart),
             setupConfig: const SetupConfig(
               readyDelay: Duration.zero,
               dropDelay: Duration.zero,
@@ -302,10 +318,12 @@ void main() {
       tester.widget<BattleStage>(find.byType(BattleStage)).frame;
 
   /// Lets a camera frame through, with the setup pose found or not.
-  Future<void> pose(WidgetTester tester, {bool found = true}) async {
-    streamPose = found
-        ? standingFrame(showHips: session.exercise == ExerciseType.squat)
-        : emptyFrame();
+  Future<void> pose(
+    WidgetTester tester, {
+    bool found = true,
+    PoseFrame? landmarks,
+  }) async {
+    streamPose = landmarks ?? (found ? setupPose() : emptyFrame());
     estimator.frames.add(streamPose);
     camera.emit();
     await tester.pump();
@@ -1471,11 +1489,7 @@ void main() {
         /// (a squat's silhouette check wants fresh frames).
         Future<void> hold(int ms) async {
           for (var left = ms; left > 0; left -= 500) {
-            estimator.frames.add(
-              exercise == ExerciseType.squat
-                  ? standingFrame(showHips: true)
-                  : standingFrame(),
-            );
+            estimator.frames.add(setupPose());
             camera.emit();
             await tester.pump();
             await tester.pump(Duration(milliseconds: left < 500 ? left : 500));
@@ -1512,6 +1526,76 @@ void main() {
         await tester.pumpWidget(const SizedBox());
       });
     }
+
+    testWidgets('a push-up wrist outside the silhouette prevents readiness', (
+      tester,
+    ) async {
+      await open(tester);
+      final outside = setupPose(rightWristX: .32);
+      expect(
+        SetupChecker(exercise: ExerciseType.pushUp).update(outside).reason,
+        SetupReason.ready,
+      );
+      await pose(tester, landmarks: outside);
+      await wait(tester, 3500);
+      expect(session.readyRequests, isEmpty);
+      showsCue(tester, '실루엣에', '맞춰요', SetupHintShort.silhouetteMessage);
+      await pose(tester);
+      await wait(tester, 2000);
+      await pose(tester, landmarks: outside);
+      await pose(tester);
+      await wait(tester, 2800);
+      expect(session.readyRequests, isEmpty);
+      await wait(tester, 300);
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('online needs a fresh aligned frame even after 3 seconds', (
+      tester,
+    ) async {
+      await open(tester);
+      await pose(tester);
+      await wait(tester, 2600);
+      // The deadline goes by, but no fresh pose arrives to confirm it.
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(session.readyRequests, isEmpty);
+      await tester.pump(const Duration(milliseconds: 400));
+      await pose(tester);
+      await wait(tester, 2900);
+      expect(session.readyRequests, isEmpty);
+      await wait(tester, 200);
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('one detector failure resets the online hold', (tester) async {
+      await open(tester);
+      await pose(tester);
+      await wait(tester, 2600);
+      estimator.frames.add(null);
+      camera.emit();
+      await tester.pump();
+      expect(cueOf(tester)!.message, isNot(contains('초 후 자동으로 준비해요')));
+      await wait(tester, 600);
+      expect(session.readyRequests, isEmpty);
+      await wait(tester, 2500);
+      expect(session.readyRequests, [true]);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('leaving the silhouette takes back unconfirmed readiness', (
+      tester,
+    ) async {
+      await open(tester);
+      session.confirmReady = false;
+      await pose(tester);
+      await wait(tester, 3100);
+      expect(session.readyRequests, [true]);
+      await pose(tester, landmarks: setupPose(rightWristX: .32));
+      expect(session.readyRequests, [true, false]);
+      await tester.pumpWidget(const SizedBox());
+    });
 
     testWidgets('a slow confirmation does not send ready again', (
       tester,
@@ -1586,6 +1670,8 @@ void main() {
       }
       expect(session.readyRequests, isEmpty);
       await tester.pump(const Duration(milliseconds: 500));
+      expect(session.readyRequests, isEmpty);
+      await send(good);
       expect(session.readyRequests, [true]);
       await tester.pumpWidget(const SizedBox());
     },

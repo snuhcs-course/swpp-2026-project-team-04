@@ -9,6 +9,9 @@ typedef Clock = Duration Function();
 
 /// All thresholds used by the pose setup step.
 class SetupConfig {
+  /// Maximum gap between confirmed frames during the setup hold.
+  static const maxPoseFrameGap = Duration(milliseconds: 750);
+
   const SetupConfig({
     this.minLikelihood = 0.6,
     this.frameMargin = 0.03,
@@ -52,8 +55,7 @@ class SetupConfig {
   /// the body or head is turned away from the camera.
   final double maxNoseOffsetRatio;
 
-  /// After Ready, how long the user must stay Ready before setup finishes
-  /// by itself. The user is far from the phone and cannot tap Start.
+  /// How long a valid, aligned posture must hold before setup finishes.
   final Duration autoStartDelay;
 
   /// Both elbows must be at least this straight, in degrees, to start a

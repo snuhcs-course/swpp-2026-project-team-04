@@ -228,7 +228,9 @@ void main() {
     addTearDown(tester.view.reset);
     await open(tester);
     await feed(tester, 0, pushUpFrontFrame());
-    await feed(tester, 1500, pushUpFrontFrame());
+    for (final ms in [500, 1000, 1500]) {
+      await feed(tester, ms, pushUpFrontFrame());
+    }
     expect(find.text('준비 완료! 2초 뒤 시작해요.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -294,7 +296,9 @@ void main() {
 
     await feed(tester, 0, standingFrame());
     expect(borderColor(), isNot(Colors.greenAccent));
-    await feed(tester, 1500, standingFrame());
+    for (final ms in [500, 1000, 1500]) {
+      await feed(tester, ms, standingFrame());
+    }
     expect(borderColor(), Colors.greenAccent);
   });
 
@@ -333,11 +337,15 @@ void main() {
   ) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
-    await feed(tester, 1500, standingFrame());
+    for (final ms in [500, 1000, 1500]) {
+      await feed(tester, ms, standingFrame());
+    }
     await feed(tester, 2000, standingFrame());
     expect(find.text('준비 완료! 1초 뒤 시작해요.'), findsOneWidget);
     expect(popped, isNull);
-    await feed(tester, 3000, standingFrame());
+    for (final ms in [2250, 2750, 3000]) {
+      await feed(tester, ms, standingFrame());
+    }
     await tester.pumpAndSettle();
     expect(popped, ExerciseType.pushUp);
     expect(camera.isStreaming, isFalse);
@@ -348,9 +356,13 @@ void main() {
   ) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
-    await feed(tester, 1500, standingFrame());
+    for (final ms in [500, 1000, 1500]) {
+      await feed(tester, ms, standingFrame());
+    }
     expect(startButton(tester).onPressed, isNull);
-    await feed(tester, 3000, standingFrame());
+    for (final ms in [2250, 2750, 3000]) {
+      await feed(tester, ms, standingFrame());
+    }
     await feed(tester, 3100, standingFrame());
     await tester.pumpAndSettle();
     expect(popCounter.pops, 1);
@@ -361,7 +373,9 @@ void main() {
   testWidgets('leaving Ready cancels the auto start countdown', (tester) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
-    await feed(tester, 1500, standingFrame());
+    for (final ms in [500, 1000, 1500]) {
+      await feed(tester, ms, standingFrame());
+    }
     await feed(tester, 2000, emptyFrame());
     await feed(tester, 2600, emptyFrame());
     expect(find.text('카메라 앞에 서 주세요.'), findsOneWidget);
@@ -376,10 +390,14 @@ void main() {
     await open(tester);
     await feed(tester, 0, standingFrame());
     expect(find.text('준비 완료! 3초 뒤 시작해요.'), findsOneWidget);
-    await feed(tester, 1500, standingFrame());
+    for (final ms in [500, 1000, 1500]) {
+      await feed(tester, ms, standingFrame());
+    }
     expect(find.text('준비 완료! 2초 뒤 시작해요.'), findsOneWidget);
     expect(startButton(tester).onPressed, isNull);
-    await feed(tester, 3000, standingFrame());
+    for (final ms in [2250, 2750, 3000]) {
+      await feed(tester, ms, standingFrame());
+    }
     await tester.pumpAndSettle();
     expect(popped, ExerciseType.pushUp);
     expect(camera.isStreaming, isFalse);
@@ -389,9 +407,13 @@ void main() {
   testWidgets('automatic start waits for camera release', (tester) async {
     await open(tester);
     await feed(tester, 0, standingFrame());
-    await feed(tester, 1500, standingFrame());
+    for (final ms in [500, 1000, 1500]) {
+      await feed(tester, ms, standingFrame());
+    }
     camera.stopGate = Completer();
-    await feed(tester, 3000, standingFrame());
+    for (final ms in [2250, 2750, 3000]) {
+      await feed(tester, ms, standingFrame());
+    }
     await tester.pump();
     expect(camera.stopCount, 1);
     expect(popCounter.pops, 0);

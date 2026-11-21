@@ -403,3 +403,15 @@ Selected visible user inputs for this follow-up; this is not a complete iteratio
 ```text
 "MLP + 기존·최신 무릎 모두 적용"으로 PR 올리고 문제 없으면 머지까지 해줘.
 ```
+
+## S3 follow-up, 2026-11-21 to 2026-11-22 — selected visible user inputs
+
+```text
+다음 포즈 셋업 문제를 개선한 버전 제작하고 PR 직전까지 작업해줘.
+
+실루엣에 맞추기 전 시작되는 문제, 거리·폰 각도에 따른 보정 중 이번에 해결할 범위. 푸시업은 엄격하게, 스쿼트는 발 위치에 여유를 주는 방향을 검증할 기준 결정.
+```
+
+```text
+송우현 님 동의 받았어. AI·온라인 푸시업 대결에도 같은 실루엣 판정과 3초 유지 조건 적용하고, 검증해서 PR 올리고 마무리해줘.
+```

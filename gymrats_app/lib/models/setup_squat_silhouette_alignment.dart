@@ -55,6 +55,8 @@ class StandingSilhouetteAlignment {
       if (mirror) normalizedX = 1 - normalizedX;
       final x = preview.left + normalizedX * preview.width;
       final y = preview.top + p.y / input.height * preview.height;
+      final displayed = Offset(x, y);
+      if (!preview.contains(displayed)) return null;
       return Offset(
         (x - guide.left) / guide.width,
         (y - guide.top) / guide.height,
@@ -87,7 +89,8 @@ class StandingSilhouetteAlignment {
         pair(
           BodyLandmark.leftAnkle,
           BodyLandmark.rightAnkle,
-          const Rect.fromLTRB(.06, .67, .94, .98),
+          // Allow a wider stance while keeping the same ankle height range.
+          const Rect.fromLTRB(-.08, .67, 1.08, .98),
         );
   }
 }

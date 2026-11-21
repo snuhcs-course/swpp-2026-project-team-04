@@ -387,6 +387,9 @@ class _BattleScreenState extends State<BattleScreen>
                     : null,
                 guide: guide?.widget,
                 guideFit: guide?.fit ?? BoxFit.cover,
+                onGuideCrop: pushUp && guide != null
+                    ? viewModel.setPushUpGuideCrop
+                    : null,
               ),
               if (state.phase == BattlePhase.starting ||
                   state.phase == BattlePhase.paused)
@@ -427,7 +430,7 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   /// The setup's short cue before the round (A9): what the setup wants, a
-  /// squat that is not in the silhouette yet first. The round has no line
+  /// pose that is not in the silhouette yet first. The round has no line
   /// of its own: the camera's frame and the bold lines say how a rep went
   /// (A9 spec 6).
   SetupHintShort? _setupCue(BattleState state, BattleStagePhase phase) {
@@ -437,9 +440,7 @@ class _BattleScreenState extends State<BattleScreen>
     return SetupHintShort.of(
       state.setup,
       outsideSilhouette:
-          widget.matchup.exercise == ExerciseType.squat &&
-          state.setup.reason == SetupReason.ready &&
-          !state.guideAligned,
+          state.setup.reason == SetupReason.ready && !state.guideAligned,
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../models/exercise_type.dart';
 import '../models/pose_frame.dart';
+import '../models/setup_silhouette_alignment.dart';
 import '../services/pose/rep_judge.dart';
 import '../theme/app_theme.dart';
 import 'chest_height_overlay.dart';
@@ -67,6 +68,7 @@ class BattleCameraView extends StatelessWidget {
     this.squatSnapshot,
     this.guide,
     this.guideFit = BoxFit.cover,
+    this.onGuideCrop,
   }) : assert(
          guideFit == BoxFit.cover || guideFit == BoxFit.contain,
          'A guide is drawn for a cropping or a whole-picture camera box.',
@@ -101,6 +103,10 @@ class BattleCameraView extends StatelessWidget {
   ///   layout does (W2b, option 가).
   /// - [BoxFit.contain]: the whole picture, as here; the guide covers it.
   final BoxFit guideFit;
+
+  /// The drawn guide and the part of the camera image visible during setup.
+  /// Reported after layout so listeners may safely clear a countdown.
+  final ValueChanged<SetupCameraCrop>? onGuideCrop;
 
   /// Width over height of a phone camera's picture held upright.
   static const _uprightShape = 3 / 4;
@@ -181,13 +187,31 @@ class BattleCameraView extends StatelessWidget {
     final layout = BattleCameraLayout.maybeOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
+        final guideBox = layout?.battleBox ?? constraints.biggest;
+        final share = _guideShare(shape, guideBox);
+        final reportCrop = onGuideCrop;
+        if (guide != null && reportCrop != null) {
+          // The arena can temporarily clip the guide along a different axis.
+          // Use the initial camera box so countdown animation never changes
+          // the required placement midway through a hold.
+          final visible = layout != null && guideFit == BoxFit.cover
+              ? coverShare(shape, layout.setupBox)
+              : (width: 1.0, height: 1.0);
+          final crop = (
+            guide: Size(share.width, share.height),
+            visible: Size(visible.width, visible.height),
+          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) reportCrop(crop);
+          });
+        }
         if (layout == null) {
           return AspectRatio(
             aspectRatio: shape,
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _picture(_guideShare(shape, constraints.biggest)),
+                _picture(share),
                 if (guide != null && uatPhoneAngleEnabled)
                   const UatPhoneAngle(alignment: Alignment.centerLeft),
               ],
@@ -211,7 +235,7 @@ class BattleCameraView extends StatelessWidget {
                 maxWidth: size.width,
                 minHeight: size.height,
                 maxHeight: size.height,
-                child: _picture(_guideShare(shape, layout.battleBox)),
+                child: _picture(share),
               ),
               if (guide != null && uatPhoneAngleEnabled)
                 const UatPhoneAngle(alignment: Alignment.centerLeft),
