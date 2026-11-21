@@ -14,6 +14,8 @@ abstract interface class ExerciseRepJudge {
 
 ExerciseRepJudge judgeFor(ExerciseType exercise, {RepClock? clock}) =>
     switch (exercise) {
-      ExerciseType.pushUp => PushUpJudgeAdapter(RepJudge(clock: clock)),
+      ExerciseType.pushUp => PushUpJudgeAdapter(
+        RepJudge.forBattle(clock: clock),
+      ),
       ExerciseType.squat => SquatRepJudge(clock: clock),
     };

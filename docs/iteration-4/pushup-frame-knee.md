@@ -143,3 +143,8 @@ Local evidence: `C:/SWPP/iter4/unified-knee-1118/`, including the four-source
 `hyunwoo-native.json`, `replay_test.dart`, `hyunwoo-results.json` and summaries.
 Numeric model goldens remain unchanged. Software API-state expectations alone
 are updated, with their earlier values preserved in the fixtures.
+
+
+## 2026-11-22 selected combined battle policy
+
+The user chose MLP plus both knee layers after the five-way comparison. Production `judgeFor(pushUp)` now constructs `RepJudge.forBattle`, which enables MLP, retains the old knee specialist and adds the current endpoint veto by default. The unnamed constructor still has historical defaults for replay and diagnostics. Explicit build definitions allow either policy to be compared. This dated choice supersedes the previous OFF-by-default policy for normal battles only; it does not turn provisional labels into confirmed ground truth. See [the combined-policy evaluation](pushup-mlp-combined-evaluation.md) for all gains, regressions and limitations.

@@ -1106,6 +1106,47 @@ or mission code were changed. Baseline log: `main-s2-retry.log` in the local
 evidence folder. Default configuration CI is checked separately on the final
 published head.
 
+
+## 2026-11-21 — Local additive MLP knee comparison (not published)
+
+User requested retaining the existing knee specialist and adding the latest frame-knee veto. Base commit 076c438b7f8e874ddd8aa9b9cf83af3e5558c260; changes remain local. New opt-in PUSHUP_RETAIN_LEGACY_KNEE keeps the original MLP primary/fallback and knee specialist paths while the existing completed-attempt frame evidence can veto an accepted event. Default behavior and the replacement comparison mode remain unchanged.
+
+Evaluation: frozen32 plus Hyunwoo/Sangwoo8; only recent Jinyoung clips excluded. 310 references: normal73, knee79, depth36, other122. Original-label DP alignment retained before grouping; missing predictions are incorrect, and extra accepted events are separate. Recent protocol/visual-v2 labels are provisional, not independently certified anatomical truth. No retraining or unseen-person accuracy claim.
+
+| Method | Normal | Knees-down | Insufficient depth | Other | Extra counted |
+|---|---:|---:|---:|---:|---:|
+| iter3 | 76.7% (56/73) | 86.1% (68/79) | 97.2% (35/36) | 31.1% (38/122) | 0 |
+| iter4 | 76.7% (56/73) | 86.1% (68/79) | 97.2% (35/36) | 31.1% (38/122) | 0 |
+| mlp | 94.5% (69/73) | 96.2% (76/79) | 5.6% (2/36) | 5.7% (7/122) | 26 |
+| mlp_latest_knee | 89.0% (65/73) | 75.9% (60/79) | 13.9% (5/36) | 22.1% (27/122) | 33 |
+| mlp_additive_knee | 89.0% (65/73) | 98.7% (78/79) | 5.6% (2/36) | 5.7% (7/122) | 22 |
+
+Validation: 219 scoped pose service/adapter tests passed with coverage; analysis of the two changed files passed. RepJudge coverage842/871 (96.7%; service target85%); this is changed-file coverage, not a new full-layer or full-app measurement. Three dataset replays passed. Old-MLP and replacement control case/event results exactly match the saved baselines. Across all44 clips,479 events have identical count/timestamps, every old rejection/reason is preserved, and only25 valid-to-kneesDown changes occur. Selected-cohort binary M2 improves151/237 to157/237; normal recall falls69/73 to65/73.
+
+Local reproduction and raw evidence: C:/SWPP/iter4/pushup-judge-comparison-20261121/run_additive.py, additive_comparison_test.dart, aggregate_five_categories.mjs, additive-run-status.json, five-way-four-category.json and .md. Flutter tests use --no-pub --coverage; the evaluation uses MLP=true/FRAME_KNEE=true/RETAIN_LEGACY_KNEE=true/KNEE_FOREST=false for the added mode.
+
+The full application suite, device latency, physical phone behavior and server checks were not run for this local evaluator change. No commit, push, PR edit, installation or deployment.
+
+
+## 2026-11-22 — Selected combined MLP knee policy publication
+
+Based on main9bcfe5d, the user requested a PR and merge after checks. Bot and online push-up battles now use RepJudge.forBattle via judgeFor: MLP + old knee specialist + latest frame-knee endpoint evidence. The unnamed constructor retains historical replay defaults; explicit build flags still select old MLP, replacement or legacy modes. Squats keep their prior factory.
+
+- Full `flutter analyze --no-pub`: clean. A detached background analyzer stalled and was interrupted; the foreground retry completed successfully.
+- Full `flutter test --no-pub --concurrency=4 --reporter expanded`: 3768 passed, 10 existing skips, zero failures.
+- Scoped pose services, production adapter and S2 video tests with coverage:236 passed. Old-MLP, replacement and legacy factory override runs each passed four tests.
+- Selected replay passed; all frozen32/recent12 case/event objects match the prior additive comparison. Recent replay exercises the production factory; fixed replay uses matching explicit flags.
+- Changed/affected service coverage: rep_judge.dart: 854/872 (97.94%), exercise_judge.dart: 4/4 (100.00%), push_up_judge_adapter.dart: 40/40 (100.00%), above the85% target. This is scoped file coverage, not a new full-layer measurement. CI measures other layers separately.
+- Independent read-only Codex source review: APPROVE; checked both battle entry points, overrides, lifecycle clearing and old-rejection preservation.
+
+Acceptance mapping: old rejection preserved/new veto/frame-off no-op -> three added rep_judge_test cases. Production defaults/build overrides/unchanged squat -> push_up_judge_adapter_test. The production-wiring test failed before the fix (expected true, got false). No existing label or verdict assertion was weakened.
+
+The first full run had3760 passes,10 skips and three S2 video-golden failures because production MLP changes candidate counts. The historical tests now explicitly inject the old judge and retain the original7/13/empty assertions. Five added production-policy replays separately check paused-frame suppression, D015 event preservation, O027 wrong-person blocking and explicit confirmation/resumption. O033 produces one accepted candidate at2867ms before tracking pauses; no paused-frame output is allowed. This is a disclosed model limitation, not a claim of zero false candidates. No production person-guard logic was changed.
+
+See [the comparison](../../iteration-4/pushup-mlp-combined-evaluation.md) for all measured gains and costs. User-selected trade-off: knee76/79 to78/79; normal69/73 to65/73; extra accepted26 to22. Binary M2 is157/237 (66.2%); frozen target attainment is not claimed. New labels remain provisional. No server change, model retraining, new dependency, phone install or physical-workout check.
+
+Local raw validation: C:/SWPP/iter4/pushup-mlp-pr-20261122.
+
 ## 2026-11-22 — S3 live battle setup alignment
 
 Implementation 994ab2e on main base 9bcfe5d. Flutter 3.47.5 with Dart 3.13.4.

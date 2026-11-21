@@ -383,6 +383,27 @@ No assistant transcript, credentials or unrelated chat was exported.
 깊이와 완전 기립을 충족하면 인정
 ```
 
+
+## Additive MLP knee comparison and publication — 2026-11-21 to 2026-11-22
+
+Selected visible user inputs for this follow-up; this is not a complete iteration transcript. Wording is preserved; no assistant responses or raw tool logs are included.
+
+2026-11-21:
+
+```text
+그럼 기존 무릎 판정기는 유지하고 최신 무릎 판정기도 추가해서, 같은 평가 세트로 다시 비교해줘. 커밋이나 푸시는 아직 하지 마.
+```
+
+```text
+정상 / 무릎댐기각 / 깊이부족기각 / 나머지 의 정확도를 확인해줘.
+```
+
+2026-11-22:
+
+```text
+"MLP + 기존·최신 무릎 모두 적용"으로 PR 올리고 문제 없으면 머지까지 해줘.
+```
+
 ## S3 follow-up, 2026-11-21 to 2026-11-22 — selected visible user inputs
 
 ```text
