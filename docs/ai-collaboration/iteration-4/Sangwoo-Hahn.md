@@ -191,3 +191,12 @@ single failure in untouched main0a17580 with S2 enabled. It is disclosed as an
 inherited optional-configuration test failure; unrelated mission assertions
 were preserved. The independent read-only reviewer approved the final code,
 data and ON/OFF report consistency before publication.
+
+## S3 follow-up — 2026-11-22 battle setup alignment
+
+- **Context and tools.** Codex continued the common setup change into the live AI and online modes. Sangwoo set the exercise-specific requirements and confirmed Song Woohyun's approval for the battle camera and setup changes.
+- **Inputs.** The prompt log records the two selected visible user inputs for this follow-up. Codex inspected the setup checker, crop layout, live controllers, and original tests before connecting the shared matcher.
+- **Implementation and supervision.** Codex used the painted outline and the stable setup clipping area to gate the existing bout flow, moved online readiness completion to a fresh sample, and used the detector-failure event only for setup. Existing server scheduling and exercise rep judges retain their contracts.
+- **Review and correction.** An independent Codex reviewer identified cropped-off landmarks, single detector failures, and the cue during online withdrawal as edge cases. Codex corrected those cases and added regression coverage. The reviewer returned APPROVE after checking the updated paths and ownership.
+- **Human contribution.** Human participation in this follow-up consisted of scope selection, publication authorization, and confirmation of the file owner's agreement. Codex authored the code and test revisions.
+- **Verification.** The personal testing note records the Flutter checks and open device UAT scenarios.

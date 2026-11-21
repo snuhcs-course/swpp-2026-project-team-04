@@ -1105,3 +1105,33 @@ test failure, not introduced by the knee policy. No unrelated test expectations
 or mission code were changed. Baseline log: `main-s2-retry.log` in the local
 evidence folder. Default configuration CI is checked separately on the final
 published head.
+
+## 2026-11-22 — S3 live battle setup alignment
+
+Implementation 994ab2e on main base 9bcfe5d. Flutter 3.47.5 with Dart 3.13.4.
+
+- `flutter analyze --no-pub` passed.
+- The 15 focused setup, battle, counter, and design-token test files passed all 451 tests under `flutter test --no-pub --coverage`. The PR lists the exact target files.
+- All four phone-angle widget tests passed under `flutter test --no-pub --dart-define=UAT_PHONE_ANGLE=true test/widgets/pose_silhouette_phone_angle_test.dart`.
+- Full CI counts and coverage are tracked by the pull request checks. No server source changes. No physical-device UAT was run for this follow-up.
+- Independent Codex review approved the implementation. Ownership and diff checks passed.
+
+| Changed layer | Line coverage | Target |
+| --- | ---: | ---: |
+| Model | 123/124 (99.2%) | 90% |
+| ViewModel | 829/874 (94.9%) | 90% |
+| Service | 136/136 (100%) | 85% |
+| View | 721/745 (96.8%) | 75% |
+
+Coverage is for changed source files, collected with the focused suite. The cropped matcher and standing matcher measured 98.7% and 100%. Bot, counter, and common setup view models measured 98.8%, 93.9%, and 90.2%. AI battle and online battle screens measured 94.9% and 97.8%.
+
+| Test file | Acceptance evidence |
+| --- | --- |
+| setup_silhouette_alignment_test.dart | Required landmarks, mirror, invalid projection, shaded gap, and clipped wrist |
+| setup_squat_silhouette_alignment_test.dart | Wider ankle pair, preserved ankle height and camera visibility |
+| setup_viewmodel_test.dart and battle_viewmodel_test.dart | Three seconds from the first aligned frame, frame gap, invalid pose, detector failure, and crop changes |
+| battle_screen_test.dart | The actual AI countdown, silhouette cues, and normal round behavior |
+| online_preparation_test.dart | Fresh frame at expiry, invalid or failed sample, withdrawal before confirmation, reconnection, and server scheduling |
+| battle_camera_view_test.dart | Stable projection from the drawn guide and initial visible camera box |
+
+Device UAT still needs real camera and sensor trials at 55°, 60°, and 70°, several distances, and a slower handset. Repeat with one push-up wrist outside the guide, a two-second alignment interrupted by movement, a wider squat stance, and an ankle cut off by the camera.
