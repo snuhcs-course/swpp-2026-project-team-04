@@ -1142,3 +1142,9 @@ this unearned state is withdrawn and that accessible camera guidance
 remains visible. The preparation tests separately verify the waiting cue
 after a valid three-second hold. The lobby's 17 tests passed on rerun, and
 independent review approved the test-only follow-up.
+
+The full run also identified a sound-screen fixture that still supplied
+a standing placeholder during push-up setup. Its existing continuous
+camera helper now uses aligned landmarks projected into the rendered
+guide. The sound assertions and timing are unchanged. The targeted
+sound-screen test passed.
