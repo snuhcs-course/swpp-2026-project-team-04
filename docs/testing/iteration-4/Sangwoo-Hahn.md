@@ -1135,3 +1135,10 @@ Coverage is for changed source files, collected with the focused suite. The crop
 | battle_camera_view_test.dart | Stable projection from the drawn guide and initial visible camera box |
 
 Device UAT still needs real camera and sensor trials at 55°, 60°, and 70°, several distances, and a slower handset. Repeat with one push-up wrist outside the guide, a two-second alignment interrupted by movement, a wider squat stance, and an ankle cut off by the camera.
+
+The first full run exposed a lobby fixture that injected server readiness
+before supplying any camera frames. The repaired route test verifies that
+this unearned state is withdrawn and that accessible camera guidance
+remains visible. The preparation tests separately verify the waiting cue
+after a valid three-second hold. The lobby's 17 tests passed on rerun, and
+independent review approved the test-only follow-up.

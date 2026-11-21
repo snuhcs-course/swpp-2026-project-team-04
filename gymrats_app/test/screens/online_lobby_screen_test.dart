@@ -459,13 +459,14 @@ void main() {
       // by itself once the pose holds.
       expect(find.text('준비'), findsNothing);
       expect(camera.startCount, 1);
+      // A readiness snapshot alone cannot stand in for the camera hold.
       session.ready(true);
       await tester.pump();
-      // The setup cue (A9): its short lines, the sentence for a screen reader.
-      expect(find.text('상대를'), findsOneWidget);
-      expect(find.text('기다려요'), findsOneWidget);
+      expect(session.readyPlayers, isNot(contains(session.playerId)));
+      expect(find.text('카메라'), findsOneWidget);
+      expect(find.text('앞으로'), findsOneWidget);
       final semantics = tester.ensureSemantics();
-      expect(find.bySemanticsLabel('상대 준비를 기다리는 중…'), findsOneWidget);
+      expect(find.bySemanticsLabel('카메라 앞에 서 주세요.'), findsOneWidget);
       semantics.dispose();
       expect(find.text('준비 취소'), findsNothing);
       expect(session.phase, OnlinePhase.preparing);
