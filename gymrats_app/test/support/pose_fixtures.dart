@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'dart:ui' show Offset;
+import 'dart:ui' show Offset, Size;
 
 import 'package:camera/camera.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart'
@@ -127,6 +127,40 @@ PoseFrame standingFrame({
   );
 }
 
+/// A straight-arm push-up aligned to the silhouette inside a centered crop.
+PoseFrame alignedPushUpSetupFrame({
+  Size crop = const Size(1, 1),
+  double rightWristX = .20,
+}) {
+  final frame = standingFrame(
+    move: {
+      BodyLandmark.nose: (500, 140),
+      BodyLandmark.leftShoulder: (640, 270),
+      BodyLandmark.rightShoulder: (360, 270),
+      BodyLandmark.leftElbow: (720, 550),
+      BodyLandmark.rightElbow: (
+        360 + (rightWristX * imageSize - 360) * .48,
+        550,
+      ),
+      BodyLandmark.leftWrist: (800, 850),
+      BodyLandmark.rightWrist: (rightWristX * imageSize, 850),
+    },
+  );
+  return PoseFrame(
+    imageWidth: frame.imageWidth,
+    imageHeight: frame.imageHeight,
+    keypoints: {
+      for (final p in frame.keypoints.values)
+        p.landmark: kp(
+          p.landmark,
+          imageSize / 2 + (p.x - imageSize / 2) * crop.width,
+          imageSize / 2 + (p.y - imageSize / 2) * crop.height,
+          likelihood: p.likelihood,
+        ),
+    },
+  );
+}
+
 const Set<BodyLandmark> hipLandmarks = {
   BodyLandmark.leftHip,
   BodyLandmark.rightHip,
@@ -229,9 +263,7 @@ PoseFrame pushUpFrame({
   final leftShoulder = Offset(midX - shoulderWidth / 2, shoulderY);
   final rightShoulder = Offset(midX + shoulderWidth / 2, shoulderY);
   final points = {
-    BodyLandmark.nose: turn(
-      Offset(midX, midY - 100 + depth * shoulderWidth),
-    ),
+    BodyLandmark.nose: turn(Offset(midX, midY - 100 + depth * shoulderWidth)),
     BodyLandmark.leftShoulder: turn(leftShoulder),
     BodyLandmark.rightShoulder: turn(rightShoulder),
     BodyLandmark.leftElbow: turn(

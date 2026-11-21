@@ -157,9 +157,8 @@ class SetupViewModel extends ChangeNotifier {
   bool _tiltHeld = false;
   Duration? _failingSince;
   Duration? _readySince;
-  Duration? _lastSquatFrame;
-  Timer? _squatFrameWatchdog;
-  static const _squatMaxFrameGap = Duration(milliseconds: 750);
+  Duration? _lastPoseFrame;
+  Timer? _poseFrameWatchdog;
   final Queue<Duration> _frameTimes = Queue();
 
   static Clock _stopwatchClock() {
@@ -170,7 +169,16 @@ class SetupViewModel extends ChangeNotifier {
   SetupState get state => _state;
 
   /// Updated by the camera panel when its displayed size changes.
-  void setGuideViewport(Size size) => _guideViewport = size;
+  void setGuideViewport(Size size) {
+    if (_guideViewport == size) return;
+    _guideViewport = size;
+    if (!_diagnosticMode) {
+      // Layout can change without a new pose frame. Never count time spent
+      // aligned to the previous crop toward the new countdown.
+      _checker.reset();
+      _readySince = null;
+    }
+  }
 
   /// Diagnostic recorders retain their manual setup and countdown behavior.
   void enableDiagnosticMode() => _diagnosticMode = true;
@@ -225,17 +233,18 @@ class SetupViewModel extends ChangeNotifier {
     // here would close the camera that call opens.
     if (session != _session) return;
     _setState(_state.copyWith(phase: SetupPhase.running));
-    if (exercise == ExerciseType.squat && !_diagnosticMode) {
-      _squatFrameWatchdog = Timer.periodic(const Duration(milliseconds: 250), (
+    if (!_diagnosticMode) {
+      _poseFrameWatchdog = Timer.periodic(const Duration(milliseconds: 250), (
         _,
       ) {
-        final last = _lastSquatFrame;
+        final last = _lastPoseFrame;
         if (session != _session ||
             last == null ||
-            _clock() - last <= _squatMaxFrameGap) {
+            _clock() - last <= SetupConfig.maxPoseFrameGap ||
+            _state.autoStarted) {
           return;
         }
-        _resetSquatReadiness();
+        _resetReadiness();
         _setState(
           const SetupState(phase: SetupPhase.running, guideAligned: false),
         );
@@ -322,12 +331,13 @@ class SetupViewModel extends ChangeNotifier {
 
     _failingSince = null;
     final now = _clock();
-    if (exercise == ExerciseType.squat && !_diagnosticMode) {
-      final last = _lastSquatFrame;
-      if (last != null && (now < last || now - last > _squatMaxFrameGap)) {
-        _resetSquatReadiness();
+    if (!_diagnosticMode) {
+      final last = _lastPoseFrame;
+      if (last != null &&
+          (now < last || now - last > SetupConfig.maxPoseFrameGap)) {
+        _resetReadiness();
       }
-      _lastSquatFrame = now;
+      _lastPoseFrame = now;
     }
     _frameTimes.addLast(now);
     while (now - _frameTimes.first > const Duration(seconds: 1)) {
@@ -387,8 +397,14 @@ class SetupViewModel extends ChangeNotifier {
           errorMessage: 'Tap Retry to restart the camera.',
         ),
       );
+    } else if (!_diagnosticMode) {
+      if (!_state.autoStarted && _lastPoseFrame != null) {
+        // A failed detection breaks a continuous hold immediately.
+        _resetReadiness();
+        _setState(SetupState(phase: _state.phase, guideAligned: false));
+      }
     } else if (failing >= config.dropDelay) {
-      // Frames are being skipped, so the pose is no longer confirmed.
+      // Diagnostics retain their existing grace period.
       _checker.reset();
       _readySince = null;
       final s = _state.status;
@@ -405,21 +421,18 @@ class SetupViewModel extends ChangeNotifier {
     }
   }
 
-  void _resetSquatReadiness() {
+  void _resetReadiness() {
     _checker.reset();
     _readySince = null;
-    _lastSquatFrame = null;
+    _lastPoseFrame = null;
     _frameTimes.clear();
   }
 
   void _resetTracking() {
-    _squatFrameWatchdog?.cancel();
-    _squatFrameWatchdog = null;
-    _lastSquatFrame = null;
-    _checker.reset();
+    _poseFrameWatchdog?.cancel();
+    _poseFrameWatchdog = null;
     _failingSince = null;
-    _readySince = null;
-    _frameTimes.clear();
+    _resetReadiness();
   }
 
   void _holdTilt() {
@@ -437,7 +450,7 @@ class SetupViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    _squatFrameWatchdog?.cancel();
+    _poseFrameWatchdog?.cancel();
     _session++;
     if (_tiltHeld) _phoneTilt.release();
     unawaited(_camera.stop());

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show Size;
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +29,8 @@ const _matchup = Matchup(
   playerName: '우현',
   opponent: Opponent(name: 'RepBot', isBot: true),
 );
+
+const _fullCrop = (guide: Size(1, 1), visible: Size(1, 1));
 
 final _endedAt = DateTime(2026, 10, 4, 14, 32);
 
@@ -910,7 +913,7 @@ void main() {
       );
       camera.emit();
       await pumpEventQueue();
-      expect(guardedCounter.state.trackingPaused, isTrue);
+      expect(guardedCounter.state.trackingPaused, isFalse);
       expect(battle.state.started, isFalse);
       expect(battle.state.startIn, isNull);
       battle.dispose();
@@ -987,7 +990,6 @@ void main() {
       await send(ms, good);
     }
     expect(squat.state.guideAligned, isTrue);
-    squat.startNow();
     expect(squat.state.started, isFalse);
     await send(1200, outside);
     expect(squat.state.startIn, isNull);
@@ -1110,7 +1112,7 @@ void main() {
         ),
         clock: () => now,
         now: () => _endedAt,
-      );
+      )..setPushUpGuideCrop(_fullCrop);
     });
 
     tearDown(() => battle.dispose());
@@ -1130,7 +1132,7 @@ void main() {
       }
       judge.holdVerdicts = false;
       now = target;
-      previousPose = found ? standingFrame() : emptyFrame();
+      previousPose = found ? alignedPushUpSetupFrame() : emptyFrame();
       estimator.frames.add(previousPose);
       camera.emit();
       await pumpEventQueue();
@@ -1153,7 +1155,6 @@ void main() {
       expect(battle.state.setup.isReady, isFalse);
       expect(battle.state.setup.reason, SetupReason.noPerson);
       expect(battle.state.startIn, isNull);
-      expect(battle.state.canStart, isFalse);
       // A minute of setting up takes nothing off the round.
       await pose(61, found: false);
       expect(battle.state.phase, BattlePhase.setup);
@@ -1168,7 +1169,6 @@ void main() {
       await pose(1);
       expect(battle.state.setup.isReady, isTrue);
       expect(battle.state.startIn, const Duration(seconds: 3));
-      expect(battle.state.canStart, isTrue);
       await pose(2.25);
       expect(battle.state.startIn, const Duration(milliseconds: 1750));
       expect(battle.state.started, isFalse);
@@ -1215,24 +1215,48 @@ void main() {
     );
 
     test(
-      'Start begins the round at once, only while the pose is ready',
+      'push-up waits for the crop and restarts after a camera gap',
       () async {
         await battle.start();
-        battle.startNow();
-        expect(battle.state.started, isFalse);
-        await pose(1, found: false);
-        battle.startNow();
-        expect(battle.state.started, isFalse);
+        await pose(1);
+        battle.setPushUpGuideCrop((
+          guide: Size.zero,
+          visible: const Size(1, 1),
+        ));
+        await pose(1.5);
+        expect(battle.state.startIn, isNull);
+        battle.setPushUpGuideCrop(_fullCrop);
+        expect(battle.state.startIn, isNull);
         await pose(2);
-        battle.startNow();
-        expect(battle.state.started, isTrue);
-        expect(battle.state.canStart, isFalse);
-        expect(opponent.startCount, 1);
-        // Once begun, pressing again changes nothing.
-        battle.startNow();
-        expect(opponent.startCount, 1);
+        await pose(4.5);
+        expect(battle.state.startIn, const Duration(milliseconds: 500));
+        previousPose = null; // The camera stops delivering frames.
+        await pose(5.5);
+        expect(battle.state.started, isFalse);
+        expect(battle.state.startIn, const Duration(seconds: 3));
+        battle.setPushUpGuideCrop((
+          guide: const Size(.9, 1),
+          visible: const Size(1, 1),
+        ));
+        expect(battle.state.startIn, isNull);
       },
     );
+
+    test('one detector failure resets the bot hold', () async {
+      await battle.start();
+      await pose(1);
+      await pose(3.5);
+      now = const Duration(milliseconds: 3750);
+      estimator.frames.add(null);
+      camera.emit();
+      await pumpEventQueue();
+      expect(battle.state.startIn, isNull);
+      await pose(4);
+      expect(battle.state.started, isFalse);
+      expect(battle.state.startIn, const Duration(seconds: 3));
+      await pose(7);
+      expect(battle.state.started, isTrue);
+    });
 
     test('reps in the setup count for nothing: no score, no banner, no beep; '
         'the round counts from zero', () async {
@@ -1484,46 +1508,50 @@ void main() {
       await pumpEventQueue();
     }
 
-    test('a push-up battle sets up first with the setup\'s own times: held '
-        '1.5 s, then 3, 2, 1; the counter runs a day and the round ends 30 s '
-        'after it began', () async {
-      battle = make(ExerciseType.pushUp);
-      expect(battle.counter.roundLength, BattleViewModel.counterRound);
-      expect(battle.counter.exercise, ExerciseType.pushUp);
-      expect(battle.roundLength, battleDuration);
-      await battle.start();
-      expect(battle.state.phase, BattlePhase.setup);
-      // Forty seconds of setting up take nothing off the round.
-      await frameAt(40, emptyFrame());
-      expect(battle.state.started, isFalse);
-      expect(battle.state.remaining, battleDuration);
-      expect(battle.counter.state.phase, CounterPhase.running);
-      expect(opponent.startCount, 0);
+    test(
+      'a push-up battle starts after three seconds of aligned frames; '
+      'the counter runs a day and the round ends 30 s after it began',
+      () async {
+        battle = make(ExerciseType.pushUp);
+        expect(battle.counter.roundLength, BattleViewModel.counterRound);
+        expect(battle.counter.exercise, ExerciseType.pushUp);
+        expect(battle.roundLength, battleDuration);
+        await battle.start();
+        expect(battle.state.phase, BattlePhase.setup);
+        // Forty seconds of setting up take nothing off the round.
+        await frameAt(40, emptyFrame());
+        expect(battle.state.started, isFalse);
+        expect(battle.state.remaining, battleDuration);
+        expect(battle.counter.state.phase, CounterPhase.running);
+        expect(opponent.startCount, 0);
 
-      await frameAt(41, standingFrame());
-      expect(battle.state.setup.isReady, isFalse);
-      await frameAt(42.5, standingFrame());
-      expect(battle.state.setup.isReady, isTrue);
-      expect(battle.state.startIn, const Duration(seconds: 3));
-      await frameAt(45.4, standingFrame());
-      expect(battle.state.started, isFalse);
-      await frameAt(45.5, standingFrame());
-      expect(battle.state.started, isTrue);
-      expect(opponent.startCount, 1);
+        battle.setPushUpGuideCrop(_fullCrop);
+        await frameAt(41, alignedPushUpSetupFrame());
+        expect(battle.state.setup.isReady, isFalse);
+        expect(battle.state.startIn, const Duration(seconds: 3));
+        await frameAt(42.5, alignedPushUpSetupFrame());
+        expect(battle.state.setup.isReady, isTrue);
+        expect(battle.state.startIn, const Duration(milliseconds: 1500));
+        await frameAt(43.9, alignedPushUpSetupFrame());
+        expect(battle.state.started, isFalse);
+        await frameAt(44, alignedPushUpSetupFrame());
+        expect(battle.state.started, isTrue);
+        expect(opponent.startCount, 1);
 
-      await frameAt(75.4, standingFrame());
-      expect(battle.state.phase, BattlePhase.playing);
-      expect(battle.state.remaining, const Duration(milliseconds: 100));
-      await frameAt(75.5, standingFrame());
-      await pumpEventQueue();
-      expect(battle.state.phase, BattlePhase.timeUp);
-      expect(battle.state.result!.roundLength, battleDuration);
-      // The battle and its form report are kept, as the result screen and
-      // the feedback need.
-      await pumpEventQueue();
-      expect(repository.saved, hasLength(1));
-      expect(await reports.list(), hasLength(1));
-    });
+        await frameAt(73.9, alignedPushUpSetupFrame());
+        expect(battle.state.phase, BattlePhase.playing);
+        expect(battle.state.remaining, const Duration(milliseconds: 100));
+        await frameAt(74, alignedPushUpSetupFrame());
+        await pumpEventQueue();
+        expect(battle.state.phase, BattlePhase.timeUp);
+        expect(battle.state.result!.roundLength, battleDuration);
+        // The battle and its form report are kept, as the result screen and
+        // the feedback need.
+        await pumpEventQueue();
+        expect(repository.saved, hasLength(1));
+        expect(await reports.list(), hasLength(1));
+      },
+    );
 
     test(
       'a squat battle checks the whole body standing and judges squats',
@@ -1589,27 +1617,29 @@ void main() {
         "setup's own times", () async {
       battle = make(ExerciseType.pushUp);
       await battle.start();
-      await frameAt(1, standingFrame());
-      await frameAt(2.5, standingFrame());
+      battle.setPushUpGuideCrop(_fullCrop);
+      await frameAt(1, alignedPushUpSetupFrame());
+      await frameAt(2.5, alignedPushUpSetupFrame());
       expect(battle.state.setup.isReady, isTrue);
-      expect(battle.state.startIn, const Duration(seconds: 3));
+      expect(battle.state.startIn, const Duration(milliseconds: 1500));
       await battle.pause();
       await battle.resume();
       await pumpEventQueue();
       expect(battle.state.phase, BattlePhase.setup);
-      await frameAt(3, standingFrame());
+      previousPose = null;
+      await frameAt(3, alignedPushUpSetupFrame());
       if (battle.counter.enablePersonGuard) {
         expect(battle.counter.state.trackingPaused, isTrue);
         battle.counter.confirmTrackedPerson();
-        await frameAt(3, standingFrame());
+        await frameAt(3, alignedPushUpSetupFrame());
       }
-      // Held again from here: not ready, nothing counting down.
+      // The new hold counts down with the Ready check running alongside it.
       expect(battle.state.setup.isReady, isFalse);
       expect(battle.state.setup.readyProgress, 0);
-      expect(battle.state.startIn, isNull);
-      await frameAt(4.5, standingFrame());
-      expect(battle.state.setup.isReady, isTrue);
       expect(battle.state.startIn, const Duration(seconds: 3));
+      await frameAt(4.5, alignedPushUpSetupFrame());
+      expect(battle.state.setup.isReady, isTrue);
+      expect(battle.state.startIn, const Duration(milliseconds: 1500));
     });
   });
 }

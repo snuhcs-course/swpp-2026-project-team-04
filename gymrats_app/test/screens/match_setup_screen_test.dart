@@ -192,7 +192,7 @@ void main() {
       await open(tester);
       await ask(tester);
       // The user ignores the dialog and holds Ready until the auto start.
-      for (final ms in [0, 1500, 3000, 4500]) {
+      for (var ms = 0; ms <= 3000; ms += 500) {
         await feed(tester, ms, standingFrame());
       }
       await tester.pumpAndSettle();
@@ -206,9 +206,9 @@ void main() {
     tester,
   ) async {
     await open(tester);
-    await feed(tester, 0, standingFrame());
-    await feed(tester, 1500, standingFrame());
-    await feed(tester, 3000, standingFrame());
+    for (var ms = 0; ms <= 3000; ms += 500) {
+      await feed(tester, ms, standingFrame());
+    }
     await tester.pumpAndSettle();
     expect(popped, ExerciseType.pushUp);
     expect(find.text('versus'), findsOneWidget);
@@ -217,7 +217,7 @@ void main() {
   testWidgets('a frame arriving after 게임 나가기 cannot finish setup and pop '
       'home', (tester) async {
     await open(tester);
-    for (final ms in [0, 1500, 2000]) {
+    for (var ms = 0; ms <= 2500; ms += 500) {
       await feed(tester, ms, standingFrame());
     }
     expect(find.text('준비 완료! 1초 뒤 시작해요.'), findsOneWidget);

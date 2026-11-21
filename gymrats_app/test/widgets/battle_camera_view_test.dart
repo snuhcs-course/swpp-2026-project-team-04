@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/setup_silhouette_alignment.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -167,6 +168,7 @@ void main() {
       WidgetTester tester,
       double progress, {
       Widget? guide,
+      ValueChanged<SetupCameraCrop>? onGuideCrop,
     }) async {
       await phone(tester);
       final box = Size(360, 621 - (621 - 387) * progress);
@@ -181,7 +183,11 @@ void main() {
                 battleBox: battleBox,
                 progress: progress,
                 child: Center(
-                  child: BattleCameraView(controller: null, guide: guide),
+                  child: BattleCameraView(
+                    controller: null,
+                    guide: guide,
+                    onGuideCrop: onGuideCrop,
+                  ),
                 ),
               ),
             ),
@@ -211,6 +217,26 @@ void main() {
         matching: find.byType(ClipRect),
       );
       expect(tester.getRect(clip.last), const Rect.fromLTWH(0, 0, 360, 621));
+    });
+
+    testWidgets('reports the painted guide and stable setup clip', (
+      tester,
+    ) async {
+      final crops = <SetupCameraCrop>[];
+      for (final progress in [0.0, 0.5, 1.0]) {
+        await pumpLaidOut(
+          tester,
+          progress,
+          guide: const SizedBox.expand(key: laidKey),
+          onGuideCrop: crops.add,
+        );
+      }
+      expect(crops, hasLength(3));
+      expect(crops.toSet(), hasLength(1));
+      expect(crops.first.guide.width, 1);
+      expect(crops.first.guide.height, closeTo(387 / 480, 1e-9));
+      expect(crops.first.visible.width, closeTo(360 / 465.75, 1e-9));
+      expect(crops.first.visible.height, 1);
     });
 
     testWidgets('the guide\'s box keeps its shape all the way, so its '

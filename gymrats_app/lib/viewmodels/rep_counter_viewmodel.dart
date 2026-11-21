@@ -178,6 +178,7 @@ class RepCounterViewModel extends ChangeNotifier {
   final Duration sampleInterval;
 
   final StreamController<RepEvent> _reps = StreamController.broadcast();
+  final _poseDetectionFailures = StreamController<void>.broadcast();
 
   RepCounterState _state = const RepCounterState();
   final List<RepEvent> _history = [];
@@ -242,6 +243,10 @@ class RepCounterViewModel extends ChangeNotifier {
   /// Judged reps, valid and rejected. Does not replay reps from before the
   /// listener subscribed.
   Stream<RepEvent> get reps => _reps.stream;
+
+  /// A single failed detection interrupts a preparation pose hold, even
+  /// while the counter still retains its previous frame and score.
+  Stream<void> get poseDetectionFailures => _poseDetectionFailures.stream;
 
   /// Controller for the camera preview; null while the camera is stopped.
   CameraController? get cameraController =>
@@ -506,7 +511,10 @@ class RepCounterViewModel extends ChangeNotifier {
     try {
       frame = await _estimator.process(image, _camera.rotationDegrees);
     } catch (e) {
-      if (session == _session) _onDetectorFailure();
+      if (session == _session) {
+        _poseDetectionFailures.add(null);
+        _onDetectorFailure();
+      }
       return;
     }
     if (frame == null || session != _session) return;
@@ -757,6 +765,7 @@ class RepCounterViewModel extends ChangeNotifier {
     _session++;
     if (_tiltHeld) _phoneTilt.release();
     unawaited(_reps.close());
+    unawaited(_poseDetectionFailures.close());
     unawaited(_camera.stop());
     unawaited(_estimator.close());
     super.dispose();

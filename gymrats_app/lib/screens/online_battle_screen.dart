@@ -11,6 +11,7 @@ import '../models/feedback_goal.dart';
 import '../models/form_report.dart';
 import '../models/pose_frame.dart';
 import '../models/setup_hint_short.dart';
+import '../models/setup_silhouette_alignment.dart';
 import '../models/setup_squat_silhouette_alignment.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
@@ -50,6 +51,7 @@ class OnlineBattleScreen extends StatefulWidget {
     required this.session,
     this.createCounter,
     this.setupConfig = const SetupConfig(),
+    this.setupClock,
     this.formReports,
     this.userRepository,
     this.playerName = '나',
@@ -59,6 +61,7 @@ class OnlineBattleScreen extends StatefulWidget {
   final OnlineBattleSession session;
   final RepCounterViewModel Function()? createCounter;
   final SetupConfig setupConfig;
+  final Clock? setupClock;
   final FormReportStore? formReports;
 
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
@@ -91,7 +94,9 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   late final RepCounterViewModel _counter;
   final _sounds = BattleSounds();
   StreamSubscription<dynamic>? _reps;
+  late final StreamSubscription<void> _poseFailureSubscription;
   late final SetupChecker _setup;
+  late final Clock _setupClock;
   SetupStatus _setupStatus = SetupStatus.initial;
   PoseFrame? _seen;
   FormReport? _formReport;
@@ -117,76 +122,66 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   /// Set once the result screen was asked for, so it opens once.
   bool _resultOpened = false;
 
-  // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
-  /// Sends ready by itself once the pose has stayed ready for
-  /// [SetupConfig.autoStartDelay], like the bot setup's auto start. Losing
-  /// the pose before then cancels it; the next ready pose starts it again.
-  Timer? _autoReady;
-  Timer? _squatFrameWatchdog;
-  bool _squatAligned = false;
-  DateTime? _autoReadyAt;
+  Timer? _setupFrameWatchdog;
+  Duration? _lastSetupFrameAt;
+  Duration? _setupHoldSince;
+  Duration? _autoReadyIn;
+  SetupCameraCrop? _pushUpGuideCrop;
 
-  /// Ready was sent and the server has not confirmed it yet, so it is not
-  /// sent again while the confirmation is on its way.
-  bool _readySent = false;
+  /// Most recent ready request awaiting confirmation from the server.
+  bool? _readyRequest;
+  bool _readyHoldComplete = false;
 
   OnlineBattleSession get session => widget.session;
   bool get _iAmReady => session.readyPlayers.contains(session.playerId);
 
-  void _syncAutoReady() {
-    if (_iAmReady || !_setupReady || !session.canReady) _readySent = false;
-    final waiting =
-        session.canReady && _setupReady && !_iAmReady && !_readySent;
-    if (!waiting) {
-      _cancelAutoReady();
+  void _syncReady({bool allowReady = false}) {
+    if (!session.canReady) {
+      _setupHoldSince = null;
+      _autoReadyIn = null;
+      _readyRequest = null;
+      _readyHoldComplete = false;
       return;
     }
-    if (_autoReady != null) return;
-    final delay = widget.setupConfig.autoStartDelay;
-    _autoReadyAt = DateTime.now().add(delay);
-    _autoReady = Timer(delay, () {
-      _autoReady = null;
-      _autoReadyAt = null;
-      if (mounted &&
-          session.canReady &&
-          _setupReady &&
-          (session.exercise != ExerciseType.squat || _setupStatus.isReady) &&
-          !_iAmReady) {
-        _readySent = true;
-        session.ready(true);
+    if (_readyRequest == _iAmReady) _readyRequest = null;
+    if (allowReady) _readyHoldComplete = true;
+    if (!_setupReady || !_readyHoldComplete) {
+      if ((_iAmReady || _readyRequest == true) && _readyRequest != false) {
+        _readyRequest = false;
+        session.ready(false);
       }
-    });
+      return;
+    }
+    if (allowReady && !_iAmReady && _readyRequest != true) {
+      _autoReadyIn = null;
+      _readyRequest = true;
+      session.ready(true);
+    }
   }
 
-  void _cancelAutoReady() {
-    _autoReady?.cancel();
-    _autoReady = null;
-    _autoReadyAt = null;
-  }
-
-  /// Whole seconds left before the auto ready; null when not counting.
+  /// Whole seconds left before the local hold ends.
   int? get _autoReadySeconds {
-    final at = _autoReadyAt;
-    if (at == null) return null;
-    final left = at.difference(DateTime.now()).inMilliseconds;
-    return (left / 1000).ceil().clamp(1, 60);
+    final left = _autoReadyIn;
+    if (left == null || _iAmReady || _readyRequest == true) return null;
+    return (left.inMilliseconds / 1000).ceil().clamp(1, 60);
   }
 
-  /// The setup bar: holding the pose, then the auto ready countdown.
   double get _setupProgress {
-    final at = _autoReadyAt;
-    if (at == null) return _setupStatus.readyProgress;
+    final left = _autoReadyIn;
+    if (left == null) return _setupStatus.readyProgress;
     final delay = widget.setupConfig.autoStartDelay.inMicroseconds;
-    final left = at.difference(DateTime.now()).inMicroseconds;
-    return delay == 0 ? 1 : 1 - left / delay;
+    return delay == 0 ? 1 : 1 - left.inMicroseconds / delay;
   }
 
   @override
   void initState() {
     super.initState();
+    final stopwatch = Stopwatch()..start();
+    _setupClock = widget.setupClock ?? (() => stopwatch.elapsed);
     _setup = SetupChecker(
       exercise: session.exercise,
       config: widget.setupConfig,
+      clock: _setupClock,
     );
     WidgetsBinding.instance.addObserver(this);
     unawaited(keepScreenOn(true));
@@ -199,6 +194,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
           exercise: session.exercise,
         );
     _counter.addListener(_onCounter);
+    _poseFailureSubscription = _counter.poseDetectionFailures.listen((_) {
+      if (mounted && !_roundStarted && _lastSetupFrameAt != null) {
+        _invalidateSetupPose();
+      }
+    });
     // Reps the server reported before this screen are not played again.
     _theirs = OnlineStageEvents.opponentSeen(session);
     session.addListener(_onSession);
@@ -272,6 +272,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   void _syncRound() {
     if (session.roundRunning && !_roundStarted) {
       _roundStarted = true;
+      _resetSetupPose();
       _counter.reset(restartClock: true);
     }
     if (!_stopping &&
@@ -332,7 +333,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   void _onSession() {
     _syncRound();
-    _syncAutoReady();
+    _syncReady();
     final theirs = OnlineStageEvents.opponentRep(_theirs, session);
     _theirs = OnlineStageEvents.opponentSeen(session);
     if (theirs != null) _stage.rep(theirs);
@@ -363,65 +364,112 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     return Duration(milliseconds: left < 0 ? 0 : left);
   }
 
+  void _setPushUpGuideCrop(SetupCameraCrop crop) {
+    if (_roundStarted || session.terminal || _pushUpGuideCrop == crop) return;
+    _pushUpGuideCrop = crop;
+    _invalidateSetupPose();
+  }
+
+  void _resetSetupPose() {
+    _setup.reset();
+    _setupFrameWatchdog?.cancel();
+    _setupFrameWatchdog = null;
+    _lastSetupFrameAt = null;
+    _setupHoldSince = null;
+    _autoReadyIn = null;
+    _setupStatus = SetupStatus.initial;
+    _setupReady = false;
+    _readyHoldComplete = false;
+  }
+
+  void _invalidateSetupPose() {
+    _resetSetupPose();
+    _syncReady();
+    _tellSetup();
+    if (mounted) setState(() {});
+  }
+
+  void _checkSetupPose(PoseFrame frame) {
+    final now = _setupClock();
+    final last = _lastSetupFrameAt;
+    if (last != null &&
+        (now < last || now - last > SetupConfig.maxPoseFrameGap)) {
+      _resetSetupPose();
+      _syncReady();
+    }
+    _seen = frame;
+    _lastSetupFrameAt = now;
+    _setupFrameWatchdog?.cancel();
+    _setupFrameWatchdog = Timer(SetupConfig.maxPoseFrameGap, () {
+      if (mounted && !_roundStarted && !session.terminal) {
+        _invalidateSetupPose();
+      }
+    });
+
+    final status = _setup.update(
+      frame,
+      phonePropped: _counter.isPhonePropped,
+      phoneStill: _counter.isPhoneStill,
+    );
+    final crop = _pushUpGuideCrop;
+    final aligned = switch (session.exercise) {
+      ExerciseType.pushUp =>
+        crop != null &&
+            SetupSilhouetteAlignment(
+              minLikelihood: widget.setupConfig.minLikelihood,
+            ).matchesImageCrop(frame, crop, mirror: _counter.isFrontCamera),
+      ExerciseType.squat =>
+        StandingSilhouetteAlignment(
+          minLikelihood: widget.setupConfig.minLikelihood,
+        ).matches(
+          frame,
+          Size(frame.imageWidth, frame.imageHeight),
+          mirror: _counter.isFrontCamera,
+        ),
+    };
+    _setupReady = status.reason == SetupReason.ready && aligned;
+    _setupStatus = _setupReady
+        ? status
+        : SetupStatus(
+            reason: status.reason,
+            isReady: false,
+            readyProgress: 0,
+            missingParts: status.missingParts,
+          );
+    if (!_setupReady || !session.canReady) {
+      _readyHoldComplete = false;
+      _setupHoldSince = null;
+      _autoReadyIn = null;
+      _syncReady();
+      return;
+    }
+    if (status.isReady) {
+      _counter.lockTrackedPerson();
+      if (_counter.state.trackingPaused) return;
+    }
+    final left =
+        widget.setupConfig.autoStartDelay - (now - (_setupHoldSince ??= now));
+    _autoReadyIn = left.isNegative ? Duration.zero : left;
+    _syncReady(allowReady: left <= Duration.zero && status.isReady);
+  }
+
   void _onCounter() {
     _syncRound();
-    final state = _counter.state, frame = state.lastFrame;
-    if (state.phase == CounterPhase.running) {
-      session.publishPose(
-        !state.trackingPaused && frame != null && frame.hasPerson
-            ? frame
-            : null,
-      );
-      if (frame != null && !identical(frame, _seen)) {
-        _seen = frame;
-        _setupStatus = _setup.update(
-          frame,
-          phonePropped: _counter.isPhonePropped,
-          phoneStill: _counter.isPhoneStill,
-        );
-        if (session.exercise == ExerciseType.squat && !_roundStarted) {
-          _squatAligned =
-              StandingSilhouetteAlignment(
-                minLikelihood: widget.setupConfig.minLikelihood,
-              ).matches(
-                frame,
-                Size(frame.imageWidth, frame.imageHeight),
-                mirror: _counter.isFrontCamera,
-              );
-          _setupReady =
-              _setupStatus.reason == SetupReason.ready && _squatAligned;
-          _squatFrameWatchdog?.cancel();
-          _squatFrameWatchdog = Timer(const Duration(milliseconds: 750), () {
-            if (!mounted || _roundStarted) return;
-            _setup.reset();
-            _setupStatus = SetupStatus.initial;
-            _squatAligned = false;
-            _setupReady = false;
-            if (_iAmReady && session.canReady) session.ready(false);
-            _syncAutoReady();
-            _tellSetup();
-            setState(() {});
-          });
-        } else {
-          _setupReady = _setupStatus.isReady;
-        }
+    final state = _counter.state;
+    final frame = state.lastFrame;
+    final usable = state.phase == CounterPhase.running && !state.trackingPaused;
+    session.publishPose(
+      usable && frame != null && frame.hasPerson ? frame : null,
+    );
+    if (!_roundStarted && !session.terminal) {
+      if (!usable || frame == null) {
+        _invalidateSetupPose();
+        return;
       }
-    } else {
-      session.publishPose(null);
-      _setup.reset();
-      _squatFrameWatchdog?.cancel();
-      _squatAligned = false;
-      _setupStatus = SetupStatus.initial;
-      _setupReady = false;
+      if (!identical(frame, _seen)) {
+        _checkSetupPose(frame);
+      }
     }
-    if (state.trackingPaused) _setupReady = false;
-    if (_setupReady && !_roundStarted) _counter.lockTrackedPerson();
-    if (session.canReady &&
-        !_setupReady &&
-        session.readyPlayers.contains(session.playerId)) {
-      session.ready(false);
-    }
-    _syncAutoReady();
     _tellSetup();
     if (mounted) setState(() {});
   }
@@ -444,16 +492,15 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       (session.phase != OnlinePhase.finished || session.matchUnconfirmed);
 
   /// The setup's short cue before the start (A9): that the connection is
-  /// being checked, that the user waits for the opponent, a squat that is
+  /// being checked, that the user waits for the opponent, a pose that is
   /// not in the silhouette yet, the count to the auto ready, or what the
   /// setup wants.
   SetupHintShort get _setupCue {
     if (!session.connected) return const SetupHintShort.reconnecting();
-    if (_iAmReady) return const SetupHintShort.waitingForOpponent();
-    final outside =
-        session.exercise == ExerciseType.squat &&
-        _setupStatus.reason == SetupReason.ready &&
-        !_squatAligned;
+    if (_iAmReady && _setupReady && _readyHoldComplete) {
+      return const SetupHintShort.waitingForOpponent();
+    }
+    final outside = _setupStatus.reason == SetupReason.ready && !_setupReady;
     final seconds = _autoReadySeconds;
     if (!outside && seconds != null) return SetupHintShort.autoReady(seconds);
     return SetupHintShort.of(_setupStatus, outsideSilhouette: outside);
@@ -531,13 +578,13 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   @override
   void dispose() {
-    _cancelAutoReady();
-    _squatFrameWatchdog?.cancel();
+    _setupFrameWatchdog?.cancel();
     unawaited(keepScreenOn(false));
     WidgetsBinding.instance.removeObserver(this);
     session.removeListener(_onSession);
     _counter.removeListener(_onCounter);
     unawaited(_reps?.cancel());
+    unawaited(_poseFailureSubscription.cancel());
     _counter.dispose();
     _sounds.dispose();
     super.dispose();
@@ -574,9 +621,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     final guide = settingUp && running
         ? BattleCameraView.setupGuide(
             session.exercise,
-            ready: pushUp
-                ? _setupStatus.isReady
-                : _setupReady && _setupStatus.isReady,
+            ready: _setupReady && _setupStatus.isReady,
           )
         : null;
     return PopScope<Object?>(
@@ -617,6 +662,9 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                           : null,
                       guide: guide?.widget,
                       guideFit: guide?.fit ?? BoxFit.cover,
+                      onGuideCrop: pushUp && guide != null
+                          ? _setPushUpGuideCrop
+                          : null,
                     ),
                     if (counter.trackingPaused && !session.terminal)
                       PersonTrackingPauseNotice(

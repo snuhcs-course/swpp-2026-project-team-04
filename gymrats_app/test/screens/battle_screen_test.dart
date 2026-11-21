@@ -242,11 +242,21 @@ void main() {
     await wait(tester, 400);
   }
 
-  /// The pose the setup looks for: a push-up's straight arms, or for a
-  /// squat the whole body standing.
-  PoseFrame setupPose() => viewModel.matchup.exercise == ExerciseType.squat
-      ? standingFrame(showHips: true)
-      : standingFrame();
+  /// Reads the displayed guide's crop before making camera landmarks.
+  PoseFrame setupPose({double rightWristX = .20}) {
+    if (viewModel.matchup.exercise == ExerciseType.squat) {
+      return standingFrame(showHips: true);
+    }
+    final overlays = find.byType(BattleGuideOverlay).evaluate();
+    final overlay = overlays.isEmpty
+        ? null
+        : overlays.single.widget as BattleGuideOverlay;
+    final share = overlay?.share;
+    return alignedPushUpSetupFrame(
+      crop: share == null ? const Size(1, 1) : Size(share.width, share.height),
+      rightWristX: rightWristX,
+    );
+  }
 
   /// A camera frame at [seconds] on the battle's clock, with the setup pose
   /// found or not. It closes the rep queued on the judge, if any.
@@ -449,7 +459,9 @@ void main() {
       // up once the countdown brings the line down.
       expect(find.byType(CharacterFigure), findsNothing);
       await frame(tester, 1);
-      await wait(tester, 1000);
+      await wait(tester, 500);
+      await frame(tester, 1.5);
+      await wait(tester, 500);
       expect(
         tester
             .widgetList<CharacterFigure>(find.byType(CharacterFigure))
@@ -659,7 +671,7 @@ void main() {
     testWidgets('a ready pose counts 3, 2, 1 on the stage, then GO! and the '
         'round with the bot', (tester) async {
       await open(tester);
-      // Frames a second apart, on the stage's time as on the battle's.
+      // Fresh frames arrive while the stage counts down.
       await frame(tester, 1);
       await wait(tester, 16);
       expect(stage(tester).phase, BattleStagePhase.countdown);
@@ -674,14 +686,20 @@ void main() {
       await wait(tester, 150);
       expect(find.text('시작'), findsNothing);
       expect(find.byIcon(Icons.cameraswitch_outlined), findsNothing);
-      await wait(tester, 1000 - 150);
+      await wait(tester, 350);
+      await frame(tester, 1.5);
+      await wait(tester, 500);
       await frame(tester, 2);
       expect(find.text('2'), findsOneWidget);
-      await wait(tester, 1000);
+      await wait(tester, 500);
+      await frame(tester, 2.5);
+      await wait(tester, 500);
       await frame(tester, 3);
       expect(find.text('1'), findsOneWidget);
       expect(opponent.startCount, 0);
-      await wait(tester, 1000);
+      await wait(tester, 500);
+      await frame(tester, 3.5);
+      await wait(tester, 500);
       // A rep closed on the frame that ends the count is the setup's.
       judge.closeRep();
       await frame(tester, 4);
@@ -924,7 +942,7 @@ void main() {
     });
 
     testWidgets('AC2, step 3 (push-up): placed well, the silhouette is on the '
-        'camera; moved to one side, the hint says how to get back in, and '
+        'camera; a wrist in the shaded area is rejected with the alignment hint, and '
         'nothing counts down', (tester) async {
       await open(tester, setupConfig: const SetupConfig());
       await frame(tester, 1, found: false);
@@ -935,13 +953,11 @@ void main() {
       expect(picture.intersect(guide), guide);
       expect(guide.width, closeTo(picture.width, .01));
 
-      final moved = aside(standingFrame(), 420);
+      final moved = setupPose(rightWristX: .32);
       final status = SetupChecker(exercise: ExerciseType.pushUp).update(moved);
-      expect(status.isReady, isFalse);
-      expect(status.reason, isNot(SetupReason.noPerson));
+      expect(status.reason, SetupReason.ready);
       await hold(tester, moved, from: 2, seconds: 5);
-      final cue = SetupHintShort.of(status);
-      showsCue(tester, cue.first, cue.second, status.message);
+      showsCue(tester, '실루엣에', '맞춰요', SetupHintShort.silhouetteMessage);
       notCounting(tester);
       await close(tester);
     });
@@ -950,7 +966,7 @@ void main() {
         'arms and holding still counts 3, 2, 1 by itself and starts the '
         'battle, with no tap', (tester) async {
       await open(tester, setupConfig: const SetupConfig());
-      await hold(tester, standingFrame(), from: 1, seconds: 1.5);
+      await hold(tester, setupPose(), from: 1, seconds: 1.5);
       expect(viewModel.state.setup.isReady, isTrue);
       expect(
         tester
@@ -958,9 +974,9 @@ void main() {
             .ready,
         isTrue,
       );
-      await hold(tester, standingFrame(), from: 3, seconds: 2);
+      await hold(tester, setupPose(), from: 3, seconds: .5);
       expect(viewModel.state.started, isFalse);
-      await frame(tester, 5.5);
+      await frame(tester, 4);
       await wait(tester, 100);
       expect(viewModel.state.started, isTrue);
       expect(stage(tester).phase, BattleStagePhase.playing);

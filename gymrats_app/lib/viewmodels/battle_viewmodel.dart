@@ -10,6 +10,7 @@ import '../models/exercise_type.dart';
 import '../models/game_score.dart';
 import '../models/matchup.dart';
 import '../models/pose_frame.dart';
+import '../models/setup_silhouette_alignment.dart';
 import '../models/setup_squat_silhouette_alignment.dart';
 import '../models/rep_event.dart';
 import '../services/device/device_controls.dart';
@@ -71,8 +72,7 @@ class BattleState {
     this.started = false,
     this.setup = SetupStatus.initial,
     this.startIn,
-    this.guideAligned = true,
-    this.requireAutoStart = false,
+    this.guideAligned = false,
   });
 
   final BattlePhase phase;
@@ -135,18 +135,8 @@ class BattleState {
   /// round starts by itself. Null while not counting down.
   final Duration? startIn;
 
-  /// Whether the current squat frame matches the setup guide.
+  /// Whether the current pose frame matches the setup guide.
   final bool guideAligned;
-  final bool requireAutoStart;
-
-  /// Whether the setup's 시작 button may begin the round now: before it,
-  /// with the camera running and the pose ready.
-  bool get canStart =>
-      !requireAutoStart &&
-      !started &&
-      phase == BattlePhase.setup &&
-      setup.isReady &&
-      guideAligned;
 
   /// Whole seconds left, rounded up: the full round at the start, 0 at the end.
   int get secondsLeft =>
@@ -177,7 +167,6 @@ class BattleState {
     Duration? startIn,
     bool clearStartIn = false,
     bool? guideAligned,
-    bool? requireAutoStart,
   }) => BattleState(
     phase: phase ?? this.phase,
     myReps: myReps ?? this.myReps,
@@ -199,7 +188,6 @@ class BattleState {
     setup: setup ?? this.setup,
     startIn: clearStartIn ? null : startIn ?? this.startIn,
     guideAligned: guideAligned ?? this.guideAligned,
-    requireAutoStart: requireAutoStart ?? this.requireAutoStart,
   );
 }
 
@@ -249,13 +237,14 @@ class BattleViewModel extends ChangeNotifier {
       'clock runs through the setup too.',
     );
     _game = _newGame();
-    _state = BattleState(
-      remaining: roundLength,
-      guideAligned: matchup.exercise != ExerciseType.squat,
-      requireAutoStart: matchup.exercise == ExerciseType.squat,
-    );
+    _state = BattleState(remaining: roundLength);
     counter.addListener(_onCounterChanged);
     _myRepSubscription = counter.reps.listen(_onMyRep);
+    _poseFailureSubscription = counter.poseDetectionFailures.listen((_) {
+      if (!_disposed && !_begun && _state.phase == BattlePhase.setup) {
+        _invalidateSetupPose();
+      }
+    });
     _opponentRepSubscription = _opponent.reps.listen(_onOpponentRep);
   }
 
@@ -344,6 +333,7 @@ class BattleViewModel extends ChangeNotifier {
 
   final DateTime Function() _now;
   late final StreamSubscription<RepEvent> _myRepSubscription;
+  late final StreamSubscription<void> _poseFailureSubscription;
   late final StreamSubscription<RepEvent> _opponentRepSubscription;
 
   late BattleState _state;
@@ -361,9 +351,9 @@ class BattleViewModel extends ChangeNotifier {
 
   /// When the pose became ready, for the countdown to the start.
   Duration? _readySince;
-  Duration? _lastSquatFrameAt;
-  Timer? _squatSetupWatchdog;
-  static const _squatMaxFrameGap = Duration(milliseconds: 750);
+  Duration? _lastSetupFrameAt;
+  Timer? _setupWatchdog;
+  SetupCameraCrop? _pushUpGuideCrop;
 
   /// The counter's time left as the setup last saw it, until the counter
   /// works out its time again after the round began: restarting its clock
@@ -396,10 +386,11 @@ class BattleViewModel extends ChangeNotifier {
   /// Opens the camera; the setup, then the round, begin when it runs.
   Future<void> start() => counter.start();
 
-  /// Begins the round now, as the setup's 시작 button does; only while
-  /// [BattleState.canStart].
-  void startNow() {
-    if (_state.canStart) _beginRound();
+  /// The crop occupied by the push-up guide over the full camera picture.
+  void setPushUpGuideCrop(SetupCameraCrop crop) {
+    if (_disposed || _begun || _pushUpGuideCrop == crop) return;
+    _pushUpGuideCrop = crop;
+    if (_state.phase == BattlePhase.setup) _invalidateSetupPose();
   }
 
   /// App moved to the background: the camera and the round are held.
@@ -421,13 +412,7 @@ class BattleViewModel extends ChangeNotifier {
     _game = _newGame();
     _scoredMyReps = 0;
     _resetSetup();
-    _setState(
-      BattleState(
-        remaining: roundLength,
-        guideAligned: matchup.exercise != ExerciseType.squat,
-        requireAutoStart: matchup.exercise == ExerciseType.squat,
-      ),
-    );
+    _setState(BattleState(remaining: roundLength));
     await counter.retry();
   }
 
@@ -435,6 +420,7 @@ class BattleViewModel extends ChangeNotifier {
   void leave() {
     if (_roundOver) return;
     _watchdog?.cancel();
+    _resetSetup();
     _opponent.stop();
     _setState(_state.copyWith(phase: BattlePhase.left));
     unawaited(counter.finish(stoppedByUser: true));
@@ -504,7 +490,7 @@ class BattleViewModel extends ChangeNotifier {
       _state.copyWith(
         phase: phase,
         setup: SetupStatus.initial,
-        guideAligned: matchup.exercise != ExerciseType.squat,
+        guideAligned: false,
         clearStartIn: true,
       ),
     );
@@ -512,100 +498,102 @@ class BattleViewModel extends ChangeNotifier {
 
   void _resetSetup() {
     _setup?.reset();
-    _squatSetupWatchdog?.cancel();
-    _squatSetupWatchdog = null;
-    _lastSquatFrameAt = null;
+    _setupWatchdog?.cancel();
+    _setupWatchdog = null;
+    _lastSetupFrameAt = null;
     _checked = null;
     _readySince = null;
   }
 
-  /// Checks the latest frame's pose and counts down to the start while it
-  /// stays ready, as the setup screen's auto start did; losing the pose
-  /// stops the count. The round begins when the count ends.
+  void _invalidateSetupPose() {
+    // The counter can still retain an old frame after a pause, detector
+    // failure, or crop change. Only the next detection may begin a hold.
+    final previous = _checked;
+    _resetSetup();
+    _checked = previous;
+    if (_state.guideAligned || _state.setup != SetupStatus.initial) {
+      _setState(
+        _state.copyWith(
+          setup: SetupStatus.initial,
+          guideAligned: false,
+          clearStartIn: true,
+        ),
+      );
+    }
+  }
+
+  /// A new detection is required both to advance the hold and to start.
   void _checkPose(RepCounterState counterState) {
     final setup = _setup;
     if (setup == null) {
       _beginRound();
       return;
     }
-    var status = _state.setup;
-    var aligned = _state.guideAligned;
-    final squat = matchup.exercise == ExerciseType.squat;
+    if (_state.phase != BattlePhase.setup) {
+      _setState(_state.copyWith(phase: BattlePhase.setup));
+    }
     final frame = counterState.lastFrame;
+    if (counterState.trackingPaused || frame == null) {
+      _invalidateSetupPose();
+      return;
+    }
+    if (identical(frame, _checked)) return;
+
     final now = _clock();
-    if (frame != null && !identical(frame, _checked)) {
-      if (squat &&
-          _lastSquatFrameAt != null &&
-          (now < _lastSquatFrameAt! ||
-              now - _lastSquatFrameAt! > _squatMaxFrameGap)) {
-        _resetSetup();
+    final last = _lastSetupFrameAt;
+    if (last != null &&
+        (now < last || now - last > SetupConfig.maxPoseFrameGap)) {
+      _resetSetup();
+    }
+    _checked = frame;
+    _lastSetupFrameAt = now;
+    _setupWatchdog?.cancel();
+    _setupWatchdog = Timer(SetupConfig.maxPoseFrameGap, () {
+      if (!_disposed && !_begun && _state.phase == BattlePhase.setup) {
+        _invalidateSetupPose();
       }
-      _checked = frame;
-      status = setup.update(
-        frame,
-        phonePropped: counter.isPhonePropped,
-        phoneStill: counter.isPhoneStill,
-      );
-      if (squat) {
-        aligned =
-            StandingSilhouetteAlignment(
-              minLikelihood: setup.config.minLikelihood,
-            ).matches(
+    });
+
+    final status = setup.update(
+      frame,
+      phonePropped: counter.isPhonePropped,
+      phoneStill: counter.isPhoneStill,
+    );
+    final crop = _pushUpGuideCrop;
+    final aligned = switch (matchup.exercise) {
+      ExerciseType.pushUp =>
+        crop != null &&
+            SetupSilhouetteAlignment(minLikelihood: setup.config.minLikelihood)
+                .matchesImageCrop(frame, crop, mirror: counter.isFrontCamera),
+      ExerciseType.squat =>
+        StandingSilhouetteAlignment(minLikelihood: setup.config.minLikelihood)
+            .matches(
               frame,
               Size(frame.imageWidth, frame.imageHeight),
               mirror: counter.isFrontCamera,
-            );
-        _lastSquatFrameAt = now;
-        _squatSetupWatchdog?.cancel();
-        _squatSetupWatchdog = Timer(_squatMaxFrameGap, () {
-          if (_disposed || _begun || _state.phase != BattlePhase.setup) return;
-          final staleFrame = _checked;
-          _resetSetup();
-          // The counter may notify on detector errors while retaining its
-          // last frame. Do not treat that same frame as a fresh detection.
-          _checked = staleFrame;
-          _setState(
-            _state.copyWith(
-              setup: SetupStatus.initial,
-              guideAligned: false,
-              clearStartIn: true,
             ),
-          );
-        });
-      }
-    }
-    final valid =
-        !counterState.trackingPaused &&
-        (squat
-            ? status.reason == SetupReason.ready && aligned
-            : status.isReady);
-    if (!valid) {
+    };
+
+    if (status.reason != SetupReason.ready || !aligned) {
       _readySince = null;
-      final displayStatus = squat && !aligned && status.isReady
-          ? SetupStatus(
-              reason: status.reason,
-              isReady: false,
-              readyProgress: 0,
-              missingParts: status.missingParts,
-            )
-          : status;
       _setState(
         _state.copyWith(
-          phase: BattlePhase.setup,
-          setup: displayStatus,
+          setup: SetupStatus(
+            reason: status.reason,
+            isReady: false,
+            readyProgress: 0,
+            missingParts: status.missingParts,
+          ),
           guideAligned: aligned,
           clearStartIn: true,
         ),
       );
       return;
     }
-    // Preserve the person who completed setup through the countdown.
-    counter.lockTrackedPerson();
-    // Locking may synchronously discover that the setup anchor is unusable.
-    if (counter.state.trackingPaused) {
-      _readySince = null;
-      _setState(_state.copyWith(clearStartIn: true));
-      return;
+    if (status.isReady) {
+      counter.lockTrackedPerson();
+      // Locking can synchronously flag an unusable tracking anchor.
+      if (counter.state.trackingPaused) return;
     }
     final left = setup.config.autoStartDelay - (now - (_readySince ??= now));
     if (left <= Duration.zero && status.isReady) {
@@ -614,9 +602,8 @@ class BattleViewModel extends ChangeNotifier {
     }
     _setState(
       _state.copyWith(
-        phase: BattlePhase.setup,
         setup: status,
-        guideAligned: aligned,
+        guideAligned: true,
         startIn: left.isNegative ? Duration.zero : left,
       ),
     );
@@ -890,9 +877,10 @@ class BattleViewModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _watchdog?.cancel();
-    _squatSetupWatchdog?.cancel();
+    _setupWatchdog?.cancel();
     counter.removeListener(_onCounterChanged);
     unawaited(_myRepSubscription.cancel());
+    unawaited(_poseFailureSubscription.cancel());
     unawaited(_opponentRepSubscription.cancel());
     _opponent.dispose();
     counter.dispose();

@@ -4,6 +4,7 @@ import 'dart:ui' show Size;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
+import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/camera_service.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/viewmodels/setup_viewmodel.dart';
@@ -18,21 +19,29 @@ void main() {
   late Duration now;
   late SetupViewModel vm;
   late bool guideMatches;
+  late PhoneTiltMonitor phone;
+  late bool disposed;
 
   setUp(() {
     camera = FakeCameraService();
     estimator = FakePoseEstimator();
     now = Duration.zero;
     guideMatches = true;
+    disposed = false;
+    phone = placedPhone();
     vm = SetupViewModel(
       exercise: ExerciseType.pushUp,
       camera: camera,
       estimator: estimator,
       clock: () => now,
-      phoneTilt: placedPhone(),
+      phoneTilt: phone,
       guideMatcher: (_, _, _) => guideMatches,
     );
     vm.setGuideViewport(const Size(400, 400));
+  });
+
+  tearDown(() {
+    if (!disposed) vm.dispose();
   });
 
   /// Feeds [frame] (null = ML Kit error) at [ms] milliseconds.
@@ -41,6 +50,13 @@ void main() {
     estimator.frames.add(frame);
     camera.emit();
     await pumpEventQueue();
+  }
+
+  Future<void> hold(int from, int to, PoseFrame frame) async {
+    for (var ms = from; ms < to; ms += 500) {
+      await feed(ms, frame);
+    }
+    await feed(to, frame);
   }
 
   test('starts the camera when permission is granted', () async {
@@ -129,8 +145,7 @@ void main() {
     });
 
     test('Ready after 1.5 s, one bad frame keeps it, 0.5 s drops it', () async {
-      await feed(0, standingFrame());
-      await feed(1000, standingFrame());
+      await hold(0, 1000, standingFrame());
       expect(vm.state.canStart, isFalse);
       await feed(1500, standingFrame());
       expect(vm.state.canStart, isTrue);
@@ -153,8 +168,7 @@ void main() {
   group('screen rotation', () {
     test('reopens the running camera and restarts the hold', () async {
       await vm.start();
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
+      await hold(0, 1500, standingFrame());
       expect(vm.state.status.isReady, isTrue);
       await vm.onScreenRotated();
       expect(camera.startCount, 2);
@@ -182,14 +196,12 @@ void main() {
         expect(vm.state.autoStartIn, isNull);
         expect(vm.state.message, contains('실루엣'));
         guideMatches = true;
-        await feed(100, standingFrame());
-        await feed(1600, standingFrame());
+        await hold(100, 1600, standingFrame());
         guideMatches = false;
         await feed(1700, standingFrame());
         expect(vm.state.autoStartIn, isNull);
         guideMatches = true;
-        await feed(1800, standingFrame());
-        await feed(4700, standingFrame());
+        await hold(1800, 4700, standingFrame());
         expect(vm.state.autoStarted, isFalse);
         await feed(4800, standingFrame());
         expect(vm.state.autoStarted, isTrue);
@@ -201,29 +213,27 @@ void main() {
       () async {
         await feed(0, standingFrame());
         expect(vm.state.autoStartIn, const Duration(seconds: 3));
-        await feed(1500, standingFrame());
+        await hold(500, 1500, standingFrame());
         expect(vm.state.status.isReady, isTrue);
         expect(vm.state.autoStartIn, const Duration(milliseconds: 1500));
         await feed(2100, standingFrame());
         expect(vm.state.message, '준비 완료! 1초 뒤 시작해요.');
         expect(vm.state.autoStarted, isFalse);
-        await feed(3000, standingFrame());
+        await hold(2600, 3000, standingFrame());
         expect(vm.state.autoStarted, isTrue);
         expect(vm.state.autoStartIn, isNull);
       },
     );
 
     test('auto start stays set once reached', () async {
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
-      await feed(3000, standingFrame());
+      await hold(0, 1500, standingFrame());
+      await hold(2000, 3000, standingFrame());
       await feed(3100, emptyFrame());
       expect(vm.state.autoStarted, isTrue);
     });
 
     test('losing Ready cancels and restarts the countdown', () async {
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
+      await hold(0, 1500, standingFrame());
       await feed(2000, standingFrame());
       // 0.5 s of invalid frames drops Ready.
       await feed(2100, emptyFrame());
@@ -233,28 +243,26 @@ void main() {
       // The new countdown starts with the first valid frame.
       await feed(2700, standingFrame());
       expect(vm.state.autoStartIn, const Duration(seconds: 3));
-      await feed(5600, standingFrame());
+      await hold(3200, 5600, standingFrame());
       expect(vm.state.autoStarted, isFalse);
       await feed(5700, standingFrame());
       expect(vm.state.autoStarted, isTrue);
     });
 
     test('an invalid frame restarts the countdown', () async {
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
+      await hold(0, 1500, standingFrame());
       await feed(2000, emptyFrame());
       expect(vm.state.autoStartIn, isNull);
       await feed(2100, standingFrame());
       expect(vm.state.autoStartIn, const Duration(seconds: 3));
-      await feed(4500, standingFrame());
+      await hold(2600, 4500, standingFrame());
       expect(vm.state.autoStarted, isFalse);
       await feed(5100, standingFrame());
       expect(vm.state.autoStarted, isTrue);
     });
 
     test('pause and resume restart the hold and the countdown', () async {
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
+      await hold(0, 1500, standingFrame());
       await feed(2000, standingFrame());
       expect(vm.state.autoStartIn, isNotNull);
       await vm.pause();
@@ -262,17 +270,16 @@ void main() {
       expect(vm.state.autoStartIn, isNull);
       await feed(3100, standingFrame());
       expect(vm.state.status.isReady, isFalse);
-      await feed(4600, standingFrame());
+      await hold(3600, 4600, standingFrame());
       expect(vm.state.autoStartIn, const Duration(milliseconds: 1500));
-      await feed(6000, standingFrame());
+      await hold(5100, 6000, standingFrame());
       expect(vm.state.autoStarted, isFalse);
       await feed(6100, standingFrame());
       expect(vm.state.autoStarted, isTrue);
     });
 
     test('0.5 s of detector failures cancels the countdown', () async {
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
+      await hold(0, 1500, standingFrame());
       await feed(2000, standingFrame());
       await feed(2100, null);
       await feed(2600, null);
@@ -280,11 +287,48 @@ void main() {
       expect(vm.state.autoStartIn, isNull);
       // Detection recovers: a fresh 3 s countdown starts immediately.
       await feed(2700, standingFrame());
-      await feed(4200, standingFrame());
+      await hold(3200, 4200, standingFrame());
       expect(vm.state.autoStartIn, const Duration(milliseconds: 1500));
-      await feed(5600, standingFrame());
+      await hold(4700, 5600, standingFrame());
       expect(vm.state.autoStarted, isFalse);
     });
+
+    test('a long push-up frame gap restarts the countdown', () async {
+      final good = standingFrame();
+      await hold(0, 2000, good);
+      await feed(3000, good);
+      expect(vm.state.autoStarted, isFalse);
+      expect(vm.state.autoStartIn, const Duration(seconds: 3));
+    });
+
+    test('a new preview crop starts a new hold', () async {
+      final good = standingFrame();
+      await hold(0, 2500, good);
+      vm.setGuideViewport(const Size(400, 250));
+      await feed(3000, good);
+      expect(vm.state.autoStarted, isFalse);
+      expect(vm.state.autoStartIn, const Duration(seconds: 3));
+    });
+
+    test(
+      'distance and phone tilt interrupt an otherwise aligned hold',
+      () async {
+        final good = standingFrame();
+        await hold(0, 2000, good);
+        await feed(2500, standingFrame(scale: .3));
+        expect(vm.state.status.reason, SetupReason.tooFar);
+        expect(vm.state.autoStartIn, isNull);
+        phone.isPropped = false;
+        await feed(3000, good);
+        expect(vm.state.status.reason, SetupReason.phoneTooFlat);
+        expect(vm.state.autoStartIn, isNull);
+        phone.isPropped = true;
+        await hold(3500, 6000, good);
+        expect(vm.state.autoStarted, isFalse);
+        await feed(6500, good);
+        expect(vm.state.autoStarted, isTrue);
+      },
+    );
 
     test('custom auto start delay is used', () async {
       final custom = SetupViewModel(
@@ -298,8 +342,7 @@ void main() {
       );
       custom.setGuideViewport(const Size(400, 400));
       await custom.start();
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
+      await hold(0, 1500, standingFrame());
       await feed(2000, standingFrame());
       expect(custom.state.autoStarted, isTrue);
       custom.dispose();
@@ -334,8 +377,7 @@ void main() {
       expect(actual.state.autoStarted, isFalse);
       await feed(100, frame());
       expect(actual.state.guideAligned, isTrue);
-      await feed(1600, frame());
-      await feed(3100, frame());
+      await hold(600, 3100, frame());
       expect(actual.state.autoStarted, isTrue);
       actual.dispose();
     },
@@ -351,12 +393,19 @@ void main() {
     );
     squat.setGuideViewport(const Size(400, 800));
     await squat.start();
-    final good = standingFrame(showHips: true);
+    final good = standingFrame(
+      showHips: true,
+      move: {
+        BodyLandmark.leftAnkle: (830, 870),
+        BodyLandmark.rightAnkle: (170, 870),
+      },
+    );
+    final centered = standingFrame(showHips: true);
     final outside = PoseFrame(
-      imageWidth: good.imageWidth,
-      imageHeight: good.imageHeight,
+      imageWidth: centered.imageWidth,
+      imageHeight: centered.imageHeight,
       keypoints: {
-        for (final entry in good.keypoints.entries)
+        for (final entry in centered.keypoints.entries)
           entry.key: Keypoint(
             landmark: entry.key,
             x: entry.value.x + 200,
@@ -483,14 +532,12 @@ void main() {
       expect(vm.state.lastFrame, isNotNull);
     });
 
-    test('failures for the drop delay clear Ready', () async {
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
+    test('one failed detection clears Ready during normal setup', () async {
+      await hold(0, 1500, standingFrame());
       expect(vm.state.canStart, isTrue);
       await feed(1600, null);
-      expect(vm.state.canStart, isTrue);
-      await feed(2100, null);
       expect(vm.state.canStart, isFalse);
+      expect(vm.state.autoStartIn, isNull);
     });
   });
 
@@ -540,8 +587,7 @@ void main() {
 
     test('resume restarts the camera and clears Ready', () async {
       await vm.start();
-      await feed(0, standingFrame());
-      await feed(1500, standingFrame());
+      await hold(0, 1500, standingFrame());
       await vm.pause();
       await vm.resume();
       expect(vm.state.phase, SetupPhase.running);
@@ -575,6 +621,7 @@ void main() {
       await vm.start();
       final onImage = camera.onImage!;
       vm.dispose();
+      disposed = true;
       await pumpEventQueue();
       expect(camera.isStreaming, isFalse);
       expect(estimator.closed, isTrue);
@@ -587,6 +634,7 @@ void main() {
     test('dispose while starting does not leave the camera running', () async {
       final starting = vm.start();
       vm.dispose();
+      disposed = true;
       await starting;
       expect(camera.isStreaming, isFalse);
     });
