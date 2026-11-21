@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
+import 'package:gymrats_app/services/pose/exercise_judge.dart';
 import 'package:gymrats_app/services/pose/push_up_judge_adapter.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
+import 'package:gymrats_app/services/pose/squat_rep_judge.dart';
 
 const frame = PoseFrame.empty(imageWidth: 640, imageHeight: 480);
 
@@ -32,6 +35,34 @@ class RecordingJudge extends RepJudge {
 }
 
 void main() {
+  test('production push-up factory selects both knee layers with MLP', () {
+    final adapter = judgeFor(ExerciseType.pushUp) as PushUpJudgeAdapter;
+    expect(
+      adapter.judge.useMlp,
+      const bool.fromEnvironment('PUSHUP_MLP', defaultValue: true) ||
+          const bool.fromEnvironment('PUSHUP_KNEE_FOREST'),
+    );
+    expect(
+      adapter.judge.useFrameKnee,
+      const bool.fromEnvironment('PUSHUP_FRAME_KNEE', defaultValue: true),
+    );
+    expect(
+      adapter.judge.retainLegacyKnee,
+      const bool.fromEnvironment(
+        'PUSHUP_RETAIN_LEGACY_KNEE',
+        defaultValue: true,
+      ),
+    );
+    expect(
+      adapter.judge.useKneeForest,
+      const bool.fromEnvironment('PUSHUP_KNEE_FOREST'),
+    );
+  });
+
+  test('production squat factory still uses the squat judge', () {
+    expect(judgeFor(ExerciseType.squat), isA<SquatRepJudge>());
+  });
+
   test(
     'forwards fresh screen-to-floor tilt from the shared battle monitor',
     () {

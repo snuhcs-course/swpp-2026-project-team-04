@@ -354,6 +354,21 @@ class RepUpdate {
 /// usually hidden, so knees, belly, and an upright body are judged only in
 /// attempts where those parts were seen. Otherwise the rep stands.
 class RepJudge {
+  /// The selected battle policy, with explicit build overrides for comparison.
+  /// The regular constructor keeps the historical replay defaults.
+  factory RepJudge.forBattle({RepClock? clock}) => RepJudge(
+    clock: clock,
+    useMlp: const bool.fromEnvironment('PUSHUP_MLP', defaultValue: true),
+    useFrameKnee: const bool.fromEnvironment(
+      'PUSHUP_FRAME_KNEE',
+      defaultValue: true,
+    ),
+    retainLegacyKnee: const bool.fromEnvironment(
+      'PUSHUP_RETAIN_LEGACY_KNEE',
+      defaultValue: true,
+    ),
+  );
+
   RepJudge({
     this.config = const RepJudgeConfig(),
     RepClock? clock,
@@ -363,6 +378,9 @@ class RepJudge {
       'PUSHUP_FRAME_KNEE',
       // Pending confirmed Iteration4 per-rep labels and on/off benefit review.
       defaultValue: false,
+    ),
+    this.retainLegacyKnee = const bool.fromEnvironment(
+      'PUSHUP_RETAIN_LEGACY_KNEE',
     ),
     KneeFrameClassifier? kneeClassifier,
   }) : useMlp = useMlp || useKneeForest,
@@ -378,6 +396,12 @@ class RepJudge {
 
   /// Applies the per-frame evidence to completed reps in comparison builds.
   final bool useFrameKnee;
+
+  /// Retains the existing MLP knee veto alongside frame-knee evidence.
+  /// Only affects builds that enable both MLP and frame-knee.
+  final bool retainLegacyKnee;
+
+  bool get _useUnifiedKnee => useFrameKnee && !(useMlp && retainLegacyKnee);
   final KneeFrameClassifier _kneeClassifier;
   final _frameKneeEvidence = KneeAttemptEvidence();
   Duration? _frameKneeAt;
@@ -633,7 +657,7 @@ class RepJudge {
                     : 165,
               ),
           lockoutAngle: config.lockoutArmAngle,
-          kneeSupport: useFrameKnee
+          kneeSupport: _useUnifiedKnee
               ? _frameKneeEvidence.matchesCompletedAttempt
               : null,
         );
@@ -652,7 +676,7 @@ class RepJudge {
               PushupPhoneBand.unknown => null,
             },
           );
-    if (useFrameKnee &&
+    if (_useUnifiedKnee &&
         spanReason == RejectReason.kneesDown &&
         !_frameKneeEvidence.matchesCompletedAttempt) {
       // A projected span cannot independently establish floor contact.
@@ -704,7 +728,7 @@ class RepJudge {
     if (proposal == null) return RepUpdate(snapshot: primary.snapshot);
     final features = _mlpHistory.featuresForProposal(now);
     final probability = PushupMlpModel.normalProbability(features);
-    final kneesDown = useFrameKnee
+    final kneesDown = _useUnifiedKnee
         ? false
         : useKneeForest
         ? (KneeForestClassifier.kneeProbability(
@@ -717,7 +741,7 @@ class RepJudge {
     final previous = primary.event;
     var fallbackReason =
         previous?.reason ?? _cheat() ?? RejectReason.insufficientDepth;
-    if ((useKneeForest || useFrameKnee) &&
+    if ((useKneeForest || _useUnifiedKnee) &&
         fallbackReason == RejectReason.kneesDown) {
       fallbackReason = RejectReason.insufficientDepth;
     }
@@ -830,7 +854,7 @@ class RepJudge {
         elbow,
         raw,
         _nextIndex,
-        kneeSupport: useFrameKnee
+        kneeSupport: _useUnifiedKnee
             ? _frameKneeEvidence.matchesCompletedAttempt
             : null,
       );
@@ -1156,7 +1180,7 @@ class RepJudge {
   /// consecutive frames, either folded or sitting next to the hands, or the
   /// hips sat back in a kneeling bow.
   bool _kneesDown() {
-    if (useFrameKnee) return _frameKneeEvidence.matchesCompletedAttempt;
+    if (_useUnifiedKnee) return _frameKneeEvidence.matchesCompletedAttempt;
     final frames = config.minCheatFrames;
     return _kneesLatched ||
         _kneeBentFrames >= frames ||

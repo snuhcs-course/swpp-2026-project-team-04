@@ -191,3 +191,19 @@ single failure in untouched main0a17580 with S2 enabled. It is disclosed as an
 inherited optional-configuration test failure; unrelated mission assertions
 were preserved. The independent read-only reviewer approved the final code,
 data and ON/OFF report consistency before publication.
+
+
+### Combined MLP and both knee layers — 2026-11-21/22
+
+1. **Use:** Codex implemented an additive knee-policy switch, replayed the unchanged recorded poses, grouped the requested four categories and wired the user-selected policy into the common battle factory. Models and weights were not retrained; no camera data was sent to an external service.
+2. **Inputs:** The three selected original user requests are in the personal prompt log. They first prohibited publication, then explicitly authorized a PR and merge after clean checks. This selected record does not claim a complete iteration export.
+3. **Useful output:** The event-by-event check preserves all479 proposal counts/timestamps and prior rejections, allowing only25 accepted-to-knee rejections. The combined table distinguishes category recall, misses and unmatched accepted events.
+4. **Errors and corrections:** The earlier replacement mode removed old protections; the additive mode preserves them. A regression failed before the fix. A separate production-factory regression exposed that the comparison option was not yet active in normal battles; Codex added explicit battle wiring. A shell test command initially split a multiword filter into an extra filename; the correctly invoked221-test run passed. No model/tool timing savings were measured.
+5. **Prompt revision:** The user changed the requested experiment from replacing the knee specialist to retaining both layers, and then explicitly chose publication after the results showed both benefits and costs. The additive comparison improves knee recall76/79 to78/79 but reduces normal recall69/73 to65/73.
+6. **Manual fixes:** No human source-code edits were reported. Codex made the code and test corrections; an independent read-only Codex reviewer inspected the actual changes and comparison artifacts. Publication-wide results and CI are recorded in the testing notes.
+
+No original video or raw image is included. Recent labels remain provisional protocol/visual references. Frozen targets are not claimed achieved. The selected policy is a user-approved trade-off, not a claim of unseen-person or live-phone accuracy.
+
+The installed Session Exporter supports Codex. Dry runs for2026-11-21 through2026-11-22 returned zero eligible sessions for both the active worktree and this chat's supplied worktree. The latter reported ambiguous working-directory moves and session metadata exclusions. No ZIP or complete transcript review is claimed. The reviewed fallback is the three verbatim visible user inputs for this task.
+
+Publication-wide validation finished: full analysis clean,3768 tests passed with10 existing skips,236 scoped tests passed, and all three four-test configuration-override runs passed. The selected production-factory replay exactly matches all44 prior case outputs. The first full run's3 S2 legacy-golden failures are retained in the local evidence; original7/13/empty assertions remain on the old judge, and five production-policy scenarios now verify pause, wrong-person suppression and confirmation/resumption. The O033 pre-pause accepted candidate is disclosed in the evaluation note.

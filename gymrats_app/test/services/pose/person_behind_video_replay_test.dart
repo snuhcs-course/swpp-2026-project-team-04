@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
+import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 
 import '../../support/fakes.dart';
@@ -40,6 +41,7 @@ Future<_Replay> _replay(
   WidgetTester tester,
   Map<String, dynamic> source, {
   int? confirmAt,
+  bool productionPolicy = false,
 }) async {
   var now = Duration.zero;
   final result = _Replay();
@@ -55,6 +57,17 @@ Future<_Replay> _replay(
         estimator: estimators[i],
         phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
         clock: () => now,
+        // Preserve the original S2 event goldens independently of the
+        // selected battle policy; production integration is covered below.
+        judge: !productionPolicy && exercise == ExerciseType.pushUp
+            ? RepJudge(
+                clock: () => now,
+                useMlp: false,
+                useFrameKnee: false,
+                retainLegacyKnee: false,
+                useKneeForest: false,
+              )
+            : null,
         // Exercise only the replay interval, independent of match timeout.
         roundLength: const Duration(hours: 1),
         enablePersonGuard: i == 1,
@@ -126,6 +139,42 @@ void main() {
       source['source_id'] as String: source as Map<String, dynamic>,
   };
 
+  for (final id in ['OLD-O027', 'S2-D015-G', 'S2-D015-B', 'OLD-O033']) {
+    testWidgets('$id production policy emits no paused-frame results', (
+      tester,
+    ) async {
+      final result = await _replay(
+        tester,
+        sources[id]!,
+        productionPolicy: true,
+      );
+      final pausedAt = {
+        for (final frame in result.frames)
+          if (frame.paused) frame.ms,
+      };
+      expect(
+        result.guardedEvents.every((event) => !pausedAt.contains(event.$1)),
+        isTrue,
+      );
+      if (id.startsWith('S2-D015')) {
+        expect(pausedAt, isEmpty);
+        expect(result.baselineEvents, isNotEmpty);
+        expect(result.guardedEvents, result.baselineEvents);
+      } else if (id == 'OLD-O027') {
+        expect(result.baselineEvents, isNotEmpty);
+        expect(result.guardedEvents, isEmpty);
+        expect(pausedAt, isNotEmpty);
+        expect(result.frames.last.paused, isTrue);
+      } else {
+        // The new judge may complete a candidate before tracking pauses.
+        // Once paused, no result or pose may be published.
+        expect(pausedAt, isNotEmpty);
+        expect(result.frames.last.paused, isTrue);
+        expect(result.frames.last.published, isFalse);
+      }
+    });
+  }
+
   testWidgets('real wrong-person stream is withheld until confirmation', (
     tester,
   ) async {
@@ -144,31 +193,39 @@ void main() {
     expect(result.frames.last.paused, isTrue);
   });
 
-  testWidgets('explicit confirmation resumes a returned real-video user', (
-    tester,
-  ) async {
-    final result = await _replay(
-      tester,
-      sources['OLD-O027']!,
-      confirmAt: 19067,
+  for (final productionPolicy in [false, true]) {
+    final policy = productionPolicy ? 'production policy: ' : '';
+    testWidgets(
+      '${policy}explicit confirmation resumes a returned real-video user',
+      (tester) async {
+        final result = await _replay(
+          tester,
+          sources['OLD-O027']!,
+          confirmAt: 19067,
+          productionPolicy: productionPolicy,
+        );
+        expect(
+          result.frames
+              .where((f) => f.ms < 19067 && f.ms >= 267)
+              .every((f) => f.paused),
+          isTrue,
+        );
+        expect(
+          result.frames.firstWhere((f) => f.ms == 19133).published,
+          isTrue,
+        );
+        // Later source blur/gaps can interrupt attempts again. This clip proves
+        // pose recovery, not successful rep completion after confirmation.
+        expect(
+          result.frames
+              .where((f) => f.ms > 19067 && !f.paused && f.published)
+              .length,
+          greaterThan(30),
+        );
+        expect(result.guardedEvents.every((event) => event.$1 > 19067), isTrue);
+      },
     );
-    expect(
-      result.frames
-          .where((f) => f.ms < 19067 && f.ms >= 267)
-          .every((f) => f.paused),
-      isTrue,
-    );
-    expect(result.frames.firstWhere((f) => f.ms == 19133).published, isTrue);
-    // Later source blur/gaps can interrupt attempts again. This clip proves
-    // pose recovery, not successful rep completion after confirmation.
-    expect(
-      result.frames
-          .where((f) => f.ms > 19067 && !f.paused && f.published)
-          .length,
-      greaterThan(30),
-    );
-    expect(result.guardedEvents.every((event) => event.$1 > 19067), isTrue);
-  });
+  }
 
   for (final id in [
     'S2-D015-G',

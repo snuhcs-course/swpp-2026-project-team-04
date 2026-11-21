@@ -2277,6 +2277,7 @@ void _kneeSpecialistIntegrationTests() {
   List<({RepEvent event, double baseProbability, double kneeProbability})> run(
     String fileName, {
     bool frameKnee = false,
+    bool retainLegacyKnee = false,
     KneeFrameClassifier? classifier,
   }) {
     final recording = PushUpRecording.decode(
@@ -2289,6 +2290,7 @@ void _kneeSpecialistIntegrationTests() {
     final judge = RepJudge(
       useMlp: true,
       useFrameKnee: frameKnee,
+      retainLegacyKnee: retainLegacyKnee,
       kneeClassifier: classifier,
       clock: () => now,
     );
@@ -2371,6 +2373,54 @@ void _kneeSpecialistIntegrationTests() {
       expect(result.event.valid, isFalse);
       expect(result.event.reason, RejectReason.kneesDown);
     }
+  });
+
+  test('additive knee mode retains legacy rejection with lifted evidence', () {
+    const clip = '20261101-204453_SM-S901N_knees';
+    final baseline = run(clip);
+    final additive = run(
+      clip,
+      frameKnee: true,
+      retainLegacyKnee: true,
+      classifier: _FrameKneeFake()..state = KneeFrameState.lifted,
+    );
+    expect(baseline.where((r) => r.baseProbability > .5).length, 5);
+    expect(additive.map((r) => r.event.at), baseline.map((r) => r.event.at));
+    expect(
+      additive.map((r) => (r.event.valid, r.event.reason)),
+      baseline.map((r) => (r.event.valid, r.event.reason)),
+    );
+  });
+
+  test(
+    'additive knee mode vetoes normal acceptance with touching evidence',
+    () {
+      const clip = '20261101-204311_SM-S901N_normal';
+      final baseline = run(clip);
+      final additive = run(
+        clip,
+        frameKnee: true,
+        retainLegacyKnee: true,
+        classifier: _FrameKneeFake()..state = KneeFrameState.touching,
+      );
+      expect(baseline.where((r) => r.event.valid).length, 4);
+      expect(additive.map((r) => r.event.at), baseline.map((r) => r.event.at));
+      expect(additive.every((r) => !r.event.valid), isTrue);
+      for (final result in additive.where((r) => r.baseProbability > .5)) {
+        expect(result.event.reason, RejectReason.kneesDown);
+      }
+    },
+  );
+
+  test('additive knee option leaves frame-disabled MLP unchanged', () {
+    const clip = '20261101-204311_SM-S901N_normal';
+    final baseline = run(clip);
+    final additive = run(clip, retainLegacyKnee: true);
+    expect(additive.map((r) => r.event.at), baseline.map((r) => r.event.at));
+    expect(
+      additive.map((r) => (r.event.valid, r.event.reason)),
+      baseline.map((r) => (r.event.valid, r.event.reason)),
+    );
   });
 }
 
