@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/arcade_catalog.dart';
 import '../models/arcade_stage.dart';
 import '../models/battle_result.dart';
+import '../models/character_rig.dart';
 import '../models/exercise_type_korean.dart';
 import '../models/game_score.dart';
 import '../models/match_record.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/arcade_viewmodel.dart';
+import '../viewmodels/character_viewmodel.dart';
 import '../widgets/arcade_parts.dart';
-import '../widgets/arcade_result_frame.dart';
 import '../widgets/battle_fx_motion.dart';
+import '../widgets/battle_stage_model.dart';
+import '../widgets/character_figure.dart';
+import '../widgets/grid_background.dart';
 import 'arcade_flow.dart';
+import 'hold_stage_brief.dart';
+import 'hold_stage_result.dart';
 
-/// What an arcade battle came to (P16 spec 6 and 7): a fight cleared
-/// (`P16Arc` clear) or failed (`ArcResult` fail), a boss match's floor
-/// cleared (`P16Boss` clear; 4F: `ArcResult` lastFloor) or a round lost
-/// (`ArcResult` bossFail).
+/// What an arcade battle came to (P16 spec 6 and 7), in A4's result frame
+/// ([ArcadeResultFrame], the design's `ArcResult`): a fight cleared or
+/// failed, a boss match's floor cleared (4F: 4층 클리어 with 5F 공사중) or
+/// a round lost.
 ///
 /// [rounds] are the battles played, the last the one just ended: one for a
 /// fight, one or two for a boss match. 리포트 보기 opens the last one's
@@ -33,257 +40,209 @@ class ArcadeResultScreen extends StatelessWidget {
   final List<BattleResult> rounds;
   final ArcadeStars stars;
 
-  /// The design's tops below the status bar: 44 and 54 less its 28.
-  static const _top = AppSpacing.s16;
-  static const _clearTop = 26.0;
+  // The stand, as `ArcResult` places it: a clear (lastFloor) has the user
+  // cheering on the step and the opponent knocked out on the right; a fail
+  // has the user knocked out on the left and the opponent cheering on the
+  // step, facing left.
+  static const _clearStep = 70.0;
+  static const _clearMeLeft = 56.0;
+  static const _clearMeScale = 1.05;
+  static const _clearOpponentLeft = 182.0;
+  static const _lyingScale = 0.62;
+  static const _failStep = 160.0;
+  static const _failMeLeft = 30.0;
+  static const _failMeScale = 0.9;
+  static const _failOpponentLeft = 150.0;
+  static const _standBottom = 12.0;
 
-  /// Between the stand and what follows it.
+  /// The gaps over what follows the stand.
   static const _nextGap = 14.0;
   static const _rowsGap = 6.0;
   static const _floorGap = 10.0;
 
-  /// The floor cleared's title band: 20 beside it (P16Boss clear).
-  static const _bossTitlePadding = EdgeInsets.fromLTRB(
-    AppSpacing.s20,
-    _bandOver,
-    AppSpacing.s20,
-    _bandUnder,
-  );
-  static const _bandOver = 2.0;
-  static const _bandUnder = 6.0;
-
-  // A fight's clear (P16Arc clear).
-  static const _clearTitleGap = 10.0;
-  static const _clearStar = 64.0;
-  static const _clearMiddleStar = 76.0;
-  static const _clearStarGap = 14.0;
-  static const _clearLabelGap = 6.0;
-  static const _clearStarsGap = 22.0;
-  static const _clearStandHeight = 200.0;
-  static const _clearPedestal = 104.0;
-  static const _clearMeLeft = 90.0;
-  static const _clearMeScale = 1.15;
-  static const _clearOpponentRight = 6.0;
-  static const _clearOpponentShade = 0.9;
-  static const _clearFiguresGap = 18.0;
-
-  // A floor cleared (P16Boss clear) and the last floor (ArcResult
-  // lastFloor).
-  static const _floorPedestal = 70.0;
-  static const _floorMeLeft = 56.0;
-  static const _floorMeScale = 1.05;
-  static const _floorOpponentRight = 4.0;
-  static const _lastOpponentLeft = 182.0;
-  static const _floorStarWidth = 96.0;
-
-  // Everyone stands 12 up; a knocked-out opponent lies on the floor, small.
-  static const _standBottom = 12.0;
-  static const _lyingScale = 0.62;
-
   @override
   Widget build(BuildContext context) {
     final stage = this.stage;
-    final text = Theme.of(context).textTheme;
-    final labels = [for (final star in stage.stars) star.label];
+    final me =
+        context.watch<CharacterViewModel?>()?.characterId ??
+        CharacterRig.defaultId;
     final last = rounds.last;
+    final starList = [
+      for (final (i, star) in stage.stars.indexed)
+        ArcadeResultStar(lit: stars.lit[i], label: star.label),
+    ];
     void report() => ArcadeFlow.openReport(context, last);
-    final ArcadeBattleResultFrame frame;
+    void leave() => ArcadeFlow.leave(context);
+    final cleared = stars.cleared;
+    final figures = cleared
+        ? ArcadeResultFigures(
+            stepLeft: _clearStep,
+            me: CharacterFigure(characterId: me, pose: BattlePose.win),
+            meLeft: _clearMeLeft,
+            meScale: _clearMeScale,
+            opponent: _opponent(stage.character, BattlePose.knockedOut),
+            opponentLeft: _clearOpponentLeft,
+            opponentBottom: 0,
+          )
+        : ArcadeResultFigures(
+            stepLeft: _failStep,
+            me: CharacterFigure(characterId: me, pose: BattlePose.knockedOut),
+            meLeft: _failMeLeft,
+            meScale: _failMeScale,
+            opponent: _opponent(stage.character, BattlePose.win, scale: 1),
+            opponentLeft: _failOpponentLeft,
+            opponentBottom: _standBottom,
+          );
+    final Widget frame;
+    String? link;
     switch (stage) {
-      case ArcadeFightStage() when stars.cleared:
-        frame = ArcadeBattleResultFrame(
-          top: _clearTop,
+      case ArcadeFightStage() when cleared:
+        frame = ArcadeResultFrame(
           tag: ArcadeWords.stageTag(stage),
           title: '클리어!',
-          titleColor: AppColors.accent,
-          titleStyle: text.arcadeBannerLarge,
-          titleGap: _clearTitleGap,
-          stars: ArcadeResultStars(
-            labels: labels,
-            lit: stars.lit,
-            size: _clearStar,
-            middleSize: _clearMiddleStar,
-            gap: _clearStarGap,
-            labelGap: _clearLabelGap,
+          cleared: true,
+          stars: starList,
+          figures: figures,
+          below: ArcadeNextStageFaceCard(
+            stage: ArcadeCatalog.stage(stage.number + 1),
           ),
-          starsGap: _clearStarsGap,
-          figures: ArcadeBattleFigures(
-            height: _clearStandHeight,
-            pedestalLeft: _clearPedestal,
-            stands: [
-              ArcadeBattleStand.me(
-                left: _clearMeLeft,
-                bottom: _standBottom,
-                scale: _clearMeScale,
-              ),
-              ArcadeBattleStand.opponent(
-                id: stage.character,
-                pose: BattlePose.knockedOut,
-                right: _clearOpponentRight,
-                bottom: 0,
-                scale: _lyingScale,
-                opacity: _clearOpponentShade,
-                outline: false,
-              ),
-            ],
-          ),
-          figuresGap: _clearFiguresGap,
-          below: [
-            const SizedBox(height: _nextGap),
-            ArcadeBattleNextCard(stage: ArcadeCatalog.stage(stage.number + 1)),
-          ],
-          buttons: ArcadeBattleButtons(
-            first: '리포트 보기',
-            onFirst: report,
-            second: '다음 스테이지',
-            onSecond: () => ArcadeFlow.next(context, stage.number + 1),
-          ),
+          belowGap: _nextGap,
+          secondaryLabel: '리포트 보기',
+          onSecondary: report,
+          primaryLabel: '다음 스테이지',
+          onPrimary: () => ArcadeFlow.next(context, stage.number + 1),
         );
       case ArcadeFightStage():
-        frame = ArcadeBattleResultFrame(
-          top: _top,
+        link = '아케이드로';
+        frame = ArcadeResultFrame(
           tag: ArcadeWords.stageTag(stage),
           title: '실패',
-          titleColor: AppColors.facetDark,
-          titleStyle: text.arcadeBanner,
-          score: ArcadeScoreLine(
+          cleared: false,
+          middle: ArcadeScoreLine(
             me: last.myDisplayScore,
             opponent: last.opponentDisplayScore,
             meLarger: last.myDisplayScore > last.opponentDisplayScore,
           ),
-          stars: ArcadeResultStars(labels: labels, lit: stars.lit),
-          figures: ArcadeBattleFigures.lost(opponent: stage.character),
-          buttons: ArcadeBattleButtons(
-            first: '리포트 보기',
-            onFirst: report,
-            second: '다시 도전',
-            onSecond: () => ArcadeFlow.replay(context, stage.number),
-            link: '아케이드로',
-            onLink: () => ArcadeFlow.leave(context),
-          ),
+          stars: starList,
+          figures: figures,
+          secondaryLabel: '리포트 보기',
+          onSecondary: report,
+          primaryLabel: '다시 도전',
+          onPrimary: () => ArcadeFlow.replay(context, stage.number),
         );
-      case ArcadeBossStage() when !stars.cleared:
-        frame = ArcadeBattleResultFrame(
-          top: _top,
+      case ArcadeBossStage() when !cleared:
+        link = '아케이드로';
+        frame = ArcadeResultFrame(
           tag: 'STAGE ${stage.number} · ${stage.floor}F BOSS',
           title: 'R${rounds.length} 패배',
-          titleColor: AppColors.facetDark,
-          titleStyle: text.arcadeBanner,
-          stars: ArcadeResultStars(labels: labels, lit: stars.lit),
-          figures: ArcadeBattleFigures.lost(opponent: stage.character),
-          below: [
-            const SizedBox(height: _rowsGap),
-            ArcadeRoundRows(stage: stage, rounds: rounds),
-          ],
-          buttons: ArcadeBattleButtons(
-            first: '리포트 보기',
-            onFirst: report,
-            second: 'R1부터 다시',
-            onSecond: () => ArcadeFlow.replay(context, stage.number),
-            link: '아케이드로',
-            onLink: () => ArcadeFlow.leave(context),
-          ),
+          cleared: false,
+          stars: starList,
+          figures: figures,
+          below: ArcadeRoundRows(stage: stage, rounds: rounds),
+          belowGap: _rowsGap,
+          secondaryLabel: '리포트 보기',
+          onSecondary: report,
+          primaryLabel: 'R1부터 다시',
+          onPrimary: () => ArcadeFlow.replay(context, stage.number),
         );
       case ArcadeBossStage() when stage.floor == ArcadeCatalog.floors.length:
-        frame = ArcadeBattleResultFrame(
-          top: _top,
+        frame = ArcadeResultFrame(
           tag: 'STAGE ${stage.number} · ${stage.floor}F BOSS',
           title: '${stage.floor}층 클리어!',
-          titleColor: AppColors.accent,
-          titleStyle: text.arcadeBanner,
-          stars: ArcadeResultStars(labels: labels, lit: stars.lit),
-          figures: ArcadeBattleFigures(
-            pedestalLeft: _floorPedestal,
-            stands: [
-              ArcadeBattleStand.me(
-                left: _floorMeLeft,
-                bottom: _standBottom,
-                scale: _floorMeScale,
-              ),
-              ArcadeBattleStand.opponent(
-                id: stage.character,
-                pose: BattlePose.knockedOut,
-                left: _lastOpponentLeft,
-                bottom: 0,
-                scale: _lyingScale,
-                mirror: true,
-              ),
-            ],
-          ),
-          below: const [
-            SizedBox(height: AppSpacing.s8),
-            ArcadeUnderConstructionCard(),
-          ],
-          buttons: ArcadeBattleButtons(
-            first: '리포트 보기',
-            onFirst: report,
-            second: '아케이드로',
-            onSecond: () => ArcadeFlow.leave(context),
-          ),
+          cleared: true,
+          stars: starList,
+          figures: figures,
+          below: const ArcadeUnderConstructionCard(),
+          belowGap: AppSpacing.s8,
+          secondaryLabel: '리포트 보기',
+          onSecondary: report,
+          primaryLabel: '아케이드로',
+          onPrimary: leave,
         );
       case ArcadeBossStage():
         final floor = ArcadeCatalog.floorOf(stage);
-        frame = ArcadeBattleResultFrame(
-          top: _top,
+        frame = ArcadeResultFrame(
           tag: 'STAGE ${stage.number} · ${floor.number}F ${floor.name}',
           title: '${floor.number}층 클리어!',
-          titleColor: AppColors.accent,
-          titleStyle: text.arcadeBanner,
-          titlePadding: _bossTitlePadding,
-          stars: ArcadeResultStars(
-            labels: labels,
-            lit: stars.lit,
-            width: _floorStarWidth,
-          ),
-          starsGap: AppSpacing.s16,
-          figures: ArcadeBattleFigures(
-            pedestalLeft: _floorPedestal,
-            stands: [
-              ArcadeBattleStand.me(
-                left: _floorMeLeft,
-                bottom: _standBottom,
-                scale: _floorMeScale,
-              ),
-              ArcadeBattleStand.opponent(
-                id: stage.character,
-                pose: BattlePose.knockedOut,
-                right: _floorOpponentRight,
-                bottom: 0,
-                scale: _lyingScale,
-                outline: false,
-              ),
+          cleared: true,
+          stars: starList,
+          figures: figures,
+          below: Column(
+            children: [
+              ArcadeRoundRows(stage: stage, rounds: rounds),
+              const SizedBox(height: _floorGap),
+              ArcadeNextFloorCard(floor: floor.number + 1),
             ],
           ),
-          below: [
-            const SizedBox(height: _rowsGap),
-            ArcadeRoundRows(stage: stage, rounds: rounds),
-            const SizedBox(height: _floorGap),
-            ArcadeNextFloorCard(floor: floor.number + 1),
-          ],
-          buttons: ArcadeBattleButtons(
-            first: '리포트 보기',
-            onFirst: report,
-            second: '${floor.number + 1}층으로',
-            onSecond: () => ArcadeFlow.next(context, stage.number + 1),
-          ),
+          belowGap: _rowsGap,
+          secondaryLabel: '리포트 보기',
+          onSecondary: report,
+          primaryLabel: '${floor.number + 1}층으로',
+          onPrimary: () => ArcadeFlow.next(context, stage.number + 1),
         );
       case ArcadeHoldStage():
         return const SizedBox.shrink();
     }
+    final linkLabel = link;
     return PopScope<Object?>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) ArcadeFlow.leave(context);
+        if (!didPop) leave();
       },
-      child: frame,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: GridBackground(
+          child: linkLabel == null
+              ? frame
+              // The link under the frame's buttons (`ArcResult` fail and
+              // bossFail): the frame keeps its own room under them.
+              : Column(
+                  children: [
+                    Expanded(
+                      child: MediaQuery.removePadding(
+                        context: context,
+                        removeBottom: true,
+                        child: frame,
+                      ),
+                    ),
+                    SafeArea(
+                      top: false,
+                      child: ArcadeTextLink(label: linkLabel, onPressed: leave),
+                    ),
+                  ],
+                ),
+        ),
+      ),
     );
   }
+
+  /// The opponent [id] as the stand puts it: [pose] in the opponent's
+  /// color, facing left, [scale]d about the feet and edged white.
+  static Widget _opponent(
+    String id,
+    BattlePose pose, {
+    double scale = _lyingScale,
+  }) => SizedBox.fromSize(
+    size: HoldOwner.box,
+    child: Transform(
+      transform: Matrix4.diagonal3Values(-scale, scale, 1),
+      origin: const Offset(70, 150),
+      child: HoldOutlined(
+        child: CharacterFigure(
+          characterId: id,
+          pose: pose,
+          side: BattleSide.opponent,
+        ),
+      ),
+    ),
+  );
 }
 
-/// The next stage's card under a fight's clear: its face, an open lock
-/// with "STAGE n", its title, and its kind ("HOLD", "BOSS").
-class ArcadeBattleNextCard extends StatelessWidget {
-  const ArcadeBattleNextCard({super.key, required this.stage});
-
+/// The next stage's card under a fight's clear (P16 spec 6): the face of
+/// who is met there, an open lock with "STAGE n", its title, and its kind
+/// ("HOLD", "BOSS").
+class ArcadeNextStageFaceCard extends StatelessWidget {
+  const ArcadeNextStageFaceCard({super.key, required this.stage});
   final ArcadeStage stage;
 
   static const _cardSide = 14.0;
@@ -669,7 +628,7 @@ class ArcadeUnderConstructionCard extends StatelessWidget {
             right: 0,
             bottom: 0,
             height: _strip,
-            child: ArcadeStripesStrip(),
+            child: _StripesStrip(),
           ),
           Positioned.fill(
             bottom: _strip,
@@ -693,4 +652,24 @@ class ArcadeUnderConstructionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A strip of amber and ink stripes under an ink line: the bottom of the
+/// last floor's card.
+class _StripesStrip extends StatelessWidget {
+  const _StripesStrip();
+
+  static const _edge = 2.0;
+  static const _stripe = 10.0;
+
+  @override
+  Widget build(BuildContext context) => const DecoratedBox(
+    position: DecorationPosition.foreground,
+    decoration: BoxDecoration(
+      border: Border(
+        top: BorderSide(color: AppColors.ink, width: _edge),
+      ),
+    ),
+    child: CustomPaint(painter: ArcadeStripesPainter(_stripe)),
+  );
 }

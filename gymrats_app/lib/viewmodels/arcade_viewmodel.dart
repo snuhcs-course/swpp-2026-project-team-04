@@ -43,6 +43,9 @@ class ArcadeViewModel extends ChangeNotifier {
   int? _requested;
   bool _disposed = false;
 
+  /// Where the progress is kept; A4's hold screens keep their stars there.
+  ArcadeProgressStore get store => _store;
+
   /// The account whose arcade this is; null when signed out.
   int? get accountId => _accountId;
 

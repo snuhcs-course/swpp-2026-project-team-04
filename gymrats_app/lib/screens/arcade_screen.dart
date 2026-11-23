@@ -16,6 +16,7 @@ import '../widgets/arcade_parts.dart';
 import '../widgets/arcade_stage_sheet.dart';
 import '../widgets/lobby_parts.dart';
 import 'arcade_flow.dart';
+import 'hold_stage_screen.dart';
 
 /// The arcade's home (P16 spec 4, design `ArcMap`): the header with the
 /// stars got out of 72, the building's map, and the bar with the stage to
@@ -29,12 +30,18 @@ import 'arcade_flow.dart';
 /// asked for (다음 스테이지).
 ///
 /// A fight stage opens its sheet, a boss match its intro and a hold stage
-/// A4's hold screen ([onOpenHold]); a locked stage does nothing.
+/// A4's hold screen ([ArcadeFlow.openHold]); a locked stage does nothing.
+/// 다음 스테이지 on a hold's result opens the stage after it here.
 class ArcadeScreen extends StatefulWidget {
-  const ArcadeScreen({super.key, this.onOpenHold});
+  const ArcadeScreen({super.key, this.openHold});
 
-  /// Opens a hold stage. Null does nothing: the hold stages come with A4.
-  final void Function(BuildContext context, ArcadeHoldStage stage)? onOpenHold;
+  /// Opens a hold stage and tells how it was left; null opens A4's
+  /// screen ([ArcadeFlow.openHold]). Tests put a stand-in here.
+  final Future<HoldStageExit?> Function(
+    BuildContext context,
+    ArcadeHoldStage stage,
+  )?
+  openHold;
 
   @override
   State<ArcadeScreen> createState() => _ArcadeScreenState();
@@ -144,8 +151,18 @@ class _ArcadeScreenState extends State<ArcadeScreen> with RouteAware {
       case ArcadeBossStage():
         ArcadeFlow.openBoss(context, stage);
       case ArcadeHoldStage():
-        widget.onOpenHold?.call(context, stage);
+        unawaited(_playHold(stage));
     }
+  }
+
+  /// Hold stage [stage], then, after its 다음 스테이지, the stage after it
+  /// with the progress the hold kept.
+  Future<void> _playHold(ArcadeHoldStage stage) async {
+    final exit = await (widget.openHold ?? ArcadeFlow.openHold)(context, stage);
+    if (!mounted || exit != HoldStageExit.nextStage) return;
+    await _arcade.refresh();
+    if (!mounted) return;
+    _open(ArcadeCatalog.stage(stage.number + 1));
   }
 
   @override

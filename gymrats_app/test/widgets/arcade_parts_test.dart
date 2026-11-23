@@ -229,35 +229,6 @@ void main() {
       expect(fills.where((fill) => fill == AppColors.starOn), hasLength(1));
       expect(fills, hasLength(9));
     });
-
-    testWidgets('the results\' stars: lit ones amber, the middle larger', (
-      tester,
-    ) async {
-      await _show(
-        tester,
-        const ArcadeResultStars(
-          labels: ['승리', '콤보 5 이상', 'KO 승리'],
-          lit: [true, true, false],
-        ),
-      );
-      final icons = tester
-          .widgetList<ArcadeGlyphIcon>(find.byType(ArcadeGlyphIcon))
-          .toList();
-      expect(icons.map((i) => i.size), [60, 72, 60]);
-      expect(icons.map((i) => i.fill), [
-        AppColors.starOn,
-        AppColors.starOn,
-        AppColors.starOff,
-      ]);
-      expect(
-        tester.widget<Text>(find.text('KO 승리')).style!.color,
-        AppColors.textMuted,
-      );
-      expect(
-        find.bySemanticsLabel('승리 받음, 콤보 5 이상 받음, KO 승리 못 받음'),
-        findsOneWidget,
-      );
-    });
   });
 
   testWidgets('the score line: the winner\'s number larger', (tester) async {

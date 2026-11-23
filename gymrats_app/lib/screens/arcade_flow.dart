@@ -5,10 +5,16 @@ import '../main.dart';
 import '../models/arcade_catalog.dart';
 import '../models/arcade_stage.dart';
 import '../models/battle_result.dart';
+import '../models/character_rig.dart';
+import '../services/arcade/arcade_progress_store.dart';
+import '../services/pose/hold_poses.dart';
 import '../viewmodels/arcade_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../viewmodels/character_viewmodel.dart';
+import '../viewmodels/hold_stage_viewmodel.dart';
 import 'arcade_boss_screen.dart';
 import 'arcade_result_screen.dart';
+import 'hold_stage_screen.dart';
 import 'result_screen.dart';
 
 /// How the arcade's screens lead into one another (P16 spec 2): from the
@@ -50,6 +56,54 @@ abstract final class ArcadeFlow {
   static void openBoss(BuildContext context, ArcadeBossStage stage) {
     _arcade(context)?.endBossRun();
     Navigator.push(context, ArcadeBossScreen.route(stage: stage));
+  }
+
+  /// Hold stage [stage]'s screen (A4, P16 spec 8), keeping its stars in
+  /// [store] for [accountId], the arcade's own. Until A5 (the chair pose)
+  /// is merged, a chair stage (5, 11, 17, 23) runs as a high plank: only
+  /// the way in changes; the stage's data, its star seconds included,
+  /// stay as they are (task.md P16-4 fallback). Remove it with A5.
+  static HoldStageScreen holdScreen(
+    ArcadeHoldStage stage, {
+    required String myCharacter,
+    ArcadeProgressStore? store,
+    int? accountId,
+  }) => HoldStageScreen(
+    stage: stage.number,
+    myCharacter: myCharacter,
+    progressStore: store,
+    accountId: accountId,
+    createViewModel: stage.pose == HoldPose.chair
+        ? () => HoldStageViewModel(
+            stage: stage.number,
+            definition: HoldPoses.of(HoldPose.plank),
+            store: store,
+            accountId: accountId,
+          )
+        : null,
+  );
+
+  /// Opens hold stage [stage] over the map, and tells how it was left
+  /// (아케이드로, 다음 스테이지, or left mid-stage).
+  static Future<HoldStageExit?> openHold(
+    BuildContext context,
+    ArcadeHoldStage stage,
+  ) {
+    final arcade = _arcade(context);
+    final me =
+        Provider.of<CharacterViewModel?>(context, listen: false)?.characterId ??
+        CharacterRig.defaultId;
+    return Navigator.push<HoldStageExit>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => holdScreen(
+          stage,
+          myCharacter: me,
+          store: arcade?.store,
+          accountId: arcade?.accountId,
+        ),
+      ),
+    );
   }
 
   /// Back to the map, which then opens stage [number]: 다음 스테이지 and

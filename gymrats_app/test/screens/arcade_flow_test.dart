@@ -14,7 +14,9 @@ import 'package:gymrats_app/screens/arcade_boss_screen.dart';
 import 'package:gymrats_app/screens/arcade_flow.dart';
 import 'package:gymrats_app/screens/arcade_result_screen.dart';
 import 'package:gymrats_app/screens/arcade_screen.dart';
+import 'package:gymrats_app/screens/hold_stage_result.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
+import 'package:gymrats_app/services/pose/hold_poses.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
 import 'package:gymrats_app/widgets/arcade_stage_sheet.dart';
@@ -84,7 +86,10 @@ void main() {
             GymRatsApp.arcadeRoute => MaterialPageRoute<void>(
               settings: settings,
               builder: (_) => ArcadeScreen(
-                onOpenHold: (_, stage) => holds.add(stage.number),
+                openHold: (_, stage) async {
+                  holds.add(stage.number);
+                  return null;
+                },
               ),
             ),
             GymRatsApp.versusRoute ||
@@ -147,10 +152,11 @@ void main() {
       expect(find.byType(ArcadeResultScreen), findsOneWidget);
       expect(find.text('STAGE 8 · 2F'), findsOneWidget);
       expect(find.text('클리어!'), findsOneWidget);
-      expect(
-        find.bySemanticsLabel('승리 받음, 콤보 5 이상 못 받음, KO 승리 받음'),
-        findsOneWidget,
-      );
+      // In A4's result frame (spec 6), each star read on its own.
+      expect(find.byType(ArcadeResultFrame), findsOneWidget);
+      expect(find.bySemanticsLabel('승리 별 받음'), findsOneWidget);
+      expect(find.bySemanticsLabel('콤보 5 이상 별 못 받음'), findsOneWidget);
+      expect(find.bySemanticsLabel('KO 승리 별 받음'), findsOneWidget);
       expect(find.text('STAGE 9'), findsOneWidget);
       expect(find.text('펭뚱이 · 하이 플랭크'), findsOneWidget);
       expect(find.text('HOLD'), findsOneWidget);
@@ -177,10 +183,10 @@ void main() {
       );
       expect(find.text('실패'), findsOneWidget);
       expect(find.bySemanticsLabel('내 점수 98, 상대 점수 140'), findsOneWidget);
-      expect(
-        find.bySemanticsLabel('승리 못 받음, 콤보 5 이상 못 받음, KO 승리 못 받음'),
-        findsOneWidget,
-      );
+      expect(find.byType(ArcadeResultFrame), findsOneWidget);
+      for (final label in ['승리', '콤보 5 이상', 'KO 승리']) {
+        expect(find.bySemanticsLabel('$label 별 못 받음'), findsOneWidget);
+      }
       expect(find.text('다시 도전'), findsOneWidget);
       expect(find.text('아케이드로'), findsOneWidget);
       expect(store.saved[1]!.bestOf(8), 0);
@@ -447,6 +453,56 @@ void main() {
         ArcadeFlow.playerName(tester.element(find.byType(ArcadeScreen))),
         '',
       );
+    });
+  });
+  group('hold stages (spec 8)', () {
+    final plank = ArcadeCatalog.stage(3) as ArcadeHoldStage;
+    final chair = ArcadeCatalog.stage(5) as ArcadeHoldStage;
+
+    test('a plank stage opens A4\'s screen as it is, with the arcade\'s '
+        'store and account', () {
+      final store = MemoryArcadeProgressStore();
+      final screen = ArcadeFlow.holdScreen(
+        plank,
+        myCharacter: 'kangaroo',
+        store: store,
+        accountId: 1,
+      );
+      expect(screen.stage, 3);
+      expect(screen.myCharacter, 'kangaroo');
+      expect(screen.progressStore, same(store));
+      expect(screen.accountId, 1);
+      expect(screen.createViewModel, isNull);
+    });
+
+    test('until A5, a chair stage runs as a high plank; its data stay', () {
+      final store = MemoryArcadeProgressStore();
+      final screen = ArcadeFlow.holdScreen(
+        chair,
+        myCharacter: 'mouse',
+        store: store,
+        accountId: 1,
+      );
+      expect(screen.stage, 5);
+      final viewModel = screen.createViewModel!();
+      addTearDown(viewModel.dispose);
+      expect(viewModel.definition, same(HoldPoses.of(HoldPose.plank)));
+      expect(viewModel.stage, same(chair));
+      expect(viewModel.stage.pose, HoldPose.chair);
+      expect(viewModel.stage.starSeconds, chair.starSeconds);
+      expect(viewModel.store, same(store));
+      expect(viewModel.accountId, 1);
+    });
+
+    test('every chair stage takes the fallback, no plank stage does', () {
+      for (final stage in ArcadeCatalog.stages.whereType<ArcadeHoldStage>()) {
+        final screen = ArcadeFlow.holdScreen(stage, myCharacter: 'mouse');
+        expect(
+          screen.createViewModel != null,
+          stage.pose == HoldPose.chair,
+          reason: 'STAGE ${stage.number}',
+        );
+      }
     });
   });
 }

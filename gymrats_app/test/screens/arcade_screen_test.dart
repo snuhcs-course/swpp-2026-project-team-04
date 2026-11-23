@@ -6,12 +6,17 @@ import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/arcade_catalog.dart';
 import 'package:gymrats_app/models/arcade_progress.dart';
 import 'package:gymrats_app/models/arcade_stage.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/arcade_boss_screen.dart';
 import 'package:gymrats_app/screens/arcade_screen.dart';
+import 'package:gymrats_app/screens/hold_stage_screen.dart';
+import 'package:gymrats_app/services/audio/sound_services.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
+import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/widgets/arcade_map.dart';
 import 'package:gymrats_app/widgets/arcade_stage_sheet.dart';
 import 'package:provider/provider.dart';
@@ -38,9 +43,13 @@ void main() {
   late ArcadeViewModel arcade;
   late List<ArcadeHoldStage> holds;
 
+  /// How the stand-in hold screen is left.
+  HoldStageExit? holdExit;
+
   setUp(() {
     store = MemoryArcadeProgressStore();
     holds = [];
+    holdExit = null;
   });
 
   /// The map over a page below, signed in as account 1 with [progress].
@@ -48,6 +57,8 @@ void main() {
     WidgetTester tester, {
     ArcadeProgress? progress,
     MemoryArcadeProgressStore? using,
+    bool realHold = false,
+    CharacterViewModel? characters,
   }) async {
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
@@ -61,8 +72,12 @@ void main() {
     addTearDown(arcade.dispose);
     unawaited(arcade.load(1));
     await tester.pumpWidget(
-      ChangeNotifierProvider<ArcadeViewModel>.value(
-        value: arcade,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ArcadeViewModel>.value(value: arcade),
+          if (characters != null)
+            ChangeNotifierProvider<CharacterViewModel>.value(value: characters),
+        ],
         child: MaterialApp(
           theme: AppTheme.light,
           navigatorObservers: [GymRatsApp.routeObserver],
@@ -78,8 +93,14 @@ void main() {
           onGenerateRoute: (settings) => switch (settings.name) {
             GymRatsApp.arcadeRoute => MaterialPageRoute<void>(
               settings: settings,
-              builder: (_) =>
-                  ArcadeScreen(onOpenHold: (_, stage) => holds.add(stage)),
+              builder: (_) => ArcadeScreen(
+                openHold: realHold
+                    ? null
+                    : (_, stage) async {
+                        holds.add(stage);
+                        return holdExit;
+                      },
+              ),
             ),
             GymRatsApp.versusRoute => MaterialPageRoute<void>(
               settings: settings,
@@ -256,6 +277,63 @@ void main() {
     expect(find.byType(ArcadeStageSheet), findsOneWidget);
     expect(find.text('곰탱이'), findsWidgets);
     expect(arcade.takeRequest(), isNull);
+  });
+
+  testWidgets('a hold\'s 다음 스테이지 reads the progress again and opens the '
+      'stage after it (spec 8)', (tester) async {
+    await open(tester, progress: _progress([3, 2]));
+    // The hold keeps its stars itself (A4), then 다음 스테이지.
+    store.saved[1] = _progress([3, 2, 2]);
+    holdExit = HoldStageExit.nextStage;
+    await tapCell(tester, 3);
+    await tester.pumpAndSettle();
+    expect(holds.map((stage) => stage.number), [3]);
+    expect(find.byType(ArcadeStageSheet), findsOneWidget);
+    expect(find.text('STAGE 4'), findsOneWidget);
+    expect(find.text('STAGE 4 · 1F'), findsOneWidget);
+  });
+
+  testWidgets('a hold left by 아케이드로 or mid-stage stays on the map', (
+    tester,
+  ) async {
+    await open(tester, progress: _progress([3, 2]));
+    for (final exit in [HoldStageExit.arcade, HoldStageExit.left, null]) {
+      holdExit = exit;
+      await tapCell(tester, 3);
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+    }
+    expect(holds, hasLength(3));
+  });
+
+  testWidgets('the app\'s own way into a hold: A4\'s screen for the stage, '
+      'with the arcade\'s store, account and the user\'s character', (
+    tester,
+  ) async {
+    SoundServices.shared = SoundServices.silent();
+    addTearDown(() => SoundServices.shared = null);
+    final chosen = CharacterRig.standard.selectable
+        .firstWhere((art) => art.id != CharacterRig.defaultId)
+        .id;
+    final characters = CharacterViewModel(store: MemoryCharacterStore());
+    addTearDown(characters.dispose);
+    await characters.load(1);
+    await characters.choose(chosen);
+    await open(
+      tester,
+      progress: _progress([3, 2]),
+      realHold: true,
+      characters: characters,
+    );
+    await tapCell(tester, 3);
+    final screen = tester.widget<HoldStageScreen>(find.byType(HoldStageScreen));
+    expect(screen.stage, 3);
+    expect(screen.progressStore, same(store));
+    expect(screen.accountId, 1);
+    expect(screen.myCharacter, chosen);
+    expect(screen.createViewModel, isNull);
+    expect(holds, isEmpty);
   });
 
   testWidgets('back returns to 게임 시작', (tester) async {
