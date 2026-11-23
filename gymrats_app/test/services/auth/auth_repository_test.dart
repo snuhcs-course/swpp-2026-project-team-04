@@ -176,4 +176,148 @@ void main() {
       expect(session.account.nickname, '우현');
     });
   });
+
+  group('Google (P7)', () {
+    test('Google sends the ID token and keeps the new session', () async {
+      answer = (_) =>
+          _json({'token': 'g-token', 'user': _user, 'created': true}, 201);
+      final result = await repository.signInWith(
+        SocialProvider.google,
+        'id',
+        nickname: '우현',
+      );
+      expect(requests.single.url.path, '/auth/google');
+      expect(jsonDecode(requests.single.body), {
+        'id_token': 'id',
+        'nickname': '우현',
+      });
+      expect(requests.single.headers['Authorization'], isNull);
+      expect(result.isNewAccount, isTrue);
+      expect(result.session.token, 'g-token');
+      expect(repository.session, same(result.session));
+      expect(store.session!.token, 'g-token');
+      expect(api.token, 'g-token');
+    });
+
+    test('an existing account sends no nickname and is not new', () async {
+      answer = (_) =>
+          _json({'token': 'g-token', 'user': _user, 'created': false}, 200);
+      final result = await repository.signInWith(SocialProvider.google, 'id');
+      expect(requests.single.url.path, '/auth/google');
+      expect(jsonDecode(requests.single.body), {'id_token': 'id'});
+      expect(result.isNewAccount, isFalse);
+    });
+
+    test('a new provider account answers signup_required', () async {
+      answer = (_) => _json({'detail': 'signup_required', 'nickname': ''}, 404);
+      await expectLater(
+        repository.signInWith(SocialProvider.google, 'id'),
+        throwsA(isA<SocialSignUpRequiredException>()),
+      );
+      expect(repository.session, isNull);
+      // Another 404 stays an ApiException.
+      answer = (_) => _json({'detail': 'not_found'}, 404);
+      await expectLater(
+        repository.signInWith(SocialProvider.google, 'id'),
+        throwsA(isA<ApiException>()),
+      );
+    });
+
+    test(
+      'a refused token and an unavailable provider have their own errors',
+      () async {
+        answer = (_) => _json({'detail': 'invalid_social_token'}, 401);
+        await expectLater(
+          repository.signInWith(SocialProvider.google, 'id'),
+          throwsA(isA<SocialTokenRejectedException>()),
+        );
+        answer = (_) => _json({'detail': 'social_login_unavailable'}, 503);
+        await expectLater(
+          repository.signInWith(SocialProvider.google, 'at'),
+          throwsA(isA<SocialLoginUnavailableException>()),
+        );
+        answer = (_) => _json({'detail': 'x'}, 422);
+        await expectLater(
+          repository.signInWith(SocialProvider.google, 'at'),
+          throwsA(isA<ApiException>()),
+        );
+        expect(repository.session, isNull);
+        expect(store.session, isNull);
+      },
+    );
+
+    test('a reply without the account is a server error', () async {
+      answer = (_) => _json({'created': true}, 201);
+      await expectLater(
+        repository.signInWith(SocialProvider.google, 'id'),
+        throwsA(isA<ApiException>()),
+      );
+    });
+
+    test('body info is sent with consent and the login token', () async {
+      await repository.logIn(loginId: 'woohyun', password: 'password1');
+      answer = (_) => _json({'height_cm': 175.0, 'weight_kg': 70.5}, 200);
+      await repository.saveBodyInfo(heightCm: 175, weightKg: 70.5);
+      final request = requests.last;
+      expect(request.method, 'POST');
+      expect(request.url.path, '/users/me/body');
+      expect(request.headers['Authorization'], 'Bearer new-token');
+      expect(jsonDecode(request.body), {
+        'height_cm': 175.0,
+        'weight_kg': 70.5,
+        'consent': true,
+      });
+    });
+
+    test('in memory: one account per provider identity', () async {
+      final memory = InMemoryAuthRepository();
+      await expectLater(
+        memory.signInWith(SocialProvider.google, 'sub-1'),
+        throwsA(isA<SocialSignUpRequiredException>()),
+      );
+      final first = await memory.signInWith(
+        SocialProvider.google,
+        'sub-1',
+        nickname: '우현',
+      );
+      expect(first.isNewAccount, isTrue);
+      expect(first.session.account.loginId, 'g_sub-1');
+      expect(first.session.account.nickname, '우현');
+      final again = await memory.signInWith(SocialProvider.google, 'sub-1');
+      expect(again.isNewAccount, isFalse);
+      expect(again.session.account.id, first.session.account.id);
+      final other = await memory.signInWith(
+        SocialProvider.google,
+        'sub-2',
+        nickname: '현우',
+      );
+      expect(other.isNewAccount, isTrue);
+      expect(other.session.account.id, isNot(first.session.account.id));
+      await expectLater(
+        memory.signInWith(SocialProvider.google, ''),
+        throwsA(isA<SocialTokenRejectedException>()),
+      );
+    });
+
+    test(
+      'in memory: body info needs a login and is kept per account',
+      () async {
+        final memory = InMemoryAuthRepository();
+        await expectLater(
+          memory.saveBodyInfo(heightCm: 175, weightKg: 70),
+          throwsStateError,
+        );
+        final session = (await memory.signInWith(
+          SocialProvider.google,
+          's',
+          nickname: '우현',
+        )).session;
+        await memory.saveBodyInfo(heightCm: 175, weightKg: 70);
+        expect(memory.bodyInfo[session.account.id], (
+          heightCm: 175.0,
+          weightKg: 70.0,
+        ));
+      },
+    );
+  });
 }

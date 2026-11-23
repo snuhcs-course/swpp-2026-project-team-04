@@ -18,7 +18,9 @@ enum AuthStatus {
 }
 
 /// The app-wide login state. GymRatsApp shows the login or home screen
-/// from [status]; the login and sign-up forms call [logIn] and [signUp].
+/// from [status]; the login and sign-up forms call [logIn], [signUp] and
+/// [signInWith]. A new account first sees the optional body info step
+/// ([needsBodyInfo]).
 class AuthViewModel extends ChangeNotifier {
   AuthViewModel({required this._repository}) {
     _expiredSubscription = _repository.sessionExpired.listen(
@@ -31,6 +33,7 @@ class AuthViewModel extends ChangeNotifier {
 
   AuthStatus _status = AuthStatus.restoring;
   bool _sessionExpired = false;
+  bool _needsBodyInfo = false;
   bool _disposed = false;
 
   AuthStatus get status => _status;
@@ -41,6 +44,11 @@ class AuthViewModel extends ChangeNotifier {
   /// True after the server rejected the session, until the next login, so
   /// the login screen can say why it is showing.
   bool get sessionExpired => _sessionExpired;
+
+  /// True right after this device created the account (id and password,
+  /// Google), until the user saves or skips height and weight.
+  /// Not kept across app restarts: the step is optional.
+  bool get needsBodyInfo => _needsBodyInfo;
 
   /// Loads the session saved on the device. A device without one, or one
   /// whose storage cannot be read, shows the login screen.
@@ -60,8 +68,7 @@ class AuthViewModel extends ChangeNotifier {
     required String password,
   }) async {
     await _repository.logIn(loginId: loginId, password: password);
-    _sessionExpired = false;
-    _set(AuthStatus.signedIn);
+    _signIn(isNewAccount: false);
   }
 
   /// Throws what [AuthRepository.signUp] throws; stays logged out then.
@@ -75,7 +82,47 @@ class AuthViewModel extends ChangeNotifier {
       loginId: loginId,
       password: password,
     );
+    _signIn(isNewAccount: true);
+  }
+
+  /// Logs in with a Google token; a new provider account needs
+  /// [nickname] to be created. Returns whether it was created. Throws what
+  /// [AuthRepository.signInWith] throws; stays logged out then.
+  Future<bool> signInWith(
+    SocialProvider provider,
+    String token, {
+    String? nickname,
+  }) async {
+    final result = await _repository.signInWith(
+      provider,
+      token,
+      nickname: nickname,
+    );
+    _signIn(isNewAccount: result.isNewAccount);
+    return result.isNewAccount;
+  }
+
+  /// Saves height and weight the user agreed to share. Throws what
+  /// [AuthRepository.saveBodyInfo] throws; [needsBodyInfo] stays then.
+  Future<void> saveBodyInfo({
+    required double heightCm,
+    required double weightKg,
+  }) async {
+    await _repository.saveBodyInfo(heightCm: heightCm, weightKg: weightKg);
+    finishBodyInfo();
+  }
+
+  /// Ends the body info step, saved or skipped.
+  void finishBodyInfo() {
+    if (!_needsBodyInfo) return;
+    _needsBodyInfo = false;
+    if (_disposed) return;
+    notifyListeners();
+  }
+
+  void _signIn({required bool isNewAccount}) {
     _sessionExpired = false;
+    _needsBodyInfo = isNewAccount;
     _set(AuthStatus.signedIn);
   }
 
@@ -87,6 +134,7 @@ class AuthViewModel extends ChangeNotifier {
   void _signOut({required bool expired}) {
     if (_status == AuthStatus.signedOut) return;
     _sessionExpired = expired;
+    _needsBodyInfo = false;
     _set(AuthStatus.signedOut);
   }
 
