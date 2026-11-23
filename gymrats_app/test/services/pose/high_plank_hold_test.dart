@@ -5,6 +5,7 @@ import 'package:gymrats_app/models/arcade_stage.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/hold_reading.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
+import 'package:gymrats_app/services/pose/chair_hold.dart';
 import 'package:gymrats_app/services/pose/high_plank_hold.dart';
 import 'package:gymrats_app/services/pose/hold_judge.dart';
 import 'package:gymrats_app/services/pose/hold_poses.dart';
@@ -98,11 +99,9 @@ void main() {
       ]);
     });
 
-    test('the chair pose is stopped until A5', () {
-      expect(
-        () => HoldPoses.of(HoldPose.chair),
-        throwsA(isA<AssertionError>()),
-      );
+    test('the chair pose is A5\'s bundle, not this one', () {
+      expect(HoldPoses.of(HoldPose.chair), same(chairHold));
+      expect(HoldPoses.of(HoldPose.chair), isNot(same(highPlankHold)));
     });
   });
 
