@@ -52,6 +52,7 @@ class ArcadeFloorRule {
     feverStart: feverStart ?? base.feverStart,
     feverMultiplier: base.feverMultiplier,
     averagePoints: base.averagePoints,
+    kneeAverageEnabled: base.kneeAverageEnabled,
     averageMaxElbowAngle: base.averageMaxElbowAngle,
     goodPoints: base.goodPoints,
     excellentPoints: excellentPoints ?? base.excellentPoints,

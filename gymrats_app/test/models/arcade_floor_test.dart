@@ -8,6 +8,7 @@ Map<String, Object> _values(BattleRules rules) => {
   'feverStart': rules.feverStart,
   'feverMultiplier': rules.feverMultiplier,
   'averagePoints': rules.averagePoints,
+  'kneeAverageEnabled': rules.kneeAverageEnabled,
   'averageMaxElbowAngle': rules.averageMaxElbowAngle,
   'goodPoints': rules.goodPoints,
   'excellentPoints': rules.excellentPoints,
@@ -58,6 +59,7 @@ void main() {
   group('a rule applied to other rules', () {
     const base = BattleRules(
       feverStart: Duration(seconds: 25),
+      kneeAverageEnabled: false,
       comboBonus: 7,
       excellentPoints: 20,
       koLead: 80,
