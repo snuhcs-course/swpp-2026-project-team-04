@@ -28,11 +28,11 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not changed by A3 | 11/23 | – |
-| ViewModel | flutter_test, fakes | 90% | not changed by A3 | 11/23 | – |
-| Service | flutter_test, MockClient, fakes | 85% | not changed by A3 | 11/23 | – |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" |
-| API server | pytest, pytest-django, pytest-cov | 90% | `server/` not changed | 11/23 | – |
+| Model | flutter_test | 90% | 99.3% (733/738; not changed by A3) | 11/23 | CI comment "Tests and coverage (GitHub Actions)" on PR #88, commit `071c7f0`, [run 45149879412](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45149879412) |
+| ViewModel | flutter_test, fakes | 90% | 97.6% (1750/1793; not changed by A3) | 11/23 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.6% (4573/4785; not changed by A3) | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | 98.1% (11325/11548); A3's files 99.5% (213/214) | 11/23 | same CI comment; A3's files from the run's lcov parts |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` not changed by A3) | 11/23 | same CI comment |
 
 - **Tests:** `flutter test` 3840 passed, 0 failed, 10 skipped (2026-11-23, `a5f0d7d`). `flutter analyze` found no issues. The
   skipped tests were already skipped on `main`, and A3 does not touch them:
@@ -58,8 +58,18 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   check fails for a wrong face, a wrong floor and a missing shape. Nothing differs from the design.
   - In the design itself, 펭뚱이's `watch` and `ok` are the same picture: its mouth is an empty path (`M0 0`) in both
     faces (`design/CoachB.dc.html` L276). Reported to the user, who decided to keep it as it is (2026-11-23).
-- **Coverage:** TODO(Woohyun Song): copy the View numbers from the PR's CI comment, with its commit and run link.
-- **Shortfalls:** none known; the coverage numbers are still to come from CI.
+- **Coverage:** from the CI comment "Tests and coverage (GitHub Actions)" on PR #88, commit `071c7f0` (2026-11-23 18:58
+  KST; app and server jobs both succeeded; [run 45149879412](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45149879412)). App total 97.4% (18751/19250), Other 95.9% (370/386).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (3844 passed, 10 skipped, 0 failed), the same as the
+    local run on `0b3475a`; `071c7f0` changes only the notes.
+  - A3's files, merged by line from the run's four lcov parts: `gym_background.dart` 13/13, `gym_owner_figure.dart`
+    42/42, `gym_background_art.dart` 158/159 (`gym_background_art_data.dart` is a constant with no executable line).
+    The one line not hit, L265, is the `StateError` for a matrix that is not six numbers, which the parser rejects
+    before any shape is built.
+  - Left out of the coverage numbers by CI's 240 s per-file limit, none of them A3's: `test/screens/settings_screen_test.dart`,
+    `test/services/audio/background_music_test.dart`, `test/services/pose/person_behind_video_replay_test.dart`,
+    `test/services/pose/pushup_error_cases_test.dart`. Their tests still ran in `flutter test`.
+- **Shortfalls:** none. Every layer and the server meet their targets.
 - **Manual check (2026-11-23, widget capture, per the spec's section 4):** the real widgets (`GymOwnerFigure` in
   all 12 owner × face pairs, and `GymBackground` 1F–5F with each floor's owner flipped to face left and standing on
   `gymBackgroundFloorLineY`) were captured at 2x in a throwaway widget test and compared by eye with
