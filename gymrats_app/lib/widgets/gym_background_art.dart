@@ -71,6 +71,23 @@ class GymArt {
   /// The art the app draws, read once.
   static final standard = GymArt.parse(gymArtJson);
 
+  /// Reads [standard] and builds every path and paint of it now (spec 2:
+  /// built once when the app starts, then reused), so the first frame that
+  /// shows an owner or a floor does not pay for it. Call it once at start-up;
+  /// calling it again builds nothing new. Without it each shape builds its
+  /// path and paints on its first paint and keeps them.
+  static void warmUp() {
+    final art = standard;
+    for (final shapes in [
+      for (final owner in art.owners.values) ...owner.faces.values,
+      ...art.floors.values,
+    ]) {
+      for (final shape in shapes) {
+        shape.build();
+      }
+    }
+  }
+
   final String version;
 
   /// An owner's box (140 x 160, as the W3 characters'); the art may leave it.
@@ -266,6 +283,13 @@ class GymArtShape {
     }
     return path;
   }();
+
+  /// Builds [path], [fillPaint] and [strokePaint] now if they are not yet.
+  void build() {
+    path;
+    fillPaint;
+    strokePaint;
+  }
 
   late final Paint? fillPaint = switch (fill) {
     null => null,
