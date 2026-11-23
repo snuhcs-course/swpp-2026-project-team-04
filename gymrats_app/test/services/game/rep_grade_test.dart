@@ -53,10 +53,19 @@ void main() {
       expect(grade(gameRep(3, reason: _goLower)), isNull);
     });
 
-    test('another reason is nothing', () {
+    test('a completed knee push-up earns a fixed five even in fever', () {
       final rep = gameRep(3, reason: RejectReason.kneesDown, minElbowAngle: 90);
-      expect(battleRules.earnsAverage(rep), isFalse);
-      expect(grade(rep), isNull);
+      expect(grade(rep), GameGrade.average);
+      final player = PlayerGameScore();
+      player.addValid(GameGrade.good, const Duration(seconds: 20));
+      expect(
+        player
+            .addRep(grade(rep), const Duration(seconds: 21), kneePushup: true)!
+            .points,
+        5,
+      );
+      expect(player.combo, 0);
+      expect(player.validReps, 1);
     });
 
     test('with Average off it is nothing too', () {
@@ -110,7 +119,7 @@ void main() {
       ], passDepth: 1.1);
       expect(counts.excellent, 2);
       expect(counts.good, 3);
-      expect(counts.average, 1);
+      expect(counts.average, 2);
     });
 
     test('goes by the pass depth and the rules it is given', () {

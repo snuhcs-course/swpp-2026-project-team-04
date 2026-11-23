@@ -1599,6 +1599,41 @@ class PushupKneeHistory {
     }
   }
 
+  /// Uses only the completed proposal. Depth has the same units as RepJudge:
+  /// nose travel divided by the shoulder width at the start.
+  ({double? depth, double? elbow}) measurements(
+    Duration? start,
+    Duration end,
+    double minLikelihood,
+  ) {
+    double? top, width, depth, elbow;
+    if (start == null ||
+        start >= end ||
+        _frames.isEmpty ||
+        start < _frames.first.at) {
+      return (depth: null, elbow: null);
+    }
+    for (final frame in _frames) {
+      if (frame.at < start || frame.at > end) continue;
+      final metrics = measurePose(frame.pose, minLikelihood: minLikelihood);
+      final nose = metrics.noseY;
+      if (frame.at == start) {
+        top = nose;
+        width = metrics.shoulderWidth;
+        continue;
+      }
+      if (top != null && width != null && width > 1e-6 && nose != null) {
+        final travel = (nose - top) / width;
+        if (travel.isFinite) depth = math.max(depth ?? 0, travel);
+      }
+      final angle = metrics.elbowAngle;
+      if (angle != null && angle.isFinite && (elbow == null || angle < elbow)) {
+        elbow = angle;
+      }
+    }
+    return (depth: depth, elbow: elbow);
+  }
+
   List<PoseFrame?> phaseFrames({
     required Duration? start,
     required Duration end,
