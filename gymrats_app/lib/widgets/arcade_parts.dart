@@ -430,6 +430,10 @@ class ArcadeDarkButton extends StatelessWidget {
   static const defaultArrow = 20.0;
   static const radius = 16.0;
 
+  /// The words' slant reaches about 3 past their box at the top and the
+  /// bottom.
+  static const _slantRoom = AppSpacing.s4;
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -447,20 +451,28 @@ class ArcadeDarkButton extends StatelessWidget {
           child: SizedBox(
             height: height,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: padding),
+              // At least room for the slanted words' corners, inside the
+              // room the design leaves around them at their own size.
+              padding: EdgeInsets.symmetric(
+                horizontal: math.max(padding, _slantRoom),
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // The design's words where they fit; on a narrow button or
+                  // with large text they shrink to fit, not cut off.
                   Flexible(
-                    child: Transform(
-                      transform: AppHighlight.slant,
-                      alignment: Alignment.center,
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: style ?? text.arcadeAction,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Transform(
+                        transform: AppHighlight.slant,
+                        alignment: Alignment.center,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          style: style ?? text.arcadeAction,
+                        ),
                       ),
                     ),
                   ),

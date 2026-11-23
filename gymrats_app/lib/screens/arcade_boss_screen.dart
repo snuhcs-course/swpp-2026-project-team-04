@@ -520,13 +520,18 @@ class _Break extends StatelessWidget {
             const SizedBox(height: _gap),
             _NextRoundCard(exercise: next),
             const Spacer(),
-            ArcadeDarkButton(
-              label: '자세 잡기',
-              onPressed: onSetUp,
-              height: _buttonHeight,
-              gap: _buttonGap,
-              arrowSize: _arrow,
-              style: text.arcadeBossAction,
+            // As wide as the screen's content, as in the design (and as on
+            // the intro), not as wide as its words.
+            SizedBox(
+              width: double.infinity,
+              child: ArcadeDarkButton(
+                label: '자세 잡기',
+                onPressed: onSetUp,
+                height: _buttonHeight,
+                gap: _buttonGap,
+                arrowSize: _arrow,
+                style: text.arcadeBossAction,
+              ),
             ),
             const SizedBox(height: AppSpacing.s8),
             ArcadeTextLink(label: '그만하기', onPressed: onQuit),

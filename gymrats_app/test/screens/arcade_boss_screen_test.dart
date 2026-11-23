@@ -8,6 +8,7 @@ import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/arcade_boss_screen.dart';
+import 'package:gymrats_app/screens/arcade_result_screen.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
 import 'package:gymrats_app/services/arcade/arcade_star_judge.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -19,6 +20,50 @@ import 'package:gymrats_app/widgets/gym_owner_figure.dart';
 import 'package:provider/provider.dart';
 
 final _stage = ArcadeCatalog.stage(6) as ArcadeBossStage;
+
+/// The four corners of [words] where they are painted, their slant and any
+/// shrinking included.
+List<Offset> _paintedCorners(WidgetTester tester, Finder words) {
+  final box = tester.renderObject<RenderBox>(words);
+  final size = box.size;
+  return [
+    for (final corner in [
+      Offset.zero,
+      size.topRight(Offset.zero),
+      size.bottomLeft(Offset.zero),
+      size.bottomRight(Offset.zero),
+    ])
+      box.localToGlobal(corner),
+  ];
+}
+
+/// How much [words] are shrunk where they are painted: 1 at their own size.
+double _wordsScale(WidgetTester tester, Finder words) {
+  final corners = _paintedCorners(tester, words);
+  return (corners[1] - corners[0]).distance /
+      tester.renderObject<RenderBox>(words).size.width;
+}
+
+/// Checks that [label]'s words are painted inside their button, its round
+/// corners included: the slanted words are a parallelogram, so it is inside
+/// when its four corners are.
+void _expectWordsInside(WidgetTester tester, String label) {
+  final words = find.text(label);
+  final button = tester.getRect(
+    find.ancestor(of: words, matching: find.byType(InkWell)).first,
+  );
+  final shape = RRect.fromRectAndRadius(
+    button,
+    const Radius.circular(ArcadeDarkButton.radius),
+  );
+  for (final corner in _paintedCorners(tester, words)) {
+    expect(
+      shape.contains(corner),
+      isTrue,
+      reason: '$label painted at $corner, its button $button',
+    );
+  }
+}
 
 void main() {
   late ArcadeViewModel arcade;
@@ -251,6 +296,98 @@ void main() {
       expect(find.text('자세 잡기').hitTestable(), findsOneWidget);
     });
   }
+
+  /// The floor cleared after the break (`ArcResult` floor): R1 and R2 won.
+  Future<void> openFloorCleared(
+    WidgetTester tester, {
+    required Size size,
+    required double textScale,
+  }) async {
+    await tester.pumpWidget(const SizedBox());
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    final arcade = ArcadeViewModel(store: MemoryArcadeProgressStore());
+    addTearDown(arcade.dispose);
+    final second = BattleResult(
+      matchup: ArcadeMatchups.boss(_stage, 2, playerName: '우현'),
+      myReps: 15,
+      myInvalidReps: 0,
+      opponentReps: 10,
+      myScore: 170,
+      opponentScore: 130,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: DateTime(2026, 11, 23),
+    );
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ArcadeViewModel>.value(
+        value: arcade,
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: ArcadeResultScreen(
+            stage: _stage,
+            rounds: [firstRound(), second],
+            stars: const ArcadeStars(true, false, false),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+  }
+
+  // The design's phone with its own text size and with 1.3x text, and a
+  // 320-wide phone with both.
+  for (final (size, scale) in [
+    (const Size(360, 780), 1.0),
+    (const Size(360, 780), 1.3),
+    (const Size(320, 640), 1.0),
+    (const Size(320, 640), 1.3),
+  ]) {
+    final where =
+        '${size.width.toInt()} x ${size.height.toInt()} with ${scale}x text';
+    testWidgets('on $where every button keeps its words inside it: the '
+        'intro, the break and the floor cleared', (tester) async {
+      Future<void> check(String label) async {
+        await tester.ensureVisible(find.text(label));
+        await tester.pump();
+        _expectWordsInside(tester, label);
+      }
+
+      await open(tester, size: size, textScale: scale);
+      expect(tester.takeException(), isNull);
+      await check('자세 잡기');
+
+      await open(tester, first: firstRound(), size: size, textScale: scale);
+      expect(tester.takeException(), isNull);
+      await check('자세 잡기');
+      await check('그만하기');
+
+      await openFloorCleared(tester, size: size, textScale: scale);
+      expect(tester.takeException(), isNull);
+      expect(find.text('1층 클리어!'), findsOneWidget);
+      await check('2층으로');
+      await check('리포트 보기');
+    });
+  }
+
+  testWidgets('the break\'s 자세 잡기 is the intro\'s button: as wide as the '
+      'screen\'s content, 58 high, its words at full size', (tester) async {
+    await open(tester);
+    final intro = tester.getRect(find.byType(ArcadeDarkButton));
+    await open(tester, first: firstRound());
+    final breakButton = tester.getRect(find.byType(ArcadeDarkButton));
+    // 360 less the design's 20 on each side.
+    expect(intro.width, 320);
+    expect(breakButton.width, 320);
+    expect(breakButton.height, 58);
+    expect(breakButton.left, 20);
+    expect(_wordsScale(tester, find.text('자세 잡기')), closeTo(1, 1e-9));
+  });
 
   testWidgets('every button is big enough and has a name', (tester) async {
     final semantics = tester.ensureSemantics();

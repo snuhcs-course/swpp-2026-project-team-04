@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/arcade_parts.dart';
@@ -200,6 +201,65 @@ void main() {
         tester.getSize(find.byType(TextButton)).height,
         greaterThanOrEqualTo(44),
       );
+    });
+
+    /// [label]'s words where they are painted: their four corners, slant and
+    /// shrinking included, and how much they are shrunk (1 at their size).
+    ({List<Offset> corners, double scale}) painted(
+      WidgetTester tester,
+      String label,
+    ) {
+      final words = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(words.didExceedMaxLines, isFalse, reason: '$label cut off');
+      final size = words.size;
+      final corners = [
+        for (final corner in [
+          Offset.zero,
+          size.topRight(Offset.zero),
+          size.bottomLeft(Offset.zero),
+          size.bottomRight(Offset.zero),
+        ])
+          words.localToGlobal(corner),
+      ];
+      return (
+        corners: corners,
+        scale: (corners[1] - corners[0]).distance / size.width,
+      );
+    }
+
+    testWidgets('the dark button keeps its words at their own size where '
+        'they fit', (tester) async {
+      await _show(
+        tester,
+        SizedBox(
+          width: 320,
+          child: ArcadeDarkButton(label: '자세 잡기', onPressed: () {}),
+        ),
+      );
+      expect(painted(tester, '자세 잡기').scale, closeTo(1, 1e-9));
+    });
+
+    testWidgets('on a narrow button the dark button shrinks its words to fit '
+        'inside it, never cutting them off', (tester) async {
+      await _show(
+        tester,
+        SizedBox(
+          width: 100,
+          child: ArcadeDarkButton(label: '다음 스테이지', onPressed: () {}),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      final words = painted(tester, '다음 스테이지');
+      final shape = RRect.fromRectAndRadius(
+        tester.getRect(find.byType(ArcadeDarkButton)),
+        const Radius.circular(ArcadeDarkButton.radius),
+      );
+      expect(words.scale, lessThan(1));
+      // The slant leans the bottom left corner out: every corner still
+      // inside the button's round shape.
+      for (final corner in words.corners) {
+        expect(shape.contains(corner), isTrue, reason: 'painted at $corner');
+      }
     });
   });
 
