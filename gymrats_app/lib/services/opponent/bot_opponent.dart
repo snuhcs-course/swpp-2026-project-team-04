@@ -122,6 +122,14 @@ class BotOpponent implements OpponentSource {
     final slots = List.generate(count, (i) => i)..shuffle(random);
     final rejected = slots.take(rejectedCount).toSet();
     final span = (roundLength - _startDelay - _endMargin).inMicroseconds;
+    // Simulated misses have no observed movement to score as a knee rep.
+    final missReasons = RejectReason.forExercise(ExerciseType.pushUp)
+        .map(
+          (reason) => reason == RejectReason.kneesDown
+              ? RejectReason.insufficientDepth
+              : reason,
+        )
+        .toList();
     final plan = <RepEvent>[];
     for (var i = 0; i < count; i++) {
       // Where the slot lies in the round, from 0 to 1.
@@ -132,9 +140,7 @@ class BotOpponent implements OpponentSource {
       final gap = span / count * ((1 - _slowdown) + 2 * _slowdown * slot);
       final jitter = (random.nextDouble() * 2 - 1) * _jitter * gap;
       final reason = rejected.contains(i)
-          ? RejectReason.forExercise(ExerciseType.pushUp)[random.nextInt(
-              RejectReason.forExercise(ExerciseType.pushUp).length,
-            )]
+          ? missReasons[random.nextInt(missReasons.length)]
           : null;
       var at =
           _startDelay +

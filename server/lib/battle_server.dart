@@ -35,6 +35,7 @@ class _Player {
   final BattleIdentity identity;
   WebSocket? socket;
   _Match? match;
+
   /// What the player sent in `avatar_id` (W3: their character id),
   /// passed on as it came; null when they sent none.
   String? avatar;
@@ -391,7 +392,7 @@ class BattleServer {
                 ? payload['reason'] != null
                 : !battleReasons.contains(payload['reason'])))
           invalid();
-        final grade = _grade(payload);
+        final grade = _grade(payload, pushUp: p.exercise == 'push_up');
         final accepted = m.reps[id]!;
         if (accepted[seq] case final previous?) {
           if (_signature(previous['submitted']) != _signature(payload))
@@ -408,7 +409,14 @@ class BattleServer {
         m.lastRepElapsed[id] = elapsed;
         final game = m.games[id]!;
         final earned =
-            game.addRep(grade, Duration(milliseconds: elapsed))?.points ?? 0;
+            game
+                .addRep(
+                  grade,
+                  Duration(milliseconds: elapsed),
+                  kneePushup: payload['reason'] == 'knees_down',
+                )
+                ?.points ??
+            0;
         final ack = {
           'rep_seq': seq,
           'valid_reps': scores[0],
@@ -472,13 +480,17 @@ class BattleServer {
   /// The grade of a submitted rep; null when it was rejected and earned
   /// nothing. The depth and the elbow angle stay on the phone, which judges
   /// them. An app that sends no grade is scored as good, and its rejected reps
-  /// as nothing. Only a rep rejected as too shallow can be average.
-  GameGrade? _grade(Map<String, dynamic> payload) {
+  /// as nothing. Shallow reps and completed knee push-ups can earn Average.
+  GameGrade? _grade(Map<String, dynamic> payload, {required bool pushUp}) {
     final grade = payload['grade'];
     if (payload['valid'] != true) {
       if (grade == null) return null;
       return grade == GameGrade.average.name &&
-              payload['reason'] == 'insufficient_depth'
+              (payload['reason'] == 'insufficient_depth' ||
+                  (pushUp &&
+                      rules.kneeAverageEnabled &&
+                      rules.averagePoints > 0 &&
+                      payload['reason'] == 'knees_down'))
           ? GameGrade.average
           : invalid();
     }
@@ -528,6 +540,7 @@ class BattleServer {
         'fever_start_ms': rules.feverStart.inMilliseconds,
         'ko_lead': rules.koLead,
         'average_points': rules.averagePoints,
+        'knee_average': rules.kneeAverageEnabled,
       });
     }
   }
@@ -543,6 +556,7 @@ class BattleServer {
     'fever_start_ms': rules.feverStart.inMilliseconds,
     'ko_lead': rules.koLead,
     'average_points': rules.averagePoints,
+    'knee_average': rules.kneeAverageEnabled,
     'scores': m.scores.map(
       (id, s) => MapEntry(id, {
         'valid_reps': s[0],

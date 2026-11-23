@@ -2,6 +2,7 @@ import '../models/battle_rules.dart';
 import '../models/game_score.dart';
 import '../models/match_record.dart';
 import '../models/matchup.dart';
+import '../models/rep_event.dart';
 import '../services/game/rep_grade.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import 'battle_stage_model.dart';
@@ -45,7 +46,12 @@ abstract final class BattleStageEvents {
           points: grade == null
               ? 0
               : score?.points ??
-                    rules.pointsFor(grade, combo: false, fever: fever),
+                    rules.pointsFor(
+                      grade,
+                      combo: false,
+                      fever: fever,
+                      kneePushup: rep.reason == RejectReason.kneesDown,
+                    ),
           combo: grade == null || grade == GameGrade.average
               ? 0
               : score?.combo ?? 1,

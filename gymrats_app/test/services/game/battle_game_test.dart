@@ -126,7 +126,9 @@ void main() {
     test(
       'every other reject reason earns nothing, however bent the elbows',
       () {
-        final others = RejectReason.values.where((r) => r != goLower);
+        final others = RejectReason.values.where(
+          (r) => r != goLower && r != RejectReason.kneesDown,
+        );
         for (final reason in others) {
           final game = _game();
           expect(
