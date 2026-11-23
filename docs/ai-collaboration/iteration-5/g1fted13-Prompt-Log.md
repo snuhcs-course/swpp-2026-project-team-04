@@ -138,6 +138,50 @@ progress.md는 원래 폴더의 P16 세션과 같은 파일을 함께 쓴다. �
 <!-- fd13d110 2026-11-23T13:13:24.264Z -->
 [Woohyun Song, 11-23 22:13] "AI 기록의 TODO에는 이렇게 적어 줘. \"버티기 판의 명세(SPEC v1~v3)는 claude.ai의 Claude가 작성했고, 시안(P16Hold, P16HoldGrid, ArcResult, ArcFlowGrid)은 Claude가 Claude Design 캔버스에서 그렸다. 시안 확정과 구현 중 결정('일어섬' 판정 유지, 경고 소리)은 송우현이 했다.\" 기록 커밋 하나로 push해 줘. 커버리지와 폰 확인 결과는 나중에 따로 채운다. 이 세션은 여기서 마친다."
 
+## 2026-11-23 · Woohyun Song · codex/iter5-hold-chair
+<!-- dfb39c07 2026-11-23T13:19:29.426Z -->
+[Woohyun Song, 11-23 22:19] "<pasted_content id=\"a37d\">
+이번 작업은 Iteration 5의 A5 \"Add chair-pose judging\"이다(명세 묶음의 옛 이름은 P16-4). A4가 만든 버티기 판 위에 두 번째 자세인 의자 자세를 더한다. 이 단계가 만드는 것은 의자 자세 읽기와 의자 자세 정의(데이터)다. 화면 그림(아이콘, 실루엣, 스쿼트 높이 안내)은 A4가 만들어 둔 것을 고르기만 한다.
+
+명세는 .claude/design/arcade/p16-4/SPEC.md(v2)다. 화면 값은 같은 폴더 design/*.dc.html 원본을 보고, shots/*.png는 확인용이다. 시작하기 전에 SPEC.md 9절의 질문 세 개를 나에게 먼저 물어봐. A4의 API(자세 정의 묶음, 고르는 자리 hold_poses.dart, 판정 공통부)는 PR #90 본문의 API for later steps 절에 있다.
+
+이 폴더(C:\dev\swpp-arcade-art)는 worktree이고, 원래 폴더에서는 다른 세션이 P16을 하고 있다. 파일은 이 폴더 안에서만 고치고, 이 폴더의 CLAUDE.md 두 개는 고치지 마. 하네스는 지금 설치된 것을 그대로 쓴다. 상우가 새로 배포한 판은 설치하지 않았다.
+
+브랜치는 codex/iter5-hold-chair이고 codex/iter5-hold-plank에서 갈라진다. PR은 draft로 연다(gh pr create --draft). 화요일 밤 머지 전까지 draft로 두기로 상우와 정했다. 제목은 \"A5 · Add chair-pose judging\", base는 codex/iter5-hold-plank, 본문은 영어다. 본문 첫 줄은 \"Merge order: #8.4 (A5)\"이고, Depends on에 #89, #88, #90을 링크로 적는다. 아케이드 단계의 ID와 팀 순번은 A2 #8.1, A3 #8.2, A4 #8.3, A5 #8.4, P16 #8.5다. Codex 리뷰는 화요일 저녁 마지막 HEAD에서 받으니 지금은 요청하지 않는다. main에는 절대 push하지 않는다.
+
+앞 단계(A2~A4) 파일은 상속만 하고 고치지 않는다. 예외는 두 곳뿐이다. A4의 hold_poses.dart에서 의자 자세를 막아 둔 한 줄과, lib/demo/hold_stage_demo.dart에서 의자 자세 판을 여는 데 필요한 줄이다. 둘 다 선조치 후보고로 처리한다(로컬 예외, progress.md, PR 본문 Exceptions 절). 그 밖에 앞 단계 파일을 고쳐야 하면 고치기 전에 물어봐. A4에 의자 자세의 아이콘, 실루엣, 스쿼트 안내선이 없으면 이 단계에서 그리지 말고 멈춰서 알려 줘. 기존 판정 코드(squat_rep_judge.dart, setup_checker.dart, pose_metrics.dart, rep_judge.dart)는 고치지 않고 가져다 쓴다. 새 파일은 lib/services/pose/chair*.dart와 test/services/pose/chair*_test.dart뿐이다. 지금 로컬 ownership.json의 이 단계 항목이 그 이름을 막으면, 로컬 파일에만 새 A5 패턴을 더하고 보고해 줘.
+
+progress.md는 원래 폴더의 P16 세션과 같은 파일을 함께 쓴다. 고치기 직전에 다시 읽고, 자기 줄만 고친다. 프롬프트 기록을 뽑을 때는 이 세션의 프롬프트만 A5 제목 아래 넣고, 같은 폴더에서 돌던 A3·A4 세션의 프롬프트는 넣지 마. 섞여 들어오면 빼고 알려 줘.
+
+테스트는 SPEC.md 7절 기준이다. 끝나면 A4처럼 task.md 기록, 테스트 기록, AI 협업 기록, 프롬프트 로그를 마치고, reviewer 지적을 반영한 뒤 커밋, push, draft PR까지 진행해 줘. AI 기록의 \"명세를 어떻게 만들었나\"에는 이렇게 적는다. \"의자 자세 명세(SPEC v1~v2)는 claude.ai의 Claude가 작성했고, 의자 자세 시안(P16Hold의 sit 장면과 경고 아이콘)은 Claude가 Claude Design 캔버스에서 그렸다. 시안 확정과 9절 질문의 답은 송우현이 정했다.\" 마지막에 바뀐 파일, 테스트 결과, 폰에서 확인할 것, 예외로 고친 줄을 정리해서 보고해 줘.
+</pasted_content id=\"a37d\">"
+
+<!-- dfb39c07 2026-11-23T13:30:19.979Z -->
+[Woohyun Song, 11-23 22:30] "<pasted_content id=\"a37d\">
+A4 브랜치를 고칠 때 덧붙일 것.
+1. 하이 플랭크의 푸쉬업 안내선도 따로 도는 판정기에서 오는지 확인하고, 오래 버티면 같은 식으로 사라지면 같은 커밋에서 함께 고쳐 줘.
+2. codex/iter5-hold-plank로 바꾸기 전에 A5 작업 중인 변경이 A4 커밋에 섞이지 않게 정리해 줘. A4 커밋에는 A4 파일과 A4 기록(task.md Decisions, 테스트 기록의 A4 절)만 들어간다.
+3. A4 커밋은 reviewer를 한 번 돌리고 push한다. 그다음 A5 브랜치로 돌아와 hold-plank를 그냥 git merge로 받아 온다.
+</pasted_content id=\"a37d\">"
+
+<!-- dfb39c07 2026-11-23T14:19:33.568Z -->
+[Woohyun Song, 11-23 23:19] "<pasted_content id=\"a37d\">
+P16 세션이 A4 파일에서 넘침 두 곳을 찾았다. 지금 하고 있는 A4 브랜치 커밋에 함께 넣어 줘. 이미 push했으면 A4 커밋을 하나 더 만든다.
+1. 화면 360×780에 글씨 1.3배일 때 HoldDarkButton 라벨(\"R1부터 다시\", \"다음 스테이지\")이 28px 넘친다. 320×640에서는 12px 넘친다.
+2. 폭 320 폰에서 ArcadeResultFrame의 별 줄이 20px 넘친다.
+둘 다 시안 모양은 그대로 두고, 좁은 화면과 큰 글씨에서만 줄어들거나 줄바꿈되게 고쳐 줘. 그 크기에서 넘침이 없는지 보는 위젯 테스트도 더해 줘.
+</pasted_content id=\"a37d\">"
+
+## 2026-11-24 · Woohyun Song · codex/iter5-hold-chair
+<!-- dfb39c07 2026-11-23T15:59:01.637Z -->
+[Woohyun Song, 11-24 00:59] "<pasted_content id=\"a37d\">
+깊이 기준은 폰 확인을 기다리지 말고 지금 고치자. 천천히 앉을 때 기준이 같이 내려가서 깊이가 낮게 읽히기 때문이다(reviewer 시뮬레이션에서 0.8이 0.73~0.75로 읽힘).
+1. GO 뒤에는 서 있는 기준을 따라가지 않는다. 카운트다운 동안 잡은 기준을 판이 끝날 때까지 쓰고, GO까지 기준이 없었을 때만 들어가기 동안 서 있음 300ms로 한 번 잡는다.
+2. 3~4초에 걸쳐 천천히 앉아도 깊이를 실제대로 읽어 \"더 앉아요\"가 뜨지 않는지 보는 테스트를 더한다.
+3. task.md A5 Decisions에 오늘 날짜로 \"명세의 '서 있는 동안 기준을 따라감'을 GO 전까지로 좁힘\"과 그 이유를 적고, PR 본문에도 적는다.
+4. analyze, test, reviewer를 돌리고 push한다. 그다음 PR #92에 Codex 리뷰를 요청하고, 지적이 오면 고쳐서 보고해 줘.
+</pasted_content id=\"a37d\">"
+
 ## 2026-11-23 · Woohyun Song · codex/iter5-ai-opponents
 <!-- 44cd470a 2026-11-23T10:02:46.697Z -->
 [Woohyun Song, 11-23 19:02] "<pasted_content id=\"0a14\">

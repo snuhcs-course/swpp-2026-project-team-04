@@ -536,20 +536,32 @@ class HoldDarkButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(_corner),
           child: SizedBox(
             height: height,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Transform(
-                  transform: AppHighlight.slant,
-                  alignment: Alignment.center,
-                  child: Text(label, style: style),
-                ),
-                SizedBox(width: gap),
-                CustomPaint(
-                  size: Size.square(arrowSize),
-                  painter: const HoldArrowPainter.forward(),
-                ),
-              ],
+            child: Padding(
+              // A margin for shrunk words and the arrow; within the room the
+              // design leaves at its own size.
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // The design's words where they fit; on a narrow button or
+                  // with large text they shrink to fit instead of overflowing.
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Transform(
+                        transform: AppHighlight.slant,
+                        alignment: Alignment.center,
+                        child: Text(label, style: style, maxLines: 1),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: gap),
+                  CustomPaint(
+                    size: Size.square(arrowSize),
+                    painter: const HoldArrowPainter.forward(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

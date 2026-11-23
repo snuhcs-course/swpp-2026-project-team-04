@@ -11,6 +11,7 @@ import 'package:gymrats_app/models/hold_reading.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
+import 'package:gymrats_app/services/pose/chair_hold.dart';
 import 'package:gymrats_app/services/pose/exercise_judge.dart';
 import 'package:gymrats_app/services/pose/high_plank_hold.dart';
 import 'package:gymrats_app/services/pose/hold_pose_definition.dart';
@@ -253,11 +254,11 @@ void main() {
       );
     });
 
-    test('a chair stage is stopped until A5 gives its pose', () {
-      expect(
-        () => HoldStageViewModel(stage: 5),
-        throwsA(isA<AssertionError>()),
-      );
+    test('a chair stage opens on A5\'s chair pose', () {
+      final viewModel = HoldStageViewModel(stage: 5);
+      expect(viewModel.stage.pose, HoldPose.chair);
+      expect(viewModel.definition, same(chairHold));
+      viewModel.dispose();
     });
   });
 

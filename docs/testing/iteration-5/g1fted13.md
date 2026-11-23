@@ -350,6 +350,160 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 | ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | a reader that gives the guide lines draws them, and no guide judge is made; the real push-up judge keeps the chest guide through a 60 s plank; an entry's end is one `started` cue, and a later resume is `resumed`; without an entry there is no `started` cue |
 | View | `test/screens/hold_stage_screen_test.dart` | the announcement for `started` is "시작" |
 
+#### 2026-11-23 · code at commit `f78ac2b` · step A4, second follow-up on `codex/iter5-hold-plank` (overflows found by the P16 session)
+The P16 session found two overflows in A4's result screen (passed on by the user; local task.md, A4 Decisions):
+- **The ink button's words** (`HoldDarkButton`: "다음 스테이지", P16's "R1부터 다시") overflowed by 28 px at 360 × 780 with
+  1.3x text, and by 12 px at 320 × 640 (48 px with 1.3x text). These are widget-test numbers with the test font,
+  whose every glyph is 1 em wide. With the app's font (measured by the reviewer, run 7) the words overflow only at
+  320 × 640 with 1.3x text: 5 px for "R1부터 다시", 16 px for "다음 스테이지". The words now sit in a `Flexible`
+  `FittedBox` (scale down, one line), in a 4-point side margin that the design's size already leaves free.
+- **The result's star row** (`ArcadeResultFrame`, 3 × 92 + 2 × 12 = 300 points) overflowed by 20 px on a 320-wide phone,
+  whose content is 280 wide (with any font). The row now sits in a `FittedBox` (scale down).
+- Both keep the design's sizes where they fit: at 360 × 780 with 1x text (the design's size), 412 × 915 and 600 × 1000
+  the stars and the words are drawn at full size; they shrink only on a narrower phone or with larger text.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the three new screen tests failed with the reported overflows: 28 px (360 × 780, 1.3x); 20 and
+  48 px (320 × 640, 1.3x); 20 and 12 px (320 × 640, 1x).
+- **Tests:** `flutter test` 4084 passed, 0 failed, 10 skipped (2026-11-23, `f78ac2b`); the same 10 skips as above.
+  `flutter analyze` found no issues. The four A4 test files with `test/design_tokens_test.dart`: 182 passed.
+- **New tests:** 4, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths).
+- **Review:** local reviewer run 7, APPROVE; it also ran the new tests on the old code (they fail with the reported
+  numbers). Its two Minors were fixed before the commit: the side margin above, and the font note above.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the second follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a clear and a fail fit 360 × 780 at 1.3x text', '… 320 × 640 at 1.3x text', '… 320 × 640 at 1.0x text': a clear and a fail with no overflow (a short phone scrolls to its buttons); 'the frame keeps the design sizes where they fit': `ArcadeResultFrame` with "R1부터 다시" draws its words and its middle star (72) at full size at 600 × 1000, 412 × 915 and 360 × 780, has no overflow at the three sizes, and shrinks the stars at 320 wide and the words at 1.3x text on a 360 phone |
+
+#### 2026-11-23 · code at commit `0579a65` · step A5 `codex/iter5-hold-chair` (Add chair-pose judging, team order #8.4)
+A5 adds the second held pose, the chair pose, on A4's hold stage (the local design hand-off's spec `p16-4/SPEC.md` v2,
+not committed): the chair reading and the chair pose's bundle (`lib/services/pose/chair_hold.dart`). The screen, the
+time and warnings, the icons, the sitting figure and the squat guide are A4's; the bundle only picks them. The user's
+answers to the spec's section 9: knees in below 0.8 of the ankles' gap (a fixed line); sitting deeper than a level
+thigh is held; no time limit on the entry.
+- **Depth:** `SquatRepJudge.update`'s formula, worked in `ChairHoldReader` because that judge drops a squat 12 s after
+  it starts down. Its public numbers (`passDepth` 0.75, `minLikelihood` 0.6, `smoothingTau` 65 ms, `baselineTau`
+  500 ms) are read from the class; its private literals (0.7 standing, 300 ms, the 0.25 / 0.15 lines of the
+  standing thigh's follow) are copied into `ChairLines`.
+- **Reading:** unknown without a leg or the standing thigh; hips too high under 0.75 (standing up too); knees in when
+  both knees and both ankles are seen and the knees are under 0.8 of the ankles' gap; both: the hips.
+- **Earlier-stage files changed, approved by the user (act first, report after):** the chair line of
+  `hold_poses.dart`, the demo's chair stages, and the two A4 tests that asserted the chair was stopped.
+- **Built on A4's follow-up** (`014e4f0`, `1c325ab`, above): the reader gives the squat lines itself
+  (`HoldGuideReader`), and the start after the entry is read as "시작".
+
+The branch starts at A4's `82e281a`; A5's code is `7f26016` and `e1b0a76`, and A4's small-screen fix came in by
+`git merge` (`0579a65`), so the runs below are on `0579a65`. I ran these in `gymrats_app/` on Windows on the code commit, without coverage
+(this PC's rule):
+
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/services/pose/chair_hold_test.dart test/services/pose/chair_hold_stage_test.dart
+flutter test test/services/pose/chair_hold_test.dart test/services/pose/chair_hold_stage_test.dart test/services/pose/hold_judge_test.dart test/services/pose/high_plank_hold_test.dart test/viewmodels/hold_stage_viewmodel_test.dart test/screens/hold_stage_screen_test.dart
+```
+
+No camera, ML Kit, server or secure storage is needed: the tests use synthetic pose frames
+(`test/support/pose_fixtures.dart`), the real `SquatRepJudge` and `HoldJudge` on a test clock, and for the screen a
+scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `MemoryArcadeProgressStore`,
+`FakeSoundEffects` and a camera controller that is never opened.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not changed by A5 | 11/23 | CI comment "Tests and coverage (GitHub Actions)" on the A5 PR |
+| ViewModel | flutter_test, fakes | 90% | not changed by A5 (A4's view model, run with the chair bundle) | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | not changed by A5 (A4's screens, run with the chair bundle) | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed by A5 | 11/23 | same CI comment |
+
+- **Tests:** `flutter test` 4124 passed, 0 failed, 10 skipped (2026-11-23, `0579a65`). `flutter analyze` found no issues. The 10 skipped tests are
+  the ones already skipped on `main` (a live server smoke test and 9 known push-up judge errors), untouched. In the
+  notes review's own run (2026-11-24, same commit) one test outside A5 failed once under load,
+  `test/services/online/online_battle_integration_test.dart` 'two real Flutter sessions match, exchange avatar pose
+  and use server result', and passed twice when run alone; nothing in `lib/services/online/`, its tests or `server/`
+  changed here.
+- **New tests:** 40, in two files (30 + 10). Two A4 tests changed (the exception above). The two chair files with A4's
+  four hold test files: 156 passed.
+- **Other checks:** `ownership_guard.py --check-staged` OK on every commit and `--check-diff` OK on `0579a65` (67 paths against `origin/main`, A2's, A3's and A4's counted as inherited). The stacked-branch
+  diff against `codex/iter5-hold-plank` lists 7 paths on `0579a65` (the three A5 files and the four approved
+  earlier-stage files), and 10 after the notes commit (with the three personal notes).
+- **Against the design shots:** the briefing, holding and both warnings of STAGE 5 were captured with the app's fonts
+  at 360 × 780, 2x, with the real chair bundle, in a throwaway widget test (not committed), and compared by eye with
+  `shots/hold_chair_brief.png`, `hold_chair_hold.png`, `hold_chair_warn.png` and `hold_chair_warn_knees.png`: the pose
+  name and icon, the star times, the two checks, the clock, the warning words and icons and the sitting figure match.
+  The "삐익!" bubble first looked half its size: it pops in over 0.22 s and the capture was taken in that frame; taken
+  0.5 s later it matches. Where the shots draw the "엉덩이" line on the gray figure, the app draws the squat lines over
+  the camera (`chair_hold_stage_test.dart` checks them with a camera controller).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment (commit, run link, per-layer numbers, A5's file).
+- **Phone check (spec 7, Galaxy S26+):** TODO(Woohyun Song): with `flutter run -t lib/demo/hold_stage_demo.dart`, open
+  STAGE 5 · 1F and try ① 20 s held (clear, 3 stars), ② lifting the hips midway, ③ knees in, ④ leaving the picture,
+  and ⑤ sitting down slowly, over 3–4 s (reviewer A5 run 1: the copied follow rule can lower the standing thigh
+  then, so a good pose may read just under 0.75; watch `standingThigh`);
+  note whether each warning comes with the right words about 0.5 s after the break, and whether the time runs again
+  right after fixing it. In the `flutter run` console the reader prints `chair_hold … depth=… knees=…` twice a second
+  (debug builds only): write the depth range of a good chair pose, the knee ratio of a good one and of knees pulled in,
+  and any changed line with the reason.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/chair_hold_test.dart` (new) | the bundle (squat setup, entry, checks, words, icons, figure, guide; `HoldPoses.of` on stages 5, 11, 17, 23); the numbers are the squat judge's and one new knee line; the same frames give `SquatRepJudge`'s depth exactly within 12 s, and past 12 s the squat judge drops it while the reader goes on; a frame gap keeps the standing thigh; depth 0.751 held, 0.749 hips too high; standing up is hips too high; a depth over 1 is held; knees 0.79 in, 0.81 held; hips and knees together read as hips; each knee or ankle not seen skips the knees; no leg, an ankle above its knee, or no standing thigh is unknown; the standing thigh from 300 ms standing in the 3·2·1, or after GO, unchanged while seated or halfway up, following slowly while standing; the guide's hips, knees and phases; no lines without a leg; the debug print twice a second; with `HoldJudge` on a fake clock: no time or warning while standing after GO, the start 0.6 s after first held, a hips-too-high and a knees-in warning ending the stage, off screen after 1 s unseen, the third star at 20 s |
+| View | `test/services/pose/chair_hold_stage_test.dart` (new) | STAGE 5 with the real bundle: the briefing at 412 × 915 and 360 × 780 (pose, icon, stars, two checks); the squat setup and its standing figure; standing after GO keeps 0:00 in a green frame with no warning; seated, "시작" is read once and the clock runs; the squat lines stay over the camera past 12 s with no squat judge of their own; each warning (더 앉아요, 무릎 벌려요, 화면 안으로): words, icon, red frame, 멈춤, the reject sound, the announcement, and the time running again; held to the third star, a clear with three stars kept |
+| Service | `test/services/pose/high_plank_hold_test.dart` (changed, approved exception) | 'the chair pose is A5's bundle, not this one' replaces 'the chair pose is stopped until A5' |
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` (changed, approved exception) | 'a chair stage opens on A5's chair pose' replaces 'a chair stage is stopped until A5 gives its pose' |
+
+### Acceptance criteria → tests (the A5 spec, section 7; the local task.md left the step's criteria to the spec)
+- Depth → chair_hold_test: 'the same frames give the squat judge's depth, within 12 s', 'past 12 s down the squat
+  judge drops it; the depth goes on'
+- Judging → chair_hold_test: 'a depth of 0.751 is held, 0.749 is the hips too high' (0.75 line), 'knees at 0.79 of the
+  ankles' gap are knees in, at 0.81 held' (0.8 line), '… not seen: the knees are not read' (4 tests), 'no leg seen is
+  unknown', 'without the standing thigh it is unknown', 'hips under the knees (a depth over 1) are held'
+- Standing thigh → chair_hold_test: 'standing in the 3·2·1 takes it after 300 ms', 'not standing in the 3·2·1, it is
+  taken after GO', 'it does not change while seated, nor halfway up'
+- Entry, fake clock → chair_hold_test: 'standing after GO: the time stays at 0, with no warning', 'seated, the time
+  starts 0.6 s after the pose is first held', 'then a warning is A4's: 0.5 s of hips too high, then knees in'
+- Screens → chair_hold_stage_test: 'names the chair pose, its stars and its two checks at …' (2 tests); '… the box
+  says …' (3 tests: words and icon per reason); '자세 잡기 opens the squat battle's setup and its figure'; 'the squat
+  height lines stay over the camera past 12 s'
+- Regression → the full `flutter test` above (A4's high plank and the squat battle's tests pass)
+- Phone check → TODO(Woohyun Song) above.
+
+#### 2026-11-24 · code at commit `77e1a75` · step A5 follow-up: the standing thigh after GO
+The user decided (2026-11-24, local task.md, A5 Decisions) to narrow the spec's "the standing thigh follows while
+standing" to the 3·2·1, without waiting for the phone check. `SquatRepJudge`'s rule lets the standing thigh follow
+while the depth is under 0.25 and the thigh still counts as standing (at least 0.7 of the shin), which is also true
+on the way down; a slow sit therefore lowered it, and a true 0.8 read under 0.75 ("더 앉아요"; reviewer A5 run 1).
+- **Now:** the 3·2·1's frames take the standing thigh and follow it as the squat judge's does (the depth parity of
+  section 7 holds there); from GO on it is fixed for the play. Without one by GO, the first 300 ms standing after GO
+  takes it, once, and it is not followed either.
+- This replaces, for frames after GO, the A5 entry's "the standing thigh's follow" above; that entry is kept as it was.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as the A5 entry above.
+
+- **Tests:** `flutter test` 4131 passed, 0 failed, 10 skipped (2026-11-24, `77e1a75`; the same 10 skips as above). `flutter analyze` found no issues. The two chair files: 47
+  passed (37 + 10).
+- **New tests:** 7 in `test/services/pose/chair_hold_test.dart`; 4 changed (the depth parity test now reads the frames
+  as the 3·2·1 does; the 12 s test takes GO at 1 s and expects the real 0.9; the two follow tests run in the 3·2·1).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+- **Review:** local reviewer A5 run 4, APPROVE; it ran the new tests on the old reader (8 fail) and on a reader that
+  never follows (the 3·2·1 tests fail), so both halves of the rule are guarded. Its Minors were fixed before the
+  commit (the skips' reason here, two wording lines in the AI notes, a halfway-up step in 'after GO it never
+  changes'), except one left for the phone check: a standing thigh taken after GO is taken once, so a user who sat
+  through the 3·2·1 and then rises slowly after GO can have it taken before fully up (simulated: a 3 s rise, then a
+  true 0.8 reads 0.739). The setup's auto start restarts its count on any frame that is not ready, so the user
+  normally stands through the 3·2·1.
+- **Phone check:** ⑤ (a slow sit over 3–4 s) now checks this change; the rest as in the A5 entry.
+
+### Test cases added or changed in the follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/chair_hold_test.dart` | 'down to 0.8 over 3 s / 4 s / 6 s reads 0.8 and is held, where the squat judge's rule reads under 0.75' (3 tests: the reader's depth is the true 0.8 and held, while `SquatRepJudge` on the same frames reads under 0.75); 'the entry ends and the time runs, with no warning' (a slow sit after GO on A4's `HoldJudge`); 'sitting again slowly after a warning runs the time again'; 'after GO it never changes: standing, halfway up or seated'; 'taken after GO, it is taken once and not followed'; changed: 'the same frames give the squat judge's depth, within 12 s' (as the 3·2·1 reads them), 'past 12 s down the squat judge drops it; the depth goes on' (GO at 1 s, the real 0.9), 'in the 3·2·1 it does not change while seated, nor halfway up', 'in the 3·2·1, standing, it follows slowly' (renamed from the A5 entry's 'it does not change while seated, nor halfway up' and 'standing, it follows slowly', which ran after GO) |
+
 #### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
 P16 builds the arcade's screens on A2's rules and A3's art (P16 spec v2):
 - **게임 시작:** two cards, 온라인 대결 and 아케이드 (design `PlayX`); the AI 1v1 card and the 이어하기 row are gone.
