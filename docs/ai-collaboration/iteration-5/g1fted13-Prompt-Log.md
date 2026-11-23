@@ -40,5 +40,14 @@ SPEC 11절 질문의 답:
 끝나면 flutter analyze, flutter test(커버리지는 돌리지 않음), reviewer를 돌리고 push한 뒤 PR을 base main으로 열어. PR 본문은 영어로 쓰고, 뒤 단계가 쓸 API 이름을 \"API for later steps\" 절에 적어. 이 단계는 화요일(11/24) 오전까지 머지되어야 뒤 단계들이 깔끔해지니 범위를 넓히지 마.
 </pasted_content id=\"7b53\">"
 
-<!-- Left out on purpose: the P16-2 worktree setup prompt (11-23 17:06, session 263aa2ad); it belongs to step P16-2 `codex/iter5-arcade-art` and is logged with that step. Its key stays so a later export from this folder does not add it again. Cut: the client's injected browser notice in front of the first prompt (11-23 16:36; not the user's text). Added by hand: the message sent mid-turn at 11-23 16:44, which the extractor does not read because it arrives inside a tool result; the text is from the redacted export. -->
+<!-- Left out on purpose: the P16-2 worktree setup prompt (11-23 17:06, session 263aa2ad); it belongs to step P16-2 `codex/iter5-arcade-art` and is logged with that step. Its key stays so a later export from this folder does not add it again. Cut: the client's injected browser notice in front of two prompts (11-23 16:36, 11-23 18:38; not the user's text). Added by hand: the message sent mid-turn at 11-23 16:44, which the extractor does not read because it arrives inside a tool result; the text is from the redacted export. -->
 <!-- 263aa2ad 2026-11-23T08:06:27.446Z -->
+
+<!-- 15b64437 2026-11-23T09:38:38.400Z -->
+[Woohyun Song, 11-23 18:38] "<pasted_content id=\"7b53\">
+상우가 Iteration 5 하네스를 다시 배포해서 아케이드 단계의 공식 ID가 정해졌다. 이 단계는 A2(\"Build arcade stage rules\")다. 하네스 재설치는 지금 하지 않는다.
+1. PR #89 제목을 \"A2 · Build arcade stage rules\"로 바꾸고, PR 본문, progress.md, 내 테스트 기록과 AI 기록에서 이 단계를 P16-1이라고 부른 곳을 A2로 고쳐 줘.
+2. 새 하네스의 A2 허용 범위는 gymrats_app/ 아래 lib/models/arcade*.dart, lib/services/arcade/*.dart, lib/models/bot_difficulty.dart, lib/services/opponent/bot_opponent.dart(PM 승인 예외), test/models/arcade*_test.dart, test/services/arcade/*_test.dart, test/models/bot_difficulty_test.dart, test/services/opponent/bot_opponent_test.dart와, 저장소 루트 docs/ 아래 내 기록 세 개다. origin/main 대비 바뀐 파일 중 이 밖에 있는 것이 있는지 확인해 줘. 특히 HoldPose가 lib/models/hold*.dart에 있으면 그건 A4 범위라서 arcade*.dart 이름의 파일로 옮겨야 한다. 옮길 것이 있으면 옮기는 안을 먼저 보여 줘.
+3. AI 기록의 TODO([REDACTED:custom_term])에는 이렇게 적어 줘. \"SPEC.md, arcade_data.json, ai_level_sim.py는 claude.ai의 Claude가 Claude Design 캔버스 시안을 바탕으로 작성했다. 판 구성, 캐릭터 로테이션, AI LV 범위, 별 조건 같은 규칙과 수치는 송우현이 정하고 검토했다.\"
+4. 고친 것은 한 커밋으로 push한다. 커버리지는 CI 댓글이 달리면 그때 채운다.
+</pasted_content id=\"7b53\">"

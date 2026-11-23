@@ -1,17 +1,17 @@
 # AI Collaboration notes: Iteration 5 (2026-11-21 ~ 2026-12-04) – Woohyun Song
 Status: draft (iteration open) | Written by: Woohyun Song | Merged by the PM into `AI-Collaboration-Report-Iteration-5.md` (P27)
-Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas)
+Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data)
 
 Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. Input prompts are in
 [g1fted13-Prompt-Log.md](g1fted13-Prompt-Log.md).
 
-## P16-1 `codex/iter5-arcade-stages` – arcade setup (team order #8), 2026-11-23
+## A2 `codex/iter5-arcade-stages` – Build arcade stage rules (team order #8 before the PM's renumbering), 2026-11-23
 
 ### a. Where AI was used
 - **Planning the split (local harness, not committed):** the user split P16 (the arcade) into five steps due 11/24 for
-  the 11/25 TA meeting. Claude Code added the four new steps to the local ownership rules and team plan, then checked
+  the 11/25 TA meeting; the PM's new harness later named this one A2. Claude Code added the four new steps to the local ownership rules and team plan, then checked
   them in a throwaway clone: commits, `--check-diff` and `--push` on all five stacked branches.
-- **The code and tests:** Claude Code wrote all of P16-1's code and tests in six commits (18 files), plus a merge of `main`:
+- **The code and tests:** Claude Code wrote all of A2's code and tests in six commits (18 files), plus a merge of `main`:
   - `7cbbab8`: the `BotPace` interface in `lib/models/bot_difficulty.dart` (L1–20). `BotOpponent` now takes it
     (`lib/services/opponent/bot_opponent.dart` L41–43, L109). The tests pin the old rounds in
     `test/services/opponent/bot_opponent_test.dart` (L57–163).
@@ -26,12 +26,12 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 - **Generated, then checked:** the 24 stage constants in `arcade_catalog.dart` were printed from `arcade_data.json` by a
   throwaway Python script. Claude Code did not type them by hand. The catalog test compares every value with a copy of
   the JSON.
-- **The hand-off:** the user decided the arcade's floors, stages, AI strength and star rules on the Claude Design canvas
-  "GymRats 메인 메뉴 시안", page "아케이드 · 들어가기와 흐름" (stated in the spec's first paragraph). The step's hand-off
-  files are the spec (`SPEC.md` v1), `arcade_data.json` and the AI level simulation `tools/ai_level_sim.py`.
-  TODO(Woohyun Song): say who wrote these three files. The spec speaks of the user in the third person and gives
-  instructions to Claude Code, so it may have been drafted on the Claude Design canvas from the user's decisions.
+- **The hand-off:** the spec (`SPEC.md` v1), `arcade_data.json` and the AI level simulation `tools/ai_level_sim.py`
+  were written by Claude on claude.ai, from the mockups on the Claude Design canvas "GymRats 메인 메뉴 시안" (page
+  "아케이드 · 들어가기와 흐름").
 - **Not done by AI:**
+  - The rules and numbers in the hand-off were decided and reviewed by Woohyun Song: the stage layout, the character
+    rotation, the AI LV ranges and the star conditions.
   - The user answered the spec's two open questions: stars when two warnings end a hold, and stars when a stage is
     played again.
   - The user decided how the ownership guard treats the stacked branches, and added the three compensating rules.
@@ -57,7 +57,7 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   the rounds that 초보, 중수 and 고수 plan at `25509ee`. The printed 고수 rounds matched the pins already in the test.
   The new tests pin these values, and they pass on the changed code. Changing one constant (`_jitter` 0.15 → 0.16)
   made 7 of the 8 new tests fail.
-- **Saw a gap in the stacked-PR rule.** P16-3 and P16 start from P16-1 and P16-2 merged together, and a GitHub PR has
+- **Saw a gap in the stacked-PR rule.** P16-3 and P16 start from A2 and P16-2 merged together, and a GitHub PR has
   only one base. Claude Code chose a base for those PRs and wrote a review command for that case: the intersection of
   the two diffs with `comm -12`. It said in the rules that the PR also shows P16-2's files until both are merged.
 - **Checked `main` before the push.** Right before the push, `main` moved to `ad8a6f7`. Claude Code read its diff
@@ -82,7 +82,8 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   Claude Code saw it in `main`'s diff before the push. Fixed in `9f14b6f`, and the floor test's base now turns the
   switch off, so a value left out fails the test. A new `BattleRules` field still needs the copy updated by hand.
 - **An unsupported claim in these notes.** The first draft said the user wrote `SPEC.md` and `arcade_data.json`. The
-  reviewer pointed out that the spec speaks of the user in the third person. The claim is now a TODO (item a).
+  reviewer pointed out that the spec speaks of the user in the third person. The claim became a TODO, and the user
+  then said who wrote the files and who set the rules (item a).
 - **Garbled Korean in the generated constants.** The first run of the catalog script redirected its output in the
   Windows code page, so every Korean label came out garbled. Claude Code saw this when it printed the output, and reran
   the script with `python -X utf8` before using the result. Cost: one rerun.
@@ -105,4 +106,4 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   that shows such an edit.
 
 ### f. Manual fixes and why
-- None in this step: nobody edited P16-1's code by hand.
+- None in this step: nobody edited A2's code by hand.

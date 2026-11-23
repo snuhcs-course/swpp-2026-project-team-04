@@ -5,8 +5,9 @@ Per-push Results for my Iteration 5 steps, in the Testing Documentation format. 
 
 ## Results
 
-#### 2026-11-23 · code at commit `141c8df` · step P16-1 `codex/iter5-arcade-stages` (arcade setup, team order #8)
-P16 (the arcade) is split into five steps. P16-1 is the arcade's values and rules, with no screen:
+#### 2026-11-23 · code at commit `141c8df` · step A2 `codex/iter5-arcade-stages` (Build arcade stage rules; team order #8 before the PM's renumbering)
+The arcade (P16 before the PM's renumbering) is split into five steps. A2 is the arcade's values and rules, with no
+screen:
 - **Data:** the 4 floors, 24 stages and 16 AI levels of the design hand-off `arcade_data.json` (version arcade-1), as
   Dart constants (`ArcadeCatalog`, `ArcadeAiLevel`).
 - **Bot:** `BotOpponent` takes a `BotPace`, which `BotDifficulty` and `ArcadeAiLevel` implement. 초보, 중수 and 고수 play
@@ -28,16 +29,16 @@ coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub A
 | API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/23 | – |
 
 - **Tests:** `flutter test` 3908 passed, 0 failed, 10 skipped. `flutter analyze` found no issues. The skipped tests
-  were already skipped on `main`, and P16-1 does not touch them:
+  were already skipped on `main`, and A2 does not touch them:
   - `test/services/online/public_wss_smoke_test.dart`: a live team-server check that runs only with
     `RUN_PUBLIC_BATTLE_SMOKE`.
   - 9 recordings in `test/services/pose/pushup_error_cases_test.dart`: known push-up judge errors, each with its
     reason in `knownErrors`.
-- **Count change:** P16-1 adds 124 tests: 115 in the seven new arcade test files and 9 in the two bot test files.
+- **Count change:** A2 adds 124 tests: 115 in the seven new arcade test files and 9 in the two bot test files.
   The other 4 new tests came with `main`'s #87. Before the merge, the branch had 3904 passed on `6b6b2b4`.
 - **One failed run, not from this step:** the first full run on `6b6b2b4` had one failure in
   `test/services/online/online_battle_integration_test.dart`, 'server deduplicates verdicts, rejects conflicts,
-  relays only pose whitelist' (L922: `valid_reps` 0, expected 1). P16-1 does not touch online battles. That run was
+  relays only pose whitelist' (L922: `valid_reps` 0, expected 1). A2 does not touch online battles. That run was
   slow (`flutter analyze` took 150 s instead of 75 s, with another test run on this PC). The file then passed 3 times
   out of 3 on its own (59 tests each), and the next full run on `6b6b2b4` passed (3904). It also passed in the earlier
   full run on `3bf2515` (3901 passed) and in the run on `141c8df` above.
@@ -62,12 +63,16 @@ coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub A
 - **The JSON copy:** the step's ownership covers only `test/models/arcade_*_test.dart`, so the copy of
   `arcade_data.json` is a raw string in `test/models/arcade_catalog_test.dart` instead of a fixture file. Only the line
   breaks differ from the hand-off file (checked with Python `json.loads(copy) == json.load(file)`).
-- **Other checks:** `ownership_guard.py --check-diff` ok (21 files, all P16-1's: 18 code and test files, 3 notes). Server `pytest` was not run because
+- **Other checks:** `ownership_guard.py --check-diff` ok (21 files: 18 code and test files, 3 notes), run with the local harness of the time. On 2026-11-23 I also
+  matched the 21 files with the A2 paths of the PM's new harness: none is outside them. Server `pytest` was not run because
   `server/` did not change.
 - **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
   (GitHub Actions)".
 - **Shortfalls:** none known before CI reports coverage.
-- **Manual check:** none. P16-1 has no screen. The arcade screens (P16) use these values.
+- **Manual check:** none. A2 has no screen. The arcade screens (P16) use these values.
+- **Notes-only push (2026-11-23):** the PM's new harness names this step A2, "Build arcade stage rules"; these
+  notes, the AI notes and the PR now use that name. The code is unchanged at `141c8df`, so the results above
+  stand. The tests were not rerun for this push.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
