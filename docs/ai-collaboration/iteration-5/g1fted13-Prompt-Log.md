@@ -169,3 +169,22 @@ progress.md는 worktree의 A4 세션과 같은 파일을 함께 쓴다. 고치�
 3. design_tokens_test.dart가 P16 범위 밖이면 선조치 후보고로 처리한다(로컬 예외, progress.md, PR 본문 Exceptions 절).
 4. 확인 결과를 짧게 보고하고, 문제가 없으면 이어서 진행해 줘.
 </pasted_content id=\"0a14\">"
+
+<!-- 44cd470a 2026-11-23T13:21:15.131Z -->
+[Woohyun Song, 11-23 22:21] "<pasted_content id=\"0a14\">
+결정한 것을 알려 줄게.
+
+1. 테스트 기록의 명세 경로는 새 커밋으로 \"P16 spec v2\"로 바꾼다. 이미 push한 이력은 고치지 않는다.
+
+2. hold-chair를 기다리지 말고, 지금 codex/iter5-hold-plank(A4, PR #90)를 그냥 git merge로 받아 와서 8절을 진행한다.
+- 기록 파일 충돌은 두 단계의 절을 모두 남겨 푼다. A4가 lib/theme/app_theme.dart 끝에 HoldColors와 HoldText를 더했으니, 이 단계의 아케이드 토큰과 충돌하면 둘 다 남긴다.
+- 대결과 보스의 결과 화면은 명세대로 A4의 ArcadeResultFrame으로 바꾸고, 임시로 만든 ArcadeBattle* 틀은 지운다(이 단계 파일이다).
+- 의자 자세 판(STAGE 5, 11, 17, 23)은 A5가 올라올 때까지 하이 플랭크로 연다. 데이터는 바꾸지 않고 여는 길에서만 바꾼다. task.md가 정한 대체 방식이고, PR 본문에 적는다. A5를 merge하면 대체를 지운다.
+- test/design_tokens_test.dart 검사 목록에 A4의 hold 화면 파일(lib/screens/hold*.dart)도 넣는다. 이 단계가 이미 그 파일을 예외로 고치고 있으니 같은 Exceptions 항목에 함께 적는다.
+
+3. 8절까지 끝나면 draft PR을 base codex/iter5-hold-plank로 연다. hold-plank를 merge한 뒤라 PR에는 이 단계 변경만 보인다. 본문에는 \"A5(codex/iter5-hold-chair)가 올라오면 merge하고 base를 그 브랜치로 바꾼다\"고 적는다. 제목 \"P16 · Build arcade screens\", 첫 줄 \"Merge order: #8.5 (P16)\", Depends on(#89, #88, #90, 나중에 A5 PR)은 정한 대로다. Codex 리뷰는 아직 요청하지 않는다.
+
+4. AI 기록 a항목에는 이렇게 적어 줘. \"아케이드 화면 명세(SPEC v1~v2)는 claude.ai의 Claude가 작성했고, 시안(PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss)은 Claude가 Claude Design 캔버스에서 그렸다. 게임 시작, 지도, 보스 매치의 구성 선택과 13절 질문의 답은 송우현이 정했다.\"
+
+끝나면 바뀐 파일, 테스트 결과, 예외로 고친 파일, PR 링크를 정리해서 보고해 줘.
+</pasted_content id=\"0a14\">"

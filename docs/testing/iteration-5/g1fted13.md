@@ -431,3 +431,74 @@ comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
 - 보스 매치: R1 lost, break and 그만하기, R2 lost, both won, 4F → 'R1 lost ends it: R1 패배, R2 locked, no stars', '그만하기 and back end the match: the map, no stars', 'R1 won: the break; R2 lost: R2 패배 with R1 checked', 'both won: n층 클리어!, the rounds, the next floor open; {n+1}층으로 opens its first stage', '4F: 4층 클리어! with 5F 공사중, and the map at the top (spec 1.6)'
 - Online regression → 'without them, as online, neither is there', 'outside the arcade nothing is added to the stage', 'a bot outside the arcade keeps "AI" and 게임 나가기', and the full suite
 - Phone check → TODO(Woohyun Song) (above)
+
+#### 2026-11-23 · code at commit `8b975cf`, merged with A4 in `6074bf4` · step P16 `codex/iter5-ai-opponents`, section 8 and the results on A4's frame
+After the first push the user chose not to wait for A5. A4 (`codex/iter5-hold-plank`, PR #90) was merged in
+(`f9d1eba`, then `6074bf4` for A4's four follow-up commits), and:
+- **Section 8, hold stages:** a hold cell opens A4's `HoldStageScreen` with the arcade's store, account and the
+  user's character; its 다음 스테이지 reads the progress again and opens the next stage on the map.
+- **Chair stages (5, 11, 17, 23) as high plank until A5:** only the way in changes (`ArcadeFlow.holdScreen`); the
+  stage data, star seconds included, stay. A4's briefing still says "의자 자세" over the plank figure. Remove with A5.
+- **Results on A4's frame (spec 6):** the fight and boss results use A4's `ArcadeResultFrame`; P16's interim frame
+  (`lib/widgets/arcade_result_frame.dart`) and its test are deleted.
+- **Boss screens scroll (reviewer run 3):** the intro and the break fill the view and scroll on short phones and
+  with large text.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `6074bf4`, without coverage. Coverage comes from
+the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (no P16 service) | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/23 | – |
+
+- **Tests:** `flutter test` 4250 passed, 0 failed, 10 skipped (the same 10 as on `main`). `flutter analyze` found
+  no issues.
+- **Count change since `c8d6044`:** P16's new test files now hold 131 tests (128 before): `arcade_flow_test.dart` +3
+  (hold stages), `arcade_screen_test.dart` +3 (a hold's 다음 스테이지, a hold left, the app's own way into a hold),
+  `arcade_boss_screen_test.dart` +2 (a short phone, large text), `arcade_parts_test.dart` -1 (the removed result
+  stars), `arcade_result_frame_test.dart` -4 (deleted with its frame). A4's tests come with the merges.
+  `test/design_tokens_test.dart` now also checks A4's five `lib/screens/hold_stage_*.dart` files; they already pass
+  (an exception, user decision 2026-11-23).
+- **Bugs the tests found:** at 360 x 640 and with 1.3x text the boss screens' buttons were cut off (reviewer run 3).
+  The new tests failed first, and also showed the break's score line overflowing at 1.3x; it now scales down.
+- **Reviewer:** run 3 CHANGES_REQUESTED (1 Major, 4 Minor), run 4 APPROVE with 3 Minor. The character test now checks
+  a chosen character, and A4's follow-up commits were merged; the third is below.
+- **Known, in A4's files (not changed here):** with 1.3x text on 360 x 780, the label of A4's dark button
+  (`HoldDarkButton`) overflows by 28 px with "R1부터 다시" and "다음 스테이지" (12 px on 320 x 640), and the frame's star
+  row (three 92-wide columns) overflows by 20 px on a 320-wide phone. Found by the reviewer's own layout check and
+  reported for A4's branch; once it is fixed there, a P16 test at these sizes on `ArcadeResultScreen` can guard it.
+- **Other checks:** `ownership_guard.py --check-diff` ok (105 paths, after `6074bf4`). Server `pytest` was not run
+  because `server/` did not change.
+- **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
+  (GitHub Actions)".
+- **Manual check:** TODO(Woohyun Song): on the Galaxy S26+ (spec 12): 1F from STAGE 1 to the boss with STAGE 3 on
+  A4's screen and its stars on the map, a chair stage opening as high plank (the briefing says "의자 자세"), the 2F
+  first stage's fever from 15 s, the map's stars and locks, and the boss screens with large text.
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_screen_test.dart` (updated) | a hold's 다음 스테이지 reads the progress again and opens the next stage; a hold left stays on the map; the app's own way into a hold: A4's screen for the stage with the arcade's store, account and the chosen character |
+| View | `test/screens/arcade_flow_test.dart` (updated) | a plank stage opens A4's screen as it is; a chair stage runs as a high plank with its data unchanged; every chair stage and no plank stage takes the fallback; the results in A4's frame, each star read on its own |
+| View | `test/screens/arcade_boss_screen_test.dart` (updated) | the intro and the break at 360 x 640 and with 1.3x text: no overflow, the buttons reachable |
+| View | `test/widgets/arcade_parts_test.dart` (updated) | the result stars' test removed with them |
+| View | `test/widgets/arcade_result_frame_test.dart` (deleted) | deleted with the interim frame (spec 6: A4's frame) |
+| Design | `test/design_tokens_test.dart` (updated) | A4's five hold screens added to the checked files; the interim frame removed |
+
+### Acceptance criteria → tests (spec 8 and 6)
+- A hold cell opens A4's screen with the arcade's store and account → 'the app's own way into a hold: A4's screen for
+  the stage, with the arcade's store, account and the user's character', 'a plank stage opens A4's screen as it is,
+  with the arcade's store and account'
+- A hold's 다음 스테이지 opens the next stage; leaving stays on the map → 'a hold's 다음 스테이지 reads the progress
+  again and opens the stage after it (spec 8)', 'a hold left by 아케이드로 or mid-stage stays on the map'
+- Chair stages as high plank until A5 → 'until A5, a chair stage runs as a high plank; its data stay', 'every chair
+  stage takes the fallback, no plank stage does'
+- Fight and boss results on A4's frame → 'won by KO: 클리어!, the stars got, the next stage's card, and the stars
+  kept', 'lost: 실패 with the score and no star; no star is kept' (both find `ArcadeResultFrame`)
+- Boss screens on small phones and large text → 'fits $label without overflow, scrolling to its buttons' (run for
+  "a short phone" and "a large text size")
+- Phone check → TODO(Woohyun Song) (above)

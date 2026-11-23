@@ -288,20 +288,30 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
     L19–100, from the `ArcMap` script's numbers), the stage sheet, the boss screen, the result screens and
     `ArcadeFlow`, the `/arcade` route and `GymArt.warmUp()` (`lib/main.dart` L61, L129).
   - `c8d6044`: the play page's two cards, the versus, battle and report changes, and the rewritten AI 1v1 tests.
+  - After A4 (`codex/iter5-hold-plank`, PR #90) was merged in (`f9d1eba`), `d429c8c`: section 8, the hold stages
+    (`lib/screens/arcade_flow.dart` `holdScreen`/`openHold`, the map's next stage after a hold), the chair stages run
+    as high plank until A5, and the fight and boss results moved onto A4's `ArcadeResultFrame` (the interim frame
+    deleted). `8b975cf`: the boss intro and break scroll on short phones. `6074bf4` merges A4's four follow-up
+    commits.
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran twice (item d): CHANGES_REQUESTED, then APPROVE.
-- **The hand-off:** `TODO(Woohyun Song)`: who wrote `.claude/design/arcade/p16/SPEC.md` v2 and how (A2's spec was
-  written by Claude on claude.ai from the Claude Design canvas).
+- **Review:** the `reviewer` subagent ran four times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+  CHANGES_REQUESTED and APPROVE.
+- **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
+  (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
+  Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
+  questions of section 13.
 - **Not done by AI:** the four open questions of spec 13 were answered by the user (remove 이어하기 now, 5F from the
   start, "STAGE 8 · 물렁범" as the record name, the report's exits inside the arcade). The user also set the branch
-  plan, the PR rules (draft, base `codex/iter5-hold-chair`, merge order #8.5) and the rule that earlier steps' files
-  are not edited. Section 8 (hold stages) waits for A4 and A5.
+  plan, the PR rules (draft, merge order #8.5) and the rule that earlier steps' files are not edited. After the first
+  push the user decided to merge A4 instead of waiting for A5, to use A4's result frame for the fights and the boss
+  match, to open the chair stages as high plank until A5, and to base the PR on `codex/iter5-hold-plank`.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "앞 단계(A2~A5)의 파일은 상속만 하고 고치지 않는다. 고칠 것이 보이면 멈추고 알려 줘. … 판정, 점수, 봇의 rep 계산은 건드리지 않는다. 온라인 대결은 하나도 바뀌면 안 된다."
 - [Woohyun Song, 11-23] (mid-task) "프롬프트 기록을 뽑을 때는 이 세션의 프롬프트만 P16 제목 아래 넣고, 같은 폴더에서 돌던 A2 세션의 프롬프트는 넣지 마."
+- [Woohyun Song, 11-23] (after the first push, pasted; excerpt) "hold-chair를 기다리지 말고, 지금 codex/iter5-hold-plank(A4, PR #90)를 그냥 git merge로 받아 와서 8절을 진행한다."
 - [Woohyun Song, 11-23] (after the laptop lost power, pasted; excerpt) "이어서 하기 전에 먼저 상태를 확인해 줘. 1. 지금 브랜치가 codex/iter5-ai-opponents인지, git status, 남아 있는 .git/index.lock이 있는지 본다."
 
 ### c. What AI did well
@@ -330,6 +340,17 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   class names as A4's uncommitted frame; the map computed locks itself instead of A2's `isOpen`. All fixed:
   `ArcadeViewModel.finishBattle` with a sealed outcome and unit tests, `ArcadeMatchups.rulesOf`/`botOf`/`battleOf`
   with tests, named constants, the `ArcadeBattle*` names. Run 2 approved with one Minor, also fixed.
+- **Reviewer run 3 (CHANGES_REQUESTED), missed in runs 1 and 2:** the boss intro and the break did not scroll, so on
+  a 360 x 640 phone or with 1.3x text their buttons were cut off (by up to 40 points). Caught by the reviewer's own
+  layout check; fixed with a fill-then-scroll wrapper and tests at both sizes, which also showed the break's score line
+  overflowing at 1.3x text. The reviewer also found that A4's dark button overflows with "R1부터 다시" at 1.3x text;
+  A4's file is not edited here, so it was reported to the user for A4's branch.
+- **Reviewer run 4 (APPROVE, 3 Minor):** a test named for "the user's character" gave no character view model, so
+  it only checked the default; it now picks another character and checks that one reaches A4's screen. A4's branch had
+  four new commits since `f9d1eba`; merged in `6074bf4`. A4's result frame also overflows on a 320-wide phone (its
+  three 92-wide star columns); reported with the button for A4's branch.
+- **A path in my notes:** the post-push check matched `.claude/...` in the spec's path in my testing notes; fixed in a
+  new commit (`7a1d46c`).
 
 ### e. Prompt revisions
 - None for the code in this step. The user added one rule mid-task (only this session's prompts under the P16 heading)
