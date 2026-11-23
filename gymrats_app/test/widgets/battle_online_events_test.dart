@@ -74,11 +74,11 @@ void main() {
     test('a rejected rep misses, with its reason', () {
       final session = _session();
       _play(session);
-      final rep = _rep(reason: RejectReason.kneesDown, elbow: 90);
+      final rep = _rep(reason: RejectReason.armsStraight, elbow: 90);
       session.submitRep(rep, passDepth: 1);
       final event = OnlineStageEvents.myRep(session, rep, passDepth: 1);
       expect((event.grade, event.points, event.combo), (null, 0, 0));
-      expect(event.reason, RejectReason.kneesDown);
+      expect(event.reason, RejectReason.armsStraight);
     });
 
     test('an average rep lands weakly with its points and keeps its reason; '

@@ -31,7 +31,11 @@ class BattleGame {
 
   GameRepScore? _add(PlayerGameScore player, RepEvent rep) {
     if (isKo) return null;
-    return player.addRep(rules.gradeOf(rep, passDepth: passDepth), rep.at);
+    return player.addRep(
+      rules.gradeOf(rep, passDepth: passDepth),
+      rep.at,
+      kneePushup: rep.reason == RejectReason.kneesDown,
+    );
   }
 
   /// The user's lead in points; negative while behind.
