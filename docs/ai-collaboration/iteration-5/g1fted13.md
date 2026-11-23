@@ -293,10 +293,12 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 - **A4 changes made from this session** (on A4's branch, then merged here; the user's decisions): `014e4f0` guide lines
   from the reader, `1c325ab` "시작" after an entry, `397f498` a test comment, `f78ac2b` the result screen on small
   screens (overflows found by the P16 session), with their testing notes `82e281a` and `be6509a`.
+- **The follow-up of 2026-11-24** (the user's decision): `77e1a75` keeps the 3·2·1's standing thigh from GO on (the
+  spec's "follows while standing" narrowed to before GO), with 7 new tests, among them a slow sit over 3, 4 and 6 s.
 - **Checking against the design:** the chair scenes captured with the app's fonts in a throwaway widget test (deleted)
   and compared by eye with the hand-off's shots (testing notes, A5 entry).
-- **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1) and on
-  these notes (runs 2–3).
+- **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1), on
+  these notes (runs 2–3) and on the follow-up of 2026-11-24 (run 4).
 - **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
   Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
   also holds the A3 and A4 sessions). Two fixes, the prompts
@@ -316,6 +318,8 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   rep_judge.dart)는 고치지 않고 가져다 쓴다."
 - [Woohyun Song, 11-23] (mid-task, pasted; excerpt) "1. 하이 플랭크의 푸쉬업 안내선도 따로 도는 판정기에서 오는지
   확인하고, 오래 버티면 같은 식으로 사라지면 같은 커밋에서 함께 고쳐 줘."
+- [Woohyun Song, 11-24] (pasted; excerpt) "깊이 기준은 폰 확인을 기다리지 말고 지금 고치자. 천천히 앉을 때 기준이 같이
+  내려가서 깊이가 낮게 읽히기 때문이다(reviewer 시뮬레이션에서 0.8이 0.73~0.75로 읽힘)."
 
 ### c. What AI did well
 - **Found A4's gaps before building on them.** Reading A4's view model against the spec's sections 5 and 6 showed that
@@ -327,7 +331,8 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   stays, so nothing was changed there. Reviewer run 5 confirmed it against `rep_judge.dart`.
 - **Proved the depth is the squat judge's.** `chair_hold_test.dart` feeds the same 33 ms frames to `SquatRepJudge` and
   the reader for 12 s and compares the depth exactly (more than 300 frames), then shows the squat judge losing it past
-  12 s while the reader keeps it.
+  12 s while the reader keeps it. (Since `77e1a75` this holds for the frames read as in the 3·2·1; after GO the depth
+  differs on purpose, see d.)
 - **Reproduced before fixing.** For the P16 session's overflow report it first wrote the size tests and saw them fail
   with the reported 28, 20 and 12 px, then fixed and saw them pass, with a test that the design's sizes stay.
 
@@ -363,6 +368,17 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   stacked-branch count must match the commit it is quoted for; the command block lacked the six-file run behind
   "156 passed". All fixed. Its own full run hit one flaky online test outside A5 (in the testing notes).
 - **Reviewer, A5 run 3 (APPROVE, notes only):** run 2's findings verified fixed; no new finding.
+- **A rule copied faithfully that did not fit the pose.** Following the spec, the reader copied the squat judge's
+  rule that the standing thigh follows a standing user. On the way down the thigh still counts as standing for a
+  while, so a slow sit lowered the standing thigh and a good chair pose read "더 앉아요". The parity test could not
+  catch it (it checks the copy, not the pose); reviewer A5 run 1 found it by simulation, and the session first left
+  it for the phone check. The user had it fixed the next day: the new tests show the squat judge's rule reading under
+  0.75 on the same slow-sit frames where the reader now reads the true 0.8.
+- **Reviewer, A5 run 4 (APPROVE, the follow-up of 2026-11-24; 4 Minors):** the new tests fail on the old reader and
+  on a reader that never follows. Fixed before the commit: the skips' reason in the testing notes, item c's parity
+  claim (now limited to the 3·2·1), item e's "the spec only allowed" (the spec ties changes to the phone check), and a
+  test named "halfway up" that never went halfway up. Left for the phone check, as the user's wording asks for it: a
+  standing thigh taken after GO is taken once, so a slow rise after GO can fix it before the user is fully up.
 
 ### e. Prompt revisions
 - Before (the user's answer, 2026-11-23): "A4 브랜치에서 고치고 merge (Recommended)".
@@ -371,6 +387,12 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   정리해 줘. … 3. A4 커밋은 reviewer를 한 번 돌리고 push한다. 그다음 A5 브랜치로 돌아와 hold-plank를 그냥 git merge로 받아 온다."
 - Why it worked: the answer only said where to fix; the revision said what else to check, what the A4 commits may hold,
   and in which order to review, push and merge, so the A4 fix went out as four A4-only commits with their own review.
+- Before (the step's start, pasted; the spec's rule it pointed to): "테스트는 SPEC.md 7절 기준이다." (SPEC 3: the
+  standing thigh "서 있는 동안만 천천히 따라감"; SPEC 1: "폰으로 찍어 보고 바꾸면 이유와 찍은 기록을 테스트 근거에 남긴다").
+- After (2026-11-24, pasted): "깊이 기준은 폰 확인을 기다리지 말고 지금 고치자. … 1. GO 뒤에는 서 있는 기준을 따라가지
+  않는다. … 2. 3~4초에 걸쳐 천천히 앉아도 깊이를 실제대로 읽어 \"더 앉아요\"가 뜨지 않는지 보는 테스트를 더한다."
+- Why it worked: the spec tied changes to the phone check; the new prompt named the rule to change, how far
+  (before GO only), and the test that proves it, so the change was small and testable without the phone.
 
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.

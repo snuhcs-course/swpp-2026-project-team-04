@@ -472,3 +472,34 @@ scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `Mem
   height lines stay over the camera past 12 s'
 - Regression → the full `flutter test` above (A4's high plank and the squat battle's tests pass)
 - Phone check → TODO(Woohyun Song) above.
+
+#### 2026-11-24 · code at commit `77e1a75` · step A5 follow-up: the standing thigh after GO
+The user decided (2026-11-24, local task.md, A5 Decisions) to narrow the spec's "the standing thigh follows while
+standing" to the 3·2·1, without waiting for the phone check. `SquatRepJudge`'s rule lets the standing thigh follow
+while the depth is under 0.25 and the thigh still counts as standing (at least 0.7 of the shin), which is also true
+on the way down; a slow sit therefore lowered it, and a true 0.8 read under 0.75 ("더 앉아요"; reviewer A5 run 1).
+- **Now:** the 3·2·1's frames take the standing thigh and follow it as the squat judge's does (the depth parity of
+  section 7 holds there); from GO on it is fixed for the play. Without one by GO, the first 300 ms standing after GO
+  takes it, once, and it is not followed either.
+- This replaces, for frames after GO, the A5 entry's "the standing thigh's follow" above; that entry is kept as it was.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as the A5 entry above.
+
+- **Tests:** `flutter test` 4131 passed, 0 failed, 10 skipped (2026-11-24, `77e1a75`; the same 10 skips as above). `flutter analyze` found no issues. The two chair files: 47
+  passed (37 + 10).
+- **New tests:** 7 in `test/services/pose/chair_hold_test.dart`; 4 changed (the depth parity test now reads the frames
+  as the 3·2·1 does; the 12 s test takes GO at 1 s and expects the real 0.9; the two follow tests run in the 3·2·1).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+- **Review:** local reviewer A5 run 4, APPROVE; it ran the new tests on the old reader (8 fail) and on a reader that
+  never follows (the 3·2·1 tests fail), so both halves of the rule are guarded. Its Minors were fixed before the
+  commit (the skips' reason here, two wording lines in the AI notes, a halfway-up step in 'after GO it never
+  changes'), except one left for the phone check: a standing thigh taken after GO is taken once, so a user who sat
+  through the 3·2·1 and then rises slowly after GO can have it taken before fully up (simulated: a 3 s rise, then a
+  true 0.8 reads 0.739). The setup's auto start restarts its count on any frame that is not ready, so the user
+  normally stands through the 3·2·1.
+- **Phone check:** ⑤ (a slow sit over 3–4 s) now checks this change; the rest as in the A5 entry.
+
+### Test cases added or changed in the follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/chair_hold_test.dart` | 'down to 0.8 over 3 s / 4 s / 6 s reads 0.8 and is held, where the squat judge's rule reads under 0.75' (3 tests: the reader's depth is the true 0.8 and held, while `SquatRepJudge` on the same frames reads under 0.75); 'the entry ends and the time runs, with no warning' (a slow sit after GO on A4's `HoldJudge`); 'sitting again slowly after a warning runs the time again'; 'after GO it never changes: standing, halfway up or seated'; 'taken after GO, it is taken once and not followed'; changed: 'the same frames give the squat judge's depth, within 12 s' (as the 3·2·1 reads them), 'past 12 s down the squat judge drops it; the depth goes on' (GO at 1 s, the real 0.9), 'in the 3·2·1 it does not change while seated, nor halfway up', 'in the 3·2·1, standing, it follows slowly' (renamed from the A5 entry's 'it does not change while seated, nor halfway up' and 'standing, it follows slowly', which ran after GO) |
