@@ -215,6 +215,19 @@ void main() {
       expect(shape.join, StrokeJoin.bevel);
       expect(shape.fillOpacity, 0.5);
       expect(shape.strokeOpacity, 0.25);
+      // What the painter gets: the colors at their opacity, the outline's
+      // width, ends and joins.
+      final fillPaint = shape.fillPaint!;
+      expect(fillPaint.style, PaintingStyle.fill);
+      expect(fillPaint.color.toARGB32() & 0xFFFFFF, 0x5B7E9B);
+      expect(fillPaint.color.a, closeTo(0.5, 1e-3));
+      final strokePaint = shape.strokePaint!;
+      expect(strokePaint.style, PaintingStyle.stroke);
+      expect(strokePaint.color.toARGB32() & 0xFFFFFF, 0x141A26);
+      expect(strokePaint.color.a, closeTo(0.25, 1e-3));
+      expect(strokePaint.strokeWidth, 2.5);
+      expect(strokePaint.strokeCap, StrokeCap.butt);
+      expect(strokePaint.strokeJoin, StrokeJoin.bevel);
       expect(
         shape.matrix4,
         Float64List.fromList([
@@ -263,6 +276,24 @@ void main() {
       expect(plain.fillPaint!.color, const Color(0xFFFFFFFF));
       expect(bare.fillPaint, isNull);
       expect(bare.strokePaint, isNull);
+    });
+
+    test('warmUp builds every path and paint of the art, and can run '
+        'again', () {
+      GymArt.warmUp();
+      final shapes = [
+        for (final owner in _art.owners.values)
+          for (final face in owner.faces.values) ...face,
+        for (final floor in _art.floors.values) ...floor,
+      ];
+      expect(shapes, hasLength(701));
+      final paths = [for (final s in shapes) s.path];
+      GymArt.warmUp();
+      for (final (i, shape) in shapes.indexed) {
+        expect(identical(shape.path, paths[i]), isTrue);
+        expect(shape.fillPaint == null, shape.fill == null);
+        expect(shape.strokePaint == null, shape.stroke == null);
+      }
     });
 
     test('builds each path and paint once', () {
@@ -375,6 +406,48 @@ void main() {
         10,
       );
       expect(_pixel(bytes, 10, 5, 5), [0, 0, 0xFF, 0xFF]);
+    });
+
+    test('paints a see-through fill and a faint outline at their opacity, as '
+        'the floor lines are', () async {
+      // Over white: black at half opacity is mid grey, at a quarter light.
+      final painter = GymArtPainter(
+        shapes: _shapes([
+          {
+            'd': [
+              ['M', 0, 0],
+              ['L', 10, 0],
+              ['L', 10, 10],
+              ['L', 0, 10],
+              ['Z'],
+            ],
+            'fill': '#000000',
+            'fillOpacity': 0.5,
+            'stroke': null,
+          },
+          {
+            'd': [
+              ['M', 0, 15],
+              ['L', 20, 15],
+            ],
+            'fill': null,
+            'stroke': '#000000',
+            'strokeWidth': 4,
+            'cap': 'butt',
+            'join': 'round',
+            'strokeOpacity': 0.25,
+          },
+        ]),
+        window: const Size(20, 20),
+      );
+      final bytes = await _render(painter, 20, 20);
+      for (final channel in _pixel(bytes, 20, 5, 5).take(3)) {
+        expect(channel, closeTo(0x80, 2));
+      }
+      for (final channel in _pixel(bytes, 20, 10, 15).take(3)) {
+        expect(channel, closeTo(0xBF, 2));
+      }
+      expect(_pixel(bytes, 20, 15, 5), [0xFF, 0xFF, 0xFF, 0xFF]);
     });
 
     test('scales the window the same both ways and centres it', () async {
