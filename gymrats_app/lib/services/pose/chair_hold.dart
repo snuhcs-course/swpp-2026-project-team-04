@@ -33,7 +33,9 @@ abstract final class ChairFaults {
 /// The chair pose's bundle (spec 1 to 5): set up standing, as in the squat
 /// battle, and entered after GO; the time starts once the pose is first
 /// held for `HoldTiming.resume`. Its drawings are A4's: the sitting figure
-/// and the squat battle's hip and knee height lines.
+/// and the squat battle's hip and knee height lines. The owner says
+/// "스쿼트 자세로 / 버텨!" from GO until the time starts (the hold effects
+/// spec 3).
 final chairHold = HoldPoseDefinition(
   pose: HoldPose.chair,
   setupExercise: ExerciseType.squat,
@@ -43,6 +45,7 @@ final chairHold = HoldPoseDefinition(
   faults: ChairFaults.all,
   silhouette: HoldSilhouette.sit,
   guide: HoldGuide.squatHeight,
+  startWords: const ['스쿼트 자세로', '버텨!'],
 );
 
 /// The chair reading's lines that [SquatRepJudge] does not make public.
