@@ -1,14 +1,17 @@
 # AI Collaboration notes: Iteration 5 (2026-11-21 ~ 2026-12-04) – Woohyun Song
 Status: draft (iteration open) | Written by: Woohyun Song | Merged by the PM into `AI-Collaboration-Report-Iteration-5.md` (P27)
-Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas)
+Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude on claude.ai with the Claude Design canvas (the arcade art)
 
 Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. Input prompts are in
 [g1fted13-Prompt-Log.md](g1fted13-Prompt-Log.md).
 
-## P16-2 `codex/iter5-arcade-art` – arcade art (team order #8), 2026-11-23
+## A3 `codex/iter5-arcade-art` – Create arcade artwork (team order #8), 2026-11-23
 
 ### a. Where AI was used
-- **The code and tests:** Claude Code wrote all of P16-2 in commits `de3a969`, `c00eced` and `a5f0d7d` (4 `lib/`
+- **The art:** Claude on claude.ai drew the four gym owners and the five floor backgrounds as SVG on the Claude Design
+  canvas. The app's art data (`gymrats_app/assets/arcade/gym_art.json`) was carried over from those SVGs by an
+  extraction script that Claude made (the user's statement, 2026-11-23, in the Prompt Log).
+- **The code and tests:** Claude Code wrote all of A3 in commits `de3a969`, `c00eced` and `a5f0d7d` (4 `lib/`
   files, 3 test files, the art's JSON and 17 design shots under `gymrats_app/assets/arcade/`):
   - `lib/widgets/gym_background_art.dart` (L1–398): the parser (`GymArt`, `GymArtShape`, `GymArtSegment`) and the
     painter `GymArtPainter`, which follows the design's reference renderer; `GymArt.warmUp` (L74–89, `c00eced`)
@@ -19,17 +22,16 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   - `lib/widgets/gym_background_art_data.dart` (L1–9): the string `gymArtJson`, written by a Python script from
     `gym_art.json`, not typed; `test/widgets/gym_background_art_test.dart` checks it equals the JSON file.
 - **Checking against the design:** Claude Code compared the drawings with the hand-off's 17 shots pixel by pixel (in
-  the tests) and by eye from a widget capture (`docs/testing/iteration-5/g1fted13.md`, P16-2 entry).
+  the tests) and by eye from a widget capture (`docs/testing/iteration-5/g1fted13.md`, A3 entry).
 - **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
   Session Exporter and `extract_prompts.py`; the Chrome extension's injected `<browser_instruction>` text (3 blocks,
   not typed by the user) was removed from it by a script, the prompts themselves are unchanged.
 - **Not done by AI:**
-  - The user chose the sports goggles (C) for the owners and the props backgrounds (A) on the Claude Design canvas.
-    The spec, `gym_art.json` (kept as `gymrats_app/assets/arcade/gym_art.json`) and the shots (now
-    `gymrats_app/assets/arcade/shots/`) were handed over by the user as a local design hand-off, which is not
-    committed.
-  - TODO(Woohyun Song): how the art itself was drawn on the Claude Design canvas (by hand or with AI), for item a.
-  - Running P16-2 in its own worktree beside the P16-1 session was the user's decision (the step's start prompt in
+  - Woohyun Song directed the art's composition, expressions and props, and chose among Claude's candidates,
+    including the sports goggles (C) for the owners and the props backgrounds (A). The spec, `gym_art.json` (kept as
+    `gymrats_app/assets/arcade/gym_art.json`) and the shots (now `gymrats_app/assets/arcade/shots/`) were handed over
+    by the user as a local design hand-off, which is not committed.
+  - Running A3 in its own worktree beside the P16-1 session was the user's decision (the step's start prompt in
     the Prompt Log).
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
@@ -48,9 +50,9 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   owners by at most 8). The test also proves it would catch another face, another floor or one missing shape.
 - **Traced a look-alike to its source instead of "fixing" it.** 펭뚱이's `watch` and `ok` shots are byte-identical.
   Claude Code found the cause in the design part (`design/CoachB.dc.html` L276: the penguin's mouth is `M0 0` in both
-  faces) and reported it to the user without changing the data, as the prompt asked.
-- **Stayed inside the step's files.** The shots could not go to `test/widgets/` as W3's did (P16-2 may only add
-  `gym_*` tests), so they went to `gymrats_app/assets/arcade/shots/` (`de3a969`), not listed in `pubspec.yaml` and so
+  faces) and reported it to the user without changing the data, as the prompt asked; the user decided to keep it.
+- **Stayed inside the step's files.** The shots could not go to `test/widgets/` as W3's did (the step's file list in
+  the local harness allowed only `gym_*` tests), so they went to `gymrats_app/assets/arcade/shots/` (`de3a969`), not listed in `pubspec.yaml` and so
   not bundled in the app.
 
 ### d. Hallucinations / errors

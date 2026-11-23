@@ -29,3 +29,13 @@ gym_art.json은 손으로 옮기지 말고 그대로 Dart 상수 문자열로 �
 그린 결과는 shots/의 그림과 대조해서 다른 곳이 있으면 고치지 말고 그림 이름과 함께 나에게 알려 줘.
 끝나면 flutter analyze, flutter test(커버리지는 돌리지 않음), reviewer를 돌리고 push한 뒤 PR을 base main으로 열어. PR 본문은 영어로 쓰고, 뒤 단계가 쓸 위젯 이름과 상수를 \"API for later steps\" 절에 적어. 화요일(11/24) 오전까지 머지되어야 하니 범위를 넓히지 마.
 </pasted_content id=\"ff62\">"
+
+## 2026-11-23 · Woohyun Song · codex/iter5-arcade-art
+<!-- a3d8fb3d 2026-11-23T09:38:57.510Z -->
+[Woohyun Song, 11-23 18:38] "<pasted_content id=\"ff62\">
+상우가 Iteration 5 하네스를 다시 배포해서 아케이드 단계의 공식 ID가 정해졌다. 이 단계는 A3(\"Create arcade artwork\")다. 하네스 재설치는 지금 하지 않는다.
+1. PR #88 제목을 \"A3 · Create arcade artwork\"로 바꾸고, PR 본문, progress.md, 내 테스트 기록과 AI 기록에서 이 단계를 P16-2라고 부른 곳을 A3로 고쳐 줘.
+2. 새 하네스의 A3 허용 범위는 gymrats_app/assets/arcade/*, test/assets/arcade*_test.dart, pubspec.yaml(자산 등록)뿐이라서, lib/widgets/gym_*.dart와 test/widgets/gym_*_test.dart는 새 기준으로는 범위 밖이다. 상우에게 범위 추가를 요청했으니 파일은 옮기지 않는다. 대신 PR 본문 Exceptions 절에 세 가지를 적어 줘. 이 사실, 그 이유(flutter_svg가 없어서 그림을 Dart 데이터와 위젯으로 그림), task.md의 \"9개 자산 로딩 확인\"을 9개 그림 렌더 테스트로 확인한 것이다.
+3. AI 기록의 TODO([REDACTED:custom_term])에는 이렇게 적어 줘. \"관장 4명과 층 배경 5개는 claude.ai의 Claude가 Claude Design 캔버스에서 SVG로 그렸고, 송우현이 구도, 표정, 소품을 지시하고 후보 중에서 골랐다. 앱의 그림 데이터는 Claude가 만든 추출 스크립트로 그 SVG에서 옮겼다.\"
+4. 고친 것은 한 커밋으로 push한다. 커버리지는 CI 댓글이 달리면 그때 채운다.
+</pasted_content id=\"ff62\">"

@@ -5,8 +5,8 @@ Per-push Results for my Iteration 5 steps, in the Testing Documentation format. 
 
 ## Results
 
-#### 2026-11-23 · code at commit `a5f0d7d` · step P16-2 `codex/iter5-arcade-art` (arcade art, team order #8)
-P16 (the arcade) is split into five steps. P16-2 is the arcade's pictures, with no screen:
+#### 2026-11-23 · code at commit `a5f0d7d` · step A3 `codex/iter5-arcade-art` (Create arcade artwork, team order #8)
+The arcade is split into steps. A3 is the arcade's pictures, with no screen:
 - **Data:** the design hand-off `gym_art.json` (version arcade-art-1, 701 shapes) kept as
   `gymrats_app/assets/arcade/gym_art.json` and copied unchanged into the Dart string `gymArtJson`.
 - **Owners:** `GymOwnerFigure`, the four goggled gym owners (물렁범, 펭뚱이, 그루, 곰탱이) in three faces (watch, blow,
@@ -28,14 +28,14 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | not changed by P16-2 | 11/23 | – |
-| ViewModel | flutter_test, fakes | 90% | not changed by P16-2 | 11/23 | – |
-| Service | flutter_test, MockClient, fakes | 85% | not changed by P16-2 | 11/23 | – |
+| Model | flutter_test | 90% | not changed by A3 | 11/23 | – |
+| ViewModel | flutter_test, fakes | 90% | not changed by A3 | 11/23 | – |
+| Service | flutter_test, MockClient, fakes | 85% | not changed by A3 | 11/23 | – |
 | View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" |
 | API server | pytest, pytest-django, pytest-cov | 90% | `server/` not changed | 11/23 | – |
 
 - **Tests:** `flutter test` 3840 passed, 0 failed, 10 skipped (2026-11-23, `a5f0d7d`). `flutter analyze` found no issues. The
-  skipped tests were already skipped on `main`, and P16-2 does not touch them:
+  skipped tests were already skipped on `main`, and A3 does not touch them:
   - `test/services/online/public_wss_smoke_test.dart`: a live team-server check that runs only with
     `RUN_PUBLIC_BATTLE_SMOKE`.
   - 9 recordings in `test/services/pose/pushup_error_cases_test.dart`: known push-up judge errors, each with its
@@ -46,9 +46,9 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   `gym_background_art.dart`), "the parser reads a shape: matrix, path, colors, line ends and opacity" and "GymArtPainter
   paints a see-through fill and a faint outline at their opacity, as the floor lines are" fail; the shot tests alone
   would not notice (their channel tolerance of 64 hides the faint floor lines).
-- **Other checks:** `ownership_guard.py --check-staged` ok on every commit (25 files, all P16-2's; none changed outside them).
+- **Other checks:** `ownership_guard.py --check-staged` ok on every commit (25 files, all inside the step's file list in the local harness; none changed outside them).
 - **Checks after merging `origin/main`:** `git fetch origin && git merge origin/main` brought in `ad8a6f7` (PR #87,
-  push-up grading; no P16-2 file). On the merge commit `0b3475a` (2026-11-23): `flutter analyze` found no issues and
+  push-up grading; no A3 file). On the merge commit `0b3475a` (2026-11-23): `flutter analyze` found no issues and
   `flutter test` had 3844 passed, 0 failed, 10 skipped (the same skips; PR #87 adds 4 tests).
   `ownership_guard.py --check-diff` ok (25 files). Server `pytest` was not run because
   `server/` did not change.
@@ -57,7 +57,7 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   differ). On 2026-11-23 no pixel of any shot differed by more than 20 in a channel (the owners by at most 8). The same
   check fails for a wrong face, a wrong floor and a missing shape. Nothing differs from the design.
   - In the design itself, 펭뚱이's `watch` and `ok` are the same picture: its mouth is an empty path (`M0 0`) in both
-    faces (`design/CoachB.dc.html` L276). Reported to the user, not changed.
+    faces (`design/CoachB.dc.html` L276). Reported to the user, who decided to keep it as it is (2026-11-23).
 - **Coverage:** TODO(Woohyun Song): copy the View numbers from the PR's CI comment, with its commit and run link.
 - **Shortfalls:** none known; the coverage numbers are still to come from CI.
 - **Manual check (2026-11-23, widget capture, per the spec's section 4):** the real widgets (`GymOwnerFigure` in
@@ -73,7 +73,7 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
 | View | `test/widgets/gym_owner_figure_test.dart` (new) | the size is the 140 × 160 box times its scale; each owner and face draws its own drawing in its box, unclipped; watch by default; an unknown id draws the seal; screen readers hear "체육관 관장 {name}" as an image, without the face; it stands still unless asked to breathe; breathing about the feet (0.988 × 1.02 a quarter into the 2.2 s cycle, 1 at the half, 1.012 × 0.98 at three quarters, the sine in between); no breathing with reduced motion, stopping and restarting when it changes; the clock stops when it leaves the screen; the face centres of spec 3; the faces match the data |
 | View | `test/widgets/gym_background_test.dart` (new) | the width it is given and 390/360 of it as height (360, 412, 180); each floor's drawing, cut to its 360 × 390 picture; an unknown floor (0, 6, −1, 42) draws 1F; decoration that screen readers skip; the published size and floor line equal the data |
 
-### Acceptance criteria → tests (P16-2 spec section 4; task.md leaves P16-2's criteria to the spec)
+### Acceptance criteria → tests (the A3 spec, section 4; the local task.md left the step's criteria to the spec)
 - Data equals `gym_art.json`, version arcade-art-1 → "is assets/arcade/gym_art.json character for character", "is
   arcade-art-1: owners in a 140 x 160 box standing on (70, 150), backgrounds 360 x 390 with the floor line at y 296"
 - Parser rejects an unknown command, a wrong count of numbers, a non-#RRGGBB color, an empty path → "rejects an unknown
@@ -97,3 +97,7 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   opacity, as the floor lines are", "the parser reads a shape: matrix, path, colors, line ends and opacity"
 - Public constants of spec 3 → "publishes each owner face centre in its box (spec 3)", "publishes the picture size and
   the floor line of the art data"
+- The PM's redeployed task.md, "9개 자산 로딩 확인" (the 9 pictures: 4 owners, 5 floors) → each one rendered and compared
+  with its design shot: "owner_<id>_<face> matches the design but for edges" (each owner in its 3 faces, 12 tests) and
+  "floor_<n> matches the design but for edges" (5 tests). The art is drawn from Dart data, not loaded as asset files
+  (see the PR's Exceptions).
