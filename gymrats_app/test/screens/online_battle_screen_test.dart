@@ -264,20 +264,73 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('the setup time ran out: the match is cancelled with nothing '
-        'recorded, and 다시 매칭 closes the screen to search again', (
-      tester,
-    ) async {
+    testWidgets('once both setups are open the seconds left show over the '
+        'camera, on amber in the last 5', (tester) async {
+      await open(tester);
+      await pose(tester, found: false);
+      expect(find.bySemanticsLabel(RegExp('남은 시간')), findsNothing);
+      session.setupCounts(8000);
+      await pose(tester, found: false);
+      expect(find.bySemanticsLabel('자세 세팅 남은 시간 8초'), findsOneWidget);
+      expect(find.text('남은 시간: 8초'), findsOneWidget);
+      Color fill() =>
+          ((tester
+                      .widget<DecoratedBox>(
+                        find
+                            .ancestor(
+                              of: find.text(
+                                '남은 시간: ${session.setupSecondsLeft}초',
+                              ),
+                              matching: find.byType(DecoratedBox),
+                            )
+                            .first,
+                      )
+                      .decoration)
+                  as BoxDecoration)
+              .color!;
+      expect(fill(), AppColors.card);
+      await wait(tester, 3100);
+      expect(find.bySemanticsLabel('자세 세팅 남은 시간 5초'), findsOneWidget);
+      expect(fill(), AppColors.warning);
+      session.cancel(battleSetupTimeoutReason);
+      await tester.pump();
+      expect(find.bySemanticsLabel(RegExp('남은 시간')), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    for (final (who, ready, message) in [
+      ('only the user', {'me'}, '상대가 제한 시간 안에 준비하지 못해 경기가 취소됐어요.'),
+      ('only the opponent', {'opponent'}, '내가 제한 시간 안에 준비하지 못해 경기가 취소됐어요.'),
+      ('neither', <String>{}, '두 사람 모두 제한 시간 안에 준비하지 못해 경기가 취소됐어요.'),
+      // Both ready as the deadline passed: the server cancelled first.
+      ('both', {'me', 'opponent'}, '준비 시간이 지나 경기가 취소됐어요.'),
+    ]) {
+      for (final reason in [battleSetupTimeoutReason, 'ready_timeout']) {
+        testWidgets('$reason with $who ready says who was not ready in time', (
+          tester,
+        ) async {
+          await open(tester, offerRematch: true);
+          session.readyPlayers = {...ready};
+          session.cancel(reason);
+          await tester.pump();
+          expect(find.text('경기 취소'), findsOneWidget);
+          expect(find.text(message), findsOneWidget);
+          expect(find.textContaining(reason), findsNothing);
+          expect(find.textContaining('승패'), findsNothing);
+          await tester.pumpWidget(const SizedBox());
+        });
+      }
+    }
+
+    testWidgets('the setup time ran out: the match is cancelled, and 다시 매칭 '
+        'closes the screen to search again', (tester) async {
       await open(tester, offerRematch: true);
       await pose(tester);
       session.cancel(battleSetupTimeoutReason);
       await tester.pump();
       expect(find.byType(BattleArena), findsNothing);
       expect(find.text('경기 취소'), findsOneWidget);
-      expect(
-        find.text('자세 세팅 시간이 지나 경기가 취소됐어요. 승패는 기록되지 않아요.'),
-        findsOneWidget,
-      );
+      expect(find.text('두 사람 모두 제한 시간 안에 준비하지 못해 경기가 취소됐어요.'), findsOneWidget);
       expect(find.byType(AccentButton), findsOneWidget);
       expect(find.widgetWithText(AccentButton, '다시 매칭'), findsOneWidget);
       await tester.tap(find.text('다시 매칭'));
@@ -297,14 +350,43 @@ void main() {
       expect(closedWith, isNull);
     });
 
-    testWidgets('another cancel offers 다시 매칭 too, with its own reason', (
-      tester,
-    ) async {
+    for (final (reason, message) in [
+      ('disconnected_before_start', '시작 전에 연결이 끊겨 경기가 취소됐어요.'),
+      ('user_exit', '상대가 경기에서 나가 취소됐어요.'),
+      ('player_left_before_start', '상대가 경기에서 나가 취소됐어요.'),
+      ('a_reason_this_app_does_not_know', '경기가 시작되기 전에 취소됐어요.'),
+    ]) {
+      testWidgets('a cancel for $reason offers 다시 매칭 too and says why in '
+          'words, not the code', (tester) async {
+        await open(tester, offerRematch: true);
+        session.cancel(reason);
+        await tester.pump();
+        expect(find.text(message), findsOneWidget);
+        expect(find.textContaining(reason), findsNothing);
+        expect(find.text('다시 매칭'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+      });
+    }
+
+    testWidgets('an error shown earlier in the match is not given as the '
+        'reason a cancel or void ended it', (tester) async {
       await open(tester, offerRematch: true);
-      session.cancel('disconnected_before_start');
+      session.error = '온라인 요청 오류: RATE_LIMITED';
+      session.cancel('a_reason_this_app_does_not_know');
       await tester.pump();
-      expect(find.text('종료 사유: disconnected_before_start'), findsOneWidget);
-      expect(find.text('다시 매칭'), findsOneWidget);
+      expect(find.text('경기가 시작되기 전에 취소됐어요.'), findsOneWidget);
+      expect(find.textContaining('RATE_LIMITED'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+
+      await open(tester);
+      session
+        ..error = '온라인 요청 오류: RATE_LIMITED'
+        ..phase = OnlinePhase.voided
+        ..result = {'reason': 'a_reason_this_app_does_not_know'}
+        ..notifyListeners();
+      await tester.pump();
+      expect(find.text('이 경기는 무효가 됐어요.'), findsOneWidget);
+      expect(find.textContaining('RATE_LIMITED'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -317,6 +399,8 @@ void main() {
         ..result = {'reason': 'both_disconnected'}
         ..notifyListeners();
       await tester.pump();
+      expect(find.text('경기 무효'), findsOneWidget);
+      expect(find.text('두 사람의 연결이 모두 끊겨 이 경기는 무효가 됐어요.'), findsOneWidget);
       expect(find.text('다시 매칭'), findsNothing);
       expect(find.widgetWithText(AccentButton, '홈으로 돌아가기'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());

@@ -730,6 +730,15 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
                         onConfirm: _counter.confirmTrackedPerson,
                         roundStarted: _roundStarted,
                       ),
+                    if (setup && !session.terminal)
+                      if (session.setupSecondsLeft case final left?)
+                        Positioned(
+                          top: AppSpacing.s12,
+                          child: _SetupTimeLeft(
+                            seconds: left,
+                            urgent: left <= _setupWarningSeconds,
+                          ),
+                        ),
                   ],
                 ),
           onLeave: () => unawaited(_exit()),
@@ -743,6 +752,55 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
               : null,
           setupProgress: setup ? _setupProgress : null,
           onShowResult: _showResult,
+        ),
+      ),
+    );
+  }
+}
+
+/// The setup time left, on top of the camera once both setups are open
+/// (P12): "남은 시간: 8초", the number large, on white, on the warning
+/// color in the last seconds before the server cancels the match.
+class _SetupTimeLeft extends StatelessWidget {
+  const _SetupTimeLeft({required this.seconds, required this.urgent});
+
+  final int seconds;
+  final bool urgent;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Semantics(
+      liveRegion: true,
+      label: '자세 세팅 남은 시간 $seconds초',
+      child: ExcludeSemantics(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: urgent ? AppColors.warning : AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadius.small),
+            border: Border.all(color: AppColors.ink),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s12,
+              vertical: AppSpacing.s4,
+            ),
+            child: Text.rich(
+              TextSpan(
+                text: '남은 시간: ',
+                style: text.stageName,
+                children: [
+                  TextSpan(
+                    text: '$seconds',
+                    style: text.stageClock.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const TextSpan(text: '초'),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -787,6 +845,39 @@ class _Ended extends StatelessWidget {
   final VoidCallback onHome;
   final VoidCallback? onRematch;
 
+  /// Why [session] ended, in the user's words, never the server's code: who
+  /// was not ready in time, that the opponent left, or that a connection
+  /// dropped. A reason this version does not know still reads as a sentence.
+  static String messageFor(OnlineBattleSession session) {
+    if (session.serverRestarted) {
+      return '서버가 다시 시작되어 이 경기는 기록되지 않았어요.';
+    }
+    if (session.matchNotFound) return '서버에서 이 경기를 찾을 수 없어요.';
+    final reason = session.result?['reason'];
+    if (session.setupTimedOut || reason == 'ready_timeout') {
+      final me = session.readyPlayers.contains(session.playerId);
+      final them = session.readyPlayers.any((id) => id != session.playerId);
+      return switch ((me, them)) {
+        (false, true) => '내가 제한 시간 안에 준비하지 못해 경기가 취소됐어요.',
+        (true, false) => '상대가 제한 시간 안에 준비하지 못해 경기가 취소됐어요.',
+        (false, false) => '두 사람 모두 제한 시간 안에 준비하지 못해 경기가 취소됐어요.',
+        (true, true) => '준비 시간이 지나 경기가 취소됐어요.',
+      };
+    }
+    return switch (reason) {
+      'user_exit' || 'player_left_before_start' => '상대가 경기에서 나가 취소됐어요.',
+      'disconnected_before_start' => '시작 전에 연결이 끊겨 경기가 취소됐어요.',
+      'both_disconnected' => '두 사람의 연결이 모두 끊겨 이 경기는 무효가 됐어요.',
+      // An error shown during the match may be stale or carry a code, so
+      // only a battle that ended by the error itself says it.
+      _ => switch (session.phase) {
+        OnlinePhase.voided => '이 경기는 무효가 됐어요.',
+        OnlinePhase.cancelled => '경기가 시작되기 전에 취소됐어요.',
+        _ => session.error ?? '연결에 문제가 생겨 경기를 이어갈 수 없어요.',
+      },
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -797,13 +888,7 @@ class _Ended extends StatelessWidget {
             OnlinePhase.cancelled => '경기 취소',
             _ => '연결 오류',
           };
-    final message = session.serverRestarted
-        ? '서버가 다시 시작되어 이 경기는 기록되지 않았어요.'
-        : session.matchNotFound
-        ? '서버에서 이 경기를 찾을 수 없어요.'
-        : session.setupTimedOut
-        ? '자세 세팅 시간이 지나 경기가 취소됐어요. 승패는 기록되지 않아요.'
-        : session.error ?? '종료 사유: ${session.result?['reason'] ?? '알 수 없음'}';
+    final message = messageFor(session);
     return Scaffold(
       body: GridBackground(
         child: SafeArea(
