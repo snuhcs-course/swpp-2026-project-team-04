@@ -789,6 +789,10 @@ void main() {
         holdAnnouncement(const HoldStageCue(HoldStageCueKind.resumed)),
         '시간이 다시 흘러요',
       );
+      expect(
+        holdAnnouncement(const HoldStageCue(HoldStageCueKind.started)),
+        '시작',
+      );
       expect(holdClock(const Duration(seconds: 75)), '1:15');
     });
   });

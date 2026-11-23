@@ -449,6 +449,47 @@ void main() {
       });
     });
 
+    test('an entry: the time starting is one started cue', () {
+      fakeAsync((async) {
+        final reader = _Reader()..answer = const HoldReading.broken(_knee);
+        final rig = _Rig(
+          async,
+          stage: 5,
+          definition: _scripted(reader, entry: true, pose: HoldPose.chair),
+        );
+        rig.goAt(async);
+        rig.frames(async, 2000);
+        expect(rig.viewModel.state.progress.state, HoldState.entering);
+        expect(rig.cues, isEmpty);
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 700);
+        expect(rig.viewModel.state.progress.state, HoldState.holding);
+        expect(rig.cues.map((c) => c.kind), [HoldStageCueKind.started]);
+        // A warning and the time running again later: resumed, not started.
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 700);
+        expect(rig.cues.map((c) => c.kind), [
+          HoldStageCueKind.started,
+          HoldStageCueKind.warning,
+          HoldStageCueKind.resumed,
+        ]);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('without an entry the time runs from GO, with no started cue', () {
+      fakeAsync((async) {
+        final rig = _Rig(async);
+        rig.goAt(async);
+        rig.frames(async, 2000);
+        expect(rig.viewModel.state.progress.held, greaterThan(Duration.zero));
+        expect(rig.cues, isEmpty);
+        rig.viewModel.dispose();
+      });
+    });
+
     test('a warning is a cue with its fault; held again, a resumed cue', () {
       fakeAsync((async) {
         final reader = _Reader();

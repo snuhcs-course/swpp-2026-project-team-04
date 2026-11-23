@@ -42,8 +42,9 @@ enum HoldStagePhase {
 }
 
 /// A moment the screen makes heard: a sound, and a short line for a screen
-/// reader (spec 5, 8).
-enum HoldStageCueKind { warning, resumed, star, ended }
+/// reader (spec 5, 8). [started] is the end of an entry: the time begins
+/// to run (the chair pose's spec 6).
+enum HoldStageCueKind { warning, resumed, started, star, ended }
 
 class HoldStageCue {
   const HoldStageCue(this.kind, {this.count = 0, this.fault, this.seconds});
@@ -391,6 +392,9 @@ class HoldStageViewModel extends ChangeNotifier {
       );
     } else if (before.paused && progress.state == HoldState.holding) {
       _cue(const HoldStageCue(HoldStageCueKind.resumed));
+    } else if (before.state == HoldState.entering &&
+        progress.state == HoldState.holding) {
+      _cue(const HoldStageCue(HoldStageCueKind.started));
     }
     final times = stage.starSeconds;
     for (var i = 0; i < times.length; i++) {
