@@ -375,7 +375,7 @@ class BattleServer {
       case 'match.setup':
         fields(payload, {});
         final m = _activeMatch(p, message);
-        _expireSetup(m);
+        _expireBeforeStart(m);
         if (m.status != 'preparing') invalid('INVALID_STATE');
         if (m.setupOpen.add(p.identity.id)) {
           if (m.setupOpen.length == 2) {
@@ -387,9 +387,9 @@ class BattleServer {
       case 'match.ready':
         fields(payload, {'ready'});
         final m = _activeMatch(p, message);
-        // A ready that comes after the setup time is too late, even before
+        // A ready that comes after the deadline is too late, even before
         // the next tick has cancelled the match.
-        _expireSetup(m);
+        _expireBeforeStart(m);
         if (m.status != 'preparing' || payload['ready'] is! bool)
           invalid('INVALID_STATE');
         if (payload['ready'] == true) {
@@ -608,11 +608,17 @@ class BattleServer {
     'setup_deadline_ms': m.setupDeadline,
   };
 
-  /// Cancels [m] once its setup time ran out before both were ready.
-  void _expireSetup(_Match m) {
-    final deadline = m.setupDeadline;
-    if (m.start == null && deadline != null && now >= deadline) {
-      _cancel(m, battleSetupTimeoutReason);
+  /// Cancels [m] before its start once its deadline passed. With both
+  /// setups open that is only the announced setup deadline, even when it
+  /// ends after the ready deadline from `match.found`; until then it is the
+  /// ready deadline. The ticks and the requests use this one rule.
+  void _expireBeforeStart(_Match m) {
+    if (m.start != null) return;
+    final setup = m.setupDeadline;
+    if (setup != null) {
+      if (now >= setup) _cancel(m, battleSetupTimeoutReason);
+    } else if (now >= m.readyDeadline) {
+      _cancel(m, 'ready_timeout');
     }
   }
 
@@ -743,8 +749,7 @@ class BattleServer {
         continue;
       }
       if (m.start == null) {
-        _expireSetup(m);
-        if (now >= m.readyDeadline) _cancel(m, 'ready_timeout');
+        _expireBeforeStart(m);
         continue;
       }
       if (now >= m.start!) m.status = 'playing';

@@ -1782,11 +1782,13 @@ void main() {
   );
 
   group('the setup time (P12)', () {
-    /// A server whose setup time is [setup] ms and whose overall ready time
-    /// is long, so only the setup time can end a match here.
+    /// A server whose setup time is [setup] ms and whose ready time from
+    /// `match.found` is [ready] ms (long by default, so only the setup time
+    /// can end a match).
     Future<(BattleServer, _Stored)> setupServer({
       int setup = 300,
       int tick = 50,
+      int ready = 20000,
     }) async {
       final stored = _Stored();
       final s = BattleServer(
@@ -1797,7 +1799,7 @@ void main() {
         },
         durationMs: 1500,
         countdownMs: 80,
-        readyTimeoutMs: 20000,
+        readyTimeoutMs: ready,
         setupTimeoutMs: setup,
         tickMs: tick,
         results: stored,
@@ -1859,6 +1861,104 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 400));
       expect(count(a, 'match.cancelled'), 0);
       expect(count(b, 'match.cancelled'), 0);
+    });
+
+    test('both setups open just before the ready time ends: the announced '
+        'setup deadline replaces it, and both ready after the ready time '
+        'start the match', () async {
+      final (s, _) = await setupServer(ready: 1500, setup: 3000);
+      final (a, b) = await paired(s);
+      final found = s.now;
+      a.send('match.setup', {});
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      b.send('match.setup', {});
+      await a.next('match.setup_state');
+      final both = await a.next('match.setup_state');
+      final deadline = both['payload']['setup_deadline_ms'] as int;
+      expect(deadline, greaterThan(found + 1500));
+      // Past the ready time, before the setup deadline: still preparing.
+      while (s.now < found + 1700) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      expect(s.now, lessThan(deadline));
+      expect(count(a, 'match.cancelled'), 0);
+      a.send('match.ready', {'ready': true});
+      b.send('match.ready', {'ready': true});
+      await a.next('match.start');
+      await b.next('match.start');
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(count(a, 'match.cancelled'), 0);
+      expect(count(b, 'match.cancelled'), 0);
+    });
+
+    test('both setups open just before the ready time ends and nobody gets '
+        'ready: setup_timeout at the announced deadline, once, never '
+        'ready_timeout', () async {
+      final (s, stored) = await setupServer(ready: 1500, setup: 3000);
+      final (a, b) = await paired(s);
+      final found = s.now;
+      a.send('match.setup', {});
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      b.send('match.setup', {});
+      await a.next('match.setup_state');
+      final deadline =
+          (await a.next('match.setup_state'))['payload']['setup_deadline_ms']
+              as int;
+      expect(deadline, greaterThan(found + 1500));
+      final forA = await a.next('match.cancelled');
+      final forB = await b.next('match.cancelled');
+      for (final cancelled in [forA, forB]) {
+        expect(cancelled['payload']['reason'], battleSetupTimeoutReason);
+        expect(
+          cancelled['payload']['ended_at_ms'],
+          greaterThanOrEqualTo(deadline),
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(count(a, 'match.cancelled'), 1);
+      expect(count(b, 'match.cancelled'), 1);
+      expect(stored.calls, isEmpty);
+    });
+
+    test('until both setups are open the ready time still ends the match as '
+        'ready_timeout', () async {
+      final (s, _) = await setupServer(ready: 300, setup: 2000);
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      final cancelled = await b.next('match.cancelled');
+      expect(cancelled['payload']['reason'], 'ready_timeout');
+      expect(count(b, 'match.cancelled'), 1);
+    });
+
+    test('requests follow the same rule before any check: a ready after the '
+        'ready time but before the setup deadline starts the match; with one '
+        'setup open it is too late', () async {
+      // No deadline check runs during these tests: only requests can end them.
+      // The first half guards against a wrong fix that would put the ready
+      // deadline back into request handling; the second half fails on the
+      // code before the fix.
+      final (s, _) = await setupServer(ready: 1000, setup: 3000, tick: 60000);
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      b.send('match.setup', {});
+      await a.next('match.setup_state');
+      await a.next('match.setup_state');
+      await Future<void>.delayed(const Duration(milliseconds: 1300));
+      a.send('match.ready', {'ready': true});
+      b.send('match.ready', {'ready': true});
+      await a.next('match.start');
+      expect(count(a, 'match.cancelled'), 0);
+
+      final (s2, _) = await setupServer(ready: 300, setup: 2000, tick: 60000);
+      final (c, d) = await paired(s2);
+      c.send('match.setup', {});
+      await d.next('match.setup_state');
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      d.send('match.setup', {});
+      expect((await d.next('error'))['payload']['code'], 'INVALID_STATE');
+      final cancelled = await c.next('match.cancelled');
+      expect(cancelled['payload']['reason'], 'ready_timeout');
+      expect(count(c, 'match.start'), 0);
     });
 
     test('one ready, then the setup time ends: both are told once, nobody '
