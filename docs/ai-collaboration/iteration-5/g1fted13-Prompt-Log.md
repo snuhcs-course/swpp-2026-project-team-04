@@ -90,3 +90,16 @@ gym_art.json은 손으로 옮기지 말고 그대로 Dart 상수 문자열로 �
 3. AI 기록의 TODO([REDACTED:custom_term])에는 이렇게 적어 줘. \"관장 4명과 층 배경 5개는 claude.ai의 Claude가 Claude Design 캔버스에서 SVG로 그렸고, 송우현이 구도, 표정, 소품을 지시하고 후보 중에서 골랐다. 앱의 그림 데이터는 Claude가 만든 추출 스크립트로 그 SVG에서 옮겼다.\"
 4. 고친 것은 한 커밋으로 push한다. 커버리지는 CI 댓글이 달리면 그때 채운다.
 </pasted_content id=\"ff62\">"
+
+## 2026-11-23 · Woohyun Song · codex/iter5-arcade-art
+<!-- a3d8fb3d 2026-11-23T10:01:08.024Z -->
+[Woohyun Song, 11-23 19:01] "<pasted_content id=\"ff62\">
+상우와 정한 것: 지금 올린 아케이드 PR은 화요일 밤 머지 전까지 draft로 둔다.
+1. PR #88을 draft로 바꿔 줘(gh pr ready 88 --undo).
+2. 아케이드 단계의 공식 ID와 팀 순번은 A2 #8.1(구성, PR #89), A3 #8.2, A4 #8.3(하이 플랭크), A5 #8.4(의자 자세), P16 #8.5(아케이드 화면)다. PR 본문 첫 줄을 \"Merge order: #8.2 (A3)\"로 하고, 본문에 남은 \"P16-1\"은 A2로 바꿔 줘. PR 본문만 고치고 커밋은 하지 않는다. AI 기록을 영어로 옮긴 것은 그대로 두면 된다.
+3. Codex 리뷰는 지금 다시 받지 않는다. 화요일 저녁 아케이드 다섯 단계가 끝난 뒤 마지막 HEAD에서 받는다. CI 커버리지 댓글이 달리면 그 숫자를 기록과 PR 본문에 채워 한 커밋으로 push해 줘. draft에서 CI가 돌지 않으면 알려 줘.
+</pasted_content id=\"ff62\">"
+
+## 2026-11-23 · Woohyun Song · codex/iter5-arcade-art
+<!-- a3d8fb3d 2026-11-23T10:11:35.145Z -->
+[Woohyun Song, 11-23 19:11] "1번으로 하자. A4 세션은 아직 이 폴더에서 git 작업을 시작하지 않았다. 지금 바로 codex/iter5-arcade-art에서 프롬프트 기록의 A4 프롬프트 항목만 빼는 커밋을 하나 만들고 push해 줘. 기록을 다시 뽑을 때는 이 세션의 프롬프트만 넣어서 A4 프롬프트가 또 들어오지 않게 해 줘. 끝나면 progress.md의 미해결 표시를 지우고, 이 폴더에서는 더 git 작업을 하지 않는다. 이 세션은 여기서 마친다."
