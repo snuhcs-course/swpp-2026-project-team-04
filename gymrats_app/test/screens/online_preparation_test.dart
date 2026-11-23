@@ -1315,7 +1315,7 @@ void main() {
         OnlinePhase.cancelled,
         <String, dynamic>{'reason': 'player_left_before_start'},
         '경기 취소',
-        '종료 사유: player_left_before_start',
+        '상대가 경기에서 나가 취소됐어요.',
       ),
       (
         'void by a server restart',
@@ -1329,7 +1329,7 @@ void main() {
         OnlinePhase.voided,
         <String, dynamic>{'reason': 'both_disconnected'},
         '경기 무효',
-        '종료 사유: both_disconnected',
+        '두 사람의 연결이 모두 끊겨 이 경기는 무효가 됐어요.',
       ),
     ]) {
       testWidgets('a battle that ended without a result ($what) says so and '
