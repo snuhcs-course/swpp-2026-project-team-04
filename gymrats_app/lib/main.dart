@@ -64,10 +64,8 @@ Future<void> main() async {
   runApp(
     GymRatsApp(
       authRepository: auth,
-      // A build without the provider's id or key hides that button.
-      googleSignIn: _googleServerClientId.isEmpty
-          ? null
-          : GoogleSignInService(),
+      // A build that clears the client id hides the Google button.
+      googleSignIn: googleServerClientId.isEmpty ? null : GoogleSignInService(),
       userRepository: ServerUserRepository(api: api, auth: auth),
       characterStore: SecureCharacterStore(),
       rulesSeenStore: SecureRulesSeenStore(),
@@ -75,8 +73,6 @@ Future<void> main() async {
     ),
   );
 }
-
-const _googleServerClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
 
 /// The app: the login screen while logged out, home while logged in.
 /// An account that signed up on this phone sees the battle rules once

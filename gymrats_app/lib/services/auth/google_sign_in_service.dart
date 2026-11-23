@@ -25,15 +25,21 @@ class PluginGoogleAuthApi implements GoogleAuthApi {
       (await GoogleSignIn.instance.authenticate()).authentication.idToken;
 }
 
+/// The OAuth *web* client id of the GymMouse Google Cloud project, the one
+/// the server accepts (GOOGLE_CLIENT_IDS there). Not a secret: every ID
+/// token names it as its audience, and it ships inside the app. Kept here so
+/// plain `flutter run` / `flutter build` builds have Google sign-in; a build
+/// may swap it with `--dart-define=GOOGLE_SERVER_CLIENT_ID=...`.
+const googleServerClientId = String.fromEnvironment(
+  'GOOGLE_SERVER_CLIENT_ID',
+  defaultValue: '569497763915-es3rao2rsnqku8sip59vvhtgmhfvsgs0.apps.googleusercontent.com',
+);
+
 /// Google sign-in on the device. The ID token it returns is issued for
-/// [serverClientId], the OAuth *web* client id the server accepts
-/// (GOOGLE_CLIENT_IDS there). It comes from
-/// `--dart-define=GOOGLE_SERVER_CLIENT_ID=...` at build time, never the repo.
+/// [serverClientId].
 class GoogleSignInService implements SocialSignInService {
   GoogleSignInService({
-    this.serverClientId = const String.fromEnvironment(
-      'GOOGLE_SERVER_CLIENT_ID',
-    ),
+    this.serverClientId = googleServerClientId,
     this._api = const PluginGoogleAuthApi(),
   });
 

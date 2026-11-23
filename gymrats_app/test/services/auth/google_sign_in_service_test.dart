@@ -111,4 +111,9 @@ void main() {
       'SocialSignInFailedException(canceled)',
     );
   });
+
+  test('plain builds use the GymMouse web client id', () {
+    expect(googleServerClientId, endsWith('.apps.googleusercontent.com'));
+    expect(GoogleSignInService().serverClientId, googleServerClientId);
+  });
 }
