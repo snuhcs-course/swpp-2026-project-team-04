@@ -105,6 +105,38 @@ abstract final class AppColors {
   /// hip and shoulder lines at the bottom of a rep, and both setup
   /// silhouettes once the pose fits. A fill or a line, never a text color.
   static const statusGood = Color(0xFF1FC95B);
+
+  // The arcade (P16 design `ArcMap`, `ArcResult`, `P16Boss`).
+
+  /// The arcade map's floor bands and its side walls.
+  static const arcadeBand = Color(0xFF2E3646);
+
+  /// A star got, on the map, the stage sheet and the results.
+  static const starOn = warning;
+
+  /// A star not got; also a locked floor's rule chip.
+  static const starOff = Color(0xFFE3E6EC);
+
+  /// The edge of a locked stage and of its lock badge.
+  static const lockedEdge = Color(0xFF8A93A5);
+
+  /// The arcade's pink tags: "PLAY / ARCADE", "STAGE 6 · 1F BOSS".
+  static const arcadeTag = Color(0xFFC4134F);
+
+  /// "1F 체육관 관장" on the boss intro.
+  static const bossRole = Color(0xFF2B3242);
+
+  /// 5F 공사중: the wall, its beams and ledge, the cones, and the result's
+  /// card.
+  static const wipWall = Color(0xFFE9E4DA);
+  static const wipBeam = Color(0xFFC9BFAE);
+  static const wipLedge = Color(0xFFB9AE9C);
+  static const wipCone = Color(0xFFFF8A3D);
+  static const wipCard = Color(0xFFF3EEE4);
+
+  /// A boss round not played: its dashed edge and its fill.
+  static const roundLockedEdge = Color(0xFFB8BFCC);
+  static const roundLockedFill = Color(0xFFF3F4F7);
 }
 
 /// RepBot, the robot doing push-ups in the lobby, as designed: its own
@@ -1259,4 +1291,378 @@ extension GoalText on TextTheme {
 
   /// The stamp of what was left, "1회 / 남음", on two lines: Do Hyeon 26.
   TextStyle get goalStampSmall => goalStamp.copyWith(fontSize: 26);
+}
+
+/// The text styles of the arcade (P16): 게임 시작's two cards, the map, the
+/// stage sheet, the boss match and the arcade's results, with the design's
+/// sizes. Ink unless a style says otherwise; lines are spaced like the
+/// design's CSS, the extra height split above and below the letters.
+extension ArcadeText on TextTheme {
+  TextStyle _arcade({
+    required String family,
+    required double size,
+    required FontWeight weight,
+    double? height,
+    double spacing = 0,
+    Color color = AppColors.ink,
+  }) => bodyMedium!.copyWith(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: spacing,
+    color: color,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// A 게임 시작 card's name, "온라인 대결", "아케이드": Do Hyeon 26.
+  TextStyle get arcadeCardName => _arcade(
+    family: AppFonts.display,
+    size: 26,
+    weight: FontWeight.w400,
+    height: 1,
+  );
+
+  /// "VS" on its ink chip between the online card's two players.
+  TextStyle get arcadeVsChip => _arcade(
+    family: AppFonts.number,
+    size: 15,
+    weight: FontWeight.w800,
+    color: AppColors.onInk,
+  );
+
+  /// The pink tag over a title: "PLAY / ARCADE", "STAGE 6 · 1F BOSS".
+  TextStyle get arcadeTag => _arcade(
+    family: AppFonts.number,
+    size: 11,
+    weight: FontWeight.w700,
+    spacing: 3,
+    color: AppColors.arcadeTag,
+  );
+
+  /// The map's title, "아케이드": Do Hyeon 30.
+  TextStyle get arcadeTitle => _arcade(
+    family: AppFonts.display,
+    size: 30,
+    weight: FontWeight.w400,
+    height: 1.05,
+  );
+
+  /// The stars got in all, "17", in the map's header.
+  TextStyle get arcadeStarSum =>
+      _arcade(family: AppFonts.number, size: 15, weight: FontWeight.w800);
+
+  /// "/ 72" after it.
+  TextStyle get arcadeStarMax => _arcade(
+    family: AppFonts.body,
+    size: 11,
+    weight: FontWeight.w400,
+    color: AppColors.textSecondary,
+  );
+
+  /// A floor's tag on its picture while its band is out of sight, "4F".
+  TextStyle get arcadeFloorTag => _arcade(
+    family: AppFonts.number,
+    size: 11,
+    weight: FontWeight.w800,
+    spacing: 2,
+    color: AppColors.textMuted,
+  );
+
+  /// "공사중" on 5F's sign: Do Hyeon 40.
+  TextStyle get arcadeWipSign => _arcade(
+    family: AppFonts.display,
+    size: 40,
+    weight: FontWeight.w400,
+    height: 1.1,
+  );
+
+  /// A band's floor chip, "2F": ink on lime, amber on 5F's.
+  TextStyle get arcadeBandFloor =>
+      _arcade(family: AppFonts.number, size: 15, weight: FontWeight.w800);
+
+  /// A band's floor name, white on the band: Do Hyeon 19.
+  TextStyle get arcadeBandName => _arcade(
+    family: AppFonts.display,
+    size: 19,
+    weight: FontWeight.w400,
+    color: AppColors.onInk,
+  );
+
+  /// A floor's rule chip, "피버 15초부터", on the band.
+  TextStyle get arcadeRuleChip =>
+      _arcade(family: AppFonts.body, size: 12, weight: FontWeight.w700);
+
+  /// "BOSS" and "HOLD" over a stage on the map.
+  TextStyle get arcadeNodeTag => _arcade(
+    family: AppFonts.number,
+    size: 11,
+    weight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// A stage's number under it on the map.
+  TextStyle get arcadeNodeNumber => _arcade(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// "나" beside the user's character on the map.
+  TextStyle get arcadeMeTag => _arcade(
+    family: AppFonts.body,
+    size: 11,
+    weight: FontWeight.w700,
+    height: 18 / 11,
+  );
+
+  /// "STAGE 8 · 2F" in the map's bottom bar.
+  TextStyle get arcadeBarTag => _arcade(
+    family: AppFonts.number,
+    size: 11,
+    weight: FontWeight.w700,
+    spacing: 2,
+    color: AppColors.textMuted,
+  );
+
+  /// The stage's title in the bottom bar, "물렁범 · 스쿼트": Do Hyeon 21.
+  TextStyle get arcadeBarTitle => _arcade(
+    family: AppFonts.display,
+    size: 21,
+    weight: FontWeight.w400,
+    height: 1.15,
+  );
+
+  /// A dark button's label, "도전", "다음 스테이지": white 17.
+  TextStyle get arcadeAction => _arcade(
+    family: AppFonts.body,
+    size: 17,
+    weight: FontWeight.w600,
+    color: AppColors.onInk,
+  );
+
+  /// The stage sheet's "도전": white 18.
+  TextStyle get arcadeSheetAction => arcadeAction.copyWith(fontSize: 18);
+
+  /// The boss match's "자세 잡기": white 19.
+  TextStyle get arcadeBossAction => arcadeAction.copyWith(fontSize: 19);
+
+  /// A light button's label, "닫기", "리포트 보기": 14 bold.
+  TextStyle get arcadeSecondary =>
+      _arcade(family: AppFonts.body, size: 14, weight: FontWeight.w700);
+
+  /// "STAGE 8" on its ink chip on the stage sheet, lime.
+  TextStyle get arcadeStageChip => _arcade(
+    family: AppFonts.number,
+    size: 13,
+    weight: FontWeight.w800,
+    color: AppColors.accent,
+  );
+
+  /// "2F · AI LV 6" beside it.
+  TextStyle get arcadeSheetMeta => _arcade(
+    family: AppFonts.number,
+    size: 10,
+    weight: FontWeight.w700,
+    spacing: 2,
+    color: AppColors.textMuted,
+  );
+
+  /// The opponent's name on the stage sheet: Do Hyeon 32.
+  TextStyle get arcadeSheetName => _arcade(
+    family: AppFonts.display,
+    size: 32,
+    weight: FontWeight.w400,
+    height: 1.05,
+  );
+
+  /// The stage sheet's chips, "스쿼트 · 30초", and "별 조건": 13 bold.
+  TextStyle get arcadeSheetChip =>
+      _arcade(family: AppFonts.body, size: 13, weight: FontWeight.w700);
+
+  /// A star condition, "콤보 5 이상", on the stage sheet.
+  TextStyle get arcadeGoal =>
+      _arcade(family: AppFonts.body, size: 14, weight: FontWeight.w600);
+
+  /// A star condition on the boss intro: 13.5.
+  TextStyle get arcadeBossGoal => arcadeGoal.copyWith(fontSize: 13.5);
+
+  /// The results' tag, "STAGE 8 · 2F".
+  TextStyle get arcadeResultTag => _arcade(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w700,
+    spacing: 3,
+    color: AppColors.textMuted,
+  );
+
+  /// The results' title on its band, "실패", "1층 클리어!": Do Hyeon 44.
+  TextStyle get arcadeBanner => _arcade(
+    family: AppFonts.display,
+    size: 44,
+    weight: FontWeight.w400,
+    height: 1.1,
+  );
+
+  /// A fight's "클리어!": Do Hyeon 48.
+  TextStyle get arcadeBannerLarge => arcadeBanner.copyWith(fontSize: 48);
+
+  /// The break's "1라운드 승리!": Do Hyeon 40.
+  TextStyle get arcadeBannerSmall => arcadeBanner.copyWith(fontSize: 40);
+
+  /// A star's condition under it on the results, 12 bold.
+  TextStyle get arcadeStarLabel => _arcade(
+    family: AppFonts.body,
+    size: 12,
+    weight: FontWeight.w700,
+    height: 1.3,
+  );
+
+  /// The results' scores: the bigger one 40, the other 28, and the colon.
+  TextStyle get arcadeScoreBig => _arcade(
+    family: AppFonts.number,
+    size: 40,
+    weight: FontWeight.w800,
+    height: 1,
+  );
+  TextStyle get arcadeScoreSmall => arcadeScoreBig.copyWith(fontSize: 28);
+  TextStyle get arcadeScoreColon => _arcade(
+    family: AppFonts.number,
+    size: 20,
+    weight: FontWeight.w700,
+    color: AppColors.textMuted,
+  );
+
+  /// "R1" on a boss round's row and on the battle's round pip.
+  TextStyle get arcadeRoundTag => _arcade(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w800,
+    spacing: 1,
+    color: AppColors.textMuted,
+  );
+
+  /// A round row's "푸쉬업 · 패배".
+  TextStyle get arcadeRoundText => arcadeSecondary;
+
+  /// A round row's score, "88 : 132".
+  TextStyle get arcadeRoundScore =>
+      _arcade(family: AppFonts.number, size: 15, weight: FontWeight.w800);
+
+  /// The next stage card's "STAGE 9".
+  TextStyle get arcadeNextTag => _arcade(
+    family: AppFonts.body,
+    size: 12,
+    weight: FontWeight.w700,
+    color: AppColors.textSecondary,
+  );
+
+  /// A next card's title, "펭뚱이 · 하이 플랭크", "시립 체육관": Do Hyeon 20.
+  TextStyle get arcadeNextTitle => _arcade(
+    family: AppFonts.display,
+    size: 20,
+    weight: FontWeight.w400,
+    height: 1.2,
+  );
+
+  /// The next card's kind, "HOLD", and the next floor's "OPEN".
+  TextStyle get arcadeNextKind => _arcade(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w800,
+    spacing: 1,
+    color: AppColors.textSecondary,
+  );
+
+  /// The next floor's "체육관 관장 · 펭뚱이".
+  TextStyle get arcadeNextOwner => _arcade(
+    family: AppFonts.body,
+    size: 12,
+    weight: FontWeight.w600,
+    color: AppColors.textSecondary,
+  );
+
+  /// The floor chip on a result's card, "2F", "5F".
+  TextStyle get arcadeCardFloor =>
+      _arcade(family: AppFonts.number, size: 14, weight: FontWeight.w800);
+
+  /// "공사중" on the last floor's card: Do Hyeon 24.
+  TextStyle get arcadeWipCard =>
+      _arcade(family: AppFonts.display, size: 24, weight: FontWeight.w400);
+
+  /// A text button under the results, "아케이드로", "그만하기".
+  TextStyle get arcadeLink => _arcade(
+    family: AppFonts.body,
+    size: 13,
+    weight: FontWeight.w700,
+    color: AppColors.textSecondary,
+  ).copyWith(decoration: TextDecoration.underline);
+
+  /// The boss intro's title, "보스 매치": 28, slanted by the screen.
+  TextStyle get arcadeBossTitle => _arcade(
+    family: AppFonts.body,
+    size: 28,
+    weight: FontWeight.w600,
+    height: 1.05,
+    spacing: -0.5,
+  );
+
+  /// The boss card's "BOSS" tag.
+  TextStyle get arcadeBossChip =>
+      _arcade(family: AppFonts.number, size: 12, weight: FontWeight.w800);
+
+  /// The boss's name on the intro: Do Hyeon 40.
+  TextStyle get arcadeBossName => _arcade(
+    family: AppFonts.display,
+    size: 40,
+    weight: FontWeight.w400,
+    height: 1.05,
+  );
+
+  /// "1F 체육관 관장" under it.
+  TextStyle get arcadeBossRole => _arcade(
+    family: AppFonts.body,
+    size: 13,
+    weight: FontWeight.w600,
+    color: AppColors.bossRole,
+  );
+
+  /// "AI LV 4" on its ink chip, white.
+  TextStyle get arcadeLevelChip => _arcade(
+    family: AppFonts.number,
+    size: 11,
+    weight: FontWeight.w800,
+    spacing: 1,
+    color: AppColors.onInk,
+  );
+
+  /// "ROUND 1", "NEXT · ROUND 2".
+  TextStyle get arcadeRoundLabel => _arcade(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w800,
+    spacing: 2,
+    color: AppColors.textMuted,
+  );
+
+  /// A round's exercise on the boss intro, "푸쉬업": 19, slanted by the
+  /// screen.
+  TextStyle get arcadeRoundName =>
+      _arcade(family: AppFonts.body, size: 19, weight: FontWeight.w600);
+
+  /// A round's length, "30초".
+  TextStyle get arcadeRoundTime => _arcade(
+    family: AppFonts.number,
+    size: 13,
+    weight: FontWeight.w700,
+    color: AppColors.textSecondary,
+  );
+
+  /// The break's next round, "스쿼트 30초": 20, slanted by the screen.
+  TextStyle get arcadeNextRound => arcadeRoundName.copyWith(fontSize: 20);
+
+  /// "R2" on the break's round disc.
+  TextStyle get arcadeRoundDisc =>
+      _arcade(family: AppFonts.number, size: 16, weight: FontWeight.w800);
 }
