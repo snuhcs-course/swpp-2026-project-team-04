@@ -95,11 +95,11 @@ abstract final class HelpRules {
       ),
       TutorialStep.good => HelpPage(
         title: '바른 자세면 Good',
-        body: squat ? '기준 깊이까지 앉으면 $good점.' : '팔꿈치를 충분히 굽히면 $good점.',
+        body: squat ? '기준 깊이까지 앉으면 $good점.' : '무릎을 떼고 기준 깊이까지 내려가면 $good점.',
       ),
       TutorialStep.average => HelpPage(
         title: '조금 얕으면 Average',
-        body: '살짝 덜 내려가도 $average점은 받아요.',
+        body: '깊이가 부족해도 팔꿈치를 120° 이하로 굽히면 $average점. 무릎 푸시업도 한 번에 5점이에요.',
       ),
       TutorialStep.fail => HelpPage(
         title: squat ? '얕게 앉으면 Fail' : '자세가 무너지면 Fail',
@@ -111,7 +111,9 @@ abstract final class HelpRules {
       ),
       TutorialStep.fever => HelpPage(
         title: '마지막 $feverSeconds초는 피버 타임',
-        body: '모든 점수가 $feverMultiplier배로 들어와요.',
+        body: squat
+            ? '모든 점수가 $feverMultiplier배로 들어와요.'
+            : '점수가 $feverMultiplier배가 돼요. 무릎 푸시업은 그대로 5점이에요.',
       ),
       TutorialStep.ko => HelpPage(
         title: '$koLead점 앞서면 KO 승리',

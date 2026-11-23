@@ -40,15 +40,16 @@ class PlayerGameScore implements Comparable<PlayerGameScore> {
     );
   }
 
-  /// Scores an average rep closed at round time [at]: it doubles in fever, but
+  /// Scores an average rep closed at round time [at]: only shallow reps double in fever. It
   /// gets no combo bonus, breaks the combo, and is not a valid rep.
-  GameRepScore addAverage(Duration at) {
+  GameRepScore addAverage(Duration at, {bool kneePushup = false}) {
     combo = 0;
     final fever = _rules.isFever(at);
     final earned = _rules.pointsFor(
       GameGrade.average,
       combo: false,
       fever: fever,
+      kneePushup: kneePushup,
     );
     points += earned;
     return GameRepScore(
@@ -64,12 +65,18 @@ class PlayerGameScore implements Comparable<PlayerGameScore> {
 
   /// Scores a judged rep of [grade] closed at round time [at]. A null [grade]
   /// is a rejected rep that earned nothing, and so is its null result.
-  GameRepScore? addRep(GameGrade? grade, Duration at) {
+  GameRepScore? addRep(
+    GameGrade? grade,
+    Duration at, {
+    bool kneePushup = false,
+  }) {
     if (grade == null) {
       addRejected();
       return null;
     }
-    return grade == GameGrade.average ? addAverage(at) : addValid(grade, at);
+    return grade == GameGrade.average
+        ? addAverage(at, kneePushup: kneePushup)
+        : addValid(grade, at);
   }
 
   /// Who wins when time is up: more points, then more valid reps. Zero is a

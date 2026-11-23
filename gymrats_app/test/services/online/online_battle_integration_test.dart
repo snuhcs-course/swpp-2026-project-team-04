@@ -12,6 +12,8 @@ import 'package:gymrats_app/services/online/pose_wire.dart';
 // Sibling standalone server is intentionally exercised through real sockets.
 // ignore: avoid_relative_lib_imports
 import '../../../../server/lib/battle_server.dart';
+// ignore: avoid_relative_lib_imports
+import '../../../../server/lib/result_store.dart';
 
 // The same library the server imports: by package: it would be another type.
 // ignore: avoid_relative_lib_imports
@@ -1057,6 +1059,7 @@ void main() {
     await until(() => b.opponentReps == 1 && a.myReps == 1);
     expect(b.opponentMisses, 0);
     var rejected = 0;
+    var misses = 0;
     for (final reason in RejectReason.values) {
       a.submitRep(
         RepEvent(
@@ -1068,7 +1071,8 @@ void main() {
       );
       rejected++;
       await until(() => a.myInvalidReps == rejected);
-      await until(() => b.opponentMisses == rejected);
+      if (reason != RejectReason.kneesDown) misses++;
+      await until(() => b.opponentMisses == misses);
       expect(a.error, isNull, reason: 'Server must accept ${reason.name}');
       // Leave room under the server's per-second control-message limit.
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -1277,7 +1281,7 @@ void main() {
           index: 3,
           valid: false,
           at: Duration.zero,
-          reason: RejectReason.kneesDown,
+          reason: RejectReason.armsStraight,
           minElbowAngle: 90,
         ),
       );
@@ -1288,6 +1292,27 @@ void main() {
       expect(a.myLastScore, isNull);
       expect(b.opponentLastScore, isNull);
       expect(b.opponentReps, 0);
+    });
+
+    test('a knee push-up earns five on both phones even in fever', () async {
+      final s = await server(
+        duration: 5000,
+        rules: const BattleRules(feverStart: Duration.zero),
+      );
+      final (a, b) = await playing(s);
+      a.submitRep(
+        const RepEvent(
+          index: 1,
+          valid: false,
+          at: Duration.zero,
+          reason: RejectReason.kneesDown,
+        ),
+      );
+      expect(a.myLastScore!.points, 5);
+      await until(() => a.myScore == 5 && b.opponentScore == 5);
+      expect(b.opponentLastScore!.points, 5);
+      expect(a.myInvalidReps, 1);
+      expect(a.myReps, 0);
     });
 
     test('fever doubles the points on both phones', () async {
@@ -1755,6 +1780,369 @@ void main() {
       expect(session.connected, false);
     },
   );
+
+  group('the setup time (P12)', () {
+    /// A server whose setup time is [setup] ms and whose ready time from
+    /// `match.found` is [ready] ms (long by default, so only the setup time
+    /// can end a match).
+    Future<(BattleServer, _Stored)> setupServer({
+      int setup = 300,
+      int tick = 50,
+      int ready = 20000,
+    }) async {
+      final stored = _Stored();
+      final s = BattleServer(
+        authenticate: (token) => switch (token) {
+          'alpha' => const BattleIdentity('a', 'Alpha'),
+          'beta' => const BattleIdentity('b', 'Beta'),
+          _ => null,
+        },
+        durationMs: 1500,
+        countdownMs: 80,
+        readyTimeoutMs: ready,
+        setupTimeoutMs: setup,
+        tickMs: tick,
+        results: stored,
+      );
+      await s.start();
+      addTearDown(s.close);
+      return (s, stored);
+    }
+
+    int count(Wire wire, String type) =>
+        wire.events.where((e) => e['type'] == type).length;
+
+    test("the production setup time is the protocol's 10 seconds", () async {
+      final s = BattleServer(authenticate: (_) => null);
+      expect(s.setupTimeoutMs, battleSetupTimeout.inMilliseconds);
+      expect(s.setupTimeoutMs, 10000);
+      await s.close();
+    });
+
+    test('the setup time counts from both setups open, not from '
+        'match.found', () async {
+      final (s, _) = await setupServer();
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      final first = await b.next('match.setup_state');
+      expect(first['payload']['setup_player_ids'], ['a']);
+      expect(first['payload']['setup_deadline_ms'], isNull);
+      expect((await a.next('match.setup_state'))['payload'], first['payload']);
+      // Past the setup time with one setup open: the match waits.
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      expect(count(a, 'match.cancelled'), 0);
+      final opened = s.now;
+      b.send('match.setup', {});
+      final both = await a.next('match.setup_state');
+      expect(both['payload']['setup_player_ids'], unorderedEquals(['a', 'b']));
+      final deadline = both['payload']['setup_deadline_ms'] as int;
+      expect(deadline - opened, inInclusiveRange(300, 550));
+      final cancelled = await a.next('match.cancelled');
+      expect(cancelled['payload']['reason'], battleSetupTimeoutReason);
+      expect(
+        cancelled['payload']['ended_at_ms'],
+        greaterThanOrEqualTo(deadline),
+      );
+    });
+
+    test('both ready just before the setup time ends: the match starts and '
+        'is not cancelled', () async {
+      final (s, _) = await setupServer(setup: 2000);
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      b.send('match.setup', {});
+      await a.next('match.setup_state');
+      await a.next('match.setup_state');
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      a.send('match.ready', {'ready': true});
+      b.send('match.ready', {'ready': true});
+      await a.next('match.start');
+      await b.next('match.start');
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(count(a, 'match.cancelled'), 0);
+      expect(count(b, 'match.cancelled'), 0);
+    });
+
+    test('both setups open just before the ready time ends: the announced '
+        'setup deadline replaces it, and both ready after the ready time '
+        'start the match', () async {
+      final (s, _) = await setupServer(ready: 1500, setup: 3000);
+      final (a, b) = await paired(s);
+      final found = s.now;
+      a.send('match.setup', {});
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      b.send('match.setup', {});
+      await a.next('match.setup_state');
+      final both = await a.next('match.setup_state');
+      final deadline = both['payload']['setup_deadline_ms'] as int;
+      expect(deadline, greaterThan(found + 1500));
+      // Past the ready time, before the setup deadline: still preparing.
+      while (s.now < found + 1700) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      expect(s.now, lessThan(deadline));
+      expect(count(a, 'match.cancelled'), 0);
+      a.send('match.ready', {'ready': true});
+      b.send('match.ready', {'ready': true});
+      await a.next('match.start');
+      await b.next('match.start');
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(count(a, 'match.cancelled'), 0);
+      expect(count(b, 'match.cancelled'), 0);
+    });
+
+    test('both setups open just before the ready time ends and nobody gets '
+        'ready: setup_timeout at the announced deadline, once, never '
+        'ready_timeout', () async {
+      final (s, stored) = await setupServer(ready: 1500, setup: 3000);
+      final (a, b) = await paired(s);
+      final found = s.now;
+      a.send('match.setup', {});
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      b.send('match.setup', {});
+      await a.next('match.setup_state');
+      final deadline =
+          (await a.next('match.setup_state'))['payload']['setup_deadline_ms']
+              as int;
+      expect(deadline, greaterThan(found + 1500));
+      final forA = await a.next('match.cancelled');
+      final forB = await b.next('match.cancelled');
+      for (final cancelled in [forA, forB]) {
+        expect(cancelled['payload']['reason'], battleSetupTimeoutReason);
+        expect(
+          cancelled['payload']['ended_at_ms'],
+          greaterThanOrEqualTo(deadline),
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(count(a, 'match.cancelled'), 1);
+      expect(count(b, 'match.cancelled'), 1);
+      expect(stored.calls, isEmpty);
+    });
+
+    test('until both setups are open the ready time still ends the match as '
+        'ready_timeout', () async {
+      final (s, _) = await setupServer(ready: 300, setup: 2000);
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      final cancelled = await b.next('match.cancelled');
+      expect(cancelled['payload']['reason'], 'ready_timeout');
+      expect(count(b, 'match.cancelled'), 1);
+    });
+
+    test('requests follow the same rule before any check: a ready after the '
+        'ready time but before the setup deadline starts the match; with one '
+        'setup open it is too late', () async {
+      // No deadline check runs during these tests: only requests can end them.
+      // The first half guards against a wrong fix that would put the ready
+      // deadline back into request handling; the second half fails on the
+      // code before the fix.
+      final (s, _) = await setupServer(ready: 1000, setup: 3000, tick: 60000);
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      b.send('match.setup', {});
+      await a.next('match.setup_state');
+      await a.next('match.setup_state');
+      await Future<void>.delayed(const Duration(milliseconds: 1300));
+      a.send('match.ready', {'ready': true});
+      b.send('match.ready', {'ready': true});
+      await a.next('match.start');
+      expect(count(a, 'match.cancelled'), 0);
+
+      final (s2, _) = await setupServer(ready: 300, setup: 2000, tick: 60000);
+      final (c, d) = await paired(s2);
+      c.send('match.setup', {});
+      await d.next('match.setup_state');
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      d.send('match.setup', {});
+      expect((await d.next('error'))['payload']['code'], 'INVALID_STATE');
+      final cancelled = await c.next('match.cancelled');
+      expect(cancelled['payload']['reason'], 'ready_timeout');
+      expect(count(c, 'match.start'), 0);
+    });
+
+    test('one ready, then the setup time ends: both are told once, nobody '
+        'wins or loses, and nothing is stored', () async {
+      final (s, stored) = await setupServer();
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      b.send('match.setup', {});
+      a.send('match.ready', {'ready': true});
+      await b.next('match.ready_state');
+      final forA = await a.next('match.cancelled');
+      final forB = await b.next('match.cancelled');
+      for (final cancelled in [forA, forB]) {
+        expect(cancelled['payload'].keys, {'reason', 'ended_at_ms'});
+        expect(cancelled['payload']['reason'], battleSetupTimeoutReason);
+      }
+      // A late ready, a leave and a lost connection change nothing.
+      b.send('match.ready', {'ready': true});
+      expect((await b.next('error'))['payload']['code'], 'INVALID_STATE');
+      a.send('match.leave', {'reason': 'user_exit'});
+      await a.next('request.accepted');
+      await b.close();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(count(a, 'match.cancelled'), 1);
+      expect(count(a, 'match.finished'), 0);
+      a.send('match.resume', {});
+      final snapshot = (await a.next('match.snapshot'))['payload'];
+      expect(snapshot['status'], 'cancelled');
+      expect(snapshot['result']['reason'], battleSetupTimeoutReason);
+      expect(snapshot['scores']['a']['valid_reps'], 0);
+      expect(stored.calls, isEmpty);
+    });
+
+    test('a ready or setup that comes after the deadline, before any check, '
+        'cancels the match instead of starting it', () async {
+      // No deadline check runs during this test: only the request can end it.
+      final (s, _) = await setupServer(setup: 200, tick: 60000);
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      b.send('match.setup', {});
+      await a.next('match.setup_state');
+      await a.next('match.setup_state');
+      a.send('match.ready', {'ready': true});
+      await a.next('match.ready_state');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(count(a, 'match.cancelled'), 0);
+      b.send('match.ready', {'ready': true});
+      expect((await b.next('error'))['payload']['code'], 'INVALID_STATE');
+      final cancelled = await a.next('match.cancelled');
+      expect(cancelled['payload']['reason'], battleSetupTimeoutReason);
+      expect(count(a, 'match.start'), 0);
+      expect(count(b, 'match.start'), 0);
+    });
+
+    test('a setup sent again after the deadline also cancels, once', () async {
+      final (s, _) = await setupServer(setup: 200, tick: 60000);
+      final (a, b) = await paired(s);
+      a.send('match.setup', {});
+      b.send('match.setup', {});
+      await b.next('match.setup_state');
+      await b.next('match.setup_state');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      a.send('match.setup', {});
+      expect((await a.next('error'))['payload']['code'], 'INVALID_STATE');
+      await b.next('match.cancelled');
+      a.send('match.setup', {});
+      await a.next('error');
+      expect(count(b, 'match.cancelled'), 1);
+    });
+
+    test('after a setup timeout both join again and get a new match', () async {
+      final (s, _) = await setupServer();
+      final (a, b) = await paired(s);
+      final firstMatch = a.match;
+      a.send('match.setup', {});
+      b.send('match.setup', {});
+      await a.next('match.cancelled');
+      await b.next('match.cancelled');
+      a.match = b.match = null;
+      a.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'mouse'});
+      b.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'bear'});
+      final found = await a.next('match.found');
+      await b.next('match.found');
+      expect(found['match_id'], isNot(firstMatch));
+      expect(rosterIds(found), unorderedEquals(['a', 'b']));
+    });
+
+    test(
+      'a snapshot carries the setup state; a setup open twice is one',
+      () async {
+        final (s, _) = await setupServer(setup: 5000);
+        final (a, b) = await paired(s);
+        a.send('match.setup', {});
+        await b.next('match.setup_state');
+        a.send('match.setup', {});
+        await a.next('request.accepted');
+        await a.next('request.accepted');
+        expect(count(b, 'match.setup_state'), 1);
+        b.send('match.resume', {});
+        final snapshot = (await b.next('match.snapshot'))['payload'];
+        expect(snapshot['setup_player_ids'], ['a']);
+        expect(snapshot['setup_deadline_ms'], isNull);
+      },
+    );
+
+    test('match.setup takes no fields and only while preparing', () async {
+      final (s, _) = await setupServer(setup: 5000);
+      final (a, b) = await paired(s);
+      a.send('match.setup', {'camera': 'on'});
+      expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
+      await ready(a, b);
+      a.send('match.setup', {});
+      expect((await a.next('error'))['payload']['code'], 'INVALID_STATE');
+    });
+
+    test(
+      'two apps: the setup time counts on both, its end cancels both as '
+      'a setup timeout with no outcome, and new sessions match again',
+      () async {
+        final (s, _) = await setupServer(setup: 400);
+        final endpoint = Uri.parse('ws://127.0.0.1:${s.port}/ws/v1/battle');
+        OnlineBattleSession open(String token) {
+          final session = OnlineBattleSession(
+            endpoint: endpoint,
+            accessToken: token,
+            allowInsecureLoopback: true,
+          );
+          addTearDown(session.dispose);
+          return session;
+        }
+
+        final a = open('alpha'), b = open('beta');
+        await a.connect();
+        await until(() => a.phase == OnlinePhase.queued);
+        await b.connect();
+        await until(
+          () =>
+              a.phase == OnlinePhase.preparing &&
+              b.phase == OnlinePhase.preparing,
+        );
+        a.setupOpened();
+        b.setupOpened();
+        await until(
+          () => a.setupDeadlineMs != null && b.setupDeadlineMs != null,
+        );
+        expect(a.setupDeadlineMs, b.setupDeadlineMs);
+        expect(a.setupSecondsLeft, inInclusiveRange(0, 1));
+        await until(() => a.terminal && b.terminal);
+        for (final session in [a, b]) {
+          expect(session.phase, OnlinePhase.cancelled);
+          expect(session.setupTimedOut, isTrue);
+          expect(session.outcome, isNull);
+          expect(session.error, isNull);
+          expect(session.setupSecondsLeft, isNull);
+        }
+        // 다시 매칭 in the app opens a new session from the lobby.
+        final again = [open('alpha'), open('beta')];
+        await again[0].connect();
+        await until(() => again[0].phase == OnlinePhase.queued);
+        await again[1].connect();
+        await until(
+          () =>
+              again.every((session) => session.phase == OnlinePhase.preparing),
+        );
+        expect(again[0].matchId, isNot(a.matchId));
+      },
+    );
+  });
+}
+
+/// Records what the battle server stores, to show a cancel stores nothing.
+class _Stored implements BattleResultStore {
+  final calls = <String>[];
+  @override
+  Future<void> started(String matchId, int startAtMs, List<String> ids) async =>
+      calls.add('started');
+  @override
+  Future<void> finished(Map<String, dynamic> result) async =>
+      calls.add('finished');
+  @override
+  Future<void> voided(String matchId, String reason) async =>
+      calls.add('voided');
+  @override
+  Future<Map<String, Set<String>>> recover(int bootedAtMs) async => {};
 }
 
 /// A battle server from before W3, as far as joining goes: it knows only

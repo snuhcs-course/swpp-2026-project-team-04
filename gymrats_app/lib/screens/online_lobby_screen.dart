@@ -168,9 +168,9 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   Future<void> _openBattle(OnlineBattleSession session) async {
     if (_opened || session.terminal || !identical(session, _session)) return;
     _opened = true;
-    await Navigator.push<void>(
+    final again = await Navigator.push<Object?>(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<Object?>(
         builder: (_) => syntheticOnlineEnabled
             ? OnlineSyntheticBattleScreen(session: session)
             : OnlineBattleScreen(
@@ -180,10 +180,20 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
                 playerName: widget.auth.session?.account.nickname ?? '나',
                 onCue: widget.onCue,
                 onSetup: widget.onSetup,
+                offerRematch: true,
               ),
       ),
     );
     if (!mounted) return;
+    // 다시 매칭 after a cancel (P12): this lobby searches again, with a
+    // new session, instead of closing.
+    if (again == true) {
+      _release();
+      final next = _start()?..addListener(_changed);
+      setState(() {});
+      await next?.connect();
+      return;
+    }
     // The lobby is still underneath the setup/battle route. Close it too,
     // rather than exposing the old manual-entry screen after leaving a match.
     // The battle may have handed over to the result screen, which then sits
