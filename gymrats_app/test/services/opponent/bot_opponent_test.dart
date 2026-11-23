@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/arcade_ai_level.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
@@ -51,6 +52,114 @@ const _roundsBeforeLevels = <int, List<(int, Object)>>{
     (24394521, 1.4),
     (26973691, 1.4),
   ],
+};
+
+/// The rounds 초보 and 중수 planned before the bot took a [BotPace], printed
+/// from that code at `25509ee`, as in [_roundsBeforeLevels]. 고수 is there.
+const _roundsBeforePace = <BotDifficulty, Map<int, List<(int, Object)>>>{
+  BotDifficulty.beginner: {
+    1: [
+      (3665943, 1.4),
+      (7436465, RejectReason.kneesDown),
+      (11301851, 1.4),
+      (15896361, 1.4),
+      (20980903, 1.4),
+      (25356619, 1.4),
+    ],
+    7: [
+      (3265531, RejectReason.bellyDown),
+      (5288120, RejectReason.shouldersNotLevel),
+      (7909859, 1.4),
+      (10249937, 1.4),
+      (13453143, RejectReason.armsStraight),
+      (16588522, 1.4),
+      (19865107, 1.4),
+      (23053462, 1.4),
+      (26750711, 1.4),
+    ],
+  },
+  BotDifficulty.intermediate: {
+    1: [
+      (3019565, 1.4),
+      (5590142, 1.4),
+      (8549403, 1.4),
+      (11649057, 1.4),
+      (15292938, 1.4),
+      (18875183, 1.4),
+      (21881481, 1.4),
+      (26098357, 1.4),
+    ],
+    7: [
+      (2637879, 1.4),
+      (4783405, 1.9),
+      (6882601, RejectReason.incompleteExtension),
+      (8952447, 1.4),
+      (10664478, 1.4),
+      (13313156, 1.4),
+      (15784017, 1.4),
+      (18473493, 1.9),
+      (21290651, RejectReason.notFloorPushUp),
+      (24010548, 1.4),
+      (26688363, 1.9),
+    ],
+  },
+};
+
+/// Every level's rounds of seeds 0 to 499 in 30 s, printed at `25509ee`
+/// before [BotPace]: all reps, valid reps, deep (1.9) reps, the sum of their
+/// end times in microseconds, and the rejected reps by reason.
+const _sumsBeforePace = <BotDifficulty, (int, int, int, int, Map<String, int>)>{
+  BotDifficulty.beginner: (
+    3974,
+    2991,
+    0,
+    55336720383,
+    {
+      'armsStraight': 100,
+      'bellyDown': 118,
+      'incompleteExtension': 101,
+      'insufficientDepth': 125,
+      'kneesDown': 107,
+      'notFloorPushUp': 107,
+      'phoneMoved': 119,
+      'shouldersNotLevel': 102,
+      'tooFast': 104,
+    },
+  ),
+  BotDifficulty.intermediate: (
+    4974,
+    4491,
+    427,
+    68795869247,
+    {
+      'armsStraight': 49,
+      'bellyDown': 58,
+      'incompleteExtension': 44,
+      'insufficientDepth': 55,
+      'kneesDown': 53,
+      'notFloorPushUp': 53,
+      'phoneMoved': 59,
+      'shouldersNotLevel': 60,
+      'tooFast': 52,
+    },
+  ),
+  BotDifficulty.expert: (
+    6482,
+    5999,
+    1168,
+    90259345977,
+    {
+      'armsStraight': 46,
+      'bellyDown': 53,
+      'incompleteExtension': 72,
+      'insufficientDepth': 42,
+      'kneesDown': 57,
+      'notFloorPushUp': 52,
+      'phoneMoved': 64,
+      'shouldersNotLevel': 47,
+      'tooFast': 50,
+    },
+  ),
 };
 
 void main() {
@@ -290,6 +399,73 @@ void main() {
             ],
           );
         }
+      });
+    });
+
+    group('a BotPace plans every level as before it (arcade spec 3)', () {
+      for (final MapEntry(key: level, value: seeds)
+          in _roundsBeforePace.entries) {
+        for (final MapEntry(key: seed, value: pinned) in seeds.entries) {
+          test('${level.label} seed $seed plans exactly the same round', () {
+            final round = BotOpponent.planRound(
+              Random(seed),
+              battleDuration,
+              difficulty: level,
+            );
+            expect([
+              for (final rep in round)
+                (
+                  rep.at.inMicroseconds,
+                  rep.valid ? rep.maxDepth! : rep.reason!,
+                ),
+            ], pinned);
+          });
+        }
+      }
+
+      for (final MapEntry(key: level, value: before)
+          in _sumsBeforePace.entries) {
+        test('${level.label}: seeds 0 to 499 plan the same reps', () {
+          var reps = 0, valid = 0, deep = 0, micros = 0;
+          final reasons = <String, int>{};
+          for (var seed = 0; seed < 500; seed++) {
+            for (final rep in BotOpponent.planRound(
+              Random(seed),
+              battleDuration,
+              difficulty: level,
+            )) {
+              reps++;
+              micros += rep.at.inMicroseconds;
+              if (rep.valid) {
+                valid++;
+                if (rep.maxDepth == 1.9) deep++;
+              } else {
+                final name = rep.reason!.name;
+                reasons[name] = (reasons[name] ?? 0) + 1;
+              }
+            }
+          }
+          expect(
+            (reps, valid, deep, micros),
+            (before.$1, before.$2, before.$3, before.$4),
+          );
+          expect(reasons, before.$5);
+        });
+      }
+
+      test('the bot and its plan take an arcade level as well', () {
+        final bot = BotOpponent(difficulty: ArcadeAiLevel.lv16);
+        expect(bot.difficulty, ArcadeAiLevel.lv16);
+        bot.dispose();
+        final round = BotOpponent.planRound(
+          Random(3),
+          battleDuration,
+          difficulty: ArcadeAiLevel.lv16,
+        );
+        expect(
+          round.where((rep) => rep.valid).length,
+          inInclusiveRange(20, 22),
+        );
       });
     });
 

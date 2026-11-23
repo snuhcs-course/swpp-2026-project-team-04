@@ -1,9 +1,30 @@
+/// The numbers the AI opponent plans a round by (`BotOpponent.planRound`).
+///
+/// The counts are for a round of [BotDifficulty.paceLength]; a round of
+/// another length scales them. A [BotDifficulty] is one, and so is each
+/// arcade AI level.
+abstract interface class BotPace {
+  /// How many reps count, at the least and at the most.
+  int get fewestValid;
+  int get mostValid;
+
+  /// How many reps are mistakes, at the least and at the most.
+  int get fewestRejected;
+  int get mostRejected;
+
+  /// About this share of the valid reps go deep enough to be excellent.
+  double get deepShare;
+
+  /// The chance that a valid rep closes right behind a valid one before it.
+  double get comboChance;
+}
+
 /// How hard the AI opponent plays. Home asks for it before a bot battle.
 ///
 /// Every number of a level is here, so a level is tuned in one place. The
 /// counts are for a round of [paceLength]; a round of another length scales
 /// them.
-enum BotDifficulty {
+enum BotDifficulty implements BotPace {
   beginner(
     label: '초보',
     summary: '실수가 잦아요',
@@ -54,20 +75,26 @@ enum BotDifficulty {
   final String summary;
 
   /// How many reps count, at the least and at the most.
+  @override
   final int fewestValid;
+  @override
   final int mostValid;
 
   /// How many reps are mistakes, at the least and at the most.
+  @override
   final int fewestRejected;
+  @override
   final int mostRejected;
 
   /// About this share of the valid reps go deep enough to be excellent.
+  @override
   final double deepShare;
 
   /// The chance that a valid rep closes right behind a valid one before it.
   ///
   /// Pace alone gives the expert its combos, and hardly any to the slower
   /// levels: this adds some without changing how many reps there are.
+  @override
   final double comboChance;
 
   /// The opponent's name on every screen and in the record, so the history

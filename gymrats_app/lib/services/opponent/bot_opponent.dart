@@ -38,8 +38,9 @@ class BotOpponent implements OpponentSource {
   /// Every planned rep falls inside this.
   final Duration roundLength;
 
-  /// How many reps it makes, and how well.
-  final BotDifficulty difficulty;
+  /// How many reps it makes, and how well: a [BotDifficulty] or an arcade
+  /// AI level.
+  final BotPace difficulty;
 
   /// The pass depth of the exercise the bot plays. Its reps go that many times
   /// as deep, so they get the same grades in every exercise.
@@ -105,7 +106,7 @@ class BotOpponent implements OpponentSource {
     math.Random random,
     Duration roundLength, {
     double passDepth = _pushUpPassDepth,
-    BotDifficulty difficulty = BotDifficulty.expert,
+    BotPace difficulty = BotDifficulty.expert,
   }) {
     // Exactly 1 at the default, so push-up depths stay exactly as they are.
     final depthScale = passDepth / _pushUpPassDepth;
