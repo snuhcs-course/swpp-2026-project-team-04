@@ -349,3 +349,32 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 | Service | `test/services/pose/hold_judge_test.dart` | a reader without guide lines gives none (`readsGuide` false, `guide` null); a `HoldGuideReader` gives its snapshot after each frame |
 | ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | a reader that gives the guide lines draws them, and no guide judge is made; the real push-up judge keeps the chest guide through a 60 s plank; an entry's end is one `started` cue, and a later resume is `resumed`; without an entry there is no `started` cue |
 | View | `test/screens/hold_stage_screen_test.dart` | the announcement for `started` is "시작" |
+
+#### 2026-11-23 · code at commit `f78ac2b` · step A4, second follow-up on `codex/iter5-hold-plank` (overflows found by the P16 session)
+The P16 session found two overflows in A4's result screen (passed on by the user; local task.md, A4 Decisions):
+- **The ink button's words** (`HoldDarkButton`: "다음 스테이지", P16's "R1부터 다시") overflowed by 28 px at 360 × 780 with
+  1.3x text, and by 12 px at 320 × 640 (48 px with 1.3x text). These are widget-test numbers with the test font,
+  whose every glyph is 1 em wide. With the app's font (measured by the reviewer, run 7) the words overflow only at
+  320 × 640 with 1.3x text: 5 px for "R1부터 다시", 16 px for "다음 스테이지". The words now sit in a `Flexible`
+  `FittedBox` (scale down, one line), in a 4-point side margin that the design's size already leaves free.
+- **The result's star row** (`ArcadeResultFrame`, 3 × 92 + 2 × 12 = 300 points) overflowed by 20 px on a 320-wide phone,
+  whose content is 280 wide (with any font). The row now sits in a `FittedBox` (scale down).
+- Both keep the design's sizes where they fit: at 360 × 780 with 1x text (the design's size), 412 × 915 and 600 × 1000
+  the stars and the words are drawn at full size; they shrink only on a narrower phone or with larger text.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the three new screen tests failed with the reported overflows: 28 px (360 × 780, 1.3x); 20 and
+  48 px (320 × 640, 1.3x); 20 and 12 px (320 × 640, 1x).
+- **Tests:** `flutter test` 4084 passed, 0 failed, 10 skipped (2026-11-23, `f78ac2b`); the same 10 skips as above.
+  `flutter analyze` found no issues. The four A4 test files with `test/design_tokens_test.dart`: 182 passed.
+- **New tests:** 4, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths).
+- **Review:** local reviewer run 7, APPROVE; it also ran the new tests on the old code (they fail with the reported
+  numbers). Its two Minors were fixed before the commit: the side margin above, and the font note above.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the second follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a clear and a fail fit 360 × 780 at 1.3x text', '… 320 × 640 at 1.3x text', '… 320 × 640 at 1.0x text': a clear and a fail with no overflow (a short phone scrolls to its buttons); 'the frame keeps the design sizes where they fit': `ArcadeResultFrame` with "R1부터 다시" draws its words and its middle star (72) at full size at 600 × 1000, 412 × 915 and 360 × 780, has no overflow at the three sizes, and shrinks the stars at 320 wide and the words at 1.3x text on a 360 phone |
