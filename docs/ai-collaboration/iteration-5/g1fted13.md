@@ -274,3 +274,103 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
+
+## A5 `codex/iter5-hold-chair` – Add chair-pose judging (team order #8.4), 2026-11-23
+
+### a. Where AI was used
+- **The spec and the designs:** Claude on claude.ai wrote the chair pose's spec (SPEC v1–v2), and Claude drew the
+  chair pose's designs (P16Hold's sit scenes and the warning icons) on the Claude Design canvas. Woohyun Song confirmed
+  the designs and answered the spec's section 9 questions (the user's statement, 2026-11-23, in the Prompt Log). They
+  reached this step as a local design hand-off, which is not committed.
+- **The code and tests:** Claude Code (Opus 5.5), session `dfb39c07`, wrote all of A5 in `7f26016` and `e1b0a76`:
+  - `lib/services/pose/chair_hold.dart`: `ChairHoldReader` (the squat judge's depth worked out in the reader, the
+    hips and knees reading, the squat guide's snapshot, a debug-only print for the phone check), `chairHold`,
+    `ChairFaults`, `ChairLines`;
+  - `test/services/pose/chair_hold_test.dart` (30 tests) and `chair_hold_stage_test.dart` (10 widget tests);
+  - the approved small changes in earlier-stage files: the chair line of `hold_poses.dart` (with its import, and
+    the now unused `_notYet` removed), the demo's `enabled` line, and one test in each of the two A4 test files that
+    asserted the chair was stopped.
+- **A4 changes made from this session** (on A4's branch, then merged here; the user's decisions): `014e4f0` guide lines
+  from the reader, `1c325ab` "시작" after an entry, `397f498` a test comment, `f78ac2b` the result screen on small
+  screens (overflows found by the P16 session), with their testing notes `82e281a` and `be6509a`.
+- **Checking against the design:** the chair scenes captured with the app's fonts in a throwaway widget test (deleted)
+  and compared by eye with the hand-off's shots (testing notes, A5 entry).
+- **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1) and on
+  these notes (runs 2–3).
+- **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
+  Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
+  also holds the A3 and A4 sessions). Two fixes, the prompts
+  otherwise unchanged: the Chrome extension's injected `<browser_instruction>` text (not typed by the user) was
+  removed, and the two messages sent while a turn was running, which `extract_prompts.py` skips (the export stores
+  them as queued commands), were copied in by hand from the same redacted export, verbatim.
+- **Not done by AI:** Woohyun Song answered the spec's three questions (a fixed 0.8 knee line; sitting deeper is
+  held; no time limit on the entry) and chose how to handle the three A4 gaps found before building (the two A4 tests
+  changed here; the guide lines and "시작" fixed on A4's branch). Mid-way the user added the plank guide check, the
+  rule that A4 commits hold only A4 files and records, one reviewer run before the A4 push and a plain merge, and
+  passed on the P16 session's two overflows. The user also set the branch, the draft PR and its wording. The phone
+  check is the user's.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "A4에 의자 자세의 아이콘, 실루엣, 스쿼트 안내선이 없으면 이
+  단계에서 그리지 말고 멈춰서 알려 줘. 기존 판정 코드(squat_rep_judge.dart, setup_checker.dart, pose_metrics.dart,
+  rep_judge.dart)는 고치지 않고 가져다 쓴다."
+- [Woohyun Song, 11-23] (mid-task, pasted; excerpt) "1. 하이 플랭크의 푸쉬업 안내선도 따로 도는 판정기에서 오는지
+  확인하고, 오래 버티면 같은 식으로 사라지면 같은 커밋에서 함께 고쳐 줘."
+
+### c. What AI did well
+- **Found A4's gaps before building on them.** Reading A4's view model against the spec's sections 5 and 6 showed that
+  the squat guide came from a separate `SquatRepJudge`, which drops a squat (`lost`) 12 s after it starts down, so the
+  squat lines would vanish in every chair stage (20–45 s), and that nothing read "시작" after the entry. It asked
+  before touching A4; the user chose A4's branch, and A5 merged the fix.
+- **Checked a claim with the real code instead of assuming.** For the user's question about the plank's push-up guide
+  it wrote a test that runs the real push-up judge through a 60 s plank (`hold_stage_viewmodel_test.dart`); the guide
+  stays, so nothing was changed there. Reviewer run 5 confirmed it against `rep_judge.dart`.
+- **Proved the depth is the squat judge's.** `chair_hold_test.dart` feeds the same 33 ms frames to `SquatRepJudge` and
+  the reader for 12 s and compares the depth exactly (more than 300 frames), then shows the squat judge losing it past
+  12 s while the reader keeps it.
+- **Reproduced before fixing.** For the P16 session's overflow report it first wrote the size tests and saw them fail
+  with the reported 28, 20 and 12 px, then fixed and saw them pass, with a test that the design's sizes stay.
+
+### d. Hallucinations / errors
+- **Wrong timings in the first test draft.** Working the smoothing through by hand before running found five wrong
+  expectations: standing up reads 'hips too high' from the first frame, not the second; the second warning needed
+  0.1 s more frames; the standing thigh taken after GO is the smoothed one at 3.4 s, not 180 at 3.3 s; "시작" needs
+  0.8 s of sitting, not 0.7 s; and a `const` empty frame is the same object each time, which the view model skips.
+  The first run found one more: after 0.9 s of smoothing the depth was 1.9e-7 from 0.9 (tolerance 1e-9 → 1e-3).
+- **Analyzer findings:** a local `started` hiding the test helper `started()`, an unused import, and a list element
+  the lint wanted null-aware.
+- **A wrong test comment:** the 60 s plank test's comment said the app runs the judge on the hold's clock; the app's
+  judge keeps its own stopwatch (reviewer run 5, Minor; fixed in `397f498`).
+- **A design-doc gap:** the new `HoldGuideReader` was missing from the local Design doc changes list (reviewer run 5,
+  Major; added).
+- **A layout first try and a measurement taken with the wrong font:** the first overflow fix padded the button's words
+  on the left only, which would have moved them off centre; dropped before testing. The fix then kept no margin at
+  all, reasoning that the button had "about 8 px to spare" at 360 wide, and the notes gave the overflows as 28 and
+  12 px. Both numbers came from the widget tests' font, whose every glyph is 1 em wide. Reviewer A4 run 7 measured
+  the app's font: the words overflow only at 320 × 640 with 1.3x text (5 and 16 px), and the slack at 360 is 33–42 px.
+  A 4-point margin was added and the notes now say which font the numbers are from.
+- **A blocked command:** the post-push check's `grep` was stopped by the repo's commit-text hook, because the command
+  itself contained the searched words; rewritten with character classes.
+- **Reviewer, A5 run 1 (APPROVE, 3 Minors):** a slow sit (3–6 s to a true 0.8) can read 0.73–0.75 because the copied
+  follow rule lowers the standing thigh while the depth is under 0.25 (kept as the spec's formula; added to the phone
+  check, a change waits for the user); a clock going back gives 0 where the squat judge gives a negative weight
+  (commented); the debug print leaked into the stage tests' output (silenced).
+- **Reviewer, A4 run 7 (APPROVE, the small-screen fix, 2 Minors):** the margin and the font, as above; it also ran
+  the new tests on the old code and saw them fail with the reported numbers.
+- **Reviewer, A5 run 2 (CHANGES_REQUESTED, notes only; 1 Major, 4 Minors):** these notes cited two local A4 commits
+  that were redone before the push (`cefcaa4`, `cbd8af0`; the pushed ones are `f78ac2b`, `be6509a`). Minors: the
+  export holds the A3 and A4 sessions, not A2's; the earlier-stage changes are small, not one line each; the
+  stacked-branch count must match the commit it is quoted for; the command block lacked the six-file run behind
+  "156 passed". All fixed. Its own full run hit one flaky online test outside A5 (in the testing notes).
+- **Reviewer, A5 run 3 (APPROVE, notes only):** run 2's findings verified fixed; no new finding.
+
+### e. Prompt revisions
+- Before (the user's answer, 2026-11-23): "A4 브랜치에서 고치고 merge (Recommended)".
+- After (mid-task, pasted): "1. 하이 플랭크의 푸쉬업 안내선도 따로 도는 판정기에서 오는지 확인하고, 오래 버티면 같은 식으로
+  사라지면 같은 커밋에서 함께 고쳐 줘. 2. codex/iter5-hold-plank로 바꾸기 전에 A5 작업 중인 변경이 A4 커밋에 섞이지 않게
+  정리해 줘. … 3. A4 커밋은 reviewer를 한 번 돌리고 push한다. 그다음 A5 브랜치로 돌아와 hold-plank를 그냥 git merge로 받아 온다."
+- Why it worked: the answer only said where to fix; the revision said what else to check, what the A4 commits may hold,
+  and in which order to review, push and merge, so the A4 fix went out as four A4-only commits with their own review.
+
+### f. Manual fixes and why
+- None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
