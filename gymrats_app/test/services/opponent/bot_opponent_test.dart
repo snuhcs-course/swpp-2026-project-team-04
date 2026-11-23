@@ -55,12 +55,12 @@ const _roundsBeforeLevels = <int, List<(int, Object)>>{
 };
 
 /// The rounds 초보 and 중수 planned before the bot took a [BotPace], printed
-/// from that code at `25509ee`, as in [_roundsBeforeLevels]. 고수 is there.
+/// from that code at `ad8a6f7`, as in [_roundsBeforeLevels]. 고수 is there.
 const _roundsBeforePace = <BotDifficulty, Map<int, List<(int, Object)>>>{
   BotDifficulty.beginner: {
     1: [
       (3665943, 1.4),
-      (7436465, RejectReason.kneesDown),
+      (7436465, RejectReason.insufficientDepth),
       (11301851, 1.4),
       (15896361, 1.4),
       (20980903, 1.4),
@@ -105,7 +105,7 @@ const _roundsBeforePace = <BotDifficulty, Map<int, List<(int, Object)>>>{
   },
 };
 
-/// Every level's rounds of seeds 0 to 499 in 30 s, printed at `25509ee`
+/// Every level's rounds of seeds 0 to 499 in 30 s, printed at `ad8a6f7`
 /// before [BotPace]: all reps, valid reps, deep (1.9) reps, the sum of their
 /// end times in microseconds, and the rejected reps by reason.
 const _sumsBeforePace = <BotDifficulty, (int, int, int, int, Map<String, int>)>{
@@ -118,8 +118,7 @@ const _sumsBeforePace = <BotDifficulty, (int, int, int, int, Map<String, int>)>{
       'armsStraight': 100,
       'bellyDown': 118,
       'incompleteExtension': 101,
-      'insufficientDepth': 125,
-      'kneesDown': 107,
+      'insufficientDepth': 232,
       'notFloorPushUp': 107,
       'phoneMoved': 119,
       'shouldersNotLevel': 102,
@@ -135,8 +134,7 @@ const _sumsBeforePace = <BotDifficulty, (int, int, int, int, Map<String, int>)>{
       'armsStraight': 49,
       'bellyDown': 58,
       'incompleteExtension': 44,
-      'insufficientDepth': 55,
-      'kneesDown': 53,
+      'insufficientDepth': 108,
       'notFloorPushUp': 53,
       'phoneMoved': 59,
       'shouldersNotLevel': 60,
@@ -152,8 +150,7 @@ const _sumsBeforePace = <BotDifficulty, (int, int, int, int, Map<String, int>)>{
       'armsStraight': 46,
       'bellyDown': 53,
       'incompleteExtension': 72,
-      'insufficientDepth': 42,
-      'kneesDown': 57,
+      'insufficientDepth': 99,
       'notFloorPushUp': 52,
       'phoneMoved': 64,
       'shouldersNotLevel': 47,
