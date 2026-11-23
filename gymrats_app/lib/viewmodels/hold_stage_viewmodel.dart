@@ -42,8 +42,9 @@ enum HoldStagePhase {
 }
 
 /// A moment the screen makes heard: a sound, and a short line for a screen
-/// reader (spec 5, 8).
-enum HoldStageCueKind { warning, resumed, star, ended }
+/// reader (spec 5, 8). [started] is the end of an entry: the time begins
+/// to run (the chair pose's spec 6).
+enum HoldStageCueKind { warning, resumed, started, star, ended }
 
 class HoldStageCue {
   const HoldStageCue(this.kind, {this.count = 0, this.fault, this.seconds});
@@ -84,8 +85,9 @@ class HoldStageState {
   /// The stars of the play, at [HoldStagePhase.result].
   final ArcadeStars stars;
 
-  /// The setup exercise's judge on the frames from GO, for its guide lines
-  /// over the camera.
+  /// The guide lines over the camera, from the frames from GO: the pose's
+  /// reader's when it gives them ([HoldGuideReader]), else the setup
+  /// exercise's judge's.
   final JudgeSnapshot guide;
 
   HoldStageState copyWith({
@@ -338,7 +340,9 @@ class HoldStageViewModel extends ChangeNotifier {
     final now = _now();
     judge.go(now);
     _lastFrameAt = now;
-    _guideJudge = _createGuideJudge(definition.setupExercise);
+    _guideJudge = judge.readsGuide
+        ? null
+        : _createGuideJudge(definition.setupExercise);
     _ticker = Timer.periodic(tick, (_) => _lookForFrames());
     _setState(
       _state.copyWith(
@@ -356,8 +360,9 @@ class HoldStageViewModel extends ChangeNotifier {
     _seen = frame;
     final now = _now();
     _lastFrameAt = now;
-    final guide = _guideJudge?.update(frame).snapshot;
-    _show(_judge!.frame(frame, now), guide: guide);
+    final judge = _judge!;
+    final progress = judge.frame(frame, now);
+    _show(progress, guide: judge.guide ?? _guideJudge?.update(frame).snapshot);
   }
 
   void _lookForFrames() {
@@ -387,6 +392,9 @@ class HoldStageViewModel extends ChangeNotifier {
       );
     } else if (before.paused && progress.state == HoldState.holding) {
       _cue(const HoldStageCue(HoldStageCueKind.resumed));
+    } else if (before.state == HoldState.entering &&
+        progress.state == HoldState.holding) {
+      _cue(const HoldStageCue(HoldStageCueKind.started));
     }
     final times = stage.starSeconds;
     for (var i = 0; i < times.length; i++) {

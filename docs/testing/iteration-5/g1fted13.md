@@ -306,6 +306,50 @@ synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fake
 - Chair icons and figure with a stand-in bundle (spec 3) → 'the chair pose's drawings, with a stand-in bundle' (3 tests)
 - Phone check → TODO(Woohyun Song) above.
 
+#### 2026-11-23 · code at commit `1c325ab` · step A4 follow-up on `codex/iter5-hold-plank` (two gaps found while starting A5)
+Starting A5 (the chair pose, spec `p16-4/SPEC.md` v2, not committed) showed two things the chair pose needs from A4's
+common part. The user chose to fix them on the A4 branch and merge them into A5 (local task.md, A4 Decisions,
+2026-11-23):
+- **`014e4f0` guide lines from the reader:** the hold ran the setup exercise's rep judge from GO only for its guide
+  lines. The squat judge drops a squat 12 s after it starts down (`RepPhase.lost`), and `SquatHeightOverlay` hides on
+  `lost`, so the chair pose (held 20 to 45 s) would lose its squat height lines. A reader that also implements
+  `HoldGuideReader` (`hold_pose_definition.dart`) now gives the snapshot itself (`HoldJudge.guide`), and the view model
+  makes no rep judge for the lines then.
+- **`1c325ab` "시작":** a pose entered after GO keeps the time at 0 until first held; a screen reader now hears "시작"
+  once when the time begins (`HoldStageCueKind.started`; the chair spec's section 6).
+- **Checked, not changed:** the high plank's push-up guide also comes from a rep judge of its own, but the push-up
+  judge's 12 s limit (`maxAttempt`) applies only once a push-up starts down; held at the top it stays `up`, and
+  `ChestHeightOverlay` draws whenever both shoulders are seen. A new test runs the real judge (`judgeFor`) on the
+  hold's clock through a 60 s plank (stage 21) and finds it `up` with its start height (`topShoulderY`) at 5, 15, 30,
+  45 and 59.9 s.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not changed by the follow-up | 11/23 | CI comment "Tests and coverage (GitHub Actions)" on the A4 PR |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment on `1c325ab` or later | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment on `1c325ab` or later | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment on `1c325ab` or later | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed | 11/23 | same CI comment |
+
+- **Tests:** `flutter test` 4080 passed, 0 failed, 10 skipped (2026-11-23, the content of `1c325ab`); the same 10 skips
+  as above. `flutter analyze` found no issues. The four A4 test files: 112 passed (110 on `014e4f0` alone).
+  `397f498` only rewords one test comment (local reviewer run 5); the four files still pass (112).
+- **New tests:** 6, plus one more check in an existing test: `hold_judge_test.dart` 2, `hold_stage_viewmodel_test.dart`
+  4, and the "시작" line in `hold_stage_screen_test.dart`'s announcement test.
+- **Other checks:** `ownership_guard.py --check-staged` OK on both commits; `--check-diff` OK (64 paths against
+  `origin/main`); the stacked-branch intersection with A2's and A3's branches still lists 21 paths (the 18 A4 files and
+  the three personal notes).
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added or changed in the follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/hold_judge_test.dart` | a reader without guide lines gives none (`readsGuide` false, `guide` null); a `HoldGuideReader` gives its snapshot after each frame |
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | a reader that gives the guide lines draws them, and no guide judge is made; the real push-up judge keeps the chest guide through a 60 s plank; an entry's end is one `started` cue, and a later resume is `resumed`; without an entry there is no `started` cue |
+| View | `test/screens/hold_stage_screen_test.dart` | the announcement for `started` is "시작" |
+
 #### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
 P16 builds the arcade's screens on A2's rules and A3's art (P16 spec v2):
 - **게임 시작:** two cards, 온라인 대결 and 아케이드 (design `PlayX`); the AI 1v1 card and the 이어하기 row are gone.

@@ -45,8 +45,8 @@ enum HoldStageExit {
 /// secure store) for [accountId] (or the signed-in account); without an
 /// account none are kept. A warning plays the battle's reject sound,
 /// following the sound settings (spec 12, user 2026-11-23), and a screen
-/// reader hears the warnings, the time running again, each star and the
-/// end (spec 8).
+/// reader hears the warnings, the time running again, the time starting
+/// after an entry, each star and the end (spec 8).
 class HoldStageScreen extends StatefulWidget {
   const HoldStageScreen({
     super.key,
@@ -292,6 +292,7 @@ class _HoldStageScreenState extends State<HoldStageScreen>
 String holdAnnouncement(HoldStageCue cue) => switch (cue.kind) {
   HoldStageCueKind.warning => '경고 ${cue.count}번, ${cue.fault!.words}',
   HoldStageCueKind.resumed => '시간이 다시 흘러요',
+  HoldStageCueKind.started => '시작',
   HoldStageCueKind.star => '${cue.seconds}초, 별 ${_count(cue.count)}',
   HoldStageCueKind.ended =>
     cue.count == 0 ? '실패' : '클리어, 별 ${_count(cue.count)}',

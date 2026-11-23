@@ -113,6 +113,16 @@ class _Reader implements HoldPoseReader {
   }
 }
 
+/// A reader that gives the guide lines itself, at the squat's bottom.
+class _GuideReader extends _Reader implements HoldGuideReader {
+  @override
+  JudgeSnapshot get guide => JudgeSnapshot(
+    phase: RepPhase.bottom,
+    squatHipY: counting.length.toDouble(),
+    squatKneeY: 500,
+  );
+}
+
 HoldPoseDefinition _scripted(
   _Reader reader, {
   bool entry = false,
@@ -167,6 +177,7 @@ class _Rig {
     HoldPoseDefinition? definition,
     ArcadeProgressStore? store,
     int? accountId,
+    ExerciseRepJudge Function(ExerciseType exercise)? guideJudge,
   }) {
     viewModel = HoldStageViewModel(
       stage: stage,
@@ -180,7 +191,7 @@ class _Rig {
       },
       createGuideJudge: (exercise) {
         guideExercises.add(exercise);
-        return guide;
+        return guideJudge?.call(exercise) ?? guide;
       },
       clock: () => async.elapsed,
     );
@@ -393,6 +404,89 @@ void main() {
         store.read(7).then((p) => saved = p);
         async.flushMicrotasks();
         expect(saved.bestOf(3), 3);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a reader that gives the guide lines draws them: no guide judge', () {
+      fakeAsync((async) {
+        final reader = _GuideReader();
+        final rig = _Rig(async, definition: _scripted(reader));
+        rig.goAt(async);
+        rig.frames(async, 500);
+        expect(rig.guideExercises, isEmpty);
+        expect(rig.guide.updates, 0);
+        final guide = rig.viewModel.state.guide;
+        expect(guide.phase, RepPhase.bottom);
+        expect(guide.squatHipY, reader.counting.length.toDouble());
+        expect(guide.squatKneeY, 500);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('the push-up judge keeps the chest guide through a 60 s plank', () {
+      fakeAsync((async) {
+        // The real push-up judge, fed on the test's fake time. (The app's
+        // judge keeps its own stopwatch.)
+        final rig = _Rig(
+          async,
+          stage: 21, // 30, 45 and 60 s.
+          guideJudge: (exercise) =>
+              judgeFor(exercise, clock: () => async.elapsed),
+        );
+        rig.goAt(async);
+        expect(rig.guideExercises, [ExerciseType.pushUp]);
+        for (final seconds in [5, 15, 30, 45]) {
+          rig.frames(async, seconds * 1000 - async.elapsed.inMilliseconds);
+          final guide = rig.viewModel.state.guide;
+          expect(guide.phase, RepPhase.up, reason: 'at $seconds s');
+          expect(guide.topShoulderY, isNotNull, reason: 'at $seconds s');
+        }
+        rig.frames(async, 59900 - async.elapsed.inMilliseconds);
+        expect(rig.viewModel.state.phase, HoldStagePhase.hold);
+        expect(rig.viewModel.state.guide.phase, RepPhase.up);
+        expect(rig.viewModel.state.guide.topShoulderY, isNotNull);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('an entry: the time starting is one started cue', () {
+      fakeAsync((async) {
+        final reader = _Reader()..answer = const HoldReading.broken(_knee);
+        final rig = _Rig(
+          async,
+          stage: 5,
+          definition: _scripted(reader, entry: true, pose: HoldPose.chair),
+        );
+        rig.goAt(async);
+        rig.frames(async, 2000);
+        expect(rig.viewModel.state.progress.state, HoldState.entering);
+        expect(rig.cues, isEmpty);
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 700);
+        expect(rig.viewModel.state.progress.state, HoldState.holding);
+        expect(rig.cues.map((c) => c.kind), [HoldStageCueKind.started]);
+        // A warning and the time running again later: resumed, not started.
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 700);
+        expect(rig.cues.map((c) => c.kind), [
+          HoldStageCueKind.started,
+          HoldStageCueKind.warning,
+          HoldStageCueKind.resumed,
+        ]);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('without an entry the time runs from GO, with no started cue', () {
+      fakeAsync((async) {
+        final rig = _Rig(async);
+        rig.goAt(async);
+        rig.frames(async, 2000);
+        expect(rig.viewModel.state.progress.held, greaterThan(Duration.zero));
+        expect(rig.cues, isEmpty);
         rig.viewModel.dispose();
       });
     });

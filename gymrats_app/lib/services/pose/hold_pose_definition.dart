@@ -2,6 +2,7 @@ import '../../models/arcade_stage.dart';
 import '../../models/exercise_type.dart';
 import '../../models/hold_reading.dart';
 import '../../models/pose_frame.dart';
+import 'rep_judge.dart';
 
 /// Reads one held pose from camera frames: the part of a hold that differs
 /// by pose (arcade hold spec 3, "자세 읽기"). The time and the warnings are
@@ -14,6 +15,17 @@ abstract interface class HoldPoseReader {
   /// baselines from it (the chair pose takes the standing thigh length
   /// there). After GO every frame is read with [counting] false.
   HoldReading read(PoseFrame frame, {required Duration at, bool counting});
+}
+
+/// A pose reader that also gives the state of the guide lines over the
+/// camera, in the shape of the setup exercise judge's snapshot (for the
+/// squat guide: `squatHipY`, `squatKneeY` and `phase`). Without one, the
+/// hold runs the setup exercise's own rep judge from GO for its guide
+/// lines. The chair pose needs this: the squat judge drops a squat after
+/// 12 s down, and with it the lines, while a chair is held for up to 45 s.
+abstract interface class HoldGuideReader implements HoldPoseReader {
+  /// The guide lines' state after the last frame read.
+  JudgeSnapshot get guide;
 }
 
 /// Everything about one held pose that differs by pose, in one bundle

@@ -6,6 +6,7 @@ import 'package:gymrats_app/models/hold_reading.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/pose/hold_judge.dart';
 import 'package:gymrats_app/services/pose/hold_pose_definition.dart';
+import 'package:gymrats_app/services/pose/rep_judge.dart';
 
 const _knee = HoldFault(id: 'knee', cue: ('무릎', '떼요'), icon: HoldIcon.knee);
 const _arm = HoldFault(id: 'arm', cue: ('팔', '펴요'), icon: HoldIcon.blank);
@@ -45,6 +46,18 @@ class _ScriptedReader implements HoldPoseReader {
     calls.add((frame: frame, at: at, counting: counting));
     return answer(frame);
   }
+}
+
+/// A reader that also gives guide lines: its hip height counts its frames.
+class _GuideReader extends _ScriptedReader implements HoldGuideReader {
+  _GuideReader() : super((_) => HoldReading.ok);
+
+  @override
+  JudgeSnapshot get guide => JudgeSnapshot(
+    phase: RepPhase.bottom,
+    squatHipY: calls.length.toDouble(),
+    squatKneeY: 10,
+  );
 }
 
 HoldPoseDefinition _definition(_ScriptedReader reader, {bool entry = false}) =>
@@ -336,6 +349,30 @@ void main() {
         endsAt: const Duration(seconds: 20),
       )..go(Duration.zero);
       expect(judge.progress.state, HoldState.entering);
+    });
+
+    test('a reader without guide lines gives none', () {
+      final judge = HoldJudge(
+        definition: _definition(_ScriptedReader((_) => HoldReading.ok)),
+        endsAt: const Duration(seconds: 20),
+      );
+      expect(judge.readsGuide, isFalse);
+      expect(judge.guide, isNull);
+    });
+
+    test('a reader with guide lines gives its snapshot after each frame', () {
+      final reader = _GuideReader();
+      final judge = HoldJudge(
+        definition: _definition(reader),
+        endsAt: const Duration(seconds: 20),
+      )..go(Duration.zero);
+      expect(judge.readsGuide, isTrue);
+      judge.frame(_frame, _ms(100));
+      expect(judge.guide!.phase, RepPhase.bottom);
+      expect(judge.guide!.squatHipY, 1);
+      expect(judge.guide!.squatKneeY, 10);
+      judge.frame(_frame, _ms(200));
+      expect(judge.guide!.squatHipY, 2);
     });
   });
 
