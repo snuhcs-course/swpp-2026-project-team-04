@@ -63,6 +63,22 @@ final class HoldFault {
   String toString() => 'HoldFault($id)';
 }
 
+/// The floor owner's words over a hold stage besides "삐익!" (the hold
+/// effects spec, 2026-11-24): a cheer at each of the first two stars and
+/// "실패!" at a second warning with no star. A pose's start words are in its
+/// definition, as its warnings are.
+abstract final class HoldWords {
+  /// At the first star and the second.
+  static const cheers = ['좋아!', '잘한다!'];
+
+  /// At a second warning that leaves no star.
+  static const fail = '실패!';
+
+  /// The cheer at star [n]; null for the third, which the clear says.
+  static String? cheer(int n) =>
+      n >= 1 && n <= cheers.length ? cheers[n - 1] : null;
+}
+
 /// What a pose reading made of one frame (spec 3).
 enum HoldReadingKind {
   /// The pose is held.

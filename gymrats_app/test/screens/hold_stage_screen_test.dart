@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/arcade_catalog.dart';
 import 'package:gymrats_app/models/arcade_stage.dart';
@@ -9,16 +10,19 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/hold_reading.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/screens/hold_stage_art.dart';
+import 'package:gymrats_app/screens/hold_stage_brief.dart';
 import 'package:gymrats_app/screens/hold_stage_play.dart';
 import 'package:gymrats_app/screens/hold_stage_result.dart';
 import 'package:gymrats_app/screens/hold_stage_screen.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
+import 'package:gymrats_app/services/audio/background_music.dart';
 import 'package:gymrats_app/services/audio/sound_effects.dart';
 import 'package:gymrats_app/services/audio/sound_services.dart';
 import 'package:gymrats_app/services/audio/sound_settings.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/exercise_judge.dart';
 import 'package:gymrats_app/services/pose/high_plank_hold.dart';
+import 'package:gymrats_app/services/pose/hold_judge.dart';
 import 'package:gymrats_app/services/pose/hold_pose_definition.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -107,6 +111,7 @@ HoldPoseDefinition _plank(_Reader reader) => HoldPoseDefinition(
   faults: highPlankHold.faults,
   silhouette: highPlankHold.silhouette,
   guide: highPlankHold.guide,
+  startWords: highPlankHold.startWords,
 );
 
 const _low = HoldFault(id: 'chair.low', cue: ('더', '앉아요'), icon: HoldIcon.low);
@@ -149,6 +154,7 @@ class _Driver {
   final HoldPoseDefinition Function(_Reader) pose;
   final reader = _Reader();
   final effects = FakeSoundEffects();
+  final music = FakeBackgroundMusic();
   final store = MemoryArcadeProgressStore();
   final setups = <_ScriptedSetup>[];
   Duration now = Duration.zero;
@@ -161,7 +167,7 @@ class _Driver {
   late final sounds = SoundServices(
     settings: SoundSettings(store: MemorySoundSettingsStore()),
     voice: const SilentVoiceGuidance(),
-    music: const SilentBackgroundMusic(),
+    music: music,
     effects: effects,
   );
 
@@ -249,6 +255,31 @@ class _Driver {
       setup.show(_running(frame: pushUpFrame()));
     }
     await tester.pump();
+  }
+
+  /// What a screen reader is told from now on.
+  List<String> listen(WidgetTester tester) {
+    final said = <String>[];
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockDecodedMessageHandler<dynamic>(
+      SystemChannels.accessibility,
+      (message) async {
+        final event = message as Map<dynamic, dynamic>;
+        if (event['type'] == 'announce') {
+          said.add(
+            (event['data'] as Map<dynamic, dynamic>)['message'] as String,
+          );
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => messenger.setMockDecodedMessageHandler<dynamic>(
+        SystemChannels.accessibility,
+        null,
+      ),
+    );
+    return said;
   }
 
   /// One warning for [fault], after a second held.
@@ -627,6 +658,7 @@ void main() {
       await driver.hold(tester, 600, const HoldReading.broken(_low));
       await driver.hold(tester, 700, HoldReading.ok);
       await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await tester.pump(HoldTiming.endShow);
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('클리어!'), findsOneWidget);
       HoldStar star(int i) =>
@@ -646,6 +678,7 @@ void main() {
       await driver.warn(tester, HighPlankFaults.kneeDown);
       await driver.hold(tester, 700, HoldReading.ok);
       await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await tester.pump(HoldTiming.endShow);
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('실패'), findsOneWidget);
       expect(find.text('0:01'), findsOneWidget);
@@ -655,7 +688,22 @@ void main() {
           isFalse,
         );
       }
-      expect(find.text('경고 2번'), findsOneWidget);
+      // The two reasons, in order, where "경고 2번" was (effects spec 5).
+      expect(find.text('경고 2번'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('result-reason-0')),
+          matching: find.text('무릎 떼요'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('result-reason-1')),
+          matching: find.text('더 앉아요'),
+        ),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('result-next')), findsNothing);
       final owner = tester.widget<GymOwnerFigure>(
         find.byType(GymOwnerFigure).last,
@@ -671,6 +719,7 @@ void main() {
       await driver.warn(tester, HighPlankFaults.kneeDown);
       await driver.hold(tester, 700, HoldReading.ok);
       await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await tester.pump(HoldTiming.endShow);
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(find.text('아케이드로'));
       await tester.pump();
@@ -722,6 +771,9 @@ void main() {
         await driver.warn(tester, HighPlankFaults.kneeDown);
         await driver.hold(tester, 700, HoldReading.ok);
         await driver.hold(tester, 600, const HoldReading.broken(_low));
+        expect(find.text('실패!'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pump(HoldTiming.endShow);
         await tester.pump(const Duration(milliseconds: 100));
         expect(find.text('다시 도전'), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -806,6 +858,290 @@ void main() {
     });
   });
 
+  group('the owner\'s bubbles, the sounds and the music (effects spec)', () {
+    HoldOwner owner(WidgetTester tester) =>
+        tester.widget<HoldOwner>(find.byKey(const ValueKey('hold-owner')));
+
+    testWidgets('GO: "그대로 버텨!" in the white bubble for 2 s, read out', (
+      tester,
+    ) async {
+      final driver = _Driver();
+      final said = driver.listen(tester);
+      await driver.open(tester);
+      await driver.go(tester);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('hold-start')),
+          matching: find.text('그대로 버텨!'),
+        ),
+        findsOneWidget,
+      );
+      expect(said, contains('그대로 버텨!'));
+      await driver.hold(tester, 1000);
+      expect(find.byKey(const ValueKey('hold-start')), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.byKey(const ValueKey('hold-start')), findsNothing);
+    });
+
+    testWidgets('a warning takes the start bubble\'s place', (tester) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      expect(find.byKey(const ValueKey('hold-start')), findsNothing);
+      expect(find.byKey(const ValueKey('hold-whistle')), findsOneWidget);
+    });
+
+    testWidgets('the first and second stars: a lime cheer, a smile, a pop '
+        'and the good sound, once each', (tester) async {
+      final driver = _Driver(); // Stage 3: 15, 20 and 30 s.
+      final said = driver.listen(tester);
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.hold(tester, 15200);
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('hold-cheer')),
+          matching: find.text('좋아!'),
+        ),
+        findsOneWidget,
+      );
+      expect(owner(tester).face, GymOwnerFace.ok);
+      expect(find.byKey(const ValueKey('hold-star-pop-0')), findsOneWidget);
+      expect(
+        driver.effects.played.where((e) => e == SoundEffect.good),
+        hasLength(1),
+      );
+      expect(said, contains('15초, 별 하나, 좋아!'));
+      await tester.pump(HoldTiming.cheer);
+      expect(find.byKey(const ValueKey('hold-cheer')), findsNothing);
+      expect(owner(tester).face, GymOwnerFace.watch);
+      expect(find.byKey(const ValueKey('hold-star-pop-0')), findsNothing);
+      await driver.hold(tester, 5000);
+      await tester.pump();
+      expect(find.text('잘한다!'), findsOneWidget);
+      expect(find.byKey(const ValueKey('hold-star-pop-1')), findsOneWidget);
+      expect(
+        driver.effects.played.where((e) => e == SoundEffect.good),
+        hasLength(2),
+      );
+      // The third star is the clear: no cheer and no sound for it.
+      await driver.hold(tester, 10000);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('클리어!'), findsOneWidget);
+      expect(
+        driver.effects.played.where((e) => e == SoundEffect.good),
+        hasLength(2),
+      );
+    });
+
+    testWidgets('the cheer ends at the owner on every floor', (tester) async {
+      for (final (stage, owner) in [
+        (9, 'penguin'),
+        (15, 'kangaroo'),
+        (21, 'bear'),
+      ]) {
+        final driver = _Driver(stage: stage);
+        await driver.open(tester);
+        await driver.go(tester);
+        final first = ArcadeCatalog.stage(stage) as ArcadeHoldStage;
+        await driver.hold(tester, first.starSeconds.first * 1000 + 200);
+        await tester.pump();
+        final positioned = tester.widget<Positioned>(
+          find
+              .ancestor(
+                of: find.byKey(const ValueKey('hold-cheer')),
+                matching: find.byType(Positioned),
+              )
+              .first,
+        );
+        expect(positioned.right, holdBigBubbleRight[owner], reason: owner);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      }
+    });
+
+    for (final (size, scale) in [
+      (const Size(360, 780), 1.3),
+      (const Size(320, 640), 1.3),
+      (const Size(320, 640), 1.0),
+    ]) {
+      testWidgets('"잘한다!" fits ${size.width.toInt()} × '
+          '${size.height.toInt()} at ${scale}x text', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final driver = _Driver();
+        await driver.open(tester, size: size);
+        await tester.ensureVisible(find.text('자세 잡기'));
+        await tester.pump();
+        await driver.go(tester);
+        expect(find.byKey(const ValueKey('hold-start')), findsOneWidget);
+        await driver.hold(tester, 20200);
+        await tester.pump(HoldTiming.failPop);
+        expect(find.text('잘한다!'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('with reduced motion the stars do not pop', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.hold(tester, 15200);
+      await tester.pump();
+      expect(find.text('좋아!'), findsOneWidget);
+      expect(find.byKey(const ValueKey('hold-star-pop-0')), findsNothing);
+    });
+
+    testWidgets('a warning takes the cheer\'s place', (tester) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.hold(tester, 15200);
+      await tester.pump();
+      expect(find.text('좋아!'), findsOneWidget);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      expect(find.text('좋아!'), findsNothing);
+      expect(find.byKey(const ValueKey('hold-whistle')), findsOneWidget);
+      expect(owner(tester).face, GymOwnerFace.blow);
+    });
+
+    testWidgets('a second warning with no star: "실패!" over the stage, the '
+        'warning kept below for 1.5 s, then the reasons in order', (
+      tester,
+    ) async {
+      final driver = _Driver();
+      final said = driver.listen(tester);
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.warn(tester, HighPlankFaults.kneeDown);
+      await driver.hold(tester, 700, HoldReading.ok);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await tester.pump(HoldTiming.failPop);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('hold-fail')),
+          matching: find.text('실패!'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('hold-whistle')), findsNothing);
+      expect(find.text('더\n앉아요'), findsOneWidget);
+      expect(find.text('멈춤'), findsOneWidget);
+      expect(_frameColor(tester), AppColors.danger);
+      expect(owner(tester).face, GymOwnerFace.blow);
+      expect(said.sublist(said.length - 2), ['경고 2번, 더 앉아요', '실패!']);
+      // The lose jingle starts now, as a battle's does when it ends.
+      expect(driver.music.played.last, MusicCue.lose);
+      // Nothing is judged in the moment: the frames are not even read.
+      final seen = driver.viewModel.lastFrame;
+      await driver.hold(tester, 1000, const HoldReading.broken(_low));
+      expect(identical(driver.viewModel.lastFrame, seen), isTrue);
+      await tester.pump(const Duration(milliseconds: 1000));
+      expect(find.text('실패!'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('다시 도전'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('result-reason-0')),
+          matching: find.text('무릎 떼요'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('result-reason-1')),
+          matching: find.text('더 앉아요'),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the battle\'s music at the battle\'s moments', (tester) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      expect(driver.music.played, isEmpty);
+      await driver.startPose(tester);
+      expect(driver.music.played.last, MusicCue.setup);
+      driver.setup.show(_running(frame: pushUpFrame()));
+      await driver.countdown(tester, 1500);
+      expect(driver.music.played.last, MusicCue.setup);
+      driver.setup.show(_running(frame: pushUpFrame(), started: true));
+      await tester.pump();
+      expect(driver.music.played.last, MusicCue.battle);
+      await driver.hold(tester, 31000);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(driver.music.played.last, MusicCue.win);
+      // Closing on a result keeps its jingle.
+      await tester.tap(find.text('다음 스테이지'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(driver.music.played.last, MusicCue.win);
+    });
+
+    testWidgets('a clear ended by warnings plays the win jingle at once', (
+      tester,
+    ) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.hold(tester, 16000);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await driver.hold(tester, 700, HoldReading.ok);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      expect(find.byKey(const ValueKey('hold-whistle')), findsOneWidget);
+      expect(find.text('실패!'), findsNothing);
+      expect(driver.music.played.last, MusicCue.win);
+      await tester.pump(HoldTiming.endShow);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('클리어!'), findsOneWidget);
+    });
+
+    testWidgets('a second warning with no star plays the lose jingle at once', (
+      tester,
+    ) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.warn(tester, HighPlankFaults.kneeDown);
+      await driver.hold(tester, 700, HoldReading.ok);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      expect(driver.music.played.last, MusicCue.lose);
+      await tester.pump(HoldTiming.endShow);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(driver.music.played.last, MusicCue.lose);
+    });
+
+    testWidgets('leaving before a result brings the menu music back', (
+      tester,
+    ) async {
+      final left = _Driver();
+      await left.open(tester);
+      await left.go(tester);
+      await left.hold(tester, 1000);
+      await tester.tap(find.bySemanticsLabel('게임 나가기'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ExitDialog),
+          matching: find.text('게임 나가기'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(left.exit, HoldStageExit.left);
+      expect(left.music.played.last, MusicCue.menu);
+    });
+  });
+
   group('the chair pose\'s drawings, with a stand-in bundle', () {
     testWidgets('its briefing icon, words and checks', (tester) async {
       final driver = _Driver(stage: 5, pose: _chair);
@@ -872,17 +1208,30 @@ void main() {
         ),
         '경고 1번, 무릎 떼요',
       );
+      // The first two stars with the owner's cheer (effects spec 6).
       expect(
         holdAnnouncement(
           const HoldStageCue(HoldStageCueKind.star, count: 1, seconds: 20),
         ),
-        '20초, 별 하나',
+        '20초, 별 하나, 좋아!',
       );
       expect(
         holdAnnouncement(
           const HoldStageCue(HoldStageCueKind.star, count: 2, seconds: 30),
         ),
-        '30초, 별 둘',
+        '30초, 별 둘, 잘한다!',
+      );
+      expect(
+        holdAnnouncement(
+          const HoldStageCue(HoldStageCueKind.star, count: 3, seconds: 45),
+        ),
+        '45초, 별 셋',
+      );
+      expect(
+        holdAnnouncement(
+          const HoldStageCue(HoldStageCueKind.callout, words: '실패!'),
+        ),
+        '실패!',
       );
       expect(
         holdAnnouncement(const HoldStageCue(HoldStageCueKind.ended, count: 3)),

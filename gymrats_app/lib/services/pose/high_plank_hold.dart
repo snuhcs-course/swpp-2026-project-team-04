@@ -41,6 +41,7 @@ final highPlankHold = HoldPoseDefinition(
   faults: HighPlankFaults.all,
   silhouette: HoldSilhouette.plank,
   guide: HoldGuide.chestHeight,
+  startWords: const ['그대로 버텨!'],
 );
 
 /// Reads a high plank from the front camera, where the push-up is read

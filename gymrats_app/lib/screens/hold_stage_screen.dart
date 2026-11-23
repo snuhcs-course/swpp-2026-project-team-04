@@ -8,8 +8,10 @@ import 'package:provider/provider.dart';
 import '../models/arcade_catalog.dart';
 import '../models/arcade_stage.dart';
 import '../models/character_rig.dart';
+import '../models/hold_reading.dart';
 import '../models/setup_silhouette_alignment.dart';
 import '../services/arcade/arcade_progress_store.dart';
+import '../services/audio/background_music.dart';
 import '../services/audio/sound_effects.dart';
 import '../services/audio/sound_services.dart';
 import '../services/device/device_controls.dart';
@@ -46,8 +48,19 @@ enum HoldStageExit {
 /// account none are kept. A warning plays the battle's reject sound,
 /// following the sound settings (spec 12, user 2026-11-23), and a screen
 /// reader hears the warnings, the time running again, the time starting
-/// after an entry, each star and the end (spec 8).
+/// after an entry, each star and the end (spec 8), and the owner's bubbles
+/// (the hold effects spec 6).
+///
+/// The music is the battle's, at the battle's moments (the effects spec 2,
+/// `BattleSounds.musicFor`): the setup's track through the setup and the
+/// 3·2·1, the battle track while holding, the win or lose jingle on the
+/// result. Leaving before a result brings the menu music back, as a battle
+/// does. A filled first or second star plays the short [starSound].
 class HoldStageScreen extends StatefulWidget {
+  /// The sound of a filled first or second star: the app's short "good"
+  /// hit (effects spec 4).
+  static const starSound = SoundEffect.good;
+
   const HoldStageScreen({
     super.key,
     required this.stage,
@@ -89,8 +102,15 @@ class _HoldStageScreenState extends State<HoldStageScreen>
     duration: const Duration(milliseconds: 700),
   );
   HoldStagePhase _shownPhase = HoldStagePhase.brief;
+
+  /// Whether a second warning's moment was shown: its jingle starts then.
+  bool _shownEnding = false;
   bool _askingToLeave = false;
   bool _closed = false;
+
+  /// Whether a result is on screen: its jingle goes on when the screen
+  /// closes, as after a battle.
+  bool _decided = false;
 
   @override
   void initState() {
@@ -125,7 +145,14 @@ class _HoldStageScreenState extends State<HoldStageScreen>
   }
 
   void _onChanged() {
-    final phase = _viewModel.state.phase;
+    final state = _viewModel.state;
+    if (state.ending && !_shownEnding) {
+      // The stage ended on a second warning: the jingle starts now, as a
+      // battle's does when it ends, before its result shows.
+      _sounds.music.play(_jingle(state));
+    }
+    _shownEnding = state.ending;
+    final phase = state.phase;
     if (phase == _shownPhase) return;
     final was = _shownPhase;
     _shownPhase = phase;
@@ -137,6 +164,7 @@ class _HoldStageScreenState extends State<HoldStageScreen>
     if (phase == HoldStagePhase.hold) {
       _go.forward(from: 0);
     }
+    _playMusic(phase);
     if (_askingToLeave && phase == HoldStagePhase.result) {
       // The hold ended while asking: the question no longer applies.
       _askingToLeave = false;
@@ -144,10 +172,30 @@ class _HoldStageScreenState extends State<HoldStageScreen>
     }
   }
 
+  /// The battle's music for [phase] (`BattleSounds.musicFor`); the briefing
+  /// keeps what plays.
+  void _playMusic(HoldStagePhase phase) {
+    _decided = phase == HoldStagePhase.result;
+    final cue = switch (phase) {
+      HoldStagePhase.brief => null,
+      HoldStagePhase.setup || HoldStagePhase.countdown => MusicCue.setup,
+      HoldStagePhase.hold => MusicCue.battle,
+      HoldStagePhase.result => _jingle(_viewModel.state),
+    };
+    if (cue != null) _sounds.music.play(cue);
+  }
+
+  static MusicCue _jingle(HoldStageState state) =>
+      state.stars.cleared ? MusicCue.win : MusicCue.lose;
+
   void _onCue(HoldStageCue cue) {
     if (!mounted) return;
     if (cue.kind == HoldStageCueKind.warning) {
       _sounds.effects.play(SoundEffect.reject);
+    }
+    if (cue.kind == HoldStageCueKind.star &&
+        HoldWords.cheer(cue.count) != null) {
+      _sounds.effects.play(HoldStageScreen.starSound);
     }
     SemanticsService.sendAnnouncement(
       View.of(context),
@@ -211,6 +259,8 @@ class _HoldStageScreenState extends State<HoldStageScreen>
     _viewModel.dispose();
     _go.dispose();
     _sounds.effects.release();
+    // Left before a result: the menu music, as when a battle is left.
+    if (!_decided) _sounds.music.play(MusicCue.menu);
     super.dispose();
   }
 
@@ -259,6 +309,7 @@ class _HoldStageScreenState extends State<HoldStageScreen>
             floor: viewModel.floor,
             held: state.progress.held,
             litStars: state.stars.lit,
+            warnings: state.progress.warnings,
             myCharacter: widget.myCharacter,
             onPlayAgain: viewModel.playAgain,
             onNextStage: () => _close(HoldStageExit.nextStage),
@@ -293,7 +344,11 @@ String holdAnnouncement(HoldStageCue cue) => switch (cue.kind) {
   HoldStageCueKind.warning => '경고 ${cue.count}번, ${cue.fault!.words}',
   HoldStageCueKind.resumed => '시간이 다시 흘러요',
   HoldStageCueKind.started => '시작',
-  HoldStageCueKind.star => '${cue.seconds}초, 별 ${_count(cue.count)}',
+  HoldStageCueKind.star => switch (HoldWords.cheer(cue.count)) {
+    final cheer? => '${cue.seconds}초, 별 ${_count(cue.count)}, $cheer',
+    null => '${cue.seconds}초, 별 ${_count(cue.count)}',
+  },
+  HoldStageCueKind.callout => cue.words!,
   HoldStageCueKind.ended =>
     cue.count == 0 ? '실패' : '클리어, 별 ${_count(cue.count)}',
 };
