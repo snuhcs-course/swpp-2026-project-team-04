@@ -181,3 +181,14 @@ P16 세션이 A4 파일에서 넘침 두 곳을 찾았다. 지금 하고 있는 
 3. task.md A5 Decisions에 오늘 날짜로 \"명세의 '서 있는 동안 기준을 따라감'을 GO 전까지로 좁힘\"과 그 이유를 적고, PR 본문에도 적는다.
 4. analyze, test, reviewer를 돌리고 push한다. 그다음 PR #92에 Codex 리뷰를 요청하고, 지적이 오면 고쳐서 보고해 줘.
 </pasted_content id=\"a37d\">"
+
+## 2026-11-24 · Woohyun Song · codex/iter5-hold-chair
+<!-- dfb39c07 2026-11-23T16:54:23.559Z -->
+[Woohyun Song, 11-24 01:54] "<pasted_content id=\"a37d\">
+A4 PR #90에 Codex 리뷰(be6509a)가 왔다. P2 \"Check each arm against the plank angle\"다. high_plank_hold.dart의 팔 굽힘 판정에 쓰는 metrics.elbowAngle은 두 팔의 평균이라, 한 팔 180°와 다른 팔 130°면 평균 155°로 통과해 한 팔을 굽힌 채 시간과 별을 얻을 수 있다는 지적이다. 맞는 지적이니 A4 브랜치에서 고치자.
+1. codex/iter5-hold-plank로 바꿔서, 신뢰도 기준을 넘는 팔마다 각도를 따로 재고, 가장 덜 펴진 팔이 기준(setup.pushUpArmAngle)보다 작으면 팔 굽힘으로 본다. 한 팔만 보이면 그 팔로 본다. 기존 판정 코드(pose_metrics 등)는 고치지 말고 high_plank_hold.dart 안에서 계산한다.
+2. 한 팔만 굽힌 경우(예: 180°와 130°)의 테스트를 더한다.
+3. A4 기록(task.md A4 Decisions, 테스트 기록 A4 절)에 적고, reviewer를 돌리고 push한다. Codex 지적 스레드에는 고친 커밋과 테스트 이름을 답글로 남긴다.
+4. codex/iter5-hold-chair로 돌아와 hold-plank를 그냥 git merge로 받아 오고 push한다.
+5. 끝나면 보고해 줘. 그다음 내가 이 폴더에서 폰 확인을 한다.
+</pasted_content id=\"a37d\">"

@@ -293,12 +293,17 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 - **A4 changes made from this session** (on A4's branch, then merged here; the user's decisions): `014e4f0` guide lines
   from the reader, `1c325ab` "시작" after an entry, `397f498` a test comment, `f78ac2b` the result screen on small
   screens (overflows found by the P16 session), with their testing notes `82e281a` and `be6509a`.
+- **Codex reviews (2026-11-24):** on PR #92 at `fe3460c` the bot's one finding (P2, freeze the standing baseline at
+  GO) was already the code since `77e1a75`, so Claude Code answered on the thread with the code lines and tests and
+  changed nothing. On PR #90 at `be6509a` its finding (P2, one bent arm passing on the mean of both) was right: Claude
+  Code fixed it on A4's branch (`4ef8a2f`, notes `ed76b18`, 3 tests), answered on the thread and merged it here
+  (`adeb74f`).
 - **The follow-up of 2026-11-24** (the user's decision): `77e1a75` keeps the 3·2·1's standing thigh from GO on (the
   spec's "follows while standing" narrowed to before GO), with 7 new tests, among them a slow sit over 3, 4 and 6 s.
 - **Checking against the design:** the chair scenes captured with the app's fonts in a throwaway widget test (deleted)
   and compared by eye with the hand-off's shots (testing notes, A5 entry).
 - **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1), on
-  these notes (runs 2–3) and on the follow-up of 2026-11-24 (run 4).
+  these notes (runs 2–3), on the follow-up of 2026-11-24 (run 4), and on A4's one-arm fix (A4 run 8).
 - **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
   Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
   also holds the A3 and A4 sessions). Two fixes, the prompts
@@ -320,6 +325,8 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   확인하고, 오래 버티면 같은 식으로 사라지면 같은 커밋에서 함께 고쳐 줘."
 - [Woohyun Song, 11-24] (pasted; excerpt) "깊이 기준은 폰 확인을 기다리지 말고 지금 고치자. 천천히 앉을 때 기준이 같이
   내려가서 깊이가 낮게 읽히기 때문이다(reviewer 시뮬레이션에서 0.8이 0.73~0.75로 읽힘)."
+- [Woohyun Song, 11-24] (pasted; excerpt) "A4 PR #90에 Codex 리뷰(be6509a)가 왔다. P2 \"Check each arm against the plank
+  angle\"다. … 맞는 지적이니 A4 브랜치에서 고치자."
 
 ### c. What AI did well
 - **Found A4's gaps before building on them.** Reading A4's view model against the spec's sections 5 and 6 showed that
@@ -379,6 +386,14 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   claim (now limited to the 3·2·1), item e's "the spec only allowed" (the spec ties changes to the phone check), and a
   test named "halfway up" that never went halfway up. Left for the phone check, as the user's wording asks for it: a
   standing thigh taken after GO is taken once, so a slow rise after GO can fix it before the user is fully up.
+
+- **A mean that hid one bent arm (A4, found by Codex).** A4's high plank reader (also written by Claude Code)
+  checked bent arms on `PoseMetrics.elbowAngle`, the mean of both arms, so 180° and 130° made 155° and passed. No
+  local reviewer run had caught it; the Codex review on PR #90 did. Fixed with the less straight arm (`4ef8a2f`).
+- **A stale finding from Codex.** On PR #92 Codex asked to freeze the standing baseline at GO, which the head it
+  reviewed already did; checked against the code and tests and answered instead of changed.
+- **Comments naming the review tool:** the first one-arm commit's comments said "Codex review on A4"; code may carry
+  only the AI marker, so they now say "PR #90 review" (reviewer A4 run 8, Minor; fixed before the push).
 
 ### e. Prompt revisions
 - Before (the user's answer, 2026-11-23): "A4 브랜치에서 고치고 merge (Recommended)".
