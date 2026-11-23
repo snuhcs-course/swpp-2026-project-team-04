@@ -7,11 +7,9 @@ import '../models/arcade_stage.dart';
 import '../models/battle_result.dart';
 import '../models/character_rig.dart';
 import '../services/arcade/arcade_progress_store.dart';
-import '../services/pose/hold_poses.dart';
 import '../viewmodels/arcade_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/character_viewmodel.dart';
-import '../viewmodels/hold_stage_viewmodel.dart';
 import 'arcade_boss_screen.dart';
 import 'arcade_result_screen.dart';
 import 'hold_stage_screen.dart';
@@ -59,10 +57,8 @@ abstract final class ArcadeFlow {
   }
 
   /// Hold stage [stage]'s screen (A4, P16 spec 8), keeping its stars in
-  /// [store] for [accountId], the arcade's own. Until A5 (the chair pose)
-  /// is merged, a chair stage (5, 11, 17, 23) runs as a high plank: only
-  /// the way in changes; the stage's data, its star seconds included,
-  /// stay as they are (task.md P16-4 fallback). Remove it with A5.
+  /// [store] for [accountId], the arcade's own. The screen judges the
+  /// stage's own pose: the high plank (A4) or the chair pose (A5).
   static HoldStageScreen holdScreen(
     ArcadeHoldStage stage, {
     required String myCharacter,
@@ -73,14 +69,6 @@ abstract final class ArcadeFlow {
     myCharacter: myCharacter,
     progressStore: store,
     accountId: accountId,
-    createViewModel: stage.pose == HoldPose.chair
-        ? () => HoldStageViewModel(
-            stage: stage.number,
-            definition: HoldPoses.of(HoldPose.plank),
-            store: store,
-            accountId: accountId,
-          )
-        : null,
   );
 
   /// Opens hold stage [stage] over the map, and tells how it was left

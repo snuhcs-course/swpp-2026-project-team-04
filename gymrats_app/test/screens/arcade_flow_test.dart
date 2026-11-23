@@ -16,7 +16,6 @@ import 'package:gymrats_app/screens/arcade_result_screen.dart';
 import 'package:gymrats_app/screens/arcade_screen.dart';
 import 'package:gymrats_app/screens/hold_stage_result.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
-import 'package:gymrats_app/services/pose/hold_poses.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
 import 'package:gymrats_app/widgets/arcade_stage_sheet.dart';
@@ -475,7 +474,8 @@ void main() {
       expect(screen.createViewModel, isNull);
     });
 
-    test('until A5, a chair stage runs as a high plank; its data stay', () {
+    test("a chair stage opens A4's screen as it is too, which judges the "
+        'chair pose (A5)', () {
       final store = MemoryArcadeProgressStore();
       final screen = ArcadeFlow.holdScreen(
         chair,
@@ -483,26 +483,33 @@ void main() {
         store: store,
         accountId: 1,
       );
+      expect(chair.pose, HoldPose.chair);
       expect(screen.stage, 5);
-      final viewModel = screen.createViewModel!();
-      addTearDown(viewModel.dispose);
-      expect(viewModel.definition, same(HoldPoses.of(HoldPose.plank)));
-      expect(viewModel.stage, same(chair));
-      expect(viewModel.stage.pose, HoldPose.chair);
-      expect(viewModel.stage.starSeconds, chair.starSeconds);
-      expect(viewModel.store, same(store));
-      expect(viewModel.accountId, 1);
+      expect(screen.progressStore, same(store));
+      expect(screen.accountId, 1);
+      expect(screen.createViewModel, isNull);
     });
 
-    test('every chair stage takes the fallback, no plank stage does', () {
-      for (final stage in ArcadeCatalog.stages.whereType<ArcadeHoldStage>()) {
-        final screen = ArcadeFlow.holdScreen(stage, myCharacter: 'mouse');
+    test(
+      'no hold stage gets a stand-in view model: each runs its own pose',
+      () {
+        final stages = ArcadeCatalog.stages.whereType<ArcadeHoldStage>();
         expect(
-          screen.createViewModel != null,
-          stage.pose == HoldPose.chair,
-          reason: 'STAGE ${stage.number}',
+          stages
+              .where((stage) => stage.pose == HoldPose.chair)
+              .map((s) => s.number),
+          [5, 11, 17, 23],
         );
-      }
-    });
+        for (final stage in stages) {
+          final screen = ArcadeFlow.holdScreen(stage, myCharacter: 'mouse');
+          expect(screen.stage, stage.number, reason: 'STAGE ${stage.number}');
+          expect(
+            screen.createViewModel,
+            isNull,
+            reason: 'STAGE ${stage.number}',
+          );
+        }
+      },
+    );
   });
 }

@@ -12,11 +12,13 @@ import 'package:gymrats_app/screens/arcade_boss_screen.dart';
 import 'package:gymrats_app/screens/arcade_screen.dart';
 import 'package:gymrats_app/screens/hold_stage_screen.dart';
 import 'package:gymrats_app/services/audio/sound_services.dart';
+import 'package:gymrats_app/services/pose/hold_poses.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
 import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/hold_stage_viewmodel.dart';
 import 'package:gymrats_app/widgets/arcade_map.dart';
 import 'package:gymrats_app/widgets/arcade_stage_sheet.dart';
 import 'package:provider/provider.dart';
@@ -333,6 +335,24 @@ void main() {
     expect(screen.accountId, 1);
     expect(screen.myCharacter, chosen);
     expect(screen.createViewModel, isNull);
+    expect(holds, isEmpty);
+  });
+
+  testWidgets('a chair stage opens the hold screen with the chair pose '
+      '(A5), not a stand-in', (tester) async {
+    SoundServices.shared = SoundServices.silent();
+    addTearDown(() => SoundServices.shared = null);
+    await open(tester, progress: _progress([3, 2, 3, 3]), realHold: true);
+    await tapCell(tester, 5);
+    final screen = tester.widget<HoldStageScreen>(find.byType(HoldStageScreen));
+    expect(screen.stage, 5);
+    expect(screen.createViewModel, isNull);
+    final viewModel = Provider.of<HoldStageViewModel>(
+      tester.element(find.text('STAGE 5 · 1F')),
+      listen: false,
+    );
+    expect(viewModel.definition, same(HoldPoses.of(HoldPose.chair)));
+    expect(find.text('의자 자세'), findsOneWidget);
     expect(holds, isEmpty);
   });
 
