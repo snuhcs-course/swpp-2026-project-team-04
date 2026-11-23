@@ -128,6 +128,29 @@ class OnlineBattleSession extends ChangeNotifier {
   bool connected = false, opponentConnected = true;
   bool authenticationRejected = false;
   Set<String> readyPlayers = {};
+
+  /// Players whose setup camera is on, as the server reported them
+  /// (`match.setup_state`, P12).
+  Set<String> setupPlayers = {};
+
+  /// When the server cancels the match unless both are ready: set once both
+  /// setups are open; null before, and with an older server.
+  int? setupDeadlineMs;
+
+  /// The `match.setup` request sent, so the server's answer to it is known.
+  String? _setupRequest;
+
+  /// Errors to `match.setup` after which it is not sent again.
+  /// How long after a turned-down `match.setup` it may be sent again; the
+  /// camera reports the open setup on every frame.
+  static const setupRetryMs = 1000;
+  int _setupRetryAt = 0;
+
+  static const _setupAnswersToKeep = {
+    'UNKNOWN_TYPE',
+    'INVALID_STATE',
+    'MATCH_NOT_FOUND',
+  };
   PoseFrame? opponentFrame;
   Map<String, dynamic>? result;
   int get serverNow =>
@@ -157,6 +180,19 @@ class OnlineBattleSession extends ChangeNotifier {
       remainingMs > 0 &&
       !terminal;
   bool get canReady => connected && phase == OnlinePhase.preparing;
+
+  /// Whole seconds left of the setup time while preparing; null when it is
+  /// not counting (one setup not open yet, an older server, or after it).
+  int? get setupSecondsLeft {
+    final deadline = setupDeadlineMs;
+    if (deadline == null || phase != OnlinePhase.preparing) return null;
+    return ((deadline - serverNow) / 1000).ceil().clamp(0, 60);
+  }
+
+  /// Cancelled because the setup time ran out: nobody won or lost.
+  bool get setupTimedOut =>
+      phase == OnlinePhase.cancelled &&
+      result?['reason'] == battleSetupTimeoutReason;
 
   /// The user's share of the health bar, from 0 to 1.
   double get myBarShare => rules?.barShare(myScore - opponentScore) ?? .5;
@@ -336,6 +372,8 @@ class OnlineBattleSession extends ChangeNotifier {
             readyPlayers = (p['ready_player_ids'] as List)
                 .cast<String>()
                 .toSet();
+          case 'match.setup_state':
+            _readSetup(p);
           case 'match.start':
             startAtMs = (p['start_at_ms'] as num).toInt();
             endAtMs = (p['end_at_ms'] as num).toInt();
@@ -405,7 +443,15 @@ class OnlineBattleSession extends ChangeNotifier {
       }
       if (type == 'error') {
         final code = p['code'];
-        if (code == 'REP_OUT_OF_ORDER') {
+        if (_setupRequest != null && m['request_id'] == _setupRequest) {
+          // An older server, which has no setup time, or a match that ended
+          // meanwhile: nothing to tell. Anything else (too many requests):
+          // the next setupOpened sends it again.
+          if (!_setupAnswersToKeep.contains(code)) {
+            _setupRequest = null;
+            _setupRetryAt = _clock.elapsedMilliseconds + setupRetryMs;
+          }
+        } else if (code == 'REP_OUT_OF_ORDER') {
           for (final message in _pending.values) {
             _send(message);
           }
@@ -508,6 +554,10 @@ class OnlineBattleSession extends ChangeNotifier {
     startAtMs = p['start_at_ms'] as int?;
     endAtMs = p['end_at_ms'] as int?;
     readyPlayers = (p['ready_player_ids'] as List).cast<String>().toSet();
+    _readSetup(p);
+    // The server has not got the user's open setup (lost with the old
+    // connection): the next setupOpened sends it again.
+    if (!setupPlayers.contains(playerId)) _setupRequest = null;
     final scores = object(p['scores']),
         mine = object(scores[playerId]),
         other = object(scores[opponent!.id]);
@@ -548,6 +598,28 @@ class OnlineBattleSession extends ChangeNotifier {
         _send(message);
       }
     }
+  }
+
+  /// The setup's numbers in a server message; an older server sends none.
+  void _readSetup(Map<String, dynamic> p) {
+    if (p['setup_player_ids'] case final List ids) {
+      setupPlayers = ids.cast<String>().toSet();
+    }
+    final deadline = p['setup_deadline_ms'];
+    setupDeadlineMs = deadline == null
+        ? null
+        : integer(deadline, 0, 0x1fffffffffffff);
+  }
+
+  /// Tells the server the setup camera is on, once per match: the setup
+  /// time counts from both. Sent again only when the server has not got it
+  /// (a snapshot without the user, after a lost connection).
+  void setupOpened() {
+    if (!canReady || setupPlayers.contains(playerId)) return;
+    if (_setupRequest != null) return;
+    if (_clock.elapsedMilliseconds < _setupRetryAt) return;
+    _setupRequest = _rid();
+    _send(_message('match.setup', {}, requestId: _setupRequest));
   }
 
   void ready(bool value) {

@@ -57,7 +57,13 @@ class OnlineBattleScreen extends StatefulWidget {
     this.playerName = '나',
     this.onCue,
     this.onSetup,
+    this.offerRematch = false,
   });
+
+  /// Whether a battle cancelled before its start (the setup time ran out,
+  /// the opponent left) offers 다시 매칭: the screen then closes with
+  /// `true`, and whoever opened it searches again (P12).
+  final bool offerRematch;
   final OnlineBattleSession session;
   final RepCounterViewModel Function()? createCounter;
   final SetupConfig setupConfig;
@@ -157,6 +163,16 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       _readyRequest = true;
       session.ready(true);
     }
+  }
+
+  /// The last seconds of the setup time, which the setup cue counts; the
+  /// server cancels the match when they are over (P12).
+  static const _setupWarningSeconds = 5;
+
+  /// Seconds of the setup time left, once few enough to warn about.
+  int? get _setupWarning {
+    final left = session.setupSecondsLeft;
+    return left != null && left <= _setupWarningSeconds ? left : null;
   }
 
   /// Whole seconds left before the local hold ends.
@@ -461,6 +477,12 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     session.publishPose(
       usable && frame != null && frame.hasPerson ? frame : null,
     );
+    if (!_roundStarted &&
+        !session.terminal &&
+        state.phase == CounterPhase.running) {
+      // The setup camera is on: the setup time may count (P12).
+      session.setupOpened();
+    }
     if (!_roundStarted && !session.terminal) {
       if (!usable || frame == null) {
         _invalidateSetupPose();
@@ -497,13 +519,33 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   /// setup wants.
   SetupHintShort get _setupCue {
     if (!session.connected) return const SetupHintShort.reconnecting();
+    final warning = _setupWarning;
     if (_iAmReady && _setupReady && _readyHoldComplete) {
-      return const SetupHintShort.waitingForOpponent();
+      const waiting = SetupHintShort.waitingForOpponent();
+      if (warning == null) return waiting;
+      return SetupHintShort(
+        first: waiting.first,
+        second: waiting.second,
+        icon: waiting.icon,
+        state: waiting.state,
+        message: '${waiting.message} $warning초 안에 상대가 준비하지 않으면 경기가 취소돼요.',
+      );
     }
     final outside = _setupStatus.reason == SetupReason.ready && !_setupReady;
     final seconds = _autoReadySeconds;
-    if (!outside && seconds != null) return SetupHintShort.autoReady(seconds);
-    return SetupHintShort.of(_setupStatus, outsideSilhouette: outside);
+    // The auto ready, unless the setup time ends before it would.
+    if (!outside && seconds != null && (warning == null || warning > seconds)) {
+      return SetupHintShort.autoReady(seconds);
+    }
+    final cue = SetupHintShort.of(_setupStatus, outsideSilhouette: outside);
+    if (warning == null) return cue;
+    return SetupHintShort(
+      first: '$warning초 후',
+      second: '취소돼요',
+      icon: cue.icon,
+      state: SetupCueState.notice,
+      message: '$warning초 안에 준비하지 않으면 경기가 취소돼요. ${cue.message}',
+    );
   }
 
   /// The camera area's one line once the setup is over.
@@ -520,6 +562,17 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       return '서버의 최종 결과를 기다리는 중…';
     }
     return session.error;
+  }
+
+  /// Set once the ended screen was closed: a second tap during the pop
+  /// would otherwise close the screen under it too.
+  bool _closed = false;
+
+  /// Closes the ended screen once; with [rematch], asks for a new search.
+  void _close({bool rematch = false}) {
+    if (_closed || !mounted) return;
+    _closed = true;
+    Navigator.pop(context, rematch ? true : null);
   }
 
   /// Opens the result in this screen's place, once the server's result is
@@ -594,7 +647,13 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   Widget build(BuildContext context) {
     if (_endedWithoutResult) {
       _sounds.ended();
-      return _Ended(session: session, onHome: () => Navigator.pop(context));
+      return _Ended(
+        session: session,
+        onHome: _close,
+        onRematch: widget.offerRematch && session.phase == OnlinePhase.cancelled
+            ? () => _close(rematch: true)
+            : null,
+      );
     }
     final counter = _counter.state;
     final running = counter.phase == CounterPhase.running;
@@ -719,12 +778,14 @@ class _CameraTrouble extends StatelessWidget {
 }
 
 /// A battle that ended without a result: cancelled, void, or lost to a
-/// connection error. Nothing was recorded; the user goes home.
+/// connection error. Nothing was recorded; the user goes home, or, after a
+/// cancel, searches again when [onRematch] is given.
 class _Ended extends StatelessWidget {
-  const _Ended({required this.session, required this.onHome});
+  const _Ended({required this.session, required this.onHome, this.onRematch});
 
   final OnlineBattleSession session;
   final VoidCallback onHome;
+  final VoidCallback? onRematch;
 
   @override
   Widget build(BuildContext context) {
@@ -740,6 +801,8 @@ class _Ended extends StatelessWidget {
         ? '서버가 다시 시작되어 이 경기는 기록되지 않았어요.'
         : session.matchNotFound
         ? '서버에서 이 경기를 찾을 수 없어요.'
+        : session.setupTimedOut
+        ? '자세 세팅 시간이 지나 경기가 취소됐어요. 승패는 기록되지 않아요.'
         : session.error ?? '종료 사유: ${session.result?['reason'] ?? '알 수 없음'}';
     return Scaffold(
       body: GridBackground(
@@ -764,7 +827,15 @@ class _Ended extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.s24),
-                  AccentButton(title: '홈으로 돌아가기', onPressed: onHome),
+                  if (onRematch case final rematch?) ...[
+                    AccentButton(title: '다시 매칭', onPressed: rematch),
+                    const SizedBox(height: AppSpacing.s8),
+                    TextButton(
+                      onPressed: onHome,
+                      child: const Text('홈으로 돌아가기'),
+                    ),
+                  ] else
+                    AccentButton(title: '홈으로 돌아가기', onPressed: onHome),
                 ],
               ),
             ),
