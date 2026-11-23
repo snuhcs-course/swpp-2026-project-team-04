@@ -40,6 +40,30 @@ PoseFrame _moved(PoseFrame frame, Map<BodyLandmark, (double, double)> points) =>
       },
     );
 
+/// The plank of [pushUpFrame] with the left arm at [left] degrees and the
+/// right at [right], and [hide] seen at a low likelihood.
+PoseFrame _arms({
+  required double left,
+  required double right,
+  Set<BodyLandmark> hide = const {},
+}) {
+  final l = pushUpFrame(elbowAngle: left, hide: hide);
+  final r = pushUpFrame(elbowAngle: right, hide: hide);
+  return PoseFrame(
+    imageWidth: l.imageWidth,
+    imageHeight: l.imageHeight,
+    keypoints: {
+      ...l.keypoints,
+      for (final landmark in const [
+        BodyLandmark.rightShoulder,
+        BodyLandmark.rightElbow,
+        BodyLandmark.rightWrist,
+      ])
+        landmark: r[landmark]!,
+    },
+  );
+}
+
 /// The plank of [pushUpFrame] with hips 50 px under the shoulders and the
 /// knees [legLength] from the hips, folded to [hipDeg] at the hips. The
 /// knees sit far behind the hands, out of the judge's knee-beside-hands
@@ -128,6 +152,55 @@ void main() {
       );
       expect(
         reader.read(pushUpFrame(elbowAngle: 154), at: Duration.zero),
+        _broken(HighPlankFaults.armBent),
+      );
+    });
+
+    // One arm bent with the other straight (PR #90 review,
+    // 2026-11-24): the mean of the two would pass.
+    test(
+      'one arm bent, 180° and 130°, is arms bent though the mean is 155°',
+      () {
+        final frame = _arms(left: 180, right: 130);
+        final metrics = measurePose(frame, minLikelihood: .6);
+        expect(metrics.elbowAngle, closeTo(155, 1e-6));
+        expect(metrics.leftElbowAngle, closeTo(180, 1e-6));
+        expect(metrics.rightElbowAngle, closeTo(130, 1e-6));
+        final reader = _reader();
+        expect(
+          reader.read(frame, at: Duration.zero),
+          _broken(HighPlankFaults.armBent),
+        );
+        expect(
+          reader.read(_arms(left: 130, right: 180), at: _ms(100)),
+          _broken(HighPlankFaults.armBent),
+        );
+      },
+    );
+
+    test('the less straight arm decides: 156° held, 154° bent', () {
+      final reader = _reader();
+      expect(
+        reader.read(_arms(left: 180, right: 156), at: Duration.zero),
+        HoldReading.ok,
+      );
+      expect(
+        reader.read(_arms(left: 180, right: 154), at: _ms(100)),
+        _broken(HighPlankFaults.armBent),
+      );
+    });
+
+    test('with one arm seen, that arm decides', () {
+      // The right elbow and wrist under the likelihood line: only the left
+      // arm is measured.
+      const unseen = {BodyLandmark.rightElbow, BodyLandmark.rightWrist};
+      final reader = _reader();
+      expect(
+        reader.read(_arms(left: 180, right: 130, hide: unseen), at: _ms(0)),
+        HoldReading.ok,
+      );
+      expect(
+        reader.read(_arms(left: 130, right: 180, hide: unseen), at: _ms(100)),
         _broken(HighPlankFaults.armBent),
       );
     });

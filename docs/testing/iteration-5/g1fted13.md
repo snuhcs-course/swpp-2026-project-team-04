@@ -379,6 +379,38 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 |---|---|---|
 | View | `test/screens/hold_stage_screen_test.dart` | 'a clear and a fail fit 360 × 780 at 1.3x text', '… 320 × 640 at 1.3x text', '… 320 × 640 at 1.0x text': a clear and a fail with no overflow (a short phone scrolls to its buttons); 'the frame keeps the design sizes where they fit': `ArcadeResultFrame` with "R1부터 다시" draws its words and its middle star (72) at full size at 600 × 1000, 412 × 915 and 360 × 780, has no overflow at the three sizes, and shrinks the stars at 320 wide and the words at 1.3x text on a 360 phone |
 
+#### 2026-11-24 · code at commit `4ef8a2f` · step A4, third follow-up on `codex/iter5-hold-plank` (one arm bent, Codex review)
+The Codex review of PR #90 at `be6509a` (P2, "Check each arm against the plank angle") found that the high plank's
+arms-bent check used `PoseMetrics.elbowAngle`, the mean of the two arms: one arm at 180° and the other at 130° make
+155°, which passed, so a user could hold with one arm bent and earn time and stars. The user had it fixed on A4's
+branch (local task.md, A4 Decisions, 2026-11-24):
+- **Now:** each arm seen is measured alone (`PoseMetrics.leftElbowAngle`, `rightElbowAngle`, each there only when its
+  shoulder, elbow and wrist reach the judge's likelihood line), and the less straight one under the setup's 155° is
+  arms bent; with one arm seen, that one. It is chosen in `high_plank_hold.dart`; `pose_metrics.dart` is unchanged.
+  The other straight-arm checks (the knees, the hip fold, the plank angle kept) keep the judge's mean.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the two new tests of a bent arm failed on the old reader; the third (one arm seen) passes on both,
+  since the mean of one arm is that arm, and guards the new one-arm path.
+- **Tests:** `flutter test` 4087 passed, 0 failed, 10 skipped (2026-11-24, `4ef8a2f`; the same 10 skips as above). `flutter analyze` found no issues.
+  `test/services/pose/high_plank_hold_test.dart`: 35 passed.
+- **New tests:** 3, in `test/services/pose/high_plank_hold_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths); the stacked-branch
+  intersection with A2's and A3's branches still lists 21 paths.
+- **Review:** local reviewer A4 run 8, APPROVE. It checked the test geometry by hand (the spliced arm keeps the
+  shoulder width and the hands under the shoulders) and that keeping the mean for the other straight-arm checks
+  loses no fault: a frame with one arm under 155° is still broken (at most it reads "무릎 떼요" first, when the hips
+  are folded too), as the push-up judge also uses the mean for its top and the smaller arm only for its lockout. Its
+  Minors were fixed before the commit: two comments named the review as "Codex review on A4" (now "PR #90 review"),
+  and this entry lacked these two lines.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the third follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/high_plank_hold_test.dart` | 'one arm bent, 180° and 130°, is arms bent though the mean is 155°' (either side; the metrics' mean is 155°); 'the less straight arm decides: 156° held, 154° bent' (the other arm at 180°); 'with one arm seen, that arm decides' (the right elbow and wrist unseen: the left at 180° held, at 130° bent) |
+
 #### 2026-11-23 · code at commit `0579a65` · step A5 `codex/iter5-hold-chair` (Add chair-pose judging, team order #8.4)
 A5 adds the second held pose, the chair pose, on A4's hold stage (the local design hand-off's spec `p16-4/SPEC.md` v2,
 not committed): the chair reading and the chair pose's bundle (`lib/services/pose/chair_hold.dart`). The screen, the
