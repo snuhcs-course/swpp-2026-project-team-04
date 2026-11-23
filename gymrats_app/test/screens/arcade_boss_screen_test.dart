@@ -28,12 +28,16 @@ void main() {
     WidgetTester tester, {
     BattleResult? first,
     int best = 0,
+    Size size = const Size(360, 780),
+    double textScale = 1,
   }) async {
     // A second open in one test starts from nothing.
     await tester.pumpWidget(const SizedBox());
-    tester.view.physicalSize = const Size(360, 780);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = textScale;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     tester.platformDispatcher.accessibilityFeaturesTestValue =
         const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
@@ -225,6 +229,28 @@ void main() {
       );
     });
   });
+
+  for (final (label, size, scale) in [
+    ('a short phone', const Size(360, 640), 1.0),
+    ('a large text size', const Size(360, 780), 1.3),
+  ]) {
+    testWidgets('fits $label without overflow, scrolling to its buttons', (
+      tester,
+    ) async {
+      await open(tester, size: size, textScale: scale);
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('자세 잡기'));
+      await tester.pump();
+      expect(find.text('자세 잡기').hitTestable(), findsOneWidget);
+
+      await open(tester, first: firstRound(), size: size, textScale: scale);
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('그만하기'));
+      await tester.pump();
+      expect(find.text('그만하기').hitTestable(), findsOneWidget);
+      expect(find.text('자세 잡기').hitTestable(), findsOneWidget);
+    });
+  }
 
   testWidgets('every button is big enough and has a name', (tester) async {
     final semantics = tester.ensureSemantics();

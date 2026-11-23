@@ -806,26 +806,30 @@ class ArcadeScoreLine extends StatelessWidget {
     return Semantics(
       label: '내 점수 $me, 상대 점수 $opponent',
       excludeSemantics: true,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          swatch(AppColors.accent),
-          const SizedBox(width: _gap),
-          Text(
-            '$me',
-            style: meLarger ? text.arcadeScoreBig : text.arcadeScoreSmall,
-          ),
-          const SizedBox(width: _gap),
-          Text(':', style: text.arcadeScoreColon),
-          const SizedBox(width: _gap),
-          Text(
-            '$opponent',
-            style: meLarger ? text.arcadeScoreSmall : text.arcadeScoreBig,
-          ),
-          const SizedBox(width: _gap),
-          swatch(AppColors.opponent),
-        ],
+      // Large numbers or text shrink it to the width rather than overflow.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            swatch(AppColors.accent),
+            const SizedBox(width: _gap),
+            Text(
+              '$me',
+              style: meLarger ? text.arcadeScoreBig : text.arcadeScoreSmall,
+            ),
+            const SizedBox(width: _gap),
+            Text(':', style: text.arcadeScoreColon),
+            const SizedBox(width: _gap),
+            Text(
+              '$opponent',
+              style: meLarger ? text.arcadeScoreSmall : text.arcadeScoreBig,
+            ),
+            const SizedBox(width: _gap),
+            swatch(AppColors.opponent),
+          ],
+        ),
       ),
     );
   }

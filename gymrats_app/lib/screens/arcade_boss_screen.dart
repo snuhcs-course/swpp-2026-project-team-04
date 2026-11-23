@@ -104,60 +104,62 @@ class _Intro extends StatelessWidget {
         Provider.of<ArcadeViewModel?>(context)?.progress
             ?.bestOf(stage.number) ??
         0;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(_side, 0, _side, _bottom),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              LobbySquareButton(
-                icon: Icons.chevron_left_rounded,
-                tooltip: '지도로',
-                onPressed: () => Navigator.maybePop(context),
-              ),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'STAGE ${stage.number} · ${stage.floor}F BOSS',
-                      style: text.arcadeTag,
-                    ),
-                    const SizedBox(height: _titleGap),
-                    LobbySkew(
-                      degrees: 10,
-                      child: Semantics(
-                        header: true,
-                        child: Text('보스 매치', style: text.arcadeBossTitle),
-                      ),
-                    ),
-                  ],
+    return _FillThenScroll(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(_side, 0, _side, _bottom),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                LobbySquareButton(
+                  icon: Icons.chevron_left_rounded,
+                  tooltip: '지도로',
+                  onPressed: () => Navigator.maybePop(context),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: _gap),
-          _OwnerCard(stage: stage),
-          const SizedBox(height: _gap),
-          _Rounds(stage: stage),
-          const SizedBox(height: _goalsGap),
-          ArcadeStarGoals(
-            labels: [for (final star in stage.stars) star.label],
-            best: best,
-            style: text.arcadeBossGoal,
-          ),
-          const Spacer(),
-          ArcadeDarkButton(
-            label: '자세 잡기',
-            onPressed: onSetUp,
-            height: _buttonHeight,
-            gap: _buttonGap,
-            arrowSize: _arrow,
-            style: text.arcadeBossAction,
-          ),
-        ],
+                const SizedBox(width: AppSpacing.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'STAGE ${stage.number} · ${stage.floor}F BOSS',
+                        style: text.arcadeTag,
+                      ),
+                      const SizedBox(height: _titleGap),
+                      LobbySkew(
+                        degrees: 10,
+                        child: Semantics(
+                          header: true,
+                          child: Text('보스 매치', style: text.arcadeBossTitle),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: _gap),
+            _OwnerCard(stage: stage),
+            const SizedBox(height: _gap),
+            _Rounds(stage: stage),
+            const SizedBox(height: _goalsGap),
+            ArcadeStarGoals(
+              labels: [for (final star in stage.stars) star.label],
+              best: best,
+              style: text.arcadeBossGoal,
+            ),
+            const Spacer(),
+            ArcadeDarkButton(
+              label: '자세 잡기',
+              onPressed: onSetUp,
+              height: _buttonHeight,
+              gap: _buttonGap,
+              arrowSize: _arrow,
+              style: text.arcadeBossAction,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -459,72 +461,77 @@ class _Break extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final floor = ArcadeCatalog.floorOf(stage);
     final next = stage.rounds[1];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(_side, _top, _side, _bottom),
-      child: Column(
-        children: [
-          Text(
-            'STAGE ${stage.number} · ${stage.floor}F BOSS',
-            style: text.arcadeResultTag,
-          ),
-          const SizedBox(height: AppSpacing.s8),
-          ArcadeTitleBand(
-            label: '1라운드 승리!',
-            color: AppColors.accent,
-            style: text.arcadeBannerSmall,
-            padding: _bannerPadding,
-          ),
-          const SizedBox(height: _scoreGap),
-          ArcadeScoreLine(
-            me: first.myDisplayScore,
-            opponent: first.opponentDisplayScore,
-            meLarger: true,
-          ),
-          const SizedBox(height: _gap),
-          const _RoundProgress(),
-          const SizedBox(height: _gap),
-          SizedBox.fromSize(
-            size: _figureBox,
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              clipBehavior: Clip.none,
-              children: [
-                const Positioned(
-                  bottom: _pedestalBottom,
-                  child: ArcadePedestal(
-                    width: _pedestalWidth,
-                    height: _pedestalHeight,
-                  ),
-                ),
-                Positioned(
-                  bottom: _figureBottom,
-                  child: Transform(
-                    transform: Matrix4.diagonal3Values(
-                      -_figureScale,
-                      _figureScale,
-                      1,
-                    ),
-                    origin: const Offset(70, 150),
-                    child: ArcadeFigure(id: floor.owner, pose: BattlePose.hit),
-                  ),
-                ),
-              ],
+    return _FillThenScroll(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(_side, _top, _side, _bottom),
+        child: Column(
+          children: [
+            Text(
+              'STAGE ${stage.number} · ${stage.floor}F BOSS',
+              style: text.arcadeResultTag,
             ),
-          ),
-          const SizedBox(height: _gap),
-          _NextRoundCard(exercise: next),
-          const Spacer(),
-          ArcadeDarkButton(
-            label: '자세 잡기',
-            onPressed: onSetUp,
-            height: _buttonHeight,
-            gap: _buttonGap,
-            arrowSize: _arrow,
-            style: text.arcadeBossAction,
-          ),
-          const SizedBox(height: AppSpacing.s8),
-          ArcadeTextLink(label: '그만하기', onPressed: onQuit),
-        ],
+            const SizedBox(height: AppSpacing.s8),
+            ArcadeTitleBand(
+              label: '1라운드 승리!',
+              color: AppColors.accent,
+              style: text.arcadeBannerSmall,
+              padding: _bannerPadding,
+            ),
+            const SizedBox(height: _scoreGap),
+            ArcadeScoreLine(
+              me: first.myDisplayScore,
+              opponent: first.opponentDisplayScore,
+              meLarger: true,
+            ),
+            const SizedBox(height: _gap),
+            const _RoundProgress(),
+            const SizedBox(height: _gap),
+            SizedBox.fromSize(
+              size: _figureBox,
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                clipBehavior: Clip.none,
+                children: [
+                  const Positioned(
+                    bottom: _pedestalBottom,
+                    child: ArcadePedestal(
+                      width: _pedestalWidth,
+                      height: _pedestalHeight,
+                    ),
+                  ),
+                  Positioned(
+                    bottom: _figureBottom,
+                    child: Transform(
+                      transform: Matrix4.diagonal3Values(
+                        -_figureScale,
+                        _figureScale,
+                        1,
+                      ),
+                      origin: const Offset(70, 150),
+                      child: ArcadeFigure(
+                        id: floor.owner,
+                        pose: BattlePose.hit,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: _gap),
+            _NextRoundCard(exercise: next),
+            const Spacer(),
+            ArcadeDarkButton(
+              label: '자세 잡기',
+              onPressed: onSetUp,
+              height: _buttonHeight,
+              gap: _buttonGap,
+              arrowSize: _arrow,
+              style: text.arcadeBossAction,
+            ),
+            const SizedBox(height: AppSpacing.s8),
+            ArcadeTextLink(label: '그만하기', onPressed: onQuit),
+          ],
+        ),
       ),
     );
   }
@@ -666,4 +673,23 @@ class _NextRoundCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// [child] at least as tall as the view, scrolling when it is taller: on a
+/// tall screen its [Spacer] puts the buttons at the bottom, and on a short
+/// one, or with large text, nothing is cut off.
+class _FillThenScroll extends StatelessWidget {
+  const _FillThenScroll({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: IntrinsicHeight(child: child),
+      ),
+    ),
+  );
 }
