@@ -411,6 +411,53 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 |---|---|---|
 | Service | `test/services/pose/high_plank_hold_test.dart` | 'one arm bent, 180° and 130°, is arms bent though the mean is 155°' (either side; the metrics' mean is 155°); 'the less straight arm decides: 156° held, 154° bent' (the other arm at 180°); 'with one arm seen, that arm decides' (the right elbow and wrist unseen: the left at 180° held, at 130° bent) |
 
+#### 2026-11-24 · code at commit `3ffed5f` · step A4, effects on `codex/iter5-hold-plank` (the user's picks after the phone check)
+After the phone check of 2026-11-24 the user picked the hold stage's effects on the design canvas (local spec
+`p16-3-fx/SPEC-FX.md`, not committed; local task.md, A4 Decisions, 2026-11-24). All new times are in `HoldTiming`:
+- **Music:** the battle's tracks at the battle's moments, through the same `SoundServices.music` and `MusicCue`s:
+  `setup` through the setup and the 3·2·1, `battle` while holding, the `win` or `lose` jingle as the stage ends
+  (at a second warning's moment already, as a battle's jingle starts when it ends), and `menu` when the stage is left
+  before a result. The battle's `BattleSounds` takes a `BattleStageState`, so the hold
+  screen picks the same cues itself; no music or battle file changed.
+- **Start bubble (C1):** right after GO the owner's white bubble, as "삐익!"'s, says the pose's start words
+  (`HoldPoseDefinition.startWords`; the high plank's "그대로 버텨!") for `startBubble` (2 s), or until the time starts
+  for a pose with an entry. A warning takes its place.
+- **Stars (B2 revised + sound):** at the first and second star the star pops on the bar (`starPop`, 0.3 s; not with
+  reduced motion), the owner smiles (`GymOwnerFace.ok`) behind a big lime bubble "좋아!" / "잘한다!" for `cheer`
+  (1 s), its right end per owner as the design's `bubR`, and the app's short `SoundEffect.good`
+  (`assets/audio/sfx_hit_good.wav`) plays. The third star is the clear. A warning takes the bubble's place.
+- **Second warning (A2 + A3, shown as F4):** the owner's big red "실패!" (the cheer's widget, its color and words
+  changed) comes in big and settles (`failPop`, 0.2 s) in place of "삐익!"; the camera box keeps the warning's words,
+  the clock says "멈춤", nothing is judged for `endShow` (1.5 s), then the fail screen lists the two warnings' reasons
+  as red chips in order where "경고 2번" was. A clear ended by warnings (a star already earned) keeps "삐익!" for the
+  same 1.5 s, then shows the clear (a call beyond the spec, noted in task.md).
+- **Screen reader:** the start words and "실패!" are announced as the warnings are (a `callout` cue), and the first two
+  stars' announcements end with their cheer.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Tests:** `flutter test` 4109 passed, 0 failed, 10 skipped (2026-11-24, `3ffed5f`; the same 10 skips as above). `flutter analyze` found no
+  issues. The four A4 test files with `test/design_tokens_test.dart`: 207 passed.
+- **New tests:** 22 (view model 8, screen 14). Changed for the new behavior: the start words' cue in two
+  cue lists, the result after `endShow` in four screen test bodies (six runs, with the size cases) and one view model
+  test, the reasons in place of "경고 2번" in the fail test, and the stars' announcements with their cheer.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths); the stacked-branch
+  intersection with A2's and A3's branches still lists 21 paths.
+- **Review:** local reviewer A4 run 9, CHANGES_REQUESTED: the result jingle came 1.5 s after a second warning, while a
+  battle's starts when it ends (now at once), and the local design-doc list lacked the new API (added); Minors: a
+  screen check that could not fail (now: the frames in the moment are not read), and this entry's counts and lines.
+  The clear ended by warnings (no "실패!") was the session's call: said in the PR and asked of the user. Run 10: APPROVE (all fixed; no new code finding).
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Phone check of the effects:** TODO(Woohyun Song): with the demo, see the start bubble, both cheers with the star
+  pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen, and the music through a
+  stage and after leaving.
+
+### Test cases added in the effects follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | 'GO shows the pose's start words for 2 s, read out'; 'with an entry the start words stay until the time starts'; 'a warning takes the start bubble'; 'the first two stars are cheered for 1 s, the third is not'; 'a warning takes the cheer'; 'a second warning with no star: 실패! for 1.5 s, nothing judged'; 'a second warning after a star: the whistle stays, then a clear'; 'leaving in the moment shows no result and keeps nothing' |
+| View | `test/screens/hold_stage_screen_test.dart` | 'GO: "그대로 버텨!" in the white bubble for 2 s, read out'; 'a warning takes the start bubble's place'; 'the first and second stars: a lime cheer, a smile, a pop and the good sound, once each'; 'the cheer ends at the owner on every floor' (142, 140, 150); '"잘한다!" fits 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x'; 'with reduced motion the stars do not pop'; 'a warning takes the cheer's place'; 'a second warning with no star: "실패!" over the stage, the warning kept below for 1.5 s, then the reasons in order'; 'the battle's music at the battle's moments'; 'a second warning with no star plays the lose jingle at once'; 'a clear ended by warnings plays the win jingle at once'; 'leaving before a result brings the menu music back'; the size tests 'a clear and a fail fit …' now also see "실패!" |
+
 #### 2026-11-23 · code at commit `0579a65` · step A5 `codex/iter5-hold-chair` (Add chair-pose judging, team order #8.4)
 A5 adds the second held pose, the chair pose, on A4's hold stage (the local design hand-off's spec `p16-4/SPEC.md` v2,
 not committed): the chair reading and the chair pose's bundle (`lib/services/pose/chair_hold.dart`). The screen, the

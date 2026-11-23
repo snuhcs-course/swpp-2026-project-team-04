@@ -1290,6 +1290,10 @@ abstract final class HoldColors {
   static const figure = Color(0xFF646A74);
   static const figureFeet = Color(0xFF585E68);
   static const figureBody = Color(0xFF7E848E);
+
+  /// A failed hold's reason chip (the hold effects spec 5, `ArcResult`
+  /// holdFail `why=list`).
+  static const reasonChip = Color(0xFFFFE9E7);
 }
 
 /// The text styles of the arcade hold stage and its result (A4: P16Hold,
@@ -1435,6 +1439,31 @@ extension HoldText on TextTheme {
     weight: FontWeight.w400,
     height: 1.1,
     color: AppColors.danger,
+  );
+
+  /// The owner's start words after GO, in the whistle's bubble: Do Hyeon 30
+  /// (the hold effects spec 3).
+  TextStyle get holdStartBubble => _hold(
+    family: AppFonts.display,
+    size: 30,
+    weight: FontWeight.w400,
+    height: 1.1,
+  );
+
+  /// The owner's big cheer and "실패!": Do Hyeon 54 (effects spec 4, 5).
+  TextStyle get holdBigBubble => _hold(
+    family: AppFonts.display,
+    size: 54,
+    weight: FontWeight.w400,
+    height: 1.05,
+  );
+
+  /// A failed hold's reason chip: Do Hyeon 20 (effects spec 5).
+  TextStyle get holdReasonChip => _hold(
+    family: AppFonts.display,
+    size: 20,
+    weight: FontWeight.w400,
+    height: 1.1,
   );
 
   /// The warning's two big lines in the camera box: Do Hyeon 66.
