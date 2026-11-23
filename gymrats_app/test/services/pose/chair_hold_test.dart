@@ -150,6 +150,8 @@ void main() {
       return _seated(.9 * share);
     }
 
+    // Read as the 3·2·1 reads them, where the standing thigh follows as the
+    // squat judge's does. After GO it does not (the next tests).
     test('the same frames give the squat judge\'s depth, within 12 s', () {
       var now = Duration.zero;
       final squat = SquatRepJudge(clock: () => now);
@@ -159,7 +161,7 @@ void main() {
         now = _ms(ms);
         final frame = frameAt(ms);
         final snapshot = squat.update(frame).snapshot;
-        reader.read(frame, at: now);
+        reader.read(frame, at: now, counting: true);
         expect(reader.depth, snapshot.depth, reason: 'at $ms ms');
         expect(reader.guide.squatHipY, snapshot.squatHipY);
         expect(reader.guide.squatKneeY, snapshot.squatKneeY);
@@ -175,20 +177,19 @@ void main() {
       final reader = ChairHoldReader();
       JudgeSnapshot? last;
       var reading = HoldReading.unknown;
+      // The 3·2·1 is the first second, standing; GO at 1 s.
       for (var ms = 0; ms <= 45000; ms += 33) {
         now = _ms(ms);
         final frame = frameAt(ms);
         last = squat.update(frame).snapshot;
-        reading = reader.read(frame, at: now);
+        reading = reader.read(frame, at: now, counting: ms <= 1000);
       }
       // The squat judge lost the squat and its standing thigh.
       expect(last!.phase, isNot(RepPhase.bottom));
       expect(last.depth, isNull);
-      // The standing thigh followed the first steps down, as the squat
-      // judge's does.
-      final standing = reader.standingThigh!;
-      expect(standing, lessThan(_standingThigh));
-      expect(reader.depth, closeTo(1 - _standingThigh * .1 / standing, 1e-9));
+      // The reader kept the 3·2·1's standing thigh: the real depth.
+      expect(reader.standingThigh, _standingThigh);
+      expect(reader.depth, closeTo(.9, 1e-9));
       expect(reading, HoldReading.ok);
       expect(reader.guide.phase, RepPhase.bottom);
     });
@@ -348,26 +349,136 @@ void main() {
       expect(_feed(reader, _seated(.9), from: 3300, to: 5000), HoldReading.ok);
     });
 
-    test('it does not change while seated, nor halfway up', () {
+    test('in the 3·2·1 it does not change while seated, nor halfway up', () {
       final reader = _afterCountdown();
-      _feed(reader, _seated(.9), from: 1000, to: 11000);
+      _feed(reader, _seated(.9), from: 1000, to: 11000, counting: true);
       expect(reader.standingThigh, _standingThigh);
       // Up to 0.2, standing by the shin but not yet back at 0.15.
-      _feed(reader, _seated(.2), from: 11000, to: 13000);
+      _feed(reader, _seated(.2), from: 11000, to: 13000, counting: true);
       expect(reader.standingThigh, _standingThigh);
-      // Back at 0.1 it follows again.
-      _feed(reader, _seated(.1), from: 13000, to: 15000);
+      // Back at 0.1 it follows again, in the 3·2·1.
+      _feed(reader, _seated(.1), from: 13000, to: 15000, counting: true);
       expect(reader.standingThigh, lessThan(_standingThigh));
     });
 
-    test('standing, it follows slowly', () {
+    test('in the 3·2·1, standing, it follows slowly', () {
       final reader = _afterCountdown();
-      reader.read(_legs(thigh: 170), at: _ms(1100));
+      reader.read(_legs(thigh: 170), at: _ms(1100), counting: true);
       final first = reader.standingThigh!;
       expect(first, lessThan(_standingThigh));
       expect(first, greaterThan(175));
-      _feed(reader, _legs(thigh: 170), from: 1100, to: 5000);
+      _feed(reader, _legs(thigh: 170), from: 1100, to: 5000, counting: true);
       expect(reader.standingThigh, closeTo(170, .01));
+    });
+
+    test('after GO it never changes: standing, halfway up or seated', () {
+      final reader = _afterCountdown();
+      // The same frames that moved it in the 3·2·1.
+      _feed(reader, _legs(thigh: 170), from: 1000, to: 5000);
+      expect(reader.standingThigh, _standingThigh);
+      _feed(reader, _seated(.9), from: 5000, to: 8000);
+      expect(reader.standingThigh, _standingThigh);
+      // Halfway up, then back at 0.1, where the 3·2·1 would follow again.
+      _feed(reader, _seated(.2), from: 8000, to: 9000);
+      expect(reader.standingThigh, _standingThigh);
+      _feed(reader, _seated(.1), from: 9000, to: 11000);
+      _feed(reader, _legs(), from: 11000, to: 13000);
+      expect(reader.standingThigh, _standingThigh);
+    });
+
+    test('taken after GO, it is taken once and not followed', () {
+      final reader = ChairHoldReader();
+      _feed(reader, _seated(.9), from: -100, to: 3000, counting: true);
+      _feed(reader, _legs(), from: 3000, to: 5000);
+      final taken = reader.standingThigh!;
+      _feed(reader, _legs(thigh: 160), from: 5000, to: 8000);
+      expect(reader.standingThigh, taken);
+    });
+  });
+
+  group('a slow sit after GO (the user\'s decision, 2026-11-24)', () {
+    /// After a 3·2·1 of 1 s standing, down to a true [depth] over [ms]
+    /// after GO, then seated for 1 s: a frame every 33 ms, with whether it
+    /// is a 3·2·1 frame.
+    List<(int, PoseFrame, bool)> slowSit(int ms, {double depth = .8}) => [
+      for (var t = 0; t <= 1000 + ms + 1000; t += 33)
+        (
+          t,
+          t <= 1000
+              ? _legs()
+              : _seated(depth * ((t - 1000) / ms).clamp(0.0, 1.0)),
+          t <= 1000,
+        ),
+    ];
+
+    for (final ms in [3000, 4000, 6000]) {
+      test('down to 0.8 over ${ms ~/ 1000} s reads 0.8 and is held, where '
+          'the squat judge\'s rule reads under 0.75', () {
+        var now = Duration.zero;
+        final squat = SquatRepJudge(clock: () => now);
+        final reader = ChairHoldReader();
+        var reading = HoldReading.unknown;
+        double? squatDepth;
+        for (final (t, frame, counting) in slowSit(ms)) {
+          now = _ms(t);
+          squatDepth = squat.update(frame).snapshot.depth;
+          reading = reader.read(frame, at: now, counting: counting);
+        }
+        expect(reader.standingThigh, _standingThigh);
+        expect(reader.depth, closeTo(.8, 1e-6));
+        expect(reading, HoldReading.ok);
+        // Why: following the thigh down while it still stands lowers the
+        // squat judge's standing thigh, so its depth reads short.
+        expect(squatDepth, lessThan(.75));
+      });
+    }
+
+    test('the entry ends and the time runs, with no warning', () {
+      final stage = ArcadeCatalog.stage(5) as ArcadeHoldStage;
+      final judge = HoldJudge(definition: chairHold, endsAt: stage.endsAt);
+      for (final (t, frame, counting) in slowSit(4000)) {
+        if (counting) {
+          judge.countdown(frame, _ms(t));
+          continue;
+        }
+        if (!judge.started) judge.go(_ms(1000));
+        judge.frame(frame, _ms(t));
+      }
+      final progress = judge.progress;
+      expect(progress.state, HoldState.holding);
+      expect(progress.warnings, isEmpty);
+      expect(progress.held, greaterThan(Duration.zero));
+      expect(judge.lastReading, HoldReading.ok);
+    });
+
+    test('sitting again slowly after a warning runs the time again', () {
+      final stage = ArcadeCatalog.stage(5) as ArcadeHoldStage;
+      final judge = HoldJudge(definition: chairHold, endsAt: stage.endsAt);
+      for (var t = 0; t <= 1000; t += 100) {
+        judge.countdown(_legs(), _ms(t));
+      }
+      judge.go(_ms(1000));
+      var t = 1000;
+      void feed(PoseFrame Function(int t) frame, int until) {
+        for (; t < until; t += 33) {
+          judge.frame(frame(t), _ms(t));
+        }
+      }
+
+      feed((_) => _seated(.8), 3000);
+      expect(judge.progress.state, HoldState.holding);
+      // Up for 1 s: a warning.
+      feed((_) => _legs(), 4000);
+      expect(judge.progress.warnings, [ChairFaults.low]);
+      // Down again over 4 s, then seated for 1 s.
+      final from = t;
+      feed(
+        (t) => _seated(.8 * ((t - from) / 4000).clamp(0.0, 1.0)),
+        from + 5000,
+      );
+      expect(judge.progress.state, HoldState.holding);
+      expect(judge.progress.warnings, [ChairFaults.low]);
+      expect(judge.lastReading, HoldReading.ok);
     });
   });
 

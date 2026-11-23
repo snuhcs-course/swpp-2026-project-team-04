@@ -55,10 +55,10 @@ abstract final class ChairLines {
   /// `SquatRepJudge.update`.
   static const standingFor = Duration(milliseconds: 300);
 
-  /// The standing thigh follows a standing user only under this depth, and
-  /// from it on not until the depth is back at [followAgainAt]:
-  /// `SquatRepJudge.update`'s `.25`, where a squat starts, and its `.15`,
-  /// where it is back up.
+  /// In the 3·2·1 the standing thigh follows a standing user only under
+  /// this depth, and from it on not until the depth is back at
+  /// [followAgainAt]: `SquatRepJudge.update`'s `.25`, where a squat starts,
+  /// and its `.15`, where it is back up. After GO it does not follow.
   static const followUnder = .25;
   static const followAgainAt = .15;
 
@@ -88,10 +88,17 @@ abstract final class ChairLines {
 /// - **Thigh:** the knee's height under the hip, smoothed over
 ///   [SquatRepJudge.smoothingTau].
 /// - **Standing thigh:** the thigh after [ChairLines.standingFor] standing
-///   ([ChairLines.standingThigh]); the 3·2·1's frames take it. It then
-///   follows a standing user over [SquatRepJudge.baselineTau], and never
-///   while sitting. It is never dropped in a play: not after a gap in the
-///   frames, not after 12 s down.
+///   ([ChairLines.standingThigh]); the 3·2·1's frames take it, and in the
+///   3·2·1 it follows a standing user over [SquatRepJudge.baselineTau], as
+///   the squat judge's does, never while sitting.
+///
+///   From GO on it is fixed for the play (the user's decision, 2026-11-24,
+///   narrowing the spec's "follows while standing" to before GO): the squat
+///   judge's rule follows the thigh while it is still standing on the way
+///   down, so a slow sit lowered it and a true 0.8 read 0.73–0.75, under
+///   [SquatRepJudge.passDepth]. Without one by GO, the first
+///   [ChairLines.standingFor] standing after GO takes it, once. It is never
+///   dropped in a play: not after a gap in the frames, not after 12 s down.
 /// - **Depth:** 1 − thigh / standing thigh.
 ///
 /// The reading:
@@ -154,7 +161,7 @@ class ChairHoldReader implements HoldGuideReader {
       _guide = JudgeSnapshot(phase: _phase);
       return _printed(at, counting, HoldReading.unknown);
     }
-    _measure(legs, at);
+    _measure(legs, at, follow: counting);
     _guide = JudgeSnapshot(
       phase: _phase,
       depth: _depth,
@@ -186,8 +193,8 @@ class ChairHoldReader implements HoldGuideReader {
   }
 
   /// `SquatRepJudge.update`'s thigh, standing thigh and depth, without its
-  /// rep flow.
-  void _measure(List<_Leg> legs, Duration at) {
+  /// rep flow; the standing thigh follows only when [follow] (the 3·2·1).
+  void _measure(List<_Leg> legs, Duration at, {required bool follow}) {
     final previousAt = _lastAt;
     _lastAt = at;
     double alpha(Duration tau) {
@@ -220,7 +227,7 @@ class ChairHoldReader implements HoldGuideReader {
       return;
     }
     var depth = 1 - thigh / top;
-    if (!_down && depth < ChairLines.followUnder && standing) {
+    if (follow && !_down && depth < ChairLines.followUnder && standing) {
       final followed = top + alpha(squat.baselineTau) * (thigh - top);
       _standingThigh = followed;
       depth = 1 - thigh / followed;
