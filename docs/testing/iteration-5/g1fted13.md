@@ -221,6 +221,91 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   "floor_<n> matches the design but for edges" (5 tests). The art is drawn from Dart data, not loaded as asset files
   (see the PR's Exceptions).
 
+#### 2026-11-23 · code at commit `1dbf9ec` · step A4 `codex/iter5-hold-plank` (Implement high-plank hold stages, team order #8.3)
+A4 is the arcade's hold stage, played with the high plank (the local design hand-off's spec `p16-3/SPEC.md` v3, not committed):
+- **Common part:** `HoldTimeline` and `HoldJudge` (`lib/services/pose/hold_judge.dart`): the time runs only while the pose
+  is held; 0.5 s broken gives a warning and stops it; 0.6 s held runs it again; no new warning while stopped; the second
+  warning or the third star ends the stage; an unknown pose keeps the last reading for 1 s, then is off screen; a pose
+  set up standing (the chair pose, A5) first has to be held 0.6 s after GO. The frames of the 3·2·1 reach the pose's
+  reader only.
+- **Pose bundle:** `HoldPoseDefinition` and the one place that picks it, `HoldPoses.of` (`hold_poses.dart`).
+- **High plank:** `HighPlankReader` and `highPlankHold` (`high_plank_hold.dart`), with the push-up judge's and the
+  setup's own numbers.
+- **Screen:** `HoldStageScreen` and `HoldStageViewModel`: briefing, the battle's push-up setup and 3·2·1, holding,
+  warnings, clear and fail, and the stars kept by A2's store.
+
+The branch starts at A2's `f074474` and merges A3 (`f45aa9b`, then `32893b5` for `3d7dee8`). I ran these in
+`gymrats_app/` on Windows on the code commit, without coverage (this PC's rule):
+
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/services/pose/hold_judge_test.dart test/services/pose/high_plank_hold_test.dart test/viewmodels/hold_stage_viewmodel_test.dart test/screens/hold_stage_screen_test.dart
+```
+
+No camera, ML Kit, server or secure storage is needed: the tests use a scripted `SetupViewModel` over
+`FakeCameraService` and `FakePoseEstimator`, scripted pose readers, `MemoryArcadeProgressStore`, `FakeSoundEffects`,
+synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fakeAsync`, a test-controlled clock).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" on the A4 PR |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed by A4 | 11/23 | same CI comment |
+
+- **Tests:** `flutter test` 4074 passed, 0 failed, 10 skipped (2026-11-23, `1dbf9ec`). `flutter analyze` found no issues. The 10 skipped
+  tests are the ones already skipped on `main` (a live server smoke test and 9 known push-up judge errors), untouched.
+- **New tests:** 106, in the four files below (26 + 32 + 22 + 26). The A4 files with `test/design_tokens_test.dart`:
+  172 passed.
+- **Other checks:** `ownership_guard.py --check-staged` OK on every commit and `--check-diff` OK on `1dbf9ec`
+  (64 paths against `origin/main`, A2's and A3's counted as inherited; the stacked-branch
+  intersection with A2's and A3's branches lists only the 18 A4 files and the three personal notes). The rules of `test/design_tokens_test.dart`, run by hand over the five `lib/screens/hold_stage_*.dart` files
+  (the test's own list does not include them; it is not an A4 file): no problem.
+- **Against the design shots:** the briefing, holding, warning, clear and fail scenes were captured with the app's fonts
+  at 360 × 780, 2x, in a throwaway widget test (not committed) and compared by eye with `shots/hold_plank_brief.png`,
+  `hold_plank_hold.png`, `hold_plank_warn.png`, `result_holdClear.png` and `result_holdFail.png`. Fixed after the first
+  capture: the stage tag stretched across the top, the clock was centred on the screen instead of between the tag and
+  the warning marks, and the results sat 28 dp low. After the fixes the scenes match within a few pixels. Where the
+  camera picture is, the shots show a gray figure; the app shows the camera, and the figure only while there is no
+  picture.
+- **Coverage:** TODO(Woohyun Song): copy the CI comment of the A4 PR (commit, run link, per-layer numbers, A4's files).
+- **Phone check (spec 9, Galaxy S26+):** TODO(Woohyun Song): with `flutter run -t lib/demo/hold_stage_demo.dart`, open
+  STAGE 3 · 1F and try ① 30 s held (clear, 3 stars), ② bent arms, ③ knees down, ④ head down, ⑤ standing up; note
+  whether each warning comes with the right words about 0.5 s after the break, and whether the time runs again right
+  after fixing it. Write any changed line values here with the reason.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/hold_judge_test.dart` (new) | nothing runs before GO; the time runs between held frames and ends at the third star; a clock going back; broken 0.49 s no warning, 0.5 s a warning and a stop; no time while broken or stopped; held 0.59 s still stopped, 0.6 s running; a break going on while stopped adds no warning; the second warning ends it; the warning's fault is the one read most (the latest of a tie); the fault shown while stopped follows the latest; an unknown pose keeps a held or a broken reading for 1 s, then is off screen; an unknown pose after GO starts nothing; an entry keeps the time at 0 with no warning until 0.6 s held; `HoldJudge` gives the 3·2·1 frames to the reader only, times frames from GO, reads a missing frame as unknown, reads nothing after the end; `HoldFault`, `HoldReading`, `HoldProgress` values |
+| Service | `test/services/pose/high_plank_hold_test.dart` (new) | the bundle (push-up setup, no entry, checks, words, icons, figure, guide); the chair pose stopped until A5; the lines are the judge's and setup's (155°, 0.35, 0.6); arms 156° held, 154° bent; hands above the shoulders and an upright body off screen, one hand not seen never; no shoulders, one shoulder, no arm, low likelihood, an empty frame unknown, one arm enough; the head's place from the held frames of the first 0.5 s after GO, never from the 3·2·1, never again; 0.349 held, 0.351 head down; a missing nose waits; knees: the classifier's touching, knees beside the hands at both ends of the judge's range, the hip fold 25° from one plank angle and 20° after three, two kept as their mean, a kneeling start never kept, bent arms read as bent arms; the order of faults; a plank held in a `HoldJudge` to the third star |
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` (new) | opens on the briefing with its stage, floor and owner; a fight stage and a chair stage are stopped; 자세 잡기 opens the push-up setup once; the setup counting down is the 3·2·1 and a broken pose goes back; 3·2·1 frames reach the reader only, counting; the guide crop and viewport reach the setup check (push-up and squat); GO starts the hold and the guide judge; held to the third star: star cues, the end, 3 stars kept, the camera let go; warning and resumed cues; two warnings before a star is a fail kept as 0; ended by warnings, the stars count the time held; no frame is unknown, then off screen; the clock stands while the camera is not running; a failing store keeps the result; no account keeps nothing; 다시 하기 back to the briefing with a new camera; playing again only after a result; leaving lets the camera go |
+| View | `test/screens/hold_stage_screen_test.dart` (new) | the briefing (stage, owner, pose, stars, checks, rule, button) at 412 × 915 and 360 × 780; its back and the system back return `arcade`; the setup in the battle's camera area, the camera switch; the 3·2·1 numbers and the clock at 0:00; the camera failures; GO!, the clock and the green frame, the figure without a camera; the bar and its star marks; each warning (팔 펴요, 무릎 떼요, 머리 들어요, 화면 안으로): 멈춤, red frame, 삐익!, the owner's whistle, a red mark, an amber bar, the reject sound, then gone when held again; the leave dialog (stay, leave = `left`, nothing kept), back asks too, a hold ending while asking; the clear (time, stars, next stage card, buttons, stars kept, `nextStage`); a clear by two warnings; the fail (no star, 경고 2번, buttons, 다시 도전, `arcade`); results at 360 × 780; the next stage names; the chair pose's icon, warnings and figure with a stand-in bundle; the announcements; a fight stage does not open |
+
+### Acceptance criteria → tests (the A4 spec, section 9; the local task.md left the step's criteria to the spec)
+- Time and warnings, fake clock → hold_judge_test: 'a broken pose after GO keeps the time at 0, with no warning', 'the
+  time starts once the pose is held for 0.6 s' (entry); 'frames of the 3·2·1 reach the reader, not the time or
+  warnings'; 'held all along, the hold ends at the third star'; 'broken for 0.49 s gives no warning', 'broken for
+  0.5 s gives one warning and stops the time'; 'the time does not run while broken or paused'; 'held for 0.59 s stays
+  paused, for 0.6 s runs again'; 'a break that goes on while paused adds no warning'; 'the second warning ends the
+  hold'; 'within 1 s an unknown pose keeps a held one: the time runs', 'past 1 s it is off screen, warned 0.5 s
+  later'; 'the warning names the fault read most in its run'
+- High plank reading → high_plank_hold_test: 'arms at 156° are held, at 154° bent'; 'the head's place is taken from the
+  held frames of the first 0.5 s', '0.349 shoulder widths lower is held, 0.351 is the head down'; 'hands above the
+  shoulders read as off screen: the user stood up'; 'a frame without the shoulders is unknown'; the knee group ('the
+  knee classifier reading touching is knees down', 'knees beside the hands are knees down, far behind them not', 'hips
+  folded 25° from the first plank angle are knees down')
+- Stars by the time held after two warnings → hold_stage_viewmodel_test 'ended by warnings, the stars count the time
+  really held'; hold_stage_screen_test 'a clear by two warnings lights the stars held'
+- Screens → hold_stage_screen_test: the briefing, holding and result groups; 'a warning for … stops the clock and
+  says …' (4 tests); 'the bar fills toward the third star, its marks light'; 'the leave button asks with the battle's
+  dialog'
+- Chair icons and figure with a stand-in bundle (spec 3) → 'the chair pose's drawings, with a stand-in bundle' (3 tests)
+- Phone check → TODO(Woohyun Song) above.
+
 #### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
 P16 builds the arcade's screens on A2's rules and A3's art (P16 spec v2):
 - **게임 시작:** two cards, 온라인 대결 and 아케이드 (design `PlayX`); the AI 1v1 card and the 이어하기 row are gone.

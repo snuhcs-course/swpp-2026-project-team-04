@@ -190,6 +190,91 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
 
+## A4 `codex/iter5-hold-plank` – Implement high-plank hold stages (team order #8.3), 2026-11-23
+
+### a. Where AI was used
+- **The spec and the designs:** Claude on claude.ai wrote the hold stage's spec (SPEC v1–v3), and Claude drew the
+  designs (`P16Hold`, `P16HoldGrid`, `ArcResult`, `ArcFlowGrid`) on the Claude Design canvas (the user's statement,
+  2026-11-23, in the Prompt Log). They reached this step as a local design hand-off, which is not committed.
+- **The code and tests:** Claude Code (Opus 5.5) wrote all of A4 in `0933ba6`, `c5b954d` and `1dbf9ec` (17 new files, 4 of them tests, and
+  additions at the end of `lib/theme/app_theme.dart`):
+  - `lib/services/pose/hold_judge.dart`: the common part, `HoldTimeline` (time, warnings, unknown, entry) and
+    `HoldJudge` (3·2·1 frames to the reader only);
+  - `lib/services/pose/high_plank_hold.dart`: `HighPlankReader`, whose lines are read from the push-up judge's and the
+    setup's configs (`RepJudgeConfig`, `SetupConfig`), not typed in;
+  - `lib/services/pose/hold_pose_definition.dart`, `hold_poses.dart`, `lib/models/hold_reading.dart`,
+    `hold_progress.dart`: the pose bundle, its one selector, and the values they pass;
+  - `lib/viewmodels/hold_stage_viewmodel.dart` and `lib/screens/hold_stage_*.dart` (5 files): the stage from the
+    briefing to the result, on the battle's unchanged `SetupViewModel`, `BattleCameraArea`, `BattleCameraView` and
+    countdown bands; `HoldColors` and `HoldText` in `app_theme.dart` with the values of the `.dc.html` sources;
+  - `lib/demo/hold_stage_demo.dart`: the phone entry point the spec asks for (section 7).
+- **Checking against the design:** Claude Code captured the five scenes with the app's fonts in a throwaway widget
+  test (deleted) and compared them by eye with the hand-off's shots (testing notes, A4 entry).
+- **Review:** the repo's `reviewer` subagent ran three times on the code (the uncommitted tree that became the
+  commits) and once more on these notes (see item d).
+- **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
+  Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder also
+  holds A3's sessions). Two script fixes, the prompts otherwise unchanged: the Chrome extension's injected
+  `<browser_instruction>` text (not typed by the user) was removed, and the profanity filter's false hit on "꺼져서"
+  ("the power went off") was put back as written.
+- **Not done by AI:**
+  - Woohyun Song confirmed the designs and made the decisions during the build (the user's statement, 2026-11-23):
+    keeping the 'standing up' check (an upright body counts as off screen; asked after reviewer run 1) and the
+    warning sound (the battle's reject sound; spec section 12, asked before starting).
+  - Woohyun Song also set the branch, the merge of A2 and A3, the draft PR and its wording, and the recovery checks
+    after the laptop lost power.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "앞 단계 파일은 상속만 하고 고치지 않는다. 기존 판정
+  코드(rep_judge.dart, squat_rep_judge.dart, pose_metrics.dart, setup_checker.dart)도 고치지 않고 가져다 쓴다. 고쳐야만 하면 먼저
+  물어봐."
+- [Woohyun Song, 11-23] (after the power loss, pasted; excerpt) "같은 폴더에서 A3 세션이 프롬프트 기록의 A4 프롬프트 항목을
+  빼는 커밋을 하려 했다. codex/iter5-arcade-art의 마지막 커밋이 무엇인지, 그 커밋이 이 브랜치에 들어와 있는지, A3의 커밋이 이
+  브랜치(codex/iter5-hold-plank)에 잘못 올라오지는 않았는지 확인해 줘."
+
+### c. What AI did well
+- **Reused the battle's setup without touching it.** The setup, its 3 s auto start (the 3·2·1), the camera, its
+  failures and pause come from the unchanged `SetupViewModel`; the setup look from `BattleCameraArea` and
+  `BattleCameraView`. No setup, battle or judge file is in the diff (`--check-diff`, reviewer runs 1–3).
+- **Found a gap in the spec; the user confirmed after review.** By the spec's table a user standing up with the arms down would read as
+  holding (the hands stay below the shoulders). Claude Code used the judge's existing upright-body line
+  (`maxTorsoDrop`), wrote it down as beyond the spec, and the user decided to keep it after the reviewer asked.
+- **Caught layout faults by looking.** The capture against the design shots found three faults that no test had:
+  the stage tag stretched across the top, the clock centred on the screen instead of between its neighbours, and the
+  results 28 dp low. Each was fixed and captured again.
+- **Recovered cleanly after the power loss.** Before going on it checked the branch, `index.lock`, the end of every
+  changed file and the A3 branch, merged A3's new commit (`32893b5`), and finished the edit that was cut off.
+
+### d. Hallucinations / errors
+- **Names that do not exist.** `RepPhase.top` (the enum has `up`) in a test and `AppColors.shadow` in the result
+  screen (it is `RepBotColors.shadow`). Both caught at once by the analyzer.
+- **Test helpers that missed real behaviour.** The cue stream delivers on a microtask, so the first warning-cue test
+  found no cue (fixed by flushing microtasks in the helper); the owner is drawn five times for its white outline, so
+  `find.byType(GymOwnerFigure)` found too many (the tests take the last one); the top row overflowed with the test
+  font (rebuilt so it cannot overflow). All caught on the first test run.
+- **Two plank fixtures that tested the wrong rule.** A leg at 140° also put the knees in the judge's knees-beside-hands
+  range, and arms at 150° sat on the classifier's boundary. Seen while re-reading the tests before running them;
+  changed to 145° and 152°.
+- **Reviewer, run 1 (CHANGES_REQUESTED, 3 Major, 4 Minor):** the upright-body rule had no user approval (asked; kept);
+  the Design doc changes named three screen files without their classes; bare `gap`/`spacing` numbers in the briefing;
+  the next stage card's gap was 6, the design 8; one file not formatted; A5 cannot edit `hold_poses.dart` or the demo
+  under the local ownership, and `design_tokens_test.dart` does not list the hold screens (both for the PR body).
+- **Reviewer, run 2 (CHANGES_REQUESTED, 1 Major, 1 Minor):** the fix for the card's gap brought in a bare `6`; now
+  `ArcadeResultFrame.strikesGap`. Minor: the testing notes' count of checked paths had to come from the run they
+  quote; filled from the run on `1dbf9ec`.
+- **Reviewer, run 3:** APPROVE on the tree committed as `0933ba6`–`1dbf9ec`, with one Minor left for the PR body: A5 needs a scope exception to add its line to `hold_poses.dart` and to open the chair stages in the demo, and `design_tokens_test.dart` does not list the hold screens. Both are for the PR body.
+- **Reviewer, run 4 (APPROVE, notes only):** every cited test name exists and the counts and checks match the runs;
+  four wording Minors fixed before the notes commit: a check said to run on a pushed head before the push, two lines
+  said the PR text existed before the PR, a heading in item c said Claude asked before the review did, and this item
+  missed run 2's Minor.
+
+### e. Prompt revisions
+- None in this step: the step ran on its start prompt; the later prompts answered questions or added the power-loss
+  checks, without changing what was asked.
+
+### f. Manual fixes and why
+- None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
+
 ## P16 `codex/iter5-ai-opponents` – Build arcade screens (team order #8.5), 2026-11-23
 
 ### a. Where AI was used

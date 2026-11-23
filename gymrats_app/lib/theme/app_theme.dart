@@ -1666,3 +1666,257 @@ extension ArcadeText on TextTheme {
   TextStyle get arcadeRoundDisc =>
       _arcade(family: AppFonts.number, size: 16, weight: FontWeight.w800);
 }
+
+/// The arcade hold stage's own colors (A4: the P16Hold and ArcResult
+/// designs), where the palette above has none of the value. The rest of
+/// the stage uses [AppColors].
+abstract final class HoldColors {
+  /// "STAGE n · nF" over the briefing's title.
+  static const stageTag = Color(0xFFC4134F);
+
+  /// The owner's title and the warning rule on the briefing.
+  static const softInk = Color(0xFF2B3242);
+
+  /// A star time's tile on the briefing.
+  static const tile = Color(0xFFF7F8FA);
+
+  /// An unlit star, and the briefing's divider.
+  static const starOff = Color(0xFFE3E6EC);
+
+  /// The failed result's title band.
+  static const failBand = AppColors.facetDark;
+
+  /// The briefing's owner card.
+  static const ownerCard = AppColors.facetLight;
+
+  /// The camera box's figure, where the camera picture is not: the box, its
+  /// floor, the figure, its feet, and the plank's body under the shoulders.
+  static const cameraBox = Color(0xFFB4B9C2);
+  static const cameraFloor = Color(0xFF9FA5AF);
+  static const figure = Color(0xFF646A74);
+  static const figureFeet = Color(0xFF585E68);
+  static const figureBody = Color(0xFF7E848E);
+}
+
+/// The text styles of the arcade hold stage and its result (A4: P16Hold,
+/// ArcResult), at the design's sizes. Screens change only their color.
+extension HoldText on TextTheme {
+  TextStyle _hold({
+    required String family,
+    required double size,
+    required FontWeight weight,
+    double? height,
+    double spacing = 0,
+    Color color = AppColors.ink,
+  }) => bodyMedium!.copyWith(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: spacing,
+    color: color,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// The briefing's "STAGE 3 · 1F": Oxanium 700, 11, spaced.
+  TextStyle get holdBriefTag => _hold(
+    family: AppFonts.number,
+    size: 11,
+    weight: FontWeight.w700,
+    spacing: 3,
+    color: HoldColors.stageTag,
+  );
+
+  /// The briefing's title, "버티기": 28, semibold, slanted by the screen.
+  TextStyle get holdBriefTitle => _hold(
+    family: AppFonts.body,
+    size: 28,
+    weight: FontWeight.w600,
+    height: 1.05,
+    spacing: -0.5,
+  );
+
+  /// "COACH" on its ink tag: Oxanium 800, 12, lime.
+  TextStyle get holdCoachTag => _hold(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w800,
+    spacing: 2,
+    color: AppColors.accent,
+  );
+
+  /// The owner's name on the briefing: Do Hyeon 40.
+  TextStyle get holdOwnerName => _hold(
+    family: AppFonts.display,
+    size: 40,
+    weight: FontWeight.w400,
+    height: 1.05,
+  );
+
+  /// "1F 체육관 관장" and "경고 2번이면 실패": 13, semibold.
+  TextStyle get holdNote => _hold(
+    family: AppFonts.body,
+    size: 13,
+    weight: FontWeight.w600,
+    color: HoldColors.softInk,
+  );
+
+  /// The pose's name on the briefing: 21, semibold, slanted by the screen.
+  TextStyle get holdPoseName => _hold(
+    family: AppFonts.body,
+    size: 21,
+    weight: FontWeight.w600,
+    height: 1.15,
+  );
+
+  /// "최대 30초": Oxanium 700, 13.
+  TextStyle get holdMaxTime => _hold(
+    family: AppFonts.number,
+    size: 13,
+    weight: FontWeight.w700,
+    color: AppColors.textSecondary,
+  );
+
+  /// A star time's seconds on the briefing: Oxanium 800, 17.
+  TextStyle get holdGoalSeconds =>
+      _hold(family: AppFonts.number, size: 17, weight: FontWeight.w800);
+
+  /// "판정", before the check chips: 12, bold.
+  TextStyle get holdChecksLabel => _hold(
+    family: AppFonts.body,
+    size: 12,
+    weight: FontWeight.w700,
+    color: AppColors.textSecondary,
+  );
+
+  /// A check chip's words, e.g. "팔 펴기": 12, bold.
+  TextStyle get holdCheck =>
+      _hold(family: AppFonts.body, size: 12, weight: FontWeight.w700);
+
+  /// The briefing's "자세 잡기": 19, semibold, white, slanted by the screen.
+  TextStyle get holdStartButton => _hold(
+    family: AppFonts.body,
+    size: 19,
+    weight: FontWeight.w600,
+    color: AppColors.onInk,
+  );
+
+  /// "STAGE 3 · 1F" on its ink tag over the stage: Oxanium 800, 12, lime.
+  TextStyle get holdStageTag => _hold(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w800,
+    color: AppColors.accent,
+  );
+
+  /// "버틴 시간" or "멈춤" over the clock: 11, bold.
+  TextStyle get holdClockLabel => _hold(
+    family: AppFonts.body,
+    size: 11,
+    weight: FontWeight.w700,
+    color: AppColors.textSecondary,
+  );
+
+  /// The clock, e.g. "0:22": Oxanium 800, 46.
+  TextStyle get holdClock => _hold(
+    family: AppFonts.number,
+    size: 46,
+    weight: FontWeight.w800,
+    height: 1,
+    spacing: -1,
+  );
+
+  /// A star mark's seconds under the bar: Oxanium 700, 11.
+  TextStyle get holdMarkSeconds => _hold(
+    family: AppFonts.number,
+    size: 11,
+    weight: FontWeight.w700,
+    color: AppColors.textSecondary,
+  );
+
+  /// The owner's "삐익!": Do Hyeon 34, red.
+  TextStyle get holdWhistle => _hold(
+    family: AppFonts.display,
+    size: 34,
+    weight: FontWeight.w400,
+    height: 1.1,
+    color: AppColors.danger,
+  );
+
+  /// The warning's two big lines in the camera box: Do Hyeon 66.
+  TextStyle get holdCue => _hold(
+    family: AppFonts.display,
+    size: 66,
+    weight: FontWeight.w400,
+    height: 0.98,
+  );
+
+  /// The result's "STAGE 9 · 2F": Oxanium 700, 12, spaced.
+  TextStyle get holdResultTag => _hold(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w700,
+    spacing: 3,
+    color: AppColors.textMuted,
+  );
+
+  /// The result's "클리어!" or "실패": Do Hyeon 44.
+  TextStyle get holdResultTitle => _hold(
+    family: AppFonts.display,
+    size: 44,
+    weight: FontWeight.w400,
+    height: 1.1,
+  );
+
+  /// The result's "버틴 시간": 12, bold.
+  TextStyle get holdResultTimeLabel => holdChecksLabel;
+
+  /// The result's time: Oxanium 800, 48.
+  TextStyle get holdResultTime => _hold(
+    family: AppFonts.number,
+    size: 48,
+    weight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// A star's label under it on the result, e.g. "20초": 12, bold.
+  TextStyle get holdStarLabel => _hold(
+    family: AppFonts.body,
+    size: 12,
+    weight: FontWeight.w700,
+    height: 1.3,
+  );
+
+  /// "경고 2번" on the failed result: 14, bold.
+  TextStyle get holdStrikes =>
+      _hold(family: AppFonts.body, size: 14, weight: FontWeight.w700);
+
+  /// The next stage card's "STAGE 10": Oxanium 700, 11.
+  TextStyle get holdNextTag => _hold(
+    family: AppFonts.number,
+    size: 11,
+    weight: FontWeight.w700,
+    spacing: 1,
+    color: AppColors.textSecondary,
+  );
+
+  /// The next stage card's "곰탱이 · 푸쉬업": Do Hyeon 20.
+  TextStyle get holdNextName => _hold(
+    family: AppFonts.display,
+    size: 20,
+    weight: FontWeight.w400,
+    height: 1.2,
+  );
+
+  /// The result's left button, e.g. "다시 하기": 14, bold.
+  TextStyle get holdResultButton => holdStrikes;
+
+  /// The result's right button, e.g. "다음 스테이지": 17, semibold, white,
+  /// slanted by the screen.
+  TextStyle get holdResultAction => _hold(
+    family: AppFonts.body,
+    size: 17,
+    weight: FontWeight.w600,
+    color: AppColors.onInk,
+  );
+}
