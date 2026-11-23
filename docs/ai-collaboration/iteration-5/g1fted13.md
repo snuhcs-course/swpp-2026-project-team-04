@@ -298,12 +298,19 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   changed nothing. On PR #90 at `be6509a` its finding (P2, one bent arm passing on the mean of both) was right: Claude
   Code fixed it on A4's branch (`4ef8a2f`, notes `ed76b18`, 3 tests), answered on the thread and merged it here
   (`adeb74f`).
+- TODO(Woohyun Song): who wrote the hold effects spec (`p16-3-fx/SPEC-FX.md`) and drew its designs (`P16Hold`
+  scenes go, star and out, `HoldPickBoard`, `ArcResult holdFail why=list`); the user picked the effects on that canvas.
+- **The hold effects (2026-11-24, from this session; the user's picks on the design canvas):** on A4's branch
+  `3ffed5f` (music at the battle's moments, the start bubble, the stars' cheer with a pop and `SoundEffect.good`, the
+  second warning's 1.5 s with "실패!" and the fail screen's reasons) and notes `47ea0d1`; merged here (`37e987c`) with
+  the chair pose's two-line start words (`4767873`).
 - **The follow-up of 2026-11-24** (the user's decision): `77e1a75` keeps the 3·2·1's standing thigh from GO on (the
   spec's "follows while standing" narrowed to before GO), with 7 new tests, among them a slow sit over 3, 4 and 6 s.
 - **Checking against the design:** the chair scenes captured with the app's fonts in a throwaway widget test (deleted)
   and compared by eye with the hand-off's shots (testing notes, A5 entry).
 - **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1), on
-  these notes (runs 2–3), on the follow-up of 2026-11-24 (run 4), and on A4's one-arm fix (A4 run 8).
+  these notes (runs 2–3), on the follow-up of 2026-11-24 (run 4), on A4's one-arm fix (A4 run 8), on A4's effects
+  (A4 runs 9–10) and on the chair's start bubble (run 5).
 - **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
   Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
   also holds the A3 and A4 sessions). Two fixes, the prompts
@@ -327,6 +334,8 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   내려가서 깊이가 낮게 읽히기 때문이다(reviewer 시뮬레이션에서 0.8이 0.73~0.75로 읽힘)."
 - [Woohyun Song, 11-24] (pasted; excerpt) "A4 PR #90에 Codex 리뷰(be6509a)가 왔다. P2 \"Check each arm against the plank
   angle\"다. … 맞는 지적이니 A4 브랜치에서 고치자."
+- [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "A4 연출 추가 작업이다. … 고른 것 (다시 묻지 않는다)
+  1. 배경음: 버티기 판에서도 대결과 같은 배경음을 같은 코드, 같은 방식으로 깐다."
 
 ### c. What AI did well
 - **Found A4's gaps before building on them.** Reading A4's view model against the spec's sections 5 and 6 showed that
@@ -395,6 +404,19 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 - **Comments naming the review tool:** the first one-arm commit's comments said "Codex review on A4"; code may carry
   only the AI marker, so they now say "PR #90 review" (reviewer A4 run 8, Minor; fixed before the push).
 
+- **The jingle a beat late (A4 effects, reviewer A4 run 9, Major).** The first version started the win or lose
+  jingle with the result screen, 1.5 s after a second warning, while a battle's starts when it ends; it now starts
+  with the warning's moment. The same run found a screen check that could never fail (a third warning cannot come
+  after the judge ended); it now checks that the frames in the moment are not read.
+- **A call made without asking.** A clear ended by a second warning (a star already earned) keeps "삐익!" and plays
+  the win jingle instead of showing "실패!"; the session decided it, wrote it down as beyond the spec and put it to
+  the user in the PR and the report.
+
+- **Reviewer, A5 run 5 (APPROVE, the merge of A4's effects and the chair's start bubble; 5 Minors):** two prompts out
+  of time order in the Prompt Log and item b; size tests that could not fail for the two-line bubble (now both lines
+  inside the bubble and the bubble on screen); the testing entry lacked its criteria and phone-check lines; item a did
+  not say who wrote the effects spec (a TODO now); the local progress log lacked this work. All fixed.
+
 ### e. Prompt revisions
 - Before (the user's answer, 2026-11-23): "A4 브랜치에서 고치고 merge (Recommended)".
 - After (mid-task, pasted): "1. 하이 플랭크의 푸쉬업 안내선도 따로 도는 판정기에서 오는지 확인하고, 오래 버티면 같은 식으로
@@ -408,6 +430,13 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   않는다. … 2. 3~4초에 걸쳐 천천히 앉아도 깊이를 실제대로 읽어 \"더 앉아요\"가 뜨지 않는지 보는 테스트를 더한다."
 - Why it worked: the spec tied changes to the phone check; the new prompt named the rule to change, how far
   (before GO only), and the test that proves it, so the change was small and testable without the phone.
+- Before (2026-11-24, pasted, then interrupted by the user): "2. A4 브랜치에서 고친다: 두 번째 경고 때도 첫 번째 경고와 같은
+  경고 화면 … 을 1.5초 보여 준 뒤 실패 화면으로 넘어간다. … 3. 같은 A4 커밋에, 별이 채워질 때의 가벼운 효과를 넣는다. …
+  말풍선과 배경음은 다음 iteration으로 미룬다고 PR 본문에 적는다."
+- After (2026-11-24, pasted): "A4 연출 추가 작업이다. … 이번 iteration이 마지막이라 다음으로 미루지 않는다. 명세와 시안은
+  p16-3-fx 묶음 v2(SPEC-FX.md, design/, shots/)에 있다."
+- Why it worked: the first message described the effects in words and deferred the bubbles and music; the revision
+  pointed at a spec and picked designs, named every value's source, and kept all four effects in this iteration.
 
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.

@@ -582,3 +582,31 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 | Layer | File | What it covers |
 |---|---|---|
 | Service | `test/services/pose/chair_hold_test.dart` | 'down to 0.8 over 3 s / 4 s / 6 s reads 0.8 and is held, where the squat judge's rule reads under 0.75' (3 tests: the reader's depth is the true 0.8 and held, while `SquatRepJudge` on the same frames reads under 0.75); 'the entry ends and the time runs, with no warning' (a slow sit after GO on A4's `HoldJudge`); 'sitting again slowly after a warning runs the time again'; 'after GO it never changes: standing, halfway up or seated'; 'taken after GO, it is taken once and not followed'; changed: 'the same frames give the squat judge's depth, within 12 s' (as the 3·2·1 reads them), 'past 12 s down the squat judge drops it; the depth goes on' (GO at 1 s, the real 0.9), 'in the 3·2·1 it does not change while seated, nor halfway up', 'in the 3·2·1, standing, it follows slowly' (renamed from the A5 entry's 'it does not change while seated, nor halfway up' and 'standing, it follows slowly', which ran after GO) |
+
+#### 2026-11-24 · code at commit `4767873` · step A5: the chair pose's start bubble (A4's effects merged)
+A4's hold effects (`3ffed5f`, its entry above) came in by `git merge` (`37e987c`; the notes' add/add conflicts kept every
+entry). The chair pose's part (the effects spec 3 and 7): its start words "스쿼트 자세로" / "버텨!" on two lines
+(`chairHold.startWords`), shown from GO and gone when the time starts, when "시작" is read.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as the A5 entry above.
+
+- **Tests:** `flutter test` 4159 passed, 0 failed, 10 skipped (2026-11-24, `4767873`; the same 10 skips as above). `flutter analyze` found no
+  issues. The two chair files: 50 passed (37 + 13).
+- **New tests:** 3 (the size cases); 3 changed: the bundle test checks the two lines, and the two entry tests now see
+  the bubble and hear "스쿼트 자세로 버텨!" before "시작".
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (67 paths).
+- **Review:** local reviewer A5 run 5, APPROVE; its Minors fixed before the commit (stronger size checks, these
+  lines, the Prompt Log's order).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+- **Phone check of the start bubble:** TODO(Woohyun Song): STAGE 5 · 1F, the two lines from GO while standing and
+  sitting down, gone when the time starts.
+- **Acceptance criteria → tests (the effects spec, the chair's part):** 6.1 shown while entering and gone at the
+  start → 'standing after GO: 0:00, 버틴 시간, a green frame, no warning', 'seated, the time starts with "시작" and
+  runs'; 6.5 sizes → 'the two-line start bubble and "좋아!" fit …' (3 tests); 6.6 read out → the `said` checks in the
+  same two entry tests.
+
+### Test cases added or changed for the start bubble
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/chair_hold_test.dart` | 'is set up as a squat, entered after GO, with its own words' now checks `startWords` |
+| View | `test/services/pose/chair_hold_stage_test.dart` | 'standing after GO: 0:00, 버틴 시간, a green frame, no warning' (the two lines shown and read); 'seated, the time starts with "시작" and runs' (the bubble goes when the time starts); 'the two-line start bubble and "좋아!" fit 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x' (new) |
