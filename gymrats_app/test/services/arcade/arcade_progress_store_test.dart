@@ -80,10 +80,10 @@ void main() {
     });
   });
 
-  group('recordArcadeStage', () {
+  group('recordStage, at the end of a stage', () {
     test('saves the stage\'s stars and returns the saved progress', () async {
       final store = _CountingStore();
-      final saved = await recordArcadeStage(store, 7, 1, 2);
+      final saved = await store.recordStage(7, 1, 2);
       expect(saved.bestOf(1), 2);
       expect(await store.read(7), saved);
       expect(store.writes, 1);
@@ -91,16 +91,55 @@ void main() {
 
     test('playing again keeps the most stars, with one write each', () async {
       final store = _CountingStore();
-      await recordArcadeStage(store, 7, 1, 3);
-      final again = await recordArcadeStage(store, 7, 1, 1);
+      await store.recordStage(7, 1, 3);
+      final again = await store.recordStage(7, 1, 1);
       expect(again.bestOf(1), 3);
       expect((await store.read(7)).bestOf(1), 3);
       expect(store.writes, 2);
     });
 
     test('a stage played with no star opens nothing', () async {
-      final saved = await recordArcadeStage(_CountingStore(), 7, 1, 0);
+      final saved = await _CountingStore().recordStage(7, 1, 0);
       expect(saved.isOpen(2), isFalse);
+    });
+
+    group('in secure storage', () {
+      final earlier = ArcadeProgress.initial().withStars(1, 3).withStars(2, 2);
+
+      setUp(
+        () => FlutterSecureStorage.setMockInitialValues({
+          'gymrats.arcade.7': jsonEncode(earlier.toJson()),
+        }),
+      );
+
+      Future<ArcadeProgress> saved() async => ArcadeProgress.fromJson(
+        jsonDecode(
+          (await const FlutterSecureStorage().read(key: 'gymrats.arcade.7'))!,
+        ),
+      );
+
+      test('adds the play to the saved progress, once', () async {
+        final after = await SecureArcadeProgressStore().recordStage(7, 3, 1);
+        expect(after, earlier.withStars(3, 1));
+        expect(await saved(), after);
+      });
+
+      test('a store that fails to read keeps the saved progress: nothing is '
+          'written', () async {
+        final after = await SecureArcadeProgressStore(_BrokenStorage())
+            .recordStage(7, 3, 1);
+        expect(after, ArcadeProgress.initial().withStars(3, 1));
+        expect(await saved(), earlier);
+      });
+
+      test('a broken saved value is replaced by the play', () async {
+        FlutterSecureStorage.setMockInitialValues({
+          'gymrats.arcade.7': 'not json',
+        });
+        final after = await SecureArcadeProgressStore().recordStage(7, 1, 2);
+        expect(after, ArcadeProgress.initial().withStars(1, 2));
+        expect(await saved(), after);
+      });
     });
   });
 }
