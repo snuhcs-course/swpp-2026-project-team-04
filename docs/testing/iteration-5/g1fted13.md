@@ -222,7 +222,7 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   (see the PR's Exceptions).
 
 #### 2026-11-23 · code at commit `1dbf9ec` · step A4 `codex/iter5-hold-plank` (Implement high-plank hold stages, team order #8.3)
-A4 is the arcade's hold stage, played with the high plank (spec `.claude/design/arcade/p16-3/SPEC.md` v3, local hand-off):
+A4 is the arcade's hold stage, played with the high plank (the local design hand-off's spec `p16-3/SPEC.md` v3, not committed):
 - **Common part:** `HoldTimeline` and `HoldJudge` (`lib/services/pose/hold_judge.dart`): the time runs only while the pose
   is held; 0.5 s broken gives a warning and stops it; 0.6 s held runs it again; no new warning while stopped; the second
   warning or the third star ends the stage; an unknown pose keeps the last reading for 1 s, then is off screen; a pose
