@@ -551,7 +551,7 @@ comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   (GitHub Actions)".
 - **Shortfalls:** section 8 (hold stages) is not done: `codex/iter5-hold-chair` is not on origin yet. Until then the
   map's hold stages do nothing, so a player stops at STAGE 3 in the app.
-- **Manual check:** TODO(Woohyun Song): on the Galaxy S26+ (spec 12): 1F from the start to the boss once (with the
+- **Manual check:** on the Galaxy S26+ (spec 12), checked on 2026-11-24 on `9b59537` (the `b03ca98` entry below; the boss match through R2 and the 2F fever still TODO(Woohyun Song)): 1F from the start to the boss once (with the
   hold stages, after section 8), the 2F first stage's fever from 15 s, and the map's stars and locks.
 
 ### Test cases added or changed in this step
@@ -584,7 +584,7 @@ comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
 - 대결 판: versus, values handed, win, loss, 다시 도전, 다음 스테이지 → 'the header says STAGE n and the exit 아케이드로', 'the stage's character fights on its floor's gym, named by its character', 'rulesOf: the stage's floor's rules; outside the arcade the default', 'botOf: the stage's AI level; outside the arcade the chosen level', 'won by KO: 클리어!, the stars got, the next stage's card, and the stars kept', 'lost: 실패 with the score and no star; no star is kept', '다시 도전 opens the versus again over the map', '다음 스테이지 opens the next stage over the map: a fight's sheet, a hold's screen'
 - 보스 매치: R1 lost, break and 그만하기, R2 lost, both won, 4F → 'R1 lost ends it: R1 패배, R2 locked, no stars', '그만하기 and back end the match: the map, no stars', 'R1 won: the break; R2 lost: R2 패배 with R1 checked', 'both won: n층 클리어!, the rounds, the next floor open; {n+1}층으로 opens its first stage', '4F: 4층 클리어! with 5F 공사중, and the map at the top (spec 1.6)'
 - Online regression → 'without them, as online, neither is there', 'outside the arcade nothing is added to the stage', 'a bot outside the arcade keeps "AI" and 게임 나가기', and the full suite
-- Phone check → TODO(Woohyun Song) (above)
+- Phone check → (above): done in part on 2026-11-24; the boss match through R2 and the 2F fever TODO(Woohyun Song)
 
 #### 2026-11-23 · code at commit `8b975cf`, merged with A4 in `6074bf4` · step P16 `codex/iter5-ai-opponents`, section 8 and the results on A4's frame
 After the first push the user chose not to wait for A5. A4 (`codex/iter5-hold-plank`, PR #90) was merged in
@@ -629,7 +629,7 @@ the PR's CI comment, "Tests and coverage (GitHub Actions)".
   because `server/` did not change.
 - **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
   (GitHub Actions)".
-- **Manual check:** TODO(Woohyun Song): on the Galaxy S26+ (spec 12): 1F from STAGE 1 to the boss with STAGE 3 on
+- **Manual check:** on the Galaxy S26+ (spec 12), checked on 2026-11-24 on `9b59537` (the `b03ca98` entry below; the boss match through R2 and the 2F fever still TODO(Woohyun Song)): 1F from STAGE 1 to the boss with STAGE 3 on
   A4's screen and its stars on the map, a chair stage opening as high plank (the briefing says "의자 자세"), the 2F
   first stage's fever from 15 s, the map's stars and locks, and the boss screens with large text.
 
@@ -655,7 +655,7 @@ the PR's CI comment, "Tests and coverage (GitHub Actions)".
   kept', 'lost: 실패 with the score and no star; no star is kept' (both find `ArcadeResultFrame`)
 - Boss screens on small phones and large text → 'fits $label without overflow, scrolling to its buttons' (run for
   "a short phone" and "a large text size")
-- Phone check → TODO(Woohyun Song) (above)
+- Phone check → (above): done in part on 2026-11-24; the boss match through R2 and the 2F fever TODO(Woohyun Song)
 
 #### 2026-11-24 · code at commit `b03ca98`, merged with A5 in `0deb979` · step P16 `codex/iter5-ai-opponents`, the chair stages on A5
 A5 (`codex/iter5-hold-chair`, PR #92) came up with A4's newer commits in it, including A4's fix for the two result
@@ -689,7 +689,16 @@ comment, "Tests and coverage (GitHub Actions)".
   did not change.
 - **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
   (GitHub Actions)".
-- **Manual check:** TODO(Woohyun Song): on the Galaxy S26+ (spec 12): as above, with STAGE 5 on the chair pose.
+- **Manual check (2026-11-24, Galaxy S26+ SM-S947N, One UI 9.0, Android 17; the build of `9b59537`, an account new
+  to the arcade):**
+  - Worked: 게임 시작's two cards; the arcade home; a fight stage's flow (the stage info, the opponent's intro, the
+    floor's background, the clear, the report, back home); the fail screen and 다시 도전; the hold stages opening
+    (STAGE 3 on the high plank, STAGE 5 on the chair pose) and opening the next cell; the home's star total and each
+    cell's stars; 2F opening.
+  - Not seen: winning the boss match through R2 to "1층 클리어!", and the 2F first stage's fever at 15 s.
+    TODO(Woohyun Song): at the last phone check.
+  - To fix: on the boss match's break, the words of "자세 잡기" nearly ran out of the button. Fixed in the next
+    entry.
 
 ### Test cases added or changed in this phase
 | Layer | File | What it covers |
@@ -704,4 +713,60 @@ comment, "Tests and coverage (GitHub Actions)".
   view model: each runs its own pose'
 - Results on small phones and large text → '$name fits ${size.width.toInt()} x ${size.height.toInt()} with
   ${scale}x text, every button reachable' (5 results x 2 sizes)
-- Phone check → TODO(Woohyun Song) (above)
+- Phone check → (above): done in part on 2026-11-24; the boss match through R2 and the 2F fever TODO(Woohyun Song)
+
+#### 2026-11-24 · code at commit `fcacca1` · step P16 `codex/iter5-ai-opponents`, the phone check and the boss button
+The phone check on `9b59537` (the entry before) found that on the boss match's break the words of "자세 잡기" nearly ran
+out of the button. In the design (`P16Boss` break) the button spans the screen's content, as on the intro; P16's
+break made it as wide as its words, so the corners of the slanted words reached 2.4 px past its edge. Fixed:
+- **The break's 자세 잡기** spans the content like the intro's: 320 wide on the design's 360 phone, 58 high, the words
+  at 19.
+- **The arcade's ink button (`ArcadeDarkButton`):** on a narrow button or with large text its words shrink to fit
+  instead of being cut off with "…", with at least 4 of room on each side for the slant. Where they fit, nothing
+  changes.
+- **The other buttons** of the boss intro, the break and the floor cleared (자세 잡기, 그만하기, 2층으로, 리포트 보기)
+  were checked the same way: all inside. The floor cleared's buttons are A4's (`ArcadeResultFrame`) and were only
+  checked, not changed.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, without coverage. Coverage comes from the PR's CI
+comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (no P16 service) | 11/24 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/24 | – |
+
+- **Tests:** `flutter test` 4319 passed, 0 failed, 10 skipped (the same 10 as on `main`). `flutter analyze` found
+  no issues.
+- **Count change since `b03ca98`:** P16's new test files now hold 149 tests (142 before): `arcade_boss_screen_test.dart`
+  +5 (the words inside every button at four sizes, the break's button like the intro's), `arcade_parts_test.dart` +2
+  (the ink button's words at their size, and shrunk on a narrow button).
+- **The new tests against the old code:** with the two code files from `9b59537` put back for one run (then
+  restored), 6 of the 7 new tests failed: the four sizes (자세 잡기 on the break painted 2.4 px left of its 127-wide
+  button), the break's button width (127, not 320) and the narrow button ("다음 스테이지" cut off). The seventh, the
+  words at their size where they fit, passes on both: it guards that the fix changes nothing there.
+- **Reviewer:** run 6 APPROVE with one Minor: a new test checked only the words' top corners, which lean away from the edge; it now checks all four against the button's round shape and fails when the room for the slant is taken out. It checked that no A2–A5 file is changed, that the map's and the sheet's ink buttons are unaffected, and that A4's buttons on the floor cleared pass unchanged.
+- **Other checks:** `ownership_guard.py --check-diff` ok (109 paths). Server `pytest` was not run because `server/`
+  did not change.
+- **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
+  (GitHub Actions)".
+- **Manual check:** TODO(Woohyun Song): at the last phone check, the break's 자세 잡기 with the phone's own and a
+  large text size, with the boss match through R2 and the 2F fever (the entry before).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_boss_screen_test.dart` (updated) | the words of every button on the boss intro, the break and the floor cleared stay inside the button, slant and round corners included, at 360 x 780 and 320 x 640 with 1.0x and 1.3x text; the break's 자세 잡기 spans the content like the intro's, 58 high, its words at full size |
+| View | `test/widgets/arcade_parts_test.dart` (updated) | the ink button keeps its words at their size where they fit, and shrinks them on a narrow button without cutting them off |
+
+### Acceptance criteria → tests (the phone check's fix)
+- "자세 잡기" inside its button with the default and 1.3x text, the design's shape kept → 'on $where every button keeps
+  its words inside it: the intro, the break and the floor cleared' (4 sizes), "the break's 자세 잡기 is the intro's
+  button: as wide as the screen's content, 58 high, its words at full size"
+- Shrinks only on a narrow screen or with large text → 'the dark button keeps its words at their own size where they
+  fit', 'on a narrow button the dark button shrinks its words to fit inside it, never cutting them off'
+- The other buttons of the boss intro, the break and 1층 클리어 → the first test above (그만하기, 2층으로, 리포트 보기)
+- Phone check of the fix → TODO(Woohyun Song) (above)
