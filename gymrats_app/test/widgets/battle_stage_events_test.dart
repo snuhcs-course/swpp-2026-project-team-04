@@ -168,8 +168,11 @@ void main() {
         'whose score is still the latest', () async {
       await battle.start();
       await myRep(3, maxDepth: _good);
-      await myRep(5, reason: RejectReason.kneesDown);
-      expect(events, ['me good +10 combo 1', 'me miss +0 combo 0 kneesDown']);
+      await myRep(5, reason: RejectReason.armsStraight);
+      expect(events, [
+        'me good +10 combo 1',
+        'me miss +0 combo 0 armsStraight',
+      ]);
     });
 
     test(
@@ -426,7 +429,7 @@ void main() {
 
     test('a miss never knocks out, whatever the lead', () {
       final after = _playing.copyWith(
-        feedback: gameRep(5, reason: RejectReason.kneesDown),
+        feedback: gameRep(5, reason: RejectReason.armsStraight),
         feedbackCount: 1,
         myScore: 120,
       );

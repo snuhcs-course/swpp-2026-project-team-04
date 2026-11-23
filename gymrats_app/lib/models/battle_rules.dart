@@ -17,6 +17,7 @@ class BattleRules {
     this.feverStart = const Duration(seconds: 20),
     this.feverMultiplier = 2,
     this.averagePoints = 5,
+    this.kneeAverageEnabled = true,
     this.averageMaxElbowAngle = 120,
     this.goodPoints = 10,
     this.excellentPoints = 15,
@@ -36,6 +37,8 @@ class BattleRules {
   /// Points for a [GameGrade.average] rep. 0 turns Average off: an older
   /// server does not know it.
   final int averagePoints;
+
+  final bool kneeAverageEnabled;
 
   /// The most a rep rejected as too shallow may keep of its elbow angle, in
   /// degrees, and still be average. Honest reps gone shallow with tiredness and
@@ -93,7 +96,13 @@ class BattleRules {
   bool isCombo(Duration gap) => gap <= comboWindow;
 
   /// Points of a rep with a grade.
-  int pointsFor(GameGrade grade, {required bool combo, required bool fever}) {
+  int pointsFor(
+    GameGrade grade, {
+    required bool combo,
+    required bool fever,
+    bool kneePushup = false,
+  }) {
+    if (grade == GameGrade.average && kneePushup) return 5;
     final base = switch (grade) {
       GameGrade.average => averagePoints,
       GameGrade.good => goodPoints,
