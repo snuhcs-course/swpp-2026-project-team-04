@@ -133,3 +133,7 @@ progress.md는 원래 폴더의 P16 세션과 같은 파일을 함께 쓴다. �
 4. 프롬프트 기록의 A3 제목 아래에 A4 프롬프트가 아직 있으면 A4 제목 아래로 옮긴다.
 5. 확인 결과를 짧게 보고하고, 문제가 없으면 이어서 진행해 줘.
 </pasted_content id=\"29bf\">"
+
+## 2026-11-23 · Woohyun Song · codex/iter5-hold-plank
+<!-- fd13d110 2026-11-23T13:13:24.264Z -->
+[Woohyun Song, 11-23 22:13] "AI 기록의 TODO에는 이렇게 적어 줘. \"버티기 판의 명세(SPEC v1~v3)는 claude.ai의 Claude가 작성했고, 시안(P16Hold, P16HoldGrid, ArcResult, ArcFlowGrid)은 Claude가 Claude Design 캔버스에서 그렸다. 시안 확정과 구현 중 결정('일어섬' 판정 유지, 경고 소리)은 송우현이 했다.\" 기록 커밋 하나로 push해 줘. 커버리지와 폰 확인 결과는 나중에 따로 채운다. 이 세션은 여기서 마친다."

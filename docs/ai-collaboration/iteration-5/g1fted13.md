@@ -193,6 +193,9 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 ## A4 `codex/iter5-hold-plank` – Implement high-plank hold stages (team order #8.3), 2026-11-23
 
 ### a. Where AI was used
+- **The spec and the designs:** Claude on claude.ai wrote the hold stage's spec (SPEC v1–v3), and Claude drew the
+  designs (`P16Hold`, `P16HoldGrid`, `ArcResult`, `ArcFlowGrid`) on the Claude Design canvas (the user's statement,
+  2026-11-23, in the Prompt Log). They reached this step as a local design hand-off, which is not committed.
 - **The code and tests:** Claude Code (Opus 5.5) wrote all of A4 in `0933ba6`, `c5b954d` and `1dbf9ec` (17 new files, 4 of them tests, and
   additions at the end of `lib/theme/app_theme.dart`):
   - `lib/services/pose/hold_judge.dart`: the common part, `HoldTimeline` (time, warnings, unknown, entry) and
@@ -215,11 +218,11 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   `<browser_instruction>` text (not typed by the user) was removed, and the profanity filter's false hit on "꺼져서"
   ("the power went off") was put back as written.
 - **Not done by AI:**
-  - The spec (`.claude/design/arcade/p16-3/SPEC.md` v3) and the designs were handed over by the user as a local design
-    hand-off, which is not committed. TODO(Woohyun Song): how the A4 spec and designs were made, as written for A3.
-  - Woohyun Song decided: the warning sound is the battle's reject sound (spec section 12, asked before starting); an
-    upright body also counts as off screen (asked after reviewer run 1); the branch, the merge of A2 and A3, the draft
-    PR and its wording; and the recovery checks after the laptop lost power.
+  - Woohyun Song confirmed the designs and made the decisions during the build (the user's statement, 2026-11-23):
+    keeping the 'standing up' check (an upright body counts as off screen; asked after reviewer run 1) and the
+    warning sound (the battle's reject sound; spec section 12, asked before starting).
+  - Woohyun Song also set the branch, the merge of A2 and A3, the draft PR and its wording, and the recovery checks
+    after the laptop lost power.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "앞 단계 파일은 상속만 하고 고치지 않는다. 기존 판정
