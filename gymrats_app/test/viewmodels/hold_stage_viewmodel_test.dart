@@ -426,7 +426,8 @@ void main() {
 
     test('the push-up judge keeps the chest guide through a 60 s plank', () {
       fakeAsync((async) {
-        // The real judge on the hold's clock, as the app runs it.
+        // The real push-up judge, fed on the test's fake time. (The app's
+        // judge keeps its own stopwatch.)
         final rig = _Rig(
           async,
           stage: 21, // 30, 45 and 60 s.
