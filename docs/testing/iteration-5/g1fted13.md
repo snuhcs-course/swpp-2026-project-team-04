@@ -222,7 +222,7 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   (see the PR's Exceptions).
 
 #### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
-P16 builds the arcade's screens on A2's rules and A3's art (spec `.claude/design/arcade/p16/SPEC.md` v2):
+P16 builds the arcade's screens on A2's rules and A3's art (P16 spec v2):
 - **게임 시작:** two cards, 온라인 대결 and 아케이드 (design `PlayX`); the AI 1v1 card and the 이어하기 row are gone.
 - **아케이드 홈:** the building's map with the 24 stages, the stars of 72, the bar with the stage to play, the stage
   sheet.
