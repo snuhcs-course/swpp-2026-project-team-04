@@ -11,7 +11,7 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 - **Planning the split (local harness, not committed):** the user split P16 (the arcade) into five steps due 11/24 for
   the 11/25 TA meeting. Claude Code added the four new steps to the local ownership rules and team plan, then checked
   them in a throwaway clone: commits, `--check-diff` and `--push` on all five stacked branches.
-- **The code and tests:** Claude Code wrote all of P16-1's code and tests in four commits (18 files):
+- **The code and tests:** Claude Code wrote all of P16-1's code and tests in six commits (18 files), plus a merge of `main`:
   - `7cbbab8`: the `BotPace` interface in `lib/models/bot_difficulty.dart` (L1–20). `BotOpponent` now takes it
     (`lib/services/opponent/bot_opponent.dart` L41–43, L109). The tests pin the old rounds in
     `test/services/opponent/bot_opponent_test.dart` (L57–163).
@@ -20,6 +20,9 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   - `3bf2515`: `lib/models/arcade_progress.dart`, `lib/services/arcade/arcade_star_judge.dart` and
     `arcade_progress_store.dart`, with their three tests.
   - `6b6b2b4`: the store records a stage itself (`ArcadeProgressStore.recordStage`), after the review (item d).
+  - `03edd7f` merges `main` at `ad8a6f7` (#87, push-up grading). `9f14b6f` copies the new
+    `BattleRules.kneeAverageEnabled` into the floor rules, and `141c8df` pins the bot rounds of `ad8a6f7`
+    (items c and d).
 - **Generated, then checked:** the 24 stage constants in `arcade_catalog.dart` were printed from `arcade_data.json` by a
   throwaway Python script. Claude Code did not type them by hand. The catalog test compares every value with a copy of
   the JSON.
@@ -57,6 +60,11 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 - **Saw a gap in the stacked-PR rule.** P16-3 and P16 start from P16-1 and P16-2 merged together, and a GitHub PR has
   only one base. Claude Code chose a base for those PRs and wrote a review command for that case: the intersection of
   the two diffs with `comm -12`. It said in the rules that the PR also shows P16-2's files until both are merged.
+- **Checked `main` before the push.** Right before the push, `main` moved to `ad8a6f7`. Claude Code read its diff
+  before merging and found two effects on this step. First, #87 changed the bot's rejection reasons, so the pins
+  from `25509ee` no longer described `main`. Claude Code printed them again from an export of `ad8a6f7` (outside the
+  working tree) and showed that only the reasons differ. Second, `BattleRules` had a new field that the floor
+  rules did not copy.
 - **Read the existing results instead of re-scoring.** The fight stars use `BattleResult.outcome` and `end`,
   `myInvalidReps`, `GoalProgress.longestCombo` and `GameGradeCounts.ofReps`, as the spec says. Claude Code first
   confirmed in the code that each one exists. No judge or score code changed.
@@ -68,6 +76,11 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   case. The reviewer found it on the first run. Fixed in `6b6b2b4`: the store records a stage itself and writes
   nothing when the read fails. The test 'a store that fails to read keeps the saved progress: nothing is written'
   covers it. Cost: one fix commit and three tests.
+- **A copy that drops new fields.** `ArcadeFloorRule` builds a floor's `BattleRules` by copying every value of the
+  base. When `main` added `kneeAverageEnabled` the same day, the copy left it out: a base with it off would have
+  come back with it on. No test failed, because the merged code still compiled and the tests used the default.
+  Claude Code saw it in `main`'s diff before the push. Fixed in `9f14b6f`, and the floor test's base now turns the
+  switch off, so a value left out fails the test. A new `BattleRules` field still needs the copy updated by hand.
 - **An unsupported claim in these notes.** The first draft said the user wrote `SPEC.md` and `arcade_data.json`. The
   reviewer pointed out that the spec speaks of the user in the third person. The claim is now a TODO (item a).
 - **Garbled Korean in the generated constants.** The first run of the catalog script redirected its output in the

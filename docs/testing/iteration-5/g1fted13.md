@@ -5,7 +5,7 @@ Per-push Results for my Iteration 5 steps, in the Testing Documentation format. 
 
 ## Results
 
-#### 2026-11-23 · code at commit `6b6b2b4` · step P16-1 `codex/iter5-arcade-stages` (arcade setup, team order #8)
+#### 2026-11-23 · code at commit `141c8df` · step P16-1 `codex/iter5-arcade-stages` (arcade setup, team order #8)
 P16 (the arcade) is split into five steps. P16-1 is the arcade's values and rules, with no screen:
 - **Data:** the 4 floors, 24 stages and 16 AI levels of the design hand-off `arcade_data.json` (version arcade-1), as
   Dart constants (`ArcadeCatalog`, `ArcadeAiLevel`).
@@ -15,8 +15,9 @@ P16 (the arcade) is split into five steps. P16-1 is the arcade's values and rule
 - **Progress:** the most stars per stage (`ArcadeProgress`), kept per account in secure storage
   (`ArcadeProgressStore`).
 
-The branch starts at `origin/main` `25509ee`. I ran the commands from the Plan in `gymrats_app/` on Windows, on
-`6b6b2b4`, without coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+The branch starts at `origin/main` `25509ee`. Before the push, `main` moved to `ad8a6f7` (#87, push-up grading), and
+I merged it in (`03edd7f`). I ran the commands from the Plan in `gymrats_app/` on Windows, on `141c8df`, without
+coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
@@ -26,19 +27,20 @@ The branch starts at `origin/main` `25509ee`. I ran the commands from the Plan i
 | View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment (no View changed) | 11/23 | same CI comment |
 | API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/23 | – |
 
-- **Tests:** `flutter test` 3904 passed, 0 failed, 10 skipped. `flutter analyze` found no issues. The skipped tests
+- **Tests:** `flutter test` 3908 passed, 0 failed, 10 skipped. `flutter analyze` found no issues. The skipped tests
   were already skipped on `main`, and P16-1 does not touch them:
   - `test/services/online/public_wss_smoke_test.dart`: a live team-server check that runs only with
     `RUN_PUBLIC_BATTLE_SMOKE`.
   - 9 recordings in `test/services/pose/pushup_error_cases_test.dart`: known push-up judge errors, each with its
     reason in `knownErrors`.
 - **Count change:** P16-1 adds 124 tests: 115 in the seven new arcade test files and 9 in the two bot test files.
+  The other 4 new tests came with `main`'s #87. Before the merge, the branch had 3904 passed on `6b6b2b4`.
 - **One failed run, not from this step:** the first full run on `6b6b2b4` had one failure in
   `test/services/online/online_battle_integration_test.dart`, 'server deduplicates verdicts, rejects conflicts,
   relays only pose whitelist' (L922: `valid_reps` 0, expected 1). P16-1 does not touch online battles. That run was
   slow (`flutter analyze` took 150 s instead of 75 s, with another test run on this PC). The file then passed 3 times
-  out of 3 on its own (59 tests each), and the next full run, given above, passed. It also passed in the earlier full
-  run on `3bf2515` (3901 passed).
+  out of 3 on its own (59 tests each), and the next full run on `6b6b2b4` passed (3904). It also passed in the earlier
+  full run on `3bf2515` (3901 passed) and in the run on `141c8df` above.
 - **The bot is unchanged (spec 3):** before editing `bot_opponent.dart`, I printed `planRound` with the code at
   `25509ee` for 초보, 중수 and 고수: the rounds of seeds 1 and 7, and for seeds 0 to 499 the counts of reps, valid
   reps and deep reps, the sum of their end times and the rejected reps by reason. The printed 고수 rounds equal the ones
@@ -46,12 +48,21 @@ The branch starts at `origin/main` `25509ee`. I ran the commands from the Plan i
   check that the pins catch a change, I set the bot's `_jitter` from 0.15 to 0.16 for one run: 7 of the 8 new tests
   failed. The 8th checks only the valid reps of an arcade level, so it does not depend on `_jitter`. Then I set it
   back.
+- **The pins after the merge:** #87 maps the bot's simulated `kneesDown` misses to `insufficientDepth`, so `main`'s
+  bot is no longer the one pinned at `25509ee`. I printed the same values again from an export of `ad8a6f7` (outside
+  the working tree). Only the rejection reasons differ: 초보 seed 1's `kneesDown` rep is now `insufficientDepth`, and
+  the `kneesDown` count of seeds 0 to 499 moved to `insufficientDepth` (초보 125 + 107 = 232, 중수 55 + 53 = 108,
+  고수 42 + 57 = 99). The times, counts and depths are the same. The pins now hold the `ad8a6f7` values (`141c8df`),
+  and they pass on the merged code.
+- **A field the merge added:** #87 also added `BattleRules.kneeAverageEnabled`, which a floor's rules did not copy
+  from their base. Fixed in `9f14b6f`. The floor test's base now turns it off, and without the copy 'fever sets its
+  start, and keeps the base's other values' fails.
 - **The data test catches a changed value:** for one run I changed stage 7's label '무효 2회 이하'. The test
   'the 24 stages, every field and star' failed at stage 7. Then I set it back.
 - **The JSON copy:** the step's ownership covers only `test/models/arcade_*_test.dart`, so the copy of
   `arcade_data.json` is a raw string in `test/models/arcade_catalog_test.dart` instead of a fixture file. Only the line
   breaks differ from the hand-off file (checked with Python `json.loads(copy) == json.load(file)`).
-- **Other checks:** `ownership_guard.py --check-diff` ok (18 files, all P16-1's). Server `pytest` was not run because
+- **Other checks:** `ownership_guard.py --check-diff` ok (21 files, all P16-1's: 18 code and test files, 3 notes). Server `pytest` was not run because
   `server/` did not change.
 - **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
   (GitHub Actions)".
@@ -63,12 +74,12 @@ The branch starts at `origin/main` `25509ee`. I ran the commands from the Plan i
 |---|---|---|
 | Model | `test/models/arcade_catalog_test.dart` (new) | every floor, stage, star and AI level equals the JSON copy; the version and 5F; the characters are the character rig's, with the same names; the JSON's default score rules are `battleRules`; 초보 = LV 1, 중수 counts like LV 4 (combo chance 0.08 vs 0.10), 고수 has no level; six stages per floor in the order push-up, squat, plank, push-up, chair, boss; six characters fight twice each, never twice on a floor, never on their own floor, never in two fights in a row; AI LV 1 to 16 through the fight and boss stages; holds and bosses meet the floor owner; boss rounds push-up then squat; the stars of each kind; the star numbers get harder each floor; 4F's 무효 0회; lookups and range errors |
 | Model | `test/models/arcade_ai_level_test.dart` (new) | 16 levels in order; `of(1..16)`, range errors at 0, -1 and 17; LV 1 has every number of 초보 and plans exactly its rounds (100 seeds); one more valid rep at both ends per level; LV 16 counts 20 to 22 in 30 s; every level stays inside its valid and rejected counts (200 seeds each); a bot takes a level |
-| Model | `test/models/arcade_floor_test.dart` (new) | 1F is `battleRules`; 2F fever from 15 s; 3F combo bonus 10; 4F excellent 30; every other value stays the default; the times multiply the base's own value; fever keeps the base's other values |
+| Model | `test/models/arcade_floor_test.dart` (new) | 1F is `battleRules`; 2F fever from 15 s; 3F combo bonus 10; 4F excellent 30; every other value (all 12) stays the default; the times multiply the base's own value; fever keeps the base's other values, incl. `kneeAverageEnabled` off |
 | Model | `test/models/arcade_stage_test.dart` (new) | `HoldPose` plank and chair with their labels; `ExerciseType` is still push-up and squat; stage kinds; a hold's star times and end time; `ArcadeStars` count, cleared, lit, equality |
 | Model | `test/models/arcade_progress_test.dart` (new) | the first state; a stage opens after a star in the one before; the stage to play; a floor cleared only by its boss; 5F after stage 24; all 24 cleared; star total up to 72; playing again never lowers a stage's stars; range errors; 24 counts from 0 to 3; equality; the saved form `{"v":1,"best":[...]}` and 13 broken values |
 | Service | `test/services/arcade/arcade_star_judge_test.dart` (new) | fight: loss, win only, condition, KO only, all three, the boundaries n and n ± 1 of 무효 (incl. 0회), 콤보 and Excellent, a wrong second star throws; boss: R1 lost, R2 lost, both won, the excellent sum at its boundary, KO in one round only, both KO, all three; hold: each star second's boundary, ended by two warnings (17 s clears, 9 s fails), each stage's own seconds; a round from a `BattleResult`: win, KO win, loss by KO, draw, rejected reps, longest combo, excellent reps, 3F and 4F rules, no form |
 | Service | `test/services/arcade/arcade_progress_store_test.dart` (new) | secure storage: writes and reads under `gymrats.arcade.<account>`, accounts apart, nothing saved, 7 broken values, a failing read; memory store; `recordStage` writes once per stage and keeps the most stars, writes nothing when the storage read fails (the saved progress stays), replaces a broken value |
-| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | 초보 and 중수 seeds 1 and 7 plan exactly the rounds printed at `25509ee`; seeds 0 to 499 of all three levels plan the same reps; the bot and `planRound` take an arcade level |
+| Service | `test/services/opponent/bot_opponent_test.dart` (updated) | 초보 and 중수 seeds 1 and 7 plan exactly the rounds printed at `ad8a6f7` (main before this step); seeds 0 to 499 of all three levels plan the same reps; the bot and `planRound` take an arcade level |
 | Model | `test/models/bot_difficulty_test.dart` (updated) | every level is a `BotPace` and reads the same through it |
 
 ### Acceptance criteria → tests
