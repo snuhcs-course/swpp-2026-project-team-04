@@ -28,6 +28,14 @@ DEBUG = os.environ.get("DJANGO_DEBUG") == "1"
 # Shared with the battle server for the P11 result saver (matches/internal.py).
 # Optional: without a 32+ character value the internal endpoints refuse all calls.
 RESULTS_SECRET = os.environ.get("RESULTS_SECRET", "")
+# Google login (P7). Not secret, but set per deployment: the OAuth client ids
+# a Google ID token may be issued for (the app's web client id, comma
+# separated). Unset: Google login answers 503.
+GOOGLE_CLIENT_IDS = [
+    value.strip()
+    for value in os.environ.get("GOOGLE_CLIENT_IDS", "").split(",")
+    if value.strip()
+]
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS", "52.78.38.225,localhost,127.0.0.1,10.0.2.2"
 ).split(",")
