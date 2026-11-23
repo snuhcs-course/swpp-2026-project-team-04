@@ -5,6 +5,24 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · code at commit `6f9ee9c` · step P7 `feat/iter5-google-auth` (PR #93): fixes for the Codex review
+Two P1 findings from the automatic Codex review of `81c3fe0` were fixed: the server now fetches Google's keys at most
+once per 5 minutes (30 s after a failure, again after 6 hours; malformed answers are 503), and the app ships the public
+Google web client id as its default so plain builds have Google sign-in.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Service (app) | flutter_test, fakes | 85% | `google_sign_in_service.dart` 78.9% per file (plugin adapter only, as before); layer for P7 files above target | 11/24 | `flutter test --coverage <P7 test files>` |
+| API server | pytest, pytest-django, pytest-cov | 90% | 97% total; `accounts/google_auth.py` 100% | 11/24 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues; `flutter test` 3910 passed, 0 failed, 10 skipped (unchanged opt-in checks);
+  server `pytest` 157 passed (10 new key-cache tests replace the old key-lookup tests).
+- **Shortfalls:** unchanged (the Google plugin adapter, see the entry below).
+- **Test cases changed:** `server/tests/test_auth.py` (Google key cache: fetch once, unknown key ids cannot force
+  refetches, new key after the interval, retry after a failure, old keys refetched, malformed answers, concurrent
+  fetch, key id parsing); `test/services/auth/google_sign_in_service_test.dart` (plain builds use the GymMouse web
+  client id).
+
 #### 2026-11-24 · code at commit `35dadd2` · step P7 `feat/iter5-google-auth` (team plan #1): Google sign-in, nickname step, body info
 The step adds Google sign-up and login (`POST /auth/google`, ID token checked against Google's keys and
 `GOOGLE_CLIENT_IDS`), a nickname step for a new Google account, an optional height and weight step with consent for
