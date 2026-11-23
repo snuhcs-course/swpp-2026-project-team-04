@@ -103,3 +103,35 @@ gym_art.json은 손으로 옮기지 말고 그대로 Dart 상수 문자열로 �
 ## 2026-11-23 · Woohyun Song · codex/iter5-arcade-art
 <!-- a3d8fb3d 2026-11-23T10:11:35.145Z -->
 [Woohyun Song, 11-23 19:11] "1번으로 하자. A4 세션은 아직 이 폴더에서 git 작업을 시작하지 않았다. 지금 바로 codex/iter5-arcade-art에서 프롬프트 기록의 A4 프롬프트 항목만 빼는 커밋을 하나 만들고 push해 줘. 기록을 다시 뽑을 때는 이 세션의 프롬프트만 넣어서 A4 프롬프트가 또 들어오지 않게 해 줘. 끝나면 progress.md의 미해결 표시를 지우고, 이 폴더에서는 더 git 작업을 하지 않는다. 이 세션은 여기서 마친다."
+
+## 2026-11-23 · Woohyun Song · codex/iter5-ai-opponents
+<!-- 44cd470a 2026-11-23T10:02:46.697Z -->
+[Woohyun Song, 11-23 19:02] "<pasted_content id=\"0a14\">
+이번 작업은 Iteration 5의 P16 \"Build arcade screens\"다. 게임 시작의 AI 1v1 칸을 아케이드로 바꾸고, 아케이드 홈 지도부터 판 정보, 대결 판, 보스 매치, 결과, 마지막 층까지 아케이드 안의 화면과 흐름을 만든다.
+
+명세는 .claude/design/arcade/p16/SPEC.md(v2)다. 화면 값은 같은 폴더 design/*.dc.html 원본을 그대로 쓰고, 문서에 값을 옮겨 적은 것은 없다. shots/*.png는 확인용 그림이다. 시작하기 전에 SPEC.md 13절의 질문 네 개를 나에게 먼저 물어봐. 앞 단계 API는 PR #89(A2)와 #88(A3) 본문의 API for later steps 절에 있다.
+
+worktree(C:\dev\swpp-arcade-art)에서는 다른 세션이 A4(버티기 · 하이 플랭크)를 하고 있다. 파일은 이 폴더 안에서만 고친다. 하네스는 지금 설치된 것을 그대로 쓴다. 상우가 새로 배포한 판은 설치하지 않았다.
+
+브랜치는 codex/iter5-ai-opponents다(이름은 그대로 두고 범위만 바뀌었다). codex/iter5-arcade-stages에서 갈라지고 codex/iter5-arcade-art를 merge해 온다. 두 브랜치가 개인 기록 파일 세 개를 각각 새로 만들어서 add/add 충돌이 나는데, 두 단계의 절을 모두 남기는 식으로 푼다. 버티기 판을 잇는 8절은 codex/iter5-hold-chair(A4와 A5가 다 들어 있다)를 merge한 뒤에 하고, 그 전에는 나머지 절을 먼저 해. 그 merge에서도 기록 파일 충돌은 같은 식으로 푼다. merge는 그냥 git merge로 하고 --no-verify는 쓰지 않는다. 훅에 막히면 멈추고 알려 줘.
+
+PR은 draft로 연다(gh pr create --draft). 화요일 밤 머지 전까지 draft로 두기로 상우와 정했다. 제목은 \"P16 · Build arcade screens\", base는 codex/iter5-hold-chair, 본문은 영어다. 본문 첫 줄은 \"Merge order: #8.5 (P16)\"이고, Depends on에 #89, #88과 A4, A5 PR을 모두 링크로 적는다. 아케이드 단계의 ID와 팀 순번은 A2 #8.1, A3 #8.2, A4 #8.3, A5 #8.4, P16 #8.5다. Codex 리뷰는 화요일 저녁 마지막 HEAD에서 받으니 지금은 요청하지 않는다. main에는 절대 push하지 않는다.
+
+앞 단계(A2~A5)의 파일은 상속만 하고 고치지 않는다. 고칠 것이 보이면 멈추고 알려 줘. 파일은 SPEC.md 머리말과 10절의 새 P16 범위와 PM 승인 예외에 맞춰 만든다. 지금 로컬 ownership.json이 그 이름을 막으면 로컬 파일에만 더하고 보고해 줘. 그 밖에 필요한 파일이 나오면 선조치 후보고로 처리해. 로컬 예외에 더하고, progress.md와 PR 본문의 Exceptions 절에 파일과 이유를 적고, 꼭 필요한 줄만 고친다. 판정, 점수, 봇의 rep 계산은 건드리지 않는다. 온라인 대결은 하나도 바뀌면 안 된다. 앱 시작(main.dart)에서 A3의 GymArt.warmUp()을 부른다.
+
+progress.md는 worktree의 A4 세션과 같은 파일을 함께 쓴다. 고치기 직전에 다시 읽고, 자기 줄만 고친다.
+
+화면 문구는 시안 그대로 쓰고, 설명 문장이나 안내 문장은 더하지 않는다. 테스트는 SPEC.md 12절 기준이다. 끝나면 A2와 A3처럼 task.md 기록, 테스트 기록, AI 협업 기록, 프롬프트 로그를 마치고, reviewer 지적을 반영한 뒤 커밋, push, draft PR까지 진행해 줘. 마지막에 바뀐 파일, 테스트 결과, 폰에서 확인할 것, 예외로 고친 파일을 정리해서 보고해 줘.
+</pasted_content id=\"0a14\">"
+
+<!-- 44cd470a 2026-11-23T10:11:56.172Z -->
+[Woohyun Song, 11-23 19:11] "프롬프트 기록을 뽑을 때는 이 세션의 프롬프트만 P16 제목 아래 넣고, 같은 폴더에서 돌던 A2 세션의 프롬프트는 넣지 마. 섞여 들어오면 빼고 알려 줘."
+
+<!-- 44cd470a 2026-11-23T12:05:59.988Z -->
+[Woohyun Song, 11-23 21:05] "<pasted_content id=\"0a14\">
+랩탑 전원이 꺼져서 작업이 19:50쯤 중간에 끊겼다. 마지막으로 하던 일은 result_screen.dart 수정을 마치고, test/design_tokens_test.dart에 아케이드 파일을 넣은 뒤 관련 테스트를 돌리던 것이었다. 이어서 하기 전에 먼저 상태를 확인해 줘.
+1. 지금 브랜치가 codex/iter5-ai-opponents인지, git status, 남아 있는 .git/index.lock이 있는지 본다.
+2. 끊긴 스크립트 때문에 design_tokens_test.dart나 다른 파일이 반쯤 바뀌지 않았는지 git diff로 확인한다. 파일 전체의 줄바꿈이 CRLF로 바뀐 곳이 없는지도 본다.
+3. design_tokens_test.dart가 P16 범위 밖이면 선조치 후보고로 처리한다(로컬 예외, progress.md, PR 본문 Exceptions 절).
+4. 확인 결과를 짧게 보고하고, 문제가 없으면 이어서 진행해 줘.
+</pasted_content id=\"0a14\">"

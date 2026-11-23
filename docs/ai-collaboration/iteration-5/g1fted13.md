@@ -189,3 +189,66 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
+
+## P16 `codex/iter5-ai-opponents` – Build arcade screens (team order #8.5), 2026-11-23
+
+### a. Where AI was used
+- **The code and tests:** Claude Code (Opus 5.5) wrote all of P16's code and tests in four commits on top of the
+  A2 + A3 merge `1ae69d1` (20 new files, 10 in `lib/` with about 5,500 lines and 10 tests, and 24 changed files: 9,554 lines added, 298 removed):
+  - `d2bb818`: the arcade's 13 color tokens and the `ArcadeText` styles in `lib/theme/app_theme.dart`.
+  - `e5c74ee`: optional arcade values on `Opponent` (`lib/models/matchup.dart` L6–97), the stage's floor picture and
+    boss round (`lib/widgets/battle_arena.dart`, `battle_stage.dart`), and the exit button's label.
+  - `5bb0e48`: the arcade view model (`lib/viewmodels/arcade_viewmodel.dart`: `ArcadeViewModel` L30,
+    `finishBattle` L118, `ArcadeMatchups.rulesOf`/`battleOf` L260–300), the map (`lib/widgets/arcade_map.dart`
+    L19–100, from the `ArcMap` script's numbers), the stage sheet, the boss screen, the result screens and
+    `ArcadeFlow`, the `/arcade` route and `GymArt.warmUp()` (`lib/main.dart` L61, L129).
+  - `c8d6044`: the play page's two cards, the versus, battle and report changes, and the rewritten AI 1v1 tests.
+- **Design values:** every size, color and position came from the `.dc.html` sources in
+  `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
+  `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
+- **Review:** the `reviewer` subagent ran twice (item d): CHANGES_REQUESTED, then APPROVE.
+- **The hand-off:** `TODO(Woohyun Song)`: who wrote `.claude/design/arcade/p16/SPEC.md` v2 and how (A2's spec was
+  written by Claude on claude.ai from the Claude Design canvas).
+- **Not done by AI:** the four open questions of spec 13 were answered by the user (remove 이어하기 now, 5F from the
+  start, "STAGE 8 · 물렁범" as the record name, the report's exits inside the arcade). The user also set the branch
+  plan, the PR rules (draft, base `codex/iter5-hold-chair`, merge order #8.5) and the rule that earlier steps' files
+  are not edited. Section 8 (hold stages) waits for A4 and A5.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "앞 단계(A2~A5)의 파일은 상속만 하고 고치지 않는다. 고칠 것이 보이면 멈추고 알려 줘. … 판정, 점수, 봇의 rep 계산은 건드리지 않는다. 온라인 대결은 하나도 바뀌면 안 된다."
+- [Woohyun Song, 11-23] (mid-task) "프롬프트 기록을 뽑을 때는 이 세션의 프롬프트만 P16 제목 아래 넣고, 같은 폴더에서 돌던 A2 세션의 프롬프트는 넣지 마."
+- [Woohyun Song, 11-23] (after the laptop lost power, pasted; excerpt) "이어서 하기 전에 먼저 상태를 확인해 줘. 1. 지금 브랜치가 codex/iter5-ai-opponents인지, git status, 남아 있는 .git/index.lock이 있는지 본다."
+
+### c. What AI did well
+- **Porting the map from its script:** the map's layout is the design's own arithmetic (`top(f)`, the six places,
+  cell sizes, the `me` offsets) in `ArcadeMapLayout`, pinned by `test/widgets/arcade_map_test.dart` ('5F 공사중 on top,
+  250 high; each floor 390 with a 46 band').
+- **Keeping the shared files small:** the online battle is untouched. Every value added to shared widgets is optional,
+  and the report's `PopScope` was moved into a Stack child, so `result_screen.dart` changes only the needed lines
+  (35 added, 3 removed; with a wrapper it was 122 changed lines).
+- **Tests that found real bugs before the phone:** a sheet whose `scopesRoute` semantics asserted, a band row and a star
+  row that overflowed (three 16-point stars with a gap after each are 51 > 50; the design's `gap` is only between
+  them), and floor tags that never showed until the first scroll. Each was fixed with a test that failed first.
+- **Recovery after the power loss:** the state check (branch, `index.lock`, diffs, line endings, ownership, analyze)
+  took a few minutes and found nothing half-written.
+
+### d. Hallucinations / errors
+- **Tokens in the wrong class:** the first edit put the arcade colors after `RepBotColors.shadow`, not in `AppColors`
+  (`warning` undefined). Caught by the analyzer at once; moved.
+- **Test edits by script:** two scripts appended a test group after the last `}` of the file, which was a helper after
+  `main()`; one dropped `_rounded` from `versus_screen_test.dart`. A Python escape turned `\'` into `'` in three test
+  names. All caught by `flutter analyze` before any run; fixed by inserting before `main()`'s closing brace.
+- **A shell command that hung:** a stray `cat > "$TMP/x"` waited on input for two minutes before it was stopped.
+- **Reviewer run 1 (CHANGES_REQUESTED):** the battle-end logic sat in a screens file (`ArcadeFlow`), so it was held to
+  the View target and only widget-tested; no test checked the AI level and floor rules handed to the battle; bare
+  design numbers in named arguments; no Design doc changes in progress.md; the interim result frame used the same
+  class names as A4's uncommitted frame; the map computed locks itself instead of A2's `isOpen`. All fixed:
+  `ArcadeViewModel.finishBattle` with a sealed outcome and unit tests, `ArcadeMatchups.rulesOf`/`botOf`/`battleOf`
+  with tests, named constants, the `ArcadeBattle*` names. Run 2 approved with one Minor, also fixed.
+
+### e. Prompt revisions
+- None for the code in this step. The user added one rule mid-task (only this session's prompts under the P16 heading)
+  and, after the power loss, gave the state check as a numbered list, which made the recovery a checklist.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step. `TODO(Woohyun Song)`: add any hand edits made after the phone check.

@@ -220,3 +220,85 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   with its design shot: "owner_<id>_<face> matches the design but for edges" (each owner in its 3 faces, 12 tests) and
   "floor_<n> matches the design but for edges" (5 tests). The art is drawn from Dart data, not loaded as asset files
   (see the PR's Exceptions).
+
+#### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
+P16 builds the arcade's screens on A2's rules and A3's art (spec `.claude/design/arcade/p16/SPEC.md` v2):
+- **게임 시작:** two cards, 온라인 대결 and 아케이드 (design `PlayX`); the AI 1v1 card and the 이어하기 row are gone.
+- **아케이드 홈:** the building's map with the 24 stages, the stars of 72, the bar with the stage to play, the stage
+  sheet.
+- **Stages:** a fight through the versus screen and the battle to its clear or fail; a boss match with its intro, R1,
+  the break, R2 and the floor cleared (4F: 4층 클리어 with 5F 공사중). Stars are kept per account.
+- **Shared screens, values only:** the battle gets the stage's character, AI level, floor rules, floor picture and
+  boss round; the versus screen and the report name the stage. Online battles do not change.
+- **Not yet:** section 8, the hold stages, waits for `codex/iter5-hold-chair` (A4 and A5) on origin.
+
+The branch starts at `1ae69d1` (A2 `f074474` + A3 `071c7f0`). I ran the commands from the Plan in `gymrats_app/` on
+Windows, on `7677fb6` (code `c8d6044`; `7677fb6` only merges A3's two newer note commits), without coverage. Coverage
+comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (no service changed) | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/23 | – |
+
+- **Tests:** `flutter test` 4131 passed, 0 failed, 10 skipped. `flutter analyze` found no issues. The 10 skipped tests
+  are the same as on `main` (the live team-server smoke test and 9 known push-up judge errors).
+- **Count change:** the 10 new test files hold 128 tests (view model 30, map 13, parts 26, flow 16, home 12, boss 9,
+  matchup 9, sheet 6, result frame 4, play card 3). Changed files gained 26 (result screen 6, versus 5, battle 5,
+  stage 4, arena 2, theme 2, report 1, exit button 1). In `play_screen_test.dart` and `main_test.dart` 7 AI 1v1 tests
+  were replaced by 7 arcade ones (spec 3, 13.1).
+- **Bugs the tests found before the phone:** the stage sheet's route semantics asserted (`scopesRoute` without
+  `explicitChildNodes`); a band row and a star row overflowed (the design's 1-point gap is between the three stars,
+  not after each); the floors' name tags did not show until the first scroll. Each test failed first, then passed.
+- **Earlier failing runs, fixed in this step:** the first full run after the play page changed had 20 failing tests
+  in `main_test.dart`, `play_screen_test.dart`, `home_screen_test.dart` and `online_lobby_screen_test.dart`: they went
+  through the AI 1v1 card, the 이어하기 row or the card name "온라인 1v1". They were rewritten for the arcade, or their
+  one line was changed (the two exception files list).
+- **Reviewer:** run 1 CHANGES_REQUESTED (4 Major, 5 Minor), run 2 APPROVE with one Minor, fixed. The fixes added 11
+  view-model tests (the battle's outcome; the AI level and floor rules handed to the battle).
+- **Power loss:** at about 19:50 the laptop lost power during a test run. Afterwards the branch, `index.lock`, the
+  diffs and the line endings were checked; nothing was half-written.
+- **Other checks:** `ownership_guard.py --check-diff` ok (46 paths, run by the reviewer on the uncommitted tree; the
+  commits passed `--check-staged` in the hook). The design-token rules of `test/design_tokens_test.dart` now also
+  check the 9 new arcade screen and widget files. Server `pytest` was not run because `server/` did not change.
+- **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
+  (GitHub Actions)".
+- **Shortfalls:** section 8 (hold stages) is not done: `codex/iter5-hold-chair` is not on origin yet. Until then the
+  map's hold stages do nothing, so a player stops at STAGE 3 in the app.
+- **Manual check:** TODO(Woohyun Song): on the Galaxy S26+ (spec 12): 1F from the start to the boss once (with the
+  hold stages, after section 8), the 2F first stage's fever from 15 s, and the map's stars and locks.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/matchup_test.dart` (new) | `Opponent.arcade`: record name "STAGE n · 캐릭터" and "STAGE n Rk · 캐릭터", character, pace, stage, round; other opponents unchanged; `isArcadeName` |
+| ViewModel | `test/viewmodels/arcade_viewmodel_test.dart` (new) | progress per account, a failed read, a late answer dropped, refresh, sign-out; `record` keeps the most stars, a failed store keeps the progress; boss run; stage request; `finishBattle` for every fight and boss case and outside the arcade; `rulesOf`, `botOf`, `battleOf`; `ArcadeWords` |
+| View | `test/screens/arcade_screen_test.dart` (new) | header only while reading; 17 of 72 stars; the bar; first scroll (STAGE 8 in the middle, STAGE 1 at the end, all cleared at the top); the sheet; cell taps (fight, hold hook, boss, locked); back from a stage reads again and opens the stage asked for; tap targets and labels |
+| View | `test/screens/arcade_flow_test.dart` (new) | fight won by KO, lost, draw; 다시 도전, 아케이드로, back, 다음 스테이지; boss R1 lost, break then R2 lost, both won with the next floor open, 4F with 5F and the map at the top, R1부터 다시, R2 without R1; leave, replay |
+| View | `test/screens/arcade_boss_screen_test.dart` (new) | intro: owner, rounds, star conditions lit by the best, 자세 잡기 to R1, back; break: score, R2 next, no rest timer, 자세 잡기 to R2, 그만하기 and back; tap targets |
+| View | `test/widgets/arcade_map_test.dart` (new) | `ArcadeMapLayout` numbers, places, cell sizes, first scroll; a new account, STAGE 8 with 3F and 4F locked, 5F from the start, grey locked floors, taps, the user idling or celebrating, floor tags, HOLD and BOSS tags |
+| View | `test/widgets/arcade_parts_test.dart` (new) | every glyph draws; star fill; face crop; white outline; mirrored figures; buttons; star goals and result stars; score line; title band; round pip; stripes; pedestal |
+| View | `test/widgets/arcade_stage_sheet_test.dart` (new) | STAGE 8's sheet, 1F without a rule chip, stars lit by the best, 닫기 and 도전, route name |
+| View | `test/widgets/arcade_result_frame_test.dart` (new) | the fail frame, the lost stand, a stand of its own, a short screen scrolls |
+| View | `test/widgets/arcade_play_card_test.dart` (new) | the two cards' size, taps, arrow colors, labels |
+| View | `test/screens/play_screen_test.dart` (updated) | two cards, no AI 1v1 or 이어하기, the PlayX pictures, the online card's fixed GYM마우스, the arcade card opens the arcade |
+| View | `test/screens/versus_screen_test.dart` (updated) | an arcade stage: STAGE n, 아케이드로, the character with AI LV n, 자세 세팅 시작, leaving to the map; a bot outside the arcade unchanged |
+| View | `test/screens/battle_screen_test.dart` (updated) | the stage's character on its floor's gym named by the character; the boss round on the stage and the camera; leaving ends the boss run; the end opens the arcade's clear and keeps stars; nothing added outside the arcade |
+| View | `test/screens/result_screen_test.dart` (updated) | an arcade report: no scene, the record's name, 홈으로 and back to the map, 다시 대결 replays a fight or opens the boss intro, a past arcade record opens the arcade |
+| View | `test/widgets/battle_stage_test.dart`, `battle_arena_test.dart` (updated) | the ROUND chip, fever and before the start; the floor picture over the grid and under the fever; passed through the arena; none online |
+| View | `test/widgets/result_report_test.dart`, `exit_game_button_test.dart` (updated) | an arcade bot's name in the report; the 아케이드로 label |
+| Design | `test/theme/app_theme_test.dart`, `test/design_tokens_test.dart` (updated) | the arcade's color and text tokens; the new files use tokens only |
+| App flow | `test/main_test.dart` (updated) | 게임 시작 → 아케이드 → STAGE 1's sheet → versus → leaving returns to the map; STAGE 2 once STAGE 1 has a star; the matching page by its route; back steps; the online sheet's best |
+| View | `test/screens/home_screen_test.dart`, `online_lobby_screen_test.dart` (updated) | the play page reads home's view model; the online card's new name |
+
+### Acceptance criteria → tests (spec 12; the local task.md left the step's criteria to the spec)
+- 게임 시작: two cards, the arcade card opens the arcade, no AI 1v1, online as before → 'shows the two cards and the rules, no AI 1v1 and no again row (P16 spec 3, 13.1)', 'the arcade card opens the arcade', 'the online card asks for the exercise, then opens the lobby'
+- 홈: first progress, STAGE 8, all cleared → 'a new account: only STAGE 1 is open, and it is the one to play', 'STAGE 8: 1 to 7 with their stars, 3F and 4F locked (spec 12)', 'all 24 cleared: no bar, 72 stars, at the top with 5F'
+- 홈: taps, star total, first scroll → 'cells: a played fight opens its sheet again, a boss its intro, a hold the hold screen; a locked one nothing (spec 4)', 'STAGE 8: 17 of 72 stars, and the bar with the stage to play (design ArcMap cur)', 'it opens with the stage to play about the middle of the map (spec 4)'
+- 대결 판: versus, values handed, win, loss, 다시 도전, 다음 스테이지 → 'the header says STAGE n and the exit 아케이드로', 'the stage's character fights on its floor's gym, named by its character', 'rulesOf: the stage's floor's rules; outside the arcade the default', 'botOf: the stage's AI level; outside the arcade the chosen level', 'won by KO: 클리어!, the stars got, the next stage's card, and the stars kept', 'lost: 실패 with the score and no star; no star is kept', '다시 도전 opens the versus again over the map', '다음 스테이지 opens the next stage over the map: a fight's sheet, a hold's screen'
+- 보스 매치: R1 lost, break and 그만하기, R2 lost, both won, 4F → 'R1 lost ends it: R1 패배, R2 locked, no stars', '그만하기 and back end the match: the map, no stars', 'R1 won: the break; R2 lost: R2 패배 with R1 checked', 'both won: n층 클리어!, the rounds, the next floor open; {n+1}층으로 opens its first stage', '4F: 4층 클리어! with 5F 공사중, and the map at the top (spec 1.6)'
+- Online regression → 'without them, as online, neither is there', 'outside the arcade nothing is added to the stage', 'a bot outside the arcade keeps "AI" and 게임 나가기', and the full suite
+- Phone check → TODO(Woohyun Song) (above)
