@@ -1166,6 +1166,14 @@ void main() {
       expect((points.textSize, points.top, points.dx), (104, 152, 34));
     });
 
+    test('a good rep clears the preceding rejection immediately', () {
+      final fx = BattleFxTimeline()
+        ..rep(_rep(BattleSide.me, null, reason: RejectReason.armsStraight), 0);
+      expect(fx.frame(200).sign, isNotNull);
+      fx.rep(_good(BattleSide.me), 300);
+      expect(fx.frame(301).sign, isNull);
+    });
+
     test('an average rep: amber AVERAGE, then a smaller amber +5', () {
       final fx = BattleFxTimeline()
         ..rep(
@@ -2771,14 +2779,12 @@ void main() {
       expect(fx.frame(100).cameraFrame, isNull);
     });
 
-    test('the next rep of mine replaces it at once, even while the sign '
-        'stays up', () {
+    test('the next rep of mine replaces it at once, and clears the sign', () {
       final fx = BattleFxTimeline()
         ..rep(rejected(), 0)
         ..rep(_good(BattleSide.me), 300);
       expect(fx.frame(300).cameraFrame, BattleFxCameraFrame.good);
-      // The sign of the rep before is still up, the frame is the new rep's.
-      expect(fx.frame(400).sign, isNotNull);
+      expect(fx.frame(400).sign, isNull);
       fx.rep(average(), 500);
       expect(fx.frame(500).cameraFrame, BattleFxCameraFrame.average);
     });

@@ -164,6 +164,32 @@ void main() {
       expect(perform(counter, 400).event!.reason, RejectReason.kneesDown);
     });
 
+    test(
+      'battle contact takes priority over shallow depth on a completed rep',
+      () {
+        counter = RepJudge(
+          config: fast,
+          clock: () => now,
+          useFrameKnee: true,
+          retainLegacyKnee: true,
+          requireBattleDepth: true,
+          kneeClassifier: classifier,
+        );
+        ready(KneeFrameState.touching);
+        for (final ms in [400, 500, 600]) {
+          expect(
+            at(
+              counter,
+              ms,
+              pose(depth: .33, shoulderDrop: .20, elbow: 130),
+            ).event,
+            isNull,
+          );
+        }
+        expect(at(counter, 850, pose()).event!.reason, RejectReason.kneesDown);
+      },
+    );
+
     test('partial-cycle knee feedback also uses the shared support mode', () {
       ready(KneeFrameState.touching);
       for (final ms in [400, 500, 600]) {

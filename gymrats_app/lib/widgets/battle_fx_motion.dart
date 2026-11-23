@@ -948,9 +948,9 @@ class BattleFxTimeline {
     }
     // The sign is only for the user's own rep that did not count; the latest
     // one replaces the one before, and one without a reason shows none.
-    if (event.side == BattleSide.me && !event.counted) {
+    if (event.side == BattleSide.me) {
       final reason = event.reason;
-      _sign = reason == null
+      _sign = event.counted || reason == null
           ? null
           : _Sign(now, reason, event.grade == GameGrade.average);
     }

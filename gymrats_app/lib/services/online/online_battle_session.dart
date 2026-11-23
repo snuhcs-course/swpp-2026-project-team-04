@@ -499,6 +499,7 @@ class OnlineBattleSession extends ChangeNotifier {
       koLead: integer(p['ko_lead'], 1, _maxGameScore),
       // An older server does not announce Average, and refuses a rejected rep
       // that has a grade, so Average stays off with it.
+      kneeAverageEnabled: p['knee_average'] == true,
       averagePoints: p['average_points'] == null
           ? 0
           : integer(p['average_points'], 0, _maxGameScore),
@@ -669,7 +670,12 @@ class OnlineBattleSession extends ChangeNotifier {
     if (rules case final rules?) {
       final preview = _myPreview ??= PlayerGameScore(rules);
       myLastScore =
-          preview.addRep(grade, Duration(milliseconds: elapsed)) ?? myLastScore;
+          preview.addRep(
+            grade,
+            Duration(milliseconds: elapsed),
+            kneePushup: rep.reason == RejectReason.kneesDown,
+          ) ??
+          myLastScore;
       _notify();
     }
   }

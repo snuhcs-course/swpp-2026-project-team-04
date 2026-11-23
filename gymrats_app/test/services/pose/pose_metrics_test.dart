@@ -1794,6 +1794,22 @@ void _spanCycleTests() {
     },
   );
 
+  test('fallback elbow angle uses only measured frames in this proposal', () {
+    final history = PushupKneeHistory();
+    const boundary = Duration(milliseconds: 100);
+    const end = Duration(milliseconds: 400);
+    history.add(arms(45), boundary);
+    history.add(arms(72), const Duration(milliseconds: 200));
+    history.add(arms(99.5), end);
+    expect(
+      history.measurements(boundary, end, .6).elbow,
+      measurePose(arms(72)).elbowAngle,
+    );
+    expect(history.measurements(null, end, .6).elbow, isNull);
+    history.reset();
+    expect(history.measurements(boundary, end, .6).elbow, isNull);
+  });
+
   test(
     'normal promotion requires a bilateral descent and current visible return',
     () {

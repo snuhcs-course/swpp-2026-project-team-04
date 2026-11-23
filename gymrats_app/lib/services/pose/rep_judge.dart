@@ -358,6 +358,7 @@ class RepJudge {
   /// The regular constructor keeps the historical replay defaults.
   factory RepJudge.forBattle({RepClock? clock}) => RepJudge(
     clock: clock,
+    requireBattleDepth: true,
     useMlp: const bool.fromEnvironment('PUSHUP_MLP', defaultValue: true),
     useFrameKnee: const bool.fromEnvironment(
       'PUSHUP_FRAME_KNEE',
@@ -371,6 +372,7 @@ class RepJudge {
 
   RepJudge({
     this.config = const RepJudgeConfig(),
+    this.requireBattleDepth = false,
     RepClock? clock,
     bool useMlp = const bool.fromEnvironment('PUSHUP_MLP'),
     this.useKneeForest = const bool.fromEnvironment('PUSHUP_KNEE_FOREST'),
@@ -400,6 +402,8 @@ class RepJudge {
   /// Retains the existing MLP knee veto alongside frame-knee evidence.
   /// Only affects builds that enable both MLP and frame-knee.
   final bool retainLegacyKnee;
+
+  final bool requireBattleDepth;
 
   bool get _useUnifiedKnee => useFrameKnee && !(useMlp && retainLegacyKnee);
   final KneeFrameClassifier _kneeClassifier;
@@ -587,7 +591,12 @@ class RepJudge {
       // A very short proposal may open and close on this same frame.
       _frameKneeEvidence.begin(touchingBefore: touchingBefore);
       final touching = _frameKneeEvidence.finish();
-      if (useFrameKnee && touching && event.valid) {
+      final kneeEligible =
+          event.valid ||
+          (requireBattleDepth &&
+              event.reason == RejectReason.insufficientDepth &&
+              (event.maxDepth != null || event.minElbowAngle != null));
+      if (useFrameKnee && touching && kneeEligible) {
         event = RepEvent(
           index: event.index,
           at: event.at,
@@ -714,7 +723,7 @@ class RepJudge {
     }
     _mlpLastAt = now;
     _mlpHistory.add(frame, now);
-    if (useKneeForest) _kneeHistory.add(frame, now);
+    _kneeHistory.add(frame, now);
     // The proposal model was trained with this earlier head/short-cycle
     // counter as one input. The newer binary calibration is a separate model.
     final primaryStarted = openPrimaryAttempt;
@@ -737,17 +746,32 @@ class RepJudge {
                   0) >
               .5
         : PushupKneeModel.rejects(features);
-    final valid = probability > .5 && !kneesDown;
     final previous = primary.event;
+    final measured = _kneeHistory.measurements(
+      proposal.start,
+      now,
+      config.minLikelihood,
+    );
+    final depth = previous?.maxDepth ?? measured.depth;
+    final elbow = previous?.minElbowAngle ?? measured.elbow;
+    final enoughDepth =
+        !requireBattleDepth || (depth != null && depth >= config.bottomDepth);
+    final valid = probability > .5 && !kneesDown && enoughDepth;
     var fallbackReason =
         previous?.reason ?? _cheat() ?? RejectReason.insufficientDepth;
     if ((useKneeForest || _useUnifiedKnee) &&
         fallbackReason == RejectReason.kneesDown) {
       fallbackReason = RejectReason.insufficientDepth;
     }
+    if (requireBattleDepth &&
+        depth == null &&
+        elbow == null &&
+        fallbackReason == RejectReason.kneesDown) {
+      fallbackReason = RejectReason.insufficientDepth;
+    }
     final reason = valid
         ? null
-        : kneesDown
+        : kneesDown && (!requireBattleDepth || depth != null || elbow != null)
         ? RejectReason.kneesDown
         : fallbackReason;
     return RepUpdate(
@@ -757,8 +781,8 @@ class RepJudge {
         at: now,
         valid: valid,
         reason: reason,
-        maxDepth: previous?.maxDepth,
-        minElbowAngle: previous?.minElbowAngle,
+        maxDepth: depth,
+        minElbowAngle: elbow,
         maxTilt: previous?.maxTilt,
         descent: previous?.descent,
       ),
