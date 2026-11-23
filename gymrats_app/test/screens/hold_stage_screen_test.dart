@@ -688,6 +688,113 @@ void main() {
       expect(find.text('다음 스테이지'), findsOneWidget);
     });
 
+    // A narrow phone or large text (found by P16, 2026-11-23): the frame's
+    // stars and the ink button's words shrink only where they do not fit.
+    for (final (size, scale) in [
+      (const Size(360, 780), 1.3),
+      (const Size(320, 640), 1.3),
+      (const Size(320, 640), 1.0),
+    ]) {
+      testWidgets('a clear and a fail fit ${size.width.toInt()} × '
+          '${size.height.toInt()} at ${scale}x text', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final driver = _Driver();
+        await driver.open(tester, size: size);
+        // A short phone scrolls the briefing and the result to their
+        // buttons.
+        Future<void> reach(String words) async {
+          await tester.ensureVisible(find.text(words));
+          await tester.pump();
+        }
+
+        await reach('자세 잡기');
+        await driver.go(tester);
+        await driver.hold(tester, 31000);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.text('다음 스테이지'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await reach('다시 하기');
+        await tester.tap(find.text('다시 하기'));
+        await tester.pump();
+        await reach('자세 잡기');
+        await driver.go(tester);
+        await driver.warn(tester, HighPlankFaults.kneeDown);
+        await driver.hold(tester, 700, HoldReading.ok);
+        await driver.hold(tester, 600, const HoldReading.broken(_low));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.text('다시 도전'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('the frame keeps the design sizes where they fit', (
+      tester,
+    ) async {
+      Future<void> frame(Size size, double scale) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: Scaffold(
+              body: ArcadeResultFrame(
+                tag: 'STAGE 6 · 1F',
+                title: '실패',
+                cleared: false,
+                stars: const [
+                  ArcadeResultStar(lit: false, label: '승리'),
+                  ArcadeResultStar(lit: false, label: '콤보 5 이상'),
+                  ArcadeResultStar(lit: false, label: '20초'),
+                ],
+                figures: const SizedBox(),
+                secondaryLabel: '아케이드로',
+                onSecondary: () {},
+                primaryLabel: 'R1부터 다시',
+                onPrimary: () {},
+              ),
+            ),
+          ),
+        );
+      }
+
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      // The painted width, after any shrinking.
+      double drawn(Finder finder) => tester.getRect(finder).width;
+      final star = find.byKey(const ValueKey('result-star-1'));
+      final words = find.text('R1부터 다시');
+
+      await frame(const Size(412, 915), 1);
+      expect(tester.takeException(), isNull);
+      expect(drawn(star), 72);
+      final full = drawn(words);
+      // A roomier phone draws them no bigger: at 412 they are not shrunk.
+      await frame(const Size(600, 1000), 1);
+      expect(drawn(words), closeTo(full, .01));
+      expect(drawn(star), 72);
+      // Nor at the design's own 360 × 780.
+      await frame(const Size(360, 780), 1);
+      expect(drawn(words), closeTo(full, .01));
+      expect(drawn(star), 72);
+
+      for (final (size, scale) in [
+        (const Size(360, 780), 1.3),
+        (const Size(320, 640), 1.3),
+        (const Size(320, 640), 1.0),
+      ]) {
+        await frame(size, scale);
+        expect(tester.takeException(), isNull, reason: '$size ${scale}x');
+      }
+      // 320 wide: the stars' row is 20 points too wide, so it shrinks.
+      expect(drawn(star), lessThan(72));
+      // 1.3x text on a 360 phone: the words shrink to their button, under
+      // the 1.3x they would be.
+      await frame(const Size(360, 780), 1.3);
+      expect(drawn(words), lessThan(full * 1.3 - 1));
+    });
+
     test('the next stage card names a fight, a hold and a boss match', () {
       final mouse = CharacterRig.standard.art('mouse').name;
       expect(

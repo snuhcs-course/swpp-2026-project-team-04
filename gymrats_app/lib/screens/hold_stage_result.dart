@@ -128,43 +128,48 @@ class ArcadeResultFrame extends StatelessWidget {
                       middle,
                     ],
                     const SizedBox(height: _gap),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        for (final (i, star) in stars.indexed) ...[
-                          if (i > 0) const SizedBox(width: _starGap),
-                          SizedBox(
-                            width: _starWidth,
-                            child: Semantics(
-                              label:
-                                  '${star.label} ${star.lit ? '별 받음' : '별 못 받음'}',
-                              child: ExcludeSemantics(
-                                child: Column(
-                                  children: [
-                                    HoldStar(
-                                      key: ValueKey('result-star-$i'),
-                                      size: i == 1 ? 72 : 60,
-                                      lit: star.lit,
-                                      edge: 1.6,
-                                    ),
-                                    const SizedBox(height: _labelGap),
-                                    Text(
-                                      star.label,
-                                      textAlign: TextAlign.center,
-                                      style: text.holdStarLabel.copyWith(
-                                        color: star.lit
-                                            ? AppColors.ink
-                                            : AppColors.textMuted,
+                    // The design's 300 points of stars where they fit; on a
+                    // narrower phone the row shrinks as a whole.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          for (final (i, star) in stars.indexed) ...[
+                            if (i > 0) const SizedBox(width: _starGap),
+                            SizedBox(
+                              width: _starWidth,
+                              child: Semantics(
+                                label:
+                                    '${star.label} ${star.lit ? '별 받음' : '별 못 받음'}',
+                                child: ExcludeSemantics(
+                                  child: Column(
+                                    children: [
+                                      HoldStar(
+                                        key: ValueKey('result-star-$i'),
+                                        size: i == 1 ? 72 : 60,
+                                        lit: star.lit,
+                                        edge: 1.6,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: _labelGap),
+                                      Text(
+                                        star.label,
+                                        textAlign: TextAlign.center,
+                                        style: text.holdStarLabel.copyWith(
+                                          color: star.lit
+                                              ? AppColors.ink
+                                              : AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                     const SizedBox(height: _figuresGap),
                     SizedBox.fromSize(size: _figures, child: figures),
