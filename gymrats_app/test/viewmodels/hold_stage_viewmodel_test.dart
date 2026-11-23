@@ -113,6 +113,16 @@ class _Reader implements HoldPoseReader {
   }
 }
 
+/// A reader that gives the guide lines itself, at the squat's bottom.
+class _GuideReader extends _Reader implements HoldGuideReader {
+  @override
+  JudgeSnapshot get guide => JudgeSnapshot(
+    phase: RepPhase.bottom,
+    squatHipY: counting.length.toDouble(),
+    squatKneeY: 500,
+  );
+}
+
 HoldPoseDefinition _scripted(
   _Reader reader, {
   bool entry = false,
@@ -167,6 +177,7 @@ class _Rig {
     HoldPoseDefinition? definition,
     ArcadeProgressStore? store,
     int? accountId,
+    ExerciseRepJudge Function(ExerciseType exercise)? guideJudge,
   }) {
     viewModel = HoldStageViewModel(
       stage: stage,
@@ -180,7 +191,7 @@ class _Rig {
       },
       createGuideJudge: (exercise) {
         guideExercises.add(exercise);
-        return guide;
+        return guideJudge?.call(exercise) ?? guide;
       },
       clock: () => async.elapsed,
     );
@@ -393,6 +404,47 @@ void main() {
         store.read(7).then((p) => saved = p);
         async.flushMicrotasks();
         expect(saved.bestOf(3), 3);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a reader that gives the guide lines draws them: no guide judge', () {
+      fakeAsync((async) {
+        final reader = _GuideReader();
+        final rig = _Rig(async, definition: _scripted(reader));
+        rig.goAt(async);
+        rig.frames(async, 500);
+        expect(rig.guideExercises, isEmpty);
+        expect(rig.guide.updates, 0);
+        final guide = rig.viewModel.state.guide;
+        expect(guide.phase, RepPhase.bottom);
+        expect(guide.squatHipY, reader.counting.length.toDouble());
+        expect(guide.squatKneeY, 500);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('the push-up judge keeps the chest guide through a 60 s plank', () {
+      fakeAsync((async) {
+        // The real judge on the hold's clock, as the app runs it.
+        final rig = _Rig(
+          async,
+          stage: 21, // 30, 45 and 60 s.
+          guideJudge: (exercise) =>
+              judgeFor(exercise, clock: () => async.elapsed),
+        );
+        rig.goAt(async);
+        expect(rig.guideExercises, [ExerciseType.pushUp]);
+        for (final seconds in [5, 15, 30, 45]) {
+          rig.frames(async, seconds * 1000 - async.elapsed.inMilliseconds);
+          final guide = rig.viewModel.state.guide;
+          expect(guide.phase, RepPhase.up, reason: 'at $seconds s');
+          expect(guide.topShoulderY, isNotNull, reason: 'at $seconds s');
+        }
+        rig.frames(async, 59900 - async.elapsed.inMilliseconds);
+        expect(rig.viewModel.state.phase, HoldStagePhase.hold);
+        expect(rig.viewModel.state.guide.phase, RepPhase.up);
+        expect(rig.viewModel.state.guide.topShoulderY, isNotNull);
         rig.viewModel.dispose();
       });
     });

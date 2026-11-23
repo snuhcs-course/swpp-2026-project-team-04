@@ -84,8 +84,9 @@ class HoldStageState {
   /// The stars of the play, at [HoldStagePhase.result].
   final ArcadeStars stars;
 
-  /// The setup exercise's judge on the frames from GO, for its guide lines
-  /// over the camera.
+  /// The guide lines over the camera, from the frames from GO: the pose's
+  /// reader's when it gives them ([HoldGuideReader]), else the setup
+  /// exercise's judge's.
   final JudgeSnapshot guide;
 
   HoldStageState copyWith({
@@ -338,7 +339,9 @@ class HoldStageViewModel extends ChangeNotifier {
     final now = _now();
     judge.go(now);
     _lastFrameAt = now;
-    _guideJudge = _createGuideJudge(definition.setupExercise);
+    _guideJudge = judge.readsGuide
+        ? null
+        : _createGuideJudge(definition.setupExercise);
     _ticker = Timer.periodic(tick, (_) => _lookForFrames());
     _setState(
       _state.copyWith(
@@ -356,8 +359,9 @@ class HoldStageViewModel extends ChangeNotifier {
     _seen = frame;
     final now = _now();
     _lastFrameAt = now;
-    final guide = _guideJudge?.update(frame).snapshot;
-    _show(_judge!.frame(frame, now), guide: guide);
+    final judge = _judge!;
+    final progress = judge.frame(frame, now);
+    _show(progress, guide: judge.guide ?? _guideJudge?.update(frame).snapshot);
   }
 
   void _lookForFrames() {

@@ -2,6 +2,7 @@ import '../../models/hold_progress.dart';
 import '../../models/hold_reading.dart';
 import '../../models/pose_frame.dart';
 import 'hold_pose_definition.dart';
+import 'rep_judge.dart';
 
 /// The common part's times (arcade hold spec 3). They are the spec's
 /// starting values; a change after the phone check is written in the
@@ -230,6 +231,16 @@ class HoldJudge {
 
   /// What the reader made of the last frame after GO; null before one.
   HoldReading? get lastReading => _lastReading;
+
+  /// Whether the reader gives the guide lines itself ([HoldGuideReader]).
+  bool get readsGuide => _reader is HoldGuideReader;
+
+  /// The guide lines' state from the reader after the last frame it read;
+  /// null when the reader gives none.
+  JudgeSnapshot? get guide => switch (_reader) {
+    HoldGuideReader(:final guide) => guide,
+    _ => null,
+  };
 
   /// A frame of the 3·2·1, seen at [at]: read for the reader's baselines,
   /// and not used for the time or the warnings.
