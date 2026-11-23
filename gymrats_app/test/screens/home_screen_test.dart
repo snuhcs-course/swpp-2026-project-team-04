@@ -365,8 +365,17 @@ void main() {
     await open(tester);
     await tapAndSettle(tester, find.text('게임 시작'));
     expect(find.byType(PlayScreen), findsOneWidget);
-    // The play page reads home's latest battle: the bot from before levels.
-    expect(find.text('푸쉬업 · AI 1v1 · 고수'), findsOneWidget);
+    // The play page reads home's view model (since P16 for the online
+    // sheet's bests only: the latest battle's row is gone).
+    expect(
+      tester
+          .element(find.byType(PlayScreen))
+          .read<HomeViewModel>()
+          .state
+          .profile
+          ?.lastMatch,
+      _lastMatch,
+    );
   });
 
   testWidgets('캐릭터 opens 캐릭터 선택; back returns home', (tester) async {
@@ -439,7 +448,7 @@ void main() {
       });
     }
 
-    testWidgets('and the play page shows the battle saved meanwhile', (
+    testWidgets('and the play page reads the battle saved meanwhile', (
       tester,
     ) async {
       await open(tester);
@@ -455,7 +464,16 @@ void main() {
       await tapAndSettle(tester, find.text('기록보관소'));
       await back(tester);
       await tapAndSettle(tester, find.text('게임 시작'));
-      expect(find.text('스쿼트 · 온라인 1v1'), findsOneWidget);
+      expect(
+        tester
+            .element(find.byType(PlayScreen))
+            .read<HomeViewModel>()
+            .state
+            .profile
+            ?.lastMatch
+            ?.opponentName,
+        '민지',
+      );
     });
   });
 

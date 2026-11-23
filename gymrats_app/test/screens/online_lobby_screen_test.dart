@@ -816,7 +816,7 @@ void main() {
       // The lobby's 게임 시작, then the online card.
       await tester.tap(find.text('게임 시작'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('온라인 1v1'));
+      await tester.tap(find.text('온라인 대결'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('푸쉬업').last);
       await tester.pump();
