@@ -415,11 +415,14 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
     as high plank until A5, and the fight and boss results moved onto A4's `ArcadeResultFrame` (the interim frame
     deleted). `8b975cf`: the boss intro and break scroll on short phones. `6074bf4` merges A4's four follow-up
     commits.
+  - After A5 (`codex/iter5-hold-chair`, PR #92) was merged in (`0deb979`): `ca88a59` removes the high-plank stand-in,
+    so the chair stages are judged by A5's chair pose; `b03ca98` tests the five results on a 320-wide phone and with
+    1.3x text.
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran four times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
-  CHANGES_REQUESTED and APPROVE.
+- **Review:** the `reviewer` subagent ran five times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+  CHANGES_REQUESTED and APPROVE, and APPROVE after the A5 merge.
 - **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
   (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
   Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
@@ -428,12 +431,14 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   start, "STAGE 8 · 물렁범" as the record name, the report's exits inside the arcade). The user also set the branch
   plan, the PR rules (draft, merge order #8.5) and the rule that earlier steps' files are not edited. After the first
   push the user decided to merge A4 instead of waiting for A5, to use A4's result frame for the fights and the boss
-  match, to open the chair stages as high plank until A5, and to base the PR on `codex/iter5-hold-plank`.
+  match, to open the chair stages as high plank until A5, and to base the PR on `codex/iter5-hold-plank`. When A5
+  came up the user decided to merge it, remove the stand-in and move the PR's base to `codex/iter5-hold-chair`.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "앞 단계(A2~A5)의 파일은 상속만 하고 고치지 않는다. 고칠 것이 보이면 멈추고 알려 줘. … 판정, 점수, 봇의 rep 계산은 건드리지 않는다. 온라인 대결은 하나도 바뀌면 안 된다."
 - [Woohyun Song, 11-23] (mid-task) "프롬프트 기록을 뽑을 때는 이 세션의 프롬프트만 P16 제목 아래 넣고, 같은 폴더에서 돌던 A2 세션의 프롬프트는 넣지 마."
 - [Woohyun Song, 11-23] (after the first push, pasted; excerpt) "hold-chair를 기다리지 말고, 지금 codex/iter5-hold-plank(A4, PR #90)를 그냥 git merge로 받아 와서 8절을 진행한다."
+- [Woohyun Song, 11-24] (when A5 came up, pasted; excerpt) "의자 자세 판(5, 11, 17, 23)을 하이 플랭크로 열던 대체를 지우고 의자 자세로 연다. 대체를 확인하던 테스트도 맞게 고친다."
 - [Woohyun Song, 11-23] (after the laptop lost power, pasted; excerpt) "이어서 하기 전에 먼저 상태를 확인해 줘. 1. 지금 브랜치가 codex/iter5-ai-opponents인지, git status, 남아 있는 .git/index.lock이 있는지 본다."
 
 ### c. What AI did well
@@ -471,6 +476,9 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   it only checked the default; it now picks another character and checks that one reaches A4's screen. A4's branch had
   four new commits since `f9d1eba`; merged in `6074bf4`. A4's result frame also overflows on a 320-wide phone (its
   three 92-wide star columns); reported with the button for A4's branch.
+- **Reviewer run 5 (APPROVE, 1 Minor):** the local progress file still described the stand-in as current; updated.
+  Before the run, the new result test was also run once against A4's result files from before its fix,
+  and 7 of its 10 tests failed with the overflows the reviewer had found, so the test guards them.
 - **A path in my notes:** the post-push check matched `.claude/...` in the spec's path in my testing notes; fixed in a
   new commit (`7a1d46c`).
 

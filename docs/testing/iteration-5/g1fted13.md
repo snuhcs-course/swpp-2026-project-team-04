@@ -656,3 +656,52 @@ the PR's CI comment, "Tests and coverage (GitHub Actions)".
 - Boss screens on small phones and large text → 'fits $label without overflow, scrolling to its buttons' (run for
   "a short phone" and "a large text size")
 - Phone check → TODO(Woohyun Song) (above)
+
+#### 2026-11-24 · code at commit `b03ca98`, merged with A5 in `0deb979` · step P16 `codex/iter5-ai-opponents`, the chair stages on A5
+A5 (`codex/iter5-hold-chair`, PR #92) came up with A4's newer commits in it, including A4's fix for the two result
+overflows (`f78ac2b`). It was merged in (`0deb979`; the three notes kept every step's section), and:
+- **Chair stages on the chair pose:** the high-plank stand-in for STAGE 5, 11, 17 and 23 is removed. A4's screen now
+  judges each stage's own pose (`HoldPoses.of(stage.pose)`: A5's chair pose or A4's high plank).
+- **The results on small screens:** a new test runs the five arcade results (fight cleared and failed, boss failed in
+  R2, floor cleared, 4F cleared) on a 320 x 640 phone and with 1.3x text on 360 x 780, and reaches every button.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, without coverage. Coverage comes from the PR's CI
+comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (no P16 service) | 11/24 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/24 | – |
+
+- **Tests:** `flutter test` 4312 passed, 0 failed, 10 skipped (the same 10 as on `main`). `flutter analyze` found
+  no issues.
+- **Count change since `8b975cf`:** P16's new test files now hold 142 tests (131 before): the new
+  `arcade_result_screen_test.dart` 10, `arcade_screen_test.dart` +1 (a chair stage on the chair pose). In
+  `arcade_flow_test.dart` the two stand-in tests were replaced by two that check no hold stage gets a stand-in. A5's
+  tests come with the merge.
+- **The new test against the old frame:** with A4's result files from before `f78ac2b` put back for one run (then
+  restored), 7 of the 10 result tests failed with overflows of 28, 20 and 12 px; all pass on the merged tree.
+- **Reviewer:** run 5 APPROVE with one Minor (progress.md still described the stand-in; updated). It checked that no A2–A5 file is changed and that the merge kept every line of both sides of the three notes.
+- **Other checks:** `ownership_guard.py --check-diff` ok (109 paths). Server `pytest` was not run because `server/`
+  did not change.
+- **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
+  (GitHub Actions)".
+- **Manual check:** TODO(Woohyun Song): on the Galaxy S26+ (spec 12): as above, with STAGE 5 on the chair pose.
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_result_screen_test.dart` (new) | the five arcade results on a 320 x 640 phone and with 1.3x text: no overflow, every button reachable |
+| View | `test/screens/arcade_screen_test.dart` (updated) | a chair stage opens the hold screen with the chair pose (A5), not a stand-in |
+| View | `test/screens/arcade_flow_test.dart` (updated) | a chair stage opens A4's screen as it is; no hold stage gets a stand-in view model |
+
+### Acceptance criteria → tests (spec 8 with A5)
+- Chair stages on the chair pose → 'a chair stage opens the hold screen with the chair pose (A5), not a stand-in',
+  'a chair stage opens A4's screen as it is too, which judges the chair pose (A5)', 'no hold stage gets a stand-in
+  view model: each runs its own pose'
+- Results on small phones and large text → '$name fits ${size.width.toInt()} x ${size.height.toInt()} with
+  ${scale}x text, every button reachable' (5 results x 2 sizes)
+- Phone check → TODO(Woohyun Song) (above)
