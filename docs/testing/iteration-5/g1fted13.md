@@ -1517,3 +1517,69 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flut
 - **Shortfalls:** coverage for A4, A5 and P16 waits for CI on `main`. Not seen on the phone: Google sign-in (the
   environment; again with P8's login screen), the invite fix (the tests instead), the chair pose and the console
   numbers (A5; TODO(Woohyun Song): whether and when to check them, the user's decision).
+
+#### 2026-11-25 · code at commit `fbfef4c` · step P16 `codex/iter5-ai-opponents`: the stage asked for opens once its stars are kept (PR #91's Codex review)
+PR #91's Codex review on `f27a7e8` (P2, `lib/screens/arcade_screen.dart` L78–79): a cleared fight or boss match
+keeps its stars without waiting (`ArcadeViewModel.finishBattle` → `record`, not awaited); 다음 스테이지 or
+"{n}층으로" asks for the next stage (`ArcadeFlow.next`) and goes back to the map, whose `didPopNext` started
+`refresh()` without waiting and took the request on the next frame. If the save had not ended, the stage was still
+locked, `_open` did nothing and the request was gone. Checked in the code (the user's item 1, 2026-11-25), it can
+happen, and the store's order adds a second case: A2's `recordStage` reads and then writes, and a read is not ordered
+with it, so a `refresh` begun while the stars were kept could be answered with the progress before them; answered
+after the save, it put that older progress back (its read number was still the newest).
+
+The fix, as the user set it (P16's own files; A2–A5 unchanged):
+- **`ArcadeViewModel`:** `saving` while a play's stars are kept; `record` tells its listeners when the save ends,
+  kept or failed, and drops a read begun meanwhile; `takeOpenRequest()` takes the stage asked for once the progress
+  shows it open, keeps it while it is locked and a save goes on, and drops it when it is locked with nothing being
+  kept (the save failed), so it never waits on its own; `hasRequest`.
+- **`ArcadeScreen`:** back from a stage it waits for `refresh()` and then looks at the request, and again on each
+  change while it waits. A waiting request is dropped when another page or a dialog goes over the map, when the map
+  is not the current page by the time it looks, and when the map is gone, so it never opens later on its own. It
+  waits from the moment the map is back, so a page opened during that read drops it as well.
+- **Found, not changed (for the user):** a hold stage's 다음 스테이지 (`_playHold`) has the same window. A4's
+  `HoldStageViewModel._finish` keeps the stars without waiting, straight to the store, so the arcade's view model
+  neither waits for nor hears that save, and `_playHold`'s `refresh` can read before the write. A fix is either in
+  A4's file or a P16-side store wrapper passed through `ArcadeFlow.openHold`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter test` 4670 passed, 0 failed, 10 skipped (4657 at `f27a7e8`, plus the 13 new tests) (2026-11-25, on `fbfef4c`; the same 10 skips as above). `flutter analyze` found no issues.
+- **New tests:** 8 in `test/screens/arcade_flow_test.dart` with a store whose saves end late (`_SlowSaveStore`), 5 in
+  `test/viewmodels/arcade_viewmodel_test.dart`.
+- **Checked against the old code:** on the screen before the fix, 'a fight's 다음 스테이지 waits for the save, then
+  opens the next stage' and 'a boss match's 2층으로 waits the same way' fail (no sheet after the save). Without the
+  `_reads` step at a save's end, 'a read begun while the stars are kept, answered after them, does not bring back the
+  progress before them (PR #91 review)' fails. Each drop, taken out alone, fails its own test: the map gone ('leaving
+  the map while the save goes on drops it: the next visit opens nothing on its own'), a page over it ('a page opened and closed again before the save ends
+  drops it too'), not the current page ('a page over the map while the progress is still being read drops it: nothing opens
+  over that page'). With the wait starting only after the read, 'a page opened and closed while the progress is
+  still being read drops it too' fails.
+- **Other checks:** `ownership_guard.py --check-diff` OK (113 paths).
+- **Review:** local reviewer runs 14 and 15. Run 14, CHANGES_REQUESTED: (Major) a request still waiting when the map was left (popped during the save) stayed asked for, and a later visit opened STAGE 8's sheet by itself on a lost stage's 아케이드로; now dropped in `dispose`, with the test 'leaving the map while the save goes on drops it: the next visit opens nothing on its own'. Its Minors: the drops were not pinned one by one (two tests added) and a comment named `_playHold` as the safe pattern (reworded). Run 15, APPROVE, with 3 Minors: the hold stage's window (above, for the user); a page opened and closed during the read right after coming back was not dropped (the wait now starts before the read, with the test 'a page opened and closed while the progress is still being read drops it too'); the doc comments of `request` and `takeRequest` (fixed).
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** the race needs a save slower than the tap, which the tests force with a fake store; it was not tried
+  on a phone. The hold stage's window above is open.
+- **Manual check:** none for this fix (a slow save cannot be made on demand on the phone).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/arcade_viewmodel_test.dart` (updated) | group 'record': 'saving while the stars are kept; the end is heard, kept or failed (PR #91 review)', 'a read begun while the stars are kept, answered after them, does not bring back the progress before them (PR #91 review)'; new group 'the stage asked for, taken once it is open (PR #91 review)': open taken at once, locked while kept then taken, locked with nothing kept or after a failed save dropped |
+| View | `test/screens/arcade_flow_test.dart` (updated) | new group 'the stage asked for while its stars are still being kept (PR #91 review)': a fight's 다음 스테이지 and a boss match's 2층으로 open after a late save; a failed save drops it; a page over the map, a page opened and closed, a page while the progress is read, a page opened and closed during that read, and leaving the map each drop it |
+
+### Acceptance criteria → tests (the user's items 2 and 3)
+- The stage asked for opens once the progress shows it open, after a late save → 'a fight's 다음 스테이지 waits for
+  the save, then opens the next stage', 'a boss match's 2층으로 waits the same way', 'locked while the stars are kept:
+  still asked for, and taken once they are'
+- A failed save drops it (no endless wait) → 'a save that fails drops it: the map stays, and a later read opens
+  nothing', 'locked with nothing being kept, or after a failed save: dropped'
+- A read during the save does not undo it → 'a read begun while the stars are kept, answered after them, does not
+  bring back the progress before them (PR #91 review)'
+- It never opens later out of place → 'another page over the map meanwhile drops it: nothing opens over that page or
+  back on the map', 'a page opened and closed again before the save ends drops it too', 'a page over the map while
+  the progress is still being read drops it: nothing opens over that page', 'a page opened and closed while the
+  progress is still being read drops it too', 'leaving the map while the save goes on
+  drops it: the next visit opens nothing on its own'

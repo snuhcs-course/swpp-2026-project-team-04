@@ -336,6 +336,17 @@ A5 의자 자세: 이번 확인에서는 하지 않았다. 판정 동작은 11/2
 6. 그 밖의 코드는 바꾸지 않는다. test와 reviewer를 돌리고 push한 뒤 HEAD를 보고해 줘.
 </pasted_content id=\"0a14\">"
 
+<!-- 44cd470a 2026-11-24T16:17:30.283Z -->
+[Woohyun Song, 11-25 01:17] "<pasted_content id=\"0a14\">
+PR #91 Codex 리뷰(f27a7e8)에 P2 하나가 달렸다(arcade_screen.dart 78~79줄).
+내용: 대결이나 보스를 깨고 ArcadeFlow.next로 지도에 돌아오면, 별은 record()로 비동기 저장된다. 그런데 didPopNext는 refresh()를 기다리지 않고 다음 프레임에 _openRequested를 부른다. 저장이 아직 안 끝났으면 요청을 꺼내 쓰는 순간 진행 상황에는 그 판이 아직 잠겨 있어서, _open이 조용히 아무것도 하지 않고 요청은 사라진다.
+1. 실제로 그렇게 될 수 있는지 코드로 확인한다. record와 refresh가 같은 저장소를 어떤 순서로 쓰고 읽는지도 본다.
+2. 맞으면 고친다. 요청한 판은 진행 상황이 그 판을 열린 것으로 보인 뒤에 연다. refresh를 기다리고, 그래도 아직 잠겨 있으면 요청을 버리지 말고 진행 상황이 바뀔 때 다시 본다. 다만 끝없이 기다리지는 않는다(저장이 실패하면 요청을 버린다). 버티기 판의 _playHold가 refresh를 기다린 뒤 여는 방식과 맞춘다.
+3. 저장이 늦게 끝나는 가짜 저장소로, 다음 스테이지 요청이 사라지지 않고 열리는 테스트를 더한다. 고치기 전 코드에서는 그 테스트가 실패하는지 확인한다.
+4. analyze, test, reviewer를 돌리고 push한다. Codex 스레드에는 고친 커밋과 방법을 영어로 답하고 resolve한다.
+5. 새 HEAD를 보고해 줘.
+</pasted_content id=\"0a14\">"
+
 ## 2026-11-24 · Woohyun Song · codex/iter5-hold-chair
 <!-- dfb39c07 2026-11-23T16:54:23.559Z -->
 [Woohyun Song, 11-24 01:54] "<pasted_content id=\"a37d\">

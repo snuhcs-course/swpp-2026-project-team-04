@@ -542,14 +542,19 @@ These were made from the A5 session at the user's word; their full evidence is i
     `arcadeResultRoute`), set them where `ArcadeFlow`, `ArcadeBossScreen` and the stage sheet open the routes,
     added them to #95's `busyRoutes` (P9's file, act first and report after), and wrote 7 tests in
     `arcade_flow_test.dart` and `main_test.dart`.
+  - The next-stage fix (`fbfef4c`, PR #91's Codex review, the user's steps): Claude Code checked the finding in the
+    code, wrote the failing tests first, then changed `ArcadeViewModel` (`saving`, `takeOpenRequest`, a read begun
+    during a save dropped) and `ArcadeScreen` (the map waits for the read, looks again while a save goes on, and
+    drops a waiting request when covered or left), with 13 tests.
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran thirteen times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+- **Review:** the `reviewer` subagent ran fifteen times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
   CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, after the merge
   of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix, APPROVE (4 Minors, fixed) on the `main` merge, and CHANGES_REQUESTED, then
-  APPROVE, on the #95 merge, APPROVE (5 Minors, fixed) on the invite alert fix, and APPROVE (5 Minors, fixed) on
-  the last phone check's notes.
+  APPROVE, on the #95 merge, APPROVE (5 Minors, fixed) on the invite alert fix, APPROVE (5 Minors, fixed) on
+  the last phone check's notes, and CHANGES_REQUESTED, then APPROVE (3 Minors: two fixed, one for the user), on the
+  next-stage fix.
 - **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
   (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
   Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
@@ -598,6 +603,10 @@ These were made from the A5 session at the user's word; their full evidence is i
   routes, so a friend's invite can show over them. Claude Code saw it while resolving `main.dart`, checked it
   with a throwaway test (not committed), and reported it instead of changing #95's file. The user called it a real
   bug and set the fix (`c02a9ff`): with the five names taken out again, the 7 new tests fail.
+- **Checking a review finding before fixing it:** for PR #91's Codex P2, the two new flow tests were run on the old
+  screen first and failed (no sheet after a late save), so the finding was real; reading A2's store for the order
+  of `recordStage` and `read` then showed a second case (a read during the save could put the older progress back),
+  fixed in the same commit with its own test.
 - **Recovery after the power loss:** the state check (branch, `index.lock`, diffs, line endings, ownership, analyze)
   took a few minutes and found nothing half-written.
 
@@ -656,6 +665,13 @@ These were made from the A5 session at the user's word; their full evidence is i
   the commit; run 11 approved, with two wording Minors, also fixed.
 - **A path in my notes:** the post-push check matched `.claude/...` in the spec's path in my testing notes; fixed in a
   new commit (`7a1d46c`).
+- **A race the tests and twelve reviewer runs missed (Codex, PR #91 on `f27a7e8`):** the map took the stage asked
+  for one frame after coming back, while the stars could still be saving, so a slow save lost it. Every test used
+  a store that answers at once. Fixed in `fbfef4c` with a store whose saves end late.
+- **My first fix for it (reviewer run 14, CHANGES_REQUESTED):** a request still waiting when the map was left
+  stayed asked for, and a later visit opened that stage's sheet by itself; my tests had pinned the two drops only
+  together. Fixed before the commit (dropped when the map goes; each drop with its own test, each checked by taking
+  it out alone). Run 15 approved, and its Minor about a page opened during the read was fixed too.
 - **A placeholder body on PR #91 (2026-11-24):** my patch to the script that writes PR #91's body, sent through a
   shell heredoc, put real line breaks into a Python string and broke it (`SyntaxError`). The `gh pr edit` chained
   after it still ran and uploaded the older dry-run body, with the placeholders `TEST` and `@N@`, to PR #91. Caught
