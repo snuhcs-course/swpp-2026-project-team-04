@@ -23,6 +23,7 @@ import 'package:gymrats_app/services/friends/friend_repository.dart';
 import 'package:gymrats_app/viewmodels/friends_viewmodel.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
+import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:provider/provider.dart';
@@ -112,6 +113,83 @@ Future<InMemoryAuthRepository> loggedIn() async {
 }
 
 void main() {
+  group('매칭·종료 이벤트 계측 (P17)', () {
+    Future<(Telemetry, List<_Session>)> search(
+      WidgetTester tester, {
+      _Session Function(Uri, String, String)? make,
+    }) async {
+      final telemetry = Telemetry();
+      final auth = await loggedIn();
+      final sessions = <_Session>[];
+      await tester.pumpWidget(
+        Provider<Telemetry>.value(
+          value: telemetry,
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: OnlineLobbyScreen(
+              auth: auth,
+              createSession: (u, t, a) {
+                final session = (make ?? _Session.new)(u, t, a);
+                sessions.add(session);
+                return session;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return (telemetry, sessions);
+    }
+
+    List<Map<String, Object?>> ends(Telemetry t) =>
+        t.pending.where((e) => e['event'] == 'matching_finished').toList();
+
+    testWidgets('the queue taking the join starts it; an opponent ends it as '
+        'found, once', (tester) async {
+      holdStill(tester);
+      final (telemetry, sessions) = await search(tester);
+      final start = telemetry.pending.single;
+      expect(start['event'], 'matching_started');
+      expect(start['kind'], 'main');
+      expect(start['exercise'], 'push_up');
+      sessions.single.found();
+      await tester.pump();
+      final end = ends(telemetry).single;
+      expect(end['result'], 'found');
+      expect(end['attempt_id'], start['attempt_id']);
+      expect(end['wait_ms'], isA<int>());
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(ends(telemetry), hasLength(1));
+    });
+
+    testWidgets('closing the lobby while searching ends it as cancelled', (
+      tester,
+    ) async {
+      final (telemetry, _) = await search(tester);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(ends(telemetry).single['result'], 'cancelled');
+    });
+
+    testWidgets('a search that fails after joining ends as error; one that '
+        'never joined records nothing', (tester) async {
+      final (telemetry, sessions) = await search(tester);
+      sessions.single
+        ..phase = OnlinePhase.failed
+        ..notifyListeners();
+      await tester.pump();
+      expect(ends(telemetry).single['result'], 'error');
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+
+      final (never, _) = await search(tester, make: _FailingSession.new);
+      expect(never.pending, isEmpty);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+  });
+
   for (final phase in [OnlinePhase.preparing, OnlinePhase.playing]) {
     testWidgets('leaving $phase closes both battle and lobby to home', (
       tester,
@@ -975,38 +1053,42 @@ void main() {
     Future<List<_Session>> openLobby(
       WidgetTester tester,
       InMemoryFriendRepository repo,
-      FriendBattle battle,
-    ) async {
+      FriendBattle battle, {
+      Telemetry? telemetry,
+    }) async {
       final auth = await loggedIn();
       final sessions = <_Session>[];
       await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.dark,
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => Navigator.push<void>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => OnlineLobbyScreen(
-                      auth: auth,
-                      exercise: battle.exercise,
-                      friendBattle: battle,
-                      friends: repo,
-                      createSession: (u, t, a) {
-                        final session = _Session(u, t, a);
-                        sessions.add(session);
-                        return session;
-                      },
-                      createCounter: () => RepCounterViewModel(
-                        camera: FakeCameraService(),
-                        estimator: FakePoseEstimator(),
-                        roundLength: const Duration(days: 1),
+        Provider<Telemetry>.value(
+          value: telemetry ?? Telemetry(),
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OnlineLobbyScreen(
+                        auth: auth,
+                        exercise: battle.exercise,
+                        friendBattle: battle,
+                        friends: repo,
+                        createSession: (u, t, a) {
+                          final session = _Session(u, t, a);
+                          sessions.add(session);
+                          return session;
+                        },
+                        createCounter: () => RepCounterViewModel(
+                          camera: FakeCameraService(),
+                          estimator: FakePoseEstimator(),
+                          roundLength: const Duration(days: 1),
+                        ),
                       ),
                     ),
                   ),
+                  child: const Text('home'),
                 ),
-                child: const Text('home'),
               ),
             ),
           ),
@@ -1065,6 +1147,64 @@ void main() {
       expect(sessions.last.friendId, '2');
       expect(repo.invites, hasLength(2));
       expect(repo.invites.last.status, InviteStatus.pending);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    List<Map<String, Object?>> matchingEnds(Telemetry t) =>
+        t.pending.where((e) => e['event'] == 'matching_finished').toList();
+
+    testWidgets('매칭·종료 이벤트 계측 (P17): a friend search is kind friend; '
+        'a declined invite ends it as cancelled; inviting again is a new '
+        'search', (tester) async {
+      final telemetry = Telemetry();
+      final repo = repository();
+      await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.squat),
+        telemetry: telemetry,
+      );
+      final start = telemetry.pending.single;
+      expect(start['event'], 'matching_started');
+      expect(start['kind'], 'friend');
+      expect(start['exercise'], 'squat');
+      repo.answer(repo.invites.single.id, InviteStatus.declined);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(matchingEnds(telemetry).single['result'], 'cancelled');
+      // Inviting again is a new search with its own attempt.
+      await tester.tap(find.text('헬창님에게 다시 신청'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final starts = telemetry.pending
+          .where((e) => e['event'] == 'matching_started')
+          .toList();
+      expect(starts, hasLength(2));
+      expect(starts[1]['attempt_id'], isNot(starts[0]['attempt_id']));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(matchingEnds(telemetry), hasLength(2));
+      expect(
+        matchingEnds(telemetry).last['attempt_id'],
+        starts[1]['attempt_id'],
+      );
+    });
+
+    testWidgets('매칭·종료 이벤트 계측 (P17): an invite not accepted in time '
+        'ends the search as timeout', (tester) async {
+      final telemetry = Telemetry();
+      final repo = repository();
+      await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+        telemetry: telemetry,
+      );
+      repo.answer(repo.invites.single.id, InviteStatus.expired);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(matchingEnds(telemetry).single['result'], 'timeout');
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
     });

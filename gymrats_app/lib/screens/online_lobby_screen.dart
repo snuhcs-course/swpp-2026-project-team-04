@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../config/server_config.dart';
 import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/matchup.dart';
+import '../services/telemetry/telemetry_service.dart';
 import '../services/auth/auth_repository.dart';
 import '../services/friends/friend_repository.dart';
 import '../services/user/user_repository.dart';
@@ -101,6 +103,11 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   final _searchClock = Stopwatch();
   bool _askingToLeave = false;
 
+  /// P17: the current search as P6's matching_started/matching_finished,
+  /// from the queue's answer to the join until found, cancelled, timed out
+  /// (a friend who did not come) or failed.
+  MatchingTelemetry? _matching;
+
   @override
   void initState() {
     super.initState();
@@ -113,6 +120,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     });
     _expiry = widget.auth.sessionExpired.listen((_) {
       if (!mounted) return;
+      _matching?.failed();
       _release();
       setState(() => _error = '로그인이 만료됐어요. 다시 로그인해주세요.');
     });
@@ -175,6 +183,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     final wait = _wait, session = _session;
     final why = wait?.ended;
     if (!mounted || why == null || session?.opponent != null) return;
+    _matching?.inviteEnded(wait?.invite?.status);
     _release();
     setState(() => _error = why);
   }
@@ -211,6 +220,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   /// Acts on what [session] says now: a refused login signs out, and a
   /// found opponent or an ended search stops the radar and its clock.
   void _follow(OnlineBattleSession session) {
+    _followMatching(session);
     if (session.authenticationRejected && !_authFailureHandled) {
       _authFailureHandled = true;
       if (widget.onAuthenticationFailed case final signOut?) {
@@ -230,6 +240,24 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     } else if (session.terminal) {
       _dropWait(leaving: true);
     }
+  }
+
+  /// The search's telemetry, made at the session's first news.
+  void _followMatching(OnlineBattleSession session) {
+    if (_matching == null) {
+      Telemetry? telemetry;
+      try {
+        telemetry = context.read<Telemetry>();
+      } on ProviderNotFoundException {
+        telemetry = null;
+      }
+      _matching = MatchingTelemetry(
+        telemetry,
+        exercise: widget.exercise,
+        friend: widget.friendBattle != null,
+      );
+    }
+    _matching!.follow(session);
   }
 
   Future<void> _openBattle(OnlineBattleSession session) async {
@@ -292,6 +320,9 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   }
 
   void _release() {
+    // Still searching: the user stopped it (cancel, back, 다시 신청).
+    _matching?.stopped();
+    _matching = null;
     // Before the session goes: a friend still waiting learns it.
     _dropWait(leaving: _session?.opponent == null);
     _radar.stop();

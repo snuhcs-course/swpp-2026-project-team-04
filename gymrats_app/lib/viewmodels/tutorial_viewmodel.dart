@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/tutorial_page.dart';
+import '../services/telemetry/telemetry_service.dart';
 
 /// The tutorial's pages and which one shows: one page about the game, then
 /// every push-up page, then every squat page, each in the order a battle
@@ -10,9 +11,16 @@ import '../models/tutorial_page.dart';
 ///
 /// The screen turns the pages and words them; this keeps the order and the
 /// place, so a swipe, 이전/다음 and the exercise tabs all agree.
+///
+/// With [telemetry] it records P6's tutorial_started when [open]ed and
+/// tutorial_finished once: completed from the last page, skipped from
+/// 건너뛰기 or any other way out (P17).
 class TutorialViewModel extends ChangeNotifier {
-  TutorialViewModel({BattleRules rules = battleRules})
+  TutorialViewModel({BattleRules rules = battleRules, this._telemetry})
     : pages = pagesFor(rules);
+
+  final Telemetry? _telemetry;
+  TelemetryAttempt? _attempt;
 
   /// The exercises in the order they are told.
   static const exercises = [ExerciseType.pushUp, ExerciseType.squat];
@@ -77,4 +85,26 @@ class TutorialViewModel extends ChangeNotifier {
 
   /// The first page of [exercise], as its tab does.
   bool showExercise(ExerciseType exercise) => goTo(firstIndexOf(exercise));
+
+  /// The tutorial is on screen: its first page shows.
+  void open() {
+    _attempt ??= _telemetry?.begin(TelemetryFlow.tutorial, {
+      'pages_total': pages.length,
+    });
+  }
+
+  /// 완료 on the last page.
+  void complete() => _end('completed');
+
+  /// 건너뛰기, back, or the screen closing before 완료.
+  void skip() => _end('skipped');
+
+  void _end(String result) =>
+      _attempt?.finish(result, {'last_page': _index + 1});
+
+  @override
+  void dispose() {
+    skip();
+    super.dispose();
+  }
 }
