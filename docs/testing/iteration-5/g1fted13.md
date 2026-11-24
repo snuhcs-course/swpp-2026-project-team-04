@@ -804,3 +804,34 @@ then the same as the A5 entry above.
   was taken, and what to write if no bend works. Minors: the two fault ids, and `null` before a value exists. All
   fixed; run 8: APPROVE (its one Minor, run 7 missing from the AI notes, fixed before the commit).
 - **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+
+#### 2026-11-24 · code at commit `200816d` (tests only) · step A5: A4's leave button fix merged in
+No A5 app code changed. At the user's word (2026-11-24, the Prompt Log under A4's heading), A4 `d56e1f5` was merged in
+(`29e1337`): from a second warning to the result the leave button is gone from the screen and the semantics tree, as
+in a battle (`f430051`, `f28cac6`). The chair pose's stages use the same screen; A4's tests drive the high plank,
+so `200816d` checks it on a chair stage too (reviewer run 9's Minor). `origin/main` had not moved (`69b0520`, already merged), so it was not merged
+again. The only conflict was in the testing notes, where A4's new entry and A5's met at the same place; both kept,
+A4's first. The merge brings exactly A4's change (6 files, the same added and removed lines as `471885d..d56e1f5`).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as the A5 entry above.
+
+- **Before the test:** the new chair test failed on A5's screen from before the merge (`b6e90d7`): the button was
+  still found at the second warning.
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4290 passed, 0 failed, 10 skipped on `29e1337`, then
+  4291 passed, 0 failed, 10 skipped on `200816d` (2026-11-24; the same 10 skips as above): 4288 before, A4's 2 new
+  and 1 new here. `test/services/pose/chair_hold_stage_test.dart`: 14 passed.
+- **New tests:** 1, and 1 changed, in `test/services/pose/chair_hold_stage_test.dart` (table below).
+- **Other checks:** `ownership_guard.py --check-staged` OK on `29e1337` (A4's three inherited files and the notes)
+  and on `200816d`;
+  `--check-diff` OK (67 paths against `origin/main`); the stacked-branch diff against `codex/iter5-hold-plank` lists
+  10 paths, as before. Server `pytest` was not run: `server/` is unchanged.
+- **Review:** local reviewer A5 run 9, APPROVE. It checked the merge carries exactly A4's change (the three code
+  files equal A4's), A5's own lines untouched, the conflict, and that `origin/main` had not moved. Its one Minor: no
+  chair-stage test checked the leave button, though the entry has no time limit and the button is its way out
+  (decision 9.3); fixed in `200816d`.
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+
+### Test cases added or changed with A4's leave button fix
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/services/pose/chair_hold_stage_test.dart` | 'standing after GO: 0:00, 버틴 시간, a green frame, no warning' now also finds the leave button's icon and its semantics label `게임 나가기` while entering; new 'a second warning: no leave button until the result' (hips up twice: the button there after the first, gone from the second, still gone 0.1 s before the end, then 다시 도전) |
