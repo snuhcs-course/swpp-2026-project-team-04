@@ -513,3 +513,42 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Review:** local reviewer A4 run 11, APPROVE; its five Minors were fixed before the commit (two references a reader
   of this branch could not follow, the timing note, this failure's reason and plan, the local status row).
 - **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+#### 2026-11-24 · code at commit `94f6416` · step A4, fourth follow-up on `codex/iter5-hold-plank` (the leave dialog at a stage's end; `main` merged in)
+The P16 session found, and the user had it fixed (local task.md, A4 Decisions, 2026-11-24): in a second warning's
+1.5 s (`HoldTiming.endShow`, with "실패!", or "삐익!" after a star) the leave dialog stayed open and could be opened,
+and leaving then closed the stage without its result, so its stars were not kept. A battle closes the dialog when it
+ends.
+- **Now (`94f6416`, `lib/screens/hold_stage_screen.dart`):** the moment the stage ends (a second warning's moment, or
+  the result at the third star) an open dialog closes, and until the result shows neither back nor the leave button
+  opens one. The result and its stars always come with the result screen. The view model is unchanged.
+- **`main` merged in (the user's word, 2026-11-24):** `origin/main` `69b0520` (#86, #93, #94) first (`166de3b`, no
+  conflict), then A2 (`78e61dc`) and A3 (`6bda1e0`), each bringing only its own merge entry; the testing notes'
+  conflicts kept both sides, each step's new entry after its own section. The user chose this order after the local
+  harness blocked merging A2 straight in: the merge commit, made by hand for the notes' conflict, counted `main`'s
+  62 files as outside A4's scope, and the harness leaves `main`'s files out only when the second parent is
+  `origin/main`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+then the same as A4's entry above.
+
+- **Before the fix:** the three new tests failed on the old screen (the dialog stayed in the moment, and opened in it).
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4238 passed, 0 failed, 10 skipped (2026-11-24, on
+  `6bda1e0`; the same 10 skips as above): 4109 before, 3 new, and 126 that came with `main`.
+  `test/screens/hold_stage_screen_test.dart`: 47 passed.
+- **New tests:** 3, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on the fix and on the two hand-made merge commits;
+  `--check-diff` OK (64 paths against `origin/main`); the stacked-branch intersection with A2's and A3's branches
+  still lists 21 paths. Server `pytest` was not run: `server/` is `main`'s, unchanged by A4.
+- **Review:** local reviewer A4 run 12, APPROVE. It ran the three new tests on a copy with the old screen (each
+  fails at its dialog check), checked the third-star path (the existing 'the hold ending while asking closes the
+  question'), a dialog opened just before the end, and that each merge differs from the automatic one only in the
+  notes, by exactly the lower step's own entry. Its Minors: these AI notes lacked the follow-ups' evidence (a short
+  block added to A4's section), the local status row (updated), and one left for the user: in the 1.5 s the leave
+  button is still drawn and announced, though it opens nothing, while the battle hides its button once decided.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the fourth follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a second warning while asking closes the question at once, then the fail screen' (the dialog gone with "실패!", then 다시 도전, the screen not closed); 'in a second warning's moment back and the leave button open no dialog' (then the fail screen); 'a star, then a second warning while asking: the clear shows and its star is kept' ("삐익!", back opens nothing, then 클리어! and the store keeps 1 star) |

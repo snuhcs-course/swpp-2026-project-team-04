@@ -274,3 +274,21 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
+
+### Follow-ups on this branch (2026-11-23 to 11-24, from the A5 session `dfb39c07`)
+These were made from the A5 session at the user's word; their full evidence is in the A5 section of this file on
+`codex/iter5-hold-chair` (PR #92). In short:
+- **a. Where AI was used:** Claude Code (Opus 5.5) wrote `014e4f0` (guide lines from the reader), `1c325ab` ("시작"
+  after an entry), `397f498` (a test comment), `f78ac2b` (the result on small screens, found by the P16 session),
+  `4ef8a2f` (one bent arm, from the Codex review on #90), `3ffed5f` (the hold effects: spec and designs by Claude on
+  claude.ai from the phone check of 11-24, the picks by Woohyun Song), `94f6416` (the leave dialog at a stage's end,
+  found by the P16 session) and the `main` merges `166de3b`, `78e61dc`, `6bda1e0`, with their testing notes; the
+  reviewer subagent ran A4 runs 5–12. The phone check of 2026-11-24 and every decision on these are the user's.
+- **d. Hallucinations / errors:** the win or lose jingle came 1.5 s late at a second warning (run 9, Major, fixed);
+  a screen check that could not fail (run 9, fixed); the bent-arm check on the mean of both arms let one bent arm pass,
+  which no local review caught and the Codex review on #90 did (fixed in `4ef8a2f`); the leave dialog stayed open in
+  a second warning's 1.5 s, so leaving lost the stars (found by the P16 session, fixed in `94f6416`).
+- **e. Prompt revisions:** merging A2 straight into this branch was blocked by the local pre-commit guard (its
+  hand-made merge commit counted `main`'s files as outside A4); the session aborted and asked, and the user's answer
+  (2026-11-24, in the Prompt Log) changed the order to `origin/main` first, then A2 and A3.
+- **f. Manual fixes:** none; no AI-generated code was edited by hand.
