@@ -53,7 +53,7 @@ void main() {
       expect(grade(gameRep(3, reason: _goLower)), isNull);
     });
 
-    test('a completed knee push-up earns a fixed five even in fever', () {
+    test('a completed knee push-up earns zero even in fever', () {
       final rep = gameRep(3, reason: RejectReason.kneesDown, minElbowAngle: 90);
       expect(grade(rep), GameGrade.average);
       final player = PlayerGameScore();
@@ -62,7 +62,7 @@ void main() {
         player
             .addRep(grade(rep), const Duration(seconds: 21), kneePushup: true)!
             .points,
-        5,
+        0,
       );
       expect(player.combo, 0);
       expect(player.validReps, 1);

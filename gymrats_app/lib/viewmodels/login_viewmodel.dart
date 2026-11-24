@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../services/api/api_client.dart';
 import '../services/auth/auth_repository.dart';
 import 'auth_viewmodel.dart';
+import 'social_signup_viewmodel.dart';
 
 /// What the login form shows besides the typed text.
 class LoginState {
@@ -11,6 +12,7 @@ class LoginState {
     this.passwordError,
     this.formError,
     this.submitting = false,
+    this.signingInWith,
   });
 
   /// Shown under the field; null when the field is fine.
@@ -22,11 +24,18 @@ class LoginState {
 
   /// A login request is running: the button does nothing.
   final bool submitting;
+
+  /// The Google login that is running; null when none is.
+  final SocialProvider? signingInWith;
+
+  /// Any login is running: every login button does nothing.
+  bool get busy => submitting || signingInWith != null;
 }
 
-/// Checks the login form and logs in through [AuthViewModel].
+/// Checks the login form and logs in through [AuthViewModel], with an id
+/// and password or with Google ([signInWith]).
 class LoginViewModel extends ChangeNotifier {
-  LoginViewModel({required this._auth})
+  LoginViewModel({required this._auth, this.google})
     : _state = LoginState(
         formError: _auth.sessionExpired ? expiredMessage : null,
       );
@@ -37,14 +46,18 @@ class LoginViewModel extends ChangeNotifier {
   static const wrongCredentialsMessage = '아이디 또는 비밀번호가 맞지 않아요.';
 
   final AuthViewModel _auth;
+
+  /// The Google sign-in; null hides its button.
+  final SocialSignInService? google;
   LoginState _state;
+  SocialSignupRequest? _signupRequest;
   bool _disposed = false;
 
   LoginState get state => _state;
 
   /// Clears the errors once the user types again.
   void edited() {
-    if (_state.submitting) return;
+    if (_state.busy) return;
     if (_state.loginIdError == null &&
         _state.passwordError == null &&
         _state.formError == null) {
@@ -59,7 +72,7 @@ class LoginViewModel extends ChangeNotifier {
     required String loginId,
     required String password,
   }) async {
-    if (_state.submitting) return false;
+    if (_state.busy) return false;
     final id = loginId.trim();
     final idError = id.isEmpty ? '아이디를 입력해 주세요.' : null;
     final passwordError = password.isEmpty ? '비밀번호를 입력해 주세요.' : null;
@@ -82,6 +95,56 @@ class LoginViewModel extends ChangeNotifier {
     }
     return false;
   }
+
+  /// Logs in with [service]'s provider. True when an existing account
+  /// logged in. A provider account seen for the first time creates nothing
+  /// yet: [takeSignupRequest] then holds what the nickname step needs.
+  /// Backing out of the provider's screen shows no error.
+  Future<bool> signInWith(SocialSignInService service) async {
+    if (_state.busy) return false;
+    final provider = service.provider;
+    _signupRequest = null;
+    _set(LoginState(signingInWith: provider));
+    try {
+      final token = await service.signIn();
+      try {
+        await _auth.signInWith(provider, token);
+      } on SocialSignUpRequiredException {
+        _signupRequest = (provider: provider, token: token);
+        _set(const LoginState());
+        return false;
+      }
+      _set(const LoginState());
+      return true;
+    } on SocialSignInCancelledException {
+      _set(const LoginState());
+    } on SocialSignInFailedException {
+      _set(LoginState(formError: socialFailedMessage(provider)));
+    } on SocialTokenRejectedException {
+      _set(LoginState(formError: socialFailedMessage(provider)));
+    } on SocialLoginUnavailableException {
+      _set(LoginState(formError: socialUnavailableMessage(provider)));
+    } on ApiException catch (e) {
+      _set(LoginState(formError: e.message));
+    } on Exception {
+      _set(const LoginState(formError: genericErrorMessage));
+    }
+    return false;
+  }
+
+  /// The new provider account the last [signInWith] found, once; null
+  /// otherwise. LoginScreen opens the nickname step with it.
+  SocialSignupRequest? takeSignupRequest() {
+    final request = _signupRequest;
+    _signupRequest = null;
+    return request;
+  }
+
+  static String socialFailedMessage(SocialProvider provider) =>
+      '${provider.label} 로그인에 실패했어요. 다시 시도해 주세요.';
+
+  static String socialUnavailableMessage(SocialProvider provider) =>
+      '지금은 ${provider.label} 로그인을 쓸 수 없어요. 잠시 후 다시 시도해 주세요.';
 
   void _set(LoginState state) {
     if (_disposed) return;

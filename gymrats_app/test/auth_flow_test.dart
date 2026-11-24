@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/screens/body_info_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/login_screen.dart';
 import 'package:gymrats_app/screens/settings_screen.dart';
+import 'package:gymrats_app/screens/social_signup_screen.dart';
+import 'package:gymrats_app/services/auth/auth_repository.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/services/auth/token_store.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
 import 'package:gymrats_app/services/user/rules_seen_store.dart';
 import 'package:gymrats_app/widgets/help_rules.dart';
 
+import 'support/auth_fakes.dart';
 import 'support/fakes.dart';
 import 'support/help_fakes.dart';
 
@@ -23,6 +27,7 @@ void main() {
     WidgetTester tester,
     InMemoryAuthRepository auth, {
     RulesSeenStore? rules,
+    SocialSignInService? google,
   }) async {
     tester.view.physicalSize = const Size(412, 915);
     tester.view.devicePixelRatio = 1;
@@ -36,6 +41,7 @@ void main() {
         authRepository: auth,
         userRepository: InMemoryUserRepository(),
         rulesSeenStore: rules,
+        googleSignIn: google,
       ),
     );
     await tester.pumpAndSettle();
@@ -43,7 +49,8 @@ void main() {
 
   Finder field(String label) => find.widgetWithText(TextField, label);
 
-  /// From login: creates the account [loginId] and submits.
+  /// From login: creates the account [loginId], submits, and skips the
+  /// body info step that follows (P7).
   Future<void> signUp(WidgetTester tester, {String loginId = 'woohyun'}) async {
     await tester.tap(find.text('처음이신가요? 회원가입'));
     await tester.pumpAndSettle();
@@ -52,6 +59,9 @@ void main() {
     await tester.enterText(field('비밀번호'), 'password1');
     await tester.enterText(field('비밀번호 확인'), 'password1');
     await tester.tap(find.text('가입하기'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BodyInfoScreen), findsOneWidget);
+    await tester.tap(find.text('건너뛰기'));
     await tester.pumpAndSettle();
   }
 
@@ -224,6 +234,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       expect(find.byType(HomeScreen), findsNothing);
     }
+    // The body info step first (P7), then still the rules, not home.
+    expect(find.byType(BodyInfoScreen), findsOneWidget);
+    await tester.tap(find.text('건너뛰기'));
+    for (var frame = 0; frame < 20; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byType(HomeScreen), findsNothing);
+    }
     expect(find.byType(HelpScreen), findsOneWidget);
 
     read.complete();
@@ -327,5 +344,117 @@ void main() {
     expect(find.byType(HistoryScreen), findsOneWidget);
     expect(find.text('기록보관소'), findsOneWidget);
     expect(find.byTooltip('뒤로'), findsOneWidget);
+  });
+
+  group('Google (P7)', () {
+    testWidgets('a new Google account gives height and weight, reads the '
+        'rules, then gets home', (tester) async {
+      final auth = InMemoryAuthRepository();
+      final google = FakeSocialSignIn(SocialProvider.google, token: 'g-1');
+      await start(tester, auth, google: google);
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pumpAndSettle();
+      // A new provider account picks its nickname first.
+      expect(find.byType(SocialSignupScreen), findsOneWidget);
+      await tester.enterText(field('닉네임'), '우현');
+      await tester.tap(find.text('가입하기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(BodyInfoScreen), findsOneWidget);
+      expect(find.text('더 정확한 피드백 정보를 드리는 데 도움이 됩니다.'), findsOneWidget);
+
+      await tester.enterText(field('키 (cm)'), '175');
+      await tester.enterText(field('몸무게 (kg)'), '70.5');
+      await tester.tap(find.text('개인정보(키·몸무게) 수집·이용 동의'));
+      await tester.tap(find.text('다음'));
+      await tester.pumpAndSettle();
+      expect(auth.bodyInfo.values.single, (heightCm: 175.0, weightKg: 70.5));
+      expect(find.byType(HelpScreen), findsOneWidget);
+      await tapStart(tester);
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('the same Google account later logs in straight to home', (
+      tester,
+    ) async {
+      final auth = InMemoryAuthRepository();
+      final google = FakeSocialSignIn(SocialProvider.google, token: 'g-2');
+      await start(tester, auth, google: google);
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('닉네임'), '현우');
+      await tester.tap(find.text('가입하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('건너뛰기'));
+      await tester.pumpAndSettle();
+      expect(auth.bodyInfo, isEmpty);
+      await tapStart(tester);
+      await logOut(tester);
+
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(BodyInfoScreen), findsNothing);
+      expect(find.byType(HelpScreen), findsNothing);
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('backing out of the nickname step creates no account', (
+      tester,
+    ) async {
+      final auth = InMemoryAuthRepository();
+      final google = FakeSocialSignIn(SocialProvider.google, token: 'g-1');
+      await start(tester, auth, google: google);
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('뒤로'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LoginScreen), findsOneWidget);
+      await expectLater(
+        auth.signInWith(SocialProvider.google, 'g-1'),
+        throwsA(isA<SocialSignUpRequiredException>()),
+      );
+    });
+
+    testWidgets('backing out of Google stays on login without an error', (
+      tester,
+    ) async {
+      final google = FakeSocialSignIn(
+        SocialProvider.google,
+        error: const SocialSignInCancelledException(),
+      );
+      await start(tester, InMemoryAuthRepository(), google: google);
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.textContaining('실패'), findsNothing);
+      expect(google.calls, 1);
+    });
+
+    testWidgets('a Google session is restored after a restart', (tester) async {
+      final tokens = MemoryTokenStore();
+      final google = FakeSocialSignIn(SocialProvider.google, token: 'g-1');
+      await start(
+        tester,
+        InMemoryAuthRepository(store: tokens),
+        google: google,
+      );
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pumpAndSettle();
+      await tester.enterText(field('닉네임'), '우현');
+      await tester.tap(find.text('가입하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('건너뛰기'));
+      await tester.pumpAndSettle();
+      await tapStart(tester);
+
+      await tester.pumpWidget(const SizedBox());
+      await start(
+        tester,
+        InMemoryAuthRepository(store: tokens),
+        google: google,
+      );
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.byType(BodyInfoScreen), findsNothing);
+      expect(google.calls, 1);
+    });
   });
 }

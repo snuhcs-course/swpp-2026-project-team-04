@@ -102,7 +102,7 @@ class BattleRules {
     required bool fever,
     bool kneePushup = false,
   }) {
-    if (grade == GameGrade.average && kneePushup) return 5;
+    if (grade == GameGrade.average && kneePushup) return 0;
     final base = switch (grade) {
       GameGrade.average => averagePoints,
       GameGrade.good => goodPoints,

@@ -61,6 +61,11 @@ class _Match {
   final List<Map<String, dynamic>> roster;
   final int created, readyDeadline;
   final ready = <String>{};
+
+  /// Players whose setup camera is on (`match.setup`); once both are,
+  /// [setupDeadline] is set and the setup time counts.
+  final setupOpen = <String>{};
+  int? setupDeadline;
   final scores = <String, List<int>>{};
   final games = <String, PlayerGameScore>{};
   final reps = <String, Map<int, Map<String, dynamic>>>{};
@@ -81,11 +86,15 @@ class BattleServer {
     int? durationMs,
     this.countdownMs = 3000,
     this.readyTimeoutMs = 60000,
+    int? setupTimeoutMs,
+    this.tickMs = 50,
     this.reconnectMs = 10000,
     this.heartbeatTimeoutMs = 15000,
     this.results,
     this.rules = battleRules,
-  }) : durationMs = durationMs ?? battleDuration.inMilliseconds;
+  }) : durationMs = durationMs ?? battleDuration.inMilliseconds,
+       setupTimeoutMs =
+           setupTimeoutMs ?? battleSetupTimeout.inMilliseconds;
   final BattleAuthenticator authenticate;
 
   /// The game the server scores: the same code and numbers as the app.
@@ -98,6 +107,15 @@ class BattleServer {
       readyTimeoutMs,
       reconnectMs,
       heartbeatTimeoutMs;
+
+  /// From both setups open to both ready (P12). [readyTimeoutMs], from
+  /// `match.found`, still bounds a match whose setup never opens (an older
+  /// app, a camera that never starts).
+  final int setupTimeoutMs;
+
+  /// How often deadlines are checked; tests make it long to see that a
+  /// late request is turned down without waiting for a check.
+  final int tickMs;
   final _clock = Stopwatch()..start();
   final int _epoch = DateTime.now().millisecondsSinceEpoch;
   final _random = Random.secure();
@@ -134,7 +152,7 @@ class BattleServer {
       port,
     );
     _http!.listen((request) => unawaited(_upgrade(request)));
-    _timer = Timer.periodic(const Duration(milliseconds: 50), (_) => _tick());
+    _timer = Timer.periodic(Duration(milliseconds: tickMs), (_) => _tick());
   }
 
   Future<void> _upgrade(HttpRequest request) async {
@@ -354,9 +372,24 @@ class BattleServer {
         p.queued = false;
         _queue.remove(p);
         return reply('queue.cancelled', {'queue_id': p.identity.id});
+      case 'match.setup':
+        fields(payload, {});
+        final m = _activeMatch(p, message);
+        _expireBeforeStart(m);
+        if (m.status != 'preparing') invalid('INVALID_STATE');
+        if (m.setupOpen.add(p.identity.id)) {
+          if (m.setupOpen.length == 2) {
+            m.setupDeadline = now + setupTimeoutMs;
+          }
+          _broadcast(m, 'match.setup_state', _setupState(m));
+        }
+        return reply('request.accepted', {});
       case 'match.ready':
         fields(payload, {'ready'});
         final m = _activeMatch(p, message);
+        // A ready that comes after the deadline is too late, even before
+        // the next tick has cancelled the match.
+        _expireBeforeStart(m);
         if (m.status != 'preparing' || payload['ready'] is! bool)
           invalid('INVALID_STATE');
         if (payload['ready'] == true) {
@@ -553,6 +586,7 @@ class BattleServer {
     'start_at_ms': m.start,
     'end_at_ms': m.end,
     'ready_deadline_ms': m.readyDeadline,
+    ..._setupState(m),
     'fever_start_ms': rules.feverStart.inMilliseconds,
     'ko_lead': rules.koLead,
     'average_points': rules.averagePoints,
@@ -569,7 +603,29 @@ class BattleServer {
     'disconnected_player_ids': m.disconnected.keys.toList(),
     'result': m.result,
   };
+  Map<String, dynamic> _setupState(_Match m) => {
+    'setup_player_ids': m.setupOpen.toList(),
+    'setup_deadline_ms': m.setupDeadline,
+  };
+
+  /// Cancels [m] before its start once its deadline passed. With both
+  /// setups open that is only the announced setup deadline, even when it
+  /// ends after the ready deadline from `match.found`; until then it is the
+  /// ready deadline. The ticks and the requests use this one rule.
+  void _expireBeforeStart(_Match m) {
+    if (m.start != null) return;
+    final setup = m.setupDeadline;
+    if (setup != null) {
+      if (now >= setup) _cancel(m, battleSetupTimeoutReason);
+    } else if (now >= m.readyDeadline) {
+      _cancel(m, 'ready_timeout');
+    }
+  }
+
+  /// Ends [m] before its start. Once only: a match that already ended keeps
+  /// its first ending.
   void _cancel(_Match m, String reason) {
+    if (m.terminal) return;
     m.status = 'cancelled';
     m.ended = now;
     m.result = {'reason': reason, 'ended_at_ms': now};
@@ -693,7 +749,7 @@ class BattleServer {
         continue;
       }
       if (m.start == null) {
-        if (now >= m.readyDeadline) _cancel(m, 'ready_timeout');
+        _expireBeforeStart(m);
         continue;
       }
       if (now >= m.start!) m.status = 'playing';
