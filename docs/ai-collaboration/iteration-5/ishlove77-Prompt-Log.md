@@ -317,3 +317,10 @@ Sent while Claude was working (queued; not in the exporter's output), verbatim:
 
 <!-- b7f2c482 2026-11-24T07:18:21.851Z -->
 [Jinyoung Park, 11-24 16:18] (pasted the PM's reply asking to fix the last Codex P2 in this PR: one confirmed friend-battle accept per person, 409 invite_busy, a server regression test; the PM's text is not the author's prompt, so it is summarized here)
+
+## 2026-11-24 · Jinyoung Park · feat/iter5-friend-battles
+<!-- b7f2c482 2026-11-24T07:38:06.669Z -->
+[Jinyoung Park, 11-24 16:38] "됬음?"
+
+<!-- b7f2c482 2026-11-24T07:38:59.153Z -->
+[Jinyoung Park, 11-24 16:38] "됬음?"
