@@ -264,3 +264,17 @@ them, so they are copied verbatim from the session, in order, without times.
 [Jinyoung Park, 11-24] "상대방이 대전 걸면 위의 친구가 대전을 신청했어요 이런식으로 뜨게 하면 안된 ㅏ"
 
 [Jinyoung Park, 11-24] "홈화면에서하번 시도해보자"
+
+## 2026-11-24 · Jinyoung Park · feat/iter5-friend-battles
+<!-- b7f2c482 2026-11-24T05:04:48.271Z -->
+[Jinyoung Park, 11-24 14:04] "다 했나"
+
+<!-- b7f2c482 2026-11-24T05:08:52.027Z -->
+[Jinyoung Park, 11-24 14:08] "codex 리뷰 수정 ㄱㄱ"
+
+<!-- b7f2c482 2026-11-24T05:13:04.015Z -->
+[Jinyoung Park, 11-24 14:13] (pasted the PM's reply approving the entry change and the two extra ownership exceptions; the PM's text is not the author's prompt, so it is summarized here)
+
+Sent while Claude was working (queued; not in the exporter's output), verbatim:
+
+[Jinyoung Park, 11-24] "emulator는 꺼도 될듯"
