@@ -9,6 +9,16 @@ bool isBattleAvatarId(Object? value) =>
 
 final _battleAvatarId = RegExp(r'^[a-z0-9_]{1,32}$');
 
+/// Whether [value] may travel in `queue.join`'s `friend_id` (P9): the
+/// player id of the friend to battle, as the server names players (the
+/// account id, in digits). A join with it is paired only with that friend,
+/// and only when they named this player back; one without it is a main
+/// match join, as before.
+bool isBattleFriendId(Object? value) =>
+    value is String && _battleFriendId.hasMatch(value);
+
+final _battleFriendId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
+
 /// How long the two players have to finish the pose setup, counted from the
 /// moment both phones have said (`match.setup`) that their setup camera is
 /// on. When it runs out before both are ready, the server cancels the match
