@@ -1583,3 +1583,58 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flut
   the progress is still being read drops it: nothing opens over that page', 'a page opened and closed while the
   progress is still being read drops it too', 'leaving the map while the save goes on
   drops it: the next visit opens nothing on its own'
+
+#### 2026-11-25 · code at commit `5b09d87` · step P16 `codex/iter5-ai-opponents`: a hold stage's 다음 스테이지 waits for its stars too
+The entry above left one window open: a hold stage's 다음 스테이지 (`_playHold`). A4's `HoldStageViewModel._finish`
+keeps the stars without waiting, straight to the store it is given, so the arcade's view model neither waited for nor
+heard that save, and `_playHold`'s `refresh` could read before the write and `_open` did nothing. The user's decision
+(2026-11-25): fix it in P16 only, A4's files read only, with the fight's rules.
+- **`ArcadeViewModel.holdStore`:** a wrapper of the arcade's store. Reads and writes go to the store; a stage's stars
+  go through the same path as `record` (`saving`, the progress after them, a read begun meanwhile dropped). A failed
+  save still fails for A4's screen, which catches it; another account's save is only kept and does not count as this
+  account's.
+- **`ArcadeFlow.holdStore(context)`** gives it, and `ArcadeFlow.openHold` hands it to A4's screen as its store.
+- **`ArcadeScreen._playHold`:** 다음 스테이지 asks for the stage after the hold and takes a fight's path back
+  (`_backFromStage`): it opens once the progress shows it open, and is dropped by the same rules.
+- No hold stage opens a new floor: the holds are 3, 5, 9, 11, 15, 17, 21 and 23, and each floor ends with its boss
+  (6, 12, 18, 24). The nearest case, hold 5 → boss 6's intro, is tested.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter test` 4680 passed, 0 failed, 10 skipped (4670 at `70a1d2a`, plus the 10 new tests) (2026-11-25, on `5b09d87`; the same 10 skips as above). `flutter analyze` found no issues.
+- **New tests:** 6 in `test/screens/arcade_screen_test.dart` (a stand-in hold that keeps its stars through
+  `ArcadeFlow.holdStore` without waiting, as A4 does, with a store whose saves end late), the wiring test changed, 4 in
+  `test/viewmodels/arcade_viewmodel_test.dart`.
+- **Checked against the old code:** with the store handed over as before and the old `_playHold`, 'it waits for the
+  save, then opens the stage after it', 'before a boss match it opens the boss's intro the same way' and 'a hold
+  left from its own page, as A4's is: the stage after it opens once, after the save' fail. Without the drop when the
+  map goes, 'leaving the map meanwhile drops it: the next visit opens nothing on its own' fails; 'a page over the map
+  meanwhile drops it' fails with both cover drops taken out (each alone is pinned by the fight tests above).
+- **Other checks:** `ownership_guard.py --check-diff` OK (113 paths). A slip: `dart format lib` reformatted two files of
+  other steps (`lib/widgets/character_motion.dart`, `player_avatar.dart`); restored with `git checkout --` at once, and
+  the reviewer confirmed them unchanged.
+- **Review:** local reviewer run 16, APPROVE. Its 4 Minors were fixed before the commit: no test left the hold from a
+  page of its own, so the map's two runs back (the page's close and `_playHold`) were not exercised (test added; it
+  fails on the old `_playHold`); another account's save bumped this account's reads and `saving` (guarded, with a
+  test); the `_saving` doc; the local progress file.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** a slow save is forced by fakes only; A4's real screen is not driven to 다음 스테이지 in a test (its
+  wiring test checks that it gets `holdStore` and that a save through it is seen).
+- **Manual check:** none for this fix (a slow save cannot be made on demand on the phone).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/arcade_viewmodel_test.dart` (updated) | new group "holdStore, the store of A4's hold screens (PR #91 review)": reads and writes are the arcade's store's; a stage's stars kept as `record` keeps them (saving, the progress after, heard); a failed save still fails for the screen; another account's stars kept, not shown, not counted |
+| View | `test/screens/arcade_screen_test.dart` (updated) | new group "a hold's 다음 스테이지 while its stars are still being kept (PR #91 review)": it waits for the save, then opens the stage after it; left from its own page it opens once; before a boss match the intro; a failed save, a page over the map and leaving the map drop it; the wiring test expects `arcade.holdStore` and a save seen through it |
+
+### Acceptance criteria → tests (the user's items 1 and 2)
+- Hold clear → 다음 스테이지 after a late save opens the next stage → 'it waits for the save, then opens the stage
+  after it', 'a hold left from its own page, as A4's is: the stage after it opens once, after the save', 'before a
+  boss match it opens the boss's intro the same way' (no hold opens a new floor)
+- The same drops as a fight's → 'a save that fails drops it: the map stays', 'a page over the map meanwhile drops
+  it', 'leaving the map meanwhile drops it: the next visit opens nothing on its own'
+- A4's files only read; its screen gets the wrapped store → the wiring test 'the app's own way into a hold: A4's
+  screen for the stage, with the arcade's store, account and the user's character'

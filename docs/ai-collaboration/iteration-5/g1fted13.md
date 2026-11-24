@@ -546,15 +546,18 @@ These were made from the A5 session at the user's word; their full evidence is i
     code, wrote the failing tests first, then changed `ArcadeViewModel` (`saving`, `takeOpenRequest`, a read begun
     during a save dropped) and `ArcadeScreen` (the map waits for the read, looks again while a save goes on, and
     drops a waiting request when covered or left), with 13 tests.
+  - The hold stage's 다음 스테이지 (`5b09d87`, the user's decision to fix it in P16 with A4's files read only):
+    `ArcadeViewModel.holdStore`, a wrapper of the arcade's store handed to A4's screen by `ArcadeFlow.openHold`, and
+    `_playHold` on a fight's path, with 10 tests.
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran fifteen times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+- **Review:** the `reviewer` subagent ran sixteen times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
   CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, after the merge
   of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix, APPROVE (4 Minors, fixed) on the `main` merge, and CHANGES_REQUESTED, then
   APPROVE, on the #95 merge, APPROVE (5 Minors, fixed) on the invite alert fix, APPROVE (5 Minors, fixed) on
-  the last phone check's notes, and CHANGES_REQUESTED, then APPROVE (3 Minors: two fixed, one for the user), on the
-  next-stage fix.
+  the last phone check's notes, CHANGES_REQUESTED, then APPROVE (3 Minors: two fixed, one for the user), on the
+  next-stage fix, and APPROVE (4 Minors, fixed) on the hold stage's fix.
 - **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
   (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
   Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
@@ -672,6 +675,10 @@ These were made from the A5 session at the user's word; their full evidence is i
   stayed asked for, and a later visit opened that stage's sheet by itself; my tests had pinned the two drops only
   together. Fixed before the commit (dropped when the map goes; each drop with its own test, each checked by taking
   it out alone). Run 15 approved, and its Minor about a page opened during the read was fixed too.
+- **The hold stage's fix:** my `dart format lib …` reformatted two files of other steps (`character_motion.dart`,
+  `player_avatar.dart`); seen in `git status` at once and restored before anything else. Reviewer run 16 approved
+  and found that no test left the hold from a page of its own, so the map's two runs back were not exercised (test
+  added, failing on the old `_playHold`), and that another account's save counted as this account's (guarded).
 - **A placeholder body on PR #91 (2026-11-24):** my patch to the script that writes PR #91's body, sent through a
   shell heredoc, put real line breaks into a Python string and broke it (`SyntaxError`). The `gh pr edit` chained
   after it still ran and uploaded the older dry-run body, with the placeholders `TEST` and `@N@`, to PR #91. Caught

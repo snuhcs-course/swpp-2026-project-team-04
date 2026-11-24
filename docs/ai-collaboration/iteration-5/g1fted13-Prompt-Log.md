@@ -347,6 +347,15 @@ PR #91 Codex 리뷰(f27a7e8)에 P2 하나가 달렸다(arcade_screen.dart 78~79�
 5. 새 HEAD를 보고해 줘.
 </pasted_content id=\"0a14\">"
 
+<!-- 44cd470a 2026-11-24T17:39:41.996Z -->
+[Woohyun Song, 11-25 02:39] "<pasted_content id=\"0a14\">
+버티기 판의 다음 스테이지 틈도 이번에 P16에서 고친다. 제안한 방법대로 A4 파일은 건드리지 않는다. ArcadeFlow.openHold에서 A4 화면에 넘기는 저장소를 감싸, 대결 판과 같은 saving·takeOpenRequest 규칙을 따르게 한다.
+1. 고치는 파일은 P16 파일만이다. A4 파일(HoldStageViewModel 등)은 읽기만 한다.
+2. 저장이 늦게 끝나는 가짜 저장소로 \"버티기 판 클리어 → 다음 스테이지\" 흐름 테스트를 더한다. 버티기 판을 깨서 다음 층이 열리는 경우가 있으면 그것도 더한다. 고치기 전 코드에서 이 테스트가 실패하는 것을 먼저 확인한다. 저장 실패, 지도를 덮음, 지도를 나감일 때 요청을 버리는 규칙이 버티기 판에서도 같은지 테스트한다.
+3. analyze, 전체 test, reviewer를 거쳐 push한다. PR #91 본문의 후속 작업 줄에 있던 이 항목을 이번 수정 내용으로 옮긴다.
+4. 끝나면 새 HEAD를 알려 준다. Codex 리뷰는 그 HEAD에 한 번만 요청한다.
+</pasted_content id=\"0a14\">"
+
 ## 2026-11-24 · Woohyun Song · codex/iter5-hold-chair
 <!-- dfb39c07 2026-11-23T16:54:23.559Z -->
 [Woohyun Song, 11-24 01:54] "<pasted_content id=\"a37d\">
