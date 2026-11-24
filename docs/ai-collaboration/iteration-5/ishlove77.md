@@ -100,6 +100,11 @@ Full list: `ishlove77-Prompt-Log.md`.
   reviewer subagent had flagged that second case as unlikely and Claude kept it with a test; Codex showed it could end
   the friend's waiting room, so the cleanup now lets the server decide (`if_pending`).
 
+- P9: the fifth Codex review (`72a9faa`) found a second path to the same cancel-after-accept problem (an invite
+  created after the pairing) and that a nickname with a line break, allowed at sign-up, made a friend code that could
+  not be read back. Each round of fixes so far opened a narrower case nearby; the friend-battle cleanup now always
+  lets the server decide.
+
 ## 4. Revisions and Decisions
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so

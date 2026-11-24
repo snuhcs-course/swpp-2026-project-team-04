@@ -5,6 +5,19 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the fifth Codex review
+Two P2 findings from the Codex review of `72a9faa` were fixed: an invite whose creation returns after the players
+were already paired is taken back only if still open (the friend may have accepted it), and a friend code is read
+for any nickname sign-up allows, including one with a line break.
+
+- **Tests:** `flutter analyze` no issues; server `pytest` 221 passed, `accounts/friends_views.py` 100%; full
+  `flutter test` count in the PR body.
+- **Test cases changed:** `test/viewmodels/friends_viewmodel_test.dart` (paired before the invite was made: taken back
+  only if still open; the friend accepted it meanwhile: the accept stays; leaving before it was made: plain cancel);
+  `server/tests/test_friends.py` (a nickname with a line break can still be added; a pasted code with line breaks
+  around it still works);
+  `test/services/friends/friend_repository_test.dart` (the same in memory).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the fourth Codex review
 Two P2 findings from the Codex review of `1f41796` were fixed: the invite banner drops a read that comes back after
 a switch of account, so one account's invites never show for another; and the cleanup after two crossed invites met
