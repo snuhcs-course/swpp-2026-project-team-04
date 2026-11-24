@@ -5,6 +5,19 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fix for the Codex review of `96e48bc`
+One P2 finding was fixed: a banner 수락 whose answer arrives after the app went to the background no longer opens the
+waiting room while the app is hidden; the accepted invite is taken back, as when another battle opens meanwhile.
+
+  Only a hidden app (hidden, paused, detached) counts as background: `inactive` (the notification shade, a system
+  dialog) keeps the banner and its 수락.
+- **Tests:** `flutter analyze` no issues; `flutter test` 4057 passed, 10 skipped; server unchanged (236 passed).
+- **Test cases changed:** `test/viewmodels/friends_viewmodel_test.dart` (the app went to the background while
+  accepting: nothing opens and the invite is taken back, also after coming back); `test/screens/friends_screen_test.dart`
+  (the notification shade (inactive) does not hide it and it keeps reading; "hidden while the app is in the
+  background" now checks the alert's state and that reading stops while hidden, because a hidden app draws no frames,
+  and the drawn banner after coming back).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the Codex review of `888db67`
 Three P2 findings were fixed: the one-battle hold now also checks the inviter's other battles; it lasts a whole battle
 (2 minutes, since the battle server allows up to 60 s of setup before the 30 s round) and the apps end it as soon as
