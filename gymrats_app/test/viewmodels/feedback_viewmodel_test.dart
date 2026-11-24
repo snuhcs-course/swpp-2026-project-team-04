@@ -8,6 +8,7 @@ import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/feedback/form_analyzer.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
+import 'package:gymrats_app/services/feedback/report_metrics.dart';
 import 'package:gymrats_app/viewmodels/feedback_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/login_viewmodel.dart';
 
@@ -304,5 +305,143 @@ void main() {
         DepthTrend.tooFew,
       );
     });
+  });
+
+  group('the report words (P14)', () {
+    FormFinding finding(FindingKind kind, String title, {String? fix}) =>
+        FormFinding(kind: kind, title: title, detail: '$title 설명', fix: fix);
+    FormFeedback feedback(List<FormFinding> findings) => FormFeedback(
+      findings: findings,
+      meanDepth: null,
+      depthTrend: DepthTrend.tooFew,
+      armBalance: ArmBalance.unknown,
+      paceBuckets: const [0, 0, 0, 0, 0, 0],
+      sliceSeconds: 5,
+      repsPerSecond: 0,
+    );
+
+    test('issues and good points are split in the analyzer order', () {
+      final form = feedback([
+        finding(FindingKind.issue, 'A'),
+        finding(FindingKind.good, 'B'),
+        finding(FindingKind.issue, 'C'),
+        finding(FindingKind.note, 'D'),
+      ]);
+      expect(form.issues.map((f) => f.title), ['A', 'C']);
+      expect(form.goods.map((f) => f.title), ['B']);
+    });
+
+    test("the coach line: the first issue's fix, else its detail, else the "
+        'first good point, else a plain line', () {
+      expect(
+        feedback([
+          finding(FindingKind.good, 'B'),
+          finding(FindingKind.issue, 'A', fix: '고쳐요'),
+        ]).coachLine,
+        '고쳐요',
+      );
+      expect(feedback([finding(FindingKind.issue, 'A')]).coachLine, 'A 설명');
+      expect(feedback([finding(FindingKind.good, 'B')]).coachLine, 'B');
+      expect(feedback(const []).coachLine, '다음 대결에서 더 많은 횟수를 노려 봐요.');
+    });
+  });
+
+  group('the post-game report numbers (P14)', () {
+    /// Earlier battles kept on the phone, [minutes] before the shown one.
+    Future<void> keep(List<(int, int)> validAtMinutesBefore) async {
+      for (final (valid, minutes) in validAtMinutesBefore) {
+        await phone.save(
+          sampleReport(
+            valid: valid,
+            endedAt: _endedAt.subtract(Duration(minutes: minutes)),
+          ),
+        );
+      }
+    }
+
+    test('a loaded report comes with its metrics and, with earlier battles '
+        'on the phone, the comparison', () async {
+      await keep([(2, 30), (4, 20)]);
+      repository.reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+      final model = vm(_match());
+      await model.load();
+      final state = model.state;
+      expect(state.metrics!.validReps, 6);
+      expect(state.metrics!.weightAssumed, isTrue);
+      expect(state.metrics!.enduranceIndex, 200);
+      expect(state.history.recentCount, 2);
+      expect(state.history.meanValidReps, 3);
+      expect(state.history.trend.map((p) => p.validReps), [2, 4, 6]);
+    });
+
+    test('the given body weight is used for the estimates', () async {
+      repository.reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+      final model = FeedbackViewModel(
+        match: _match(),
+        repository: repository,
+        phoneReports: phone,
+        weightKg: 80,
+      );
+      await model.load();
+      expect(model.state.metrics!.weightAssumed, isFalse);
+      expect(model.state.metrics!.liftedKg, closeTo(6 * 80 * 0.64, 1e-9));
+    });
+
+    test(
+      'offline, the phone copy is compared with the other kept battles',
+      () async {
+        await keep([(1, 10)]);
+        final copy = sampleReport(valid: 3, endedAt: _endedAt);
+        await phone.save(copy);
+        repository.feedbackError = const ApiException(ApiErrorKind.network);
+        final model = vm(_match());
+        await model.load();
+        expect(model.state.fromPhone, isTrue);
+        expect(model.state.history.recentCount, 1);
+        expect(model.state.history.meanValidReps, 1);
+      },
+    );
+
+    test(
+      'an unreadable phone store leaves the report without comparison',
+      () async {
+        repository.reports = {7: sampleReport(endedAt: _endedAt)};
+        final model = vm(_match(), store: _BrokenStore());
+        await model.load();
+        expect(model.state.phase, FeedbackPhase.ready);
+        expect(model.state.metrics, isNotNull);
+        expect(model.state.history.hasHistory, isFalse);
+      },
+    );
+
+    test('a report in hand has its metrics at once; load reads the kept '
+        'battles once for the comparison', () async {
+      await keep([(4, 5)]);
+      final model = FeedbackViewModel.fromReport(
+        sampleReport(valid: 6, endedAt: _endedAt),
+        phoneReports: phone,
+      );
+      expect(model.state.metrics!.validReps, 6);
+      expect(model.state.history.hasHistory, isFalse);
+      var notified = 0;
+      model.addListener(() => notified++);
+      await model.load();
+      expect(model.state.history.meanValidReps, 4);
+      expect(model.state.metrics!.enduranceIndex, 150);
+      await model.load();
+      expect(notified, 1);
+    });
+
+    test(
+      'a report in hand without a phone store never changes on load',
+      () async {
+        final model = FeedbackViewModel.fromReport(sampleReport());
+        var notified = 0;
+        model.addListener(() => notified++);
+        await model.load();
+        expect(notified, 0);
+        expect(model.state.metrics, isA<ReportMetrics>());
+      },
+    );
   });
 }
