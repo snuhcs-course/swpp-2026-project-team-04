@@ -100,7 +100,8 @@ abstract final class ChairLines {
 ///   judge's rule follows the thigh while it is still standing on the way
 ///   down, so a slow sit lowered it and a true 0.8 read 0.73–0.75, under
 ///   [SquatRepJudge.passDepth]. Without one by GO, the first
-///   [ChairLines.standingFor] standing after GO takes it, once. It is never
+///   [ChairLines.standingFor] standing after GO takes it, and until the
+///   first sit starts it rises with a longer thigh, never down. It is never
 ///   dropped in a play: not after a gap in the frames, not after 12 s down.
 /// - **Depth:** 1 − thigh / standing thigh.
 ///
@@ -133,6 +134,10 @@ class ChairHoldReader implements HoldGuideReader {
   double? _thigh;
   double? _standingThigh;
   bool _down = false;
+
+  /// Whether the standing thigh was taken after GO and may still rise:
+  /// until the first sit starts.
+  bool _risingAfterGo = false;
   double? _depth;
   double? _kneeRatio;
   JudgeSnapshot _guide = JudgeSnapshot.initial;
@@ -227,9 +232,19 @@ class ChairHoldReader implements HoldGuideReader {
         _standingSince = null;
       } else {
         final since = _standingSince ??= at;
-        if (at - since >= ChairLines.standingFor) _standingThigh = thigh;
+        if (at - since >= ChairLines.standingFor) {
+          _standingThigh = thigh;
+          _risingAfterGo = !follow;
+        }
       }
       _depth = _standingThigh == null ? null : 0;
+      return;
+    }
+    // Taken after GO, perhaps in a slow rise: it goes up with a longer
+    // thigh until the first sit starts, and never down.
+    if (_risingAfterGo && thigh > top) {
+      _standingThigh = thigh;
+      _depth = 0;
       return;
     }
     var depth = 1 - thigh / top;
@@ -240,6 +255,7 @@ class ChairHoldReader implements HoldGuideReader {
     }
     if (!_down && depth >= ChairLines.followUnder) {
       _down = true;
+      _risingAfterGo = false;
     } else if (_down && depth <= ChairLines.followAgainAt) {
       _down = false;
     }

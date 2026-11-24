@@ -324,6 +324,38 @@ void main() {
   });
 
   group('the standing thigh', () {
+    test('taken after GO while rising slowly, it rises with the thigh until '
+        'the first sit: a true 0.8 is held (PR #92 review)', () {
+      final reader = ChairHoldReader();
+      _feed(reader, _seated(.9), from: -100, to: 3000, counting: true);
+      expect(reader.standingThigh, isNull);
+      // Up from 120 px (just standing) to 180 px over 3 s.
+      for (var i = 1; i <= 30; i++) {
+        reader.read(_legs(thigh: 120 + 2.0 * i), at: _ms(3000 + 100 * i));
+      }
+      _feed(reader, _legs(), from: 6000, to: 7000);
+      expect(reader.standingThigh, closeTo(_standingThigh, 1));
+      expect(_feed(reader, _seated(.8), from: 7000, to: 9000), HoldReading.ok);
+      expect(reader.depth, closeTo(.8, .01));
+    });
+
+    test('taken after GO, a slow sit never lowers it (PR #92 review)', () {
+      final reader = ChairHoldReader();
+      _feed(reader, _seated(.9), from: -100, to: 3000, counting: true);
+      _feed(reader, _legs(), from: 3000, to: 4500);
+      expect(reader.standingThigh, closeTo(_standingThigh, 2));
+      final taken = reader.standingThigh!;
+      // Down from 180 px to 36 px (a true 0.8) over 4 s.
+      for (var i = 1; i <= 40; i++) {
+        reader.read(_legs(thigh: 180 - 3.6 * i), at: _ms(4500 + 100 * i));
+        expect(reader.standingThigh, taken, reason: 'at step $i');
+      }
+      expect(_feed(reader, _seated(.8), from: 8500, to: 10000), HoldReading.ok);
+      // Standing again after the sit does not move it either.
+      _feed(reader, _legs(thigh: 190), from: 10000, to: 11000);
+      expect(reader.standingThigh, taken);
+    });
+
     test('legs lost before it is taken start its 300 ms over: back in a '
         'shallow bend, it is not taken at once (PR #92 review)', () {
       final reader = ChairHoldReader();
