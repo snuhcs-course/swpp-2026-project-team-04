@@ -1,3 +1,5 @@
+import math
+
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -16,6 +18,38 @@ class SignUpSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     login_id = serializers.CharField(trim_whitespace=False)
     password = serializers.CharField(trim_whitespace=False)
+
+
+class _SocialLoginSerializer(serializers.Serializer):
+    # Only for a new account; the same rule as SignUpSerializer.nickname.
+    nickname = serializers.CharField(
+        min_length=1, max_length=12, trim_whitespace=True, required=False
+    )
+
+
+class GoogleLoginSerializer(_SocialLoginSerializer):
+    id_token = serializers.CharField(max_length=4096, trim_whitespace=False)
+
+
+
+class BodyInfoSerializer(serializers.Serializer):
+    # The app checks the same ranges (BodyInfoRules).
+    height_cm = serializers.FloatField(min_value=100, max_value=250)
+    weight_kg = serializers.FloatField(min_value=20, max_value=300)
+    consent = serializers.BooleanField()
+
+    # FloatField takes "NaN", which passes min/max; refuse it.
+    def validate_height_cm(self, value):
+        if not math.isfinite(value):
+            raise serializers.ValidationError("not_a_number")
+        return value
+
+    validate_weight_kg = validate_height_cm
+
+    def validate_consent(self, value):
+        if not value:
+            raise serializers.ValidationError("consent_required")
+        return value
 
 
 class UserSerializer(serializers.ModelSerializer):

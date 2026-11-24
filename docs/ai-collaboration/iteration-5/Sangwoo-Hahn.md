@@ -8,3 +8,7 @@
 - Review. An independent Codex review identified shallow knee-contact precedence and outdated tutorial guidance. Codex revised both. The final review verdict is recorded on the PR.
 - Verification. Local Flutter regressions include authoritative server scoring in fever and client feedback. See the personal testing record.
 - Human input. The PM selected the scoring policy and confirmed agreement for shared-file changes. No manual source edits were reported.
+
+### 2026-11-24 · Knee push-up scoring follow-up
+
+Codex updated the shared knee-rep points rule, tutorial copy and regression tests. The PM specified zero points. No manual code edits were reported.

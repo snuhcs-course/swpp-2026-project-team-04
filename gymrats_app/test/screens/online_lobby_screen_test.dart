@@ -11,6 +11,7 @@ import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
+import 'package:gymrats_app/widgets/accent_button.dart';
 import 'package:gymrats_app/widgets/battle_arena.dart';
 import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
@@ -857,5 +858,108 @@ void main() {
     expect(find.text('이번 경기의 아바타'), findsNothing);
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
+  });
+
+  group('다시 매칭 after a cancel (P12)', () {
+    /// Home with a button that opens the lobby; every session it makes.
+    Future<List<_Session>> openLobby(WidgetTester tester) async {
+      final auth = await loggedIn();
+      final sessions = <_Session>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OnlineLobbyScreen(
+                      auth: auth,
+                      createSession: (u, t, a) {
+                        final session = _Session(u, t, a);
+                        sessions.add(session);
+                        return session;
+                      },
+                      createCounter: () => RepCounterViewModel(
+                        camera: FakeCameraService(),
+                        estimator: FakePoseEstimator(),
+                        roundLength: const Duration(days: 1),
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('홈 · 온라인 대결'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('홈 · 온라인 대결'));
+      await settle(tester);
+      return sessions;
+    }
+
+    /// Opens the setup for the found match, then the server cancels it
+    /// because the setup time ran out.
+    Future<void> cancelInSetup(WidgetTester tester, _Session session) async {
+      session.found();
+      await settle(tester);
+      await tester.tap(find.text('확인 (5)'));
+      await settle(tester);
+      await tester.tap(find.text('자세 세팅 시작'));
+      await settle(tester);
+      expect(
+        tester
+            .widget<OnlineBattleScreen>(find.byType(OnlineBattleScreen))
+            .offerRematch,
+        isTrue,
+      );
+      session
+        ..phase = OnlinePhase.cancelled
+        ..result = {'reason': 'setup_timeout', 'ended_at_ms': 0}
+        ..notifyListeners();
+      await settle(tester);
+      expect(find.text('경기 취소'), findsOneWidget);
+    }
+
+    testWidgets('다시 매칭 starts one new search in the lobby, however often '
+        'it is tapped', (tester) async {
+      final sessions = await openLobby(tester);
+      await cancelInSetup(tester, sessions.single);
+      // Two taps in one frame, before the screen starts to close.
+      final rematch = tester
+          .widget<AccentButton>(find.widgetWithText(AccentButton, '다시 매칭'))
+          .onPressed;
+      rematch();
+      rematch();
+      await settle(tester);
+      expect(find.byType(OnlineBattleScreen), findsNothing);
+      expect(find.byType(OnlineLobbyScreen), findsOneWidget);
+      expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
+      expect(sessions, hasLength(2));
+      expect(sessions.first.wasDisposed, isTrue);
+      expect(sessions.last.wasDisposed, isFalse);
+      expect(sessions.last.phase, OnlinePhase.queued);
+      // The new search goes on to a battle as the first did.
+      sessions.last.found();
+      await settle(tester);
+      expect(find.text('확인 (5)'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('홈으로 돌아가기 after a cancel closes the battle and the lobby '
+        'to home, with no new search', (tester) async {
+      final sessions = await openLobby(tester);
+      await cancelInSetup(tester, sessions.single);
+      await tester.tap(find.text('홈으로 돌아가기'));
+      await settle(tester);
+      expect(find.text('홈 · 온라인 대결'), findsOneWidget);
+      expect(find.byType(OnlineLobbyScreen), findsNothing);
+      expect(sessions, hasLength(1));
+      expect(sessions.single.wasDisposed, isTrue);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

@@ -1,6 +1,9 @@
 Django==5.2.7
 djangorestframework==3.16.1
 djangorestframework-simplejwt==5.5.1
+# Google ID token check (accounts/google_auth.py): JWKS + RS256.
+PyJWT==2.10.1
 dj-database-url==3.0.1
 bcrypt==4.3.0
+cryptography==46.0.3
 gunicorn==23.0.0

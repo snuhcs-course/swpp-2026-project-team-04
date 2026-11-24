@@ -1,8 +1,10 @@
-"""Sign-up, login, and the logged-in user's profile."""
+"""Sign-up, login (id and password, Google), and the logged-in user's
+profile and body info."""
 
 from django.contrib.auth import authenticate
 from django.db import IntegrityError, transaction
 from django.db.models import Max
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -10,8 +12,15 @@ from rest_framework.views import APIView
 
 from matches.models import Match
 
+from .google_auth import (
+    SocialLoginUnavailable,
+    SocialTokenInvalid,
+    verify_google_id_token,
+)
 from .models import User
 from .serializers import (
+    BodyInfoSerializer,
+    GoogleLoginSerializer,
     LoginSerializer,
     ProfileSerializer,
     SignUpSerializer,
@@ -62,6 +71,86 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         return Response(auth_response(user))
+
+
+class _SocialLoginView(APIView):
+    """Logs in the account of a Google identity. 200 for an
+    existing account. For a new one the user picks a nickname first: without
+    "nickname" the answer is 404 "signup_required" and nothing is created;
+    with it, the account is created
+    (201, "created": true, so the app asks for the optional body info)."""
+
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    serializer_class = None
+    token_field = ""
+    provider_field = ""
+
+    def verify(self, token):
+        raise NotImplementedError
+
+    def post(self, request):
+        body = self.serializer_class(data=request.data)
+        body.is_valid(raise_exception=True)
+        try:
+            identity = self.verify(body.validated_data[self.token_field])
+        except SocialTokenInvalid:
+            return Response(
+                {"detail": "invalid_social_token"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        except SocialLoginUnavailable:
+            return Response(
+                {"detail": "social_login_unavailable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        lookup = {self.provider_field: identity.subject}
+        user = User.objects.filter(**lookup).first()
+        created = False
+        nickname = body.validated_data.get("nickname")
+        if user is None and nickname is None:
+            return Response(
+                {"detail": "signup_required"}, status=status.HTTP_404_NOT_FOUND
+            )
+        if user is None:
+            try:
+                with transaction.atomic():
+                    user = User.objects.create_social_user(
+                        self.provider_field, identity.subject, nickname
+                    )
+                created = True
+            except IntegrityError:
+                # The same identity signed up at the same moment.
+                user = User.objects.get(**lookup)
+        return Response(
+            {**auth_response(user), "created": created},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class GoogleLoginView(_SocialLoginView):
+    serializer_class = GoogleLoginSerializer
+    token_field = "id_token"
+    provider_field = "google_sub"
+
+    def verify(self, token):
+        return verify_google_id_token(token)
+
+
+
+class BodyInfoView(APIView):
+    """Saves the user's height and weight, only with their consent. POST, as
+    the app's ApiClient sends no PATCH; each call replaces both values."""
+
+    def post(self, request):
+        body = BodyInfoSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        user = request.user
+        user.height_cm = round(body.validated_data["height_cm"], 1)
+        user.weight_kg = round(body.validated_data["weight_kg"], 1)
+        user.body_consent_at = timezone.now()
+        user.save(update_fields=["height_cm", "weight_kg", "body_consent_at"])
+        return Response({"height_cm": user.height_cm, "weight_kg": user.weight_kg})
 
 
 class MeView(APIView):
