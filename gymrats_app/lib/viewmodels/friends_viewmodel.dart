@@ -259,16 +259,23 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
   }
 
   /// The battle server paired us with the friend: stop reading, and take
-  /// back my invite if it was still open. That happens when both invited
+  /// back my invite if it is still open. That happens when both invited
   /// each other at once and met in the queue with neither invite accepted;
-  /// left open, it would come back as an alert after the battle.
+  /// left open, it would come back as an alert after the battle. The server
+  /// decides "still open" (my last read may not have seen the friend's
+  /// accept yet), so an accepted invite stays and the friend's waiting room
+  /// is not told that I cancelled.
   Future<void> paired() async {
     if (_paired) return;
     _paired = true;
-    final open = battle.inviting ? invite : null;
+    final mine = battle.inviting ? invite : null;
     stop();
-    if (open != null && open.status == InviteStatus.pending) {
-      await _cancelQuietly(open.id);
+    if (mine != null && mine.status != InviteStatus.accepted) {
+      try {
+        await _repository.cancelInvite(mine.id, ifPending: true);
+      } on Object {
+        // Accepted meanwhile (or closed): nothing to take back.
+      }
     }
   }
 
@@ -387,12 +394,19 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
     _notify();
   }
 
-  /// Reads the invites once.
+  /// Reads the invites once. A read that comes back after a sign-in change
+  /// belongs to the account that sent it and is dropped.
   Future<void> check() async {
     if (!_active || _reading || answering) return;
+    final account = _account;
+    var dropped = false;
     _reading = true;
     try {
       final overview = await _repository.fetchOverview();
+      if (account != _account) {
+        dropped = true;
+        return;
+      }
       if (!_active || answering) return;
       final next = overview.invites
           .where((i) => !_done.contains(i.id))
@@ -406,6 +420,9 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
       // Not reached this time; the next read tries again.
     } finally {
       _reading = false;
+      // The new account's first read was skipped while this one ran: read
+      // for it now rather than at the next tick.
+      if (dropped) unawaited(check());
     }
   }
 

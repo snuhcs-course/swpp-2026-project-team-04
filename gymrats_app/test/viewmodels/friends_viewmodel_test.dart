@@ -22,9 +22,13 @@ class _Repo extends InMemoryFriendRepository {
     if (failWith case final error?) throw error;
   }
 
+  /// While set, reading the overview waits for it.
+  Completer<void>? holdFetch;
+
   @override
   Future<FriendsOverview> fetchOverview() async {
     fetches++;
+    await holdFetch?.future;
     _maybeFail();
     return super.fetchOverview();
   }
@@ -55,11 +59,15 @@ class _Repo extends InMemoryFriendRepository {
     return super.fetchInvite(inviteId);
   }
 
+  /// The `ifPending` of each cancel, in order.
+  final cancelledIfPending = <bool>[];
+
   @override
-  Future<void> cancelInvite(int inviteId) async {
+  Future<void> cancelInvite(int inviteId, {bool ifPending = false}) async {
     cancels++;
+    cancelledIfPending.add(ifPending);
     _maybeFail();
-    return super.cancelInvite(inviteId);
+    return super.cancelInvite(inviteId, ifPending: ifPending);
   }
 }
 
@@ -389,6 +397,7 @@ void main() {
       await vm.paired();
       await vm.paired();
       expect(repo.cancels, 1);
+      expect(repo.cancelledIfPending, [true]);
       expect(
         (await repo.fetchInvite(vm.invite!.id)).status,
         InviteStatus.cancelled,
@@ -400,18 +409,17 @@ void main() {
     });
 
     test('paired just after the friend accepted, before my next read: the '
-        'cancel is harmless and nothing ends', () async {
+        'accept stays, so the friend is not told I cancelled', () async {
       final vm = inviting();
       await vm.start();
       // Accepted on the server; my copy still says pending.
       repo.answer(vm.invite!.id, InviteStatus.accepted);
       await vm.paired();
-      expect(repo.cancels, 1);
+      expect(repo.cancelledIfPending, [true]);
       expect(vm.ended, isNull);
-      // The server lets an accepted invite be cancelled; the battle is on.
       expect(
         (await repo.fetchInvite(vm.invite!.id)).status,
-        InviteStatus.cancelled,
+        InviteStatus.accepted,
       );
     });
 
@@ -712,6 +720,32 @@ void main() {
       vm.setSignedIn(true);
       expect(vm.error, isNull);
     });
+
+    test(
+      'a read that comes back after a switch of account is dropped',
+      () async {
+        vm.setSignedIn(true);
+        await pumpEventQueue();
+        // Account A's read is on its way when A signs out and B signs in.
+        repo.receiveInvite(_friend, ExerciseType.pushUp);
+        repo.holdFetch = Completer<void>();
+        final reading = vm.check();
+        vm
+          ..setSignedIn(false)
+          ..setSignedIn(true);
+        final reads = repo.fetches;
+        final held = repo.holdFetch!;
+        repo.holdFetch = Completer<void>();
+        held.complete();
+        await reading;
+        // A's answer is dropped, and B's own read starts at once.
+        expect(vm.current, isNull);
+        expect(repo.fetches, reads + 1);
+        repo.holdFetch!.complete();
+        await pumpEventQueue();
+        expect(vm.current, isNotNull);
+      },
+    );
 
     test('a failed read keeps what shows', () async {
       repo.receiveInvite(_friend, ExerciseType.squat);
