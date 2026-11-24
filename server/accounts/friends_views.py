@@ -12,6 +12,7 @@ inviter. The battle server pairs only two players who named each other.
 """
 
 import re
+import sqlite3
 import time
 from datetime import timedelta
 
@@ -145,30 +146,45 @@ class FriendRequestsView(APIView):
             return _error("user_not_found", status.HTTP_404_NOT_FOUND)
         if other.id == me.id:
             return _error("cannot_add_self", status.HTTP_400_BAD_REQUEST)
-        with transaction.atomic():
-            existing = _pair(me, other)
-            if existing is not None:
-                if existing.accepted_at is not None:
-                    return _error("already_friends", status.HTTP_409_CONFLICT)
-                if existing.from_user_id == me.id:
-                    return _error("already_requested", status.HTTP_409_CONFLICT)
-                # Their open request: accept it, unless another answer got
-                # there first (one conditional write, see _answer_request).
-                if not _answer_request(existing.id, me, accept=True):
-                    return _error("request_not_found", status.HTTP_404_NOT_FOUND)
-                return Response({"status": "accepted", "friend": _person(other)})
+        for attempt in range(3):
             try:
-                with transaction.atomic():
-                    created = FriendRequest.objects.create(
-                        from_user=me, to_user=other
-                    )
-            # The same pair either way round, sent at the same moment.
-            except IntegrityError:
+                return _send_friend_request(me, other)
+            except OperationalError as error:
+                # Extended SQLite result codes retain the base code in the low byte.
+                code = getattr(error.__cause__, "sqlite_errorcode", 0)
+                if (code & 0xff) not in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED):
+                    raise
+                if attempt == 2:
+                    return _error("request_busy", status.HTTP_503_SERVICE_UNAVAILABLE)
+                # The atomic block has rolled back. Retry with a fresh view of the pair.
+                time.sleep(0.05 * (attempt + 1))
+
+
+def _send_friend_request(me, other):
+    with transaction.atomic():
+        existing = _pair(me, other)
+        if existing is not None:
+            if existing.accepted_at is not None:
+                return _error("already_friends", status.HTTP_409_CONFLICT)
+            if existing.from_user_id == me.id:
                 return _error("already_requested", status.HTTP_409_CONFLICT)
-        return Response(
-            {"status": "requested", "request_id": created.id, "to": _person(other)},
-            status=status.HTTP_201_CREATED,
-        )
+            # Their open request: accept it, unless another answer got
+            # there first (one conditional write, see _answer_request).
+            if not _answer_request(existing.id, me, accept=True):
+                return _error("request_not_found", status.HTTP_404_NOT_FOUND)
+            return Response({"status": "accepted", "friend": _person(other)})
+        try:
+            with transaction.atomic():
+                created = FriendRequest.objects.create(
+                    from_user=me, to_user=other
+                )
+        # The same pair either way round, sent at the same moment.
+        except IntegrityError:
+            return _error("already_requested", status.HTTP_409_CONFLICT)
+    return Response(
+        {"status": "requested", "request_id": created.id, "to": _person(other)},
+        status=status.HTTP_201_CREATED,
+    )
 
 
 def _answer_request(request_id, me, *, accept):

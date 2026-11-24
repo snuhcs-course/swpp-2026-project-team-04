@@ -12,3 +12,6 @@
 ### 2026-11-24 · Knee push-up scoring follow-up
 
 Codex updated the shared knee-rep points rule, tutorial copy and regression tests. The PM specified zero points. No manual code edits were reported.
+
+### P9 review follow-up · 2026-11-24
+Codex implemented and tested bounded transaction retries for SQLite contention in the friend request endpoint at the PM's request. No manual edits reported.

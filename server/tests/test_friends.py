@@ -884,3 +884,66 @@ def test_the_battle_ending_frees_the_person_at_once(client):
     assert client.post(f"/friends/invites/{first}/cancel", **a).status_code == 200
     again = _invite(client, c, b_id).json()["invite_id"]
     assert client.post(f"/friends/invites/{again}/accept", **b).status_code == 200
+
+@pytest.mark.django_db(transaction=True)
+def test_simultaneous_reciprocal_requests_accept_one_friendship(client, two, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier, local
+
+    from django.db import connections
+    from rest_framework.test import APIClient
+    from accounts import friends_views
+
+    (a_id, a), (b_id, b) = two
+    a_code, b_code = _code(a_id), _code(b_id)
+    first_reads = Barrier(2)
+    worker = local()
+    original_pair = friends_views._pair
+
+    def simultaneous_pair(me, other):
+        pair = original_pair(me, other)
+        if not getattr(worker, "read_once", False):
+            worker.read_once = True
+            assert pair is None
+            first_reads.wait(timeout=5)
+        return pair
+
+    def send(headers, code):
+        try:
+            response = _request(APIClient(), headers, code)
+            return response.status_code, response.json()["status"]
+        finally:
+            connections.close_all()
+
+    monkeypatch.setattr(friends_views, "_pair", simultaneous_pair)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        sends = [pool.submit(send, a, b_code), pool.submit(send, b, a_code)]
+        assert sorted(f.result() for f in sends) == [(200, "accepted"), (201, "requested")]
+    assert FriendRequest.objects.get().accepted_at is not None
+    for headers, friend_id in [(a, b_id), (b, a_id)]:
+        assert [f["id"] for f in client.get("/friends", **headers).json()["friends"]] == [friend_id]
+
+
+@pytest.mark.parametrize("locked", [True, False])
+def test_friend_request_retries_only_sqlite_contention(client, two, monkeypatch, locked):
+    import sqlite3
+    from unittest.mock import Mock
+
+    from django.db import OperationalError
+    from accounts import friends_views
+
+    (_, me), (other_id, _) = two
+    cause = sqlite3.OperationalError()
+    cause.sqlite_errorcode = sqlite3.SQLITE_BUSY if locked else sqlite3.SQLITE_ERROR
+    error = OperationalError()
+    error.__cause__ = cause
+    send = Mock(side_effect=error)
+    monkeypatch.setattr(friends_views, "_send_friend_request", send)
+    if locked:
+        response = _request(client, me, _code(other_id))
+        assert response.status_code == 503
+        assert send.call_count == 3
+    else:
+        with pytest.raises(OperationalError):
+            _request(client, me, _code(other_id))
+        assert send.call_count == 1
