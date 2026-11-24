@@ -213,6 +213,65 @@ void main() {
     });
   });
 
+  group("holdStore, the store of A4's hold screens (PR #91 review)", () {
+    setUp(() async {
+      final load = arcade.load(1);
+      store.answer(1, _progress([1]));
+      await load;
+      store.hold = false;
+    });
+
+    test("reads and writes are the arcade's store's", () async {
+      await arcade.holdStore.write(1, _progress([3, 2]));
+      expect(store.saved[1], _progress([3, 2]));
+      expect(await arcade.holdStore.read(1), _progress([3, 2]));
+    });
+
+    test("a stage's stars are kept as record keeps them: saving, then the "
+        'progress after them, heard', () async {
+      final gate = store.saveGate = Completer<void>();
+      var heard = 0;
+      arcade.addListener(() => heard += 1);
+      final kept = arcade.holdStore.recordStage(1, 2, 3);
+      expect(arcade.saving, isTrue);
+      gate.complete();
+      expect((await kept).bestOf(2), 3);
+      expect(arcade.saving, isFalse);
+      expect(heard, 1);
+      expect(arcade.progress!.bestOf(2), 3);
+      expect(store.saved[1]!.bestOf(2), 3);
+    });
+
+    test('a failed save still fails for the screen, and is heard', () async {
+      store.failRecords = true;
+      var heard = 0;
+      arcade.addListener(() => heard += 1);
+      await expectLater(
+        arcade.holdStore.recordStage(1, 2, 3),
+        throwsA(isA<StateError>()),
+      );
+      expect(arcade.saving, isFalse);
+      expect(heard, 1);
+      expect(arcade.progress!.bestOf(2), 0);
+    });
+
+    test("another account's stars are kept, not shown, and do not count as "
+        "this account's save", () async {
+      final gate = store.saveGate = Completer<void>();
+      final kept = arcade.holdStore.recordStage(2, 1, 2);
+      expect(arcade.saving, isFalse);
+      store.hold = true;
+      final read = arcade.refresh();
+      store.answer(1, _progress([1, 3]));
+      await read;
+      expect(arcade.progress, _progress([1, 3]));
+      gate.complete();
+      expect((await kept).bestOf(1), 2);
+      expect(store.saved[2]!.bestOf(1), 2);
+      expect(arcade.progress, _progress([1, 3]));
+    });
+  });
+
   group('the stage asked for, taken once it is open (PR #91 review)', () {
     setUp(() async {
       final load = arcade.load(1);

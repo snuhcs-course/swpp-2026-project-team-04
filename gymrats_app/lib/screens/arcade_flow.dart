@@ -94,7 +94,7 @@ abstract final class ArcadeFlow {
         builder: (_) => holdScreen(
           stage,
           myCharacter: me,
-          store: arcade?.store,
+          store: holdStore(context),
           accountId: arcade?.accountId,
         ),
       ),
@@ -172,6 +172,12 @@ abstract final class ArcadeFlow {
     }
     Navigator.pushReplacement(context, next);
   }
+
+  /// The store a hold stage's screen keeps its stars in: the arcade's,
+  /// through its view model, so the map waits for a hold's save as for a
+  /// fight's ([ArcadeViewModel.holdStore]).
+  static ArcadeProgressStore? holdStore(BuildContext context) =>
+      _arcade(context)?.holdStore;
 
   static ArcadeViewModel? _arcade(BuildContext context) =>
       Provider.of<ArcadeViewModel?>(context, listen: false);

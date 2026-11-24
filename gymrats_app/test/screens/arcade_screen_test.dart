@@ -9,6 +9,7 @@ import 'package:gymrats_app/models/arcade_stage.dart';
 import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/arcade_boss_screen.dart';
+import 'package:gymrats_app/screens/arcade_flow.dart';
 import 'package:gymrats_app/screens/arcade_screen.dart';
 import 'package:gymrats_app/screens/hold_stage_screen.dart';
 import 'package:gymrats_app/services/audio/background_music.dart';
@@ -45,6 +46,26 @@ class _WaitingStore extends MemoryArcadeProgressStore {
   }
 }
 
+/// A store whose saves wait until [release], as a slow phone's can, and
+/// then fail when [fail] is set.
+class _SlowSaveStore extends MemoryArcadeProgressStore {
+  final _gate = Completer<void>();
+  bool fail = false;
+
+  void release() => _gate.complete();
+
+  @override
+  Future<ArcadeProgress> recordStage(
+    int accountId,
+    int number,
+    int stars,
+  ) async {
+    await _gate.future;
+    if (fail) throw StateError('write failed');
+    return super.recordStage(accountId, number, stars);
+  }
+}
+
 void main() {
   late MemoryArcadeProgressStore store;
   late ArcadeViewModel arcade;
@@ -53,10 +74,21 @@ void main() {
   /// How the stand-in hold screen is left.
   HoldStageExit? holdExit;
 
+  /// When set, the stand-in hold keeps these stars before it is left, as
+  /// A4's screen does: in the store the arcade gives a hold's screen
+  /// ([ArcadeFlow.holdStore]), without waiting for the save.
+  int? holdStars;
+
+  /// Whether the stand-in hold opens a page of its own and is left from it,
+  /// as A4's screen is (the map then hears the page close).
+  bool holdPage = false;
+
   setUp(() {
     store = MemoryArcadeProgressStore();
     holds = [];
     holdExit = null;
+    holdStars = null;
+    holdPage = false;
   });
 
   /// The map over a page below, signed in as account 1 with [progress].
@@ -103,8 +135,50 @@ void main() {
               builder: (_) => ArcadeScreen(
                 openHold: realHold
                     ? null
-                    : (_, stage) async {
+                    : (context, stage) async {
                         holds.add(stage);
+                        final stars = holdStars;
+                        if (holdPage) {
+                          return Navigator.push<HoldStageExit>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (page) => Scaffold(
+                                body: Column(
+                                  children: [
+                                    const Text('hold page'),
+                                    TextButton(
+                                      onPressed: () {
+                                        if (stars != null) {
+                                          unawaited(
+                                            ArcadeFlow.holdStore(page)!
+                                                .recordStage(
+                                                  1,
+                                                  stage.number,
+                                                  stars,
+                                                )
+                                                .then<void>(
+                                                  (_) {},
+                                                  onError: (_) {},
+                                                ),
+                                          );
+                                        }
+                                        Navigator.pop(page, holdExit);
+                                      },
+                                      child: const Text('leave the hold'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        if (stars != null) {
+                          unawaited(
+                            ArcadeFlow.holdStore(context)!
+                                .recordStage(1, stage.number, stars)
+                                .then<void>((_) {}, onError: (_) {}),
+                          );
+                        }
                         return holdExit;
                       },
               ),
@@ -300,6 +374,131 @@ void main() {
     expect(find.text('STAGE 4 · 1F'), findsOneWidget);
   });
 
+  group("a hold's 다음 스테이지 while its stars are still being kept (PR #91 "
+      'review)', () {
+    testWidgets('it waits for the save, then opens the stage after it', (
+      tester,
+    ) async {
+      final slow = _SlowSaveStore();
+      await open(tester, progress: _progress([3, 2]), using: slow);
+      holdStars = 2;
+      holdExit = HoldStageExit.nextStage;
+      await tapCell(tester, 3);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(arcade.progress!.isOpen(4), isFalse);
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(slow.saved[1]!.bestOf(3), 2);
+      expect(holds.map((stage) => stage.number), [3]);
+      expect(find.byType(ArcadeStageSheet), findsOneWidget);
+      expect(find.text('STAGE 4'), findsOneWidget);
+    });
+
+    testWidgets("a hold left from its own page, as A4's is: the stage after "
+        'it opens once, after the save', (tester) async {
+      final slow = _SlowSaveStore();
+      holdPage = true;
+      await open(tester, progress: _progress([3, 2]), using: slow);
+      holdStars = 2;
+      holdExit = HoldStageExit.nextStage;
+      await tapCell(tester, 3);
+      expect(find.text('hold page'), findsOneWidget);
+      await tester.tap(find.text('leave the hold'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsOneWidget);
+      expect(find.text('STAGE 4'), findsOneWidget);
+      expect(arcade.hasRequest, isFalse);
+      await tester.tap(find.text('닫기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+    });
+
+    testWidgets("before a boss match it opens the boss's intro the same "
+        'way', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, progress: _progress([3, 2, 2, 3]), using: slow);
+      holdStars = 1;
+      holdExit = HoldStageExit.nextStage;
+      await tapCell(tester, 5);
+      expect(find.byType(ArcadeBossScreen), findsNothing);
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeBossScreen), findsOneWidget);
+    });
+
+    testWidgets('a save that fails drops it: the map stays', (tester) async {
+      final slow = _SlowSaveStore()..fail = true;
+      await open(tester, progress: _progress([3, 2]), using: slow);
+      holdStars = 2;
+      holdExit = HoldStageExit.nextStage;
+      await tapCell(tester, 3);
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(arcade.progress!.isOpen(4), isFalse);
+      expect(arcade.hasRequest, isFalse);
+    });
+
+    testWidgets('a page over the map meanwhile drops it', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, progress: _progress([3, 2]), using: slow);
+      holdStars = 2;
+      holdExit = HoldStageExit.nextStage;
+      await tapCell(tester, 3);
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      unawaited(
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('another page')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.text('another page'), findsOneWidget);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      navigator.pop();
+      await tester.pumpAndSettle();
+      expect(arcade.progress!.isOpen(4), isTrue);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+    });
+
+    testWidgets('leaving the map meanwhile drops it: the next visit opens '
+        'nothing on its own', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, progress: _progress([3, 2]), using: slow);
+      holdStars = 2;
+      holdExit = HoldStageExit.nextStage;
+      await tapCell(tester, 3);
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      navigator.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeScreen), findsNothing);
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(arcade.hasRequest, isFalse);
+
+      holdStars = null;
+      holdExit = HoldStageExit.arcade;
+      await tester.tap(find.text('below'));
+      await tester.pumpAndSettle();
+      await tapCell(tester, 3);
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+    });
+  });
+
   testWidgets('a hold left by 아케이드로 or mid-stage stays on the map', (
     tester,
   ) async {
@@ -336,7 +535,15 @@ void main() {
     await tapCell(tester, 3);
     final screen = tester.widget<HoldStageScreen>(find.byType(HoldStageScreen));
     expect(screen.stage, 3);
-    expect(screen.progressStore, same(store));
+    // The arcade's store, through the arcade's view model: a hold's save is
+    // kept as a fight's (PR #91 review).
+    expect(screen.progressStore, same(arcade.holdStore));
+    final kept = screen.progressStore!.recordStage(1, 3, 2);
+    expect(arcade.saving, isTrue);
+    await tester.runAsync(() => kept);
+    expect(arcade.saving, isFalse);
+    expect(store.saved[1]!.bestOf(3), 2);
+    expect(arcade.progress!.bestOf(3), 2);
     expect(screen.accountId, 1);
     expect(screen.myCharacter, chosen);
     expect(screen.createViewModel, isNull);

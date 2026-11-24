@@ -43,10 +43,12 @@ class ArcadeViewModel extends ChangeNotifier {
   int? _requested;
   bool _disposed = false;
 
-  /// The plays whose stars are being kept ([record] not answered yet).
+  /// The plays of this account whose stars are being kept ([record] or a
+  /// hold's save through [holdStore], not answered yet).
   int _saving = 0;
 
-  /// Where the progress is kept; A4's hold screens keep their stars there.
+  /// Where the progress is kept. A4's hold screens keep their stars through
+  /// [holdStore].
   ArcadeProgressStore get store => _store;
 
   /// The account whose arcade this is; null when signed out.
@@ -110,17 +112,39 @@ class ArcadeViewModel extends ChangeNotifier {
   Future<void> record(int number, ArcadeStars stars) async {
     final accountId = _accountId;
     if (accountId == null) return;
-    _reads += 1;
-    _saving += 1;
     try {
-      final after = await _store.recordStage(accountId, number, stars.count);
-      if (_disposed || accountId != _accountId) return;
-      _reads += 1;
-      _progress = after;
+      await _keep(accountId, number, stars.count);
     } on Object {
       // The play is lost; the map shows what it had.
+    }
+  }
+
+  /// The store a hold stage's screen (A4) keeps its stars in: the arcade's
+  /// own, each save kept as [record] keeps one ([saving], the progress
+  /// after it, a read begun meanwhile dropped), so the map waits for a
+  /// hold's stars as for a fight's. A failed save still fails for the
+  /// screen.
+  late final ArcadeProgressStore holdStore = _HoldStageStore(this);
+
+  /// Keeps [stars] for stage [number] of [accountId] in the store, as
+  /// [record] tells; the progress shown changes only for this account.
+  Future<ArcadeProgress> _keep(int accountId, int number, int stars) async {
+    // Another account's save is only kept: this account's reads and
+    // [saving] are not its business.
+    final mine = accountId == _accountId;
+    if (mine) {
+      _reads += 1;
+      _saving += 1;
+    }
+    try {
+      final after = await _store.recordStage(accountId, number, stars);
+      if (!_disposed && accountId == _accountId) {
+        _reads += 1;
+        _progress = after;
+      }
+      return after;
     } finally {
-      _saving -= 1;
+      if (mine) _saving -= 1;
       _notify();
     }
   }
@@ -149,7 +173,7 @@ class ArcadeViewModel extends ChangeNotifier {
     switch (stage) {
       case ArcadeFightStage():
         final stars = ArcadeStarJudge.fight(stage, round);
-        _keep(stage, stars);
+        _keepPlay(stage, stars);
         return ArcadeStageEnded(stage: stage, rounds: [result], stars: stars);
       case ArcadeBossStage() when opponent.arcadeRound == 1:
         if (!round.won) {
@@ -169,7 +193,7 @@ class ArcadeViewModel extends ChangeNotifier {
           return const ArcadeBattleLeft();
         }
         final stars = ArcadeStarJudge.boss(stage, run.firstRound, round);
-        _keep(stage, stars);
+        _keepPlay(stage, stars);
         return ArcadeStageEnded(
           stage: stage,
           rounds: [run.first, result],
@@ -181,7 +205,7 @@ class ArcadeViewModel extends ChangeNotifier {
   }
 
   /// Keeps a play's stars; a play without one changes nothing.
-  void _keep(ArcadeStage stage, ArcadeStars stars) {
+  void _keepPlay(ArcadeStage stage, ArcadeStars stars) {
     if (stars.cleared) unawaited(record(stage.number, stars));
   }
 
@@ -394,4 +418,23 @@ abstract final class ArcadeWords {
     ArcadeBossStage(:final aiLevel) => 'AI LV ${aiLevel.level}',
     ArcadeHoldStage() => null,
   };
+}
+
+/// [ArcadeViewModel.holdStore]: reads and writes go to the arcade's store;
+/// a stage's stars are kept through the view model.
+class _HoldStageStore implements ArcadeProgressStore {
+  _HoldStageStore(this._arcade);
+
+  final ArcadeViewModel _arcade;
+
+  @override
+  Future<ArcadeProgress> read(int accountId) => _arcade._store.read(accountId);
+
+  @override
+  Future<void> write(int accountId, ArcadeProgress progress) =>
+      _arcade._store.write(accountId, progress);
+
+  @override
+  Future<ArcadeProgress> recordStage(int accountId, int number, int stars) =>
+      _arcade._keep(accountId, number, stars);
 }

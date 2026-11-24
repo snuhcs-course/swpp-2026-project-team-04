@@ -198,14 +198,15 @@ class _ArcadeScreenState extends State<ArcadeScreen> with RouteAware {
     }
   }
 
-  /// Hold stage [stage], then, after its 다음 스테이지, the stage after it
-  /// with the progress the hold kept.
+  /// Hold stage [stage], then, after its 다음 스테이지, the stage after it,
+  /// asked for as a fight's result asks: it opens once the progress shows
+  /// it open, after the hold's stars are kept ([ArcadeFlow.holdStore]), and
+  /// is dropped as a fight's is.
   Future<void> _playHold(ArcadeHoldStage stage) async {
     final exit = await (widget.openHold ?? ArcadeFlow.openHold)(context, stage);
     if (!mounted || exit != HoldStageExit.nextStage) return;
-    await _arcade.refresh();
-    if (!mounted) return;
-    _open(ArcadeCatalog.stage(stage.number + 1));
+    _arcade.request(stage.number + 1);
+    await _backFromStage();
   }
 
   @override
