@@ -489,7 +489,8 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Phone check of the effects (the last phone check):** TODO(Woohyun Song): with the demo, see the start bubble, both
   cheers with the star pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen (also
   for ③ knees down and ⑤ standing up as the second warning, whose words the first check could not read), a clear
-  ended by warnings ("삐익!", the win jingle, the clear), and the music through a stage and after leaving.
+  ended by warnings ("삐익!", the win jingle, the clear), and the music through a stage and after leaving; and that
+  the leave button goes at a second warning and stays gone until the result (the fifth follow-up below).
 
 ### Test cases added in the effects follow-up
 | Layer | File | What it covers |
@@ -552,3 +553,34 @@ then the same as A4's entry above.
 | Layer | File | What it covers |
 |---|---|---|
 | View | `test/screens/hold_stage_screen_test.dart` | 'a second warning while asking closes the question at once, then the fail screen' (the dialog gone with "실패!", then 다시 도전, the screen not closed); 'in a second warning's moment back and the leave button open no dialog' (then the fail screen); 'a star, then a second warning while asking: the clear shows and its star is kept' ("삐익!", back opens nothing, then 클리어! and the store keeps 1 star) |
+
+#### 2026-11-24 · code at commit `f28cac6` · step A4, fifth follow-up on `codex/iter5-hold-plank` (the leave button at a stage's end)
+The reviewer's Minor in the fourth follow-up (run 12) was left to the user: in a second warning's 1.5 s the leave
+button was still drawn and announced, though it opened nothing. The user had it hidden as in a battle (local
+task.md, A4 Decisions, 2026-11-24).
+- **Now (`f430051`):** `lib/screens/hold_stage_screen.dart` passes no leave action to `HoldStagePlay` once the stage
+  is over, and `lib/screens/hold_stage_play.dart` takes it as nullable (null hides the button), as `BattleArena`
+  does once a battle is decided. `BattleCameraArea` then draws no button and keeps its place empty, as in a battle.
+  The third star goes straight to the result, which has no leave button (`f28cac6` asserts it). The view model is
+  unchanged.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the two new tests and the changed one failed on the old screen (the button was still found).
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4240 passed, 0 failed, 10 skipped (2026-11-24, on
+  `f430051`; the same 10 skips as above): 4238 before and 2 new. `test/screens/hold_stage_screen_test.dart`: 49
+  passed, on `f430051` and again on `f28cac6` (one assertion added to an existing test).
+- **New tests:** 2, and 2 changed, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on `f430051` and `f28cac6`. Server `pytest` was not run:
+  `server/` is unchanged.
+- **Review:** local reviewer A4 run 13, APPROVE. It checked the button and its semantics node are gone for the whole
+  1.5 s in both cases, the third-star path and back in the moment, and that `94f6416` stays. Its three Minors were
+  fixed: "optional" in this entry (the parameter is nullable, still required), the third-star check (`f28cac6`), and
+  the PR body.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Phone check:** in the last phone check (the effects entry's TODO above).
+
+### Test cases added or changed in the fifth follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a second warning with no star: the leave button is gone for the whole moment, on the screen and to a screen reader' and 'a second warning after a star: …' (the button's icon and its semantics label `게임 나가기` are there before the warning; from the warning, at 0.75 s and 0.1 s before the end, neither is found; then 다시 도전 or 클리어!, the screen not closed); renamed from the fourth follow-up's 'in a second warning's moment back and the leave button open no dialog': 'in a second warning's moment there is no leave button and back opens no dialog' (the button is not found, back opens nothing, then the fail screen); 'the hold ending while asking closes the question' now also finds no leave button on the clear (`f28cac6`) |
