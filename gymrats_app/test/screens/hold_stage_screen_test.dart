@@ -610,6 +610,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.byType(ExitDialog), findsNothing);
       expect(find.text('클리어!'), findsOneWidget);
+      // The third star goes straight to the result: no leave button there.
+      _expectLeaveButton(findsNothing);
       expect(driver.closed, isFalse);
     });
 
