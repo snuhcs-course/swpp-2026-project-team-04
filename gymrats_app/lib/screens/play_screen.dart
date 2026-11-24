@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,7 +8,7 @@ import '../models/battle_rules.dart';
 import '../models/bot_difficulty.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
-import '../models/matchup.dart';
+import '../services/friends/friend_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
 import '../widgets/battle_mode_card.dart';
@@ -14,9 +16,12 @@ import '../widgets/exercise_sheet.dart';
 import '../widgets/lobby_parts.dart';
 import 'ai_setup_screen.dart';
 
-/// 게임 시작, from home: online 1v1 and AI 1v1 as two big cards, the latest
-/// setup to play again in one tap, and the rules. Reads home's view model.
-/// The character is picked from home's 캐릭터 row (W4).
+/// 게임 시작, from home: online 1v1 and AI 1v1 as two big cards, 친구와의
+/// 대전 under them, and the rules. Reads home's view model. The character
+/// is picked from home's 캐릭터 row (W4). Online is the main match: the
+/// exercise, then the lobby. 친구와의 대전 (P9) opens the friends page, where
+/// a friend and then the exercise are picked, with a dot while a request or
+/// an invite waits.
 class PlayScreen extends StatelessWidget {
   const PlayScreen({super.key});
 
@@ -46,30 +51,9 @@ class PlayScreen extends StatelessWidget {
     ),
   );
 
-  /// Starts [setup] straight away, without asking again.
-  void _playAgain(BuildContext context, BattleSetup setup) {
-    if (setup.difficulty case final difficulty?) {
-      Navigator.pushNamed(
-        context,
-        GymRatsApp.matchingRoute,
-        arguments: BotMatchRequest(
-          exercise: setup.exercise,
-          difficulty: difficulty,
-        ),
-      );
-    } else {
-      Navigator.pushNamed(
-        context,
-        GymRatsApp.onlineBattleRoute,
-        arguments: setup.exercise,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final last = context.watch<HomeViewModel>().state.lastSetup;
     return LobbyPage(
       behind: const LobbyWatermark('PLAY', left: 150),
       children: [
@@ -110,19 +94,12 @@ class PlayScreen extends StatelessWidget {
             ],
           ),
         ),
-        if (last != null) ...[
-          const SizedBox(height: AppSpacing.s12),
-          _PlayAgain(setup: last, onTap: () => _playAgain(context, last)),
-        ],
+        const SizedBox(height: AppSpacing.s12),
+        const _FriendBattleRow(),
         const SizedBox(height: AppSpacing.s16),
         Row(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Expanded(
-              child: Text(
-                '${battleDuration.inSeconds}초 · 점수 높은 쪽 승리',
-                style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
-              ),
-            ),
             TextButton(
               onPressed: () =>
                   Navigator.pushNamed(context, GymRatsApp.helpRoute),
@@ -142,50 +119,133 @@ class PlayScreen extends StatelessWidget {
       .join(' · ');
 }
 
-/// "최근 설정으로 다시 하기" with the setup in one line under it.
-class _PlayAgain extends StatelessWidget {
-  const _PlayAgain({required this.setup, required this.onTap});
+/// 친구와의 대전 (P9): opens the friends page, with a dot while a friend request
+/// or a battle invite waits for an answer. The dot reads the app's
+/// [FriendRepository], when there is one: on opening, every [refreshEvery]
+/// while this page is on top, and on coming back.
+class _FriendBattleRow extends StatefulWidget {
+  const _FriendBattleRow();
 
-  final BattleSetup setup;
-  final VoidCallback onTap;
+  /// As the friends page reads its lists.
+  static const refreshEvery = Duration(seconds: 5);
 
-  static const _chipSize = 34.0;
+  @override
+  State<_FriendBattleRow> createState() => _FriendBattleRowState();
+}
 
-  String get _summary => [
-    setup.exercise.koreanName,
-    if (setup.difficulty case final level?) ...[
-      'AI 1v1',
-      level.label,
-    ] else
-      '온라인 1v1',
-  ].join(' · ');
+class _FriendBattleRowState extends State<_FriendBattleRow> {
+  bool _waiting = false, _checking = false;
+  Timer? _refresh;
+
+  /// The dot's size, and the icon chip's: larger than a list row's, so the
+  /// row stands out under the two cards.
+  static const _dot = 12.0, _chip = 48.0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_check());
+    _refresh = Timer.periodic(_FriendBattleRow.refreshEvery, (_) {
+      // Not while another page is on top (coming back reads it anyway) or
+      // the app is in the background.
+      // Unknown (before the first report) counts as in front.
+      final state = WidgetsBinding.instance.lifecycleState;
+      final inFront = state == null || state == AppLifecycleState.resumed;
+      if (inFront && (ModalRoute.of(context)?.isCurrent ?? false)) {
+        unawaited(_check());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
+  }
+
+  /// Reads whether something waits; one read at a time, so an older answer
+  /// never lands after a newer one.
+  Future<void> _check() async {
+    if (_checking) return;
+    final FriendRepository friends;
+    try {
+      friends = context.read<FriendRepository>();
+    } on ProviderNotFoundException {
+      return;
+    }
+    _checking = true;
+    try {
+      final overview = await friends.fetchOverview();
+      if (!mounted) return;
+      setState(
+        () => _waiting =
+            overview.incoming.isNotEmpty || overview.invites.isNotEmpty,
+      );
+    } on Object {
+      // No dot without the server; the friends page says why.
+    } finally {
+      _checking = false;
+    }
+  }
+
+  Future<void> _open() async {
+    await Navigator.pushNamed(context, GymRatsApp.friendsRoute);
+    if (mounted) unawaited(_check());
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final line = _waiting ? '새 친구 요청이나 대결 신청이 있어요' : '친구 코드로 추가하고 대결 신청';
     return Semantics(
       button: true,
-      label: '최근 설정으로 다시 하기, $_summary',
-      onTap: onTap,
+      label: '친구와의 대전, $line',
+      onTap: () => unawaited(_open()),
       excludeSemantics: true,
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: onTap,
+          onTap: () => unawaited(_open()),
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.s12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s16,
+              vertical: AppSpacing.s20,
+            ),
             child: Row(
               children: [
-                const LobbyArrowChip(size: _chipSize, icon: Icons.bolt_rounded),
-                const SizedBox(width: AppSpacing.s12),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const LobbyArrowChip(
+                      size: _chip,
+                      icon: Icons.group_rounded,
+                    ),
+                    if (_waiting)
+                      const Positioned(
+                        top: -AppSpacing.s4,
+                        right: -AppSpacing.s4,
+                        child: SizedBox.square(
+                          dimension: _dot,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AppColors.opponent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: AppSpacing.s16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('최근 설정으로 다시 하기', style: text.lobbyRowTitle),
+                      Text('친구와의 대전', style: text.titleLarge),
+                      const SizedBox(height: AppSpacing.s4),
                       Text(
-                        _summary,
-                        style: text.bodySmall?.copyWith(
+                        line,
+                        style: text.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
                       ),

@@ -11,6 +11,7 @@ import 'screens/body_info_screen.dart';
 import 'screens/character_select_screen.dart';
 import 'screens/coach_screen.dart';
 import 'screens/feedback_screen.dart';
+import 'screens/friends_screen.dart';
 import 'screens/help_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_shell_screen.dart';
@@ -29,6 +30,7 @@ import 'services/auth/google_sign_in_service.dart';
 import 'services/auth/token_store.dart';
 import 'services/feedback/form_report_store.dart';
 import 'services/feedback/goal_store.dart';
+import 'services/friends/friend_repository.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
 import 'services/user/character_store.dart';
@@ -42,6 +44,7 @@ import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/body_info_viewmodel.dart';
 import 'viewmodels/character_viewmodel.dart';
 import 'viewmodels/coach_viewmodel.dart';
+import 'viewmodels/friends_viewmodel.dart';
 import 'viewmodels/help_viewmodel.dart';
 import 'viewmodels/login_viewmodel.dart';
 import 'viewmodels/settings_viewmodel.dart';
@@ -70,6 +73,7 @@ Future<void> main() async {
       characterStore: SecureCharacterStore(),
       rulesSeenStore: SecureRulesSeenStore(),
       settingsStore: SecureSettingsStore(),
+      friendRepository: ServerFriendRepository(api: api),
     ),
   );
 }
@@ -92,6 +96,7 @@ class GymRatsApp extends StatefulWidget {
     this.rulesSeenStore,
     this.settingsStore,
     this.googleSignIn,
+    this.friendRepository,
   });
 
   final AuthRepository authRepository;
@@ -120,7 +125,14 @@ class GymRatsApp extends StatefulWidget {
   /// [MemorySettingsStore].
   final SettingsStore? settingsStore;
 
+  /// Friends and friend battle invites (P9). Defaults to an empty
+  /// [InMemoryFriendRepository].
+  final FriendRepository? friendRepository;
+
   static const signupRoute = '/signup';
+
+  /// 친구와의 대전 (P9).
+  static const friendsRoute = '/friends';
 
   /// The nickname of a new Google account; its argument is the
   /// [SocialSignupRequest].
@@ -167,6 +179,14 @@ class _GymRatsAppState extends State<GymRatsApp> {
 
   /// The app's settings, the same on every screen and every visit.
   late final SettingsViewModel _settings;
+
+  /// Friends (P9), the same for every screen.
+  late final FriendRepository _friends =
+      widget.friendRepository ?? InMemoryFriendRepository();
+
+  /// A friend's battle invite, above every page while signed in (P9).
+  late final _inviteAlert = FriendInviteAlertViewModel(repository: _friends);
+  final _inviteRoutes = FriendInviteRouteWatch();
   AuthStatus? _shownStatus;
 
   @override
@@ -195,6 +215,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
     _shownStatus = _auth.status;
     _navigator.currentState?.popUntil((route) => route.isFirst);
     final account = _auth.account;
+    _inviteAlert.setSignedIn(_auth.status == AuthStatus.signedIn);
     if (_auth.status == AuthStatus.signedIn && account != null) {
       _help.load(account.id);
       _characters.load(account.id);
@@ -211,6 +232,8 @@ class _GymRatsAppState extends State<GymRatsApp> {
     _help.dispose();
     _settings.dispose();
     _characters.dispose();
+    _inviteAlert.dispose();
+    _inviteRoutes.dispose();
     super.dispose();
   }
 
@@ -225,6 +248,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
           create: (_) => widget.createMatchmaker?.call() ?? BotMatchmaker(),
         ),
         ChangeNotifierProvider<AuthViewModel>.value(value: _auth),
+        Provider<FriendRepository>.value(value: _friends),
         ChangeNotifierProvider<HelpViewModel>.value(value: _help),
         ChangeNotifierProvider<SettingsViewModel>.value(value: _settings),
         ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),
@@ -235,7 +259,13 @@ class _GymRatsAppState extends State<GymRatsApp> {
         title: 'GymRats',
         theme: AppTheme.light,
         navigatorKey: _navigator,
-        navigatorObservers: [GymRatsApp.routeObserver],
+        navigatorObservers: [GymRatsApp.routeObserver, _inviteRoutes],
+        builder: (context, child) => FriendInviteOverlay(
+          viewModel: _inviteAlert,
+          routes: _inviteRoutes,
+          navigator: _navigator,
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: Consumer3<AuthViewModel, HelpViewModel, CharacterViewModel>(
           builder: (context, auth, help, character, _) => switch (auth.status) {
             AuthStatus.restoring => const Scaffold(
@@ -273,16 +303,30 @@ class _GymRatsAppState extends State<GymRatsApp> {
           },
         ),
         onGenerateRoute: (settings) => switch (settings.name) {
+          // An exercise for the main match, or a FriendBattle (P9).
           GymRatsApp.onlineBattleRoute => MaterialPageRoute<void>(
             settings: settings,
             builder: (_) => OnlineLobbyScreen(
               auth: widget.authRepository,
-              exercise:
-                  (settings.arguments as ExerciseType?) ?? ExerciseType.pushUp,
+              exercise: switch (settings.arguments) {
+                final ExerciseType exercise => exercise,
+                final FriendBattle battle => battle.exercise,
+                _ => ExerciseType.pushUp,
+              },
+              friendBattle: settings.arguments is FriendBattle
+                  ? settings.arguments! as FriendBattle
+                  : null,
+              friends: _friends,
               onAuthenticationFailed: _auth.logOut,
               myCharacter: _characters.characterId,
               createSession: widget.createOnlineSession,
               userRepository: widget.userRepository,
+            ),
+          ),
+          GymRatsApp.friendsRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => FriendsScreen(
+              createViewModel: () => FriendsViewModel(repository: _friends),
             ),
           ),
           GymRatsApp.characterRoute => MaterialPageRoute<void>(

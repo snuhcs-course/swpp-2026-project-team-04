@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
+import '../services/friends/friend_repository.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/lobby_parts.dart';
@@ -35,9 +38,28 @@ class SettingsScreen extends StatelessWidget {
     if (confirmed) await logOut();
   }
 
+  /// My friend code (P9), from the signed-in account; null without one.
+  String? _friendCode(BuildContext context) {
+    try {
+      final account = context.watch<AuthViewModel>().account;
+      return account == null ? null : friendCode(nickname, account.id);
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  Future<void> _copy(BuildContext context, String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('친구 코드를 복사했어요')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<SettingsViewModel>();
+    final code = _friendCode(context);
     final logOut = onLogOut;
     return LobbyPage(
       behind: const LobbyWatermark('SET', left: 138),
@@ -52,6 +74,14 @@ class SettingsScreen extends StatelessWidget {
           label: '프로필',
           rows: [
             _Row(title: '닉네임', line: '온라인 대결에서 상대에게 보여요', value: nickname),
+            if (code != null)
+              _Row(
+                title: '친구 코드',
+                line: '친구가 이 코드로 나를 추가해요',
+                value: code,
+                onTap: () => _copy(context, code),
+                end: const Icon(Icons.copy_rounded, color: AppColors.line),
+              ),
             _Row(
               title: '캐릭터',
               onTap: () =>

@@ -40,6 +40,10 @@ class _Player {
   /// passed on as it came; null when they sent none.
   String? avatar;
   String exercise = 'push_up';
+
+  /// The friend this player waits for (`friend_id`, P9); null in the main
+  /// queue.
+  String? friend;
   bool queued = false;
   int lastHeartbeat = 0, rateAt = 0, controls = 0, poseAt = -1000;
   final requests =
@@ -345,12 +349,18 @@ class BattleServer {
           'server_sent_ms': now,
         });
       case 'queue.join':
-        fields(payload, {'exercise', 'avatar_id'});
+        fields(payload, {'exercise', 'avatar_id', 'friend_id'});
         if (!{'push_up', 'squat'}.contains(payload['exercise'])) invalid();
         // Optional (W3); any short id, passed on without reading it.
         if (payload.containsKey('avatar_id') &&
             !isBattleAvatarId(payload['avatar_id'])) {
           invalid('INVALID_AVATAR');
+        }
+        // Optional (P9): only that friend, who must name this player back.
+        if (payload.containsKey('friend_id') &&
+            (!isBattleFriendId(payload['friend_id']) ||
+                payload['friend_id'] == p.identity.id)) {
+          invalid('INVALID_FRIEND');
         }
         if (p.queued) invalid('ALREADY_QUEUED');
         if (p.match != null && !p.match!.terminal) invalid('ALREADY_IN_MATCH');
@@ -359,6 +369,7 @@ class BattleServer {
         p.match = null;
         p.avatar = payload['avatar_id'] as String?;
         p.exercise = payload['exercise'] as String;
+        p.friend = payload['friend_id'] as String?;
         p.queued = true;
         _queue.addLast(p);
         final response = reply('queue.joined', {'queue_id': p.identity.id});
@@ -535,6 +546,13 @@ class BattleServer {
   }
 
   List<Map<String, dynamic>> _roster(_Match m) => m.roster;
+
+  /// Whether [a] and [b] may be paired: the same exercise, and either both
+  /// in the main queue or each waiting for the other (P9).
+  bool _fits(_Player a, _Player b) =>
+      a.exercise == b.exercise &&
+      (a.friend == null && b.friend == null ||
+          a.friend == b.identity.id && b.friend == a.identity.id);
   void _pair() {
     _queue.removeWhere(
       (p) => !p.queued || p.socket?.readyState != WebSocket.open,
@@ -544,8 +562,7 @@ class BattleServer {
       _Player? second;
       for (final candidate in _queue) {
         for (final other in _queue) {
-          if (!identical(candidate, other) &&
-              candidate.exercise == other.exercise) {
+          if (!identical(candidate, other) && _fits(candidate, other)) {
             first = candidate;
             second = other;
             break;

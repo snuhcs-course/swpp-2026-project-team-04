@@ -646,10 +646,8 @@ void main() {
 
     await tester.tap(find.text('홈으로'));
     await tester.pumpAndSettle();
-    // Home loaded again: 게임 시작 offers that battle again, and the AI 1v1
-    // page reads the new best.
+    // Home loaded again: the AI 1v1 page reads the new best.
     await tapAndSettle(tester, '게임 시작');
-    expect(find.text('푸쉬업 · AI 1v1 · 고수'), findsOneWidget);
     await tapAndSettle(tester, 'AI 1v1');
     expect(find.text('최고 40회'), findsOneWidget);
   });
