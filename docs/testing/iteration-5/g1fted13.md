@@ -111,3 +111,18 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   with its design shot: "owner_<id>_<face> matches the design but for edges" (each owner in its 3 faces, 12 tests) and
   "floor_<n> matches the design but for edges" (5 tests). The art is drawn from Dart data, not loaded as asset files
   (see the PR's Exceptions).
+
+#### 2026-11-24 · merge `f482e99` of `origin/main` `69b0520` · step A3: `main` merged in before the draft ends
+At the user's word (2026-11-24; the prompt is logged on A4's branch, `codex/iter5-hold-plank`), `origin/main`
+(#86 setup timeout, #93 Google sign-in, #94 zero points for knee push-ups) was merged into this branch before the
+steps stacked on it. No conflict: no file changed on `main` since this branch's base is one of A3's. A3's code is
+unchanged.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 3970 passed, 0 failed, 10 skipped (2026-11-24, on
+  `f482e99`; the same 10 skips as `main`'s: a live server smoke test and 9 known push-up judge errors).
+- **Other checks:** `ownership_guard.py --check-diff` OK (28 paths against `origin/main`). Server `pytest` was not run: `server/` is `main`'s,
+  unchanged by A3, and `main`'s own checks cover it.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head (the earlier numbers are for `071c7f0`).
