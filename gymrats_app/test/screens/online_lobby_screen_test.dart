@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/config/server_config.dart';
@@ -17,6 +19,8 @@ import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
+import 'package:gymrats_app/services/friends/friend_repository.dart';
+import 'package:gymrats_app/viewmodels/friends_viewmodel.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
@@ -960,6 +964,276 @@ void main() {
       expect(sessions, hasLength(1));
       expect(sessions.single.wasDisposed, isTrue);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('friend battle waiting room (P9)', () {
+    const me = FriendPerson(id: 1, nickname: '로그인사용자', code: '로그인사용자#0001');
+    const friend = FriendPerson(id: 2, nickname: '헬창', code: '헬창#0002');
+
+    /// The lobby for [battle] over a home page, on [repo]; every session.
+    Future<List<_Session>> openLobby(
+      WidgetTester tester,
+      InMemoryFriendRepository repo,
+      FriendBattle battle,
+    ) async {
+      final auth = await loggedIn();
+      final sessions = <_Session>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OnlineLobbyScreen(
+                      auth: auth,
+                      exercise: battle.exercise,
+                      friendBattle: battle,
+                      friends: repo,
+                      createSession: (u, t, a) {
+                        final session = _Session(u, t, a);
+                        sessions.add(session);
+                        return session;
+                      },
+                      createCounter: () => RepCounterViewModel(
+                        camera: FakeCameraService(),
+                        estimator: FakePoseEstimator(),
+                        roundLength: const Duration(days: 1),
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('home'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('home'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      return sessions;
+    }
+
+    InMemoryFriendRepository repository() =>
+        InMemoryFriendRepository(me: me, people: const [friend])
+          ..friends.add(friend);
+
+    testWidgets('inviting: the invite goes out and only the friend is '
+        'searched for', (tester) async {
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.squat),
+      );
+      expect(sessions.single.friendId, '2');
+      expect(find.text('헬창님의 수락을 기다리는 중'), findsOneWidget);
+      final invite = repo.invites.single;
+      expect(invite.to, friend);
+      expect(invite.exercise, ExerciseType.squat);
+      expect(invite.status, InviteStatus.pending);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a declined invite ends the search and offers a new one', (
+      tester,
+    ) async {
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      repo.answer(repo.invites.single.id, InviteStatus.declined);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(sessions.single.left, isTrue);
+      expect(sessions.single.wasDisposed, isTrue);
+      expect(find.text('헬창님이 대결 신청을 거절했어요.'), findsOneWidget);
+      expect(find.text('헬창님에게 다시 신청'), findsOneWidget);
+      expect(find.text('온라인 상대 찾기'), findsNothing);
+
+      await tester.tap(find.text('헬창님에게 다시 신청'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sessions, hasLength(2));
+      expect(sessions.last.friendId, '2');
+      expect(repo.invites, hasLength(2));
+      expect(repo.invites.last.status, InviteStatus.pending);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('leaving the search takes the invite back', (tester) async {
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      await tester.tap(find.text('매칭 취소'));
+      await settle(tester);
+      expect(sessions.single.left, isTrue);
+      expect(find.text('home'), findsOneWidget);
+      expect(repo.invites.single.status, InviteStatus.cancelled);
+    });
+
+    testWidgets('invited: no new invite; the inviter leaving ends the wait', (
+      tester,
+    ) async {
+      final repo = repository();
+      final sent = repo.receiveInvite(friend, ExerciseType.pushUp);
+      final accepted = await repo.acceptInvite(sent.id);
+      final sessions = await openLobby(
+        tester,
+        repo,
+        FriendBattle(
+          friend: friend,
+          exercise: ExerciseType.pushUp,
+          accepted: accepted,
+        ),
+      );
+      expect(sessions.single.friendId, '2');
+      expect(find.text('헬창님을 기다리는 중'), findsOneWidget);
+      expect(repo.invites, hasLength(1));
+      await repo.cancelInvite(sent.id);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(sessions.single.left, isTrue);
+      expect(find.text('헬창님이 대결을 취소했어요.'), findsOneWidget);
+      // My accepted invite cannot be sent again from here.
+      expect(find.text('헬창님에게 다시 신청'), findsNothing);
+      expect(find.text('온라인 상대 찾기'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('paired with the friend: the invite is no longer read', (
+      tester,
+    ) async {
+      holdStill(tester);
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      repo.answer(repo.invites.single.id, InviteStatus.accepted);
+      sessions.single.found();
+      await tester.pump();
+      expect(find.byType(VersusScreen), findsOneWidget);
+      // A late change of the invite no longer ends anything.
+      repo.answer(repo.invites.single.id, InviteStatus.cancelled);
+      await tester.pump(const Duration(seconds: 4));
+      expect(sessions.single.left, isFalse);
+      expect(find.byType(VersusScreen), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a search that fails takes the invite back', (tester) async {
+      final auth = await loggedIn();
+      final repo = repository();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: OnlineLobbyScreen(
+            auth: auth,
+            friendBattle: const FriendBattle(
+              friend: friend,
+              exercise: ExerciseType.pushUp,
+            ),
+            friends: repo,
+            createSession: (u, t, a) => _FailingSession(u, t, a),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('서버에 연결하지 못했어요.'), findsOneWidget);
+      expect(repo.invites.single.status, InviteStatus.cancelled);
+      // Nothing is read any more.
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('서버에 연결하지 못했어요.'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a friend battle offers no 다시 매칭 after a cancel', (
+      tester,
+    ) async {
+      holdStill(tester);
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      sessions.single.found();
+      await settle(tester);
+      await tester.tap(find.text('확인 (5)'));
+      await settle(tester);
+      await tester.tap(find.text('자세 세팅 시작'));
+      await settle(tester);
+      final battle = tester.widget<OnlineBattleScreen>(
+        find.byType(OnlineBattleScreen),
+      );
+      expect(battle.offerRematch, isFalse);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('the app routes a FriendBattle to the lobby on its '
+        'repository', (tester) async {
+      final auth = await loggedIn();
+      final repo = repository();
+      final sessions = <_Session>[];
+      await tester.pumpWidget(
+        GymRatsApp(
+          authRepository: auth,
+          userRepository: FakeUserRepository(),
+          friendRepository: repo,
+          createOnlineSession: (u, t, a) {
+            final session = _Session(u, t, a);
+            sessions.add(session);
+            return session;
+          },
+        ),
+      );
+      await settle(tester);
+      final navigator = tester.state<NavigatorState>(
+        find.byType(Navigator).first,
+      );
+      unawaited(
+        navigator.pushNamed(
+          GymRatsApp.onlineBattleRoute,
+          arguments: const FriendBattle(
+            friend: friend,
+            exercise: ExerciseType.squat,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final lobby = tester.widget<OnlineLobbyScreen>(
+        find.byType(OnlineLobbyScreen),
+      );
+      expect(lobby.exercise, ExerciseType.squat);
+      expect(lobby.friendBattle!.friend, friend);
+      expect(lobby.friends, same(repo));
+      expect(sessions.single.friendId, '2');
+      expect(repo.invites.single.exercise, ExerciseType.squat);
+      navigator.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      unawaited(navigator.pushNamed(GymRatsApp.friendsRoute));
+      await settle(tester);
+      expect(find.text('헬창#0002'), findsOneWidget);
     });
   });
 }

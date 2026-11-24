@@ -7,6 +7,7 @@ import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/matchup.dart';
 import '../services/auth/auth_repository.dart';
+import '../services/friends/friend_repository.dart';
 import '../services/user/user_repository.dart';
 import '../services/online/online_battle_session.dart';
 import '../theme/app_theme.dart';
@@ -14,6 +15,7 @@ import '../widgets/battle_stage_model.dart';
 import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
+import '../viewmodels/friends_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import 'battle_screen.dart' show BattleSetupListener;
 import 'matching_screen.dart';
@@ -41,8 +43,19 @@ class OnlineLobbyScreen extends StatefulWidget {
     this.userRepository,
     this.onCue,
     this.onSetup,
+    this.friendBattle,
+    this.friends,
+    this.invitePollEvery = const Duration(seconds: 2),
   });
   final AuthRepository auth;
+
+  /// A battle with this friend only (P9); null searches the main match.
+  /// The waiting room then sends or holds the invite through [friends].
+  final FriendBattle? friendBattle;
+  final FriendRepository? friends;
+
+  /// How often a friend battle's waiting room reads the invite.
+  final Duration invitePollEvery;
   final ExerciseType exercise;
   final OnlineSessionFactory? createSession;
   final Future<void> Function()? onAuthenticationFailed;
@@ -76,6 +89,9 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   static const _warningAutoClose = Duration(seconds: 5);
 
   OnlineBattleSession? _session;
+
+  /// The friend battle's invite while waiting for the friend (P9).
+  FriendInviteWaitViewModel? _wait;
   StreamSubscription<void>? _expiry;
   bool _opened = false;
   bool _authFailureHandled = false;
@@ -120,6 +136,7 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
       return null;
     }
     final endpoint = Uri.parse(gymratsBattleUrl);
+    final friendId = widget.friendBattle?.friend.id.toString();
     final session =
         widget.createSession?.call(endpoint, login.token, widget.myCharacter) ??
         OnlineBattleSession(
@@ -128,13 +145,53 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
           character: widget.myCharacter,
           exercise: widget.exercise,
         );
+    session.friendId = friendId;
     _session = session;
     _error = null;
+    _startWait();
     _searchClock
       ..reset()
       ..start();
     _radar.repeat();
     return session;
+  }
+
+  /// A friend battle sends (or holds) its invite as the search starts.
+  /// Inviting again after a wait ended sends a new one.
+  void _startWait() {
+    final battle = widget.friendBattle, friends = widget.friends;
+    if (battle == null || friends == null) return;
+    final wait = FriendInviteWaitViewModel(
+      repository: friends,
+      battle: battle,
+      pollEvery: widget.invitePollEvery,
+    )..addListener(_waitChanged);
+    _wait = wait;
+    unawaited(wait.start());
+  }
+
+  /// The friend cannot come: stop searching and say why.
+  void _waitChanged() {
+    final wait = _wait, session = _session;
+    final why = wait?.ended;
+    if (!mounted || why == null || session?.opponent != null) return;
+    _release();
+    setState(() => _error = why);
+  }
+
+  /// Stops [_wait]; [leaving] takes its invite back too.
+  void _dropWait({required bool leaving}) {
+    final wait = _wait;
+    _wait = null;
+    if (wait == null) return;
+    wait.removeListener(_waitChanged);
+    if (leaving) {
+      unawaited(wait.leave());
+    } else {
+      wait.stop();
+    }
+    // Not while it may be telling its listeners.
+    scheduleMicrotask(wait.dispose);
   }
 
   Future<void> _join() async {
@@ -163,6 +220,14 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
       _radar.stop();
       _searchClock.stop();
     }
+    // Paired with the friend: the invite has done its work. A search that
+    // ended without them can no longer pair: take the invite back, so the
+    // friend is not left waiting for it.
+    if (session.opponent != null) {
+      _wait?.stop();
+    } else if (session.terminal) {
+      _dropWait(leaving: true);
+    }
   }
 
   Future<void> _openBattle(OnlineBattleSession session) async {
@@ -180,7 +245,8 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
                 playerName: widget.auth.session?.account.nickname ?? '나',
                 onCue: widget.onCue,
                 onSetup: widget.onSetup,
-                offerRematch: true,
+                // A friend battle needs a new invite instead (P9).
+                offerRematch: widget.friendBattle == null,
               ),
       ),
     );
@@ -224,6 +290,8 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   }
 
   void _release() {
+    // Before the session goes: a friend still waiting learns it.
+    _dropWait(leaving: _session?.opponent == null);
     _radar.stop();
     _searchClock.stop();
     final session = _session;
@@ -280,7 +348,12 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
             child: SafeArea(
               child: BattleSearchView(
                 exercise: widget.exercise,
-                title: '실시간 상대를 찾는 중',
+                title: switch (widget.friendBattle) {
+                  null => '실시간 상대를 찾는 중',
+                  final battle when battle.inviting =>
+                    '${battle.friend.nickname}님의 수락을 기다리는 중',
+                  final battle => '${battle.friend.nickname}님을 기다리는 중',
+                },
                 duration: Duration(milliseconds: session.durationMs),
                 searchArea: BattleSearchRadar(
                   animation: _radar,
@@ -342,15 +415,20 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
                 padding: EdgeInsets.only(bottom: 12),
                 child: Text('매칭이 종료됐어요. 다시 상대를 찾아주세요.'),
               ),
-            FilledButton(
-              onPressed: login == null
-                  ? null
-                  : () {
-                      if (_session != null) _release();
-                      unawaited(_join());
-                    },
-              child: const Text('온라인 상대 찾기'),
-            ),
+            // An invite I accepted cannot be sent again from here.
+            if (widget.friendBattle?.inviting ?? true)
+              FilledButton(
+                onPressed: login == null
+                    ? null
+                    : () {
+                        if (_session != null) _release();
+                        unawaited(_join());
+                      },
+                child: Text(switch (widget.friendBattle) {
+                  null => '온라인 상대 찾기',
+                  final battle => '${battle.friend.nickname}님에게 다시 신청',
+                }),
+              ),
             const SizedBox(height: 20),
             const Text(
               '고정 팀 서버 · HTTPS/WSS 암호화 연결\n두 기기는 서로 다른 계정으로 로그인해주세요.',
