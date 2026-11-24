@@ -606,6 +606,83 @@ void main() {
       expect(find.text('클리어!'), findsOneWidget);
       expect(driver.closed, isFalse);
     });
+
+    Future<void> openDialog(WidgetTester tester) async {
+      await tester.tap(find.bySemanticsLabel('게임 나가기'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(ExitDialog), findsOneWidget);
+    }
+
+    testWidgets('a second warning while asking closes the question at once, '
+        'then the fail screen', (tester) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.warn(tester, HighPlankFaults.kneeDown);
+      await driver.hold(tester, 700, HoldReading.ok);
+      await openDialog(tester);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await tester.pump(const Duration(milliseconds: 300));
+      // The stage is over: the question goes, as when a battle ends.
+      expect(find.byType(ExitDialog), findsNothing);
+      expect(find.text('실패!'), findsOneWidget);
+      await tester.pump(HoldTiming.endShow);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('다시 도전'), findsOneWidget);
+      expect(driver.closed, isFalse);
+    });
+
+    testWidgets('in a second warning\'s moment back and the leave button '
+        'open no dialog', (tester) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.warn(tester, HighPlankFaults.kneeDown);
+      await driver.hold(tester, 700, HoldReading.ok);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      expect(driver.viewModel.state.ending, isTrue);
+      await tester.tap(find.bySemanticsLabel('게임 나가기'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(ExitDialog), findsNothing);
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      await navigator.maybePop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(ExitDialog), findsNothing);
+      expect(driver.closed, isFalse);
+      await tester.pump(HoldTiming.endShow);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('다시 도전'), findsOneWidget);
+      expect(driver.closed, isFalse);
+    });
+
+    testWidgets('a star, then a second warning while asking: the clear '
+        'shows and its star is kept', (tester) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.hold(tester, 16000);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await driver.hold(tester, 700, HoldReading.ok);
+      await openDialog(tester);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(ExitDialog), findsNothing);
+      expect(find.byKey(const ValueKey('hold-whistle')), findsOneWidget);
+      // Back in the moment does not ask either.
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      await navigator.maybePop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(ExitDialog), findsNothing);
+      await tester.pump(HoldTiming.endShow);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('클리어!'), findsOneWidget);
+      expect(driver.closed, isFalse);
+      expect((await driver.store.read(7)).bestOf(3), 1);
+    });
   });
 
   group('the result', () {
