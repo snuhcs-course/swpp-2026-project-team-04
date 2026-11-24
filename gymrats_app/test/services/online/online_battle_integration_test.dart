@@ -1059,7 +1059,6 @@ void main() {
     await until(() => b.opponentReps == 1 && a.myReps == 1);
     expect(b.opponentMisses, 0);
     var rejected = 0;
-    var misses = 0;
     for (final reason in RejectReason.values) {
       a.submitRep(
         RepEvent(
@@ -1071,8 +1070,7 @@ void main() {
       );
       rejected++;
       await until(() => a.myInvalidReps == rejected);
-      if (reason != RejectReason.kneesDown) misses++;
-      await until(() => b.opponentMisses == misses);
+      await until(() => b.opponentMisses == rejected);
       expect(a.error, isNull, reason: 'Server must accept ${reason.name}');
       // Leave room under the server's per-second control-message limit.
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -1294,7 +1292,7 @@ void main() {
       expect(b.opponentReps, 0);
     });
 
-    test('a knee push-up earns five on both phones even in fever', () async {
+    test('a knee push-up earns zero on both phones even in fever', () async {
       final s = await server(
         duration: 5000,
         rules: const BattleRules(feverStart: Duration.zero),
@@ -1308,9 +1306,11 @@ void main() {
           reason: RejectReason.kneesDown,
         ),
       );
-      expect(a.myLastScore!.points, 5);
-      await until(() => a.myScore == 5 && b.opponentScore == 5);
-      expect(b.opponentLastScore!.points, 5);
+      expect(a.myLastScore!.points, 0);
+      await until(() => b.opponentLastScore != null);
+      expect(a.myScore, 0);
+      expect(b.opponentScore, 0);
+      expect(b.opponentLastScore!.points, 0);
       expect(a.myInvalidReps, 1);
       expect(a.myReps, 0);
     });
