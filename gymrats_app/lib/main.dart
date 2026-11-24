@@ -156,6 +156,18 @@ class GymRatsApp extends StatefulWidget {
   /// down to it.
   static const arcadeRoute = '/arcade';
 
+  /// The names of the arcade's stage screens over its map (P16), so that a
+  /// friend's invite waits while one is open (`FriendInviteRouteWatch`):
+  /// a fight's sheet, a hold stage, a boss match's intro and its break
+  /// between the rounds, and a stage's result. A fight itself opens
+  /// [versusRoute] and [battleRoute]. These screens are opened by
+  /// `ArcadeFlow` with their stage, never by name alone.
+  static const arcadeSheetRoute = '/arcade/sheet';
+  static const arcadeHoldRoute = '/arcade/hold';
+  static const arcadeBossRoute = '/arcade/boss';
+  static const arcadeBreakRoute = '/arcade/break';
+  static const arcadeResultRoute = '/arcade/result';
+
   /// 캐릭터 선택, from home's 캐릭터 row and 환경설정.
   static const characterRoute = '/character';
 

@@ -14,8 +14,11 @@ import 'package:gymrats_app/screens/arcade_boss_screen.dart';
 import 'package:gymrats_app/screens/arcade_flow.dart';
 import 'package:gymrats_app/screens/arcade_result_screen.dart';
 import 'package:gymrats_app/screens/arcade_screen.dart';
+import 'package:gymrats_app/screens/friends_screen.dart';
 import 'package:gymrats_app/screens/hold_stage_result.dart';
+import 'package:gymrats_app/screens/hold_stage_screen.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
+import 'package:gymrats_app/services/audio/sound_services.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
 import 'package:gymrats_app/widgets/arcade_stage_sheet.dart';
@@ -52,6 +55,9 @@ void main() {
   late ArcadeViewModel arcade;
   late List<int> holds;
 
+  /// What the app's friend invite alert reads to hide (#95).
+  late FriendInviteRouteWatch invites;
+
   /// The map over a page below, with [played] stages starred, and a
   /// stand-in battle page over the map.
   Future<void> open(WidgetTester tester, {required int played}) async {
@@ -66,12 +72,13 @@ void main() {
     arcade = ArcadeViewModel(store: store);
     addTearDown(arcade.dispose);
     unawaited(arcade.load(1));
+    invites = FriendInviteRouteWatch();
     await tester.pumpWidget(
       ChangeNotifierProvider<ArcadeViewModel>.value(
         value: arcade,
         child: MaterialApp(
           theme: AppTheme.light,
-          navigatorObservers: [GymRatsApp.routeObserver],
+          navigatorObservers: [GymRatsApp.routeObserver, invites],
           home: Builder(
             builder: (context) => Scaffold(
               body: TextButton(
@@ -454,6 +461,107 @@ void main() {
       );
     });
   });
+  group("a friend's invite waits over the arcade's stage screens, as over a "
+      "battle (#95's FriendInviteRouteWatch)", () {
+    /// The name of the page on top.
+    String? top(WidgetTester tester) {
+      String? name;
+      tester.state<NavigatorState>(find.byType(Navigator)).popUntil((route) {
+        name = route.settings.name;
+        return true;
+      });
+      return name;
+    }
+
+    testWidgets("the map lets it show; a fight's sheet, then its versus "
+        'screen, hide it', (tester) async {
+      await open(tester, played: 7);
+      expect(top(tester), GymRatsApp.arcadeRoute);
+      expect(invites.hides, isFalse);
+      await tap(tester, '도전');
+      expect(find.byType(ArcadeStageSheet), findsOneWidget);
+      expect(top(tester), GymRatsApp.arcadeSheetRoute);
+      expect(invites.hides, isTrue);
+      await tap(tester, '닫기');
+      expect(invites.hides, isFalse);
+      await tap(tester, '도전');
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ArcadeStageSheet),
+          matching: find.text('도전'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(top(tester), GymRatsApp.versusRoute);
+      expect(invites.hides, isTrue);
+    });
+
+    testWidgets('a hold stage hides it; back on its briefing lets it show '
+        'again', (tester) async {
+      SoundServices.shared = SoundServices.silent();
+      addTearDown(() => SoundServices.shared = null);
+      await open(tester, played: 2);
+      unawaited(
+        ArcadeFlow.openHold(
+          tester.element(find.byType(ArcadeScreen)),
+          ArcadeCatalog.stage(3) as ArcadeHoldStage,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(HoldStageScreen), findsOneWidget);
+      expect(top(tester), GymRatsApp.arcadeHoldRoute);
+      expect(invites.hides, isTrue);
+      await tester.tap(find.bySemanticsLabel('지도로'));
+      await tester.pumpAndSettle();
+      expect(find.byType(HoldStageScreen), findsNothing);
+      expect(invites.hides, isFalse);
+    });
+
+    testWidgets("a boss match's intro hides it, and so does the break after "
+        'R1; 그만하기 lets it show again', (tester) async {
+      await open(tester, played: 5);
+      ArcadeFlow.openBoss(tester.element(find.byType(ArcadeScreen)), _boss(6));
+      await tester.pumpAndSettle();
+      expect(top(tester), GymRatsApp.arcadeBossRoute);
+      expect(invites.hides, isTrue);
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pumpAndSettle();
+      expect(invites.hides, isFalse);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.boss(_boss(6), 1, playerName: '우현'), won: true),
+      );
+      expect(find.text('1라운드 승리!'), findsOneWidget);
+      expect(top(tester), GymRatsApp.arcadeBreakRoute);
+      expect(invites.hides, isTrue);
+      await tap(tester, '그만하기');
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(invites.hides, isFalse);
+    });
+
+    testWidgets("a stage's result hides it, a fight's and a boss match's; "
+        '아케이드로 lets it show again', (tester) async {
+      await open(tester, played: 7);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(8), playerName: '우현'), won: false),
+      );
+      expect(find.byType(ArcadeResultScreen), findsOneWidget);
+      expect(top(tester), GymRatsApp.arcadeResultRoute);
+      expect(invites.hides, isTrue);
+      await tap(tester, '아케이드로');
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(invites.hides, isFalse);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.boss(_boss(6), 1, playerName: '우현'), won: false),
+      );
+      expect(find.text('R1 패배'), findsOneWidget);
+      expect(top(tester), GymRatsApp.arcadeResultRoute);
+      expect(invites.hides, isTrue);
+    });
+  });
+
   group('hold stages (spec 8)', () {
     final plank = ArcadeCatalog.stage(3) as ArcadeHoldStage;
     final chair = ArcadeCatalog.stage(5) as ArcadeHoldStage;

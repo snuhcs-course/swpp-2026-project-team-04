@@ -43,15 +43,17 @@ class ArcadeStageSheet extends StatelessWidget {
   static const _closeWidth = 96.0;
   static const _buttonGap = 10.0;
 
-  /// Shows [stage]'s sheet over [context]'s map, the map dimmed under it.
-  /// 도전 closes it and runs [onChallenge].
+  /// Shows [stage]'s sheet over [context]'s map, the map dimmed under it,
+  /// as a route named [routeName]. 도전 closes it and runs [onChallenge].
   static Future<void> show(
     BuildContext context, {
     required ArcadeFightStage stage,
     required int best,
     required VoidCallback onChallenge,
+    String? routeName,
   }) => showModalBottomSheet<void>(
     context: context,
+    routeSettings: RouteSettings(name: routeName),
     isScrollControlled: true,
     backgroundColor: AppColors.card.withValues(alpha: 0),
     barrierColor: AppColors.ink.withValues(alpha: 0.5),

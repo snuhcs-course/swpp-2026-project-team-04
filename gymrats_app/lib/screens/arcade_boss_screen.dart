@@ -32,11 +32,17 @@ class ArcadeBossScreen extends StatelessWidget {
   /// R1 as played and won; null on the intro.
   final BattleResult? first;
 
-  /// This screen as a page.
+  /// This screen as a page, named as the intro or the break
+  /// ([GymRatsApp.arcadeBossRoute], [GymRatsApp.arcadeBreakRoute]).
   static Route<void> route({
     required ArcadeBossStage stage,
     BattleResult? first,
   }) => MaterialPageRoute<void>(
+    settings: RouteSettings(
+      name: first == null
+          ? GymRatsApp.arcadeBossRoute
+          : GymRatsApp.arcadeBreakRoute,
+    ),
     builder: (_) => ArcadeBossScreen(stage: stage, first: first),
   );
 

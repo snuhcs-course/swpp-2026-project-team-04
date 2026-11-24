@@ -146,6 +146,7 @@ class _ArcadeScreenState extends State<ArcadeScreen> with RouteAware {
             stage: stage,
             best: progress.bestOf(stage.number),
             onChallenge: () => ArcadeFlow.openFight(context, stage),
+            routeName: GymRatsApp.arcadeSheetRoute,
           ),
         );
       case ArcadeBossStage():

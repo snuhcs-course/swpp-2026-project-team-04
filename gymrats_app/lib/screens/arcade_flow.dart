@@ -90,6 +90,7 @@ abstract final class ArcadeFlow {
     return Navigator.push<HoldStageExit>(
       context,
       MaterialPageRoute(
+        settings: const RouteSettings(name: GymRatsApp.arcadeHoldRoute),
         builder: (_) => holdScreen(
           stage,
           myCharacter: me,
@@ -155,20 +156,21 @@ abstract final class ArcadeFlow {
   }) {
     final outcome = _arcade(context)
         ?.finishBattle(result, passDepth: passDepth);
-    final Widget next;
+    final Route<void> next;
     switch (outcome) {
       case ArcadeStageEnded(:final stage, :final rounds, :final stars):
-        next = ArcadeResultScreen(stage: stage, rounds: rounds, stars: stars);
+        next = MaterialPageRoute<void>(
+          settings: const RouteSettings(name: GymRatsApp.arcadeResultRoute),
+          builder: (_) =>
+              ArcadeResultScreen(stage: stage, rounds: rounds, stars: stars),
+        );
       case ArcadeBossBreak(:final stage, :final first):
-        next = ArcadeBossScreen(stage: stage, first: first);
+        next = ArcadeBossScreen.route(stage: stage, first: first);
       case ArcadeBattleLeft() || null:
         toMap(context);
         return;
     }
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute<void>(builder: (_) => next),
-    );
+    Navigator.pushReplacement(context, next);
   }
 
   static ArcadeViewModel? _arcade(BuildContext context) =>

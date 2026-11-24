@@ -10,11 +10,13 @@ import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/screens/arcade_boss_screen.dart';
 import 'package:gymrats_app/screens/arcade_screen.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/screens/character_select_screen.dart';
 import 'package:gymrats_app/screens/coach_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
+import 'package:gymrats_app/screens/hold_stage_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
@@ -23,7 +25,9 @@ import 'package:gymrats_app/screens/play_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
+import 'package:gymrats_app/services/audio/sound_services.dart';
 import 'package:gymrats_app/services/feedback/goal_store.dart';
+import 'package:gymrats_app/services/friends/friend_repository.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
@@ -245,6 +249,79 @@ void main() {
     expect(matchup.opponent.arcadeStage, 2);
     expect(find.text('펭뚱이'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group("a friend's invite on the arcade (#95's alert)", () {
+    const friend = FriendPerson(id: 2, nickname: '헬창', code: '헬창#0002');
+    final invite = find.text('헬창님이 푸쉬업 대결을 신청했어요');
+
+    /// The app with [best] saved for the arcade and a friend's push-up
+    /// invite waiting.
+    GymRatsApp invitedApp(List<int> best) {
+      final friends = InMemoryFriendRepository()..friends.add(friend);
+      friends.receiveInvite(friend, ExerciseType.pushUp);
+      return GymRatsApp(
+        authRepository: signedInAuth(),
+        userRepository: InMemoryUserRepository(),
+        arcadeStore: MemoryArcadeProgressStore()
+          ..saved[testAccount.id] = ArcadeProgress(best),
+        friendRepository: friends,
+      );
+    }
+
+    /// The app's alert has read the invite.
+    Future<void> settleInvite(WidgetTester tester) async {
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+    }
+
+    Future<void> openWith(WidgetTester tester, List<int> best) async {
+      await _openApp(tester, invitedApp(best));
+      await settleInvite(tester);
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(invite, findsOneWidget, reason: 'on home');
+      await openArcade(tester);
+      await settleInvite(tester);
+    }
+
+    testWidgets("it shows on the arcade's map as on home, and waits while a "
+        "fight's sheet is open", (tester) async {
+      await openWith(tester, [for (var i = 0; i < 24; i++) 0]);
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(invite, findsOneWidget);
+      await tapAndSettle(tester, '도전');
+      expect(find.byType(ArcadeStageSheet), findsOneWidget);
+      expect(invite, findsNothing);
+      await tapAndSettle(tester, '닫기');
+      expect(invite, findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('it waits while a hold stage is open, and shows again on the '
+        'map', (tester) async {
+      SoundServices.shared = SoundServices.silent();
+      addTearDown(() => SoundServices.shared = null);
+      await openWith(tester, [3, 3, for (var i = 2; i < 24; i++) 0]);
+      expect(invite, findsOneWidget);
+      await tapAndSettle(tester, '도전');
+      expect(find.byType(HoldStageScreen), findsOneWidget);
+      expect(invite, findsNothing);
+      await tester.tap(find.bySemanticsLabel('지도로'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(invite, findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets("it waits while a boss match's intro is open", (tester) async {
+      await openWith(tester, [3, 3, 3, 3, 3, for (var i = 5; i < 24; i++) 0]);
+      expect(invite, findsOneWidget);
+      await tapAndSettle(tester, '도전');
+      expect(find.byType(ArcadeBossScreen), findsOneWidget);
+      expect(invite, findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
   });
 
   for (final (name, exercise) in const [
