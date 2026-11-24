@@ -631,3 +631,21 @@ def test_an_odd_answer_body_is_ignored(client, two, body):
     )
     assert response.status_code == 200
     assert response.json()["status"] == "cancelled"
+
+
+def test_a_nickname_with_a_line_break_can_still_be_added(client):
+    _, me = _user(client, "alice01", "쥐돌이")
+    other_id, _ = _user(client, "linebrk1", "헬\n창")
+    code = _code(other_id)
+    assert "\n" in code
+    response = _request(client, me, code)
+    assert response.status_code == 201
+    assert response.json()["to"]["id"] == other_id
+
+
+@pytest.mark.parametrize("around", [("\n", "\n"), (" ", "\t"), ("", "\r\n")])
+def test_a_pasted_code_with_line_breaks_around_it_still_works(client, two, around):
+    (_, a), (b_id, _) = two
+    before, after = around
+    response = _request(client, a, f"{before}{_code(b_id)}{after}")
+    assert response.status_code == 201

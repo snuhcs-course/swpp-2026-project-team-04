@@ -318,7 +318,7 @@ class InMemoryFriendRepository implements FriendRepository {
   @override
   Future<FriendAddOutcome> addFriend(String code) async {
     final wanted = code.trim();
-    if (!RegExp(r'^.{1,12}#[0-9]{4,10}$').hasMatch(wanted)) {
+    if (!RegExp(r'^.{1,12}#[0-9]{4,10}$', dotAll: true).hasMatch(wanted)) {
       _refuse('invalid_code');
     }
     if (wanted == me.code) _refuse('cannot_add_self');

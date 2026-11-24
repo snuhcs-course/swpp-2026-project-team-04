@@ -26,7 +26,9 @@ from .models import FriendBattleInvite, FriendRequest, User
 INVITE_TTL = timedelta(minutes=1)
 
 # The tag as friend_code shows it: at least four digits ("#0042", "#10000").
-_CODE = re.compile(r"^(?P<nickname>.{1,12})#(?P<tag>[0-9]{4,10})$")
+# Any nickname sign-up allows, line breaks included (DOTALL), so every
+# shown code can be read back.
+_CODE = re.compile(r"\A(?P<nickname>.{1,12})#(?P<tag>[0-9]{4,10})\Z", re.DOTALL)
 
 
 def friend_code(user):
