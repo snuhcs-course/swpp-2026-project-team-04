@@ -121,16 +121,21 @@ class PlayScreen extends StatelessWidget {
 
 /// 친구와의 대전 (P9): opens the friends page, with a dot while a friend request
 /// or a battle invite waits for an answer. The dot reads the app's
-/// [FriendRepository], when there is one, on opening and on coming back.
+/// [FriendRepository], when there is one: on opening, every [refreshEvery]
+/// while this page is on top, and on coming back.
 class _FriendBattleRow extends StatefulWidget {
   const _FriendBattleRow();
+
+  /// As the friends page reads its lists.
+  static const refreshEvery = Duration(seconds: 5);
 
   @override
   State<_FriendBattleRow> createState() => _FriendBattleRowState();
 }
 
 class _FriendBattleRowState extends State<_FriendBattleRow> {
-  bool _waiting = false;
+  bool _waiting = false, _checking = false;
+  Timer? _refresh;
 
   /// The dot's size, and the icon chip's: larger than a list row's, so the
   /// row stands out under the two cards.
@@ -140,15 +145,35 @@ class _FriendBattleRowState extends State<_FriendBattleRow> {
   void initState() {
     super.initState();
     unawaited(_check());
+    _refresh = Timer.periodic(_FriendBattleRow.refreshEvery, (_) {
+      // Not while another page is on top (coming back reads it anyway) or
+      // the app is in the background.
+      // Unknown (before the first report) counts as in front.
+      final state = WidgetsBinding.instance.lifecycleState;
+      final inFront = state == null || state == AppLifecycleState.resumed;
+      if (inFront && (ModalRoute.of(context)?.isCurrent ?? false)) {
+        unawaited(_check());
+      }
+    });
   }
 
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
+  }
+
+  /// Reads whether something waits; one read at a time, so an older answer
+  /// never lands after a newer one.
   Future<void> _check() async {
+    if (_checking) return;
     final FriendRepository friends;
     try {
       friends = context.read<FriendRepository>();
     } on ProviderNotFoundException {
       return;
     }
+    _checking = true;
     try {
       final overview = await friends.fetchOverview();
       if (!mounted) return;
@@ -158,6 +183,8 @@ class _FriendBattleRowState extends State<_FriendBattleRow> {
       );
     } on Object {
       // No dot without the server; the friends page says why.
+    } finally {
+      _checking = false;
     }
   }
 

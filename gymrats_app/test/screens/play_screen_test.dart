@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
@@ -305,6 +307,71 @@ void main() {
       expect(find.text('친구 코드로 추가하고 대결 신청'), findsOneWidget);
     });
 
+    testWidgets('a request that comes while the page is open shows within '
+        'one refresh', (tester) async {
+      final friends = InMemoryFriendRepository()..friends.add(friend);
+      await openWith(tester, friends);
+      expect(find.text('새 친구 요청이나 대결 신청이 있어요'), findsNothing);
+      friends.incoming.add(const FriendRequestItem(id: 7, person: friend));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pump();
+      expect(find.text('새 친구 요청이나 대결 신청이 있어요'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('no reading while another page is on top', (tester) async {
+      final friends = _CountingFriends()..friends.add(friend);
+      await openWith(tester, friends);
+      await tester.tap(find.text('친구와의 대전'));
+      await tester.pumpAndSettle();
+      final reads = friends.reads;
+      await tester.pump(const Duration(seconds: 20));
+      expect(friends.reads, reads);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a slow read is not started again on the next tick', (
+      tester,
+    ) async {
+      final friends = _CountingFriends()..hold = Completer<void>();
+      await openWith(tester, friends);
+      expect(friends.reads, 1);
+      await tester.pump(const Duration(seconds: 15));
+      expect(friends.reads, 1);
+      friends.hold!.complete();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 5));
+      expect(friends.reads, 2);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('no reading while the app is in the background', (
+      tester,
+    ) async {
+      final friends = _CountingFriends();
+      await openWith(tester, friends);
+      for (final state in [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      final reads = friends.reads;
+      await tester.pump(const Duration(seconds: 20));
+      expect(friends.reads, reads);
+      for (final state in [
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pump(const Duration(seconds: 5));
+      expect(friends.reads, reads + 1);
+      await tester.pumpWidget(const SizedBox());
+    });
+
     testWidgets('a dot for a battle invite', (tester) async {
       final friends = InMemoryFriendRepository()..friends.add(friend);
       friends.receiveInvite(friend, ExerciseType.squat);
@@ -318,6 +385,20 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+}
+
+class _CountingFriends extends InMemoryFriendRepository {
+  int reads = 0;
+
+  /// While set, reads wait for it.
+  Completer<void>? hold;
+
+  @override
+  Future<FriendsOverview> fetchOverview() async {
+    reads++;
+    await hold?.future;
+    return super.fetchOverview();
+  }
 }
 
 class _FailingFriends extends InMemoryFriendRepository {
