@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
+import '../services/auth/auth_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/login_viewmodel.dart';
@@ -9,9 +10,9 @@ import '../widgets/accent_button.dart';
 import '../widgets/auth_form.dart';
 import '../widgets/grid_background.dart';
 
-/// Shown while nobody is logged in: login id and password, the lime 로그인
-/// button at the bottom, and a link to sign up. On success GymRatsApp
-/// switches to home by itself.
+/// Shown while nobody is logged in: login id and password, Google
+/// (sign up or log in in one tap), the lime 로그인 button at the bottom, and
+/// a link to sign up. On success GymRatsApp switches to home by itself.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.createViewModel});
 
@@ -49,6 +50,32 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _openSignup() => Navigator.pushNamed(context, GymRatsApp.signupRoute);
+
+  /// A new provider account picks its nickname before it is created.
+  Future<void> _signInWith(SocialSignInService service) async {
+    await _viewModel.signInWith(service);
+    final request = _viewModel.takeSignupRequest();
+    if (request == null || !mounted) return;
+    await Navigator.pushNamed(
+      context,
+      GymRatsApp.socialSignupRoute,
+      arguments: request,
+    );
+  }
+
+  Widget _socialButton(LoginState state, SocialSignInService service) {
+    final provider = service.provider;
+    final text = Theme.of(context).textTheme;
+    return OutlinedButton(
+      onPressed: state.busy ? null : () => _signInWith(service),
+      child: Text(
+        state.signingInWith == provider
+            ? '${provider.label}로 로그인하는 중…'
+            : '${provider.label}로 계속하기',
+        style: text.bodyLarge,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +138,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: AppSpacing.s16),
                               FormErrorMessage(formError),
                             ],
+                            if (vm.google case final service?) ...[
+                              const SizedBox(height: AppSpacing.s12),
+                              _socialButton(state, service),
+                            ],
                           ],
                         ),
                       ),
@@ -131,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: AppSpacing.s8),
                           TextButton(
-                            onPressed: state.submitting ? null : _openSignup,
+                            onPressed: state.busy ? null : _openSignup,
                             child: Text(
                               '처음이신가요? 회원가입',
                               style: text.bodyLarge?.copyWith(

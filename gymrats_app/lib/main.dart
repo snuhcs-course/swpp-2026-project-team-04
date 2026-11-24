@@ -7,6 +7,7 @@ import 'models/exercise_type.dart';
 import 'models/form_report.dart';
 import 'models/matchup.dart';
 import 'screens/battle_screen.dart';
+import 'screens/body_info_screen.dart';
 import 'screens/character_select_screen.dart';
 import 'screens/coach_screen.dart';
 import 'screens/feedback_screen.dart';
@@ -20,9 +21,11 @@ import 'screens/online_lobby_screen.dart';
 import 'screens/result_screen.dart';
 import 'screens/setup_screen.dart';
 import 'screens/signup_screen.dart';
+import 'screens/social_signup_screen.dart';
 import 'screens/versus_screen.dart';
 import 'services/api/api_client.dart';
 import 'services/auth/auth_repository.dart';
+import 'services/auth/google_sign_in_service.dart';
 import 'services/auth/token_store.dart';
 import 'services/feedback/form_report_store.dart';
 import 'services/feedback/goal_store.dart';
@@ -36,11 +39,14 @@ import 'services/user/user_repository.dart';
 import 'services/user/avatar_store.dart';
 import 'theme/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
+import 'viewmodels/body_info_viewmodel.dart';
 import 'viewmodels/character_viewmodel.dart';
 import 'viewmodels/coach_viewmodel.dart';
 import 'viewmodels/help_viewmodel.dart';
+import 'viewmodels/login_viewmodel.dart';
 import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/signup_viewmodel.dart';
+import 'viewmodels/social_signup_viewmodel.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +64,8 @@ Future<void> main() async {
   runApp(
     GymRatsApp(
       authRepository: auth,
+      // A build that clears the client id hides the Google button.
+      googleSignIn: googleServerClientId.isEmpty ? null : GoogleSignInService(),
       userRepository: ServerUserRepository(api: api, auth: auth),
       characterStore: SecureCharacterStore(),
       rulesSeenStore: SecureRulesSeenStore(),
@@ -83,9 +91,13 @@ class GymRatsApp extends StatefulWidget {
     this.createOnlineSession,
     this.rulesSeenStore,
     this.settingsStore,
+    this.googleSignIn,
   });
 
   final AuthRepository authRepository;
+
+  /// The login screen's Google sign-in; null hides its button.
+  final SocialSignInService? googleSignIn;
   final UserRepository userRepository;
 
   /// Defaults to [BotMatchmaker].
@@ -109,6 +121,10 @@ class GymRatsApp extends StatefulWidget {
   final SettingsStore? settingsStore;
 
   static const signupRoute = '/signup';
+
+  /// The nickname of a new Google account; its argument is the
+  /// [SocialSignupRequest].
+  static const socialSignupRoute = '/social-signup';
   static const historyRoute = '/history';
   static const onlineBattleRoute = '/online-battle';
 
@@ -225,7 +241,14 @@ class _GymRatsAppState extends State<GymRatsApp> {
             AuthStatus.restoring => const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             ),
-            AuthStatus.signedOut => const LoginScreen(),
+            AuthStatus.signedOut => LoginScreen(
+              createViewModel: () =>
+                  LoginViewModel(auth: _auth, google: widget.googleSignIn),
+            ),
+            // A new account first gives (or skips) height and weight.
+            AuthStatus.signedIn when auth.needsBodyInfo => BodyInfoScreen(
+              createViewModel: () => BodyInfoViewModel(auth: _auth),
+            ),
             AuthStatus.signedIn => switch (help.gateFor(auth.account?.id)) {
               HelpGate.checking => const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
@@ -270,6 +293,16 @@ class _GymRatsAppState extends State<GymRatsApp> {
             settings: settings,
             builder: (_) => SignupScreen(
               createViewModel: () => SignupViewModel(auth: _auth, help: _help),
+            ),
+          ),
+          GymRatsApp.socialSignupRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => SocialSignupScreen(
+              createViewModel: () => SocialSignupViewModel(
+                auth: _auth,
+                help: _help,
+                request: settings.arguments! as SocialSignupRequest,
+              ),
             ),
           ),
           GymRatsApp.helpRoute => MaterialPageRoute<void>(
