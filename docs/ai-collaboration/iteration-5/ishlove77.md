@@ -92,6 +92,9 @@ Full list: `ishlove77-Prompt-Log.md`.
   to how the code is shown, not to how it is parsed. Fixed with a database constraint and retry, a 5 s refresh, and a
   four-digit parse, each with tests.
 
+- P9: the third Codex review (`851cc40`) found that a 수락 still in flight when the account signs out opened the
+  waiting room over the signed-out app. Fixed by dropping answers that come back after a sign-in change, with tests.
+
 ## 4. Revisions and Decisions
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so

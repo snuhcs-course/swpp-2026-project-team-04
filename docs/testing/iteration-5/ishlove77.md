@@ -5,6 +5,17 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fix for the third Codex review
+One P2 finding from the Codex review of `851cc40` was fixed: when the account signs out while the invite banner's
+수락 is on its way, the late answer no longer opens the waiting room over the signed-out app; the app tries to take the
+accepted invite back (without a login the request can fail, and the friend's waiting room then ends within 30 s).
+
+- **Tests:** `flutter analyze` no issues; full `flutter test` count in the PR body; server unchanged (210 passed).
+- **Test cases changed:** `test/viewmodels/friends_viewmodel_test.dart` (signed out while accepting: the late answer
+  opens nothing and the invite is taken back; signed out and in again while accepting: still dropped; a failed
+  accept after a sign-out leaves no error behind);
+  `test/screens/friends_screen_test.dart` (signed out while 수락 is on its way: no waiting room opens).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the second Codex review
 Three P2 findings from the Codex review of `f752b07` were fixed: one open invite per inviter is now kept by the
 database (migration `accounts.0004_one_pending_friend_invite`; two invites sent at once from two phones retry, so the
