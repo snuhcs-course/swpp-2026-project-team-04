@@ -254,6 +254,17 @@ A5가 PR #92로 올라왔다(codex/iter5-hold-chair). A4(#90)에도 커밋이 �
 4. 지금 A5 세션이 A4와 A5 브랜치에 버티기 연출(배경음, 시작 안내, 별 연출, 실패 연출)을 더하는 중이다. 끝나면 따로 알려 줄 테니, 그 전에는 codex/iter5-hold-chair를 merge하지 않는다.
 </pasted_content id=\"0a14\">"
 
+<!-- 44cd470a 2026-11-24T02:47:22.565Z -->
+[Woohyun Song, 11-24 11:47] "<pasted_content id=\"0a14\">
+A5 세션 작업이 끝났다. A4(codex/iter5-hold-plank)에 버티기 연출(배경음, GO 직후 관장 말풍선, ★1·★2 별 연출과 효과음, 두 번째 경고의 \"실패!\" 1.5초와 실패 화면 이유 칩)이 들어갔고, A5(codex/iter5-hold-chair)에 merge됐다. A5 세션이 기록을 조금 더 push할 수 있지만 앱 코드는 끝났으니 지금 merge한다.
+1. origin을 fetch하고 codex/iter5-hold-chair를 P16 브랜치에 merge한다. 충돌이 나면 버티기 파일은 A4·A5 쪽을, P16 파일은 P16 쪽을 기준으로 푼다.
+2. 버티기 화면이 이제 배경음을 직접 튼다. 세팅과 3·2·1은 MusicCue.setup, 버티는 중은 MusicCue.battle, 끝나는 순간 win/lose jingle, 결과 전에 나가면 MusicCue.menu다. 아케이드에서 버티기 판에 들어가 결과 화면을 거쳐 아케이드 홈으로 돌아오는 길이 아케이드 대결 판과 같은 순서로 곡이 바뀌는지 코드로 확인한다. 특히 jingle이 두 번 나거나 곡이 겹치지 않는지 본다. 어긋나면 P16 쪽에서 고치고 테스트를 더한다.
+3. analyze, test, reviewer를 돌리고 push한 뒤 HEAD를 보고해 줘.
+</pasted_content id=\"0a14\">"
+
+<!-- 44cd470a 2026-11-24T02:47:59.784Z -->
+[Woohyun Song, 11-24 11:47] "4. \"2F 열림\"은 홈 지도에서 2F 층이 보인 것이었다. 기록을 \"2F 층 보임(첫 판은 잠김)\"으로 고친다."
+
 ## 2026-11-24 · Woohyun Song · codex/iter5-hold-chair
 <!-- dfb39c07 2026-11-23T16:54:23.559Z -->
 [Woohyun Song, 11-24 01:54] "<pasted_content id=\"a37d\">

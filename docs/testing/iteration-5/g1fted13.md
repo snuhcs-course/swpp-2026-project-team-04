@@ -801,7 +801,7 @@ comment, "Tests and coverage (GitHub Actions)".
   - Worked: 게임 시작's two cards; the arcade home; a fight stage's flow (the stage info, the opponent's intro, the
     floor's background, the clear, the report, back home); the fail screen and 다시 도전; the hold stages opening
     (STAGE 3 on the high plank, STAGE 5 on the chair pose) and opening the next cell; the home's star total and each
-    cell's stars; 2F opening.
+    cell's stars; the 2F floor shown on the home's map (its first stage still locked).
   - Not seen: winning the boss match through R2 to "1층 클리어!", and the 2F first stage's fever at 15 s.
     TODO(Woohyun Song): at the last phone check.
   - To fix: on the boss match's break, the words of "자세 잡기" nearly ran out of the button. Fixed in the next
@@ -877,3 +877,84 @@ comment, "Tests and coverage (GitHub Actions)".
   fit', 'on a narrow button the dark button shrinks its words to fit inside it, never cutting them off'
 - The other buttons of the boss intro, the break and 1층 클리어 → the first test above (그만하기, 2층으로, 리포트 보기)
 - Phone check of the fix → TODO(Woohyun Song) (above)
+
+#### 2026-11-24 · code at commits `359ea18` and `5553521`, with A5 merged in `2ab24c3` · step P16 `codex/iter5-ai-opponents`, the hold stages' music
+The A5 session finished the hold effects on A4 (`3ffed5f`: the battle's music on a hold stage, the owner's bubble
+after GO, the effects and sound of the first and second stars, a second warning's "실패!" for 1.5 s and the fail
+screen's reason chip) and A5 (`4767873`: the chair pose's start bubble), and merged them into
+`codex/iter5-hold-chair` (`fafb0d4`). `git merge origin/codex/iter5-hold-chair` (`2ab24c3`): the app code merged
+without a conflict; this file and the Prompt Log had content conflicts (both sides added entries at their ends),
+resolved by keeping every entry (A5's entry above P16's here, the P16 prompts above A5's in the log).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **The music check (the user's item 2), traced in the code against a fight stage:**
+  - A fight: the map, the stage sheet and the versus screen play nothing, so what plays goes on (the menu track from
+    home); the battle (`BattleSounds.musicFor`) plays the setup track through the setup and the 3·2·1, the battle
+    track (fever at the end) and, when it ends, the win or lose jingle; the battle closes on a result, so the jingle
+    goes on through the arcade's result and the report, which play nothing; back on the map nothing new plays, and
+    home's `SoundCues` brings the menu track back.
+  - A hold (`HoldStageScreen._playMusic`): the briefing plays nothing; the setup track through the setup and the
+    3·2·1; the battle track while holding; the jingle when the time runs out. On a second warning the jingle starts
+    with the warning, and the result asks for the same jingle again, which `BackgroundMusicService.play` drops (the
+    same cue as the last one); the stars, and so the jingle, are fixed at that warning (`HoldStageViewModel` sets
+    them with `ending`; `_finish` keeps them). 아케이드로 and 다음 스테이지 close on a result, so the jingle goes on;
+    leaving in the setup, the 3·2·1 or the hold brings the menu track back, as leaving a battle does. A hold's
+    다음 스테이지 opens a fight's sheet or the boss intro (no two hold stages are next to each other).
+  - No jingle plays twice. Each change is the music service's usual cross-fade, the old track fading out over 0.6 s
+    while the new one fades in (`BackgroundMusicService.fade`), as on any screen change; both screens use the app's
+    one music service (`SoundServices.shared`), so no track loops on beside another.
+  - **One difference, fixed here:** a hold closed on its briefing, before any track of its own (opened from the map
+    after a result, or after 다시 하기), asked for the menu track as it closed (`HoldStageScreen.dispose`: no result
+    on screen), so after a jingle the menu came back on the map, where a fight's sheet and versus screen play nothing
+    and the silence after its jingle stays. The hold screen is A4's, so `359ea18` changes the arcade's side:
+    `ArcadeFlow.holdScreen` gives the screen the app's sound with its music in `ArcadeHoldMusic`
+    (`lib/widgets/arcade_hold_music.dart`), which passes every cue on except that menu track when no setup or battle
+    track was asked for since the stage opened or since its last jingle. Left in the setup, the 3·2·1 or the hold,
+    the menu still comes back (A4's rule, as for a battle).
+  - **A4's, reported, not changed:** in a second warning's 1.5 s moment the phase is still the hold, so back or the
+    leave button still opens the leave dialog, and leaving there skips the result and keeps no star; a fight closes
+    its dialog when it ends. With `ArcadeHoldMusic` the jingle goes on there instead of the menu track.
+- **Tests:** `flutter test` 4357 passed, 0 failed, 10 skipped (2026-11-24, `5553521`; the same skips as
+  above). `flutter analyze` found no issues. New: 8 tests in `arcade_hold_music_test.dart`, 1 in
+  `arcade_screen_test.dart`, 1 in `design_tokens_test.dart` (`5553521`: the new file on its list); 1 changed (the
+  app's way into a hold also checks the sound it gets). A4's and A5's new
+  tests came with the merge (their entries above).
+- **Old-code check:** with `ArcadeHoldMusic` taken out of `ArcadeFlow.holdScreen`, the two arcade-screen tests fail
+  (closing the briefing after a jingle asked for `[win, menu]`); the unit tests need the new class.
+- **The phone check's record:** "2F opening" in the entry above was the 2F floor shown on the home's map, its first
+  stage still locked (the user, 2026-11-24); corrected there.
+- **Other checks:** `ownership_guard.py --check-diff` OK (111 paths).
+- **Review:** local reviewer run 7 CHANGES_REQUESTED (these notes said the order matched, that tracks never play
+  together and that the map stays silent after any result, and the difference was left in the code), so the notes
+  were corrected and the difference fixed; run 8 APPROVE (3 Minor: wording in the local progress file, fixed; the
+  new file added to `design_tokens_test.dart`'s list in `5553521`; origin/main's #93 not yet in the A2–P16 stack,
+  left to the user).
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment "Tests and coverage (GitHub Actions)" for this head.
+- **Shortfalls:** coverage is not measured on this PC (the CI comment is pending). The whole way from the map through
+  a hold's result back to the map is tested in parts (the wrapper's order, the briefing closed on the map, A4's
+  tests of the hold screen's cues), not in one widget test, because the hold's camera setup is A4's and the arcade's
+  way in takes no stand-in view model. The phone check below.
+- **Manual check:** TODO(Woohyun Song): at the last phone check, STAGE 3 and STAGE 5 from the arcade: the setup track,
+  the battle track, the jingle once and back to the map; a hold closed on its briefing after a fight's jingle stays
+  silent; leaving mid-stage brings the menu track back.
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/arcade_hold_music_test.dart` | 'passes the hold screen's cues on: the setup, the hold, the jingle', 'left in the setup, the 3·2·1 or the hold, the menu comes back, as when a battle is left before its result', 'closed on its briefing before anything started: what plays goes on, as a fight's sheet and versus screen play nothing', 'closed on its briefing after a jingle (다시 하기, then back): the silence after the jingle stays, as after a fight', 'left in the second warning's moment, after its jingle started: the jingle goes on', 'played again after a jingle, then left mid-stage: the menu comes back', 'stop goes to the app's music; dispose leaves the app's music alone', 'around keeps the set's switches, voice and effects and wraps its music' |
+| Design | `test/design_tokens_test.dart` (updated) | `lib/widgets/arcade_hold_music.dart` uses only design tokens |
+| View | `test/screens/arcade_screen_test.dart` (updated) | 'closed on its briefing after a jingle, the map stays silent, as after backing out of a fight's versus screen' (new); 'the app's own way into a hold: …' also checks the wrapped music and the app's effects, voice and switches |
+
+### Acceptance criteria → tests (the user's item 2)
+- A hold's tracks from the map change in a fight's order → 'closed on its briefing after a jingle, the map stays
+  silent, as after backing out of a fight's versus screen', 'closed on its briefing after a jingle (다시 하기, then
+  back): the silence after the jingle stays, as after a fight', 'passes the hold screen's cues on: the setup, the
+  hold, the jingle', and A4's 'the battle's music at the battle's moments'
+- Left before a result, the menu comes back → 'left in the setup, the 3·2·1 or the hold, the menu comes back, as when
+  a battle is left before its result', A4's 'leaving before a result brings the menu music back'
+- No jingle twice → A4's 'a second warning with no star plays the lose jingle at once', 'a clear ended by warnings
+  plays the win jingle at once', and `background_music_test.dart` 'the same cue on every state update plays the track
+  once'
+- The arcade's hold gets the app's sound → 'the app's own way into a hold: A4's screen for the stage, with the
+  arcade's store, account and the user's character'

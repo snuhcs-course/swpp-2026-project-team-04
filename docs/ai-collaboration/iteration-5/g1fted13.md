@@ -465,11 +465,17 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   - After the user's phone check on `9b59537`: `fcacca1` makes the break's 자세 잡기 span the content as in the design
     (`lib/screens/arcade_boss_screen.dart`, `_Break`) and lets the ink button's words shrink to fit
     (`lib/widgets/arcade_parts.dart`, `ArcadeDarkButton`).
+  - After the A5 session's hold effects: `2ab24c3` merges `codex/iter5-hold-chair`, and Claude Code traced the music
+    of a hold stage from the arcade against a fight stage's in the code (`hold_stage_screen.dart`,
+    `sound_battle.dart`, `background_music.dart`, `arcade_flow.dart`). One difference (a hold closed on its
+    briefing after a jingle brought the menu track back) is fixed in `359ea18`: `ArcadeHoldMusic`
+    (`lib/widgets/arcade_hold_music.dart`), given to A4's screen by `ArcadeFlow.holdScreen`.
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran six times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
-  CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, and once more after the phone check's fix.
+- **Review:** the `reviewer` subagent ran eight times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+  CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, and after the merge
+  of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix.
 - **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
   (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
   Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
@@ -489,6 +495,7 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 - [Woohyun Song, 11-23] (after the first push, pasted; excerpt) "hold-chair를 기다리지 말고, 지금 codex/iter5-hold-plank(A4, PR #90)를 그냥 git merge로 받아 와서 8절을 진행한다."
 - [Woohyun Song, 11-24] (when A5 came up, pasted; excerpt) "의자 자세 판(5, 11, 17, 23)을 하이 플랭크로 열던 대체를 지우고 의자 자세로 연다. 대체를 확인하던 테스트도 맞게 고친다."
 - [Woohyun Song, 11-24] (after the phone check, pasted; excerpt) "고칠 것: 보스 매치 라운드 사이 화면의 "자세 잡기" 버튼 글자가 버튼 밖으로 거의 삐져나온다."
+- [Woohyun Song, 11-24] (after the hold effects, pasted; excerpt) "아케이드에서 버티기 판에 들어가 결과 화면을 거쳐 아케이드 홈으로 돌아오는 길이 아케이드 대결 판과 같은 순서로 곡이 바뀌는지 코드로 확인한다. 특히 jingle이 두 번 나거나 곡이 겹치지 않는지 본다."
 - [Woohyun Song, 11-23] (after the laptop lost power, pasted; excerpt) "이어서 하기 전에 먼저 상태를 확인해 줘. 1. 지금 브랜치가 codex/iter5-ai-opponents인지, git status, 남아 있는 .git/index.lock이 있는지 본다."
 
 ### c. What AI did well
@@ -501,6 +508,9 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 - **Tests that found real bugs before the phone:** a sheet whose `scopesRoute` semantics asserted, a band row and a star
   row that overflowed (three 16-point stars with a gap after each are 51 > 50; the design's `gap` is only between
   them), and floor tags that never showed until the first scroll. Each was fixed with a test that failed first.
+- **Checking the record against the code:** the phone check's "2F 열림" did not fit A2's rule (stage 7 opens only
+  after the boss's star, and the boss match was not won). Flagged in the report; the user said it was the 2F floor
+  shown on the map with its first stage locked, and the record was corrected.
 - **Recovery after the power loss:** the state check (branch, `index.lock`, diffs, line endings, ownership, analyze)
   took a few minutes and found nothing half-written.
 
@@ -535,6 +545,19 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   painted words, so they passed. Caught by the user on the phone (`9b59537`); fixed in `fcacca1` with a test that
   checks the slanted words' corners against each button's rounded shape on the boss screens, and fails on the old
   code. Cost: one fix commit and its tests.
+- **Reviewer run 6 (APPROVE, 1 Minor):** the narrow-button test checked only the words' top corners, not the bottom
+  left one that the slant leans out; it now checks all four against the button's round shape, and fails when the
+  room for the slant is taken out.
+- **The music check written too kindly (reviewer run 7, CHANGES_REQUESTED):** my first trace of the hold stages' music
+  found that a hold closed on its briefing after a jingle brings the menu track back, where a fight keeps the
+  silence, but left it as harmless, and my notes then said the order "matched", that two tracks "never go on
+  together" (the music service cross-fades for 0.6 s at every change) and that the map "stays silent after any
+  result". The reviewer read the code on its own and also found that A4's leave dialog still opens in a second
+  warning's 1.5 s moment. The user's rule was to fix a difference on the P16 side, so `359ea18` adds `ArcadeHoldMusic`
+  with tests that fail without it, the notes were rewritten, and the dialog was reported for A4's branch. Cost: one
+  code commit, its tests and the notes again. Run 8 approved the fix, with three Minors: wording in the local progress
+  file, the new file missing from `design_tokens_test.dart`'s list (added in `5553521`), and origin/main's #93 not
+  yet in the A2–P16 stack (left to the user).
 - **A path in my notes:** the post-push check matched `.claude/...` in the spec's path in my testing notes; fixed in a
   new commit (`7a1d46c`).
 
