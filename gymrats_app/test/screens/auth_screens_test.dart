@@ -213,6 +213,39 @@ void main() {
       expect(find.byType(AuthFieldError), findsNothing);
     });
 
+    testWidgets('the password manager is asked to save only after a login '
+        'that worked, never when the sheet closes', (tester) async {
+      List<bool> saves() => [
+        for (final call in tester.testTextInput.log)
+          if (call.method == 'TextInput.finishAutofillContext')
+            call.arguments as bool,
+      ];
+      repository.logInError = const InvalidCredentialsException();
+      await open(tester, const LoginScreen());
+      await openSheet(tester);
+      await tester.enterText(input('아이디'), 'woohyun');
+      await tester.enterText(input('비밀번호'), 'wrongpass');
+      await tester.tap(find.text('로그인'));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text(LoginViewModel.wrongCredentialsMessage), findsOneWidget);
+      tester.testTextInput.log.clear();
+      await tester.tap(find.byTooltip('닫기'));
+      await settle(tester);
+      // Closing ends the autofill context without saving.
+      expect(saves(), [false]);
+
+      repository.logInError = null;
+      await openSheet(tester);
+      tester.testTextInput.log.clear();
+      await tester.enterText(input('비밀번호'), 'password1');
+      await tester.tap(find.text('로그인'));
+      await tester.pump();
+      await tester.pump();
+      expect(auth.status, AuthStatus.signedIn);
+      expect(saves(), [true]);
+    });
+
     testWidgets('the sign-up link opens the id sign-up screen', (tester) async {
       await open(tester, const LoginScreen());
       await openSheet(tester);

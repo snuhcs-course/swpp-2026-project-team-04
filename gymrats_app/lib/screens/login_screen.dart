@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
@@ -327,12 +328,15 @@ class _IdLoginSheet extends StatelessWidget {
   final TextEditingController loginId;
   final TextEditingController password;
 
-  void _submit(BuildContext context) {
+  /// Logs in; only a login that worked tells the phone's password
+  /// manager to save what was typed.
+  Future<void> _submit(BuildContext context) async {
     FocusScope.of(context).unfocus();
-    context.read<LoginViewModel>().submit(
+    final loggedIn = await context.read<LoginViewModel>().submit(
       loginId: loginId.text,
       password: password.text,
     );
+    if (loggedIn) TextInput.finishAutofillContext();
   }
 
   @override
@@ -364,7 +368,10 @@ class _IdLoginSheet extends StatelessWidget {
                 AppSpacing.s20,
                 AppSpacing.s24,
               ),
+              // Closing the sheet is not a login: the password manager is not
+              // asked to save (Samsung Pass did after a wrong password).
               child: AutofillGroup(
+                onDisposeAction: AutofillContextAction.cancel,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
