@@ -161,6 +161,9 @@ class ChairHoldReader implements HoldGuideReader {
     if (knees != null) _kneeRatio = knees;
     final legs = _legs(frame);
     if (legs.isEmpty) {
+      // A standing thigh not taken yet starts its time over: lost legs are
+      // not standing. One already taken stays.
+      if (_standingThigh == null) _standingSince = null;
       _guide = JudgeSnapshot(phase: _phase);
       return _printed(at, counting, HoldReading.unknown);
     }

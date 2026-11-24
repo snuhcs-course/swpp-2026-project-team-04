@@ -324,6 +324,32 @@ void main() {
   });
 
   group('the standing thigh', () {
+    test('legs lost before it is taken start its 300 ms over: back in a '
+        'shallow bend, it is not taken at once (PR #92 review)', () {
+      final reader = ChairHoldReader();
+      reader.read(_legs(), at: _ms(0), counting: true);
+      final noLegs = _legs(
+        hide: const {
+          BodyLandmark.leftHip,
+          BodyLandmark.rightHip,
+          BodyLandmark.leftKnee,
+          BodyLandmark.rightKnee,
+          BodyLandmark.leftAnkle,
+          BodyLandmark.rightAnkle,
+        },
+      );
+      for (final ms in [100, 200, 300]) {
+        expect(
+          reader.read(noLegs, at: _ms(ms), counting: true),
+          HoldReading.unknown,
+        );
+      }
+      // A shallow bend still reads as standing (thigh over 0.7 of the shin).
+      reader.read(_seated(.25), at: _ms(400), counting: true);
+      expect(reader.standingThigh, isNull);
+      expect(reader.depth, isNull);
+    });
+
     test('standing in the 3·2·1 takes it after 300 ms', () {
       final reader = ChairHoldReader();
       for (final ms in [0, 100, 200]) {
