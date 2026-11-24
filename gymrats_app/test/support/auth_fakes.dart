@@ -7,6 +7,21 @@ import 'package:gymrats_app/services/auth/auth_repository.dart';
 class ScriptedAuthRepository implements AuthRepository {
   final logIns = <(String, String)>[];
   final signUps = <(String, String, String)>[];
+  final socialSignIns = <(SocialProvider, String, String?)>[];
+  final bodyInfos = <(double, double)>[];
+
+  /// Thrown by the next signInWith / saveBodyInfo while set.
+  Exception? socialError;
+  Exception? bodyInfoError;
+
+  /// Whether the provider account is new: signInWith then needs a nickname
+  /// and creates the account with it.
+  bool socialIsNew = true;
+
+  Completer<void>? _bodyInfoGate;
+
+  /// Makes saveBodyInfo wait until the returned completer completes.
+  Completer<void> holdBodyInfo() => _bodyInfoGate = Completer();
 
   /// Thrown by the next logIn / signUp while set.
   Exception? logInError;
@@ -57,6 +72,33 @@ class ScriptedAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<SocialSignIn> signInWith(
+    SocialProvider provider,
+    String token, {
+    String? nickname,
+  }) async {
+    socialSignIns.add((provider, token, nickname));
+    if (socialError case final error?) throw error;
+    if (socialIsNew && nickname == null) {
+      throw const SocialSignUpRequiredException();
+    }
+    _session = _sessionFor('${provider.name[0]}_1', nickname ?? '우현');
+    final created = socialIsNew;
+    socialIsNew = false;
+    return (session: _session!, isNewAccount: created);
+  }
+
+  @override
+  Future<void> saveBodyInfo({
+    required double heightCm,
+    required double weightKg,
+  }) async {
+    bodyInfos.add((heightCm, weightKg));
+    await _bodyInfoGate?.future;
+    if (bodyInfoError case final error?) throw error;
+  }
+
+  @override
   Future<void> logOut() async => _session = null;
 
   static AuthSession _sessionFor(String loginId, String nickname) =>
@@ -64,4 +106,24 @@ class ScriptedAuthRepository implements AuthRepository {
         token: 'token',
         account: Account(id: 1, loginId: loginId, nickname: nickname),
       );
+}
+
+/// A provider sign-in that returns [token] or throws [error], counting calls.
+class FakeSocialSignIn implements SocialSignInService {
+  FakeSocialSignIn(this.provider, {this.token = 'provider-token', this.error});
+
+  @override
+  final SocialProvider provider;
+  String token;
+  Exception? error;
+  int calls = 0;
+  Completer<void>? gate;
+
+  @override
+  Future<String> signIn() async {
+    calls++;
+    await gate?.future;
+    if (error case final error?) throw error;
+    return token;
+  }
 }

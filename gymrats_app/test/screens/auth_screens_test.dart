@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
@@ -168,6 +170,113 @@ void main() {
       await tester.tap(find.text('가입하기'));
       await tester.pumpAndSettle();
       expect(repository.signUps.single, ('우현', 'woohyun', 'password1'));
+      expect(auth.status, AuthStatus.signedIn);
+    });
+  });
+
+  group('LoginScreen with Google (P7)', () {
+    late FakeSocialSignIn google;
+
+    setUp(() {
+      google = FakeSocialSignIn(SocialProvider.google);
+      // An existing provider account unless a test says otherwise.
+      repository.socialIsNew = false;
+    });
+
+    LoginScreen screen() => LoginScreen(
+      createViewModel: () => LoginViewModel(auth: auth, google: google),
+    );
+
+    testWidgets('no Google button without the service', (tester) async {
+      await open(tester, const LoginScreen());
+      expect(find.text('Google로 계속하기'), findsNothing);
+      expect(find.textContaining('카카오'), findsNothing);
+    });
+
+    testWidgets('shows Google, still with one lime button', (tester) async {
+      await open(tester, screen());
+      expect(find.text('Google로 계속하기'), findsOneWidget);
+      expect(find.textContaining('카카오'), findsNothing);
+      expect(find.byType(AccentButton), findsOneWidget);
+    });
+
+    testWidgets('a new provider account opens the nickname step', (
+      tester,
+    ) async {
+      repository.socialIsNew = true;
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      Object? arguments;
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AuthViewModel>.value(
+          value: auth,
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: screen(),
+            onGenerateRoute: (settings) {
+              if (settings.name != GymRatsApp.socialSignupRoute) return null;
+              arguments = settings.arguments;
+              return MaterialPageRoute<void>(
+                builder: (_) => const Scaffold(body: Text('nickname')),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.text('nickname'), findsOneWidget);
+      expect(arguments, (
+        provider: SocialProvider.google,
+        token: 'provider-token',
+      ));
+      expect(auth.status, AuthStatus.signedOut);
+    });
+
+    testWidgets('tapping it signs in with Google', (tester) async {
+      await open(tester, screen());
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pump();
+      expect(google.calls, 1);
+      expect(repository.socialSignIns.single.$1, SocialProvider.google);
+      expect(auth.status, AuthStatus.signedIn);
+    });
+
+    testWidgets('while one runs, it says so and the others wait', (
+      tester,
+    ) async {
+      final gate = google.gate = Completer<void>();
+      await open(tester, screen());
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pump();
+      expect(find.text('Google로 로그인하는 중…'), findsOneWidget);
+      final googleButton = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Google로 로그인하는 중…'),
+      );
+      expect(googleButton.onPressed, isNull);
+      final signup = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, '처음이신가요? 회원가입'),
+      );
+      expect(signup.onPressed, isNull);
+      gate.complete();
+      await tester.pump();
+    });
+
+    testWidgets('a failure shows its message and can be retried', (
+      tester,
+    ) async {
+      google.error = const SocialSignInFailedException('x');
+      await open(tester, screen());
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pump();
+      expect(
+        find.text(LoginViewModel.socialFailedMessage(SocialProvider.google)),
+        findsOneWidget,
+      );
+      google.error = null;
+      await tester.tap(find.text('Google로 계속하기'));
+      await tester.pump();
       expect(auth.status, AuthStatus.signedIn);
     });
   });
