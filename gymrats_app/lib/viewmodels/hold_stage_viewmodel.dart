@@ -43,11 +43,18 @@ enum HoldStagePhase {
 
 /// A moment the screen makes heard: a sound, and a short line for a screen
 /// reader (spec 5, 8). [started] is the end of an entry: the time begins
-/// to run (the chair pose's spec 6).
-enum HoldStageCueKind { warning, resumed, started, star, ended }
+/// to run (the chair pose's spec 6). [callout] is a bubble of the owner's
+/// (the hold effects spec 6): its words are read as a warning's are.
+enum HoldStageCueKind { warning, resumed, started, star, callout, ended }
 
 class HoldStageCue {
-  const HoldStageCue(this.kind, {this.count = 0, this.fault, this.seconds});
+  const HoldStageCue(
+    this.kind, {
+    this.count = 0,
+    this.fault,
+    this.seconds,
+    this.words,
+  });
 
   final HoldStageCueKind kind;
 
@@ -60,8 +67,52 @@ class HoldStageCue {
   /// A star's seconds.
   final int? seconds;
 
+  /// A callout's words, its lines as one.
+  final String? words;
+
   @override
   String toString() => 'HoldStageCue(${kind.name}, $count, ${fault?.id})';
+}
+
+/// What the floor's owner says over the stage besides "삐익!" (the hold
+/// effects spec 3 to 5).
+enum HoldCalloutKind {
+  /// Right after GO: the pose's start words, in the whistle's white bubble.
+  start,
+
+  /// At the first or second star: a big lime bubble, with a smile.
+  cheer,
+
+  /// At a second warning that leaves no star: a big red bubble.
+  fail,
+}
+
+/// One of the owner's bubbles: its kind and its lines.
+class HoldCallout {
+  const HoldCallout.start(this.lines) : kind = HoldCalloutKind.start, star = 0;
+
+  HoldCallout.cheer(this.star)
+    : kind = HoldCalloutKind.cheer,
+      lines = [HoldWords.cheer(star)!];
+
+  const HoldCallout.fail()
+    : kind = HoldCalloutKind.fail,
+      lines = const [HoldWords.fail],
+      star = 0;
+
+  final HoldCalloutKind kind;
+
+  /// The bubble's lines.
+  final List<String> lines;
+
+  /// The star a cheer is for, 1 or 2; 0 for the others.
+  final int star;
+
+  /// The lines as one, for a screen reader.
+  String get words => lines.join(' ');
+
+  @override
+  String toString() => 'HoldCallout(${kind.name}, $words)';
 }
 
 /// What the hold screen shows: an immutable snapshot.
@@ -72,6 +123,8 @@ class HoldStageState {
     this.startIn,
     this.stars = ArcadeStars.none,
     this.guide = JudgeSnapshot.initial,
+    this.callout,
+    this.ending = false,
   });
 
   final HoldStagePhase phase;
@@ -90,6 +143,25 @@ class HoldStageState {
   /// exercise's judge's.
   final JudgeSnapshot guide;
 
+  /// The owner's bubble over the stage, if any; a warning's "삐익!" is drawn
+  /// from [progress] instead.
+  final HoldCallout? callout;
+
+  /// From a second warning to the result ([HoldTiming.endShow]): the hold
+  /// ended, its last warning stays on screen, and nothing is judged.
+  /// [stars] are the play's already.
+  final bool ending;
+
+  /// Whether the clock stands and the warning shows: paused, or [ending].
+  bool get stopped =>
+      ending || (phase == HoldStagePhase.hold && progress.paused);
+
+  /// The warning the camera box shows: the paused one, or while [ending]
+  /// the last.
+  HoldFault? get shownFault => ending
+      ? (progress.warnings.isEmpty ? null : progress.warnings.last)
+      : (progress.paused ? progress.fault : null);
+
   HoldStageState copyWith({
     HoldStagePhase? phase,
     HoldProgress? progress,
@@ -97,12 +169,17 @@ class HoldStageState {
     bool clearStartIn = false,
     ArcadeStars? stars,
     JudgeSnapshot? guide,
+    HoldCallout? callout,
+    bool clearCallout = false,
+    bool? ending,
   }) => HoldStageState(
     phase: phase ?? this.phase,
     progress: progress ?? this.progress,
     startIn: clearStartIn ? null : startIn ?? this.startIn,
     stars: stars ?? this.stars,
     guide: guide ?? this.guide,
+    callout: clearCallout ? null : callout ?? this.callout,
+    ending: ending ?? this.ending,
   );
 }
 
@@ -180,6 +257,12 @@ class HoldStageViewModel extends ChangeNotifier {
   PoseFrame? _seen;
   SetupCameraCrop? _crop;
   Timer? _ticker;
+
+  /// Drops the owner's bubble when its time is up.
+  Timer? _calloutTimer;
+
+  /// Shows the result after a second warning's [HoldTiming.endShow].
+  Timer? _endTimer;
   bool _disposed = false;
 
   /// The hold's clock: the time the camera was not running is left out.
@@ -274,6 +357,7 @@ class HoldStageViewModel extends ChangeNotifier {
     if (_disposed) return;
     _ticker?.cancel();
     _ticker = null;
+    _cancelTimers();
     final setup = _setup;
     if (setup != null) unawaited(setup.releaseCamera());
   }
@@ -344,17 +428,29 @@ class HoldStageViewModel extends ChangeNotifier {
         ? null
         : _createGuideJudge(definition.setupExercise);
     _ticker = Timer.periodic(tick, (_) => _lookForFrames());
+    final words = definition.startWords;
+    final callout = words.isEmpty ? null : HoldCallout.start(words);
     _setState(
       _state.copyWith(
         phase: HoldStagePhase.hold,
         progress: judge.progress,
         clearStartIn: true,
+        callout: callout,
+        clearCallout: callout == null,
       ),
     );
+    if (callout != null) {
+      _cue(HoldStageCue(HoldStageCueKind.callout, words: callout.words));
+      // A pose with an entry keeps it until the time starts (in [_show]).
+      if (!definition.entry) _dropLater(callout, HoldTiming.startBubble);
+    }
   }
 
   void _hold(PoseFrame? frame) {
-    if (frame == null || identical(frame, _seen) || _frozenSince != null) {
+    if (frame == null ||
+        identical(frame, _seen) ||
+        _frozenSince != null ||
+        _state.ending) {
       return;
     }
     _seen = frame;
@@ -370,6 +466,7 @@ class HoldStageViewModel extends ChangeNotifier {
     if (_disposed ||
         judge == null ||
         _state.phase != HoldStagePhase.hold ||
+        _state.ending ||
         _frozenSince != null) {
       return;
     }
@@ -382,6 +479,7 @@ class HoldStageViewModel extends ChangeNotifier {
   /// ended.
   void _show(HoldProgress progress, {JudgeSnapshot? guide}) {
     final before = _state.progress;
+    var callout = _state.callout;
     if (progress.warningCount > before.warningCount) {
       _cue(
         HoldStageCue(
@@ -390,11 +488,14 @@ class HoldStageViewModel extends ChangeNotifier {
           fault: progress.warnings.last,
         ),
       );
+      // A warning takes the owner's bubble (effects spec 3, 4).
+      callout = null;
     } else if (before.paused && progress.state == HoldState.holding) {
       _cue(const HoldStageCue(HoldStageCueKind.resumed));
     } else if (before.state == HoldState.entering &&
         progress.state == HoldState.holding) {
       _cue(const HoldStageCue(HoldStageCueKind.started));
+      if (callout?.kind == HoldCalloutKind.start) callout = null;
     }
     final times = stage.starSeconds;
     for (var i = 0; i < times.length; i++) {
@@ -403,27 +504,97 @@ class HoldStageViewModel extends ChangeNotifier {
         _cue(
           HoldStageCue(HoldStageCueKind.star, count: i + 1, seconds: times[i]),
         );
+        // The first two stars are cheered; the third ends it as a clear.
+        if (!progress.ended && HoldWords.cheer(i + 1) != null) {
+          callout = HoldCallout.cheer(i + 1);
+          _dropLater(callout, HoldTiming.cheer);
+        }
       }
     }
     if (!progress.ended) {
-      _setState(_state.copyWith(progress: progress, guide: guide));
+      _setState(
+        _state.copyWith(
+          progress: progress,
+          guide: guide,
+          callout: callout,
+          clearCallout: callout == null,
+        ),
+      );
       return;
     }
     _ticker?.cancel();
     _ticker = null;
+    _calloutTimer?.cancel();
+    _calloutTimer = null;
     final stars = ArcadeStarJudge.hold(stage, progress.held);
+    if (progress.end != HoldEnd.warnings) {
+      _setState(
+        _state.copyWith(
+          progress: progress,
+          stars: stars,
+          guide: guide,
+          clearCallout: true,
+        ),
+      );
+      _finish();
+      return;
+    }
+    // The second warning stays for [HoldTiming.endShow] before the result,
+    // with "실패!" when it leaves no star (effects spec 5).
+    final fail = stars.count == 0 ? const HoldCallout.fail() : null;
     _setState(
       _state.copyWith(
-        phase: HoldStagePhase.result,
         progress: progress,
         stars: stars,
         guide: guide,
+        ending: true,
+        callout: fail,
+        clearCallout: fail == null,
+      ),
+    );
+    if (fail != null) {
+      _cue(HoldStageCue(HoldStageCueKind.callout, words: fail.words));
+    }
+    _endTimer = Timer(HoldTiming.endShow, () {
+      _endTimer = null;
+      _finish();
+    });
+  }
+
+  /// The result: the stars of [HoldStageState.stars], kept; the camera let
+  /// go.
+  void _finish() {
+    if (_disposed) return;
+    final stars = _state.stars;
+    _setState(
+      _state.copyWith(
+        phase: HoldStagePhase.result,
+        ending: false,
+        clearCallout: true,
       ),
     );
     _cue(HoldStageCue(HoldStageCueKind.ended, count: stars.count));
     final setup = _setup;
     if (setup != null) unawaited(setup.releaseCamera());
     unawaited(_save(stars));
+  }
+
+  /// Drops [callout] after [after], unless another took its place.
+  void _dropLater(HoldCallout callout, Duration after) {
+    _calloutTimer?.cancel();
+    _calloutTimer = Timer(after, () {
+      _calloutTimer = null;
+      if (identical(_state.callout, callout)) {
+        _setState(_state.copyWith(clearCallout: true));
+      }
+    });
+  }
+
+  void _cancelTimers() {
+    _calloutTimer?.cancel();
+    _calloutTimer = null;
+    _endTimer?.cancel();
+    _endTimer = null;
   }
 
   /// Keeps the play's stars: the store keeps a stage's most.
@@ -446,6 +617,7 @@ class HoldStageViewModel extends ChangeNotifier {
   void _closeSetup() {
     _ticker?.cancel();
     _ticker = null;
+    _cancelTimers();
     final setup = _setup;
     _setup = null;
     if (setup != null) {

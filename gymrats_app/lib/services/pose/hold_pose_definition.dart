@@ -43,6 +43,7 @@ class HoldPoseDefinition {
     required this.faults,
     required this.silhouette,
     required this.guide,
+    this.startWords = const [],
   });
 
   final HoldPose pose;
@@ -72,4 +73,9 @@ class HoldPoseDefinition {
 
   /// The guide lines over the camera while holding.
   final HoldGuide guide;
+
+  /// The owner's bubble right after GO, one string a line (the hold effects
+  /// spec 3); none when empty. A pose with an [entry] keeps it until the
+  /// time starts, the others for `HoldTiming.startBubble`.
+  final List<String> startWords;
 }

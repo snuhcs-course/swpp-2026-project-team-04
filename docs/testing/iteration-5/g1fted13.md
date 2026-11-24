@@ -379,6 +379,85 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 |---|---|---|
 | View | `test/screens/hold_stage_screen_test.dart` | 'a clear and a fail fit 360 × 780 at 1.3x text', '… 320 × 640 at 1.3x text', '… 320 × 640 at 1.0x text': a clear and a fail with no overflow (a short phone scrolls to its buttons); 'the frame keeps the design sizes where they fit': `ArcadeResultFrame` with "R1부터 다시" draws its words and its middle star (72) at full size at 600 × 1000, 412 × 915 and 360 × 780, has no overflow at the three sizes, and shrinks the stars at 320 wide and the words at 1.3x text on a 360 phone |
 
+#### 2026-11-24 · code at commit `4ef8a2f` · step A4, third follow-up on `codex/iter5-hold-plank` (one arm bent, Codex review)
+The Codex review of PR #90 at `be6509a` (P2, "Check each arm against the plank angle") found that the high plank's
+arms-bent check used `PoseMetrics.elbowAngle`, the mean of the two arms: one arm at 180° and the other at 130° make
+155°, which passed, so a user could hold with one arm bent and earn time and stars. The user had it fixed on A4's
+branch (local task.md, A4 Decisions, 2026-11-24):
+- **Now:** each arm seen is measured alone (`PoseMetrics.leftElbowAngle`, `rightElbowAngle`, each there only when its
+  shoulder, elbow and wrist reach the judge's likelihood line), and the less straight one under the setup's 155° is
+  arms bent; with one arm seen, that one. It is chosen in `high_plank_hold.dart`; `pose_metrics.dart` is unchanged.
+  The other straight-arm checks (the knees, the hip fold, the plank angle kept) keep the judge's mean.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the two new tests of a bent arm failed on the old reader; the third (one arm seen) passes on both,
+  since the mean of one arm is that arm, and guards the new one-arm path.
+- **Tests:** `flutter test` 4087 passed, 0 failed, 10 skipped (2026-11-24, `4ef8a2f`; the same 10 skips as above). `flutter analyze` found no issues.
+  `test/services/pose/high_plank_hold_test.dart`: 35 passed.
+- **New tests:** 3, in `test/services/pose/high_plank_hold_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths); the stacked-branch
+  intersection with A2's and A3's branches still lists 21 paths.
+- **Review:** local reviewer A4 run 8, APPROVE. It checked the test geometry by hand (the spliced arm keeps the
+  shoulder width and the hands under the shoulders) and that keeping the mean for the other straight-arm checks
+  loses no fault: a frame with one arm under 155° is still broken (at most it reads "무릎 떼요" first, when the hips
+  are folded too), as the push-up judge also uses the mean for its top and the smaller arm only for its lockout. Its
+  Minors were fixed before the commit: two comments named the review as "Codex review on A4" (now "PR #90 review"),
+  and this entry lacked these two lines.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the third follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/high_plank_hold_test.dart` | 'one arm bent, 180° and 130°, is arms bent though the mean is 155°' (either side; the metrics' mean is 155°); 'the less straight arm decides: 156° held, 154° bent' (the other arm at 180°); 'with one arm seen, that arm decides' (the right elbow and wrist unseen: the left at 180° held, at 130° bent) |
+
+#### 2026-11-24 · code at commit `3ffed5f` · step A4, effects on `codex/iter5-hold-plank` (the user's picks after the phone check)
+After the phone check of 2026-11-24 the user picked the hold stage's effects on the design canvas (local spec
+`p16-3-fx/SPEC-FX.md`, not committed; local task.md, A4 Decisions, 2026-11-24). All new times are in `HoldTiming`:
+- **Music:** the battle's tracks at the battle's moments, through the same `SoundServices.music` and `MusicCue`s:
+  `setup` through the setup and the 3·2·1, `battle` while holding, the `win` or `lose` jingle as the stage ends
+  (at a second warning's moment already, as a battle's jingle starts when it ends), and `menu` when the stage is left
+  before a result. The battle's `BattleSounds` takes a `BattleStageState`, so the hold
+  screen picks the same cues itself; no music or battle file changed.
+- **Start bubble (C1):** right after GO the owner's white bubble, as "삐익!"'s, says the pose's start words
+  (`HoldPoseDefinition.startWords`; the high plank's "그대로 버텨!") for `startBubble` (2 s), or until the time starts
+  for a pose with an entry. A warning takes its place.
+- **Stars (B2 revised + sound):** at the first and second star the star pops on the bar (`starPop`, 0.3 s; not with
+  reduced motion), the owner smiles (`GymOwnerFace.ok`) behind a big lime bubble "좋아!" / "잘한다!" for `cheer`
+  (1 s), its right end per owner as the design's `bubR`, and the app's short `SoundEffect.good`
+  (`assets/audio/sfx_hit_good.wav`) plays. The third star is the clear. A warning takes the bubble's place.
+- **Second warning (A2 + A3, shown as F4):** the owner's big red "실패!" (the cheer's widget, its color and words
+  changed) comes in big and settles (`failPop`, 0.2 s) in place of "삐익!"; the camera box keeps the warning's words,
+  the clock says "멈춤", nothing is judged for `endShow` (1.5 s), then the fail screen lists the two warnings' reasons
+  as red chips in order where "경고 2번" was. A clear ended by warnings (a star already earned) keeps "삐익!" for the
+  same 1.5 s, then shows the clear (a call beyond the spec, noted in task.md).
+- **Screen reader:** the start words and "실패!" are announced as the warnings are (a `callout` cue), and the first two
+  stars' announcements end with their cheer.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Tests:** `flutter test` 4109 passed, 0 failed, 10 skipped (2026-11-24, `3ffed5f`; the same 10 skips as above). `flutter analyze` found no
+  issues. The four A4 test files with `test/design_tokens_test.dart`: 207 passed.
+- **New tests:** 22 (view model 8, screen 14). Changed for the new behavior: the start words' cue in two
+  cue lists, the result after `endShow` in four screen test bodies (six runs, with the size cases) and one view model
+  test, the reasons in place of "경고 2번" in the fail test, and the stars' announcements with their cheer.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths); the stacked-branch
+  intersection with A2's and A3's branches still lists 21 paths.
+- **Review:** local reviewer A4 run 9, CHANGES_REQUESTED: the result jingle came 1.5 s after a second warning, while a
+  battle's starts when it ends (now at once), and the local design-doc list lacked the new API (added); Minors: a
+  screen check that could not fail (now: the frames in the moment are not read), and this entry's counts and lines.
+  The clear ended by warnings (no "실패!") was the session's call: said in the PR and asked of the user. Run 10: APPROVE (all fixed; no new code finding).
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Phone check of the effects:** TODO(Woohyun Song): with the demo, see the start bubble, both cheers with the star
+  pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen, and the music through a
+  stage and after leaving.
+
+### Test cases added in the effects follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | 'GO shows the pose's start words for 2 s, read out'; 'with an entry the start words stay until the time starts'; 'a warning takes the start bubble'; 'the first two stars are cheered for 1 s, the third is not'; 'a warning takes the cheer'; 'a second warning with no star: 실패! for 1.5 s, nothing judged'; 'a second warning after a star: the whistle stays, then a clear'; 'leaving in the moment shows no result and keeps nothing' |
+| View | `test/screens/hold_stage_screen_test.dart` | 'GO: "그대로 버텨!" in the white bubble for 2 s, read out'; 'a warning takes the start bubble's place'; 'the first and second stars: a lime cheer, a smile, a pop and the good sound, once each'; 'the cheer ends at the owner on every floor' (142, 140, 150); '"잘한다!" fits 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x'; 'with reduced motion the stars do not pop'; 'a warning takes the cheer's place'; 'a second warning with no star: "실패!" over the stage, the warning kept below for 1.5 s, then the reasons in order'; 'the battle's music at the battle's moments'; 'a second warning with no star plays the lose jingle at once'; 'a clear ended by warnings plays the win jingle at once'; 'leaving before a result brings the menu music back'; the size tests 'a clear and a fail fit …' now also see "실패!" |
+
 #### 2026-11-23 · code at commit `0579a65` · step A5 `codex/iter5-hold-chair` (Add chair-pose judging, team order #8.4)
 A5 adds the second held pose, the chair pose, on A4's hold stage (the local design hand-off's spec `p16-4/SPEC.md` v2,
 not committed): the chair reading and the chair pose's bundle (`lib/services/pose/chair_hold.dart`). The screen, the
@@ -503,6 +582,34 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 | Layer | File | What it covers |
 |---|---|---|
 | Service | `test/services/pose/chair_hold_test.dart` | 'down to 0.8 over 3 s / 4 s / 6 s reads 0.8 and is held, where the squat judge's rule reads under 0.75' (3 tests: the reader's depth is the true 0.8 and held, while `SquatRepJudge` on the same frames reads under 0.75); 'the entry ends and the time runs, with no warning' (a slow sit after GO on A4's `HoldJudge`); 'sitting again slowly after a warning runs the time again'; 'after GO it never changes: standing, halfway up or seated'; 'taken after GO, it is taken once and not followed'; changed: 'the same frames give the squat judge's depth, within 12 s' (as the 3·2·1 reads them), 'past 12 s down the squat judge drops it; the depth goes on' (GO at 1 s, the real 0.9), 'in the 3·2·1 it does not change while seated, nor halfway up', 'in the 3·2·1, standing, it follows slowly' (renamed from the A5 entry's 'it does not change while seated, nor halfway up' and 'standing, it follows slowly', which ran after GO) |
+
+#### 2026-11-24 · code at commit `4767873` · step A5: the chair pose's start bubble (A4's effects merged)
+A4's hold effects (`3ffed5f`, its entry above) came in by `git merge` (`37e987c`; the notes' add/add conflicts kept every
+entry). The chair pose's part (the effects spec 3 and 7): its start words "스쿼트 자세로" / "버텨!" on two lines
+(`chairHold.startWords`), shown from GO and gone when the time starts, when "시작" is read.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as the A5 entry above.
+
+- **Tests:** `flutter test` 4159 passed, 0 failed, 10 skipped (2026-11-24, `4767873`; the same 10 skips as above). `flutter analyze` found no
+  issues. The two chair files: 50 passed (37 + 13).
+- **New tests:** 3 (the size cases); 3 changed: the bundle test checks the two lines, and the two entry tests now see
+  the bubble and hear "스쿼트 자세로 버텨!" before "시작".
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (67 paths).
+- **Review:** local reviewer A5 run 5, APPROVE; its Minors fixed before the commit (stronger size checks, these
+  lines, the Prompt Log's order).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+- **Phone check of the start bubble:** TODO(Woohyun Song): STAGE 5 · 1F, the two lines from GO while standing and
+  sitting down, gone when the time starts.
+- **Acceptance criteria → tests (the effects spec, the chair's part):** 6.1 shown while entering and gone at the
+  start → 'standing after GO: 0:00, 버틴 시간, a green frame, no warning', 'seated, the time starts with "시작" and
+  runs'; 6.5 sizes → 'the two-line start bubble and "좋아!" fit …' (3 tests); 6.6 read out → the `said` checks in the
+  same two entry tests.
+
+### Test cases added or changed for the start bubble
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/chair_hold_test.dart` | 'is set up as a squat, entered after GO, with its own words' now checks `startWords` |
+| View | `test/services/pose/chair_hold_stage_test.dart` | 'standing after GO: 0:00, 버틴 시간, a green frame, no warning' (the two lines shown and read); 'seated, the time starts with "시작" and runs' (the bubble goes when the time starts); 'the two-line start bubble and "좋아!" fit 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x' (new) |
 
 #### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
 P16 builds the arcade's screens on A2's rules and A3's art (P16 spec v2):

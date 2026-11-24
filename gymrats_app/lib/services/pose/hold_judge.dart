@@ -21,6 +21,25 @@ abstract final class HoldTiming {
 
   /// The warning that ends the stage.
   static const maxWarnings = 2;
+
+  /// The owner's start bubble after GO, for a pose held from GO (the hold
+  /// effects spec 3). A pose with an entry keeps it until the time starts.
+  static const startBubble = Duration(seconds: 2);
+
+  /// The owner's cheer bubble and smile at the first and second star
+  /// (effects spec 4).
+  static const cheer = Duration(seconds: 1);
+
+  /// A filled star's pop on the bar: bigger, then back (effects spec 4).
+  static const starPop = Duration(milliseconds: 300);
+
+  /// From a second warning to the result: the warning stays, the owner
+  /// says "실패!" when no star was earned, and nothing is judged (effects
+  /// spec 5).
+  static const endShow = Duration(milliseconds: 1500);
+
+  /// The "실패!" bubble's entrance: big, then in place (effects spec 5).
+  static const failPop = Duration(milliseconds: 200);
 }
 
 /// The time and the warnings of one hold, from a stream of readings on a

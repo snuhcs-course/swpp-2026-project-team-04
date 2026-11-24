@@ -14,6 +14,7 @@ import 'package:gymrats_app/services/audio/sound_settings.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/chair_hold.dart';
 import 'package:gymrats_app/services/pose/exercise_judge.dart';
+import 'package:gymrats_app/services/pose/hold_judge.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/hold_stage_viewmodel.dart';
@@ -296,7 +297,17 @@ void main() {
       expect(find.text('멈춤'), findsNothing);
       expect(_frameColor(tester), AppColors.statusGood);
       expect(driver.viewModel.state.progress.warnings, isEmpty);
-      expect(driver.said, isEmpty);
+      // The owner's two lines stay while entering (the effects spec 3).
+      final bubble = find.byKey(const ValueKey('hold-start'));
+      expect(
+        find.descendant(of: bubble, matching: find.text('스쿼트 자세로')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: bubble, matching: find.text('버텨!')),
+        findsOneWidget,
+      );
+      expect(driver.said, ['스쿼트 자세로 버텨!']);
     });
 
     _testWidgets('seated, the time starts with "시작" and runs', (tester) async {
@@ -308,13 +319,16 @@ void main() {
       // the time starts 0.6 s later.
       await driver.sit(tester, 700);
       await tester.pump();
-      expect(driver.said, isEmpty);
+      expect(driver.said, ['스쿼트 자세로 버텨!']);
+      expect(find.byKey(const ValueKey('hold-start')), findsOneWidget);
       await driver.sit(tester, 100);
       await tester.pump();
-      expect(driver.said, ['시작']);
+      // The time starts: "시작", and the start bubble goes.
+      expect(driver.said, ['스쿼트 자세로 버텨!', '시작']);
+      expect(find.byKey(const ValueKey('hold-start')), findsNothing);
       await driver.sit(tester, 3000);
       expect(find.text('0:03'), findsOneWidget);
-      expect(driver.said, ['시작']);
+      expect(driver.said, ['스쿼트 자세로 버텨!', '시작']);
     });
 
     _testWidgets('the squat height lines stay over the camera past 12 s', (
@@ -339,6 +353,48 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  for (final (size, scale) in [
+    (const Size(360, 780), 1.3),
+    (const Size(320, 640), 1.3),
+    (const Size(320, 640), 1.0),
+  ]) {
+    _testWidgets('the two-line start bubble and "좋아!" fit '
+        '${size.width.toInt()} × ${size.height.toInt()} at ${scale}x text', (
+      tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final driver = _Driver();
+      await driver.open(tester, size: size);
+      await tester.ensureVisible(find.text('자세 잡기'));
+      await tester.pump();
+      await driver.go(tester);
+      final bubble = find.byKey(const ValueKey('hold-start'));
+      for (final line in ['스쿼트 자세로', '버텨!']) {
+        expect(
+          find.descendant(of: bubble, matching: find.text(line)),
+          findsOneWidget,
+        );
+      }
+      // The whole bubble on screen, its two lines inside it.
+      final box = tester.getRect(bubble);
+      expect(box.left, greaterThanOrEqualTo(0));
+      expect(box.right, lessThanOrEqualTo(size.width));
+      for (final line in ['스쿼트 자세로', '버텨!']) {
+        final words = tester.getRect(
+          find.descendant(of: bubble, matching: find.text(line)),
+        );
+        expect(box.left <= words.left && words.right <= box.right, isTrue);
+      }
+      expect(tester.takeException(), isNull);
+      // Seated to the first star (10 s): the cheer.
+      await driver.sit(tester, 10900);
+      await tester.pump(HoldTiming.failPop);
+      expect(find.text('좋아!'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   group('warnings', () {
     for (final (name, words, icon, act) in [

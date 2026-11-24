@@ -7,6 +7,7 @@ import '../models/arcade_floor.dart';
 import '../models/arcade_stage.dart';
 import '../models/character_rig.dart';
 import '../models/exercise_type_korean.dart';
+import '../models/hold_reading.dart';
 import '../theme/app_theme.dart';
 import '../widgets/battle_fx_motion.dart';
 import '../widgets/character_figure.dart';
@@ -521,6 +522,85 @@ class ArcadeResultStrikes extends StatelessWidget {
   );
 }
 
+/// A failed hold's warnings with their reasons, in the order they came: a
+/// red chip each, the warning mark and its big words on one line (the hold
+/// effects spec 5; the design's `ArcResult` holdFail `why=list`). The same
+/// reason twice is two chips. Where [ArcadeResultStrikes] says "경고 2번".
+class ArcadeResultReasons extends StatelessWidget {
+  const ArcadeResultReasons({super.key, required this.faults});
+
+  final List<HoldFault> faults;
+
+  static const _padTop = 10.0;
+  static const _pad = EdgeInsets.symmetric(
+    horizontal: AppSpacing.s12,
+    vertical: _padTop,
+  );
+  static const _corner = 14.0;
+  static const _edge = 1.5;
+  static const _chipPadTop = 5.0;
+  static const _chipPad = EdgeInsets.symmetric(
+    horizontal: AppSpacing.s8,
+    vertical: _chipPadTop,
+  );
+  static const _chipCorner = 10.0;
+  static const _chipEdge = 2.0;
+  static const _chipGap = 6.0;
+  static const _strike = Size(22, 16);
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Container(
+      key: const ValueKey('result-reasons'),
+      padding: _pad,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border, width: _edge),
+        borderRadius: BorderRadius.circular(_corner),
+      ),
+      child: Row(
+        children: [
+          for (final (i, fault) in faults.indexed) ...[
+            if (i > 0) const SizedBox(width: AppSpacing.s8),
+            Expanded(
+              child: Container(
+                key: ValueKey('result-reason-$i'),
+                padding: _chipPad,
+                decoration: BoxDecoration(
+                  color: HoldColors.reasonChip,
+                  border: Border.all(color: AppColors.ink, width: _chipEdge),
+                  borderRadius: BorderRadius.circular(_chipCorner),
+                ),
+                child: Row(
+                  children: [
+                    const ExcludeSemantics(
+                      child: HoldStrike(size: _strike, fill: AppColors.danger),
+                    ),
+                    const SizedBox(width: _chipGap),
+                    // Shrinks only on a narrow phone or with large text.
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          fault.words,
+                          maxLines: 1,
+                          style: text.holdReasonChip,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// A hold stage's result (spec 6, the design's `ArcResult` holdClear and
 /// holdFail) in the [ArcadeResultFrame].
 class HoldStageResult extends StatelessWidget {
@@ -534,11 +614,15 @@ class HoldStageResult extends StatelessWidget {
     required this.onPlayAgain,
     required this.onNextStage,
     required this.onArcade,
+    this.warnings = const [],
   });
 
   final ArcadeHoldStage stage;
   final ArcadeFloor floor;
   final Duration held;
+
+  /// The play's warnings, in order: a fail lists their reasons.
+  final List<HoldFault> warnings;
 
   /// Each star lit or not: none lit is a fail.
   final List<bool> litStars;
@@ -597,7 +681,9 @@ class HoldStageResult extends StatelessWidget {
             ),
       below: cleared
           ? (next == null ? null : ArcadeNextStageCard(next: next))
-          : const ArcadeResultStrikes(),
+          : warnings.isEmpty
+          ? const ArcadeResultStrikes()
+          : ArcadeResultReasons(faults: warnings),
       belowGap: cleared
           ? ArcadeResultFrame.nextStageGap
           : ArcadeResultFrame.strikesGap,

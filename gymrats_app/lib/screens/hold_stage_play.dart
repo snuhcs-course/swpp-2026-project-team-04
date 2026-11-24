@@ -9,6 +9,7 @@ import '../models/hold_reading.dart';
 import '../models/pose_frame.dart';
 import '../models/setup_hint_short.dart';
 import '../models/setup_silhouette_alignment.dart';
+import '../services/pose/hold_judge.dart';
 import '../services/pose/hold_pose_definition.dart';
 import '../services/pose/setup_checker.dart';
 import '../theme/app_theme.dart';
@@ -38,6 +39,11 @@ import 'hold_stage_brief.dart';
 ///   marks and the user's face at its end (amber while paused).
 /// - Holding: a green frame in the camera box; paused, a red one, the
 ///   warning's big words and icon, and the owner blowing the whistle.
+/// - The owner's bubbles (the hold effects spec 3 to 5): the pose's start
+///   words after GO in the whistle's white bubble; at the first and second
+///   star a big lime cheer, with a smile and the star popping on the bar;
+///   at a second warning with no star a big red "실패!" over the whistle,
+///   with the warning kept in the camera box until the result.
 class HoldStagePlay extends StatelessWidget {
   const HoldStagePlay({
     super.key,
@@ -165,14 +171,18 @@ class _Stage extends StatelessWidget {
 
   static const _bubbleLeft = 30.0;
   static const _bubbleTop = 196.0;
+  static const _bigBubbleTop = 172.0;
   static const _ownerBottom = 34.0;
 
   @override
   Widget build(BuildContext context) {
     final progress = state.progress;
-    final warned = state.phase == HoldStagePhase.hold && progress.paused;
+    final warned = state.phase == HoldStagePhase.hold && state.stopped;
+    final callout = state.phase == HoldStagePhase.hold ? state.callout : null;
     final showHud = state.phase != HoldStagePhase.setup;
     final right = holdOwnerRight[floor.owner]?.stage ?? 8;
+    final bubbleRight =
+        holdBigBubbleRight[floor.owner] ?? holdBigBubbleRight['seal']!;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
     return Stack(
       clipBehavior: Clip.hardEdge,
@@ -188,7 +198,11 @@ class _Stage extends StatelessWidget {
               key: const ValueKey('hold-owner'),
               ownerId: floor.owner,
               scale: 1.2,
-              face: warned ? GymOwnerFace.blow : GymOwnerFace.watch,
+              face: warned
+                  ? GymOwnerFace.blow
+                  : callout?.kind == HoldCalloutKind.cheer
+                  ? GymOwnerFace.ok
+                  : GymOwnerFace.watch,
               idle: true,
             ),
           ),
@@ -198,7 +212,7 @@ class _Stage extends StatelessWidget {
             left: 14,
             right: 14,
             top: 26,
-            child: _Hud(stage: stage, progress: progress),
+            child: _Hud(stage: stage, progress: progress, stopped: warned),
           ),
           Positioned(
             left: 22,
@@ -208,15 +222,43 @@ class _Stage extends StatelessWidget {
             child: _Bar(
               stage: stage,
               progress: progress,
+              stopped: warned,
               myCharacter: myCharacter,
+              popStar: callout?.kind == HoldCalloutKind.cheer
+                  ? callout!.star
+                  : null,
+              animate: !reducedMotion,
             ),
           ),
         ],
-        if (warned)
+        // "실패!" takes the whistle's place; a start bubble gives way to it.
+        if (warned && callout?.kind != HoldCalloutKind.fail)
           Positioned(
             left: _bubbleLeft,
             top: _bubbleTop,
             child: _Whistle(animate: !reducedMotion),
+          ),
+        if (!warned && callout?.kind == HoldCalloutKind.start)
+          Positioned(
+            left: _bubbleLeft,
+            top: _bubbleTop,
+            child: _StartBubble(lines: callout!.lines, animate: !reducedMotion),
+          ),
+        if (callout != null && callout.kind != HoldCalloutKind.start)
+          Positioned(
+            right: bubbleRight,
+            top: _bigBubbleTop,
+            child: callout.kind == HoldCalloutKind.fail
+                ? HoldBigBubble.fail(
+                    words: callout.words,
+                    right: bubbleRight,
+                    animate: !reducedMotion,
+                  )
+                : HoldBigBubble.cheer(
+                    words: callout.words,
+                    right: bubbleRight,
+                    animate: !reducedMotion,
+                  ),
           ),
         ..._bands(reducedMotion),
       ],
@@ -271,10 +313,17 @@ class _Stage extends StatelessWidget {
 
 /// The stage tag, the clock and the warning marks along the top.
 class _Hud extends StatelessWidget {
-  const _Hud({required this.stage, required this.progress});
+  const _Hud({
+    required this.stage,
+    required this.progress,
+    required this.stopped,
+  });
 
   final ArcadeHoldStage stage;
   final HoldProgress progress;
+
+  /// Paused, or the second warning's moment: "멈춤".
+  final bool stopped;
 
   static const _tagHeight = 24.0;
   static const _tagSide = 9.0;
@@ -287,7 +336,7 @@ class _Hud extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final used = progress.warningCount;
-    final paused = progress.paused;
+    final paused = stopped;
     // Spread across the top with equal room between, as the design: the
     // clock sits in the middle of the room the tag and the marks leave,
     // and shrinks rather than overflow.
@@ -372,12 +421,22 @@ class _Bar extends StatelessWidget {
   const _Bar({
     required this.stage,
     required this.progress,
+    required this.stopped,
     required this.myCharacter,
+    required this.popStar,
+    required this.animate,
   });
 
   final ArcadeHoldStage stage;
   final HoldProgress progress;
+
+  /// Paused, or the second warning's moment: an amber fill.
+  final bool stopped;
   final String myCharacter;
+
+  /// The star (1 or 2) being cheered: it pops, unless [animate] is off.
+  final int? popStar;
+  final bool animate;
 
   static const _trackTop = 18.0;
   static const _trackHeight = 18.0;
@@ -390,7 +449,7 @@ class _Bar extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final ends = stage.endsAt.inMilliseconds;
     final share = (progress.held.inMilliseconds / ends).clamp(0.0, 1.0);
-    final fill = progress.paused ? AppColors.warning : AppColors.accent;
+    final fill = stopped ? AppColors.warning : AppColors.accent;
     return ExcludeSemantics(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -434,10 +493,14 @@ class _Bar extends StatelessWidget {
                 Positioned(
                   left: width * seconds * 1000 / ends - 11,
                   top: -6,
-                  child: HoldStar(
-                    key: ValueKey('hold-mark-star-$i'),
-                    size: 22,
-                    lit: progress.held >= Duration(seconds: seconds),
+                  child: _StarPop(
+                    popping: animate && popStar == i + 1,
+                    index: i,
+                    child: HoldStar(
+                      key: ValueKey('hold-mark-star-$i'),
+                      size: 22,
+                      lit: progress.held >= Duration(seconds: seconds),
+                    ),
                   ),
                 ),
                 Positioned(
@@ -509,6 +572,54 @@ class _Whistle extends StatelessWidget {
 
   final bool animate;
 
+  @override
+  Widget build(BuildContext context) => _SmallBubble(
+    boxKey: const ValueKey('hold-whistle'),
+    animate: animate,
+    child: Text('삐익!', style: Theme.of(context).textTheme.holdWhistle),
+  );
+}
+
+/// The owner's start words after GO, a line each, in the whistle's bubble
+/// (the hold effects spec 3; the design's `P16Hold scene=go guide=bubble`).
+class _StartBubble extends StatelessWidget {
+  const _StartBubble({required this.lines, required this.animate});
+
+  final List<String> lines;
+  final bool animate;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.holdStartBubble;
+    return _SmallBubble(
+      boxKey: const ValueKey('hold-start'),
+      animate: animate,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final line in lines)
+            Text(line, style: style, maxLines: 1, softWrap: false),
+        ],
+      ),
+    );
+  }
+}
+
+/// The whistle's white bubble with its tail toward the owner, popping in
+/// unless motion is reduced. Its words shrink only where they would not fit
+/// the stage.
+class _SmallBubble extends StatelessWidget {
+  const _SmallBubble({
+    required this.boxKey,
+    required this.animate,
+    required this.child,
+  });
+
+  final Key boxKey;
+  final bool animate;
+  final Widget child;
+
   static const _padTop = 6.0;
   static const _padBottom = 8.0;
   static const _pad = EdgeInsets.fromLTRB(
@@ -520,6 +631,10 @@ class _Whistle extends StatelessWidget {
   static const _edge = 2.5;
   static const _corner = 16.0;
 
+  /// The room the bubble may take: the stage less its left and a margin.
+  static const _maxWidth =
+      BattleFx.stageWidth - _Stage._bubbleLeft - AppSpacing.s20;
+
   @override
   Widget build(BuildContext context) {
     final bubble = Semantics(
@@ -527,15 +642,22 @@ class _Whistle extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
-            key: const ValueKey('hold-whistle'),
-            padding: _pad,
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              border: Border.all(color: AppColors.ink, width: _edge),
-              borderRadius: BorderRadius.circular(_corner),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _maxWidth),
+            child: Container(
+              key: boxKey,
+              padding: _pad,
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                border: Border.all(color: AppColors.ink, width: _edge),
+                borderRadius: BorderRadius.circular(_corner),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: child,
+              ),
             ),
-            child: Text('삐익!', style: Theme.of(context).textTheme.holdWhistle),
           ),
           const Positioned(
             right: -13,
@@ -557,6 +679,240 @@ class _Whistle extends StatelessWidget {
       child: bubble,
     );
   }
+}
+
+/// Where each owner's big bubble ends on the right of the stage, so that its
+/// tail reaches the owner's face (the design's `bubR`).
+const holdBigBubbleRight = <String, double>{
+  'seal': 140,
+  'penguin': 142,
+  'kangaroo': 140,
+  'bear': 150,
+};
+
+/// The owner's big bubble (the hold effects spec 4 and 5; the design's
+/// `P16Hold scene=star fx=big` and `scene=out out=say`): a lime cheer at
+/// the first and second star, or a red "실패!" at a second warning with no
+/// star. One widget, its color and words told apart. The cheer pops in as
+/// the whistle does; "실패!" comes in big and settles in
+/// [HoldTiming.failPop]. No motion when [animate] is off.
+class HoldBigBubble extends StatelessWidget {
+  const HoldBigBubble.cheer({
+    super.key,
+    required this.words,
+    required this.right,
+    this.animate = true,
+  }) : color = AppColors.accent,
+       textColor = AppColors.ink,
+       failing = false;
+
+  const HoldBigBubble.fail({
+    super.key,
+    required this.words,
+    required this.right,
+    this.animate = true,
+  }) : color = AppColors.danger,
+       textColor = AppColors.onInk,
+       failing = true;
+
+  final String words;
+
+  /// Where the bubble ends on the right of the 360-point stage.
+  final double right;
+  final Color color;
+  final Color textColor;
+  final bool failing;
+  final bool animate;
+
+  static const _padTop = 8.0;
+  static const _padSide = 24.0;
+  static const _padBottom = 12.0;
+  static const _pad = EdgeInsets.fromLTRB(
+    _padSide,
+    _padTop,
+    _padSide,
+    _padBottom,
+  );
+  static const _edge = 3.0;
+  static const _corner = 22.0;
+  static const _tail = Size(24, 30);
+  static const _tailBottom = 10.0;
+
+  /// "실패!" starts this much bigger.
+  static const _failFrom = 1.4;
+
+  /// The room the bubble may take left of its right end.
+  static const _margin = AppSpacing.s8;
+
+  @override
+  Widget build(BuildContext context) {
+    final bubble = Semantics(
+      liveRegion: true,
+      label: words,
+      child: ExcludeSemantics(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: BattleFx.stageWidth - right - _margin,
+              ),
+              child: Container(
+                key: ValueKey(failing ? 'hold-fail' : 'hold-cheer'),
+                padding: _pad,
+                decoration: BoxDecoration(
+                  color: color,
+                  border: Border.all(color: AppColors.ink, width: _edge),
+                  borderRadius: BorderRadius.circular(_corner),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    words,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: Theme.of(context).textTheme.holdBigBubble
+                        .copyWith(color: textColor),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: -_tail.width,
+              bottom: _tailBottom,
+              child: CustomPaint(size: _tail, painter: _BigTailPainter(color)),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!animate) return bubble;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: failing
+          ? HoldTiming.failPop
+          : const Duration(milliseconds: 220),
+      builder: (context, t, child) => Transform.scale(
+        scale: failing
+            ? _failFrom - (_failFrom - 1) * BattleFx.easeOut(t)
+            : 0.5 + 0.5 * BattleFx.back(t),
+        alignment: Alignment.centerRight,
+        child: child,
+      ),
+      child: bubble,
+    );
+  }
+}
+
+/// The big bubble's tail toward the owner: an ink triangle with one of the
+/// bubble's color inside.
+class _BigTailPainter extends CustomPainter {
+  const _BigTailPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, 0)
+        ..lineTo(24, 15)
+        ..lineTo(0, 30)
+        ..close(),
+      Paint()..color = AppColors.ink,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(-1, 4)
+        ..lineTo(17, 15)
+        ..lineTo(-1, 26)
+        ..close(),
+      Paint()..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BigTailPainter oldDelegate) => oldDelegate.color != color;
+}
+
+/// A star mark that pops when it fills and is cheered: bigger with rays,
+/// then back, over [HoldTiming.starPop] (the design's pop star, 22 to 34
+/// points).
+class _StarPop extends StatelessWidget {
+  const _StarPop({
+    required this.popping,
+    required this.index,
+    required this.child,
+  });
+
+  final bool popping;
+  final int index;
+  final Widget child;
+
+  static const _grow = 34 / 22 - 1;
+  static const _rays = 60.0;
+  static const _star = 22.0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!popping) return child;
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('hold-star-pop-$index'),
+      tween: Tween(begin: 0, end: 1),
+      duration: HoldTiming.starPop,
+      builder: (context, t, child) {
+        final swell = math.sin(math.pi * t);
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: (_star - _rays) / 2,
+              top: (_star - _rays) / 2,
+              child: Opacity(
+                opacity: swell.clamp(0.0, 1.0),
+                child: const CustomPaint(
+                  size: Size.square(_rays),
+                  painter: _RaysPainter(),
+                ),
+              ),
+            ),
+            Transform.scale(scale: 1 + _grow * swell, child: child),
+          ],
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+/// The pop star's eight ink rays, in its 60 x 60 box.
+class _RaysPainter extends CustomPainter {
+  const _RaysPainter();
+
+  static const _lines = [
+    (Offset(30, 2), Offset(30, 9)),
+    (Offset(30, 51), Offset(30, 58)),
+    (Offset(2, 30), Offset(9, 30)),
+    (Offset(51, 30), Offset(58, 30)),
+    (Offset(10, 10), Offset(15, 15)),
+    (Offset(45, 45), Offset(50, 50)),
+    (Offset(50, 10), Offset(45, 15)),
+    (Offset(15, 45), Offset(10, 50)),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.ink
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    for (final (from, to) in _lines) {
+      canvas.drawLine(from, to, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RaysPainter oldDelegate) => false;
 }
 
 /// The bubble's tail toward the owner: an ink triangle with a white one
@@ -673,13 +1029,14 @@ class _CameraBox extends StatelessWidget {
           boardScale: scale,
           stageScale: scale,
         ),
-        if (holding && !progress.ended)
+        // Through a second warning's moment too, its warning kept.
+        if (holding && (!progress.ended || state.ending))
           Positioned.fill(
             top: BattleCameraArea.lineWidth,
             child: IgnorePointer(
               child: _HoldOverlay(
-                fault: progress.paused ? progress.fault : null,
-                frameColor: progress.paused
+                fault: state.shownFault,
+                frameColor: state.stopped
                     ? AppColors.danger
                     : AppColors.statusGood,
               ),

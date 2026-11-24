@@ -106,6 +106,8 @@ void main() {
       expect(chair.checks, ['엉덩이 높이', '무릎 안 모으기']);
       expect(chair.silhouette, HoldSilhouette.sit);
       expect(chair.guide, HoldGuide.squatHeight);
+      // The owner's start bubble, two lines, until the time starts.
+      expect(chair.startWords, ['스쿼트 자세로', '버텨!']);
       expect(chair.createReader(), isA<ChairHoldReader>());
       expect(chair.createReader(), isA<HoldGuideReader>());
       expect(chair.faults, [ChairFaults.low, ChairFaults.kneesIn]);

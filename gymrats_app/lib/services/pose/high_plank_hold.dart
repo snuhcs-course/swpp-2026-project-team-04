@@ -41,6 +41,7 @@ final highPlankHold = HoldPoseDefinition(
   faults: HighPlankFaults.all,
   silhouette: HoldSilhouette.plank,
   guide: HoldGuide.chestHeight,
+  startWords: const ['그대로 버텨!'],
 );
 
 /// Reads a high plank from the front camera, where the push-up is read
@@ -68,9 +69,15 @@ final highPlankHold = HoldPoseDefinition(
 ///   [RepJudgeConfig.baselineFrames] of them,
 ///   [RepJudgeConfig.hipFoldFromSetup] under the plank angles taken at
 ///   [RepJudgeConfig.adoptHipAngle] or more, as the judge keeps them).
-/// - **Arms bent:** [PoseMetrics.elbowAngle] under the setup's push-up arm
-///   line ([SetupConfig.pushUpArmAngle], 155°, the judge's
-///   [RepJudgeConfig.topAngle] too).
+/// - **Arms bent:** the less straight of the arms seen under the setup's
+///   push-up arm line ([SetupConfig.pushUpArmAngle], 155°, the judge's
+///   [RepJudgeConfig.topAngle] too). Each arm is measured alone
+///   ([PoseMetrics.leftElbowAngle], [PoseMetrics.rightElbowAngle]: its
+///   shoulder, elbow and wrist at [RepJudgeConfig.minLikelihood] or more);
+///   with one arm seen, that one. The mean of the two
+///   ([PoseMetrics.elbowAngle]) would hold one bent arm with a straight one,
+///   180° and 130° making 155° (PR #90 review, 2026-11-24). The other
+///   checks at straight arms keep the judge's mean.
 /// - **Head down:** the nose more than [RepJudgeConfig.enterDepth] shoulder
 ///   widths under where it was, the depth that starts a push-up. Where it
 ///   was: the mean nose height and shoulder width of the frames read as
@@ -148,8 +155,19 @@ class HighPlankReader implements HoldPoseReader {
     final drop = metrics.torsoDrop;
     if (drop != null && drop > judge.maxTorsoDrop) return HoldFault.offScreen;
     if (_kneesDown(frame, metrics, elbow)) return HighPlankFaults.kneeDown;
-    if (elbow < setup.pushUpArmAngle) return HighPlankFaults.armBent;
+    if (_lessStraightArm(metrics, elbow) < setup.pushUpArmAngle) {
+      return HighPlankFaults.armBent;
+    }
     return null;
+  }
+
+  /// The smaller of the two arms' angles, of those seen. [mean] is only a
+  /// fallback: it is there only when at least one arm was measured.
+  static double _lessStraightArm(PoseMetrics metrics, double mean) {
+    final left = metrics.leftElbowAngle;
+    final right = metrics.rightElbowAngle;
+    if (left != null && right != null) return left < right ? left : right;
+    return left ?? right ?? mean;
   }
 
   bool _bothWristsSeen(PoseFrame frame) =>

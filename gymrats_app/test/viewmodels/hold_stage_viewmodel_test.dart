@@ -14,6 +14,7 @@ import 'package:gymrats_app/services/device/phone_tilt.dart';
 import 'package:gymrats_app/services/pose/chair_hold.dart';
 import 'package:gymrats_app/services/pose/exercise_judge.dart';
 import 'package:gymrats_app/services/pose/high_plank_hold.dart';
+import 'package:gymrats_app/services/pose/hold_judge.dart';
 import 'package:gymrats_app/services/pose/hold_pose_definition.dart';
 import 'package:gymrats_app/services/pose/rep_judge.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
@@ -128,6 +129,7 @@ HoldPoseDefinition _scripted(
   _Reader reader, {
   bool entry = false,
   HoldPose pose = HoldPose.plank,
+  List<String> startWords = const [],
 }) => HoldPoseDefinition(
   pose: pose,
   setupExercise: pose == HoldPose.plank
@@ -139,6 +141,7 @@ HoldPoseDefinition _scripted(
   faults: const [_knee],
   silhouette: HoldSilhouette.plank,
   guide: HoldGuide.chestHeight,
+  startWords: startWords,
 );
 
 class _FailingStore implements ArcadeProgressStore {
@@ -259,6 +262,211 @@ void main() {
       expect(viewModel.stage.pose, HoldPose.chair);
       expect(viewModel.definition, same(chairHold));
       viewModel.dispose();
+    });
+  });
+
+  group('the owner\'s bubbles and the second warning (effects spec)', () {
+    test('GO shows the pose\'s start words for 2 s, read out', () {
+      fakeAsync((async) {
+        final rig = _Rig(async);
+        rig.goAt(async);
+        async.flushMicrotasks();
+        final callout = rig.viewModel.state.callout!;
+        expect(callout.kind, HoldCalloutKind.start);
+        expect(callout.lines, highPlankHold.startWords);
+        expect(rig.cues.single.kind, HoldStageCueKind.callout);
+        expect(rig.cues.single.words, '그대로 버텨!');
+        rig.frames(async, 1900);
+        expect(rig.viewModel.state.callout, isNotNull);
+        rig.frames(async, 200);
+        expect(rig.viewModel.state.callout, isNull);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('with an entry the start words stay until the time starts', () {
+      fakeAsync((async) {
+        final reader = _Reader()..answer = const HoldReading.broken(_knee);
+        final rig = _Rig(
+          async,
+          stage: 5,
+          definition: _scripted(
+            reader,
+            entry: true,
+            pose: HoldPose.chair,
+            startWords: const ['스쿼트 자세로', '버텨!'],
+          ),
+        );
+        rig.goAt(async);
+        rig.frames(async, 4000);
+        expect(rig.viewModel.state.callout!.kind, HoldCalloutKind.start);
+        expect(rig.viewModel.state.callout!.words, '스쿼트 자세로 버텨!');
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 700);
+        expect(rig.viewModel.state.progress.state, HoldState.holding);
+        expect(rig.viewModel.state.callout, isNull);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a warning takes the start bubble', () {
+      fakeAsync((async) {
+        final reader = _Reader()..answer = const HoldReading.broken(_knee);
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader, startWords: const ['그대로 버텨!']),
+        );
+        rig.goAt(async);
+        rig.frames(async, 600);
+        expect(rig.viewModel.state.progress.paused, isTrue);
+        expect(rig.viewModel.state.callout, isNull);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('the first two stars are cheered for 1 s, the third is not', () {
+      fakeAsync((async) {
+        final rig = _Rig(async); // Stage 3: 15, 20 and 30 s.
+        rig.goAt(async);
+        rig.frames(async, 15200);
+        var callout = rig.viewModel.state.callout!;
+        expect(callout.kind, HoldCalloutKind.cheer);
+        expect(callout.star, 1);
+        expect(callout.words, '좋아!');
+        rig.frames(async, 1000);
+        expect(rig.viewModel.state.callout, isNull);
+        rig.frames(async, 4000);
+        callout = rig.viewModel.state.callout!;
+        expect(callout.star, 2);
+        expect(callout.words, '잘한다!');
+        rig.frames(async, 11000);
+        expect(rig.viewModel.state.phase, HoldStagePhase.result);
+        expect(rig.viewModel.state.callout, isNull);
+        // Each star once: no callout for the third.
+        expect(
+          rig.cues
+              .where((c) => c.kind == HoldStageCueKind.star)
+              .map((c) => c.count),
+          [1, 2, 3],
+        );
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a warning takes the cheer', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final rig = _Rig(async, definition: _scripted(reader));
+        rig.goAt(async);
+        rig.frames(async, 15200);
+        expect(rig.viewModel.state.callout!.kind, HoldCalloutKind.cheer);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        expect(rig.viewModel.state.progress.paused, isTrue);
+        expect(rig.viewModel.state.callout, isNull);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a second warning with no star: 실패! for 1.5 s, nothing judged', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final rig = _Rig(async, definition: _scripted(reader));
+        rig.goAt(async);
+        rig.frames(async, 1000);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 700);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        async.flushMicrotasks();
+        var state = rig.viewModel.state;
+        expect(state.phase, HoldStagePhase.hold);
+        expect(state.ending, isTrue);
+        expect(state.stopped, isTrue);
+        expect(state.callout!.kind, HoldCalloutKind.fail);
+        expect(state.shownFault, _knee);
+        expect(
+          rig.cues.map((c) => c.kind).toList().sublist(rig.cues.length - 2),
+          [HoldStageCueKind.warning, HoldStageCueKind.callout],
+        );
+        expect(rig.cues.last.words, '실패!');
+        // Frames in the moment are not judged.
+        final readings = reader.counting.length;
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 1300);
+        state = rig.viewModel.state;
+        expect(reader.counting, hasLength(readings));
+        expect(state.phase, HoldStagePhase.hold);
+        expect(state.progress.warningCount, 2);
+        rig.frames(async, 300);
+        async.flushMicrotasks();
+        state = rig.viewModel.state;
+        expect(state.phase, HoldStagePhase.result);
+        expect(state.ending, isFalse);
+        expect(state.callout, isNull);
+        expect(state.progress.warnings, [_knee, _knee]);
+        expect(rig.cues.last.kind, HoldStageCueKind.ended);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a second warning after a star: the whistle stays, then a clear', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final rig = _Rig(async, definition: _scripted(reader));
+        rig.goAt(async);
+        rig.frames(async, 16500);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 700);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        var state = rig.viewModel.state;
+        expect(state.ending, isTrue);
+        expect(state.stars.count, 1);
+        expect(state.callout, isNull);
+        async.elapse(HoldTiming.endShow);
+        async.flushMicrotasks();
+        state = rig.viewModel.state;
+        expect(state.phase, HoldStagePhase.result);
+        expect(state.stars.cleared, isTrue);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('leaving in the moment shows no result and keeps nothing', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final store = MemoryArcadeProgressStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          store: store,
+          accountId: 7,
+        );
+        rig.goAt(async);
+        // A star first, so a result would keep one.
+        rig.frames(async, 16500);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        reader.answer = HoldReading.ok;
+        rig.frames(async, 700);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        expect(rig.viewModel.state.ending, isTrue);
+        rig.viewModel.leave();
+        async.elapse(HoldTiming.endShow * 2);
+        async.flushMicrotasks();
+        expect(rig.viewModel.state.phase, HoldStagePhase.hold);
+        late ArcadeProgress saved;
+        store.read(7).then((p) => saved = p);
+        async.flushMicrotasks();
+        expect(saved.bestOf(3), 0);
+        rig.viewModel.dispose();
+      });
     });
   });
 
@@ -395,6 +603,7 @@ void main() {
         expect(state.progress.held, const Duration(seconds: 30));
         expect(state.stars.count, 3);
         expect(rig.cues.map((c) => (c.kind, c.count, c.seconds)), [
+          (HoldStageCueKind.callout, 0, null), // The start words.
           (HoldStageCueKind.star, 1, 15),
           (HoldStageCueKind.star, 2, 20),
           (HoldStageCueKind.star, 3, 30),
@@ -487,7 +696,8 @@ void main() {
         rig.goAt(async);
         rig.frames(async, 2000);
         expect(rig.viewModel.state.progress.held, greaterThan(Duration.zero));
-        expect(rig.cues, isEmpty);
+        // Only the start words: no started cue.
+        expect(rig.cues.map((c) => c.kind), [HoldStageCueKind.callout]);
         rig.viewModel.dispose();
       });
     });
@@ -530,6 +740,9 @@ void main() {
         rig.frames(async, 700);
         reader.answer = const HoldReading.broken(_knee);
         rig.frames(async, 600);
+        // The second warning stays for its moment, then the result.
+        expect(rig.viewModel.state.ending, isTrue);
+        async.elapse(HoldTiming.endShow);
         async.flushMicrotasks();
         final state = rig.viewModel.state;
         expect(state.phase, HoldStagePhase.result);
