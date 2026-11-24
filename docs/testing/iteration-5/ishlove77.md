@@ -5,6 +5,26 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the Codex review
+Two P2 findings from the automatic Codex review of `4224bc2` were fixed: every answer to a friend request or a battle
+invite is now one conditional write, so of two answers at the same moment (two phones) only one counts; and when two
+friends invite each other at once and are paired, each one's still-open invite is taken back, so no stale invite alert
+comes after the battle.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total; `accounts/friends_views.py` 100% | 11/24 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+| ViewModel | flutter_test, fakes | 90% | `friends_viewmodel.dart` unchanged at 100% in the targeted run before this fix; the new `paired()` lines are covered by the four tests below | 11/24 | `flutter test test/viewmodels/friends_viewmodel_test.dart` |
+
+- **Tests:** `flutter analyze` no issues; server `pytest` 204 passed (6 new race tests); the online battle tests
+  (`online_battle_integration_test.dart`, `friend_battle_test.dart`) 90 passed on the new battle server, which shows
+  the main match without `friend_id` unchanged (PM's request). Full `flutter test`: see the PR body for the head run.
+- **Test cases changed:** `server/tests/test_friends.py` (two answers to a request at once, both orders; asking back
+  while the request is answered elsewhere; two answers to an invite at once: accept/decline, decline/accept,
+  cancel/accept); `test/viewmodels/friends_viewmodel_test.dart` (paired with my invite still open, paired through an
+  accepted invite, paired on the invited side, paired just after the friend accepted);
+  `test/screens/online_lobby_screen_test.dart` (both invited each other and met: my open invite is taken back).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (team plan #3): friends and friend battles
 The step adds friends by friend code (`nickname#tag`, the tag being the account id with at least four digits),
 friend requests (`/friends`, `/friends/requests`), friend battle invites open for one minute (`/friends/invites`), a

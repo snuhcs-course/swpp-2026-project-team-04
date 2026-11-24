@@ -80,6 +80,12 @@ Full list: `ishlove77-Prompt-Log.md`.
   an exit dialog) as possible app bugs; they were the user tapping the emulator at the same time. Claude asked before
   changing code, and set up touch display and a hardware input log to tell the two apart.
 
+- P9: the automatic Codex review of PR #95 found two P2 issues neither the reviewer subagent nor the emulator check
+  had caught: two answers to the same friend request at once could both succeed and delete the new friendship (the
+  code read, then wrote; `select_for_update` does nothing on the SQLite production database), and two friends who
+  invited each other at once were paired but left both invites open, so a stale alert could start another lobby
+  after the battle. Fixed with conditional writes and by taking back an open invite on pairing, with race tests.
+
 ## 4. Revisions and Decisions
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so
