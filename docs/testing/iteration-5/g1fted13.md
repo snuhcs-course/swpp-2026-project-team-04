@@ -272,10 +272,15 @@ synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fake
   camera picture is, the shots show a gray figure; the app shows the camera, and the figure only while there is no
   picture.
 - **Coverage:** TODO(Woohyun Song): copy the CI comment of the A4 PR (commit, run link, per-layer numbers, A4's files).
-- **Phone check (spec 9, Galaxy S26+):** TODO(Woohyun Song): with `flutter run -t lib/demo/hold_stage_demo.dart`, open
-  STAGE 3 · 1F and try ① 30 s held (clear, 3 stars), ② bent arms, ③ knees down, ④ head down, ⑤ standing up; note
-  whether each warning comes with the right words about 0.5 s after the break, and whether the time runs again right
-  after fixing it. Write any changed line values here with the reason.
+- **Phone check (spec 9, Galaxy S26+), done 2026-11-24** by the user (the user's message of 2026-11-24 02:52, logged
+  in A5's Prompt Log under `codex/iter5-hold-chair`), with `lib/demo/hold_stage_demo.dart` built from the worktree's
+  HEAD then, A5's `e17e332`, which holds A4's code up to `4ef8a2f` (the one-arm fix). The USB cable was out, so no console numbers were seen. STAGE 3 · 1F: ① 30 s held: a
+  clear; ② one arm bent: "팔 펴요"; ④ head down: "머리 들어요"; after fixing, the time ran again; a second warning: the
+  fail. ③ knees down and ⑤ standing up were tried as the second warning: the stage failed at the right moment, but it
+  went straight to the fail screen before their words could be read. Each warning came almost at once (the user's
+  words; with the cable out, the 0.5 s itself was not measured). No line value changed. The missing reason at a second warning is fixed by the
+  effects (entry `3ffed5f` below: the owner's "실패!" for 1.5 s with the warning's words kept, then the reasons as
+  chips on the fail screen); ③'s and ⑤'s words are seen again in the last phone check (TODO in that entry).
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
@@ -304,7 +309,7 @@ synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fake
   says …' (4 tests); 'the bar fills toward the third star, its marks light'; 'the leave button asks with the battle's
   dialog'
 - Chair icons and figure with a stand-in bundle (spec 3) → 'the chair pose's drawings, with a stand-in bundle' (3 tests)
-- Phone check → TODO(Woohyun Song) above.
+- Phone check → above (2026-11-24); the effects' phone check is the last TODO, in the effects entry below.
 
 #### 2026-11-23 · code at commit `1c325ab` · step A4 follow-up on `codex/iter5-hold-plank` (two gaps found while starting A5)
 Starting A5 (the chair pose, spec `p16-4/SPEC.md` v2, not committed) showed two things the chair pose needs from A4's
@@ -430,7 +435,10 @@ After the phone check of 2026-11-24 the user picked the hold stage's effects on 
   changed) comes in big and settles (`failPop`, 0.2 s) in place of "삐익!"; the camera box keeps the warning's words,
   the clock says "멈춤", nothing is judged for `endShow` (1.5 s), then the fail screen lists the two warnings' reasons
   as red chips in order where "경고 2번" was. A clear ended by warnings (a star already earned) keeps "삐익!" for the
-  same 1.5 s, then shows the clear (a call beyond the spec, noted in task.md).
+  same 1.5 s, with the win jingle, then shows the clear: a call beyond the spec that the user kept (2026-11-24, local
+  task.md, A4 Decisions), as "실패!" on a clear would not match the clear screen after it.
+  This fixes what the phone check of 2026-11-24 found (A4 entry above): a second warning went straight to the fail
+  screen, so its reason could not be read.
 - **Screen reader:** the start words and "실패!" are announced as the warnings are (a `callout` cue), and the first two
   stars' announcements end with their cheer.
 
@@ -446,14 +454,33 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Review:** local reviewer A4 run 9, CHANGES_REQUESTED: the result jingle came 1.5 s after a second warning, while a
   battle's starts when it ends (now at once), and the local design-doc list lacked the new API (added); Minors: a
   screen check that could not fail (now: the frames in the moment are not read), and this entry's counts and lines.
-  The clear ended by warnings (no "실패!") was the session's call: said in the PR and asked of the user. Run 10: APPROVE (all fixed; no new code finding).
+  The clear ended by warnings (no "실패!") was the session's call: said in the PR and asked of the user, who kept it
+  on 2026-11-24. Run 10: APPROVE (all fixed; no new code finding).
 - **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
-- **Phone check of the effects:** TODO(Woohyun Song): with the demo, see the start bubble, both cheers with the star
-  pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen, and the music through a
-  stage and after leaving.
+- **Phone check of the effects (the last phone check):** TODO(Woohyun Song): with the demo, see the start bubble, both
+  cheers with the star pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen (also
+  for ③ knees down and ⑤ standing up as the second warning, whose words the first check could not read), a clear
+  ended by warnings ("삐익!", the win jingle, the clear), and the music through a stage and after leaving.
 
 ### Test cases added in the effects follow-up
 | Layer | File | What it covers |
 |---|---|---|
 | ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | 'GO shows the pose's start words for 2 s, read out'; 'with an entry the start words stay until the time starts'; 'a warning takes the start bubble'; 'the first two stars are cheered for 1 s, the third is not'; 'a warning takes the cheer'; 'a second warning with no star: 실패! for 1.5 s, nothing judged'; 'a second warning after a star: the whistle stays, then a clear'; 'leaving in the moment shows no result and keeps nothing' |
 | View | `test/screens/hold_stage_screen_test.dart` | 'GO: "그대로 버텨!" in the white bubble for 2 s, read out'; 'a warning takes the start bubble's place'; 'the first and second stars: a lime cheer, a smile, a pop and the good sound, once each'; 'the cheer ends at the owner on every floor' (142, 140, 150); '"잘한다!" fits 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x'; 'with reduced motion the stars do not pop'; 'a warning takes the cheer's place'; 'a second warning with no star: "실패!" over the stage, the warning kept below for 1.5 s, then the reasons in order'; 'the battle's music at the battle's moments'; 'a second warning with no star plays the lose jingle at once'; 'a clear ended by warnings plays the win jingle at once'; 'leaving before a result brings the menu music back'; the size tests 'a clear and a fail fit …' now also see "실패!" |
+
+#### 2026-11-24 · code at commit `3ffed5f` (notes only) · step A4: the phone check and the user's answers
+No code changed. The user's phone check of 2026-11-24 went into A4's entry above (spec 9, with the build it ran),
+and the user's answer on a clear ended by warnings into the effects entry (local task.md, A4 Decisions, 2026-11-24).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4109 passed, 0 failed, 10 skipped (2026-11-24, on
+  `47ea0d1`, the code of `3ffed5f`; the same 10 skips as above). The first full run had one failure outside A4:
+  `test/services/online/online_battle_integration_test.dart`, 'the game on the phones +5 AVERAGE shows at once; the
+  same answer keeps it, and a third phone's average rep reads as average'. It is an intermittent failure outside A4;
+  its cause was not found (that run kept only the summary, not the failure message). The file then passed twice alone
+  (60 tests each time), and the full rerun passed. Nothing in `lib/services/online/`, its tests or `server/` changed
+  here. Plan: watch it in the PR's CI run; it is not A4's file, so it is left to that file's owner if it fails again.
+- **Review:** local reviewer A4 run 11, APPROVE; its five Minors were fixed before the commit (two references a reader
+  of this branch could not follow, the timing note, this failure's reason and plan, the local status row).
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
