@@ -272,6 +272,13 @@ class InMemoryFriendRepository implements FriendRepository {
 
   static const ttl = Duration(minutes: 1);
 
+  /// How long an accept holds me: one friend battle at a time, as the
+  /// server's ACCEPT_HOLD.
+  static const acceptHold = Duration(seconds: 35);
+
+  /// When I accepted each invite.
+  final _acceptedAt = <int, DateTime>{};
+
   static Never _refuse(String code) =>
       throw ApiException(ApiErrorKind.rejected, statusCode: 400, code: code);
 
@@ -398,8 +405,33 @@ class InMemoryFriendRepository implements FriendRepository {
   }
 
   @override
-  Future<BattleInvite> acceptInvite(int inviteId) =>
-      _close(inviteId, InviteStatus.accepted);
+  Future<BattleInvite> acceptInvite(int inviteId) async {
+    final held = invites.any(
+      (i) =>
+          i.id != inviteId &&
+          i.to == me &&
+          i.status == InviteStatus.accepted &&
+          _now().difference(_acceptedAt[i.id] ?? DateTime(0)) < acceptHold,
+    );
+    if (held) {
+      final invite = _find(inviteId);
+      if (invite.status == InviteStatus.pending) {
+        answer(inviteId, InviteStatus.cancelled);
+      }
+      _refuse('invite_busy');
+    }
+    final accepted = await _close(inviteId, InviteStatus.accepted);
+    _acceptedAt[inviteId] = _now();
+    // The others, to me or from me, cannot be paired now: take them back.
+    for (final i in [...invites]) {
+      if (i.id != inviteId &&
+          (i.to == me || i.from == me) &&
+          i.status == InviteStatus.pending) {
+        answer(i.id, InviteStatus.cancelled);
+      }
+    }
+    return accepted;
+  }
 
   @override
   Future<void> declineInvite(int inviteId) =>

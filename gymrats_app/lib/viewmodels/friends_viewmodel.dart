@@ -19,6 +19,8 @@ String friendErrorMessage(Object error) {
     'not_friends' => '친구에게만 대결을 신청할 수 있어요.',
     'invite_expired' => '대결 신청 시간이 지났어요.',
     'invite_closed' => '이미 끝난 대결 신청이에요.',
+    // One friend battle at a time (another accept or invite is on).
+    'invite_busy' => '이미 진행 중인 친구 대결이 있어요.',
     'request_not_found' || 'invite_not_found' => '이미 처리된 요청이에요.',
     _ => error.message,
   };

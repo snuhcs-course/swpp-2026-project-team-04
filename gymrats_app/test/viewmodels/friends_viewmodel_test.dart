@@ -91,6 +91,7 @@ void main() {
         'not_friends': '친구에게만',
         'invite_expired': '시간이 지났어요',
         'invite_closed': '이미 끝난',
+        'invite_busy': '이미 진행 중인 친구 대결',
         'request_not_found': '이미 처리된',
         'invite_not_found': '이미 처리된',
       };
@@ -599,6 +600,21 @@ void main() {
       expect(vm.current, isNull);
     });
 
+    test('a second friend battle accepted from another phone is busy: it '
+        'says so and opens nothing', () async {
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      repo.failWith = const ApiException(
+        ApiErrorKind.rejected,
+        statusCode: 409,
+        code: 'invite_busy',
+      );
+      expect(await vm.accept(), isNull);
+      expect(vm.error, '이미 진행 중인 친구 대결이 있어요.');
+      expect(vm.current, isNull);
+    });
+
     test('an invite that ran out says so and is not offered again', () async {
       final sent = repo.receiveInvite(_friend, ExerciseType.squat);
       vm.setSignedIn(true);
@@ -700,7 +716,18 @@ void main() {
       repo.holdAccept!.complete();
       await accepting;
       expect(vm.current, isNull);
-      // Answered: the newer one comes on the next read.
+      // Accepted: one friend battle at a time, so the newer invite was taken
+      // back and is not offered on the next read either.
+      await vm.check();
+      expect(vm.current, isNull);
+    });
+
+    test('declined: a newer invite comes on the next read', () async {
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      await vm.decline();
+      repo.receiveInvite(_friend, ExerciseType.pushUp);
       await vm.check();
       expect(vm.current!.exercise, ExerciseType.pushUp);
     });

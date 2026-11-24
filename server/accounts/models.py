@@ -106,6 +106,9 @@ class FriendBattleInvite(models.Model):
     exercise = models.CharField(max_length=10, choices=EXERCISES)
     status = models.CharField(max_length=10, choices=STATUSES, default=PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
+    # When the friend accepted it: one friend battle at a time per person
+    # (accounts.friends_views.ACCEPT_HOLD).
+    accepted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [

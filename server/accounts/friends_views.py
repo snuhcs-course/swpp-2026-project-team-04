@@ -12,10 +12,11 @@ inviter. The battle server pairs only two players who named each other.
 """
 
 import re
+import time
 from datetime import timedelta
 
-from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db import IntegrityError, OperationalError, transaction
+from django.db.models import Exists, Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
@@ -24,6 +25,12 @@ from rest_framework.views import APIView
 from .models import FriendBattleInvite, FriendRequest, User
 
 INVITE_TTL = timedelta(minutes=1)
+
+# How long an accepted invite holds its friend: one friend battle at a time,
+# so a second accept within it is 409 invite_busy. The app gives an accepted
+# invite 30 s to pair; leaving the waiting room cancels the invite and ends
+# the hold at once.
+ACCEPT_HOLD = timedelta(seconds=35)
 
 # The tag as friend_code shows it: at least four digits ("#0042", "#10000").
 # Any nickname sign-up allows, line breaks included (DOTALL), so every
@@ -252,6 +259,65 @@ class FriendInviteView(APIView):
         return Response(_invite(invite))
 
 
+def _accept_invite(invite_id, me):
+    """Accepts the open invite [invite_id] to [me] unless [me] already holds
+    another accepted one (ACCEPT_HOLD): one conditional write, under a lock
+    on [me] where the database has row locks, so of two accepts at the same
+    moment (two invites, two phones) only one counts. Returns "accepted",
+    "busy" (the invite is then cancelled, so its inviter's waiting room ends
+    now) or "closed". On "accepted" the other open invites to [me] are
+    cancelled too: their inviters cannot be paired any more."""
+    now = timezone.now()
+    with transaction.atomic():
+        # Lock both players' rows, in id order (no deadlock), where the
+        # database has row locks: the hold counts both sides of an invite.
+        inviter = (
+            FriendBattleInvite.objects.filter(id=invite_id, to_user=me)
+            .values_list("from_user_id", flat=True)
+            .first()
+        )
+        list(
+            User.objects.select_for_update()
+            .filter(id__in=[me.id, inviter or me.id])
+            .order_by("id")
+        )
+        # Either side of a recently accepted invite: invited by a friend, or
+        # inviting one who just accepted.
+        held = (
+            FriendBattleInvite.objects.filter(Q(to_user=me) | Q(from_user=me))
+            .filter(
+                status=FriendBattleInvite.ACCEPTED,
+                accepted_at__gt=now - ACCEPT_HOLD,
+            )
+            .exclude(id=invite_id)
+        )
+        open_invite = FriendBattleInvite.objects.filter(
+            id=invite_id,
+            to_user=me,
+            status=FriendBattleInvite.PENDING,
+            created_at__gt=now - INVITE_TTL,
+        )
+        if open_invite.filter(~Exists(held)).update(
+            status=FriendBattleInvite.ACCEPTED, accepted_at=now
+        ):
+            _cancel_invites_to(me, exclude=invite_id)
+            return "accepted"
+        # Another accept holds [me], whether it came just before this one
+        # (and already cancelled this invite) or a while ago.
+        if held.exists():
+            open_invite.update(status=FriendBattleInvite.CANCELLED)
+            return "busy"
+        return "closed"
+
+
+def _cancel_invites_to(user, *, exclude):
+    """Cancels [user]'s other open invites, to and from them: they took
+    another battle, so those cannot be paired any more."""
+    FriendBattleInvite.objects.filter(
+        Q(to_user=user) | Q(from_user=user), status=FriendBattleInvite.PENDING
+    ).exclude(id=exclude).update(status=FriendBattleInvite.CANCELLED)
+
+
 def _answer_invite(invite_id, mine, action, *, if_pending=False):
     """Closes the invite [invite_id] by [action] in one conditional write, so
     of two answers at the same moment only the one that still finds it open
@@ -277,6 +343,20 @@ def _answer_invite(invite_id, mine, action, *, if_pending=False):
     )
 
 
+def _accept_with_retry(invite_id, me, *, tries=3):
+    """_accept_invite, tried again when SQLite reports a lock: two accepts at
+    the very same moment can both read before either writes, and SQLite then
+    fails the second at once ("database is locked") instead of waiting. The
+    next try sees the first accept and answers "busy" (409 invite_busy)."""
+    for attempt in range(tries):
+        try:
+            return _accept_invite(invite_id, me)
+        except OperationalError:
+            if attempt == tries - 1:
+                raise
+            time.sleep(0.05 * (attempt + 1))
+
+
 class FriendInviteActionView(APIView):
     """POST /friends/invites/<id>/accept|decline, by the friend, while the
     invite is open; an expired one is 410. POST .../cancel, by either player
@@ -297,9 +377,15 @@ class FriendInviteActionView(APIView):
         )
         body = request.data if isinstance(request.data, dict) else {}
         if_pending = body.get("if_pending") is True
-        changed = _answer_invite(
-            invite_id, mine, self.action, if_pending=if_pending
-        )
+        if self.action == "accept":
+            outcome = _accept_with_retry(invite_id, me)
+            if outcome == "busy":
+                return _error("invite_busy", status.HTTP_409_CONFLICT)
+            changed = outcome == "accepted"
+        else:
+            changed = _answer_invite(
+                invite_id, mine, self.action, if_pending=if_pending
+            )
         invite = (
             FriendBattleInvite.objects.filter(mine, id=invite_id)
             .select_related("from_user", "to_user")

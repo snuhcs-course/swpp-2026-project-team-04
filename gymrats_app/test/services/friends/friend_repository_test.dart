@@ -275,6 +275,31 @@ void main() {
       expect(await refusal(repo.acceptInvite(old.id)), 'invite_expired');
     });
 
+    test('one friend battle at a time: a second accept is busy', () async {
+      final first = repo.receiveInvite(b, ExerciseType.pushUp);
+      final second = repo.receiveInvite(twin, ExerciseType.squat);
+      await repo.acceptInvite(first.id);
+      // The other invite was taken back by the accept.
+      expect(
+        (await repo.fetchInvite(second.id)).status,
+        InviteStatus.cancelled,
+      );
+      final third = repo.receiveInvite(twin, ExerciseType.squat);
+      expect(await refusal(repo.acceptInvite(third.id)), 'invite_busy');
+      expect((await repo.fetchInvite(third.id)).status, InviteStatus.cancelled);
+      // My own open invite is taken back by an accept too.
+      repo.friends.add(b);
+      final mine = await repo.invite(b.id, ExerciseType.pushUp);
+      clock = clock.add(InMemoryFriendRepository.acceptHold);
+      final fifth = repo.receiveInvite(twin, ExerciseType.squat);
+      await repo.acceptInvite(fifth.id);
+      expect((await repo.fetchInvite(mine.id)).status, InviteStatus.cancelled);
+      // After the hold, or once the first is taken back, accepts work.
+      clock = clock.add(InMemoryFriendRepository.acceptHold);
+      final fourth = repo.receiveInvite(twin, ExerciseType.squat);
+      await repo.acceptInvite(fourth.id);
+    });
+
     test('accept, decline and cancel follow the server rules', () async {
       final a = repo.receiveInvite(b, ExerciseType.pushUp);
       expect((await repo.acceptInvite(a.id)).status, InviteStatus.accepted);
