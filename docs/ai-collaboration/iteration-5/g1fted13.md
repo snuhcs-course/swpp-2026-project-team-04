@@ -295,3 +295,206 @@ These were made from the A5 session at the user's word; their full evidence is i
   hand-made merge commit counted `main`'s files as outside A4); the session aborted and asked, and the user's answer
   (2026-11-24, in the Prompt Log) changed the order to `origin/main` first, then A2 and A3.
 - **f. Manual fixes:** none; no AI-generated code was edited by hand.
+
+## A5 `codex/iter5-hold-chair` – Add chair-pose judging (team order #8.4), 2026-11-23
+
+### a. Where AI was used
+- **The spec and the designs:** Claude on claude.ai wrote the chair pose's spec (SPEC v1–v2), and Claude drew the
+  chair pose's designs (P16Hold's sit scenes and the warning icons) on the Claude Design canvas. Woohyun Song confirmed
+  the designs and answered the spec's section 9 questions (the user's statement, 2026-11-23, in the Prompt Log). They
+  reached this step as a local design hand-off, which is not committed.
+- **The code and tests:** Claude Code (Opus 5.5), session `dfb39c07`, wrote all of A5 in `7f26016` and `e1b0a76`:
+  - `lib/services/pose/chair_hold.dart`: `ChairHoldReader` (the squat judge's depth worked out in the reader, the
+    hips and knees reading, the squat guide's snapshot, a debug-only print for the phone check), `chairHold`,
+    `ChairFaults`, `ChairLines`;
+  - `test/services/pose/chair_hold_test.dart` (30 tests) and `chair_hold_stage_test.dart` (10 widget tests);
+  - the approved small changes in earlier-stage files: the chair line of `hold_poses.dart` (with its import, and
+    the now unused `_notYet` removed), the demo's `enabled` line, and one test in each of the two A4 test files that
+    asserted the chair was stopped.
+- **A4 changes made from this session** (on A4's branch, then merged here; the user's decisions): `014e4f0` guide lines
+  from the reader, `1c325ab` "시작" after an entry, `397f498` a test comment, `f78ac2b` the result screen on small
+  screens (overflows found by the P16 session), with their testing notes `82e281a` and `be6509a`.
+- **Codex reviews (2026-11-24):** on PR #92 at `fe3460c` the bot's one finding (P2, freeze the standing baseline at
+  GO) was already the code since `77e1a75`, so Claude Code answered on the thread with the code lines and tests and
+  changed nothing. On PR #90 at `be6509a` its finding (P2, one bent arm passing on the mean of both) was right: Claude
+  Code fixed it on A4's branch (`4ef8a2f`, notes `ed76b18`, 3 tests), answered on the thread and merged it here
+  (`adeb74f`).
+- **The effects spec and designs:** Claude (claude.ai) made the hold effects' designs (on the Claude Design canvas)
+  and their spec `SPEC-FX.md` by drawing candidates from the phone check of 11-24. Woohyun Song picked among the
+  candidates the fail effect (A2 + A3, shown as F4), the star effect (B2) and the start notice (C1), had the bubbles'
+  size and place and the chair pose's words changed, and decided to reuse the background music and to give the stars
+  a sound (the user's statement, 2026-11-24, in the Prompt Log). They reached this session as a local design hand-off
+  (`p16-3-fx`), which is not committed.
+- **The hold effects (2026-11-24, from this session; the user's picks on the design canvas):** on A4's branch
+  `3ffed5f` (music at the battle's moments, the start bubble, the stars' cheer with a pop and `SoundEffect.good`, the
+  second warning's 1.5 s with "실패!" and the fail screen's reasons) and notes `47ea0d1`; merged here (`37e987c`) with
+  the chair pose's two-line start words (`4767873`).
+- **The follow-up of 2026-11-24** (the user's decision): `77e1a75` keeps the 3·2·1's standing thigh from GO on (the
+  spec's "follows while standing" narrowed to before GO), with 7 new tests, among them a slow sit over 3, 4 and 6 s.
+- **The leave dialog and `main` (2026-11-24, from this session; the user's instruction):** on A4's branch `94f6416`
+  (the leave dialog closes when a hold stage ends and opens no more in the 1.5 s before its result; 3 tests). Then
+  `origin/main` was merged up the stack: A2 `da3a039` (notes `dc5947b`), A3 `f482e99` (`c1f5f5f`), A4 `166de3b`,
+  `78e61dc`, `6bda1e0`, and here `6a8ce7f`, `ca2cf6a`. Merging A2 straight into A4 was blocked by the local pre-commit
+  guard; Claude Code aborted that merge and asked, and the user chose to merge `origin/main` into A4 and A5 first.
+- **The leave button (2026-11-24, the user's decision on A4 run 12's Minor):** on A4's branch `f430051` and
+  `f28cac6` (the leave button gone from the screen and the semantics tree from a second warning to the result, as in
+  a battle; 2 new tests, 2 changed), merged here in `29e1337`; `200816d` checks the button on a chair stage (there in
+  the entry, its way out; gone from a second warning), from A5 run 9's Minor.
+- **Checking against the design:** the chair scenes captured with the app's fonts in a throwaway widget test (deleted)
+  and compared by eye with the hand-off's shots (testing notes, A5 entry).
+- **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1), on
+  these notes (runs 2–3), on the follow-up of 2026-11-24 (run 4), on A4's one-arm fix (A4 run 8), on A4's effects
+  (A4 runs 9–10), on the chair's start bubble (run 5), on the records of the phone check and the user's answers
+  (A4 run 11, A5 run 6), and on the leave dialog fix with the `main` merges (A4 run 12, A5 runs 7–8), and on the leave button
+  (A4 run 13, A5 run 9).
+- **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
+  Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
+  also holds the A3 and A4 sessions). Two fixes, the prompts
+  otherwise unchanged: the Chrome extension's injected `<browser_instruction>` text (not typed by the user) was
+  removed, and the two messages sent while a turn was running, which `extract_prompts.py` skips (the export stores
+  them as queued commands), were copied in by hand from the same redacted export, verbatim.
+- **Not done by AI:** Woohyun Song answered the spec's three questions (a fixed 0.8 knee line; sitting deeper is
+  held; no time limit on the entry) and chose how to handle the three A4 gaps found before building (the two A4 tests
+  changed here; the guide lines and "시작" fixed on A4's branch). Mid-way the user added the plank guide check, the
+  rule that A4 commits hold only A4 files and records, one reviewer run before the A4 push and a plain merge, and
+  passed on the P16 session's two overflows. The user also set the branch, the draft PR and its wording. The phone
+  check of 2026-11-24 is the user's (testing notes), and so is keeping "삐익!" on a clear ended by warnings.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "A4에 의자 자세의 아이콘, 실루엣, 스쿼트 안내선이 없으면 이
+  단계에서 그리지 말고 멈춰서 알려 줘. 기존 판정 코드(squat_rep_judge.dart, setup_checker.dart, pose_metrics.dart,
+  rep_judge.dart)는 고치지 않고 가져다 쓴다."
+- [Woohyun Song, 11-23] (mid-task, pasted; excerpt) "1. 하이 플랭크의 푸쉬업 안내선도 따로 도는 판정기에서 오는지
+  확인하고, 오래 버티면 같은 식으로 사라지면 같은 커밋에서 함께 고쳐 줘."
+- [Woohyun Song, 11-24] (pasted; excerpt) "깊이 기준은 폰 확인을 기다리지 말고 지금 고치자. 천천히 앉을 때 기준이 같이
+  내려가서 깊이가 낮게 읽히기 때문이다(reviewer 시뮬레이션에서 0.8이 0.73~0.75로 읽힘)."
+- [Woohyun Song, 11-24] (pasted; excerpt) "A4 PR #90에 Codex 리뷰(be6509a)가 왔다. P2 \"Check each arm against the plank
+  angle\"다. … 맞는 지적이니 A4 브랜치에서 고치자."
+- [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "A4 연출 추가 작업이다. … 고른 것 (다시 묻지 않는다)
+  1. 배경음: 버티기 판에서도 대결과 같은 배경음을 같은 코드, 같은 방식으로 깐다."
+- [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "1. 별을 받은 뒤 두 번째 경고로 끝나는 클리어는 지금처럼
+  둔다(\"삐익!\" 1.5초, win jingle, 클리어 화면). 클리어인데 \"실패!\"를 띄우면 뒤의 클리어 화면과 맞지 않기 때문이다."
+- [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "두 번째 경고 뒤 1.5초(\"실패!\", 또는 별을 받은 경우
+  \"삐익!\") 동안 아직 나가기 창이 열리고, 이때 나가면 결과 화면 없이 끝나 별이 저장되지 않는다. 대결은 판이 끝나는
+  순간 나가기 창을 닫는다."
+
+### c. What AI did well
+- **Checked the harness before committing a merge.** Before merging A2 into A4, the session merged without
+  committing and ran the pre-commit guard by hand; it blocked, so the merge was aborted and the user was asked, as the
+  instruction said, instead of a merge commit being forced through.
+- **Found A4's gaps before building on them.** Reading A4's view model against the spec's sections 5 and 6 showed that
+  the squat guide came from a separate `SquatRepJudge`, which drops a squat (`lost`) 12 s after it starts down, so the
+  squat lines would vanish in every chair stage (20–45 s), and that nothing read "시작" after the entry. It asked
+  before touching A4; the user chose A4's branch, and A5 merged the fix.
+- **Checked a claim with the real code instead of assuming.** For the user's question about the plank's push-up guide
+  it wrote a test that runs the real push-up judge through a 60 s plank (`hold_stage_viewmodel_test.dart`); the guide
+  stays, so nothing was changed there. Reviewer run 5 confirmed it against `rep_judge.dart`.
+- **Proved the depth is the squat judge's.** `chair_hold_test.dart` feeds the same 33 ms frames to `SquatRepJudge` and
+  the reader for 12 s and compares the depth exactly (more than 300 frames), then shows the squat judge losing it past
+  12 s while the reader keeps it. (Since `77e1a75` this holds for the frames read as in the 3·2·1; after GO the depth
+  differs on purpose, see d.)
+- **Reproduced before fixing.** For the P16 session's overflow report it first wrote the size tests and saw them fail
+  with the reported 28, 20 and 12 px, then fixed and saw them pass, with a test that the design's sizes stay.
+
+### d. Hallucinations / errors
+- **Wrong timings in the first test draft.** Working the smoothing through by hand before running found five wrong
+  expectations: standing up reads 'hips too high' from the first frame, not the second; the second warning needed
+  0.1 s more frames; the standing thigh taken after GO is the smoothed one at 3.4 s, not 180 at 3.3 s; "시작" needs
+  0.8 s of sitting, not 0.7 s; and a `const` empty frame is the same object each time, which the view model skips.
+  The first run found one more: after 0.9 s of smoothing the depth was 1.9e-7 from 0.9 (tolerance 1e-9 → 1e-3).
+- **Analyzer findings:** a local `started` hiding the test helper `started()`, an unused import, and a list element
+  the lint wanted null-aware.
+- **A wrong test comment:** the 60 s plank test's comment said the app runs the judge on the hold's clock; the app's
+  judge keeps its own stopwatch (reviewer run 5, Minor; fixed in `397f498`).
+- **A design-doc gap:** the new `HoldGuideReader` was missing from the local Design doc changes list (reviewer run 5,
+  Major; added).
+- **A layout first try and a measurement taken with the wrong font:** the first overflow fix padded the button's words
+  on the left only, which would have moved them off centre; dropped before testing. The fix then kept no margin at
+  all, reasoning that the button had "about 8 px to spare" at 360 wide, and the notes gave the overflows as 28 and
+  12 px. Both numbers came from the widget tests' font, whose every glyph is 1 em wide. Reviewer A4 run 7 measured
+  the app's font: the words overflow only at 320 × 640 with 1.3x text (5 and 16 px), and the slack at 360 is 33–42 px.
+  A 4-point margin was added and the notes now say which font the numbers are from.
+- **A blocked command:** the post-push check's `grep` was stopped by the repo's commit-text hook, because the command
+  itself contained the searched words; rewritten with character classes.
+- **Reviewer, A5 run 1 (APPROVE, 3 Minors):** a slow sit (3–6 s to a true 0.8) can read 0.73–0.75 because the copied
+  follow rule lowers the standing thigh while the depth is under 0.25 (kept as the spec's formula; added to the phone
+  check, a change waits for the user); a clock going back gives 0 where the squat judge gives a negative weight
+  (commented); the debug print leaked into the stage tests' output (silenced).
+- **Reviewer, A4 run 7 (APPROVE, the small-screen fix, 2 Minors):** the margin and the font, as above; it also ran
+  the new tests on the old code and saw them fail with the reported numbers.
+- **Reviewer, A5 run 2 (CHANGES_REQUESTED, notes only; 1 Major, 4 Minors):** these notes cited two local A4 commits
+  that were redone before the push (`cefcaa4`, `cbd8af0`; the pushed ones are `f78ac2b`, `be6509a`). Minors: the
+  export holds the A3 and A4 sessions, not A2's; the earlier-stage changes are small, not one line each; the
+  stacked-branch count must match the commit it is quoted for; the command block lacked the six-file run behind
+  "156 passed". All fixed. Its own full run hit one flaky online test outside A5 (in the testing notes).
+- **Reviewer, A5 run 3 (APPROVE, notes only):** run 2's findings verified fixed; no new finding.
+- **A rule copied faithfully that did not fit the pose.** Following the spec, the reader copied the squat judge's
+  rule that the standing thigh follows a standing user. On the way down the thigh still counts as standing for a
+  while, so a slow sit lowered the standing thigh and a good chair pose read "더 앉아요". The parity test could not
+  catch it (it checks the copy, not the pose); reviewer A5 run 1 found it by simulation, and the session first left
+  it for the phone check. The user had it fixed the next day: the new tests show the squat judge's rule reading under
+  0.75 on the same slow-sit frames where the reader now reads the true 0.8.
+- **Reviewer, A5 run 4 (APPROVE, the follow-up of 2026-11-24; 4 Minors):** the new tests fail on the old reader and
+  on a reader that never follows. Fixed before the commit: the skips' reason in the testing notes, item c's parity
+  claim (now limited to the 3·2·1), item e's "the spec only allowed" (the spec ties changes to the phone check), and a
+  test named "halfway up" that never went halfway up. Left for the phone check, as the user's wording asks for it: a
+  standing thigh taken after GO is taken once, so a slow rise after GO can fix it before the user is fully up.
+
+- **A mean that hid one bent arm (A4, found by Codex).** A4's high plank reader (also written by Claude Code)
+  checked bent arms on `PoseMetrics.elbowAngle`, the mean of both arms, so 180° and 130° made 155° and passed. No
+  local reviewer run had caught it; the Codex review on PR #90 did. Fixed with the less straight arm (`4ef8a2f`).
+- **A stale finding from Codex.** On PR #92 Codex asked to freeze the standing baseline at GO, which the head it
+  reviewed already did; checked against the code and tests and answered instead of changed.
+- **Comments naming the review tool:** the first one-arm commit's comments said "Codex review on A4"; code may carry
+  only the AI marker, so they now say "PR #90 review" (reviewer A4 run 8, Minor; fixed before the push).
+
+- **The jingle a beat late (A4 effects, reviewer A4 run 9, Major).** The first version started the win or lose
+  jingle with the result screen, 1.5 s after a second warning, while a battle's starts when it ends; it now starts
+  with the warning's moment. The same run found a screen check that could never fail (a third warning cannot come
+  after the judge ended); it now checks that the frames in the moment are not read.
+- **A call made without asking.** A clear ended by a second warning (a star already earned) keeps "삐익!" and plays
+  the win jingle instead of showing "실패!"; the session decided it, wrote it down as beyond the spec and put it to
+  the user in the PR and the report. The user kept it (2026-11-24): "실패!" on a clear would not match the clear
+  screen after it.
+
+- **Reviewer, A5 run 5 (APPROVE, the merge of A4's effects and the chair's start bubble; 5 Minors):** two prompts out
+  of time order in the Prompt Log and item b; size tests that could not fail for the two-line bubble (now both lines
+  inside the bubble and the bubble on screen); the testing entry lacked its criteria and phone-check lines; item a did
+  not say who wrote the effects spec (a TODO now); the local progress log lacked this work. All fixed.
+- **Phone-check steps that could not be done (reviewer A5 run 7, Major).** The first draft of the slow rise after GO
+  said to sit as soon as the 3·2·1 starts, but a user upright at its first frame gives the reader 0.3 s of standing at
+  once, and that thigh stays for the play; its fallback ("the case cannot happen on the phone") did not follow from
+  the code, since the setup counts standing from 0.25 of the shin and the reader from 0.7. Now: a half squat held
+  through the count, reopening the stage when a thigh was taken, and writing down the bends tried. Two Minors (the
+  fault ids, `null` before a value exists) fixed with it; run 8 APPROVE.
+
+### e. Prompt revisions
+- Before (the user's answer, 2026-11-23): "A4 브랜치에서 고치고 merge (Recommended)".
+- After (mid-task, pasted): "1. 하이 플랭크의 푸쉬업 안내선도 따로 도는 판정기에서 오는지 확인하고, 오래 버티면 같은 식으로
+  사라지면 같은 커밋에서 함께 고쳐 줘. 2. codex/iter5-hold-plank로 바꾸기 전에 A5 작업 중인 변경이 A4 커밋에 섞이지 않게
+  정리해 줘. … 3. A4 커밋은 reviewer를 한 번 돌리고 push한다. 그다음 A5 브랜치로 돌아와 hold-plank를 그냥 git merge로 받아 온다."
+- Why it worked: the answer only said where to fix; the revision said what else to check, what the A4 commits may hold,
+  and in which order to review, push and merge, so the A4 fix went out as four A4-only commits with their own review.
+- Before (the step's start, pasted; the spec's rule it pointed to): "테스트는 SPEC.md 7절 기준이다." (SPEC 3: the
+  standing thigh "서 있는 동안만 천천히 따라감"; SPEC 1: "폰으로 찍어 보고 바꾸면 이유와 찍은 기록을 테스트 근거에 남긴다").
+- After (2026-11-24, pasted): "깊이 기준은 폰 확인을 기다리지 말고 지금 고치자. … 1. GO 뒤에는 서 있는 기준을 따라가지
+  않는다. … 2. 3~4초에 걸쳐 천천히 앉아도 깊이를 실제대로 읽어 \"더 앉아요\"가 뜨지 않는지 보는 테스트를 더한다."
+- Why it worked: the spec tied changes to the phone check; the new prompt named the rule to change, how far
+  (before GO only), and the test that proves it, so the change was small and testable without the phone.
+- Before (2026-11-24, pasted, then interrupted by the user): "2. A4 브랜치에서 고친다: 두 번째 경고 때도 첫 번째 경고와 같은
+  경고 화면 … 을 1.5초 보여 준 뒤 실패 화면으로 넘어간다. … 3. 같은 A4 커밋에, 별이 채워질 때의 가벼운 효과를 넣는다. …
+  말풍선과 배경음은 다음 iteration으로 미룬다고 PR 본문에 적는다."
+- After (2026-11-24, pasted): "A4 연출 추가 작업이다. … 이번 iteration이 마지막이라 다음으로 미루지 않는다. 명세와 시안은
+  p16-3-fx 묶음 v2(SPEC-FX.md, design/, shots/)에 있다."
+- Why it worked: the first message described the effects in words and deferred the bubbles and music; the revision
+  pointed at a spec and picked designs, named every value's source, and kept all four effects in this iteration.
+- Before (2026-11-24, pasted): "A4에 A2와 A3를 merge한다(1번 수정 포함). - A5에 A4를 merge한다. … 하네스가 merge
+  커밋을 막거나 앞 단계 파일을 고쳐야 하면, 우회하지 말고 멈추고 보고한다."
+- After (2026-11-24, the user's answer to the session's question): "1번(A4에 main 먼저)으로 간다. A4에 origin/main을
+  먼저 merge한 뒤 A2, A3를 merge한다. A5도 같은 방식으로 한다."
+- Why it worked: merging A2 straight in needed a merge commit made by hand (the notes' conflict), which the guard
+  checks against A4's own scope, so `main`'s files were outside it; the guard leaves them out only when the merge's
+  second parent is `origin/main`. The revision gives the same content in an order the guard accepts.
+
+### f. Manual fixes and why
+- None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.

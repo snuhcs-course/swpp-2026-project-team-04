@@ -13,7 +13,7 @@ import '../widgets/gym_background_art.dart';
 /// `flutter run -t lib/demo/hold_stage_demo.dart`.
 ///
 /// The stars go to an in-memory store for a demo account and show beside
-/// each stage; the chair pose's stages wait for A5.
+/// each stage.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   // As the app will at start-up (A3): every drawing's paths at once.
@@ -88,7 +88,6 @@ class _HoldStageDemoState extends State<HoldStageDemo> {
                 '${stage.starSeconds.join(' / ')} s · best '
                 '${_stars[stage.number] ?? 0} stars',
               ),
-              enabled: stage.pose == HoldPose.plank,
               onTap: () => _open(stage.number),
             ),
           if (_lastExit != null)
