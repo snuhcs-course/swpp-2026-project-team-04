@@ -24,6 +24,8 @@ import 'screens/setup_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/social_signup_screen.dart';
 import 'screens/versus_screen.dart';
+import 'services/device/device_controls.dart';
+import 'services/telemetry/telemetry_service.dart';
 import 'services/api/api_client.dart';
 import 'services/auth/auth_repository.dart';
 import 'services/auth/google_sign_in_service.dart';
@@ -74,6 +76,13 @@ Future<void> main() async {
       rulesSeenStore: SecureRulesSeenStore(),
       settingsStore: SecureSettingsStore(),
       friendRepository: ServerFriendRepository(api: api),
+      // P17: P6's events, sent with the login; kept on the phone meanwhile.
+      telemetry: Telemetry(
+        send: httpTelemetrySender(api),
+        root: appFilesDirectory,
+        // Events go only with the login of the account that made them.
+        owner: () => auth.session?.account.id.toString(),
+      ),
     ),
   );
 }
@@ -97,6 +106,7 @@ class GymRatsApp extends StatefulWidget {
     this.settingsStore,
     this.googleSignIn,
     this.friendRepository,
+    this.telemetry,
   });
 
   final AuthRepository authRepository;
@@ -128,6 +138,10 @@ class GymRatsApp extends StatefulWidget {
   /// Friends and friend battle invites (P9). Defaults to an empty
   /// [InMemoryFriendRepository].
   final FriendRepository? friendRepository;
+
+  /// Where the screens record P6's telemetry events (P17). Defaults to one
+  /// that only keeps them in memory and sends nothing.
+  final Telemetry? telemetry;
 
   static const signupRoute = '/signup';
 
@@ -188,6 +202,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
   late final _inviteAlert = FriendInviteAlertViewModel(repository: _friends);
   final _inviteRoutes = FriendInviteRouteWatch();
   AuthStatus? _shownStatus;
+  late final Telemetry _telemetry = widget.telemetry ?? Telemetry();
 
   @override
   void initState() {
@@ -219,6 +234,8 @@ class _GymRatsAppState extends State<GymRatsApp> {
     if (_auth.status == AuthStatus.signedIn && account != null) {
       _help.load(account.id);
       _characters.load(account.id);
+      // Events kept while logged out (the tutorial before the first home).
+      _telemetry.flush();
     } else if (_auth.status == AuthStatus.signedOut) {
       _characters.clear();
     }
@@ -234,6 +251,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
     _characters.dispose();
     _inviteAlert.dispose();
     _inviteRoutes.dispose();
+    _telemetry.dispose();
     super.dispose();
   }
 
@@ -254,6 +272,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
         Provider<GoalStore>(create: (_) => SecureGoalStore()),
+        Provider<Telemetry>.value(value: _telemetry),
       ],
       child: MaterialApp(
         title: 'GymRats',

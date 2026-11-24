@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/exercise_type.dart';
 import '../models/tutorial_page.dart';
 import '../services/audio/background_music.dart';
+import '../services/telemetry/telemetry_service.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/tutorial_viewmodel.dart';
 import '../widgets/accent_button.dart';
@@ -34,8 +36,24 @@ class HelpScreen extends StatefulWidget {
 class _HelpScreenState extends State<HelpScreen> {
   static const _turn = Duration(milliseconds: 300);
 
-  final _tutorial = TutorialViewModel();
+  late final TutorialViewModel _tutorial;
   final _pager = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    Telemetry? telemetry;
+    try {
+      telemetry = context.read<Telemetry>();
+    } on ProviderNotFoundException {
+      telemetry = null;
+    }
+    // P17 measures the onboarding: the tutorial before the first home, not
+    // the help opened again later.
+    _tutorial = TutorialViewModel(
+      telemetry: widget.onStart == null ? null : telemetry,
+    )..open();
+  }
 
   @override
   void dispose() {
@@ -61,6 +79,7 @@ class _HelpScreenState extends State<HelpScreen> {
 
   void _next() {
     if (_tutorial.isLast) {
+      _tutorial.complete();
       _finish();
     } else {
       _turnTo(_tutorial.index + 1);
@@ -97,7 +116,10 @@ class _HelpScreenState extends State<HelpScreen> {
                               right: AppSpacing.s8,
                             ),
                             child: TextButton(
-                              onPressed: onStart,
+                              onPressed: () {
+                                _tutorial.skip();
+                                onStart();
+                              },
                               child: Text(
                                 '건너뛰기',
                                 style: text.bodyMedium?.copyWith(

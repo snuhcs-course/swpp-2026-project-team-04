@@ -95,10 +95,13 @@ class BattleServer {
     this.reconnectMs = 10000,
     this.heartbeatTimeoutMs = 15000,
     this.results,
+    BattleTelemetry? telemetry,
     this.rules = battleRules,
-  }) : durationMs = durationMs ?? battleDuration.inMilliseconds,
-       setupTimeoutMs =
-           setupTimeoutMs ?? battleSetupTimeout.inMilliseconds;
+  }) : _telemetry =
+           telemetry ??
+           (results is BattleTelemetry ? results as BattleTelemetry : null),
+       durationMs = durationMs ?? battleDuration.inMilliseconds,
+       setupTimeoutMs = setupTimeoutMs ?? battleSetupTimeout.inMilliseconds;
   final BattleAuthenticator authenticate;
 
   /// The game the server scores: the same code and numbers as the app.
@@ -106,6 +109,10 @@ class BattleServer {
 
   /// P11 storage; null keeps results in memory only (local tests, dev).
   final BattleResultStore? results;
+
+  /// P17: where each match's end is recorded as `battle_finished`; the P11
+  /// store by default, null to record nothing.
+  final BattleTelemetry? _telemetry;
   final int durationMs,
       countdownMs,
       readyTimeoutMs,
@@ -647,6 +654,7 @@ class BattleServer {
     m.ended = now;
     m.result = {'reason': reason, 'ended_at_ms': now};
     _broadcast(m, 'match.cancelled', m.result!);
+    _recordEnd(m, reason);
   }
 
   void _void(_Match m, String reason) {
@@ -656,7 +664,61 @@ class BattleServer {
     _broadcast(m, 'match.void', m.result!);
     // On shutdown the next start-up voids it in storage instead, so a
     // resuming app still learns what happened.
-    if (!_closing) _store((store) => store.voided(m.id, reason));
+    if (!_closing) {
+      _store((store) => store.voided(m.id, reason));
+      _recordEnd(m, reason);
+    }
+  }
+
+  /// P17: records [m]'s end as P6's `battle_finished`, here and only here,
+  /// so two phones reporting the same match still count once. Called once
+  /// per match, as it ends: the callers return early for a terminal match.
+  /// [reason] is the server's own end code; the duration is from
+  /// `match.found` to the end.
+  void _recordEnd(_Match m, String reason) {
+    final sink = _telemetry;
+    if (sink == null) return;
+    final event = <String, dynamic>{
+      'event': 'battle_finished',
+      'event_id': _uuid(),
+      'ts': DateTime.fromMillisecondsSinceEpoch(
+        now,
+        isUtc: true,
+      ).toIso8601String(),
+      'match_id': m.id,
+      'end_reason': reason,
+      'status': m.status,
+      'duration_ms': now - m.created,
+      'exercise': m.players.first.exercise,
+      'kind': m.players.first.friend == null ? 'main' : 'friend',
+      // Points exist only once the battle started.
+      'scores': m.start == null
+          ? const <Map<String, dynamic>>[]
+          : [
+              for (final p in m.players)
+                {
+                  'player_id': p.identity.id,
+                  'game_score': m.games[p.identity.id]!.points,
+                  'valid_reps': m.scores[p.identity.id]![0],
+                },
+            ],
+    };
+    late final Future<void> pending;
+    pending = sink
+        .battleFinished(event)
+        .catchError((_) {})
+        .whenComplete(() => _storing.remove(pending));
+    _storing.add(pending);
+  }
+
+  /// A random (version 4) UUID, the event id Django keys events by.
+  String _uuid() {
+    final b = List.generate(16, (_) => _random.nextInt(256));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    final h = b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
+    return '${h.substring(0, 8)}-${h.substring(8, 12)}-'
+        '${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
   }
 
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
@@ -725,6 +787,7 @@ class BattleServer {
         ],
       }),
     );
+    _recordEnd(m, reason);
   }
 
   void _disconnect(_Player p, WebSocket socket) {

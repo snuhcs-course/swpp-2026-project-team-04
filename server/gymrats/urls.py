@@ -22,7 +22,9 @@ urlpatterns = [
     path("users/", include("accounts.me_urls")),
     path("matches", include("matches.urls")),
     path("friends", include("accounts.friends_urls")),
-    # Battle server only (P11); nginx does not forward /api/internal/.
+    path("telemetry/", include("telemetry.urls")),
+    # Battle server only (P11, P17); nginx does not forward /api/internal/.
+    path("internal/telemetry/", include("telemetry.internal_urls")),
     path("internal/", include("matches.internal_urls")),
 ]
 

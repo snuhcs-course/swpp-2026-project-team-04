@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/tutorial_page.dart';
+import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/viewmodels/tutorial_viewmodel.dart';
 
 void main() {
@@ -115,6 +116,62 @@ void main() {
       expect(tutorial.positionOf(11), (11, 11));
       expect(tutorial.positionOf(12), (1, 10));
       expect(tutorial.positionOf(21), (10, 10));
+    });
+  });
+
+  group('튜토리얼 텔레메트리 (P17)', () {
+    test('opening records the start with the page count, once', () {
+      final telemetry = Telemetry();
+      final tutorial = TutorialViewModel(telemetry: telemetry)
+        ..open()
+        ..open();
+      final start = telemetry.pending.single;
+      expect(start['event'], 'tutorial_started');
+      expect(start['pages_total'], tutorial.pages.length);
+    });
+
+    test('완료 on the last page is completed with that page', () {
+      final telemetry = Telemetry();
+      final tutorial = TutorialViewModel(telemetry: telemetry)..open();
+      tutorial.goTo(tutorial.pages.length - 1);
+      tutorial.complete();
+      final end = telemetry.pending.last;
+      expect(end['event'], 'tutorial_finished');
+      expect(end['result'], 'completed');
+      expect(end['last_page'], tutorial.pages.length);
+      expect(end['attempt_id'], telemetry.pending.first['attempt_id']);
+    });
+
+    test('skipping is skipped at the page it was on; the end counts once', () {
+      final telemetry = Telemetry();
+      final tutorial = TutorialViewModel(telemetry: telemetry)..open();
+      tutorial.next();
+      tutorial.next();
+      tutorial.skip();
+      tutorial.dispose();
+      final ends = telemetry.pending.where(
+        (e) => e['event'] == 'tutorial_finished',
+      );
+      expect(ends.single['result'], 'skipped');
+      expect(ends.single['last_page'], 3);
+    });
+
+    test('closing it any other way is skipped', () {
+      final telemetry = Telemetry();
+      TutorialViewModel(telemetry: telemetry)
+        ..open()
+        ..dispose();
+      expect(telemetry.pending.last['result'], 'skipped');
+      expect(telemetry.pending.last['last_page'], 1);
+    });
+
+    test('without telemetry, or never opened, nothing is recorded', () {
+      final telemetry = Telemetry();
+      TutorialViewModel(telemetry: telemetry).dispose();
+      expect(telemetry.pending, isEmpty);
+      final plain = TutorialViewModel()..open();
+      plain.complete();
+      plain.dispose();
     });
   });
 }

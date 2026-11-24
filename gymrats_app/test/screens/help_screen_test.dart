@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/tutorial_page.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/services/audio/background_music.dart';
+import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/accent_button.dart';
 import 'package:gymrats_app/widgets/help_pictures.dart';
 import 'package:gymrats_app/widgets/help_rules.dart';
+import 'package:gymrats_app/viewmodels/tutorial_viewmodel.dart';
 import 'package:gymrats_app/widgets/sound_cues.dart';
 
 void main() {
@@ -265,4 +268,75 @@ void main() {
       }
     });
   }
+
+  group('튜토리얼 텔레메트리 (P17)', () {
+    Future<Telemetry> showWith(WidgetTester tester, Widget home) async {
+      final telemetry = Telemetry();
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        Provider<Telemetry>.value(
+          value: telemetry,
+          child: MaterialApp(theme: AppTheme.light, home: home),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return telemetry;
+    }
+
+    List<Map<String, Object?>> ends(Telemetry t) =>
+        t.pending.where((e) => e['event'] == 'tutorial_finished').toList();
+
+    testWidgets('the first page records the start; 건너뛰기 records skipped '
+        'once', (tester) async {
+      var started = 0;
+      final telemetry = await showWith(
+        tester,
+        HelpScreen(onStart: () => started++),
+      );
+      expect(telemetry.pending.single['event'], 'tutorial_started');
+      expect(
+        telemetry.pending.single['pages_total'],
+        TutorialViewModel().pages.length,
+      );
+      await tester.tap(find.text('건너뛰기'));
+      await tester.pumpWidget(const SizedBox());
+      expect(started, 1);
+      expect(ends(telemetry).single['result'], 'skipped');
+      expect(ends(telemetry).single['last_page'], 1);
+    });
+
+    testWidgets('완료 on the last page records completed', (tester) async {
+      final telemetry = await showWith(tester, HelpScreen(onStart: () {}));
+      final pages = TutorialViewModel().pages.length;
+      for (var i = 1; i < pages; i++) {
+        await tester.tap(find.text('다음'));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.text('완료'));
+      await tester.pumpWidget(const SizedBox());
+      expect(ends(telemetry).single['result'], 'completed');
+      expect(ends(telemetry).single['last_page'], pages);
+    });
+
+    testWidgets('closing the onboarding tutorial mid-way is skipped at its '
+        'page', (tester) async {
+      final telemetry = await showWith(tester, HelpScreen(onStart: () {}));
+      await tester.tap(find.text('다음'));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox());
+      expect(ends(telemetry).single['result'], 'skipped');
+      expect(ends(telemetry).single['last_page'], 2);
+    });
+
+    testWidgets('the help opened again from home is not the onboarding: '
+        'nothing is recorded', (tester) async {
+      final telemetry = await showWith(tester, const HelpScreen());
+      await tester.tap(find.text('다음'));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox());
+      expect(telemetry.pending, isEmpty);
+    });
+  });
 }
