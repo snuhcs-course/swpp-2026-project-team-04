@@ -74,7 +74,7 @@ void main() {
     );
     expect(
       words(ExerciseType.pushUp, TutorialStep.fever).body,
-      '점수가 2배가 돼요. 무릎 푸시업은 그대로 5점이에요.',
+      '점수가 2배가 돼요. 무릎을 대면 피버 중에도 0점이에요.',
     );
     expect(words(ExerciseType.squat, TutorialStep.ko).title, '100점 앞서면 KO 승리');
   });
