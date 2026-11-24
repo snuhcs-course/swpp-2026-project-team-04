@@ -28,7 +28,7 @@ class SettingsScreen extends StatelessWidget {
       context,
       const ExitDialog(
         title: '로그아웃할까요?',
-        message: '다시 들어오려면\n아이디와 비밀번호가 필요해요.',
+        message: '다시 들어오려면\n로그인이 필요해요.',
         leaveLabel: '로그아웃',
       ),
     );
