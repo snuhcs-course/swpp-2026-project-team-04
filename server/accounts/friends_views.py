@@ -130,7 +130,9 @@ class FriendRequestsView(APIView):
         other = User.objects.filter(
             id=int(match["tag"]), nickname=match["nickname"]
         ).first()
-        if other is None:
+        # Exactly the code shown, padding included: "헬창#00002" is not
+        # "헬창#0002".
+        if other is None or code.strip() != friend_code(other):
             return _error("user_not_found", status.HTTP_404_NOT_FOUND)
         if other.id == me.id:
             return _error("cannot_add_self", status.HTTP_400_BAD_REQUEST)

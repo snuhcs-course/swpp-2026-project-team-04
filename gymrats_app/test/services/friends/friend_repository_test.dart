@@ -221,6 +221,8 @@ void main() {
       expect(await refusal(repo.addFriend('헬창')), 'invalid_code');
       // At least the four digits a code shows.
       expect(await refusal(repo.addFriend('헬창#2')), 'invalid_code');
+      // Exactly the code shown: more padding finds nobody.
+      expect(await refusal(repo.addFriend('헬창#00002')), 'user_not_found');
       // Any nickname sign-up allows, a line break too.
       const odd = FriendPerson(id: 12, nickname: '헬\n창', code: '헬\n창#0012');
       final withOdd = InMemoryFriendRepository(me: me, people: const [odd]);

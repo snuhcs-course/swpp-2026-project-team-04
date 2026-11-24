@@ -649,3 +649,12 @@ def test_a_pasted_code_with_line_breaks_around_it_still_works(client, two, aroun
     before, after = around
     response = _request(client, a, f"{before}{_code(b_id)}{after}")
     assert response.status_code == 201
+
+
+@pytest.mark.parametrize("extra", ["0", "00"])
+def test_an_over_padded_tag_finds_nobody(client, two, extra):
+    (_, a), (b_id, _) = two
+    padded = f"헬창#{extra}{b_id:04d}"
+    response = _request(client, a, padded)
+    assert response.status_code == 404
+    assert response.json() == {"detail": "user_not_found"}
