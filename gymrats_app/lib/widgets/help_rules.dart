@@ -99,7 +99,7 @@ abstract final class HelpRules {
       ),
       TutorialStep.average => HelpPage(
         title: '조금 얕으면 Average',
-        body: '깊이가 부족해도 팔꿈치를 120° 이하로 굽히면 $average점. 무릎 푸시업도 한 번에 5점이에요.',
+        body: '깊이가 부족해도 팔꿈치를 120° 이하로 굽히면 $average점. 무릎을 대면 0점이에요.',
       ),
       TutorialStep.fail => HelpPage(
         title: squat ? '얕게 앉으면 Fail' : '자세가 무너지면 Fail',
@@ -113,7 +113,7 @@ abstract final class HelpRules {
         title: '마지막 $feverSeconds초는 피버 타임',
         body: squat
             ? '모든 점수가 $feverMultiplier배로 들어와요.'
-            : '점수가 $feverMultiplier배가 돼요. 무릎 푸시업은 그대로 5점이에요.',
+            : '점수가 $feverMultiplier배가 돼요. 무릎을 대면 피버 중에도 0점이에요.',
       ),
       TutorialStep.ko => HelpPage(
         title: '$koLead점 앞서면 KO 승리',
