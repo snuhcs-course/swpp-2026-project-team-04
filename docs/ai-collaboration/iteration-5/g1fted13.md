@@ -282,12 +282,15 @@ These were made from the A5 session at the user's word; their full evidence is i
   after an entry), `397f498` (a test comment), `f78ac2b` (the result on small screens, found by the P16 session),
   `4ef8a2f` (one bent arm, from the Codex review on #90), `3ffed5f` (the hold effects: spec and designs by Claude on
   claude.ai from the phone check of 11-24, the picks by Woohyun Song), `94f6416` (the leave dialog at a stage's end,
-  found by the P16 session) and the `main` merges `166de3b`, `78e61dc`, `6bda1e0`, with their testing notes; the
-  reviewer subagent ran A4 runs 5–12. The phone check of 2026-11-24 and every decision on these are the user's.
+  found by the P16 session), the `main` merges `166de3b`, `78e61dc`, `6bda1e0`, and `f430051` and `f28cac6` (the
+  leave button hidden at a stage's end), with their testing notes; the reviewer subagent ran A4 runs 5–13. The phone check of
+  2026-11-24 and every decision on these are the user's.
 - **d. Hallucinations / errors:** the win or lose jingle came 1.5 s late at a second warning (run 9, Major, fixed);
   a screen check that could not fail (run 9, fixed); the bent-arm check on the mean of both arms let one bent arm pass,
   which no local review caught and the Codex review on #90 did (fixed in `4ef8a2f`); the leave dialog stayed open in
-  a second warning's 1.5 s, so leaving lost the stars (found by the P16 session, fixed in `94f6416`).
+  a second warning's 1.5 s, so leaving lost the stars (found by the P16 session, fixed in `94f6416`); that fix left
+  the leave button drawn and announced in the 1.5 s, though it opened nothing (run 12, Minor, left to the user, who
+  had it hidden as in a battle: `f430051`).
 - **e. Prompt revisions:** merging A2 straight into this branch was blocked by the local pre-commit guard (its
   hand-made merge commit counted `main`'s files as outside A4); the session aborted and asked, and the user's answer
   (2026-11-24, in the Prompt Log) changed the order to `origin/main` first, then A2 and A3.
