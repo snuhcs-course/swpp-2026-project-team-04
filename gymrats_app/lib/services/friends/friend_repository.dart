@@ -119,8 +119,9 @@ abstract interface class FriendRepository {
   Future<void> declineInvite(int inviteId);
 
   /// Takes back an open or accepted invite, by either player leaving the
-  /// waiting room.
-  Future<void> cancelInvite(int inviteId);
+  /// waiting room. With [ifPending], only an invite still open: an accepted
+  /// one stays (and the call is refused with `invite_closed`).
+  Future<void> cancelInvite(int inviteId, {bool ifPending = false});
 }
 
 /// [FriendRepository] over the GymRats API (`/friends`).
@@ -204,8 +205,10 @@ class ServerFriendRepository implements FriendRepository {
       _api.post('/friends/invites/$inviteId/decline', const {});
 
   @override
-  Future<void> cancelInvite(int inviteId) =>
-      _api.post('/friends/invites/$inviteId/cancel', const {});
+  Future<void> cancelInvite(int inviteId, {bool ifPending = false}) =>
+      _api.post('/friends/invites/$inviteId/cancel', {
+        if (ifPending) 'if_pending': true,
+      });
 
   static FriendPerson _person(Object? json) {
     final p = json! as Map<String, Object?>;
@@ -377,11 +380,16 @@ class InMemoryFriendRepository implements FriendRepository {
   @override
   Future<BattleInvite> fetchInvite(int inviteId) async => _find(inviteId);
 
-  Future<BattleInvite> _close(int inviteId, InviteStatus to) async {
+  Future<BattleInvite> _close(
+    int inviteId,
+    InviteStatus to, {
+    bool ifPending = false,
+  }) async {
     final invite = _find(inviteId);
     final open =
         invite.status == InviteStatus.pending ||
         (to == InviteStatus.cancelled &&
+            !ifPending &&
             invite.status == InviteStatus.accepted);
     if (invite.status == InviteStatus.expired) _refuse('invite_expired');
     if (!open) _refuse('invite_closed');
@@ -398,6 +406,6 @@ class InMemoryFriendRepository implements FriendRepository {
       _close(inviteId, InviteStatus.declined);
 
   @override
-  Future<void> cancelInvite(int inviteId) =>
-      _close(inviteId, InviteStatus.cancelled);
+  Future<void> cancelInvite(int inviteId, {bool ifPending = false}) =>
+      _close(inviteId, InviteStatus.cancelled, ifPending: ifPending);
 }

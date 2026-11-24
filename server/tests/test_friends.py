@@ -490,10 +490,10 @@ def test_two_answers_to_an_invite_at_once_only_the_first_counts(
     invite_id = _invite(client, a, b_id).json()["invite_id"]
     real = views._answer_invite
 
-    def raced(iid, mine, action):
+    def raced(iid, mine, action, **options):
         either = Q(from_user_id=a_id) | Q(to_user_id=b_id)
         real(iid, either, winner)
-        return real(iid, mine, action)
+        return real(iid, mine, action, **options)
 
     monkeypatch.setattr(views, "_answer_invite", raced)
     response = client.post(f"/friends/invites/{invite_id}/{loser}", **b)
@@ -582,3 +582,52 @@ def test_the_database_keeps_one_open_invite_per_inviter(client):
     FriendBattleInvite.objects.create(
         from_user=me, to_user=User.objects.get(id=c_id), exercise="squat"
     )
+
+
+def test_cancel_if_pending_leaves_an_accepted_invite(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    client.post(f"/friends/invites/{invite_id}/accept", **b)
+    # The inviter's cleanup after pairing has not seen the accept yet.
+    response = client.post(
+        f"/friends/invites/{invite_id}/cancel", {"if_pending": True}, format="json", **a
+    )
+    assert response.status_code == 409
+    assert response.json() == {"detail": "invite_closed"}
+    assert FriendBattleInvite.objects.get().status == "accepted"
+
+
+def test_cancel_if_pending_takes_back_an_open_invite(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    response = client.post(
+        f"/friends/invites/{invite_id}/cancel", {"if_pending": True}, format="json", **a
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"
+
+
+def test_only_true_turns_on_if_pending(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    client.post(f"/friends/invites/{invite_id}/accept", **b)
+    response = client.post(
+        f"/friends/invites/{invite_id}/cancel", {"if_pending": "yes"}, format="json", **a
+    )
+    assert response.status_code == 200
+    assert FriendBattleInvite.objects.get().status == "cancelled"
+
+
+@pytest.mark.parametrize("body", [[], [1, 2], "text", 3])
+def test_an_odd_answer_body_is_ignored(client, two, body):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    response = client.post(
+        f"/friends/invites/{invite_id}/cancel", body, format="json", **a
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"

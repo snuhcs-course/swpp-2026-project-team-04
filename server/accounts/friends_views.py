@@ -248,16 +248,17 @@ class FriendInviteView(APIView):
         return Response(_invite(invite))
 
 
-def _answer_invite(invite_id, mine, action):
+def _answer_invite(invite_id, mine, action, *, if_pending=False):
     """Closes the invite [invite_id] by [action] in one conditional write, so
     of two answers at the same moment only the one that still finds it open
     changes it: accept and decline need it open and within its minute;
-    cancel also takes an accepted one. False when nothing changed."""
+    cancel also takes an accepted one, unless [if_pending]. False when
+    nothing changed."""
     still_open = Q(
         status=FriendBattleInvite.PENDING,
         created_at__gt=timezone.now() - INVITE_TTL,
     )
-    if action == "cancel":
+    if action == "cancel" and not if_pending:
         still_open |= Q(status=FriendBattleInvite.ACCEPTED)
     to = {
         "accept": FriendBattleInvite.ACCEPTED,
@@ -276,7 +277,10 @@ class FriendInviteActionView(APIView):
     """POST /friends/invites/<id>/accept|decline, by the friend, while the
     invite is open; an expired one is 410. POST .../cancel, by either player
     leaving the waiting room: an open or an accepted invite, so the other
-    one's waiting room learns that nobody is coming."""
+    one's waiting room learns that nobody is coming. With {"if_pending":
+    true} it takes back only an invite still open (409 once accepted): the
+    app's cleanup after two crossed invites met, which must not undo an
+    accept it has not seen yet."""
 
     action = "accept"
 
@@ -287,7 +291,11 @@ class FriendInviteActionView(APIView):
             if self.action == "cancel"
             else Q(to_user=me)
         )
-        changed = _answer_invite(invite_id, mine, self.action)
+        body = request.data if isinstance(request.data, dict) else {}
+        if_pending = body.get("if_pending") is True
+        changed = _answer_invite(
+            invite_id, mine, self.action, if_pending=if_pending
+        )
         invite = (
             FriendBattleInvite.objects.filter(mine, id=invite_id)
             .select_related("from_user", "to_user")

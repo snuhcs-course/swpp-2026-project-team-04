@@ -170,6 +170,9 @@ void main() {
         ],
       );
       expect(jsonDecode(sent[2].body), {'friend_id': 2, 'exercise': 'push_up'});
+      expect(jsonDecode(sent.last.body), isEmpty);
+      await repo.cancelInvite(9, ifPending: true);
+      expect(jsonDecode(sent.last.body), {'if_pending': true});
     });
 
     test('a squat invite says squat', () async {
@@ -274,6 +277,17 @@ void main() {
       await repo.cancelInvite(a.id);
       expect((await repo.fetchInvite(a.id)).status, InviteStatus.cancelled);
       expect(await refusal(repo.cancelInvite(a.id)), 'invite_closed');
+      // Only still-open invites, when asked so.
+      final second = repo.receiveInvite(b, ExerciseType.pushUp);
+      await repo.acceptInvite(second.id);
+      expect(
+        await refusal(repo.cancelInvite(second.id, ifPending: true)),
+        'invite_closed',
+      );
+      expect((await repo.fetchInvite(second.id)).status, InviteStatus.accepted);
+      final third = repo.receiveInvite(b, ExerciseType.pushUp);
+      await repo.cancelInvite(third.id, ifPending: true);
+      expect((await repo.fetchInvite(third.id)).status, InviteStatus.cancelled);
       final d = repo.receiveInvite(b, ExerciseType.pushUp);
       await repo.declineInvite(d.id);
       repo.answer(d.id, InviteStatus.pending);
