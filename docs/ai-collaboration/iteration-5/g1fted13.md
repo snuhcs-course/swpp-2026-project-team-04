@@ -545,10 +545,11 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran twelve times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+- **Review:** the `reviewer` subagent ran thirteen times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
   CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, after the merge
   of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix, APPROVE (4 Minors, fixed) on the `main` merge, and CHANGES_REQUESTED, then
-  APPROVE, on the #95 merge, and APPROVE (5 Minors, fixed) on the invite alert fix.
+  APPROVE, on the #95 merge, APPROVE (5 Minors, fixed) on the invite alert fix, and APPROVE (5 Minors, fixed) on
+  the last phone check's notes.
 - **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
   (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
   Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
@@ -560,7 +561,11 @@ These were made from the A5 session at the user's word; their full evidence is i
   match, to open the chair stages as high plank until A5, and to base the PR on `codex/iter5-hold-plank`. When A5
   came up the user decided to merge it, remove the stand-in and move the PR's base to `codex/iter5-hold-chair`.
 - **The phone check:** done by Woohyun Song on the Galaxy S26+ (`9b59537`, 2026-11-24); the user asked for the fix's
-  rule (the design's shape kept, shrinking only on a narrow screen or with large text) and the sizes to test.
+  rule (the design's shape kept, shrinking only on a narrow screen or with large text) and the sizes to test. The
+  last phone check (2026-11-24 22:21–22:25, the build of `21fc291`) was also the user's, and its results, with the
+  app's sounds in the screen recording, came from the user; Claude Code wrote them into the TODO spots of P16's,
+  A4's and A5's testing entries, copied #88's and #89's CI coverage numbers into A3's and A2's entries, and listed
+  the follow-ups.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "앞 단계(A2~A5)의 파일은 상속만 하고 고치지 않는다. 고칠 것이 보이면 멈추고 알려 줘. … 판정, 점수, 봇의 rep 계산은 건드리지 않는다. 온라인 대결은 하나도 바뀌면 안 된다."
@@ -569,6 +574,7 @@ These were made from the A5 session at the user's word; their full evidence is i
 - [Woohyun Song, 11-24] (when A5 came up, pasted; excerpt) "의자 자세 판(5, 11, 17, 23)을 하이 플랭크로 열던 대체를 지우고 의자 자세로 연다. 대체를 확인하던 테스트도 맞게 고친다."
 - [Woohyun Song, 11-24] (after the phone check, pasted; excerpt) "고칠 것: 보스 매치 라운드 사이 화면의 "자세 잡기" 버튼 글자가 버튼 밖으로 거의 삐져나온다."
 - [Woohyun Song, 11-24] (after the hold effects, pasted; excerpt) "아케이드에서 버티기 판에 들어가 결과 화면을 거쳐 아케이드 홈으로 돌아오는 길이 아케이드 대결 판과 같은 순서로 곡이 바뀌는지 코드로 확인한다. 특히 jingle이 두 번 나거나 곡이 겹치지 않는지 본다."
+- [Woohyun Song, 11-24] (the last phone check's results, pasted; excerpt) "A2~A5 PR은 지금 HEAD에서 Codex 리뷰가 끝나 더 커밋하지 않기로 했다. 그래서 A4·A5 몫의 폰 확인 결과도 이 브랜치의 테스트 기록에 함께 적는다."
 - [Woohyun Song, 11-23] (after the laptop lost power, pasted; excerpt) "이어서 하기 전에 먼저 상태를 확인해 줘. 1. 지금 브랜치가 codex/iter5-ai-opponents인지, git status, 남아 있는 .git/index.lock이 있는지 본다."
 
 ### c. What AI did well
@@ -650,6 +656,12 @@ These were made from the A5 session at the user's word; their full evidence is i
   the commit; run 11 approved, with two wording Minors, also fixed.
 - **A path in my notes:** the post-push check matched `.claude/...` in the spec's path in my testing notes; fixed in a
   new commit (`7a1d46c`).
+- **A placeholder body on PR #91 (2026-11-24):** my patch to the script that writes PR #91's body, sent through a
+  shell heredoc, put real line breaks into a Python string and broke it (`SyntaxError`). The `gh pr edit` chained
+  after it still ran and uploaded the older dry-run body, with the placeholders `TEST` and `@N@`, to PR #91. Caught
+  by reading the live body back; the script was fixed in the editor, the body made again, uploaded, and read back
+  with no placeholder left. Cost: a few minutes, and a wrong body public for under a minute (38 s in the PR's edit
+  history, 13:37:15Z to 13:37:53Z). Since then the body is made and checked first and uploaded in a separate step.
 
 ### e. Prompt revisions
 - Before (2026-11-24, pasted): "1. fetch 뒤 codex/iter5-hold-chair를 P16 브랜치에 merge한다. main.dart와
