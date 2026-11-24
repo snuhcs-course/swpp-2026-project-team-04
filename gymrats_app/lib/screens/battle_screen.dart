@@ -11,6 +11,7 @@ import '../models/character_rig.dart';
 import '../models/feedback_goal.dart';
 import '../models/matchup.dart';
 import '../models/setup_hint_short.dart';
+import '../services/telemetry/telemetry_service.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/feedback/goal_progress.dart';
@@ -197,6 +198,7 @@ class _BattleScreenState extends State<BattleScreen>
       // The camera reads the orientation when it opens, so the setup waits
       // for portrait.
       _cameraStarted = true;
+      _beginSetupTelemetry();
       _viewModel.start();
     } else if (_cameraStarted && orientation != _orientation) {
       _viewModel.onScreenRotated();
@@ -258,7 +260,10 @@ class _BattleScreenState extends State<BattleScreen>
     for (final event in events) {
       _stage.rep(_withGoal(event));
     }
-    if (state.started && !_shown.started) _stage.go();
+    if (state.started && !_shown.started) {
+      _stage.go();
+      _endSetupTelemetry(ready: true);
+    }
     _shown = state;
     if (!state.started && state.phase == BattlePhase.setup) {
       widget.onSetup?.call(state.setup, state.startIn);
@@ -312,12 +317,33 @@ class _BattleScreenState extends State<BattleScreen>
   /// map, without stars). The round stops first, so time cannot run out
   /// while this screen slides away.
   void _leave() {
+    _endSetupTelemetry(ready: false);
     _viewModel.leave();
     if (widget.matchup.opponent.isArcade) {
       ArcadeFlow.leave(context);
     } else {
       popToHome(context);
     }
+  }
+
+  /// P17: the bot battle's pose setup as P6's setup_started and
+  /// setup_finished: ready when the round begins, cancelled when the user
+  /// leaves before it.
+  SetupTelemetry? _setupTelemetry;
+
+  void _beginSetupTelemetry() {
+    Telemetry? telemetry;
+    try {
+      telemetry = context.read<Telemetry>();
+    } on ProviderNotFoundException {
+      telemetry = null;
+    }
+    _setupTelemetry = SetupTelemetry.bot(telemetry, widget.matchup.exercise);
+  }
+
+  void _endSetupTelemetry({required bool ready}) {
+    final telemetry = _setupTelemetry?..saw(_viewModel.lastSetupReason);
+    ready ? telemetry?.ready() : telemetry?.cancelled();
   }
 
   /// Replaces this screen with the result screen.
@@ -357,6 +383,7 @@ class _BattleScreenState extends State<BattleScreen>
 
   @override
   void dispose() {
+    _endSetupTelemetry(ready: false);
     unawaited(keepScreenOn(false));
     WidgetsBinding.instance.removeObserver(this);
     _viewModel.removeListener(_onViewModelChanged);

@@ -10,6 +10,7 @@ import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
 import 'package:gymrats_app/screens/arcade_result_screen.dart';
 import 'package:gymrats_app/models/arcade_stage.dart';
 import 'package:gymrats_app/models/arcade_catalog.dart';
+import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/character_rig.dart';
@@ -172,6 +173,7 @@ void main() {
     AuthViewModel? auth,
     bool personGuard = const bool.fromEnvironment('S2_PERSON_GUARD'),
     ArcadeViewModel? arcade,
+    Telemetry? telemetry,
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = size;
@@ -213,50 +215,57 @@ void main() {
       clock: () => now,
       now: () => DateTime(2026, 11, 12, 14, 32),
     );
+    Widget withTelemetry(Widget app) => telemetry == null
+        ? app
+        : Provider<Telemetry>.value(value: telemetry, child: app);
     await tester.pumpWidget(
-      _withGoals(
-        MaterialApp(
-          theme: AppTheme.light,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: TextScaler.linear(textScale)),
-            child: child!,
-          ),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => BattleScreen(
-                      matchup: matchup,
-                      myCharacter: myCharacter ?? CharacterRig.defaultId,
-                      createViewModel: () => viewModel,
-                      onCue: (cue) => cues.add('$cue'),
-                      onSetup: onSetup,
+      withTelemetry(
+        _withGoals(
+          MaterialApp(
+            theme: AppTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(textScale)),
+              child: child!,
+            ),
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => BattleScreen(
+                        matchup: matchup,
+                        myCharacter: myCharacter ?? CharacterRig.defaultId,
+                        createViewModel: () => viewModel,
+                        onCue: (cue) => cues.add('$cue'),
+                        onSetup: onSetup,
+                      ),
                     ),
                   ),
+                  child: const Text('home'),
                 ),
-                child: const Text('home'),
               ),
             ),
+            onGenerateRoute: (settings) => switch (settings.name) {
+              GymRatsApp.resultRoute => MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) {
+                  final result = settings.arguments! as BattleResult;
+                  return Scaffold(
+                    body: Text(
+                      'result ${result.myReps}:${result.opponentReps}',
+                    ),
+                  );
+                },
+              ),
+              _ => null,
+            },
           ),
-          onGenerateRoute: (settings) => switch (settings.name) {
-            GymRatsApp.resultRoute => MaterialPageRoute<void>(
-              settings: settings,
-              builder: (_) {
-                final result = settings.arguments! as BattleResult;
-                return Scaffold(
-                  body: Text('result ${result.myReps}:${result.opponentReps}'),
-                );
-              },
-            ),
-            _ => null,
-          },
+          goals,
+          auth,
+          arcade,
         ),
-        goals,
-        auth,
-        arcade,
       ),
     );
     await tester.tap(find.text('home'));
@@ -1393,6 +1402,43 @@ void main() {
       expect(viewModel.state.phase, BattlePhase.playing);
       expect(opponent.running, isTrue);
       await close(tester);
+    });
+
+    group('세팅 텔레메트리 (P17)', () {
+      List<Map<String, Object?>> ends(Telemetry t) =>
+          t.pending.where((e) => e['event'] == 'setup_finished').toList();
+
+      testWidgets('the bot setup records its start, and ready with what it '
+          'last asked for when the round begins', (tester) async {
+        final telemetry = Telemetry();
+        await open(tester, telemetry: telemetry);
+        final start = telemetry.pending.single;
+        expect(start['event'], 'setup_started');
+        expect(start['mode'], 'bot');
+        expect(start['exercise'], 'push_up');
+        await frame(tester, 0.5, found: false);
+        await begin(tester);
+        final end = ends(telemetry).single;
+        expect(end['result'], 'ready');
+        expect(end['limit_ms'], isNull);
+        expect(end['last_reason'], 'no_person');
+        expect(end['attempt_id'], start['attempt_id']);
+        await close(tester);
+        expect(ends(telemetry), hasLength(1));
+      });
+
+      testWidgets('leaving in the setup is cancelled', (tester) async {
+        final telemetry = Telemetry();
+        await open(tester, telemetry: telemetry);
+        await frame(tester, 1);
+        await tester.binding.handlePopRoute();
+        await wait(tester, 400);
+        await tester.tap(dialogExit);
+        await wait(tester, 1000);
+        final end = ends(telemetry).single;
+        expect(end['result'], 'cancelled');
+        expect(end['last_reason'], isNull);
+      });
     });
 
     testWidgets('leaving in the setup never starts the bot', (tester) async {
