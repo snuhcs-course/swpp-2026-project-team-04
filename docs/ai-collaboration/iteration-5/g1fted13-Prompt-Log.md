@@ -51,3 +51,76 @@ SPEC 11절 질문의 답:
 3. AI 기록의 TODO([REDACTED:custom_term])에는 이렇게 적어 줘. \"SPEC.md, arcade_data.json, ai_level_sim.py는 claude.ai의 Claude가 Claude Design 캔버스 시안을 바탕으로 작성했다. 판 구성, 캐릭터 로테이션, AI LV 범위, 별 조건 같은 규칙과 수치는 송우현이 정하고 검토했다.\"
 4. 고친 것은 한 커밋으로 push한다. 커버리지는 CI 댓글이 달리면 그때 채운다.
 </pasted_content id=\"7b53\">"
+
+## 2026-11-25 · Woohyun Song · codex/iter5-auth-screens
+<!-- f5bae97a 2026-11-24T17:11:00.679Z -->
+[Woohyun Song, 11-25 02:11] "<pasted_content id=\"ec32\">
+P8(Redesign the sign-in and sign-up screens)을 시작한다. 이 worktree는 방금 origin/main에서 codex/iter5-auth-screens 브랜치를 새로 땄다(P7 Google 로그인 #93 포함). 하네스는 이 브랜치를 P8로 본다. PR은 main을 base로 연다. 마감은 11/27이다.
+명세와 시안은 C:\dev\handoff\p8 에 있다(SPEC.md, design/, shots/). 저장소 밖 폴더라 읽기만 하고, 그 안의 파일을 저장소로 복사하거나 커밋하지 않는다. 화면 값은 .dc.html 원본을 그대로 쓴다.
+1. flutter pub get을 하고 SPEC.md를 끝까지 읽는다. design/의 .dc.html도 연다. 단체 사진 캐릭터의 기준은 ChL.dc.html이다.
+2. 지금 코드를 읽는다: login_screen, social_signup_screen, signup_screen, auth_form, LoginViewModel, SocialSignupViewModel, 그리고 캐릭터 엔진(character_motion, character_figure, character_rig).
+3. 코드를 쓰기 전에 SPEC.md 11절의 계획(단체 사진을 그리는 방법, 새 파일과 범위 밖 파일, 취소 신호, 테스트 목록과 순서)을 보고하고 기다린다.
+4. SPEC 1절의 확정한 것은 다시 묻지 않는다. 범위 밖 파일은 선조치 후보고(로컬 allow, progress.md, PR의 Exceptions 절)로 처리한다.
+5. 이 메시지를 P8 프롬프트 기록에 남긴다.
+</pasted_content id=\"ec32\">"
+
+<!-- f5bae97a 2026-11-24T17:40:30.849Z -->
+[Woohyun Song, 11-25 02:40] "<pasted_content id=\"ec32\">
+계획대로 진행한다. 정해 달라고 한 세 가지와 더할 것을 적는다.
+
+정한 것
+1. 검사기: 로컬 ownership.json의 P7 branch를 feat/iter5-google-auth로 고친다. P11도 원인이 같으니 #95의 실제 브랜치 이름으로 함께 고친다. 둘 다 실제로 머지된 PR의 브랜치다. 하네스는 저장소에 올리지 않고 progress.md에 적는다. 고친 뒤 --status로 P8 편집이 풀린 것을 확인하고 5번(프롬프트 기록)을 마친다.
+2. 세션 만료 문구: 제안대로 Google 버튼 위의 F1 모양 칸에 띄우고, 버튼 글자는 \"Google로 시작하기\" 그대로 둔다. 첫 문장은 굵게, 나머지는 작은 회색으로 나눈다. 화면 읽기에 알리고, 다시 누르거나 시트를 열면 사라진다. 이 셋은 F1과 같다.
+3. 닉네임 12자: 시안대로 12자에서 입력을 막고, 글자 수는 12/12에서 멈춘다. 한글 조합 중인 글자가 잘리지 않게, 조합이 끝난 뒤 자르는 방식(Android 기본값)을 쓴다. SocialSignupViewModel의 12자 검사는 고치지 않고 그대로 둔다. 13자를 입력해도 12자만 남는 테스트를 더한다.
+
+더할 것
+4. golden 시각: 키 포즈 시각만이 아니라 다음 시각도 넣는다. 그래야 보간과 이징이 틀린 것이 잡힌다.
+   - 구간 중간(이징이 걸린 곳)
+   - glob from/to 경계의 앞뒤
+   - flagT가 바뀌는 시각의 앞뒤
+   - 18초 되돌림 직전과 직후
+   golden JSON을 만든 방법(ChL.dc.html의 d1, 고른 시각들)은 테스트 파일 머리 주석에 짧게 적는다. 변환·추출 스크립트와 시안 파일은 커밋하지 않는다.
+5. formError 공유 테스트를 더한다.
+   (가) Google 실패(F1) 뒤 아이디 시트를 열면 시트의 오류 줄이 비어 있다.
+   (나) 시트에서 틀린 비밀번호로 오류가 뜬 뒤 시트를 닫으면 첫 화면에 아무 칸도 없다.
+   (다) 세션 만료 칸이 뜬 상태에서 시트를 열고 닫으면 칸이 사라진다.
+6. 2단계(변환, 데이터, auth_cast, golden)가 끝나면 첫 화면을 0초와 6초로 그려 scratchpad에 남긴다. 그 그림을 shots/state_base.png, shots/cast_timeline_0-7s.png와 나란히 대조한 결과를 보고한다. 보고만 하고 기다리지 않고 3단계로 넘어간다.
+7. login_viewmodel.dart 변경은 PR의 Exceptions 절에 \"P7 파일, 기본값 있는 필드 두 개만 추가, 문구와 기존 동작 변화 없음\"으로 적는다.
+8. 프롬프트 기록의 add/add 충돌: P16 PR이 먼저 머지되면, origin/main을 이 브랜치에 merge하면서 두 절을 모두 남겨 푼다.
+</pasted_content id=\"ec32\">"
+
+## 2026-11-25 · Woohyun Song · codex/iter5-auth-screens
+<!-- f5bae97a 2026-11-24T18:40:41.129Z -->
+[Woohyun Song, 11-25 03:40] "앞으로 원래 규칙대로 한국어로 응답하도록 해.
+
+<pasted_content id=\"ec32\">
+2단계 대조 그림과 상태 그림 27장을 시안과 나란히 봤다. 360×780에서는 포즈, 표정, 자리, 상태 화면이 시안과 맞는다. 고칠 것 두 가지와 정한 것을 적는다.
+
+고칠 것
+1. 한글 줄바꿈: 320×640, 글자 1.3배에서 단어 중간이 잘린다. login_busy_small은 \"Google로 로그인하는 / 중…\", login_fail_small은 \"Google 로그인에 실패했어 / 요.\"로 마지막 글자만 다음 줄로 넘어간다. 인증 화면의 한글(버튼, F1 칸, 취소 줄, 시트, 닉네임 화면)은 띄어쓰기 자리에서만 줄이 바뀌게 한다. 화면에 그리는 글자에만 단어 안 글자 사이에 U+2060(word joiner)을 넣는 작은 도우미를 auth_form.dart에 두는 방법을 권한다. 화면 읽기는 원래 문장을 읽게 하고, 기존 테스트가 문구로 찾는 부분이 깨지지 않게 한다. 도우미 단위 테스트를 더하고, 작은 화면 그림을 다시 그려 \"Google로 / 로그인하는 중…\", \"Google 로그인에 / 실패했어요.\"처럼 나뉘는지 확인한다. 글자 크기는 줄이지 않는다.
+2. character_rig.dart의 #RRGGBBAA: 알파가 맨 뒤라는 순서를 고정하는 단위 테스트를 하나 더한다(예: '#FF000080'은 빨강, 알파 0x80). Flutter Color는 알파가 맨 앞이라 순서가 뒤바뀌어도 golden(포즈·표정)으로는 잡히지 않는다.
+
+정한 것
+3. 시안이 정하지 않은 세 가지(닉네임 placeholder 없음, 시트 약 16px 더 높음, 링크 밑줄 기본 거리)는 보고한 대로 둔다.
+4. 320×640, 1.3배에서 F1 칸이 캐릭터 아래쪽을 가리는 것은 그대로 둔다. 넘치지 않고, 이 조합에서만 생긴다.
+5. 범위 밖 세 파일(character_rig.dart, auth_flow_test.dart, auth_history_demo_test.dart)은 보고한 대로 둔다. 로컬 예외 파일, progress.md, PR Exceptions 절에 이유와 함께 적는다.
+6. 커밋: reviewer 수정, 위 1·2번, 노트와 두 번째 리뷰가 끝나면 커밋하고 이 브랜치를 push한다. PR은 폰 확인 뒤에 연다.
+7. 폰 확인 목록을 만들어 보고한다. 콘솔 확인 항목은 넣지 않는다(폰은 랩탑과 분리해서 테스트한다). 포함할 것:
+   - 첫 화면의 로고 위치(상태 표시줄 아래가 시안과 맞는지)
+   - 캐릭터가 1초 간격으로 차례로 움직이고 18초마다 되돌아가는지
+   - 아이디 시트: 로그인, 틀린 비밀번호, 키보드가 올라올 때, 회원가입 링크
+   - Google 로그인: 먼저 폰 빌드에서 Google 로그인이 되는지(P7 SHA-1 문제) 본다. 안 되면 L1·C2·새 계정 닉네임 화면은 위젯 테스트로 갈음하고, 폰에서는 F1과 \"Google로 다시 시도\"만 본다.
+</pasted_content id=\"ec32\">"
+
+## 2026-11-25 · Woohyun Song · codex/iter5-auth-screens
+<!-- f5bae97a 2026-11-24T19:11:38.668Z -->
+[Woohyun Song, 11-25 04:11] "<pasted_content id=\"ec32\">
+순서가 바뀐 것은 괜찮다. merge에 커밋이 필요했으니 맞는 판단이다. 4차 리뷰가 APPROVE면 말한 대로 노트를 커밋하고 push한다.
+
+TODO 채우기(누가 만들었나):
+- SPEC.md v1, LoginS.dc.html, LoginStateBoard.dc.html: Claude(claude.ai 채팅, Claude Opus 5.5)가 만들었다. 사용자가 Claude Design 캔버스에 놓인 시안 중에서 골랐다. C1-A 첫 화면, \"아이디로 로그인\"은 아래 시트, 아이디 회원가입은 지금 그대로, 상태는 L1·C2·F1이다.
+- LoginFinal.dc.html, LoginB.dc.html, ChL.dc.html(단체 사진 포즈와 동작), LoginCSheet.dc.html: 사용자가 그 전에 Claude Design에서 Claude와 함께 만든 메뉴 시안이다.
+- 화면 값은 이 .dc.html 원본에서 그대로 가져왔고, 이 세션(Claude Code)이 Flutter로 옮겼다.
+
+PR 전에 할 일: 아케이드 PR(#90, #92, #91)이 곧 main에 들어간다. 그 PR들도 같은 노트 세 파일 끝에 절을 더해 두었다. 폰 확인이 끝나고 PR을 열기 직전에 origin/main을 다시 merge한다. 노트 충돌은 두 쪽 절을 모두 남기는 방향으로 풀고, 순서는 main 쪽(A3~P16) 뒤에 P8을 둔다.
+</pasted_content id=\"ec32\">"

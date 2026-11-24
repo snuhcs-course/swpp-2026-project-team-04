@@ -1,6 +1,6 @@
 # AI Collaboration notes: Iteration 5 (2026-11-21 ~ 2026-12-04) – Woohyun Song
 Status: draft (iteration open) | Written by: Woohyun Song | Merged by the PM into `AI-Collaboration-Report-Iteration-5.md` (P27)
-Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data)
+Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data; P8's spec and state mockups)
 
 Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. Input prompts are in
 [g1fted13-Prompt-Log.md](g1fted13-Prompt-Log.md).
@@ -107,3 +107,115 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 
 ### f. Manual fixes and why
 - None in this step: nobody edited A2's code by hand.
+
+## P8 `codex/iter5-auth-screens` – Redesign the sign-in and sign-up screens (team order #5), 2026-11-25
+
+### a. Where AI was used
+- **The hand-off** (Woohyun Song's account, 2026-11-25):
+  - The menu mockups `LoginFinal.dc.html`, `LoginB.dc.html`, `ChL.dc.html` (the group photo's poses and motion)
+    and `LoginCSheet.dc.html` were made earlier by Woohyun Song with Claude in Claude Design, on the canvas
+    "GymRats 메인 메뉴 시안".
+  - `SPEC.md` v1, `LoginS.dc.html` and `LoginStateBoard.dc.html` were made by Claude (claude.ai chat, Claude Opus 5.5).
+    Woohyun Song chose among the mockups on the canvas: the C1-A first screen, the id login as a bottom sheet, the
+    id sign-up screen kept as it is, and the L1, C2 and F1 states.
+  - The screen values come from these `.dc.html` sources as they are; this session (Claude Code) moved them to
+    Flutter.
+- **Planning:** before any code, Claude Code read the spec, the mockups and the character engine. It compared ChL's
+  drawing with the app's W3 + W4 + W5 drawing lists shape by shape, using a throwaway Python script. The result: the
+  six bodies are identical, and only the faces, the thumb and RepBot's back glove are new. It then reported the plan
+  of spec section 11 and waited. The user approved it with three decisions and five additions (Prompt Log, 11-25 02:40).
+- **Local harness (not committed):**
+  - P7's and P9's branches in `ownership.json` were changed to the branches that really merged (#93, #95). The guard
+    had reported "P7 미머지" and blocked every P8 edit.
+  - The ownership exceptions file got 15 P8 lines.
+- **Generated, then checked:**
+  - `lib/widgets/auth_cast_data.dart` (142 lines) was written by a throwaway converter from `ChL.dc.html`
+    `motions.d1` and `LoginB.dc.html`. It asserts each LoginB value it copies against the file.
+  - `test/widgets/auth_cast_golden.json` was written by running ChL's own JavaScript (`RIGX.vals`) in node.
+  - Neither script is committed (the user's decision).
+- **The code and tests:** Claude Code wrote all of it, in four commits (`68597e4`, `5e5c8aa`, `e1b88b1`, `c91a8f3`)
+  after the code reviews passed, then merged `origin/main` (`def1c5e`).
+  - **The group photo:** `lib/widgets/auth_cast.dart` (L1–892). The model is `AuthCast` (L24); the clock is
+    `AuthCastStageState` (L652); the painter is `AuthCastPainter` (L745).
+  - **The screens:** `lib/screens/login_screen.dart` has the first-screen layout (L189), the id sheet (L324) and the
+    sheet's edge (L480). `lib/screens/social_signup_screen.dart` is the nickname step.
+  - **The parts:** `lib/widgets/auth_form.dart` gets the new parts (L185–941), including the line-break helpers
+    `keepWordsWhole` (L845), `authLines` (L863) and `AuthWords` (L902).
+  - **The tokens:** `lib/theme/app_theme.dart` gets `AuthColors`, `AuthLayout` and `AuthText` (L1267–end).
+  - **The view model:** `lib/viewmodels/login_viewmodel.dart` gets `cancelledWith` and `failedWith` (L16–40, L130–148).
+  - **The color reader:** `lib/models/character_rig.dart` `_color` (L529) also reads `#RRGGBBAA`.
+  - **Tests:** 3 new test files and 8 changed ones (the testing notes' table).
+- **Review:** the `reviewer` subagent ran four times: 1 and 3 CHANGES_REQUESTED, 2 and 4 APPROVE (item d).
+- **Not done by AI:**
+  - The user checked the 27 comparison images against the mockups and found the line-break problem (item d).
+  - The user decided the three open design points, the F1 box covering the characters at the smallest size, and
+    the commit and phone-check order.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-25] "3. 코드를 쓰기 전에 SPEC.md 11절의 계획(단체 사진을 그리는 방법, 새 파일과 범위 밖 파일, 취소 신호, 테스트 목록과 순서)을 보고하고 기다린다."
+- [Woohyun Song, 11-25] "4. golden 시각: 키 포즈 시각만이 아니라 다음 시각도 넣는다. 그래야 보간과 이징이 틀린 것이 잡힌다."
+- [Woohyun Song, 11-25] "1. 한글 줄바꿈: 320×640, 글자 1.3배에서 단어 중간이 잘린다. … 인증 화면의 한글(버튼, F1 칸, 취소 줄, 시트, 닉네임 화면)은 띄어쓰기 자리에서만 줄이 바뀌게 한다."
+
+### c. What AI did well
+- **Using the engine instead of copying ChL:**
+  - The shape-by-shape comparison showed that ChL's pose arrays map one to one onto the home rig's key poses.
+  - So the photo runs on the app's own engine. No existing character file changed except one additive color rule.
+  - The golden test checks 645 sampled frames against the design's own code with no difference. The times include
+    eased mid-segments and ±1 ms around every hop, rock, flag and face change, and the 18 s wrap.
+- **The reviewer's data check:** in run 1 the reviewer compared every number of `auth_cast_data.dart` with
+  ChL line 738 and LoginB by script, with 0 differences.
+- **Render comparisons:** throwaway widget tests drew every state with the app's fonts into PNGs, kept in the
+  scratchpad. They caught three layout bugs before any widget test was written (item d).
+- **Finding the minimal signal:** `LoginViewModel` needed two defaulted fields. With them the screen can tell a cancel
+  (C2), a Google failure (F1) and the expired session apart without changing any message.
+
+### d. Hallucinations / errors
+- **Logo slant:** Claude Code first slanted the lime bar and GYMMOUSE the wrong way. It took CSS `skewX(-14deg)` as
+  leaning left, then passed a tangent where `Matrix4.skewX` takes an angle. Caught by comparing the render with
+  `state_base.png`; fixed before any commit. Cost: one re-render.
+- **Podium outline:** it assumed SVG strokes are drawn inside a shape's edge and deflated the podium's outline. SVG
+  centres them. Caught on re-reading its own code before the first render.
+- **Sheet border:** a rounded `Border` with no bottom side throws in Flutter. The first render test failed on it, so
+  it was replaced by a small edge painter (`login_screen.dart` L480).
+- **Field text offset:** the theme's input padding leaked into the sheet's fields. Caught by the render.
+- **Reviewer run 1:**
+  - Major: two public enums were missing from the Design doc changes.
+  - Minor: closing the sheet during a login let a wrong-password result show as an F1 box on the first screen. This
+    broke the user's rule (b). The fix got a test that fails on the old code.
+- **Korean line breaks:** at 320 × 640 with text 1.3, Korean broke inside a word ("Google 로그인에 실패했어 / 요."). It
+  was not seen by Claude Code, whose overflow tests only check that nothing spills out. The user found it in the
+  images. The fix keeps words whole and balances two lines.
+- **Smaller slips:**
+  - `pumpAndSettle` never settles while the photo's ticker runs, so the first clock tests timed out.
+  - The new `AuthText` widget's name clashed with a theme extension; it was renamed to `AuthWords`.
+  - A unit test expected a split that was a tie.
+  - The first prompt-log entry included the harness-injected `<browser_instruction>` block. It was removed, since
+    only the user's words belong there.
+- **Reviewer run 3:**
+  - Major: the notes were written as new files, but `origin/main` already had them with A2's entries (#89 merged
+    meanwhile). Committing them as they were would have dropped A2's evidence. They were merged into main's files
+    after merging `origin/main` (`def1c5e`).
+  - Minor: the balanced line break measured lines without the device's bold text. Fixed in `c91a8f3`.
+- **A risk the user caught in review:** the `#RRGGBBAA` reader puts the alpha last, while a Flutter color keeps it
+  first. A swapped order would not change any pose or face, so the golden test could not catch it. The user asked
+  for a unit test that pins the order (`'#FF000080'` is half red).
+
+### e. Prompt revisions
+- **The golden times:**
+  - Before (the approved plan): golden values at the key-pose times.
+  - After (11-25 02:40): also mid-segment eased points, both sides of every hop/rock range and flag change, and the
+    18 s wrap.
+  - Why it worked: the key-pose times alone would pass with a wrong easing or an off-by-one range.
+- **Line breaks:**
+  - Before: "넘치지 않기" (spec section 8), checked only as "no overflow".
+  - After: "띄어쓰기 자리에서만 줄이 바뀌게 한다", with a suggested method (U+2060 in the drawn text only, screen readers
+    and finders untouched) and the expected splits.
+  - Why it worked: the expected splits showed the greedy wrap's "Google로 로그인하는 / 중…" was still wrong, which led
+    to the balanced two-line break.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Render comparisons at the smallest size with large text catch what overflow tests do not. Look at the pictures
+  before calling a screen done.
