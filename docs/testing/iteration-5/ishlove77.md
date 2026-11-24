@@ -5,6 +5,24 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the second Codex review
+Three P2 findings from the Codex review of `f752b07` were fixed: one open invite per inviter is now kept by the
+database (migration `accounts.0004_one_pending_friend_invite`; two invites sent at once from two phones retry, so the
+latest is the open one); the 친구와의 대전 row on 게임 시작 re-reads every 5 s while the page is on top, so a request
+that comes meanwhile shows its dot; and a friend code needs at least the four tag digits it shows (`헬창#2` finds
+nobody).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total; `accounts/friends_views.py` 100%, migration 0004 100% | 11/24 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues; server `pytest` 210 passed; full `flutter test` count in the PR body.
+- **Test cases changed:** `server/tests/test_friends.py` (two invites at once leave one open, an invite that keeps
+  losing the race gives up with 409, one open invite per inviter in the database, codes with fewer than four digits);
+  `test/screens/play_screen_test.dart` (a request that comes while the page is open shows within one refresh, no
+  reading while another page is on top, a slow read is not started again on the next tick, no reading while the app
+  is in the background); `test/services/friends/friend_repository_test.dart` (short tag refused).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the Codex review
 Two P2 findings from the automatic Codex review of `4224bc2` were fixed: every answer to a friend request or a battle
 invite is now one conditional write, so of two answers at the same moment (two phones) only one counts; and when two

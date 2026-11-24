@@ -86,6 +86,12 @@ Full list: `ishlove77-Prompt-Log.md`.
   invited each other at once were paired but left both invites open, so a stale alert could start another lobby
   after the battle. Fixed with conditional writes and by taking back an open invite on pairing, with race tests.
 
+- P9: the second Codex review (`f752b07`) found three more P2 issues: two invites sent at once from two phones could
+  both stay open; the dot on the 친구와의 대전 row never refreshed while 게임 시작 stayed open; and a short tag such
+  as `헬창#2` still found `헬창#0002`, against the PM's four-digit rule. Claude had applied the four-digit rule only
+  to how the code is shown, not to how it is parsed. Fixed with a database constraint and retry, a 5 s refresh, and a
+  four-digit parse, each with tests.
+
 ## 4. Revisions and Decisions
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so
