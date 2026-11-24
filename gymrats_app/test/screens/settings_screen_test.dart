@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/settings_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:provider/provider.dart';
+
+import '../support/fakes.dart';
 
 void main() {
   // A tap that misses its target must fail here, not pass with nothing done.
@@ -415,6 +419,73 @@ void main() {
         tester.getRect(find.text('우현')).right,
         moreOrLessEquals(rowEnd(tester), epsilon: 1),
       );
+    });
+  });
+
+  group('friend code (P9)', () {
+    Future<void> openSignedIn(
+      WidgetTester tester, {
+      String nickname = '우현',
+    }) async {
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final settings = SettingsViewModel();
+      addTearDown(settings.dispose);
+      final auth = AuthViewModel(repository: signedInAuth());
+      await auth.restore();
+      addTearDown(auth.dispose);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<SettingsViewModel>.value(value: settings),
+            ChangeNotifierProvider<AuthViewModel>.value(value: auth),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: SettingsScreen(nickname: nickname),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows my friend code under the nickname', (tester) async {
+      await openSignedIn(tester);
+      expect(find.text('친구 코드'), findsOneWidget);
+      expect(find.text('우현#0001'), findsOneWidget);
+      expect(find.text('친구가 이 코드로 나를 추가해요'), findsOneWidget);
+      final nickname = tester.getTopLeft(find.text('닉네임')).dy;
+      expect(tester.getTopLeft(find.text('친구 코드')).dy, greaterThan(nickname));
+    });
+
+    testWidgets('tapping it copies the code', (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await openSignedIn(tester);
+      await tester.tap(find.text('친구 코드'));
+      await tester.pump();
+      expect(copied, '우현#0001');
+      expect(find.text('친구 코드를 복사했어요'), findsOneWidget);
+    });
+
+    testWidgets('no row without a signed-in account above', (tester) async {
+      await open(tester);
+      expect(find.text('친구 코드'), findsNothing);
     });
   });
 }

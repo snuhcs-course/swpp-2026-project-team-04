@@ -13,3 +13,8 @@ The regressions cover a completed knee push-up in fever, an opponent receiving t
 ### 2026-11-24 · Knee push-up scoring follow-up
 
 Updated scoring and tutorial expectations. Exercised the shared score path and the two-client battle-server integration in fever. A zero-point knee rep now counts as an opponent miss. Device play was not exercised.
+
+### P9 reciprocal friend requests · 2026-11-24
+Server pytest: 239 passed. accounts/friends_views.py: 184/184 statements. Two concurrent API clients start with an empty pair and end with one accepted friendship visible to both. Tested retry exhaustion and unrelated database errors.
+
+Independent re-review reproduced simultaneous 503 responses. The updated endpoint writes first and resolves a pair uniqueness conflict within the transaction. Full server suite: 245 passed; friends_views.py 187/187 statements. Added malformed JSON regressions.

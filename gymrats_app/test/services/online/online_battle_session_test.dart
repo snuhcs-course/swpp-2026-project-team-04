@@ -118,6 +118,33 @@ void main() {
     return (session, server);
   }
 
+  group('friend battle (P9)', () {
+    Future<Map<dynamic, dynamic>> joined({String? friendId}) async {
+      final server = await _StubServer.start();
+      addTearDown(server.close);
+      final session = OnlineBattleSession(
+        endpoint: server.endpoint,
+        accessToken: 'test-only',
+        allowInsecureLoopback: true,
+      )..friendId = friendId;
+      addTearDown(session.dispose);
+      await session.connect();
+      await _until(() => server.received.any((m) => m['type'] == 'queue.join'));
+      return server.received.firstWhere((m) => m['type'] == 'queue.join');
+    }
+
+    test('a friend battle names the friend in queue.join', () async {
+      final join = await joined(friendId: '42');
+      expect(join['payload']['friend_id'], '42');
+      expect(isBattleFriendId(join['payload']['friend_id']), isTrue);
+    });
+
+    test('the main match sends no friend_id', () async {
+      final join = await joined();
+      expect((join['payload'] as Map).containsKey('friend_id'), isFalse);
+    });
+  });
+
   group('the setup time (P12)', () {
     test('the open setup is sent once, however often it is reported', () async {
       final (session, server) = await preparing();

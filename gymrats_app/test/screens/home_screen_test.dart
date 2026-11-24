@@ -376,6 +376,8 @@ void main() {
           ?.lastMatch,
       _lastMatch,
     );
+    // P9: 친구와의 대전 replaced the play-again row under the two cards.
+    expect(find.text('친구와의 대전'), findsOneWidget);
   });
 
   testWidgets('캐릭터 opens 캐릭터 선택; back returns home', (tester) async {
@@ -464,16 +466,11 @@ void main() {
       await tapAndSettle(tester, find.text('기록보관소'));
       await back(tester);
       await tapAndSettle(tester, find.text('게임 시작'));
-      expect(
-        tester
-            .element(find.byType(PlayScreen))
-            .read<HomeViewModel>()
-            .state
-            .profile
-            ?.lastMatch
-            ?.opponentName,
-        '민지',
-      );
+      final home = tester
+          .element(find.byType(PlayScreen))
+          .read<HomeViewModel>();
+      expect(home.state.profile?.lastMatch?.opponentName, '민지');
+      expect(home.state.lastSetup?.exercise, ExerciseType.squat);
     });
   });
 
