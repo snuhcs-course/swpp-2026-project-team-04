@@ -113,6 +113,9 @@ def test_a_second_request_either_way_is_not_a_duplicate(client, two):
         ("헬창#", 400, "invalid_code"),
         ("#0001", 400, "invalid_code"),
         ("헬창#00a1", 400, "invalid_code"),
+        # Shorter than the four digits a code shows (Codex review).
+        ("헬창#2", 400, "invalid_code"),
+        ("헬창#002", 400, "invalid_code"),
         ("열세글자가넘는아주긴닉네임#0001", 400, "invalid_code"),
     ],
 )
@@ -497,3 +500,85 @@ def test_two_answers_to_an_invite_at_once_only_the_first_counts(
     assert response.status_code == 409
     assert response.json() == {"detail": "invite_closed"}
     assert FriendBattleInvite.objects.get().status == status
+
+
+def test_a_code_with_fewer_than_four_digits_finds_nobody(client, two):
+    (_, a), (b_id, _) = two
+    assert b_id < 10
+    short = _request(client, a, f"헬창#{b_id}")
+    assert short.status_code == 400
+    assert short.json() == {"detail": "invalid_code"}
+    assert _request(client, a, _code(b_id)).status_code == 201
+
+
+def _three_friends(client):
+    me = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    c = _user(client, "carol01", "근육")
+    _befriend(client, me, b)
+    _befriend(client, me, c)
+    return me, b, c
+
+
+def test_two_invites_at_once_from_two_phones_leave_one_open(client, monkeypatch):
+    import accounts.friends_views as views
+
+    (me_id, me), (b_id, _), (c_id, _) = _three_friends(client)
+    real_cancel = views._cancel_open_invites
+    cancels = []
+
+    # The other phone's invite (to c) lands between this one's cancel and
+    # its insert, once.
+    def raced(user):
+        real_cancel(user)
+        cancels.append(user.id)
+        if len(cancels) == 1:
+            FriendBattleInvite.objects.create(
+                from_user=user, to_user=User.objects.get(id=c_id), exercise="squat"
+            )
+
+    monkeypatch.setattr(views, "_cancel_open_invites", raced)
+    response = _invite(client, me, b_id)
+    assert response.status_code == 201
+    assert cancels == [me_id, me_id]
+    pending = FriendBattleInvite.objects.filter(status=FriendBattleInvite.PENDING)
+    assert [(i.from_user_id, i.to_user_id) for i in pending] == [(me_id, b_id)]
+    assert FriendBattleInvite.objects.get(to_user_id=c_id).status == "cancelled"
+
+
+def test_an_invite_that_keeps_losing_the_race_gives_up(client, monkeypatch):
+    import accounts.friends_views as views
+
+    (_, me), (b_id, _), (c_id, _) = _three_friends(client)
+    real_cancel = views._cancel_open_invites
+
+    def always_raced(user):
+        real_cancel(user)
+        FriendBattleInvite.objects.create(
+            from_user=user, to_user=User.objects.get(id=c_id), exercise="squat"
+        )
+
+    monkeypatch.setattr(views, "_cancel_open_invites", always_raced)
+    response = _invite(client, me, b_id)
+    assert response.status_code == 409
+    assert response.json() == {"detail": "invite_busy"}
+    assert FriendBattleInvite.objects.filter(status="pending").count() == 1
+
+
+def test_the_database_keeps_one_open_invite_per_inviter(client):
+    from django.db import IntegrityError, transaction
+
+    (me_id, _), (b_id, _), (c_id, _) = _three_friends(client)
+    me = User.objects.get(id=me_id)
+    FriendBattleInvite.objects.create(
+        from_user=me, to_user=User.objects.get(id=b_id), exercise="push_up"
+    )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        FriendBattleInvite.objects.create(
+            from_user=me, to_user=User.objects.get(id=c_id), exercise="squat"
+        )
+    # Closed invites do not count.
+    FriendBattleInvite.objects.update(status="declined")
+    FriendBattleInvite.objects.create(
+        from_user=me, to_user=User.objects.get(id=c_id), exercise="squat"
+    )

@@ -106,3 +106,14 @@ class FriendBattleInvite(models.Model):
     exercise = models.CharField(max_length=10, choices=EXERCISES)
     status = models.CharField(max_length=10, choices=STATUSES, default=PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            # One wait at a time: two invites sent at once from two phones
+            # cannot both stay open (accounts.friends_views.FriendInvitesView).
+            models.UniqueConstraint(
+                fields=["from_user"],
+                condition=models.Q(status="pending"),
+                name="one_pending_invite_per_inviter",
+            ),
+        ]

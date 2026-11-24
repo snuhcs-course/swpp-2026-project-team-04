@@ -216,6 +216,8 @@ void main() {
 
     test('codes are checked like the server checks them', () async {
       expect(await refusal(repo.addFriend('헬창')), 'invalid_code');
+      // At least the four digits a code shows.
+      expect(await refusal(repo.addFriend('헬창#2')), 'invalid_code');
       expect(await refusal(repo.addFriend('쥐돌이#0001')), 'cannot_add_self');
       expect(await refusal(repo.addFriend('헬창#0009')), 'user_not_found');
       expect(await repo.addFriend('헬창#0003'), FriendAddOutcome.requested);

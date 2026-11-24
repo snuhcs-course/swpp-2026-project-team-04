@@ -25,7 +25,8 @@ from .models import FriendBattleInvite, FriendRequest, User
 
 INVITE_TTL = timedelta(minutes=1)
 
-_CODE = re.compile(r"^(?P<nickname>.{1,12})#(?P<tag>[0-9]{1,10})$")
+# The tag as friend_code shows it: at least four digits ("#0042", "#10000").
+_CODE = re.compile(r"^(?P<nickname>.{1,12})#(?P<tag>[0-9]{4,10})$")
 
 
 def friend_code(user):
@@ -191,6 +192,13 @@ class FriendRequestAnswerView(APIView):
         return Response({"status": "accepted", "friend": _person(sender.from_user)})
 
 
+def _cancel_open_invites(user):
+    """Cancels [user]'s open invites, before a new one."""
+    FriendBattleInvite.objects.filter(
+        from_user=user, status=FriendBattleInvite.PENDING
+    ).update(status=FriendBattleInvite.CANCELLED)
+
+
 class FriendInvitesView(APIView):
     """POST /friends/invites {"friend_id", "exercise"}: invites a friend to
     a battle. My earlier open invites are cancelled: one wait at a time."""
@@ -207,12 +215,21 @@ class FriendInvitesView(APIView):
         friend = User.objects.filter(id=friend_id).first()
         if friend is None or not are_friends(me, friend):
             return _error("not_friends", status.HTTP_403_FORBIDDEN)
-        FriendBattleInvite.objects.filter(
-            from_user=me, status=FriendBattleInvite.PENDING
-        ).update(status=FriendBattleInvite.CANCELLED)
-        invite = FriendBattleInvite.objects.create(
-            from_user=me, to_user=friend, exercise=exercise
-        )
+        # The database keeps one open invite per inviter; when another
+        # phone's invite got in between, cancel that one too and try again,
+        # so the latest invite is the open one.
+        for _ in range(3):
+            _cancel_open_invites(me)
+            try:
+                with transaction.atomic():
+                    invite = FriendBattleInvite.objects.create(
+                        from_user=me, to_user=friend, exercise=exercise
+                    )
+                break
+            except IntegrityError:
+                continue
+        else:
+            return _error("invite_busy", status.HTTP_409_CONFLICT)
         return Response(_invite(invite), status=status.HTTP_201_CREATED)
 
 
