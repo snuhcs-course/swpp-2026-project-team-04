@@ -546,14 +546,18 @@ scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `Mem
   0.5 s later it matches. Where the shots draw the "엉덩이" line on the gray figure, the app draws the squat lines over
   the camera (`chair_hold_stage_test.dart` checks them with a camera controller).
 - **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment (commit, run link, per-layer numbers, A5's file).
-- **Phone check (spec 7, Galaxy S26+):** TODO(Woohyun Song): with `flutter run -t lib/demo/hold_stage_demo.dart`, open
-  STAGE 5 · 1F and try ① 20 s held (clear, 3 stars), ② lifting the hips midway, ③ knees in, ④ leaving the picture,
-  and ⑤ sitting down slowly, over 3–4 s (reviewer A5 run 1: the copied follow rule can lower the standing thigh
-  then, so a good pose may read just under 0.75; watch `standingThigh`);
-  note whether each warning comes with the right words about 0.5 s after the break, and whether the time runs again
-  right after fixing it. In the `flutter run` console the reader prints `chair_hold … depth=… knees=…` twice a second
-  (debug builds only): write the depth range of a good chair pose, the knee ratio of a good one and of knees pulled in,
-  and any changed line with the reason.
+- **Phone check (spec 7, Galaxy S26+), done 2026-11-24** by the user (the user's message of 2026-11-24 02:52, in the
+  Prompt Log), with `lib/demo/hold_stage_demo.dart` built from the worktree's HEAD then, `e17e332` (the chair code of
+  `77e1a75`, A4's code up to `4ef8a2f`). STAGE 5 · 1F: ⑤ sitting down slowly: no warning; ① 20 s held: a clear;
+  ② the hips up: "더 앉아요"; ③ knees in: "무릎 벌려요". ④ leaving the picture: hard to do in a good pose, so another
+  warning came first; left to the tests ('out of the picture for over 1 s is off screen' in `chair_hold_test.dart`,
+  'out of the picture: the clock stops and the box says 화면 안으로' in `chair_hold_stage_test.dart`). Each warning
+  came almost at once (the user's words). The USB cable was out, so neither the 0.5 s itself nor the console's
+  `standingThigh`, depth and knee numbers were seen; by what the poses did, the 0.8 knee line was right. No line
+  value changed.
+- **Shortfall against spec 7:** its last item asks for the depth range of a good chair pose and the knee ratios
+  (good, knees in) in these notes; they were not seen. TODO(Woohyun Song): measure them with the cable in at the last
+  phone check, or record that the check by behavior is enough.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
@@ -577,7 +581,7 @@ scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `Mem
   says …' (3 tests: words and icon per reason); '자세 잡기 opens the squat battle's setup and its figure'; 'the squat
   height lines stay over the camera past 12 s'
 - Regression → the full `flutter test` above (A4's high plank and the squat battle's tests pass)
-- Phone check → TODO(Woohyun Song) above.
+- Phone check → above (2026-11-24); the start bubble's phone check is the last TODO, in the start bubble's entry below.
 
 #### 2026-11-24 · code at commit `77e1a75` · step A5 follow-up: the standing thigh after GO
 The user decided (2026-11-24, local task.md, A5 Decisions) to narrow the spec's "the standing thigh follows while
@@ -603,7 +607,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   through the 3·2·1 and then rises slowly after GO can have it taken before fully up (simulated: a 3 s rise, then a
   true 0.8 reads 0.739). The setup's auto start restarts its count on any frame that is not ready, so the user
   normally stands through the 3·2·1.
-- **Phone check:** ⑤ (a slow sit over 3–4 s) now checks this change; the rest as in the A5 entry.
+- **Phone check:** ⑤ (sitting down slowly) checks this change: done 2026-11-24 on `e17e332`, no warning (A5 entry
+  above). The slow rise after GO above is not in the user's results. TODO(Woohyun Song): choose whether the last phone
+  check tries it (sit through the 3·2·1, then rise slowly after GO) or it stays a known risk for the reason above.
 
 ### Test cases added or changed in the follow-up
 | Layer | File | What it covers |
@@ -625,8 +631,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Review:** local reviewer A5 run 5, APPROVE; its Minors fixed before the commit (stronger size checks, these
   lines, the Prompt Log's order).
 - **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
-- **Phone check of the start bubble:** TODO(Woohyun Song): STAGE 5 · 1F, the two lines from GO while standing and
-  sitting down, gone when the time starts.
+- **Phone check of the start bubble (the last phone check, with A4's effects):** TODO(Woohyun Song): STAGE 5 · 1F,
+  the two lines from GO while standing and sitting down, gone when the time starts; the cheers, "실패!" with the
+  warning kept and the reasons on the fail screen, as in A4's effects entry.
 - **Acceptance criteria → tests (the effects spec, the chair's part):** 6.1 shown while entering and gone at the
   start → 'standing after GO: 0:00, 버틴 시간, a green frame, no warning', 'seated, the time starts with "시작" and
   runs'; 6.5 sizes → 'the two-line start bubble and "좋아!" fit …' (3 tests); 6.6 read out → the `said` checks in the
@@ -637,3 +644,19 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 |---|---|---|
 | Service | `test/services/pose/chair_hold_test.dart` | 'is set up as a squat, entered after GO, with its own words' now checks `startWords` |
 | View | `test/services/pose/chair_hold_stage_test.dart` | 'standing after GO: 0:00, 버틴 시간, a green frame, no warning' (the two lines shown and read); 'seated, the time starts with "시작" and runs' (the bubble goes when the time starts); 'the two-line start bubble and "좋아!" fit 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x' (new) |
+
+#### 2026-11-24 · code at commit `4767873` (notes only) · step A5: the chair pose's phone check, A4's notes merged
+No code changed. A4's notes of the same day (`f3f45ac`: the plank's phone check, the user's decision on a clear
+ended by warnings) came in by `git merge` (`ac30f40`; the testing notes' conflict kept both sides, A4's entry before
+A5's). The chair pose's phone check of 2026-11-24 went into the A5 entry above (spec 7, with the build it ran).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as the A5 entry above.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4159 passed, 0 failed, 10 skipped (2026-11-24, on
+  `ac30f40`, the code of `4767873`; the same 10 skips as above).
+- **Review:** local reviewer A5 run 6, APPROVE (the merge checked against both parents, the results against the
+  message). Its Minors were fixed before the commit: the slow sit's and the slow rise's lines said more than the
+  message (now a TODO for the user's choice), the missing numbers of spec 7 named as a shortfall (TODO), one word
+  added to the user's statement in the AI notes, these lines. One was left: `origin/main` is ahead of every stage
+  branch; it is merged up the stack before the PRs leave draft (not a notes change).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.

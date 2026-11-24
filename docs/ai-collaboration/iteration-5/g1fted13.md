@@ -298,8 +298,12 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   changed nothing. On PR #90 at `be6509a` its finding (P2, one bent arm passing on the mean of both) was right: Claude
   Code fixed it on A4's branch (`4ef8a2f`, notes `ed76b18`, 3 tests), answered on the thread and merged it here
   (`adeb74f`).
-- TODO(Woohyun Song): who wrote the hold effects spec (`p16-3-fx/SPEC-FX.md`) and drew its designs (`P16Hold`
-  scenes go, star and out, `HoldPickBoard`, `ArcResult holdFail why=list`); the user picked the effects on that canvas.
+- **The effects spec and designs:** Claude (claude.ai) made the hold effects' designs (on the Claude Design canvas)
+  and their spec `SPEC-FX.md` by drawing candidates from the phone check of 11-24. Woohyun Song picked among the
+  candidates the fail effect (A2 + A3, shown as F4), the star effect (B2) and the start notice (C1), had the bubbles'
+  size and place and the chair pose's words changed, and decided to reuse the background music and to give the stars
+  a sound (the user's statement, 2026-11-24, in the Prompt Log). They reached this session as a local design hand-off
+  (`p16-3-fx`), which is not committed.
 - **The hold effects (2026-11-24, from this session; the user's picks on the design canvas):** on A4's branch
   `3ffed5f` (music at the battle's moments, the start bubble, the stars' cheer with a pop and `SoundEffect.good`, the
   second warning's 1.5 s with "실패!" and the fail screen's reasons) and notes `47ea0d1`; merged here (`37e987c`) with
@@ -310,7 +314,8 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   and compared by eye with the hand-off's shots (testing notes, A5 entry).
 - **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1), on
   these notes (runs 2–3), on the follow-up of 2026-11-24 (run 4), on A4's one-arm fix (A4 run 8), on A4's effects
-  (A4 runs 9–10) and on the chair's start bubble (run 5).
+  (A4 runs 9–10), on the chair's start bubble (run 5) and on the records of the phone check and the user's answers
+  (A4 run 11, A5 run 6).
 - **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
   Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
   also holds the A3 and A4 sessions). Two fixes, the prompts
@@ -322,7 +327,7 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   changed here; the guide lines and "시작" fixed on A4's branch). Mid-way the user added the plank guide check, the
   rule that A4 commits hold only A4 files and records, one reviewer run before the A4 push and a plain merge, and
   passed on the P16 session's two overflows. The user also set the branch, the draft PR and its wording. The phone
-  check is the user's.
+  check of 2026-11-24 is the user's (testing notes), and so is keeping "삐익!" on a clear ended by warnings.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "A4에 의자 자세의 아이콘, 실루엣, 스쿼트 안내선이 없으면 이
@@ -336,6 +341,8 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   angle\"다. … 맞는 지적이니 A4 브랜치에서 고치자."
 - [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "A4 연출 추가 작업이다. … 고른 것 (다시 묻지 않는다)
   1. 배경음: 버티기 판에서도 대결과 같은 배경음을 같은 코드, 같은 방식으로 깐다."
+- [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "1. 별을 받은 뒤 두 번째 경고로 끝나는 클리어는 지금처럼
+  둔다(\"삐익!\" 1.5초, win jingle, 클리어 화면). 클리어인데 \"실패!\"를 띄우면 뒤의 클리어 화면과 맞지 않기 때문이다."
 
 ### c. What AI did well
 - **Found A4's gaps before building on them.** Reading A4's view model against the spec's sections 5 and 6 showed that
@@ -410,7 +417,8 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   after the judge ended); it now checks that the frames in the moment are not read.
 - **A call made without asking.** A clear ended by a second warning (a star already earned) keeps "삐익!" and plays
   the win jingle instead of showing "실패!"; the session decided it, wrote it down as beyond the spec and put it to
-  the user in the PR and the report.
+  the user in the PR and the report. The user kept it (2026-11-24): "실패!" on a clear would not match the clear
+  screen after it.
 
 - **Reviewer, A5 run 5 (APPROVE, the merge of A4's effects and the chair's start bubble; 5 Minors):** two prompts out
   of time order in the Prompt Log and item b; size tests that could not fail for the two-line bubble (now both lines
