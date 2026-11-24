@@ -38,10 +38,21 @@ class _SlowStore extends MemoryArcadeProgressStore {
   void answer(int accountId, ArcadeProgress progress) =>
       reads[accountId]!.complete(progress);
 
+  /// When set, saves wait for it before they read and write.
+  Completer<void>? saveGate;
+
   @override
-  Future<ArcadeProgress> recordStage(int accountId, int number, int stars) {
-    if (failRecords) return Future.error(StateError('write failed'));
-    return super.recordStage(accountId, number, stars);
+  Future<ArcadeProgress> recordStage(
+    int accountId,
+    int number,
+    int stars,
+  ) async {
+    await saveGate?.future;
+    if (failRecords) throw StateError('write failed');
+    // From memory, not through [read], so a save never waits on a read.
+    final progress = (await super.read(accountId)).withStars(number, stars);
+    await write(accountId, progress);
+    return progress;
   }
 }
 
@@ -166,6 +177,84 @@ void main() {
       await arcade.record(1, const ArcadeStars(true, false, false));
       expect(store.saved, isEmpty);
     });
+
+    test('saving while the stars are kept; the end is heard, kept or failed '
+        '(PR #91 review)', () async {
+      final gate = store.saveGate = Completer<void>();
+      var heard = 0;
+      arcade.addListener(() => heard += 1);
+      final kept = arcade.record(1, const ArcadeStars(true, false, false));
+      expect(arcade.saving, isTrue);
+      gate.complete();
+      await kept;
+      expect(arcade.saving, isFalse);
+      expect(heard, 1);
+      expect(arcade.progress!.bestOf(1), 1);
+
+      store.failRecords = true;
+      await arcade.record(2, const ArcadeStars(true, false, false));
+      expect(arcade.saving, isFalse);
+      expect(heard, 2);
+      expect(arcade.progress!.bestOf(2), 0);
+    });
+
+    test('a read begun while the stars are kept, answered after them, does '
+        'not bring back the progress before them (PR #91 review)', () async {
+      final gate = store.saveGate = Completer<void>();
+      final kept = arcade.record(1, const ArcadeStars(true, true, false));
+      store.hold = true;
+      final read = arcade.refresh();
+      gate.complete();
+      await kept;
+      expect(arcade.progress!.bestOf(1), 2);
+      store.answer(1, ArcadeProgress.initial());
+      await read;
+      expect(arcade.progress!.bestOf(1), 2);
+    });
+  });
+
+  group('the stage asked for, taken once it is open (PR #91 review)', () {
+    setUp(() async {
+      final load = arcade.load(1);
+      store.answer(1, _progress([1]));
+      await load;
+      store.hold = false;
+    });
+
+    test('open: taken at once, then gone', () {
+      arcade.request(2);
+      expect(arcade.takeOpenRequest(), 2);
+      expect(arcade.hasRequest, isFalse);
+      expect(arcade.takeOpenRequest(), isNull);
+    });
+
+    test('locked while the stars are kept: still asked for, and taken once '
+        'they are', () async {
+      final gate = store.saveGate = Completer<void>();
+      final kept = arcade.record(2, const ArcadeStars(true, false, false));
+      arcade.request(3);
+      expect(arcade.takeOpenRequest(), isNull);
+      expect(arcade.hasRequest, isTrue);
+      gate.complete();
+      await kept;
+      expect(arcade.takeOpenRequest(), 3);
+      expect(arcade.hasRequest, isFalse);
+    });
+
+    test(
+      'locked with nothing being kept, or after a failed save: dropped',
+      () async {
+        arcade.request(3);
+        expect(arcade.takeOpenRequest(), isNull);
+        expect(arcade.hasRequest, isFalse);
+
+        store.failRecords = true;
+        await arcade.record(2, const ArcadeStars(true, false, false));
+        arcade.request(3);
+        expect(arcade.takeOpenRequest(), isNull);
+        expect(arcade.hasRequest, isFalse);
+      },
+    );
   });
 
   test('the boss run holds R1 until it ends', () {

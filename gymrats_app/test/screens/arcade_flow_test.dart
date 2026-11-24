@@ -45,6 +45,35 @@ BattleResult _battle(
   endedAt: DateTime(2026, 11, 23, 20),
 );
 
+/// A store whose saves wait until [release], as a slow phone's can, and
+/// then fail when [fail] is set.
+class _SlowSaveStore extends MemoryArcadeProgressStore {
+  final _gate = Completer<void>();
+  bool fail = false;
+
+  /// When set, reads wait for it too.
+  Completer<void>? readGate;
+
+  void release() => _gate.complete();
+
+  @override
+  Future<ArcadeProgress> read(int accountId) async {
+    await readGate?.future;
+    return super.read(accountId);
+  }
+
+  @override
+  Future<ArcadeProgress> recordStage(
+    int accountId,
+    int number,
+    int stars,
+  ) async {
+    await _gate.future;
+    if (fail) throw StateError('write failed');
+    return super.recordStage(accountId, number, stars);
+  }
+}
+
 ArcadeFightStage _fight(int number) =>
     ArcadeCatalog.stage(number) as ArcadeFightStage;
 ArcadeBossStage _boss(int number) =>
@@ -58,9 +87,13 @@ void main() {
   /// What the app's friend invite alert reads to hide (#95).
   late FriendInviteRouteWatch invites;
 
-  /// The map over a page below, with [played] stages starred, and a
-  /// stand-in battle page over the map.
-  Future<void> open(WidgetTester tester, {required int played}) async {
+  /// The map over a page below, with [played] stages starred (in [using],
+  /// or a store in memory), and a stand-in battle page over the map.
+  Future<void> open(
+    WidgetTester tester, {
+    required int played,
+    MemoryArcadeProgressStore? using,
+  }) async {
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -68,7 +101,8 @@ void main() {
         const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     holds = [];
-    store = MemoryArcadeProgressStore()..saved[1] = _progress(played);
+    store = (using ?? MemoryArcadeProgressStore())
+      ..saved[1] = _progress(played);
     arcade = ArcadeViewModel(store: store);
     addTearDown(arcade.dispose);
     unawaited(arcade.load(1));
@@ -267,6 +301,230 @@ void main() {
       );
       await tap(tester, '다음 스테이지');
       expect(holds, [9]);
+    });
+  });
+
+  group('the stage asked for while its stars are still being kept (PR #91 '
+      'review)', () {
+    testWidgets('a fight\'s 다음 스테이지 waits for the save, then opens the '
+        'next stage', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, played: 6, using: slow);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      await tap(tester, '다음 스테이지');
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(arcade.progress!.isOpen(8), isFalse);
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsOneWidget);
+      expect(find.text('STAGE 8'), findsOneWidget);
+    });
+
+    testWidgets('a boss match\'s 2층으로 waits the same way', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, played: 5, using: slow);
+      final stage = _boss(6);
+      await play(
+        tester,
+        _battle(
+          ArcadeMatchups.boss(stage, 1, playerName: '우현'),
+          won: true,
+          ko: true,
+        ),
+      );
+      await play(
+        tester,
+        _battle(
+          ArcadeMatchups.boss(stage, 2, playerName: '우현'),
+          won: true,
+          ko: true,
+          me: 200,
+          opponent: 95,
+        ),
+      );
+      await tap(tester, '2층으로');
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsOneWidget);
+      expect(find.text('STAGE 7'), findsOneWidget);
+    });
+
+    testWidgets('a save that fails drops it: the map stays, and a later read '
+        'opens nothing', (tester) async {
+      final slow = _SlowSaveStore()..fail = true;
+      await open(tester, played: 6, using: slow);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      await tap(tester, '다음 스테이지');
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(arcade.progress!.isOpen(8), isFalse);
+      expect(arcade.takeRequest(), isNull);
+
+      slow.saved[1] = _progress(7);
+      await arcade.refresh();
+      await tester.pumpAndSettle();
+      expect(arcade.progress!.isOpen(8), isTrue);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+    });
+
+    testWidgets('another page over the map meanwhile drops it: nothing opens '
+        'over that page or back on the map', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, played: 6, using: slow);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      await tap(tester, '다음 스테이지');
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      unawaited(
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('another page')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.text('another page'), findsOneWidget);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(arcade.hasRequest, isFalse);
+
+      navigator.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(arcade.progress!.isOpen(8), isTrue);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+    });
+
+    testWidgets('a page opened and closed again before the save ends drops it '
+        'too', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, played: 6, using: slow);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      await tap(tester, '다음 스테이지');
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      unawaited(
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('another page')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      navigator.pop();
+      await tester.pumpAndSettle();
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(arcade.progress!.isOpen(8), isTrue);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+    });
+
+    testWidgets('a page over the map while the progress is still being read '
+        'drops it: nothing opens over that page', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, played: 6, using: slow);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      final reads = slow.readGate = Completer<void>();
+      await tap(tester, '다음 스테이지');
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      unawaited(
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('another page')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slow.release();
+      await tester.pumpAndSettle();
+      reads.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('another page'), findsOneWidget);
+      expect(arcade.progress!.isOpen(8), isTrue);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(arcade.hasRequest, isFalse);
+    });
+
+    testWidgets('a page opened and closed while the progress is still being '
+        'read drops it too', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, played: 6, using: slow);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(arcade.progress!.isOpen(8), isTrue);
+      final reads = slow.readGate = Completer<void>();
+      await tap(tester, '다음 스테이지');
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      unawaited(
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('another page')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      navigator.pop();
+      await tester.pumpAndSettle();
+
+      reads.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(arcade.hasRequest, isFalse);
+    });
+
+    testWidgets('leaving the map while the save goes on drops it: the next '
+        'visit opens nothing on its own', (tester) async {
+      final slow = _SlowSaveStore();
+      await open(tester, played: 6, using: slow);
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      await tap(tester, '다음 스테이지');
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeScreen), findsNothing);
+
+      slow.release();
+      await tester.pumpAndSettle();
+      expect(arcade.hasRequest, isFalse);
+
+      await tap(tester, 'below');
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: false),
+      );
+      await tap(tester, '아케이드로');
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(find.byType(ArcadeStageSheet), findsNothing);
     });
   });
 

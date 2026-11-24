@@ -43,6 +43,9 @@ class ArcadeViewModel extends ChangeNotifier {
   int? _requested;
   bool _disposed = false;
 
+  /// The plays whose stars are being kept ([record] not answered yet).
+  int _saving = 0;
+
   /// Where the progress is kept; A4's hold screens keep their stars there.
   ArcadeProgressStore get store => _store;
 
@@ -55,6 +58,10 @@ class ArcadeViewModel extends ChangeNotifier {
 
   /// The boss match whose first round was won, until its second ends.
   ArcadeBossRun? get bossRun => _bossRun;
+
+  /// Whether a play's stars are still being kept. Listeners hear when they
+  /// are, with the progress after them or, if the store failed, as it was.
+  bool get saving => _saving > 0;
 
   /// Reads [accountId]'s progress. The previous account's is gone at once.
   /// A store that cannot be read gives the first state, as a new account.
@@ -96,17 +103,25 @@ class ArcadeViewModel extends ChangeNotifier {
   /// Keeps [stars] for stage [number] (A2's store keeps the most a stage
   /// ever got) and shows the progress after it. A store that fails leaves
   /// the progress shown as it was.
+  ///
+  /// A read begun while the stars are kept may have been answered from the
+  /// store before they were written, so it is dropped: the progress after
+  /// them is the newer one.
   Future<void> record(int number, ArcadeStars stars) async {
     final accountId = _accountId;
     if (accountId == null) return;
     _reads += 1;
+    _saving += 1;
     try {
       final after = await _store.recordStage(accountId, number, stars.count);
       if (_disposed || accountId != _accountId) return;
+      _reads += 1;
       _progress = after;
-      _notify();
     } on Object {
       // The play is lost; the map shows what it had.
+    } finally {
+      _saving -= 1;
+      _notify();
     }
   }
 
@@ -185,15 +200,35 @@ class ArcadeViewModel extends ChangeNotifier {
   /// The boss match is over, or left.
   void endBossRun() => _bossRun = null;
 
-  /// Asks the map to open stage [number] once it shows again: 다음 스테이지
-  /// and "{n}층으로" go back to the map, which then opens it.
+  /// Asks the map to open stage [number] once it shows again and the
+  /// progress shows the stage open ([takeOpenRequest]): 다음 스테이지 and
+  /// "{n}층으로" go back to the map, which then opens it.
   void request(int number) => _requested = number;
 
-  /// The stage asked for, once: the map opens it and it is gone.
+  /// The stage asked for, taken whether open or not; it is gone after. The
+  /// map drops a request with it.
   int? takeRequest() {
     final requested = _requested;
     _requested = null;
     return requested;
+  }
+
+  /// Whether a stage is still asked for.
+  bool get hasRequest => _requested != null;
+
+  /// The stage asked for, taken once the progress shows it open. While it
+  /// is still locked and a play's stars are being kept ([saving]), it stays
+  /// asked for, to be looked at again when the progress changes; still
+  /// locked with nothing being kept (the store failed), it is dropped.
+  int? takeOpenRequest() {
+    final number = _requested;
+    if (number == null) return null;
+    if (_progress?.isOpen(number) ?? false) {
+      _requested = null;
+      return number;
+    }
+    if (!saving) _requested = null;
+    return null;
   }
 
   void _notify() {

@@ -27,7 +27,8 @@ import 'hold_stage_screen.dart';
 /// the stage to play is about the middle of the view, at the top once all
 /// 24 are cleared. Coming back to it from a stage it reads the progress
 /// again, scrolls to the stage to play now, and opens the stage a result
-/// asked for (다음 스테이지).
+/// asked for (다음 스테이지) once the progress shows it open, which may be
+/// after the play's stars are kept.
 ///
 /// A fight stage opens its sheet, a boss match its intro and a hold stage
 /// A4's hold screen ([ArcadeFlow.openHold]); a locked stage does nothing.
@@ -55,10 +56,14 @@ class _ArcadeScreenState extends State<ArcadeScreen> with RouteAware {
   int? _scrolledTo;
   ModalRoute<void>? _route;
 
+  /// Whether a stage a result asked for waits to open: back on the map, it
+  /// was still locked while its stars were being kept.
+  bool _awaitingRequest = false;
+
   @override
   void initState() {
     super.initState();
-    _arcade = context.read<ArcadeViewModel>()..addListener(_onProgress);
+    _arcade = context.read<ArcadeViewModel>()..addListener(_onArcade);
     WidgetsBinding.instance.addPostFrameCallback((_) => _onProgress());
   }
 
@@ -72,19 +77,44 @@ class _ArcadeScreenState extends State<ArcadeScreen> with RouteAware {
     }
   }
 
-  /// Back from a stage: the progress may have changed.
+  /// Back from a stage: the progress may have changed. It is read again
+  /// first; then the stage a result asked for opens once it shows open.
   @override
-  void didPopNext() {
-    unawaited(_arcade.refresh());
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openRequested());
+  void didPopNext() => unawaited(_backFromStage());
+
+  Future<void> _backFromStage() async {
+    // Waiting from now, so a page over the map during the read drops it.
+    _awaitingRequest = true;
+    await _arcade.refresh();
+    if (!mounted) return;
+    _openRequested();
   }
 
+  /// Another page over the map: a stage still waiting to open is dropped.
+  @override
+  void didPushNext() {
+    if (!_awaitingRequest) return;
+    _awaitingRequest = false;
+    _arcade.takeRequest();
+  }
+
+  /// The map is gone: a stage asked for is dropped, so a later map never
+  /// opens it on its own.
   @override
   void dispose() {
     GymRatsApp.routeObserver.unsubscribe(this);
-    _arcade.removeListener(_onProgress);
+    _arcade.removeListener(_onArcade);
+    _awaitingRequest = false;
+    _arcade.takeRequest();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// The arcade changed: the map scrolls, and a stage waiting to open is
+  /// looked at again.
+  void _onArcade() {
+    _onProgress();
+    if (_awaitingRequest) _openRequested();
   }
 
   /// Scrolls to the stage to play when it is new: at once the first time,
@@ -126,12 +156,24 @@ class _ArcadeScreenState extends State<ArcadeScreen> with RouteAware {
 
   static const _scrollTime = Duration(milliseconds: 450);
 
-  /// Opens the stage a result asked for, once the map shows again.
+  /// Opens the stage a result asked for once the progress shows it open.
+  /// While its stars are still being kept it waits for the next change;
+  /// if they cannot be kept it is dropped ([ArcadeViewModel.takeOpenRequest]),
+  /// and so it is when another page or a dialog is over the map by then.
   void _openRequested() {
     if (!mounted) return;
-    final number = _arcade.takeRequest();
-    if (number == null) return;
-    _open(ArcadeCatalog.stage(number));
+    if (!(_route?.isCurrent ?? true)) {
+      _awaitingRequest = false;
+      _arcade.takeRequest();
+      return;
+    }
+    final number = _arcade.takeOpenRequest();
+    if (number != null) {
+      _awaitingRequest = false;
+      _open(ArcadeCatalog.stage(number));
+    } else if (!_arcade.hasRequest) {
+      _awaitingRequest = false;
+    }
   }
 
   /// A tap on stage [stage], or 도전 for it.
