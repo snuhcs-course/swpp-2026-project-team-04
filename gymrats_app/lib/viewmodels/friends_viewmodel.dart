@@ -337,6 +337,10 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
 
   /// Invites answered or found closed here, never offered again.
   final _done = <int>{};
+
+  /// Counts sign-ins and sign-outs, so an answer that comes back after one
+  /// is dropped: it belongs to the account that sent it.
+  int _account = 0;
   Timer? _poll;
   bool _running = false, _hidden = false, _foreground = true;
   bool _reading = false, _disposed = false;
@@ -347,6 +351,7 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
   void setSignedIn(bool signedIn) {
     if (signedIn == _running) return;
     _running = signedIn;
+    _account++;
     if (!signedIn) {
       _done.clear();
       current = null;
@@ -405,17 +410,28 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
   }
 
   /// Accepts [current]; the accepted invite to open the waiting room with,
-  /// or null when it can no longer be accepted ([error] says why).
+  /// or null when it can no longer be accepted ([error] says why), or when
+  /// the account signed out meanwhile: then nobody will come for the friend,
+  /// so it tries to take the accepted invite back (after a sign-out the
+  /// request may lack a login and fail; the friend's waiting room then ends
+  /// on its own within 30 s).
   Future<BattleInvite?> accept() async {
     final invite = current;
     if (invite == null || answering) return null;
+    final account = _account;
     answering = true;
     _notify();
     try {
       final accepted = await _repository.acceptInvite(invite.id);
+      if (account != _account) {
+        unawaited(_cancelQuietly(invite.id));
+        return null;
+      }
       current = null;
       return accepted;
     } on Object catch (e) {
+      // An answer for an account that signed out meanwhile says nothing.
+      if (account != _account) return null;
       current = null;
       error = friendErrorMessage(e);
       return null;
@@ -423,6 +439,14 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
       _done.add(invite.id);
       answering = false;
       _notify();
+    }
+  }
+
+  Future<void> _cancelQuietly(int inviteId) async {
+    try {
+      await _repository.cancelInvite(inviteId);
+    } on Object {
+      // The friend's waiting room ends on its own within 30 s.
     }
   }
 

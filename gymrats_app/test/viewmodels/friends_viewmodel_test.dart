@@ -661,6 +661,58 @@ void main() {
       expect(vm.current!.exercise, ExerciseType.pushUp);
     });
 
+    test('signed out while accepting: the late answer opens nothing and the '
+        'invite is taken back', () async {
+      final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      repo.holdAccept = Completer<void>();
+      final accepting = vm.accept();
+      vm.setSignedIn(false);
+      repo.holdAccept!.complete();
+      expect(await accepting, isNull);
+      await pumpEventQueue();
+      expect(repo.cancels, 1);
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.cancelled);
+      expect(vm.current, isNull);
+      expect(vm.answering, isFalse);
+    });
+
+    test('signed out and in again while accepting: still dropped', () async {
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      repo.holdAccept = Completer<void>();
+      final accepting = vm.accept();
+      vm
+        ..setSignedIn(false)
+        ..setSignedIn(true);
+      repo.holdAccept!.complete();
+      expect(await accepting, isNull);
+      await pumpEventQueue();
+      expect(vm.answering, isFalse);
+      expect(repo.cancels, 1);
+      // Taken back: nothing to offer, and reading goes on.
+      await vm.check();
+      expect(vm.current, isNull);
+    });
+
+    test('a failed accept after a sign-out leaves no error behind', () async {
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      repo.holdAccept = Completer<void>();
+      final accepting = vm.accept();
+      vm.setSignedIn(false);
+      repo.failWith = const ApiException(ApiErrorKind.unauthorized);
+      repo.holdAccept!.complete();
+      expect(await accepting, isNull);
+      expect(vm.error, isNull);
+      repo.failWith = null;
+      vm.setSignedIn(true);
+      expect(vm.error, isNull);
+    });
+
     test('a failed read keeps what shows', () async {
       repo.receiveInvite(_friend, ExerciseType.squat);
       vm.setSignedIn(true);

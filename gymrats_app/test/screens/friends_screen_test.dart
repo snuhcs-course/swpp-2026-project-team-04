@@ -23,6 +23,15 @@ class _Repo extends InMemoryFriendRepository {
   bool fail = false;
   int fetches = 0;
 
+  /// While set, accepting an invite waits for it.
+  Completer<void>? holdAccept;
+
+  @override
+  Future<BattleInvite> acceptInvite(int inviteId) async {
+    await holdAccept?.future;
+    return super.acceptInvite(inviteId);
+  }
+
   @override
   Future<FriendsOverview> fetchOverview() async {
     fetches++;
@@ -452,6 +461,23 @@ void main() {
       await tester.pump(const Duration(seconds: 20));
       expect(repo.fetches, reads);
       expect(alert.visible, isFalse);
+    });
+
+    testWidgets('signed out while 수락 is on its way: no waiting room opens', (
+      tester,
+    ) async {
+      repo.friends.add(_friend);
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      repo.holdAccept = Completer<void>();
+      await openApp(tester);
+      await tester.tap(find.text('수락'));
+      await tester.pump();
+      alert.setSignedIn(false);
+      repo.holdAccept!.complete();
+      await tester.pumpAndSettle();
+      expect(opened, isEmpty);
+      expect(find.text('home page'), findsOneWidget);
+      expect(repo.invites.single.status, InviteStatus.cancelled);
     });
 
     testWidgets('a replaced route is followed', (tester) async {
