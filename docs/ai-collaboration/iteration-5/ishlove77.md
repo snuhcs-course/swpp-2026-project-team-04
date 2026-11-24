@@ -105,6 +105,9 @@ Full list: `ishlove77-Prompt-Log.md`.
   not be read back. Each round of fixes so far opened a narrower case nearby; the friend-battle cleanup now always
   lets the server decide.
 
+- P9: the sixth Codex review (`afae806`) found over-padded tags still resolving (the four-digit fix of round two
+  checked only the minimum) and a late 수락 opening a friend lobby over another battle. Both fixed with tests.
+
 ## 4. Revisions and Decisions
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so

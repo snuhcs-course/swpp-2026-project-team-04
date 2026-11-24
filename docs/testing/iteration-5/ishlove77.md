@@ -5,6 +5,18 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the sixth Codex review
+Two P2 findings from the Codex review of `afae806` were fixed: a friend code must match the shown code exactly, so
+extra padding (`헬창#00002`) finds nobody; and a banner 수락 that comes back after another battle (or the friends page)
+was opened meanwhile opens nothing and takes the accepted invite back.
+
+- **Tests:** `flutter analyze` no issues; server `pytest` 223 passed, `accounts/friends_views.py` 100%; full
+  `flutter test` count in the PR body.
+- **Test cases changed:** `server/tests/test_friends.py` (an over-padded tag finds nobody);
+  `test/services/friends/friend_repository_test.dart` (the same in memory); `test/viewmodels/friends_viewmodel_test.dart`
+  (a battle opened while accepting; hidden and shown again while accepting); `test/screens/friends_screen_test.dart`
+  (a battle opened while 수락 is on its way: no friend waiting room over it).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the fifth Codex review
 Two P2 findings from the Codex review of `72a9faa` were fixed: an invite whose creation returns after the players
 were already paired is taken back only if still open (the friend may have accepted it), and a friend code is read
