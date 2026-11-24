@@ -374,3 +374,13 @@ origin/main(#93 구글 로그인, #94)이 스택보다 앞서 있어서, draft�
 "
 <!-- dfb39c07 2026-11-24T07:35:55.527Z -->
 [Woohyun Song, 11-24 16:35] (answer to the session's question: the harness blocked merging A2 into A4) "1번(A4에 main 먼저)으로 간다. A4에 origin/main을 먼저 merge한 뒤 A2, A3를 merge한다. A5도 같은 방식으로 한다. origin/main을 먼저 merge한 뒤 A4를 merge해서, 기록 충돌로 손 merge 커밋을 해도 main 파일이 섞이지 않게 한다. 나머지는 지시한 대로 진행하고, 끝나면 네 브랜치의 HEAD를 보고해 줘."
+
+## 2026-11-24 · Woohyun Song · codex/iter5-hold-plank
+<!-- dfb39c07 2026-11-24T09:53:38.950Z -->
+[Woohyun Song, 11-24 18:53] "<pasted_content id=\"a37d\">
+그만하기 버튼은 대결처럼 숨긴다. 판이 끝난 뒤 1.5초 동안 보이지도 않고 화면 낭독기에도 읽히지 않게 한다.
+1. codex/iter5-hold-plank에서 판이 끝나는 순간(두 번째 경고, ★3 클리어) 그만하기 버튼을 대결 화면과 같은 방식으로 숨긴다. 1.5초 동안 버튼이 화면과 의미 트리에 없음을 보는 테스트를 더한다.
+2. analyze, test, reviewer를 돌리고 push한다. A4 결정 기록에 오늘 날짜의 사용자 결정으로 적는다.
+3. codex/iter5-hold-chair에 A4를 merge하고 test, reviewer를 돌린 뒤 push한다. origin/main이 또 앞서 있으면 지금까지처럼 origin/main을 먼저 merge한다.
+4. 두 브랜치의 HEAD를 보고해 줘.
+</pasted_content id=\"a37d\">"

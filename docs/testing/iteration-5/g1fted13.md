@@ -489,7 +489,8 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Phone check of the effects (the last phone check):** TODO(Woohyun Song): with the demo, see the start bubble, both
   cheers with the star pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen (also
   for ③ knees down and ⑤ standing up as the second warning, whose words the first check could not read), a clear
-  ended by warnings ("삐익!", the win jingle, the clear), and the music through a stage and after leaving.
+  ended by warnings ("삐익!", the win jingle, the clear), and the music through a stage and after leaving; and that
+  the leave button goes at a second warning and stays gone until the result (the fifth follow-up below).
 
 ### Test cases added in the effects follow-up
 | Layer | File | What it covers |
@@ -552,6 +553,37 @@ then the same as A4's entry above.
 | Layer | File | What it covers |
 |---|---|---|
 | View | `test/screens/hold_stage_screen_test.dart` | 'a second warning while asking closes the question at once, then the fail screen' (the dialog gone with "실패!", then 다시 도전, the screen not closed); 'in a second warning's moment back and the leave button open no dialog' (then the fail screen); 'a star, then a second warning while asking: the clear shows and its star is kept' ("삐익!", back opens nothing, then 클리어! and the store keeps 1 star) |
+
+#### 2026-11-24 · code at commit `f28cac6` · step A4, fifth follow-up on `codex/iter5-hold-plank` (the leave button at a stage's end)
+The reviewer's Minor in the fourth follow-up (run 12) was left to the user: in a second warning's 1.5 s the leave
+button was still drawn and announced, though it opened nothing. The user had it hidden as in a battle (local
+task.md, A4 Decisions, 2026-11-24).
+- **Now (`f430051`):** `lib/screens/hold_stage_screen.dart` passes no leave action to `HoldStagePlay` once the stage
+  is over, and `lib/screens/hold_stage_play.dart` takes it as nullable (null hides the button), as `BattleArena`
+  does once a battle is decided. `BattleCameraArea` then draws no button and keeps its place empty, as in a battle.
+  The third star goes straight to the result, which has no leave button (`f28cac6` asserts it). The view model is
+  unchanged.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the two new tests and the changed one failed on the old screen (the button was still found).
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4240 passed, 0 failed, 10 skipped (2026-11-24, on
+  `f430051`; the same 10 skips as above): 4238 before and 2 new. `test/screens/hold_stage_screen_test.dart`: 49
+  passed, on `f430051` and again on `f28cac6` (one assertion added to an existing test).
+- **New tests:** 2, and 2 changed, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on `f430051` and `f28cac6`. Server `pytest` was not run:
+  `server/` is unchanged.
+- **Review:** local reviewer A4 run 13, APPROVE. It checked the button and its semantics node are gone for the whole
+  1.5 s in both cases, the third-star path and back in the moment, and that `94f6416` stays. Its three Minors were
+  fixed: "optional" in this entry (the parameter is nullable, still required), the third-star check (`f28cac6`), and
+  the PR body.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Phone check:** in the last phone check (the effects entry's TODO above).
+
+### Test cases added or changed in the fifth follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a second warning with no star: the leave button is gone for the whole moment, on the screen and to a screen reader' and 'a second warning after a star: …' (the button's icon and its semantics label `게임 나가기` are there before the warning; from the warning, at 0.75 s and 0.1 s before the end, neither is found; then 다시 도전 or 클리어!, the screen not closed); renamed from the fourth follow-up's 'in a second warning's moment back and the leave button open no dialog': 'in a second warning's moment there is no leave button and back opens no dialog' (the button is not found, back opens nothing, then the fail screen); 'the hold ending while asking closes the question' now also finds no leave button on the clear (`f28cac6`) |
 
 #### 2026-11-23 · code at commit `0579a65` · step A5 `codex/iter5-hold-chair` (Add chair-pose judging, team order #8.4)
 A5 adds the second held pose, the chair pose, on A4's hold stage (the local design hand-off's spec `p16-4/SPEC.md` v2,
@@ -772,6 +804,37 @@ then the same as the A5 entry above.
   was taken, and what to write if no bend works. Minors: the two fault ids, and `null` before a value exists. All
   fixed; run 8: APPROVE (its one Minor, run 7 missing from the AI notes, fixed before the commit).
 - **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+
+#### 2026-11-24 · code at commit `200816d` (tests only) · step A5: A4's leave button fix merged in
+No A5 app code changed. At the user's word (2026-11-24, the Prompt Log under A4's heading), A4 `d56e1f5` was merged in
+(`29e1337`): from a second warning to the result the leave button is gone from the screen and the semantics tree, as
+in a battle (`f430051`, `f28cac6`). The chair pose's stages use the same screen; A4's tests drive the high plank,
+so `200816d` checks it on a chair stage too (reviewer run 9's Minor). `origin/main` had not moved (`69b0520`, already merged), so it was not merged
+again. The only conflict was in the testing notes, where A4's new entry and A5's met at the same place; both kept,
+A4's first. The merge brings exactly A4's change (6 files, the same added and removed lines as `471885d..d56e1f5`).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as the A5 entry above.
+
+- **Before the test:** the new chair test failed on A5's screen from before the merge (`b6e90d7`): the button was
+  still found at the second warning.
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4290 passed, 0 failed, 10 skipped on `29e1337`, then
+  4291 passed, 0 failed, 10 skipped on `200816d` (2026-11-24; the same 10 skips as above): 4288 before, A4's 2 new
+  and 1 new here. `test/services/pose/chair_hold_stage_test.dart`: 14 passed.
+- **New tests:** 1, and 1 changed, in `test/services/pose/chair_hold_stage_test.dart` (table below).
+- **Other checks:** `ownership_guard.py --check-staged` OK on `29e1337` (A4's three inherited files and the notes)
+  and on `200816d`;
+  `--check-diff` OK (67 paths against `origin/main`); the stacked-branch diff against `codex/iter5-hold-plank` lists
+  10 paths, as before. Server `pytest` was not run: `server/` is unchanged.
+- **Review:** local reviewer A5 run 9, APPROVE. It checked the merge carries exactly A4's change (the three code
+  files equal A4's), A5's own lines untouched, the conflict, and that `origin/main` had not moved. Its one Minor: no
+  chair-stage test checked the leave button, though the entry has no time limit and the button is its way out
+  (decision 9.3); fixed in `200816d`.
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+
+### Test cases added or changed with A4's leave button fix
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/services/pose/chair_hold_stage_test.dart` | 'standing after GO: 0:00, 버틴 시간, a green frame, no warning' now also finds the leave button's icon and its semantics label `게임 나가기` while entering; new 'a second warning: no leave button until the result' (hips up twice: the button there after the first, gone from the second, still gone 0.1 s before the end, then 다시 도전) |
 
 #### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
 P16 builds the arcade's screens on A2's rules and A3's art (P16 spec v2):

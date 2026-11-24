@@ -297,6 +297,10 @@ void main() {
       expect(find.text('멈춤'), findsNothing);
       expect(_frameColor(tester), AppColors.statusGood);
       expect(driver.viewModel.state.progress.warnings, isEmpty);
+      // The entry has no time limit, so the leave button stays: it is the
+      // way out (decision 9.3), on the screen and to a screen reader.
+      expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
+      expect(find.bySemanticsLabel('게임 나가기'), findsOneWidget);
       // The owner's two lines stay while entering (the effects spec 3).
       final bubble = find.byKey(const ValueKey('hold-start'));
       expect(
@@ -452,6 +456,28 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+
+    _testWidgets('a second warning: no leave button until the result', (
+      tester,
+    ) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.sit(tester, 2000);
+      await driver.stand(tester, 600);
+      await driver.sit(tester, 800);
+      expect(find.bySemanticsLabel('게임 나가기'), findsOneWidget);
+      await driver.stand(tester, 600);
+      expect(driver.viewModel.state.ending, isTrue);
+      expect(find.byIcon(Icons.logout_rounded), findsNothing);
+      expect(find.bySemanticsLabel('게임 나가기'), findsNothing);
+      await tester.pump(HoldTiming.endShow - const Duration(milliseconds: 100));
+      expect(driver.viewModel.state.ending, isTrue);
+      expect(find.bySemanticsLabel('게임 나가기'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('다시 도전'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   _testWidgets('held to the third star: a clear with three stars, kept', (

@@ -343,7 +343,9 @@ class _HoldStageScreenState extends State<HoldStageScreen>
           goAge: state.phase == HoldStagePhase.hold && _go.isAnimating
               ? _go.value * 700
               : null,
-          onLeave: () => unawaited(_askToLeave()),
+          // Gone once the stage is over, as in a battle: a second
+          // warning's moment leads only to the result.
+          onLeave: _over ? null : () => unawaited(_askToLeave()),
           onGuideCrop: (SetupCameraCrop crop) => viewModel.setGuideCrop(crop),
           onCameraBox: viewModel.setGuideViewport,
         );

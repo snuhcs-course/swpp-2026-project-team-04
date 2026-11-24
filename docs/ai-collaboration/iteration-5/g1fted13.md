@@ -282,12 +282,15 @@ These were made from the A5 session at the user's word; their full evidence is i
   after an entry), `397f498` (a test comment), `f78ac2b` (the result on small screens, found by the P16 session),
   `4ef8a2f` (one bent arm, from the Codex review on #90), `3ffed5f` (the hold effects: spec and designs by Claude on
   claude.ai from the phone check of 11-24, the picks by Woohyun Song), `94f6416` (the leave dialog at a stage's end,
-  found by the P16 session) and the `main` merges `166de3b`, `78e61dc`, `6bda1e0`, with their testing notes; the
-  reviewer subagent ran A4 runs 5–12. The phone check of 2026-11-24 and every decision on these are the user's.
+  found by the P16 session), the `main` merges `166de3b`, `78e61dc`, `6bda1e0`, and `f430051` and `f28cac6` (the
+  leave button hidden at a stage's end), with their testing notes; the reviewer subagent ran A4 runs 5–13. The phone check of
+  2026-11-24 and every decision on these are the user's.
 - **d. Hallucinations / errors:** the win or lose jingle came 1.5 s late at a second warning (run 9, Major, fixed);
   a screen check that could not fail (run 9, fixed); the bent-arm check on the mean of both arms let one bent arm pass,
   which no local review caught and the Codex review on #90 did (fixed in `4ef8a2f`); the leave dialog stayed open in
-  a second warning's 1.5 s, so leaving lost the stars (found by the P16 session, fixed in `94f6416`).
+  a second warning's 1.5 s, so leaving lost the stars (found by the P16 session, fixed in `94f6416`); that fix left
+  the leave button drawn and announced in the 1.5 s, though it opened nothing (run 12, Minor, left to the user, who
+  had it hidden as in a battle: `f430051`).
 - **e. Prompt revisions:** merging A2 straight into this branch was blocked by the local pre-commit guard (its
   hand-made merge commit counted `main`'s files as outside A4); the session aborted and asked, and the user's answer
   (2026-11-24, in the Prompt Log) changed the order to `origin/main` first, then A2 and A3.
@@ -333,12 +336,17 @@ These were made from the A5 session at the user's word; their full evidence is i
   `origin/main` was merged up the stack: A2 `da3a039` (notes `dc5947b`), A3 `f482e99` (`c1f5f5f`), A4 `166de3b`,
   `78e61dc`, `6bda1e0`, and here `6a8ce7f`, `ca2cf6a`. Merging A2 straight into A4 was blocked by the local pre-commit
   guard; Claude Code aborted that merge and asked, and the user chose to merge `origin/main` into A4 and A5 first.
+- **The leave button (2026-11-24, the user's decision on A4 run 12's Minor):** on A4's branch `f430051` and
+  `f28cac6` (the leave button gone from the screen and the semantics tree from a second warning to the result, as in
+  a battle; 2 new tests, 2 changed), merged here in `29e1337`; `200816d` checks the button on a chair stage (there in
+  the entry, its way out; gone from a second warning), from A5 run 9's Minor.
 - **Checking against the design:** the chair scenes captured with the app's fonts in a throwaway widget test (deleted)
   and compared by eye with the hand-off's shots (testing notes, A5 entry).
 - **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1), on
   these notes (runs 2–3), on the follow-up of 2026-11-24 (run 4), on A4's one-arm fix (A4 run 8), on A4's effects
   (A4 runs 9–10), on the chair's start bubble (run 5), on the records of the phone check and the user's answers
-  (A4 run 11, A5 run 6), and on the leave dialog fix with the `main` merges (A4 run 12, A5 runs 7–8).
+  (A4 run 11, A5 run 6), and on the leave dialog fix with the `main` merges (A4 run 12, A5 runs 7–8), and on the leave button
+  (A4 run 13, A5 run 9).
 - **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
   Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
   also holds the A3 and A4 sessions). Two fixes, the prompts
