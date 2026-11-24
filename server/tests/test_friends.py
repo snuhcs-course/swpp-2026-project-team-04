@@ -757,7 +757,7 @@ def test_an_old_accept_no_longer_holds(client):
     )
     third = _invite(client, c, b_id).json()["invite_id"]
     assert client.post(f"/friends/invites/{third}/accept", **b).status_code == 200
-    assert ACCEPT_HOLD == timedelta(seconds=35)
+    assert ACCEPT_HOLD == timedelta(minutes=2)
 
 
 def test_an_accept_records_when(client, two):
@@ -845,3 +845,42 @@ def test_accepting_takes_back_my_own_open_invite(client):
     assert client.get(f"/friends/invites/{mine}", **b[1]).json()["status"] == (
         "cancelled"
     )
+
+
+def test_an_invite_from_someone_in_another_battle_is_busy(client):
+    """The inviter is held too: b already plays c, then invites a from
+    another phone; a's accept must not put b in two battles."""
+    a = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    c = _user(client, "carol01", "근육")
+    _befriend(client, a, b)
+    _befriend(client, b, c)
+    with_c = _invite(client, c[1], b[0]).json()["invite_id"]
+    assert client.post(f"/friends/invites/{with_c}/accept", **b[1]).status_code == 200
+    to_a = _invite(client, b[1], a[0]).json()["invite_id"]
+    busy = client.post(f"/friends/invites/{to_a}/accept", **a[1])
+    assert busy.status_code == 409
+    assert busy.json() == {"detail": "invite_busy"}
+    assert FriendBattleInvite.objects.get(id=to_a).status == "cancelled"
+
+
+def test_the_hold_lasts_through_a_long_setup(client):
+    """Accepted 90 s ago (a slow setup and the round): still held."""
+    (a_id, a), (b_id, b), (c_id, c), first, _ = _two_inviters(client)
+    client.post(f"/friends/invites/{first}/accept", **b)
+    FriendBattleInvite.objects.filter(id=first).update(
+        accepted_at=timezone.now() - timedelta(seconds=90)
+    )
+    third = _invite(client, c, b_id).json()["invite_id"]
+    assert client.post(f"/friends/invites/{third}/accept", **b).status_code == 409
+
+
+def test_the_battle_ending_frees_the_person_at_once(client):
+    """After the battle the app cancels the accepted invite (either side),
+    and the next friend battle can be accepted right away."""
+    (a_id, a), (b_id, b), (c_id, c), first, _ = _two_inviters(client)
+    client.post(f"/friends/invites/{first}/accept", **b)
+    # The inviter's waiting room closes after the battle.
+    assert client.post(f"/friends/invites/{first}/cancel", **a).status_code == 200
+    again = _invite(client, c, b_id).json()["invite_id"]
+    assert client.post(f"/friends/invites/{again}/accept", **b).status_code == 200

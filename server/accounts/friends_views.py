@@ -26,11 +26,13 @@ from .models import FriendBattleInvite, FriendRequest, User
 
 INVITE_TTL = timedelta(minutes=1)
 
-# How long an accepted invite holds its friend: one friend battle at a time,
-# so a second accept within it is 409 invite_busy. The app gives an accepted
-# invite 30 s to pair; leaving the waiting room cancels the invite and ends
-# the hold at once.
-ACCEPT_HOLD = timedelta(seconds=35)
+# How long an accepted invite holds both its players: one friend battle at a
+# time, so a second accept within it is 409 invite_busy. It covers a whole
+# battle (the battle server allows up to 60 s of setup, a countdown and the
+# 30 s round, plus a reconnect). The apps end the hold sooner by cancelling
+# the invite when their waiting room closes: on leaving, and after the
+# battle.
+ACCEPT_HOLD = timedelta(minutes=2)
 
 # The tag as friend_code shows it: at least four digits ("#0042", "#10000").
 # Any nickname sign-up allows, line breaks included (DOTALL), so every
@@ -276,15 +278,18 @@ def _accept_invite(invite_id, me):
             .values_list("from_user_id", flat=True)
             .first()
         )
+        players = [me.id, inviter or me.id]
         list(
             User.objects.select_for_update()
-            .filter(id__in=[me.id, inviter or me.id])
+            .filter(id__in=players)
             .order_by("id")
         )
-        # Either side of a recently accepted invite: invited by a friend, or
-        # inviting one who just accepted.
+        # Either side of a recently accepted invite, for me and for the
+        # inviter: neither may be in another friend battle.
         held = (
-            FriendBattleInvite.objects.filter(Q(to_user=me) | Q(from_user=me))
+            FriendBattleInvite.objects.filter(
+                Q(to_user_id__in=players) | Q(from_user_id__in=players)
+            )
             .filter(
                 status=FriendBattleInvite.ACCEPTED,
                 accepted_at__gt=now - ACCEPT_HOLD,
