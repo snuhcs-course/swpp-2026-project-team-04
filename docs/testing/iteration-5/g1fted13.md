@@ -1311,3 +1311,60 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flut
   arcade's music', 'the arcade's hold screen is A4's, its music in an ArcadeHoldMusic'
 - Before the end the button still works with the arcade's music → 'before the end the leave button is there, and
   leaving from the arcade brings the menu track back'
+
+#### 2026-11-24 · code at commits `c02a9ff` and `d3159cf` (a comment) · step P16 `codex/iter5-ai-opponents`: a friend's invite waits over the arcade's stage screens
+At the user's word (2026-11-24, the Prompt Log), the item found in the entry above is a real bug: a friend's invite
+could show over an arcade stage, and 수락 would open the online battle while a hold stage's camera and clock went on.
+The fix, as the user set it:
+- **Route names (`lib/main.dart`):** `GymRatsApp.arcadeSheetRoute` (a fight's sheet), `arcadeHoldRoute`,
+  `arcadeBossRoute` (a boss match's intro), `arcadeBreakRoute` (the break between its rounds) and `arcadeResultRoute`
+  (a stage's result). A fight itself already opens the named `/versus` and `/battle`. The names are set where the
+  routes are opened: `ArcadeStageSheet.show` (a new optional `routeName`, given by `ArcadeScreen`),
+  `ArcadeFlow.openHold`, `ArcadeBossScreen.route` (the intro or the break, by whether R1 is given) and
+  `ArcadeFlow.afterBattle` (the break now opens through `ArcadeBossScreen.route`, the result with its name). Nothing
+  else about these routes changed.
+- **#95's `busyRoutes` (`lib/screens/friends_screen.dart`, P9's file):** the five names added, no other line of #95
+  changed. Act first and report after (team rule): written down in the local exceptions list, and in PR #91's
+  Exceptions with this push; the owner's and the PM's approval are pending.
+- The arcade's map (`/arcade`) is not in the list, so the invite shows there as on home.
+- **Also hidden, as #95's rule has it:** the alert hides while a busy route is anywhere below, so it also waits on
+  the report opened from an arcade result (리포트 보기) and on 피드백 or 코치 opened from that report. After an AI
+  1v1 the report replaces `/battle`, so it is not hidden there. Not tested on its own.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter test` 4657 passed, 0 failed, 10 skipped; 12 more than at `7362fb4`: the 7 new tests and 5 of #95's for the new names (2026-11-24, `c02a9ff`; the same skips as above). `flutter analyze` found no issues; `dart format`
+  left the six changed code files as they were.
+- **Checked against the old code:** with the five names taken out of `busyRoutes` again, the 7 new tests fail (4 of 4
+  in `arcade_flow_test.dart`, 3 of 3 in `main_test.dart`), and all pass with them.
+- **#95's own tests:** `friends_screen_test.dart` runs 'hidden while $route is open, back after it' for every name in
+  `busyRoutes`, so it now also checks `/arcade/sheet`, `/arcade/hold`, `/arcade/boss`, `/arcade/break` and
+  `/arcade/result` (5 more tests, all passing; the file is not changed).
+- **Other checks:** `ownership_guard.py --check-paths` OK for the commit's eight paths, with the local exception for
+  `friends_screen.dart`; `--check-staged` OK in the commit's hook (8 paths); `--check-diff` OK (113 paths, `friends_screen.dart` now among them). PR #91's diff against its base still lists 77 files: P16's 50 and 27 of #95's that P16 does not change.
+- **Review:** local reviewer run 12 APPROVE: only route names changed (`isMap` still matches `/arcade` alone;
+  `toMap`, `replay`, `leave`, `next` and the boss rounds' `/battle` unchanged; the sheet with no name as before), no
+  online, A2–A5 or other #95 file in the commit, the 7 tests fail on a route with no other busy name; analyze clean,
+  4657 / 0 / 10 in its own run, `--check-diff` 113. Its 5 Minors were fixed before the push: PR #91's body
+  (Exceptions, the fixed item, the file count line) and the local Exceptions list; the new names in the design doc
+  changes; `main.dart`'s comment named only `ArcadeFlow` as the opener (`d3159cf`); the report opened from an arcade
+  result (above); two counts in this entry.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment "Tests and coverage (GitHub Actions)" for this head.
+- **Shortfalls:** coverage is not measured on this PC. The fix is checked by widget tests, not yet on a phone: the
+  phone check under way uses `21fc291`, from before it.
+- **Manual check:** TODO(Woohyun Song): on a build with this fix, a friend's invite on the arcade's map, and none over
+  a fight's sheet, a hold stage, a boss match's intro or break, or a stage's result (it shows again back on the map).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_flow_test.dart` (updated) | new group 'a friend's invite waits over the arcade's stage screens, as over a battle (#95's FriendInviteRouteWatch)': 'the map lets it show; a fight's sheet, then its versus screen, hide it', 'a hold stage hides it; back on its briefing lets it show again', 'a boss match's intro hides it, and so does the break after R1; 그만하기 lets it show again', 'a stage's result hides it, a fight's and a boss match's; 아케이드로 lets it show again' (each also checks the top route's name) |
+| App flow | `test/main_test.dart` (updated) | new group 'a friend's invite on the arcade (#95's alert)', with the app's own alert and a friend's push-up invite: 'it shows on the arcade's map as on home, and waits while a fight's sheet is open', 'it waits while a hold stage is open, and shows again on the map', 'it waits while a boss match's intro is open' |
+
+### Acceptance criteria → tests (the user's item 1)
+- No invite over an arcade stage (sheet, hold stage, boss intro, break, result) → the four tests of 'a friend's
+  invite waits over the arcade's stage screens, as over a battle (#95's FriendInviteRouteWatch)', 'it waits while a
+  hold stage is open, and shows again on the map', 'it waits while a boss match's intro is open', and #95's 'hidden
+  while $route is open, back after it' for the five names
+- The invite still shows on the arcade's map, as now → 'it shows on the arcade's map as on home, and waits while a
+  fight's sheet is open', 'the map lets it show; a fight's sheet, then its versus screen, hide it'

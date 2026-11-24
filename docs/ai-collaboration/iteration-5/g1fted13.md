@@ -537,13 +537,18 @@ These were made from the A5 session at the user's word; their full evidence is i
     친구와의 대전 row under them), then `03cac86` merges `codex/iter5-hold-chair`. Claude Code resolved both and
     wrote `test/screens/arcade_hold_stage_test.dart` (`7362fb4`), which runs A4's screen with the arcade's
     `ArcadeHoldMusic`.
+  - The invite alert fix (`c02a9ff`, the user's decision): Claude Code named the arcade's stage routes in
+    `main.dart` (`arcadeSheetRoute`, `arcadeHoldRoute`, `arcadeBossRoute`, `arcadeBreakRoute`,
+    `arcadeResultRoute`), set them where `ArcadeFlow`, `ArcadeBossScreen` and the stage sheet open the routes,
+    added them to #95's `busyRoutes` (P9's file, act first and report after), and wrote 7 tests in
+    `arcade_flow_test.dart` and `main_test.dart`.
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran eleven times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+- **Review:** the `reviewer` subagent ran twelve times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
   CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, after the merge
   of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix, APPROVE (4 Minors, fixed) on the `main` merge, and CHANGES_REQUESTED, then
-  APPROVE, on the #95 merge.
+  APPROVE, on the #95 merge, and APPROVE (5 Minors, fixed) on the invite alert fix.
 - **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
   (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
   Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
@@ -585,7 +590,8 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **A gap between two merged features, found while merging:** #95's invite alert hides only on named routes
   (`FriendInviteRouteWatch.busyRoutes`), and the arcade opens its hold stages, boss intro and break as unnamed
   routes, so a friend's invite can show over them. Claude Code saw it while resolving `main.dart`, checked it
-  with a throwaway test (not committed), and reported it instead of changing #95's file.
+  with a throwaway test (not committed), and reported it instead of changing #95's file. The user called it a real
+  bug and set the fix (`c02a9ff`): with the five names taken out again, the 7 new tests fail.
 - **Recovery after the power loss:** the state check (branch, `index.lock`, diffs, line endings, ownership, analyze)
   took a few minutes and found nothing half-written.
 
