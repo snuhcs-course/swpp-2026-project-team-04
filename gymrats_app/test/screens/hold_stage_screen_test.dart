@@ -289,6 +289,12 @@ class _Driver {
   }
 }
 
+/// The leave button, on the screen and in the semantics tree alike.
+void _expectLeaveButton(Matcher matcher) {
+  expect(find.byIcon(Icons.logout_rounded), matcher);
+  expect(find.bySemanticsLabel('게임 나가기'), matcher);
+}
+
 Color? _frameColor(WidgetTester tester) {
   final box = tester.widget<DecoratedBox>(
     find.byKey(const ValueKey('hold-frame')),
@@ -633,8 +639,8 @@ void main() {
       expect(driver.closed, isFalse);
     });
 
-    testWidgets('in a second warning\'s moment back and the leave button '
-        'open no dialog', (tester) async {
+    testWidgets('in a second warning\'s moment there is no leave button '
+        'and back opens no dialog', (tester) async {
       final driver = _Driver();
       await driver.open(tester);
       await driver.go(tester);
@@ -642,10 +648,7 @@ void main() {
       await driver.hold(tester, 700, HoldReading.ok);
       await driver.hold(tester, 600, const HoldReading.broken(_low));
       expect(driver.viewModel.state.ending, isTrue);
-      await tester.tap(find.bySemanticsLabel('게임 나가기'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.byType(ExitDialog), findsNothing);
+      _expectLeaveButton(findsNothing);
       final navigator = tester.state<NavigatorState>(find.byType(Navigator));
       await navigator.maybePop();
       await tester.pump();
@@ -657,6 +660,38 @@ void main() {
       expect(find.text('다시 도전'), findsOneWidget);
       expect(driver.closed, isFalse);
     });
+
+    for (final star in [false, true]) {
+      testWidgets('a second warning ${star ? 'after a star' : 'with no star'}: '
+          'the leave button is gone for the whole moment, on the screen and '
+          'to a screen reader', (tester) async {
+        final driver = _Driver();
+        await driver.open(tester);
+        await driver.go(tester);
+        if (star) {
+          await driver.hold(tester, 16000);
+          await driver.hold(tester, 600, const HoldReading.broken(_low));
+        } else {
+          await driver.warn(tester, HighPlankFaults.kneeDown);
+        }
+        await driver.hold(tester, 700, HoldReading.ok);
+        _expectLeaveButton(findsOneWidget);
+        await driver.hold(tester, 600, const HoldReading.broken(_low));
+        expect(driver.viewModel.state.ending, isTrue);
+        _expectLeaveButton(findsNothing);
+        await tester.pump(HoldTiming.endShow ~/ 2);
+        _expectLeaveButton(findsNothing);
+        await tester.pump(
+          HoldTiming.endShow ~/ 2 - const Duration(milliseconds: 100),
+        );
+        // Still the moment, 0.1 s before its end.
+        expect(driver.viewModel.state.ending, isTrue);
+        _expectLeaveButton(findsNothing);
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(find.text(star ? '클리어!' : '다시 도전'), findsOneWidget);
+        expect(driver.closed, isFalse);
+      });
+    }
 
     testWidgets('a star, then a second warning while asking: the clear '
         'shows and its star is kept', (tester) async {

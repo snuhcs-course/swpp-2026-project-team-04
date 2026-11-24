@@ -77,7 +77,9 @@ class HoldStagePlay extends StatelessWidget {
   /// Milliseconds since GO, for its band; null before GO.
   final double? goAge;
 
-  final VoidCallback onLeave;
+  /// The leave button's action. Null hides the button, as a battle does
+  /// once it has ended: from a second warning on, the result comes next.
+  final VoidCallback? onLeave;
   final ValueChanged<SetupCameraCrop> onGuideCrop;
 
   /// The camera box's size, for the setup's check.
@@ -964,7 +966,7 @@ class _CameraBox extends StatelessWidget {
   final PoseFrame? frame;
   final Offset boardOffset;
   final double scale;
-  final VoidCallback onLeave;
+  final VoidCallback? onLeave;
   final ValueChanged<SetupCameraCrop> onGuideCrop;
 
   static const _frame = 8.0;
