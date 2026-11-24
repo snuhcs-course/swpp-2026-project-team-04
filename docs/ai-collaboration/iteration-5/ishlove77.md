@@ -95,6 +95,11 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P9: the third Codex review (`851cc40`) found that a 수락 still in flight when the account signs out opened the
   waiting room over the signed-out app. Fixed by dropping answers that come back after a sign-in change, with tests.
 
+- P9: the fourth Codex review (`1f41796`) found a read that could show one account's invites to the next account,
+  and that the pairing cleanup from the first round could still cancel an invite the friend had just accepted. The
+  reviewer subagent had flagged that second case as unlikely and Claude kept it with a test; Codex showed it could end
+  the friend's waiting room, so the cleanup now lets the server decide (`if_pending`).
+
 ## 4. Revisions and Decisions
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so

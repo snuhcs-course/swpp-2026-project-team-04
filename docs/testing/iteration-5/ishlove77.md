@@ -5,6 +5,19 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the fourth Codex review
+Two P2 findings from the Codex review of `1f41796` were fixed: the invite banner drops a read that comes back after
+a switch of account, so one account's invites never show for another; and the cleanup after two crossed invites met
+now asks the server to cancel only an invite that is still open (`{"if_pending": true}` on
+`POST /friends/invites/<id>/cancel`), so an invite the friend has just accepted stays accepted.
+
+- **Tests:** `flutter analyze` no issues; server `pytest` 217 passed, `accounts/friends_views.py` 100%; full
+  `flutter test` count in the PR body.
+- **Test cases changed:** `server/tests/test_friends.py` (cancel if pending leaves an accepted invite, takes back an
+  open one, only `true` turns it on, an odd answer body is ignored); `test/services/friends/friend_repository_test.dart` (`if_pending` in the request,
+  in-memory refusal); `test/viewmodels/friends_viewmodel_test.dart` (a read after a switch of account is dropped and the new account's read follows at once; the
+  pairing cleanup uses `ifPending` and leaves a just-accepted invite).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fix for the third Codex review
 One P2 finding from the Codex review of `851cc40` was fixed: when the account signs out while the invite banner's
 수락 is on its way, the late answer no longer opens the waiting room over the signed-out app; the app tries to take the
