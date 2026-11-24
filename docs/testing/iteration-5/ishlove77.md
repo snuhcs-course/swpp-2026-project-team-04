@@ -5,6 +5,53 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (team plan #3): friends and friend battles
+The step adds friends by friend code (`nickname#tag`, the tag being the account id with at least four digits),
+friend requests (`/friends`, `/friends/requests`), friend battle invites open for one minute (`/friends/invites`), a
+`friend_id` in the battle server's `queue.join` that pairs only two players who named each other, the 친구와의 대전
+page and row on 게임 시작, the friend waiting room in the online lobby, the friend code in 환경설정, and an app-wide
+banner for a friend's battle invite. Commands from `gymrats_app/` and `server/` on macOS (Flutter 3.47.5 /
+Dart 3.13.4, Python 3.12). The commit is the PR head; see the PR for its hash.
+
+| Component | Frameworks | Target | Actual (P9 files) | Date | Command / Report |
+|---|---|---|---|---|---|
+| ViewModel | flutter_test, fakes, fake_async | 90% | 100% (194/194): friends_viewmodel | 11/24 | `flutter test --coverage <P9 test files>` |
+| Service | flutter_test, MockClient, fakes | 85% | friend_repository 100% (164/164) | 11/24 | same run |
+| View | flutter_test (widget) | 75% | friends_screen 98.6% (285/289), play_screen 98.7% (75/76), online_lobby_screen 95.4% (186/195), settings_screen 100% (98/98) | 11/24 | same run |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total; accounts/friends_views 100%, friends_urls 100%, migration 0003 100%, models 98% | 11/24 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 4027 passed, 0 failed, 10 skipped (the existing opt-in live
+  server and device checks, unchanged by this step). Server `pytest` 198 passed, 0 failed (41 in
+  `test_friends.py`).
+- **Coverage:** measured on the P9 test files (a full per-file run takes over 10 minutes on this Mac and was stopped
+  when the code changed). `online_battle_session.dart` shows 52.8% in this subset because its other paths are covered
+  by the existing online tests outside it; P9 added only `friendId`, which is covered. `shared/battle_protocol.dart`
+  shows 0% in lcov because the file is loaded twice (by package URI and by the battle server's relative import) and
+  the hits are not attributed to the listed path; `isBattleFriendId` is covered by
+  `isBattleFriendId takes server player ids only` and the battle server tests.
+- **Shortfalls:** none in the P9 files.
+- **Manual check:** Android emulator (Medium Phone, API 36) against the working-tree Django API and battle server on
+  this Mac (outside the repo copy), with test accounts and a throwaway script outside the repo playing the friend's
+  side on the battle server: outgoing request, duplicate request refused, wrong code refused, accept and decline by the
+  other side (with the page open and after reopening), incoming request with the dot on 게임 시작 and accept, friend
+  battle both ways ending in MATCH FOUND with the friend, leaving before the start cancels it for the friend, and the
+  invite banner on home and on 기록보관소 with 거절 and 수락 (수락 opens MATCH FOUND). Not checked: two real phones,
+  and the production servers (the friends API and `friend_id` are not deployed; the battle server must be deployed
+  before the app).
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_friends.py` | Server | friend code (4+ digits), login required, request then accept, duplicate either way, malformed codes, number and nickname both needed, same nicknames told apart, self, decline, accepted not declinable, list order, invite reaches the friend and accept, only friends invited, malformed invites, 1-minute expiry and just inside it, decline and cancel once, either player cancels an accepted invite, a new invite cancels the old, invites private to the two players, no login id or password in the list, only the invited friend accepts, accepting twice accepts once, closed invites not accepted, one request per pair in the database, reverse request race |
+| `test/services/online/friend_battle_test.dart` | Service (battle server) | friends who name each other share a room, later join still pairs, never with the main queue, only the named friend, different exercises not paired, friend leaving the queue, leaving before the start cancels, invalid `friend_id` values, joining twice and a second phone make one room, two app sessions meet |
+| `test/services/online/online_battle_session_test.dart` (updated) | Service | `friend_id` sent only for a friend battle |
+| `test/services/friends/friend_repository_test.dart` | Service | `friendCode`, server overview parsing, unreadable replies, add friend outcomes and refusal codes, request and invite paths, in-memory rules (requests, codes, invites, expiry, accept/decline/cancel) |
+| `test/viewmodels/friends_viewmodel_test.dart` | ViewModel | error messages, load and add states, answering requests and invites, wait for an invite (sent, declined, cancelled, expired, accepted but not paired in 30 s, invited side, stop, leave, polling), app-wide alert (signed in only, newest unanswered, accept, ran out, decline, hidden and background, sign-out reset, failed read, double answer, read during an answer, polling) |
+| `test/screens/friends_screen_test.dart` | View | my code and copy, add by code, duplicate and wrong code, accept and decline requests, 대결 asks for the exercise, invite accept and decline, ordering, retry, refresh; banner over every page, accept opens the waiting room, decline, ran-out message, hidden on battle routes and the friends page (also under a sheet), replaced routes, background, stops when gone, on the real app's home |
+| `test/screens/play_screen_test.dart` (updated) | View | online card goes straight to the exercise, 친구와의 대전 row opens the friends page, dot for a request or an invite, no rule line or play-again row |
+| `test/screens/online_lobby_screen_test.dart` (updated) | View | friend waiting room: invite sent, declined, leaving takes it back, invited side, paired stops reading, failed search takes it back, no 다시 매칭, app routes a `FriendBattle` |
+| `test/screens/settings_screen_test.dart` (updated) | View | friend code row and copy |
+| `test/main_test.dart`, `test/screens/home_screen_test.dart` (updated, exceptions) | App flow / View | expectations of the removed play-again row replaced |
+
 #### 2026-11-24 · code at commit `6f9ee9c` · step P7 `feat/iter5-google-auth` (PR #93): fixes for the Codex review
 Two P1 findings from the automatic Codex review of `81c3fe0` were fixed: the server now fetches Google's keys at most
 once per 5 minutes (30 s after a failure, again after 6 hours; malformed answers are 503), and the app ships the public

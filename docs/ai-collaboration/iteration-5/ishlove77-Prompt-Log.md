@@ -129,3 +129,138 @@ Input prompts only, quoted verbatim (no agent responses), from the course Sessio
 
 <!-- 862bdb8e 2026-11-23T17:26:27.605Z -->
 [Jinyoung Park, 11-24 02:26] "에뮬레이터에 다시 띄워봐"
+
+## 2026-11-24 · Jinyoung Park · feat/iter5-google-auth (after the P7 push: Codex review, release)
+<!-- 862bdb8e 2026-11-23T17:36:56.388Z -->
+[Jinyoung Park, 11-24 02:36] "gymmouse로 바꿀거면 많이 바꾸어ㅑ 하나"
+
+<!-- 862bdb8e 2026-11-23T17:37:10.109Z -->
+[Jinyoung Park, 11-24 02:37] "확인 받았고 그냥 ㄱㄱ"
+
+<!-- 862bdb8e 2026-11-23T17:46:27.427Z -->
+[Jinyoung Park, 11-24 02:46] "그리고 이름 바꾼거 상우한테 보낼 거에 적어줘"
+
+<!-- 862bdb8e 2026-11-23T17:53:45.488Z -->
+[Jinyoung Park, 11-24 02:53] "다됨?"
+
+<!-- 862bdb8e 2026-11-23T18:12:36.185Z -->
+[Jinyoung Park, 11-24 03:12] "했음?"
+
+<!-- 862bdb8e 2026-11-23T18:13:14.496Z -->
+[Jinyoung Park, 11-24 03:13] "ㅇㅇㅇ"
+
+<!-- 862bdb8e 2026-11-23T18:17:44.951Z -->
+[Jinyoung Park, 11-24 03:17] "ㅇㅇ 재리뷰 확인해봐"
+
+<!-- 862bdb8e 2026-11-23T18:19:15.702Z -->
+[Jinyoung Park, 11-24 03:19] "게시하고 답글 달아"
+
+<!-- 862bdb8e 2026-11-23T18:19:47.093Z -->
+[Jinyoung Park, 11-24 03:19] "로그인했음"
+
+<!-- 862bdb8e 2026-11-23T18:20:21.507Z -->
+[Jinyoung Park, 11-24 03:20] "1번으로 해 초안 써줘"
+
+<!-- 862bdb8e 2026-11-23T18:21:24.022Z -->
+[Jinyoung Park, 11-24 03:21] "[REDACTED:email].kr로 하고 위키에 올려"
+
+<!-- 862bdb8e 2026-11-23T18:25:49.338Z -->
+[Jinyoung Park, 11-24 03:25] "상우에게 알려줘 그러면 재리뷰 할 필요 없는 거지?"
+
+<!-- 862bdb8e 2026-11-23T18:26:29.815Z -->
+[Jinyoung Park, 11-24 03:26] "남은게 다시 독립 리뷰? 그러면 해봐"
+
+<!-- 862bdb8e 2026-11-23T18:27:45.133Z -->
+[Jinyoung Park, 11-24 03:27] "그거 하고 머지후에 재 배포하면 끝?"
+
+<!-- 862bdb8e 2026-11-23T18:28:09.338Z -->
+[Jinyoung Park, 11-24 03:28] "- 팀원 디버그 키 등록: 팀원이 자기 Mac에서 빌드해 Google 로그인을 테스트하려면, 각자 디버그 키 SHA-1을 받아 Google Cloud에 등록해야 합니다. 이거는 뭐임? 다른 구글은 안되는거?"
+
+<!-- 862bdb8e 2026-11-23T18:29:32.773Z -->
+[Jinyoung Park, 11-24 03:29] "리뷰 결과 나왔어?"
+
+<!-- 862bdb8e 2026-11-23T18:30:05.011Z -->
+[Jinyoung Park, 11-24 03:30] "나 출시 했는데"
+
+<!-- 862bdb8e 2026-11-23T18:30:35.575Z -->
+[Jinyoung Park, 11-24 03:30] "이 Mac에서 빌드했어"
+
+<!-- 862bdb8e 2026-11-23T18:31:39.808Z -->
+[Jinyoung Park, 11-24 03:31] "~/Downloads/gymmouse-app-release.aab 이걸로 배포해썽ㅆ음"
+
+<!-- 862bdb8e 2026-11-23T18:34:08.630Z -->
+[Jinyoung Park, 11-24 03:34] "지금 연동해놨음 확인해봐"
+
+<!-- 862bdb8e 2026-11-23T18:34:27.504Z -->
+[Jinyoung Park, 11-24 03:34] "아니 chromed으로 연동"
+
+<!-- 862bdb8e 2026-11-23T18:36:20.715Z -->
+[Jinyoung Park, 11-24 03:36] "ㅇㅇ 등록하고 답글 달아 그리고 상우한테 알려줄 글도 작성좀 전체적으로"
+
+## 2026-11-24 · Jinyoung Park · feat/iter5-friend-battles
+
+<!-- b7f2c482 2026-11-24T02:03:11.169Z -->
+[Jinyoung Park, 11-24 11:03] "task 수행해"
+
+<!-- b7f2c482 2026-11-24T03:06:13.868Z -->
+[Jinyoung Park, 11-24 12:06] "emulator로 띄워봐"
+
+<!-- b7f2c482 2026-11-24T03:12:29.564Z -->
+[Jinyoung Park, 11-24 12:12] "최근 설정으로 다시 하기 대신에 친구와의 대전으로 이름 바꿔서 저기 배치해주고 30초, 점수 높은쪽 승리 이거는 뺴자"
+
+<!-- b7f2c482 2026-11-24T03:17:26.147Z -->
+[Jinyoung Park, 11-24 12:17] "PM 메시지 작성해줘"
+
+<!-- b7f2c482 2026-11-24T03:54:44.074Z -->
+[Jinyoung Park, 11-24 12:54] "한번 emulaotr 띄워보"
+
+<!-- b7f2c482 2026-11-24T03:56:44.530Z -->
+[Jinyoung Park, 11-24 12:56] "근데 신청 걸고 상대가 수락을 해야 친구가 되야되는거 아님?"
+
+<!-- b7f2c482 2026-11-24T03:57:24.637Z -->
+[Jinyoung Park, 11-24 12:57] "한번 보낸 친구 요청 기능 검증해봐"
+
+<!-- b7f2c482 2026-11-24T04:00:50.879Z -->
+[Jinyoung Park, 11-24 13:00] "ㅇㅋㅇㅋ 그러면 상대방이 나한테 친구 추가를 보낼때를 보자 이제 또"
+
+<!-- b7f2c482 2026-11-24T04:03:38.176Z -->
+[Jinyoung Park, 11-24 13:03] "됬고 반대로 상대가 나한테 대결신청 보낸거 test해보자"
+
+<!-- b7f2c482 2026-11-24T04:18:31.263Z -->
+[Jinyoung Park, 11-24 13:18] "한번 다시 보여줘봐"
+
+<!-- b7f2c482 2026-11-24T04:23:58.111Z -->
+[Jinyoung Park, 11-24 13:23] "ㅇㅇ 내가 했음 된듯? push 랑 pr ㄱㄱ"
+
+Sent while Claude was working on the previous request (queued messages); the Session Exporter output does not list
+them, so they are copied verbatim from the session, in order, without times.
+
+[Jinyoung Park, 11-24] "friend추가하는 기능은 닉네임으로 추가?"
+
+[Jinyoung Park, 11-24] "유효는 1분으로 하자 그리고 태그 설명좀"
+
+[Jinyoung Park, 11-24] "근데 계정 태그가 안보이는데 내 환경설정 들어갔을때"
+
+[Jinyoung Park, 11-24] "그리고 PM에게 보낼메세지 잦ㄱ성좀"
+
+[Jinyoung Park, 11-24] "지금 게임 시작안에 친구와의 대전이 있는건가?"
+
+[Jinyoung Park, 11-24] "흠.. 게임 시작에서 메인 매치/ 친구와 1v1대신에 그냥 오른쪽의 상단에 친구관리 칸에서 친구와의 대결을 할 수 있게 하면 안되나"
+
+[Jinyoung Park, 11-24] "그리고 우 상단 친구 버튼은 빼고"
+
+[Jinyoung Park, 11-24] "그리고 친구와의 대전 크기를 좀더 크게 배치해줘"
+
+[Jinyoung Park, 11-24] "굳이 그러면 온ㄹ아니 1v1 에서 치눅와의 대전 갈 필요는 없을듯"
+
+[Jinyoung Park, 11-24] "그리고 제목도 친구와 1v1 대신에 친구와의 대전으로"
+
+[Jinyoung Park, 11-24] "emulator로"
+
+[Jinyoung Park, 11-24] "친구가 수락을 거부 하면 어캐됨?"
+
+[Jinyoung Park, 11-24] "한번 대결도 되는지도 확인좀"
+
+[Jinyoung Park, 11-24] "상대방이 대전 걸면 위의 친구가 대전을 신청했어요 이런식으로 뜨게 하면 안된 ㅏ"
+
+[Jinyoung Park, 11-24] "홈화면에서하번 시도해보자"
