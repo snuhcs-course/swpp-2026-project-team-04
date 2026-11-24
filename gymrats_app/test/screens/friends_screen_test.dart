@@ -223,6 +223,25 @@ void main() {
     expect(find.text('받은 대결 신청'), findsNothing);
   });
 
+  testWidgets('another battle opened while accepting: no second lobby, and '
+      'the accept is taken back', (tester) async {
+    repo.friends.addAll([_friend, _other]);
+    final invite = repo.receiveInvite(_friend, ExerciseType.pushUp);
+    await open(tester, pickExercise: (_, _) async => ExerciseType.squat);
+    repo.holdAccept = Completer<void>();
+    await tester.tap(find.text('수락'));
+    await tester.pump();
+    // Meanwhile I challenge another friend: that lobby opens.
+    await tester.tap(find.text('대결').last);
+    await tester.pumpAndSettle();
+    expect(opened, hasLength(1));
+    expect((opened.single! as FriendBattle).inviting, isTrue);
+    repo.holdAccept!.complete();
+    await tester.pumpAndSettle();
+    expect(opened, hasLength(1));
+    expect((await repo.fetchInvite(invite.id)).status, InviteStatus.cancelled);
+  });
+
   testWidgets('an invite that expired says so and opens nothing', (
     tester,
   ) async {

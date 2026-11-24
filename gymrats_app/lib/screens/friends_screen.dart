@@ -91,7 +91,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   Future<void> _accept(BattleInvite invite) async {
     final accepted = await _vm.acceptInvite(invite);
-    if (accepted == null || !mounted) return;
+    if (accepted == null) return;
+    // Another battle (or page) opened over this one while accepting: open
+    // no second lobby, and take the accept back.
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? true)) {
+      unawaited(_vm.takeBack(accepted));
+      return;
+    }
     await _open(
       FriendBattle(
         friend: accepted.from,

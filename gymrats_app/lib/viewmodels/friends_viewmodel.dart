@@ -115,6 +115,17 @@ class FriendsViewModel extends ChangeNotifier {
     return accepted;
   }
 
+  /// Takes back an invite I accepted but will not play (another battle
+  /// opened meanwhile), so the friend's waiting room ends and both are free.
+  /// Quiet: the friend's room ends on its own if this fails.
+  Future<void> takeBack(BattleInvite accepted) async {
+    try {
+      await _repository.cancelInvite(accepted.id);
+    } on Object {
+      // Nothing to show: the page has moved on.
+    }
+  }
+
   /// Runs [call] for the request or invite [id], then reloads: a refused
   /// one may have expired or been answered elsewhere.
   Future<void> _answer(int id, Future<void> Function() call) async {

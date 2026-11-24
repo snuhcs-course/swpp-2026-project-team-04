@@ -120,6 +120,23 @@ void main() {
 
     tearDown(() => vm.dispose());
 
+    test('takeBack cancels an accepted invite, quietly even when it fails '
+        'and after the page is gone', () async {
+      final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+      final accepted = await repo.acceptInvite(sent.id);
+      var notified = 0;
+      vm.addListener(() => notified++);
+      repo.failWith = const ApiException(ApiErrorKind.network);
+      await vm.takeBack(accepted);
+      expect(notified, 0);
+      expect(vm.actionError, isNull);
+      repo.failWith = null;
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.accepted);
+      final gone = FriendsViewModel(repository: repo)..dispose();
+      await gone.takeBack(accepted);
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.cancelled);
+    });
+
     test('load reads the overview, and says why when it cannot', () async {
       await vm.load();
       expect(vm.overview!.code, '쥐돌이#0001');
