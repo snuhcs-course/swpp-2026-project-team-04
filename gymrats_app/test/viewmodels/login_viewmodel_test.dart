@@ -43,6 +43,8 @@ void main() {
     repository.logInError = const InvalidCredentialsException();
     expect(await vm.submit(loginId: 'woohyun', password: 'nope1234'), isFalse);
     expect(vm.state.formError, LoginViewModel.wrongCredentialsMessage);
+    // Not a Google failure (P8: shown in the id sheet, not above Google).
+    expect(vm.state.failedWith, isNull);
     expect(vm.state.loginIdError, isNull);
     expect(vm.state.passwordError, isNull);
     expect(auth.status, AuthStatus.signedOut);
@@ -99,6 +101,8 @@ void main() {
     await pumpEventQueue();
     final login = LoginViewModel(auth: expiredAuth);
     expect(login.state.formError, LoginViewModel.expiredMessage);
+    expect(login.state.failedWith, isNull);
+    expect(login.state.cancelledWith, isNull);
   });
 
   group('Google (P7)', () {
@@ -169,6 +173,36 @@ void main() {
       expect(auth.status, AuthStatus.signedOut);
     });
 
+    test(
+      'backing out is told apart from nothing (P8), until the next try',
+      () async {
+        google.error = const SocialSignInCancelledException();
+        await vm.signInWith(google);
+        expect(vm.state.cancelledWith, SocialProvider.google);
+        expect(vm.state.failedWith, isNull);
+        google.error = null;
+        final gate = google.gate = Completer<void>();
+        final again = vm.signInWith(google);
+        expect(vm.state.cancelledWith, isNull);
+        expect(vm.state.signingInWith, SocialProvider.google);
+        gate.complete();
+        expect(await again, isTrue);
+        expect(vm.state.cancelledWith, isNull);
+      },
+    );
+
+    test('turning to the id form clears the cancel note (P8)', () async {
+      google.error = const SocialSignInCancelledException();
+      await vm.signInWith(google);
+      var notified = 0;
+      vm.addListener(() => notified++);
+      vm.edited();
+      expect(vm.state.cancelledWith, isNull);
+      expect(notified, 1);
+      vm.edited();
+      expect(notified, 1);
+    });
+
     test('each failure has its message', () async {
       final cases = <(FakeSocialSignIn, Exception?, Exception?, String)>[
         (
@@ -202,8 +236,14 @@ void main() {
         repository.socialError = serverError;
         expect(await vm.signInWith(service), isFalse);
         expect(vm.state.formError, message);
+        // P8: every one of them is a Google failure (F1 above the button).
+        expect(vm.state.failedWith, SocialProvider.google);
+        expect(vm.state.cancelledWith, isNull);
         expect(auth.status, AuthStatus.signedOut);
       }
+      vm.edited();
+      expect(vm.state.formError, isNull);
+      expect(vm.state.failedWith, isNull);
     });
 
     test('a failure can be retried', () async {
@@ -212,6 +252,7 @@ void main() {
       google.error = null;
       expect(await vm.signInWith(google), isTrue);
       expect(vm.state.formError, isNull);
+      expect(vm.state.failedWith, isNull);
     });
   });
 }
