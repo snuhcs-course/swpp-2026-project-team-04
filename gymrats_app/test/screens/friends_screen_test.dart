@@ -480,6 +480,22 @@ void main() {
       expect(repo.invites.single.status, InviteStatus.cancelled);
     });
 
+    testWidgets('a battle opened while 수락 is on its way: no friend waiting '
+        'room over it', (tester) async {
+      repo.friends.add(_friend);
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      repo.holdAccept = Completer<void>();
+      await openApp(tester);
+      await tester.tap(find.text('수락'));
+      await tester.pump();
+      push(GymRatsApp.onlineBattleRoute);
+      await tester.pumpAndSettle();
+      repo.holdAccept!.complete();
+      await tester.pumpAndSettle();
+      expect(opened.whereType<FriendBattle>(), isEmpty);
+      expect(repo.invites.single.status, InviteStatus.cancelled);
+    });
+
     testWidgets('a replaced route is followed', (tester) async {
       repo.friends.add(_friend);
       repo.receiveInvite(_friend, ExerciseType.squat);

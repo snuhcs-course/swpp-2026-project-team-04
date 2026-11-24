@@ -374,8 +374,13 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
   void setHidden(bool hidden) {
     if (hidden == _hidden) return;
     _hidden = hidden;
+    if (hidden) _hiddenTimes++;
     _sync();
   }
+
+  /// Counts the times the alert was hidden, so a 수락 that comes back after
+  /// a battle (or the friends page) was opened meanwhile opens nothing.
+  int _hiddenTimes = 0;
 
   /// The app went to the background (or came back).
   void setForeground(bool foreground) {
@@ -434,17 +439,20 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
   /// the account signed out meanwhile: then nobody will come for the friend,
   /// so it tries to take the accepted invite back (after a sign-out the
   /// request may lack a login and fail; the friend's waiting room then ends
-  /// on its own within 30 s).
+  /// on its own within 30 s). The same when the alert was hidden meanwhile
+  /// (another battle or the friends page opened): the friend battle must
+  /// not open over it.
   Future<BattleInvite?> accept() async {
     final invite = current;
     if (invite == null || answering) return null;
-    final account = _account;
+    final account = _account, hiddenTimes = _hiddenTimes;
     answering = true;
     _notify();
     try {
       final accepted = await _repository.acceptInvite(invite.id);
-      if (account != _account) {
+      if (account != _account || hiddenTimes != _hiddenTimes || _hidden) {
         unawaited(_cancelQuietly(invite.id));
+        if (account == _account) current = null;
         return null;
       }
       current = null;

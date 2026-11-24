@@ -783,6 +783,37 @@ void main() {
       },
     );
 
+    test('a battle opened while accepting: the late answer opens nothing '
+        'and the invite is taken back', () async {
+      final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      repo.holdAccept = Completer<void>();
+      final accepting = vm.accept();
+      vm.setHidden(true);
+      repo.holdAccept!.complete();
+      expect(await accepting, isNull);
+      await pumpEventQueue();
+      expect(repo.cancelledIfPending, [false]);
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.cancelled);
+      expect(vm.current, isNull);
+      expect(vm.error, isNull);
+    });
+
+    test('hidden and shown again while accepting: still dropped', () async {
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      repo.holdAccept = Completer<void>();
+      final accepting = vm.accept();
+      vm
+        ..setHidden(true)
+        ..setHidden(false);
+      repo.holdAccept!.complete();
+      expect(await accepting, isNull);
+      expect(vm.current, isNull);
+    });
+
     test('a failed read keeps what shows', () async {
       repo.receiveInvite(_friend, ExerciseType.squat);
       vm.setSignedIn(true);
