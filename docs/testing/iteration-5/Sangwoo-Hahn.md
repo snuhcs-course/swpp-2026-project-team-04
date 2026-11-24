@@ -9,3 +9,7 @@ flutter test --no-pub test/services/pose/rep_judge_test.dart test/services/oppon
 ```
 
 The regressions cover a completed knee push-up in fever, an opponent receiving the same five points, the elbow-angle window of a shallow attempt, knee contact on a shallow cycle and clearing an earlier rejection on Good. This run did not include physical-device play or a production deployment.
+
+### 2026-11-24 · Knee push-up scoring follow-up
+
+Updated scoring and tutorial expectations. Exercised the shared score path and the two-client battle-server integration in fever. A zero-point knee rep now counts as an opponent miss. Device play was not exercised.
