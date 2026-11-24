@@ -112,6 +112,11 @@ Full list: `ishlove77-Prompt-Log.md`.
   the user's new rule to fix only what users can realistically hit; the PM then asked for it in this PR with a server
   regression test. Fixed with a per-person accept hold.
 
+- P9: the Codex review after the PM-requested fix (`888db67`) found the hold still had gaps (the inviter's other
+  battle; a hold shorter than a slow setup) and that a network error on 수락 lost the banner for good. The 35 s hold
+  was Claude's choice, sized to the app's pairing timeout rather than the battle server's limits; it is now 2 minutes
+  and released by the app when the battle ends.
+
 ## 4. Revisions and Decisions
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so

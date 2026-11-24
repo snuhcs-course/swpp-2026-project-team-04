@@ -5,6 +5,22 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the Codex review of `888db67`
+Three P2 findings were fixed: the one-battle hold now also checks the inviter's other battles; it lasts a whole battle
+(2 minutes, since the battle server allows up to 60 s of setup before the 30 s round) and the apps end it as soon as
+the waiting room closes after the battle; and an accept that gets no answer (network, timeout, server failure) is
+offered again instead of being dropped.
+
+- **Tests:** `flutter analyze` no issues; server `pytest` 236 passed, `accounts/friends_views.py` 100%; the
+  two-connection SQLite check (40 rounds) still gives one 200 and one 409 `invite_busy` every round; full
+  `flutter test` count in the PR body.
+- **Test cases changed:** `server/tests/test_friends.py` (an invite from someone in another battle is busy; the hold
+  lasts through a long setup; the battle ending frees the person at once); `test/viewmodels/friends_viewmodel_test.dart`
+  (the battle is over: the accepted invite is taken back once; the invite made after the battle was over is taken
+  back in any case; finished before any invite takes nothing back; a
+  network failure offers the invite again; a refusal is final); `test/screens/online_lobby_screen_test.dart` (paired,
+  then the waiting room closes: the accepted invite is taken back).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): one friend battle at a time (PM request)
 The last Codex P2 (two invites to one person accepted at once both succeeding) was first left with a reasoned reply;
 the PM asked for it to be fixed in this PR. The server now confirms one accept per person: accepting needs no other
