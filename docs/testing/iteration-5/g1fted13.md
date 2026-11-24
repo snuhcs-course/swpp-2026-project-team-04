@@ -624,8 +624,9 @@ scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `Mem
   `standingThigh`, depth and knee numbers were seen; by what the poses did, the 0.8 knee line was right. No line
   value changed.
 - **Shortfall against spec 7:** its last item asks for the depth range of a good chair pose and the knee ratios
-  (good, knees in) in these notes; they were not seen. TODO(Woohyun Song): measure them with the cable in at the last
-  phone check, or record that the check by behavior is enough.
+  (good, knees in) in these notes; they were not seen. The user's decision (2026-11-24): they are measured at the last
+  phone check, with the USB cable in, from the `flutter run` console (the lines to read are in the start bubble's
+  entry below).
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
@@ -676,8 +677,8 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   true 0.8 reads 0.739). The setup's auto start restarts its count on any frame that is not ready, so the user
   normally stands through the 3·2·1.
 - **Phone check:** ⑤ (sitting down slowly) checks this change: done 2026-11-24 on `e17e332`, no warning (A5 entry
-  above). The slow rise after GO above is not in the user's results. TODO(Woohyun Song): choose whether the last phone
-  check tries it (sit through the 3·2·1, then rise slowly after GO) or it stays a known risk for the reason above.
+  above). The slow rise after GO above is not in the user's results. The user's decision (2026-11-24): the last phone
+  check tries it once (the start bubble's entry below says how and which console lines to read).
 
 ### Test cases added or changed in the follow-up
 | Layer | File | What it covers |
@@ -701,7 +702,27 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
 - **Phone check of the start bubble (the last phone check, with A4's effects):** TODO(Woohyun Song): STAGE 5 · 1F,
   the two lines from GO while standing and sitting down, gone when the time starts; the cheers, "실패!" with the
-  warning kept and the reasons on the fail screen, as in A4's effects entry.
+  warning kept and the reasons on the fail screen, as in A4's effects entry. With the USB cable in
+  (`flutter run -t lib/demo/hold_stage_demo.dart -d <device>`, a debug build), two more (the user's decisions,
+  2026-11-24):
+  1. **The numbers of spec 7.** The reader prints twice a second, on Android after `I/flutter (…):`,
+     `chair_hold <3-2-1|hold> depth=<0.000> knees=<0.000> standingThigh=<0.0> <reading>`; each number is `null`
+     until it exists (depth and the standing thigh until a standing thigh is taken, knees until a frame shows both
+     knees and both ankles, then the last such frame's). The reading is `HoldReading.ok`, `HoldReading.unknown`,
+     `HoldReading.broken(chair.low)` ("더 앉아요") or `HoldReading.broken(chair.kneesIn)` ("무릎 벌려요"); "화면
+     안으로" comes from the time's rule, not this line. Read the `chair_hold hold` lines (after GO): `depth=` while
+     seated in a good chair pose (its lowest and highest; held from 0.75), `knees=` in a good pose and with the knees
+     pulled in (knees in under 0.8), and `standingThigh=` (the standing thigh, fixed from GO). Write the ranges here.
+  2. **The slow rise after GO (reviewer A5 run 4), once.** The case needs no standing thigh by GO. Two lines decide
+     it: the setup counts a leg as standing from a thigh of 0.25 of the shin (`SetupChecker`, its standing check),
+     the reader only from 0.7 (`ChairLines.standingThigh`), for 0.3 s (`ChairLines.standingFor`). A full sit restarts
+     the 3·2·1, so bend to about a half squat in the setup, before the 3·2·1 can start, and hold that bend through
+     the count. The `chair_hold 3-2-1` lines should then show `standingThigh=null` up to GO. A thigh once taken stays
+     for the whole play (the reader is made at 자세 잡기): if a `3-2-1` line shows a number, leave and open the stage
+     again. After GO, rise slowly, over about 3 s, then sit down into a good pose. The first `chair_hold hold` line
+     with a number after `standingThigh=` shows the thigh taken; compare it with the `standingThigh=` of a play where
+     you stood through the 3·2·1, and note the seated `depth=` and whether "더 앉아요" came. If no bend keeps the count
+     going with `standingThigh=null`, write down the bends tried and whether the count restarted.
 - **Acceptance criteria → tests (the effects spec, the chair's part):** 6.1 shown while entering and gone at the
   start → 'standing after GO: 0:00, 버틴 시간, a green frame, no warning', 'seated, the time starts with "시작" and
   runs'; 6.5 sizes → 'the two-line start bubble and "좋아!" fit …' (3 tests); 6.6 read out → the `said` checks in the
@@ -727,4 +748,27 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   message (now a TODO for the user's choice), the missing numbers of spec 7 named as a shortfall (TODO), one word
   added to the user's statement in the AI notes, these lines. One was left: `origin/main` is ahead of every stage
   branch; it is merged up the stack before the PRs leave draft (not a notes change).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+
+#### 2026-11-24 · code at commit `4767873` (A5 unchanged) · step A5: `main` and A4's leave dialog fix merged in
+No A5 code changed. At the user's word (2026-11-24, the Prompt Log under A4's heading), `origin/main` `69b0520`
+(#86, #93, #94) was merged first (`6a8ce7f`, no conflict), then A4 (`ca2cf6a`: its leave dialog fix `94f6416`, and
+A2's and A3's `main` merges). That merge's conflicts were only in the testing notes and the AI notes, where A4's new
+entries and A5's met at the same place; both kept, A4's first. The user's two decisions for the last phone check
+(spec 7's numbers with the cable in; the slow rise after GO, once) are in the TODOs above, with the console lines.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+then the same as the A5 entry above.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4288 passed, 0 failed, 10 skipped (2026-11-24, on
+  `ca2cf6a`; the same 10 skips as above): 4159 before, A4's 3 new and 126 from `main`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on `ca2cf6a` (the notes and A4's two inherited files);
+  `--check-diff` OK (67 paths against `origin/main`); the stacked-branch diff against `codex/iter5-hold-plank` lists
+  10 paths, as before. Server `pytest` was not run: `server/` is `main`'s, unchanged by A5.
+- **Review:** local reviewer A5 run 7, CHANGES_REQUESTED: the slow rise's steps could not be done as written (a
+  user upright when the 3·2·1 starts gives the reader 0.3 s of standing at once, and the thigh stays for the play),
+  and their fallback ("the case cannot happen") did not follow from the code (the setup counts standing from 0.25 of
+  the shin, the reader from 0.7); now a half squat held through the count, the two lines, what to do when a thigh
+  was taken, and what to write if no bend works. Minors: the two fault ids, and `null` before a value exists. All
+  fixed; run 8: APPROVE (its one Minor, run 7 missing from the AI notes, fixed before the commit).
 - **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.

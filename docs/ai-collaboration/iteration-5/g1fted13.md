@@ -328,12 +328,17 @@ These were made from the A5 session at the user's word; their full evidence is i
   the chair pose's two-line start words (`4767873`).
 - **The follow-up of 2026-11-24** (the user's decision): `77e1a75` keeps the 3·2·1's standing thigh from GO on (the
   spec's "follows while standing" narrowed to before GO), with 7 new tests, among them a slow sit over 3, 4 and 6 s.
+- **The leave dialog and `main` (2026-11-24, from this session; the user's instruction):** on A4's branch `94f6416`
+  (the leave dialog closes when a hold stage ends and opens no more in the 1.5 s before its result; 3 tests). Then
+  `origin/main` was merged up the stack: A2 `da3a039` (notes `dc5947b`), A3 `f482e99` (`c1f5f5f`), A4 `166de3b`,
+  `78e61dc`, `6bda1e0`, and here `6a8ce7f`, `ca2cf6a`. Merging A2 straight into A4 was blocked by the local pre-commit
+  guard; Claude Code aborted that merge and asked, and the user chose to merge `origin/main` into A4 and A5 first.
 - **Checking against the design:** the chair scenes captured with the app's fonts in a throwaway widget test (deleted)
   and compared by eye with the hand-off's shots (testing notes, A5 entry).
 - **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1), on
   these notes (runs 2–3), on the follow-up of 2026-11-24 (run 4), on A4's one-arm fix (A4 run 8), on A4's effects
-  (A4 runs 9–10), on the chair's start bubble (run 5) and on the records of the phone check and the user's answers
-  (A4 run 11, A5 run 6).
+  (A4 runs 9–10), on the chair's start bubble (run 5), on the records of the phone check and the user's answers
+  (A4 run 11, A5 run 6), and on the leave dialog fix with the `main` merges (A4 run 12, A5 runs 7–8).
 - **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
   Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
   also holds the A3 and A4 sessions). Two fixes, the prompts
@@ -361,8 +366,14 @@ These were made from the A5 session at the user's word; their full evidence is i
   1. 배경음: 버티기 판에서도 대결과 같은 배경음을 같은 코드, 같은 방식으로 깐다."
 - [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "1. 별을 받은 뒤 두 번째 경고로 끝나는 클리어는 지금처럼
   둔다(\"삐익!\" 1.5초, win jingle, 클리어 화면). 클리어인데 \"실패!\"를 띄우면 뒤의 클리어 화면과 맞지 않기 때문이다."
+- [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "두 번째 경고 뒤 1.5초(\"실패!\", 또는 별을 받은 경우
+  \"삐익!\") 동안 아직 나가기 창이 열리고, 이때 나가면 결과 화면 없이 끝나 별이 저장되지 않는다. 대결은 판이 끝나는
+  순간 나가기 창을 닫는다."
 
 ### c. What AI did well
+- **Checked the harness before committing a merge.** Before merging A2 into A4, the session merged without
+  committing and ran the pre-commit guard by hand; it blocked, so the merge was aborted and the user was asked, as the
+  instruction said, instead of a merge commit being forced through.
 - **Found A4's gaps before building on them.** Reading A4's view model against the spec's sections 5 and 6 showed that
   the squat guide came from a separate `SquatRepJudge`, which drops a squat (`lost`) 12 s after it starts down, so the
   squat lines would vanish in every chair stage (20–45 s), and that nothing read "시작" after the entry. It asked
@@ -442,6 +453,12 @@ These were made from the A5 session at the user's word; their full evidence is i
   of time order in the Prompt Log and item b; size tests that could not fail for the two-line bubble (now both lines
   inside the bubble and the bubble on screen); the testing entry lacked its criteria and phone-check lines; item a did
   not say who wrote the effects spec (a TODO now); the local progress log lacked this work. All fixed.
+- **Phone-check steps that could not be done (reviewer A5 run 7, Major).** The first draft of the slow rise after GO
+  said to sit as soon as the 3·2·1 starts, but a user upright at its first frame gives the reader 0.3 s of standing at
+  once, and that thigh stays for the play; its fallback ("the case cannot happen on the phone") did not follow from
+  the code, since the setup counts standing from 0.25 of the shin and the reader from 0.7. Now: a half squat held
+  through the count, reopening the stage when a thigh was taken, and writing down the bends tried. Two Minors (the
+  fault ids, `null` before a value exists) fixed with it; run 8 APPROVE.
 
 ### e. Prompt revisions
 - Before (the user's answer, 2026-11-23): "A4 브랜치에서 고치고 merge (Recommended)".
@@ -463,6 +480,13 @@ These were made from the A5 session at the user's word; their full evidence is i
   p16-3-fx 묶음 v2(SPEC-FX.md, design/, shots/)에 있다."
 - Why it worked: the first message described the effects in words and deferred the bubbles and music; the revision
   pointed at a spec and picked designs, named every value's source, and kept all four effects in this iteration.
+- Before (2026-11-24, pasted): "A4에 A2와 A3를 merge한다(1번 수정 포함). - A5에 A4를 merge한다. … 하네스가 merge
+  커밋을 막거나 앞 단계 파일을 고쳐야 하면, 우회하지 말고 멈추고 보고한다."
+- After (2026-11-24, the user's answer to the session's question): "1번(A4에 main 먼저)으로 간다. A4에 origin/main을
+  먼저 merge한 뒤 A2, A3를 merge한다. A5도 같은 방식으로 한다."
+- Why it worked: merging A2 straight in needed a merge commit made by hand (the notes' conflict), which the guard
+  checks against A4's own scope, so `main`'s files were outside it; the guard leaves them out only when the merge's
+  second parent is `origin/main`. The revision gives the same content in an order the guard accepts.
 
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
