@@ -423,3 +423,77 @@ def test_a_request_racing_the_reverse_one_says_already_requested(client, two, mo
     response = _request(client, a, _code(b_id))
     assert response.status_code == 409
     assert response.json() == {"detail": "already_requested"}
+
+
+@pytest.mark.parametrize("winner, loser", [("accept", "decline"), ("decline", "accept")])
+def test_two_answers_to_a_request_at_once_only_the_first_counts(
+    client, two, monkeypatch, winner, loser
+):
+    import accounts.friends_views as views
+
+    (a_id, a), (b_id, b) = two
+    request_id = _request(client, a, _code(b_id)).json()["request_id"]
+    real = views._answer_request
+
+    # The other phone's answer lands between this answer's look-up and its
+    # write.
+    def raced(rid, me, *, accept):
+        real(rid, me, accept=winner == "accept")
+        return real(rid, me, accept=accept)
+
+    monkeypatch.setattr(views, "_answer_request", raced)
+    response = client.post(f"/friends/requests/{request_id}/{loser}", **b)
+    assert response.status_code == 404
+    assert response.json() == {"detail": "request_not_found"}
+    friends = are_friends(User.objects.get(id=a_id), User.objects.get(id=b_id))
+    assert friends is (winner == "accept")
+    assert FriendRequest.objects.count() == (1 if winner == "accept" else 0)
+
+
+def test_asking_back_while_the_request_is_answered_elsewhere(client, two, monkeypatch):
+    import accounts.friends_views as views
+
+    (a_id, a), (b_id, b) = two
+    _request(client, a, _code(b_id))
+    real = views._answer_request
+
+    def raced(rid, me, *, accept):
+        real(rid, me, accept=False)  # declined on b's other phone meanwhile
+        return real(rid, me, accept=accept)
+
+    monkeypatch.setattr(views, "_answer_request", raced)
+    response = _request(client, b, _code(a_id))
+    assert response.status_code == 404
+    assert FriendRequest.objects.count() == 0
+
+
+@pytest.mark.parametrize(
+    "winner, loser, status",
+    [
+        ("accept", "decline", "accepted"),
+        ("decline", "accept", "declined"),
+        ("cancel", "accept", "cancelled"),
+    ],
+)
+def test_two_answers_to_an_invite_at_once_only_the_first_counts(
+    client, two, monkeypatch, winner, loser, status
+):
+    import accounts.friends_views as views
+
+    from django.db.models import Q
+
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    real = views._answer_invite
+
+    def raced(iid, mine, action):
+        either = Q(from_user_id=a_id) | Q(to_user_id=b_id)
+        real(iid, either, winner)
+        return real(iid, mine, action)
+
+    monkeypatch.setattr(views, "_answer_invite", raced)
+    response = client.post(f"/friends/invites/{invite_id}/{loser}", **b)
+    assert response.status_code == 409
+    assert response.json() == {"detail": "invite_closed"}
+    assert FriendBattleInvite.objects.get().status == status

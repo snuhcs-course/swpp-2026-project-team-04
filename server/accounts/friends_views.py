@@ -138,8 +138,10 @@ class FriendRequestsView(APIView):
                     return _error("already_friends", status.HTTP_409_CONFLICT)
                 if existing.from_user_id == me.id:
                     return _error("already_requested", status.HTTP_409_CONFLICT)
-                existing.accepted_at = timezone.now()
-                existing.save(update_fields=["accepted_at"])
+                # Their open request: accept it, unless another answer got
+                # there first (one conditional write, see _answer_request).
+                if not _answer_request(existing.id, me, accept=True):
+                    return _error("request_not_found", status.HTTP_404_NOT_FOUND)
                 return Response({"status": "accepted", "friend": _person(other)})
             try:
                 with transaction.atomic():
@@ -155,23 +157,38 @@ class FriendRequestsView(APIView):
         )
 
 
+def _answer_request(request_id, me, *, accept):
+    """Accepts or declines the open request [request_id] to [me] in one
+    conditional write, so of two answers at the same moment (two phones)
+    only one changes it; False when it is not open any more."""
+    still_open = FriendRequest.objects.filter(
+        id=request_id, to_user=me, accepted_at__isnull=True
+    )
+    if accept:
+        return still_open.update(accepted_at=timezone.now()) == 1
+    deleted, _ = still_open.delete()
+    return deleted == 1
+
+
 class FriendRequestAnswerView(APIView):
-    """POST /friends/requests/<id>/accept|decline, by the one asked."""
+    """POST /friends/requests/<id>/accept|decline, by the one asked. Only
+    an open request changes; a second answer finds it gone (404)."""
 
     accept = True
 
     def post(self, request, request_id):
-        found = FriendRequest.objects.filter(
-            id=request_id, to_user=request.user, accepted_at__isnull=True
-        ).first()
-        if found is None:
+        sender = (
+            FriendRequest.objects.filter(id=request_id, to_user=request.user)
+            .select_related("from_user")
+            .first()
+        )
+        if sender is None or not _answer_request(
+            request_id, request.user, accept=self.accept
+        ):
             return _error("request_not_found", status.HTTP_404_NOT_FOUND)
         if not self.accept:
-            found.delete()
             return Response({"status": "declined"})
-        found.accepted_at = timezone.now()
-        found.save(update_fields=["accepted_at"])
-        return Response({"status": "accepted", "friend": _person(found.from_user)})
+        return Response({"status": "accepted", "friend": _person(sender.from_user)})
 
 
 class FriendInvitesView(APIView):
@@ -214,6 +231,30 @@ class FriendInviteView(APIView):
         return Response(_invite(invite))
 
 
+def _answer_invite(invite_id, mine, action):
+    """Closes the invite [invite_id] by [action] in one conditional write, so
+    of two answers at the same moment only the one that still finds it open
+    changes it: accept and decline need it open and within its minute;
+    cancel also takes an accepted one. False when nothing changed."""
+    still_open = Q(
+        status=FriendBattleInvite.PENDING,
+        created_at__gt=timezone.now() - INVITE_TTL,
+    )
+    if action == "cancel":
+        still_open |= Q(status=FriendBattleInvite.ACCEPTED)
+    to = {
+        "accept": FriendBattleInvite.ACCEPTED,
+        "decline": FriendBattleInvite.DECLINED,
+        "cancel": FriendBattleInvite.CANCELLED,
+    }[action]
+    return (
+        FriendBattleInvite.objects.filter(mine, id=invite_id)
+        .filter(still_open)
+        .update(status=to)
+        == 1
+    )
+
+
 class FriendInviteActionView(APIView):
     """POST /friends/invites/<id>/accept|decline, by the friend, while the
     invite is open; an expired one is 410. POST .../cancel, by either player
@@ -229,26 +270,16 @@ class FriendInviteActionView(APIView):
             if self.action == "cancel"
             else Q(to_user=me)
         )
-        with transaction.atomic():
-            invite = (
-                FriendBattleInvite.objects.select_for_update()
-                .filter(mine, id=invite_id)
-                .select_related("from_user", "to_user")
-                .first()
-            )
-            if invite is None:
-                return _error("invite_not_found", status.HTTP_404_NOT_FOUND)
-            current = _invite_status(invite)
-            if self.action == "cancel" and current == FriendBattleInvite.ACCEPTED:
-                current = FriendBattleInvite.PENDING
-            if current == "expired":
+        changed = _answer_invite(invite_id, mine, self.action)
+        invite = (
+            FriendBattleInvite.objects.filter(mine, id=invite_id)
+            .select_related("from_user", "to_user")
+            .first()
+        )
+        if invite is None:
+            return _error("invite_not_found", status.HTTP_404_NOT_FOUND)
+        if not changed:
+            if _invite_status(invite) == "expired":
                 return _error("invite_expired", status.HTTP_410_GONE)
-            if current != FriendBattleInvite.PENDING:
-                return _error("invite_closed", status.HTTP_409_CONFLICT)
-            invite.status = {
-                "accept": FriendBattleInvite.ACCEPTED,
-                "decline": FriendBattleInvite.DECLINED,
-                "cancel": FriendBattleInvite.CANCELLED,
-            }[self.action]
-            invite.save(update_fields=["status"])
+            return _error("invite_closed", status.HTTP_409_CONFLICT)
         return Response(_invite(invite))
