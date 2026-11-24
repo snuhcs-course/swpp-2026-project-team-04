@@ -220,11 +220,12 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
       _radar.stop();
       _searchClock.stop();
     }
-    // Paired with the friend: the invite has done its work. A search that
+    // Paired with the friend: the invite has done its work (one still open,
+    // when both invited each other at once, is taken back). A search that
     // ended without them can no longer pair: take the invite back, so the
     // friend is not left waiting for it.
     if (session.opponent != null) {
-      _wait?.stop();
+      unawaited(_wait?.paired());
     } else if (session.terminal) {
       _dropWait(leaving: true);
     }

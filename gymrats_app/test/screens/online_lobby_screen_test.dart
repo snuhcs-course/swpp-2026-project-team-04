@@ -1164,6 +1164,30 @@ void main() {
       await tester.pump();
     });
 
+    testWidgets('both invited each other and met: my open invite is taken '
+        'back', (tester) async {
+      holdStill(tester);
+      final repo = repository();
+      // The friend's own invite to me, which I never answered.
+      final theirs = repo.receiveInvite(friend, ExerciseType.pushUp);
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      final mine = repo.invites.last;
+      expect(mine.status, InviteStatus.pending);
+      sessions.single.found();
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(VersusScreen), findsOneWidget);
+      expect((await repo.fetchInvite(mine.id)).status, InviteStatus.cancelled);
+      // Theirs is theirs to take back; the alert is hidden during the battle.
+      expect((await repo.fetchInvite(theirs.id)).status, InviteStatus.pending);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
     testWidgets('a friend battle offers no 다시 매칭 after a cancel', (
       tester,
     ) async {

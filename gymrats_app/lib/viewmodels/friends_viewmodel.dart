@@ -186,7 +186,7 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
   String? ended;
   Timer? _poll;
   DateTime? _acceptedAt;
-  bool _stopped = false, _disposed = false, _checking = false;
+  bool _stopped = false, _disposed = false, _checking = false, _paired = false;
 
   String get _friend => battle.friend.nickname;
 
@@ -258,7 +258,21 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
     }
   }
 
-  /// The friend came (the battle server paired us): stop reading.
+  /// The battle server paired us with the friend: stop reading, and take
+  /// back my invite if it was still open. That happens when both invited
+  /// each other at once and met in the queue with neither invite accepted;
+  /// left open, it would come back as an alert after the battle.
+  Future<void> paired() async {
+    if (_paired) return;
+    _paired = true;
+    final open = battle.inviting ? invite : null;
+    stop();
+    if (open != null && open.status == InviteStatus.pending) {
+      await _cancelQuietly(open.id);
+    }
+  }
+
+  /// Stop reading.
   void stop() {
     _stopped = true;
     _poll?.cancel();

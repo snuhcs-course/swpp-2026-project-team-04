@@ -382,6 +382,59 @@ void main() {
       },
     );
 
+    test('paired while my invite is still open (both invited each other): '
+        'it is taken back, once', () async {
+      final vm = inviting();
+      await vm.start();
+      await vm.paired();
+      await vm.paired();
+      expect(repo.cancels, 1);
+      expect(
+        (await repo.fetchInvite(vm.invite!.id)).status,
+        InviteStatus.cancelled,
+      );
+      // And reading stopped.
+      repo.answer(vm.invite!.id, InviteStatus.declined);
+      await vm.check();
+      expect(vm.ended, isNull);
+    });
+
+    test('paired just after the friend accepted, before my next read: the '
+        'cancel is harmless and nothing ends', () async {
+      final vm = inviting();
+      await vm.start();
+      // Accepted on the server; my copy still says pending.
+      repo.answer(vm.invite!.id, InviteStatus.accepted);
+      await vm.paired();
+      expect(repo.cancels, 1);
+      expect(vm.ended, isNull);
+      // The server lets an accepted invite be cancelled; the battle is on.
+      expect(
+        (await repo.fetchInvite(vm.invite!.id)).status,
+        InviteStatus.cancelled,
+      );
+    });
+
+    test('paired through an accepted invite: nothing is taken back', () async {
+      final vm = inviting();
+      await vm.start();
+      repo.answer(vm.invite!.id, InviteStatus.accepted);
+      await vm.check();
+      await vm.paired();
+      expect(repo.cancels, 0);
+    });
+
+    test(
+      "paired on the invited side: the friend's invite is left alone",
+      () async {
+        final sent = repo.receiveInvite(_friend, ExerciseType.pushUp);
+        final vm = invited(await repo.acceptInvite(sent.id));
+        await vm.start();
+        await vm.paired();
+        expect(repo.cancels, 0);
+      },
+    );
+
     test('leaving while waiting cancels an open or accepted invite', () async {
       final open = inviting();
       await open.start();
