@@ -153,6 +153,13 @@ class _HoldStageScreenState extends State<HoldStageScreen>
     }
     _shownEnding = state.ending;
     final phase = state.phase;
+    // The stage is over (a second warning's moment, or the result), so the
+    // question no longer applies, as when a battle ends. Its result and
+    // stars always come with the result screen.
+    if (_askingToLeave && _over) {
+      _askingToLeave = false;
+      Navigator.pop(context);
+    }
     if (phase == _shownPhase) return;
     final was = _shownPhase;
     _shownPhase = phase;
@@ -165,11 +172,6 @@ class _HoldStageScreenState extends State<HoldStageScreen>
       _go.forward(from: 0);
     }
     _playMusic(phase);
-    if (_askingToLeave && phase == HoldStagePhase.result) {
-      // The hold ended while asking: the question no longer applies.
-      _askingToLeave = false;
-      Navigator.pop(context);
-    }
   }
 
   /// The battle's music for [phase] (`BattleSounds.musicFor`); the briefing
@@ -223,9 +225,12 @@ class _HoldStageScreenState extends State<HoldStageScreen>
     Navigator.pop(context, exit);
   }
 
-  /// Back: to the arcade before and after the hold, the leave dialog in it.
+  /// Back: to the arcade before and after the hold, the leave dialog in it,
+  /// and nothing in a second warning's moment, whose result comes next.
   void _back() {
-    switch (_viewModel.state.phase) {
+    final state = _viewModel.state;
+    if (state.ending) return;
+    switch (state.phase) {
       case HoldStagePhase.brief || HoldStagePhase.result:
         _close(HoldStageExit.arcade);
       case HoldStagePhase.setup ||
@@ -235,9 +240,11 @@ class _HoldStageScreenState extends State<HoldStageScreen>
     }
   }
 
-  /// The battle's leave dialog (spec 5): leaving keeps no star.
+  /// The battle's leave dialog (spec 5): leaving keeps no star. Once the
+  /// stage is over it does not open: a second warning's moment leads to the
+  /// result.
   Future<void> _askToLeave() async {
-    if (_askingToLeave) return;
+    if (_askingToLeave || _over) return;
     _askingToLeave = true;
     final leave = await confirmExit(
       context,
@@ -245,9 +252,15 @@ class _HoldStageScreenState extends State<HoldStageScreen>
     );
     if (!_askingToLeave) return;
     _askingToLeave = false;
-    if (!mounted || !leave) return;
-    if (_viewModel.state.phase == HoldStagePhase.result) return;
+    if (!mounted || !leave || _over) return;
     _close(HoldStageExit.left);
+  }
+
+  /// Whether the stage has ended: in a second warning's moment or at the
+  /// result.
+  bool get _over {
+    final state = _viewModel.state;
+    return state.ending || state.phase == HoldStagePhase.result;
   }
 
   @override

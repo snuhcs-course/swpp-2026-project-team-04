@@ -114,6 +114,20 @@ coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub A
   outside 0 to 3 is the first state', 'a store that fails to read is the first state', 'a store that fails to read
   keeps the saved progress: nothing is written'
 
+#### 2026-11-24 · merge `da3a039` of `origin/main` `69b0520` · step A2: `main` merged in before the draft ends
+At the user's word (2026-11-24; the prompt is logged on A4's branch, `codex/iter5-hold-plank`), `origin/main` (#86 setup timeout, #93 Google
+sign-in, #94 zero points for knee push-ups) was merged into this branch first, before the steps stacked on it. No
+conflict: no file changed on `main` since `ad8a6f7` is one of A2's. A2's code is unchanged at `141c8df`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4034 passed, 0 failed, 10 skipped (2026-11-24, on
+  `da3a039`; the same 10 skips as above). The bot pins pass on the merged code.
+- **Other checks:** `ownership_guard.py --check-diff` OK (21 paths against `origin/main`, as before). Server `pytest`
+  was not run: `server/` is `main`'s, unchanged by A2, and `main`'s own checks cover it.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head.
+
 #### 2026-11-23 · code at commit `a5f0d7d` · step A3 `codex/iter5-arcade-art` (Create arcade artwork, team order #8)
 The arcade is split into steps. A3 is the arcade's pictures, with no screen:
 - **Data:** the design hand-off `gym_art.json` (version arcade-art-1, 701 shapes) kept as
@@ -221,6 +235,21 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   "floor_<n> matches the design but for edges" (5 tests). The art is drawn from Dart data, not loaded as asset files
   (see the PR's Exceptions).
 
+#### 2026-11-24 · merge `f482e99` of `origin/main` `69b0520` · step A3: `main` merged in before the draft ends
+At the user's word (2026-11-24; the prompt is logged on A4's branch, `codex/iter5-hold-plank`), `origin/main`
+(#86 setup timeout, #93 Google sign-in, #94 zero points for knee push-ups) was merged into this branch before the
+steps stacked on it. No conflict: no file changed on `main` since this branch's base is one of A3's. A3's code is
+unchanged.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 3970 passed, 0 failed, 10 skipped (2026-11-24, on
+  `f482e99`; the same 10 skips as `main`'s: a live server smoke test and 9 known push-up judge errors).
+- **Other checks:** `ownership_guard.py --check-diff` OK (28 paths against `origin/main`). Server `pytest` was not run: `server/` is `main`'s,
+  unchanged by A3, and `main`'s own checks cover it.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head (the earlier numbers are for `071c7f0`).
+
 #### 2026-11-23 · code at commit `1dbf9ec` · step A4 `codex/iter5-hold-plank` (Implement high-plank hold stages, team order #8.3)
 A4 is the arcade's hold stage, played with the high plank (the local design hand-off's spec `p16-3/SPEC.md` v3, not committed):
 - **Common part:** `HoldTimeline` and `HoldJudge` (`lib/services/pose/hold_judge.dart`): the time runs only while the pose
@@ -272,10 +301,15 @@ synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fake
   camera picture is, the shots show a gray figure; the app shows the camera, and the figure only while there is no
   picture.
 - **Coverage:** TODO(Woohyun Song): copy the CI comment of the A4 PR (commit, run link, per-layer numbers, A4's files).
-- **Phone check (spec 9, Galaxy S26+):** TODO(Woohyun Song): with `flutter run -t lib/demo/hold_stage_demo.dart`, open
-  STAGE 3 · 1F and try ① 30 s held (clear, 3 stars), ② bent arms, ③ knees down, ④ head down, ⑤ standing up; note
-  whether each warning comes with the right words about 0.5 s after the break, and whether the time runs again right
-  after fixing it. Write any changed line values here with the reason.
+- **Phone check (spec 9, Galaxy S26+), done 2026-11-24** by the user (the user's message of 2026-11-24 02:52, logged
+  in A5's Prompt Log under `codex/iter5-hold-chair`), with `lib/demo/hold_stage_demo.dart` built from the worktree's
+  HEAD then, A5's `e17e332`, which holds A4's code up to `4ef8a2f` (the one-arm fix). The USB cable was out, so no console numbers were seen. STAGE 3 · 1F: ① 30 s held: a
+  clear; ② one arm bent: "팔 펴요"; ④ head down: "머리 들어요"; after fixing, the time ran again; a second warning: the
+  fail. ③ knees down and ⑤ standing up were tried as the second warning: the stage failed at the right moment, but it
+  went straight to the fail screen before their words could be read. Each warning came almost at once (the user's
+  words; with the cable out, the 0.5 s itself was not measured). No line value changed. The missing reason at a second warning is fixed by the
+  effects (entry `3ffed5f` below: the owner's "실패!" for 1.5 s with the warning's words kept, then the reasons as
+  chips on the fail screen); ③'s and ⑤'s words are seen again in the last phone check (TODO in that entry).
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
@@ -304,7 +338,7 @@ synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fake
   says …' (4 tests); 'the bar fills toward the third star, its marks light'; 'the leave button asks with the battle's
   dialog'
 - Chair icons and figure with a stand-in bundle (spec 3) → 'the chair pose's drawings, with a stand-in bundle' (3 tests)
-- Phone check → TODO(Woohyun Song) above.
+- Phone check → above (2026-11-24); the effects' phone check is the last TODO, in the effects entry below.
 
 #### 2026-11-23 · code at commit `1c325ab` · step A4 follow-up on `codex/iter5-hold-plank` (two gaps found while starting A5)
 Starting A5 (the chair pose, spec `p16-4/SPEC.md` v2, not committed) showed two things the chair pose needs from A4's
@@ -430,7 +464,10 @@ After the phone check of 2026-11-24 the user picked the hold stage's effects on 
   changed) comes in big and settles (`failPop`, 0.2 s) in place of "삐익!"; the camera box keeps the warning's words,
   the clock says "멈춤", nothing is judged for `endShow` (1.5 s), then the fail screen lists the two warnings' reasons
   as red chips in order where "경고 2번" was. A clear ended by warnings (a star already earned) keeps "삐익!" for the
-  same 1.5 s, then shows the clear (a call beyond the spec, noted in task.md).
+  same 1.5 s, with the win jingle, then shows the clear: a call beyond the spec that the user kept (2026-11-24, local
+  task.md, A4 Decisions), as "실패!" on a clear would not match the clear screen after it.
+  This fixes what the phone check of 2026-11-24 found (A4 entry above): a second warning went straight to the fail
+  screen, so its reason could not be read.
 - **Screen reader:** the start words and "실패!" are announced as the warnings are (a `callout` cue), and the first two
   stars' announcements end with their cheer.
 
@@ -446,17 +483,75 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Review:** local reviewer A4 run 9, CHANGES_REQUESTED: the result jingle came 1.5 s after a second warning, while a
   battle's starts when it ends (now at once), and the local design-doc list lacked the new API (added); Minors: a
   screen check that could not fail (now: the frames in the moment are not read), and this entry's counts and lines.
-  The clear ended by warnings (no "실패!") was the session's call: said in the PR and asked of the user. Run 10: APPROVE (all fixed; no new code finding).
+  The clear ended by warnings (no "실패!") was the session's call: said in the PR and asked of the user, who kept it
+  on 2026-11-24. Run 10: APPROVE (all fixed; no new code finding).
 - **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
-- **Phone check of the effects:** TODO(Woohyun Song): with the demo, see the start bubble, both cheers with the star
-  pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen, and the music through a
-  stage and after leaving.
+- **Phone check of the effects (the last phone check):** TODO(Woohyun Song): with the demo, see the start bubble, both
+  cheers with the star pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen (also
+  for ③ knees down and ⑤ standing up as the second warning, whose words the first check could not read), a clear
+  ended by warnings ("삐익!", the win jingle, the clear), and the music through a stage and after leaving.
 
 ### Test cases added in the effects follow-up
 | Layer | File | What it covers |
 |---|---|---|
 | ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | 'GO shows the pose's start words for 2 s, read out'; 'with an entry the start words stay until the time starts'; 'a warning takes the start bubble'; 'the first two stars are cheered for 1 s, the third is not'; 'a warning takes the cheer'; 'a second warning with no star: 실패! for 1.5 s, nothing judged'; 'a second warning after a star: the whistle stays, then a clear'; 'leaving in the moment shows no result and keeps nothing' |
 | View | `test/screens/hold_stage_screen_test.dart` | 'GO: "그대로 버텨!" in the white bubble for 2 s, read out'; 'a warning takes the start bubble's place'; 'the first and second stars: a lime cheer, a smile, a pop and the good sound, once each'; 'the cheer ends at the owner on every floor' (142, 140, 150); '"잘한다!" fits 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x'; 'with reduced motion the stars do not pop'; 'a warning takes the cheer's place'; 'a second warning with no star: "실패!" over the stage, the warning kept below for 1.5 s, then the reasons in order'; 'the battle's music at the battle's moments'; 'a second warning with no star plays the lose jingle at once'; 'a clear ended by warnings plays the win jingle at once'; 'leaving before a result brings the menu music back'; the size tests 'a clear and a fail fit …' now also see "실패!" |
+
+#### 2026-11-24 · code at commit `3ffed5f` (notes only) · step A4: the phone check and the user's answers
+No code changed. The user's phone check of 2026-11-24 went into A4's entry above (spec 9, with the build it ran),
+and the user's answer on a clear ended by warnings into the effects entry (local task.md, A4 Decisions, 2026-11-24).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4109 passed, 0 failed, 10 skipped (2026-11-24, on
+  `47ea0d1`, the code of `3ffed5f`; the same 10 skips as above). The first full run had one failure outside A4:
+  `test/services/online/online_battle_integration_test.dart`, 'the game on the phones +5 AVERAGE shows at once; the
+  same answer keeps it, and a third phone's average rep reads as average'. It is an intermittent failure outside A4;
+  its cause was not found (that run kept only the summary, not the failure message). The file then passed twice alone
+  (60 tests each time), and the full rerun passed. Nothing in `lib/services/online/`, its tests or `server/` changed
+  here. Plan: watch it in the PR's CI run; it is not A4's file, so it is left to that file's owner if it fails again.
+- **Review:** local reviewer A4 run 11, APPROVE; its five Minors were fixed before the commit (two references a reader
+  of this branch could not follow, the timing note, this failure's reason and plan, the local status row).
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+#### 2026-11-24 · code at commit `94f6416` · step A4, fourth follow-up on `codex/iter5-hold-plank` (the leave dialog at a stage's end; `main` merged in)
+The P16 session found, and the user had it fixed (local task.md, A4 Decisions, 2026-11-24): in a second warning's
+1.5 s (`HoldTiming.endShow`, with "실패!", or "삐익!" after a star) the leave dialog stayed open and could be opened,
+and leaving then closed the stage without its result, so its stars were not kept. A battle closes the dialog when it
+ends.
+- **Now (`94f6416`, `lib/screens/hold_stage_screen.dart`):** the moment the stage ends (a second warning's moment, or
+  the result at the third star) an open dialog closes, and until the result shows neither back nor the leave button
+  opens one. The result and its stars always come with the result screen. The view model is unchanged.
+- **`main` merged in (the user's word, 2026-11-24):** `origin/main` `69b0520` (#86, #93, #94) first (`166de3b`, no
+  conflict), then A2 (`78e61dc`) and A3 (`6bda1e0`), each bringing only its own merge entry; the testing notes'
+  conflicts kept both sides, each step's new entry after its own section. The user chose this order after the local
+  harness blocked merging A2 straight in: the merge commit, made by hand for the notes' conflict, counted `main`'s
+  62 files as outside A4's scope, and the harness leaves `main`'s files out only when the second parent is
+  `origin/main`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+then the same as A4's entry above.
+
+- **Before the fix:** the three new tests failed on the old screen (the dialog stayed in the moment, and opened in it).
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4238 passed, 0 failed, 10 skipped (2026-11-24, on
+  `6bda1e0`; the same 10 skips as above): 4109 before, 3 new, and 126 that came with `main`.
+  `test/screens/hold_stage_screen_test.dart`: 47 passed.
+- **New tests:** 3, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on the fix and on the two hand-made merge commits;
+  `--check-diff` OK (64 paths against `origin/main`); the stacked-branch intersection with A2's and A3's branches
+  still lists 21 paths. Server `pytest` was not run: `server/` is `main`'s, unchanged by A4.
+- **Review:** local reviewer A4 run 12, APPROVE. It ran the three new tests on a copy with the old screen (each
+  fails at its dialog check), checked the third-star path (the existing 'the hold ending while asking closes the
+  question'), a dialog opened just before the end, and that each merge differs from the automatic one only in the
+  notes, by exactly the lower step's own entry. Its Minors: these AI notes lacked the follow-ups' evidence (a short
+  block added to A4's section), the local status row (updated), and one left for the user: in the 1.5 s the leave
+  button is still drawn and announced, though it opens nothing, while the battle hides its button once decided.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the fourth follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a second warning while asking closes the question at once, then the fail screen' (the dialog gone with "실패!", then 다시 도전, the screen not closed); 'in a second warning's moment back and the leave button open no dialog' (then the fail screen); 'a star, then a second warning while asking: the clear shows and its star is kept' ("삐익!", back opens nothing, then 클리어! and the store keeps 1 star) |
 
 #### 2026-11-23 · code at commit `0579a65` · step A5 `codex/iter5-hold-chair` (Add chair-pose judging, team order #8.4)
 A5 adds the second held pose, the chair pose, on A4's hold stage (the local design hand-off's spec `p16-4/SPEC.md` v2,
@@ -519,14 +614,19 @@ scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `Mem
   0.5 s later it matches. Where the shots draw the "엉덩이" line on the gray figure, the app draws the squat lines over
   the camera (`chair_hold_stage_test.dart` checks them with a camera controller).
 - **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment (commit, run link, per-layer numbers, A5's file).
-- **Phone check (spec 7, Galaxy S26+):** TODO(Woohyun Song): with `flutter run -t lib/demo/hold_stage_demo.dart`, open
-  STAGE 5 · 1F and try ① 20 s held (clear, 3 stars), ② lifting the hips midway, ③ knees in, ④ leaving the picture,
-  and ⑤ sitting down slowly, over 3–4 s (reviewer A5 run 1: the copied follow rule can lower the standing thigh
-  then, so a good pose may read just under 0.75; watch `standingThigh`);
-  note whether each warning comes with the right words about 0.5 s after the break, and whether the time runs again
-  right after fixing it. In the `flutter run` console the reader prints `chair_hold … depth=… knees=…` twice a second
-  (debug builds only): write the depth range of a good chair pose, the knee ratio of a good one and of knees pulled in,
-  and any changed line with the reason.
+- **Phone check (spec 7, Galaxy S26+), done 2026-11-24** by the user (the user's message of 2026-11-24 02:52, in the
+  Prompt Log), with `lib/demo/hold_stage_demo.dart` built from the worktree's HEAD then, `e17e332` (the chair code of
+  `77e1a75`, A4's code up to `4ef8a2f`). STAGE 5 · 1F: ⑤ sitting down slowly: no warning; ① 20 s held: a clear;
+  ② the hips up: "더 앉아요"; ③ knees in: "무릎 벌려요". ④ leaving the picture: hard to do in a good pose, so another
+  warning came first; left to the tests ('out of the picture for over 1 s is off screen' in `chair_hold_test.dart`,
+  'out of the picture: the clock stops and the box says 화면 안으로' in `chair_hold_stage_test.dart`). Each warning
+  came almost at once (the user's words). The USB cable was out, so neither the 0.5 s itself nor the console's
+  `standingThigh`, depth and knee numbers were seen; by what the poses did, the 0.8 knee line was right. No line
+  value changed.
+- **Shortfall against spec 7:** its last item asks for the depth range of a good chair pose and the knee ratios
+  (good, knees in) in these notes; they were not seen. The user's decision (2026-11-24): they are measured at the last
+  phone check, with the USB cable in, from the `flutter run` console (the lines to read are in the start bubble's
+  entry below).
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
@@ -550,7 +650,7 @@ scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `Mem
   says …' (3 tests: words and icon per reason); '자세 잡기 opens the squat battle's setup and its figure'; 'the squat
   height lines stay over the camera past 12 s'
 - Regression → the full `flutter test` above (A4's high plank and the squat battle's tests pass)
-- Phone check → TODO(Woohyun Song) above.
+- Phone check → above (2026-11-24); the start bubble's phone check is the last TODO, in the start bubble's entry below.
 
 #### 2026-11-24 · code at commit `77e1a75` · step A5 follow-up: the standing thigh after GO
 The user decided (2026-11-24, local task.md, A5 Decisions) to narrow the spec's "the standing thigh follows while
@@ -576,7 +676,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   through the 3·2·1 and then rises slowly after GO can have it taken before fully up (simulated: a 3 s rise, then a
   true 0.8 reads 0.739). The setup's auto start restarts its count on any frame that is not ready, so the user
   normally stands through the 3·2·1.
-- **Phone check:** ⑤ (a slow sit over 3–4 s) now checks this change; the rest as in the A5 entry.
+- **Phone check:** ⑤ (sitting down slowly) checks this change: done 2026-11-24 on `e17e332`, no warning (A5 entry
+  above). The slow rise after GO above is not in the user's results. The user's decision (2026-11-24): the last phone
+  check tries it once (the start bubble's entry below says how and which console lines to read).
 
 ### Test cases added or changed in the follow-up
 | Layer | File | What it covers |
@@ -598,8 +700,29 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Review:** local reviewer A5 run 5, APPROVE; its Minors fixed before the commit (stronger size checks, these
   lines, the Prompt Log's order).
 - **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
-- **Phone check of the start bubble:** TODO(Woohyun Song): STAGE 5 · 1F, the two lines from GO while standing and
-  sitting down, gone when the time starts.
+- **Phone check of the start bubble (the last phone check, with A4's effects):** TODO(Woohyun Song): STAGE 5 · 1F,
+  the two lines from GO while standing and sitting down, gone when the time starts; the cheers, "실패!" with the
+  warning kept and the reasons on the fail screen, as in A4's effects entry. With the USB cable in
+  (`flutter run -t lib/demo/hold_stage_demo.dart -d <device>`, a debug build), two more (the user's decisions,
+  2026-11-24):
+  1. **The numbers of spec 7.** The reader prints twice a second, on Android after `I/flutter (…):`,
+     `chair_hold <3-2-1|hold> depth=<0.000> knees=<0.000> standingThigh=<0.0> <reading>`; each number is `null`
+     until it exists (depth and the standing thigh until a standing thigh is taken, knees until a frame shows both
+     knees and both ankles, then the last such frame's). The reading is `HoldReading.ok`, `HoldReading.unknown`,
+     `HoldReading.broken(chair.low)` ("더 앉아요") or `HoldReading.broken(chair.kneesIn)` ("무릎 벌려요"); "화면
+     안으로" comes from the time's rule, not this line. Read the `chair_hold hold` lines (after GO): `depth=` while
+     seated in a good chair pose (its lowest and highest; held from 0.75), `knees=` in a good pose and with the knees
+     pulled in (knees in under 0.8), and `standingThigh=` (the standing thigh, fixed from GO). Write the ranges here.
+  2. **The slow rise after GO (reviewer A5 run 4), once.** The case needs no standing thigh by GO. Two lines decide
+     it: the setup counts a leg as standing from a thigh of 0.25 of the shin (`SetupChecker`, its standing check),
+     the reader only from 0.7 (`ChairLines.standingThigh`), for 0.3 s (`ChairLines.standingFor`). A full sit restarts
+     the 3·2·1, so bend to about a half squat in the setup, before the 3·2·1 can start, and hold that bend through
+     the count. The `chair_hold 3-2-1` lines should then show `standingThigh=null` up to GO. A thigh once taken stays
+     for the whole play (the reader is made at 자세 잡기): if a `3-2-1` line shows a number, leave and open the stage
+     again. After GO, rise slowly, over about 3 s, then sit down into a good pose. The first `chair_hold hold` line
+     with a number after `standingThigh=` shows the thigh taken; compare it with the `standingThigh=` of a play where
+     you stood through the 3·2·1, and note the seated `depth=` and whether "더 앉아요" came. If no bend keeps the count
+     going with `standingThigh=null`, write down the bends tried and whether the count restarted.
 - **Acceptance criteria → tests (the effects spec, the chair's part):** 6.1 shown while entering and gone at the
   start → 'standing after GO: 0:00, 버틴 시간, a green frame, no warning', 'seated, the time starts with "시작" and
   runs'; 6.5 sizes → 'the two-line start bubble and "좋아!" fit …' (3 tests); 6.6 read out → the `said` checks in the
@@ -610,6 +733,45 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 |---|---|---|
 | Service | `test/services/pose/chair_hold_test.dart` | 'is set up as a squat, entered after GO, with its own words' now checks `startWords` |
 | View | `test/services/pose/chair_hold_stage_test.dart` | 'standing after GO: 0:00, 버틴 시간, a green frame, no warning' (the two lines shown and read); 'seated, the time starts with "시작" and runs' (the bubble goes when the time starts); 'the two-line start bubble and "좋아!" fit 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x' (new) |
+
+#### 2026-11-24 · code at commit `4767873` (notes only) · step A5: the chair pose's phone check, A4's notes merged
+No code changed. A4's notes of the same day (`f3f45ac`: the plank's phone check, the user's decision on a clear
+ended by warnings) came in by `git merge` (`ac30f40`; the testing notes' conflict kept both sides, A4's entry before
+A5's). The chair pose's phone check of 2026-11-24 went into the A5 entry above (spec 7, with the build it ran).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as the A5 entry above.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4159 passed, 0 failed, 10 skipped (2026-11-24, on
+  `ac30f40`, the code of `4767873`; the same 10 skips as above).
+- **Review:** local reviewer A5 run 6, APPROVE (the merge checked against both parents, the results against the
+  message). Its Minors were fixed before the commit: the slow sit's and the slow rise's lines said more than the
+  message (now a TODO for the user's choice), the missing numbers of spec 7 named as a shortfall (TODO), one word
+  added to the user's statement in the AI notes, these lines. One was left: `origin/main` is ahead of every stage
+  branch; it is merged up the stack before the PRs leave draft (not a notes change).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+
+#### 2026-11-24 · code at commit `4767873` (A5 unchanged) · step A5: `main` and A4's leave dialog fix merged in
+No A5 code changed. At the user's word (2026-11-24, the Prompt Log under A4's heading), `origin/main` `69b0520`
+(#86, #93, #94) was merged first (`6a8ce7f`, no conflict), then A4 (`ca2cf6a`: its leave dialog fix `94f6416`, and
+A2's and A3's `main` merges). That merge's conflicts were only in the testing notes and the AI notes, where A4's new
+entries and A5's met at the same place; both kept, A4's first. The user's two decisions for the last phone check
+(spec 7's numbers with the cable in; the slow rise after GO, once) are in the TODOs above, with the console lines.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+then the same as the A5 entry above.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4288 passed, 0 failed, 10 skipped (2026-11-24, on
+  `ca2cf6a`; the same 10 skips as above): 4159 before, A4's 3 new and 126 from `main`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on `ca2cf6a` (the notes and A4's two inherited files);
+  `--check-diff` OK (67 paths against `origin/main`); the stacked-branch diff against `codex/iter5-hold-plank` lists
+  10 paths, as before. Server `pytest` was not run: `server/` is `main`'s, unchanged by A5.
+- **Review:** local reviewer A5 run 7, CHANGES_REQUESTED: the slow rise's steps could not be done as written (a
+  user upright when the 3·2·1 starts gives the reader 0.3 s of standing at once, and the thigh stays for the play),
+  and their fallback ("the case cannot happen") did not follow from the code (the setup counts standing from 0.25 of
+  the shin, the reader from 0.7); now a half squat held through the count, the two lines, what to do when a thigh
+  was taken, and what to write if no bend works. Minors: the two fault ids, and `null` before a value exists. All
+  fixed; run 8: APPROVE (its one Minor, run 7 missing from the AI notes, fixed before the commit).
+- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
 
 #### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
 P16 builds the arcade's screens on A2's rules and A3's art (P16 spec v2):

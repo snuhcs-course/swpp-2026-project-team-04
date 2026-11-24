@@ -275,6 +275,24 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
 
+### Follow-ups on this branch (2026-11-23 to 11-24, from the A5 session `dfb39c07`)
+These were made from the A5 session at the user's word; their full evidence is in the A5 section of this file on
+`codex/iter5-hold-chair` (PR #92). In short:
+- **a. Where AI was used:** Claude Code (Opus 5.5) wrote `014e4f0` (guide lines from the reader), `1c325ab` ("시작"
+  after an entry), `397f498` (a test comment), `f78ac2b` (the result on small screens, found by the P16 session),
+  `4ef8a2f` (one bent arm, from the Codex review on #90), `3ffed5f` (the hold effects: spec and designs by Claude on
+  claude.ai from the phone check of 11-24, the picks by Woohyun Song), `94f6416` (the leave dialog at a stage's end,
+  found by the P16 session) and the `main` merges `166de3b`, `78e61dc`, `6bda1e0`, with their testing notes; the
+  reviewer subagent ran A4 runs 5–12. The phone check of 2026-11-24 and every decision on these are the user's.
+- **d. Hallucinations / errors:** the win or lose jingle came 1.5 s late at a second warning (run 9, Major, fixed);
+  a screen check that could not fail (run 9, fixed); the bent-arm check on the mean of both arms let one bent arm pass,
+  which no local review caught and the Codex review on #90 did (fixed in `4ef8a2f`); the leave dialog stayed open in
+  a second warning's 1.5 s, so leaving lost the stars (found by the P16 session, fixed in `94f6416`).
+- **e. Prompt revisions:** merging A2 straight into this branch was blocked by the local pre-commit guard (its
+  hand-made merge commit counted `main`'s files as outside A4); the session aborted and asked, and the user's answer
+  (2026-11-24, in the Prompt Log) changed the order to `origin/main` first, then A2 and A3.
+- **f. Manual fixes:** none; no AI-generated code was edited by hand.
+
 ## A5 `codex/iter5-hold-chair` – Add chair-pose judging (team order #8.4), 2026-11-23
 
 ### a. Where AI was used
@@ -298,19 +316,29 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   changed nothing. On PR #90 at `be6509a` its finding (P2, one bent arm passing on the mean of both) was right: Claude
   Code fixed it on A4's branch (`4ef8a2f`, notes `ed76b18`, 3 tests), answered on the thread and merged it here
   (`adeb74f`).
-- TODO(Woohyun Song): who wrote the hold effects spec (`p16-3-fx/SPEC-FX.md`) and drew its designs (`P16Hold`
-  scenes go, star and out, `HoldPickBoard`, `ArcResult holdFail why=list`); the user picked the effects on that canvas.
+- **The effects spec and designs:** Claude (claude.ai) made the hold effects' designs (on the Claude Design canvas)
+  and their spec `SPEC-FX.md` by drawing candidates from the phone check of 11-24. Woohyun Song picked among the
+  candidates the fail effect (A2 + A3, shown as F4), the star effect (B2) and the start notice (C1), had the bubbles'
+  size and place and the chair pose's words changed, and decided to reuse the background music and to give the stars
+  a sound (the user's statement, 2026-11-24, in the Prompt Log). They reached this session as a local design hand-off
+  (`p16-3-fx`), which is not committed.
 - **The hold effects (2026-11-24, from this session; the user's picks on the design canvas):** on A4's branch
   `3ffed5f` (music at the battle's moments, the start bubble, the stars' cheer with a pop and `SoundEffect.good`, the
   second warning's 1.5 s with "실패!" and the fail screen's reasons) and notes `47ea0d1`; merged here (`37e987c`) with
   the chair pose's two-line start words (`4767873`).
 - **The follow-up of 2026-11-24** (the user's decision): `77e1a75` keeps the 3·2·1's standing thigh from GO on (the
   spec's "follows while standing" narrowed to before GO), with 7 new tests, among them a slow sit over 3, 4 and 6 s.
+- **The leave dialog and `main` (2026-11-24, from this session; the user's instruction):** on A4's branch `94f6416`
+  (the leave dialog closes when a hold stage ends and opens no more in the 1.5 s before its result; 3 tests). Then
+  `origin/main` was merged up the stack: A2 `da3a039` (notes `dc5947b`), A3 `f482e99` (`c1f5f5f`), A4 `166de3b`,
+  `78e61dc`, `6bda1e0`, and here `6a8ce7f`, `ca2cf6a`. Merging A2 straight into A4 was blocked by the local pre-commit
+  guard; Claude Code aborted that merge and asked, and the user chose to merge `origin/main` into A4 and A5 first.
 - **Checking against the design:** the chair scenes captured with the app's fonts in a throwaway widget test (deleted)
   and compared by eye with the hand-off's shots (testing notes, A5 entry).
 - **Review:** the repo's `reviewer` subagent ran on the A4 follow-up (runs 5–7), on A5's code (run 1), on
   these notes (runs 2–3), on the follow-up of 2026-11-24 (run 4), on A4's one-arm fix (A4 run 8), on A4's effects
-  (A4 runs 9–10) and on the chair's start bubble (run 5).
+  (A4 runs 9–10), on the chair's start bubble (run 5), on the records of the phone check and the user's answers
+  (A4 run 11, A5 run 6), and on the leave dialog fix with the `main` merges (A4 run 12, A5 runs 7–8).
 - **Course notes:** Claude Code drafted this section and the testing notes. The Prompt Log comes from the course
   Session Exporter and `extract_prompts.py`, run on a copy of the export that holds only this session (the folder
   also holds the A3 and A4 sessions). Two fixes, the prompts
@@ -322,7 +350,7 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   changed here; the guide lines and "시작" fixed on A4's branch). Mid-way the user added the plank guide check, the
   rule that A4 commits hold only A4 files and records, one reviewer run before the A4 push and a plain merge, and
   passed on the P16 session's two overflows. The user also set the branch, the draft PR and its wording. The phone
-  check is the user's.
+  check of 2026-11-24 is the user's (testing notes), and so is keeping "삐익!" on a clear ended by warnings.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "A4에 의자 자세의 아이콘, 실루엣, 스쿼트 안내선이 없으면 이
@@ -336,8 +364,16 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   angle\"다. … 맞는 지적이니 A4 브랜치에서 고치자."
 - [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "A4 연출 추가 작업이다. … 고른 것 (다시 묻지 않는다)
   1. 배경음: 버티기 판에서도 대결과 같은 배경음을 같은 코드, 같은 방식으로 깐다."
+- [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "1. 별을 받은 뒤 두 번째 경고로 끝나는 클리어는 지금처럼
+  둔다(\"삐익!\" 1.5초, win jingle, 클리어 화면). 클리어인데 \"실패!\"를 띄우면 뒤의 클리어 화면과 맞지 않기 때문이다."
+- [Woohyun Song, 11-24] (pasted; excerpt; under A4's heading) "두 번째 경고 뒤 1.5초(\"실패!\", 또는 별을 받은 경우
+  \"삐익!\") 동안 아직 나가기 창이 열리고, 이때 나가면 결과 화면 없이 끝나 별이 저장되지 않는다. 대결은 판이 끝나는
+  순간 나가기 창을 닫는다."
 
 ### c. What AI did well
+- **Checked the harness before committing a merge.** Before merging A2 into A4, the session merged without
+  committing and ran the pre-commit guard by hand; it blocked, so the merge was aborted and the user was asked, as the
+  instruction said, instead of a merge commit being forced through.
 - **Found A4's gaps before building on them.** Reading A4's view model against the spec's sections 5 and 6 showed that
   the squat guide came from a separate `SquatRepJudge`, which drops a squat (`lost`) 12 s after it starts down, so the
   squat lines would vanish in every chair stage (20–45 s), and that nothing read "시작" after the entry. It asked
@@ -410,12 +446,19 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   after the judge ended); it now checks that the frames in the moment are not read.
 - **A call made without asking.** A clear ended by a second warning (a star already earned) keeps "삐익!" and plays
   the win jingle instead of showing "실패!"; the session decided it, wrote it down as beyond the spec and put it to
-  the user in the PR and the report.
+  the user in the PR and the report. The user kept it (2026-11-24): "실패!" on a clear would not match the clear
+  screen after it.
 
 - **Reviewer, A5 run 5 (APPROVE, the merge of A4's effects and the chair's start bubble; 5 Minors):** two prompts out
   of time order in the Prompt Log and item b; size tests that could not fail for the two-line bubble (now both lines
   inside the bubble and the bubble on screen); the testing entry lacked its criteria and phone-check lines; item a did
   not say who wrote the effects spec (a TODO now); the local progress log lacked this work. All fixed.
+- **Phone-check steps that could not be done (reviewer A5 run 7, Major).** The first draft of the slow rise after GO
+  said to sit as soon as the 3·2·1 starts, but a user upright at its first frame gives the reader 0.3 s of standing at
+  once, and that thigh stays for the play; its fallback ("the case cannot happen on the phone") did not follow from
+  the code, since the setup counts standing from 0.25 of the shin and the reader from 0.7. Now: a half squat held
+  through the count, reopening the stage when a thigh was taken, and writing down the bends tried. Two Minors (the
+  fault ids, `null` before a value exists) fixed with it; run 8 APPROVE.
 
 ### e. Prompt revisions
 - Before (the user's answer, 2026-11-23): "A4 브랜치에서 고치고 merge (Recommended)".
@@ -437,6 +480,13 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
   p16-3-fx 묶음 v2(SPEC-FX.md, design/, shots/)에 있다."
 - Why it worked: the first message described the effects in words and deferred the bubbles and music; the revision
   pointed at a spec and picked designs, named every value's source, and kept all four effects in this iteration.
+- Before (2026-11-24, pasted): "A4에 A2와 A3를 merge한다(1번 수정 포함). - A5에 A4를 merge한다. … 하네스가 merge
+  커밋을 막거나 앞 단계 파일을 고쳐야 하면, 우회하지 말고 멈추고 보고한다."
+- After (2026-11-24, the user's answer to the session's question): "1번(A4에 main 먼저)으로 간다. A4에 origin/main을
+  먼저 merge한 뒤 A2, A3를 merge한다. A5도 같은 방식으로 한다."
+- Why it worked: merging A2 straight in needed a merge commit made by hand (the notes' conflict), which the guard
+  checks against A4's own scope, so `main`'s files were outside it; the guard leaves them out only when the merge's
+  second parent is `origin/main`. The revision gives the same content in an order the guard accepts.
 
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
