@@ -301,6 +301,13 @@ class BattleViewModel extends ChangeNotifier {
 
   final Matchup matchup;
 
+  SetupReason? _lastSetupReason;
+
+  /// What the pose setup last asked the user to fix; null while it never
+  /// had to (P17 telemetry). Kept through the camera's pauses, unlike
+  /// [BattleState.setup], which they reset.
+  SetupReason? get lastSetupReason => _lastSetupReason;
+
   /// The user's character in this battle, kept in its form report; null
   /// keeps none.
   final String? characterId;
@@ -574,6 +581,7 @@ class BattleViewModel extends ChangeNotifier {
             ),
     };
 
+    if (status.reason != SetupReason.ready) _lastSetupReason = status.reason;
     if (status.reason != SetupReason.ready || !aligned) {
       _readySince = null;
       _setState(
