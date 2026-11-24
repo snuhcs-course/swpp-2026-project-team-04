@@ -300,3 +300,10 @@ Sent while Claude was working (queued; not in the exporter's output), verbatim:
 
 <!-- b7f2c482 2026-11-24T06:03:45.594Z -->
 [Jinyoung Park, 11-24 15:03] "됬음?"
+
+## 2026-11-24 · Jinyoung Park · feat/iter5-friend-battles
+<!-- b7f2c482 2026-11-24T06:56:33.545Z -->
+[Jinyoung Park, 11-24 15:56] "됬음?"
+
+<!-- b7f2c482 2026-11-24T06:59:10.576Z -->
+[Jinyoung Park, 11-24 15:59] "굳이 필요 없는 수정이면 하지 않아도 될듯?"
