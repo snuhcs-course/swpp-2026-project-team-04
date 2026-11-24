@@ -520,12 +520,16 @@ These were made from the A5 session at the user's word; their full evidence is i
     `sound_battle.dart`, `background_music.dart`, `arcade_flow.dart`). One difference (a hold closed on its
     briefing after a jingle brought the menu track back) is fixed in `359ea18`: `ArcadeHoldMusic`
     (`lib/widgets/arcade_hold_music.dart`), given to A4's screen by `ArcadeFlow.holdScreen`.
+  - After `main`'s #86, #93 (Google sign-in) and #94 came up the stack: `c92006c` merges `origin/main` first (the
+    `main.dart` conflict resolved by keeping #93's Google sign-in lines and P16's arcade lines), then `670aecf`
+    merges `codex/iter5-hold-chair` with A4's leave dialog fix (`94f6416`); Claude Code resolved both, checked
+    each side's lines and the fix against `ArcadeHoldMusic`. No P16 code changed.
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran eight times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
-  CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, and after the merge
-  of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix.
+- **Review:** the `reviewer` subagent ran nine times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+  CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, after the merge
+  of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix, and APPROVE (4 Minors, fixed) on the `main` merge.
 - **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
   (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
   Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
@@ -561,6 +565,9 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **Checking the record against the code:** the phone check's "2F 열림" did not fit A2's rule (stage 7 opens only
   after the boss's star, and the boss match was not won). Flagged in the report; the user said it was the 2F floor
   shown on the map with its first stage locked, and the record was corrected.
+- **Checking the stack before merging:** the user's message said A2–A5 had taken `main`; a fetch showed none of the
+  four had it yet and A5 had no dialog fix (the A5 session was still merging), so nothing was merged on the old
+  branches, and the merge waited for A5's push (`b6e90d7`).
 - **Recovery after the power loss:** the state check (branch, `index.lock`, diffs, line endings, ownership, analyze)
   took a few minutes and found nothing half-written.
 
@@ -608,10 +615,23 @@ These were made from the A5 session at the user's word; their full evidence is i
   code commit, its tests and the notes again. Run 8 approved the fix, with three Minors: wording in the local progress
   file, the new file missing from `design_tokens_test.dart`'s list (added in `5553521`), and origin/main's #93 not
   yet in the A2–P16 stack (left to the user).
+- **Reviewer run 9 (APPROVE, 4 Minors), on the `main` merge:** my new testing entry put #93's tests in
+  `main_test.dart` (they are in `test/auth_flow_test.dart`) and said that if the app was closed in a second warning's
+  moment `ArcadeHoldMusic` would keep the jingle, though a closed app need not dispose its screens and its sound ends
+  with it. Both were rewritten before the commit; the other two Minors were PR #91's stale body and this file's
+  missing P16 evidence.
 - **A path in my notes:** the post-push check matched `.claude/...` in the spec's path in my testing notes; fixed in a
   new commit (`7a1d46c`).
 
 ### e. Prompt revisions
+- Before (2026-11-24, pasted): "1. fetch 뒤 codex/iter5-hold-chair를 P16 브랜치에 merge한다. main.dart와
+  online_lobby_screen_test.dart 충돌은 main의 구글 로그인과 P16 변경을 모두 살려 푼다."
+- After (the same day, pasted; excerpt): "하네스는 두 번째 부모가 origin/main인 merge만 main 파일을 빼고 본다. …
+  1. hold-chair에 main과 나가기 창 수정이 들어왔는지 확인한 뒤, P16 브랜치에 origin/main을 먼저 merge한다. … 2. 그다음
+  codex/iter5-hold-chair를 merge한다."
+- Why it worked: on A4 the user had seen the pre-commit guard block a merge commit made by hand that carried
+  `main`'s files. With `main` first, `c92006c`'s check compared the index with `origin/main` (111 paths, all P16's
+  own or inherited) and `670aecf`'s held only 5 paths, so both passed without any bypass.
 - None for the code in this step. The user added one rule mid-task (only this session's prompts under the P16 heading)
   and, after the power loss, gave the state check as a numbered list, which made the recovery a checklist.
 

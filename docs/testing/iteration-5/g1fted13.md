@@ -1120,3 +1120,48 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flut
   once'
 - The arcade's hold gets the app's sound → 'the app's own way into a hold: A4's screen for the stage, with the
   arcade's store, account and the user's character'
+
+#### 2026-11-24 · code at commits `359ea18` and `5553521` (P16 unchanged), with `main` merged in `c92006c` and A5 in `670aecf` · step P16 `codex/iter5-ai-opponents`: `main` and A4's leave dialog fix merged in
+At the user's word (2026-11-24, the Prompt Log), A2 and A3 merged `origin/main` `69b0520` (#86, #93 Google sign-in,
+#94), A4 merged `main` and then A2 and A3 with its leave dialog fix (`94f6416`), and A5 merged `main` and then A4
+(`b6e90d7`). My first fetch found none of the four branches with `main` and no dialog fix in A5, so nothing was merged
+until A5's push. Then, in the order the user gave (the pre-commit guard leaves `main`'s files out of a merge's check
+only when its second parent is `origin/main`):
+- `git merge origin/main` (`c92006c`): one conflict, in `gymrats_app/lib/main.dart`, at two places where #93 and P16
+  each added a line (the imports `viewmodels/social_signup_viewmodel.dart` and `widgets/gym_background_art.dart`;
+  `GymRatsApp`'s `arcadeStore` and `googleSignIn`). Both kept, so against `main` the file differs only by P16's
+  arcade lines and the art's warm-up call; every Google sign-in line of #93 is there.
+  `test/screens/online_lobby_screen_test.dart` merged without a conflict: #86's new group '다시 매칭 after a cancel
+  (P12)' and P16's card name '온라인 대결' are both in it.
+- `git merge origin/codex/iter5-hold-chair` (`670aecf`): the app code merged without a conflict (A4's
+  `hold_stage_screen.dart` and its test); this file had a content conflict where A5's two new entries met P16's
+  (both kept, A5's first; the only lines dropped are A4's and A5's own, which their branches changed). The AI notes
+  and the Prompt Log merged without a conflict.
+- **A4's leave dialog fix against the hold music:** the dialog now closes when a stage is over (a second warning's
+  moment or the result), does not open then, and back does nothing in that moment. `_playMusic` and `dispose` are
+  unchanged, so the music trace in the entry above stands, and the dialog item reported there is fixed on A4's
+  branch. No in-app path closes the screen in that moment now (back returns in `_back`, the leave button in
+  `_askToLeave`). If the screen were disposed there, `ArcadeHoldMusic` would drop the menu cue ('left in the second
+  warning's moment, after its jingle started: the jingle goes on', a unit test of the wrapper's cues).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter test` 4486 passed, 0 failed, 10 skipped (2026-11-24, `670aecf`; the same skips as above).
+  `flutter analyze` found no issues. 4357 before: 126 came from `main` and 3 from A4's dialog fix (the same numbers as in A5's entry above). No P16 test was added or changed.
+- **Other checks:** `ownership_guard.py --check-staged` OK in both merge commits' hook (`c92006c`: 111 paths
+  against `origin/main`; `670aecf`: 5 paths, the notes and A4's two inherited files); `--check-diff` OK (111 paths);
+  the diff against `codex/iter5-hold-chair` (PR #91's base) still lists 48 files. Server `pytest` was not run:
+  `server/` is `main`'s.
+- **Review:** local reviewer run 9 APPROVE: both merges rebuilt and checked against their parents (nothing of #93 or
+  P16 lost, the notes' lines dropped only where hold-chair itself changed them), P16's 45 code files' changes the
+  same as at run 8, the 48-file list unchanged; analyze clean, 231 targeted tests passed. Its 4 Minors were fixed
+  before the commit: #93's tests named by their file (`auth_flow_test.dart`); the dialog sentence said more than the
+  code; PR #91's body (updated after the push); the AI notes' P16 evidence and this line.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment "Tests and coverage (GitHub Actions)" for this head.
+- **Shortfalls:** coverage is not measured on this PC (the CI comment is pending). The merged `main.dart` is checked
+  here only by tests (#93's `test/auth_flow_test.dart` and P16's app-flow tests in `main_test.dart`, both on the
+  merged file), not yet on a phone; the phone check below.
+- **Manual check:** TODO(Woohyun Song): the last phone check, on the Galaxy S26+: the app's start and Google sign-in
+  (main #93) working with the arcade screens; the boss match through R2 to 1층 클리어!; the 2F first stage's fever
+  from 15 s; the break's fixed 자세 잡기 button; the hold stages' music from the arcade (the entry above).

@@ -265,6 +265,22 @@ A5 세션 작업이 끝났다. A4(codex/iter5-hold-plank)에 버티기 연출(�
 <!-- 44cd470a 2026-11-24T02:47:59.784Z -->
 [Woohyun Song, 11-24 11:47] "4. \"2F 열림\"은 홈 지도에서 2F 층이 보인 것이었다. 기록을 \"2F 층 보임(첫 판은 잠김)\"으로 고친다."
 
+<!-- 44cd470a 2026-11-24T04:02:17.340Z -->
+[Woohyun Song, 11-24 13:02] "<pasted_content id=\"0a14\">
+스택 아래쪽이 main을 받았다. A2와 A3는 origin/main(#93 구글 로그인, #94)을 merge했다. A4는 그 둘을 받으면서, 알려 준 \"실패!\" 1.5초 동안의 나가기 창 문제를 고쳤다. A5는 A4를 받았다.
+1. fetch 뒤 codex/iter5-hold-chair를 P16 브랜치에 merge한다. main.dart와 online_lobby_screen_test.dart 충돌은 main의 구글 로그인과 P16 변경을 모두 살려 푼다.
+2. analyze, test, reviewer를 돌리고 push한 뒤 HEAD를 보고해 줘. 하네스가 merge 커밋을 막으면 우회하지 말고 멈추고 보고한다.
+3. 마지막 폰 확인 TODO에 \"앱 시작과 구글 로그인(main #93)이 아케이드 화면과 함께 정상인지\"를 더한다.
+</pasted_content id=\"0a14\">"
+
+<!-- 44cd470a 2026-11-24T07:36:51.954Z -->
+[Woohyun Song, 11-24 16:36] "<pasted_content id=\"0a14\">
+merge 순서를 하나 바꾼다. A4에서 하네스가 main 파일이 섞인 손 merge 커밋을 막는 것을 확인했다. 하네스는 두 번째 부모가 origin/main인 merge만 main 파일을 빼고 본다. 그래서 A4와 A5는 origin/main을 먼저 merge한 뒤 아래 단계를 merge하는 순서로 바꿨다. P16도 같은 순서로 한다.
+1. hold-chair에 main과 나가기 창 수정이 들어왔는지 확인한 뒤, P16 브랜치에 origin/main을 먼저 merge한다. main.dart와 online_lobby_screen_test.dart 충돌은 main의 구글 로그인과 P16 변경을 모두 살려 푼다.
+2. 그다음 codex/iter5-hold-chair를 merge한다.
+3. 나머지(analyze, test, reviewer, push, 폰 확인 TODO에 구글 로그인 추가)는 앞 메시지대로 한다. 하네스가 막으면 우회하지 말고 멈추고 보고한다.
+</pasted_content id=\"0a14\">"
+
 ## 2026-11-24 · Woohyun Song · codex/iter5-hold-chair
 <!-- dfb39c07 2026-11-23T16:54:23.559Z -->
 [Woohyun Song, 11-24 01:54] "<pasted_content id=\"a37d\">
