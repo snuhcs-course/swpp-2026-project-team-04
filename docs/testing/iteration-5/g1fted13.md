@@ -114,6 +114,20 @@ coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub A
   outside 0 to 3 is the first state', 'a store that fails to read is the first state', 'a store that fails to read
   keeps the saved progress: nothing is written'
 
+#### 2026-11-24 · merge `da3a039` of `origin/main` `69b0520` · step A2: `main` merged in before the draft ends
+At the user's word (2026-11-24; the prompt is logged on A4's branch, `codex/iter5-hold-plank`), `origin/main` (#86 setup timeout, #93 Google
+sign-in, #94 zero points for knee push-ups) was merged into this branch first, before the steps stacked on it. No
+conflict: no file changed on `main` since `ad8a6f7` is one of A2's. A2's code is unchanged at `141c8df`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4034 passed, 0 failed, 10 skipped (2026-11-24, on
+  `da3a039`; the same 10 skips as above). The bot pins pass on the merged code.
+- **Other checks:** `ownership_guard.py --check-diff` OK (21 paths against `origin/main`, as before). Server `pytest`
+  was not run: `server/` is `main`'s, unchanged by A2, and `main`'s own checks cover it.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head.
+
 #### 2026-11-23 · code at commit `a5f0d7d` · step A3 `codex/iter5-arcade-art` (Create arcade artwork, team order #8)
 The arcade is split into steps. A3 is the arcade's pictures, with no screen:
 - **Data:** the design hand-off `gym_art.json` (version arcade-art-1, 701 shapes) kept as
@@ -220,6 +234,21 @@ Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
   with its design shot: "owner_<id>_<face> matches the design but for edges" (each owner in its 3 faces, 12 tests) and
   "floor_<n> matches the design but for edges" (5 tests). The art is drawn from Dart data, not loaded as asset files
   (see the PR's Exceptions).
+
+#### 2026-11-24 · merge `f482e99` of `origin/main` `69b0520` · step A3: `main` merged in before the draft ends
+At the user's word (2026-11-24; the prompt is logged on A4's branch, `codex/iter5-hold-plank`), `origin/main`
+(#86 setup timeout, #93 Google sign-in, #94 zero points for knee push-ups) was merged into this branch before the
+steps stacked on it. No conflict: no file changed on `main` since this branch's base is one of A3's. A3's code is
+unchanged.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 3970 passed, 0 failed, 10 skipped (2026-11-24, on
+  `f482e99`; the same 10 skips as `main`'s: a live server smoke test and 9 known push-up judge errors).
+- **Other checks:** `ownership_guard.py --check-diff` OK (28 paths against `origin/main`). Server `pytest` was not run: `server/` is `main`'s,
+  unchanged by A3, and `main`'s own checks cover it.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head (the earlier numbers are for `071c7f0`).
 
 #### 2026-11-23 · code at commit `1dbf9ec` · step A4 `codex/iter5-hold-plank` (Implement high-plank hold stages, team order #8.3)
 A4 is the arcade's hold stage, played with the high plank (the local design hand-off's spec `p16-3/SPEC.md` v3, not committed):
@@ -484,6 +513,45 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Review:** local reviewer A4 run 11, APPROVE; its five Minors were fixed before the commit (two references a reader
   of this branch could not follow, the timing note, this failure's reason and plan, the local status row).
 - **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+#### 2026-11-24 · code at commit `94f6416` · step A4, fourth follow-up on `codex/iter5-hold-plank` (the leave dialog at a stage's end; `main` merged in)
+The P16 session found, and the user had it fixed (local task.md, A4 Decisions, 2026-11-24): in a second warning's
+1.5 s (`HoldTiming.endShow`, with "실패!", or "삐익!" after a star) the leave dialog stayed open and could be opened,
+and leaving then closed the stage without its result, so its stars were not kept. A battle closes the dialog when it
+ends.
+- **Now (`94f6416`, `lib/screens/hold_stage_screen.dart`):** the moment the stage ends (a second warning's moment, or
+  the result at the third star) an open dialog closes, and until the result shows neither back nor the leave button
+  opens one. The result and its stars always come with the result screen. The view model is unchanged.
+- **`main` merged in (the user's word, 2026-11-24):** `origin/main` `69b0520` (#86, #93, #94) first (`166de3b`, no
+  conflict), then A2 (`78e61dc`) and A3 (`6bda1e0`), each bringing only its own merge entry; the testing notes'
+  conflicts kept both sides, each step's new entry after its own section. The user chose this order after the local
+  harness blocked merging A2 straight in: the merge commit, made by hand for the notes' conflict, counted `main`'s
+  62 files as outside A4's scope, and the harness leaves `main`'s files out only when the second parent is
+  `origin/main`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+then the same as A4's entry above.
+
+- **Before the fix:** the three new tests failed on the old screen (the dialog stayed in the moment, and opened in it).
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4238 passed, 0 failed, 10 skipped (2026-11-24, on
+  `6bda1e0`; the same 10 skips as above): 4109 before, 3 new, and 126 that came with `main`.
+  `test/screens/hold_stage_screen_test.dart`: 47 passed.
+- **New tests:** 3, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on the fix and on the two hand-made merge commits;
+  `--check-diff` OK (64 paths against `origin/main`); the stacked-branch intersection with A2's and A3's branches
+  still lists 21 paths. Server `pytest` was not run: `server/` is `main`'s, unchanged by A4.
+- **Review:** local reviewer A4 run 12, APPROVE. It ran the three new tests on a copy with the old screen (each
+  fails at its dialog check), checked the third-star path (the existing 'the hold ending while asking closes the
+  question'), a dialog opened just before the end, and that each merge differs from the automatic one only in the
+  notes, by exactly the lower step's own entry. Its Minors: these AI notes lacked the follow-ups' evidence (a short
+  block added to A4's section), the local status row (updated), and one left for the user: in the 1.5 s the leave
+  button is still drawn and announced, though it opens nothing, while the battle hides its button once decided.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the fourth follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a second warning while asking closes the question at once, then the fail screen' (the dialog gone with "실패!", then 다시 도전, the screen not closed); 'in a second warning's moment back and the leave button open no dialog' (then the fail screen); 'a star, then a second warning while asking: the clear shows and its star is kept' ("삐익!", back opens nothing, then 클리어! and the store keeps 1 star) |
 
 #### 2026-11-23 · code at commit `0579a65` · step A5 `codex/iter5-hold-chair` (Add chair-pose judging, team order #8.4)
 A5 adds the second held pose, the chair pose, on A4's hold stage (the local design hand-off's spec `p16-4/SPEC.md` v2,
