@@ -224,6 +224,8 @@ def test_only_friends_can_be_invited(client, two):
         ({"friend_id": "2", "exercise": "push_up"}, "invalid_friend"),
         ({"friend_id": True, "exercise": "push_up"}, "invalid_friend"),
         ({"exercise": "push_up"}, "invalid_friend"),
+        ({"friend_id": 2, "exercise": []}, "invalid_exercise"),
+        ({"friend_id": 2, "exercise": {}}, "invalid_exercise"),
         ({"friend_id": 2, "exercise": "plank"}, "invalid_exercise"),
         ({"friend_id": 2}, "invalid_exercise"),
     ],
@@ -407,25 +409,14 @@ def test_the_database_keeps_one_request_per_pair_either_way(client, two):
     assert FriendRequest.objects.count() == 1
 
 
-def test_a_request_racing_the_reverse_one_says_already_requested(client, two, monkeypatch):
-    import accounts.friends_views as views
+def test_unrelated_friend_request_integrity_error_is_not_a_duplicate(client, two, monkeypatch):
+    from django.db import IntegrityError
+    from unittest.mock import Mock
 
-    (a_id, a), (b_id, b) = two
-    # The reverse request lands between the check and the insert.
-    real_pair = views._pair
-
-    def late_pair(x, y):
-        found = real_pair(x, y)
-        if found is None:
-            FriendRequest.objects.create(
-                from_user=User.objects.get(id=b_id), to_user=User.objects.get(id=a_id)
-            )
-        return found
-
-    monkeypatch.setattr(views, "_pair", late_pair)
-    response = _request(client, a, _code(b_id))
-    assert response.status_code == 409
-    assert response.json() == {"detail": "already_requested"}
+    (_, a), (b_id, _) = two
+    monkeypatch.setattr(FriendRequest.objects, "create", Mock(side_effect=IntegrityError("unexpected")))
+    with pytest.raises(IntegrityError, match="unexpected"):
+        _request(client, a, _code(b_id))
 
 
 @pytest.mark.parametrize("winner, loser", [("accept", "decline"), ("decline", "accept")])
@@ -892,21 +883,18 @@ def test_simultaneous_reciprocal_requests_accept_one_friendship(client, two, mon
 
     from django.db import connections
     from rest_framework.test import APIClient
-    from accounts import friends_views
 
     (a_id, a), (b_id, b) = two
     a_code, b_code = _code(a_id), _code(b_id)
-    first_reads = Barrier(2)
+    first_writes = Barrier(2)
     worker = local()
-    original_pair = friends_views._pair
+    original_create = FriendRequest.objects.create
 
-    def simultaneous_pair(me, other):
-        pair = original_pair(me, other)
-        if not getattr(worker, "read_once", False):
-            worker.read_once = True
-            assert pair is None
-            first_reads.wait(timeout=5)
-        return pair
+    def simultaneous_create(**kwargs):
+        if not getattr(worker, "started", False):
+            worker.started = True
+            first_writes.wait(timeout=5)
+        return original_create(**kwargs)
 
     def send(headers, code):
         try:
@@ -915,7 +903,7 @@ def test_simultaneous_reciprocal_requests_accept_one_friendship(client, two, mon
         finally:
             connections.close_all()
 
-    monkeypatch.setattr(friends_views, "_pair", simultaneous_pair)
+    monkeypatch.setattr(FriendRequest.objects, "create", simultaneous_create)
     with ThreadPoolExecutor(max_workers=2) as pool:
         sends = [pool.submit(send, a, b_code), pool.submit(send, b, a_code)]
         assert sorted(f.result() for f in sends) == [(200, "accepted"), (201, "requested")]
@@ -947,3 +935,11 @@ def test_friend_request_retries_only_sqlite_contention(client, two, monkeypatch,
         with pytest.raises(OperationalError):
             _request(client, me, _code(other_id))
         assert send.call_count == 1
+
+@pytest.mark.parametrize("body", ["[]", "null"])
+@pytest.mark.parametrize("endpoint,detail", [("requests", "invalid_code"), ("invites", "invalid_friend")])
+def test_friend_creation_requires_an_object(client, two, body, endpoint, detail):
+    (_, headers), _ = two
+    response = client.post(f"/friends/{endpoint}", body, content_type="application/json", **headers)
+    assert response.status_code == 400
+    assert response.json()["detail"] == detail

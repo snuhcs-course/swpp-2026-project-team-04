@@ -49,6 +49,10 @@ def _person(user):
     return {"id": user.id, "nickname": user.nickname, "code": friend_code(user)}
 
 
+def _body(request):
+    return request.data if isinstance(request.data, dict) else {}
+
+
 def _error(detail, code):
     return Response({"detail": detail}, status=code)
 
@@ -133,7 +137,7 @@ class FriendRequestsView(APIView):
 
     def post(self, request):
         me = request.user
-        code = request.data.get("code")
+        code = _body(request).get("code")
         match = _CODE.match(code.strip()) if isinstance(code, str) else None
         if match is None:
             return _error("invalid_code", status.HTTP_400_BAD_REQUEST)
@@ -162,25 +166,22 @@ class FriendRequestsView(APIView):
 
 def _send_friend_request(me, other):
     with transaction.atomic():
-        existing = _pair(me, other)
-        if existing is not None:
+        # Write first: reciprocal requests must not both hold read locks
+        # while trying to upgrade them to write locks.
+        try:
+            with transaction.atomic():
+                created = FriendRequest.objects.create(from_user=me, to_user=other)
+        except IntegrityError:
+            existing = _pair(me, other)
+            if existing is None:
+                raise
             if existing.accepted_at is not None:
                 return _error("already_friends", status.HTTP_409_CONFLICT)
             if existing.from_user_id == me.id:
                 return _error("already_requested", status.HTTP_409_CONFLICT)
-            # Their open request: accept it, unless another answer got
-            # there first (one conditional write, see _answer_request).
             if not _answer_request(existing.id, me, accept=True):
                 return _error("request_not_found", status.HTTP_404_NOT_FOUND)
             return Response({"status": "accepted", "friend": _person(other)})
-        try:
-            with transaction.atomic():
-                created = FriendRequest.objects.create(
-                    from_user=me, to_user=other
-                )
-        # The same pair either way round, sent at the same moment.
-        except IntegrityError:
-            return _error("already_requested", status.HTTP_409_CONFLICT)
     return Response(
         {"status": "requested", "request_id": created.id, "to": _person(other)},
         status=status.HTTP_201_CREATED,
@@ -234,12 +235,11 @@ class FriendInvitesView(APIView):
 
     def post(self, request):
         me = request.user
-        friend_id, exercise = request.data.get("friend_id"), request.data.get(
-            "exercise"
-        )
+        body = _body(request)
+        friend_id, exercise = body.get("friend_id"), body.get("exercise")
         if not isinstance(friend_id, int) or isinstance(friend_id, bool):
             return _error("invalid_friend", status.HTTP_400_BAD_REQUEST)
-        if exercise not in {"push_up", "squat"}:
+        if exercise not in ("push_up", "squat"):
             return _error("invalid_exercise", status.HTTP_400_BAD_REQUEST)
         friend = User.objects.filter(id=friend_id).first()
         if friend is None or not are_friends(me, friend):
@@ -396,7 +396,7 @@ class FriendInviteActionView(APIView):
             if self.action == "cancel"
             else Q(to_user=me)
         )
-        body = request.data if isinstance(request.data, dict) else {}
+        body = _body(request)
         if_pending = body.get("if_pending") is True
         if self.action == "accept":
             outcome = _accept_with_retry(invite_id, me)
