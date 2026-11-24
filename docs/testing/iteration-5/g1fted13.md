@@ -127,3 +127,460 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flut
 - **Other checks:** `ownership_guard.py --check-diff` OK (21 paths against `origin/main`, as before). Server `pytest`
   was not run: `server/` is `main`'s, unchanged by A2, and `main`'s own checks cover it.
 - **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head.
+
+#### 2026-11-23 · code at commit `a5f0d7d` · step A3 `codex/iter5-arcade-art` (Create arcade artwork, team order #8)
+The arcade is split into steps. A3 is the arcade's pictures, with no screen:
+- **Data:** the design hand-off `gym_art.json` (version arcade-art-1, 701 shapes) kept as
+  `gymrats_app/assets/arcade/gym_art.json` and copied unchanged into the Dart string `gymArtJson`.
+- **Owners:** `GymOwnerFigure`, the four goggled gym owners (물렁범, 펭뚱이, 그루, 곰탱이) in three faces (watch, blow,
+  ok), with optional breathing.
+- **Backgrounds:** `GymBackground`, the stage background of 1F–5F, cut to its 360 × 390 picture.
+
+The branch starts at `origin/main` `25509ee` and does not wait for P16-1. The code is three commits: `de3a969` (the
+art), `c00eced` (`GymArt.warmUp`) and `a5f0d7d` (opacity tests, after the first review). I ran these in
+`gymrats_app/` on Windows, on `a5f0d7d`, without coverage (this PC's rule):
+
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/widgets/gym_background_art_test.dart test/widgets/gym_background_test.dart test/widgets/gym_owner_figure_test.dart
+```
+
+Coverage comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.3% (733/738; not changed by A3) | 11/23 | CI comment "Tests and coverage (GitHub Actions)" on PR #88, commit `071c7f0`, [run 45149879412](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45149879412) |
+| ViewModel | flutter_test, fakes | 90% | 97.6% (1750/1793; not changed by A3) | 11/23 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 95.6% (4573/4785; not changed by A3) | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | 98.1% (11325/11548); A3's files 99.5% (213/214) | 11/23 | same CI comment; A3's files from the run's lcov parts |
+| API server | pytest, pytest-django, pytest-cov | 90% | 96% (114 passed; `server/` not changed by A3) | 11/23 | same CI comment |
+
+- **Tests:** `flutter test` 3840 passed, 0 failed, 10 skipped (2026-11-23, `a5f0d7d`). `flutter analyze` found no issues. The
+  skipped tests were already skipped on `main`, and A3 does not touch them:
+  - `test/services/online/public_wss_smoke_test.dart`: a live team-server check that runs only with
+    `RUN_PUBLIC_BATTLE_SMOKE`.
+  - 9 recordings in `test/services/pose/pushup_error_cases_test.dart`: known push-up judge errors, each with its
+    reason in `knownErrors`.
+- **New tests:** 60, in the three files below (43 + 12 + 5). The first review's run on `de3a969` had 3838 passed;
+  `a5f0d7d` adds the opacity test and the warm-up test.
+- **Mutation check (2026-11-23):** with the opacity taken out of the paints (`withValues` removed in
+  `gym_background_art.dart`), "the parser reads a shape: matrix, path, colors, line ends and opacity" and "GymArtPainter
+  paints a see-through fill and a faint outline at their opacity, as the floor lines are" fail; the shot tests alone
+  would not notice (their channel tolerance of 64 hides the faint floor lines).
+- **Other checks:** `ownership_guard.py --check-staged` ok on every commit (25 files, all inside the step's file list in the local harness; none changed outside them).
+- **Checks after merging `origin/main`:** `git fetch origin && git merge origin/main` brought in `ad8a6f7` (PR #87,
+  push-up grading; no A3 file). On the merge commit `0b3475a` (2026-11-23): `flutter analyze` found no issues and
+  `flutter test` had 3844 passed, 0 failed, 10 skipped (the same skips; PR #87 adds 4 tests).
+  `ownership_guard.py --check-diff` ok (25 files). Server `pytest` was not run because
+  `server/` did not change.
+- **Against the design shots:** the 17 shots of the hand-off (`shots/`, now `assets/arcade/shots/`) are compared pixel
+  by pixel at 2x, as for the W3 characters (a pixel differs when a channel is off by more than 64; at most 0.03% may
+  differ). On 2026-11-23 no pixel of any shot differed by more than 20 in a channel (the owners by at most 8). The same
+  check fails for a wrong face, a wrong floor and a missing shape. Nothing differs from the design.
+  - In the design itself, 펭뚱이's `watch` and `ok` are the same picture: its mouth is an empty path (`M0 0`) in both
+    faces (`design/CoachB.dc.html` L276). Reported to the user, who decided to keep it as it is (2026-11-23).
+- **Coverage:** from the CI comment "Tests and coverage (GitHub Actions)" on PR #88, commit `071c7f0` (2026-11-23 18:58
+  KST; app and server jobs both succeeded; [run 45149879412](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45149879412)). App total 97.4% (18751/19250), Other 95.9% (370/386).
+  - CI also ran `flutter analyze` (no issues) and `flutter test` (3844 passed, 10 skipped, 0 failed), the same as the
+    local run on `0b3475a`; `071c7f0` changes only the notes.
+  - A3's files, merged by line from the run's four lcov parts: `gym_background.dart` 13/13, `gym_owner_figure.dart`
+    42/42, `gym_background_art.dart` 158/159 (`gym_background_art_data.dart` is a constant with no executable line).
+    The one line not hit, L265, is the `StateError` for a matrix that is not six numbers, which the parser rejects
+    before any shape is built.
+  - Left out of the coverage numbers by CI's 240 s per-file limit, none of them A3's: `test/screens/settings_screen_test.dart`,
+    `test/services/audio/background_music_test.dart`, `test/services/pose/person_behind_video_replay_test.dart`,
+    `test/services/pose/pushup_error_cases_test.dart`. Their tests still ran in `flutter test`.
+- **Shortfalls:** none. Every layer and the server meet their targets.
+- **Manual check (2026-11-23, widget capture, per the spec's section 4):** the real widgets (`GymOwnerFigure` in
+  all 12 owner × face pairs, and `GymBackground` 1F–5F with each floor's owner flipped to face left and standing on
+  `gymBackgroundFloorLineY`) were captured at 2x in a throwaway widget test and compared by eye with
+  `_owners_overview.png` and `_floors_overview.png`: the same pictures, the owners' feet on the floor line, and no
+  floor line drawn outside a background. The phone check waits for the map and the hold stage (P16-3, P16).
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/gym_background_art_test.dart` (new) | the Dart string equals `assets/arcade/gym_art.json` character for character; version arcade-art-1, the 140 × 160 box with feet at (70, 150), the 360 × 390 background and floor line 296; the four owners with their names and three faces; the breathing values; the shape counts of spec 4 (701); every owner in `AppColors.opponent`; the 93 faint floor lines; the parser reads matrix, path, colors, line ends and opacity, and the paints it builds (alpha, width, ends, joins), and rejects an unknown command, a wrong count of numbers, a color that is not #RRGGBB, an empty path or command, a bad matrix, line end, join, outline width or opacity, non-object JSON, a missing face and a bad floor; `GymArt.warmUp` builds all 701 paths and paints and can run again; paths and paints are built once; the painter fills then outlines under each matrix, in order, paints a see-through fill and outline at their opacity, scales the window the same both ways and centres it, draws nothing for a lone move, cuts a background at its window while the floor lines run past it unclipped, repaints only on a change; all 17 design shots match, and the comparison catches another face, another floor and a missing shape |
+| View | `test/widgets/gym_owner_figure_test.dart` (new) | the size is the 140 × 160 box times its scale; each owner and face draws its own drawing in its box, unclipped; watch by default; an unknown id draws the seal; screen readers hear "체육관 관장 {name}" as an image, without the face; it stands still unless asked to breathe; breathing about the feet (0.988 × 1.02 a quarter into the 2.2 s cycle, 1 at the half, 1.012 × 0.98 at three quarters, the sine in between); no breathing with reduced motion, stopping and restarting when it changes; the clock stops when it leaves the screen; the face centres of spec 3; the faces match the data |
+| View | `test/widgets/gym_background_test.dart` (new) | the width it is given and 390/360 of it as height (360, 412, 180); each floor's drawing, cut to its 360 × 390 picture; an unknown floor (0, 6, −1, 42) draws 1F; decoration that screen readers skip; the published size and floor line equal the data |
+
+### Acceptance criteria → tests (the A3 spec, section 4; the local task.md left the step's criteria to the spec)
+- Data equals `gym_art.json`, version arcade-art-1 → "is assets/arcade/gym_art.json character for character", "is
+  arcade-art-1: owners in a 140 x 160 box standing on (70, 150), backgrounds 360 x 390 with the floor line at y 296"
+- Parser rejects an unknown command, a wrong count of numbers, a non-#RRGGBB color, an empty path → "rejects an unknown
+  path command", "rejects a command with the wrong count of numbers", "rejects a color that is not #RRGGBB", "rejects an
+  empty path or an empty command"
+- Shape counts → "has the shape counts of spec 4 (701 in all)"
+- Owner size 140·scale × 160·scale; background width × 390/360 → "is the 140 x 160 box times its scale", "takes the
+  width it is given and 390/360 of it as height"
+- The background draws nothing outside its picture → "with clip, a background shows nothing outside its window; its
+  floor lines run past it", "draws its floor, cut to the 360 x 390 picture"
+- Unknown owner id and floor → "an unknown owner draws the seal", "an unknown floor draws 1F"
+- Accessibility → "screen readers hear "체육관 관장" and the name, not the face", "is decoration: screen readers skip it"
+- Breathing stops with reduced motion → "does not breathe when the device asks for reduced motion", "stops and settles
+  when reduced motion is turned on, and starts again when it is turned off"; the formula → "breathes about its feet:
+  1.2% narrower and 2% taller a quarter into its 2.2 s cycle, back at the half"
+- Picture check, 12 owners and 5 backgrounds → "owner_<id>_<face> matches the design but for edges" (12), "floor_<n>
+  matches the design but for edges" (5), "the comparison catches a wrong picture (another face, another floor, a
+  missing shape)"
+- Drawing rules of spec 2 (order, matrix, fill then outline, opacity) → "draws the shapes in order, the later ones on
+  top", "fills, then outlines, each shape under its matrix", "paints a see-through fill and a faint outline at their
+  opacity, as the floor lines are", "the parser reads a shape: matrix, path, colors, line ends and opacity"
+- Public constants of spec 3 → "publishes each owner face centre in its box (spec 3)", "publishes the picture size and
+  the floor line of the art data"
+- The PM's redeployed task.md, "9개 자산 로딩 확인" (the 9 pictures: 4 owners, 5 floors) → each one rendered and compared
+  with its design shot: "owner_<id>_<face> matches the design but for edges" (each owner in its 3 faces, 12 tests) and
+  "floor_<n> matches the design but for edges" (5 tests). The art is drawn from Dart data, not loaded as asset files
+  (see the PR's Exceptions).
+
+#### 2026-11-24 · merge `f482e99` of `origin/main` `69b0520` · step A3: `main` merged in before the draft ends
+At the user's word (2026-11-24; the prompt is logged on A4's branch, `codex/iter5-hold-plank`), `origin/main`
+(#86 setup timeout, #93 Google sign-in, #94 zero points for knee push-ups) was merged into this branch before the
+steps stacked on it. No conflict: no file changed on `main` since this branch's base is one of A3's. A3's code is
+unchanged.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 3970 passed, 0 failed, 10 skipped (2026-11-24, on
+  `f482e99`; the same 10 skips as `main`'s: a live server smoke test and 9 known push-up judge errors).
+- **Other checks:** `ownership_guard.py --check-diff` OK (28 paths against `origin/main`). Server `pytest` was not run: `server/` is `main`'s,
+  unchanged by A3, and `main`'s own checks cover it.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head (the earlier numbers are for `071c7f0`).
+
+#### 2026-11-23 · code at commit `1dbf9ec` · step A4 `codex/iter5-hold-plank` (Implement high-plank hold stages, team order #8.3)
+A4 is the arcade's hold stage, played with the high plank (the local design hand-off's spec `p16-3/SPEC.md` v3, not committed):
+- **Common part:** `HoldTimeline` and `HoldJudge` (`lib/services/pose/hold_judge.dart`): the time runs only while the pose
+  is held; 0.5 s broken gives a warning and stops it; 0.6 s held runs it again; no new warning while stopped; the second
+  warning or the third star ends the stage; an unknown pose keeps the last reading for 1 s, then is off screen; a pose
+  set up standing (the chair pose, A5) first has to be held 0.6 s after GO. The frames of the 3·2·1 reach the pose's
+  reader only.
+- **Pose bundle:** `HoldPoseDefinition` and the one place that picks it, `HoldPoses.of` (`hold_poses.dart`).
+- **High plank:** `HighPlankReader` and `highPlankHold` (`high_plank_hold.dart`), with the push-up judge's and the
+  setup's own numbers.
+- **Screen:** `HoldStageScreen` and `HoldStageViewModel`: briefing, the battle's push-up setup and 3·2·1, holding,
+  warnings, clear and fail, and the stars kept by A2's store.
+
+The branch starts at A2's `f074474` and merges A3 (`f45aa9b`, then `32893b5` for `3d7dee8`). I ran these in
+`gymrats_app/` on Windows on the code commit, without coverage (this PC's rule):
+
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/services/pose/hold_judge_test.dart test/services/pose/high_plank_hold_test.dart test/viewmodels/hold_stage_viewmodel_test.dart test/screens/hold_stage_screen_test.dart
+```
+
+No camera, ML Kit, server or secure storage is needed: the tests use a scripted `SetupViewModel` over
+`FakeCameraService` and `FakePoseEstimator`, scripted pose readers, `MemoryArcadeProgressStore`, `FakeSoundEffects`,
+synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fakeAsync`, a test-controlled clock).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" on the A4 PR |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed by A4 | 11/23 | same CI comment |
+
+- **Tests:** `flutter test` 4074 passed, 0 failed, 10 skipped (2026-11-23, `1dbf9ec`). `flutter analyze` found no issues. The 10 skipped
+  tests are the ones already skipped on `main` (a live server smoke test and 9 known push-up judge errors), untouched.
+- **New tests:** 106, in the four files below (26 + 32 + 22 + 26). The A4 files with `test/design_tokens_test.dart`:
+  172 passed.
+- **Other checks:** `ownership_guard.py --check-staged` OK on every commit and `--check-diff` OK on `1dbf9ec`
+  (64 paths against `origin/main`, A2's and A3's counted as inherited; the stacked-branch
+  intersection with A2's and A3's branches lists only the 18 A4 files and the three personal notes). The rules of `test/design_tokens_test.dart`, run by hand over the five `lib/screens/hold_stage_*.dart` files
+  (the test's own list does not include them; it is not an A4 file): no problem.
+- **Against the design shots:** the briefing, holding, warning, clear and fail scenes were captured with the app's fonts
+  at 360 × 780, 2x, in a throwaway widget test (not committed) and compared by eye with `shots/hold_plank_brief.png`,
+  `hold_plank_hold.png`, `hold_plank_warn.png`, `result_holdClear.png` and `result_holdFail.png`. Fixed after the first
+  capture: the stage tag stretched across the top, the clock was centred on the screen instead of between the tag and
+  the warning marks, and the results sat 28 dp low. After the fixes the scenes match within a few pixels. Where the
+  camera picture is, the shots show a gray figure; the app shows the camera, and the figure only while there is no
+  picture.
+- **Coverage:** TODO(Woohyun Song): copy the CI comment of the A4 PR (commit, run link, per-layer numbers, A4's files).
+- **Phone check (spec 9, Galaxy S26+), done 2026-11-24** by the user (the user's message of 2026-11-24 02:52, logged
+  in A5's Prompt Log under `codex/iter5-hold-chair`), with `lib/demo/hold_stage_demo.dart` built from the worktree's
+  HEAD then, A5's `e17e332`, which holds A4's code up to `4ef8a2f` (the one-arm fix). The USB cable was out, so no console numbers were seen. STAGE 3 · 1F: ① 30 s held: a
+  clear; ② one arm bent: "팔 펴요"; ④ head down: "머리 들어요"; after fixing, the time ran again; a second warning: the
+  fail. ③ knees down and ⑤ standing up were tried as the second warning: the stage failed at the right moment, but it
+  went straight to the fail screen before their words could be read. Each warning came almost at once (the user's
+  words; with the cable out, the 0.5 s itself was not measured). No line value changed. The missing reason at a second warning is fixed by the
+  effects (entry `3ffed5f` below: the owner's "실패!" for 1.5 s with the warning's words kept, then the reasons as
+  chips on the fail screen); ③'s and ⑤'s words are seen again in the last phone check (TODO in that entry).
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/hold_judge_test.dart` (new) | nothing runs before GO; the time runs between held frames and ends at the third star; a clock going back; broken 0.49 s no warning, 0.5 s a warning and a stop; no time while broken or stopped; held 0.59 s still stopped, 0.6 s running; a break going on while stopped adds no warning; the second warning ends it; the warning's fault is the one read most (the latest of a tie); the fault shown while stopped follows the latest; an unknown pose keeps a held or a broken reading for 1 s, then is off screen; an unknown pose after GO starts nothing; an entry keeps the time at 0 with no warning until 0.6 s held; `HoldJudge` gives the 3·2·1 frames to the reader only, times frames from GO, reads a missing frame as unknown, reads nothing after the end; `HoldFault`, `HoldReading`, `HoldProgress` values |
+| Service | `test/services/pose/high_plank_hold_test.dart` (new) | the bundle (push-up setup, no entry, checks, words, icons, figure, guide); the chair pose stopped until A5; the lines are the judge's and setup's (155°, 0.35, 0.6); arms 156° held, 154° bent; hands above the shoulders and an upright body off screen, one hand not seen never; no shoulders, one shoulder, no arm, low likelihood, an empty frame unknown, one arm enough; the head's place from the held frames of the first 0.5 s after GO, never from the 3·2·1, never again; 0.349 held, 0.351 head down; a missing nose waits; knees: the classifier's touching, knees beside the hands at both ends of the judge's range, the hip fold 25° from one plank angle and 20° after three, two kept as their mean, a kneeling start never kept, bent arms read as bent arms; the order of faults; a plank held in a `HoldJudge` to the third star |
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` (new) | opens on the briefing with its stage, floor and owner; a fight stage and a chair stage are stopped; 자세 잡기 opens the push-up setup once; the setup counting down is the 3·2·1 and a broken pose goes back; 3·2·1 frames reach the reader only, counting; the guide crop and viewport reach the setup check (push-up and squat); GO starts the hold and the guide judge; held to the third star: star cues, the end, 3 stars kept, the camera let go; warning and resumed cues; two warnings before a star is a fail kept as 0; ended by warnings, the stars count the time held; no frame is unknown, then off screen; the clock stands while the camera is not running; a failing store keeps the result; no account keeps nothing; 다시 하기 back to the briefing with a new camera; playing again only after a result; leaving lets the camera go |
+| View | `test/screens/hold_stage_screen_test.dart` (new) | the briefing (stage, owner, pose, stars, checks, rule, button) at 412 × 915 and 360 × 780; its back and the system back return `arcade`; the setup in the battle's camera area, the camera switch; the 3·2·1 numbers and the clock at 0:00; the camera failures; GO!, the clock and the green frame, the figure without a camera; the bar and its star marks; each warning (팔 펴요, 무릎 떼요, 머리 들어요, 화면 안으로): 멈춤, red frame, 삐익!, the owner's whistle, a red mark, an amber bar, the reject sound, then gone when held again; the leave dialog (stay, leave = `left`, nothing kept), back asks too, a hold ending while asking; the clear (time, stars, next stage card, buttons, stars kept, `nextStage`); a clear by two warnings; the fail (no star, 경고 2번, buttons, 다시 도전, `arcade`); results at 360 × 780; the next stage names; the chair pose's icon, warnings and figure with a stand-in bundle; the announcements; a fight stage does not open |
+
+### Acceptance criteria → tests (the A4 spec, section 9; the local task.md left the step's criteria to the spec)
+- Time and warnings, fake clock → hold_judge_test: 'a broken pose after GO keeps the time at 0, with no warning', 'the
+  time starts once the pose is held for 0.6 s' (entry); 'frames of the 3·2·1 reach the reader, not the time or
+  warnings'; 'held all along, the hold ends at the third star'; 'broken for 0.49 s gives no warning', 'broken for
+  0.5 s gives one warning and stops the time'; 'the time does not run while broken or paused'; 'held for 0.59 s stays
+  paused, for 0.6 s runs again'; 'a break that goes on while paused adds no warning'; 'the second warning ends the
+  hold'; 'within 1 s an unknown pose keeps a held one: the time runs', 'past 1 s it is off screen, warned 0.5 s
+  later'; 'the warning names the fault read most in its run'
+- High plank reading → high_plank_hold_test: 'arms at 156° are held, at 154° bent'; 'the head's place is taken from the
+  held frames of the first 0.5 s', '0.349 shoulder widths lower is held, 0.351 is the head down'; 'hands above the
+  shoulders read as off screen: the user stood up'; 'a frame without the shoulders is unknown'; the knee group ('the
+  knee classifier reading touching is knees down', 'knees beside the hands are knees down, far behind them not', 'hips
+  folded 25° from the first plank angle are knees down')
+- Stars by the time held after two warnings → hold_stage_viewmodel_test 'ended by warnings, the stars count the time
+  really held'; hold_stage_screen_test 'a clear by two warnings lights the stars held'
+- Screens → hold_stage_screen_test: the briefing, holding and result groups; 'a warning for … stops the clock and
+  says …' (4 tests); 'the bar fills toward the third star, its marks light'; 'the leave button asks with the battle's
+  dialog'
+- Chair icons and figure with a stand-in bundle (spec 3) → 'the chair pose's drawings, with a stand-in bundle' (3 tests)
+- Phone check → above (2026-11-24); the effects' phone check is the last TODO, in the effects entry below.
+
+#### 2026-11-23 · code at commit `1c325ab` · step A4 follow-up on `codex/iter5-hold-plank` (two gaps found while starting A5)
+Starting A5 (the chair pose, spec `p16-4/SPEC.md` v2, not committed) showed two things the chair pose needs from A4's
+common part. The user chose to fix them on the A4 branch and merge them into A5 (local task.md, A4 Decisions,
+2026-11-23):
+- **`014e4f0` guide lines from the reader:** the hold ran the setup exercise's rep judge from GO only for its guide
+  lines. The squat judge drops a squat 12 s after it starts down (`RepPhase.lost`), and `SquatHeightOverlay` hides on
+  `lost`, so the chair pose (held 20 to 45 s) would lose its squat height lines. A reader that also implements
+  `HoldGuideReader` (`hold_pose_definition.dart`) now gives the snapshot itself (`HoldJudge.guide`), and the view model
+  makes no rep judge for the lines then.
+- **`1c325ab` "시작":** a pose entered after GO keeps the time at 0 until first held; a screen reader now hears "시작"
+  once when the time begins (`HoldStageCueKind.started`; the chair spec's section 6).
+- **Checked, not changed:** the high plank's push-up guide also comes from a rep judge of its own, but the push-up
+  judge's 12 s limit (`maxAttempt`) applies only once a push-up starts down; held at the top it stays `up`, and
+  `ChestHeightOverlay` draws whenever both shoulders are seen. A new test runs the real judge (`judgeFor`) on the
+  hold's clock through a 60 s plank (stage 21) and finds it `up` with its start height (`topShoulderY`) at 5, 15, 30,
+  45 and 59.9 s.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not changed by the follow-up | 11/23 | CI comment "Tests and coverage (GitHub Actions)" on the A4 PR |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment on `1c325ab` or later | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment on `1c325ab` or later | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment on `1c325ab` or later | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed | 11/23 | same CI comment |
+
+- **Tests:** `flutter test` 4080 passed, 0 failed, 10 skipped (2026-11-23, the content of `1c325ab`); the same 10 skips
+  as above. `flutter analyze` found no issues. The four A4 test files: 112 passed (110 on `014e4f0` alone).
+  `397f498` only rewords one test comment (local reviewer run 5); the four files still pass (112).
+- **New tests:** 6, plus one more check in an existing test: `hold_judge_test.dart` 2, `hold_stage_viewmodel_test.dart`
+  4, and the "시작" line in `hold_stage_screen_test.dart`'s announcement test.
+- **Other checks:** `ownership_guard.py --check-staged` OK on both commits; `--check-diff` OK (64 paths against
+  `origin/main`); the stacked-branch intersection with A2's and A3's branches still lists 21 paths (the 18 A4 files and
+  the three personal notes).
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added or changed in the follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/hold_judge_test.dart` | a reader without guide lines gives none (`readsGuide` false, `guide` null); a `HoldGuideReader` gives its snapshot after each frame |
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | a reader that gives the guide lines draws them, and no guide judge is made; the real push-up judge keeps the chest guide through a 60 s plank; an entry's end is one `started` cue, and a later resume is `resumed`; without an entry there is no `started` cue |
+| View | `test/screens/hold_stage_screen_test.dart` | the announcement for `started` is "시작" |
+
+#### 2026-11-23 · code at commit `f78ac2b` · step A4, second follow-up on `codex/iter5-hold-plank` (overflows found by the P16 session)
+The P16 session found two overflows in A4's result screen (passed on by the user; local task.md, A4 Decisions):
+- **The ink button's words** (`HoldDarkButton`: "다음 스테이지", P16's "R1부터 다시") overflowed by 28 px at 360 × 780 with
+  1.3x text, and by 12 px at 320 × 640 (48 px with 1.3x text). These are widget-test numbers with the test font,
+  whose every glyph is 1 em wide. With the app's font (measured by the reviewer, run 7) the words overflow only at
+  320 × 640 with 1.3x text: 5 px for "R1부터 다시", 16 px for "다음 스테이지". The words now sit in a `Flexible`
+  `FittedBox` (scale down, one line), in a 4-point side margin that the design's size already leaves free.
+- **The result's star row** (`ArcadeResultFrame`, 3 × 92 + 2 × 12 = 300 points) overflowed by 20 px on a 320-wide phone,
+  whose content is 280 wide (with any font). The row now sits in a `FittedBox` (scale down).
+- Both keep the design's sizes where they fit: at 360 × 780 with 1x text (the design's size), 412 × 915 and 600 × 1000
+  the stars and the words are drawn at full size; they shrink only on a narrower phone or with larger text.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the three new screen tests failed with the reported overflows: 28 px (360 × 780, 1.3x); 20 and
+  48 px (320 × 640, 1.3x); 20 and 12 px (320 × 640, 1x).
+- **Tests:** `flutter test` 4084 passed, 0 failed, 10 skipped (2026-11-23, `f78ac2b`); the same 10 skips as above.
+  `flutter analyze` found no issues. The four A4 test files with `test/design_tokens_test.dart`: 182 passed.
+- **New tests:** 4, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths).
+- **Review:** local reviewer run 7, APPROVE; it also ran the new tests on the old code (they fail with the reported
+  numbers). Its two Minors were fixed before the commit: the side margin above, and the font note above.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the second follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a clear and a fail fit 360 × 780 at 1.3x text', '… 320 × 640 at 1.3x text', '… 320 × 640 at 1.0x text': a clear and a fail with no overflow (a short phone scrolls to its buttons); 'the frame keeps the design sizes where they fit': `ArcadeResultFrame` with "R1부터 다시" draws its words and its middle star (72) at full size at 600 × 1000, 412 × 915 and 360 × 780, has no overflow at the three sizes, and shrinks the stars at 320 wide and the words at 1.3x text on a 360 phone |
+
+#### 2026-11-24 · code at commit `4ef8a2f` · step A4, third follow-up on `codex/iter5-hold-plank` (one arm bent, Codex review)
+The Codex review of PR #90 at `be6509a` (P2, "Check each arm against the plank angle") found that the high plank's
+arms-bent check used `PoseMetrics.elbowAngle`, the mean of the two arms: one arm at 180° and the other at 130° make
+155°, which passed, so a user could hold with one arm bent and earn time and stars. The user had it fixed on A4's
+branch (local task.md, A4 Decisions, 2026-11-24):
+- **Now:** each arm seen is measured alone (`PoseMetrics.leftElbowAngle`, `rightElbowAngle`, each there only when its
+  shoulder, elbow and wrist reach the judge's likelihood line), and the less straight one under the setup's 155° is
+  arms bent; with one arm seen, that one. It is chosen in `high_plank_hold.dart`; `pose_metrics.dart` is unchanged.
+  The other straight-arm checks (the knees, the hip fold, the plank angle kept) keep the judge's mean.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the two new tests of a bent arm failed on the old reader; the third (one arm seen) passes on both,
+  since the mean of one arm is that arm, and guards the new one-arm path.
+- **Tests:** `flutter test` 4087 passed, 0 failed, 10 skipped (2026-11-24, `4ef8a2f`; the same 10 skips as above). `flutter analyze` found no issues.
+  `test/services/pose/high_plank_hold_test.dart`: 35 passed.
+- **New tests:** 3, in `test/services/pose/high_plank_hold_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths); the stacked-branch
+  intersection with A2's and A3's branches still lists 21 paths.
+- **Review:** local reviewer A4 run 8, APPROVE. It checked the test geometry by hand (the spliced arm keeps the
+  shoulder width and the hands under the shoulders) and that keeping the mean for the other straight-arm checks
+  loses no fault: a frame with one arm under 155° is still broken (at most it reads "무릎 떼요" first, when the hips
+  are folded too), as the push-up judge also uses the mean for its top and the smaller arm only for its lockout. Its
+  Minors were fixed before the commit: two comments named the review as "Codex review on A4" (now "PR #90 review"),
+  and this entry lacked these two lines.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the third follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/pose/high_plank_hold_test.dart` | 'one arm bent, 180° and 130°, is arms bent though the mean is 155°' (either side; the metrics' mean is 155°); 'the less straight arm decides: 156° held, 154° bent' (the other arm at 180°); 'with one arm seen, that arm decides' (the right elbow and wrist unseen: the left at 180° held, at 130° bent) |
+
+#### 2026-11-24 · code at commit `3ffed5f` · step A4, effects on `codex/iter5-hold-plank` (the user's picks after the phone check)
+After the phone check of 2026-11-24 the user picked the hold stage's effects on the design canvas (local spec
+`p16-3-fx/SPEC-FX.md`, not committed; local task.md, A4 Decisions, 2026-11-24). All new times are in `HoldTiming`:
+- **Music:** the battle's tracks at the battle's moments, through the same `SoundServices.music` and `MusicCue`s:
+  `setup` through the setup and the 3·2·1, `battle` while holding, the `win` or `lose` jingle as the stage ends
+  (at a second warning's moment already, as a battle's jingle starts when it ends), and `menu` when the stage is left
+  before a result. The battle's `BattleSounds` takes a `BattleStageState`, so the hold
+  screen picks the same cues itself; no music or battle file changed.
+- **Start bubble (C1):** right after GO the owner's white bubble, as "삐익!"'s, says the pose's start words
+  (`HoldPoseDefinition.startWords`; the high plank's "그대로 버텨!") for `startBubble` (2 s), or until the time starts
+  for a pose with an entry. A warning takes its place.
+- **Stars (B2 revised + sound):** at the first and second star the star pops on the bar (`starPop`, 0.3 s; not with
+  reduced motion), the owner smiles (`GymOwnerFace.ok`) behind a big lime bubble "좋아!" / "잘한다!" for `cheer`
+  (1 s), its right end per owner as the design's `bubR`, and the app's short `SoundEffect.good`
+  (`assets/audio/sfx_hit_good.wav`) plays. The third star is the clear. A warning takes the bubble's place.
+- **Second warning (A2 + A3, shown as F4):** the owner's big red "실패!" (the cheer's widget, its color and words
+  changed) comes in big and settles (`failPop`, 0.2 s) in place of "삐익!"; the camera box keeps the warning's words,
+  the clock says "멈춤", nothing is judged for `endShow` (1.5 s), then the fail screen lists the two warnings' reasons
+  as red chips in order where "경고 2번" was. A clear ended by warnings (a star already earned) keeps "삐익!" for the
+  same 1.5 s, with the win jingle, then shows the clear: a call beyond the spec that the user kept (2026-11-24, local
+  task.md, A4 Decisions), as "실패!" on a clear would not match the clear screen after it.
+  This fixes what the phone check of 2026-11-24 found (A4 entry above): a second warning went straight to the fail
+  screen, so its reason could not be read.
+- **Screen reader:** the start words and "실패!" are announced as the warnings are (a `callout` cue), and the first two
+  stars' announcements end with their cheer.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Tests:** `flutter test` 4109 passed, 0 failed, 10 skipped (2026-11-24, `3ffed5f`; the same 10 skips as above). `flutter analyze` found no
+  issues. The four A4 test files with `test/design_tokens_test.dart`: 207 passed.
+- **New tests:** 22 (view model 8, screen 14). Changed for the new behavior: the start words' cue in two
+  cue lists, the result after `endShow` in four screen test bodies (six runs, with the size cases) and one view model
+  test, the reasons in place of "경고 2번" in the fail test, and the stars' announcements with their cheer.
+- **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths); the stacked-branch
+  intersection with A2's and A3's branches still lists 21 paths.
+- **Review:** local reviewer A4 run 9, CHANGES_REQUESTED: the result jingle came 1.5 s after a second warning, while a
+  battle's starts when it ends (now at once), and the local design-doc list lacked the new API (added); Minors: a
+  screen check that could not fail (now: the frames in the moment are not read), and this entry's counts and lines.
+  The clear ended by warnings (no "실패!") was the session's call: said in the PR and asked of the user, who kept it
+  on 2026-11-24. Run 10: APPROVE (all fixed; no new code finding).
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Phone check of the effects (the last phone check):** TODO(Woohyun Song): with the demo, see the start bubble, both
+  cheers with the star pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen (also
+  for ③ knees down and ⑤ standing up as the second warning, whose words the first check could not read), a clear
+  ended by warnings ("삐익!", the win jingle, the clear), and the music through a stage and after leaving; and that
+  the leave button goes at a second warning and stays gone until the result (the fifth follow-up below).
+
+### Test cases added in the effects follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` | 'GO shows the pose's start words for 2 s, read out'; 'with an entry the start words stay until the time starts'; 'a warning takes the start bubble'; 'the first two stars are cheered for 1 s, the third is not'; 'a warning takes the cheer'; 'a second warning with no star: 실패! for 1.5 s, nothing judged'; 'a second warning after a star: the whistle stays, then a clear'; 'leaving in the moment shows no result and keeps nothing' |
+| View | `test/screens/hold_stage_screen_test.dart` | 'GO: "그대로 버텨!" in the white bubble for 2 s, read out'; 'a warning takes the start bubble's place'; 'the first and second stars: a lime cheer, a smile, a pop and the good sound, once each'; 'the cheer ends at the owner on every floor' (142, 140, 150); '"잘한다!" fits 360 × 780 at 1.3x text / 320 × 640 at 1.3x / 320 × 640 at 1.0x'; 'with reduced motion the stars do not pop'; 'a warning takes the cheer's place'; 'a second warning with no star: "실패!" over the stage, the warning kept below for 1.5 s, then the reasons in order'; 'the battle's music at the battle's moments'; 'a second warning with no star plays the lose jingle at once'; 'a clear ended by warnings plays the win jingle at once'; 'leaving before a result brings the menu music back'; the size tests 'a clear and a fail fit …' now also see "실패!" |
+
+#### 2026-11-24 · code at commit `3ffed5f` (notes only) · step A4: the phone check and the user's answers
+No code changed. The user's phone check of 2026-11-24 went into A4's entry above (spec 9, with the build it ran),
+and the user's answer on a clear ended by warnings into the effects entry (local task.md, A4 Decisions, 2026-11-24).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4109 passed, 0 failed, 10 skipped (2026-11-24, on
+  `47ea0d1`, the code of `3ffed5f`; the same 10 skips as above). The first full run had one failure outside A4:
+  `test/services/online/online_battle_integration_test.dart`, 'the game on the phones +5 AVERAGE shows at once; the
+  same answer keeps it, and a third phone's average rep reads as average'. It is an intermittent failure outside A4;
+  its cause was not found (that run kept only the summary, not the failure message). The file then passed twice alone
+  (60 tests each time), and the full rerun passed. Nothing in `lib/services/online/`, its tests or `server/` changed
+  here. Plan: watch it in the PR's CI run; it is not A4's file, so it is left to that file's owner if it fails again.
+- **Review:** local reviewer A4 run 11, APPROVE; its five Minors were fixed before the commit (two references a reader
+  of this branch could not follow, the timing note, this failure's reason and plan, the local status row).
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+#### 2026-11-24 · code at commit `94f6416` · step A4, fourth follow-up on `codex/iter5-hold-plank` (the leave dialog at a stage's end; `main` merged in)
+The P16 session found, and the user had it fixed (local task.md, A4 Decisions, 2026-11-24): in a second warning's
+1.5 s (`HoldTiming.endShow`, with "실패!", or "삐익!" after a star) the leave dialog stayed open and could be opened,
+and leaving then closed the stage without its result, so its stars were not kept. A battle closes the dialog when it
+ends.
+- **Now (`94f6416`, `lib/screens/hold_stage_screen.dart`):** the moment the stage ends (a second warning's moment, or
+  the result at the third star) an open dialog closes, and until the result shows neither back nor the leave button
+  opens one. The result and its stars always come with the result screen. The view model is unchanged.
+- **`main` merged in (the user's word, 2026-11-24):** `origin/main` `69b0520` (#86, #93, #94) first (`166de3b`, no
+  conflict), then A2 (`78e61dc`) and A3 (`6bda1e0`), each bringing only its own merge entry; the testing notes'
+  conflicts kept both sides, each step's new entry after its own section. The user chose this order after the local
+  harness blocked merging A2 straight in: the merge commit, made by hand for the notes' conflict, counted `main`'s
+  62 files as outside A4's scope, and the harness leaves `main`'s files out only when the second parent is
+  `origin/main`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+then the same as A4's entry above.
+
+- **Before the fix:** the three new tests failed on the old screen (the dialog stayed in the moment, and opened in it).
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4238 passed, 0 failed, 10 skipped (2026-11-24, on
+  `6bda1e0`; the same 10 skips as above): 4109 before, 3 new, and 126 that came with `main`.
+  `test/screens/hold_stage_screen_test.dart`: 47 passed.
+- **New tests:** 3, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on the fix and on the two hand-made merge commits;
+  `--check-diff` OK (64 paths against `origin/main`); the stacked-branch intersection with A2's and A3's branches
+  still lists 21 paths. Server `pytest` was not run: `server/` is `main`'s, unchanged by A4.
+- **Review:** local reviewer A4 run 12, APPROVE. It ran the three new tests on a copy with the old screen (each
+  fails at its dialog check), checked the third-star path (the existing 'the hold ending while asking closes the
+  question'), a dialog opened just before the end, and that each merge differs from the automatic one only in the
+  notes, by exactly the lower step's own entry. Its Minors: these AI notes lacked the follow-ups' evidence (a short
+  block added to A4's section), the local status row (updated), and one left for the user: in the 1.5 s the leave
+  button is still drawn and announced, though it opens nothing, while the battle hides its button once decided.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+
+### Test cases added in the fourth follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a second warning while asking closes the question at once, then the fail screen' (the dialog gone with "실패!", then 다시 도전, the screen not closed); 'in a second warning's moment back and the leave button open no dialog' (then the fail screen); 'a star, then a second warning while asking: the clear shows and its star is kept' ("삐익!", back opens nothing, then 클리어! and the store keeps 1 star) |
+
+#### 2026-11-24 · code at commit `f28cac6` · step A4, fifth follow-up on `codex/iter5-hold-plank` (the leave button at a stage's end)
+The reviewer's Minor in the fourth follow-up (run 12) was left to the user: in a second warning's 1.5 s the leave
+button was still drawn and announced, though it opened nothing. The user had it hidden as in a battle (local
+task.md, A4 Decisions, 2026-11-24).
+- **Now (`f430051`):** `lib/screens/hold_stage_screen.dart` passes no leave action to `HoldStagePlay` once the stage
+  is over, and `lib/screens/hold_stage_play.dart` takes it as nullable (null hides the button), as `BattleArena`
+  does once a battle is decided. `BattleCameraArea` then draws no button and keeps its place empty, as in a battle.
+  The third star goes straight to the result, which has no leave button (`f28cac6` asserts it). The view model is
+  unchanged.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the same as A4's entry above.
+
+- **Before the fix:** the two new tests and the changed one failed on the old screen (the button was still found).
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4240 passed, 0 failed, 10 skipped (2026-11-24, on
+  `f430051`; the same 10 skips as above): 4238 before and 2 new. `test/screens/hold_stage_screen_test.dart`: 49
+  passed, on `f430051` and again on `f28cac6` (one assertion added to an existing test).
+- **New tests:** 2, and 2 changed, in `test/screens/hold_stage_screen_test.dart`.
+- **Other checks:** `ownership_guard.py --check-staged` OK on `f430051` and `f28cac6`. Server `pytest` was not run:
+  `server/` is unchanged.
+- **Review:** local reviewer A4 run 13, APPROVE. It checked the button and its semantics node are gone for the whole
+  1.5 s in both cases, the third-star path and back in the moment, and that `94f6416` stays. Its three Minors were
+  fixed: "optional" in this entry (the parameter is nullable, still required), the third-star check (`f28cac6`), and
+  the PR body.
+- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Phone check:** in the last phone check (the effects entry's TODO above).
+
+### Test cases added or changed in the fifth follow-up
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/hold_stage_screen_test.dart` | 'a second warning with no star: the leave button is gone for the whole moment, on the screen and to a screen reader' and 'a second warning after a star: …' (the button's icon and its semantics label `게임 나가기` are there before the warning; from the warning, at 0.75 s and 0.1 s before the end, neither is found; then 다시 도전 or 클리어!, the screen not closed); renamed from the fourth follow-up's 'in a second warning's moment back and the leave button open no dialog': 'in a second warning's moment there is no leave button and back opens no dialog' (the button is not found, back opens nothing, then the fail screen); 'the hold ending while asking closes the question' now also finds no leave button on the clear (`f28cac6`) |
