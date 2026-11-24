@@ -1,10 +1,12 @@
 // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/form_report.dart';
 import 'package:gymrats_app/models/match_record.dart';
+import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/feedback/form_analyzer.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
@@ -431,6 +433,91 @@ void main() {
       await model.load();
       expect(notified, 1);
     });
+
+    test('without a given weight, the one in the profile is used, read '
+        'alongside the report', () async {
+      repository.profile = const UserProfile(name: '우현', weightKg: 80);
+      repository.reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+      final model = vm(_match());
+      await model.load();
+      expect(model.state.metrics!.weightAssumed, isFalse);
+      expect(model.state.metrics!.weightKg, 80);
+      expect(repository.fetchCount, 1);
+      // A retry does not ask again.
+      await model.load();
+      expect(repository.fetchCount, 1);
+    });
+
+    test(
+      'no weight in the profile, or no profile, assumes the default',
+      () async {
+        repository.reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+        final none = vm(_match());
+        await none.load();
+        expect(none.state.metrics!.weightAssumed, isTrue);
+        repository.error = const ApiException(ApiErrorKind.network);
+        final unreachable = vm(_match());
+        await unreachable.load();
+        expect(unreachable.state.phase, FeedbackPhase.ready);
+        expect(unreachable.state.metrics!.weightAssumed, isTrue);
+      },
+    );
+
+    test('a slow profile does not hold the report: past the limit it opens '
+        'on the default weight', () {
+      fakeAsync((async) {
+        repository.reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+        repository.gate = Completer<void>();
+        final model = vm(_match());
+        model.load();
+        async.elapse(
+          FeedbackViewModel.weightWait - const Duration(milliseconds: 1),
+        );
+        expect(model.state.phase, FeedbackPhase.loading);
+        async.elapse(const Duration(milliseconds: 2));
+        expect(model.state.phase, FeedbackPhase.ready);
+        expect(model.state.metrics!.weightAssumed, isTrue);
+      });
+    });
+
+    test('a given weight is not looked up', () async {
+      repository.reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+      await FeedbackViewModel(
+        match: _match(),
+        repository: repository,
+        weightKg: 70,
+      ).load();
+      expect(repository.fetchCount, 0);
+    });
+
+    test('a report in hand reads the profile weight on load, even with no '
+        'kept battles', () async {
+      repository.profile = const UserProfile(name: '우현', weightKg: 80);
+      final model = FeedbackViewModel.fromReport(
+        sampleReport(valid: 6, endedAt: _endedAt),
+        phoneReports: phone,
+        profiles: repository,
+      );
+      expect(model.state.metrics!.weightAssumed, isTrue);
+      await model.load();
+      expect(model.state.metrics!.weightKg, 80);
+      expect(model.state.metrics!.liftedKg, closeTo(6 * 80 * 0.64, 1e-9));
+    });
+
+    test(
+      'a report in hand with no weight anywhere does not change on load',
+      () async {
+        final model = FeedbackViewModel.fromReport(
+          sampleReport(),
+          profiles: repository,
+        );
+        var notified = 0;
+        model.addListener(() => notified++);
+        await model.load();
+        expect(notified, 0);
+        expect(repository.fetchCount, 1);
+      },
+    );
 
     test(
       'a report in hand without a phone store never changes on load',

@@ -552,6 +552,16 @@ def test_body_info_needs_consent_and_sane_values(client, body):
     assert user.height_cm is None and user.body_consent_at is None
 
 
+def test_the_profile_carries_only_the_users_own_weight(client):
+    token = sign_up(client)["token"]
+    assert client.get("/users/me", **auth(token)).json()["weight_kg"] is None
+    _post_body(client, token, height_cm=175, weight_kg=70.26, consent=True)
+    me = client.get("/users/me", **auth(token)).json()
+    assert me["weight_kg"] == 70.3
+    # The height is not needed by the app and stays off the profile.
+    assert "height_cm" not in me
+
+
 def test_body_info_needs_a_login(client):
     response = client.post(
         "/users/me/body", {"height_cm": 175, "weight_kg": 70, "consent": True}, format="json"

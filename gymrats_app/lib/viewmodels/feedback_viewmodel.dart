@@ -171,15 +171,18 @@ class FeedbackViewModel extends ChangeNotifier {
     this._phoneReports,
     this.analyzer = const FormAnalyzer(),
     this.weightKg,
-  });
+  }) : _profiles = _repository;
 
-  /// Ready at once with [report]. [load] then only reads the recent battles
-  /// kept on the phone for the comparisons, and does nothing without a store.
+  /// Ready at once with [report] on [weightKg]. [load] then reads the
+  /// recent battles kept on the phone for the comparisons and, without
+  /// [weightKg], the body weight from [profiles]; it does nothing without
+  /// either.
   FeedbackViewModel.fromReport(
     FormReport report, {
     this.analyzer = const FormAnalyzer(),
     this._phoneReports,
     this.weightKg,
+    this._profiles,
   }) : match = null,
        _repository = null,
        _state = _ready(report, analyzer, weightKg: weightKg);
@@ -189,12 +192,22 @@ class FeedbackViewModel extends ChangeNotifier {
   final UserRepository? _repository;
   final FormReportStore? _phoneReports;
 
+  /// Where the body weight is read when [weightKg] is not given.
+  final UserRepository? _profiles;
+
   /// The rules the feedback is computed with.
   final FormAnalyzer analyzer;
 
-  /// The user's body weight for the estimates; null uses
-  /// [ReportMetrics.defaultWeightKg] and the report says it is assumed.
+  /// The user's body weight for the estimates when known up front; null
+  /// reads it from the profile, and without one there the report uses
+  /// [ReportMetrics.defaultWeightKg] and says it is assumed.
   final double? weightKg;
+
+  /// The weight the numbers use: [weightKg], else the profile's once read.
+  double? _weight;
+
+  /// How long a loaded report waits for the profile's body weight.
+  static const weightWait = Duration(seconds: 2);
 
   FeedbackState _state = const FeedbackState();
   bool _loading = false;
@@ -240,13 +253,21 @@ class FeedbackViewModel extends ChangeNotifier {
     }
     _loading = true;
     _setState(const FeedbackState());
+    // Asked alongside the report. The profile read first sends any queued
+    // battles, so it gets a short limit and then the default weight is used.
+    final weight = _readWeight().timeout(weightWait, onTimeout: () => null);
     try {
       final id = match.id;
       final report = id == null ? null : await repository.fetchFeedback(id);
       _setState(
         report == null
             ? const FeedbackState(phase: FeedbackPhase.missing)
-            : _ready(report, analyzer, weightKg: weightKg, kept: await _kept()),
+            : _ready(
+                report,
+                analyzer,
+                weightKg: await weight,
+                kept: await _kept(),
+              ),
       );
     } on Exception catch (e) {
       final kept = await _kept();
@@ -257,7 +278,7 @@ class FeedbackViewModel extends ChangeNotifier {
                 copy,
                 analyzer,
                 fromPhone: true,
-                weightKg: weightKg,
+                weightKg: await weight,
                 kept: kept,
               )
             : FeedbackState(
@@ -276,19 +297,37 @@ class FeedbackViewModel extends ChangeNotifier {
 
   Future<void> _compareFromReport() async {
     final report = _state.report;
-    if (_compared || _phoneReports == null || report == null) return;
+    if (_compared || report == null) return;
+    if (_phoneReports == null && (weightKg != null || _profiles == null)) {
+      return;
+    }
     _compared = true;
+    final reading = _readWeight();
     final kept = await _kept();
-    if (kept.isEmpty) return;
+    final weight = await reading;
+    if (kept.isEmpty && weight == weightKg) return;
     _setState(
       _ready(
         report,
         analyzer,
         fromPhone: _state.fromPhone,
-        weightKg: weightKg,
+        weightKg: weight,
         kept: kept,
       ),
     );
+  }
+
+  /// [weightKg], else the body weight in the user's profile; null when the
+  /// profile has none or cannot be read, so the report assumes the default.
+  Future<double?> _readWeight() async {
+    final known = weightKg ?? _weight;
+    final profiles = _profiles;
+    if (known != null || profiles == null) return known;
+    try {
+      return _weight = (await profiles.fetchProfile()).weightKg;
+    } on Exception {
+      return null;
+    }
   }
 
   /// The reports kept on this phone; none when there is no store or it

@@ -10,6 +10,7 @@ import '../models/rep_event.dart';
 import '../services/feedback/form_analyzer.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/feedback/report_metrics.dart';
+import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/feedback_viewmodel.dart';
 import '../widgets/feedback_charts.dart';
@@ -23,8 +24,9 @@ import '../widgets/form_fault_clip.dart';
 ///
 /// It draws what [FeedbackViewModel] made of [report] and only words it.
 /// Opened with only a report (the result screen's route), it makes that view
-/// model itself and reads the recent battles kept on the phone, when the app
-/// provides the store. Back returns to where it was opened.
+/// model itself, which reads the recent battles kept on the phone and the
+/// body weight in the user's profile, when the app provides them. Back
+/// returns to where it was opened.
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({
     super.key,
@@ -58,16 +60,19 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   FeedbackViewModel get _model {
     final own = _own;
     if (own != null) return own;
-    FormReportStore? store;
-    try {
-      store = context.read<FormReportStore>();
-    } on ProviderNotFoundException {
-      store = null;
+    T? provided<T>() {
+      try {
+        return context.read<T>();
+      } on ProviderNotFoundException {
+        return null;
+      }
     }
+
     final made = FeedbackViewModel.fromReport(
       widget.report,
       analyzer: widget.analyzer,
-      phoneReports: store,
+      phoneReports: provided<FormReportStore>(),
+      profiles: provided<UserRepository>(),
     )..addListener(_changed);
     made.load();
     return _own = made;
