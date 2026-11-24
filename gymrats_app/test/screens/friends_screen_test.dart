@@ -526,7 +526,12 @@ void main() {
         tester.binding.handleAppLifecycleStateChanged(state);
       }
       await tester.pump();
-      expect(find.textContaining('대결을 신청했어요'), findsNothing);
+      // A hidden app draws no frames, so the alert's own state is what
+      // counts here: it is off and stops reading.
+      expect(alert.visible, isFalse);
+      final idle = repo.fetches;
+      await tester.pump(const Duration(seconds: 20));
+      expect(repo.fetches, idle);
       for (final state in [
         AppLifecycleState.hidden,
         AppLifecycleState.inactive,
@@ -536,6 +541,24 @@ void main() {
       }
       await tester.pumpAndSettle();
       expect(find.textContaining('대결을 신청했어요'), findsOneWidget);
+    });
+
+    testWidgets('the notification shade (inactive) does not hide it', (
+      tester,
+    ) async {
+      repo.friends.add(_friend);
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      await openApp(tester);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      expect(alert.visible, isTrue);
+      expect(find.textContaining('대결을 신청했어요'), findsOneWidget);
+      // Still in front: it keeps reading.
+      final reads = repo.fetches;
+      await tester.pump(const Duration(seconds: 20));
+      expect(repo.fetches, greaterThan(reads));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
     });
 
     testWidgets('the app shows it on home while signed in', (tester) async {

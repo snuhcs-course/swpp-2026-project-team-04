@@ -863,6 +863,31 @@ void main() {
       expect(vm.error, isNull);
     });
 
+    test('the app went to the background while accepting: nothing opens '
+        'and the invite is taken back, also after coming back', () async {
+      for (final comeBack in [false, true]) {
+        final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+        vm.setSignedIn(true);
+        await pumpEventQueue();
+        expect(vm.current!.id, sent.id, reason: 'comeBack $comeBack');
+        repo.holdAccept = Completer<void>();
+        final accepting = vm.accept();
+        vm.setForeground(false);
+        if (comeBack) vm.setForeground(true);
+        repo.holdAccept!.complete();
+        repo.holdAccept = null;
+        expect(await accepting, isNull, reason: 'comeBack $comeBack');
+        expect(vm.current, isNull);
+        expect(vm.error, isNull);
+        await pumpEventQueue();
+        expect(
+          (await repo.fetchInvite(sent.id)).status,
+          InviteStatus.cancelled,
+        );
+        vm.setForeground(true);
+      }
+    });
+
     test('hidden and shown again while accepting: still dropped', () async {
       repo.receiveInvite(_friend, ExerciseType.squat);
       vm.setSignedIn(true);

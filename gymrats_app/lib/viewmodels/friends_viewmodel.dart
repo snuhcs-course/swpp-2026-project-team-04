@@ -402,7 +402,11 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
   void setForeground(bool foreground) {
     if (foreground == _foreground) return;
     _foreground = foreground;
+    // Going to the background hides the alert too: a 수락 on its way then
+    // opens nothing (accept()).
+    if (!foreground) _hiddenTimes++;
     _sync();
+    _notify();
   }
 
   /// Whether the alert shows now.
@@ -467,7 +471,10 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
     _notify();
     try {
       final accepted = await _repository.acceptInvite(invite.id);
-      if (account != _account || hiddenTimes != _hiddenTimes || _hidden) {
+      if (account != _account ||
+          hiddenTimes != _hiddenTimes ||
+          _hidden ||
+          !_foreground) {
         unawaited(_cancelQuietly(invite.id));
         if (account == _account) current = null;
         return null;

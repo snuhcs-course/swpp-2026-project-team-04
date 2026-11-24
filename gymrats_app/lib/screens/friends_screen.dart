@@ -584,9 +584,16 @@ class _FriendInviteOverlayState extends State<FriendInviteOverlay>
     _routesChanged();
   }
 
+  /// Only a hidden app counts as gone: `inactive` is also the notification
+  /// shade or a system dialog over the app, which must not drop a 수락.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) =>
-      widget.viewModel.setForeground(state == AppLifecycleState.resumed);
+      widget.viewModel.setForeground(switch (state) {
+        AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+        AppLifecycleState.hidden ||
+        AppLifecycleState.paused ||
+        AppLifecycleState.detached => false,
+      });
 
   void _routesChanged() => widget.viewModel.setHidden(widget.routes.hides);
 
