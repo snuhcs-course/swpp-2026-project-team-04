@@ -552,3 +552,7 @@ The messages after this summary are the most recent messages from before compact
 
 <!-- b7f2c482 2026-11-24T08:31:41.335Z -->
 [Jinyoung Park, 11-24 17:31] "됬음?"
+
+## 2026-11-24 · Jinyoung Park · feat/iter5-friend-battles
+<!-- b7f2c482 2026-11-24T08:58:51.601Z -->
+[Jinyoung Park, 11-24 17:58] "됐음?"
