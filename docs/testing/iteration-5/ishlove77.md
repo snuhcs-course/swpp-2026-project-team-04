@@ -5,6 +5,29 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): one friend battle at a time (PM request)
+The last Codex P2 (two invites to one person accepted at once both succeeding) was first left with a reasoned reply;
+the PM asked for it to be fixed in this PR. The server now confirms one accept per person: accepting needs no other
+invite to that person accepted in the last 35 s (`ACCEPT_HOLD`, one conditional write under a lock on the person;
+migration `accounts.0005_friend_invite_accepted_at`). A second accept ends with 409 `invite_busy` and its invite is
+cancelled, and a successful accept cancels the person's other open invites, so those inviters' waiting rooms end at
+their next 2 s read instead of after 30 s. Leaving the waiting room cancels the accept and frees the person at once.
+
+- **Tests:** `flutter analyze` no issues; server `pytest` 233 passed, `accounts/friends_views.py` 100%, migration 0005
+  100%; full `flutter test` count in the commit message and the PR body.
+- **Real concurrency on SQLite:** the Django test database has one connection, so a script outside the repo ran the
+  real view against a file SQLite database with two threads (two connections) accepting two invites to the same
+  person behind a barrier, 40 rounds: every round gave one 200 `accepted`, one 409 `invite_busy`, and exactly one
+  accepted invite. Without the retry, the reviewer reproduced the second request failing with "database is locked"
+  (HTTP 500); the retry on that lock is covered by `test_an_accept_that_meets_a_database_lock_tries_again_and_is_busy`.
+- **Test cases changed:** `server/tests/test_friends.py` (two invites to one person accepted at once: only one counts,
+  409 `invite_busy`, no second accepted invite; a second accept from another phone is busy and the other invite is
+  cancelled; an invite arriving during a held accept is busy and ends now; leaving frees the person; an old accept no
+  longer holds; the accept time is recorded; a database lock is tried again and ends busy; a lock that does not clear
+  is an error; an inviter whose invite was just accepted is held too; accepting takes back my own open invite); `test/services/friends/friend_repository_test.dart` (the same rule in
+  memory); `test/viewmodels/friends_viewmodel_test.dart` (busy accept message, no newer invite after an accept,
+  declined then a newer invite).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fixes for the sixth Codex review
 Two P2 findings from the Codex review of `afae806` were fixed: a friend code must match the shown code exactly, so
 extra padding (`헬창#00002`) finds nobody; and a banner 수락 that comes back after another battle (or the friends page)

@@ -108,6 +108,10 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P9: the sixth Codex review (`afae806`) found over-padded tags still resolving (the four-digit fix of round two
   checked only the minimum) and a late 수락 opening a friend lobby over another battle. Both fixed with tests.
 
+- P9: the seventh Codex finding (two invites to one person accepted at once) was first answered as "won't fix" under
+  the user's new rule to fix only what users can realistically hit; the PM then asked for it in this PR with a server
+  regression test. Fixed with a per-person accept hold.
+
 ## 4. Revisions and Decisions
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so
@@ -118,6 +122,8 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P9 entry: online card → 메인 매치 / 친구와 1v1 sheet (PM) → also a top-right friends button (user) → button removed,
   the 친구와의 대전 row replaces 최근 설정으로 다시 하기, the online card is the main match again, the sheet removed
   (user, after seeing it on the emulator; the PM is told).
+- P9 one battle at a time: Codex finding left with a reasoned reply (user: fix only what is needed) → the PM asked to
+  fix it in this PR (one confirmed accept per person, 409 `invite_busy`, the unmatched inviter's room ends at once).
 - P9 invites: a friend left waiting after an accepted invite → either player may cancel an accepted invite, both
   waiting rooms read it every 2 s, and an accepted invite not paired within 30 s ends the wait.
 
