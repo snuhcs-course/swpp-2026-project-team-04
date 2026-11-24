@@ -39,11 +39,16 @@ class _Repo extends InMemoryFriendRepository {
     return super.addFriend(code);
   }
 
+  /// Called with each invite as soon as it is made, as the friend's app.
+  void Function(BattleInvite made)? onInvited;
+
   @override
   Future<BattleInvite> invite(int friendId, ExerciseType exercise) async {
     await holdInvite?.future;
     _maybeFail();
-    return super.invite(friendId, exercise);
+    final made = await super.invite(friendId, exercise);
+    onInvited?.call(made);
+    return made;
   }
 
   @override
@@ -478,7 +483,38 @@ void main() {
       await starting;
       await Future<void>.delayed(Duration.zero);
       expect(repo.cancels, 1);
+      expect(repo.cancelledIfPending, [false]);
       expect(vm.invite, isNull);
+    });
+
+    test('paired before the invite was made: once made, it is taken back '
+        'only if still open', () async {
+      repo.holdInvite = Completer<void>();
+      final vm = inviting();
+      final starting = vm.start();
+      await vm.paired();
+      // Nothing to take back yet.
+      expect(repo.cancels, 0);
+      repo.holdInvite!.complete();
+      await starting;
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.cancelledIfPending, [true]);
+      expect(vm.invite, isNull);
+    });
+
+    test('paired before the invite was made, and the friend accepted it '
+        'meanwhile: the accept stays', () async {
+      repo.holdInvite = Completer<void>();
+      // The friend accepts the moment the invite exists.
+      repo.onInvited = (made) => repo.answer(made.id, InviteStatus.accepted);
+      final vm = inviting();
+      final starting = vm.start();
+      await vm.paired();
+      repo.holdInvite!.complete();
+      await starting;
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.cancelledIfPending, [true]);
+      expect(repo.invites.single.status, InviteStatus.accepted);
     });
 
     test('reads the invite every pollEvery until it ends', () {

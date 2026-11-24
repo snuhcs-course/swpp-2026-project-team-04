@@ -204,7 +204,10 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
           battle.exercise,
         );
         if (_stopped) {
-          unawaited(_cancelQuietly(sent.id));
+          // Paired before this answer came: the friend may have accepted
+          // the invite already, so take it back only if still open. Left
+          // instead: take it back in any case.
+          unawaited(_cancelQuietly(sent.id, ifPending: _paired));
           return;
         }
         invite = sent;
@@ -297,9 +300,9 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> _cancelQuietly(int inviteId) async {
+  Future<void> _cancelQuietly(int inviteId, {bool ifPending = false}) async {
     try {
-      await _repository.cancelInvite(inviteId);
+      await _repository.cancelInvite(inviteId, ifPending: ifPending);
     } on Object {
       // An open invite expires on its own within the minute.
     }
