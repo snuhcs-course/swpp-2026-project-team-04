@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
@@ -7,10 +5,12 @@ import 'package:gymrats_app/screens/login_screen.dart';
 import 'package:gymrats_app/screens/signup_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/auth/auth_repository.dart';
+import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/login_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/signup_viewmodel.dart';
+import 'package:gymrats_app/widgets/auth_form.dart';
 import 'package:gymrats_app/widgets/accent_button.dart';
 import 'package:provider/provider.dart';
 
@@ -46,47 +46,103 @@ void main() {
 
   Finder field(String label) => find.widgetWithText(TextField, label);
 
-  group('LoginScreen', () {
-    testWidgets('has the fields, one lime button, and a sign-up link', (
+  /// Lets a route move in or out; the group photo never settles.
+  Future<void> settle(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  Future<void> openSheet(WidgetTester tester) async {
+    await tester.tap(find.text('아이디로 로그인'));
+    await settle(tester);
+  }
+
+  Finder input(String label) => find.descendant(
+    of: find.byWidgetPredicate((w) => w is AuthInputField && w.label == label),
+    matching: find.byType(TextField),
+  );
+
+  group('LoginScreen id sheet (P8 SPEC 5)', () {
+    testWidgets('the link opens it: title, close, both fields, the lime '
+        'button, the sign-up link', (tester) async {
+      await open(tester, const LoginScreen());
+      expect(find.byType(TextField), findsNothing);
+      await openSheet(tester);
+      expect(find.text('아이디로 로그인'), findsNWidgets(2));
+      expect(find.byTooltip('닫기'), findsOneWidget);
+      expect(input('아이디'), findsOneWidget);
+      expect(input('비밀번호'), findsOneWidget);
+      expect(tester.widget<TextField>(input('비밀번호')).obscureText, isTrue);
+      expect(find.widgetWithText(AuthLimeButton, '로그인'), findsOneWidget);
+      expect(find.text('처음이신가요? 회원가입'), findsOneWidget);
+    });
+
+    testWidgets('X, back and a tap outside each close it, keeping the text', (
       tester,
     ) async {
       await open(tester, const LoginScreen());
-      // The app is called GymMouse now (user, 2026-11-14).
-      expect(find.text('GYMMOUSE'), findsOneWidget);
-      expect(find.text('GYMRATS'), findsNothing);
-      expect(find.text('로그인하고\n한 판 붙어볼까요?'), findsOneWidget);
-      expect(field('아이디'), findsOneWidget);
-      expect(field('비밀번호'), findsOneWidget);
-      expect(find.byType(AccentButton), findsOneWidget);
-      final password = tester.widget<TextField>(field('비밀번호'));
-      expect(password.obscureText, isTrue);
+      await openSheet(tester);
+      await tester.enterText(input('아이디'), 'woohyun');
+      await tester.tap(find.byTooltip('닫기'));
+      await settle(tester);
+      expect(find.byType(TextField), findsNothing);
 
-      await tester.tap(find.text('처음이신가요? 회원가입'));
-      await tester.pumpAndSettle();
-      expect(find.text('signup'), findsOneWidget);
+      await openSheet(tester);
+      expect(find.text('woohyun'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await settle(tester);
+      expect(find.byType(TextField), findsNothing);
+
+      await openSheet(tester);
+      await tester.tapAt(const Offset(20, 20));
+      await settle(tester);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('아이디로 로그인'), findsOneWidget);
     });
 
-    testWidgets('empty fields show their errors', (tester) async {
+    testWidgets('empty fields show their errors under them', (tester) async {
       await open(tester, const LoginScreen());
+      await openSheet(tester);
       await tester.tap(find.text('로그인'));
       await tester.pump();
-      expect(find.text('아이디를 입력해 주세요.'), findsOneWidget);
-      expect(find.text('비밀번호를 입력해 주세요.'), findsOneWidget);
+      expect(
+        find.widgetWithText(AuthFieldError, '아이디를 입력해 주세요.'),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(AuthFieldError, '비밀번호를 입력해 주세요.'),
+        findsOneWidget,
+      );
+      expect(
+        tester.getTopLeft(find.text('아이디를 입력해 주세요.')).dy,
+        greaterThan(tester.getBottomLeft(input('아이디')).dy),
+      );
       expect(repository.logIns, isEmpty);
     });
 
-    testWidgets('wrong credentials show the generic error in amber', (
-      tester,
-    ) async {
+    testWidgets('a wrong id or password shows one line over the button, in '
+        'ink with an amber mark', (tester) async {
       repository.logInError = const InvalidCredentialsException();
       await open(tester, const LoginScreen());
-      await tester.enterText(field('아이디'), 'woohyun');
-      await tester.enterText(field('비밀번호'), 'wrongpass');
+      await openSheet(tester);
+      await tester.enterText(input('아이디'), 'woohyun');
+      await tester.enterText(input('비밀번호'), 'wrongpass');
       await tester.tap(find.text('로그인'));
-      await tester.pumpAndSettle();
-      final message = find.text(LoginViewModel.wrongCredentialsMessage);
-      expect(message, findsOneWidget);
-      expect(tester.widget<Text>(message).style!.color, AppColors.warning);
+      await tester.pump();
+      await tester.pump();
+      final line = find.widgetWithText(
+        AuthFieldError,
+        LoginViewModel.wrongCredentialsMessage,
+      );
+      expect(line, findsOneWidget);
+      final words = tester.widget<Text>(
+        find.text(LoginViewModel.wrongCredentialsMessage),
+      );
+      expect(words.style!.color, AppColors.ink);
+      expect(
+        tester.getBottomLeft(line).dy,
+        lessThan(tester.getTopLeft(find.byType(AuthLimeButton)).dy),
+      );
       expect(repository.logIns.single, ('woohyun', 'wrongpass'));
       expect(auth.status, AuthStatus.signedOut);
     });
@@ -94,29 +150,121 @@ void main() {
     testWidgets('a network failure shows its message', (tester) async {
       repository.logInError = const ApiException(ApiErrorKind.network);
       await open(tester, const LoginScreen());
-      await tester.enterText(field('아이디'), 'woohyun');
-      await tester.enterText(field('비밀번호'), 'password1');
+      await openSheet(tester);
+      await tester.enterText(input('아이디'), 'woohyun');
+      await tester.enterText(input('비밀번호'), 'password1');
       await tester.tap(find.text('로그인'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump();
       expect(
         find.text(const ApiException(ApiErrorKind.network).message),
         findsOneWidget,
       );
     });
 
-    testWidgets('shows progress while logging in, then signs in', (
-      tester,
-    ) async {
+    testWidgets('while it logs in, the button turns pale with a spinner and '
+        '"로그인하는 중…"', (tester) async {
       final gate = repository.holdLogIn();
       await open(tester, const LoginScreen());
-      await tester.enterText(field('아이디'), 'woohyun');
-      await tester.enterText(field('비밀번호'), 'password1');
+      await openSheet(tester);
+      await tester.enterText(input('아이디'), 'woohyun');
+      await tester.enterText(input('비밀번호'), 'password1');
       await tester.tap(find.text('로그인'));
       await tester.pump();
       expect(find.text('로그인하는 중…'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AuthLimeButton),
+          matching: find.byType(AuthSpinner),
+        ),
+        findsOneWidget,
+      );
+      final link = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, '처음이신가요? 회원가입'),
+      );
+      expect(link.onPressed, isNull);
       gate.complete();
-      await tester.pumpAndSettle();
+      await tester.pump();
       expect(auth.status, AuthStatus.signedIn);
+    });
+
+    testWidgets('closed while it logs in, a wrong password shows nowhere', (
+      tester,
+    ) async {
+      repository.logInError = const InvalidCredentialsException();
+      final gate = repository.holdLogIn();
+      await open(tester, const LoginScreen());
+      await openSheet(tester);
+      await tester.enterText(input('아이디'), 'woohyun');
+      await tester.enterText(input('비밀번호'), 'wrongpass');
+      await tester.tap(find.text('로그인'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('닫기'));
+      await settle(tester);
+      expect(find.byType(TextField), findsNothing);
+      gate.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(repository.logIns.single, ('woohyun', 'wrongpass'));
+      expect(find.byType(AuthErrorBox), findsNothing);
+      expect(find.text(LoginViewModel.wrongCredentialsMessage), findsNothing);
+      // The sheet opens clean again.
+      await openSheet(tester);
+      expect(find.byType(AuthFieldError), findsNothing);
+    });
+
+    testWidgets('the sign-up link opens the id sign-up screen', (tester) async {
+      await open(tester, const LoginScreen());
+      await openSheet(tester);
+      await tester.tap(find.text('처음이신가요? 회원가입'));
+      await settle(tester);
+      expect(find.text('signup'), findsOneWidget);
+    });
+
+    testWidgets('a login closes the sheet with the screen, as the app does', (
+      tester,
+    ) async {
+      final navigator = GlobalKey<NavigatorState>();
+      // GymRatsApp closes everything over its first screen on a login.
+      void onAuth() => navigator.currentState?.popUntil((r) => r.isFirst);
+      auth.addListener(onAuth);
+      addTearDown(() => auth.removeListener(onAuth));
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AuthViewModel>.value(
+          value: auth,
+          child: MaterialApp(
+            navigatorKey: navigator,
+            theme: AppTheme.light,
+            home: const LoginScreen(),
+          ),
+        ),
+      );
+      await openSheet(tester);
+      await tester.enterText(input('아이디'), 'woohyun');
+      await tester.enterText(input('비밀번호'), 'password1');
+      await tester.tap(find.text('로그인'));
+      await settle(tester);
+      expect(auth.status, AuthStatus.signedIn);
+      expect(find.byType(TextField), findsNothing);
+    });
+
+    testWidgets('with the keyboard up, the fields and the button stay above '
+        'it', (tester) async {
+      await open(tester, const LoginScreen());
+      tester.view.viewInsets = const FakeViewPadding(bottom: 330);
+      addTearDown(tester.view.resetViewInsets);
+      await openSheet(tester);
+      const keyboardTop = 915 - 330;
+      for (final finder in [
+        input('아이디'),
+        input('비밀번호'),
+        find.byType(AuthLimeButton),
+      ]) {
+        expect(tester.getRect(finder).bottom, lessThanOrEqualTo(keyboardTop));
+      }
     });
   });
 
@@ -174,7 +322,7 @@ void main() {
     });
   });
 
-  group('LoginScreen with Google (P7)', () {
+  group('LoginScreen with Google (P7, P8)', () {
     late FakeSocialSignIn google;
 
     setUp(() {
@@ -183,22 +331,10 @@ void main() {
       repository.socialIsNew = false;
     });
 
-    LoginScreen screen() => LoginScreen(
-      createViewModel: () => LoginViewModel(auth: auth, google: google),
+    LoginScreen screen([AuthViewModel? withAuth]) => LoginScreen(
+      createViewModel: () =>
+          LoginViewModel(auth: withAuth ?? auth, google: google),
     );
-
-    testWidgets('no Google button without the service', (tester) async {
-      await open(tester, const LoginScreen());
-      expect(find.text('Google로 계속하기'), findsNothing);
-      expect(find.textContaining('카카오'), findsNothing);
-    });
-
-    testWidgets('shows Google, still with one lime button', (tester) async {
-      await open(tester, screen());
-      expect(find.text('Google로 계속하기'), findsOneWidget);
-      expect(find.textContaining('카카오'), findsNothing);
-      expect(find.byType(AccentButton), findsOneWidget);
-    });
 
     testWidgets('a new provider account opens the nickname step', (
       tester,
@@ -224,8 +360,8 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('Google로 계속하기'));
-      await tester.pumpAndSettle();
+      await tester.tap(find.text('Google로 시작하기'));
+      await settle(tester);
       expect(find.text('nickname'), findsOneWidget);
       expect(arguments, (
         provider: SocialProvider.google,
@@ -234,50 +370,64 @@ void main() {
       expect(auth.status, AuthStatus.signedOut);
     });
 
-    testWidgets('tapping it signs in with Google', (tester) async {
-      await open(tester, screen());
-      await tester.tap(find.text('Google로 계속하기'));
-      await tester.pump();
-      expect(google.calls, 1);
-      expect(repository.socialSignIns.single.$1, SocialProvider.google);
-      expect(auth.status, AuthStatus.signedIn);
-    });
-
-    testWidgets('while one runs, it says so and the others wait', (
-      tester,
-    ) async {
-      final gate = google.gate = Completer<void>();
-      await open(tester, screen());
-      await tester.tap(find.text('Google로 계속하기'));
-      await tester.pump();
-      expect(find.text('Google로 로그인하는 중…'), findsOneWidget);
-      final googleButton = tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, 'Google로 로그인하는 중…'),
-      );
-      expect(googleButton.onPressed, isNull);
-      final signup = tester.widget<TextButton>(
-        find.widgetWithText(TextButton, '처음이신가요? 회원가입'),
-      );
-      expect(signup.onPressed, isNull);
-      gate.complete();
-      await tester.pump();
-    });
-
-    testWidgets('a failure shows its message and can be retried', (
+    testWidgets('(a) after a Google failure the sheet opens with no error', (
       tester,
     ) async {
       google.error = const SocialSignInFailedException('x');
       await open(tester, screen());
-      await tester.tap(find.text('Google로 계속하기'));
+      await tester.tap(find.text('Google로 시작하기'));
       await tester.pump();
+      expect(find.byType(AuthErrorBox), findsOneWidget);
+      await openSheet(tester);
+      expect(find.byType(AuthFieldError), findsNothing);
       expect(
-        find.text(LoginViewModel.socialFailedMessage(SocialProvider.google)),
-        findsOneWidget,
+        find.textContaining(
+          LoginViewModel.socialFailedMessage(SocialProvider.google),
+        ),
+        findsNothing,
       );
-      google.error = null;
-      await tester.tap(find.text('Google로 계속하기'));
+      expect(find.byType(AuthErrorBox), findsNothing);
+    });
+
+    testWidgets('(b) a wrong password in the sheet, then closing it, leaves '
+        'nothing on the first screen', (tester) async {
+      repository.logInError = const InvalidCredentialsException();
+      await open(tester, screen());
+      await openSheet(tester);
+      await tester.enterText(input('아이디'), 'woohyun');
+      await tester.enterText(input('비밀번호'), 'wrongpass');
+      await tester.tap(find.text('로그인'));
       await tester.pump();
-      expect(auth.status, AuthStatus.signedIn);
+      await tester.pump();
+      expect(find.text(LoginViewModel.wrongCredentialsMessage), findsOneWidget);
+      await tester.tap(find.byTooltip('닫기'));
+      await settle(tester);
+      expect(find.byType(AuthErrorBox), findsNothing);
+      expect(find.byType(AuthNotice), findsNothing);
+      expect(find.text(LoginViewModel.wrongCredentialsMessage), findsNothing);
+      expect(find.text('Google로 시작하기'), findsOneWidget);
+    });
+
+    testWidgets('(c) the expired-session box goes when the sheet opens and '
+        'stays gone when it closes', (tester) async {
+      final memory = InMemoryAuthRepository();
+      final expired = AuthViewModel(repository: memory);
+      await memory.signUp(
+        nickname: '우현',
+        loginId: 'woohyun',
+        password: 'password1',
+      );
+      await expired.restore();
+      await memory.expireSession();
+      await tester.runAsync(pumpEventQueue);
+      await open(tester, screen(expired));
+      expect(find.byType(AuthErrorBox), findsOneWidget);
+      expect(find.text('로그인이 만료됐어요.'), findsOneWidget);
+      await openSheet(tester);
+      expect(find.byType(AuthFieldError), findsNothing);
+      await tester.tap(find.byTooltip('닫기'));
+      await settle(tester);
+      expect(find.byType(AuthErrorBox), findsNothing);
     });
   });
 }

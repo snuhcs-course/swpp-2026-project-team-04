@@ -20,8 +20,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
 
-    await tester.enterText(find.widgetWithText(TextField, '아이디'), 'demo_user');
-    await tester.enterText(find.widgetWithText(TextField, '비밀번호'), 'password1');
+    // P8: id login is in the sheet "아이디로 로그인".
+    await tester.tap(find.text('아이디로 로그인'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'demo_user');
+    await tester.enterText(fields.at(1), 'password1');
     await tester.tap(find.text('로그인'));
     await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);

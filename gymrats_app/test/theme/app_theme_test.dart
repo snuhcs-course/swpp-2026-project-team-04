@@ -605,4 +605,49 @@ void main() {
       );
     });
   });
+
+  group('the login screens (P8)', () {
+    test('the colors LoginS adds to the palette', () {
+      expect(AuthColors.busyText, const Color(0xFF8A93A6));
+      expect(AuthColors.busyLink, const Color(0xFFA3AABA));
+      expect(AuthColors.busyLime, const Color(0xFFE3F7B0));
+      expect(AuthColors.sheetHandle, const Color(0xFFC9CED8));
+      // rgba(20, 26, 38, 0.45): the ink at 45 %.
+      expect(AuthColors.scrim.withValues(alpha: 1), AppColors.ink);
+      expect(AuthColors.scrim.a, closeTo(0.45, 0.005));
+    });
+
+    test('the text styles of LoginB and LoginS', () {
+      final text = theme.textTheme;
+      expect(
+        (
+          text.authLogo.fontFamily,
+          text.authLogo.fontSize,
+          text.authLogo.fontWeight,
+        ),
+        (AppFonts.number, 46, FontWeight.w800),
+      );
+      expect(text.authTagMark.letterSpacing, 2);
+      expect((text.authSmall.fontSize, text.authSmall.height), (13, 18 / 13));
+      expect(text.authLabel.fontWeight, FontWeight.w700);
+      expect((text.authButton.fontSize, text.authButton.height), (16, 22 / 16));
+      expect(text.authLink.decoration, TextDecoration.underline);
+      expect(
+        (text.authField.fontSize, text.authField.fontWeight),
+        (17, FontWeight.w600),
+      );
+      expect(text.authSecret.letterSpacing, 3);
+      expect(text.authCount.fontFamily, AppFonts.number);
+      for (final (style, size) in [
+        (text.authLime, 24.0),
+        (text.authSheetTitle, 28.0),
+        (text.authTitle, 30.0),
+      ]) {
+        expect((style.fontFamily, style.fontSize), (AppFonts.display, size));
+      }
+      for (final style in [text.authLogo, text.authButton, text.authLime]) {
+        expect(style.color, AppColors.ink);
+      }
+    });
+  });
 }
