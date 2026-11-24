@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -276,6 +277,37 @@ void main() {
         t.dispose();
       },
     );
+
+    test('a login while the last account is still sending sends the new '
+        "account's events when that send ends", () async {
+      String? who = '1';
+      final sent = <List<Object?>>[];
+      final inFlight = Completer<void>();
+      final t = Telemetry(
+        send: (batch) async {
+          sent.add([for (final e in batch) e['mode']]);
+          if (sent.length == 1) await inFlight.future;
+          return TelemetrySendResult.delivered;
+        },
+        owner: () => who,
+        flushDelay: const Duration(hours: 1),
+      );
+      t.begin(TelemetryFlow.setup, {'mode': 'a'});
+      final first = t.flush();
+      // B signs in while A's batch is on its way; the app flushes on login.
+      who = '2';
+      t.begin(TelemetryFlow.setup, {'mode': 'b'});
+      await t.flush();
+      inFlight.complete();
+      await first;
+      await Future<void>.delayed(Duration.zero);
+      expect(sent, [
+        ['a'],
+        ['b'],
+      ]);
+      expect(t.pending, isEmpty);
+      t.dispose();
+    });
 
     test('a refused batch is dropped, not retried', () {
       fakeAsync((async) {

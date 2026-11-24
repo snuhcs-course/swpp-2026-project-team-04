@@ -141,6 +141,10 @@ class Telemetry {
   final _pending = <Map<String, Object?>>[];
   Timer? _timer;
   bool _flushing = false;
+
+  /// A flush was asked for while one was sending (a login mid-send): it
+  /// runs again when that one ends, for whoever is signed in by then.
+  bool _flushAgain = false;
   bool _disposed = false;
 
   /// The events not sent yet, oldest first, as they will be sent.
@@ -187,7 +191,11 @@ class Telemetry {
   /// (the app calls this on every login).
   Future<void> flush() async {
     final send = _send;
-    if (send == null || _flushing || _disposed) return;
+    if (send == null || _disposed) return;
+    if (_flushing) {
+      _flushAgain = true;
+      return;
+    }
     final owner = _owner == null ? null : _owner();
     // Signed out: everything waits for a login.
     if (_owner != null && owner == null) return;
@@ -221,6 +229,10 @@ class Telemetry {
       }
     } finally {
       _flushing = false;
+      if (_flushAgain && !_disposed) {
+        _flushAgain = false;
+        unawaited(flush());
+      }
     }
   }
 
