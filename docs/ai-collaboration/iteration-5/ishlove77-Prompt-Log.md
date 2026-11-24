@@ -289,3 +289,7 @@ Sent while Claude was working (queued; not in the exporter's output), verbatim:
 
 <!-- b7f2c482 2026-11-24T05:39:00.009Z -->
 [Jinyoung Park, 11-24 14:39] "됬음?"
+
+## 2026-11-24 · Jinyoung Park · feat/iter5-friend-battles
+<!-- b7f2c482 2026-11-24T05:49:21.602Z -->
+[Jinyoung Park, 11-24 14:49] "어캐됨?"
