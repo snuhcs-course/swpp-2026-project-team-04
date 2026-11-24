@@ -7,9 +7,11 @@ import '../models/arcade_stage.dart';
 import '../models/battle_result.dart';
 import '../models/character_rig.dart';
 import '../services/arcade/arcade_progress_store.dart';
+import '../services/audio/sound_services.dart';
 import '../viewmodels/arcade_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/character_viewmodel.dart';
+import '../widgets/arcade_hold_music.dart';
 import 'arcade_boss_screen.dart';
 import 'arcade_result_screen.dart';
 import 'hold_stage_screen.dart';
@@ -58,17 +60,21 @@ abstract final class ArcadeFlow {
 
   /// Hold stage [stage]'s screen (A4, P16 spec 8), keeping its stars in
   /// [store] for [accountId], the arcade's own. The screen judges the
-  /// stage's own pose: the high plank (A4) or the chair pose (A5).
+  /// stage's own pose: the high plank (A4) or the chair pose (A5). Its music
+  /// changes in a fight stage's order ([ArcadeHoldMusic], on [sounds] or the
+  /// app's).
   static HoldStageScreen holdScreen(
     ArcadeHoldStage stage, {
     required String myCharacter,
     ArcadeProgressStore? store,
     int? accountId,
+    SoundServices? sounds,
   }) => HoldStageScreen(
     stage: stage.number,
     myCharacter: myCharacter,
     progressStore: store,
     accountId: accountId,
+    sounds: ArcadeHoldMusic.around(sounds ?? SoundServices.shared),
   );
 
   /// Opens hold stage [stage] over the map, and tells how it was left

@@ -11,7 +11,9 @@ import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/screens/arcade_boss_screen.dart';
 import 'package:gymrats_app/screens/arcade_screen.dart';
 import 'package:gymrats_app/screens/hold_stage_screen.dart';
+import 'package:gymrats_app/services/audio/background_music.dart';
 import 'package:gymrats_app/services/audio/sound_services.dart';
+import 'package:gymrats_app/services/audio/sound_settings.dart';
 import 'package:gymrats_app/services/pose/hold_poses.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
 import 'package:gymrats_app/services/user/character_store.dart';
@@ -19,9 +21,12 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/hold_stage_viewmodel.dart';
+import 'package:gymrats_app/widgets/arcade_hold_music.dart';
 import 'package:gymrats_app/widgets/arcade_map.dart';
 import 'package:gymrats_app/widgets/arcade_stage_sheet.dart';
 import 'package:provider/provider.dart';
+
+import '../support/audio_fakes.dart';
 
 ArcadeProgress _progress(List<int> first) =>
     ArcadeProgress([...first, for (var i = first.length; i < 24; i++) 0]);
@@ -335,7 +340,44 @@ void main() {
     expect(screen.accountId, 1);
     expect(screen.myCharacter, chosen);
     expect(screen.createViewModel, isNull);
+    // The app's sound, with the music in a fight stage's order.
+    final shared = SoundServices.shared;
+    expect(screen.sounds!.music, isA<ArcadeHoldMusic>());
+    expect(screen.sounds!.effects, same(shared.effects));
+    expect(screen.sounds!.voice, same(shared.voice));
+    expect(screen.sounds!.settings, same(shared.settings));
     expect(holds, isEmpty);
+  });
+
+  group('a hold\'s music from the map, in a fight stage\'s order', () {
+    late FakeBackgroundMusic music;
+
+    setUp(() {
+      music = FakeBackgroundMusic();
+      SoundServices.shared = SoundServices(
+        settings: SoundSettings(store: MemorySoundSettingsStore()),
+        voice: FakeVoiceGuidance(),
+        music: music,
+        effects: FakeSoundEffects(),
+      );
+    });
+    tearDown(() => SoundServices.shared = null);
+
+    testWidgets('closed on its briefing after a jingle, the map stays '
+        'silent, as after backing out of a fight\'s versus screen', (
+      tester,
+    ) async {
+      await open(tester, progress: _progress([3, 2]), realHold: true);
+      // A fight's result just played its jingle.
+      SoundServices.shared.music.play(MusicCue.win);
+      await tapCell(tester, 3);
+      expect(find.byType(HoldStageScreen), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('지도로'));
+      await tester.pumpAndSettle();
+      expect(find.byType(HoldStageScreen), findsNothing);
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(music.played, [MusicCue.win]);
+    });
   });
 
   testWidgets('a chair stage opens the hold screen with the chair pose '
