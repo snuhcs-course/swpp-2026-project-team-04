@@ -113,3 +113,17 @@ coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub A
 - Storage (spec 7) → 'accounts keep their own progress', 'a broken value, another version, another length or a count
   outside 0 to 3 is the first state', 'a store that fails to read is the first state', 'a store that fails to read
   keeps the saved progress: nothing is written'
+
+#### 2026-11-24 · merge `da3a039` of `origin/main` `69b0520` · step A2: `main` merged in before the draft ends
+At the user's word (2026-11-24; the prompt is logged on A4's branch, `codex/iter5-hold-plank`), `origin/main` (#86 setup timeout, #93 Google
+sign-in, #94 zero points for knee push-ups) was merged into this branch first, before the steps stacked on it. No
+conflict: no file changed on `main` since `ad8a6f7` is one of A2's. A2's code is unchanged at `141c8df`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4034 passed, 0 failed, 10 skipped (2026-11-24, on
+  `da3a039`; the same 10 skips as above). The bot pins pass on the merged code.
+- **Other checks:** `ownership_guard.py --check-diff` OK (21 paths against `origin/main`, as before). Server `pytest`
+  was not run: `server/` is `main`'s, unchanged by A2, and `main`'s own checks cover it.
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head.
