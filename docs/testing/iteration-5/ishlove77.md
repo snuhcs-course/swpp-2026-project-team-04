@@ -5,6 +5,16 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fix for the Codex review of `978e092`
+One P2 finding was fixed: on the friends page, a 수락 that comes back after another battle (or the exercise sheet) has
+opened over the page no longer opens a second lobby; the accepted invite is taken back, so the friend's waiting room
+ends at once.
+
+- **Tests:** `flutter analyze` no issues; `flutter test` 4059 passed, 10 skipped; server unchanged (236 passed).
+- **Test cases changed:** `test/screens/friends_screen_test.dart` (another battle opened while accepting: no second
+  lobby, and the accept is taken back; fails without the fix); `test/viewmodels/friends_viewmodel_test.dart`
+  (takeBack cancels an accepted invite, quietly even when it fails and after the page is gone).
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fix for the Codex review of `96e48bc`
 One P2 finding was fixed: a banner 수락 whose answer arrives after the app went to the background no longer opens the
 waiting room while the app is hidden; the accepted invite is taken back, as when another battle opens meanwhile.
