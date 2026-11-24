@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/auth/auth_repository.dart';
@@ -97,5 +99,119 @@ void main() {
     await pumpEventQueue();
     final login = LoginViewModel(auth: expiredAuth);
     expect(login.state.formError, LoginViewModel.expiredMessage);
+  });
+
+  group('Google (P7)', () {
+    late FakeSocialSignIn google;
+
+    setUp(() {
+      google = FakeSocialSignIn(SocialProvider.google, token: 'id-token');
+      vm = LoginViewModel(auth: auth, google: google);
+      // An existing provider account unless a test says otherwise.
+      repository.socialIsNew = false;
+    });
+
+    test('keeps the services it was given', () {
+      expect(vm.google, same(google));
+      expect(vm.takeSignupRequest(), isNull);
+    });
+
+    test(
+      'a new provider account creates nothing and asks for a nickname',
+      () async {
+        repository.socialIsNew = true;
+        expect(await vm.signInWith(google), isFalse);
+        expect(repository.socialSignIns.single, (
+          SocialProvider.google,
+          'id-token',
+          null,
+        ));
+        expect(auth.status, AuthStatus.signedOut);
+        expect(vm.state.busy, isFalse);
+        expect(vm.state.formError, isNull);
+        expect(vm.takeSignupRequest(), (
+          provider: SocialProvider.google,
+          token: 'id-token',
+        ));
+        // Taken once.
+        expect(vm.takeSignupRequest(), isNull);
+      },
+    );
+
+    test('an existing account logs straight in', () async {
+      expect(await vm.signInWith(google), isTrue);
+      expect(auth.status, AuthStatus.signedIn);
+      expect(auth.needsBodyInfo, isFalse);
+      expect(vm.takeSignupRequest(), isNull);
+    });
+
+    test('shows which provider is running and ignores other taps', () async {
+      final gate = google.gate = Completer<void>();
+      final first = vm.signInWith(google);
+      expect(vm.state.signingInWith, SocialProvider.google);
+      expect(vm.state.busy, isTrue);
+      expect(await vm.signInWith(google), isFalse);
+      expect(await vm.submit(loginId: 'a', password: 'b'), isFalse);
+      vm.edited();
+      expect(vm.state.signingInWith, SocialProvider.google);
+      gate.complete();
+      expect(await first, isTrue);
+      expect(google.calls, 1);
+      expect(repository.logIns, isEmpty);
+    });
+
+    test('backing out shows nothing and sends nothing', () async {
+      google.error = const SocialSignInCancelledException();
+      expect(await vm.signInWith(google), isFalse);
+      expect(vm.state.formError, isNull);
+      expect(vm.state.busy, isFalse);
+      expect(repository.socialSignIns, isEmpty);
+      expect(auth.status, AuthStatus.signedOut);
+    });
+
+    test('each failure has its message', () async {
+      final cases = <(FakeSocialSignIn, Exception?, Exception?, String)>[
+        (
+          google,
+          const SocialSignInFailedException('x'),
+          null,
+          'Google 로그인에 실패했어요. 다시 시도해 주세요.',
+        ),
+        (
+          google,
+          null,
+          const SocialTokenRejectedException(),
+          'Google 로그인에 실패했어요. 다시 시도해 주세요.',
+        ),
+        (
+          google,
+          null,
+          const SocialLoginUnavailableException(),
+          '지금은 Google 로그인을 쓸 수 없어요. 잠시 후 다시 시도해 주세요.',
+        ),
+        (
+          google,
+          null,
+          const ApiException(ApiErrorKind.network),
+          const ApiException(ApiErrorKind.network).message,
+        ),
+        (google, null, Exception('?'), genericErrorMessage),
+      ];
+      for (final (service, deviceError, serverError, message) in cases) {
+        service.error = deviceError;
+        repository.socialError = serverError;
+        expect(await vm.signInWith(service), isFalse);
+        expect(vm.state.formError, message);
+        expect(auth.status, AuthStatus.signedOut);
+      }
+    });
+
+    test('a failure can be retried', () async {
+      google.error = const SocialSignInFailedException('x');
+      await vm.signInWith(google);
+      google.error = null;
+      expect(await vm.signInWith(google), isTrue);
+      expect(vm.state.formError, isNull);
+    });
   });
 }

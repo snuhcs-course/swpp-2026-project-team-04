@@ -264,6 +264,9 @@ void main() {
     await tapAndSettle(tester, find.text('로그아웃'));
     expect(find.byType(ExitDialog), findsOneWidget);
     expect(find.text('로그아웃할까요?'), findsOneWidget);
+    // Google accounts have no password: the message fits every account (P7).
+    expect(find.text('다시 들어오려면\n로그인이 필요해요.'), findsOneWidget);
+    expect(find.textContaining('비밀번호'), findsNothing);
     await tapAndSettle(tester, find.text('계속하기'));
     expect(find.byType(ExitDialog), findsNothing);
     expect(loggedOut, 0);

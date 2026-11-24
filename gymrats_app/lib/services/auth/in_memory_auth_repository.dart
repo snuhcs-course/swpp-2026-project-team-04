@@ -17,6 +17,10 @@ class InMemoryAuthRepository implements AuthRepository {
   final _expired = StreamController<void>.broadcast();
   AuthSession? _session;
   int _nextId = 1;
+  final _social = <(SocialProvider, String), Account>{};
+
+  /// The last saved height and weight of each account id.
+  final bodyInfo = <int, ({double heightCm, double weightKg})>{};
 
   @override
   AuthSession? get session => _session;
@@ -66,6 +70,41 @@ class InMemoryAuthRepository implements AuthRepository {
       throw const InvalidCredentialsException();
     }
     return _signIn(entry.account);
+  }
+
+  /// A provider token is the identity itself here; an empty one is refused,
+  /// as the server refuses a token it cannot check.
+  @override
+  Future<SocialSignIn> signInWith(
+    SocialProvider provider,
+    String token, {
+    String? nickname,
+  }) async {
+    if (token.isEmpty) throw const SocialTokenRejectedException();
+    final key = (provider, token);
+    final existing = _social[key];
+    if (existing == null && nickname == null) {
+      throw const SocialSignUpRequiredException();
+    }
+    final account =
+        existing ??
+        Account(
+          id: _nextId++,
+          loginId: '${provider.name[0]}_$token',
+          nickname: nickname!,
+        );
+    _social[key] = account;
+    return (session: await _signIn(account), isNewAccount: existing == null);
+  }
+
+  @override
+  Future<void> saveBodyInfo({
+    required double heightCm,
+    required double weightKg,
+  }) async {
+    final account = _session?.account;
+    if (account == null) throw StateError('Not logged in');
+    bodyInfo[account.id] = (heightCm: heightCm, weightKg: weightKg);
   }
 
   @override
