@@ -204,9 +204,32 @@ No server, Google account, camera or secure storage is needed:
   - `test/auth_flow_test.dart` (P7) and `test/demo/auth_history_demo_test.dart`: they now open the id sheet first
     and use the new words; the flows and their expectations are the same.
 - **Coverage:** TODO(Woohyun Song): copy the P8 PR's CI comment (commit, run link, per-layer numbers, P8's files).
-- **Phone check:** TODO(Woohyun Song): on the Galaxy S26+ after the push, with the list in the PR body. Google
-  sign-in first: if this PC's debug build still cannot sign in with Google (P7's SHA-1), L1, C2 and the new account's
-  nickname step are left to the widget tests, and only F1 and "Google로 다시 시도" are checked on the phone.
+- **Phone check, done 2026-11-25** by the user (Galaxy S26+, a release build of the pushed branch, the cable out, two
+  screen recordings of 31 s and 59 s; the user's message is in the Prompt Log):
+  - **First screen:** the logo right under the status bar, the group photo, the Google button and the link sit as
+    in the design. The characters move and change faces, and go on moving after a return from the recent apps.
+  - **L1:** while Google's account picker was up, the turning ring, "Google로 로그인하는 중…" and the greyed button
+    and link were as designed.
+  - **C2:** closing the account picker showed "로그인을 취소했어요" over the button; a new tap cleared it.
+  - **Id sheet:**
+    - It opened from the link, three times, and the characters behind it kept moving.
+    - With the keyboard up, the fields, the 로그인 button and the sign-up link stayed visible.
+    - A wrong password showed the busy button (pale lime, spinner), then "아이디 또는 비밀번호가 맞지 않아요.";
+      typing again cleared it.
+    - "처음이신가요? 회원가입" opened the id sign-up screen, and back returned to the sheet.
+    - The right password went home.
+  - **Not seen on the phone:**
+    - F1 and the nickname step: the build is signed with a debug key whose SHA-1 is not yet registered in the team's
+      Google Cloud (asked of 박진영). Picking an account made the plugin report a cancel, so C2 showed. To check
+      again after the registration; until then the widget tests above cover them.
+    - The one-a-second start and the 18 s loop: not caught in the recordings; left to `auth_cast_test`.
+  - **Fixed after the phone check (`dd08911`):** after a wrong password, closing the sheet made Samsung Pass offer
+    to save the login. The sheet's autofill group committed when it closed. It now cancels on close, and the screen
+    asks to save only after a login that worked (`TextInput.finishAutofillContext()`). New test in
+    `auth_screens_test.dart`: 'the password manager is asked to save only after a login that worked, never when the
+    sheet closes'. It fails without the fix ([true] instead of [false]). `flutter analyze` on the two files found no
+    issues, and auth_screens, login_screen, auth_flow and auth_history_demo passed 55 tests (the user's call: no
+    reviewer run for this fix).
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
@@ -214,7 +237,7 @@ No server, Google account, camera or secure storage is needed:
 | View | `test/widgets/auth_cast_test.dart` (new) | **Data:** the six places, scales, flips, teams and clocks of LoginB; the podium, the planes, the shadows; every loop is 18 s and holds each pose 6 s; every face and flag a loop uses has shapes; malformed data rejected.<br>**Golden:** each of the six matches ChL's own `RIGX.vals` at every sampled time (pose numbers, expression, hop and rock, flags and what they show, sparks and hearts).<br>**Timing:** one more character changes pose each second from 1 s to 6 s; animations off draws LoginB's `ft` moment.<br>**Stage:** one picture with the cast label; the clock starts at 0 and runs, never ticks with animations off, stops in the background and under an opaque screen and goes on after, not under a sheet; the band's scale. |
 | View | `test/widgets/auth_form_test.dart` (new) | **Text:** `keepWordsWhole` (joiners only inside words, nothing lost, a decomposed letter kept whole); with joiners a narrow line breaks at a space where the plain sentence breaks inside a word; `authLines` (fits, balanced two lines, three lines or one word left to wrap); `AuthWords` finds and reads as written; `splitFirstSentence`.<br>**Parts:** the error box (bold first sentence, grey rest, amber mark, announced); the cancel line and field error announced; the Google button (G, busy spinner, grey words, no taps); the lime button (arrow, busy pale with spinner, no taps); the spinner turns and stands still with animations off; links (underlined, lighter when off, 48 high); round buttons (48 tap area); input fields (named, 17 text, spaced dots); every glyph draws. |
 | View | `test/screens/login_screen_test.dart` (new) | **First screen:** logo, line, photo, Google and the link in order; no fields, no sign-up link; Google signs in; no Google service shows only the link; tap sizes.<br>**States:** L1 (spinner, words, no taps on the button or link); C2 (line over the button, announced, gone on a new tap or when the sheet opens); F1 (box over the button, bold and grey sentences, "Google로 다시 시도", gone on a new tap); each failure's words; the expired box with "Google로 시작하기".<br>**Sizes:** 360 × 780 and 320 × 640 with text 1.3, every state and the sheet with errors fit, a note never reaching the lowest row's feet; at the design's size the box covers the bottom step and the photo keeps its size. |
-| View | `test/screens/auth_screens_test.dart` (updated) | **Id sheet:** opens from the link; X, back and outside close it and keep the text; field errors under the fields; the wrong-credentials line over the button; a network failure; busy; closed while logging in, a wrong password shows nowhere; the sign-up link; a login closes the sheet as the app does; the keyboard.<br>**Google:** a new Google account opens the nickname step; (a) after a Google failure the sheet has no error; (b) a wrong password then closing leaves nothing; (c) the expired box goes when the sheet opens and closes.<br>**Unchanged:** the id sign-up screen's tests. |
+| View | `test/screens/auth_screens_test.dart` (updated) | **Id sheet:** opens from the link; X, back and outside close it and keep the text; field errors under the fields; the wrong-credentials line over the button; a network failure; busy; closed while logging in, a wrong password shows nowhere; the sign-up link; a login closes the sheet as the app does; the keyboard; the password manager saves only after a login that worked (`dd08911`).<br>**Google:** a new Google account opens the nickname step; (a) after a Google failure the sheet has no error; (b) a wrong password then closing leaves nothing; (c) the expired box goes when the sheet opens and closes.<br>**Unchanged:** the id sign-up screen's tests. |
 | View | `test/screens/social_signup_screen_test.dart` (updated) | **Layout:** back, 회원가입, the photo, the nickname with count and help, the lime 시작하기, and only the design's words; back creates nothing.<br>**Input:** the count follows and stops at 12, a 13th letter is not taken; the cut waits for composition.<br>**States:** 시작하기 creates the account; the empty error replaces the help line; busy (pale, spinner, "계정을 만드는 중…", one request); a server failure's F1 box; the expired provider login.<br>**Sizes:** 360 × 780 and 320 × 640 with text 1.3, and the keyboard up. |
 | ViewModel | `test/viewmodels/login_viewmodel_test.dart` (updated) | cancel told apart until the next try; the id form clears the cancel note; every Google failure sets `failedWith`; wrong credentials and the expired session do not |
 | Model | `test/models/character_rig_test.dart` (updated) | `#RRGGBB` opaque, `#RRGGBBAA` with its alpha last (`#FF000080` is half red), other lengths rejected |

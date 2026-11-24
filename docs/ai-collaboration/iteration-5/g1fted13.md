@@ -196,6 +196,10 @@ Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. I
     meanwhile). Committing them as they were would have dropped A2's evidence. They were merged into main's files
     after merging `origin/main` (`def1c5e`).
   - Minor: the balanced line break measured lines without the device's bold text. Fixed in `c91a8f3`.
+- **Found on the phone:** after a wrong password, closing the sheet made Samsung Pass offer to save the login. The
+  sheet's `AutofillGroup` committed on dispose (Flutter's default), which no widget test had looked at. The user found
+  it in the phone check and named the fix: cancel on close, save only after a login that worked (`dd08911`, with a
+  test that fails without it).
 - **A risk the user caught in review:** the `#RRGGBBAA` reader puts the alpha last, while a Flutter color keeps it
   first. A swapped order would not change any pose or face, so the golden test could not catch it. The user asked
   for a unit test that pins the order (`'#FF000080'` is half red).
