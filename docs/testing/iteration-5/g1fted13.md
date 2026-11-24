@@ -1228,3 +1228,86 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flut
 - **Manual check:** TODO(Woohyun Song): the last phone check, on the Galaxy S26+: the app's start and Google sign-in
   (main #93) working with the arcade screens; the boss match through R2 to 1층 클리어!; the 2F first stage's fever
   from 15 s; the break's fixed 자세 잡기 button; the hold stages' music from the arcade (the entry above).
+
+#### 2026-11-24 · code at commit `7362fb4` (one new P16 test file), with `main` `18b9259` merged in `18ea16c` and A5 `b9b5a45` in `03cac86` · step P16 `codex/iter5-ai-opponents`: `main`'s friend battles and A4's hidden leave button merged in
+At the user's word (2026-11-24, the Prompt Log), A4 hides the leave button once a hold stage is over (`d56e1f5`) and
+A5 merged it (`b9b5a45`). The message said `origin/main` was still `69b0520`; the fetch showed `18b9259` (#95, friend
+battles), so, as the message said for that case, `origin/main` was merged first:
+- `git merge origin/main` (`18ea16c`): five files conflicted, each where #95 and P16 changed the same lines.
+  - `lib/main.dart`: five places where each side added lines next to the other's (`arcadeStore` and
+    `friendRepository`, their fields, `_arcade` and the friends' fields, their disposal, the `/arcade` and `/friends`
+    routes). All kept; against `main` the file differs only by P16's arcade lines.
+  - `lib/screens/play_screen.dart`: P16's two cards (온라인 대결, 아케이드) with #95's 친구와의 대전 row under them,
+    the place P16 spec 13.1 left empty for the friend battles. #95 also dropped the footer line "30초 · 점수 높은 쪽
+    승리" (P16's note of 2026-11-23 had left that line to a later step); kept dropped. The AI 1v1 card, its route and
+    the exercise list it used stay gone (P16 spec 3).
+  - `test/screens/play_screen_test.dart`: 'shows the two cards and the rules, no AI 1v1 and no again row (P16 spec 3,
+    13.1)' also finds 친구와의 대전 and no footer line; the online card's test taps 온라인 대결 and keeps #95's check
+    that no mode is asked first; #95's AI card test is dropped (no AI 1v1); the tap-target test names all three
+    entries; #95's 'it sits under the two cards and opens the friends page' measures against `ArcadePlayCard` instead
+    of the removed `BattleModeCard`.
+  - `test/screens/home_screen_test.dart`: both sides' checks kept (P16's read of the latest battle and #95's friend
+    row; in the second, `lastMatch.opponentName` and `lastSetup.exercise`).
+  - `test/main_test.dart`: P16's side (the online sheet's best); #95 had only dropped the play-again line there,
+    which P16 had dropped too. `online_lobby_screen_test.dart` merged without a conflict.
+- `git merge origin/codex/iter5-hold-chair` (`03cac86`): A4's `hold_stage_screen.dart`, `hold_stage_play.dart` and
+  `hold_stage_screen_test.dart` and A5's `chair_hold_stage_test.dart` merged without a conflict; this file's
+  conflict kept both sides, A5's entry first.
+- **A4's hidden leave button with `ArcadeHoldMusic`:** the screen passes no leave action once the stage is over (a
+  second warning's moment or the result); its music calls (`_playMusic`, `dispose`) are unchanged. The new
+  `test/screens/arcade_hold_stage_test.dart` runs A4's screen with the sounds `ArcadeFlow.holdScreen` gives it, on a
+  scripted setup and pose reader: after a second warning, with no star and after a star, the button is gone from the
+  screen and to a screen reader for the whole moment and on the result; the lose or win jingle starts with the moment
+  and stays; 아케이드로 or 다음 스테이지 brings no menu track. Before the end the button is there, and leaving from
+  it brings the menu track back.
+- **Found, not changed (for the user):** #95's invite alert hides only on named routes
+  (`FriendInviteRouteWatch.busyRoutes`: the online lobby and battle, matching, versus, setup, battle). The arcade's
+  fights and boss rounds open the named versus and battle routes, so the alert stays hidden there. The hold stages
+  (`ArcadeFlow.openHold`), the boss intro (`ArcadeBossScreen.route`) and the break after R1 (`afterBattle`) open
+  unnamed routes, so the alert can show over them (`FriendInviteRouteWatch.hides` is false there, checked in a
+  throwaway test that is not committed). Accepting an invite there opens the online battle over the hold stage,
+  whose camera and clock go on under it (the reviewer's reading of the code; not tried). `busyRoutes` is in #95's
+  `friends_screen.dart`, outside P16.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get`, `flutter analyze`,
+`flutter test`.
+
+- **Tests:** `flutter test` 4645 passed, 0 failed, 10 skipped; 159 more than at `670aecf`: 4 in the new P16 file, the rest from #95 and A4's and A5's leave-button tests, less #95's AI card test, dropped here (2026-11-24, `7362fb4`; the same skips as above). `flutter analyze` found no issues.
+- **Other checks:** `ownership_guard.py --check-staged` OK in both merge commits' hook (`18ea16c`: 111 paths against
+  `origin/main`; `03cac86`: 7 paths, the notes, three of A4's files and A5's `chair_hold_stage_test.dart`) and for the test commit;
+  `--check-diff` OK (112 paths). The diff against `codex/iter5-hold-chair` (PR #91's base) now lists 77 files: P16's
+  49 and 28 of #95's, which A2–A5 do not have yet. Server `pytest` was not run: `server/` is `main`'s.
+- **Review:** local reviewer run 10 CHANGES_REQUESTED: both merges rebuilt (`merge-tree`) with exactly the five
+  conflicts above, nothing of #95 or P16 lost beyond P16's intended removals, #95's other 27 files byte-equal to
+  `18b9259`, A4's and A5's four files byte-equal to `b9b5a45`; the new test checked as meaningful; the invite alert
+  item confirmed from the code; full suite 4645 / 0 / 10 in its own run. Its Major (this entry had no test-case
+  table and no acceptance criteria → tests) and Minor (A5's test called one of A4's) were fixed; run 11 APPROVE (2 Minors, fixed: a test named without its group, the local progress file's review
+  rows).
+- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment "Tests and coverage (GitHub Actions)" for this head.
+- **Shortfalls:** coverage is not measured on this PC (the CI comment is pending). 게임 시작 with 친구와의 대전 under
+  the arcade cards is checked by widget tests at 412x915, 360x640 and 360x780 at 2.0x text, not yet on a phone; the
+  invite alert over the arcade's unnamed routes is open (above).
+- **Manual check:** TODO(Woohyun Song): the last phone check, on the Galaxy S26+: the app's start and Google sign-in
+  (main #93) working with the arcade screens; 게임 시작 with 친구와의 대전 under the two cards (main #95); the leave
+  button gone once a hold stage is over (A4 `d56e1f5`); the boss match through R2 to 1층 클리어!; the 2F first
+  stage's fever from 15 s; the break's fixed 자세 잡기 button; the hold stages' music from the arcade.
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_hold_stage_test.dart` (new) | 'the arcade's hold screen is A4's, its music in an ArcadeHoldMusic'; in the group 'a second warning from the arcade: A4's hidden leave button with the arcade's music': 'with no star: no leave button for the whole moment, the lose jingle from its start, and no menu track at the map after 아케이드로' and 'after a star: no leave button for the whole moment, the win jingle from its start, and no menu track at the map after 다음 스테이지'; 'before the end the leave button is there, and leaving from the arcade brings the menu track back' |
+| View | `test/screens/play_screen_test.dart` (updated in the merge) | 'shows the two cards and the rules, no AI 1v1 and no again row (P16 spec 3, 13.1)' also finds 친구와의 대전 and its line, and no "30초 · 점수 높은 쪽 승리"; 'the online card asks for the exercise, then opens the lobby' taps 온라인 대결 and keeps #95's check that 메인 매치 is not asked; 'every button is big enough and has a name' names 온라인 대결, 아케이드 and the friend row; #95's group '친구와의 대전 row (P9)' as on `main`, its 'it sits under the two cards and opens the friends page' measured against `ArcadePlayCard`; #95's 'the AI card opens the AI 1v1 page on the same view model' dropped (no AI 1v1, P16 spec 3) |
+| View | `test/screens/home_screen_test.dart` (updated in the merge) | '게임 시작 opens the play page on home's profile' also finds 친구와의 대전 (#95); in the group 'coming back to home loads it again': 'and the play page reads the battle saved meanwhile' checks both the latest battle's opponent (P16) and the last setup's exercise (#95) |
+
+### Acceptance criteria → tests (the user's items 1 and 2)
+- 게임 시작 keeps P16's two cards and gets #95's 친구와의 대전 under them, with no AI 1v1, 이어하기 or footer line →
+  'shows the two cards and the rules, no AI 1v1 and no again row (P16 spec 3, 13.1)', 'it sits under the two cards
+  and opens the friends page', 'fits a short phone without overflow, scrolling if it must', 'fits a large text size
+  without overflow, scrolling if it must', 'every button is big enough and has a name'
+- The online battle is unchanged → 'the online card asks for the exercise, then opens the lobby' and
+  `online_lobby_screen_test.dart` as on `main`
+- On a hold stage from the arcade, the leave button is gone once the stage is over, and `ArcadeHoldMusic` still plays
+  the battle's order → the two tests in 'a second warning from the arcade: A4's hidden leave button with the
+  arcade's music', 'the arcade's hold screen is A4's, its music in an ArcadeHoldMusic'
+- Before the end the button still works with the arcade's music → 'before the end the leave button is there, and
+  leaving from the arcade brings the menu track back'

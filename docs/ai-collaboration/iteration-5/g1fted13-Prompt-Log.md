@@ -281,6 +281,15 @@ merge 순서를 하나 바꾼다. A4에서 하네스가 main 파일이 섞인 �
 3. 나머지(analyze, test, reviewer, push, 폰 확인 TODO에 구글 로그인 추가)는 앞 메시지대로 한다. 하네스가 막으면 우회하지 말고 멈추고 보고한다.
 </pasted_content id=\"0a14\">"
 
+<!-- 44cd470a 2026-11-24T11:46:52.839Z -->
+[Woohyun Song, 11-24 20:46] "<pasted_content id=\"0a14\">
+A4와 A5가 마지막으로 바뀌었다. 판이 끝난 뒤 1.5초 동안 그만하기 버튼을 대결처럼 숨긴다(A4 d56e1f5). A5 세션이 이것을 hold-chair에 merge해 push했다(b9b5a45). origin/main은 그대로 69b0520이라 P16에 이미 들어 있다.
+1. fetch 뒤 codex/iter5-hold-chair를 P16 브랜치에 merge한다. origin/main이 69b0520보다 앞서 있으면 origin/main을 먼저 merge한다.
+2. 아케이드에서 들어간 버티기 판에서도 버튼 숨김과 ArcadeHoldMusic이 함께 맞게 동작하는지 확인한다.
+3. analyze, test, reviewer를 돌리고 push한 뒤 HEAD를 보고해 줘. 하네스가 막으면 우회하지 말고 멈추고 보고한다.
+4. 마지막 폰 확인 TODO에 \"판이 끝난 뒤 그만하기 버튼이 사라지는지\"를 더한다. 폰 확인 결과는 따로 보낸다.
+</pasted_content id=\"0a14\">"
+
 ## 2026-11-24 · Woohyun Song · codex/iter5-hold-chair
 <!-- dfb39c07 2026-11-23T16:54:23.559Z -->
 [Woohyun Song, 11-24 01:54] "<pasted_content id=\"a37d\">

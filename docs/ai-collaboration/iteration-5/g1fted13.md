@@ -532,12 +532,18 @@ These were made from the A5 session at the user's word; their full evidence is i
     `main.dart` conflict resolved by keeping #93's Google sign-in lines and P16's arcade lines), then `670aecf`
     merges `codex/iter5-hold-chair` with A4's leave dialog fix (`94f6416`); Claude Code resolved both, checked
     each side's lines and the fix against `ArcadeHoldMusic`. No P16 code changed.
+  - After `main`'s #95 (friend battles) and A4's hidden leave button (`d56e1f5`): `18ea16c` merges `origin/main`
+    (five conflicts: `main.dart`, `play_screen.dart` and three of their tests; P16's two cards kept, with #95's
+    친구와의 대전 row under them), then `03cac86` merges `codex/iter5-hold-chair`. Claude Code resolved both and
+    wrote `test/screens/arcade_hold_stage_test.dart` (`7362fb4`), which runs A4's screen with the arcade's
+    `ArcadeHoldMusic`.
 - **Design values:** every size, color and position came from the `.dc.html` sources in
   `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
   `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
-- **Review:** the `reviewer` subagent ran nine times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+- **Review:** the `reviewer` subagent ran eleven times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
   CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, after the merge
-  of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix, and APPROVE (4 Minors, fixed) on the `main` merge.
+  of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix, APPROVE (4 Minors, fixed) on the `main` merge, and CHANGES_REQUESTED, then
+  APPROVE, on the #95 merge.
 - **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
   (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
   Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
@@ -576,6 +582,10 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **Checking the stack before merging:** the user's message said A2–A5 had taken `main`; a fetch showed none of the
   four had it yet and A5 had no dialog fix (the A5 session was still merging), so nothing was merged on the old
   branches, and the merge waited for A5's push (`b6e90d7`).
+- **A gap between two merged features, found while merging:** #95's invite alert hides only on named routes
+  (`FriendInviteRouteWatch.busyRoutes`), and the arcade opens its hold stages, boss intro and break as unnamed
+  routes, so a friend's invite can show over them. Claude Code saw it while resolving `main.dart`, checked it
+  with a throwaway test (not committed), and reported it instead of changing #95's file.
 - **Recovery after the power loss:** the state check (branch, `index.lock`, diffs, line endings, ownership, analyze)
   took a few minutes and found nothing half-written.
 
@@ -628,6 +638,10 @@ These were made from the A5 session at the user's word; their full evidence is i
   moment `ArcadeHoldMusic` would keep the jingle, though a closed app need not dispose its screens and its sound ends
   with it. Both were rewritten before the commit; the other two Minors were PR #91's stale body and this file's
   missing P16 evidence.
+- **Reviewer run 10 (CHANGES_REQUESTED), on the #95 merge:** my testing entry for this round had no test-case table
+  and no acceptance criteria → tests, though the round added a test file and the merge changed two; it also called
+  A5's `chair_hold_stage_test.dart` one of A4's files. The code and both merges passed its checks. Both fixed before
+  the commit; run 11 approved, with two wording Minors, also fixed.
 - **A path in my notes:** the post-push check matched `.claude/...` in the spec's path in my testing notes; fixed in a
   new commit (`7a1d46c`).
 
@@ -640,6 +654,10 @@ These were made from the A5 session at the user's word; their full evidence is i
 - Why it worked: on A4 the user had seen the pre-commit guard block a merge commit made by hand that carried
   `main`'s files. With `main` first, `c92006c`'s check compared the index with `origin/main` (111 paths, all P16's
   own or inherited) and `670aecf`'s held only 5 paths, so both passed without any bypass.
+- Before (2026-11-24, pasted): "P16 브랜치에 origin/main을 먼저 merge한다."
+- After (the same day, pasted): "origin/main이 69b0520보다 앞서 있으면 origin/main을 먼저 merge한다."
+- Why it worked: the message also said `origin/main` was still `69b0520`, but #95 had been merged to `main` by
+  then (`18b9259`). The condition covered that case, so the merge order needed no question.
 - None for the code in this step. The user added one rule mid-task (only this session's prompts under the P16 heading)
   and, after the power loss, gave the state check as a numbered list, which made the recovery a checklist.
 
