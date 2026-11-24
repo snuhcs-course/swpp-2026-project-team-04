@@ -189,6 +189,7 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
   Timer? _poll;
   DateTime? _acceptedAt;
   bool _stopped = false, _disposed = false, _checking = false, _paired = false;
+  bool _finished = false;
 
   String get _friend => battle.friend.nickname;
 
@@ -209,7 +210,9 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
           // Paired before this answer came: the friend may have accepted
           // the invite already, so take it back only if still open. Left
           // instead: take it back in any case.
-          unawaited(_cancelQuietly(sent.id, ifPending: _paired));
+          // Once the battle is over too, take it back in any case, so the
+          // hold ends now.
+          unawaited(_cancelQuietly(sent.id, ifPending: _paired && !_finished));
           return;
         }
         invite = sent;
@@ -282,6 +285,17 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
         // Accepted meanwhile (or closed): nothing to take back.
       }
     }
+  }
+
+  /// The friend battle is over (the waiting room closed after the pairing):
+  /// take the accepted invite back, so the server lets both players into
+  /// another friend battle at once rather than after its hold. Once.
+  Future<void> finished() async {
+    if (_finished) return;
+    _finished = true;
+    final played = invite;
+    stop();
+    if (played != null) await _cancelQuietly(played.id);
   }
 
   /// Stop reading.
@@ -448,6 +462,7 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
     final invite = current;
     if (invite == null || answering) return null;
     final account = _account, hiddenTimes = _hiddenTimes;
+    var settled = true;
     answering = true;
     _notify();
     try {
@@ -464,9 +479,13 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
       if (account != _account) return null;
       current = null;
       error = friendErrorMessage(e);
+      // Refused by the server (closed, expired, busy): final. No answer
+      // (network, timeout, a server failure): offer it again on the next
+      // read, while it is still open.
+      settled = e is ApiException && e.kind == ApiErrorKind.rejected;
       return null;
     } finally {
-      _done.add(invite.id);
+      if (settled) _done.add(invite.id);
       answering = false;
       _notify();
     }

@@ -449,6 +449,42 @@ void main() {
       },
     );
 
+    test('the battle is over: the accepted invite is taken back once, so '
+        'both players are free at once', () async {
+      final sent = repo.receiveInvite(_friend, ExerciseType.pushUp);
+      final vm = invited(await repo.acceptInvite(sent.id));
+      await vm.start();
+      await vm.paired();
+      await vm.finished();
+      await vm.finished();
+      expect(repo.cancelledIfPending, [false]);
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.cancelled);
+    });
+
+    test('the invite made after the battle was over is taken back in any '
+        'case', () async {
+      repo.holdInvite = Completer<void>();
+      repo.onInvited = (made) => repo.answer(made.id, InviteStatus.accepted);
+      final vm = inviting();
+      final starting = vm.start();
+      await vm.paired();
+      await vm.finished();
+      repo.holdInvite!.complete();
+      await starting;
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.cancelledIfPending, [false]);
+      expect(repo.invites.single.status, InviteStatus.cancelled);
+    });
+
+    test('finished before any invite was made takes nothing back', () async {
+      repo.holdInvite = Completer<void>();
+      final vm = inviting();
+      unawaited(vm.start());
+      await vm.finished();
+      expect(repo.cancels, 0);
+      repo.holdInvite!.complete();
+    });
+
     test('leaving while waiting cancels an open or accepted invite', () async {
       final open = inviting();
       await open.start();
@@ -839,6 +875,34 @@ void main() {
       repo.holdAccept!.complete();
       expect(await accepting, isNull);
       expect(vm.current, isNull);
+    });
+
+    test('no answer from the server (network): it says so and offers the '
+        'invite again on the next read', () async {
+      final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      repo.failWith = const ApiException(ApiErrorKind.network);
+      expect(await vm.accept(), isNull);
+      expect(vm.error, const ApiException(ApiErrorKind.network).message);
+      expect(vm.current, isNull);
+      repo.failWith = null;
+      await vm.check();
+      expect(vm.current!.id, sent.id);
+      // And this time it goes through.
+      expect((await vm.accept())!.status, InviteStatus.accepted);
+    });
+
+    test('a refusal from the server is final: not offered again', () async {
+      final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+      vm.setSignedIn(true);
+      await pumpEventQueue();
+      repo.failWith = _refused('invite_busy');
+      expect(await vm.accept(), isNull);
+      repo.failWith = null;
+      await vm.check();
+      expect(vm.current, isNull);
+      expect(sent.status, InviteStatus.pending);
     });
 
     test('a failed read keeps what shows', () async {

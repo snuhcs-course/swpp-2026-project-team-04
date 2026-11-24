@@ -188,7 +188,8 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     if (leaving) {
       unawaited(wait.leave());
     } else {
-      wait.stop();
+      // Paired, and now the waiting room closes: the battle is over.
+      unawaited(wait.finished());
     }
     // Not while it may be telling its listeners.
     scheduleMicrotask(wait.dispose);

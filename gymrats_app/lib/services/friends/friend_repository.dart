@@ -272,9 +272,9 @@ class InMemoryFriendRepository implements FriendRepository {
 
   static const ttl = Duration(minutes: 1);
 
-  /// How long an accept holds me: one friend battle at a time, as the
-  /// server's ACCEPT_HOLD.
-  static const acceptHold = Duration(seconds: 35);
+  /// How long an accept holds both players: one friend battle at a time,
+  /// as the server's ACCEPT_HOLD.
+  static const acceptHold = Duration(minutes: 2);
 
   /// When I accepted each invite.
   final _acceptedAt = <int, DateTime>{};
@@ -406,10 +406,16 @@ class InMemoryFriendRepository implements FriendRepository {
 
   @override
   Future<BattleInvite> acceptInvite(int inviteId) async {
+    // As the server: neither player may be in another friend battle. This
+    // fake holds only invites involving me, so the inviter's own battles
+    // with others cannot occur here; the server test covers them.
+    final inviter = invites.where((i) => i.id == inviteId).firstOrNull?.from;
+    bool involves(BattleInvite i, FriendPerson? p) =>
+        p != null && (i.to == p || i.from == p);
     final held = invites.any(
       (i) =>
           i.id != inviteId &&
-          i.to == me &&
+          (involves(i, me) || involves(i, inviter)) &&
           i.status == InviteStatus.accepted &&
           _now().difference(_acceptedAt[i.id] ?? DateTime(0)) < acceptHold,
     );

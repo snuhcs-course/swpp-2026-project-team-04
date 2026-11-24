@@ -1188,6 +1188,29 @@ void main() {
       await tester.pump();
     });
 
+    testWidgets('paired, then the waiting room closes (the battle is over): '
+        'the accepted invite is taken back', (tester) async {
+      holdStill(tester);
+      final repo = repository();
+      final sent = repo.receiveInvite(friend, ExerciseType.pushUp);
+      final accepted = await repo.acceptInvite(sent.id);
+      final sessions = await openLobby(
+        tester,
+        repo,
+        FriendBattle(
+          friend: friend,
+          exercise: ExerciseType.pushUp,
+          accepted: accepted,
+        ),
+      );
+      sessions.single.found();
+      await tester.pump();
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.accepted);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.cancelled);
+    });
+
     testWidgets('a friend battle offers no 다시 매칭 after a cancel', (
       tester,
     ) async {
