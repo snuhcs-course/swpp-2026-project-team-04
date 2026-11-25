@@ -83,6 +83,7 @@ Future<void> main() async {
       rulesSeenStore: SecureRulesSeenStore(),
       settingsStore: SecureSettingsStore(),
       arcadeStore: SecureArcadeProgressStore(),
+      holdRecords: FileHoldRecordStore(),
       friendRepository: ServerFriendRepository(api: api),
       // P17: P6's events, sent with the login; kept on the phone meanwhile.
       telemetry: Telemetry(
@@ -113,6 +114,7 @@ class GymRatsApp extends StatefulWidget {
     this.rulesSeenStore,
     this.settingsStore,
     this.arcadeStore,
+    this.holdRecords,
     this.googleSignIn,
     this.friendRepository,
     this.telemetry,
@@ -147,6 +149,10 @@ class GymRatsApp extends StatefulWidget {
   /// Keeps each account's arcade progress. Defaults to
   /// [MemoryArcadeProgressStore].
   final ArcadeProgressStore? arcadeStore;
+
+  /// Keeps the played holds for their report and the archive (P13).
+  /// Defaults to [InMemoryHoldRecordStore].
+  final HoldRecordStore? holdRecords;
 
   /// Friends and friend battle invites (P9). Defaults to an empty
   /// [InMemoryFriendRepository].
@@ -310,7 +316,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),
         ChangeNotifierProvider<ArcadeViewModel>.value(value: _arcade),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
-        Provider<HoldRecordStore>(create: (_) => FileHoldRecordStore()),
+        Provider<HoldRecordStore>(
+          create: (_) => widget.holdRecords ?? InMemoryHoldRecordStore(),
+        ),
         Provider<GoalStore>(create: (_) => SecureGoalStore()),
         Provider<Telemetry>.value(value: _telemetry),
       ],
