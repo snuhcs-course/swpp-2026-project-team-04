@@ -15,6 +15,7 @@ import 'package:gymrats_app/services/user/settings_store.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
+import 'package:gymrats_app/widgets/accent_button.dart';
 import 'package:gymrats_app/widgets/battle_fighter.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
@@ -113,6 +114,9 @@ void main() {
     GoalStore? goals,
     AuthViewModel? auth,
     bool settle = true,
+    Duration? autoSetupIn,
+    Future<void> Function()? onStartSetup,
+    Future<void> Function()? onLeave,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -166,6 +170,9 @@ void main() {
                       matchup: matchup,
                       warningAutoClose: warningAutoClose,
                       characters: characters,
+                      autoSetupIn: autoSetupIn,
+                      onStartSetup: onStartSetup,
+                      onLeave: onLeave,
                     ),
                   ),
                 ),
@@ -1019,6 +1026,155 @@ void main() {
       expect(find.byType(VersusScreen), findsNothing);
     });
   }
+
+  group('온라인 자동 자세 세팅 (A6)', () {
+    const three = Duration(seconds: 3);
+    final notice = find.text('3초 후 자세 세팅을 시작해요');
+
+    testWidgets('no button: "3초 후 자세 세팅을 시작해요" counts 3, 2, 1, then '
+        'the setup opens once', (tester) async {
+      var starts = 0;
+      await open(
+        tester,
+        autoSetupIn: three,
+        onStartSetup: () async => starts++,
+      );
+      expect(find.text('자세 세팅 시작'), findsNothing);
+      expect(find.byType(AccentButton), findsNothing);
+      expect(notice, findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('2'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('1'), findsOneWidget);
+      expect(starts, 0);
+      await tester.pump(const Duration(seconds: 1));
+      expect(starts, 1);
+      // Nothing more fires afterwards.
+      await tester.pump(const Duration(seconds: 5));
+      expect(starts, 1);
+    });
+
+    testWidgets('a screen reader hears the sentence once, then each second', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await open(tester, autoSetupIn: three, onStartSetup: () async {});
+      expect(find.bySemanticsLabel('3초 후 자세 세팅을 시작해요'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.bySemanticsLabel('2'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('자세 세팅을 시작해요')), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets('back on the safety warning, then 계속하기: the warning comes '
+        'again and nothing counts until it is confirmed', (tester) async {
+      var starts = 0;
+      await open(
+        tester,
+        seeWarning: false,
+        autoSetupIn: three,
+        onStartSetup: () async => starts++,
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('계속하기'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SafeWarningDialog), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      expect(starts, 0);
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 3));
+      expect(starts, 1);
+    });
+
+    testWidgets('it waits for the safety warning to close', (tester) async {
+      var starts = 0;
+      await open(
+        tester,
+        seeWarning: false,
+        autoSetupIn: three,
+        onStartSetup: () async => starts++,
+      );
+      await tester.pump(const Duration(seconds: 5));
+      expect(starts, 0);
+      expect(find.text('3'), findsOneWidget);
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 3));
+      expect(starts, 1);
+    });
+
+    testWidgets('it waits while 게임 나가기 asks; 계속하기 goes on from where '
+        'it was', (tester) async {
+      var starts = 0;
+      await open(
+        tester,
+        autoSetupIn: three,
+        onStartSetup: () async => starts++,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(exitButton);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      expect(starts, 0);
+      expect(find.text('게임에서 나갈까요?'), findsOneWidget);
+      await tester.tap(find.text('계속하기'));
+      // The answer comes back as the dialog starts closing: from then on,
+      // a whole second again, not what was left of the old one.
+      await tester.pump();
+      expect(find.text('2'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(find.text('2'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('1'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(starts, 1);
+    });
+
+    testWidgets('leaving in the countdown never opens the setup', (
+      tester,
+    ) async {
+      var starts = 0, leaves = 0;
+      await open(
+        tester,
+        autoSetupIn: three,
+        onStartSetup: () async => starts++,
+        onLeave: () async => leaves++,
+      );
+      await tester.tap(exitButton);
+      await tester.pumpAndSettle();
+      await tester.tap(dialogExit);
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      expect(leaves, 1);
+      expect(starts, 0);
+    });
+
+    testWidgets('closed in the countdown (the opponent left): nothing fires', (
+      tester,
+    ) async {
+      var starts = 0;
+      await open(
+        tester,
+        autoSetupIn: three,
+        onStartSetup: () async => starts++,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+      expect(starts, 0);
+    });
+
+    testWidgets('without it (bot and arcade) the button stays', (tester) async {
+      await open(tester);
+      expect(find.text('자세 세팅 시작'), findsOneWidget);
+      expect(notice, findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+      expect(battleOpens(), 0);
+    });
+  });
 
   testWidgets('the dialog names the opponent from the matchup', (tester) async {
     await open(

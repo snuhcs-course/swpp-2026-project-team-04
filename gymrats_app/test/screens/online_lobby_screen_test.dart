@@ -105,6 +105,16 @@ void holdStill(WidgetTester tester) {
   addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
 }
 
+/// A6: the versus screen counts 3, 2, 1 under "3초 후 자세 세팅을
+/// 시작해요" and opens the pose setup by itself; there is no button.
+Future<void> countDownToSetup(WidgetTester tester) async {
+  expect(find.text('3초 후 자세 세팅을 시작해요'), findsOneWidget);
+  expect(find.text('자세 세팅 시작'), findsNothing);
+  for (var i = 0; i < 3; i++) {
+    await tester.pump(const Duration(seconds: 1));
+  }
+}
+
 Future<InMemoryAuthRepository> loggedIn() async {
   final auth = InMemoryAuthRepository()
     ..addAccount(loginId: 'human', nickname: '로그인사용자', password: 'password1');
@@ -235,7 +245,7 @@ void main() {
       expect(find.text('확인 (5)'), findsOneWidget);
       await tester.tap(find.text('확인 (5)'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('자세 세팅 시작'));
+      await countDownToSetup(tester);
       await settle(tester);
       session.phase = phase;
       session.notifyListeners();
@@ -320,7 +330,7 @@ void main() {
     await settle(tester);
     await tester.tap(find.text('확인 (5)'));
     await settle(tester);
-    await tester.tap(find.text('자세 세팅 시작'));
+    await countDownToSetup(tester);
     await settle(tester);
     session
       ..startAtMs = session.serverNow - 1000
@@ -530,7 +540,7 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
       expect(find.byType(SafeWarningDialog), findsNothing);
-      await tester.tap(find.text('자세 세팅 시작'));
+      await countDownToSetup(tester);
       await settle(tester);
       expect(find.byType(OnlineBattleScreen), findsOneWidget);
       // The setup is on the battle's stage: both still setting up.
@@ -561,7 +571,7 @@ void main() {
   );
 
   testWidgets("with 환경설정's '매 경기 안전 안내' off and the notice seen "
-      'once, the match goes straight to the setup button', (tester) async {
+      'once, the match goes straight to the setup countdown', (tester) async {
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -600,7 +610,7 @@ void main() {
     expect(find.text('MATCH FOUND'), findsOneWidget);
     expect(find.byType(SafeWarningDialog), findsNothing);
     // No 5 s wait for the warning to close itself.
-    await tester.tap(find.text('자세 세팅 시작'));
+    await countDownToSetup(tester);
     await settle(tester);
     expect(find.byType(OnlineBattleScreen), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
@@ -645,7 +655,7 @@ void main() {
     expect(find.byType(SafeWarningDialog), findsOneWidget);
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('자세 세팅 시작'));
+    await countDownToSetup(tester);
     await settle(tester);
     final battle = tester.widget<OnlineBattleScreen>(
       find.byType(OnlineBattleScreen),
@@ -749,6 +759,75 @@ void main() {
     // Its countdown went with it.
     await tester.pump(const Duration(seconds: 10));
     expect(tester.takeException(), isNull);
+  });
+
+  group('온라인 자동 자세 세팅 (A6)', () {
+    Future<(_Session, List<OnlineBattleScreen>)> matched(
+      WidgetTester tester,
+    ) async {
+      holdStill(tester);
+      final auth = await loggedIn();
+      late _Session session;
+      final battles = <OnlineBattleScreen>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: OnlineLobbyScreen(
+            autoJoin: false,
+            auth: auth,
+            createSession: (u, t, a) => session = _Session(u, t, a),
+            createCounter: () => RepCounterViewModel(
+              camera: FakeCameraService(),
+              estimator: FakePoseEstimator(),
+              roundLength: const Duration(days: 1),
+            ),
+          ),
+          navigatorObservers: [_OpenedBattles((screen) => battles.add(screen))],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('온라인 상대 찾기'));
+      await tester.pump();
+      session.found();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('확인 (5)'));
+      await tester.pumpAndSettle();
+      return (session, battles);
+    }
+
+    testWidgets('the setup opens by itself after 3, 2, 1, once, even as the '
+        'session keeps changing', (tester) async {
+      final (session, battles) = await matched(tester);
+      expect(find.text('3'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      // The session telling its listeners again does not open anything.
+      session.notifyListeners();
+      await tester.pump(const Duration(seconds: 1));
+      expect(battles, isEmpty);
+      await tester.pump(const Duration(seconds: 1));
+      await settle(tester);
+      expect(find.byType(OnlineBattleScreen), findsOneWidget);
+      session.notifyListeners();
+      await tester.pump(const Duration(seconds: 5));
+      expect(battles, hasLength(1));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('the opponent leaving in the countdown ends the match as '
+        'before, and no setup opens', (tester) async {
+      final (session, battles) = await matched(tester);
+      await tester.pump(const Duration(seconds: 1));
+      session.phase = OnlinePhase.cancelled;
+      session.notifyListeners();
+      await tester.pumpAndSettle();
+      expect(find.byType(VersusScreen), findsNothing);
+      expect(find.text('매칭이 종료됐어요. 다시 상대를 찾아주세요.'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      expect(battles, isEmpty);
+      expect(find.byType(OnlineBattleScreen), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   testWidgets(
@@ -989,7 +1068,7 @@ void main() {
       await settle(tester);
       await tester.tap(find.text('확인 (5)'));
       await settle(tester);
-      await tester.tap(find.text('자세 세팅 시작'));
+      await countDownToSetup(tester);
       await settle(tester);
       expect(
         tester
@@ -1365,7 +1444,7 @@ void main() {
       await settle(tester);
       await tester.tap(find.text('확인 (5)'));
       await settle(tester);
-      await tester.tap(find.text('자세 세팅 시작'));
+      await countDownToSetup(tester);
       await settle(tester);
       final battle = tester.widget<OnlineBattleScreen>(
         find.byType(OnlineBattleScreen),
@@ -1423,4 +1502,21 @@ void main() {
       expect(find.text('헬창#0002'), findsOneWidget);
     });
   });
+}
+
+/// Calls [opened] for every online battle screen pushed.
+class _OpenedBattles extends NavigatorObserver {
+  _OpenedBattles(this.opened);
+
+  final void Function(OnlineBattleScreen screen) opened;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is MaterialPageRoute) {
+      final context = navigator?.context;
+      if (context == null) return;
+      final page = route.builder(context);
+      if (page is OnlineBattleScreen) opened(page);
+    }
+  }
 }
