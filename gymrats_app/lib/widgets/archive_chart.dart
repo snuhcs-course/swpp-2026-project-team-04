@@ -30,9 +30,9 @@ abstract final class TrendChartLayout {
   }
 
   /// One point per value in a chart of [size].
-  static List<Offset> points(List<int> values, Size size) {
+  static List<Offset> points(List<num> values, Size size) {
     if (values.isEmpty) return const [];
-    final highest = values.reduce(math.max);
+    final highest = values.fold<num>(values.first, math.max);
     final xs = TrendChartLayout.xs(values.length, size.width);
     return [
       for (var i = 0; i < values.length; i++)
@@ -41,23 +41,30 @@ abstract final class TrendChartLayout {
   }
 
   /// The mean of [values]; 0 without any.
-  static double mean(List<int> values) =>
-      values.isEmpty ? 0 : values.fold(0, (sum, v) => sum + v) / values.length;
+  static double mean(List<num> values) => values.isEmpty
+      ? 0
+      : values.fold<num>(0, (sum, v) => sum + v) / values.length;
 }
 
 /// The journal's trend chart: a green line through [values], a white dot on
 /// each but the newest (a filled green one), the value over each point, and
-/// the mean as a dashed grey line named "평균 N".
+/// the mean as a dashed grey line named "평균 N". [format] writes a value:
+/// whole numbers by default, a hold's seconds with one decimal.
 class ArchiveTrendPainter extends CustomPainter {
   ArchiveTrendPainter({
     required this.values,
     required this.labelStyle,
     required this.meanStyle,
+    this.format = whole,
   });
 
-  final List<int> values;
+  final List<num> values;
   final TextStyle labelStyle;
   final TextStyle meanStyle;
+  final String Function(num value) format;
+
+  /// A value rounded to a whole number.
+  static String whole(num value) => '${value.round()}';
 
   static const _line = 2.5;
   static const _dot = 4.0;
@@ -69,7 +76,7 @@ class ArchiveTrendPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (values.isEmpty) return;
     final points = TrendChartLayout.points(values, size);
-    final highest = values.reduce(math.max);
+    final highest = values.fold<num>(values.first, math.max);
     final grid = Paint()
       ..color = AppColors.facetLight
       ..strokeWidth = 1;
@@ -96,7 +103,7 @@ class ArchiveTrendPainter extends CustomPainter {
     }
     _text(
       canvas,
-      '평균 ${mean.round()}',
+      '평균 ${format(mean)}',
       meanStyle,
       Offset(0, meanY - _labelGap),
       above: true,
@@ -127,7 +134,7 @@ class ArchiveTrendPainter extends CustomPainter {
       }
       _text(
         canvas,
-        '${values[i]}',
+        format(values[i]),
         labelStyle,
         points[i] - const Offset(0, _lastDot + _labelGap),
         above: true,
@@ -156,5 +163,6 @@ class ArchiveTrendPainter extends CustomPainter {
   bool shouldRepaint(ArchiveTrendPainter old) =>
       !listEquals(old.values, values) ||
       old.labelStyle != labelStyle ||
-      old.meanStyle != meanStyle;
+      old.meanStyle != meanStyle ||
+      old.format != format;
 }

@@ -33,6 +33,7 @@ import 'services/auth/auth_repository.dart';
 import 'services/auth/google_sign_in_service.dart';
 import 'services/auth/token_store.dart';
 import 'services/feedback/form_report_store.dart';
+import 'services/feedback/hold_record_store.dart';
 import 'services/feedback/goal_store.dart';
 import 'services/friends/friend_repository.dart';
 import 'services/matching/bot_matchmaker.dart';
@@ -309,6 +310,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),
         ChangeNotifierProvider<ArcadeViewModel>.value(value: _arcade),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
+        Provider<HoldRecordStore>(create: (_) => FileHoldRecordStore()),
         Provider<GoalStore>(create: (_) => SecureGoalStore()),
         Provider<Telemetry>.value(value: _telemetry),
       ],
