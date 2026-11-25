@@ -1,5 +1,9 @@
 import 'dart:async';
 
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/models/matchup.dart';
@@ -53,6 +57,32 @@ class _SlowStore extends MemoryArcadeProgressStore {
     final progress = (await super.read(accountId)).withStars(number, stars);
     await write(accountId, progress);
     return progress;
+  }
+}
+
+/// Secure storage whose next [failReads] reads fail, as a lost key does
+/// (after [gate], when set, as on a slow phone); the others read the
+/// test's saved values.
+class _FlakyStorage extends FlutterSecureStorage {
+  int failReads = 0;
+  Completer<void>? gate;
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) {
+    if (failReads > 0) {
+      failReads--;
+      final wait = gate?.future ?? Future<void>.value();
+      return wait.then((_) => throw PlatformException(code: 'read'));
+    }
+    return super.read(key: key);
   }
 }
 
@@ -210,6 +240,61 @@ void main() {
       store.answer(1, ArcadeProgress.initial());
       await read;
       expect(arcade.progress!.bestOf(1), 2);
+    });
+  });
+
+  group('a save whose read of the store fails (PR #91 review)', () {
+    final earlier = _progress([3, 2]);
+    late _FlakyStorage storage;
+    late ArcadeViewModel secure;
+
+    setUp(() async {
+      FlutterSecureStorage.setMockInitialValues({
+        SecureArcadeProgressStore.key(1): jsonEncode(earlier.toJson()),
+      });
+      storage = _FlakyStorage();
+      secure = ArcadeViewModel(store: SecureArcadeProgressStore(storage));
+      await secure.load(1);
+      expect(secure.progress, earlier);
+    });
+
+    tearDown(() => secure.dispose());
+
+    test('keeps the stars shown, saves nothing, opens nothing; a read that '
+        'overlaps it still lands; the next save works', () async {
+      storage.failReads = 1;
+      secure.request(4);
+      final kept = secure.record(3, const ArcadeStars(true, false, false));
+      final read = secure.refresh();
+      await kept;
+      await read;
+      expect(secure.saving, isFalse);
+      expect(secure.progress, earlier);
+      expect(secure.takeOpenRequest(), isNull);
+      expect(secure.hasRequest, isFalse);
+      expect(
+        await SecureArcadeProgressStore().read(1),
+        earlier,
+        reason: 'nothing written',
+      );
+
+      await secure.record(3, const ArcadeStars(true, false, false));
+      expect(secure.progress, earlier.withStars(3, 1));
+      expect(
+        await SecureArcadeProgressStore().read(1),
+        earlier.withStars(3, 1),
+      );
+    });
+
+    test('through holdStore the failure reaches the screen, and the stars '
+        'shown stay', () async {
+      storage.failReads = 1;
+      await expectLater(
+        secure.holdStore.recordStage(1, 3, 2),
+        throwsA(isA<PlatformException>()),
+      );
+      expect(secure.progress, earlier);
+      expect(secure.saving, isFalse);
     });
   });
 

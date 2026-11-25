@@ -124,13 +124,17 @@ void main() {
         expect(await saved(), after);
       });
 
-      test('a store that fails to read keeps the saved progress: nothing is '
-          'written', () async {
-        final after = await SecureArcadeProgressStore(_BrokenStorage())
-            .recordStage(7, 3, 1);
-        expect(after, ArcadeProgress.initial().withStars(3, 1));
-        expect(await saved(), earlier);
-      });
+      test(
+        'a store that fails to read keeps the saved progress: nothing is '
+        'written, and the failure reaches the caller (PR #91 review)',
+        () async {
+          await expectLater(
+            SecureArcadeProgressStore(_BrokenStorage()).recordStage(7, 3, 1),
+            throwsA(isA<PlatformException>()),
+          );
+          expect(await saved(), earlier);
+        },
+      );
 
       test('a broken saved value is replaced by the play', () async {
         FlutterSecureStorage.setMockInitialValues({

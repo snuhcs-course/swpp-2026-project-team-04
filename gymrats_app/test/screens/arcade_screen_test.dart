@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/arcade_catalog.dart';
 import 'package:gymrats_app/models/arcade_progress.dart';
@@ -43,6 +46,32 @@ class _WaitingStore extends MemoryArcadeProgressStore {
   Future<ArcadeProgress> read(int accountId) async {
     await gate.future;
     return super.read(accountId);
+  }
+}
+
+/// Secure storage whose next [failReads] reads fail, as a lost key does
+/// (after [gate], when set, as on a slow phone); the others read the
+/// test's saved values.
+class _FlakyStorage extends FlutterSecureStorage {
+  int failReads = 0;
+  Completer<void>? gate;
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) {
+    if (failReads > 0) {
+      failReads--;
+      final wait = gate?.future ?? Future<void>.value();
+      return wait.then((_) => throw PlatformException(code: 'read'));
+    }
+    return super.read(key: key);
   }
 }
 
@@ -96,6 +125,7 @@ void main() {
     WidgetTester tester, {
     ArcadeProgress? progress,
     MemoryArcadeProgressStore? using,
+    SecureArcadeProgressStore? secure,
     bool realHold = false,
     CharacterViewModel? characters,
   }) async {
@@ -107,7 +137,14 @@ void main() {
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     if (using != null) store = using;
     if (progress != null) store.saved[1] = progress;
-    arcade = ArcadeViewModel(store: store);
+    if (secure != null) {
+      FlutterSecureStorage.setMockInitialValues({
+        SecureArcadeProgressStore.key(1): jsonEncode(
+          (progress ?? ArcadeProgress.initial()).toJson(),
+        ),
+      });
+    }
+    arcade = ArcadeViewModel(store: secure ?? store);
     addTearDown(arcade.dispose);
     unawaited(arcade.load(1));
     await tester.pumpWidget(
@@ -431,6 +468,30 @@ void main() {
       slow.release();
       await tester.pumpAndSettle();
       expect(find.byType(ArcadeBossScreen), findsOneWidget);
+    });
+
+    testWidgets('a save that cannot read the store: the earlier stars stay '
+        'and the stage after it does not open (PR #91 review)', (tester) async {
+      final storage = _FlakyStorage();
+      await open(
+        tester,
+        progress: _progress([3, 2]),
+        secure: SecureArcadeProgressStore(storage),
+      );
+      final slow = storage.gate = Completer<void>();
+      storage.failReads = 1;
+      holdStars = 2;
+      holdExit = HoldStageExit.nextStage;
+      await tapCell(tester, 3);
+      // The save's read fails after the map's own read began.
+      slow.complete();
+      storage.gate = null;
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(arcade.progress!.bestOf(1), 3);
+      expect(arcade.progress!.isOpen(4), isFalse);
+      expect(arcade.hasRequest, isFalse);
     });
 
     testWidgets('a save that fails drops it: the map stays', (tester) async {

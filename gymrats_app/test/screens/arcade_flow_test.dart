@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/arcade_catalog.dart';
 import 'package:gymrats_app/models/arcade_progress.dart';
@@ -74,6 +77,32 @@ class _SlowSaveStore extends MemoryArcadeProgressStore {
   }
 }
 
+/// Secure storage whose next [failReads] reads fail, as a lost key does
+/// (after [gate], when set, as on a slow phone); the others read the
+/// test's saved values.
+class _FlakyStorage extends FlutterSecureStorage {
+  int failReads = 0;
+  Completer<void>? gate;
+
+  @override
+  Future<String?> read({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) {
+    if (failReads > 0) {
+      failReads--;
+      final wait = gate?.future ?? Future<void>.value();
+      return wait.then((_) => throw PlatformException(code: 'read'));
+    }
+    return super.read(key: key);
+  }
+}
+
 ArcadeFightStage _fight(int number) =>
     ArcadeCatalog.stage(number) as ArcadeFightStage;
 ArcadeBossStage _boss(int number) =>
@@ -93,6 +122,7 @@ void main() {
     WidgetTester tester, {
     required int played,
     MemoryArcadeProgressStore? using,
+    SecureArcadeProgressStore? secure,
   }) async {
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
@@ -103,7 +133,14 @@ void main() {
     holds = [];
     store = (using ?? MemoryArcadeProgressStore())
       ..saved[1] = _progress(played);
-    arcade = ArcadeViewModel(store: store);
+    if (secure != null) {
+      FlutterSecureStorage.setMockInitialValues({
+        SecureArcadeProgressStore.key(1): jsonEncode(
+          _progress(played).toJson(),
+        ),
+      });
+    }
+    arcade = ArcadeViewModel(store: secure ?? store);
     addTearDown(arcade.dispose);
     unawaited(arcade.load(1));
     invites = FriendInviteRouteWatch();
@@ -301,6 +338,73 @@ void main() {
       );
       await tap(tester, '다음 스테이지');
       expect(holds, [9]);
+    });
+  });
+
+  group('a save that cannot read the store (PR #91 review)', () {
+    testWidgets('a fight: the earlier stars stay, the next stage does not '
+        'open, and the next save works', (tester) async {
+      final storage = _FlakyStorage();
+      await open(tester, played: 6, secure: SecureArcadeProgressStore(storage));
+      final slow = storage.gate = Completer<void>();
+      storage.failReads = 1;
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      expect(find.text('다음 스테이지'), findsOneWidget);
+      await tap(tester, '다음 스테이지');
+      // The save's read fails after the map's own read began.
+      slow.complete();
+      storage.gate = null;
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(arcade.progress!.bestOf(1), 1);
+      expect(arcade.progress!.isOpen(8), isFalse);
+      expect(arcade.hasRequest, isFalse);
+
+      await play(
+        tester,
+        _battle(ArcadeMatchups.fight(_fight(7), playerName: '우현'), won: true),
+      );
+      await tap(tester, '다음 스테이지');
+      expect(find.text('STAGE 8'), findsOneWidget);
+      expect(arcade.progress!.bestOf(1), 1);
+    });
+
+    testWidgets('a boss match: the next floor does not open, the earlier '
+        'stars stay', (tester) async {
+      final storage = _FlakyStorage();
+      await open(tester, played: 5, secure: SecureArcadeProgressStore(storage));
+      final stage = _boss(6);
+      await play(
+        tester,
+        _battle(
+          ArcadeMatchups.boss(stage, 1, playerName: '우현'),
+          won: true,
+          ko: true,
+        ),
+      );
+      final slow = storage.gate = Completer<void>();
+      storage.failReads = 1;
+      await play(
+        tester,
+        _battle(
+          ArcadeMatchups.boss(stage, 2, playerName: '우현'),
+          won: true,
+          ko: true,
+          me: 200,
+          opponent: 95,
+        ),
+      );
+      expect(find.text('1층 클리어!'), findsOneWidget);
+      await tap(tester, '2층으로');
+      slow.complete();
+      storage.gate = null;
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeStageSheet), findsNothing);
+      expect(arcade.progress!.bestOf(5), 1);
+      expect(arcade.progress!.isOpen(7), isFalse);
     });
   });
 

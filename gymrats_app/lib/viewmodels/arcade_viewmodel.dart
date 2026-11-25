@@ -127,15 +127,14 @@ class ArcadeViewModel extends ChangeNotifier {
   late final ArcadeProgressStore holdStore = _HoldStageStore(this);
 
   /// Keeps [stars] for stage [number] of [accountId] in the store, as
-  /// [record] tells; the progress shown changes only for this account.
+  /// [record] tells; the progress shown changes only for this account. A
+  /// save that fails changes nothing shown, and a read begun meanwhile
+  /// still lands: only a save that went through drops it.
   Future<ArcadeProgress> _keep(int accountId, int number, int stars) async {
-    // Another account's save is only kept: this account's reads and
-    // [saving] are not its business.
+    // Another account's save is only kept: this account's [saving] is not
+    // its business.
     final mine = accountId == _accountId;
-    if (mine) {
-      _reads += 1;
-      _saving += 1;
-    }
+    if (mine) _saving += 1;
     try {
       final after = await _store.recordStage(accountId, number, stars);
       if (!_disposed && accountId == _accountId) {
