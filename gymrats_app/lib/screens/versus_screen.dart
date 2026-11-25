@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
+import '../models/arcade_ai_level.dart';
 import '../models/battle_rules.dart';
 import '../models/character_idle_motion.dart';
 import '../models/character_rig.dart';
@@ -29,6 +30,7 @@ import '../widgets/exit_dialog.dart';
 import '../widgets/exit_game_button.dart';
 import '../widgets/grid_background.dart';
 import '../widgets/safe_warning_dialog.dart';
+import 'arcade_flow.dart';
 
 /// Shows who battles whom, the rules (or the user's goal for this
 /// exercise, A11 spec 4), and the button to the pose setup.
@@ -250,19 +252,23 @@ class _VersusScreenState extends State<VersusScreen>
   /// Asks before leaving, on a back attempt or the 게임 나가기 button. True
   /// when the user chose to leave.
   Future<bool> _askToLeave() async {
+    final opponent = widget.matchup.opponent;
     // The countdown waits while the question is open, so the setup never
     // opens over it, and goes on from the same second after 계속하기.
     final counting = _countdown?.isActive ?? false;
     _countdown?.cancel();
     final leave = await confirmExit(
       context,
-      ExitDialog.game(opponentName: widget.matchup.opponent.name),
+      ExitDialog.game(opponentName: opponent.characterName),
     );
     if (counting && !leave && mounted) _runCountdown();
     if (!mounted) return leave;
     if (leave) {
       if (widget.onLeave case final leaveMatch?) {
         await leaveMatch();
+      } else if (opponent.isArcade) {
+        // An arcade stage goes back to the arcade's map (P16 spec 6).
+        ArcadeFlow.leave(context);
       } else {
         popToHome(context);
       }
@@ -278,9 +284,11 @@ class _VersusScreenState extends State<VersusScreen>
         me:
             context.watch<CharacterViewModel?>()?.characterId ??
             CharacterRig.defaultId,
-        opponent: widget.matchup.opponent.isBot
-            ? CharacterRig.botId
-            : CharacterRig.defaultId,
+        opponent:
+            widget.matchup.opponent.characterId ??
+            (widget.matchup.opponent.isBot
+                ? CharacterRig.botId
+                : CharacterRig.defaultId),
       );
 
   @override
@@ -311,6 +319,7 @@ class _VersusScreenState extends State<VersusScreen>
                       exercise: matchup.exercise,
                       onExit: _askToLeave,
                       duration: widget.duration,
+                      stage: matchup.opponent.arcadeStage,
                     ),
                     const SizedBox(height: AppSpacing.s16),
                     // Takes all the height the rules leave, so longer rules
@@ -418,18 +427,26 @@ class _Header extends StatelessWidget {
     required this.exercise,
     required this.onExit,
     required this.duration,
+    this.stage,
   });
 
   final ExerciseType exercise;
   final VoidCallback onExit;
   final Duration duration;
 
+  /// An arcade stage's number: the band says "STAGE n" and the exit
+  /// "아케이드로" (P16 spec 6, design `P16Found`).
+  final int? stage;
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Row(
       children: [
-        ExitGameButton(onPressed: onExit),
+        if (stage == null)
+          ExitGameButton(onPressed: onExit)
+        else
+          ExitGameButton(onPressed: onExit, label: '아케이드로'),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -444,7 +461,7 @@ class _Header extends StatelessWidget {
                   child: Padding(
                     padding: AppHighlight.tightBandPadding,
                     child: Text(
-                      'MATCH FOUND',
+                      stage == null ? 'MATCH FOUND' : 'STAGE $stage',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: text.displaySmall?.copyWith(
@@ -565,8 +582,12 @@ class _MatchupBoardState extends State<_MatchupBoard>
                   Expanded(
                     child: _PlayerCell(
                       side: BattleSide.opponent,
-                      name: opponent.name,
+                      name: opponent.characterName,
                       bot: opponent.isBot,
+                      aiTag: switch (opponent.pace) {
+                        final ArcadeAiLevel level => 'AI LV ${level.level}',
+                        _ => 'AI',
+                      },
                       characterId: characters.opponent,
                       cast: cast,
                       clock: _clock,
@@ -599,6 +620,7 @@ class _PlayerCell extends StatelessWidget {
     required this.side,
     required this.name,
     this.bot = false,
+    this.aiTag = 'AI',
     required this.characterId,
     required this.cast,
     required this.clock,
@@ -608,6 +630,9 @@ class _PlayerCell extends StatelessWidget {
   final BattleSide side;
   final String name;
   final bool bot;
+
+  /// The bot's tag under its name: "AI", an arcade stage's "AI LV 6".
+  final String aiTag;
   final String characterId;
   final BattleFxCast cast;
   final ValueListenable<double> clock;
@@ -651,7 +676,12 @@ class _PlayerCell extends StatelessWidget {
                     left: mine ? room : AppSpacing.s16,
                     right: mine ? AppSpacing.s16 : room,
                   ),
-                  child: _PlayerWords(side: side, name: name, bot: bot),
+                  child: _PlayerWords(
+                    side: side,
+                    name: name,
+                    bot: bot,
+                    aiTag: aiTag,
+                  ),
                 ),
               ),
             ],
@@ -672,11 +702,13 @@ class _PlayerWords extends StatelessWidget {
     required this.side,
     required this.name,
     required this.bot,
+    this.aiTag = 'AI',
   });
 
   final BattleSide side;
   final String name;
   final bool bot;
+  final String aiTag;
 
   @override
   Widget build(BuildContext context) {
@@ -686,7 +718,7 @@ class _PlayerWords extends StatelessWidget {
     final label = mine ? '나' : '상대';
     return Semantics(
       container: true,
-      label: [label, name, if (bot) 'AI'].join(', '),
+      label: [label, name, if (bot) aiTag].join(', '),
       excludeSemantics: true,
       child: LayoutBuilder(
         builder: (context, constraints) => Align(
@@ -720,7 +752,7 @@ class _PlayerWords extends StatelessWidget {
                   if (bot) ...[
                     const SizedBox(height: AppSpacing.s4),
                     _Pill(
-                      label: 'AI',
+                      label: aiTag,
                       style: text.versusAiTag,
                       inside: AppHighlight.tagPadding,
                     ),

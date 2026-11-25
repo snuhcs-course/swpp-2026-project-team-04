@@ -524,11 +524,14 @@ double _number(Object? value) {
   throw FormatException('not a number: $value');
 }
 
-/// "#RRGGBB" as an opaque 0xAARRGGBB.
+/// "#RRGGBB" as an opaque 0xAARRGGBB, or "#RRGGBBAA" with its alpha (the
+/// login group photo's blush, drawn at an SVG opacity, P8).
 int _color(Object? value) {
-  final match = RegExp(r'^#([0-9A-Fa-f]{6})$').firstMatch('$value');
+  final match = RegExp(r'^#([0-9A-Fa-f]{6})([0-9A-Fa-f]{2})?$')
+      .firstMatch('$value');
   if (match == null) throw FormatException('not a color: $value');
-  return 0xFF000000 | int.parse(match[1]!, radix: 16);
+  final alpha = match[2] == null ? 0xFF : int.parse(match[2]!, radix: 16);
+  return alpha << 24 | int.parse(match[1]!, radix: 16);
 }
 
 /// Runs [read] and turns a wrong JSON type into a [FormatException] that

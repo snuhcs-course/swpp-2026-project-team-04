@@ -97,6 +97,8 @@ Future<void> _pump(
   double? setupProgress,
   Widget? camera,
   BattleCharacters? characters,
+  Widget? scenery,
+  int? round,
 }) async {
   // The test's screen is the phone's.
   await tester.binding.setSurfaceSize(size);
@@ -137,6 +139,8 @@ Future<void> _pump(
             onSwitchCamera: onSwitchCamera,
             setupProgress: setupProgress,
             characters: characters,
+            scenery: scenery,
+            round: round,
           ),
         ),
       ),
@@ -2158,6 +2162,40 @@ void main() {
       await _wait(tester, 100);
       expect(cues, ['knockout me excellent']);
       expect(said, ['내 점수 100점, 유효 0회', 'K.O. 이겼어요']);
+    });
+  });
+  group('BattleArena, in the arcade (P16 spec 6 and 7)', () {
+    testWidgets('hands the floor picture to the backdrop and the round to '
+        'the stage', (tester) async {
+      const picture = ColoredBox(color: AppColors.opponent);
+      await _pump(
+        tester,
+        BattleStageController(),
+        _state(),
+        scenery: picture,
+        round: 1,
+      );
+      expect(
+        tester
+            .widget<BattleStageBackdrop>(find.byType(BattleStageBackdrop))
+            .scenery,
+        same(picture),
+      );
+      expect(tester.widget<BattleStage>(find.byType(BattleStage)).round, 1);
+    });
+
+    testWidgets('without them, as online, neither is there', (tester) async {
+      await _pump(tester, BattleStageController(), _state());
+      expect(
+        tester
+            .widget<BattleStageBackdrop>(find.byType(BattleStageBackdrop))
+            .scenery,
+        isNull,
+      );
+      expect(
+        tester.widget<BattleStage>(find.byType(BattleStage)).round,
+        isNull,
+      );
     });
   });
 }

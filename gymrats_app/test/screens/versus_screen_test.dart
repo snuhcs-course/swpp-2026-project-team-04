@@ -4,6 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
+import 'package:gymrats_app/models/arcade_stage.dart';
+import 'package:gymrats_app/models/arcade_catalog.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/character_idle_motion.dart';
 import 'package:gymrats_app/models/character_rig.dart';
@@ -1720,6 +1723,138 @@ void main() {
       await tester.pumpAndSettle();
       expect(card, findsNothing);
       expect(find.text('경기 규칙'), findsOneWidget);
+    });
+  });
+
+  group('an arcade stage (P16 spec 6, design P16Found)', () {
+    final stage = ArcadeCatalog.stage(8) as ArcadeFightStage;
+    final arcadeMatchup = ArcadeMatchups.fight(stage, playerName: '우현');
+
+    /// Home, the arcade's map (a stand-in) over it, and the stage's versus
+    /// over the map, its safety warning closed.
+    Future<void> openStage(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      pushes = PushLog();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          navigatorObservers: [pushes],
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () =>
+                    Navigator.pushNamed(context, GymRatsApp.arcadeRoute),
+                child: const Text('home'),
+              ),
+            ),
+          ),
+          onGenerateRoute: (settings) => switch (settings.name) {
+            GymRatsApp.arcadeRoute => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => VersusScreen(matchup: arcadeMatchup),
+                    ),
+                  ),
+                  child: const Text('arcade map'),
+                ),
+              ),
+            ),
+            GymRatsApp.battleRoute => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => Scaffold(
+                body: Text(
+                  'battle vs ${(settings.arguments! as Matchup).opponent.name}',
+                ),
+              ),
+            ),
+            _ => null,
+          },
+        ),
+      );
+      await tester.tap(find.text('home'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('arcade map'));
+      await tester.pumpAndSettle();
+      await tester.tap(warningButton);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the header says STAGE n and the exit 아케이드로', (tester) async {
+      await openStage(tester);
+      expect(find.text('STAGE 8'), findsOneWidget);
+      expect(find.text('MATCH FOUND'), findsNothing);
+      expect(find.text('스쿼트 · 30초'), findsOneWidget);
+      expect(find.text('아케이드로'), findsOneWidget);
+      expect(find.text('게임 나가기'), findsNothing);
+    });
+
+    testWidgets('the opponent is the stage\'s character with its AI level', (
+      tester,
+    ) async {
+      await openStage(tester);
+      expect(find.text('물렁범'), findsOneWidget);
+      expect(find.text('AI LV 6'), findsOneWidget);
+      expect(find.text('STAGE 8 · 물렁범'), findsNothing);
+      expect(find.bySemanticsLabel('상대, 물렁범, AI LV 6'), findsOneWidget);
+      final opponents = tester
+          .widgetList<CharacterFigure>(find.byType(CharacterFigure))
+          .where((figure) => figure.side == BattleSide.opponent)
+          .map((figure) => figure.characterId)
+          .toSet();
+      expect(opponents, {'seal'});
+      // The rest is as before: the user's cell and the rules card.
+      expect(find.text('우현'), findsOneWidget);
+      expect(find.text('경기 규칙'), findsOneWidget);
+    });
+
+    testWidgets('자세 세팅 시작 opens the stage\'s battle', (tester) async {
+      await openStage(tester);
+      await tester.tap(find.text('자세 세팅 시작'));
+      await tester.pumpAndSettle();
+      expect(find.text('battle vs STAGE 8 · 물렁범'), findsOneWidget);
+    });
+
+    testWidgets('아케이드로 asks, then goes back to the arcade\'s map, not home', (
+      tester,
+    ) async {
+      await openStage(tester);
+      await tester.tap(find.text('아케이드로'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExitDialog), findsOneWidget);
+      // The dialog names the character, not the record's name.
+      expect(
+        find.descendant(
+          of: find.byType(ExitDialog),
+          matching: find.textContaining('물렁범'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('STAGE 8 ·'), findsNothing);
+      await tester.tap(dialogExit);
+      await tester.pumpAndSettle();
+      expect(find.text('arcade map'), findsOneWidget);
+      expect(find.text('home'), findsNothing);
+    });
+
+    testWidgets('a bot outside the arcade keeps "AI" and 게임 나가기', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(find.text('MATCH FOUND'), findsOneWidget);
+      expect(find.text('게임 나가기'), findsOneWidget);
+      expect(find.text('AI'), findsOneWidget);
+      expect(find.textContaining('AI LV'), findsNothing);
     });
   });
 }

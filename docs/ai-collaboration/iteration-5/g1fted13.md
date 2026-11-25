@@ -1,6 +1,6 @@
 # AI Collaboration notes: Iteration 5 (2026-11-21 ~ 2026-12-04) – Woohyun Song
 Status: draft (iteration open) | Written by: Woohyun Song | Merged by the PM into `AI-Collaboration-Report-Iteration-5.md` (P27)
-Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data); Claude on claude.ai with the Claude Design canvas (the arcade art)
+Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data; P8's spec and state mockups); Claude on claude.ai with the Claude Design canvas (the arcade art)
 
 Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. Input prompts are in
 [g1fted13-Prompt-Log.md](g1fted13-Prompt-Log.md).
@@ -498,3 +498,325 @@ These were made from the A5 session at the user's word; their full evidence is i
 
 ### f. Manual fixes and why
 - None in this step: no AI-generated code was edited by hand, so there is no manual-fix marker.
+
+## P16 `codex/iter5-ai-opponents` – Build arcade screens (team order #8.5), 2026-11-23
+
+### a. Where AI was used
+- **The code and tests:** Claude Code (Opus 5.5) wrote all of P16's code and tests in four commits on top of the
+  A2 + A3 merge `1ae69d1` (20 new files, 10 in `lib/` with about 5,500 lines and 10 tests, and 24 changed files: 9,554 lines added, 298 removed):
+  - `d2bb818`: the arcade's 13 color tokens and the `ArcadeText` styles in `lib/theme/app_theme.dart`.
+  - `e5c74ee`: optional arcade values on `Opponent` (`lib/models/matchup.dart` L6–97), the stage's floor picture and
+    boss round (`lib/widgets/battle_arena.dart`, `battle_stage.dart`), and the exit button's label.
+  - `5bb0e48`: the arcade view model (`lib/viewmodels/arcade_viewmodel.dart`: `ArcadeViewModel` L30,
+    `finishBattle` L118, `ArcadeMatchups.rulesOf`/`battleOf` L260–300), the map (`lib/widgets/arcade_map.dart`
+    L19–100, from the `ArcMap` script's numbers), the stage sheet, the boss screen, the result screens and
+    `ArcadeFlow`, the `/arcade` route and `GymArt.warmUp()` (`lib/main.dart` L61, L129).
+  - `c8d6044`: the play page's two cards, the versus, battle and report changes, and the rewritten AI 1v1 tests.
+  - After A4 (`codex/iter5-hold-plank`, PR #90) was merged in (`f9d1eba`), `d429c8c`: section 8, the hold stages
+    (`lib/screens/arcade_flow.dart` `holdScreen`/`openHold`, the map's next stage after a hold), the chair stages run
+    as high plank until A5, and the fight and boss results moved onto A4's `ArcadeResultFrame` (the interim frame
+    deleted). `8b975cf`: the boss intro and break scroll on short phones. `6074bf4` merges A4's four follow-up
+    commits.
+  - After A5 (`codex/iter5-hold-chair`, PR #92) was merged in (`0deb979`): `ca88a59` removes the high-plank stand-in,
+    so the chair stages are judged by A5's chair pose; `b03ca98` tests the five results on a 320-wide phone and with
+    1.3x text.
+  - After the user's phone check on `9b59537`: `fcacca1` makes the break's 자세 잡기 span the content as in the design
+    (`lib/screens/arcade_boss_screen.dart`, `_Break`) and lets the ink button's words shrink to fit
+    (`lib/widgets/arcade_parts.dart`, `ArcadeDarkButton`).
+  - After the A5 session's hold effects: `2ab24c3` merges `codex/iter5-hold-chair`, and Claude Code traced the music
+    of a hold stage from the arcade against a fight stage's in the code (`hold_stage_screen.dart`,
+    `sound_battle.dart`, `background_music.dart`, `arcade_flow.dart`). One difference (a hold closed on its
+    briefing after a jingle brought the menu track back) is fixed in `359ea18`: `ArcadeHoldMusic`
+    (`lib/widgets/arcade_hold_music.dart`), given to A4's screen by `ArcadeFlow.holdScreen`.
+  - After `main`'s #86, #93 (Google sign-in) and #94 came up the stack: `c92006c` merges `origin/main` first (the
+    `main.dart` conflict resolved by keeping #93's Google sign-in lines and P16's arcade lines), then `670aecf`
+    merges `codex/iter5-hold-chair` with A4's leave dialog fix (`94f6416`); Claude Code resolved both, checked
+    each side's lines and the fix against `ArcadeHoldMusic`. No P16 code changed.
+  - After `main`'s #95 (friend battles) and A4's hidden leave button (`d56e1f5`): `18ea16c` merges `origin/main`
+    (five conflicts: `main.dart`, `play_screen.dart` and three of their tests; P16's two cards kept, with #95's
+    친구와의 대전 row under them), then `03cac86` merges `codex/iter5-hold-chair`. Claude Code resolved both and
+    wrote `test/screens/arcade_hold_stage_test.dart` (`7362fb4`), which runs A4's screen with the arcade's
+    `ArcadeHoldMusic`.
+  - The invite alert fix (`c02a9ff`, the user's decision): Claude Code named the arcade's stage routes in
+    `main.dart` (`arcadeSheetRoute`, `arcadeHoldRoute`, `arcadeBossRoute`, `arcadeBreakRoute`,
+    `arcadeResultRoute`), set them where `ArcadeFlow`, `ArcadeBossScreen` and the stage sheet open the routes,
+    added them to #95's `busyRoutes` (P9's file, act first and report after), and wrote 7 tests in
+    `arcade_flow_test.dart` and `main_test.dart`.
+  - The next-stage fix (`fbfef4c`, PR #91's Codex review, the user's steps): Claude Code checked the finding in the
+    code, wrote the failing tests first, then changed `ArcadeViewModel` (`saving`, `takeOpenRequest`, a read begun
+    during a save dropped) and `ArcadeScreen` (the map waits for the read, looks again while a save goes on, and
+    drops a waiting request when covered or left), with 13 tests.
+  - The hold stage's 다음 스테이지 (`5b09d87`, the user's decision to fix it in P16 with A4's files read only):
+    `ArcadeViewModel.holdStore`, a wrapper of the arcade's store handed to A4's screen by `ArcadeFlow.openHold`, and
+    `_playHold` on a fight's path, with 10 tests.
+- **Design values:** every size, color and position came from the `.dc.html` sources in
+  `.claude/design/arcade/p16/design/` (read by Claude Code, not estimated from the shots), e.g. the map's `FH`,
+  `BAND`, `WIP`, `P` and `me` values and the `ArcResult` frame.
+- **Review:** the `reviewer` subagent ran sixteen times (item d): CHANGES_REQUESTED, APPROVE, then after section 8
+  CHANGES_REQUESTED and APPROVE, APPROVE after the A5 merge, APPROVE after the phone check's fix, after the merge
+  of the hold effects CHANGES_REQUESTED, then APPROVE on the music fix, APPROVE (4 Minors, fixed) on the `main` merge, and CHANGES_REQUESTED, then
+  APPROVE, on the #95 merge, APPROVE (5 Minors, fixed) on the invite alert fix, APPROVE (5 Minors, fixed) on
+  the last phone check's notes, CHANGES_REQUESTED, then APPROVE (3 Minors: two fixed, one for the user), on the
+  next-stage fix, and APPROVE (4 Minors, fixed) on the hold stage's fix.
+- **The hand-off:** the arcade screens' spec (SPEC v1–v2) was written by Claude on claude.ai, and the mockups
+  (PlayX, ArcMap, ArcMenuAll, P16Found, ArcPlay, P16Scene, P16Arc, ArcResult, P16Boss) were drawn by Claude on the
+  Claude Design canvas. Woohyun Song chose the layout of 게임 시작, the map and the boss match, and answered the
+  questions of section 13.
+- **Not done by AI:** the four open questions of spec 13 were answered by the user (remove 이어하기 now, 5F from the
+  start, "STAGE 8 · 물렁범" as the record name, the report's exits inside the arcade). The user also set the branch
+  plan, the PR rules (draft, merge order #8.5) and the rule that earlier steps' files are not edited. After the first
+  push the user decided to merge A4 instead of waiting for A5, to use A4's result frame for the fights and the boss
+  match, to open the chair stages as high plank until A5, and to base the PR on `codex/iter5-hold-plank`. When A5
+  came up the user decided to merge it, remove the stand-in and move the PR's base to `codex/iter5-hold-chair`.
+- **The phone check:** done by Woohyun Song on the Galaxy S26+ (`9b59537`, 2026-11-24); the user asked for the fix's
+  rule (the design's shape kept, shrinking only on a narrow screen or with large text) and the sizes to test. The
+  last phone check (2026-11-24 22:21–22:25, the build of `21fc291`) was also the user's, and its results, with the
+  app's sounds in the screen recording, came from the user; Claude Code wrote them into the TODO spots of P16's,
+  A4's and A5's testing entries, copied #88's and #89's CI coverage numbers into A3's and A2's entries, and listed
+  the follow-ups.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-23] (the step's start, pasted; excerpt) "앞 단계(A2~A5)의 파일은 상속만 하고 고치지 않는다. 고칠 것이 보이면 멈추고 알려 줘. … 판정, 점수, 봇의 rep 계산은 건드리지 않는다. 온라인 대결은 하나도 바뀌면 안 된다."
+- [Woohyun Song, 11-23] (mid-task) "프롬프트 기록을 뽑을 때는 이 세션의 프롬프트만 P16 제목 아래 넣고, 같은 폴더에서 돌던 A2 세션의 프롬프트는 넣지 마."
+- [Woohyun Song, 11-23] (after the first push, pasted; excerpt) "hold-chair를 기다리지 말고, 지금 codex/iter5-hold-plank(A4, PR #90)를 그냥 git merge로 받아 와서 8절을 진행한다."
+- [Woohyun Song, 11-24] (when A5 came up, pasted; excerpt) "의자 자세 판(5, 11, 17, 23)을 하이 플랭크로 열던 대체를 지우고 의자 자세로 연다. 대체를 확인하던 테스트도 맞게 고친다."
+- [Woohyun Song, 11-24] (after the phone check, pasted; excerpt) "고칠 것: 보스 매치 라운드 사이 화면의 "자세 잡기" 버튼 글자가 버튼 밖으로 거의 삐져나온다."
+- [Woohyun Song, 11-24] (after the hold effects, pasted; excerpt) "아케이드에서 버티기 판에 들어가 결과 화면을 거쳐 아케이드 홈으로 돌아오는 길이 아케이드 대결 판과 같은 순서로 곡이 바뀌는지 코드로 확인한다. 특히 jingle이 두 번 나거나 곡이 겹치지 않는지 본다."
+- [Woohyun Song, 11-24] (the last phone check's results, pasted; excerpt) "A2~A5 PR은 지금 HEAD에서 Codex 리뷰가 끝나 더 커밋하지 않기로 했다. 그래서 A4·A5 몫의 폰 확인 결과도 이 브랜치의 테스트 기록에 함께 적는다."
+- [Woohyun Song, 11-23] (after the laptop lost power, pasted; excerpt) "이어서 하기 전에 먼저 상태를 확인해 줘. 1. 지금 브랜치가 codex/iter5-ai-opponents인지, git status, 남아 있는 .git/index.lock이 있는지 본다."
+
+### c. What AI did well
+- **Porting the map from its script:** the map's layout is the design's own arithmetic (`top(f)`, the six places,
+  cell sizes, the `me` offsets) in `ArcadeMapLayout`, pinned by `test/widgets/arcade_map_test.dart` ('5F 공사중 on top,
+  250 high; each floor 390 with a 46 band').
+- **Keeping the shared files small:** the online battle is untouched. Every value added to shared widgets is optional,
+  and the report's `PopScope` was moved into a Stack child, so `result_screen.dart` changes only the needed lines
+  (35 added, 3 removed; with a wrapper it was 122 changed lines).
+- **Tests that found real bugs before the phone:** a sheet whose `scopesRoute` semantics asserted, a band row and a star
+  row that overflowed (three 16-point stars with a gap after each are 51 > 50; the design's `gap` is only between
+  them), and floor tags that never showed until the first scroll. Each was fixed with a test that failed first.
+- **Checking the record against the code:** the phone check's "2F 열림" did not fit A2's rule (stage 7 opens only
+  after the boss's star, and the boss match was not won). Flagged in the report; the user said it was the 2F floor
+  shown on the map with its first stage locked, and the record was corrected.
+- **Checking the stack before merging:** the user's message said A2–A5 had taken `main`; a fetch showed none of the
+  four had it yet and A5 had no dialog fix (the A5 session was still merging), so nothing was merged on the old
+  branches, and the merge waited for A5's push (`b6e90d7`).
+- **A gap between two merged features, found while merging:** #95's invite alert hides only on named routes
+  (`FriendInviteRouteWatch.busyRoutes`), and the arcade opens its hold stages, boss intro and break as unnamed
+  routes, so a friend's invite can show over them. Claude Code saw it while resolving `main.dart`, checked it
+  with a throwaway test (not committed), and reported it instead of changing #95's file. The user called it a real
+  bug and set the fix (`c02a9ff`): with the five names taken out again, the 7 new tests fail.
+- **Checking a review finding before fixing it:** for PR #91's Codex P2, the two new flow tests were run on the old
+  screen first and failed (no sheet after a late save), so the finding was real; reading A2's store for the order
+  of `recordStage` and `read` then showed a second case (a read during the save could put the older progress back),
+  fixed in the same commit with its own test.
+- **Recovery after the power loss:** the state check (branch, `index.lock`, diffs, line endings, ownership, analyze)
+  took a few minutes and found nothing half-written.
+
+### d. Hallucinations / errors
+- **Tokens in the wrong class:** the first edit put the arcade colors after `RepBotColors.shadow`, not in `AppColors`
+  (`warning` undefined). Caught by the analyzer at once; moved.
+- **Test edits by script:** two scripts appended a test group after the last `}` of the file, which was a helper after
+  `main()`; one dropped `_rounded` from `versus_screen_test.dart`. A Python escape turned `\'` into `'` in three test
+  names. All caught by `flutter analyze` before any run; fixed by inserting before `main()`'s closing brace.
+- **A shell command that hung:** a stray `cat > "$TMP/x"` waited on input for two minutes before it was stopped.
+- **Reviewer run 1 (CHANGES_REQUESTED):** the battle-end logic sat in a screens file (`ArcadeFlow`), so it was held to
+  the View target and only widget-tested; no test checked the AI level and floor rules handed to the battle; bare
+  design numbers in named arguments; no Design doc changes in progress.md; the interim result frame used the same
+  class names as A4's uncommitted frame; the map computed locks itself instead of A2's `isOpen`. All fixed:
+  `ArcadeViewModel.finishBattle` with a sealed outcome and unit tests, `ArcadeMatchups.rulesOf`/`botOf`/`battleOf`
+  with tests, named constants, the `ArcadeBattle*` names. Run 2 approved with one Minor, also fixed.
+- **Reviewer run 3 (CHANGES_REQUESTED), missed in runs 1 and 2:** the boss intro and the break did not scroll, so on
+  a 360 x 640 phone or with 1.3x text their buttons were cut off (by up to 40 points). Caught by the reviewer's own
+  layout check; fixed with a fill-then-scroll wrapper and tests at both sizes, which also showed the break's score line
+  overflowing at 1.3x text. The reviewer also found that A4's dark button overflows with "R1부터 다시" at 1.3x text;
+  A4's file is not edited here, so it was reported to the user for A4's branch.
+- **Reviewer run 4 (APPROVE, 3 Minor):** a test named for "the user's character" gave no character view model, so
+  it only checked the default; it now picks another character and checks that one reaches A4's screen. A4's branch had
+  four new commits since `f9d1eba`; merged in `6074bf4`. A4's result frame also overflows on a 320-wide phone (its
+  three 92-wide star columns); reported with the button for A4's branch.
+- **Reviewer run 5 (APPROVE, 1 Minor):** the local progress file still described the stand-in as current; updated.
+  Before the run, the new result test was also run once against A4's result files from before its fix,
+  and 7 of its 10 tests failed with the overflows the reviewer had found, so the test guards them.
+- **The break's button, missed by the tests and the reviewer:** the design's break puts 자세 잡기 in a full-width
+  column (`width: 100%`); the port left it in a centred column, so the button was only as wide as its words and the
+  slanted words' corners reached 2.4 px past its edge. The layout tests checked overflow and reachability, not the
+  painted words, so they passed. Caught by the user on the phone (`9b59537`); fixed in `fcacca1` with a test that
+  checks the slanted words' corners against each button's rounded shape on the boss screens, and fails on the old
+  code. Cost: one fix commit and its tests.
+- **Reviewer run 6 (APPROVE, 1 Minor):** the narrow-button test checked only the words' top corners, not the bottom
+  left one that the slant leans out; it now checks all four against the button's round shape, and fails when the
+  room for the slant is taken out.
+- **The music check written too kindly (reviewer run 7, CHANGES_REQUESTED):** my first trace of the hold stages' music
+  found that a hold closed on its briefing after a jingle brings the menu track back, where a fight keeps the
+  silence, but left it as harmless, and my notes then said the order "matched", that two tracks "never go on
+  together" (the music service cross-fades for 0.6 s at every change) and that the map "stays silent after any
+  result". The reviewer read the code on its own and also found that A4's leave dialog still opens in a second
+  warning's 1.5 s moment. The user's rule was to fix a difference on the P16 side, so `359ea18` adds `ArcadeHoldMusic`
+  with tests that fail without it, the notes were rewritten, and the dialog was reported for A4's branch. Cost: one
+  code commit, its tests and the notes again. Run 8 approved the fix, with three Minors: wording in the local progress
+  file, the new file missing from `design_tokens_test.dart`'s list (added in `5553521`), and origin/main's #93 not
+  yet in the A2–P16 stack (left to the user).
+- **Reviewer run 9 (APPROVE, 4 Minors), on the `main` merge:** my new testing entry put #93's tests in
+  `main_test.dart` (they are in `test/auth_flow_test.dart`) and said that if the app was closed in a second warning's
+  moment `ArcadeHoldMusic` would keep the jingle, though a closed app need not dispose its screens and its sound ends
+  with it. Both were rewritten before the commit; the other two Minors were PR #91's stale body and this file's
+  missing P16 evidence.
+- **Reviewer run 10 (CHANGES_REQUESTED), on the #95 merge:** my testing entry for this round had no test-case table
+  and no acceptance criteria → tests, though the round added a test file and the merge changed two; it also called
+  A5's `chair_hold_stage_test.dart` one of A4's files. The code and both merges passed its checks. Both fixed before
+  the commit; run 11 approved, with two wording Minors, also fixed.
+- **A path in my notes:** the post-push check matched `.claude/...` in the spec's path in my testing notes; fixed in a
+  new commit (`7a1d46c`).
+- **A race the tests and twelve reviewer runs missed (Codex, PR #91 on `f27a7e8`):** the map took the stage asked
+  for one frame after coming back, while the stars could still be saving, so a slow save lost it. Every test used
+  a store that answers at once. Fixed in `fbfef4c` with a store whose saves end late.
+- **My first fix for it (reviewer run 14, CHANGES_REQUESTED):** a request still waiting when the map was left
+  stayed asked for, and a later visit opened that stage's sheet by itself; my tests had pinned the two drops only
+  together. Fixed before the commit (dropped when the map goes; each drop with its own test, each checked by taking
+  it out alone). Run 15 approved, and its Minor about a page opened during the read was fixed too.
+- **The hold stage's fix:** my `dart format lib …` reformatted two files of other steps (`character_motion.dart`,
+  `player_avatar.dart`); seen in `git status` at once and restored before anything else. Reviewer run 16 approved
+  and found that no test left the hold from a page of its own, so the map's two runs back were not exercised (test
+  added, failing on the old `_playHold`), and that another account's save counted as this account's (guarded).
+- **A placeholder body on PR #91 (2026-11-24):** my patch to the script that writes PR #91's body, sent through a
+  shell heredoc, put real line breaks into a Python string and broke it (`SyntaxError`). The `gh pr edit` chained
+  after it still ran and uploaded the older dry-run body, with the placeholders `TEST` and `@N@`, to PR #91. Caught
+  by reading the live body back; the script was fixed in the editor, the body made again, uploaded, and read back
+  with no placeholder left. Cost: a few minutes, and a wrong body public for under a minute (38 s in the PR's edit
+  history, 13:37:15Z to 13:37:53Z). Since then the body is made and checked first and uploaded in a separate step.
+
+### e. Prompt revisions
+- Before (2026-11-24, pasted): "1. fetch 뒤 codex/iter5-hold-chair를 P16 브랜치에 merge한다. main.dart와
+  online_lobby_screen_test.dart 충돌은 main의 구글 로그인과 P16 변경을 모두 살려 푼다."
+- After (the same day, pasted; excerpt): "하네스는 두 번째 부모가 origin/main인 merge만 main 파일을 빼고 본다. …
+  1. hold-chair에 main과 나가기 창 수정이 들어왔는지 확인한 뒤, P16 브랜치에 origin/main을 먼저 merge한다. … 2. 그다음
+  codex/iter5-hold-chair를 merge한다."
+- Why it worked: on A4 the user had seen the pre-commit guard block a merge commit made by hand that carried
+  `main`'s files. With `main` first, `c92006c`'s check compared the index with `origin/main` (111 paths, all P16's
+  own or inherited) and `670aecf`'s held only 5 paths, so both passed without any bypass.
+- Before (2026-11-24, pasted): "P16 브랜치에 origin/main을 먼저 merge한다."
+- After (the same day, pasted): "origin/main이 69b0520보다 앞서 있으면 origin/main을 먼저 merge한다."
+- Why it worked: the message also said `origin/main` was still `69b0520`, but #95 had been merged to `main` by
+  then (`18b9259`). The condition covered that case, so the merge order needed no question.
+- None for the code in this step. The user added one rule mid-task (only this session's prompts under the P16 heading)
+  and, after the power loss, gave the state check as a numbered list, which made the recovery a checklist.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step. `TODO(Woohyun Song)`: add any hand edits made after the phone check.
+
+## P8 `codex/iter5-auth-screens` – Redesign the sign-in and sign-up screens (team order #5), 2026-11-25
+
+### a. Where AI was used
+- **The hand-off** (Woohyun Song's account, 2026-11-25):
+  - The menu mockups `LoginFinal.dc.html`, `LoginB.dc.html`, `ChL.dc.html` (the group photo's poses and motion)
+    and `LoginCSheet.dc.html` were made earlier by Woohyun Song with Claude in Claude Design, on the canvas
+    "GymRats 메인 메뉴 시안".
+  - `SPEC.md` v1, `LoginS.dc.html` and `LoginStateBoard.dc.html` were made by Claude (claude.ai chat, Claude Opus 5.5).
+    Woohyun Song chose among the mockups on the canvas: the C1-A first screen, the id login as a bottom sheet, the
+    id sign-up screen kept as it is, and the L1, C2 and F1 states.
+  - The screen values come from these `.dc.html` sources as they are; this session (Claude Code) moved them to
+    Flutter.
+- **Planning:** before any code, Claude Code read the spec, the mockups and the character engine. It compared ChL's
+  drawing with the app's W3 + W4 + W5 drawing lists shape by shape, using a throwaway Python script. The result: the
+  six bodies are identical, and only the faces, the thumb and RepBot's back glove are new. It then reported the plan
+  of spec section 11 and waited. The user approved it with three decisions and five additions (Prompt Log, 11-25 02:40).
+- **Local harness (not committed):**
+  - P7's and P9's branches in `ownership.json` were changed to the branches that really merged (#93, #95). The guard
+    had reported "P7 미머지" and blocked every P8 edit.
+  - The ownership exceptions file got 15 P8 lines.
+- **Generated, then checked:**
+  - `lib/widgets/auth_cast_data.dart` (142 lines) was written by a throwaway converter from `ChL.dc.html`
+    `motions.d1` and `LoginB.dc.html`. It asserts each LoginB value it copies against the file.
+  - `test/widgets/auth_cast_golden.json` was written by running ChL's own JavaScript (`RIGX.vals`) in node.
+  - Neither script is committed (the user's decision).
+- **The code and tests:** Claude Code wrote all of it, in four commits (`68597e4`, `5e5c8aa`, `e1b88b1`, `c91a8f3`)
+  after the code reviews passed, then merged `origin/main` (`def1c5e`).
+  - **The group photo:** `lib/widgets/auth_cast.dart` (L1–892). The model is `AuthCast` (L24); the clock is
+    `AuthCastStageState` (L652); the painter is `AuthCastPainter` (L745).
+  - **The screens:** `lib/screens/login_screen.dart` has the first-screen layout (L189), the id sheet (L324) and the
+    sheet's edge (L480). `lib/screens/social_signup_screen.dart` is the nickname step.
+  - **The parts:** `lib/widgets/auth_form.dart` gets the new parts (L185–941), including the line-break helpers
+    `keepWordsWhole` (L845), `authLines` (L863) and `AuthWords` (L902).
+  - **The tokens:** `lib/theme/app_theme.dart` gets `AuthColors`, `AuthLayout` and `AuthText` (L1267–end).
+  - **The view model:** `lib/viewmodels/login_viewmodel.dart` gets `cancelledWith` and `failedWith` (L16–40, L130–148).
+  - **The color reader:** `lib/models/character_rig.dart` `_color` (L529) also reads `#RRGGBBAA`.
+  - **Tests:** 3 new test files and 8 changed ones (the testing notes' table).
+- **Review:** the `reviewer` subagent ran four times: 1 and 3 CHANGES_REQUESTED, 2 and 4 APPROVE (item d).
+- **Not done by AI:**
+  - The user checked the 27 comparison images against the mockups and found the line-break problem (item d).
+  - The user decided the three open design points, the F1 box covering the characters at the smallest size, and
+    the commit and phone-check order.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-25] "3. 코드를 쓰기 전에 SPEC.md 11절의 계획(단체 사진을 그리는 방법, 새 파일과 범위 밖 파일, 취소 신호, 테스트 목록과 순서)을 보고하고 기다린다."
+- [Woohyun Song, 11-25] "4. golden 시각: 키 포즈 시각만이 아니라 다음 시각도 넣는다. 그래야 보간과 이징이 틀린 것이 잡힌다."
+- [Woohyun Song, 11-25] "1. 한글 줄바꿈: 320×640, 글자 1.3배에서 단어 중간이 잘린다. … 인증 화면의 한글(버튼, F1 칸, 취소 줄, 시트, 닉네임 화면)은 띄어쓰기 자리에서만 줄이 바뀌게 한다."
+
+### c. What AI did well
+- **Using the engine instead of copying ChL:**
+  - The shape-by-shape comparison showed that ChL's pose arrays map one to one onto the home rig's key poses.
+  - So the photo runs on the app's own engine. No existing character file changed except one additive color rule.
+  - The golden test checks 645 sampled frames against the design's own code with no difference. The times include
+    eased mid-segments and ±1 ms around every hop, rock, flag and face change, and the 18 s wrap.
+- **The reviewer's data check:** in run 1 the reviewer compared every number of `auth_cast_data.dart` with
+  ChL line 738 and LoginB by script, with 0 differences.
+- **Render comparisons:** throwaway widget tests drew every state with the app's fonts into PNGs, kept in the
+  scratchpad. They caught three layout bugs before any widget test was written (item d).
+- **Finding the minimal signal:** `LoginViewModel` needed two defaulted fields. With them the screen can tell a cancel
+  (C2), a Google failure (F1) and the expired session apart without changing any message.
+
+### d. Hallucinations / errors
+- **Logo slant:** Claude Code first slanted the lime bar and GYMMOUSE the wrong way. It took CSS `skewX(-14deg)` as
+  leaning left, then passed a tangent where `Matrix4.skewX` takes an angle. Caught by comparing the render with
+  `state_base.png`; fixed before any commit. Cost: one re-render.
+- **Podium outline:** it assumed SVG strokes are drawn inside a shape's edge and deflated the podium's outline. SVG
+  centres them. Caught on re-reading its own code before the first render.
+- **Sheet border:** a rounded `Border` with no bottom side throws in Flutter. The first render test failed on it, so
+  it was replaced by a small edge painter (`login_screen.dart` L480).
+- **Field text offset:** the theme's input padding leaked into the sheet's fields. Caught by the render.
+- **Reviewer run 1:**
+  - Major: two public enums were missing from the Design doc changes.
+  - Minor: closing the sheet during a login let a wrong-password result show as an F1 box on the first screen. This
+    broke the user's rule (b). The fix got a test that fails on the old code.
+- **Korean line breaks:** at 320 × 640 with text 1.3, Korean broke inside a word ("Google 로그인에 실패했어 / 요."). It
+  was not seen by Claude Code, whose overflow tests only check that nothing spills out. The user found it in the
+  images. The fix keeps words whole and balances two lines.
+- **Smaller slips:**
+  - `pumpAndSettle` never settles while the photo's ticker runs, so the first clock tests timed out.
+  - The new `AuthText` widget's name clashed with a theme extension; it was renamed to `AuthWords`.
+  - A unit test expected a split that was a tie.
+  - The first prompt-log entry included the harness-injected `<browser_instruction>` block. It was removed, since
+    only the user's words belong there.
+- **Reviewer run 3:**
+  - Major: the notes were written as new files, but `origin/main` already had them with A2's entries (#89 merged
+    meanwhile). Committing them as they were would have dropped A2's evidence. They were merged into main's files
+    after merging `origin/main` (`def1c5e`).
+  - Minor: the balanced line break measured lines without the device's bold text. Fixed in `c91a8f3`.
+- **Found on the phone:** after a wrong password, closing the sheet made Samsung Pass offer to save the login. The
+  sheet's `AutofillGroup` committed on dispose (Flutter's default), which no widget test had looked at. The user found
+  it in the phone check and named the fix: cancel on close, save only after a login that worked (`dd08911`, with a
+  test that fails without it).
+- **A risk the user caught in review:** the `#RRGGBBAA` reader puts the alpha last, while a Flutter color keeps it
+  first. A swapped order would not change any pose or face, so the golden test could not catch it. The user asked
+  for a unit test that pins the order (`'#FF000080'` is half red).
+
+### e. Prompt revisions
+- **The golden times:**
+  - Before (the approved plan): golden values at the key-pose times.
+  - After (11-25 02:40): also mid-segment eased points, both sides of every hop/rock range and flag change, and the
+    18 s wrap.
+  - Why it worked: the key-pose times alone would pass with a wrong easing or an off-by-one range.
+- **Line breaks:**
+  - Before: "넘치지 않기" (spec section 8), checked only as "no overflow".
+  - After: "띄어쓰기 자리에서만 줄이 바뀌게 한다", with a suggested method (U+2060 in the drawn text only, screen readers
+    and finders untouched) and the expected splits.
+  - Why it worked: the expected splits showed the greedy wrap's "Google로 로그인하는 / 중…" was still wrong, which led
+    to the balanced two-line break.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Render comparisons at the smallest size with large text catch what overflow tests do not. Look at the pictures
+  before calling a screen done.

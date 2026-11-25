@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/character_idle_motion.dart';
@@ -361,6 +362,38 @@ void main() {
       _expectRejected((s) => prim(s)['stroke'] = 7);
       _expectRejected((s) => prim(s)['cap'] = 'square');
     });
+
+    test(
+      'a color is #RRGGBB (opaque) or #RRGGBBAA (P8 blush), nothing else',
+      () {
+        CharacterRig withStroke(String color) {
+          final source = _source();
+          ((_mouse(source)['ops'] as List).first['prim']
+                  as Map<String, dynamic>)['stroke'] =
+              color;
+          return CharacterRig.parse(jsonEncode(source));
+        }
+
+        int strokeOf(CharacterRig rig) =>
+            rig.art('mouse').ops.first.prim.stroke!.argb;
+        expect(strokeOf(withStroke('#141A26')), 0xFF141A26);
+        expect(strokeOf(withStroke('#FF7FA08C')), 0x8CFF7FA0);
+        expect(strokeOf(withStroke('#ff7fa000')), 0x00FF7FA0);
+        // The alpha is the last pair (CSS #RRGGBBAA), while a Flutter color
+        // keeps it first: red at half, not a dark blue.
+        final red = Color(strokeOf(withStroke('#FF000080')));
+        expect(red.r, 1);
+        expect((red.g, red.b), (0, 0));
+        expect((red.a * 255).round(), 0x80);
+        for (final bad in ['#FFF', '#FFFFFFF', '#FFFFFFFFF', 'FF7FA08C']) {
+          _expectRejected((s) {
+            ((_mouse(s)['ops'] as List).first['prim']
+                    as Map<String, dynamic>)['stroke'] =
+                bad;
+          });
+        }
+      },
+    );
 
     test('an empty move or path step', () {
       _expectRejected((s) => _mouse(s)['poses']['atk']['g2'] = [[]]);

@@ -28,6 +28,7 @@ class BattleStage extends StatelessWidget {
     this.fighterBuilder = BattleFighter.standIn,
     this.characters,
     this.setupShift = 0,
+    this.round,
   });
 
   final BattleFxFrame frame;
@@ -44,6 +45,11 @@ class BattleStage extends StatelessWidget {
   /// The two fighters' characters (W3). They paint their own flash: white
   /// fills, ink outlines kept.
   final BattleCharacters? characters;
+
+  /// An arcade boss match's round, 1 or 2: the chip beside the clock says
+  /// "ROUND n" in place of the lead, unless fever is on (P16 spec 7,
+  /// design `P16Scene` `round`). Null for any other battle.
+  final int? round;
 
   /// The height the KO zoom grows from.
   static const _zoomOriginY = 300.0;
@@ -79,12 +85,18 @@ class BattleStage extends StatelessWidget {
               opponentName: state.opponentName,
               secondsLeft: state.secondsLeft,
               elapsed: state.elapsed,
-              chip: BattleFx.chip(
-                lead: state.lead,
-                fever: state.fever,
-                beforeStart: frame.beforeStart,
-                feverMultiplier: state.feverMultiplier,
-              ),
+              chip: switch (round) {
+                final round? when !state.fever && !frame.beforeStart => (
+                  text: 'ROUND $round',
+                  tone: BattleFxTone.plain,
+                ),
+                _ => BattleFx.chip(
+                  lead: state.lead,
+                  fever: state.fever,
+                  beforeStart: frame.beforeStart,
+                  feverMultiplier: state.feverMultiplier,
+                ),
+              },
               myScore: state.myScore,
               opponentScore: state.opponentScore,
               myReps: state.myReps,
@@ -748,6 +760,7 @@ class BattleStageBackdrop extends StatelessWidget {
     required this.stripeShift,
     this.scale = 1,
     this.origin = Offset.zero,
+    this.scenery,
   });
 
   /// How much of the fever wash shows, from 0 to 1.
@@ -759,8 +772,14 @@ class BattleStageBackdrop extends StatelessWidget {
   final double scale;
   final Offset origin;
 
+  /// A picture behind the fighters, over the grid and under the fever:
+  /// an arcade floor's gym (P16 spec 6). It fills the stage's design box
+  /// (360 x 390), so its floor is where the fighters stand. Null for none.
+  final Widget? scenery;
+
   @override
   Widget build(BuildContext context) {
+    final scenery = this.scenery;
     return ClipRect(
       child: Stack(
         fit: StackFit.expand,
@@ -771,6 +790,14 @@ class BattleStageBackdrop extends StatelessWidget {
               painter: BattleGridPainter(scale: scale, origin: origin),
             ),
           ),
+          if (scenery != null)
+            Positioned(
+              left: origin.dx,
+              top: origin.dy,
+              width: BattleFx.stageWidth * scale,
+              height: BattleFx.stageHeight * scale,
+              child: RepaintBoundary(child: scenery),
+            ),
           if (feverOpacity > 0)
             Opacity(
               opacity: feverOpacity.clamp(0.0, 1.0),
