@@ -142,10 +142,10 @@ class ArcadeStageSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: _gap),
+            ArcadeBestRecord(best: best, style: text.arcadeGoal),
             ArcadeStarGoals(
               title: '별 조건',
               labels: [for (final star in stage.stars) star.label],
-              best: best,
               style: text.arcadeGoal,
             ),
             const SizedBox(height: _gap),

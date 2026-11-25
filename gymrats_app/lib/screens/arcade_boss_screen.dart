@@ -150,9 +150,9 @@ class _Intro extends StatelessWidget {
             const SizedBox(height: _gap),
             _Rounds(stage: stage),
             const SizedBox(height: _goalsGap),
+            ArcadeBestRecord(best: best, style: text.arcadeBossGoal),
             ArcadeStarGoals(
               labels: [for (final star in stage.stars) star.label],
-              best: best,
               style: text.arcadeBossGoal,
             ),
             const Spacer(),

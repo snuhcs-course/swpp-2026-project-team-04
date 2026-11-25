@@ -189,11 +189,22 @@ void main() {
       );
     });
 
-    testWidgets('the star conditions light the stars got', (tester) async {
+    testWidgets('a best of 2 from two KO wins without the second condition: '
+        'no condition reads as got; the best on a line of its own (PR #91 '
+        'review)', (tester) async {
       await open(tester, best: 2);
-      expect(find.bySemanticsLabel(RegExp(r'^별 1개, .*, 받음$')), findsOne);
-      expect(find.bySemanticsLabel(RegExp(r'^별 2개, .*, 받음$')), findsOne);
-      expect(find.bySemanticsLabel(RegExp(r'^별 3개, .*받음$')), findsNothing);
+      expect(find.text('최고 기록: 별 2/3'), findsOneWidget);
+      expect(find.bySemanticsLabel('최고 기록, 별 3개 중 2개'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('받음')), findsNothing);
+      expect(
+        find.bySemanticsLabel('두 번째 별, ${_stage.stars[1].label}'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('never cleared: no best line (PR #91 review)', (tester) async {
+      await open(tester);
+      expect(find.textContaining('최고 기록'), findsNothing);
     });
 
     testWidgets('자세 잡기 opens R1\'s setup and battle in its place', (

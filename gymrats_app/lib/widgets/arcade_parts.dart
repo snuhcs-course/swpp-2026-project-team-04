@@ -682,23 +682,47 @@ class ArcadeSlantChip extends StatelessWidget {
   }
 }
 
+/// The stage's best, "최고 기록: 별 2/3", on a line of its own over its
+/// star conditions (the stage sheet's and the boss intro's); nothing
+/// before a clear. Only the count is kept (A2's progress), so which
+/// conditions gave it is not shown.
+class ArcadeBestRecord extends StatelessWidget {
+  const ArcadeBestRecord({super.key, required this.best, required this.style});
+
+  /// The most stars got in the stage, 0 to 3.
+  final int best;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    if (best <= 0) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s8),
+      child: Semantics(
+        label: '최고 기록, 별 3개 중 $best개',
+        excludeSemantics: true,
+        child: Text('최고 기록: 별 $best/3', style: style),
+      ),
+    );
+  }
+}
+
 /// One star condition per row with its stars before it, on white (the
-/// stage sheet's and the boss intro's 별 조건): row i shows i stars, lit
-/// when the stage's best is at least i ([best]); dark lines between rows.
+/// stage sheet's and the boss intro's 별 조건): row i shows i stars, all
+/// unlit, since the three are earned apart and only their count is kept
+/// ([ArcadeBestRecord] shows it); dark lines between rows.
 class ArcadeStarGoals extends StatelessWidget {
   const ArcadeStarGoals({
     super.key,
     required this.labels,
-    required this.best,
     required this.style,
     this.title,
   });
 
   final List<String> labels;
-
-  /// The most stars got in the stage, 0 to 3.
-  final int best;
   final TextStyle style;
+
+  static const _ordinals = ['첫 번째', '두 번째', '세 번째'];
 
   /// "별 조건" over the rows; none on the boss intro.
   final String? title;
@@ -743,7 +767,7 @@ class ArcadeStarGoals extends StatelessWidget {
             ),
           for (final (index, label) in labels.indexed)
             Semantics(
-              label: '별 ${index + 1}개, $label${best > index ? ', 받음' : ''}',
+              label: '${_ordinals[index]} 별, $label',
               excludeSemantics: true,
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -764,9 +788,7 @@ class ArcadeStarGoals extends StatelessWidget {
                               ArcadeGlyphIcon(
                                 ArcadeGlyph.star,
                                 size: _starSize,
-                                fill: star <= index && best > index
-                                    ? AppColors.starOn
-                                    : AppColors.starOff,
+                                fill: AppColors.starOff,
                               ),
                             ],
                           ],

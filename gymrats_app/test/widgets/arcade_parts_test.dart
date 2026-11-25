@@ -264,9 +264,8 @@ void main() {
   });
 
   group('stars', () {
-    testWidgets('the conditions light row i once the best reaches i', (
-      tester,
-    ) async {
+    testWidgets('the conditions only say what each star asks: row i has i '
+        'unlit stars, read by its star (PR #91 review)', (tester) async {
       await _show(
         tester,
         const SizedBox(
@@ -274,20 +273,36 @@ void main() {
           child: ArcadeStarGoals(
             title: '별 조건',
             labels: ['승리', '콤보 5 이상', 'KO 승리'],
-            best: 1,
             style: TextStyle(),
           ),
         ),
       );
       expect(find.text('별 조건'), findsOneWidget);
-      expect(find.bySemanticsLabel('별 1개, 승리, 받음'), findsOneWidget);
-      expect(find.bySemanticsLabel('별 2개, 콤보 5 이상'), findsOneWidget);
+      expect(find.bySemanticsLabel('첫 번째 별, 승리'), findsOneWidget);
+      expect(find.bySemanticsLabel('두 번째 별, 콤보 5 이상'), findsOneWidget);
+      expect(find.bySemanticsLabel('세 번째 별, KO 승리'), findsOneWidget);
       final fills = tester
           .widgetList<ArcadeGlyphIcon>(find.byType(ArcadeGlyphIcon))
           .map((icon) => icon.fill)
           .toList();
-      expect(fills.where((fill) => fill == AppColors.starOn), hasLength(1));
+      expect(fills, everyElement(AppColors.starOff));
       expect(fills, hasLength(9));
+    });
+
+    testWidgets('the best: "최고 기록: 별 2/3", read as 2 of 3 stars; nothing at 0 '
+        '(PR #91 review)', (tester) async {
+      await _show(
+        tester,
+        const Column(
+          children: [
+            ArcadeBestRecord(best: 2, style: TextStyle()),
+            ArcadeBestRecord(best: 0, style: TextStyle()),
+          ],
+        ),
+      );
+      expect(find.text('최고 기록: 별 2/3'), findsOneWidget);
+      expect(find.bySemanticsLabel('최고 기록, 별 3개 중 2개'), findsOneWidget);
+      expect(find.textContaining('최고 기록'), findsOneWidget);
     });
   });
 

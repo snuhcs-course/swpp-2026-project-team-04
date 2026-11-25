@@ -76,13 +76,40 @@ void main() {
     );
   });
 
-  testWidgets('the stars lit are the stage\'s best (spec 5)', (tester) async {
+  testWidgets('a best of 2 from a KO win without the second condition: no '
+      'condition reads as got; the best on a line of its own (PR #91 review)', (
+    tester,
+  ) async {
     await show(tester, 8, best: 2);
-    final lit = tester
-        .widgetList<ArcadeGlyphIcon>(find.byType(ArcadeGlyphIcon))
-        .where((icon) => icon.fill == AppColors.starOn);
-    // Row 1 has one star, row 2 two: three lit.
-    expect(lit, hasLength(3));
+    final stage = ArcadeCatalog.stage(8);
+    expect(find.text('최고 기록: 별 2/3'), findsOneWidget);
+    expect(find.bySemanticsLabel('최고 기록, 별 3개 중 2개'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('받음')), findsNothing);
+    expect(
+      tester
+          .widgetList<ArcadeGlyphIcon>(find.byType(ArcadeGlyphIcon))
+          .where((icon) => icon.fill == AppColors.starOn),
+      isEmpty,
+    );
+    expect(
+      find.bySemanticsLabel('두 번째 별, ${stage.stars[1].label}'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('never cleared: no best line; the conditions read by their '
+      'star (PR #91 review)', (tester) async {
+    await show(tester, 8);
+    final stage = ArcadeCatalog.stage(8);
+    expect(find.textContaining('최고 기록'), findsNothing);
+    expect(
+      find.bySemanticsLabel('첫 번째 별, ${stage.stars[0].label}'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('세 번째 별, ${stage.stars[2].label}'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('닫기 closes it; 도전 closes it and challenges', (tester) async {
