@@ -249,7 +249,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('vs RepBot'));
+    // The archive opens on its 전체 tab; the battles are under 경기 (P13).
+    await tester.tap(find.widgetWithText(Tab, '경기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('vs RepBot'));
     await tester.pumpAndSettle();
     // Since W5 (team decision 2026-11-08) the row opens the battle's report;
     // its 자세 기록 표로 보기 opens the feedback.

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_stats.dart';
@@ -18,7 +17,6 @@ import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/history_viewmodel.dart';
 import 'package:gymrats_app/widgets/archive_cards.dart';
 import 'package:gymrats_app/widgets/archive_match_row.dart';
-import 'package:gymrats_app/widgets/lobby_parts.dart';
 import 'package:gymrats_app/widgets/victory_overlay.dart';
 import 'package:provider/provider.dart';
 
@@ -163,21 +161,35 @@ void main() {
       .widgetList<ArchiveMatchRow>(find.byType(ArchiveMatchRow))
       .map((row) => row.match.id);
 
-  group('the page', () {
-    testWidgets('back button, 03 / ARCHIVE, the slanted title, LOG behind', (
-      tester,
-    ) async {
+  Future<void> toMatches(WidgetTester tester) async {
+    await tester.tap(find.widgetWithText(Tab, '경기'));
+    await tester.pumpAndSettle();
+  }
+
+  /// The tab's list, not the chips' row or the tab pages.
+  final vertical = find.byWidgetPredicate(
+    (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+  );
+
+  String? chartLabel(WidgetTester tester) {
+    // The chart's label, not its title's: "경기별 점수: 150점, …".
+    final label = find.bySemanticsLabel(RegExp(r'^경기별 [^:]*: '));
+    if (label.evaluate().isEmpty) return null;
+    return tester.getSemantics(label).label;
+  }
+
+  group('the page (P13, draft C)', () {
+    testWidgets('back, the title 기록보관소 and the 전체 · 경기 tabs, 전체 '
+        'first', (tester) async {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
       expect(find.byTooltip('뒤로'), findsOneWidget);
-      expect(find.text('03 / ARCHIVE'), findsOneWidget);
       expect(find.text('기록보관소'), findsOneWidget);
-      expect(
-        tester.widget<LobbyWatermark>(find.byType(LobbyWatermark)).word,
-        'LOG',
-      );
-      expect(find.text('경기 기록'), findsNothing);
+      expect(find.widgetWithText(Tab, '전체'), findsOneWidget);
+      expect(find.widgetWithText(Tab, '경기'), findsOneWidget);
+      expect(find.byType(ArchivePeriodPicker), findsOneWidget);
+      expect(find.byType(ArchiveMatchRow), findsNothing);
     });
 
     testWidgets('back returns to the previous screen', (tester) async {
@@ -189,134 +201,217 @@ void main() {
     });
   });
 
-  group('the way into 기간별 통계 (W7-STATS 6)', () {
-    final pill = find.byKey(const ValueKey('archive-stats-pill'));
-
-    testWidgets('a lime pill at the right end of the header row', (
-      tester,
-    ) async {
-      withBattles();
-      await open(tester, size: const Size(360, 780));
-      await tester.pumpAndSettle();
-      expect(find.text('기간별 통계'), findsOneWidget);
-      final rect = tester.getRect(pill);
-      expect(rect.height, 44);
-      // 20 from the right edge, on the back button's row.
-      expect(rect.right, 340);
-      expect(
-        rect.center.dy,
-        moreOrLessEquals(tester.getCenter(find.byTooltip('뒤로')).dy),
-      );
-      final material = tester.widget<Material>(
-        find.ancestor(of: pill, matching: find.byType(Material)).first,
-      );
-      expect(material.color, AppColors.accent);
-      expect(
-        (material.shape! as StadiumBorder).side,
-        const BorderSide(color: AppColors.ink, width: 1.5),
-      );
-    });
-
-    testWidgets('it opens the statistics on this week and both exercises', (
-      tester,
-    ) async {
-      final semantics = tester.ensureSemantics();
+  group('전체 tab', () {
+    testWidgets("this week's push-ups: battles, reps per battle, best "
+        'score', (tester) async {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
-      expect(
-        tester.getSemantics(pill),
-        isSemantics(label: '기간별 통계', isButton: true, hasTapAction: true),
+      // Saturday 11-14: the week from Monday 11-09 has three push-ups.
+      expect(find.bySemanticsLabel('경기 3판'), findsOneWidget);
+      expect(find.bySemanticsLabel('경기당 인정 19회'), findsOneWidget);
+      expect(find.bySemanticsLabel('최고 점수 240점'), findsOneWidget);
+      expect(chartLabel(tester), '경기별 점수: 150점, 185점, 240점');
+    });
+
+    testWidgets('전체 기간 and 스쿼트 change what is summed', (tester) async {
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('전체 기간'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('경기 4판'), findsOneWidget);
+      expect(find.bySemanticsLabel('경기당 인정 16.3회'), findsOneWidget);
+      await tester.tap(find.text('스쿼트').first);
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('경기 1판'), findsOneWidget);
+      expect(find.bySemanticsLabel('최고 점수 490점'), findsOneWidget);
+    });
+
+    testWidgets('인정 횟수 turns the chart to the counted reps', (tester) async {
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('인정 횟수'));
+      await tester.pumpAndSettle();
+      expect(chartLabel(tester), '경기별 인정 횟수: 15회, 18회, 24회');
+      expect(find.text('경기별 인정 횟수'), findsOneWidget);
+    });
+
+    testWidgets('a period without battles says so, with no best', (
+      tester,
+    ) async {
+      withBattles([_battles.last]);
+      await open(tester);
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('경기 0판'), findsOneWidget);
+      expect(find.bySemanticsLabel('최고 점수 –'), findsOneWidget);
+      expect(find.text('이 기간에 기록된 경기가 없어요.'), findsOneWidget);
+      expect(chartLabel(tester), isNull);
+    });
+
+    testWidgets('개인 최고 of both exercises, from every battle', (tester) async {
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('개인 최고'),
+        200,
+        scrollable: vertical.first,
       );
-      await tester.tap(pill);
+      expect(
+        find.bySemanticsLabel('푸쉬업 최고 240점, 인정 24회, 11.14'),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel('스쿼트 최고 490점, 인정 20회, 11.14'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('자주 나온 자세 문제: the reject reasons of the period, most '
+        'first; none says so', (tester) async {
+      repository
+        ..historyPages = [_battles]
+        ..stats.points = [
+          statsPoint(
+            5,
+            DateTime(2026, 11, 14, 9),
+            score: 100,
+            issues: {'reject.insufficientDepth': 4, 'reject.kneesDown': 1},
+          ),
+        ];
+      await open(tester);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('자주 나온 자세 문제'),
+        200,
+        scrollable: vertical.first,
+      );
+      expect(find.text('이번 주 무효 5회'), findsOneWidget);
+      expect(find.text('4회'), findsOneWidget);
+      expect(find.text('1회'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('스쿼트').first,
+        -200,
+        scrollable: vertical.first,
+      );
+      await tester.tap(find.text('스쿼트').first);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('자주 나온 자세 문제'),
+        200,
+        scrollable: vertical.first,
+      );
+      expect(find.text('이 기간에 무효 처리된 횟수가 없어요.'), findsOneWidget);
+    });
+
+    testWidgets('기간별 통계 자세히 보기 opens the statistics on the same '
+        'clock', (tester) async {
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('기간별 통계 자세히 보기'),
+        200,
+        scrollable: vertical.first,
+      );
+      await tester.ensureVisible(find.text('기간별 통계 자세히 보기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('기간별 통계 자세히 보기'));
       await tester.pumpAndSettle();
       expect(find.byType(FeedbackStatsScreen), findsOneWidget);
-      expect(find.text('03 / STATS'), findsOneWidget);
-      bool picked(String label) =>
-          isSemantics(isSelected: true)
-              .matches(tester.getSemantics(find.text(label)), {});
-      expect(picked('이번 주'), isTrue);
-      expect(picked('둘 다'), isTrue);
-      // The archive's summary, then the statistics' own load.
-      expect(repository.stats.calls, hasLength(2));
-      // The archive's clock: Saturday 11/14 is in the week from 11/9.
       expect(find.text('이번 주 · 11/9 월 ~ 11/15 일'), findsOneWidget);
-      await tester.tap(find.byTooltip('뒤로'));
-      await tester.pumpAndSettle();
-      expect(find.text('기록보관소'), findsOneWidget);
-      semantics.dispose();
     });
 
-    testWidgets('no statistics source: no pill', (tester) async {
-      await open(
-        tester,
-        using: FakeUserRepository()..historyPages = [_battles],
-      );
-      await tester.pumpAndSettle();
-      expect(pill, findsNothing);
-      expect(find.text('기간별 통계'), findsNothing);
-      expect(find.text('03 / ARCHIVE'), findsOneWidget);
-    });
-
-    testWidgets('on a narrow phone with large text the tag is cut, the pill '
-        'stays whole', (tester) async {
-      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      withBattles();
-      await open(tester, size: const Size(320, 640));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      final tag = tester.renderObject<RenderParagraph>(
-        find.text('03 / ARCHIVE'),
-      );
-      expect(tag.didExceedMaxLines, isTrue);
-      expect(
-        tester
-            .renderObject<RenderParagraph>(find.text('기간별 통계'))
-            .didExceedMaxLines,
-        isFalse,
-      );
-    });
-
-    testWidgets('the 7-day card is named from its first day to today', (
+    testWidgets('no statistics source: a note, no way into the statistics', (
       tester,
     ) async {
-      withBattles();
-      await open(tester);
+      final plain = FakeUserRepository()..historyPages = [_battles];
+      await open(tester, using: plain);
       await tester.pumpAndSettle();
-      expect(find.text('최근 7일 · 11/8 ~ 오늘'), findsOneWidget);
+      expect(find.text('기간별 기록은 서버에 연결되어 있을 때 볼 수 있어요.'), findsOneWidget);
+      expect(find.text('기간별 통계 자세히 보기'), findsNothing);
+    });
+
+    testWidgets('while the period loads a spinner; a failure offers 다시 '
+        '시도', (tester) async {
+      withBattles();
+      repository.stats.gate = Completer<void>();
+      await open(tester);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      repository.stats
+        ..error = const ApiException(ApiErrorKind.network)
+        ..gate!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(ArchiveStatsRetry), findsOneWidget);
+      repository.stats
+        ..gate = null
+        ..error = null;
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ArchiveStatsRetry), findsNothing);
+      expect(find.bySemanticsLabel('경기 3판'), findsOneWidget);
     });
   });
 
-  group('with values', () {
-    testWidgets('the last 7 days, the growth and the newest three battles', (
-      tester,
-    ) async {
+  group('경기 tab', () {
+    testWidgets('the battles by day: 오늘, 어제 and the date, each with its '
+        'count', (tester) async {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
-      // The last 7 days: battles 2-5 (15 + 18 + 20 + 24 reps); today and
-      // yesterday in a row.
-      expect(find.byType(ArchiveWeekCard), findsOneWidget);
-      expect(find.text('77회  · 4판'), findsOneWidget);
-      expect(find.text('2일 연속'), findsOneWidget);
-      // Push-ups first: 80 -> 240 over four battles since 10/28.
-      expect(find.byType(ArchiveGrowthCard), findsOneWidget);
-      expect(find.text('160점'), findsOneWidget);
-      expect(find.text('첫 기록 80점 → 최고 240점'), findsOneWidget);
-      expect(find.text('10/28'), findsOneWidget);
-      // The newest three, then 전체 보기 for the other two.
-      expect(find.text('최근 경기'), findsOneWidget);
-      expect(shownIds(tester), [5, 4, 3]);
-      expect(find.text('전체 보기'), findsOneWidget);
-      expect(find.text('푸쉬업 · KO 승'), findsOneWidget);
-      expect(find.text('스쿼트 · 승리'), findsOneWidget);
-      expect(find.text('푸쉬업 · 패배'), findsOneWidget);
-      expect(find.text('vs RepBot 고수'), findsOneWidget);
-      expect(find.text('온라인 vs test111'), findsOneWidget);
-      expect(find.text('어제 21:05'), findsOneWidget);
-      expect(find.text('240'), findsOneWidget);
-      expect(find.text('490'), findsOneWidget);
+      await toMatches(tester);
+      expect(find.text('오늘 · 11.14 (토)'), findsOneWidget);
+      expect(find.text('어제 · 11.13 (금)'), findsOneWidget);
+      expect(find.text('2경기'), findsOneWidget);
+      expect(shownIds(tester).take(3), [5, 4, 3]);
+    });
+
+    testWidgets('a row: the result chip, the title, the time and kind, the '
+        'score and reps', (tester) async {
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      await toMatches(tester);
+      expect(find.text('KO승'), findsOneWidget);
+      expect(find.text('푸쉬업 · vs RepBot 고수'), findsOneWidget);
+      expect(find.text('14:30 · 아케이드'), findsOneWidget);
+      expect(find.text('13:42 · 온라인'), findsOneWidget);
+      expect(find.text('240 점', findRichText: true), findsOneWidget);
+      expect(find.text('인정 24회'), findsOneWidget);
+    });
+
+    testWidgets('the chips: an exercise, 온라인 or 아케이드; 전체 shows all '
+        'again', (tester) async {
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      await toMatches(tester);
+      await tester.tap(find.text('스쿼트'));
+      await tester.pumpAndSettle();
+      expect(shownIds(tester), [4]);
+      await tester.tap(find.text('온라인'));
+      await tester.pumpAndSettle();
+      expect(shownIds(tester), [4]);
+      await tester.tap(find.text('아케이드'));
+      await tester.pumpAndSettle();
+      expect(shownIds(tester), [5, 3]);
+      await tester.tap(find.text('전체').last);
+      await tester.pumpAndSettle();
+      expect(shownIds(tester).take(3), [5, 4, 3]);
+    });
+
+    testWidgets('a chip that leaves no battle says so', (tester) async {
+      withBattles([_battles.first]);
+      await open(tester);
+      await tester.pumpAndSettle();
+      await toMatches(tester);
+      await tester.tap(find.text('온라인'));
+      await tester.pumpAndSettle();
+      expect(find.text('이 조건에 맞는 경기가 없어요.'), findsOneWidget);
     });
 
     testWidgets('the gain chip only on the battles that raised the best', (
@@ -325,166 +420,88 @@ void main() {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
-      final rows = tester
-          .widgetList<ArchiveMatchRow>(find.byType(ArchiveMatchRow))
-          .toList();
-      expect([for (final row in rows) row.bestGain], [55, null, 35]);
-      final chips = find.byKey(const ValueKey('archive-gain-chip'));
-      expect(chips, findsNWidgets(2));
-      expect(
-        find.descendant(
-          of: find.widgetWithText(ArchiveMatchRow, '스쿼트 · 승리'),
-          matching: chips,
-        ),
-        findsNothing,
-      );
-      expect(find.text('55'), findsOneWidget);
-      expect(find.text('35'), findsOneWidget);
-    });
-
-    testWidgets('the 스쿼트 tab switches the graph to squats', (tester) async {
-      withBattles();
-      await open(tester);
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TextButton, '스쿼트'));
-      await tester.pumpAndSettle();
-      // One squat: its score only, no rise.
-      expect(find.text('첫 기록 490점'), findsOneWidget);
-      expect(find.text('160점'), findsNothing);
-      expect(find.text('11/14'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TextButton, '푸쉬업'));
-      await tester.pumpAndSettle();
-      expect(find.text('160점'), findsOneWidget);
-    });
-
-    testWidgets('an exercise never scored shows the short empty line', (
-      tester,
-    ) async {
-      withBattles([
-        for (final b in _battles)
-          if (b.exercise == ExerciseType.pushUp) b,
-      ]);
-      await open(tester);
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TextButton, '스쿼트'));
-      await tester.pumpAndSettle();
-      expect(find.text('아직 점수 기록이 없어요'), findsOneWidget);
-    });
-
-    testWidgets('a quiet streak hides the chip', (tester) async {
-      // Only the battle of 10/28: nothing in the last 7 days.
-      withBattles([_battles.last]);
-      await open(tester);
-      await tester.pumpAndSettle();
-      expect(find.text('0회  · 0판'), findsOneWidget);
-      expect(find.textContaining('연속'), findsNothing);
-      expect(find.text('전체 보기'), findsNothing);
-      expect(shownIds(tester), [1]);
-    });
-
-    testWidgets('fits a 360 x 780 phone down to the second battle; the page '
-        'scrolls to the rest', (tester) async {
-      withBattles();
-      await open(tester, size: const Size(360, 780));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      // As BArchive: header, both cards, 최근 경기 and two rows on screen.
-      expect(
-        tester.getBottomLeft(find.byType(ArchiveMatchRow).at(1)).dy,
-        lessThanOrEqualTo(780),
-      );
+      await toMatches(tester);
       await tester.scrollUntilVisible(
-        find.byType(ArchiveMatchRow).at(2),
+        find.byWidgetPredicate((w) => w is ArchiveMatchRow && w.match.id == 1),
         200,
-        scrollable: find.byType(Scrollable).first,
+        scrollable: vertical.last,
       );
-      expect(find.byType(ArchiveMatchRow).at(2), findsOneWidget);
+      final gained = [
+        for (final row in tester.widgetList<ArchiveMatchRow>(
+          find.byType(ArchiveMatchRow),
+        ))
+          if (row.bestGain != null) row.match.id,
+      ];
+      expect(gained, [5, 3, 2]);
     });
 
-    for (final scale in [1.3, 2.0]) {
-      testWidgets('no overflow at ${scale}x text on a 360 wide phone', (
-        tester,
-      ) async {
-        tester.platformDispatcher.textScaleFactorTestValue = scale;
-        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-        withBattles();
-        await open(tester, size: const Size(360, 780));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        await tester.scrollUntilVisible(
-          find.text('전체 보기'),
-          200,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.tap(find.text('전체 보기'));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-      });
-    }
-  });
-
-  group('without the summary', () {
-    testWidgets('no statistics source: the cards hide, the battles show', (
+    testWidgets('older battles load as the end of the list comes near', (
       tester,
     ) async {
-      final plain = FakeUserRepository()..historyPages = [_battles];
-      await open(tester, using: plain);
-      await tester.pumpAndSettle();
-      expect(find.byType(ArchiveWeekCard), findsNothing);
-      expect(find.byType(ArchiveGrowthCard), findsNothing);
-      expect(find.byType(ArchiveStatsRetry), findsNothing);
-      expect(shownIds(tester), [5, 4, 3]);
-      // No summary, so no gains either.
-      expect(find.byKey(const ValueKey('archive-gain-chip')), findsNothing);
-    });
-
-    testWidgets('while the summary loads the cards are hidden', (tester) async {
-      withBattles();
-      repository.stats.gate = Completer();
+      repository.historyPages = [
+        for (var page = 0; page < 3; page++)
+          [for (var i = 0; i < 20; i++) _record(60 - page * 20 - i, 5)],
+      ];
       await open(tester);
       await tester.pumpAndSettle();
-      expect(shownIds(tester), [5, 4, 3]);
-      expect(find.byType(ArchiveWeekCard), findsNothing);
-      expect(find.byType(ArchiveStatsRetry), findsNothing);
-
-      repository.stats.gate!.complete();
-      await tester.pumpAndSettle();
-      expect(find.byType(ArchiveWeekCard), findsOneWidget);
-    });
-
-    testWidgets('a failed summary: 다시 시도 in the cards\' place, the list '
-        'stays, and the retry brings the cards', (tester) async {
-      withBattles();
-      repository.stats.error = Exception('offline');
-      await open(tester);
-      await tester.pumpAndSettle();
-      expect(find.byType(ArchiveStatsRetry), findsOneWidget);
-      expect(find.byType(ArchiveWeekCard), findsNothing);
-      expect(shownIds(tester), [5, 4, 3]);
-      // Above the list, where the cards go.
-      expect(
-        tester.getTopLeft(find.byType(ArchiveStatsRetry)).dy,
-        lessThan(tester.getTopLeft(find.text('최근 경기')).dy),
+      await toMatches(tester);
+      expect(repository.historyCursors, [null]);
+      await tester.dragUntilVisible(
+        find.byWidgetPredicate(
+          (w) => w is ArchiveMatchRow && w.match.myReps == 1,
+        ),
+        find.byType(ListView).last,
+        const Offset(0, -500),
       );
+      await tester.pumpAndSettle();
+      expect(repository.historyCursors, [null, '1', '2']);
+    });
 
-      repository.stats.error = null;
+    testWidgets('a short first page asks for the next one right away', (
+      tester,
+    ) async {
+      repository.historyPages = [
+        [_record(2, 1)],
+        [_record(1, 1, day: 14)],
+      ];
+      await open(tester);
+      await tester.pumpAndSettle();
+      await toMatches(tester);
+      expect(repository.historyCursors, [null, '1']);
+      expect(find.byType(ArchiveMatchRow), findsNWidgets(2));
+    });
+
+    testWidgets('a failed next page offers a retry under the list', (
+      tester,
+    ) async {
+      repository
+        ..historyPages = [
+          [_record(2, 1)],
+          [_record(1, 1, day: 14)],
+        ]
+        ..nextPageError = Exception('offline');
+      await open(tester);
+      await tester.pumpAndSettle();
+      await toMatches(tester);
+      expect(find.byType(ArchiveMatchRow), findsOneWidget);
+      expect(find.text('더 불러오지 못했어요'), findsOneWidget);
+      repository.nextPageError = null;
       await tester.tap(find.text('다시 시도'));
       await tester.pumpAndSettle();
-      expect(find.byType(ArchiveStatsRetry), findsNothing);
-      expect(find.byType(ArchiveWeekCard), findsOneWidget);
-      expect(shownIds(tester), [5, 4, 3]);
+      expect(find.byType(ArchiveMatchRow), findsNWidgets(2));
     });
   });
 
   group('states', () {
-    testWidgets('a new user sees the empty state, no cards', (tester) async {
+    testWidgets('a new user sees the empty state, no tabs\' content', (
+      tester,
+    ) async {
       await open(tester);
       await tester.pumpAndSettle();
       expect(find.text('아직 경기 기록이 없어요'), findsOneWidget);
       expect(find.text('첫 대결을 마치면 여기에 기록돼요.'), findsOneWidget);
       expect(find.byType(ArchiveMatchRow), findsNothing);
-      expect(find.byType(ArchiveWeekCard), findsNothing);
-      expect(find.text('최근 경기'), findsNothing);
+      expect(find.byType(ArchivePeriodPicker), findsNothing);
     });
 
     testWidgets('a spinner shows while loading', (tester) async {
@@ -507,8 +524,6 @@ void main() {
         find.text(const ApiException(ApiErrorKind.network).message),
         findsOneWidget,
       );
-      expect(find.byType(ArchiveStatsRetry), findsNothing);
-
       repository
         ..historyError = null
         ..historyPages = [
@@ -516,129 +531,26 @@ void main() {
         ];
       await tester.tap(find.text('다시 시도'));
       await tester.pumpAndSettle();
+      await toMatches(tester);
       expect(find.byType(ArchiveMatchRow), findsOneWidget);
     });
-  });
 
-  group('전체 보기', () {
-    Future<void> openAll(WidgetTester tester) async {
-      await tester.tap(find.text('전체 보기'));
-      await tester.pumpAndSettle();
-      expect(find.text('전체 경기'), findsOneWidget);
+    for (final scale in [1.3, 2.0]) {
+      testWidgets('no overflow at ${scale}x text on a 360 x 780 phone, on '
+          'both tabs', (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        withBattles();
+        await open(tester, size: const Size(360, 780));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await tester.drag(find.byType(ListView).first, const Offset(0, -2000));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        await toMatches(tester);
+        expect(tester.takeException(), isNull);
+      });
     }
-
-    testWidgets('opens every battle on the same view model, with the gains', (
-      tester,
-    ) async {
-      withBattles();
-      await open(tester);
-      await tester.pumpAndSettle();
-      await openAll(tester);
-      expect(shownIds(tester), [5, 4, 3, 2, 1]);
-      expect(
-        [
-          for (final row in tester.widgetList<ArchiveMatchRow>(
-            find.byType(ArchiveMatchRow),
-          ))
-            row.bestGain,
-        ],
-        [55, null, 35, 70, null],
-      );
-      // Not loaded again: one first page, one summary.
-      expect(repository.historyCursors, [null]);
-      expect(repository.stats.calls, hasLength(1));
-      expect(find.text('03 / ARCHIVE'), findsOneWidget);
-
-      await tester.tap(find.byTooltip('뒤로'));
-      await tester.pumpAndSettle();
-      expect(find.text('기록보관소'), findsOneWidget);
-      expect(shownIds(tester), [5, 4, 3]);
-    });
-
-    testWidgets('three battles or fewer and nothing older: no 전체 보기', (
-      tester,
-    ) async {
-      withBattles(_battles.take(3).toList());
-      await open(tester);
-      await tester.pumpAndSettle();
-      expect(shownIds(tester), [5, 4, 3]);
-      expect(find.text('전체 보기'), findsNothing);
-    });
-
-    testWidgets('older pages left on the server: 전체 보기 even for one', (
-      tester,
-    ) async {
-      repository.historyPages = [
-        [_record(2, 1)],
-        [_record(1, 1)],
-      ];
-      await open(tester);
-      await tester.pumpAndSettle();
-      // The archive itself never asks for the next page.
-      expect(repository.historyCursors, [null]);
-      expect(find.text('전체 보기'), findsOneWidget);
-    });
-
-    testWidgets('older battles load as the end of the list comes near', (
-      tester,
-    ) async {
-      repository.historyPages = [
-        for (var page = 0; page < 3; page++)
-          [for (var i = 0; i < 20; i++) _record(60 - page * 20 - i, 5)],
-      ];
-      await open(tester);
-      await tester.pumpAndSettle();
-      await openAll(tester);
-      // The first page fills the screen, so nothing more is asked yet.
-      expect(repository.historyCursors, [null]);
-
-      await tester.dragUntilVisible(
-        find.byWidgetPredicate(
-          (w) => w is ArchiveMatchRow && w.match.myReps == 1,
-        ),
-        find.byType(ListView),
-        const Offset(0, -500),
-      );
-      await tester.pumpAndSettle();
-      expect(repository.historyCursors, [null, '1', '2']);
-      expect(find.byType(CircularProgressIndicator), findsNothing);
-    });
-
-    testWidgets('a short first page asks for the next one right away', (
-      tester,
-    ) async {
-      repository.historyPages = [
-        [_record(2, 1)],
-        [_record(1, 1)],
-      ];
-      await open(tester);
-      await tester.pumpAndSettle();
-      await openAll(tester);
-      expect(repository.historyCursors, [null, '1']);
-      expect(find.byType(ArchiveMatchRow), findsNWidgets(2));
-    });
-
-    testWidgets('a failed next page offers a retry under the list', (
-      tester,
-    ) async {
-      repository
-        ..historyPages = [
-          [_record(2, 1)],
-          [_record(1, 1)],
-        ]
-        ..nextPageError = Exception('offline');
-      await open(tester);
-      await tester.pumpAndSettle();
-      await openAll(tester);
-      expect(find.byType(ArchiveMatchRow), findsOneWidget);
-      expect(find.text('더 불러오지 못했어요'), findsOneWidget);
-
-      repository.nextPageError = null;
-      await tester.tap(find.text('다시 시도'));
-      await tester.pumpAndSettle();
-      expect(find.byType(ArchiveMatchRow), findsNWidgets(2));
-      expect(find.text('더 불러오지 못했어요'), findsNothing);
-    });
   });
 
   // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
@@ -682,6 +594,7 @@ void main() {
         ..reports = {2: sampleReport()};
       await open(tester);
       await tester.pumpAndSettle();
+      await toMatches(tester);
       await tester.tap(find.byType(ArchiveMatchRow).last);
       await tester.pumpAndSettle();
       expect(shownRecord(tester), same(without));
@@ -697,26 +610,6 @@ void main() {
       expectEndLookOnly(tester);
       expect(find.text('자세 기록 표로 보기'), findsOneWidget);
       expect(repository.feedbackRequests, [2]);
-    });
-
-    testWidgets('the full list opens a battle\'s report the same way', (
-      tester,
-    ) async {
-      repository
-        ..historyPages = [
-          [for (var id = 4; id >= 1; id--) withFeedback(id)],
-        ]
-        ..reports = {1: sampleReport()};
-      await open(tester);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('전체 보기'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(ArchiveMatchRow).last);
-      await tester.pumpAndSettle();
-      expect(shownRecord(tester)!.id, 1);
-      expectEndLookOnly(tester);
-      expect(find.text('자세 기록 표로 보기'), findsOneWidget);
-      expect(repository.feedbackRequests, [1]);
     });
   });
 }

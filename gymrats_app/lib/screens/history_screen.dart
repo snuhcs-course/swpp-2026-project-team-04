@@ -7,29 +7,29 @@ import '../theme/app_theme.dart';
 import '../viewmodels/feedback_stats_viewmodel.dart';
 import '../viewmodels/history_viewmodel.dart';
 import '../widgets/archive_cards.dart';
-import '../widgets/archive_chart.dart';
 import '../widgets/archive_match_row.dart';
 import '../widgets/auth_form.dart';
-import '../widgets/lobby_parts.dart';
 import 'feedback_stats_screen.dart';
 import 'result_screen.dart';
 
-/// 기록보관소 (BArchive), opened from home's 03 / ARCHIVE: the last 7 days,
-/// the score growth per exercise, and the newest battles; "전체 보기" opens
-/// every battle, loaded page by page as that list scrolls. A row opens its
-/// battle's report. The lime "기간별 통계" pill in the header opens the
-/// statistics (W7-STATS 6) when the repository is a statistics source.
+/// 기록보관소 (P13, draft C "운동일지"), opened from home's 03 / ARCHIVE: two
+/// tabs. The title stays 기록보관소, as home's menu names it.
+///
+/// - **전체:** a period (이번 주, 이번 달, 전체 기간) and an exercise; the
+///   battles, counted reps per battle and best score; the battles' scores or
+///   reps in time; the bests of every exercise; the most frequent reject
+///   reasons; and the way into 기간별 통계.
+/// - **경기:** chips for 전체, an exercise, 온라인 or 아케이드, and the battles
+///   by day, loaded page by page as the list scrolls. A row opens its
+///   battle's report.
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key, this.createViewModel, this.now});
 
   /// Builds the view model; replaces the default one in tests.
   final HistoryViewModel Function()? createViewModel;
 
-  /// Today, for the rows' "오늘" and "어제"; the clock by default.
+  /// Today, for "오늘" and "어제" and the periods; the clock by default.
   final DateTime Function()? now;
-
-  /// How many of the newest battles the archive itself shows.
-  static const recentCount = 3;
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -38,7 +38,8 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   late final HistoryViewModel _viewModel;
 
-  /// The statistics' battles; null without a source, and then no pill.
+  /// The statistics' battles; null without a source, and then the 전체 tab
+  /// says the periods are not available.
   late final FeedbackStatsSource? _statsSource;
 
   @override
@@ -52,7 +53,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         widget.createViewModel?.call() ??
         HistoryViewModel(
           repository: context.read<UserRepository>(),
-          // One clock for the summary's "오늘" and the rows' words.
+          // One clock for the periods and the rows' words.
           now: widget.now,
         );
     _viewModel.load();
@@ -78,200 +79,53 @@ class _HistoryScreenState extends State<HistoryScreen> {
     ),
   );
 
-  void _openAll() => Navigator.push<void>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => ChangeNotifierProvider<HistoryViewModel>.value(
-        value: _viewModel,
-        child: _AllMatchesPage(now: _now),
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<HistoryViewModel>.value(
       value: _viewModel,
-      child: Consumer<HistoryViewModel>(
-        builder: (context, vm, _) {
-          final state = vm.state;
-          final source = _statsSource;
-          return LobbyPage(
-            behind: const LobbyWatermark('LOG', left: _watermarkLeft),
-            children: [
-              _Header(
-                title: '기록보관소',
-                onOpenStats: source == null ? null : () => _openStats(source),
-              ),
-              const SizedBox(height: AppSpacing.s16),
-              ...switch (state.phase) {
-                HistoryPhase.loading => const [
-                  Expanded(child: Center(child: CircularProgressIndicator())),
-                ],
-                HistoryPhase.failed => [
-                  Expanded(
-                    child: CenteredMessage(
-                      title: '기록을 불러오지 못했어요',
-                      detail: state.errorMessage,
-                      onRetry: vm.load,
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: Consumer<HistoryViewModel>(
+              builder: (context, vm, _) {
+                final state = vm.state;
+                final source = _statsSource;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _Top(),
+                    Expanded(
+                      child: switch (state.phase) {
+                        HistoryPhase.loading => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        HistoryPhase.failed => CenteredMessage(
+                          title: '기록을 불러오지 못했어요',
+                          detail: state.errorMessage,
+                          onRetry: vm.load,
+                        ),
+                        HistoryPhase.empty => const CenteredMessage(
+                          title: '아직 경기 기록이 없어요',
+                          detail: '첫 대결을 마치면 여기에 기록돼요.',
+                        ),
+                        HistoryPhase.ready => TabBarView(
+                          children: [
+                            _OverviewTab(
+                              onOpenStats: source == null
+                                  ? null
+                                  : () => _openStats(source),
+                              hasSource: source != null,
+                            ),
+                            _MatchesTab(now: _now),
+                          ],
+                        ),
+                      },
                     ),
-                  ),
-                ],
-                HistoryPhase.empty => const [
-                  Expanded(
-                    child: CenteredMessage(
-                      title: '아직 경기 기록이 없어요',
-                      detail: '첫 대결을 마치면 여기에 기록돼요.',
-                    ),
-                  ),
-                ],
-                HistoryPhase.ready => _ready(context, state, vm.load),
+                  ],
+                );
               },
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  /// The cards (or "다시 시도" in their place when the summary failed; nothing
-  /// while it loads or without one), then the newest battles.
-  List<Widget> _ready(
-    BuildContext context,
-    HistoryState state,
-    VoidCallback onRetry,
-  ) {
-    final archive = state.archive;
-    final recent = state.matches.take(HistoryScreen.recentCount).toList();
-    final more =
-        state.matches.length > HistoryScreen.recentCount || state.hasMore;
-    final now = _now();
-    return [
-      if (archive != null) ...[
-        ArchiveWeekCard(stats: archive),
-        const SizedBox(height: AppSpacing.s12),
-        ArchiveGrowthCard(growth: archive.growth),
-        const SizedBox(height: AppSpacing.s8),
-      ] else if (state.statsFailed) ...[
-        ArchiveStatsRetry(onRetry: onRetry),
-        const SizedBox(height: AppSpacing.s8),
-      ],
-      _RecentHeader(onShowAll: more ? _openAll : null),
-      for (final (index, match) in recent.indexed) ...[
-        if (index > 0) const SizedBox(height: AppSpacing.s8),
-        ArchiveMatchRow(
-          match: match,
-          now: now,
-          bestGain: state.bestGainOf(match),
-          onTap: reportTap(context, match),
-        ),
-      ],
-    ];
-  }
-}
-
-/// Where the faint "LOG" starts, as designed.
-const _watermarkLeft = 178.0;
-
-/// The back button, "03 / ARCHIVE" (cut with "…" when narrow) and, with
-/// [onOpenStats], the "기간별 통계" pill at the right end; then the slanted
-/// [title]. As `LobbyPageHeader`, with room for the pill.
-class _Header extends StatelessWidget {
-  const _Header({required this.title, this.onOpenStats});
-
-  final String title;
-  final VoidCallback? onOpenStats;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final onOpenStats = this.onOpenStats;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            LobbySquareButton(
-              icon: Icons.chevron_left_rounded,
-              tooltip: '뒤로',
-              onPressed: () => Navigator.maybePop(context),
-            ),
-            const SizedBox(width: AppSpacing.s12),
-            Expanded(
-              child: Text(
-                '03 / ARCHIVE',
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.ellipsis,
-                style: text.lobbyTag.copyWith(color: AppColors.textMuted),
-              ),
-            ),
-            if (onOpenStats != null) ...[
-              const SizedBox(width: AppSpacing.s12),
-              _StatsPill(onTap: onOpenStats),
-            ],
-          ],
-        ),
-        const SizedBox(height: AppSpacing.s20),
-        Semantics(
-          header: true,
-          child: LobbySkew(
-            degrees: 10,
-            child: Text(title, style: text.lobbyPageTitle),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// "기간별 통계" with a bar icon on a lime pill with an ink edge: the way
-/// into the statistics (W7-STATS 6), a 44 high button.
-class _StatsPill extends StatelessWidget {
-  const _StatsPill({required this.onTap});
-
-  final VoidCallback onTap;
-
-  static const _height = 44.0;
-  static const _edge = 1.5;
-  static const _iconSize = 18.0;
-
-  @override
-  Widget build(BuildContext context) {
-    const shape = StadiumBorder(
-      side: BorderSide(color: AppColors.ink, width: _edge),
-    );
-    // One button for a screen reader; the icon is decoration.
-    return Semantics(
-      button: true,
-      label: '기간별 통계',
-      onTap: onTap,
-      excludeSemantics: true,
-      child: Material(
-        color: AppColors.accent,
-        shape: shape,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: const ValueKey('archive-stats-pill'),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: _height),
-            child: Padding(
-              // W7A's 12 / 14, on the 12 step.
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const ArchiveStatsIcon(size: _iconSize),
-                  const SizedBox(width: AppSpacing.s4),
-                  Text(
-                    '기간별 통계',
-                    maxLines: 1,
-                    style: Theme.of(context).textTheme.archiveLabel
-                        .copyWith(color: AppColors.ink),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -280,50 +134,192 @@ class _StatsPill extends StatelessWidget {
   }
 }
 
-/// "최근 경기", and "전체 보기 ›" when there are more battles than shown.
-class _RecentHeader extends StatelessWidget {
-  const _RecentHeader({required this.onShowAll});
+/// The back button and "기록보관소" on white, then the 전체 | 경기 tabs with an
+/// ink line under the chosen one.
+class _Top extends StatelessWidget {
+  const _Top();
 
-  final VoidCallback? onShowAll;
-
-  static const _chevronSize = 16.0;
+  static const _indicator = 3.0;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final onShowAll = this.onShowAll;
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
-      child: Row(
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.card,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: Text('최근 경기', style: text.lobbyRowTitle)),
-          if (onShowAll != null)
-            TextButton(
-              onPressed: onShowAll,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.textSecondary,
-                textStyle: text.archiveLabel,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('전체 보기'),
-                  Icon(Icons.chevron_right_rounded, size: _chevronSize),
-                ],
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.s8,
+              AppSpacing.s4,
+              AppSpacing.s20,
+              0,
             ),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: '뒤로',
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.chevron_left_rounded),
+                  color: AppColors.ink,
+                ),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text('기록보관소', style: text.lobbyCardTitle),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TabBar(
+            labelStyle: text.reportCardTitle,
+            unselectedLabelStyle: text.feedbackMeta,
+            labelColor: AppColors.ink,
+            unselectedLabelColor: AppColors.textMuted,
+            indicatorColor: AppColors.ink,
+            indicatorWeight: _indicator,
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: AppColors.card,
+            tabs: const [
+              Tab(text: '전체'),
+              Tab(text: '경기'),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-/// Every battle, newest first, on the archive's view model; the footer
-/// loads the next page as soon as the list builds it, which is when the end
-/// comes near (or right away when one page does not fill the screen).
-class _AllMatchesPage extends StatelessWidget {
-  const _AllMatchesPage({required this.now});
+const _gap = SizedBox(height: AppSpacing.s8);
+
+/// The 전체 tab: the period and exercise, then what they hold.
+class _OverviewTab extends StatelessWidget {
+  const _OverviewTab({required this.onOpenStats, required this.hasSource});
+
+  final VoidCallback? onOpenStats;
+  final bool hasSource;
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<HistoryViewModel>();
+    final state = vm.state;
+    final growth = vm.growth;
+    final text = Theme.of(context).textTheme;
+    final onOpenStats = this.onOpenStats;
+    return ListView(
+      padding: const EdgeInsets.only(
+        top: AppSpacing.s8,
+        bottom: AppSpacing.s24,
+      ),
+      children: [
+        ArchiveSection(
+          padding: const EdgeInsets.all(AppSpacing.s16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ArchivePeriodPicker(value: state.period, onChanged: vm.setPeriod),
+              const SizedBox(height: AppSpacing.s12),
+              ArchiveExerciseChips(
+                selected: state.exercise,
+                onSelected: vm.setExercise,
+              ),
+            ],
+          ),
+        ),
+        _gap,
+        if (growth != null) ...[
+          ArchiveSection(child: ArchiveSummary(growth: growth)),
+          _gap,
+          ArchiveSection(child: ArchiveScoreChart(points: growth.points)),
+          _gap,
+          ArchiveSection(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const ArchiveSectionTitle('개인 최고'),
+                const SizedBox(height: AppSpacing.s12),
+                ArchiveBests(bests: growth.bests),
+              ],
+            ),
+          ),
+          _gap,
+          ArchiveSection(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ArchiveSectionTitle(
+                  '자주 나온 자세 문제',
+                  detail:
+                      '${archivePeriodLabel(growth.period)} 무효 '
+                      '${growth.issues.fold(0, (sum, i) => sum + i.count)}회',
+                ),
+                const SizedBox(height: AppSpacing.s12),
+                ArchiveIssues(issues: growth.issues),
+              ],
+            ),
+          ),
+        ] else if (state.statsFailed)
+          ArchiveStatsRetry(onRetry: vm.load)
+        else if (!hasSource)
+          ArchiveSection(
+            child: Text(
+              '기간별 기록은 서버에 연결되어 있을 때 볼 수 있어요.',
+              style: text.feedbackMeta,
+            ),
+          )
+        else
+          const ArchiveSection(
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        if (onOpenStats != null) ...[
+          _gap,
+          Material(
+            color: AppColors.card,
+            child: InkWell(
+              onTap: onOpenStats,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: kMinInteractiveDimension,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.s20,
+                    vertical: AppSpacing.s12,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '기간별 통계 자세히 보기',
+                          style: text.reportCardTitle,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textMuted,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The 경기 tab: the chips, then the battles by day, then a footer that
+/// loads the next page as soon as the list builds it.
+class _MatchesTab extends StatelessWidget {
+  const _MatchesTab({required this.now});
 
   final DateTime Function() now;
 
@@ -331,63 +327,89 @@ class _AllMatchesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<HistoryViewModel>();
     final state = vm.state;
-    final matches = state.matches;
+    final days = state.days;
     final showFooter =
         state.hasMore || state.loadingMore || state.loadMoreFailed;
     final today = now();
-    return Scaffold(
-      body: Stack(
-        children: [
-          const LobbyWatermark('LOG', left: _watermarkLeft),
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.s20,
-                    AppSpacing.s4,
-                    AppSpacing.s20,
-                    0,
-                  ),
-                  child: _Header(title: '전체 경기'),
-                ),
-                Expanded(
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.s20,
-                      AppSpacing.s16,
-                      AppSpacing.s20,
-                      AppSpacing.s24,
-                    ),
-                    itemCount: matches.length + (showFooter ? 1 : 0),
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: AppSpacing.s8),
-                    itemBuilder: (context, index) {
-                      if (index < matches.length) {
-                        // AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
-                        final match = matches[index];
-                        return ArchiveMatchRow(
-                          match: match,
-                          now: today,
-                          bestGain: state.bestGainOf(match),
-                          onTap: reportTap(context, match),
-                        );
-                      }
-                      if (state.loadMoreFailed) {
-                        return CenteredMessage(
-                          title: '더 불러오지 못했어요',
-                          onRetry: vm.loadMore,
-                        );
-                      }
-                      if (state.loadingMore) return const _FooterSpinner();
-                      return _LoadMoreTrigger(onBuilt: vm.loadMore);
-                    },
-                  ),
-                ),
-              ],
+    final text = Theme.of(context).textTheme;
+    // The chips, the days (or a note when the chip leaves none), the footer.
+    final count =
+        1 +
+        (days.isEmpty && !showFooter ? 1 : days.length) +
+        (showFooter ? 1 : 0);
+    return ListView.builder(
+      padding: const EdgeInsets.only(
+        top: AppSpacing.s8,
+        bottom: AppSpacing.s24,
+      ),
+      itemCount: count,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.s8),
+            child: ArchiveSection(
+              padding: const EdgeInsets.all(AppSpacing.s16),
+              child: ArchiveChips<ArchiveFilter>(
+                values: ArchiveFilter.values,
+                labelOf: (f) => f.label,
+                selected: state.filter,
+                onSelected: vm.setFilter,
+              ),
             ),
-          ),
+          );
+        }
+        final at = index - 1;
+        if (days.isEmpty && !showFooter && at == 0) {
+          return ArchiveSection(
+            child: Text('이 조건에 맞는 경기가 없어요.', style: text.feedbackMeta),
+          );
+        }
+        if (at < days.length) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.s8),
+            child: _Day(day: days[at], now: today, state: state),
+          );
+        }
+        if (state.loadMoreFailed) {
+          return CenteredMessage(title: '더 불러오지 못했어요', onRetry: vm.loadMore);
+        }
+        if (state.loadingMore) return const _FooterSpinner();
+        return _LoadMoreTrigger(onBuilt: vm.loadMore);
+      },
+    );
+  }
+}
+
+/// One day on white: its head, then its battles with a line between them.
+class _Day extends StatelessWidget {
+  const _Day({required this.day, required this.now, required this.state});
+
+  final ArchiveDay day;
+  final DateTime now;
+  final HistoryState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ArchiveDayHeader(date: day.date, count: day.matches.length, now: now),
+          for (final (index, match) in day.matches.indexed) ...[
+            if (index > 0)
+              const Divider(
+                height: 1,
+                indent: AppSpacing.s20,
+                endIndent: AppSpacing.s20,
+                color: AppColors.facetLight,
+              ),
+            ArchiveMatchRow(
+              match: match,
+              bestGain: state.bestGainOf(match),
+              onTap: reportTap(context, match),
+            ),
+          ],
         ],
       ),
     );

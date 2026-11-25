@@ -1,490 +1,238 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
-import 'package:gymrats_app/widgets/archive_chart.dart';
 import 'package:gymrats_app/widgets/archive_match_row.dart';
 
 import 'battle_test_support.dart';
 
-/// Saturday 2026-11-14, 15:00.
-final _now = DateTime(2026, 11, 14, 15);
-
-MatchRecord _match({
+MatchRecord _battle({
+  int mine = 18,
+  int theirs = 12,
+  int? score = 185,
+  GameEnd? end = GameEnd.timeUp,
+  bool? online = false,
+  bool left = false,
   ExerciseType exercise = ExerciseType.pushUp,
-  String opponentName = 'RepBot 고수',
-  int myReps = 24,
-  int opponentReps = 12,
-  int? myScore = 240,
-  int? opponentScore = 125,
-  DateTime? playedAt,
-  MatchOutcome? decidedOutcome,
-  GameEnd? gameEnd = GameEnd.ko,
-  bool? isOnline = false,
-  bool opponentLeft = false,
+  DateTime? at,
 }) => MatchRecord(
-  id: 5,
   exercise: exercise,
-  opponentName: opponentName,
-  myReps: myReps,
-  opponentReps: opponentReps,
-  myScore: myScore,
-  opponentScore: opponentScore,
-  playedAt: playedAt ?? DateTime(2026, 11, 14, 14, 30),
-  decidedOutcome: decidedOutcome,
-  gameEnd: gameEnd,
-  isOnline: isOnline,
-  opponentLeft: opponentLeft,
+  opponentName: '러너',
+  myReps: mine,
+  opponentReps: theirs,
+  myScore: score,
+  opponentScore: score == null ? null : 100,
+  playedAt: at ?? DateTime(2026, 11, 24, 16, 4),
+  gameEnd: end,
+  isOnline: online,
+  opponentLeft: left,
 );
 
+Future<void> _show(WidgetTester tester, Widget child, {double width = 412}) {
+  tester.view.physicalSize = Size(width, 400);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  return tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.light,
+      home: Scaffold(body: ListView(children: [child])),
+    ),
+  );
+}
+
 void main() {
-  // The app's fonts, so the rows measure as they do on a phone.
   setUpAll(loadBattleFonts);
 
-  group('resultLine', () {
-    test('a KO says KO; time up says 승리, 패배 or 무승부', () {
-      expect(ArchiveMatchRow.resultLine(_match()), '푸쉬업 · KO 승');
+  group('the words (P13, draft C)', () {
+    test('the chip: 승, KO승, 패, KO패, 무', () {
+      expect(ArchiveMatchRow.chipLabel(_battle()), '승');
+      expect(ArchiveMatchRow.chipLabel(_battle(end: GameEnd.ko)), 'KO승');
+      expect(ArchiveMatchRow.chipLabel(_battle(mine: 3)), '패');
       expect(
-        ArchiveMatchRow.resultLine(_match(myReps: 5, gameEnd: GameEnd.ko)),
-        '푸쉬업 · KO 패',
+        ArchiveMatchRow.chipLabel(_battle(mine: 3, end: GameEnd.ko)),
+        'KO패',
       );
+      expect(ArchiveMatchRow.chipLabel(_battle(mine: 12)), '무');
+    });
+
+    test('the title names the exercise and the opponent', () {
+      expect(ArchiveMatchRow.titleLine(_battle()), '푸쉬업 · vs 러너');
       expect(
-        ArchiveMatchRow.resultLine(
-          _match(exercise: ExerciseType.squat, gameEnd: GameEnd.timeUp),
-        ),
-        '스쿼트 · 승리',
-      );
-      expect(
-        ArchiveMatchRow.resultLine(_match(myReps: 5, gameEnd: GameEnd.timeUp)),
-        '푸쉬업 · 패배',
-      );
-      expect(
-        ArchiveMatchRow.resultLine(_match(myReps: 12, gameEnd: GameEnd.timeUp)),
-        '푸쉬업 · 무승부',
+        ArchiveMatchRow.titleLine(_battle(exercise: ExerciseType.squat)),
+        '스쿼트 · vs 러너',
       );
     });
 
-    test('the stored outcome wins over the reps', () {
+    test('the detail: the time, the kind when known, the opponent leaving', () {
+      expect(ArchiveMatchRow.detailLine(_battle()), '16:04 · 아케이드');
       expect(
-        ArchiveMatchRow.resultLine(
-          _match(decidedOutcome: MatchOutcome.lose, gameEnd: null),
-        ),
-        '푸쉬업 · 패배',
+        ArchiveMatchRow.detailLine(_battle(online: true, left: true)),
+        '16:04 · 온라인 · 상대 나감',
       );
-    });
-
-    test('a battle the opponent left says so after the result', () {
+      expect(ArchiveMatchRow.detailLine(_battle(online: null)), '16:04');
       expect(
-        ArchiveMatchRow.resultLine(
-          _match(
-            myReps: 3,
-            decidedOutcome: MatchOutcome.win,
-            gameEnd: null,
-            isOnline: true,
-            opponentLeft: true,
+        ArchiveMatchRow.detailLine(
+          const MatchRecord(
+            exercise: ExerciseType.pushUp,
+            opponentName: 'RepBot',
+            myReps: 1,
+            opponentReps: 0,
           ),
         ),
-        '푸쉬업 · 승리 · 상대 나감',
+        '',
+      );
+    });
+
+    test('the score in points, or the reps for a battle without one', () {
+      expect(ArchiveMatchRow.scoreWords(_battle()), '185점');
+      expect(ArchiveMatchRow.scoreWords(_battle(score: null)), '18회');
+    });
+
+    test('the day: 오늘 and 어제 with the date and weekday, else the date', () {
+      final now = DateTime(2026, 11, 24, 21);
+      expect(
+        ArchiveDayHeader.dayLine(DateTime(2026, 11, 24), now),
+        '오늘 · 11.24 (화)',
+      );
+      expect(
+        ArchiveDayHeader.dayLine(DateTime(2026, 11, 23), now),
+        '어제 · 11.23 (월)',
+      );
+      expect(
+        ArchiveDayHeader.dayLine(DateTime(2026, 11, 21), now),
+        '11.21 (토)',
+      );
+      // Across a month's turn.
+      expect(
+        ArchiveDayHeader.dayLine(DateTime(2026, 11, 30), DateTime(2026, 12, 1)),
+        '어제 · 11.30 (월)',
       );
     });
   });
 
-  group('whenLine', () {
-    test('today and yesterday by name, older days by date', () {
-      expect(
-        ArchiveMatchRow.whenLine(DateTime(2026, 11, 14, 14, 30), _now),
-        '오늘 14:30',
-      );
-      expect(
-        ArchiveMatchRow.whenLine(DateTime(2026, 11, 14, 0, 5), _now),
-        '오늘 00:05',
-      );
-      expect(
-        ArchiveMatchRow.whenLine(DateTime(2026, 11, 13, 21, 5), _now),
-        '어제 21:05',
-      );
-      expect(
-        ArchiveMatchRow.whenLine(DateTime(2026, 11, 12, 23, 59), _now),
-        '11월 12일 23:59',
-      );
-    });
-
-    test('yesterday across a month and a year', () {
-      expect(
-        ArchiveMatchRow.whenLine(
-          DateTime(2026, 10, 31, 22),
-          DateTime(2026, 11, 1, 9),
-        ),
-        '어제 22:00',
-      );
-      expect(
-        ArchiveMatchRow.whenLine(
-          DateTime(2026, 12, 31, 23, 10),
-          DateTime(2027, 1, 1, 1),
-        ),
-        '어제 23:10',
-      );
-    });
-
-    test('a battle stamped after now (a clock ahead) shows its date', () {
-      expect(
-        ArchiveMatchRow.whenLine(DateTime(2026, 11, 15, 9), _now),
-        '11월 15일 09:00',
-      );
-    });
-  });
-
-  group('opponentLine', () {
-    test('온라인 for an online battle; as before otherwise', () {
-      expect(
-        ArchiveMatchRow.opponentLine(
-          _match(opponentName: 'test111', isOnline: true),
-        ),
-        '온라인 vs test111',
-      );
-      expect(ArchiveMatchRow.opponentLine(_match()), 'vs RepBot 고수');
-      expect(
-        ArchiveMatchRow.opponentLine(
-          _match(opponentName: 'RepBot', isOnline: null),
-        ),
-        'vs RepBot',
-      );
-    });
-  });
-
-  group('ArchiveMatchRow', () {
-    Future<void> show(
-      WidgetTester tester,
-      MatchRecord match, {
-      int? bestGain,
-      VoidCallback? onTap,
-      Size size = const Size(412, 915),
-    }) async {
-      tester.view.physicalSize = size;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ArchiveMatchRow(
-                  match: match,
-                  now: _now,
-                  bestGain: bestGain,
-                  onTap: onTap,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    testWidgets('the icon, the result, when and whom, and the score', (
-      tester,
-    ) async {
-      await show(tester, _match());
-      expect(find.byType(ArchiveExerciseIcon), findsOneWidget);
-      expect(
-        tester
-            .widget<ArchiveExerciseIcon>(find.byType(ArchiveExerciseIcon))
-            .exercise,
-        ExerciseType.pushUp,
-      );
-      expect(find.text('푸쉬업 · KO 승'), findsOneWidget);
-      expect(find.text('오늘 14:30'), findsOneWidget);
-      expect(find.text(' · '), findsOneWidget);
-      expect(find.text('vs RepBot 고수'), findsOneWidget);
-      expect(find.text('240'), findsOneWidget);
-      expect(
-        tester.getSize(find.byType(ArchiveMatchRow)).height,
-        ArchiveMatchRow.minHeight,
-      );
-      // The opponent's score is not in the row (BArchive).
-      expect(find.text('125'), findsNothing);
-    });
-
-    testWidgets('a squat row draws the squat', (tester) async {
-      await show(tester, _match(exercise: ExerciseType.squat));
-      expect(
-        tester
-            .widget<ArchiveExerciseIcon>(find.byType(ArchiveExerciseIcon))
-            .exercise,
-        ExerciseType.squat,
-      );
-      expect(find.text('스쿼트 · KO 승'), findsOneWidget);
-    });
-
-    testWidgets('a battle saved before scores shows its reps with 회', (
-      tester,
-    ) async {
-      await show(tester, _match(myScore: null, opponentScore: null));
-      expect(find.text('24회'), findsOneWidget);
-      expect(find.text('240'), findsNothing);
-    });
-
-    testWidgets('a battle without a time shows only the opponent', (
-      tester,
-    ) async {
-      await show(
-        tester,
-        MatchRecord(
-          exercise: ExerciseType.pushUp,
-          opponentName: 'RepBot',
-          myReps: 3,
-          opponentReps: 1,
-        ),
-      );
-      expect(find.text('vs RepBot'), findsOneWidget);
-      expect(find.text(' · '), findsNothing);
-      expect(find.byType(ArchiveWhenAndOpponent), findsNothing);
-      expect(find.textContaining('오늘'), findsNothing);
-    });
-
-    testWidgets('a new best shows the lime ↑ chip with the gain', (
-      tester,
-    ) async {
-      await show(tester, _match(), bestGain: 55);
-      final chip = find.byKey(const ValueKey('archive-gain-chip'));
-      expect(chip, findsOneWidget);
-      expect(
-        find.descendant(of: chip, matching: find.text('55')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(
-          of: chip,
-          matching: find.byIcon(Icons.arrow_upward_rounded),
-        ),
-        findsOneWidget,
-      );
-      final fill =
-          (tester.widget<DecoratedBox>(chip).decoration as BoxDecoration).color;
-      expect(fill, AppColors.accent.withValues(alpha: 0.6));
-      // Under the score.
-      expect(
-        tester.getTopLeft(chip).dy,
-        greaterThan(tester.getBottomLeft(find.text('240')).dy),
-      );
-    });
-
-    testWidgets('no new best, no chip', (tester) async {
-      await show(tester, _match());
-      expect(find.byKey(const ValueKey('archive-gain-chip')), findsNothing);
-      expect(find.byIcon(Icons.arrow_upward_rounded), findsNothing);
-    });
-
-    testWidgets('one node for a screen reader, with the chip in words', (
-      tester,
-    ) async {
+  group('the row', () {
+    testWidgets('shows the chip, title, detail, score with its unit and the '
+        'reps; one tappable node for a screen reader', (tester) async {
       final semantics = tester.ensureSemantics();
-      await show(tester, _match(), bestGain: 55, onTap: () {});
-      final node = tester.getSemantics(find.byType(ArchiveMatchRow));
-      expect(node.label, contains('푸쉬업 · KO 승'));
-      expect(node.label, contains('vs RepBot 고수'));
-      expect(node.label, contains('240점'));
-      expect(node.label, contains('최고 기록 55점 경신'));
-      expect(node, isSemantics(hasTapAction: true));
-      semantics.dispose();
-    });
-
-    testWidgets('a tap calls onTap; without it the row does nothing', (
-      tester,
-    ) async {
       var taps = 0;
-      await show(tester, _match(), onTap: () => taps++);
-      await tester.tap(find.byType(ArchiveMatchRow));
-      expect(taps, 1);
-
-      final semantics = tester.ensureSemantics();
-      await show(tester, _match());
-      await tester.tap(find.byType(ArchiveMatchRow));
+      await _show(
+        tester,
+        ArchiveMatchRow(match: _battle(), onTap: () => taps++),
+      );
+      expect(find.text('승'), findsOneWidget);
+      expect(find.text('푸쉬업 · vs 러너'), findsOneWidget);
+      expect(find.text('16:04 · 아케이드'), findsOneWidget);
+      expect(find.text('185 점', findRichText: true), findsOneWidget);
+      expect(find.text('인정 18회'), findsOneWidget);
       expect(
         tester.getSemantics(find.byType(ArchiveMatchRow)),
-        isSemantics(hasTapAction: false),
-      );
-      semantics.dispose();
-    });
-
-    RenderArchiveWhenAndOpponent line(WidgetTester tester) =>
-        tester.renderObject<RenderArchiveWhenAndOpponent>(
-          find.byType(ArchiveWhenAndOpponent),
-        );
-
-    testWidgets('time, dot and opponent share a line when they fit', (
-      tester,
-    ) async {
-      await show(tester, _match(opponentName: '온라인닉네임', isOnline: true));
-      expect(line(tester).split, isFalse);
-      final time = tester.getRect(find.text('오늘 14:30'));
-      final dot = tester.getRect(find.text(' · '));
-      final who = tester.getRect(find.text('온라인 vs 온라인닉네임'));
-      expect([dot.top, who.top], [time.top, time.top]);
-      expect(dot.left, time.right);
-      expect(who.left, dot.right);
-      expect(
-        find.byType(ArchiveWhenAndOpponent),
-        paintsExactlyCountTimes(#drawParagraph, 3),
-      );
-    });
-
-    testWidgets('on one line the dot is read too', (tester) async {
-      final semantics = tester.ensureSemantics();
-      await show(tester, _match());
-      final label = tester.getSemantics(find.byType(ArchiveMatchRow)).label;
-      expect(label.split('\n').map((part) => part.trim()), contains('·'));
-      semantics.dispose();
-    });
-
-    testWidgets('a long online nickname goes under the time, whole, and no '
-        'line ends in the dot', (tester) async {
-      final semantics = tester.ensureSemantics();
-      await show(
-        tester,
-        _match(opponentName: '가나다라마바사아자차카타', isOnline: true),
-        bestGain: 55,
-        size: const Size(360, 780),
-      );
-      expect(line(tester).split, isTrue);
-      final time = find.text('오늘 14:30');
-      final who = find.text('온라인 vs 가나다라마바사아자차카타');
-      expect(tester.getTopLeft(who).dy, tester.getBottomLeft(time).dy);
-      expect(tester.getTopLeft(who).dx, tester.getTopLeft(time).dx);
-      expect(
-        tester.renderObject<RenderParagraph>(who).didExceedMaxLines,
-        isFalse,
-      );
-      // The dot is neither drawn nor read.
-      expect(
-        find.byType(ArchiveWhenAndOpponent),
-        paintsExactlyCountTimes(#drawParagraph, 2),
-      );
-      final label = tester.getSemantics(find.byType(ArchiveMatchRow)).label;
-      expect(label, contains('오늘 14:30'));
-      expect(label, contains('온라인 vs 가나다라마바사아자차카타'));
-      // The merged label puts each text on its own line.
-      expect(
-        label.split('\n').map((part) => part.trim()),
-        isNot(contains('·')),
-      );
-      expect(tester.takeException(), isNull);
-      semantics.dispose();
-    });
-
-    testWidgets('a time wider than the line alone is cut, the opponent too', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          // Material: the theme's text, not the debug fallback.
-          home: Material(
-            child: Center(
-              child: SizedBox(
-                width: 40,
-                child: ArchiveWhenAndOpponent(
-                  time: const Text(
-                    '10월 15일 21:30',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  dot: const Text(' · '),
-                  opponent: const Text(
-                    'vs RepBot 고수',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ),
-          ),
+        isSemantics(
+          label: '승\n푸쉬업 · vs 러너\n16:04 · 아케이드\n185점\n인정 18회',
+          hasTapAction: true,
         ),
       );
-      final box = line(tester);
-      expect(box.split, isTrue);
-      expect(box.size.width, lessThanOrEqualTo(40));
+      await tester.tap(find.byType(ArchiveMatchRow));
+      expect(taps, 1);
       expect(
-        tester
-            .renderObject<RenderParagraph>(find.text('10월 15일 21:30'))
-            .didExceedMaxLines,
-        isTrue,
+        tester.getSize(find.byType(ArchiveMatchRow)).height,
+        greaterThanOrEqualTo(ArchiveMatchRow.minHeight),
       );
-      expect(tester.takeException(), isNull);
+      semantics.dispose();
     });
 
-    testWidgets('its height is known before layout, for the archive page', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: AppTheme.light,
-          home: Material(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(
-                width: 120,
-                child: IntrinsicHeight(
-                  child: ArchiveWhenAndOpponent(
-                    time: const Text('오늘 14:30'),
-                    dot: const Text(' · '),
-                    opponent: const Text('온라인 vs 가나다라마바사'),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      final box = line(tester);
-      expect(box.split, isTrue);
-      expect(box.getMaxIntrinsicHeight(120), box.size.height);
-      expect(box.getMinIntrinsicHeight(120), box.size.height);
-      expect(box.getDryLayout(const BoxConstraints(maxWidth: 120)), box.size);
-      expect(box.getMaxIntrinsicWidth(double.infinity), greaterThan(120));
-      expect(
-        box.getMinIntrinsicWidth(double.infinity),
-        lessThan(box.getMaxIntrinsicWidth(double.infinity)),
-      );
-      final wide = box.getDryLayout(const BoxConstraints(maxWidth: 1000));
-      expect(wide.width, box.getMaxIntrinsicWidth(double.infinity));
-      expect(wide.height, lessThan(box.size.height));
-      expect(box.getMaxIntrinsicHeight(1000), wide.height);
+    testWidgets('a battle without a score shows its reps with 회 and no '
+        'reps line', (tester) async {
+      await _show(tester, ArchiveMatchRow(match: _battle(score: null)));
+      expect(find.text('18 회', findRichText: true), findsOneWidget);
+      expect(find.textContaining('인정'), findsNothing);
+    });
+
+    testWidgets('the gain chip only with a gain', (tester) async {
+      await _show(tester, ArchiveMatchRow(match: _battle(), bestGain: 55));
+      expect(find.byKey(const ValueKey('archive-gain-chip')), findsOneWidget);
+      expect(find.text('55'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('최고 기록 55점 경신')), findsOneWidget);
+      await _show(tester, ArchiveMatchRow(match: _battle()));
+      expect(find.byKey(const ValueKey('archive-gain-chip')), findsNothing);
+    });
+
+    testWidgets('a loss and a draw get their own chip colors', (tester) async {
+      Color chipColor() =>
+          (tester
+                      .widget<DecoratedBox>(
+                        find
+                            .ancestor(
+                              of: find.byWidgetPredicate(
+                                (w) =>
+                                    w is Text &&
+                                    const ['승', '패', '무'].contains(w.data),
+                              ),
+                              matching: find.byType(DecoratedBox),
+                            )
+                            .first,
+                      )
+                      .decoration
+                  as BoxDecoration)
+              .color!;
+      await _show(tester, ArchiveMatchRow(match: _battle()));
+      final win = chipColor();
+      await _show(tester, ArchiveMatchRow(match: _battle(mine: 3)));
+      final lose = chipColor();
+      await _show(tester, ArchiveMatchRow(match: _battle(mine: 12)));
+      final draw = chipColor();
+      expect(win, AppColors.accent);
+      expect({win, lose, draw}, hasLength(3));
     });
 
     for (final scale in [1.3, 2.0]) {
-      testWidgets('no overflow on a 360 wide phone at ${scale}x text', (
-        tester,
-      ) async {
+      testWidgets('a long opponent name fits a 360 wide phone at ${scale}x '
+          'text', (tester) async {
         tester.platformDispatcher.textScaleFactorTestValue = scale;
         addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-        await show(
+        await _show(
           tester,
-          _match(
-            opponentName: '가나다라마바사아자차카타',
-            isOnline: true,
-            playedAt: DateTime(2026, 10, 15, 21, 30),
-            myScore: 1240,
-            opponentLeft: true,
-            decidedOutcome: MatchOutcome.win,
-            gameEnd: null,
+          ArchiveMatchRow(
+            match: MatchRecord(
+              exercise: ExerciseType.squat,
+              opponentName: '아주아주긴닉네임을가진상대선수',
+              myReps: 18,
+              opponentReps: 12,
+              myScore: 1850,
+              opponentScore: 100,
+              playedAt: DateTime(2026, 11, 24, 16, 4),
+              gameEnd: GameEnd.ko,
+              isOnline: true,
+              opponentLeft: true,
+            ),
+            bestGain: 120,
           ),
-          bestGain: 155,
-          size: const Size(360, 780),
+          width: 360,
         );
         expect(tester.takeException(), isNull);
-        expect(find.text('1240'), findsOneWidget);
-        expect(
-          tester.getSize(find.byType(ArchiveMatchRow)).height,
-          greaterThanOrEqualTo(ArchiveMatchRow.minHeight),
-        );
       });
     }
+  });
+
+  group('the day header', () {
+    testWidgets('the day and its count, as a header', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _show(
+        tester,
+        ArchiveDayHeader(
+          date: DateTime(2026, 11, 24),
+          count: 2,
+          now: DateTime(2026, 11, 24, 21),
+        ),
+      );
+      expect(find.text('오늘 · 11.24 (화)'), findsOneWidget);
+      expect(find.text('2경기'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byType(ArchiveDayHeader)),
+        isSemantics(label: '오늘 · 11.24 (화)\n2경기', isHeader: true),
+      );
+      semantics.dispose();
+    });
   });
 }
