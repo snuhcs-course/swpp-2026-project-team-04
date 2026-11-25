@@ -3,8 +3,8 @@ import 'package:gymrats_app/shared/battle_protocol.dart';
 
 void main() {
   group('the setup time (P12)', () {
-    test('starts at 10 seconds, the Iteration 5 trial value', () {
-      expect(battleSetupTimeout, const Duration(seconds: 10));
+    test('is 20 seconds, raised from the 10 s trial start (A6)', () {
+      expect(battleSetupTimeout, const Duration(seconds: 20));
     });
 
     test('its cancel reason is setup_timeout, apart from the ready time', () {

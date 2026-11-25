@@ -22,9 +22,11 @@ final _battleFriendId = RegExp(r'^[A-Za-z0-9_-]{1,64}$');
 /// How long the two players have to finish the pose setup, counted from the
 /// moment both phones have said (`match.setup`) that their setup camera is
 /// on. When it runs out before both are ready, the server cancels the match
-/// with [battleSetupTimeoutReason]; nobody wins or loses. 10 s is the start
-/// value of the Iteration 5 trial (P12); the server may be given another.
-const battleSetupTimeout = Duration(seconds: 10);
+/// with [battleSetupTimeoutReason]; nobody wins or loses. The Iteration 5
+/// trial (P12) started at 10 s; 20 s since A6 (2026-11-25), as getting the
+/// phone set and the whole body in view took longer. The server may be given
+/// another.
+const battleSetupTimeout = Duration(seconds: 20);
 
 /// `match.cancelled` reason when the setup time above ran out.
 const battleSetupTimeoutReason = 'setup_timeout';

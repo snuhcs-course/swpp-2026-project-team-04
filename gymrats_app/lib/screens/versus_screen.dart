@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -62,6 +63,7 @@ class VersusScreen extends StatefulWidget {
     this.duration = battleDuration,
     this.warningAutoClose,
     this.characters,
+    this.autoSetupIn,
   });
 
   final Matchup matchup;
@@ -81,6 +83,13 @@ class VersusScreen extends StatefulWidget {
   /// set it, since the server's time to get ready keeps running; null waits
   /// for 확인.
   final Duration? warningAutoClose;
+
+  /// Online matches (A6): instead of the 자세 세팅 시작 button, count down
+  /// this many seconds ("3초 후 자세 세팅을 시작해요", 3 → 2 → 1) once the
+  /// safety warning has closed, then open the setup by itself. Only a
+  /// notice: the setup's own time limit is the server's, from when both
+  /// cameras are open. Null keeps the button (bot and arcade battles).
+  final Duration? autoSetupIn;
 
   /// The size a player's character and pedestal are drawn at, around the
   /// feet, in a color cell [cellHeight] tall: full size from 189 up (8
@@ -108,6 +117,11 @@ class _VersusScreenState extends State<VersusScreen>
 
   /// Set once the safety warning has closed; the setup waits for it.
   bool _warned = false;
+
+  /// The automatic start's seconds left (A6); null before it counts and
+  /// without [VersusScreen.autoSetupIn].
+  int? _secondsLeft;
+  Timer? _countdown;
 
   /// Set once the warning has been scheduled, so it opens once per screen.
   bool _warningScheduled = false;
@@ -147,7 +161,7 @@ class _VersusScreenState extends State<VersusScreen>
     // The app's settings; without them (some tests, demos) it always shows.
     final settings = context.read<SettingsViewModel?>();
     if (settings != null && !settings.safetyNotice.showsBeforeMatch) {
-      _warned = true;
+      _markWarned();
       return;
     }
     while (true) {
@@ -161,7 +175,7 @@ class _VersusScreenState extends State<VersusScreen>
       _warning = null;
       if (!mounted) return;
       if (seen == true) {
-        _warned = true;
+        _markWarned();
         settings?.markSafetyNoticeSeen();
         return;
       }
@@ -172,11 +186,39 @@ class _VersusScreenState extends State<VersusScreen>
     }
   }
 
+  /// The warning has closed (or is not shown): the setup may open, and an
+  /// online match starts counting down to it.
+  void _markWarned() {
+    _warned = true;
+    final wait = widget.autoSetupIn;
+    if (wait == null || _secondsLeft != null) return;
+    setState(() => _secondsLeft = wait.inSeconds);
+    _runCountdown();
+  }
+
+  /// Counts a second at a time from the second showing.
+  void _runCountdown() {
+    _countdown?.cancel();
+    _countdown = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
+  void _tick() {
+    if (!mounted) return;
+    final left = (_secondsLeft ?? 0) - 1;
+    if (left > 0) {
+      setState(() => _secondsLeft = left);
+      return;
+    }
+    _countdown?.cancel();
+    unawaited(_startSetup());
+  }
+
   /// Online, a cancelled match rebuilds the lobby without this screen while
   /// the warning may still be open over it: close the warning too, after
   /// the frame, since the navigator may not change during a build.
   @override
   void dispose() {
+    _countdown?.cancel();
     final warning = _warning;
     final navigator = warning?.navigator;
     if (warning != null && navigator != null) {
@@ -211,10 +253,15 @@ class _VersusScreenState extends State<VersusScreen>
   /// when the user chose to leave.
   Future<bool> _askToLeave() async {
     final opponent = widget.matchup.opponent;
+    // The countdown waits while the question is open, so the setup never
+    // opens over it, and goes on from the same second after 계속하기.
+    final counting = _countdown?.isActive ?? false;
+    _countdown?.cancel();
     final leave = await confirmExit(
       context,
       ExitDialog.game(opponentName: opponent.characterName),
     );
+    if (counting && !leave && mounted) _runCountdown();
     if (!mounted) return leave;
     if (leave) {
       if (widget.onLeave case final leaveMatch?) {
@@ -289,10 +336,82 @@ class _VersusScreenState extends State<VersusScreen>
                     else
                       _RulesCard(exercise: matchup.exercise),
                     const SizedBox(height: AppSpacing.s16),
-                    AccentButton(title: '자세 세팅 시작', onPressed: _startSetup),
+                    if (widget.autoSetupIn case final wait?)
+                      _AutoSetupNotice(
+                        seconds: _secondsLeft ?? wait.inSeconds,
+                        total: wait.inSeconds,
+                      )
+                    else
+                      AccentButton(title: '자세 세팅 시작', onPressed: _startSetup),
                   ],
                 ),
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Where an online match's 자세 세팅 시작 button would be (A6): the
+/// countdown's number on lime, then "3초 후 자세 세팅을 시작해요". A live
+/// region: a screen reader says the sentence once, then only each second.
+class _AutoSetupNotice extends StatelessWidget {
+  const _AutoSetupNotice({required this.seconds, required this.total});
+
+  /// The second showing, from [total] down to 1.
+  final int seconds;
+  final int total;
+
+  static const _dot = 52.0;
+
+  /// The ink outline, as the board's.
+  static const _edge = 2.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: seconds == total ? '$total초 후 자세 세팅을 시작해요' : '$seconds',
+      child: ExcludeSemantics(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.ink, width: _edge),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s16,
+              vertical: AppSpacing.s12,
+            ),
+            child: Row(
+              children: [
+                SizedBox.square(
+                  dimension: _dot,
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text('$seconds', style: text.stageClock),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s16),
+                Expanded(
+                  child: Text(
+                    '$total초 후 자세 세팅을 시작해요',
+                    style: text.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
