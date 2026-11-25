@@ -1549,150 +1549,31 @@ class FeedbackDetailScreen extends StatelessWidget {
   }
 }
 
-/// One thing to fix: the moment it happened as a stick figure when the
-/// report kept one, the title, the measured detail and, when there is one,
-/// the prepared side-view example of the fault.
+/// One thing to fix: the title, the measured detail and, when there is one,
+/// the prepared side-view example of the fault. The front-view figure of the
+/// moment is not drawn: beside the example it only repeated it (phone check,
+/// 2026-11-26).
 class _IssueRow extends StatelessWidget {
   const _IssueRow({required this.finding});
 
   final FormFinding finding;
 
-  static const _figure = 96.0;
-
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final pose = finding.pose;
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (pose != null) ...[
-          SizedBox.square(
-            dimension: _figure,
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppColors.cardHigh,
-                borderRadius: BorderRadius.all(
-                  Radius.circular(AppRadius.small),
-                ),
-              ),
-              child: Semantics(
-                label: '${finding.title} 순간의 자세 그림',
-                child: CustomPaint(
-                  painter: ReportPosePainter(
-                    pose: pose,
-                    highlight: finding.highlight,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.s12),
+        Text(finding.title, style: text.reportCardTitle),
+        const SizedBox(height: AppSpacing.s4),
+        Text(finding.detail, style: text.feedbackBody),
+        if (finding.demo case final demo?) ...[
+          const SizedBox(height: AppSpacing.s12),
+          FormFaultClip(demo: demo),
         ],
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(finding.title, style: text.reportCardTitle),
-              const SizedBox(height: AppSpacing.s4),
-              Text(finding.detail, style: text.feedbackBody),
-              if (finding.demo case final demo?) ...[
-                const SizedBox(height: AppSpacing.s12),
-                FormFaultClip(demo: demo),
-              ],
-            ],
-          ),
-        ),
       ],
     );
   }
-}
-
-/// A stick figure of a [FormPose]: the shoulders, arms, nose, hips and
-/// knees in ink, the [highlight]ed joints in the warning color.
-class ReportPosePainter extends CustomPainter {
-  ReportPosePainter({required this.pose, this.highlight = const []});
-
-  final FormPose pose;
-  final List<String> highlight;
-
-  static const _bones = [
-    ('leftShoulder', 'rightShoulder'),
-    ('leftShoulder', 'leftElbow'),
-    ('leftElbow', 'leftWrist'),
-    ('rightShoulder', 'rightElbow'),
-    ('rightElbow', 'rightWrist'),
-    ('leftShoulder', 'leftHip'),
-    ('rightShoulder', 'rightHip'),
-    ('leftHip', 'rightHip'),
-    ('leftHip', 'leftKnee'),
-    ('rightHip', 'rightKnee'),
-  ];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final points = pose.points.values;
-    if (points.isEmpty) return;
-    var minX = points.first.x, maxX = minX;
-    var minY = points.first.y, maxY = minY;
-    for (final p in points) {
-      if (p.x < minX) minX = p.x;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.y > maxY) maxY = p.y;
-    }
-    final span = [
-      maxX - minX,
-      maxY - minY,
-      1.0,
-    ].reduce((a, b) => a > b ? a : b);
-    final scale = (size.shortestSide * 0.8) / span;
-    final offset = Offset(
-      size.width / 2 - (minX + maxX) / 2 * scale,
-      size.height / 2 - (minY + maxY) / 2 * scale,
-    );
-    Offset? at(String name) {
-      final p = pose.points[name];
-      return p == null ? null : Offset(p.x * scale, p.y * scale) + offset;
-    }
-
-    final bone = Paint()
-      ..color = AppColors.ink
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    for (final (a, b) in _bones) {
-      final pa = at(a), pb = at(b);
-      if (pa != null && pb != null) canvas.drawLine(pa, pb, bone);
-    }
-    final nose = at('nose');
-    if (nose != null) {
-      canvas.drawCircle(
-        nose,
-        6,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..color = AppColors.ink,
-      );
-    }
-    for (final name in highlight) {
-      final p = at(name);
-      if (p == null) continue;
-      canvas.drawCircle(p, 5, Paint()..color = AppColors.warning);
-      canvas.drawCircle(
-        p,
-        5,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
-          ..color = AppColors.ink,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(ReportPosePainter old) =>
-      old.pose != pose || old.highlight != highlight;
 }
 
 class _CheckLine extends StatelessWidget {
@@ -1841,6 +1722,9 @@ class _SplitSection extends StatelessWidget {
                             height: _barsHeight,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.end,
+                              // Without it the bars get no width and the
+                              // chart is empty (phone check, 2026-11-26).
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 if (invalid[i] > 0)
                                   SizedBox(

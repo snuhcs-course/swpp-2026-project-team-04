@@ -453,8 +453,8 @@ void main() {
       expect(find.text('자세 점수'), findsOneWidget);
     });
 
-    testWidgets('an issue shows the moment as a stick figure and its example, '
-        'without a how-to line', (tester) async {
+    testWidgets('an issue shows its side-view example, without the front-view '
+        'stick figure of the moment or a how-to line', (tester) async {
       const pose = FormPose(
         at: Duration(seconds: 3),
         points: {
@@ -483,12 +483,10 @@ void main() {
       await openDetail(tester);
       expect(find.text('고칠 점'), findsOneWidget);
       expect(find.text('팔꿈치 벌어짐'), findsOneWidget);
-      expect(
-        find.byWidgetPredicate(
-          (w) => w is CustomPaint && w.painter is ReportPosePainter,
-        ),
-        findsOneWidget,
-      );
+      // The phone check (2026-11-26) found the front-view figure beside the
+      // side-view example only repeated it: the report keeps the pose, the
+      // screen no longer draws it.
+      expect(find.bySemanticsLabel(RegExp('순간의 자세 그림')), findsNothing);
       expect(find.text('예시 동작 · 누르면 멈춤'), findsOneWidget);
       expect(find.textContaining('→ '), findsNothing);
       expect(find.textContaining('이렇게 해 보세요'), findsNothing);
@@ -515,6 +513,23 @@ void main() {
       expect(find.text('10초 구간'), findsOneWidget);
       // Counted at 2-8 s, rejected at 10, 12 and 14 s.
       expect(find.text('0 +3'), findsOneWidget);
+      // The bars are drawn as wide as their slot, not only as tall: on the
+      // phone (2026-11-26) they had no width and the chart looked empty.
+      final drawn = [
+        for (final color in [AppColors.statusGood, AppColors.warning])
+          ...tester
+              .renderObjectList<RenderBox>(
+                find.byWidgetPredicate(
+                  (w) => w is ColoredBox && w.color == color,
+                ),
+              )
+              .map((box) => box.size)
+              .where((size) => size.height > 0),
+      ];
+      expect(drawn, isNotEmpty);
+      for (final size in drawn) {
+        expect(size.width, greaterThan(40));
+      }
       expect(find.text('횟수별 기록'), findsNothing);
     });
 
