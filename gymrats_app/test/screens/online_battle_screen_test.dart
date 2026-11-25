@@ -454,7 +454,7 @@ void main() {
       await tester.pump();
       final end = ends(telemetry).single;
       expect(end['result'], 'timeout');
-      expect(end['limit_ms'], 10000);
+      expect(end['limit_ms'], 20000);
       expect(end['last_reason'], 'no_person');
       expect(end['attempt_id'], telemetry.pending.first['attempt_id']);
     });
