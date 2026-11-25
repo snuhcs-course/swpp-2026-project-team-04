@@ -648,7 +648,7 @@ void main() {
       form: _report,
     );
     await tester.pumpWidget(app(ResultScreen(result: result)));
-    await tester.tap(find.text('자세 기록 표로 보기'));
+    await tester.tap(find.text('상세 리포트 보기'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(FeedbackScreen), findsOneWidget);
@@ -713,10 +713,10 @@ void main() {
     await tester.tap(find.text('vs RepBot'));
     await tester.pumpAndSettle();
     // Since W5 (team decision 2026-11-08) the row opens the battle's report;
-    // its 자세 기록 표로 보기 opens the feedback.
+    // its 상세 리포트 보기 opens the feedback.
     expect(find.byType(ResultScreen), findsOneWidget);
-    await tester.ensureVisible(find.text('자세 기록 표로 보기'));
-    await tester.tap(find.text('자세 기록 표로 보기'));
+    await tester.ensureVisible(find.text('상세 리포트 보기'));
+    await tester.tap(find.text('상세 리포트 보기'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(FeedbackScreen), findsOneWidget);

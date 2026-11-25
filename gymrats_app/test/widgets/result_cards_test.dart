@@ -309,15 +309,15 @@ void main() {
   });
 
   group('the feedback link', () {
-    testWidgets('"자세 기록 표로 보기", 44 high, opens the feedback', (tester) async {
+    testWidgets('"상세 리포트 보기", 44 high, opens the feedback', (tester) async {
       var opened = 0;
       await show(tester, ResultFeedbackLink(onPressed: () => opened++));
-      expect(find.text('자세 기록 표로 보기'), findsOneWidget);
+      expect(find.text('상세 리포트 보기'), findsOneWidget);
       expect(
         tester.getSize(find.byType(TextButton)).height,
         greaterThanOrEqualTo(44),
       );
-      await tester.tap(find.text('자세 기록 표로 보기'));
+      await tester.tap(find.text('상세 리포트 보기'));
       expect(opened, 1);
     });
   });
