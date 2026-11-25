@@ -62,6 +62,7 @@ class OnlineBattleSession extends ChangeNotifier {
     this.character = CharacterRig.defaultId,
     this.exercise = ExerciseType.pushUp,
     this.allowInsecureLoopback = false,
+    this.friendId,
   });
   final Uri endpoint;
   final String accessToken;
@@ -78,6 +79,11 @@ class OnlineBattleSession extends ChangeNotifier {
   bool _sentLegacyAvatar = false;
   final ExerciseType exercise;
   final bool allowInsecureLoopback;
+
+  /// The friend's player id for a friend battle (P9), sent in `queue.join`'s
+  /// `friend_id`: the server then pairs this player only with that friend.
+  /// Null searches the main match. Set before [connect].
+  String? friendId;
 
   /// Far above any real score; a larger number on the wire is invalid.
   static const _maxGameScore = 1 << 30;
@@ -234,6 +240,7 @@ class OnlineBattleSession extends ChangeNotifier {
     _message('queue.join', {
       'exercise': exercise == ExerciseType.squat ? 'squat' : 'push_up',
       'avatar_id': avatarId,
+      'friend_id': ?friendId,
     }),
   );
 

@@ -3,6 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/widgets/gym_background.dart';
+import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
+import 'package:gymrats_app/services/arcade/arcade_star_judge.dart';
+import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
+import 'package:gymrats_app/screens/arcade_result_screen.dart';
+import 'package:gymrats_app/models/arcade_stage.dart';
+import 'package:gymrats_app/models/arcade_catalog.dart';
+import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/character_rig.dart';
@@ -87,8 +95,20 @@ Future<AuthViewModel> _signedIn() async {
 }
 
 /// [app] under the goal store [goals] and [auth], as the app provides
-/// them; just [app] without a store.
-Widget _withGoals(Widget app, GoalStore? goals, AuthViewModel? auth) {
+/// them; just [app] without a store. With [arcade], under the app's arcade
+/// too (P16).
+Widget _withGoals(
+  Widget app,
+  GoalStore? goals,
+  AuthViewModel? auth, [
+  ArcadeViewModel? arcade,
+]) {
+  if (arcade != null) {
+    app = ChangeNotifierProvider<ArcadeViewModel>.value(
+      value: arcade,
+      child: app,
+    );
+  }
   if (goals == null) return app;
   return MultiProvider(
     providers: [
@@ -152,6 +172,8 @@ void main() {
     GoalStore? goals,
     AuthViewModel? auth,
     bool personGuard = const bool.fromEnvironment('S2_PERSON_GUARD'),
+    ArcadeViewModel? arcade,
+    Telemetry? telemetry,
   }) async {
     await prepareFlowSnapshotFonts(tester);
     tester.view.physicalSize = size;
@@ -193,49 +215,57 @@ void main() {
       clock: () => now,
       now: () => DateTime(2026, 11, 12, 14, 32),
     );
+    Widget withTelemetry(Widget app) => telemetry == null
+        ? app
+        : Provider<Telemetry>.value(value: telemetry, child: app);
     await tester.pumpWidget(
-      _withGoals(
-        MaterialApp(
-          theme: AppTheme.light,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(textScaler: TextScaler.linear(textScale)),
-            child: child!,
-          ),
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) => BattleScreen(
-                      matchup: matchup,
-                      myCharacter: myCharacter ?? CharacterRig.defaultId,
-                      createViewModel: () => viewModel,
-                      onCue: (cue) => cues.add('$cue'),
-                      onSetup: onSetup,
+      withTelemetry(
+        _withGoals(
+          MaterialApp(
+            theme: AppTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(textScale)),
+              child: child!,
+            ),
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => BattleScreen(
+                        matchup: matchup,
+                        myCharacter: myCharacter ?? CharacterRig.defaultId,
+                        createViewModel: () => viewModel,
+                        onCue: (cue) => cues.add('$cue'),
+                        onSetup: onSetup,
+                      ),
                     ),
                   ),
+                  child: const Text('home'),
                 ),
-                child: const Text('home'),
               ),
             ),
+            onGenerateRoute: (settings) => switch (settings.name) {
+              GymRatsApp.resultRoute => MaterialPageRoute<void>(
+                settings: settings,
+                builder: (_) {
+                  final result = settings.arguments! as BattleResult;
+                  return Scaffold(
+                    body: Text(
+                      'result ${result.myReps}:${result.opponentReps}',
+                    ),
+                  );
+                },
+              ),
+              _ => null,
+            },
           ),
-          onGenerateRoute: (settings) => switch (settings.name) {
-            GymRatsApp.resultRoute => MaterialPageRoute<void>(
-              settings: settings,
-              builder: (_) {
-                final result = settings.arguments! as BattleResult;
-                return Scaffold(
-                  body: Text('result ${result.myReps}:${result.opponentReps}'),
-                );
-              },
-            ),
-            _ => null,
-          },
+          goals,
+          auth,
+          arcade,
         ),
-        goals,
-        auth,
       ),
     );
     await tester.tap(find.text('home'));
@@ -1374,6 +1404,43 @@ void main() {
       await close(tester);
     });
 
+    group('세팅 텔레메트리 (P17)', () {
+      List<Map<String, Object?>> ends(Telemetry t) =>
+          t.pending.where((e) => e['event'] == 'setup_finished').toList();
+
+      testWidgets('the bot setup records its start, and ready with what it '
+          'last asked for when the round begins', (tester) async {
+        final telemetry = Telemetry();
+        await open(tester, telemetry: telemetry);
+        final start = telemetry.pending.single;
+        expect(start['event'], 'setup_started');
+        expect(start['mode'], 'bot');
+        expect(start['exercise'], 'push_up');
+        await frame(tester, 0.5, found: false);
+        await begin(tester);
+        final end = ends(telemetry).single;
+        expect(end['result'], 'ready');
+        expect(end['limit_ms'], isNull);
+        expect(end['last_reason'], 'no_person');
+        expect(end['attempt_id'], start['attempt_id']);
+        await close(tester);
+        expect(ends(telemetry), hasLength(1));
+      });
+
+      testWidgets('leaving in the setup is cancelled', (tester) async {
+        final telemetry = Telemetry();
+        await open(tester, telemetry: telemetry);
+        await frame(tester, 1);
+        await tester.binding.handlePopRoute();
+        await wait(tester, 400);
+        await tester.tap(dialogExit);
+        await wait(tester, 1000);
+        final end = ends(telemetry).single;
+        expect(end['result'], 'cancelled');
+        expect(end['last_reason'], isNull);
+      });
+    });
+
     testWidgets('leaving in the setup never starts the bot', (tester) async {
       await open(tester);
       await frame(tester, 1);
@@ -1663,6 +1730,116 @@ void main() {
         find.descendant(of: chip(), matching: find.byIcon(Icons.check_rounded)),
         findsOneWidget,
       );
+      await close(tester);
+    });
+  });
+  group('an arcade stage (P16 spec 6 and 7)', () {
+    final fight = ArcadeMatchups.fight(
+      ArcadeCatalog.stage(8) as ArcadeFightStage,
+      playerName: '우현',
+    );
+    final boss = ArcadeCatalog.stage(6) as ArcadeBossStage;
+
+    BattleArena arena(WidgetTester tester) =>
+        tester.widget<BattleArena>(find.byType(BattleArena));
+
+    testWidgets('the stage\'s character fights on its floor\'s gym, named '
+        'by its character', (tester) async {
+      await open(tester, matchup: fight);
+      expect(arena(tester).characters!.opponent, 'seal');
+      final scenery = arena(tester).scenery;
+      expect(scenery, isA<GymBackground>());
+      expect((scenery! as GymBackground).floor, 2);
+      expect(arena(tester).round, isNull);
+      expect(find.text('R1'), findsNothing);
+      await begin(tester);
+      expect(stage(tester).opponentName, '물렁범');
+      expect(stage(tester).myName, '우현');
+      await close(tester);
+    });
+
+    testWidgets('a boss round says its round on the stage and the camera', (
+      tester,
+    ) async {
+      await open(
+        tester,
+        matchup: ArcadeMatchups.boss(boss, 1, playerName: '우'),
+      );
+      expect(arena(tester).round, 1);
+      expect(arena(tester).characters!.opponent, 'seal');
+      expect(find.bySemanticsLabel('보스 매치 1라운드'), findsOneWidget);
+      await begin(tester);
+      expect(find.text('ROUND 1'), findsOneWidget);
+      await close(tester);
+    });
+
+    testWidgets('leaving asks with the character\'s name, then ends the boss '
+        'match for the arcade\'s map, keeping nothing', (tester) async {
+      final arcade = ArcadeViewModel(store: MemoryArcadeProgressStore());
+      addTearDown(arcade.dispose);
+      final first = ArcadeMatchups.boss(boss, 2, playerName: '우현');
+      arcade.wonFirstRound(
+        boss,
+        BattleResult(
+          matchup: ArcadeMatchups.boss(boss, 1, playerName: '우현'),
+          myReps: 9,
+          myInvalidReps: 0,
+          opponentReps: 4,
+          endedAt: DateTime(2026, 11, 23),
+        ),
+        const ArcadeRound(
+          won: true,
+          wonByKo: false,
+          rejects: 0,
+          longestCombo: 0,
+          excellent: 0,
+        ),
+      );
+      await open(tester, matchup: first, arcade: arcade);
+      await begin(tester);
+      await tester.binding.handlePopRoute();
+      await wait(tester, 400);
+      expect(find.textContaining('물렁범'), findsWidgets);
+      expect(find.textContaining('STAGE 6'), findsNothing);
+      await tester.tap(dialogExit);
+      await wait(tester, 1000);
+      expect(find.byType(BattleScreen), findsNothing);
+      expect(arcade.bossRun, isNull);
+      expect(repository.saved, isEmpty);
+    });
+
+    testWidgets('its end opens the arcade\'s clear, not the report, and '
+        'keeps the stars', (tester) async {
+      final store = MemoryArcadeProgressStore();
+      final arcade = ArcadeViewModel(store: store);
+      addTearDown(arcade.dispose);
+      await arcade.load(1);
+      await open(tester, matchup: fight, arcade: arcade);
+      await begin(tester);
+      for (var i = 0; i < 2; i++) {
+        judge.closeRep();
+        await frame(tester, 6.0 + i);
+      }
+      opponent.emit();
+      await tester.pump();
+      await frame(tester, 34);
+      await wait(tester, 2200);
+      await tester.tap(find.text('결과 보기'));
+      await wait(tester, 1000);
+      expect(find.byType(ArcadeResultScreen), findsOneWidget);
+      expect(find.text('클리어!'), findsOneWidget);
+      expect(find.textContaining('result'), findsNothing);
+      expect(store.saved[1]!.bestOf(8), greaterThan(0));
+      await close(tester);
+    });
+
+    testWidgets('outside the arcade nothing is added to the stage', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(arena(tester).scenery, isNull);
+      expect(arena(tester).round, isNull);
+      expect(arena(tester).characters!.opponent, CharacterRig.botId);
       await close(tester);
     });
   });

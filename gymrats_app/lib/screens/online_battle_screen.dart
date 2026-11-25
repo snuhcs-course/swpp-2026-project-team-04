@@ -20,6 +20,7 @@ import '../services/feedback/goal_store.dart';
 import '../services/game/online_battle_result.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
+import '../services/telemetry/telemetry_service.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -104,6 +105,9 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   late final SetupChecker _setup;
   late final Clock _setupClock;
   SetupStatus _setupStatus = SetupStatus.initial;
+
+  /// P17: this pose setup as P6's setup_started/setup_finished.
+  SetupTelemetry? _setupTelemetry;
   PoseFrame? _seen;
   FormReport? _formReport;
   bool _reportCreated = false;
@@ -200,6 +204,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       clock: _setupClock,
     );
     WidgetsBinding.instance.addObserver(this);
+    _beginSetupTelemetry();
     unawaited(keepScreenOn(true));
     // Online timing is owned by the server. The counter's offline round clock
     // must not start/finish a different round during camera preparation.
@@ -347,7 +352,19 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     }
   }
 
+  void _beginSetupTelemetry() {
+    if (session.startAtMs != null || session.terminal) return;
+    Telemetry? telemetry;
+    try {
+      telemetry = context.read<Telemetry>();
+    } on ProviderNotFoundException {
+      telemetry = null;
+    }
+    _setupTelemetry = SetupTelemetry.online(telemetry, session);
+  }
+
   void _onSession() {
+    _setupTelemetry?.follow(session);
     _syncRound();
     _syncReady();
     final theirs = OnlineStageEvents.opponentRep(_theirs, session);
@@ -444,6 +461,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         ),
     };
     _setupReady = status.reason == SetupReason.ready && aligned;
+    _setupTelemetry?.saw(status.reason);
     _setupStatus = _setupReady
         ? status
         : SetupStatus(
@@ -625,12 +643,16 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     );
     _asking = false;
     if (leave != true || !mounted) return;
+    _setupTelemetry?.cancelled();
     await session.leave();
     if (mounted) Navigator.pop(context);
   }
 
   @override
   void dispose() {
+    _setupTelemetry
+      ?..follow(session)
+      ..cancelled();
     _setupFrameWatchdog?.cancel();
     unawaited(keepScreenOn(false));
     WidgetsBinding.instance.removeObserver(this);

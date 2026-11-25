@@ -21,9 +21,16 @@ abstract interface class BattleResultStore {
   Future<Map<String, Set<String>>> recover(int bootedAtMs);
 }
 
+/// P17: where the battle server records P6's `battle_finished`, once per
+/// match, when the match ends (finished, cancelled or void).
+abstract interface class BattleTelemetry {
+  Future<void> battleFinished(Map<String, dynamic> event);
+}
+
 /// Calls the Django P11 saver (`/internal/...`) over loopback HTTP with the
-/// shared secret. Bodies and the secret are never logged.
-class HttpResultStore implements BattleResultStore {
+/// shared secret. Bodies and the secret are never logged. It also records
+/// P17's `battle_finished` at `/internal/telemetry/battle`.
+class HttpResultStore implements BattleResultStore, BattleTelemetry {
   HttpResultStore(
     Uri base,
     this._secret, {
@@ -69,6 +76,11 @@ class HttpResultStore implements BattleResultStore {
   @override
   Future<void> voided(String matchId, String reason) =>
       _post('battles/void', {'match_id': matchId, 'reason': reason});
+
+  /// Stored once per match_id on the Django side, so a retry is harmless.
+  @override
+  Future<void> battleFinished(Map<String, dynamic> event) =>
+      _post('telemetry/battle', event);
 
   @override
   Future<Map<String, Set<String>>> recover(int bootedAtMs) async {

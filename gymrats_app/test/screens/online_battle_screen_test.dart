@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/models/setup_hint_short.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
+import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/shared/battle_protocol.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
@@ -97,13 +99,18 @@ void main() {
     );
   }
 
-  Future<void> open(WidgetTester tester, {bool offerRematch = false}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    bool offerRematch = false,
+    Telemetry? telemetry,
+    String? friendId,
+  }) async {
     tester.view.physicalSize = const Size(412, 915);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     session = _Session(
       now: () => tester.binding.clock.now().millisecondsSinceEpoch,
-    );
+    )..friendId = friendId;
     addTearDown(session.dispose);
     camera = FakeCameraService();
     estimator = FakePoseEstimator();
@@ -121,12 +128,15 @@ void main() {
       roundLength: const Duration(days: 1),
     );
     final navigator = GlobalKey<NavigatorState>();
+    final app = MaterialApp(
+      navigatorKey: navigator,
+      theme: AppTheme.light,
+      home: const Scaffold(body: Text('로비')),
+    );
     await tester.pumpWidget(
-      MaterialApp(
-        navigatorKey: navigator,
-        theme: AppTheme.light,
-        home: const Scaffold(body: Text('로비')),
-      ),
+      telemetry == null
+          ? app
+          : Provider<Telemetry>.value(value: telemetry, child: app),
     );
     unawaited(
       navigator.currentState!
@@ -411,6 +421,89 @@ void main() {
       expect(find.text('다시 매칭'), findsNothing);
       expect(find.widgetWithText(AccentButton, '홈으로 돌아가기'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('세팅·종료 계측 (P17)', () {
+    List<Map<String, Object?>> ends(Telemetry t) =>
+        t.pending.where((e) => e['event'] == 'setup_finished').toList();
+
+    testWidgets('opening the setup records its start for the main queue', (
+      tester,
+    ) async {
+      final telemetry = Telemetry();
+      await open(tester, telemetry: telemetry);
+      final start = telemetry.pending.single;
+      expect(start['event'], 'setup_started');
+      expect(start['exercise'], 'push_up');
+      expect(start['mode'], 'main');
+    });
+
+    testWidgets('a friend battle is mode friend', (tester) async {
+      final telemetry = Telemetry();
+      await open(tester, telemetry: telemetry, friendId: '7');
+      expect(telemetry.pending.single['mode'], 'friend');
+    });
+
+    testWidgets('the setup time running out is timeout, with the limit and '
+        'what the checker last asked for', (tester) async {
+      final telemetry = Telemetry();
+      await open(tester, telemetry: telemetry);
+      await pose(tester, found: false);
+      session.cancel('setup_timeout');
+      await tester.pump();
+      final end = ends(telemetry).single;
+      expect(end['result'], 'timeout');
+      expect(end['limit_ms'], 10000);
+      expect(end['last_reason'], 'no_person');
+      expect(end['attempt_id'], telemetry.pending.first['attempt_id']);
+    });
+
+    testWidgets('the 60 s ready time running out is a timeout too', (
+      tester,
+    ) async {
+      final telemetry = Telemetry();
+      await open(tester, telemetry: telemetry);
+      session.cancel('ready_timeout');
+      await tester.pump();
+      expect(ends(telemetry).single['result'], 'timeout');
+      expect(ends(telemetry).single['last_reason'], isNull);
+    });
+
+    testWidgets('the server setting the start is ready, and the end counts '
+        'once', (tester) async {
+      final telemetry = Telemetry();
+      await open(tester, telemetry: telemetry);
+      session
+        ..phase = OnlinePhase.scheduled
+        ..startAtMs = session.serverNow + 3000
+        ..notifyListeners();
+      await tester.pump();
+      session.cancel('user_exit');
+      await tester.pump();
+      expect(ends(telemetry).single['result'], 'ready');
+    });
+
+    testWidgets('the opponent leaving before the start is cancelled', (
+      tester,
+    ) async {
+      final telemetry = Telemetry();
+      await open(tester, telemetry: telemetry);
+      session.cancel('user_exit');
+      await tester.pump();
+      expect(ends(telemetry).single['result'], 'cancelled');
+    });
+
+    testWidgets('leaving the setup yourself is cancelled', (tester) async {
+      final telemetry = Telemetry();
+      await open(tester, telemetry: telemetry);
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.tap(find.text('게임 나가기'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(closed, isTrue);
+      expect(ends(telemetry).single['result'], 'cancelled');
     });
   });
 }

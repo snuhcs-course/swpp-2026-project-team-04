@@ -5,11 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
+import '../models/arcade_catalog.dart';
 import '../models/exercise_type.dart';
 import '../models/character_rig.dart';
 import '../models/feedback_goal.dart';
 import '../models/matchup.dart';
 import '../models/setup_hint_short.dart';
+import '../services/telemetry/telemetry_service.dart';
 import '../services/device/device_controls.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/feedback/goal_progress.dart';
@@ -19,15 +21,19 @@ import '../services/pose/setup_checker.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../viewmodels/arcade_viewmodel.dart';
 import '../viewmodels/battle_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
+import '../widgets/arcade_parts.dart';
 import '../widgets/battle_arena.dart';
 import '../widgets/battle_camera_view.dart';
 import '../widgets/battle_stage_events.dart';
 import '../widgets/battle_stage_model.dart';
 import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
+import '../widgets/gym_background.dart';
 import '../widgets/sound_battle.dart';
+import 'arcade_flow.dart';
 
 /// A battle against the bot, from the pose setup to the end: the fighting
 /// stage above and the user's camera below (the battle arena).
@@ -124,6 +130,8 @@ class _BattleScreenState extends State<BattleScreen>
     final createViewModel = widget.createViewModel;
     if (createViewModel != null) {
       _viewModel = createViewModel();
+    } else if (widget.matchup.opponent.isArcade) {
+      _viewModel = _arcadeViewModel();
     } else {
       final counter = BattleViewModel.botCounter(widget.matchup.exercise);
       _viewModel = BattleViewModel.bot(
@@ -149,6 +157,35 @@ class _BattleScreenState extends State<BattleScreen>
     unawaited(keepScreenOn(true));
   }
 
+  /// An arcade stage's battle (P16 spec 6): as [BattleViewModel.bot] makes
+  /// it, but the bot at the stage's AI level and the score by its floor's
+  /// rules ([ArcadeMatchups]). Only the values handed to the battle change.
+  BattleViewModel _arcadeViewModel() => ArcadeMatchups.battleOf(
+    widget.matchup,
+    counter: BattleViewModel.botCounter(widget.matchup.exercise),
+    repository: context.read<UserRepository>(),
+    sound: const NoRepBeep(),
+    formReports: context.read<FormReportStore>(),
+    characterId: widget.myCharacter,
+  );
+
+  /// The stage's floor for an arcade battle; null for any other.
+  int? get _arcadeFloor => switch (widget.matchup.opponent.arcadeStage) {
+    final stage? => ArcadeCatalog.stage(stage).floor,
+    null => null,
+  };
+
+  /// The matchup as the stage names it: an arcade opponent by its
+  /// character's name ("물렁범"), not its record's ("STAGE 8 · 물렁범").
+  late final Matchup _onStage = switch (widget.matchup) {
+    Matchup(opponent: Opponent(isArcade: true) && final opponent) => Matchup(
+      exercise: widget.matchup.exercise,
+      playerName: widget.matchup.playerName,
+      opponent: Opponent(name: opponent.characterName, isBot: true),
+    ),
+    final matchup => matchup,
+  };
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -161,6 +198,7 @@ class _BattleScreenState extends State<BattleScreen>
       // The camera reads the orientation when it opens, so the setup waits
       // for portrait.
       _cameraStarted = true;
+      _beginSetupTelemetry();
       _viewModel.start();
     } else if (_cameraStarted && orientation != _orientation) {
       _viewModel.onScreenRotated();
@@ -222,7 +260,10 @@ class _BattleScreenState extends State<BattleScreen>
     for (final event in events) {
       _stage.rep(_withGoal(event));
     }
-    if (state.started && !_shown.started) _stage.go();
+    if (state.started && !_shown.started) {
+      _stage.go();
+      _endSetupTelemetry(ready: true);
+    }
     _shown = state;
     if (!state.started && state.phase == BattlePhase.setup) {
       widget.onSetup?.call(state.setup, state.startIn);
@@ -265,18 +306,44 @@ class _BattleScreenState extends State<BattleScreen>
     _askingToLeave = true;
     final leave = await confirmExit(
       context,
-      ExitDialog.game(opponentName: widget.matchup.opponent.name),
+      ExitDialog.game(opponentName: widget.matchup.opponent.characterName),
     );
     _askingToLeave = false;
     if (!mounted) return;
     if (leave) _leave();
   }
 
-  /// Goes home and keeps nothing. The round stops first, so time cannot run
-  /// out while this screen slides away.
+  /// Goes home and keeps nothing (an arcade stage: back to the arcade's
+  /// map, without stars). The round stops first, so time cannot run out
+  /// while this screen slides away.
   void _leave() {
+    _endSetupTelemetry(ready: false);
     _viewModel.leave();
-    popToHome(context);
+    if (widget.matchup.opponent.isArcade) {
+      ArcadeFlow.leave(context);
+    } else {
+      popToHome(context);
+    }
+  }
+
+  /// P17: the bot battle's pose setup as P6's setup_started and
+  /// setup_finished: ready when the round begins, cancelled when the user
+  /// leaves before it.
+  SetupTelemetry? _setupTelemetry;
+
+  void _beginSetupTelemetry() {
+    Telemetry? telemetry;
+    try {
+      telemetry = context.read<Telemetry>();
+    } on ProviderNotFoundException {
+      telemetry = null;
+    }
+    _setupTelemetry = SetupTelemetry.bot(telemetry, widget.matchup.exercise);
+  }
+
+  void _endSetupTelemetry({required bool ready}) {
+    final telemetry = _setupTelemetry?..saw(_viewModel.lastSetupReason);
+    ready ? telemetry?.ready() : telemetry?.cancelled();
   }
 
   /// Replaces this screen with the result screen.
@@ -284,6 +351,15 @@ class _BattleScreenState extends State<BattleScreen>
     final result = _viewModel.state.result;
     if (_openedResult || result == null) return;
     _openedResult = true;
+    if (widget.matchup.opponent.isArcade) {
+      // The arcade's clear, fail or break comes first (P16 spec 6 and 7).
+      ArcadeFlow.afterBattle(
+        context,
+        result,
+        passDepth: _viewModel.counter.passDepth,
+      );
+      return;
+    }
     Navigator.pushReplacementNamed(
       context,
       GymRatsApp.resultRoute,
@@ -307,6 +383,7 @@ class _BattleScreenState extends State<BattleScreen>
 
   @override
   void dispose() {
+    _endSetupTelemetry(ready: false);
     unawaited(keepScreenOn(false));
     WidgetsBinding.instance.removeObserver(this);
     _viewModel.removeListener(_onViewModelChanged);
@@ -344,7 +421,7 @@ class _BattleScreenState extends State<BattleScreen>
     final counterState = counter.state;
     final standing = BattleStageEvents.stateOf(
       state,
-      widget.matchup,
+      _onStage,
       roundLength: viewModel.roundLength,
       rules: viewModel.rules,
     );
@@ -401,6 +478,14 @@ class _BattleScreenState extends State<BattleScreen>
                   onConfirm: counter.confirmTrackedPerson,
                   roundStarted: state.started,
                 ),
+              if (widget.matchup.opponent.arcadeRound case final round?)
+                Positioned(
+                  right: ArcadeRoundPip.inset,
+                  bottom:
+                      ArcadeRoundPip.bottom +
+                      MediaQuery.paddingOf(context).bottom,
+                  child: ArcadeRoundPip(round: round),
+                ),
             ],
           );
     return BattleArena(
@@ -410,8 +495,13 @@ class _BattleScreenState extends State<BattleScreen>
       camera: camera,
       characters: BattleCharacters(
         me: widget.myCharacter,
-        opponent: CharacterRig.botId,
+        opponent: widget.matchup.opponent.characterId ?? CharacterRig.botId,
       ),
+      scenery: switch (_arcadeFloor) {
+        final floor? => GymBackground(floor: floor),
+        null => null,
+      },
+      round: widget.matchup.opponent.arcadeRound,
       onCue: widget.onCue ?? _sounds.cue,
       onLeave: () => unawaited(_askToLeave()),
       // While the person check asks for a tap, it is the only thing to do:

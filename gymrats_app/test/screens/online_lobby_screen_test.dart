@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/config/server_config.dart';
@@ -17,8 +19,11 @@ import 'package:gymrats_app/widgets/grid_background.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:gymrats_app/widgets/safe_warning_dialog.dart';
 import 'package:gymrats_app/services/auth/in_memory_auth_repository.dart';
+import 'package:gymrats_app/services/friends/friend_repository.dart';
+import 'package:gymrats_app/viewmodels/friends_viewmodel.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 import 'package:gymrats_app/services/pose/setup_checker.dart';
+import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:provider/provider.dart';
@@ -108,6 +113,83 @@ Future<InMemoryAuthRepository> loggedIn() async {
 }
 
 void main() {
+  group('매칭·종료 이벤트 계측 (P17)', () {
+    Future<(Telemetry, List<_Session>)> search(
+      WidgetTester tester, {
+      _Session Function(Uri, String, String)? make,
+    }) async {
+      final telemetry = Telemetry();
+      final auth = await loggedIn();
+      final sessions = <_Session>[];
+      await tester.pumpWidget(
+        Provider<Telemetry>.value(
+          value: telemetry,
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: OnlineLobbyScreen(
+              auth: auth,
+              createSession: (u, t, a) {
+                final session = (make ?? _Session.new)(u, t, a);
+                sessions.add(session);
+                return session;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      return (telemetry, sessions);
+    }
+
+    List<Map<String, Object?>> ends(Telemetry t) =>
+        t.pending.where((e) => e['event'] == 'matching_finished').toList();
+
+    testWidgets('the queue taking the join starts it; an opponent ends it as '
+        'found, once', (tester) async {
+      holdStill(tester);
+      final (telemetry, sessions) = await search(tester);
+      final start = telemetry.pending.single;
+      expect(start['event'], 'matching_started');
+      expect(start['kind'], 'main');
+      expect(start['exercise'], 'push_up');
+      sessions.single.found();
+      await tester.pump();
+      final end = ends(telemetry).single;
+      expect(end['result'], 'found');
+      expect(end['attempt_id'], start['attempt_id']);
+      expect(end['wait_ms'], isA<int>());
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(ends(telemetry), hasLength(1));
+    });
+
+    testWidgets('closing the lobby while searching ends it as cancelled', (
+      tester,
+    ) async {
+      final (telemetry, _) = await search(tester);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(ends(telemetry).single['result'], 'cancelled');
+    });
+
+    testWidgets('a search that fails after joining ends as error; one that '
+        'never joined records nothing', (tester) async {
+      final (telemetry, sessions) = await search(tester);
+      sessions.single
+        ..phase = OnlinePhase.failed
+        ..notifyListeners();
+      await tester.pump();
+      expect(ends(telemetry).single['result'], 'error');
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+
+      final (never, _) = await search(tester, make: _FailingSession.new);
+      expect(never.pending, isEmpty);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+  });
+
   for (final phase in [OnlinePhase.preparing, OnlinePhase.playing]) {
     testWidgets('leaving $phase closes both battle and lobby to home', (
       tester,
@@ -817,7 +899,7 @@ void main() {
       // The lobby's 게임 시작, then the online card.
       await tester.tap(find.text('게임 시작'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('온라인 1v1'));
+      await tester.tap(find.text('온라인 대결'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('푸쉬업').last);
       await tester.pump();
@@ -960,6 +1042,385 @@ void main() {
       expect(sessions, hasLength(1));
       expect(sessions.single.wasDisposed, isTrue);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('friend battle waiting room (P9)', () {
+    const me = FriendPerson(id: 1, nickname: '로그인사용자', code: '로그인사용자#0001');
+    const friend = FriendPerson(id: 2, nickname: '헬창', code: '헬창#0002');
+
+    /// The lobby for [battle] over a home page, on [repo]; every session.
+    Future<List<_Session>> openLobby(
+      WidgetTester tester,
+      InMemoryFriendRepository repo,
+      FriendBattle battle, {
+      Telemetry? telemetry,
+    }) async {
+      final auth = await loggedIn();
+      final sessions = <_Session>[];
+      await tester.pumpWidget(
+        Provider<Telemetry>.value(
+          value: telemetry ?? Telemetry(),
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OnlineLobbyScreen(
+                        auth: auth,
+                        exercise: battle.exercise,
+                        friendBattle: battle,
+                        friends: repo,
+                        createSession: (u, t, a) {
+                          final session = _Session(u, t, a);
+                          sessions.add(session);
+                          return session;
+                        },
+                        createCounter: () => RepCounterViewModel(
+                          camera: FakeCameraService(),
+                          estimator: FakePoseEstimator(),
+                          roundLength: const Duration(days: 1),
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: const Text('home'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('home'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      return sessions;
+    }
+
+    InMemoryFriendRepository repository() =>
+        InMemoryFriendRepository(me: me, people: const [friend])
+          ..friends.add(friend);
+
+    testWidgets('inviting: the invite goes out and only the friend is '
+        'searched for', (tester) async {
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.squat),
+      );
+      expect(sessions.single.friendId, '2');
+      expect(find.text('헬창님의 수락을 기다리는 중'), findsOneWidget);
+      final invite = repo.invites.single;
+      expect(invite.to, friend);
+      expect(invite.exercise, ExerciseType.squat);
+      expect(invite.status, InviteStatus.pending);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a declined invite ends the search and offers a new one', (
+      tester,
+    ) async {
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      repo.answer(repo.invites.single.id, InviteStatus.declined);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(sessions.single.left, isTrue);
+      expect(sessions.single.wasDisposed, isTrue);
+      expect(find.text('헬창님이 대결 신청을 거절했어요.'), findsOneWidget);
+      expect(find.text('헬창님에게 다시 신청'), findsOneWidget);
+      expect(find.text('온라인 상대 찾기'), findsNothing);
+
+      await tester.tap(find.text('헬창님에게 다시 신청'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(sessions, hasLength(2));
+      expect(sessions.last.friendId, '2');
+      expect(repo.invites, hasLength(2));
+      expect(repo.invites.last.status, InviteStatus.pending);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    List<Map<String, Object?>> matchingEnds(Telemetry t) =>
+        t.pending.where((e) => e['event'] == 'matching_finished').toList();
+
+    testWidgets('매칭·종료 이벤트 계측 (P17): a friend search is kind friend; '
+        'a declined invite ends it as cancelled; inviting again is a new '
+        'search', (tester) async {
+      final telemetry = Telemetry();
+      final repo = repository();
+      await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.squat),
+        telemetry: telemetry,
+      );
+      final start = telemetry.pending.single;
+      expect(start['event'], 'matching_started');
+      expect(start['kind'], 'friend');
+      expect(start['exercise'], 'squat');
+      repo.answer(repo.invites.single.id, InviteStatus.declined);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(matchingEnds(telemetry).single['result'], 'cancelled');
+      // Inviting again is a new search with its own attempt.
+      await tester.tap(find.text('헬창님에게 다시 신청'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final starts = telemetry.pending
+          .where((e) => e['event'] == 'matching_started')
+          .toList();
+      expect(starts, hasLength(2));
+      expect(starts[1]['attempt_id'], isNot(starts[0]['attempt_id']));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(matchingEnds(telemetry), hasLength(2));
+      expect(
+        matchingEnds(telemetry).last['attempt_id'],
+        starts[1]['attempt_id'],
+      );
+    });
+
+    testWidgets('매칭·종료 이벤트 계측 (P17): an invite not accepted in time '
+        'ends the search as timeout', (tester) async {
+      final telemetry = Telemetry();
+      final repo = repository();
+      await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+        telemetry: telemetry,
+      );
+      repo.answer(repo.invites.single.id, InviteStatus.expired);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(matchingEnds(telemetry).single['result'], 'timeout');
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('leaving the search takes the invite back', (tester) async {
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      await tester.tap(find.text('매칭 취소'));
+      await settle(tester);
+      expect(sessions.single.left, isTrue);
+      expect(find.text('home'), findsOneWidget);
+      expect(repo.invites.single.status, InviteStatus.cancelled);
+    });
+
+    testWidgets('invited: no new invite; the inviter leaving ends the wait', (
+      tester,
+    ) async {
+      final repo = repository();
+      final sent = repo.receiveInvite(friend, ExerciseType.pushUp);
+      final accepted = await repo.acceptInvite(sent.id);
+      final sessions = await openLobby(
+        tester,
+        repo,
+        FriendBattle(
+          friend: friend,
+          exercise: ExerciseType.pushUp,
+          accepted: accepted,
+        ),
+      );
+      expect(sessions.single.friendId, '2');
+      expect(find.text('헬창님을 기다리는 중'), findsOneWidget);
+      expect(repo.invites, hasLength(1));
+      await repo.cancelInvite(sent.id);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump();
+      expect(sessions.single.left, isTrue);
+      expect(find.text('헬창님이 대결을 취소했어요.'), findsOneWidget);
+      // My accepted invite cannot be sent again from here.
+      expect(find.text('헬창님에게 다시 신청'), findsNothing);
+      expect(find.text('온라인 상대 찾기'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('paired with the friend: the invite is no longer read', (
+      tester,
+    ) async {
+      holdStill(tester);
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      repo.answer(repo.invites.single.id, InviteStatus.accepted);
+      sessions.single.found();
+      await tester.pump();
+      expect(find.byType(VersusScreen), findsOneWidget);
+      // A late change of the invite no longer ends anything.
+      repo.answer(repo.invites.single.id, InviteStatus.cancelled);
+      await tester.pump(const Duration(seconds: 4));
+      expect(sessions.single.left, isFalse);
+      expect(find.byType(VersusScreen), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a search that fails takes the invite back', (tester) async {
+      final auth = await loggedIn();
+      final repo = repository();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: OnlineLobbyScreen(
+            auth: auth,
+            friendBattle: const FriendBattle(
+              friend: friend,
+              exercise: ExerciseType.pushUp,
+            ),
+            friends: repo,
+            createSession: (u, t, a) => _FailingSession(u, t, a),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('서버에 연결하지 못했어요.'), findsOneWidget);
+      expect(repo.invites.single.status, InviteStatus.cancelled);
+      // Nothing is read any more.
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('서버에 연결하지 못했어요.'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('both invited each other and met: my open invite is taken '
+        'back', (tester) async {
+      holdStill(tester);
+      final repo = repository();
+      // The friend's own invite to me, which I never answered.
+      final theirs = repo.receiveInvite(friend, ExerciseType.pushUp);
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      final mine = repo.invites.last;
+      expect(mine.status, InviteStatus.pending);
+      sessions.single.found();
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(VersusScreen), findsOneWidget);
+      expect((await repo.fetchInvite(mine.id)).status, InviteStatus.cancelled);
+      // Theirs is theirs to take back; the alert is hidden during the battle.
+      expect((await repo.fetchInvite(theirs.id)).status, InviteStatus.pending);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('paired, then the waiting room closes (the battle is over): '
+        'the accepted invite is taken back', (tester) async {
+      holdStill(tester);
+      final repo = repository();
+      final sent = repo.receiveInvite(friend, ExerciseType.pushUp);
+      final accepted = await repo.acceptInvite(sent.id);
+      final sessions = await openLobby(
+        tester,
+        repo,
+        FriendBattle(
+          friend: friend,
+          exercise: ExerciseType.pushUp,
+          accepted: accepted,
+        ),
+      );
+      sessions.single.found();
+      await tester.pump();
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.accepted);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect((await repo.fetchInvite(sent.id)).status, InviteStatus.cancelled);
+    });
+
+    testWidgets('a friend battle offers no 다시 매칭 after a cancel', (
+      tester,
+    ) async {
+      holdStill(tester);
+      final repo = repository();
+      final sessions = await openLobby(
+        tester,
+        repo,
+        const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+      );
+      sessions.single.found();
+      await settle(tester);
+      await tester.tap(find.text('확인 (5)'));
+      await settle(tester);
+      await tester.tap(find.text('자세 세팅 시작'));
+      await settle(tester);
+      final battle = tester.widget<OnlineBattleScreen>(
+        find.byType(OnlineBattleScreen),
+      );
+      expect(battle.offerRematch, isFalse);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('the app routes a FriendBattle to the lobby on its '
+        'repository', (tester) async {
+      final auth = await loggedIn();
+      final repo = repository();
+      final sessions = <_Session>[];
+      await tester.pumpWidget(
+        GymRatsApp(
+          authRepository: auth,
+          userRepository: FakeUserRepository(),
+          friendRepository: repo,
+          createOnlineSession: (u, t, a) {
+            final session = _Session(u, t, a);
+            sessions.add(session);
+            return session;
+          },
+        ),
+      );
+      await settle(tester);
+      final navigator = tester.state<NavigatorState>(
+        find.byType(Navigator).first,
+      );
+      unawaited(
+        navigator.pushNamed(
+          GymRatsApp.onlineBattleRoute,
+          arguments: const FriendBattle(
+            friend: friend,
+            exercise: ExerciseType.squat,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      final lobby = tester.widget<OnlineLobbyScreen>(
+        find.byType(OnlineLobbyScreen),
+      );
+      expect(lobby.exercise, ExerciseType.squat);
+      expect(lobby.friendBattle!.friend, friend);
+      expect(lobby.friends, same(repo));
+      expect(sessions.single.friendId, '2');
+      expect(repo.invites.single.exercise, ExerciseType.squat);
+      navigator.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      unawaited(navigator.pushNamed(GymRatsApp.friendsRoute));
+      await settle(tester);
+      expect(find.text('헬창#0002'), findsOneWidget);
     });
   });
 }

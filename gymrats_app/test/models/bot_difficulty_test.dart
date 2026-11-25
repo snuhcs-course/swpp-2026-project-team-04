@@ -37,6 +37,30 @@ void main() {
       expect(BotDifficulty.paceLength, const Duration(seconds: 30));
     });
 
+    test('every level is a BotPace, read through it the same', () {
+      for (final level in BotDifficulty.values) {
+        final BotPace pace = level;
+        expect(
+          (
+            pace.fewestValid,
+            pace.mostValid,
+            pace.fewestRejected,
+            pace.mostRejected,
+            pace.deepShare,
+            pace.comboChance,
+          ),
+          (
+            level.fewestValid,
+            level.mostValid,
+            level.fewestRejected,
+            level.mostRejected,
+            level.deepShare,
+            level.comboChance,
+          ),
+        );
+      }
+    });
+
     test('the levels are in order, from the easiest', () {
       expect(BotDifficulty.values, [
         BotDifficulty.beginner,

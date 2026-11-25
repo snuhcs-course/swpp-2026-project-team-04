@@ -1,0 +1,945 @@
+from datetime import timedelta
+
+import pytest
+from django.utils import timezone
+
+from accounts.friends_views import INVITE_TTL, are_friends, friend_code
+from accounts.models import FriendBattleInvite, FriendRequest, User
+
+from .conftest import auth, sign_up
+
+
+def _user(client, login_id, nickname):
+    body = sign_up(client, login_id=login_id, nickname=nickname)
+    return body["user"]["id"], auth(body["token"])
+
+
+@pytest.fixture
+def two(client):
+    a = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    return a, b
+
+
+def _code(user_id):
+    user = User.objects.get(id=user_id)
+    return friend_code(user)
+
+
+def _request(client, me, code):
+    return client.post("/friends/requests", {"code": code}, format="json", **me)
+
+
+def _befriend(client, a, b):
+    sent = _request(client, a[1], _code(b[0]))
+    assert sent.status_code == 201, sent.content
+    accepted = client.post(
+        f"/friends/requests/{sent.json()['request_id']}/accept", **b[1]
+    )
+    assert accepted.status_code == 200
+
+
+def _invite(client, me, friend_id, exercise="push_up"):
+    return client.post(
+        "/friends/invites",
+        {"friend_id": friend_id, "exercise": exercise},
+        format="json",
+        **me,
+    )
+
+
+def test_friend_code_pads_the_account_id_to_four_digits(client):
+    user_id, me = _user(client, "alice01", "쥐돌이")
+    body = client.get("/friends", **me).json()
+    assert body["code"] == f"쥐돌이#{user_id:04d}"
+    user = User.objects.get(id=user_id)
+    user.id = 12345
+    assert friend_code(user) == "쥐돌이#12345"
+
+
+def test_friends_need_a_login(client):
+    assert client.get("/friends").status_code == 401
+    assert client.post("/friends/requests", {}, format="json").status_code == 401
+
+
+def test_request_then_accept_makes_both_friends(client, two):
+    (a_id, a), (b_id, b) = two
+    sent = _request(client, a, _code(b_id))
+    assert sent.status_code == 201
+    assert sent.json()["status"] == "requested"
+    assert sent.json()["to"]["nickname"] == "헬창"
+
+    assert client.get("/friends", **a).json()["outgoing"][0]["to"]["id"] == b_id
+    incoming = client.get("/friends", **b).json()["incoming"]
+    assert [r["from"]["id"] for r in incoming] == [a_id]
+
+    accepted = client.post(
+        f"/friends/requests/{incoming[0]['request_id']}/accept", **b
+    )
+    assert accepted.json() == {
+        "status": "accepted",
+        "friend": {"id": a_id, "nickname": "쥐돌이", "code": _code(a_id)},
+    }
+    for me, other in ((a, b_id), (b, a_id)):
+        body = client.get("/friends", **me).json()
+        assert [f["id"] for f in body["friends"]] == [other]
+        assert body["incoming"] == [] and body["outgoing"] == []
+
+
+def test_a_second_request_either_way_is_not_a_duplicate(client, two):
+    (a_id, a), (b_id, b) = two
+    assert _request(client, a, _code(b_id)).status_code == 201
+    again = _request(client, a, _code(b_id))
+    assert again.status_code == 409
+    assert again.json() == {"detail": "already_requested"}
+    # Asked back: that accepts the open request, not a second row.
+    back = _request(client, b, _code(a_id))
+    assert back.status_code == 200
+    assert back.json()["status"] == "accepted"
+    assert FriendRequest.objects.count() == 1
+    assert are_friends(User.objects.get(id=a_id), User.objects.get(id=b_id))
+    for me, other in ((a, b_id), (b, a_id)):
+        repeat = _request(client, me, _code(other))
+        assert repeat.status_code == 409
+        assert repeat.json() == {"detail": "already_friends"}
+
+
+@pytest.mark.parametrize(
+    "code, status, detail",
+    [
+        (None, 400, "invalid_code"),
+        (42, 400, "invalid_code"),
+        ("헬창", 400, "invalid_code"),
+        ("헬창#", 400, "invalid_code"),
+        ("#0001", 400, "invalid_code"),
+        ("헬창#00a1", 400, "invalid_code"),
+        # Shorter than the four digits a code shows (Codex review).
+        ("헬창#2", 400, "invalid_code"),
+        ("헬창#002", 400, "invalid_code"),
+        ("열세글자가넘는아주긴닉네임#0001", 400, "invalid_code"),
+    ],
+)
+def test_a_malformed_code_is_refused(client, two, code, status, detail):
+    (_, a), _ = two
+    response = _request(client, a, code)
+    assert response.status_code == status
+    assert response.json() == {"detail": detail}
+
+
+def test_a_code_needs_both_the_number_and_the_nickname(client, two):
+    (a_id, a), (b_id, _) = two
+    wrong_name = _request(client, a, f"쥐돌이#{b_id:04d}")
+    assert wrong_name.status_code == 404
+    assert wrong_name.json() == {"detail": "user_not_found"}
+    assert _request(client, a, "헬창#9999").status_code == 404
+    # Spaces around a pasted code are fine.
+    assert _request(client, a, f"  {_code(b_id)} ").status_code == 201
+
+
+def test_same_nicknames_are_told_apart_by_the_tag(client):
+    _, me = _user(client, "alice01", "쥐돌이")
+    first, _ = _user(client, "twin0001", "헬창")
+    second, _ = _user(client, "twin0002", "헬창")
+    sent = _request(client, me, _code(second))
+    assert sent.json()["to"]["id"] == second != first
+
+
+def test_i_cannot_add_myself(client):
+    user_id, me = _user(client, "alice01", "쥐돌이")
+    response = _request(client, me, _code(user_id))
+    assert response.status_code == 400
+    assert response.json() == {"detail": "cannot_add_self"}
+
+
+def test_decline_deletes_the_request_and_only_the_one_asked_answers(client, two):
+    (a_id, a), (b_id, b) = two
+    request_id = _request(client, a, _code(b_id)).json()["request_id"]
+    # The sender cannot accept their own request.
+    own = client.post(f"/friends/requests/{request_id}/accept", **a)
+    assert own.status_code == 404
+    declined = client.post(f"/friends/requests/{request_id}/decline", **b)
+    assert declined.json() == {"status": "declined"}
+    assert FriendRequest.objects.count() == 0
+    gone = client.post(f"/friends/requests/{request_id}/accept", **b)
+    assert gone.json() == {"detail": "request_not_found"}
+    # Declined: the sender may ask again.
+    assert _request(client, a, _code(b_id)).status_code == 201
+
+
+def test_an_accepted_request_cannot_be_declined(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    request_id = FriendRequest.objects.get().id
+    response = client.post(f"/friends/requests/{request_id}/decline", **b)
+    assert response.status_code == 404
+    assert are_friends(User.objects.get(id=a_id), User.objects.get(id=b_id))
+
+
+def test_friends_are_listed_by_nickname(client):
+    me_id, me = _user(client, "alice01", "쥐돌이")
+    users = [_user(client, f"user000{n}", name) for n, name in enumerate("다가나")]
+    for user in users:
+        _befriend(client, (me_id, me), user)
+    names = [f["nickname"] for f in client.get("/friends", **me).json()["friends"]]
+    assert names == ["가", "나", "다"]
+
+
+def test_invite_reaches_the_friend_and_accepting_opens_the_battle(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    created = _invite(client, a, b_id, "squat")
+    assert created.status_code == 201
+    invite = created.json()
+    assert invite["status"] == "pending"
+    assert invite["exercise"] == "squat"
+    assert invite["from"]["id"] == a_id and invite["to"]["id"] == b_id
+
+    listed = client.get("/friends", **b).json()["invites"]
+    assert [i["invite_id"] for i in listed] == [invite["invite_id"]]
+    # The inviter does not see their own invite as one to answer.
+    assert client.get("/friends", **a).json()["invites"] == []
+
+    accepted = client.post(f"/friends/invites/{invite['invite_id']}/accept", **b)
+    assert accepted.status_code == 200
+    assert accepted.json()["status"] == "accepted"
+    seen = client.get(f"/friends/invites/{invite['invite_id']}", **a).json()
+    assert seen["status"] == "accepted"
+    assert client.get("/friends", **b).json()["invites"] == []
+
+
+def test_only_friends_can_be_invited(client, two):
+    (_, a), (b_id, b) = two
+    response = _invite(client, a, b_id)
+    assert response.status_code == 403
+    assert response.json() == {"detail": "not_friends"}
+    # A request that is still open is not a friendship yet.
+    _request(client, a, _code(b_id))
+    assert _invite(client, a, b_id).status_code == 403
+    assert _invite(client, a, 999999).status_code == 403
+
+
+@pytest.mark.parametrize(
+    "body, detail",
+    [
+        ({"friend_id": "2", "exercise": "push_up"}, "invalid_friend"),
+        ({"friend_id": True, "exercise": "push_up"}, "invalid_friend"),
+        ({"exercise": "push_up"}, "invalid_friend"),
+        ({"friend_id": 2, "exercise": []}, "invalid_exercise"),
+        ({"friend_id": 2, "exercise": {}}, "invalid_exercise"),
+        ({"friend_id": 2, "exercise": "plank"}, "invalid_exercise"),
+        ({"friend_id": 2}, "invalid_exercise"),
+    ],
+)
+def test_a_malformed_invite_is_refused(client, two, body, detail):
+    (_, a), _ = two
+    response = client.post("/friends/invites", body, format="json", **a)
+    assert response.status_code == 400
+    assert response.json() == {"detail": detail}
+
+
+def test_an_invite_expires_after_a_minute(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    FriendBattleInvite.objects.filter(id=invite_id).update(
+        created_at=timezone.now() - INVITE_TTL - timedelta(seconds=1)
+    )
+    assert client.get("/friends", **b).json()["invites"] == []
+    assert client.get(f"/friends/invites/{invite_id}", **a).json()["status"] == (
+        "expired"
+    )
+    late = client.post(f"/friends/invites/{invite_id}/accept", **b)
+    assert late.status_code == 410
+    assert late.json() == {"detail": "invite_expired"}
+    assert INVITE_TTL == timedelta(minutes=1)
+
+
+def test_an_invite_just_inside_the_minute_is_still_open(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    FriendBattleInvite.objects.filter(id=invite_id).update(
+        created_at=timezone.now() - INVITE_TTL + timedelta(seconds=5)
+    )
+    assert len(client.get("/friends", **b).json()["invites"]) == 1
+    assert client.post(f"/friends/invites/{invite_id}/accept", **b).status_code == 200
+
+
+def test_decline_and_cancel_close_the_invite_once(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    first = _invite(client, a, b_id).json()["invite_id"]
+    declined = client.post(f"/friends/invites/{first}/decline", **b)
+    assert declined.json()["status"] == "declined"
+    assert client.get(f"/friends/invites/{first}", **a).json()["status"] == "declined"
+    again = client.post(f"/friends/invites/{first}/accept", **b)
+    assert again.status_code == 409
+    assert again.json() == {"detail": "invite_closed"}
+
+    second = _invite(client, a, b_id).json()["invite_id"]
+    # Only the friend accepts or declines.
+    assert client.post(f"/friends/invites/{second}/accept", **a).status_code == 404
+    assert client.post(f"/friends/invites/{second}/decline", **a).status_code == 404
+    cancelled = client.post(f"/friends/invites/{second}/cancel", **a)
+    assert cancelled.json()["status"] == "cancelled"
+    assert client.post(f"/friends/invites/{second}/accept", **b).status_code == 409
+    assert client.post(f"/friends/invites/{second}/cancel", **a).status_code == 409
+
+
+@pytest.mark.parametrize("leaver", ["inviter", "friend"])
+def test_either_player_leaving_cancels_an_accepted_invite(client, two, leaver):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    client.post(f"/friends/invites/{invite_id}/accept", **b)
+    gone, stays = (a, b) if leaver == "inviter" else (b, a)
+    left = client.post(f"/friends/invites/{invite_id}/cancel", **gone)
+    assert left.status_code == 200
+    seen = client.get(f"/friends/invites/{invite_id}", **stays).json()
+    assert seen["status"] == "cancelled"
+
+
+def test_the_friend_can_take_back_an_open_invite_too(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    assert client.post(f"/friends/invites/{invite_id}/cancel", **b).status_code == 200
+
+
+def test_an_expired_invite_cannot_be_cancelled(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    FriendBattleInvite.objects.filter(id=invite_id).update(
+        created_at=timezone.now() - INVITE_TTL
+    )
+    assert client.post(f"/friends/invites/{invite_id}/cancel", **a).status_code == 410
+
+
+def test_a_new_invite_cancels_my_earlier_open_one(client):
+    me_id, me = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    c = _user(client, "carol01", "근육")
+    _befriend(client, (me_id, me), b)
+    _befriend(client, (me_id, me), c)
+    old = _invite(client, me, b[0]).json()["invite_id"]
+    _invite(client, me, c[0])
+    assert client.get(f"/friends/invites/{old}", **me).json()["status"] == "cancelled"
+    assert client.get("/friends", **b[1]).json()["invites"] == []
+    assert len(client.get("/friends", **c[1]).json()["invites"]) == 1
+
+
+def test_an_invite_is_private_to_its_two_players(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    _, stranger = _user(client, "carol01", "근육")
+    for path in ("", "/accept", "/decline", "/cancel"):
+        url = f"/friends/invites/{invite_id}{path}"
+        call = client.get if path == "" else client.post
+        response = call(url, **stranger)
+        assert response.status_code == 404
+        assert response.json() == {"detail": "invite_not_found"}
+    assert client.get("/friends/invites/999999", **a).status_code == 404
+
+
+def test_the_friends_list_shows_no_password_or_login_id(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    _invite(client, a, b_id)
+    text = str(client.get("/friends", **b).json())
+    assert "alice01" not in text and "password" not in text
+
+
+def test_only_the_invited_friend_accepts(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    _, c = _user(client, "carol01", "근육")
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    for someone in (a, c):
+        response = client.post(f"/friends/invites/{invite_id}/accept", **someone)
+        assert response.status_code == 404
+    assert FriendBattleInvite.objects.get().status == FriendBattleInvite.PENDING
+    assert client.post(f"/friends/invites/{invite_id}/accept", **b).status_code == 200
+
+
+def test_accepting_twice_accepts_once(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    first = client.post(f"/friends/invites/{invite_id}/accept", **b)
+    second = client.post(f"/friends/invites/{invite_id}/accept", **b)
+    assert first.status_code == 200
+    assert second.status_code == 409
+    assert second.json() == {"detail": "invite_closed"}
+    assert FriendBattleInvite.objects.count() == 1
+    assert FriendBattleInvite.objects.get().status == FriendBattleInvite.ACCEPTED
+
+
+@pytest.mark.parametrize("closed", ["cancelled", "declined"])
+def test_a_closed_invite_cannot_be_accepted(client, two, closed):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    actor = a if closed == "cancelled" else b
+    action = "cancel" if closed == "cancelled" else "decline"
+    client.post(f"/friends/invites/{invite_id}/{action}", **actor)
+    response = client.post(f"/friends/invites/{invite_id}/accept", **b)
+    assert response.status_code == 409
+    assert FriendBattleInvite.objects.get().status == closed
+
+
+def test_tags_have_at_least_four_digits(client):
+    user_id, _ = _user(client, "alice01", "쥐돌이")
+    user = User.objects.get(id=user_id)
+    for number, tag in ((42, "0042"), (7, "0007"), (10000, "10000"), (123456, "123456")):
+        user.id = number
+        assert friend_code(user) == f"쥐돌이#{tag}"
+
+
+def test_the_database_keeps_one_request_per_pair_either_way(client, two):
+    from django.db import IntegrityError, transaction
+
+    (a_id, _), (b_id, _) = two
+    a, b = User.objects.get(id=a_id), User.objects.get(id=b_id)
+    FriendRequest.objects.create(from_user=a, to_user=b)
+    # Two opposite requests that both passed the check at the same moment.
+    with pytest.raises(IntegrityError), transaction.atomic():
+        FriendRequest.objects.create(from_user=b, to_user=a)
+    assert FriendRequest.objects.count() == 1
+
+
+def test_unrelated_friend_request_integrity_error_is_not_a_duplicate(client, two, monkeypatch):
+    from django.db import IntegrityError
+    from unittest.mock import Mock
+
+    (_, a), (b_id, _) = two
+    monkeypatch.setattr(FriendRequest.objects, "create", Mock(side_effect=IntegrityError("unexpected")))
+    with pytest.raises(IntegrityError, match="unexpected"):
+        _request(client, a, _code(b_id))
+
+
+@pytest.mark.parametrize("winner, loser", [("accept", "decline"), ("decline", "accept")])
+def test_two_answers_to_a_request_at_once_only_the_first_counts(
+    client, two, monkeypatch, winner, loser
+):
+    import accounts.friends_views as views
+
+    (a_id, a), (b_id, b) = two
+    request_id = _request(client, a, _code(b_id)).json()["request_id"]
+    real = views._answer_request
+
+    # The other phone's answer lands between this answer's look-up and its
+    # write.
+    def raced(rid, me, *, accept):
+        real(rid, me, accept=winner == "accept")
+        return real(rid, me, accept=accept)
+
+    monkeypatch.setattr(views, "_answer_request", raced)
+    response = client.post(f"/friends/requests/{request_id}/{loser}", **b)
+    assert response.status_code == 404
+    assert response.json() == {"detail": "request_not_found"}
+    friends = are_friends(User.objects.get(id=a_id), User.objects.get(id=b_id))
+    assert friends is (winner == "accept")
+    assert FriendRequest.objects.count() == (1 if winner == "accept" else 0)
+
+
+def test_asking_back_while_the_request_is_answered_elsewhere(client, two, monkeypatch):
+    import accounts.friends_views as views
+
+    (a_id, a), (b_id, b) = two
+    _request(client, a, _code(b_id))
+    real = views._answer_request
+
+    def raced(rid, me, *, accept):
+        real(rid, me, accept=False)  # declined on b's other phone meanwhile
+        return real(rid, me, accept=accept)
+
+    monkeypatch.setattr(views, "_answer_request", raced)
+    response = _request(client, b, _code(a_id))
+    assert response.status_code == 404
+    assert FriendRequest.objects.count() == 0
+
+
+@pytest.mark.parametrize(
+    "winner, loser, status",
+    [
+        ("accept", "decline", "accepted"),
+        ("decline", "accept", "declined"),
+        ("cancel", "accept", "cancelled"),
+    ],
+)
+def test_two_answers_to_an_invite_at_once_only_the_first_counts(
+    client, two, monkeypatch, winner, loser, status
+):
+    import accounts.friends_views as views
+
+    from django.db.models import Q
+
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    real, real_accept = views._answer_invite, views._accept_invite
+    either = Q(from_user_id=a_id) | Q(to_user_id=b_id)
+
+    # The other phone's answer lands between this one's look-up and its
+    # write.
+    def raced(iid, mine, action, **options):
+        real(iid, either, winner)
+        return real(iid, mine, action, **options)
+
+    def raced_accept(iid, me):
+        real(iid, either, winner)
+        return real_accept(iid, me)
+
+    monkeypatch.setattr(views, "_answer_invite", raced)
+    monkeypatch.setattr(views, "_accept_invite", raced_accept)
+    response = client.post(f"/friends/invites/{invite_id}/{loser}", **b)
+    assert response.status_code == 409
+    assert response.json() == {"detail": "invite_closed"}
+    assert FriendBattleInvite.objects.get().status == status
+
+
+def test_a_code_with_fewer_than_four_digits_finds_nobody(client, two):
+    (_, a), (b_id, _) = two
+    assert b_id < 10
+    short = _request(client, a, f"헬창#{b_id}")
+    assert short.status_code == 400
+    assert short.json() == {"detail": "invalid_code"}
+    assert _request(client, a, _code(b_id)).status_code == 201
+
+
+def _three_friends(client):
+    me = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    c = _user(client, "carol01", "근육")
+    _befriend(client, me, b)
+    _befriend(client, me, c)
+    return me, b, c
+
+
+def test_two_invites_at_once_from_two_phones_leave_one_open(client, monkeypatch):
+    import accounts.friends_views as views
+
+    (me_id, me), (b_id, _), (c_id, _) = _three_friends(client)
+    real_cancel = views._cancel_open_invites
+    cancels = []
+
+    # The other phone's invite (to c) lands between this one's cancel and
+    # its insert, once.
+    def raced(user):
+        real_cancel(user)
+        cancels.append(user.id)
+        if len(cancels) == 1:
+            FriendBattleInvite.objects.create(
+                from_user=user, to_user=User.objects.get(id=c_id), exercise="squat"
+            )
+
+    monkeypatch.setattr(views, "_cancel_open_invites", raced)
+    response = _invite(client, me, b_id)
+    assert response.status_code == 201
+    assert cancels == [me_id, me_id]
+    pending = FriendBattleInvite.objects.filter(status=FriendBattleInvite.PENDING)
+    assert [(i.from_user_id, i.to_user_id) for i in pending] == [(me_id, b_id)]
+    assert FriendBattleInvite.objects.get(to_user_id=c_id).status == "cancelled"
+
+
+def test_an_invite_that_keeps_losing_the_race_gives_up(client, monkeypatch):
+    import accounts.friends_views as views
+
+    (_, me), (b_id, _), (c_id, _) = _three_friends(client)
+    real_cancel = views._cancel_open_invites
+
+    def always_raced(user):
+        real_cancel(user)
+        FriendBattleInvite.objects.create(
+            from_user=user, to_user=User.objects.get(id=c_id), exercise="squat"
+        )
+
+    monkeypatch.setattr(views, "_cancel_open_invites", always_raced)
+    response = _invite(client, me, b_id)
+    assert response.status_code == 409
+    assert response.json() == {"detail": "invite_busy"}
+    assert FriendBattleInvite.objects.filter(status="pending").count() == 1
+
+
+def test_the_database_keeps_one_open_invite_per_inviter(client):
+    from django.db import IntegrityError, transaction
+
+    (me_id, _), (b_id, _), (c_id, _) = _three_friends(client)
+    me = User.objects.get(id=me_id)
+    FriendBattleInvite.objects.create(
+        from_user=me, to_user=User.objects.get(id=b_id), exercise="push_up"
+    )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        FriendBattleInvite.objects.create(
+            from_user=me, to_user=User.objects.get(id=c_id), exercise="squat"
+        )
+    # Closed invites do not count.
+    FriendBattleInvite.objects.update(status="declined")
+    FriendBattleInvite.objects.create(
+        from_user=me, to_user=User.objects.get(id=c_id), exercise="squat"
+    )
+
+
+def test_cancel_if_pending_leaves_an_accepted_invite(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    client.post(f"/friends/invites/{invite_id}/accept", **b)
+    # The inviter's cleanup after pairing has not seen the accept yet.
+    response = client.post(
+        f"/friends/invites/{invite_id}/cancel", {"if_pending": True}, format="json", **a
+    )
+    assert response.status_code == 409
+    assert response.json() == {"detail": "invite_closed"}
+    assert FriendBattleInvite.objects.get().status == "accepted"
+
+
+def test_cancel_if_pending_takes_back_an_open_invite(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    response = client.post(
+        f"/friends/invites/{invite_id}/cancel", {"if_pending": True}, format="json", **a
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"
+
+
+def test_only_true_turns_on_if_pending(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    client.post(f"/friends/invites/{invite_id}/accept", **b)
+    response = client.post(
+        f"/friends/invites/{invite_id}/cancel", {"if_pending": "yes"}, format="json", **a
+    )
+    assert response.status_code == 200
+    assert FriendBattleInvite.objects.get().status == "cancelled"
+
+
+@pytest.mark.parametrize("body", [[], [1, 2], "text", 3])
+def test_an_odd_answer_body_is_ignored(client, two, body):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    response = client.post(
+        f"/friends/invites/{invite_id}/cancel", body, format="json", **a
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"
+
+
+def test_a_nickname_with_a_line_break_can_still_be_added(client):
+    _, me = _user(client, "alice01", "쥐돌이")
+    other_id, _ = _user(client, "linebrk1", "헬\n창")
+    code = _code(other_id)
+    assert "\n" in code
+    response = _request(client, me, code)
+    assert response.status_code == 201
+    assert response.json()["to"]["id"] == other_id
+
+
+@pytest.mark.parametrize("around", [("\n", "\n"), (" ", "\t"), ("", "\r\n")])
+def test_a_pasted_code_with_line_breaks_around_it_still_works(client, two, around):
+    (_, a), (b_id, _) = two
+    before, after = around
+    response = _request(client, a, f"{before}{_code(b_id)}{after}")
+    assert response.status_code == 201
+
+
+@pytest.mark.parametrize("extra", ["0", "00"])
+def test_an_over_padded_tag_finds_nobody(client, two, extra):
+    (_, a), (b_id, _) = two
+    padded = f"헬창#{extra}{b_id:04d}"
+    response = _request(client, a, padded)
+    assert response.status_code == 404
+    assert response.json() == {"detail": "user_not_found"}
+
+
+def _two_inviters(client):
+    """Two friends a and c, each with an open invite to b."""
+    a = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    c = _user(client, "carol01", "근육")
+    _befriend(client, a, b)
+    _befriend(client, c, b)
+    first = _invite(client, a[1], b[0]).json()["invite_id"]
+    second = _invite(client, c[1], b[0], "squat").json()["invite_id"]
+    return a, b, c, first, second
+
+
+def _accepted_to(user_id):
+    return list(
+        FriendBattleInvite.objects.filter(to_user_id=user_id, status="accepted")
+    )
+
+
+def test_two_invites_to_one_person_accepted_at_once_only_one_counts(
+    client, monkeypatch
+):
+    """PM regression (P9): one friend battle at a time per person, from any
+    phone. The second accept lands while the first is being written."""
+    import accounts.friends_views as views
+
+    (a_id, _), (b_id, b), (c_id, _), first, second = _two_inviters(client)
+    real_accept = views._accept_invite
+    competitor_done = []
+
+    def raced(iid, me):
+        if not competitor_done:
+            competitor_done.append(real_accept(second, me))
+        return real_accept(iid, me)
+
+    monkeypatch.setattr(views, "_accept_invite", raced)
+    response = client.post(f"/friends/invites/{first}/accept", **b)
+    assert competitor_done == ["accepted"]
+    assert response.status_code == 409
+    assert response.json() == {"detail": "invite_busy"}
+    # One accepted invite: the competitor's; mine is closed, not accepted.
+    assert [i.id for i in _accepted_to(b_id)] == [second]
+    assert FriendBattleInvite.objects.get(id=first).status == "cancelled"
+
+
+def test_a_second_accept_from_another_phone_is_busy(client):
+    (a_id, a), (b_id, b), (c_id, c), first, second = _two_inviters(client)
+    ok = client.post(f"/friends/invites/{first}/accept", **b)
+    assert ok.status_code == 200
+    # The other invite was taken back by the first accept: its inviter's
+    # waiting room ends at its next read, not after 30 s.
+    seen = client.get(f"/friends/invites/{second}", **c).json()
+    assert seen["status"] == "cancelled"
+    late = client.post(f"/friends/invites/{second}/accept", **b)
+    assert late.status_code == 409
+    assert [i.id for i in _accepted_to(b_id)] == [first]
+
+
+def test_an_invite_arriving_during_a_held_accept_is_busy_and_ends_now(client):
+    (a_id, a), (b_id, b), (c_id, c), first, _ = _two_inviters(client)
+    client.post(f"/friends/invites/{first}/accept", **b)
+    # A new invite from c after b accepted a's.
+    third = _invite(client, c, b_id).json()["invite_id"]
+    busy = client.post(f"/friends/invites/{third}/accept", **b)
+    assert busy.status_code == 409
+    assert busy.json() == {"detail": "invite_busy"}
+    # Not left accepted or open: c's waiting room sees it end at once.
+    assert client.get(f"/friends/invites/{third}", **c).json()["status"] == (
+        "cancelled"
+    )
+    assert [i.id for i in _accepted_to(b_id)] == [first]
+
+
+def test_leaving_the_waiting_room_frees_the_person_at_once(client):
+    (a_id, a), (b_id, b), (c_id, c), first, _ = _two_inviters(client)
+    client.post(f"/friends/invites/{first}/accept", **b)
+    client.post(f"/friends/invites/{first}/cancel", **b)
+    third = _invite(client, c, b_id).json()["invite_id"]
+    assert client.post(f"/friends/invites/{third}/accept", **b).status_code == 200
+
+
+def test_an_old_accept_no_longer_holds(client):
+    from accounts.friends_views import ACCEPT_HOLD
+
+    (a_id, a), (b_id, b), (c_id, c), first, _ = _two_inviters(client)
+    client.post(f"/friends/invites/{first}/accept", **b)
+    FriendBattleInvite.objects.filter(id=first).update(
+        accepted_at=timezone.now() - ACCEPT_HOLD
+    )
+    third = _invite(client, c, b_id).json()["invite_id"]
+    assert client.post(f"/friends/invites/{third}/accept", **b).status_code == 200
+    assert ACCEPT_HOLD == timedelta(minutes=2)
+
+
+def test_an_accept_records_when(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite(client, a, b_id).json()["invite_id"]
+    before = timezone.now()
+    client.post(f"/friends/invites/{invite_id}/accept", **b)
+    assert FriendBattleInvite.objects.get().accepted_at >= before
+
+
+def test_an_accept_that_meets_a_database_lock_tries_again_and_is_busy(
+    client, monkeypatch
+):
+    """Two accepts at the very same moment on SQLite: the second can fail
+    with "database is locked" before the first commits. It is tried again,
+    sees the first accept, and ends with 409 invite_busy, not 500. (The test
+    database has one connection, so the lock is raised by hand.)"""
+    from django.db import OperationalError
+
+    import accounts.friends_views as views
+
+    (a_id, _), (b_id, b), (c_id, _), first, second = _two_inviters(client)
+    real_accept = views._accept_invite
+    calls = []
+
+    def locked_once(iid, me):
+        calls.append(iid)
+        if len(calls) == 1:
+            real_accept(second, me)  # the other phone's accept commits
+            raise OperationalError("database is locked")
+        return real_accept(iid, me)
+
+    monkeypatch.setattr(views, "_accept_invite", locked_once)
+    monkeypatch.setattr(views.time, "sleep", lambda _: None)
+    response = client.post(f"/friends/invites/{first}/accept", **b)
+    assert calls == [first, first]
+    assert response.status_code == 409
+    assert response.json() == {"detail": "invite_busy"}
+    assert [i.id for i in _accepted_to(b_id)] == [second]
+
+
+def test_a_lock_that_does_not_clear_is_an_error(client, monkeypatch):
+    from django.db import OperationalError
+
+    import accounts.friends_views as views
+
+    (_, _), (_, b), _, first, _ = _two_inviters(client)
+
+    def always_locked(iid, me):
+        raise OperationalError("database is locked")
+
+    monkeypatch.setattr(views, "_accept_invite", always_locked)
+    monkeypatch.setattr(views.time, "sleep", lambda _: None)
+    with pytest.raises(OperationalError):
+        client.post(f"/friends/invites/{first}/accept", **b)
+    assert FriendBattleInvite.objects.get(id=first).status == "pending"
+
+
+def test_an_inviter_whose_invite_was_just_accepted_is_held_too(client):
+    """One friend battle at a time also for the one who invited: a just
+    accepted invite from me holds me."""
+    me = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    c = _user(client, "carol01", "근육")
+    _befriend(client, me, b)
+    _befriend(client, me, c)
+    mine = _invite(client, me[1], b[0]).json()["invite_id"]
+    client.post(f"/friends/invites/{mine}/accept", **b[1])
+    theirs = _invite(client, c[1], me[0]).json()["invite_id"]
+    busy = client.post(f"/friends/invites/{theirs}/accept", **me[1])
+    assert busy.status_code == 409
+    assert busy.json() == {"detail": "invite_busy"}
+
+
+def test_accepting_takes_back_my_own_open_invite(client):
+    me = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    c = _user(client, "carol01", "근육")
+    _befriend(client, me, b)
+    _befriend(client, me, c)
+    mine = _invite(client, me[1], b[0]).json()["invite_id"]
+    theirs = _invite(client, c[1], me[0]).json()["invite_id"]
+    assert client.post(f"/friends/invites/{theirs}/accept", **me[1]).status_code == 200
+    assert client.get(f"/friends/invites/{mine}", **b[1]).json()["status"] == (
+        "cancelled"
+    )
+
+
+def test_an_invite_from_someone_in_another_battle_is_busy(client):
+    """The inviter is held too: b already plays c, then invites a from
+    another phone; a's accept must not put b in two battles."""
+    a = _user(client, "alice01", "쥐돌이")
+    b = _user(client, "bobby01", "헬창")
+    c = _user(client, "carol01", "근육")
+    _befriend(client, a, b)
+    _befriend(client, b, c)
+    with_c = _invite(client, c[1], b[0]).json()["invite_id"]
+    assert client.post(f"/friends/invites/{with_c}/accept", **b[1]).status_code == 200
+    to_a = _invite(client, b[1], a[0]).json()["invite_id"]
+    busy = client.post(f"/friends/invites/{to_a}/accept", **a[1])
+    assert busy.status_code == 409
+    assert busy.json() == {"detail": "invite_busy"}
+    assert FriendBattleInvite.objects.get(id=to_a).status == "cancelled"
+
+
+def test_the_hold_lasts_through_a_long_setup(client):
+    """Accepted 90 s ago (a slow setup and the round): still held."""
+    (a_id, a), (b_id, b), (c_id, c), first, _ = _two_inviters(client)
+    client.post(f"/friends/invites/{first}/accept", **b)
+    FriendBattleInvite.objects.filter(id=first).update(
+        accepted_at=timezone.now() - timedelta(seconds=90)
+    )
+    third = _invite(client, c, b_id).json()["invite_id"]
+    assert client.post(f"/friends/invites/{third}/accept", **b).status_code == 409
+
+
+def test_the_battle_ending_frees_the_person_at_once(client):
+    """After the battle the app cancels the accepted invite (either side),
+    and the next friend battle can be accepted right away."""
+    (a_id, a), (b_id, b), (c_id, c), first, _ = _two_inviters(client)
+    client.post(f"/friends/invites/{first}/accept", **b)
+    # The inviter's waiting room closes after the battle.
+    assert client.post(f"/friends/invites/{first}/cancel", **a).status_code == 200
+    again = _invite(client, c, b_id).json()["invite_id"]
+    assert client.post(f"/friends/invites/{again}/accept", **b).status_code == 200
+
+@pytest.mark.django_db(transaction=True)
+def test_simultaneous_reciprocal_requests_accept_one_friendship(client, two, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier, local
+
+    from django.db import connections
+    from rest_framework.test import APIClient
+
+    (a_id, a), (b_id, b) = two
+    a_code, b_code = _code(a_id), _code(b_id)
+    first_writes = Barrier(2)
+    worker = local()
+    original_create = FriendRequest.objects.create
+
+    def simultaneous_create(**kwargs):
+        if not getattr(worker, "started", False):
+            worker.started = True
+            first_writes.wait(timeout=5)
+        return original_create(**kwargs)
+
+    def send(headers, code):
+        try:
+            response = _request(APIClient(), headers, code)
+            return response.status_code, response.json()["status"]
+        finally:
+            connections.close_all()
+
+    monkeypatch.setattr(FriendRequest.objects, "create", simultaneous_create)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        sends = [pool.submit(send, a, b_code), pool.submit(send, b, a_code)]
+        assert sorted(f.result() for f in sends) == [(200, "accepted"), (201, "requested")]
+    assert FriendRequest.objects.get().accepted_at is not None
+    for headers, friend_id in [(a, b_id), (b, a_id)]:
+        assert [f["id"] for f in client.get("/friends", **headers).json()["friends"]] == [friend_id]
+
+
+@pytest.mark.parametrize("locked", [True, False])
+def test_friend_request_retries_only_sqlite_contention(client, two, monkeypatch, locked):
+    import sqlite3
+    from unittest.mock import Mock
+
+    from django.db import OperationalError
+    from accounts import friends_views
+
+    (_, me), (other_id, _) = two
+    cause = sqlite3.OperationalError()
+    cause.sqlite_errorcode = sqlite3.SQLITE_BUSY if locked else sqlite3.SQLITE_ERROR
+    error = OperationalError()
+    error.__cause__ = cause
+    send = Mock(side_effect=error)
+    monkeypatch.setattr(friends_views, "_send_friend_request", send)
+    if locked:
+        response = _request(client, me, _code(other_id))
+        assert response.status_code == 503
+        assert send.call_count == 3
+    else:
+        with pytest.raises(OperationalError):
+            _request(client, me, _code(other_id))
+        assert send.call_count == 1
+
+@pytest.mark.parametrize("body", ["[]", "null"])
+@pytest.mark.parametrize("endpoint,detail", [("requests", "invalid_code"), ("invites", "invalid_friend")])
+def test_friend_creation_requires_an_object(client, two, body, endpoint, detail):
+    (_, headers), _ = two
+    response = client.post(f"/friends/{endpoint}", body, content_type="application/json", **headers)
+    assert response.status_code == 400
+    assert response.json()["detail"] == detail

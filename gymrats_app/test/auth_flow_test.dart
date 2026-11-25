@@ -5,6 +5,7 @@ import 'package:gymrats_app/screens/body_info_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
+import 'package:gymrats_app/widgets/auth_form.dart';
 import 'package:gymrats_app/screens/login_screen.dart';
 import 'package:gymrats_app/screens/settings_screen.dart';
 import 'package:gymrats_app/screens/social_signup_screen.dart';
@@ -47,11 +48,30 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Finder field(String label) => find.widgetWithText(TextField, label);
+  /// A field by its name: the id sign-up screen's labeled ones, or (P8)
+  /// the id sheet's and the nickname step's, named on [AuthInputField].
+  Finder field(String label) {
+    final named = find.descendant(
+      of: find.byWidgetPredicate(
+        (w) => w is AuthInputField && w.label == label,
+      ),
+      matching: find.byType(TextField),
+    );
+    return named.evaluate().isEmpty
+        ? find.widgetWithText(TextField, label)
+        : named;
+  }
+
+  /// P8: id login and the sign-up link are in the sheet "아이디로 로그인".
+  Future<void> openIdSheet(WidgetTester tester) async {
+    await tester.tap(find.text('아이디로 로그인'));
+    await tester.pumpAndSettle();
+  }
 
   /// From login: creates the account [loginId], submits, and skips the
   /// body info step that follows (P7).
   Future<void> signUp(WidgetTester tester, {String loginId = 'woohyun'}) async {
+    await openIdSheet(tester);
     await tester.tap(find.text('처음이신가요? 회원가입'));
     await tester.pumpAndSettle();
     await tester.enterText(field('닉네임'), '우현');
@@ -66,6 +86,7 @@ void main() {
   }
 
   Future<void> logIn(WidgetTester tester, String loginId) async {
+    await openIdSheet(tester);
     await tester.enterText(field('아이디'), loginId);
     await tester.enterText(field('비밀번호'), 'password1');
     await tester.tap(find.text('로그인'));
@@ -222,6 +243,7 @@ void main() {
     await start(tester, InMemoryAuthRepository(), rules: rules);
     final read = rules.holdRead();
     final write = rules.holdWrite();
+    await openIdSheet(tester);
     await tester.tap(find.text('처음이신가요? 회원가입'));
     await tester.pumpAndSettle();
     await tester.enterText(field('닉네임'), '우현');
@@ -258,6 +280,7 @@ void main() {
       ..addAccount(loginId: 'woohyun', nickname: '우현', password: 'password1');
     await start(tester, auth, rules: rules);
     final read = rules.holdRead();
+    await openIdSheet(tester);
     await tester.enterText(field('아이디'), 'woohyun');
     await tester.enterText(field('비밀번호'), 'password1');
     await tester.tap(find.text('로그인'));
@@ -278,6 +301,7 @@ void main() {
     final auth = InMemoryAuthRepository()
       ..addAccount(loginId: 'woohyun', nickname: '우현', password: 'password1');
     await start(tester, auth);
+    await openIdSheet(tester);
     await tester.enterText(field('아이디'), 'woohyun');
     await tester.enterText(field('비밀번호'), 'password2');
     await tester.tap(find.text('로그인'));
@@ -332,7 +356,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.byType(HistoryScreen), findsNothing);
-    expect(find.text('로그인이 만료됐어요. 다시 로그인해 주세요.'), findsOneWidget);
+    // P8: the box shows the first sentence in bold, the rest under it.
+    expect(find.text('로그인이 만료됐어요.'), findsOneWidget);
+    expect(find.text('다시 로그인해 주세요.'), findsOneWidget);
   });
 
   // Updated for the game lobby (W1): the 홈 | 기록 tabs are gone, and the
@@ -352,12 +378,12 @@ void main() {
       final auth = InMemoryAuthRepository();
       final google = FakeSocialSignIn(SocialProvider.google, token: 'g-1');
       await start(tester, auth, google: google);
-      await tester.tap(find.text('Google로 계속하기'));
+      await tester.tap(find.text('Google로 시작하기'));
       await tester.pumpAndSettle();
       // A new provider account picks its nickname first.
       expect(find.byType(SocialSignupScreen), findsOneWidget);
       await tester.enterText(field('닉네임'), '우현');
-      await tester.tap(find.text('가입하기'));
+      await tester.tap(find.text('시작하기'));
       await tester.pumpAndSettle();
       expect(find.byType(BodyInfoScreen), findsOneWidget);
       expect(find.text('더 정확한 피드백 정보를 드리는 데 도움이 됩니다.'), findsOneWidget);
@@ -379,10 +405,10 @@ void main() {
       final auth = InMemoryAuthRepository();
       final google = FakeSocialSignIn(SocialProvider.google, token: 'g-2');
       await start(tester, auth, google: google);
-      await tester.tap(find.text('Google로 계속하기'));
+      await tester.tap(find.text('Google로 시작하기'));
       await tester.pumpAndSettle();
       await tester.enterText(field('닉네임'), '현우');
-      await tester.tap(find.text('가입하기'));
+      await tester.tap(find.text('시작하기'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('건너뛰기'));
       await tester.pumpAndSettle();
@@ -390,7 +416,7 @@ void main() {
       await tapStart(tester);
       await logOut(tester);
 
-      await tester.tap(find.text('Google로 계속하기'));
+      await tester.tap(find.text('Google로 시작하기'));
       await tester.pumpAndSettle();
       expect(find.byType(BodyInfoScreen), findsNothing);
       expect(find.byType(HelpScreen), findsNothing);
@@ -403,7 +429,7 @@ void main() {
       final auth = InMemoryAuthRepository();
       final google = FakeSocialSignIn(SocialProvider.google, token: 'g-1');
       await start(tester, auth, google: google);
-      await tester.tap(find.text('Google로 계속하기'));
+      await tester.tap(find.text('Google로 시작하기'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('뒤로'));
       await tester.pumpAndSettle();
@@ -422,7 +448,7 @@ void main() {
         error: const SocialSignInCancelledException(),
       );
       await start(tester, InMemoryAuthRepository(), google: google);
-      await tester.tap(find.text('Google로 계속하기'));
+      await tester.tap(find.text('Google로 시작하기'));
       await tester.pumpAndSettle();
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.textContaining('실패'), findsNothing);
@@ -437,10 +463,10 @@ void main() {
         InMemoryAuthRepository(store: tokens),
         google: google,
       );
-      await tester.tap(find.text('Google로 계속하기'));
+      await tester.tap(find.text('Google로 시작하기'));
       await tester.pumpAndSettle();
       await tester.enterText(field('닉네임'), '우현');
-      await tester.tap(find.text('가입하기'));
+      await tester.tap(find.text('시작하기'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('건너뛰기'));
       await tester.pumpAndSettle();

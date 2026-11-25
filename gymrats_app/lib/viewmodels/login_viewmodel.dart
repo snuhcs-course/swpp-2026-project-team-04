@@ -13,6 +13,8 @@ class LoginState {
     this.formError,
     this.submitting = false,
     this.signingInWith,
+    this.cancelledWith,
+    this.failedWith,
   });
 
   /// Shown under the field; null when the field is fine.
@@ -27,6 +29,14 @@ class LoginState {
 
   /// The Google login that is running; null when none is.
   final SocialProvider? signingInWith;
+
+  /// The Google login the user backed out of, until the next attempt or
+  /// edit (the login screen's grey "로그인을 취소했어요" line, P8).
+  final SocialProvider? cancelledWith;
+
+  /// The Google login whose failure [formError] tells; null when
+  /// [formError] comes from the id form or an expired session (P8).
+  final SocialProvider? failedWith;
 
   /// Any login is running: every login button does nothing.
   bool get busy => submitting || signingInWith != null;
@@ -55,12 +65,14 @@ class LoginViewModel extends ChangeNotifier {
 
   LoginState get state => _state;
 
-  /// Clears the errors once the user types again.
+  /// Clears the errors, and a cancelled Google login's note, once the user
+  /// types again or turns to the id form.
   void edited() {
     if (_state.busy) return;
     if (_state.loginIdError == null &&
         _state.passwordError == null &&
-        _state.formError == null) {
+        _state.formError == null &&
+        _state.cancelledWith == null) {
       return;
     }
     _set(const LoginState());
@@ -117,20 +129,23 @@ class LoginViewModel extends ChangeNotifier {
       _set(const LoginState());
       return true;
     } on SocialSignInCancelledException {
-      _set(const LoginState());
+      _set(LoginState(cancelledWith: provider));
     } on SocialSignInFailedException {
-      _set(LoginState(formError: socialFailedMessage(provider)));
+      _failed(provider, socialFailedMessage(provider));
     } on SocialTokenRejectedException {
-      _set(LoginState(formError: socialFailedMessage(provider)));
+      _failed(provider, socialFailedMessage(provider));
     } on SocialLoginUnavailableException {
-      _set(LoginState(formError: socialUnavailableMessage(provider)));
+      _failed(provider, socialUnavailableMessage(provider));
     } on ApiException catch (e) {
-      _set(LoginState(formError: e.message));
+      _failed(provider, e.message);
     } on Exception {
-      _set(const LoginState(formError: genericErrorMessage));
+      _failed(provider, genericErrorMessage);
     }
     return false;
   }
+
+  void _failed(SocialProvider provider, String message) =>
+      _set(LoginState(formError: message, failedWith: provider));
 
   /// The new provider account the last [signInWith] found, once; null
   /// otherwise. LoginScreen opens the nickname step with it.

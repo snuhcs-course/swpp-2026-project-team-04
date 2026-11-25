@@ -3,15 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/arcade_ai_level.dart';
+import 'package:gymrats_app/models/arcade_progress.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/screens/arcade_boss_screen.dart';
+import 'package:gymrats_app/screens/arcade_screen.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/screens/character_select_screen.dart';
 import 'package:gymrats_app/screens/coach_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
+import 'package:gymrats_app/screens/hold_stage_screen.dart';
 import 'package:gymrats_app/screens/home_screen.dart';
 import 'package:gymrats_app/screens/match_setup_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
@@ -19,7 +24,10 @@ import 'package:gymrats_app/screens/online_lobby_screen.dart';
 import 'package:gymrats_app/screens/play_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
+import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
+import 'package:gymrats_app/services/audio/sound_services.dart';
 import 'package:gymrats_app/services/feedback/goal_store.dart';
+import 'package:gymrats_app/services/friends/friend_repository.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
@@ -31,6 +39,7 @@ import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/character_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/coach_viewmodel.dart';
+import 'package:gymrats_app/widgets/arcade_stage_sheet.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/exercise_sheet.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
@@ -113,27 +122,83 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// Opens 게임 시작, then the AI 1v1 page.
-  Future<void> openBotSetup(WidgetTester tester) async {
+  /// Opens 게임 시작, then the arcade's map (P16).
+  Future<void> openArcade(WidgetTester tester) async {
     await tapAndSettle(tester, '게임 시작');
-    await tapAndSettle(tester, 'AI 1v1');
+    await tapAndSettle(tester, '아케이드');
   }
 
-  /// Chooses push-ups and 초보 on the AI 1v1 page, starts, and lets the
-  /// matching page slide in. The radar keeps turning, so pumpAndSettle would
-  /// only return after the bot is found.
+  /// Opens the matching page for a push-up bot at 초보, as a past AI 1v1
+  /// battle's 다시 대결 still does (P16 took AI 1v1 off 게임 시작), and lets
+  /// it slide in. The radar keeps turning, so pumpAndSettle would only
+  /// return after the bot is found.
   Future<void> startMatching(WidgetTester tester) async {
-    await openBotSetup(tester);
-    await tester.tap(find.text('초보'));
-    await tester.pump();
-    await tester.tap(find.text('대결 시작'));
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .pushNamed(
+          GymRatsApp.matchingRoute,
+          arguments: const BotMatchRequest(
+            exercise: ExerciseType.pushUp,
+            difficulty: BotDifficulty.beginner,
+          ),
+        );
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
   }
 
-  testWidgets('start leads through matching to versus; cancelling goes home', (
-    tester,
-  ) async {
+  /// The app with [best] stars saved for the signed-in account's arcade.
+  GymRatsApp arcadeApp(List<int> best) => GymRatsApp(
+    authRepository: signedInAuth(),
+    userRepository: InMemoryUserRepository(),
+    arcadeStore: MemoryArcadeProgressStore()
+      ..saved[testAccount.id] = ArcadeProgress(best),
+  );
+
+  /// 도전 on the stage sheet.
+  Finder sheetChallenge() => find.descendant(
+    of: find.byType(ArcadeStageSheet),
+    matching: find.text('도전'),
+  );
+
+  testWidgets('게임 시작 leads through the arcade to a stage\'s versus; '
+      'leaving goes back to the arcade (P16 spec 2 and 6)', (tester) async {
+    await _openApp(tester);
+    await openArcade(tester);
+    expect(find.byType(ArcadeScreen), findsOneWidget);
+    // A new account plays STAGE 1: the bar's 도전 opens its sheet.
+    expect(find.text('STAGE 1 · 1F'), findsOneWidget);
+    await tapAndSettle(tester, '도전');
+    expect(find.byType(ArcadeStageSheet), findsOneWidget);
+    await tester.tap(sheetChallenge());
+    await tester.pumpAndSettle();
+
+    expect(find.text('STAGE 1'), findsOneWidget);
+    expect(find.text('아케이드로'), findsOneWidget);
+    expect(find.text('RepBot'), findsOneWidget);
+    expect(find.text('AI LV 1'), findsOneWidget);
+    final matchup = tester
+        .widget<VersusScreen>(find.byType(VersusScreen))
+        .matchup;
+    expect(matchup.opponent.name, 'STAGE 1 · RepBot');
+    expect(matchup.opponent.pace, ArcadeAiLevel.lv1);
+
+    // Back only asks; leaving returns to the arcade's map, not home.
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('게임에서 나갈까요?'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ExitDialog),
+        matching: find.text('게임 나가기'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(VersusScreen), findsNothing);
+    expect(find.byType(ArcadeScreen), findsOneWidget);
+  });
+
+  testWidgets('the matching page still leads to versus; cancelling goes '
+      'home', (tester) async {
     await _openApp(tester);
     expect(find.text('GYMMOUSE'), findsOneWidget);
 
@@ -162,40 +227,101 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // Past 게임 시작 and AI 1v1, straight to home.
+    // Straight to home.
     expect(find.byType(PlayScreen), findsNothing);
     expect(find.text('GYMMOUSE'), findsOneWidget);
   });
 
-  testWidgets('the AI 1v1 page leads to a squat bot at the level chosen', (
-    tester,
-  ) async {
-    await _openApp(tester);
-    await openBotSetup(tester);
-    await tester.tap(find.text('스쿼트'));
-    await tester.tap(find.text('고수'));
-    await tester.pump();
-    expect(find.text('스쿼트 · RepBot 고수 · 30초 대결'), findsOneWidget);
-
-    await tester.tap(find.text('대결 시작'));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('고수 AI 상대를 찾는 중'), findsOneWidget);
-    expect(
-      tester.widget<MatchingScreen>(find.byType(MatchingScreen)).exercise,
-      ExerciseType.squat,
-    );
-
-    // The bot answers 3 seconds after the search started.
-    await tester.pump(const Duration(seconds: 2));
+  testWidgets('stage 2 opens 펭뚱이\'s squats at AI LV 2 once stage 1 has a '
+      'star', (tester) async {
+    await _openApp(tester, arcadeApp([1, for (var i = 1; i < 24; i++) 0]));
+    await openArcade(tester);
+    expect(find.text('STAGE 2 · 1F'), findsOneWidget);
+    await tapAndSettle(tester, '도전');
+    await tester.tap(sheetChallenge());
     await tester.pumpAndSettle();
     final matchup = tester
         .widget<VersusScreen>(find.byType(VersusScreen))
         .matchup;
     expect(matchup.exercise, ExerciseType.squat);
-    expect(matchup.opponent.name, 'AI 봇 · 고수');
-    expect(matchup.opponent.difficulty, BotDifficulty.expert);
+    expect(matchup.opponent.characterId, 'penguin');
+    expect(matchup.opponent.pace, ArcadeAiLevel.lv2);
+    expect(matchup.opponent.arcadeStage, 2);
+    expect(find.text('펭뚱이'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group("a friend's invite on the arcade (#95's alert)", () {
+    const friend = FriendPerson(id: 2, nickname: '헬창', code: '헬창#0002');
+    final invite = find.text('헬창님이 푸쉬업 대결을 신청했어요');
+
+    /// The app with [best] saved for the arcade and a friend's push-up
+    /// invite waiting.
+    GymRatsApp invitedApp(List<int> best) {
+      final friends = InMemoryFriendRepository()..friends.add(friend);
+      friends.receiveInvite(friend, ExerciseType.pushUp);
+      return GymRatsApp(
+        authRepository: signedInAuth(),
+        userRepository: InMemoryUserRepository(),
+        arcadeStore: MemoryArcadeProgressStore()
+          ..saved[testAccount.id] = ArcadeProgress(best),
+        friendRepository: friends,
+      );
+    }
+
+    /// The app's alert has read the invite.
+    Future<void> settleInvite(WidgetTester tester) async {
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+    }
+
+    Future<void> openWith(WidgetTester tester, List<int> best) async {
+      await _openApp(tester, invitedApp(best));
+      await settleInvite(tester);
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(invite, findsOneWidget, reason: 'on home');
+      await openArcade(tester);
+      await settleInvite(tester);
+    }
+
+    testWidgets("it shows on the arcade's map as on home, and waits while a "
+        "fight's sheet is open", (tester) async {
+      await openWith(tester, [for (var i = 0; i < 24; i++) 0]);
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(invite, findsOneWidget);
+      await tapAndSettle(tester, '도전');
+      expect(find.byType(ArcadeStageSheet), findsOneWidget);
+      expect(invite, findsNothing);
+      await tapAndSettle(tester, '닫기');
+      expect(invite, findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('it waits while a hold stage is open, and shows again on the '
+        'map', (tester) async {
+      SoundServices.shared = SoundServices.silent();
+      addTearDown(() => SoundServices.shared = null);
+      await openWith(tester, [3, 3, for (var i = 2; i < 24; i++) 0]);
+      expect(invite, findsOneWidget);
+      await tapAndSettle(tester, '도전');
+      expect(find.byType(HoldStageScreen), findsOneWidget);
+      expect(invite, findsNothing);
+      await tester.tap(find.bySemanticsLabel('지도로'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ArcadeScreen), findsOneWidget);
+      expect(invite, findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets("it waits while a boss match's intro is open", (tester) async {
+      await openWith(tester, [3, 3, 3, 3, 3, for (var i = 5; i < 24; i++) 0]);
+      expect(invite, findsOneWidget);
+      await tapAndSettle(tester, '도전');
+      expect(find.byType(ArcadeBossScreen), findsOneWidget);
+      expect(invite, findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
   });
 
   for (final (name, exercise) in const [
@@ -210,7 +336,7 @@ void main() {
           testApp(createOnlineSession: _QueuedSession.new),
         );
         await tapAndSettle(tester, '게임 시작');
-        await tapAndSettle(tester, '온라인 1v1');
+        await tapAndSettle(tester, '온라인 대결');
         await tester.tap(
           find.descendant(
             of: find.byType(ExerciseSheet),
@@ -240,14 +366,14 @@ void main() {
     }
 
     await tapAndSettle(tester, '게임 시작');
-    await tapAndSettle(tester, '온라인 1v1');
+    await tapAndSettle(tester, '온라인 대결');
     expect(find.byType(ExerciseSheet), findsOneWidget);
     await back();
     expect(find.byType(ExerciseSheet), findsNothing);
     expect(find.byType(PlayScreen), findsOneWidget);
 
-    await tapAndSettle(tester, 'AI 1v1');
-    expect(find.text('RepBot과 겨룰 종목과 난이도를 골라요'), findsOneWidget);
+    await tapAndSettle(tester, '아케이드');
+    expect(find.byType(ArcadeScreen), findsOneWidget);
     await back();
     expect(find.byType(PlayScreen), findsOneWidget);
     await back();
@@ -646,12 +772,10 @@ void main() {
 
     await tester.tap(find.text('홈으로'));
     await tester.pumpAndSettle();
-    // Home loaded again: 게임 시작 offers that battle again, and the AI 1v1
-    // page reads the new best.
+    // Home loaded again: 게임 시작's online sheet reads the new best.
     await tapAndSettle(tester, '게임 시작');
-    expect(find.text('푸쉬업 · AI 1v1 · 고수'), findsOneWidget);
-    await tapAndSettle(tester, 'AI 1v1');
-    expect(find.text('최고 40회'), findsOneWidget);
+    await tapAndSettle(tester, '온라인 대결');
+    expect(find.text('개인 최고 40회', findRichText: true), findsOneWidget);
   });
 
   testWidgets("after a game's result, the best reads in points, not reps", (
@@ -683,9 +807,10 @@ void main() {
 
     await tester.tap(find.text('홈으로'));
     await tester.pumpAndSettle();
-    await openBotSetup(tester);
-    expect(find.text('최고 150점'), findsOneWidget);
-    expect(find.text('최고 7회'), findsNothing);
+    await tapAndSettle(tester, '게임 시작');
+    await tapAndSettle(tester, '온라인 대결');
+    expect(find.text('개인 최고 150점', findRichText: true), findsOneWidget);
+    expect(find.text('개인 최고 7회', findRichText: true), findsNothing);
   });
 
   testWidgets('the sound switches keep what an earlier run saved, and save '
