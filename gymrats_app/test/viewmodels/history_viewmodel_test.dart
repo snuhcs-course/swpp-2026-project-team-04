@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_stats.dart';
 import 'package:gymrats_app/models/match_record.dart';
+import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/viewmodels/history_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/login_viewmodel.dart';
@@ -17,6 +18,20 @@ MatchRecord _record(int mine, {int? id}) => MatchRecord(
   opponentName: 'RepBot',
   myReps: mine,
   opponentReps: 10,
+);
+
+MatchRecord _played(
+  DateTime at, {
+  ExerciseType exercise = ExerciseType.pushUp,
+  bool? online,
+  int reps = 5,
+}) => MatchRecord(
+  exercise: exercise,
+  opponentName: 'RepBot',
+  myReps: reps,
+  opponentReps: 3,
+  playedAt: at,
+  isOnline: online,
 );
 
 /// Friday 2026-11-13, 21:00 local.
@@ -282,6 +297,207 @@ void main() {
       expect(plain.state.phase, HistoryPhase.ready);
       expect(plain.state.archive, isNull);
       expect(plain.state.statsFailed, isFalse);
+    });
+  });
+  group('운동일지 경기 tab (P13)', () {
+    final today = DateTime(2026, 11, 13, 16, 4);
+    final todayEarly = DateTime(2026, 11, 13, 9);
+    final yesterday = DateTime(2026, 11, 12, 21);
+
+    setUp(() {
+      repository.historyPages = [
+        [
+          _played(today, online: true),
+          _played(todayEarly, exercise: ExerciseType.squat, online: false),
+          _played(yesterday, online: false),
+          _played(DateTime(2026, 11, 10, 8)),
+        ],
+      ];
+    });
+
+    test('the chips keep an exercise, online or arcade battles; 전체 keeps '
+        'all', () async {
+      await vm.load();
+      expect(vm.state.filter, ArchiveFilter.all);
+      expect(vm.state.filtered, hasLength(4));
+      vm.setFilter(ArchiveFilter.squat);
+      expect(vm.state.filtered.single.playedAt, todayEarly);
+      vm.setFilter(ArchiveFilter.pushUp);
+      expect(vm.state.filtered, hasLength(3));
+      vm.setFilter(ArchiveFilter.online);
+      expect(vm.state.filtered.single.playedAt, today);
+      // A battle whose kind is not known is neither online nor arcade.
+      vm.setFilter(ArchiveFilter.arcade);
+      expect(vm.state.filtered.map((m) => m.playedAt), [todayEarly, yesterday]);
+      expect(ArchiveFilter.values.map((f) => f.label), [
+        '전체',
+        '푸쉬업',
+        '스쿼트',
+        '온라인',
+        '아케이드',
+      ]);
+    });
+
+    test('the battles are grouped by their local day, newest first', () async {
+      await vm.load();
+      final days = vm.state.days;
+      expect(days.map((d) => d.date), [
+        DateTime(2026, 11, 13),
+        DateTime(2026, 11, 12),
+        DateTime(2026, 11, 10),
+      ]);
+      expect(days.first.matches, hasLength(2));
+      vm.setFilter(ArchiveFilter.online);
+      expect(vm.state.days.single.matches.single.playedAt, today);
+    });
+
+    test('a battle without a time goes with the day before it', () {
+      const untimed = MatchRecord(
+        exercise: ExerciseType.pushUp,
+        opponentName: 'RepBot',
+        myReps: 1,
+        opponentReps: 0,
+      );
+      expect(
+        ArchiveDay.of([_played(today), untimed]).single.matches,
+        hasLength(2),
+      );
+      expect(ArchiveDay.of([untimed]).single.matches, hasLength(1));
+    });
+
+    test('setting the same chip again tells nobody; a reload keeps the '
+        'chip, period and exercise', () async {
+      await vm.load();
+      var told = 0;
+      vm.addListener(() => told++);
+      vm.setFilter(ArchiveFilter.all);
+      vm.setPeriod(StatsPeriod.week);
+      vm.setExercise(ExerciseType.pushUp);
+      expect(told, 0);
+      vm
+        ..setFilter(ArchiveFilter.squat)
+        ..setPeriod(StatsPeriod.month)
+        ..setExercise(ExerciseType.squat);
+      expect(told, 3);
+      repository.historyPages = [
+        [_played(today)],
+      ];
+      await vm.load();
+      expect(vm.state.filter, ArchiveFilter.squat);
+      expect(vm.state.period, StatsPeriod.month);
+      expect(vm.state.exercise, ExerciseType.squat);
+    });
+  });
+
+  group('운동일지 전체 tab (P13)', () {
+    late FakeFeedbackStatsSource stats;
+
+    setUp(() {
+      stats = FakeFeedbackStatsSource([
+        // Last month: only in 전체 기간.
+        statsPoint(1, DateTime(2026, 10, 30, 9), reps: 20, score: 200),
+        // This week (from Monday 11-09).
+        statsPoint(
+          2,
+          DateTime(2026, 11, 10, 9),
+          reps: 4,
+          score: 60,
+          issues: {'reject.insufficientDepth': 3, 'reject.kneesDown': 1},
+        ),
+        statsPoint(
+          3,
+          DateTime(2026, 11, 12, 9),
+          reps: 7,
+          score: 110,
+          issues: {'reject.insufficientDepth': 2},
+        ),
+        statsPoint(
+          4,
+          DateTime(2026, 11, 13, 9),
+          reps: 9,
+          score: 90,
+          exercise: ExerciseType.squat,
+        ),
+        // Not played yet: left out.
+        statsPoint(5, DateTime(2026, 11, 14, 9), reps: 99, score: 999),
+      ]);
+      repository.historyPages = [
+        [_record(7, id: 3)],
+      ];
+      vm = HistoryViewModel(
+        repository: repository,
+        stats: stats,
+        now: () => _now,
+      );
+    });
+
+    test('nothing to show before the battles load', () {
+      expect(vm.growth, isNull);
+    });
+
+    test("this week's push-ups: battles, reps per battle, best score and "
+        'the chart, oldest first', () async {
+      await vm.load();
+      final growth = vm.growth!;
+      expect(growth.period, StatsPeriod.week);
+      expect(growth.exercise, ExerciseType.pushUp);
+      expect(growth.matches, 2);
+      expect(growth.repsPerMatch, 5.5);
+      expect(growth.bestScore, 110);
+      expect(growth.points.map((p) => (p.score, p.reps)), [(60, 4), (110, 7)]);
+    });
+
+    test('the reject reasons of the period, most first', () async {
+      await vm.load();
+      expect(vm.growth!.issues.map((i) => (i.reason, i.count)), [
+        (RejectReason.insufficientDepth, 5),
+        (RejectReason.kneesDown, 1),
+      ]);
+    });
+
+    test('the bests of every exercise come from all battles played', () async {
+      await vm.load();
+      final bests = vm.growth!.bests;
+      expect(bests.map((b) => (b.exercise, b.score, b.reps)), [
+        (ExerciseType.pushUp, 200, 20),
+        (ExerciseType.squat, 90, 9),
+      ]);
+      expect(bests.first.playedAt, DateTime(2026, 10, 30, 9));
+    });
+
+    test('전체 기간 and squats', () async {
+      await vm.load();
+      vm.setPeriod(StatsPeriod.all);
+      expect(vm.growth!.matches, 3);
+      expect(vm.growth!.bestScore, 200);
+      vm.setExercise(ExerciseType.squat);
+      expect(vm.growth!.matches, 1);
+      expect(vm.growth!.issues, isEmpty);
+    });
+
+    test('a period without battles: zeros, no best, no chart', () async {
+      stats.points = [statsPoint(1, DateTime(2026, 10, 30, 9), reps: 20)];
+      await vm.load();
+      final growth = vm.growth!;
+      expect(growth.matches, 0);
+      expect(growth.repsPerMatch, 0);
+      expect(growth.bestScore, isNull);
+      expect(growth.points, isEmpty);
+      // The October battle kept no score: no best either.
+      expect(growth.bests, isEmpty);
+    });
+
+    test('the chart keeps the newest ten; the first of equal bests '
+        'stays', () async {
+      stats.points = [
+        for (var i = 0; i < 12; i++)
+          statsPoint(i, DateTime(2026, 11, 2 + i % 10, 9 + i), score: 50),
+      ];
+      await vm.load();
+      vm.setPeriod(StatsPeriod.all);
+      final growth = vm.growth!;
+      expect(growth.points, hasLength(ArchiveGrowth.chartCount));
+      expect(growth.bests.single.playedAt, DateTime(2026, 11, 2, 9));
     });
   });
 }
