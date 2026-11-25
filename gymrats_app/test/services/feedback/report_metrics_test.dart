@@ -494,6 +494,20 @@ void main() {
     test('a full round is cut at 10 and 20 s', () {
       expect(ReportMetrics.of(report(const [])).splitBounds, [0, 10, 20, 30]);
     });
+
+    test('reps are counted in the thirds the chart names (PR #100 Codex '
+        'review): 5.8 s of a 17 s round is in 0–6초, 6.0 s in 6–11초', () {
+      final m = ReportMetrics.of(
+        report([rep(5800), rep(6000), rep(10900), rep(11000)], round: ko),
+      );
+      expect(m.splitBounds, [0, 6, 11, 17]);
+      expect(m.splitValid, [1, 2, 1]);
+      expect(ReportMetrics.splitOf(const Duration(seconds: 17), ko), 2);
+      expect(
+        ReportMetrics.splitOf(const Duration(seconds: 1), Duration.zero),
+        0,
+      );
+    });
   });
 
   group('the evidence', () {

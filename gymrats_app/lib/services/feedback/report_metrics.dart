@@ -167,10 +167,25 @@ class ReportMetrics {
 
   /// The whole seconds where the thirds of the round begin and end, e.g.
   /// 0, 10, 20, 30, or 0, 6, 11, 17 for a 17 s round cut short by a KO.
-  List<int> get splitBounds => [
+  List<int> get splitBounds => boundsOf(roundLength);
+
+  /// [splitBounds] of a round of [roundLength].
+  static List<int> boundsOf(Duration roundLength) => [
     for (var i = 0; i <= splits; i++)
       (roundLength.inMilliseconds * i / splits / 1000).round(),
   ];
+
+  /// The third a rep at [at] counts in: by the whole-second bounds the
+  /// chart names, so a rep at 5.8 s of a 17 s round is in 0–6초. A rep at
+  /// or past the end is in the last third.
+  static int splitOf(Duration at, Duration roundLength) {
+    if (roundLength <= Duration.zero) return 0;
+    final bounds = boundsOf(roundLength);
+    for (var i = 1; i < splits; i++) {
+      if (at.inMilliseconds < bounds[i] * 1000) return i - 1;
+    }
+    return splits - 1;
+  }
 
   /// Measures [report]. [weightKg] is the user's body weight, null when not
   /// known. [earlier] are other battles kept on the phone, in any order; only
@@ -187,15 +202,12 @@ class ReportMetrics {
     final axes = axesOf(report, analyzer: analyzer, rules: rules);
     final valid = report.validReps;
 
-    final third = report.roundLength.inMicroseconds / splits;
     final splitValid = List.filled(splits, 0);
     final splitInvalid = List.filled(splits, 0);
     final reasons = <RejectReason, int>{};
     var last = Duration.zero;
     for (final rep in report.reps) {
-      final i = third <= 0
-          ? 0
-          : (rep.at.inMicroseconds / third).floor().clamp(0, splits - 1);
+      final i = splitOf(rep.at, report.roundLength);
       if (rep.valid) {
         splitValid[i]++;
       } else {
