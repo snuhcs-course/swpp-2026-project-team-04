@@ -5,23 +5,18 @@ import 'package:provider/provider.dart';
 
 import '../main.dart';
 import '../models/battle_rules.dart';
-import '../models/bot_difficulty.dart';
-import '../models/exercise_type.dart';
-import '../models/exercise_type_korean.dart';
 import '../services/friends/friend_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
-import '../widgets/battle_mode_card.dart';
+import '../widgets/arcade_play_card.dart';
 import '../widgets/exercise_sheet.dart';
 import '../widgets/lobby_parts.dart';
-import 'ai_setup_screen.dart';
 
-/// 게임 시작, from home: online 1v1 and AI 1v1 as two big cards, 친구와의
-/// 대전 under them, and the rules. Reads home's view model. The character
-/// is picked from home's 캐릭터 row (W4). Online is the main match: the
-/// exercise, then the lobby. 친구와의 대전 (P9) opens the friends page, where
-/// a friend and then the exercise are picked, with a dot while a request or
-/// an invite waits.
+/// 게임 시작, from home: 온라인 대결 and 아케이드 as two cards (P16 spec 3,
+/// design `PlayX`), 친구와의 대전 under them, and the rules. Reads home's
+/// view model. The character is picked from home's 캐릭터 row (W4).
+/// 친구와의 대전 (P9) opens the friends page, where a friend and then the
+/// exercise are picked, with a dot while a request or an invite waits.
 class PlayScreen extends StatelessWidget {
   const PlayScreen({super.key});
 
@@ -41,16 +36,6 @@ class PlayScreen extends StatelessWidget {
     );
   }
 
-  void _openBotSetup(BuildContext context) => Navigator.push(
-    context,
-    MaterialPageRoute<void>(
-      builder: (_) => ChangeNotifierProvider<HomeViewModel>.value(
-        value: context.read<HomeViewModel>(),
-        child: const AiSetupScreen(),
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -58,44 +43,26 @@ class PlayScreen extends StatelessWidget {
       behind: const LobbyWatermark('PLAY', left: 150),
       children: [
         const LobbyPageHeader(tag: '01 / PLAY', title: '게임 시작'),
-        const SizedBox(height: AppSpacing.s24),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: BattleModeCard(
-                  tag: 'ONLINE 1V1',
-                  title: '온라인 1v1',
-                  line: '다른 사람과\n실시간으로 대결',
-                  offer: _exercises,
-                  color: AppColors.accent,
-                  shade: AppColors.accentDeep,
-                  picture: const BattleModePicture.online(),
-                  onTap: () => _startOnline(context),
-                ),
+        const SizedBox(height: ArcadePlayCard.topGap),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: ArcadePlayCard.online(onTap: () => _startOnline(context)),
+            ),
+            const SizedBox(width: AppSpacing.s12),
+            Flexible(
+              child: ArcadePlayCard.arcade(
+                onTap: () =>
+                    Navigator.pushNamed(context, GymRatsApp.arcadeRoute),
               ),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(
-                child: BattleModeCard(
-                  tag: 'AI 1V1',
-                  title: 'AI 1v1',
-                  line: 'RepBot과\n난이도별 대결',
-                  offer: BotDifficulty.values
-                      .map((level) => level.label)
-                      .join(' · '),
-                  color: AppColors.opponent,
-                  shade: AppColors.opponentDeep,
-                  shadeRises: false,
-                  picture: const BattleModePicture.bot(),
-                  onTap: () => _openBotSetup(context),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.s12),
         const _FriendBattleRow(),
+        const Spacer(),
         const SizedBox(height: AppSpacing.s16),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -113,10 +80,6 @@ class PlayScreen extends StatelessWidget {
       ],
     );
   }
-
-  static final _exercises = ExerciseType.values
-      .map((exercise) => exercise.koreanName)
-      .join(' · ');
 }
 
 /// 친구와의 대전 (P9): opens the friends page, with a dot while a friend request

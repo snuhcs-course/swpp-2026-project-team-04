@@ -22,10 +22,10 @@ coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub A
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" |
-| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment (no ViewModel changed) | 11/23 | same CI comment |
-| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment (no View changed) | 11/23 | same CI comment |
+| Model | flutter_test | 90% | 99.4% (841/846), CI on `dc5947b` (this code with `main` merged) | 11/24 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | 98.3% (1898/1930; no ViewModel changed), same run | 11/24 | same CI comment |
+| Service | flutter_test, fakes | 85% | 97.5% (4796/4920), same run | 11/24 | same CI comment |
+| View | flutter_test (widget) | 75% | 98.1% (11320/11542; no View changed), same run | 11/24 | same CI comment |
 | API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/23 | – |
 
 - **Tests:** `flutter test` 3908 passed, 0 failed, 10 skipped. `flutter analyze` found no issues. The skipped tests
@@ -66,9 +66,13 @@ coverage. Coverage comes from the PR's CI comment, "Tests and coverage (GitHub A
 - **Other checks:** `ownership_guard.py --check-diff` ok (21 files: 18 code and test files, 3 notes), run with the local harness of the time. On 2026-11-23 I also
   matched the 21 files with the A2 paths of the PM's new harness: none is outside them. Server `pytest` was not run because
   `server/` did not change.
-- **Coverage:** TODO(Woohyun Song): copy the numbers, commit and run link from the PR's CI comment "Tests and coverage
-  (GitHub Actions)".
-- **Shortfalls:** none known before CI reports coverage.
+- **Coverage:** from the CI comment "Tests and coverage (GitHub Actions)" on PR #89's head `dc5947b` (this code
+  with `main` merged in `da3a039`, the entry below, and a notes commit; 2026-11-24 13:19 KST; app and server jobs
+  both succeeded; [run 45324655059](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45324655059)):
+  the table above; app total 98.0% (19235/19635), Other 95.7% (380/397); `flutter test` there 4034 passed,
+  10 skipped, 0 failed; server 97% (157 passed). `test/screens/settings_screen_test.dart` timed out in the
+  per-file coverage run, so its lines are not in the numbers (its tests ran; not an A2 file).
+- **Shortfalls:** none: every layer is above its target (CI, above).
 - **Manual check:** none. A2 has no screen. The arcade screens (P16) use these values.
 - **Notes-only push (2026-11-23):** the PM's new harness names this step A2, "Build arcade stage rules"; these
   notes, the AI notes and the PR now use that name. The code is unchanged at `141c8df`, so the results above
@@ -126,7 +130,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flut
   `da3a039`; the same 10 skips as above). The bot pins pass on the merged code.
 - **Other checks:** `ownership_guard.py --check-diff` OK (21 paths against `origin/main`, as before). Server `pytest`
   was not run: `server/` is `main`'s, unchanged by A2, and `main`'s own checks cover it.
-- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head.
+- **Coverage:** PR #89's CI comment on `dc5947b` (this merge and a notes commit; [run 45324655059](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45324655059)):
+  Model 99.4%, ViewModel 98.3%, Service 97.5%, View 98.1%, total 98.0%, all above target; the numbers are in
+  the first A2 entry's table.
 
 #### 2026-11-23 · code at commit `a5f0d7d` · step A3 `codex/iter5-arcade-art` (Create arcade artwork, team order #8)
 The arcade is split into steps. A3 is the arcade's pictures, with no screen:
@@ -248,7 +254,14 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flut
   `f482e99`; the same 10 skips as `main`'s: a live server smoke test and 9 known push-up judge errors).
 - **Other checks:** `ownership_guard.py --check-diff` OK (28 paths against `origin/main`). Server `pytest` was not run: `server/` is `main`'s,
   unchanged by A3, and `main`'s own checks cover it.
-- **Coverage:** TODO(Woohyun Song): copy the PR's CI comment for this head (the earlier numbers are for `071c7f0`).
+- **Coverage:** from the CI comment "Tests and coverage (GitHub Actions)" on PR #88's head `c1f5f5f` (this merge
+  and a notes commit; 2026-11-24 13:25 KST; app and server jobs both succeeded;
+  [run 45325092621](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45325092621)): Model 99.3% (733/738), ViewModel 98.3%
+  (1898/1930), Service 97.4% (4738/4862), View 98.1% (11533/11756), Other 95.7% (380/397), total 98.0%
+  (19282/19683), all above target; `flutter test` there 3970 passed, 10 skipped, 0 failed; server 97% (157
+  passed). `test/screens/settings_screen_test.dart` timed out in the per-file coverage run, so its lines are not
+  in the numbers (its tests ran; not an A3 file). A3's own files were not split out for this run; its code is
+  unchanged since `071c7f0` (99.5% above).
 
 #### 2026-11-23 · code at commit `1dbf9ec` · step A4 `codex/iter5-hold-plank` (Implement high-plank hold stages, team order #8.3)
 A4 is the arcade's hold stage, played with the high plank (the local design hand-off's spec `p16-3/SPEC.md` v3, not committed):
@@ -300,7 +313,9 @@ synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fake
   the warning marks, and the results sat 28 dp low. After the fixes the scenes match within a few pixels. Where the
   camera picture is, the shots show a gray figure; the app shows the camera, and the figure only while there is no
   picture.
-- **Coverage:** TODO(Woohyun Song): copy the CI comment of the A4 PR (commit, run link, per-layer numbers, A4's files).
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #90's base is `codex/iter5-arcade-stages`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 - **Phone check (spec 9, Galaxy S26+), done 2026-11-24** by the user (the user's message of 2026-11-24 02:52, logged
   in A5's Prompt Log under `codex/iter5-hold-chair`), with `lib/demo/hold_stage_demo.dart` built from the worktree's
   HEAD then, A5's `e17e332`, which holds A4's code up to `4ef8a2f` (the one-arm fix). The USB cable was out, so no console numbers were seen. STAGE 3 · 1F: ① 30 s held: a
@@ -338,7 +353,7 @@ synthetic pose frames (`test/support/pose_fixtures.dart`) and fake clocks (`fake
   says …' (4 tests); 'the bar fills toward the third star, its marks light'; 'the leave button asks with the battle's
   dialog'
 - Chair icons and figure with a stand-in bundle (spec 3) → 'the chair pose's drawings, with a stand-in bundle' (3 tests)
-- Phone check → above (2026-11-24); the effects' phone check is the last TODO, in the effects entry below.
+- Phone check → above (2026-11-24); the effects' phone check, done at the last phone check, in the effects entry below.
 
 #### 2026-11-23 · code at commit `1c325ab` · step A4 follow-up on `codex/iter5-hold-plank` (two gaps found while starting A5)
 Starting A5 (the chair pose, spec `p16-4/SPEC.md` v2, not committed) showed two things the chair pose needs from A4's
@@ -375,7 +390,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Other checks:** `ownership_guard.py --check-staged` OK on both commits; `--check-diff` OK (64 paths against
   `origin/main`); the stacked-branch intersection with A2's and A3's branches still lists 21 paths (the 18 A4 files and
   the three personal notes).
-- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #90's base is `codex/iter5-arcade-stages`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 
 ### Test cases added or changed in the follow-up
 | Layer | File | What it covers |
@@ -406,7 +423,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (64 paths).
 - **Review:** local reviewer run 7, APPROVE; it also ran the new tests on the old code (they fail with the reported
   numbers). Its two Minors were fixed before the commit: the side margin above, and the font note above.
-- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #90's base is `codex/iter5-arcade-stages`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 
 ### Test cases added in the second follow-up
 | Layer | File | What it covers |
@@ -438,7 +457,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   are folded too), as the push-up judge also uses the mean for its top and the smaller arm only for its lockout. Its
   Minors were fixed before the commit: two comments named the review as "Codex review on A4" (now "PR #90 review"),
   and this entry lacked these two lines.
-- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #90's base is `codex/iter5-arcade-stages`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 
 ### Test cases added in the third follow-up
 | Layer | File | What it covers |
@@ -485,12 +506,26 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   screen check that could not fail (now: the frames in the moment are not read), and this entry's counts and lines.
   The clear ended by warnings (no "실패!") was the session's call: said in the PR and asked of the user, who kept it
   on 2026-11-24. Run 10: APPROVE (all fixed; no new code finding).
-- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
-- **Phone check of the effects (the last phone check):** TODO(Woohyun Song): with the demo, see the start bubble, both
-  cheers with the star pop and the sound, the fail bubble with the warning kept, the reasons on the fail screen (also
-  for ③ knees down and ⑤ standing up as the second warning, whose words the first check could not read), a clear
-  ended by warnings ("삐익!", the win jingle, the clear), and the music through a stage and after leaving; and that
-  the leave button goes at a second warning and stays gone until the result (the fifth follow-up below).
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #90's base is `codex/iter5-arcade-stages`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Phone check of the effects: the last phone check, done 2026-11-24 22:21–22:25** by the user on the Galaxy
+  S26+ with the build of `21fc291` (it holds A4's `d56e1f5`), the phone off the laptop, checked on a screen
+  recording. Recorded on P16's branch: A2–A5 take no more commits after their Codex reviews (the user,
+  2026-11-24; the message is in P16's Prompt Log). STAGE 3 (the high plank), two rounds:
+  - First round: a 30 s clear with three stars: "그대로 버텨!", ★1 "좋아!", ★2 "잘한다!", and the stars' pop.
+  - Second round: warnings at 0:02 and 0:05 ("무릎 떼요"). At the second, "실패!" and the warning's words showed
+    together for about 1.4 s and the leave button was gone; the fail screen had two reason chips.
+  - The sounds, from the app's audio in the recording: the setup track, then the battle track right after GO; a
+    short sound right after ★1 and right after ★2; the whistle at the first warning; at the second warning the
+    battle track stopped and the jingle started; at the 30 s clear the jingle started (about 4 s).
+  - Timed on the recording: "그대로 버텨!" was covered by the GO! text for its first 0.6–0.8 s and clearly seen
+    for about 1.2 s; each star bubble for about 1 s. The user finds them too fast: a follow-up after the merge.
+  - The second warning was standing up, but its reason read "무릎 떼요": checked in the follow-up.
+  - Not in the recording: a clear ended by warnings after a star ("삐익!", the win jingle, the clear). It stands
+    on the tests 'a clear by two warnings lights the stars held' and 'a clear ended by warnings plays the win
+    jingle at once'. Leaving mid-stage is not in the results either ('leaving before a result brings the menu
+    music back').
 
 ### Test cases added in the effects follow-up
 | Layer | File | What it covers |
@@ -513,7 +548,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   here. Plan: watch it in the PR's CI run; it is not A4's file, so it is left to that file's owner if it fails again.
 - **Review:** local reviewer A4 run 11, APPROVE; its five Minors were fixed before the commit (two references a reader
   of this branch could not follow, the timing note, this failure's reason and plan, the local status row).
-- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #90's base is `codex/iter5-arcade-stages`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 
 #### 2026-11-24 · code at commit `94f6416` · step A4, fourth follow-up on `codex/iter5-hold-plank` (the leave dialog at a stage's end; `main` merged in)
 The P16 session found, and the user had it fixed (local task.md, A4 Decisions, 2026-11-24): in a second warning's
@@ -547,7 +584,9 @@ then the same as A4's entry above.
   notes, by exactly the lower step's own entry. Its Minors: these AI notes lacked the follow-ups' evidence (a short
   block added to A4's section), the local status row (updated), and one left for the user: in the 1.5 s the leave
   button is still drawn and announced, though it opens nothing, while the battle hides its button once decided.
-- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #90's base is `codex/iter5-arcade-stages`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 
 ### Test cases added in the fourth follow-up
 | Layer | File | What it covers |
@@ -577,8 +616,11 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   1.5 s in both cases, the third-star path and back in the moment, and that `94f6416` stays. Its three Minors were
   fixed: "optional" in this entry (the parameter is nullable, still required), the third-star check (`f28cac6`), and
   the PR body.
-- **Coverage:** TODO(Woohyun Song): copy the A4 PR's CI comment for this head.
-- **Phone check:** in the last phone check (the effects entry's TODO above).
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #90's base is `codex/iter5-arcade-stages`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Phone check:** done at the last phone check (the effects entry above): at the second warning the leave
+  button was gone while "실패!" showed.
 
 ### Test cases added or changed in the fifth follow-up
 | Layer | File | What it covers |
@@ -645,7 +687,9 @@ scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `Mem
   The "삐익!" bubble first looked half its size: it pops in over 0.22 s and the capture was taken in that frame; taken
   0.5 s later it matches. Where the shots draw the "엉덩이" line on the gray figure, the app draws the squat lines over
   the camera (`chair_hold_stage_test.dart` checks them with a camera controller).
-- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment (commit, run link, per-layer numbers, A5's file).
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #92's base is `codex/iter5-hold-plank`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 - **Phone check (spec 7, Galaxy S26+), done 2026-11-24** by the user (the user's message of 2026-11-24 02:52, in the
   Prompt Log), with `lib/demo/hold_stage_demo.dart` built from the worktree's HEAD then, `e17e332` (the chair code of
   `77e1a75`, A4's code up to `4ef8a2f`). STAGE 5 · 1F: ⑤ sitting down slowly: no warning; ① 20 s held: a clear;
@@ -658,7 +702,9 @@ scripted `SetupViewModel` over `FakeCameraService` and `FakePoseEstimator`, `Mem
 - **Shortfall against spec 7:** its last item asks for the depth range of a good chair pose and the knee ratios
   (good, knees in) in these notes; they were not seen. The user's decision (2026-11-24): they are measured at the last
   phone check, with the USB cable in, from the `flutter run` console (the lines to read are in the start bubble's
-  entry below).
+  entry below). They could not be seen there: the last phone check (2026-11-24 22:21–22:25) did not try the chair
+  pose and had to run with the phone off the laptop, so there was no console. TODO(Woohyun Song): whether and when
+  to measure them (the user's decision).
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
@@ -700,7 +746,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   passed (37 + 10).
 - **New tests:** 7 in `test/services/pose/chair_hold_test.dart`; 4 changed (the depth parity test now reads the frames
   as the 3·2·1 does; the 12 s test takes GO at 1 s and expects the real 0.9; the two follow tests run in the 3·2·1).
-- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #92's base is `codex/iter5-hold-plank`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 - **Review:** local reviewer A5 run 4, APPROVE; it ran the new tests on the old reader (8 fail) and on a reader that
   never follows (the 3·2·1 tests fail), so both halves of the rule are guarded. Its Minors were fixed before the
   commit (the skips' reason here, two wording lines in the AI notes, a halfway-up step in 'after GO it never
@@ -710,7 +758,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   normally stands through the 3·2·1.
 - **Phone check:** ⑤ (sitting down slowly) checks this change: done 2026-11-24 on `e17e332`, no warning (A5 entry
   above). The slow rise after GO above is not in the user's results. The user's decision (2026-11-24): the last phone
-  check tries it once (the start bubble's entry below says how and which console lines to read).
+  check tries it once (the start bubble's entry below says how and which console lines to read). It could not
+  be tried: the last phone check had to run with the phone off the laptop (no console), and the chair pose was
+  not tried.
 
 ### Test cases added or changed in the follow-up
 | Layer | File | What it covers |
@@ -731,12 +781,16 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
 - **Other checks:** `ownership_guard.py --check-staged` OK; `--check-diff` OK (67 paths).
 - **Review:** local reviewer A5 run 5, APPROVE; its Minors fixed before the commit (stronger size checks, these
   lines, the Prompt Log's order).
-- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
-- **Phone check of the start bubble (the last phone check, with A4's effects):** TODO(Woohyun Song): STAGE 5 · 1F,
-  the two lines from GO while standing and sitting down, gone when the time starts; the cheers, "실패!" with the
-  warning kept and the reasons on the fail screen, as in A4's effects entry. With the USB cable in
-  (`flutter run -t lib/demo/hold_stage_demo.dart -d <device>`, a debug build), two more (the user's decisions,
-  2026-11-24):
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #92's base is `codex/iter5-hold-plank`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Phone check of the start bubble (the last phone check, with A4's effects):** not done: the chair pose was not
+  tried at the last phone check (2026-11-24 22:21–22:25, the build of `21fc291`, the phone off the laptop);
+  recorded on P16's branch, as A4's. The chair's judging stands on the check of 02:52 on `e17e332` (the A5 entry
+  above), the two-line start bubble on the tests (the criteria below). The two console checks planned with it
+  (the user's decisions, 2026-11-24) could not be seen: they need the USB cable in (`flutter run -t
+  lib/demo/hold_stage_demo.dart -d <device>`, a debug build), and the check had to run with the phone off the
+  laptop. TODO(Woohyun Song): whether and when to run them (the user's decision). Left as planned:
   1. **The numbers of spec 7.** The reader prints twice a second, on Android after `I/flutter (…):`,
      `chair_hold <3-2-1|hold> depth=<0.000> knees=<0.000> standingThigh=<0.0> <reading>`; each number is `null`
      until it exists (depth and the standing thigh until a standing thigh is taken, knees until a frame shows both
@@ -780,7 +834,9 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   message (now a TODO for the user's choice), the missing numbers of spec 7 named as a shortfall (TODO), one word
   added to the user's statement in the AI notes, these lines. One was left: `origin/main` is ahead of every stage
   branch; it is merged up the stack before the PRs leave draft (not a notes change).
-- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #92's base is `codex/iter5-hold-plank`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 
 #### 2026-11-24 · code at commit `4767873` (A5 unchanged) · step A5: `main` and A4's leave dialog fix merged in
 No A5 code changed. At the user's word (2026-11-24, the Prompt Log under A4's heading), `origin/main` `69b0520`
@@ -803,7 +859,9 @@ then the same as the A5 entry above.
   the shin, the reader from 0.7); now a half squat held through the count, the two lines, what to do when a thigh
   was taken, and what to write if no bend works. Minors: the two fault ids, and `null` before a value exists. All
   fixed; run 8: APPROVE (its one Minor, run 7 missing from the AI notes, fixed before the commit).
-- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #92's base is `codex/iter5-hold-plank`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 
 #### 2026-11-24 · code at commit `200816d` (tests only) · step A5: A4's leave button fix merged in
 No A5 app code changed. At the user's word (2026-11-24, the Prompt Log under A4's heading), A4 `d56e1f5` was merged in
@@ -829,9 +887,754 @@ Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): the s
   files equal A4's), A5's own lines untouched, the conflict, and that `origin/main` had not moved. Its one Minor: no
   chair-stage test checked the leave button, though the entry has no time limit and the button is its way out
   (decision 9.3); fixed in `200816d`.
-- **Coverage:** TODO(Woohyun Song): copy the A5 PR's CI comment for this head.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #92's base is `codex/iter5-hold-plank`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
 
 ### Test cases added or changed with A4's leave button fix
 | Layer | File | What it covers |
 |---|---|---|
 | View | `test/services/pose/chair_hold_stage_test.dart` | 'standing after GO: 0:00, 버틴 시간, a green frame, no warning' now also finds the leave button's icon and its semantics label `게임 나가기` while entering; new 'a second warning: no leave button until the result' (hips up twice: the button there after the first, gone from the second, still gone 0.1 s before the end, then 다시 도전) |
+
+#### 2026-11-23 · code at commit `c8d6044` · step P16 `codex/iter5-ai-opponents` (Build arcade screens, team order #8.5)
+P16 builds the arcade's screens on A2's rules and A3's art (P16 spec v2):
+- **게임 시작:** two cards, 온라인 대결 and 아케이드 (design `PlayX`); the AI 1v1 card and the 이어하기 row are gone.
+- **아케이드 홈:** the building's map with the 24 stages, the stars of 72, the bar with the stage to play, the stage
+  sheet.
+- **Stages:** a fight through the versus screen and the battle to its clear or fail; a boss match with its intro, R1,
+  the break, R2 and the floor cleared (4F: 4층 클리어 with 5F 공사중). Stars are kept per account.
+- **Shared screens, values only:** the battle gets the stage's character, AI level, floor rules, floor picture and
+  boss round; the versus screen and the report name the stage. Online battles do not change.
+- **Not yet:** section 8, the hold stages, waits for `codex/iter5-hold-chair` (A4 and A5) on origin.
+
+The branch starts at `1ae69d1` (A2 `f074474` + A3 `071c7f0`). I ran the commands from the Plan in `gymrats_app/` on
+Windows, on `7677fb6` (code `c8d6044`; `7677fb6` only merges A3's two newer note commits), without coverage. Coverage
+comes from the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (no service changed) | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/23 | – |
+
+- **Tests:** `flutter test` 4131 passed, 0 failed, 10 skipped. `flutter analyze` found no issues. The 10 skipped tests
+  are the same as on `main` (the live team-server smoke test and 9 known push-up judge errors).
+- **Count change:** the 10 new test files hold 128 tests (view model 30, map 13, parts 26, flow 16, home 12, boss 9,
+  matchup 9, sheet 6, result frame 4, play card 3). Changed files gained 26 (result screen 6, versus 5, battle 5,
+  stage 4, arena 2, theme 2, report 1, exit button 1). In `play_screen_test.dart` and `main_test.dart` 7 AI 1v1 tests
+  were replaced by 7 arcade ones (spec 3, 13.1).
+- **Bugs the tests found before the phone:** the stage sheet's route semantics asserted (`scopesRoute` without
+  `explicitChildNodes`); a band row and a star row overflowed (the design's 1-point gap is between the three stars,
+  not after each); the floors' name tags did not show until the first scroll. Each test failed first, then passed.
+- **Earlier failing runs, fixed in this step:** the first full run after the play page changed had 20 failing tests
+  in `main_test.dart`, `play_screen_test.dart`, `home_screen_test.dart` and `online_lobby_screen_test.dart`: they went
+  through the AI 1v1 card, the 이어하기 row or the card name "온라인 1v1". They were rewritten for the arcade, or their
+  one line was changed (the two exception files list).
+- **Reviewer:** run 1 CHANGES_REQUESTED (4 Major, 5 Minor), run 2 APPROVE with one Minor, fixed. The fixes added 11
+  view-model tests (the battle's outcome; the AI level and floor rules handed to the battle).
+- **Power loss:** at about 19:50 the laptop lost power during a test run. Afterwards the branch, `index.lock`, the
+  diffs and the line endings were checked; nothing was half-written.
+- **Other checks:** `ownership_guard.py --check-diff` ok (46 paths, run by the reviewer on the uncommitted tree; the
+  commits passed `--check-staged` in the hook). The design-token rules of `test/design_tokens_test.dart` now also
+  check the 9 new arcade screen and widget files. Server `pytest` was not run because `server/` did not change.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** section 8 (hold stages) is not done: `codex/iter5-hold-chair` is not on origin yet. Until then the
+  map's hold stages do nothing, so a player stops at STAGE 3 in the app.
+- **Manual check:** on the Galaxy S26+ (spec 12), checked on 2026-11-24 on `9b59537` (the `b03ca98` entry below; the boss match through R2 and the 2F fever seen at the last phone check, the `7362fb4` entry's Manual check): 1F from the start to the boss once (with the
+  hold stages, after section 8), the 2F first stage's fever from 15 s, and the map's stars and locks.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/matchup_test.dart` (new) | `Opponent.arcade`: record name "STAGE n · 캐릭터" and "STAGE n Rk · 캐릭터", character, pace, stage, round; other opponents unchanged; `isArcadeName` |
+| ViewModel | `test/viewmodels/arcade_viewmodel_test.dart` (new) | progress per account, a failed read, a late answer dropped, refresh, sign-out; `record` keeps the most stars, a failed store keeps the progress; boss run; stage request; `finishBattle` for every fight and boss case and outside the arcade; `rulesOf`, `botOf`, `battleOf`; `ArcadeWords` |
+| View | `test/screens/arcade_screen_test.dart` (new) | header only while reading; 17 of 72 stars; the bar; first scroll (STAGE 8 in the middle, STAGE 1 at the end, all cleared at the top); the sheet; cell taps (fight, hold hook, boss, locked); back from a stage reads again and opens the stage asked for; tap targets and labels |
+| View | `test/screens/arcade_flow_test.dart` (new) | fight won by KO, lost, draw; 다시 도전, 아케이드로, back, 다음 스테이지; boss R1 lost, break then R2 lost, both won with the next floor open, 4F with 5F and the map at the top, R1부터 다시, R2 without R1; leave, replay |
+| View | `test/screens/arcade_boss_screen_test.dart` (new) | intro: owner, rounds, star conditions lit by the best, 자세 잡기 to R1, back; break: score, R2 next, no rest timer, 자세 잡기 to R2, 그만하기 and back; tap targets |
+| View | `test/widgets/arcade_map_test.dart` (new) | `ArcadeMapLayout` numbers, places, cell sizes, first scroll; a new account, STAGE 8 with 3F and 4F locked, 5F from the start, grey locked floors, taps, the user idling or celebrating, floor tags, HOLD and BOSS tags |
+| View | `test/widgets/arcade_parts_test.dart` (new) | every glyph draws; star fill; face crop; white outline; mirrored figures; buttons; star goals and result stars; score line; title band; round pip; stripes; pedestal |
+| View | `test/widgets/arcade_stage_sheet_test.dart` (new) | STAGE 8's sheet, 1F without a rule chip, stars lit by the best, 닫기 and 도전, route name |
+| View | `test/widgets/arcade_result_frame_test.dart` (new) | the fail frame, the lost stand, a stand of its own, a short screen scrolls |
+| View | `test/widgets/arcade_play_card_test.dart` (new) | the two cards' size, taps, arrow colors, labels |
+| View | `test/screens/play_screen_test.dart` (updated) | two cards, no AI 1v1 or 이어하기, the PlayX pictures, the online card's fixed GYM마우스, the arcade card opens the arcade |
+| View | `test/screens/versus_screen_test.dart` (updated) | an arcade stage: STAGE n, 아케이드로, the character with AI LV n, 자세 세팅 시작, leaving to the map; a bot outside the arcade unchanged |
+| View | `test/screens/battle_screen_test.dart` (updated) | the stage's character on its floor's gym named by the character; the boss round on the stage and the camera; leaving ends the boss run; the end opens the arcade's clear and keeps stars; nothing added outside the arcade |
+| View | `test/screens/result_screen_test.dart` (updated) | an arcade report: no scene, the record's name, 홈으로 and back to the map, 다시 대결 replays a fight or opens the boss intro, a past arcade record opens the arcade |
+| View | `test/widgets/battle_stage_test.dart`, `battle_arena_test.dart` (updated) | the ROUND chip, fever and before the start; the floor picture over the grid and under the fever; passed through the arena; none online |
+| View | `test/widgets/result_report_test.dart`, `exit_game_button_test.dart` (updated) | an arcade bot's name in the report; the 아케이드로 label |
+| Design | `test/theme/app_theme_test.dart`, `test/design_tokens_test.dart` (updated) | the arcade's color and text tokens; the new files use tokens only |
+| App flow | `test/main_test.dart` (updated) | 게임 시작 → 아케이드 → STAGE 1's sheet → versus → leaving returns to the map; STAGE 2 once STAGE 1 has a star; the matching page by its route; back steps; the online sheet's best |
+| View | `test/screens/home_screen_test.dart`, `online_lobby_screen_test.dart` (updated) | the play page reads home's view model; the online card's new name |
+
+### Acceptance criteria → tests (spec 12; the local task.md left the step's criteria to the spec)
+- 게임 시작: two cards, the arcade card opens the arcade, no AI 1v1, online as before → 'shows the two cards and the rules, no AI 1v1 and no again row (P16 spec 3, 13.1)', 'the arcade card opens the arcade', 'the online card asks for the exercise, then opens the lobby'
+- 홈: first progress, STAGE 8, all cleared → 'a new account: only STAGE 1 is open, and it is the one to play', 'STAGE 8: 1 to 7 with their stars, 3F and 4F locked (spec 12)', 'all 24 cleared: no bar, 72 stars, at the top with 5F'
+- 홈: taps, star total, first scroll → 'cells: a played fight opens its sheet again, a boss its intro, a hold the hold screen; a locked one nothing (spec 4)', 'STAGE 8: 17 of 72 stars, and the bar with the stage to play (design ArcMap cur)', 'it opens with the stage to play about the middle of the map (spec 4)'
+- 대결 판: versus, values handed, win, loss, 다시 도전, 다음 스테이지 → 'the header says STAGE n and the exit 아케이드로', 'the stage's character fights on its floor's gym, named by its character', 'rulesOf: the stage's floor's rules; outside the arcade the default', 'botOf: the stage's AI level; outside the arcade the chosen level', 'won by KO: 클리어!, the stars got, the next stage's card, and the stars kept', 'lost: 실패 with the score and no star; no star is kept', '다시 도전 opens the versus again over the map', '다음 스테이지 opens the next stage over the map: a fight's sheet, a hold's screen'
+- 보스 매치: R1 lost, break and 그만하기, R2 lost, both won, 4F → 'R1 lost ends it: R1 패배, R2 locked, no stars', '그만하기 and back end the match: the map, no stars', 'R1 won: the break; R2 lost: R2 패배 with R1 checked', 'both won: n층 클리어!, the rounds, the next floor open; {n+1}층으로 opens its first stage', '4F: 4층 클리어! with 5F 공사중, and the map at the top (spec 1.6)'
+- Online regression → 'without them, as online, neither is there', 'outside the arcade nothing is added to the stage', 'a bot outside the arcade keeps "AI" and 게임 나가기', and the full suite
+- Phone check → (above): done on 2026-11-24, on `9b59537` and at the last phone check on `21fc291` (the boss
+  match through R2 and the 2F fever; the `7362fb4` entry's Manual check)
+
+#### 2026-11-23 · code at commit `8b975cf`, merged with A4 in `6074bf4` · step P16 `codex/iter5-ai-opponents`, section 8 and the results on A4's frame
+After the first push the user chose not to wait for A5. A4 (`codex/iter5-hold-plank`, PR #90) was merged in
+(`f9d1eba`, then `6074bf4` for A4's four follow-up commits), and:
+- **Section 8, hold stages:** a hold cell opens A4's `HoldStageScreen` with the arcade's store, account and the
+  user's character; its 다음 스테이지 reads the progress again and opens the next stage on the map.
+- **Chair stages (5, 11, 17, 23) as high plank until A5:** only the way in changes (`ArcadeFlow.holdScreen`); the
+  stage data, star seconds included, stay. A4's briefing still says "의자 자세" over the plank figure. Remove with A5.
+- **Results on A4's frame (spec 6):** the fight and boss results use A4's `ArcadeResultFrame`; P16's interim frame
+  (`lib/widgets/arcade_result_frame.dart`) and its test are deleted.
+- **Boss screens scroll (reviewer run 3):** the intro and the break fill the view and scroll on short phones and
+  with large text.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, on `6074bf4`, without coverage. Coverage comes from
+the PR's CI comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (no P16 service) | 11/23 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/23 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/23 | – |
+
+- **Tests:** `flutter test` 4250 passed, 0 failed, 10 skipped (the same 10 as on `main`). `flutter analyze` found
+  no issues.
+- **Count change since `c8d6044`:** P16's new test files now hold 131 tests (128 before): `arcade_flow_test.dart` +3
+  (hold stages), `arcade_screen_test.dart` +3 (a hold's 다음 스테이지, a hold left, the app's own way into a hold),
+  `arcade_boss_screen_test.dart` +2 (a short phone, large text), `arcade_parts_test.dart` -1 (the removed result
+  stars), `arcade_result_frame_test.dart` -4 (deleted with its frame). A4's tests come with the merges.
+  `test/design_tokens_test.dart` now also checks A4's five `lib/screens/hold_stage_*.dart` files; they already pass
+  (an exception, user decision 2026-11-23).
+- **Bugs the tests found:** at 360 x 640 and with 1.3x text the boss screens' buttons were cut off (reviewer run 3).
+  The new tests failed first, and also showed the break's score line overflowing at 1.3x; it now scales down.
+- **Reviewer:** run 3 CHANGES_REQUESTED (1 Major, 4 Minor), run 4 APPROVE with 3 Minor. The character test now checks
+  a chosen character, and A4's follow-up commits were merged; the third is below.
+- **Known, in A4's files (not changed here):** with 1.3x text on 360 x 780, the label of A4's dark button
+  (`HoldDarkButton`) overflows by 28 px with "R1부터 다시" and "다음 스테이지" (12 px on 320 x 640), and the frame's star
+  row (three 92-wide columns) overflows by 20 px on a 320-wide phone. Found by the reviewer's own layout check and
+  reported for A4's branch; once it is fixed there, a P16 test at these sizes on `ArcadeResultScreen` can guard it.
+- **Other checks:** `ownership_guard.py --check-diff` ok (105 paths, after `6074bf4`). Server `pytest` was not run
+  because `server/` did not change.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Manual check:** on the Galaxy S26+ (spec 12), checked on 2026-11-24 on `9b59537` (the `b03ca98` entry below; the boss match through R2 and the 2F fever seen at the last phone check, the `7362fb4` entry's Manual check): 1F from STAGE 1 to the boss with STAGE 3 on
+  A4's screen and its stars on the map, a chair stage opening as high plank (the briefing says "의자 자세"), the 2F
+  first stage's fever from 15 s, the map's stars and locks, and the boss screens with large text.
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_screen_test.dart` (updated) | a hold's 다음 스테이지 reads the progress again and opens the next stage; a hold left stays on the map; the app's own way into a hold: A4's screen for the stage with the arcade's store, account and the chosen character |
+| View | `test/screens/arcade_flow_test.dart` (updated) | a plank stage opens A4's screen as it is; a chair stage runs as a high plank with its data unchanged; every chair stage and no plank stage takes the fallback; the results in A4's frame, each star read on its own |
+| View | `test/screens/arcade_boss_screen_test.dart` (updated) | the intro and the break at 360 x 640 and with 1.3x text: no overflow, the buttons reachable |
+| View | `test/widgets/arcade_parts_test.dart` (updated) | the result stars' test removed with them |
+| View | `test/widgets/arcade_result_frame_test.dart` (deleted) | deleted with the interim frame (spec 6: A4's frame) |
+| Design | `test/design_tokens_test.dart` (updated) | A4's five hold screens added to the checked files; the interim frame removed |
+
+### Acceptance criteria → tests (spec 8 and 6)
+- A hold cell opens A4's screen with the arcade's store and account → 'the app's own way into a hold: A4's screen for
+  the stage, with the arcade's store, account and the user's character', 'a plank stage opens A4's screen as it is,
+  with the arcade's store and account'
+- A hold's 다음 스테이지 opens the next stage; leaving stays on the map → 'a hold's 다음 스테이지 reads the progress
+  again and opens the stage after it (spec 8)', 'a hold left by 아케이드로 or mid-stage stays on the map'
+- Chair stages as high plank until A5 → 'until A5, a chair stage runs as a high plank; its data stay', 'every chair
+  stage takes the fallback, no plank stage does'
+- Fight and boss results on A4's frame → 'won by KO: 클리어!, the stars got, the next stage's card, and the stars
+  kept', 'lost: 실패 with the score and no star; no star is kept' (both find `ArcadeResultFrame`)
+- Boss screens on small phones and large text → 'fits $label without overflow, scrolling to its buttons' (run for
+  "a short phone" and "a large text size")
+- Phone check → (above): done on 2026-11-24, on `9b59537` and at the last phone check on `21fc291` (the boss
+  match through R2 and the 2F fever; the `7362fb4` entry's Manual check)
+
+#### 2026-11-24 · code at commit `b03ca98`, merged with A5 in `0deb979` · step P16 `codex/iter5-ai-opponents`, the chair stages on A5
+A5 (`codex/iter5-hold-chair`, PR #92) came up with A4's newer commits in it, including A4's fix for the two result
+overflows (`f78ac2b`). It was merged in (`0deb979`; the three notes kept every step's section), and:
+- **Chair stages on the chair pose:** the high-plank stand-in for STAGE 5, 11, 17 and 23 is removed. A4's screen now
+  judges each stage's own pose (`HoldPoses.of(stage.pose)`: A5's chair pose or A4's high plank).
+- **The results on small screens:** a new test runs the five arcade results (fight cleared and failed, boss failed in
+  R2, floor cleared, 4F cleared) on a 320 x 640 phone and with 1.3x text on 360 x 780, and reaches every button.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, without coverage. Coverage comes from the PR's CI
+comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (no P16 service) | 11/24 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/24 | – |
+
+- **Tests:** `flutter test` 4312 passed, 0 failed, 10 skipped (the same 10 as on `main`). `flutter analyze` found
+  no issues.
+- **Count change since `8b975cf`:** P16's new test files now hold 142 tests (131 before): the new
+  `arcade_result_screen_test.dart` 10, `arcade_screen_test.dart` +1 (a chair stage on the chair pose). In
+  `arcade_flow_test.dart` the two stand-in tests were replaced by two that check no hold stage gets a stand-in. A5's
+  tests come with the merge.
+- **The new test against the old frame:** with A4's result files from before `f78ac2b` put back for one run (then
+  restored), 7 of the 10 result tests failed with overflows of 28, 20 and 12 px; all pass on the merged tree.
+- **Reviewer:** run 5 APPROVE with one Minor (progress.md still described the stand-in; updated). It checked that no A2–A5 file is changed and that the merge kept every line of both sides of the three notes.
+- **Other checks:** `ownership_guard.py --check-diff` ok (109 paths). Server `pytest` was not run because `server/`
+  did not change.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Manual check (2026-11-24, Galaxy S26+ SM-S947N, One UI 9.0, Android 17; the build of `9b59537`, an account new
+  to the arcade):**
+  - Worked: 게임 시작's two cards; the arcade home; a fight stage's flow (the stage info, the opponent's intro, the
+    floor's background, the clear, the report, back home); the fail screen and 다시 도전; the hold stages opening
+    (STAGE 3 on the high plank, STAGE 5 on the chair pose) and opening the next cell; the home's star total and each
+    cell's stars; the 2F floor shown on the home's map (its first stage still locked).
+  - Not seen: winning the boss match through R2 to "1층 클리어!", and the 2F first stage's fever at 15 s. Both
+    seen at the last phone check (the `7362fb4` entry's Manual check).
+  - To fix: on the boss match's break, the words of "자세 잡기" nearly ran out of the button. Fixed in the next
+    entry.
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_result_screen_test.dart` (new) | the five arcade results on a 320 x 640 phone and with 1.3x text: no overflow, every button reachable |
+| View | `test/screens/arcade_screen_test.dart` (updated) | a chair stage opens the hold screen with the chair pose (A5), not a stand-in |
+| View | `test/screens/arcade_flow_test.dart` (updated) | a chair stage opens A4's screen as it is; no hold stage gets a stand-in view model |
+
+### Acceptance criteria → tests (spec 8 with A5)
+- Chair stages on the chair pose → 'a chair stage opens the hold screen with the chair pose (A5), not a stand-in',
+  'a chair stage opens A4's screen as it is too, which judges the chair pose (A5)', 'no hold stage gets a stand-in
+  view model: each runs its own pose'
+- Results on small phones and large text → '$name fits ${size.width.toInt()} x ${size.height.toInt()} with
+  ${scale}x text, every button reachable' (5 results x 2 sizes)
+- Phone check → (above): done on 2026-11-24, on `9b59537` and at the last phone check on `21fc291` (the boss
+  match through R2 and the 2F fever; the `7362fb4` entry's Manual check)
+
+#### 2026-11-24 · code at commit `fcacca1` · step P16 `codex/iter5-ai-opponents`, the phone check and the boss button
+The phone check on `9b59537` (the entry before) found that on the boss match's break the words of "자세 잡기" nearly ran
+out of the button. In the design (`P16Boss` break) the button spans the screen's content, as on the intro; P16's
+break made it as wide as its words, so the corners of the slanted words reached 2.4 px past its edge. Fixed:
+- **The break's 자세 잡기** spans the content like the intro's: 320 wide on the design's 360 phone, 58 high, the words
+  at 19.
+- **The arcade's ink button (`ArcadeDarkButton`):** on a narrow button or with large text its words shrink to fit
+  instead of being cut off with "…", with at least 4 of room on each side for the slant. Where they fit, nothing
+  changes.
+- **The other buttons** of the boss intro, the break and the floor cleared (자세 잡기, 그만하기, 2층으로, 리포트 보기)
+  were checked the same way: all inside. The floor cleared's buttons are A4's (`ArcadeResultFrame`) and were only
+  checked, not changed.
+
+I ran the commands from the Plan in `gymrats_app/` on Windows, without coverage. Coverage comes from the PR's CI
+comment, "Tests and coverage (GitHub Actions)".
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | CI comment "Tests and coverage (GitHub Actions)" |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (no P16 service) | 11/24 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/24 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not run: `server/` unchanged | 11/24 | – |
+
+- **Tests:** `flutter test` 4319 passed, 0 failed, 10 skipped (the same 10 as on `main`). `flutter analyze` found
+  no issues.
+- **Count change since `b03ca98`:** P16's new test files now hold 149 tests (142 before): `arcade_boss_screen_test.dart`
+  +5 (the words inside every button at four sizes, the break's button like the intro's), `arcade_parts_test.dart` +2
+  (the ink button's words at their size, and shrunk on a narrow button).
+- **The new tests against the old code:** with the two code files from `9b59537` put back for one run (then
+  restored), 6 of the 7 new tests failed: the four sizes (자세 잡기 on the break painted 2.4 px left of its 127-wide
+  button), the break's button width (127, not 320) and the narrow button ("다음 스테이지" cut off). The seventh, the
+  words at their size where they fit, passes on both: it guards that the fix changes nothing there.
+- **Reviewer:** run 6 APPROVE with one Minor: a new test checked only the words' top corners, which lean away from the edge; it now checks all four against the button's round shape and fails when the room for the slant is taken out. It checked that no A2–A5 file is changed, that the map's and the sheet's ink buttons are unaffected, and that A4's buttons on the floor cleared pass unchanged.
+- **Other checks:** `ownership_guard.py --check-diff` ok (109 paths). Server `pytest` was not run because `server/`
+  did not change.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Manual check:** at the last phone check (the `7362fb4` entry's Manual check), the break "1라운드 승리!" had its
+  자세 잡기 words inside the button. A large text size is not in the results (the tests at four sizes cover it).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_boss_screen_test.dart` (updated) | the words of every button on the boss intro, the break and the floor cleared stay inside the button, slant and round corners included, at 360 x 780 and 320 x 640 with 1.0x and 1.3x text; the break's 자세 잡기 spans the content like the intro's, 58 high, its words at full size |
+| View | `test/widgets/arcade_parts_test.dart` (updated) | the ink button keeps its words at their size where they fit, and shrinks them on a narrow button without cutting them off |
+
+### Acceptance criteria → tests (the phone check's fix)
+- "자세 잡기" inside its button with the default and 1.3x text, the design's shape kept → 'on $where every button keeps
+  its words inside it: the intro, the break and the floor cleared' (4 sizes), "the break's 자세 잡기 is the intro's
+  button: as wide as the screen's content, 58 high, its words at full size"
+- Shrinks only on a narrow screen or with large text → 'the dark button keeps its words at their own size where they
+  fit', 'on a narrow button the dark button shrinks its words to fit inside it, never cutting them off'
+- The other buttons of the boss intro, the break and 1층 클리어 → the first test above (그만하기, 2층으로, 리포트 보기)
+- Phone check of the fix → (above): the words inside the button at the last phone check
+
+#### 2026-11-24 · code at commits `359ea18` and `5553521`, with A5 merged in `2ab24c3` · step P16 `codex/iter5-ai-opponents`, the hold stages' music
+The A5 session finished the hold effects on A4 (`3ffed5f`: the battle's music on a hold stage, the owner's bubble
+after GO, the effects and sound of the first and second stars, a second warning's "실패!" for 1.5 s and the fail
+screen's reason chip) and A5 (`4767873`: the chair pose's start bubble), and merged them into
+`codex/iter5-hold-chair` (`fafb0d4`). `git merge origin/codex/iter5-hold-chair` (`2ab24c3`): the app code merged
+without a conflict; this file and the Prompt Log had content conflicts (both sides added entries at their ends),
+resolved by keeping every entry (A5's entry above P16's here, the P16 prompts above A5's in the log).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **The music check (the user's item 2), traced in the code against a fight stage:**
+  - A fight: the map, the stage sheet and the versus screen play nothing, so what plays goes on (the menu track from
+    home); the battle (`BattleSounds.musicFor`) plays the setup track through the setup and the 3·2·1, the battle
+    track (fever at the end) and, when it ends, the win or lose jingle; the battle closes on a result, so the jingle
+    goes on through the arcade's result and the report, which play nothing; back on the map nothing new plays, and
+    home's `SoundCues` brings the menu track back.
+  - A hold (`HoldStageScreen._playMusic`): the briefing plays nothing; the setup track through the setup and the
+    3·2·1; the battle track while holding; the jingle when the time runs out. On a second warning the jingle starts
+    with the warning, and the result asks for the same jingle again, which `BackgroundMusicService.play` drops (the
+    same cue as the last one); the stars, and so the jingle, are fixed at that warning (`HoldStageViewModel` sets
+    them with `ending`; `_finish` keeps them). 아케이드로 and 다음 스테이지 close on a result, so the jingle goes on;
+    leaving in the setup, the 3·2·1 or the hold brings the menu track back, as leaving a battle does. A hold's
+    다음 스테이지 opens a fight's sheet or the boss intro (no two hold stages are next to each other).
+  - No jingle plays twice. Each change is the music service's usual cross-fade, the old track fading out over 0.6 s
+    while the new one fades in (`BackgroundMusicService.fade`), as on any screen change; both screens use the app's
+    one music service (`SoundServices.shared`), so no track loops on beside another.
+  - **One difference, fixed here:** a hold closed on its briefing, before any track of its own (opened from the map
+    after a result, or after 다시 하기), asked for the menu track as it closed (`HoldStageScreen.dispose`: no result
+    on screen), so after a jingle the menu came back on the map, where a fight's sheet and versus screen play nothing
+    and the silence after its jingle stays. The hold screen is A4's, so `359ea18` changes the arcade's side:
+    `ArcadeFlow.holdScreen` gives the screen the app's sound with its music in `ArcadeHoldMusic`
+    (`lib/widgets/arcade_hold_music.dart`), which passes every cue on except that menu track when no setup or battle
+    track was asked for since the stage opened or since its last jingle. Left in the setup, the 3·2·1 or the hold,
+    the menu still comes back (A4's rule, as for a battle).
+  - **A4's, reported, not changed:** in a second warning's 1.5 s moment the phase is still the hold, so back or the
+    leave button still opens the leave dialog, and leaving there skips the result and keeps no star; a fight closes
+    its dialog when it ends. With `ArcadeHoldMusic` the jingle goes on there instead of the menu track.
+- **Tests:** `flutter test` 4357 passed, 0 failed, 10 skipped (2026-11-24, `5553521`; the same skips as
+  above). `flutter analyze` found no issues. New: 8 tests in `arcade_hold_music_test.dart`, 1 in
+  `arcade_screen_test.dart`, 1 in `design_tokens_test.dart` (`5553521`: the new file on its list); 1 changed (the
+  app's way into a hold also checks the sound it gets). A4's and A5's new
+  tests came with the merge (their entries above).
+- **Old-code check:** with `ArcadeHoldMusic` taken out of `ArcadeFlow.holdScreen`, the two arcade-screen tests fail
+  (closing the briefing after a jingle asked for `[win, menu]`); the unit tests need the new class.
+- **The phone check's record:** "2F opening" in the entry above was the 2F floor shown on the home's map, its first
+  stage still locked (the user, 2026-11-24); corrected there.
+- **Other checks:** `ownership_guard.py --check-diff` OK (111 paths).
+- **Review:** local reviewer run 7 CHANGES_REQUESTED (these notes said the order matched, that tracks never play
+  together and that the map stays silent after any result, and the difference was left in the code), so the notes
+  were corrected and the difference fixed; run 8 APPROVE (3 Minor: wording in the local progress file, fixed; the
+  new file added to `design_tokens_test.dart`'s list in `5553521`; origin/main's #93 not yet in the A2–P16 stack,
+  left to the user).
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** coverage is not measured on this PC (the CI comment is pending). The whole way from the map through
+  a hold's result back to the map is tested in parts (the wrapper's order, the briefing closed on the map, A4's
+  tests of the hold screen's cues), not in one widget test, because the hold's camera setup is A4's and the arcade's
+  way in takes no stand-in view model. The phone check below.
+- **Manual check:** at the last phone check (the `7362fb4` entry's Manual check), from the app's audio in the screen
+  recording, STAGE 3 from the arcade: the setup track, then the battle track right after GO, a short sound right
+  after ★1 and ★2, the whistle at the first warning, at the second warning the battle track stopped and the jingle
+  started, at the 30 s clear the jingle (about 4 s). After a jingle the result, the map and the
+  next stage's briefing played nothing, as traced above (a follow-up asks whether the map should start a track
+  again). STAGE 5 was not tried; a hold closed on its briefing after a jingle and leaving mid-stage are not in
+  the results (the tests above).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/arcade_hold_music_test.dart` | 'passes the hold screen's cues on: the setup, the hold, the jingle', 'left in the setup, the 3·2·1 or the hold, the menu comes back, as when a battle is left before its result', 'closed on its briefing before anything started: what plays goes on, as a fight's sheet and versus screen play nothing', 'closed on its briefing after a jingle (다시 하기, then back): the silence after the jingle stays, as after a fight', 'left in the second warning's moment, after its jingle started: the jingle goes on', 'played again after a jingle, then left mid-stage: the menu comes back', 'stop goes to the app's music; dispose leaves the app's music alone', 'around keeps the set's switches, voice and effects and wraps its music' |
+| Design | `test/design_tokens_test.dart` (updated) | `lib/widgets/arcade_hold_music.dart` uses only design tokens |
+| View | `test/screens/arcade_screen_test.dart` (updated) | 'closed on its briefing after a jingle, the map stays silent, as after backing out of a fight's versus screen' (new); 'the app's own way into a hold: …' also checks the wrapped music and the app's effects, voice and switches |
+
+### Acceptance criteria → tests (the user's item 2)
+- A hold's tracks from the map change in a fight's order → 'closed on its briefing after a jingle, the map stays
+  silent, as after backing out of a fight's versus screen', 'closed on its briefing after a jingle (다시 하기, then
+  back): the silence after the jingle stays, as after a fight', 'passes the hold screen's cues on: the setup, the
+  hold, the jingle', and A4's 'the battle's music at the battle's moments'
+- Left before a result, the menu comes back → 'left in the setup, the 3·2·1 or the hold, the menu comes back, as when
+  a battle is left before its result', A4's 'leaving before a result brings the menu music back'
+- No jingle twice → A4's 'a second warning with no star plays the lose jingle at once', 'a clear ended by warnings
+  plays the win jingle at once', and `background_music_test.dart` 'the same cue on every state update plays the track
+  once'
+- The arcade's hold gets the app's sound → 'the app's own way into a hold: A4's screen for the stage, with the
+  arcade's store, account and the user's character'
+
+#### 2026-11-24 · code at commits `359ea18` and `5553521` (P16 unchanged), with `main` merged in `c92006c` and A5 in `670aecf` · step P16 `codex/iter5-ai-opponents`: `main` and A4's leave dialog fix merged in
+At the user's word (2026-11-24, the Prompt Log), A2 and A3 merged `origin/main` `69b0520` (#86, #93 Google sign-in,
+#94), A4 merged `main` and then A2 and A3 with its leave dialog fix (`94f6416`), and A5 merged `main` and then A4
+(`b6e90d7`). My first fetch found none of the four branches with `main` and no dialog fix in A5, so nothing was merged
+until A5's push. Then, in the order the user gave (the pre-commit guard leaves `main`'s files out of a merge's check
+only when its second parent is `origin/main`):
+- `git merge origin/main` (`c92006c`): one conflict, in `gymrats_app/lib/main.dart`, at two places where #93 and P16
+  each added a line (the imports `viewmodels/social_signup_viewmodel.dart` and `widgets/gym_background_art.dart`;
+  `GymRatsApp`'s `arcadeStore` and `googleSignIn`). Both kept, so against `main` the file differs only by P16's
+  arcade lines and the art's warm-up call; every Google sign-in line of #93 is there.
+  `test/screens/online_lobby_screen_test.dart` merged without a conflict: #86's new group '다시 매칭 after a cancel
+  (P12)' and P16's card name '온라인 대결' are both in it.
+- `git merge origin/codex/iter5-hold-chair` (`670aecf`): the app code merged without a conflict (A4's
+  `hold_stage_screen.dart` and its test); this file had a content conflict where A5's two new entries met P16's
+  (both kept, A5's first; the only lines dropped are A4's and A5's own, which their branches changed). The AI notes
+  and the Prompt Log merged without a conflict.
+- **A4's leave dialog fix against the hold music:** the dialog now closes when a stage is over (a second warning's
+  moment or the result), does not open then, and back does nothing in that moment. `_playMusic` and `dispose` are
+  unchanged, so the music trace in the entry above stands, and the dialog item reported there is fixed on A4's
+  branch. No in-app path closes the screen in that moment now (back returns in `_back`, the leave button in
+  `_askToLeave`). If the screen were disposed there, `ArcadeHoldMusic` would drop the menu cue ('left in the second
+  warning's moment, after its jingle started: the jingle goes on', a unit test of the wrapper's cues).
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get` (#93 added a package),
+`flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter test` 4486 passed, 0 failed, 10 skipped (2026-11-24, `670aecf`; the same skips as above).
+  `flutter analyze` found no issues. 4357 before: 126 came from `main` and 3 from A4's dialog fix (the same numbers as in A5's entry above). No P16 test was added or changed.
+- **Other checks:** `ownership_guard.py --check-staged` OK in both merge commits' hook (`c92006c`: 111 paths
+  against `origin/main`; `670aecf`: 5 paths, the notes and A4's two inherited files); `--check-diff` OK (111 paths);
+  the diff against `codex/iter5-hold-chair` (PR #91's base) still lists 48 files. Server `pytest` was not run:
+  `server/` is `main`'s.
+- **Review:** local reviewer run 9 APPROVE: both merges rebuilt and checked against their parents (nothing of #93 or
+  P16 lost, the notes' lines dropped only where hold-chair itself changed them), P16's 45 code files' changes the
+  same as at run 8, the 48-file list unchanged; analyze clean, 231 targeted tests passed. Its 4 Minors were fixed
+  before the commit: #93's tests named by their file (`auth_flow_test.dart`); the dialog sentence said more than the
+  code; PR #91's body (updated after the push); the AI notes' P16 evidence and this line.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** coverage is not measured on this PC (the CI comment is pending). The merged `main.dart` is checked
+  here only by tests (#93's `test/auth_flow_test.dart` and P16's app-flow tests in `main_test.dart`, both on the
+  merged file), and the app's start with the arcade was seen at the last phone check (below; Google sign-in was not).
+- **Manual check:** at the last phone check (the `7362fb4` entry's Manual check): the app started with the arcade
+  screens, the boss match through R2 to 1층 클리어!, the 2F fever from 0:15, the fixed 자세 잡기 button and STAGE
+  3's music from the arcade worked; Google sign-in (main #93) was not seen (the button did nothing: an environment
+  issue, not code, as written there).
+
+#### 2026-11-24 · code at commit `7362fb4` (one new P16 test file), with `main` `18b9259` merged in `18ea16c` and A5 `b9b5a45` in `03cac86` · step P16 `codex/iter5-ai-opponents`: `main`'s friend battles and A4's hidden leave button merged in
+At the user's word (2026-11-24, the Prompt Log), A4 hides the leave button once a hold stage is over (`d56e1f5`) and
+A5 merged it (`b9b5a45`). The message said `origin/main` was still `69b0520`; the fetch showed `18b9259` (#95, friend
+battles), so, as the message said for that case, `origin/main` was merged first:
+- `git merge origin/main` (`18ea16c`): five files conflicted, each where #95 and P16 changed the same lines.
+  - `lib/main.dart`: five places where each side added lines next to the other's (`arcadeStore` and
+    `friendRepository`, their fields, `_arcade` and the friends' fields, their disposal, the `/arcade` and `/friends`
+    routes). All kept; against `main` the file differs only by P16's arcade lines.
+  - `lib/screens/play_screen.dart`: P16's two cards (온라인 대결, 아케이드) with #95's 친구와의 대전 row under them,
+    the place P16 spec 13.1 left empty for the friend battles. #95 also dropped the footer line "30초 · 점수 높은 쪽
+    승리" (P16's note of 2026-11-23 had left that line to a later step); kept dropped. The AI 1v1 card, its route and
+    the exercise list it used stay gone (P16 spec 3).
+  - `test/screens/play_screen_test.dart`: 'shows the two cards and the rules, no AI 1v1 and no again row (P16 spec 3,
+    13.1)' also finds 친구와의 대전 and no footer line; the online card's test taps 온라인 대결 and keeps #95's check
+    that no mode is asked first; #95's AI card test is dropped (no AI 1v1); the tap-target test names all three
+    entries; #95's 'it sits under the two cards and opens the friends page' measures against `ArcadePlayCard` instead
+    of the removed `BattleModeCard`.
+  - `test/screens/home_screen_test.dart`: both sides' checks kept (P16's read of the latest battle and #95's friend
+    row; in the second, `lastMatch.opponentName` and `lastSetup.exercise`).
+  - `test/main_test.dart`: P16's side (the online sheet's best); #95 had only dropped the play-again line there,
+    which P16 had dropped too. `online_lobby_screen_test.dart` merged without a conflict.
+- `git merge origin/codex/iter5-hold-chair` (`03cac86`): A4's `hold_stage_screen.dart`, `hold_stage_play.dart` and
+  `hold_stage_screen_test.dart` and A5's `chair_hold_stage_test.dart` merged without a conflict; this file's
+  conflict kept both sides, A5's entry first.
+- **A4's hidden leave button with `ArcadeHoldMusic`:** the screen passes no leave action once the stage is over (a
+  second warning's moment or the result); its music calls (`_playMusic`, `dispose`) are unchanged. The new
+  `test/screens/arcade_hold_stage_test.dart` runs A4's screen with the sounds `ArcadeFlow.holdScreen` gives it, on a
+  scripted setup and pose reader: after a second warning, with no star and after a star, the button is gone from the
+  screen and to a screen reader for the whole moment and on the result; the lose or win jingle starts with the moment
+  and stays; 아케이드로 or 다음 스테이지 brings no menu track. Before the end the button is there, and leaving from
+  it brings the menu track back.
+- **Found, not changed (for the user):** #95's invite alert hides only on named routes
+  (`FriendInviteRouteWatch.busyRoutes`: the online lobby and battle, matching, versus, setup, battle). The arcade's
+  fights and boss rounds open the named versus and battle routes, so the alert stays hidden there. The hold stages
+  (`ArcadeFlow.openHold`), the boss intro (`ArcadeBossScreen.route`) and the break after R1 (`afterBattle`) open
+  unnamed routes, so the alert can show over them (`FriendInviteRouteWatch.hides` is false there, checked in a
+  throwaway test that is not committed). Accepting an invite there opens the online battle over the hold stage,
+  whose camera and clock go on under it (the reviewer's reading of the code; not tried). `busyRoutes` is in #95's
+  `friends_screen.dart`, outside P16.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter pub get`, `flutter analyze`,
+`flutter test`.
+
+- **Tests:** `flutter test` 4645 passed, 0 failed, 10 skipped; 159 more than at `670aecf`: 4 in the new P16 file, the rest from #95 and A4's and A5's leave-button tests, less #95's AI card test, dropped here (2026-11-24, `7362fb4`; the same skips as above). `flutter analyze` found no issues.
+- **Other checks:** `ownership_guard.py --check-staged` OK in both merge commits' hook (`18ea16c`: 111 paths against
+  `origin/main`; `03cac86`: 7 paths, the notes, three of A4's files and A5's `chair_hold_stage_test.dart`) and for the test commit;
+  `--check-diff` OK (112 paths). The diff against `codex/iter5-hold-chair` (PR #91's base) now lists 77 files: P16's
+  49 and 28 of #95's, which A2–A5 do not have yet. Server `pytest` was not run: `server/` is `main`'s.
+- **Review:** local reviewer run 10 CHANGES_REQUESTED: both merges rebuilt (`merge-tree`) with exactly the five
+  conflicts above, nothing of #95 or P16 lost beyond P16's intended removals, #95's other 27 files byte-equal to
+  `18b9259`, A4's and A5's four files byte-equal to `b9b5a45`; the new test checked as meaningful; the invite alert
+  item confirmed from the code; full suite 4645 / 0 / 10 in its own run. Its Major (this entry had no test-case
+  table and no acceptance criteria → tests) and Minor (A5's test called one of A4's) were fixed; run 11 APPROVE (2 Minors, fixed: a test named without its group, the local progress file's review
+  rows).
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** coverage is not measured on this PC (the CI comment is pending). 게임 시작 with 친구와의 대전 under
+  the arcade cards is checked by widget tests at 412x915, 360x640 and 360x780 at 2.0x text, and was seen on the phone
+  at the last phone check (below); the invite alert over the arcade's unnamed routes was open then (fixed in the next
+  entry).
+- **Manual check: the last phone check, done 2026-11-24 22:21–22:25** by the user on the Galaxy S26+ (SM-S947N)
+  with the build of `21fc291` (this entry's code), made in a separate copy of the repo, the phone off the laptop,
+  checked on a screen recording. The user's message is in the Prompt Log.
+  - Worked: the app's start; 게임 시작 with the 친구와의 대전 row under the two cards (main #95); the arcade home;
+    STAGE 3 (hold): its clear, its fail, 다시 도전 and 아케이드로; the boss match: R1 (push-ups) won by KO, the
+    break "1라운드 승리!" with its 자세 잡기 words inside the button (`fcacca1`), R2 (squats) won by KO, then
+    "1층 클리어!" with "2층으로" and "리포트 보기"; 2층으로 opened 2F's first stage (STAGE 7), its fever
+    started at 0:15, and a loss there showed the fail screen. The leave button gone once a hold stage is over
+    (A4 `d56e1f5`): seen at the second warning (A4's effects entry above, with STAGE 3's other results).
+  - The sounds, from the app's audio in the recording: in the boss match and the 2F stage the battle track went
+    on to the end, and the jingle played on a KO and on a loss. STAGE 3's are in A4's effects entry and the
+    hold music entry above.
+  - Not seen: Google sign-in (main #93); the button did nothing. Per 박진영 (P7, Google sign-in), this PC's debug SHA-1 is not
+    registered for Google sign-in, so it is written down as an environment issue, not code, and checked again
+    with the login screen's redesign (P8).
+  - Follow-ups after the merge (no code changed now; listed in the local progress file): the silence after a
+    jingle on the result, the map and the next stage's briefing (about 16 s from the boss clear to the setup of
+    2F's first stage; home has the menu track when the app starts); the win jingle cut without a fade on
+    entering "1층 클리어!" (about 3 s heard of about 4 s); R1's KO button says "결과 보기" but opens the break;
+    plain hold and break screens and a weak floor-cleared staging; the arcade bots' level (push-ups about 5%
+    easier, squats about 5% harder); the hold bubbles' time and the standing-up reason (A4).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_hold_stage_test.dart` (new) | 'the arcade's hold screen is A4's, its music in an ArcadeHoldMusic'; in the group 'a second warning from the arcade: A4's hidden leave button with the arcade's music': 'with no star: no leave button for the whole moment, the lose jingle from its start, and no menu track at the map after 아케이드로' and 'after a star: no leave button for the whole moment, the win jingle from its start, and no menu track at the map after 다음 스테이지'; 'before the end the leave button is there, and leaving from the arcade brings the menu track back' |
+| View | `test/screens/play_screen_test.dart` (updated in the merge) | 'shows the two cards and the rules, no AI 1v1 and no again row (P16 spec 3, 13.1)' also finds 친구와의 대전 and its line, and no "30초 · 점수 높은 쪽 승리"; 'the online card asks for the exercise, then opens the lobby' taps 온라인 대결 and keeps #95's check that 메인 매치 is not asked; 'every button is big enough and has a name' names 온라인 대결, 아케이드 and the friend row; #95's group '친구와의 대전 row (P9)' as on `main`, its 'it sits under the two cards and opens the friends page' measured against `ArcadePlayCard`; #95's 'the AI card opens the AI 1v1 page on the same view model' dropped (no AI 1v1, P16 spec 3) |
+| View | `test/screens/home_screen_test.dart` (updated in the merge) | '게임 시작 opens the play page on home's profile' also finds 친구와의 대전 (#95); in the group 'coming back to home loads it again': 'and the play page reads the battle saved meanwhile' checks both the latest battle's opponent (P16) and the last setup's exercise (#95) |
+
+### Acceptance criteria → tests (the user's items 1 and 2)
+- 게임 시작 keeps P16's two cards and gets #95's 친구와의 대전 under them, with no AI 1v1, 이어하기 or footer line →
+  'shows the two cards and the rules, no AI 1v1 and no again row (P16 spec 3, 13.1)', 'it sits under the two cards
+  and opens the friends page', 'fits a short phone without overflow, scrolling if it must', 'fits a large text size
+  without overflow, scrolling if it must', 'every button is big enough and has a name'
+- The online battle is unchanged → 'the online card asks for the exercise, then opens the lobby' and
+  `online_lobby_screen_test.dart` as on `main`
+- On a hold stage from the arcade, the leave button is gone once the stage is over, and `ArcadeHoldMusic` still plays
+  the battle's order → the two tests in 'a second warning from the arcade: A4's hidden leave button with the
+  arcade's music', 'the arcade's hold screen is A4's, its music in an ArcadeHoldMusic'
+- Before the end the button still works with the arcade's music → 'before the end the leave button is there, and
+  leaving from the arcade brings the menu track back'
+
+#### 2026-11-24 · code at commits `c02a9ff` and `d3159cf` (a comment) · step P16 `codex/iter5-ai-opponents`: a friend's invite waits over the arcade's stage screens
+At the user's word (2026-11-24, the Prompt Log), the item found in the entry above is a real bug: a friend's invite
+could show over an arcade stage, and 수락 would open the online battle while a hold stage's camera and clock went on.
+The fix, as the user set it:
+- **Route names (`lib/main.dart`):** `GymRatsApp.arcadeSheetRoute` (a fight's sheet), `arcadeHoldRoute`,
+  `arcadeBossRoute` (a boss match's intro), `arcadeBreakRoute` (the break between its rounds) and `arcadeResultRoute`
+  (a stage's result). A fight itself already opens the named `/versus` and `/battle`. The names are set where the
+  routes are opened: `ArcadeStageSheet.show` (a new optional `routeName`, given by `ArcadeScreen`),
+  `ArcadeFlow.openHold`, `ArcadeBossScreen.route` (the intro or the break, by whether R1 is given) and
+  `ArcadeFlow.afterBattle` (the break now opens through `ArcadeBossScreen.route`, the result with its name). Nothing
+  else about these routes changed.
+- **#95's `busyRoutes` (`lib/screens/friends_screen.dart`, P9's file):** the five names added, no other line of #95
+  changed. Act first and report after (team rule): written down in the local exceptions list, and in PR #91's
+  Exceptions with this push; the owner's and the PM's approval are pending.
+- The arcade's map (`/arcade`) is not in the list, so the invite shows there as on home.
+- **Also hidden, as #95's rule has it:** the alert hides while a busy route is anywhere below, so it also waits on
+  the report opened from an arcade result (리포트 보기) and on 피드백 or 코치 opened from that report. After an AI
+  1v1 the report replaces `/battle`, so it is not hidden there. Not tested on its own.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter test` 4657 passed, 0 failed, 10 skipped; 12 more than at `7362fb4`: the 7 new tests and 5 of #95's for the new names (2026-11-24, `c02a9ff`; the same skips as above). `flutter analyze` found no issues; `dart format`
+  left the six changed code files as they were.
+- **Checked against the old code:** with the five names taken out of `busyRoutes` again, the 7 new tests fail (4 of 4
+  in `arcade_flow_test.dart`, 3 of 3 in `main_test.dart`), and all pass with them.
+- **#95's own tests:** `friends_screen_test.dart` runs 'hidden while $route is open, back after it' for every name in
+  `busyRoutes`, so it now also checks `/arcade/sheet`, `/arcade/hold`, `/arcade/boss`, `/arcade/break` and
+  `/arcade/result` (5 more tests, all passing; the file is not changed).
+- **Other checks:** `ownership_guard.py --check-paths` OK for the commit's eight paths, with the local exception for
+  `friends_screen.dart`; `--check-staged` OK in the commit's hook (8 paths); `--check-diff` OK (113 paths, `friends_screen.dart` now among them). PR #91's diff against its base still lists 77 files: P16's 50 and 27 of #95's that P16 does not change.
+- **Review:** local reviewer run 12 APPROVE: only route names changed (`isMap` still matches `/arcade` alone;
+  `toMap`, `replay`, `leave`, `next` and the boss rounds' `/battle` unchanged; the sheet with no name as before), no
+  online, A2–A5 or other #95 file in the commit, the 7 tests fail on a route with no other busy name; analyze clean,
+  4657 / 0 / 10 in its own run, `--check-diff` 113. Its 5 Minors were fixed before the push: PR #91's body
+  (Exceptions, the fixed item, the file count line) and the local Exceptions list; the new names in the design doc
+  changes; `main.dart`'s comment named only `ArcadeFlow` as the opener (`d3159cf`); the report opened from an arcade
+  result (above); two counts in this entry.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** coverage is not measured on this PC. The fix is checked by widget tests, not on a phone: the last
+  phone check used `21fc291`, from before it (Manual check below).
+- **Manual check:** not on the phone. The fix is not in the last phone check's build (`21fc291`), and an invite
+  needs a second account and device, so it was left this time (user, 2026-11-24). Checked instead by the 4 tests
+  in `arcade_flow_test.dart` and the 3 in `main_test.dart` (the real app), listed below.
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/arcade_flow_test.dart` (updated) | new group 'a friend's invite waits over the arcade's stage screens, as over a battle (#95's FriendInviteRouteWatch)': 'the map lets it show; a fight's sheet, then its versus screen, hide it', 'a hold stage hides it; back on its briefing lets it show again', 'a boss match's intro hides it, and so does the break after R1; 그만하기 lets it show again', 'a stage's result hides it, a fight's and a boss match's; 아케이드로 lets it show again' (each also checks the top route's name) |
+| App flow | `test/main_test.dart` (updated) | new group 'a friend's invite on the arcade (#95's alert)', with the app's own alert and a friend's push-up invite: 'it shows on the arcade's map as on home, and waits while a fight's sheet is open', 'it waits while a hold stage is open, and shows again on the map', 'it waits while a boss match's intro is open' |
+
+### Acceptance criteria → tests (the user's item 1)
+- No invite over an arcade stage (sheet, hold stage, boss intro, break, result) → the four tests of 'a friend's
+  invite waits over the arcade's stage screens, as over a battle (#95's FriendInviteRouteWatch)', 'it waits while a
+  hold stage is open, and shows again on the map', 'it waits while a boss match's intro is open', and #95's 'hidden
+  while $route is open, back after it' for the five names
+- The invite still shows on the arcade's map, as now → 'it shows on the arcade's map as on home, and waits while a
+  fight's sheet is open', 'the map lets it show; a fight's sheet, then its versus screen, hide it'
+
+#### 2026-11-25 · code unchanged since `d3159cf` (notes only) · step P16 `codex/iter5-ai-opponents`, with A4's and A5's parts: the last phone check and the CI coverage
+The user's results of the last phone check (2026-11-24 22:21–22:25, Galaxy S26+, the build of `21fc291`, the phone
+off the laptop, checked on a screen recording; the message of 2026-11-24 in the Prompt Log) are written into the
+TODO spots of the entries above: P16's in the `7362fb4` entry's Manual check (and the earlier P16 spots point there),
+A4's in its effects entry, A5's in its start bubble's entry. A2–A5 take no more commits after their Codex reviews (the
+user, 2026-11-24), so A4's and A5's parts are recorded on this branch; `codex/iter5-hold-chair` was not merged again
+(no new commit). In short:
+- **P16:** the app's start, 게임 시작 with 친구와의 대전, the arcade home, STAGE 3's clear, fail, 다시 도전 and 아케이드로,
+  the boss match through R2 to 1층 클리어! (the break's 자세 잡기 inside its button), 2F's STAGE 7 with the fever at
+  0:15 and its fail screen worked; in the boss match and on 2F the battle track went on to the end and the jingle
+  played on a KO and on a loss. Google sign-in was not seen: the button did nothing, which per 박진영 (P7, Google sign-in) is this PC's
+  debug SHA-1 not being registered (an environment issue, not code; checked again with the login screen's redesign,
+  P8).
+- **The invite fix (`c02a9ff`):** not in that build, and an invite needs a second account and device, so it was not
+  tried on the phone (user, 2026-11-24); the 4 tests in `arcade_flow_test.dart` and the 3 in `main_test.dart` (the
+  real app) check it instead.
+- **A4:** the plank's clear with three stars and the cheers, two warnings with "실패!" and the leave button gone, the
+  fail screen's two reasons, the sounds in order; the bubbles seen for about 1.2 s and 1 s; standing up read "무릎 떼요";
+  the clear ended by warnings after a star stands on the tests.
+- **A5:** the chair pose was not tried; its judging stands on the check of 02:52 (`e17e332`), the two-line start bubble
+  on the tests; the console numbers of spec 7 and reviewer A5 run 4's slow rise could not be seen (the phone was off
+  the laptop, so no console).
+- **Follow-ups after the merge** (no code changed now; in the local progress file): the hold bubbles' time (the start
+  bubble counted from when GO! is gone), the arcade bots' level (push-ups about 5% easier, squats about 5% harder),
+  plain hold and break screens and a weak floor-cleared staging, R1's KO button "결과 보기" that opens the break, the
+  standing-up reason, the silence after a jingle on the result, the map and the next stage's briefing (about 16 s from
+  the boss clear to 2F's first setup; home has the menu track at the app's start), and the win jingle cut without a
+  fade on entering "1층 클리어!" (about 3 s heard of about 4 s).
+- **Coverage:** #89's (A2) and #88's (A3) CI comments are copied into A2's and A3's entries above: on `dc5947b` and
+  `c1f5f5f`, every layer above its target (Model 99.4% / 99.3%, ViewModel 98.3%, Service 97.5% / 97.4%, View 98.1%).
+  #90 (A4), #92 (A5) and #91 (P16) have no CI comment: their bases are the stage branches below them, not `main`, and
+  `tests.yml` runs only on pull requests to and pushes to `main`. Not run by hand (the user, 2026-11-24); each
+  entry's coverage line says so and stays a TODO until its PR targets `main`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter analyze` found no issues. `flutter test` 4657 passed, 0 failed, 10 skipped (2026-11-25, on `d3159cf`'s code; the same 10 skips as above). No test or code file changed.
+- **Review:** local reviewer run 13, APPROVE (notes only). It checked each result against the user's message, the
+  CI numbers against the two comments, the cited tests, and the Prompt Log against the export. Its 5 Minors were
+  fixed before the commit: three additions not in the message (two parentheticals; 박진영's step is P7, not P9);
+  three lines that still said "not yet on a phone"; the AI notes' wording (where the CI numbers went, the
+  placeholder body's 38 s, the review count); TODOs for the user's decision on A5's two shortfalls; and PR #91's
+  body, updated after the push.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** coverage for A4, A5 and P16 waits for CI on `main`. Not seen on the phone: Google sign-in (the
+  environment; again with P8's login screen), the invite fix (the tests instead), the chair pose and the console
+  numbers (A5; TODO(Woohyun Song): whether and when to check them, the user's decision).
+
+#### 2026-11-25 · code at commit `fbfef4c` · step P16 `codex/iter5-ai-opponents`: the stage asked for opens once its stars are kept (PR #91's Codex review)
+PR #91's Codex review on `f27a7e8` (P2, `lib/screens/arcade_screen.dart` L78–79): a cleared fight or boss match
+keeps its stars without waiting (`ArcadeViewModel.finishBattle` → `record`, not awaited); 다음 스테이지 or
+"{n}층으로" asks for the next stage (`ArcadeFlow.next`) and goes back to the map, whose `didPopNext` started
+`refresh()` without waiting and took the request on the next frame. If the save had not ended, the stage was still
+locked, `_open` did nothing and the request was gone. Checked in the code (the user's item 1, 2026-11-25), it can
+happen, and the store's order adds a second case: A2's `recordStage` reads and then writes, and a read is not ordered
+with it, so a `refresh` begun while the stars were kept could be answered with the progress before them; answered
+after the save, it put that older progress back (its read number was still the newest).
+
+The fix, as the user set it (P16's own files; A2–A5 unchanged):
+- **`ArcadeViewModel`:** `saving` while a play's stars are kept; `record` tells its listeners when the save ends,
+  kept or failed, and drops a read begun meanwhile; `takeOpenRequest()` takes the stage asked for once the progress
+  shows it open, keeps it while it is locked and a save goes on, and drops it when it is locked with nothing being
+  kept (the save failed), so it never waits on its own; `hasRequest`.
+- **`ArcadeScreen`:** back from a stage it waits for `refresh()` and then looks at the request, and again on each
+  change while it waits. A waiting request is dropped when another page or a dialog goes over the map, when the map
+  is not the current page by the time it looks, and when the map is gone, so it never opens later on its own. It
+  waits from the moment the map is back, so a page opened during that read drops it as well.
+- **Found, not changed (for the user):** a hold stage's 다음 스테이지 (`_playHold`) has the same window. A4's
+  `HoldStageViewModel._finish` keeps the stars without waiting, straight to the store, so the arcade's view model
+  neither waits for nor hears that save, and `_playHold`'s `refresh` can read before the write. A fix is either in
+  A4's file or a P16-side store wrapper passed through `ArcadeFlow.openHold`.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter test` 4670 passed, 0 failed, 10 skipped (4657 at `f27a7e8`, plus the 13 new tests) (2026-11-25, on `fbfef4c`; the same 10 skips as above). `flutter analyze` found no issues.
+- **New tests:** 8 in `test/screens/arcade_flow_test.dart` with a store whose saves end late (`_SlowSaveStore`), 5 in
+  `test/viewmodels/arcade_viewmodel_test.dart`.
+- **Checked against the old code:** on the screen before the fix, 'a fight's 다음 스테이지 waits for the save, then
+  opens the next stage' and 'a boss match's 2층으로 waits the same way' fail (no sheet after the save). Without the
+  `_reads` step at a save's end, 'a read begun while the stars are kept, answered after them, does not bring back the
+  progress before them (PR #91 review)' fails. Each drop, taken out alone, fails its own test: the map gone ('leaving
+  the map while the save goes on drops it: the next visit opens nothing on its own'), a page over it ('a page opened and closed again before the save ends
+  drops it too'), not the current page ('a page over the map while the progress is still being read drops it: nothing opens
+  over that page'). With the wait starting only after the read, 'a page opened and closed while the progress is
+  still being read drops it too' fails.
+- **Other checks:** `ownership_guard.py --check-diff` OK (113 paths).
+- **Review:** local reviewer runs 14 and 15. Run 14, CHANGES_REQUESTED: (Major) a request still waiting when the map was left (popped during the save) stayed asked for, and a later visit opened STAGE 8's sheet by itself on a lost stage's 아케이드로; now dropped in `dispose`, with the test 'leaving the map while the save goes on drops it: the next visit opens nothing on its own'. Its Minors: the drops were not pinned one by one (two tests added) and a comment named `_playHold` as the safe pattern (reworded). Run 15, APPROVE, with 3 Minors: the hold stage's window (above, for the user); a page opened and closed during the read right after coming back was not dropped (the wait now starts before the read, with the test 'a page opened and closed while the progress is still being read drops it too'); the doc comments of `request` and `takeRequest` (fixed).
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** the race needs a save slower than the tap, which the tests force with a fake store; it was not tried
+  on a phone. The hold stage's window above is open.
+- **Manual check:** none for this fix (a slow save cannot be made on demand on the phone).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/arcade_viewmodel_test.dart` (updated) | group 'record': 'saving while the stars are kept; the end is heard, kept or failed (PR #91 review)', 'a read begun while the stars are kept, answered after them, does not bring back the progress before them (PR #91 review)'; new group 'the stage asked for, taken once it is open (PR #91 review)': open taken at once, locked while kept then taken, locked with nothing kept or after a failed save dropped |
+| View | `test/screens/arcade_flow_test.dart` (updated) | new group 'the stage asked for while its stars are still being kept (PR #91 review)': a fight's 다음 스테이지 and a boss match's 2층으로 open after a late save; a failed save drops it; a page over the map, a page opened and closed, a page while the progress is read, a page opened and closed during that read, and leaving the map each drop it |
+
+### Acceptance criteria → tests (the user's items 2 and 3)
+- The stage asked for opens once the progress shows it open, after a late save → 'a fight's 다음 스테이지 waits for
+  the save, then opens the next stage', 'a boss match's 2층으로 waits the same way', 'locked while the stars are kept:
+  still asked for, and taken once they are'
+- A failed save drops it (no endless wait) → 'a save that fails drops it: the map stays, and a later read opens
+  nothing', 'locked with nothing being kept, or after a failed save: dropped'
+- A read during the save does not undo it → 'a read begun while the stars are kept, answered after them, does not
+  bring back the progress before them (PR #91 review)'
+- It never opens later out of place → 'another page over the map meanwhile drops it: nothing opens over that page or
+  back on the map', 'a page opened and closed again before the save ends drops it too', 'a page over the map while
+  the progress is still being read drops it: nothing opens over that page', 'a page opened and closed while the
+  progress is still being read drops it too', 'leaving the map while the save goes on
+  drops it: the next visit opens nothing on its own'
+
+#### 2026-11-25 · code at commit `5b09d87` · step P16 `codex/iter5-ai-opponents`: a hold stage's 다음 스테이지 waits for its stars too
+The entry above left one window open: a hold stage's 다음 스테이지 (`_playHold`). A4's `HoldStageViewModel._finish`
+keeps the stars without waiting, straight to the store it is given, so the arcade's view model neither waited for nor
+heard that save, and `_playHold`'s `refresh` could read before the write and `_open` did nothing. The user's decision
+(2026-11-25): fix it in P16 only, A4's files read only, with the fight's rules.
+- **`ArcadeViewModel.holdStore`:** a wrapper of the arcade's store. Reads and writes go to the store; a stage's stars
+  go through the same path as `record` (`saving`, the progress after them, a read begun meanwhile dropped). A failed
+  save still fails for A4's screen, which catches it; another account's save is only kept and does not count as this
+  account's.
+- **`ArcadeFlow.holdStore(context)`** gives it, and `ArcadeFlow.openHold` hands it to A4's screen as its store.
+- **`ArcadeScreen._playHold`:** 다음 스테이지 asks for the stage after the hold and takes a fight's path back
+  (`_backFromStage`): it opens once the progress shows it open, and is dropped by the same rules.
+- No hold stage opens a new floor: the holds are 3, 5, 9, 11, 15, 17, 21 and 23, and each floor ends with its boss
+  (6, 12, 18, 24). The nearest case, hold 5 → boss 6's intro, is tested.
+
+Commands, in `gymrats_app/` on Windows, without coverage (this PC's rule): `flutter analyze`, `flutter test`.
+
+- **Tests:** `flutter test` 4680 passed, 0 failed, 10 skipped (4670 at `70a1d2a`, plus the 10 new tests) (2026-11-25, on `5b09d87`; the same 10 skips as above). `flutter analyze` found no issues.
+- **New tests:** 6 in `test/screens/arcade_screen_test.dart` (a stand-in hold that keeps its stars through
+  `ArcadeFlow.holdStore` without waiting, as A4 does, with a store whose saves end late), the wiring test changed, 4 in
+  `test/viewmodels/arcade_viewmodel_test.dart`.
+- **Checked against the old code:** with the store handed over as before and the old `_playHold`, 'it waits for the
+  save, then opens the stage after it', 'before a boss match it opens the boss's intro the same way' and 'a hold
+  left from its own page, as A4's is: the stage after it opens once, after the save' fail. Without the drop when the
+  map goes, 'leaving the map meanwhile drops it: the next visit opens nothing on its own' fails; 'a page over the map
+  meanwhile drops it' fails with both cover drops taken out (each alone is pinned by the fight tests above).
+- **Other checks:** `ownership_guard.py --check-diff` OK (113 paths). A slip: `dart format lib` reformatted two files of
+  other steps (`lib/widgets/character_motion.dart`, `player_avatar.dart`); restored with `git checkout --` at once, and
+  the reviewer confirmed them unchanged.
+- **Review:** local reviewer run 16, APPROVE. Its 4 Minors were fixed before the commit: no test left the hold from a
+  page of its own, so the map's two runs back (the page's close and `_playHold`) were not exercised (test added; it
+  fails on the old `_playHold`); another account's save bumped this account's reads and `saving` (guarded, with a
+  test); the `_saving` doc; the local progress file.
+- **Coverage:** TODO(Woohyun Song): no CI comment yet: PR #91's base is `codex/iter5-hold-chair`, not `main`, and the
+  CI (`tests.yml`) runs only on pull requests to `main`; not run by hand (user, 2026-11-24). Copy it once the
+  PR targets `main`.
+- **Shortfalls:** a slow save is forced by fakes only; A4's real screen is not driven to 다음 스테이지 in a test (its
+  wiring test checks that it gets `holdStore` and that a save through it is seen).
+- **Manual check:** none for this fix (a slow save cannot be made on demand on the phone).
+
+### Test cases added or changed in this phase
+| Layer | File | What it covers |
+|---|---|---|
+| ViewModel | `test/viewmodels/arcade_viewmodel_test.dart` (updated) | new group "holdStore, the store of A4's hold screens (PR #91 review)": reads and writes are the arcade's store's; a stage's stars kept as `record` keeps them (saving, the progress after, heard); a failed save still fails for the screen; another account's stars kept, not shown, not counted |
+| View | `test/screens/arcade_screen_test.dart` (updated) | new group "a hold's 다음 스테이지 while its stars are still being kept (PR #91 review)": it waits for the save, then opens the stage after it; left from its own page it opens once; before a boss match the intro; a failed save, a page over the map and leaving the map drop it; the wiring test expects `arcade.holdStore` and a save seen through it |
+
+### Acceptance criteria → tests (the user's items 1 and 2)
+- Hold clear → 다음 스테이지 after a late save opens the next stage → 'it waits for the save, then opens the stage
+  after it', 'a hold left from its own page, as A4's is: the stage after it opens once, after the save', 'before a
+  boss match it opens the boss's intro the same way' (no hold opens a new floor)
+- The same drops as a fight's → 'a save that fails drops it: the map stays', 'a page over the map meanwhile drops
+  it', 'leaving the map meanwhile drops it: the next visit opens nothing on its own'
+- A4's files only read; its screen gets the wrapped store → the wiring test 'the app's own way into a hold: A4's
+  screen for the stage, with the arcade's store, account and the user's character'

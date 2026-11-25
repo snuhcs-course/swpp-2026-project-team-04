@@ -6,6 +6,7 @@ import 'models/battle_result.dart';
 import 'models/exercise_type.dart';
 import 'models/form_report.dart';
 import 'models/matchup.dart';
+import 'screens/arcade_screen.dart';
 import 'screens/battle_screen.dart';
 import 'screens/body_info_screen.dart';
 import 'screens/character_select_screen.dart';
@@ -27,6 +28,7 @@ import 'screens/versus_screen.dart';
 import 'services/device/device_controls.dart';
 import 'services/telemetry/telemetry_service.dart';
 import 'services/api/api_client.dart';
+import 'services/arcade/arcade_progress_store.dart';
 import 'services/auth/auth_repository.dart';
 import 'services/auth/google_sign_in_service.dart';
 import 'services/auth/token_store.dart';
@@ -42,6 +44,7 @@ import 'services/user/server_user_repository.dart';
 import 'services/user/user_repository.dart';
 import 'services/user/avatar_store.dart';
 import 'theme/app_theme.dart';
+import 'viewmodels/arcade_viewmodel.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/body_info_viewmodel.dart';
 import 'viewmodels/character_viewmodel.dart';
@@ -52,6 +55,7 @@ import 'viewmodels/login_viewmodel.dart';
 import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/signup_viewmodel.dart';
 import 'viewmodels/social_signup_viewmodel.dart';
+import 'widgets/gym_background_art.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +68,8 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+  // The arcade's art is built once, now, not on its first paint (A3).
+  GymArt.warmUp();
   final api = ApiClient();
   final auth = ServerAuthRepository(api: api, store: SecureTokenStore());
   runApp(
@@ -75,6 +81,7 @@ Future<void> main() async {
       characterStore: SecureCharacterStore(),
       rulesSeenStore: SecureRulesSeenStore(),
       settingsStore: SecureSettingsStore(),
+      arcadeStore: SecureArcadeProgressStore(),
       friendRepository: ServerFriendRepository(api: api),
       // P17: P6's events, sent with the login; kept on the phone meanwhile.
       telemetry: Telemetry(
@@ -104,6 +111,7 @@ class GymRatsApp extends StatefulWidget {
     this.createOnlineSession,
     this.rulesSeenStore,
     this.settingsStore,
+    this.arcadeStore,
     this.googleSignIn,
     this.friendRepository,
     this.telemetry,
@@ -135,6 +143,10 @@ class GymRatsApp extends StatefulWidget {
   /// [MemorySettingsStore].
   final SettingsStore? settingsStore;
 
+  /// Keeps each account's arcade progress. Defaults to
+  /// [MemoryArcadeProgressStore].
+  final ArcadeProgressStore? arcadeStore;
+
   /// Friends and friend battle invites (P9). Defaults to an empty
   /// [InMemoryFriendRepository].
   final FriendRepository? friendRepository;
@@ -153,6 +165,22 @@ class GymRatsApp extends StatefulWidget {
   static const socialSignupRoute = '/social-signup';
   static const historyRoute = '/history';
   static const onlineBattleRoute = '/online-battle';
+
+  /// The arcade's map, from 게임 시작 (P16). Its stages' screens close back
+  /// down to it.
+  static const arcadeRoute = '/arcade';
+
+  /// The names of the arcade's stage screens over its map (P16), so that a
+  /// friend's invite waits while one is open (`FriendInviteRouteWatch`):
+  /// a fight's sheet, a hold stage, a boss match's intro and its break
+  /// between the rounds, and a stage's result. A fight itself opens
+  /// [versusRoute] and [battleRoute]. These screens are opened with their
+  /// stage by the arcade's screens and `ArcadeFlow`, never by name alone.
+  static const arcadeSheetRoute = '/arcade/sheet';
+  static const arcadeHoldRoute = '/arcade/hold';
+  static const arcadeBossRoute = '/arcade/boss';
+  static const arcadeBreakRoute = '/arcade/break';
+  static const arcadeResultRoute = '/arcade/result';
 
   /// 캐릭터 선택, from home's 캐릭터 row and 환경설정.
   static const characterRoute = '/character';
@@ -194,6 +222,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
   /// The app's settings, the same on every screen and every visit.
   late final SettingsViewModel _settings;
 
+  /// The signed-in account's arcade, the same on the map and its stages.
+  late final ArcadeViewModel _arcade;
+
   /// Friends (P9), the same for every screen.
   late final FriendRepository _friends =
       widget.friendRepository ?? InMemoryFriendRepository();
@@ -216,6 +247,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
     _settings = SettingsViewModel(
       store: widget.settingsStore ?? MemorySettingsStore(),
     )..load();
+    _arcade = ArcadeViewModel(
+      store: widget.arcadeStore ?? MemoryArcadeProgressStore(),
+    );
     _auth = AuthViewModel(repository: widget.authRepository)
       ..addListener(_onAuthChanged)
       ..restore();
@@ -234,10 +268,12 @@ class _GymRatsAppState extends State<GymRatsApp> {
     if (_auth.status == AuthStatus.signedIn && account != null) {
       _help.load(account.id);
       _characters.load(account.id);
+      _arcade.load(account.id);
       // Events kept while logged out (the tutorial before the first home).
       _telemetry.flush();
     } else if (_auth.status == AuthStatus.signedOut) {
       _characters.clear();
+      _arcade.clear();
     }
   }
 
@@ -249,6 +285,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
     _help.dispose();
     _settings.dispose();
     _characters.dispose();
+    _arcade.dispose();
     _inviteAlert.dispose();
     _inviteRoutes.dispose();
     _telemetry.dispose();
@@ -270,6 +307,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ChangeNotifierProvider<HelpViewModel>.value(value: _help),
         ChangeNotifierProvider<SettingsViewModel>.value(value: _settings),
         ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),
+        ChangeNotifierProvider<ArcadeViewModel>.value(value: _arcade),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
         Provider<GoalStore>(create: (_) => SecureGoalStore()),
         Provider<Telemetry>.value(value: _telemetry),
@@ -341,6 +379,10 @@ class _GymRatsAppState extends State<GymRatsApp> {
               createSession: widget.createOnlineSession,
               userRepository: widget.userRepository,
             ),
+          ),
+          GymRatsApp.arcadeRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => const ArcadeScreen(),
           ),
           GymRatsApp.friendsRoute => MaterialPageRoute<void>(
             settings: settings,

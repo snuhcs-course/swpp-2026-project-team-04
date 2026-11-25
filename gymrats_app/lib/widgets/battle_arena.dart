@@ -259,6 +259,8 @@ class BattleArena extends StatefulWidget {
     this.onSwitchCamera,
     this.setupProgress,
     this.onShowResult,
+    this.scenery,
+    this.round,
   });
 
   final BattleStageController controller;
@@ -305,6 +307,13 @@ class BattleArena extends StatefulWidget {
 
   /// Opens the result, from 결과 보기 once the ending has played.
   final VoidCallback? onShowResult;
+
+  /// A picture behind the fighters on the stage ([BattleStageBackdrop]):
+  /// an arcade floor's gym. Null for none, as online.
+  final Widget? scenery;
+
+  /// An arcade boss match's round for the clock's chip ([BattleStage]).
+  final int? round;
 
   /// The stage's design height below its status bar room.
   static const _stageBelowStatusBar = BattleFx.stageHeight - 26;
@@ -448,6 +457,7 @@ class _BattleArenaState extends State<BattleArena>
                       stripeShift: frame.stripeShift,
                       scale: scale,
                       origin: origin,
+                      scenery: widget.scenery,
                     ),
                   ),
                 ),
@@ -474,6 +484,7 @@ class _BattleArenaState extends State<BattleArena>
                               setupShift: layout.setupShift,
                               fighterBuilder: widget.fighterBuilder,
                               characters: widget.characters,
+                              round: widget.round,
                             ),
                           ),
                         ),

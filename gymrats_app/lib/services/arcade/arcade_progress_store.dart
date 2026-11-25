@@ -19,8 +19,9 @@ abstract interface class ArcadeProgressStore {
   /// Returns the progress after the play.
   ///
   /// When the store itself fails to read, nothing is written, so a passing
-  /// failure never wipes the saved progress; the play's stars are then
-  /// counted over the first state. A missing or broken value is replaced.
+  /// failure never wipes the saved progress, and the failure is thrown to
+  /// the caller (PR #91 review): the play is not saved. A missing or broken
+  /// value is replaced.
   Future<ArcadeProgress> recordStage(int accountId, int number, int stars);
 }
 
@@ -54,12 +55,8 @@ class SecureArcadeProgressStore implements ArcadeProgressStore {
     int number,
     int stars,
   ) async {
-    final String? saved;
-    try {
-      saved = await _storage.read(key: key(accountId));
-    } on Object {
-      return ArcadeProgress.initial().withStars(number, stars);
-    }
+    // A read that fails throws before anything is written.
+    final saved = await _storage.read(key: key(accountId));
     final progress = _parse(saved).withStars(number, stars);
     await write(accountId, progress);
     return progress;

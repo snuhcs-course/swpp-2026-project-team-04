@@ -36,4 +36,20 @@ void main() {
     await tester.tap(find.byType(ExitGameButton));
     expect(taps, 1);
   });
+
+  testWidgets("an arcade stage's says 아케이드로 (P16 spec 6)", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Scaffold(
+          body: Center(
+            child: ExitGameButton(onPressed: () {}, label: '아케이드로'),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('아케이드로'), findsOneWidget);
+    expect(find.text('게임 나가기'), findsNothing);
+    expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
+  });
 }
