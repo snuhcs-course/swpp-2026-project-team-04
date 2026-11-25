@@ -605,6 +605,54 @@ void main() {
       );
     });
   });
+  group('the arcade (P16): its design values as tokens', () {
+    test('colors from the designs ArcMap, ArcResult and P16Boss', () {
+      expect(AppColors.arcadeBand, const Color(0xFF2E3646));
+      expect(AppColors.starOn, AppColors.warning);
+      expect(AppColors.starOff, const Color(0xFFE3E6EC));
+      expect(AppColors.lockedEdge, const Color(0xFF8A93A5));
+      expect(AppColors.arcadeTag, const Color(0xFFC4134F));
+      expect(AppColors.bossRole, const Color(0xFF2B3242));
+      expect(AppColors.wipWall, const Color(0xFFE9E4DA));
+      expect(AppColors.wipBeam, const Color(0xFFC9BFAE));
+      expect(AppColors.wipLedge, const Color(0xFFB9AE9C));
+      expect(AppColors.wipCone, const Color(0xFFFF8A3D));
+      expect(AppColors.wipCard, const Color(0xFFF3EEE4));
+      expect(AppColors.roundLockedEdge, const Color(0xFFB8BFCC));
+      expect(AppColors.roundLockedFill, const Color(0xFFF3F4F7));
+    });
+
+    test('text: the families and sizes of the designs', () {
+      final text = theme.textTheme;
+      for (final (style, family, size) in [
+        (text.arcadeCardName, AppFonts.display, 26.0),
+        (text.arcadeTitle, AppFonts.display, 30.0),
+        (text.arcadeTag, AppFonts.number, 11.0),
+        (text.arcadeBandName, AppFonts.display, 19.0),
+        (text.arcadeBarTitle, AppFonts.display, 21.0),
+        (text.arcadeAction, AppFonts.body, 17.0),
+        (text.arcadeSheetAction, AppFonts.body, 18.0),
+        (text.arcadeBossAction, AppFonts.body, 19.0),
+        (text.arcadeSheetName, AppFonts.display, 32.0),
+        (text.arcadeBanner, AppFonts.display, 44.0),
+        (text.arcadeBannerLarge, AppFonts.display, 48.0),
+        (text.arcadeBannerSmall, AppFonts.display, 40.0),
+        (text.arcadeScoreBig, AppFonts.number, 40.0),
+        (text.arcadeScoreSmall, AppFonts.number, 28.0),
+        (text.arcadeBossName, AppFonts.display, 40.0),
+        (text.arcadeBossGoal, AppFonts.body, 13.5),
+        (text.arcadeWipSign, AppFonts.display, 40.0),
+      ]) {
+        expect(style.fontFamily, family, reason: '$size');
+        expect(style.fontSize, size);
+      }
+      expect(text.arcadeTag.color, AppColors.arcadeTag);
+      expect(text.arcadeAction.color, AppColors.onInk);
+      expect(text.arcadeBandName.color, AppColors.onInk);
+      expect(text.arcadeStageChip.color, AppColors.accent);
+      expect(text.arcadeLink.decoration, TextDecoration.underline);
+    });
+  });
 
   group('the login screens (P8)', () {
     test('the colors LoginS adds to the palette', () {

@@ -509,6 +509,11 @@ class FriendInviteRouteWatch extends NavigatorObserver with ChangeNotifier {
     GymRatsApp.matchSetupRoute,
     GymRatsApp.battleRoute,
     GymRatsApp.setupRoute,
+    GymRatsApp.arcadeSheetRoute,
+    GymRatsApp.arcadeHoldRoute,
+    GymRatsApp.arcadeBossRoute,
+    GymRatsApp.arcadeBreakRoute,
+    GymRatsApp.arcadeResultRoute,
   };
 
   final _open = <Route<dynamic>>[];

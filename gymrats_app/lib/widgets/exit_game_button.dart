@@ -3,11 +3,17 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 /// "게임 나가기" with an exit icon on a card-colored pill, for leaving a
-/// found match from the versus and setup screens.
+/// found match from the versus and setup screens. An arcade stage's says
+/// "아케이드로" ([label]).
 class ExitGameButton extends StatelessWidget {
-  const ExitGameButton({super.key, required this.onPressed});
+  const ExitGameButton({
+    super.key,
+    required this.onPressed,
+    this.label = '게임 나가기',
+  });
 
   final VoidCallback onPressed;
+  final String label;
 
   static const _iconSize = 18.0;
   static const _edge = 1.5;
@@ -17,7 +23,7 @@ class ExitGameButton extends StatelessWidget {
     return OutlinedButton.icon(
       onPressed: onPressed,
       icon: const Icon(Icons.logout_rounded, size: _iconSize),
-      label: const Text('게임 나가기'),
+      label: Text(label),
       style: OutlinedButton.styleFrom(
         // The tap target pads it to 48, as tall as SetupScreen's buttons.
         minimumSize: const Size(0, 44),

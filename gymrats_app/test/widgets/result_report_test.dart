@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/arcade_ai_level.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
@@ -302,6 +303,30 @@ void main() {
       expect(
         ResultSubLine.opponentText(const Opponent(name: '민아', isBot: false)),
         '민아',
+      );
+    });
+
+    test('an arcade bot by the name its record keeps (P16 spec 13.3)', () {
+      expect(
+        ResultSubLine.opponentText(
+          Opponent.arcade(
+            stage: 8,
+            characterId: 'seal',
+            pace: ArcadeAiLevel.lv6,
+          ),
+        ),
+        'STAGE 8 · 물렁범',
+      );
+      expect(
+        ResultSubLine.opponentText(
+          Opponent.arcade(
+            stage: 6,
+            round: 1,
+            characterId: 'seal',
+            pace: ArcadeAiLevel.lv4,
+          ),
+        ),
+        'STAGE 6 R1 · 물렁범',
       );
     });
 

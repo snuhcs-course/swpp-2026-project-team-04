@@ -26,6 +26,7 @@ import '../widgets/result_cards.dart';
 import '../widgets/result_report.dart';
 import '../widgets/victory_overlay.dart';
 import '../widgets/victory_scene.dart';
+import 'arcade_flow.dart';
 
 /// The result report of a battle (BResult): how it ended, both scores, the
 /// user's reps, and the cards its values allow.
@@ -42,6 +43,11 @@ import '../widgets/victory_scene.dart';
 /// [ResultScreen.record] is a past battle's report, opened from 기록보관소
 /// ([reportTap]): the seat shows only the end look, system back returns to
 /// the archive, and 다시 대결 starts the new battle from home.
+///
+/// An arcade battle's report (P16 spec 13.4), opened over the arcade's
+/// result: no scene plays, 홈으로 and back return to the arcade's map, and
+/// 다시 대결 plays the stage again from its start. A past arcade battle's
+/// 다시 대결 opens the arcade's map.
 ///
 /// A battle with a form report gets the character card (A10; online and
 /// past battles too): the screen makes the talk's [CoachViewModel] once the
@@ -263,8 +269,9 @@ class _ResultScreenState extends State<ResultScreen> {
                   listen: false,
                 ),
               ));
-    // A past report shows only the scene's end look.
-    if (record != null) _sceneOver = true;
+    // A past report shows only the scene's end look; an arcade report none
+    // (its clear or fail already did the same, P16 spec 13.4).
+    if (record != null || _arcade) _sceneOver = true;
     _viewModel.addListener(_makeCoach);
     unawaited(
       _viewModel.load().whenComplete(() {
@@ -369,7 +376,12 @@ class _ResultScreenState extends State<ResultScreen> {
     navigate();
   }
 
-  void _goHome() => _leaveOnce(() => popToHome(context));
+  /// Whether this is an arcade battle just played.
+  bool get _arcade => widget.result?.matchup.opponent.isArcade ?? false;
+
+  void _goHome() => _leaveOnce(
+    () => _arcade ? ArcadeFlow.leave(context) : popToHome(context),
+  );
 
   /// The talk, from its first line or ([atGoal], 건너뛰기) at the goal
   /// question. Opens on top, so back and 리포트로 come here again.
@@ -398,6 +410,18 @@ class _ResultScreenState extends State<ResultScreen> {
   /// any battle does, so 기록보관소 is not left under it.
   void _matchAgain() => _leaveOnce(() {
     final state = _viewModel.state;
+    if (widget.result?.matchup.opponent.arcadeStage case final stage?) {
+      ArcadeFlow.replay(context, stage);
+      return;
+    }
+    if (widget.record != null && Opponent.isArcadeName(state.opponentName)) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        GymRatsApp.arcadeRoute,
+        (below) => below.isFirst,
+      );
+      return;
+    }
     final rematch = ResultScreen.rematchOf(state);
     final (route, argument) = rematch != null
         ? (GymRatsApp.matchingRoute, rematch as Object)
@@ -437,6 +461,14 @@ class _ResultScreenState extends State<ResultScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
+        // An arcade report's back goes to the arcade's map (P16 spec 13.4).
+        PopScope<Object?>(
+          canPop: !_arcade,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _goHome();
+          },
+          child: const SizedBox.shrink(),
+        ),
         NotificationListener<ScrollNotification>(
           onNotification: (_) {
             _findSeatLater();

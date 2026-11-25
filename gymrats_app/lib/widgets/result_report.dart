@@ -545,8 +545,10 @@ class ResultSubLine extends StatelessWidget {
   static String _after(Duration played) => ' · ${played.inSeconds}초';
 
   /// A bot as "RepBot" and its level (a bot without one plays as 고수); a
-  /// person by their nickname.
-  static String opponentText(Opponent opponent) => opponent.isBot
+  /// person by their nickname; an arcade stage's bot by the name its record
+  /// keeps, "STAGE 8 · 물렁범" (P16 spec 13.3).
+  static String opponentText(Opponent opponent) =>
+      opponent.isBot && !opponent.isArcade
       ? 'RepBot ${(opponent.difficulty ?? BotDifficulty.expert).label}'
       : opponent.name;
 

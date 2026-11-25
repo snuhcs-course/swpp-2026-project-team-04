@@ -54,6 +54,7 @@ Future<void> _pump(
   BattleFighterBuilder fighterBuilder = BattleFighter.standIn,
   BattleCharacters? characters,
   double setupShift = 0,
+  int? round,
 }) => tester.pumpWidget(
   battleTestApp(
     Stack(
@@ -67,6 +68,7 @@ Future<void> _pump(
             fighterBuilder: fighterBuilder,
             characters: characters,
             setupShift: setupShift,
+            round: round,
           ),
         ),
       ],
@@ -1323,6 +1325,80 @@ void main() {
       );
       // A picture to a screen reader: the chip says it.
       expect(find.bySemanticsLabel('미션 성공!'), findsNothing);
+    });
+  });
+  group('an arcade boss round and floor (P16 spec 6 and 7)', () {
+    BattleStageHud hud(WidgetTester tester) =>
+        tester.widget<BattleStageHud>(find.byType(BattleStageHud));
+
+    testWidgets('the chip says ROUND n in place of the lead, on white', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        BattleFxTimeline(share: 0.575).frame(0),
+        _state(me: 60, op: 45),
+        round: 2,
+      );
+      expect(hud(tester).chip, (text: 'ROUND 2', tone: BattleFxTone.plain));
+      expect(find.text('ROUND 2'), findsOneWidget);
+    });
+
+    testWidgets('fever still says fever, and before the start there is no '
+        'chip', (tester) async {
+      final fever = BattleFxTimeline()..setFever(true, 0);
+      await _pump(tester, fever.frame(500), _state(fever: true), round: 1);
+      expect(hud(tester).chip!.text, 'FEVER ×2');
+      await _pump(
+        tester,
+        BattleFxTimeline(setup: true).frame(0),
+        _state(phase: BattleStagePhase.setup),
+        round: 1,
+      );
+      expect(hud(tester).chip, isNull);
+    });
+
+    testWidgets('the backdrop lays a floor picture over the grid, the stage\'s '
+        'size and place, under the fever', (tester) async {
+      Future<PaintedPicture> paint({double fever = 0}) => paintPicture(
+        tester,
+        SizedBox(
+          width: 200,
+          height: 220,
+          child: BattleStageBackdrop(
+            feverOpacity: fever,
+            stripeShift: 0,
+            scale: 0.5,
+            origin: const Offset(10, 20),
+            scenery: const ColoredBox(color: AppColors.opponent),
+          ),
+        ),
+        size: const Size(200, 220),
+      );
+      final plain = await paint();
+      // The stage's 360 x 390 at half size from (10, 20): to (190, 215).
+      expect(plain.at(12, 22), AppColors.opponent);
+      expect(plain.at(188, 213), AppColors.opponent);
+      // Off the grid's lines (every 14 from the stage's corner).
+      expect(plain.at(3, 12), AppColors.background);
+      expect(plain.at(195, 100), isNot(AppColors.opponent));
+      final fever = await paint(fever: 1);
+      expect(fever.at(100, 100), isNot(AppColors.opponent));
+    });
+
+    testWidgets('without a picture the backdrop is as before', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: BattleStageBackdrop(feverOpacity: 0, stripeShift: 0),
+        ),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(BattleStageBackdrop),
+          matching: find.byType(Positioned),
+        ),
+        findsNothing,
+      );
     });
   });
 }

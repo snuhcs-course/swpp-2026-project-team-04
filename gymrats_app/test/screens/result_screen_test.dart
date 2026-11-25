@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/viewmodels/arcade_viewmodel.dart';
+import 'package:gymrats_app/screens/arcade_boss_screen.dart';
+import 'package:gymrats_app/models/arcade_stage.dart';
+import 'package:gymrats_app/models/arcade_catalog.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/bot_difficulty.dart';
@@ -1795,5 +1799,198 @@ void main() {
         expect(find.text('archive'), findsNothing);
       });
     }
+  });
+
+  group('an arcade battle\'s report (P16 spec 13.3 and 13.4)', () {
+    late _Routes routes;
+
+    /// The arcade's map (a stand-in) with [result]'s report over it, as
+    /// 리포트 보기 opens it.
+    Future<void> openArcade(WidgetTester tester, BattleResult result) async {
+      tester.view
+        ..physicalSize = const Size(360, 780)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      routes = _Routes();
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<UserRepository>.value(value: FakeUserRepository()),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            navigatorObservers: [routes],
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, GymRatsApp.arcadeRoute),
+                  child: const Text('home'),
+                ),
+              ),
+            ),
+            onGenerateRoute: (settings) => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (context) => Scaffold(
+                body: settings.name == GymRatsApp.arcadeRoute
+                    ? TextButton(
+                        onPressed: () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ResultScreen(result: result),
+                          ),
+                        ),
+                        child: const Text('arcade map'),
+                      )
+                    : Text('${settings.name}'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('home'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('arcade map'));
+      await tester.pump();
+    }
+
+    BattleResult arcadeResult(Matchup matchup) => BattleResult(
+      matchup: matchup,
+      myReps: 12,
+      myInvalidReps: 1,
+      opponentReps: 7,
+      myScore: 180,
+      opponentScore: 90,
+      decidedOutcome: MatchOutcome.win,
+      endedAt: _endedAt,
+    );
+
+    final fight = arcadeResult(
+      ArcadeMatchups.fight(
+        ArcadeCatalog.stage(8) as ArcadeFightStage,
+        playerName: '우현',
+      ),
+    );
+
+    testWidgets('no victory scene plays, and the opponent is the record\'s '
+        'name', (tester) async {
+      await openArcade(tester, fight);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is VictoryOverlay && widget.play,
+        ),
+        findsNothing,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('STAGE 8 · 물렁범', findRichText: true),
+        findsWidgets,
+      );
+      expect(find.textContaining('RepBot', findRichText: true), findsNothing);
+    });
+
+    testWidgets('홈으로 goes back to the arcade\'s map', (tester) async {
+      await openArcade(tester, fight);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('홈으로'));
+      await tester.pumpAndSettle();
+      expect(find.text('arcade map'), findsOneWidget);
+    });
+
+    testWidgets('back goes back to the arcade\'s map', (tester) async {
+      await openArcade(tester, fight);
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('arcade map'), findsOneWidget);
+    });
+
+    testWidgets('다시 대결 plays the fight again from its versus, over the map', (
+      tester,
+    ) async {
+      await openArcade(tester, fight);
+      await tester.pumpAndSettle();
+      routes.settings.clear();
+      await tester.tap(find.text('다시 대결'));
+      await tester.pumpAndSettle();
+      expect(routes.names, [GymRatsApp.versusRoute]);
+      final matchup = routes.settings.single.arguments! as Matchup;
+      expect(matchup.opponent.arcadeStage, 8);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('arcade map'), findsOneWidget);
+    });
+
+    testWidgets('a boss round\'s 다시 대결 opens the boss intro', (tester) async {
+      await openArcade(
+        tester,
+        arcadeResult(
+          ArcadeMatchups.boss(
+            ArcadeCatalog.stage(6) as ArcadeBossStage,
+            2,
+            playerName: '우현',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('STAGE 6 R2 · 물렁범', findRichText: true),
+        findsWidgets,
+      );
+      await tester.tap(find.text('다시 대결'));
+      // The owner on the intro breathes, so it never settles.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ArcadeBossScreen), findsOneWidget);
+    });
+
+    testWidgets('a past arcade battle\'s 다시 대결 opens the arcade from home', (
+      tester,
+    ) async {
+      tester.view
+        ..physicalSize = const Size(360, 780)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final archive = _Routes();
+      await tester.pumpWidget(
+        Provider<UserRepository>.value(
+          value: FakeUserRepository(),
+          child: MaterialApp(
+            theme: AppTheme.light,
+            navigatorObservers: [archive],
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: reportTap(
+                    context,
+                    const MatchRecord(
+                      exercise: ExerciseType.squat,
+                      opponentName: 'STAGE 8 · 물렁범',
+                      myReps: 12,
+                      opponentReps: 7,
+                      isOnline: false,
+                    ),
+                  ),
+                  child: const Text('archive'),
+                ),
+              ),
+            ),
+            onGenerateRoute: (settings) => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => Scaffold(body: Text('${settings.name}')),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('archive'));
+      await tester.pumpAndSettle();
+      archive.settings.clear();
+      await tester.tap(find.text('다시 대결'));
+      await tester.pumpAndSettle();
+      expect(archive.names, [GymRatsApp.arcadeRoute]);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('archive'), findsOneWidget);
+    });
   });
 }
