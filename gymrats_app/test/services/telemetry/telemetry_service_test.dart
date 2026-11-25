@@ -532,7 +532,7 @@ void main() {
       s.startAtMs = 1000;
       setup.follow(s);
       expect(end(t)['result'], 'ready');
-      expect(end(t)['limit_ms'], 10000);
+      expect(end(t)['limit_ms'], 20000);
       expect(end(t)['last_reason'], isNull);
     });
 

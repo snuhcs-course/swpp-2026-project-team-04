@@ -1812,10 +1812,10 @@ void main() {
     int count(Wire wire, String type) =>
         wire.events.where((e) => e['type'] == type).length;
 
-    test("the production setup time is the protocol's 10 seconds", () async {
+    test("the production setup time is the protocol's 20 seconds", () async {
       final s = BattleServer(authenticate: (_) => null);
       expect(s.setupTimeoutMs, battleSetupTimeout.inMilliseconds);
-      expect(s.setupTimeoutMs, 10000);
+      expect(s.setupTimeoutMs, 20000);
       await s.close();
     });
 

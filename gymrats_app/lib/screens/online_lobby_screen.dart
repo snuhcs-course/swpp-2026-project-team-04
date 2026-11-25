@@ -90,6 +90,9 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   /// takes at most this much of that time.
   static const _warningAutoClose = Duration(seconds: 5);
 
+  /// A6: how long the VS screen counts down before the pose setup opens.
+  static const _autoSetupIn = Duration(seconds: 3);
+
   OnlineBattleSession? _session;
 
   /// The friend battle's invite while waiting for the friend (P9).
@@ -368,6 +371,8 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
         onStartSetup: () => _openBattle(session),
         onLeave: _cancelSearch,
         warningAutoClose: _warningAutoClose,
+        // A6: the setup opens by itself after a short countdown.
+        autoSetupIn: _autoSetupIn,
       );
     }
     if (busy) {
