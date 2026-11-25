@@ -1949,3 +1949,194 @@ extension HoldText on TextTheme {
     color: AppColors.onInk,
   );
 }
+
+/// The login and first sign-up screens' colors that the shared palette
+/// lacks (P8, `LoginS.dc.html`). Everything else there is an [AppColors]
+/// value.
+abstract final class AuthColors {
+  /// The Google button's words while it logs in, and a field's placeholder.
+  static const busyText = Color(0xFF8A93A6);
+
+  /// The "아이디로 로그인" link while a login runs.
+  static const busyLink = Color(0xFFA3AABA);
+
+  /// The lime button's fill while it works (계정을 만드는 중…).
+  static const busyLime = Color(0xFFE3F7B0);
+
+  /// The id sheet's handle.
+  static const sheetHandle = Color(0xFFC9CED8);
+
+  /// Over the screen behind the id sheet: ink at 45 %.
+  static const scrim = Color(0x73141A26);
+}
+
+/// The login and first sign-up screens' sizes (P8, `LoginB.dc.html` and
+/// `LoginS.dc.html`) that [AppSpacing] and [AppRadius] lack.
+abstract final class AuthLayout {
+  /// The logo's top under the status bar: 50 in the design, less its 24
+  /// high status bar.
+  static const double logoTop = 26;
+  static const double logoRow = 50;
+  static const double logoBarWidth = 13;
+  static const double logoBarHeight = 42;
+
+  /// The lime bar's and the logo's slant in degrees, top to the right
+  /// (CSS skewX(-14deg), skewX(-10deg)).
+  static const double logoBarSkew = 14;
+  static const double logoSkew = 10;
+
+  /// Between the logo and the line under it, and between the controls at
+  /// the bottom.
+  static const double gap = 10;
+
+  /// Between "1V1" and the words after it; between an icon and its words.
+  static const double tagGap = 8;
+  static const double iconGap = 6;
+  static const double googleHeight = 54;
+  static const double googleRadius = 16;
+  static const double markBox = 22;
+  static const double linkHeight = 44;
+  static const double sheetLinkHeight = 40;
+  static const double edge = 2;
+  static const double thinEdge = 1.5;
+  static const double noticeIcon = 16;
+
+  /// Under the cancel line, before the gap to the button.
+  static const double noticeBelow = 2;
+  static const double errorPadV = 10;
+  static const double errorPadH = 12;
+  static const double errorRadius = 14;
+  static const double errorMark = 34;
+  static const double errorMarkRadius = 10;
+  static const double errorMarkIcon = 20;
+  static const double errorLineGap = 1;
+  static const double fieldMark = 18;
+  static const double fieldMarkRadius = 6;
+  static const double fieldMarkIcon = 12;
+  static const double fieldHeight = 54;
+  static const double nicknameHeight = 56;
+  static const double fieldRadius = 14;
+  static const double limeHeight = 58;
+  static const double limeIcon = 26;
+  static const double spinner = 22;
+  static const double sheetPadTop = 10;
+  static const double handleWidth = 44;
+  static const double handleHeight = 5;
+  static const double handleRadius = 3;
+  static const double sheetTitleTop = 4;
+  static const double closeButton = 40;
+  static const double closeIcon = 18;
+  static const double backButton = 44;
+  static const double backIcon = 22;
+
+  /// The sign-up title row's top under the status bar (32 less 24).
+  static const double titleTop = 8;
+}
+
+/// The login and first sign-up screens' text styles (P8). Like the rest of
+/// the app they follow the system text size.
+extension AuthText on TextTheme {
+  /// "GYMMOUSE": Oxanium 800, 46, slanted by the screen.
+  TextStyle get authLogo => bodyMedium!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 46,
+    fontWeight: FontWeight.w800,
+    height: 1,
+    letterSpacing: 1,
+    color: AppColors.ink,
+  );
+
+  /// "1V1" before the line under the logo: Oxanium 700, 13 on 18, spaced.
+  TextStyle get authTagMark => bodyMedium!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    height: 18 / 13,
+    letterSpacing: 2,
+    color: AppColors.ink,
+  );
+
+  /// The line under the logo, a help line, a field error's detail: 13 on 18.
+  TextStyle get authSmall => bodyMedium!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    height: 18 / 13,
+    letterSpacing: 0,
+    color: AppColors.textSecondary,
+  );
+
+  /// A field's name, the cancel line, a field error: 13 on 18, bold.
+  TextStyle get authLabel =>
+      authSmall.copyWith(fontWeight: FontWeight.w700, color: AppColors.ink);
+
+  /// The Google button's words: 16 on 22, bold.
+  TextStyle get authButton => bodyMedium!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    height: 22 / 16,
+    letterSpacing: 0,
+    color: AppColors.ink,
+  );
+
+  /// The "G" before it: 18, bold, tight.
+  TextStyle get authMark => authButton.copyWith(fontSize: 18, height: 1);
+
+  /// A link: 14 on 20, semibold, underlined.
+  TextStyle get authLink => bodyMedium!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    height: 20 / 14,
+    letterSpacing: 0,
+    color: AppColors.textSecondary,
+    decoration: TextDecoration.underline,
+  );
+
+  /// An error box's first sentence: 14 on 20, bold.
+  TextStyle get authErrorTitle => authLink.copyWith(
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+    decoration: TextDecoration.none,
+  );
+
+  /// Typed text: 17, semibold.
+  TextStyle get authField => bodyMedium!.copyWith(
+    fontFamily: AppFonts.body,
+    fontSize: 17,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+    color: AppColors.ink,
+  );
+
+  /// A hidden password's dots: 17, bold, spaced 3.
+  TextStyle get authSecret =>
+      authField.copyWith(fontWeight: FontWeight.w700, letterSpacing: 3);
+
+  /// The nickname's count: Oxanium 700, 13.
+  TextStyle get authCount => bodyMedium!.copyWith(
+    fontFamily: AppFonts.number,
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    color: AppColors.textMuted,
+  );
+
+  /// The lime button's words: Do Hyeon 24 on 28.
+  TextStyle get authLime => bodyMedium!.copyWith(
+    fontFamily: AppFonts.display,
+    fontSize: 24,
+    fontWeight: FontWeight.w400,
+    height: 28 / 24,
+    letterSpacing: 0,
+    color: AppColors.ink,
+  );
+
+  /// The id sheet's title: Do Hyeon 28 on 32.
+  TextStyle get authSheetTitle =>
+      authLime.copyWith(fontSize: 28, height: 32 / 28);
+
+  /// The sign-up screen's title: Do Hyeon 30 on 36.
+  TextStyle get authTitle => authLime.copyWith(fontSize: 30, height: 36 / 30);
+}
