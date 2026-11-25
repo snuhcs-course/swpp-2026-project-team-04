@@ -515,19 +515,24 @@ void main() {
       expect(find.text('0 +3'), findsOneWidget);
       // The bars are drawn as wide as their slot, not only as tall: on the
       // phone (2026-11-26) they had no width and the chart looked empty.
-      final drawn = [
-        for (final color in [AppColors.statusGood, AppColors.warning])
-          ...tester
-              .renderObjectList<RenderBox>(
-                find.byWidgetPredicate(
-                  (w) => w is ColoredBox && w.color == color,
-                ),
-              )
-              .map((box) => box.size)
-              .where((size) => size.height > 0),
-      ];
-      expect(drawn, isNotEmpty);
-      for (final size in drawn) {
+      // Only the split chart's bars: 무효 사유 draws warning bars too.
+      Iterable<Size> drawn(Color color) => tester
+          .renderObjectList<RenderBox>(
+            find.descendant(
+              of: find.bySemanticsLabel(RegExp('초 인정')),
+              matching: find.byWidgetPredicate(
+                (w) => w is ColoredBox && w.color == color,
+              ),
+            ),
+          )
+          .map((box) => box.size)
+          .where((size) => size.height > 0);
+      expect(drawn(AppColors.statusGood), isNotEmpty);
+      expect(drawn(AppColors.warning), isNotEmpty);
+      for (final size in [
+        ...drawn(AppColors.statusGood),
+        ...drawn(AppColors.warning),
+      ]) {
         expect(size.width, greaterThan(40));
       }
       expect(find.text('횟수별 기록'), findsNothing);
