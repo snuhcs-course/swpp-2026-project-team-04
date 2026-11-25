@@ -6,6 +6,9 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_stats.dart';
 import 'package:gymrats_app/models/feedback_summary.dart';
 import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/models/hold_record.dart';
+import 'package:gymrats_app/screens/hold_report_screen.dart';
+import 'package:gymrats_app/services/feedback/hold_record_store.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/screens/feedback_stats_screen.dart';
 import 'package:gymrats_app/screens/history_screen.dart';
@@ -21,6 +24,7 @@ import 'package:gymrats_app/widgets/victory_overlay.dart';
 import 'package:provider/provider.dart';
 
 import '../support/feedback_fakes.dart';
+import '../models/hold_record_test.dart' show holdRecord;
 import '../support/fakes.dart';
 import '../support/form_report_fixtures.dart';
 import '../widgets/battle_test_support.dart';
@@ -411,7 +415,7 @@ void main() {
       await toMatches(tester);
       await tester.tap(find.text('온라인'));
       await tester.pumpAndSettle();
-      expect(find.text('이 조건에 맞는 경기가 없어요.'), findsOneWidget);
+      expect(find.text('이 조건에 맞는 기록이 없어요.'), findsOneWidget);
     });
 
     testWidgets('the gain chip only on the battles that raised the best', (
@@ -610,6 +614,87 @@ void main() {
       expectEndLookOnly(tester);
       expect(find.text('자세 기록 표로 보기'), findsOneWidget);
       expect(repository.feedbackRequests, [2]);
+    });
+  });
+  group('holds (P13)', () {
+    Future<void> openWithHolds(
+      WidgetTester tester,
+      List<HoldRecord> holds,
+    ) async {
+      final store = InMemoryHoldRecordStore();
+      for (final h in holds) {
+        await store.save(h);
+      }
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<UserRepository>.value(value: repository),
+            Provider<FormReportStore>.value(value: InMemoryFormReportStore()),
+            Provider<HoldRecordStore>.value(value: store),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light,
+            home: HistoryScreen(now: () => _now),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a hold is a row of its day; it opens its report', (
+      tester,
+    ) async {
+      withBattles();
+      await openWithHolds(tester, [
+        holdRecord(endedAt: DateTime(2026, 11, 14, 14, 50)),
+      ]);
+      await toMatches(tester);
+      expect(find.text('3기록'), findsOneWidget);
+      expect(find.byType(ArchiveHoldRow), findsOneWidget);
+      await tester.tap(find.byType(ArchiveHoldRow));
+      await tester.pumpAndSettle();
+      expect(find.byType(HoldReportScreen), findsOneWidget);
+    });
+
+    testWidgets('버티기 lists only the holds', (tester) async {
+      withBattles();
+      await openWithHolds(tester, [
+        holdRecord(endedAt: DateTime(2026, 11, 14, 14, 50)),
+      ]);
+      await toMatches(tester);
+      // The last chip: it may need the row scrolled to it first.
+      final chip = find.descendant(
+        of: find.byType(ArchiveChips<ArchiveFilter>),
+        matching: find.text('버티기'),
+      );
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(find.byType(ArchiveMatchRow), findsNothing);
+      expect(find.byType(ArchiveHoldRow), findsOneWidget);
+    });
+
+    testWidgets('the 전체 tab sums the holds of the period', (tester) async {
+      withBattles();
+      await openWithHolds(tester, [
+        holdRecord(endedAt: DateTime(2026, 11, 14, 14, 50)),
+      ]);
+      await tester.scrollUntilVisible(
+        find.byType(ArchiveHoldSummary),
+        200,
+        scrollable: vertical.first,
+      );
+      expect(find.bySemanticsLabel('횟수 1회'), findsOneWidget);
+    });
+
+    testWidgets('no hold: no 버티기 section', (tester) async {
+      withBattles();
+      await openWithHolds(tester, const []);
+      expect(find.byType(ArchiveHoldSummary), findsNothing);
     });
   });
 }

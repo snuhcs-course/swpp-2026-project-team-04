@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/models/arcade_stage.dart';
+import 'package:gymrats_app/models/hold_record.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/archive_match_row.dart';
@@ -233,6 +235,63 @@ void main() {
         isSemantics(label: '오늘 · 11.24 (화)\n2경기', isHeader: true),
       );
       semantics.dispose();
+    });
+  });
+  group('a hold row (P13)', () {
+    HoldRecord hold({int stars = 2, int warnings = 2}) => HoldRecord(
+      endedAt: DateTime(2026, 11, 26, 21, 10),
+      pose: HoldPose.plank,
+      stage: 3,
+      held: const Duration(milliseconds: 24600),
+      elapsed: const Duration(milliseconds: 26700),
+      stars: stars,
+      starSeconds: const [15, 20, 30],
+      warnings: [
+        for (var i = 0; i < warnings; i++)
+          HoldRecordWarning(
+            at: Duration(seconds: 3 + i),
+            faultId: 'plank.kneeDown',
+            words: '무릎 떼요',
+          ),
+      ],
+    );
+
+    test('the words', () {
+      expect(ArchiveHoldRow.titleLine(hold()), '하이 플랭크 · 3스테이지');
+      expect(ArchiveHoldRow.detailLine(hold()), '21:10 · 버티기 · 경고 2');
+      expect(ArchiveHoldRow.detailLine(hold(warnings: 0)), '21:10 · 버티기');
+      expect(ArchiveHoldRow.heldWords(hold()), '24.6');
+    });
+
+    testWidgets('the star chip, the title, the time held and the stars; one '
+        'tappable node', (tester) async {
+      final semantics = tester.ensureSemantics();
+      var taps = 0;
+      await _show(tester, ArchiveHoldRow(hold: hold(), onTap: () => taps++));
+      expect(find.text('★2'), findsOneWidget);
+      expect(find.text('하이 플랭크 · 3스테이지'), findsOneWidget);
+      expect(find.text('24.6 초', findRichText: true), findsOneWidget);
+      expect(find.text('별 2/3'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byType(ArchiveHoldRow)),
+        isSemantics(
+          label: '별 2개\n하이 플랭크 · 3스테이지\n21:10 · 버티기 · 경고 2\n24.6초 버팀\n별 2/3',
+          hasTapAction: true,
+        ),
+      );
+      await tester.tap(find.byType(ArchiveHoldRow));
+      expect(taps, 1);
+      semantics.dispose();
+    });
+
+    testWidgets('a fail gets the pink chip', (tester) async {
+      await _show(tester, ArchiveHoldRow(hold: hold(stars: 0)));
+      final chip = tester.widget<DecoratedBox>(
+        find
+            .ancestor(of: find.text('★0'), matching: find.byType(DecoratedBox))
+            .first,
+      );
+      expect((chip.decoration as BoxDecoration).color, isNot(AppColors.accent));
     });
   });
 }

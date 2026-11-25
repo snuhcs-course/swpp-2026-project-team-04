@@ -273,7 +273,8 @@ class _Figure extends StatelessWidget {
               TextSpan(
                 children: [
                   TextSpan(text: value, style: text.statsIssueName),
-                  TextSpan(text: ' $unit', style: text.archiveLabel),
+                  if (unit.isNotEmpty)
+                    TextSpan(text: ' $unit', style: text.archiveLabel),
                 ],
               ),
               maxLines: 1,
@@ -559,6 +560,99 @@ class ArchiveIssues extends StatelessWidget {
                 Text('${issue.count}회', style: text.coachChipNumber),
               ],
             ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "버티기" on the 전체 tab (P13): the period's holds and time held, and each
+/// pose's longest hold.
+class ArchiveHoldSummary extends StatelessWidget {
+  const ArchiveHoldSummary({
+    super.key,
+    required this.holds,
+    required this.period,
+  });
+
+  final ArchiveHolds holds;
+  final StatsPeriod period;
+
+  /// "24.6초", or "1분 12초" from a minute.
+  static String time(Duration d) {
+    final tenths = (d.inMilliseconds / 100).round();
+    if (tenths >= 600) {
+      final seconds = (tenths / 10).round();
+      return '${seconds ~/ 60}분 ${seconds % 60}초';
+    }
+    final value = tenths / 10;
+    return value == value.roundToDouble()
+        ? '${value.toStringAsFixed(0)}초'
+        : '${value.toStringAsFixed(1)}초';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final held = time(holds.held);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ArchiveSectionTitle('버티기', detail: archivePeriodLabel(period)),
+        const SizedBox(height: AppSpacing.s12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _Figure(value: '${holds.count}', unit: '회', name: '횟수'),
+            ),
+            Expanded(
+              child: _Figure(value: held, unit: '', name: '버틴 시간'),
+            ),
+          ],
+        ),
+        if (holds.bests.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.s12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (index, best) in holds.bests.indexed) ...[
+                if (index > 0) const SizedBox(width: AppSpacing.s8),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: const BoxDecoration(
+                      color: AppColors.cardHigh,
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(AppRadius.small),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.s12),
+                      child: Semantics(
+                        container: true,
+                        label:
+                            '${best.pose.label} 최고 ${time(best.held)}, '
+                            '${archiveDay(best.endedAt)}',
+                        child: ExcludeSemantics(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(best.pose.label, style: text.feedbackMeta),
+                              Text(time(best.held), style: text.statsIssueName),
+                              Text(
+                                '최고 · ${archiveDay(best.endedAt)}',
+                                style: text.feedbackMeta,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ],

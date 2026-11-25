@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/exercise_type_korean.dart';
 import '../models/game_score.dart';
+import '../models/hold_record.dart';
 import '../models/match_record.dart';
 import '../theme/app_theme.dart';
 
@@ -279,6 +280,149 @@ class _GainChip extends StatelessWidget {
                       .copyWith(color: AppColors.ink),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One played hold in the journal's 경기 tab (P13): a star chip (lime with a
+/// star, pink without), "하이 플랭크 · 3스테이지", the time, 버티기 and the
+/// warnings, the time held and the stars. Tappable when [onTap] is set: the
+/// hold's report.
+class ArchiveHoldRow extends StatelessWidget {
+  const ArchiveHoldRow({super.key, required this.hold, this.onTap});
+
+  final HoldRecord hold;
+  final VoidCallback? onTap;
+
+  static const _chip = 44.0;
+  static const _chevron = 18.0;
+  static const _failTint = 0.22;
+
+  /// "하이 플랭크 · 3스테이지".
+  static String titleLine(HoldRecord hold) =>
+      '${hold.pose.label} · ${hold.stage}스테이지';
+
+  /// "21:10 · 버티기 · 경고 2".
+  static String detailLine(HoldRecord hold) {
+    final at = hold.endedAt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return [
+      '${two(at.hour)}:${two(at.minute)}',
+      '버티기',
+      if (hold.warnings.isNotEmpty) '경고 ${hold.warnings.length}',
+    ].join(' · ');
+  }
+
+  /// "24.6".
+  static String heldWords(HoldRecord hold) {
+    final tenths = (hold.held.inMilliseconds / 100).round() / 10;
+    return tenths == tenths.roundToDouble()
+        ? tenths.toStringAsFixed(0)
+        : tenths.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final quiet = text.feedbackMeta;
+    final cleared = hold.stars > 0;
+    return MergeSemantics(
+      child: Material(
+        color: AppColors.card,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: ArchiveMatchRow.minHeight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.s20,
+                vertical: AppSpacing.s12,
+              ),
+              child: Row(
+                children: [
+                  SizedBox.square(
+                    dimension: _chip,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: cleared
+                            ? AppColors.accent
+                            : AppColors.opponent.withValues(alpha: _failTint),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(AppRadius.small),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '★${hold.stars}',
+                          semanticsLabel: '별 ${hold.stars}개',
+                          maxLines: 1,
+                          style: text.reportCardTitle.copyWith(
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.s12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          titleLine(hold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.reportCardTitle,
+                        ),
+                        Text(
+                          detailLine(hold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: quiet,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.s12),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: heldWords(hold),
+                              style: text.archiveScore.copyWith(
+                                color: AppColors.ink,
+                              ),
+                            ),
+                            TextSpan(text: ' 초', style: text.archiveLabel),
+                          ],
+                        ),
+                        semanticsLabel: '${heldWords(hold)}초 버팀',
+                      ),
+                      Text(
+                        '별 ${hold.stars}/${hold.starSeconds.length}',
+                        style: quiet,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: AppSpacing.s4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: _chevron,
+                    color: AppColors.inactive,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

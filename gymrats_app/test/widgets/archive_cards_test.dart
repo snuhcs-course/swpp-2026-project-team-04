@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/arcade_stage.dart';
 import 'package:gymrats_app/models/feedback_stats.dart';
+import 'package:gymrats_app/models/hold_record.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/history_viewmodel.dart';
@@ -315,6 +317,48 @@ void main() {
         find.ancestor(of: find.text('x'), matching: find.byType(DecoratedBox)),
       );
       expect((box.decoration as BoxDecoration).color, AppColors.card);
+    });
+  });
+  group('버티기 on the 전체 tab (P13)', () {
+    HoldRecord best(HoldPose pose, int ms) => HoldRecord(
+      endedAt: DateTime(2026, 11, 26, 21, 10),
+      pose: pose,
+      stage: 3,
+      held: Duration(milliseconds: ms),
+      elapsed: Duration(milliseconds: ms),
+      stars: 1,
+      starSeconds: const [15, 20, 30],
+    );
+
+    testWidgets('the holds and time held of the period, each pose\'s longest', (
+      tester,
+    ) async {
+      await _show(
+        tester,
+        ArchiveHoldSummary(
+          holds: ArchiveHolds(
+            count: 3,
+            held: const Duration(milliseconds: 69600),
+            bests: [best(HoldPose.plank, 40000), best(HoldPose.chair, 15000)],
+          ),
+          period: StatsPeriod.week,
+        ),
+      );
+      expect(find.text('버티기'), findsOneWidget);
+      expect(find.text('이번 주'), findsOneWidget);
+      expect(find.bySemanticsLabel('횟수 3회'), findsOneWidget);
+      expect(find.bySemanticsLabel('버틴 시간 1분 10초'), findsOneWidget);
+      expect(find.bySemanticsLabel('하이 플랭크 최고 40초, 11.26'), findsOneWidget);
+      expect(find.bySemanticsLabel('의자 자세 최고 15초, 11.26'), findsOneWidget);
+    });
+
+    test('times under a minute with one decimal, from a minute in minutes', () {
+      expect(
+        ArchiveHoldSummary.time(const Duration(milliseconds: 24600)),
+        '24.6초',
+      );
+      expect(ArchiveHoldSummary.time(const Duration(seconds: 30)), '30초');
+      expect(ArchiveHoldSummary.time(const Duration(seconds: 72)), '1분 12초');
     });
   });
 }

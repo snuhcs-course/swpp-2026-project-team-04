@@ -1,15 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/arcade_stage.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/feedback_stats.dart';
+import 'package:gymrats_app/models/hold_record.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
+import 'package:gymrats_app/services/feedback/hold_record_store.dart';
 import 'package:gymrats_app/viewmodels/history_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/login_viewmodel.dart';
 
 import '../support/fakes.dart';
+import '../models/hold_record_test.dart' show holdRecord;
 import '../support/feedback_fakes.dart';
 
 MatchRecord _record(int mine, {int? id}) => MatchRecord(
@@ -335,6 +339,7 @@ void main() {
         '스쿼트',
         '온라인',
         '아케이드',
+        '버티기',
       ]);
     });
 
@@ -500,4 +505,140 @@ void main() {
       expect(growth.bests.single.playedAt, DateTime(2026, 11, 2, 9));
     });
   });
+  group('holds in the journal (P13)', () {
+    HoldRecord hold(DateTime at, {int heldMs = 20000, HoldPose? pose}) =>
+        holdRecord(endedAt: at, heldMs: heldMs, pose: pose ?? HoldPose.plank);
+
+    test('the holds come with the first page and sit between the battles by '
+        'time', () async {
+      final store = InMemoryHoldRecordStore();
+      await store.save(hold(DateTime(2026, 11, 13, 12)));
+      await store.save(hold(DateTime(2026, 11, 12, 22)));
+      repository.historyPages = [
+        [
+          _played(DateTime(2026, 11, 13, 16)),
+          _played(DateTime(2026, 11, 12, 21)),
+        ],
+      ];
+      vm = HistoryViewModel(repository: repository, holdRecords: store);
+      await vm.load();
+      expect(vm.state.holds, hasLength(2));
+      final days = vm.state.days;
+      expect(days.first.entries.map((e) => e.runtimeType), [
+        ArchiveMatchEntry,
+        ArchiveHoldEntry,
+      ]);
+      expect(days.last.entries.map((e) => e.runtimeType), [
+        ArchiveHoldEntry,
+        ArchiveMatchEntry,
+      ]);
+      expect(days.first.matches, hasLength(1));
+      expect(days.first.holds, hasLength(1));
+    });
+
+    test('버티기 lists only the holds, 아케이드 battles and holds, an '
+        'exercise only battles', () async {
+      final store = InMemoryHoldRecordStore();
+      await store.save(hold(DateTime(2026, 11, 13, 12)));
+      repository.historyPages = [
+        [_played(DateTime(2026, 11, 13, 16), online: false)],
+      ];
+      vm = HistoryViewModel(repository: repository, holdRecords: store);
+      await vm.load();
+      vm.setFilter(ArchiveFilter.hold);
+      expect(vm.state.days.single.entries.single, isA<ArchiveHoldEntry>());
+      vm.setFilter(ArchiveFilter.arcade);
+      expect(vm.state.days.single.entries, hasLength(2));
+      vm.setFilter(ArchiveFilter.pushUp);
+      expect(vm.state.days.single.holds, isEmpty);
+      expect(ArchiveFilter.values.where((f) => f.keepsHolds), [
+        ArchiveFilter.all,
+        ArchiveFilter.arcade,
+        ArchiveFilter.hold,
+      ]);
+    });
+
+    test('holds older than the battles shown wait while older pages are '
+        'left', () {
+      final days = ArchiveDay.of(
+        [_played(DateTime(2026, 11, 13, 16))],
+        holds: [
+          hold(DateTime(2026, 11, 13, 17)),
+          hold(DateTime(2026, 11, 10, 9)),
+        ],
+        complete: false,
+      );
+      expect(days.single.holds, hasLength(1));
+      expect(
+        ArchiveDay.of(
+          const [],
+          holds: [hold(DateTime(2026, 11, 10, 9))],
+          complete: false,
+        ),
+        isEmpty,
+      );
+    });
+
+    test(
+      'holds alone make the journal ready; a failing store lists none',
+      () async {
+        final store = InMemoryHoldRecordStore();
+        await store.save(hold(DateTime(2026, 11, 13, 12)));
+        repository.historyPages = [[]];
+        vm = HistoryViewModel(repository: repository, holdRecords: store);
+        await vm.load();
+        expect(vm.state.phase, HistoryPhase.ready);
+        expect(vm.state.days.single.holds, hasLength(1));
+
+        repository.historyPages = [[]];
+        final failing = HistoryViewModel(
+          repository: repository,
+          holdRecords: _FailingHolds(),
+        );
+        await failing.load();
+        expect(failing.state.phase, HistoryPhase.empty);
+        expect(failing.state.holds, isEmpty);
+      },
+    );
+
+    test('the 전체 tab: holds and time held of the period, each pose\'s '
+        'longest', () async {
+      final store = InMemoryHoldRecordStore();
+      await store.save(hold(DateTime(2026, 11, 13, 12), heldMs: 24600));
+      await store.save(hold(DateTime(2026, 11, 10, 12), heldMs: 30000));
+      await store.save(hold(DateTime(2026, 10, 2, 12), heldMs: 40000));
+      await store.save(
+        hold(DateTime(2026, 11, 11, 12), heldMs: 15000, pose: HoldPose.chair),
+      );
+      // Not played yet: left out.
+      await store.save(hold(DateTime(2026, 11, 14, 12), heldMs: 99000));
+      repository.historyPages = [
+        [_played(DateTime(2026, 11, 13, 16))],
+      ];
+      vm = HistoryViewModel(
+        repository: repository,
+        holdRecords: store,
+        now: () => _now,
+      );
+      expect(vm.holdSummary, isNull);
+      await vm.load();
+      final week = vm.holdSummary!;
+      expect(week.count, 3);
+      expect(week.held, const Duration(milliseconds: 24600 + 30000 + 15000));
+      expect(week.bests.map((h) => (h.pose, h.held.inSeconds)), [
+        (HoldPose.plank, 40),
+        (HoldPose.chair, 15),
+      ]);
+      vm.setPeriod(StatsPeriod.all);
+      expect(vm.holdSummary!.count, 4);
+    });
+  });
+}
+
+class _FailingHolds implements HoldRecordStore {
+  @override
+  Future<void> save(HoldRecord record) async {}
+
+  @override
+  Future<List<HoldRecord>> list() async => throw StateError('no files');
 }

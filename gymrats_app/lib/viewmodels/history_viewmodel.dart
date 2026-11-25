@@ -2,12 +2,15 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
+import '../models/arcade_stage.dart';
 import '../models/exercise_type.dart';
 import '../models/feedback_stats.dart';
+import '../models/hold_record.dart';
 import '../models/match_record.dart';
 import '../models/rep_event.dart';
 import '../services/api/api_client.dart';
 import '../services/feedback/feedback_stats.dart';
+import '../services/feedback/hold_record_store.dart';
 import '../services/user/user_repository.dart';
 import 'login_viewmodel.dart';
 
@@ -32,7 +35,8 @@ enum ArchiveFilter {
   pushUp('푸쉬업'),
   squat('스쿼트'),
   online('온라인'),
-  arcade('아케이드');
+  arcade('아케이드'),
+  hold('버티기');
 
   const ArchiveFilter(this.label);
 
@@ -47,34 +51,148 @@ enum ArchiveFilter {
     squat => match.exercise == ExerciseType.squat,
     online => match.isOnline == true,
     arcade => match.isOnline == false,
+    hold => false,
   };
+
+  /// Whether the arcade's holds are listed: under 전체, 아케이드 and 버티기.
+  bool get keepsHolds => this == all || this == arcade || this == hold;
 }
 
-/// The battles of one local day, newest first, for the 경기 tab.
+/// One row of the 경기 tab: a battle or a played hold (P13).
+sealed class ArchiveEntry {
+  const ArchiveEntry();
+
+  /// When it was played; null for a battle saved without a time.
+  DateTime? get at;
+}
+
+final class ArchiveMatchEntry extends ArchiveEntry {
+  const ArchiveMatchEntry(this.match);
+
+  final MatchRecord match;
+
+  @override
+  DateTime? get at => match.playedAt?.toLocal();
+}
+
+final class ArchiveHoldEntry extends ArchiveEntry {
+  const ArchiveHoldEntry(this.hold);
+
+  final HoldRecord hold;
+
+  @override
+  DateTime? get at => hold.endedAt.toLocal();
+}
+
+/// The battles and holds of one local day, newest first, for the 경기 tab.
 class ArchiveDay {
-  const ArchiveDay({required this.date, required this.matches});
+  const ArchiveDay({required this.date, required this.entries});
 
   /// Local midnight.
   final DateTime date;
-  final List<MatchRecord> matches;
+  final List<ArchiveEntry> entries;
 
-  /// [matches] grouped by their local day, in the order they came (newest
-  /// first); a battle without a time goes under the day before it, or
-  /// first when none.
-  static List<ArchiveDay> of(List<MatchRecord> matches) {
-    final days = <ArchiveDay>[];
+  /// The day's battles.
+  List<MatchRecord> get matches => [
+    for (final e in entries)
+      if (e is ArchiveMatchEntry) e.match,
+  ];
+
+  /// The day's holds.
+  List<HoldRecord> get holds => [
+    for (final e in entries)
+      if (e is ArchiveHoldEntry) e.hold,
+  ];
+
+  /// [matches] (newest first, as the server gave them) and [holds] (any
+  /// order) by local day, newest first. A battle without a time goes under
+  /// the one before it, or first when none. While older battles are still
+  /// on the server ([complete] false), holds older than the oldest battle
+  /// shown wait, so a later page does not put battles above them.
+  static List<ArchiveDay> of(
+    List<MatchRecord> matches, {
+    List<HoldRecord> holds = const [],
+    bool complete = true,
+  }) {
+    final oldest = [for (final m in matches) ?m.playedAt]
+        .fold<DateTime?>(null, (o, t) => o == null || t.isBefore(o) ? t : o);
+    final waiting = [
+      for (final h in holds)
+        if (complete || (oldest != null && !h.endedAt.isBefore(oldest))) h,
+    ]..sort((a, b) => b.endedAt.compareTo(a.endedAt));
+    final entries = <ArchiveEntry>[];
+    var h = 0;
     for (final match in matches) {
-      final at = match.playedAt?.toLocal();
+      final at = match.playedAt;
+      while (at != null &&
+          h < waiting.length &&
+          waiting[h].endedAt.isAfter(at)) {
+        entries.add(ArchiveHoldEntry(waiting[h++]));
+      }
+      entries.add(ArchiveMatchEntry(match));
+    }
+    for (; h < waiting.length; h++) {
+      entries.add(ArchiveHoldEntry(waiting[h]));
+    }
+    final days = <ArchiveDay>[];
+    for (final entry in entries) {
+      final at = entry.at;
       final date = at == null
           ? (days.isEmpty ? null : days.last.date)
           : DateTime(at.year, at.month, at.day);
       if (days.isNotEmpty && days.last.date == date) {
-        days.last.matches.add(match);
+        days.last.entries.add(entry);
       } else {
-        days.add(ArchiveDay(date: date ?? DateTime(0), matches: [match]));
+        days.add(ArchiveDay(date: date ?? DateTime(0), entries: [entry]));
       }
     }
     return days;
+  }
+}
+
+/// The 전체 tab's holds of a period (P13): how many, the time held in all,
+/// and each pose's longest hold of all time.
+class ArchiveHolds {
+  const ArchiveHolds({
+    required this.count,
+    required this.held,
+    required this.bests,
+  });
+
+  /// Holds in the period.
+  final int count;
+
+  /// Time held in the period, in all.
+  final Duration held;
+
+  /// Each pose's longest hold over every kept one, in the poses' order.
+  final List<HoldRecord> bests;
+
+  static ArchiveHolds of(
+    List<HoldRecord> all,
+    StatsPeriod period,
+    DateTime now,
+  ) {
+    final start = const FeedbackStatsCalculator().periodStart(period, now);
+    final inPeriod = [
+      for (final h in all)
+        if ((start == null || !h.endedAt.isBefore(start)) &&
+            !h.endedAt.isAfter(now))
+          h,
+    ];
+    return ArchiveHolds(
+      count: inPeriod.length,
+      held: inPeriod.fold(Duration.zero, (sum, h) => sum + h.held),
+      bests: [
+        for (final pose in HoldPose.values)
+          ?all
+              .where((h) => h.pose == pose && !h.endedAt.isAfter(now))
+              .fold<HoldRecord?>(
+                null,
+                (best, h) => best == null || h.held > best.held ? h : best,
+              ),
+      ],
+    );
   }
 }
 
@@ -243,6 +361,7 @@ class HistoryState {
     this.filter = ArchiveFilter.all,
     this.period = StatsPeriod.week,
     this.exercise = ExerciseType.pushUp,
+    this.holds = const [],
   });
 
   final HistoryPhase phase;
@@ -282,14 +401,22 @@ class HistoryState {
   final StatsPeriod period;
   final ExerciseType exercise;
 
+  /// The holds kept on the phone, newest first (P13).
+  final List<HoldRecord> holds;
+
   /// The loaded battles [filter] keeps, newest first.
   List<MatchRecord> get filtered => [
     for (final m in matches)
       if (filter.keeps(m)) m,
   ];
 
-  /// [filtered] by local day.
-  List<ArchiveDay> get days => ArchiveDay.of(filtered);
+  /// [filtered] and, under [ArchiveFilter.keepsHolds], the holds, by local
+  /// day.
+  List<ArchiveDay> get days => ArchiveDay.of(
+    filtered,
+    holds: filter.keepsHolds ? holds : const [],
+    complete: !hasMore,
+  );
 
   /// How much [match] beat the earlier best score of its exercise; null when
   /// it set no new best, was the exercise's first battle, or the summary is
@@ -309,6 +436,7 @@ class HistoryState {
     ArchiveFilter? filter,
     StatsPeriod? period,
     ExerciseType? exercise,
+    List<HoldRecord>? holds,
   }) => HistoryState(
     phase: phase ?? this.phase,
     matches: matches ?? this.matches,
@@ -322,6 +450,7 @@ class HistoryState {
     filter: filter ?? this.filter,
     period: period ?? this.period,
     exercise: exercise ?? this.exercise,
+    holds: holds ?? this.holds,
   );
 }
 
@@ -335,6 +464,7 @@ class HistoryViewModel extends ChangeNotifier {
     required this._repository,
     this.pageSize = 20,
     FeedbackStatsSource? stats,
+    this.holdRecords,
     DateTime Function()? now,
   }) : _stats =
            stats ??
@@ -345,6 +475,9 @@ class HistoryViewModel extends ChangeNotifier {
 
   final UserRepository _repository;
   final int pageSize;
+
+  /// The holds kept on the phone (P13); null lists none.
+  final HoldRecordStore? holdRecords;
   final FeedbackStatsSource? _stats;
   final DateTime Function() _now;
   static const _calculator = FeedbackStatsCalculator();
@@ -369,15 +502,21 @@ class HistoryViewModel extends ChangeNotifier {
     final kept = _state;
     _set(_choices(kept, const HistoryState()));
     try {
+      final holding = _readHolds();
       final page = await _repository.fetchHistory(limit: pageSize);
+      final holds = await holding;
       _cursor = page.nextCursor;
       _set(
         _choices(
           kept,
           HistoryState(
-            phase: page.items.isEmpty ? HistoryPhase.empty : HistoryPhase.ready,
+            // Holds alone are a journal too.
+            phase: page.items.isEmpty && holds.isEmpty
+                ? HistoryPhase.empty
+                : HistoryPhase.ready,
             matches: page.items,
             hasMore: page.nextCursor != null,
+            holds: holds,
           ),
         ),
       );
@@ -464,6 +603,24 @@ class HistoryViewModel extends ChangeNotifier {
     final points = _state.points;
     if (points == null) return null;
     return ArchiveGrowth.of(points, _state.period, _state.exercise, _now());
+  }
+
+  /// The kept holds, newest first; none when the store fails.
+  Future<List<HoldRecord>> _readHolds() async {
+    final store = holdRecords;
+    if (store == null) return const [];
+    try {
+      return await store.list();
+    } on Object {
+      return const [];
+    }
+  }
+
+  /// The 전체 tab's holds of the chosen period; null without any hold.
+  ArchiveHolds? get holdSummary {
+    final holds = _state.holds;
+    if (holds.isEmpty) return null;
+    return ArchiveHolds.of(holds, _state.period, _now());
   }
 
   /// [next] with the user's chip, period and exercise from [kept].

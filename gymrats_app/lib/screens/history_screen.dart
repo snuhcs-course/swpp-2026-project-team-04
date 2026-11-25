@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/hold_record.dart';
 import '../services/feedback/feedback_stats.dart';
+import '../services/feedback/hold_record_store.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/feedback_stats_viewmodel.dart';
@@ -10,6 +12,7 @@ import '../widgets/archive_cards.dart';
 import '../widgets/archive_match_row.dart';
 import '../widgets/auth_form.dart';
 import 'feedback_stats_screen.dart';
+import 'hold_report_screen.dart';
 import 'result_screen.dart';
 
 /// 기록보관소 (P13, draft C "운동일지"), opened from home's 03 / ARCHIVE: two
@@ -53,10 +56,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
         widget.createViewModel?.call() ??
         HistoryViewModel(
           repository: context.read<UserRepository>(),
+          holdRecords: _holdRecords(),
           // One clock for the periods and the rows' words.
           now: widget.now,
         );
     _viewModel.load();
+  }
+
+  /// The app's kept holds (P13); none without one, as in tests.
+  HoldRecordStore? _holdRecords() {
+    try {
+      return context.read<HoldRecordStore>();
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 
   @override
@@ -277,6 +290,12 @@ class _OverviewTab extends StatelessWidget {
           const ArchiveSection(
             child: Center(child: CircularProgressIndicator()),
           ),
+        if (vm.holdSummary case final holds?) ...[
+          _gap,
+          ArchiveSection(
+            child: ArchiveHoldSummary(holds: holds, period: state.period),
+          ),
+        ],
         if (onOpenStats != null) ...[
           _gap,
           Material(
@@ -361,7 +380,7 @@ class _MatchesTab extends StatelessWidget {
         final at = index - 1;
         if (days.isEmpty && !showFooter && at == 0) {
           return ArchiveSection(
-            child: Text('이 조건에 맞는 경기가 없어요.', style: text.feedbackMeta),
+            child: Text('이 조건에 맞는 기록이 없어요.', style: text.feedbackMeta),
           );
         }
         if (at < days.length) {
@@ -395,8 +414,13 @@ class _Day extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ArchiveDayHeader(date: day.date, count: day.matches.length, now: now),
-          for (final (index, match) in day.matches.indexed) ...[
+          ArchiveDayHeader(
+            date: day.date,
+            count: day.entries.length,
+            now: now,
+            unit: day.holds.isEmpty ? '경기' : '기록',
+          ),
+          for (final (index, entry) in day.entries.indexed) ...[
             if (index > 0)
               const Divider(
                 height: 1,
@@ -404,17 +428,34 @@ class _Day extends StatelessWidget {
                 endIndent: AppSpacing.s20,
                 color: AppColors.facetLight,
               ),
-            ArchiveMatchRow(
-              match: match,
-              bestGain: state.bestGainOf(match),
-              onTap: reportTap(context, match),
-            ),
+            switch (entry) {
+              ArchiveMatchEntry(:final match) => ArchiveMatchRow(
+                match: match,
+                bestGain: state.bestGainOf(match),
+                onTap: reportTap(context, match),
+              ),
+              ArchiveHoldEntry(:final hold) => ArchiveHoldRow(
+                hold: hold,
+                onTap: () => _openHold(context, hold),
+              ),
+            },
           ],
         ],
       ),
     );
   }
 }
+
+/// A played hold's report on top (P13).
+void _openHold(BuildContext context, HoldRecord hold) => Navigator.push<void>(
+  context,
+  MaterialPageRoute(
+    builder: (_) => HoldReportScreen(
+      record: hold,
+      store: context.read<HistoryViewModel>().holdRecords,
+    ),
+  ),
+);
 
 class _FooterSpinner extends StatelessWidget {
   const _FooterSpinner();
