@@ -98,7 +98,9 @@ void main() {
     });
 
     testWidgets('운동 분석 without earlier holds: time held and calories on '
-        '65 kg, no endurance, no lifted weight', (tester) async {
+        '65 kg, the endurance index says 비교 기록 없음, no lifted weight', (
+      tester,
+    ) async {
       await open(tester);
       await scrollTo(tester, find.text('운동 분석'));
       expect(find.bySemanticsLabel('버틴 시간 24.6초'), findsOneWidget);
@@ -107,7 +109,9 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('65 kg 기준 추정'), findsOneWidget);
-      expect(find.text('근지구력 지수'), findsNothing);
+      expect(find.text('근지구력 지수'), findsOneWidget);
+      expect(find.bySemanticsLabel('근지구력 지수 –'), findsOneWidget);
+      expect(find.text(noEarlier), findsWidgets);
       expect(find.text('들어 올린 무게는 움직임이 없는 버티기에는 계산하지 않아요.'), findsOneWidget);
     });
 
@@ -117,13 +121,15 @@ void main() {
       expect(find.text('체중 80 kg 기준 추정'), findsOneWidget);
     });
 
-    testWidgets('성과: the clean start and the next star; no 변화 without '
-        'earlier holds; the coach line', (tester) async {
+    testWidgets('성과: the clean start and the next star; 변화 says 비교 '
+        '기록 없음 without earlier holds; the coach line', (tester) async {
       await open(tester);
       await scrollTo(tester, find.text('코치 한마디'));
       expect(find.text('처음 12초 경고 없이'), findsOneWidget);
       expect(find.text('세 번째 별까지 5.4초'), findsOneWidget);
-      expect(find.text('변화'), findsNothing);
+      expect(find.text('변화'), findsOneWidget);
+      expect(find.text('하이 플랭크 버틴 시간'), findsOneWidget);
+      expect(find.text(noEarlier), findsNWidgets(2));
       expect(
         find.text('12초쯤 "무릎 떼요" 경고가 나왔어요. 다음엔 그 순간을 넘겨 30초 별을 노려 봐요.'),
         findsOneWidget,

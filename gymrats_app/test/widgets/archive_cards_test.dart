@@ -361,4 +361,71 @@ void main() {
       expect(ArchiveHoldSummary.time(const Duration(seconds: 72)), '1분 12초');
     });
   });
+  group('자세별 버틴 시간 (P13)', () {
+    HoldRecord hold(HoldPose pose, int day, int ms) => HoldRecord(
+      endedAt: DateTime(2026, 11, day, 9),
+      pose: pose,
+      stage: 3,
+      held: Duration(milliseconds: ms),
+      elapsed: Duration(milliseconds: ms),
+      stars: 1,
+      starSeconds: const [15, 20, 30],
+    );
+
+    Future<void> showTrends(
+      WidgetTester tester,
+      Map<HoldPose, List<HoldRecord>> trends,
+    ) => _show(
+      tester,
+      ArchiveHoldSummary(
+        holds: ArchiveHolds(
+          count: trends.values.fold(0, (n, l) => n + l.length),
+          held: Duration.zero,
+          bests: const [],
+          trends: trends,
+        ),
+        period: StatsPeriod.week,
+      ),
+    );
+
+    testWidgets('a pose\'s holds as a trend; the chips switch the pose', (
+      tester,
+    ) async {
+      await showTrends(tester, {
+        HoldPose.plank: [
+          hold(HoldPose.plank, 24, 20100),
+          hold(HoldPose.plank, 25, 23000),
+          hold(HoldPose.plank, 26, 24600),
+        ],
+        HoldPose.chair: [
+          hold(HoldPose.chair, 24, 15000),
+          hold(HoldPose.chair, 26, 18000),
+        ],
+      });
+      expect(find.text('자세별 버틴 시간'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('하이 플랭크 버틴 시간: 20.1초, 23초, 24.6초'),
+        findsOneWidget,
+      );
+      expect(find.text('11.26'), findsOneWidget);
+      await tester.tap(find.text('의자 자세'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel('의자 자세 버틴 시간: 15초, 18초'), findsOneWidget);
+      expect(find.text('2회'), findsOneWidget);
+    });
+
+    testWidgets('one hold of the pose: nothing to compare yet', (tester) async {
+      await showTrends(tester, {
+        HoldPose.plank: [hold(HoldPose.plank, 26, 24600)],
+      });
+      expect(find.text('하이 플랭크 24.6초 · 비교 기록 없음'), findsOneWidget);
+      // One pose: no chips.
+      expect(find.byType(ArchiveChips<HoldPose>), findsNothing);
+    });
+
+    testWidgets('no hold in the period: one line', (tester) async {
+      await showTrends(tester, const {});
+      expect(find.text('이 기간에 기록된 버티기가 없어요.'), findsOneWidget);
+    });
+  });
 }

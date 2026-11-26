@@ -151,12 +151,14 @@ class ArchiveDay {
 }
 
 /// The 전체 tab's holds of a period (P13): how many, the time held in all,
-/// and each pose's longest hold of all time.
+/// each pose's longest hold of all time, and each pose's holds of the
+/// period in time for its trend chart.
 class ArchiveHolds {
   const ArchiveHolds({
     required this.count,
     required this.held,
     required this.bests,
+    this.trends = const {},
   });
 
   /// Holds in the period.
@@ -167,6 +169,13 @@ class ArchiveHolds {
 
   /// Each pose's longest hold over every kept one, in the poses' order.
   final List<HoldRecord> bests;
+
+  /// Each pose's holds of the period, oldest first, at most [trendCount]
+  /// of the newest; a pose without one is left out.
+  final Map<HoldPose, List<HoldRecord>> trends;
+
+  /// How many holds a pose's trend chart shows.
+  static const trendCount = 10;
 
   static ArchiveHolds of(
     List<HoldRecord> all,
@@ -180,9 +189,22 @@ class ArchiveHolds {
             !h.endedAt.isAfter(now))
           h,
     ];
+    final trends = <HoldPose, List<HoldRecord>>{};
+    for (final pose in HoldPose.values) {
+      final ofPose = [
+        for (final h in inPeriod)
+          if (h.pose == pose) h,
+      ]..sort((a, b) => a.endedAt.compareTo(b.endedAt));
+      if (ofPose.isNotEmpty) {
+        trends[pose] = ofPose
+            .skip(math.max(0, ofPose.length - trendCount))
+            .toList();
+      }
+    }
     return ArchiveHolds(
       count: inPeriod.length,
       held: inPeriod.fold(Duration.zero, (sum, h) => sum + h.held),
+      trends: trends,
       bests: [
         for (final pose in HoldPose.values)
           ?all

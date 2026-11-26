@@ -633,6 +633,29 @@ void main() {
       expect(vm.holdSummary!.count, 4);
     });
   });
+  test('each pose\'s holds of the period in time, the newest ten (P13)', () {
+    final now = DateTime(2026, 11, 13, 21);
+    HoldRecord at(int day, int hour, {HoldPose pose = HoldPose.plank}) =>
+        holdRecord(endedAt: DateTime(2026, 11, day, hour), pose: pose);
+    final holds = ArchiveHolds.of(
+      [
+        for (var i = 0; i < 12; i++) at(9 + i % 4, 8 + i),
+        at(12, 9, pose: HoldPose.chair),
+        // Last month: not in this week's trend.
+        holdRecord(endedAt: DateTime(2026, 10, 1, 9), pose: HoldPose.chair),
+      ],
+      StatsPeriod.week,
+      now,
+    );
+    final plank = holds.trends[HoldPose.plank]!;
+    expect(plank, hasLength(ArchiveHolds.trendCount));
+    expect([
+      for (var i = 1; i < plank.length; i++)
+        !plank[i].endedAt.isBefore(plank[i - 1].endedAt),
+    ], everyElement(isTrue));
+    expect(holds.trends[HoldPose.chair], hasLength(1));
+    expect(ArchiveHolds.of(const [], StatsPeriod.week, now).trends, isEmpty);
+  });
 }
 
 class _FailingHolds implements HoldRecordStore {

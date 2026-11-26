@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../models/arcade_stage.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../models/feedback_stats.dart';
+import '../models/hold_record.dart';
 import '../models/reject_reason_korean.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/history_viewmodel.dart';
@@ -567,9 +569,10 @@ class ArchiveIssues extends StatelessWidget {
   }
 }
 
-/// "버티기" on the 전체 tab (P13): the period's holds and time held, and each
-/// pose's longest hold.
-class ArchiveHoldSummary extends StatelessWidget {
+/// "버티기" on the 전체 tab (P13): the period's holds and time held, each
+/// pose's longest hold, and a pose's time held in the period as a trend
+/// (the pose picked by chips); one hold says there is nothing to compare.
+class ArchiveHoldSummary extends StatefulWidget {
   const ArchiveHoldSummary({
     super.key,
     required this.holds,
@@ -578,6 +581,9 @@ class ArchiveHoldSummary extends StatelessWidget {
 
   final ArchiveHolds holds;
   final StatsPeriod period;
+
+  @override
+  State<ArchiveHoldSummary> createState() => _ArchiveHoldSummaryState();
 
   /// "24.6초", or "1분 12초" from a minute.
   static String time(Duration d) {
@@ -591,11 +597,27 @@ class ArchiveHoldSummary extends StatelessWidget {
         ? '${value.toStringAsFixed(0)}초'
         : '${value.toStringAsFixed(1)}초';
   }
+}
+
+class _ArchiveHoldSummaryState extends State<ArchiveHoldSummary> {
+  HoldPose? _picked;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final holds = widget.holds;
+    final period = widget.period;
+    final time = ArchiveHoldSummary.time;
     final held = time(holds.held);
+    // The picked pose, else the first with holds in the period.
+    final poses = [
+      for (final pose in HoldPose.values)
+        if (holds.trends.containsKey(pose)) pose,
+    ];
+    final pose = poses.contains(_picked)
+        ? _picked!
+        : (poses.isEmpty ? null : poses.first);
+    final trend = pose == null ? const <HoldRecord>[] : holds.trends[pose]!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -655,8 +677,76 @@ class ArchiveHoldSummary extends StatelessWidget {
             ],
           ),
         ],
+        const SizedBox(height: AppSpacing.s16),
+        ArchiveSectionTitle(
+          '자세별 버틴 시간',
+          detail: pose == null ? null : '${trend.length}회',
+        ),
+        const SizedBox(height: AppSpacing.s12),
+        if (poses.length > 1) ...[
+          ArchiveChips<HoldPose>(
+            values: poses,
+            labelOf: (p) => p.label,
+            selected: pose!,
+            onSelected: (p) => setState(() => _picked = p),
+          ),
+          const SizedBox(height: AppSpacing.s12),
+        ],
+        if (pose == null)
+          Text('이 기간에 기록된 버티기가 없어요.', style: text.feedbackMeta)
+        else if (trend.length < 2)
+          Text(
+            '${pose.label} ${time(trend.single.held)} · 비교 기록 없음',
+            style: text.feedbackMeta,
+          )
+        else ...[
+          Semantics(
+            container: true,
+            label:
+                '${pose.label} 버틴 시간: '
+                '${[for (final h in trend) time(h.held)].join(', ')}',
+            child: ExcludeSemantics(
+              child: SizedBox(
+                height: ArchiveScoreChart.height,
+                child: CustomPaint(
+                  painter: ArchiveTrendPainter(
+                    values: [
+                      for (final h in trend) h.held.inMilliseconds / 1000,
+                    ],
+                    labelStyle: text.coachChipNumber,
+                    meanStyle: text.statsAxis,
+                    format: _oneDecimal,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          ExcludeSemantics(
+            child: Row(
+              children: [
+                for (final h in trend)
+                  Expanded(
+                    child: Text(
+                      archiveDay(h.endedAt),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      style: text.statsAxis,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  static String _oneDecimal(num v) {
+    final rounded = (v * 10).round() / 10;
+    return rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(1);
   }
 }
 

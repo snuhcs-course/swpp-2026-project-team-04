@@ -77,10 +77,8 @@ class _HoldReportScreenState extends State<HoldReportScreen> {
                   ArchiveSection(child: _ExerciseSection(metrics: m)),
                   _gap,
                   ArchiveSection(child: _HighlightSection(metrics: m)),
-                  if (m.earlier.isNotEmpty) ...[
-                    _gap,
-                    ArchiveSection(child: _TrendSection(metrics: m)),
-                  ],
+                  _gap,
+                  ArchiveSection(child: _TrendSection(metrics: m)),
                   _gap,
                   ArchiveSection(child: _CoachSection(metrics: m)),
                 ],
@@ -94,6 +92,9 @@ class _HoldReportScreenState extends State<HoldReportScreen> {
 }
 
 const _gap = SizedBox(height: AppSpacing.s8);
+
+/// What the endurance index and 변화 say for the first hold of a pose.
+const noEarlier = '비교 기록 없음';
 
 /// "26.11.26(목) 21:10", in the phone's time.
 String holdReportDate(DateTime at) {
@@ -735,8 +736,12 @@ class _ExerciseSection extends StatelessWidget {
               ? '${HoldMetrics.defaultWeightKg.round()} kg 기준 추정'
               : '체중 ${HoldMetrics.oneDecimal(metrics.weightKg)} kg 기준 추정',
         ),
-        if (endurance != null) ...[
-          const Divider(height: 1, color: AppColors.facetLight),
+        const Divider(height: 1, color: AppColors.facetLight),
+        // Without an earlier hold of the pose there is nothing to compare
+        // with (PM, 2026-11-26): the row says so.
+        if (endurance == null)
+          _Row(name: '근지구력 지수', value: '–', unit: '', note: noEarlier)
+        else
           _Row(
             name: '근지구력 지수',
             value: '${endurance.round()}',
@@ -744,7 +749,6 @@ class _ExerciseSection extends StatelessWidget {
             change: endurance - 100,
             note: '같은 자세 최근 평균 = 100',
           ),
-        ],
         const SizedBox(height: AppSpacing.s8),
         Text('들어 올린 무게는 움직임이 없는 버티기에는 계산하지 않아요.', style: text.feedbackMeta),
       ],
@@ -903,6 +907,16 @@ class _TrendSection extends StatelessWidget {
     final trend = metrics.trend;
     final values = [for (final r in trend) HoldMetrics.seconds(r.held)];
     final pose = metrics.record.pose.label;
+    if (metrics.earlier.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ArchiveSectionTitle('변화', detail: '$pose 버틴 시간'),
+          const SizedBox(height: AppSpacing.s12),
+          Text(noEarlier, style: text.feedbackMeta),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
