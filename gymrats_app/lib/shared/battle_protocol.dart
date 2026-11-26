@@ -31,6 +31,11 @@ const battleSetupTimeout = Duration(seconds: 20);
 /// `match.cancelled` reason when the setup time above ran out.
 const battleSetupTimeoutReason = 'setup_timeout';
 
+/// P10: how long a player who sent `accept_virtual` waits in the main queue
+/// for a real player. Real players are paired at once; after this the
+/// server finds them a match with a simulated opponent instead.
+const battleVirtualWait = Duration(seconds: 10);
+
 const battleReasons = {
   'insufficient_depth',
   'incomplete_extension',
