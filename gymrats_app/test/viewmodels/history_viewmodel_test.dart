@@ -8,6 +8,7 @@ import 'package:gymrats_app/models/hold_record.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
+import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/feedback/hold_record_store.dart';
 import 'package:gymrats_app/viewmodels/history_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/login_viewmodel.dart';
@@ -15,6 +16,7 @@ import 'package:gymrats_app/viewmodels/login_viewmodel.dart';
 import '../support/fakes.dart';
 import '../models/hold_record_test.dart' show holdRecord;
 import '../support/feedback_fakes.dart';
+import '../support/form_report_fixtures.dart';
 
 MatchRecord _record(int mine, {int? id}) => MatchRecord(
   id: id,
@@ -370,13 +372,13 @@ void main() {
     });
 
     test('setting the same chip again tells nobody; a reload keeps the '
-        'chip, period and exercise', () async {
+        'chip, period and scope (전체 first)', () async {
       await vm.load();
       var told = 0;
       vm.addListener(() => told++);
       vm.setFilter(ArchiveFilter.all);
       vm.setPeriod(StatsPeriod.week);
-      vm.setExercise(ExerciseType.pushUp);
+      vm.setScope(ArchiveScope.all);
       expect(told, 0);
       vm
         ..setFilter(ArchiveFilter.squat)
@@ -389,6 +391,7 @@ void main() {
       await vm.load();
       expect(vm.state.filter, ArchiveFilter.squat);
       expect(vm.state.period, StatsPeriod.month);
+      expect(vm.state.scope, ArchiveScope.squat);
       expect(vm.state.exercise, ExerciseType.squat);
     });
   });
@@ -442,6 +445,7 @@ void main() {
     test("this week's push-ups: battles, reps per battle, best score and "
         'the chart, oldest first', () async {
       await vm.load();
+      vm.setExercise(ExerciseType.pushUp);
       final growth = vm.growth!;
       expect(growth.period, StatsPeriod.week);
       expect(growth.exercise, ExerciseType.pushUp);
@@ -471,7 +475,9 @@ void main() {
 
     test('전체 기간 and squats', () async {
       await vm.load();
-      vm.setPeriod(StatsPeriod.all);
+      vm
+        ..setExercise(ExerciseType.pushUp)
+        ..setPeriod(StatsPeriod.all);
       expect(vm.growth!.matches, 3);
       expect(vm.growth!.bestScore, 200);
       vm.setExercise(ExerciseType.squat);
@@ -654,7 +660,200 @@ void main() {
     expect(holds.trends[HoldPose.chair], hasLength(1));
     expect(ArchiveHolds.of(const [], StatsPeriod.week, now).trends, isEmpty);
   });
+  group('전체 · 버티기 scopes and 운동량 (P13, user 2026-11-26)', () {
+    final now = DateTime(2026, 11, 13, 21);
+
+    HoldRecord hold(
+      DateTime at, {
+      int heldMs = 20000,
+      HoldPose pose = HoldPose.plank,
+      int? account,
+      List<HoldRecordWarning> warnings = const [],
+    }) => HoldRecord(
+      endedAt: at,
+      pose: pose,
+      stage: 3,
+      held: Duration(milliseconds: heldMs),
+      elapsed: Duration(milliseconds: heldMs + 2000),
+      stars: 1,
+      starSeconds: const [15, 20, 30],
+      warnings: warnings,
+      accountId: account,
+    );
+
+    test('전체 sums every exercise: battles, the split and both in the '
+        'chart', () {
+      final growth = ArchiveGrowth.of(
+        [
+          statsPoint(1, DateTime(2026, 11, 10, 9), reps: 4, score: 60),
+          statsPoint(
+            2,
+            DateTime(2026, 11, 11, 9),
+            reps: 8,
+            score: 90,
+            exercise: ExerciseType.squat,
+          ),
+        ],
+        StatsPeriod.week,
+        null,
+        now,
+      );
+      expect(growth.exercise, isNull);
+      expect(growth.matches, 2);
+      expect(growth.repsPerMatch, 6);
+      expect(growth.perExercise, {
+        ExerciseType.pushUp: 1,
+        ExerciseType.squat: 1,
+      });
+      expect(growth.points.map((p) => p.exercise), [
+        ExerciseType.pushUp,
+        ExerciseType.squat,
+      ]);
+      expect(ArchiveScope.values.map((s) => s.label), [
+        '전체',
+        '푸쉬업',
+        '스쿼트',
+        '버티기',
+      ]);
+      expect(ArchiveScope.of(ExerciseType.squat), ArchiveScope.squat);
+      expect(ArchiveScope.hold.exercise, isNull);
+    });
+
+    test('the holds of a period: count, time, best, keep rate, warnings '
+        'and each one in time', () {
+      final holds = ArchiveHolds.of(
+        [
+          hold(
+            DateTime(2026, 11, 12, 9),
+            heldMs: 30000,
+            warnings: const [
+              HoldRecordWarning(
+                at: Duration(seconds: 3),
+                faultId: 'plank.kneeDown',
+                words: '무릎 떼요',
+              ),
+            ],
+          ),
+          hold(DateTime(2026, 11, 10, 9), pose: HoldPose.chair),
+          // Last month: out of the week, but a best of all time.
+          hold(DateTime(2026, 10, 1, 9), heldMs: 50000),
+        ],
+        StatsPeriod.week,
+        now,
+      );
+      expect(holds.count, 2);
+      expect(holds.held, const Duration(seconds: 50));
+      expect(holds.bestHeld, const Duration(seconds: 30));
+      expect(holds.points.map((h) => h.pose), [HoldPose.chair, HoldPose.plank]);
+      expect(holds.keepRate, closeTo((30 / 32 + 20 / 22) / 2, 1e-9));
+      expect(holds.warnings.single, (words: '무릎 떼요', count: 1));
+      expect(holds.bests.map((h) => h.held.inSeconds), [50, 20]);
+    });
+
+    test('운동량: this period against the one before, calories with the '
+        'holds under 전체, the holds alone under 버티기', () {
+      final kept = [
+        sampleReport(valid: 6, endedAt: DateTime(2026, 11, 12, 9)),
+        sampleReport(valid: 3, endedAt: DateTime(2026, 11, 4, 9)),
+      ];
+      final holds = [hold(DateTime(2026, 11, 11, 9))];
+      final push = ArchiveVolume.of(
+        kept,
+        StatsPeriod.week,
+        ArchiveScope.pushUp,
+        now,
+        weightKg: 80,
+        holds: holds,
+      );
+      expect(push.current.battles, 1);
+      expect(push.current.holds, 0);
+      expect(push.previous!.battles, 1);
+      expect(push.current.liftedKg, closeTo(6 * 80 * 0.64, 1e-9));
+      expect(push.weightAssumed, isFalse);
+      // Twice the reps per second of the battle before.
+      expect(push.current.endurance, 200);
+
+      final every = ArchiveVolume.of(
+        kept,
+        StatsPeriod.week,
+        ArchiveScope.all,
+        now,
+        holds: holds,
+      );
+      expect(every.current.holds, 1);
+      expect(every.current.kcal, greaterThan(push.current.kcal * 65 / 80));
+      expect(every.weightAssumed, isTrue);
+
+      final onlyHolds = ArchiveVolume.of(
+        kept,
+        StatsPeriod.week,
+        ArchiveScope.hold,
+        now,
+        holds: holds,
+      );
+      expect(onlyHolds.current.battles, 0);
+      expect(onlyHolds.current.liftedKg, 0);
+      expect(onlyHolds.current.holds, 1);
+      // A first hold: against the stage's goal, 20 of 30 s.
+      expect(onlyHolds.current.endurance, closeTo(20 / 30 * 100, 1e-9));
+
+      expect(
+        ArchiveVolume.of(kept, StatsPeriod.all, ArchiveScope.all, now).previous,
+        isNull,
+      );
+      expect(
+        ArchiveVolume.previousStart(StatsPeriod.month, now),
+        DateTime(2026, 10),
+      );
+    });
+
+    test("only the account's own holds and kept battles count: the phone "
+        "keeps everyone's (phone check, 2026-11-26)", () async {
+      final holdStore = InMemoryHoldRecordStore();
+      await holdStore.save(hold(DateTime(2026, 11, 12, 9), account: 7));
+      await holdStore.save(hold(DateTime(2026, 11, 12, 10), account: 8));
+      // Kept before accounts were: still shown.
+      await holdStore.save(hold(DateTime(2026, 11, 12, 11)));
+      final reports = InMemoryFormReportStore();
+      final mine = DateTime(2026, 11, 12, 12);
+      await reports.save(sampleReport(valid: 6, endedAt: mine));
+      await reports.save(
+        sampleReport(valid: 9, endedAt: DateTime(2026, 11, 12, 13)),
+      );
+      final stats = FakeFeedbackStatsSource([statsPoint(1, mine, reps: 6)]);
+      repository.historyPages = [
+        [_played(mine)],
+      ];
+      vm = HistoryViewModel(
+        repository: repository,
+        stats: stats,
+        holdRecords: holdStore,
+        formReports: reports,
+        accountId: 7,
+        now: () => now,
+      );
+      await vm.load();
+      expect(vm.state.holds.map((h) => h.accountId), [null, 7]);
+      vm.setExercise(ExerciseType.pushUp);
+      expect(vm.volume!.current.battles, 1);
+      expect(vm.volume!.current.liftedKg, closeTo(6 * 65 * 0.64, 1e-9));
+      expect(holdRecordIsOf(null, 7), isTrue);
+      expect(holdRecordIsOf(8, 7), isFalse);
+      expect(holdRecordIsOf(8, null), isTrue);
+    });
+  });
 }
+
+bool holdRecordIsOf(int? recordAccount, int? signedIn) => HoldRecord(
+  endedAt: DateTime(2026),
+  pose: HoldPose.plank,
+  stage: 3,
+  held: Duration.zero,
+  elapsed: Duration.zero,
+  stars: 0,
+  starSeconds: const [],
+  accountId: recordAccount,
+).isOf(signedIn);
 
 class _FailingHolds implements HoldRecordStore {
   @override

@@ -220,18 +220,18 @@ void main() {
         ),
       );
       expect(
-        find.bySemanticsLabel('푸쉬업 최고 170점, 인정 18회, 11.23'),
+        find.bySemanticsLabel('푸쉬업 최고 170점, 인정 18회 · 11.23'),
         findsOneWidget,
       );
       expect(
-        find.bySemanticsLabel('스쿼트 최고 90점, 인정 10회, 11.21'),
+        find.bySemanticsLabel('스쿼트 최고 90점, 인정 10회 · 11.21'),
         findsOneWidget,
       );
     });
 
     testWidgets('none yet: one line', (tester) async {
       await _show(tester, const ArchiveBests(bests: []));
-      expect(find.text('점수가 기록된 경기가 아직 없어요.'), findsOneWidget);
+      expect(find.text('기록된 최고 기록이 아직 없어요.'), findsOneWidget);
     });
   });
 
@@ -319,49 +319,7 @@ void main() {
       expect((box.decoration as BoxDecoration).color, AppColors.card);
     });
   });
-  group('버티기 on the 전체 tab (P13)', () {
-    HoldRecord best(HoldPose pose, int ms) => HoldRecord(
-      endedAt: DateTime(2026, 11, 26, 21, 10),
-      pose: pose,
-      stage: 3,
-      held: Duration(milliseconds: ms),
-      elapsed: Duration(milliseconds: ms),
-      stars: 1,
-      starSeconds: const [15, 20, 30],
-    );
-
-    testWidgets('the holds and time held of the period, each pose\'s longest', (
-      tester,
-    ) async {
-      await _show(
-        tester,
-        ArchiveHoldSummary(
-          holds: ArchiveHolds(
-            count: 3,
-            held: const Duration(milliseconds: 69600),
-            bests: [best(HoldPose.plank, 40000), best(HoldPose.chair, 15000)],
-          ),
-          period: StatsPeriod.week,
-        ),
-      );
-      expect(find.text('버티기'), findsOneWidget);
-      expect(find.text('이번 주'), findsOneWidget);
-      expect(find.bySemanticsLabel('횟수 3회'), findsOneWidget);
-      expect(find.bySemanticsLabel('버틴 시간 1분 10초'), findsOneWidget);
-      expect(find.bySemanticsLabel('하이 플랭크 최고 40초, 11.26'), findsOneWidget);
-      expect(find.bySemanticsLabel('의자 자세 최고 15초, 11.26'), findsOneWidget);
-    });
-
-    test('times under a minute with one decimal, from a minute in minutes', () {
-      expect(
-        ArchiveHoldSummary.time(const Duration(milliseconds: 24600)),
-        '24.6초',
-      );
-      expect(ArchiveHoldSummary.time(const Duration(seconds: 30)), '30초');
-      expect(ArchiveHoldSummary.time(const Duration(seconds: 72)), '1분 12초');
-    });
-  });
-  group('자세별 버틴 시간 (P13)', () {
+  group('버티기 on the 전체 tab, laid out as an exercise (P13)', () {
     HoldRecord hold(HoldPose pose, int day, int ms) => HoldRecord(
       endedAt: DateTime(2026, 11, day, 9),
       pose: pose,
@@ -372,60 +330,246 @@ void main() {
       starSeconds: const [15, 20, 30],
     );
 
-    Future<void> showTrends(
-      WidgetTester tester,
-      Map<HoldPose, List<HoldRecord>> trends,
-    ) => _show(
-      tester,
-      ArchiveHoldSummary(
-        holds: ArchiveHolds(
-          count: trends.values.fold(0, (n, l) => n + l.length),
-          held: Duration.zero,
-          bests: const [],
-          trends: trends,
-        ),
-        period: StatsPeriod.week,
-      ),
-    );
-
-    testWidgets('a pose\'s holds as a trend; the chips switch the pose', (
+    testWidgets('the summary: holds, time held and the longest hold', (
       tester,
     ) async {
-      await showTrends(tester, {
-        HoldPose.plank: [
-          hold(HoldPose.plank, 24, 20100),
-          hold(HoldPose.plank, 25, 23000),
-          hold(HoldPose.plank, 26, 24600),
-        ],
-        HoldPose.chair: [
-          hold(HoldPose.chair, 24, 15000),
-          hold(HoldPose.chair, 26, 18000),
-        ],
-      });
-      expect(find.text('자세별 버틴 시간'), findsOneWidget);
+      await _show(
+        tester,
+        const ArchiveHoldFigures(
+          holds: ArchiveHolds(
+            count: 3,
+            held: Duration(milliseconds: 69600),
+            bests: [],
+            bestHeld: Duration(milliseconds: 24600),
+          ),
+        ),
+      );
+      expect(find.bySemanticsLabel('횟수 3회'), findsOneWidget);
+      expect(find.bySemanticsLabel('버틴 시간 1분 10초'), findsOneWidget);
+      expect(find.bySemanticsLabel('최고 버틴 시간 24.6초'), findsOneWidget);
+      await _show(
+        tester,
+        const ArchiveHoldFigures(
+          holds: ArchiveHolds(count: 0, held: Duration.zero, bests: []),
+        ),
+      );
+      expect(find.bySemanticsLabel('최고 버틴 시간 –'), findsOneWidget);
+    });
+
+    testWidgets('경기별 버틴 시간: every hold in time; both poses in their '
+        'colours with a legend', (tester) async {
+      await _show(
+        tester,
+        ArchiveHoldChart(
+          holds: [
+            hold(HoldPose.plank, 24, 20100),
+            hold(HoldPose.chair, 25, 15000),
+            hold(HoldPose.plank, 26, 24600),
+          ],
+        ),
+      );
+      expect(find.text('경기별 버틴 시간'), findsOneWidget);
       expect(
-        find.bySemanticsLabel('하이 플랭크 버틴 시간: 20.1초, 23초, 24.6초'),
+        find.bySemanticsLabel('경기별 버틴 시간: 20.1초, 15초, 24.6초'),
         findsOneWidget,
       );
-      expect(find.text('11.26'), findsOneWidget);
-      await tester.tap(find.text('의자 자세'));
-      await tester.pumpAndSettle();
-      expect(find.bySemanticsLabel('의자 자세 버틴 시간: 15초, 18초'), findsOneWidget);
-      expect(find.text('2회'), findsOneWidget);
+      expect(find.text('하이 플랭크'), findsOneWidget);
+      expect(find.text('의자 자세'), findsOneWidget);
+      final painter =
+          tester
+                  .widget<CustomPaint>(
+                    find.byWidgetPredicate(
+                      (w) =>
+                          w is CustomPaint && w.painter is ArchiveTrendPainter,
+                    ),
+                  )
+                  .painter!
+              as ArchiveTrendPainter;
+      expect(painter.colors, [
+        holdPoseColor(HoldPose.plank),
+        holdPoseColor(HoldPose.chair),
+        holdPoseColor(HoldPose.plank),
+      ]);
     });
 
-    testWidgets('one hold of the pose: nothing to compare yet', (tester) async {
-      await showTrends(tester, {
-        HoldPose.plank: [hold(HoldPose.plank, 26, 24600)],
-      });
-      expect(find.text('하이 플랭크 24.6초 · 비교 기록 없음'), findsOneWidget);
-      // One pose: no chips.
-      expect(find.byType(ArchiveChips<HoldPose>), findsNothing);
-    });
-
-    testWidgets('no hold in the period: one line', (tester) async {
-      await showTrends(tester, const {});
+    testWidgets('one pose: no legend, one colour; none: one line', (
+      tester,
+    ) async {
+      await _show(
+        tester,
+        ArchiveHoldChart(holds: [hold(HoldPose.plank, 26, 24600)]),
+      );
+      expect(find.text('하이 플랭크'), findsNothing);
+      await _show(tester, const ArchiveHoldChart(holds: []));
       expect(find.text('이 기간에 기록된 버티기가 없어요.'), findsOneWidget);
+    });
+
+    testWidgets('개인 최고 has a tile per pose, two to a row with the '
+        'exercises', (tester) async {
+      await _show(
+        tester,
+        ArchiveBests(
+          bests: [
+            ArchiveBest(
+              exercise: ExerciseType.pushUp,
+              score: 170,
+              reps: 18,
+              playedAt: DateTime(2026, 11, 23, 9),
+            ),
+          ],
+          holds: [hold(HoldPose.plank, 26, 40000)],
+        ),
+      );
+      expect(
+        find.bySemanticsLabel('하이 플랭크 최고 40초, 버티기 · 11.26'),
+        findsOneWidget,
+      );
+      final push = tester.getTopLeft(find.text('푸쉬업'));
+      final plank = tester.getTopLeft(find.text('하이 플랭크'));
+      expect(plank.dy, push.dy);
+      expect(plank.dx, greaterThan(push.dx));
+    });
+
+    testWidgets('자주 받은 경고: the warnings as bars, most first; none says '
+        'so', (tester) async {
+      await _show(
+        tester,
+        const ArchiveHoldWarnings(
+          warnings: [(words: '무릎 떼요', count: 4), (words: '팔 펴요', count: 1)],
+        ),
+      );
+      expect(find.text('무릎 떼요'), findsOneWidget);
+      expect(find.text('4회'), findsOneWidget);
+      await _show(tester, const ArchiveHoldWarnings(warnings: []));
+      expect(find.text('이 기간에 받은 경고가 없어요.'), findsOneWidget);
+    });
+
+    test('a hold\'s time', () {
+      expect(archiveHoldTime(const Duration(milliseconds: 24600)), '24.6초');
+      expect(archiveHoldTime(const Duration(seconds: 30)), '30초');
+      expect(archiveHoldTime(const Duration(seconds: 72)), '1분 12초');
+    });
+  });
+
+  group('scopes and 운동량 (P13)', () {
+    testWidgets('전체 · 푸쉬업 · 스쿼트 · 버티기 chips', (tester) async {
+      ArchiveScope? picked;
+      await _show(
+        tester,
+        ArchiveScopeChips(
+          selected: ArchiveScope.all,
+          onSelected: (s) => picked = s,
+        ),
+      );
+      for (final s in ArchiveScope.values) {
+        expect(find.text(s.label), findsOneWidget);
+      }
+      await tester.tap(find.text('버티기'));
+      expect(picked, ArchiveScope.hold);
+    });
+
+    testWidgets('전체\'s summary has the holds and the split by exercise', (
+      tester,
+    ) async {
+      await _show(
+        tester,
+        const ArchiveSummary(
+          growth: ArchiveGrowth(
+            period: StatsPeriod.week,
+            exercise: null,
+            matches: 4,
+            repsPerMatch: 6,
+            bestScore: 170,
+            points: [],
+            bests: [],
+            issues: [],
+            perExercise: {ExerciseType.pushUp: 3, ExerciseType.squat: 1},
+          ),
+          holds: 2,
+        ),
+      );
+      expect(find.bySemanticsLabel('버티기 2회'), findsOneWidget);
+      expect(find.text('푸쉬업 3판 · 스쿼트 1판 · 버티기 2회'), findsOneWidget);
+    });
+
+    const amount = ArchiveAmount(
+      battles: 3,
+      kcal: 26,
+      liftedKg: 4200,
+      endurance: 108,
+      holds: 1,
+    );
+
+    testWidgets('운동량: calories, lifted weight and endurance against the '
+        'period before, the weight it assumed; no other note', (tester) async {
+      await _show(
+        tester,
+        const ArchiveVolumeSection(
+          volume: ArchiveVolume(
+            current: amount,
+            previous: ArchiveAmount(
+              battles: 2,
+              kcal: 22,
+              liftedKg: 3600,
+              endurance: 100,
+            ),
+            weightKg: 65,
+            weightAssumed: true,
+          ),
+          period: StatsPeriod.week,
+        ),
+      );
+      expect(find.text('이번 주 운동량'), findsOneWidget);
+      expect(find.text('지난 주'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('예상 소모 칼로리 26kcal, 증가 4, 버티기 1회 포함'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('들어 올린 무게 4.2t, 증가 600 kg'), findsOneWidget);
+      expect(find.bySemanticsLabel('근지구력 지수 108, 증가 8'), findsOneWidget);
+      expect(find.text('65 kg 기준 추정'), findsOneWidget);
+      expect(find.textContaining('이 폰에 남은'), findsNothing);
+      expect(find.textContaining('= 100'), findsNothing);
+    });
+
+    testWidgets('버티기: calories and endurance, no lifted weight; nothing to '
+        'compare says so', (tester) async {
+      await _show(
+        tester,
+        const ArchiveVolumeSection(
+          volume: ArchiveVolume(
+            current: ArchiveAmount(
+              battles: 0,
+              kcal: 1.8,
+              liftedKg: 0,
+              holds: 1,
+            ),
+            weightKg: 80,
+            weightAssumed: false,
+          ),
+          period: StatsPeriod.all,
+          holdsOnly: true,
+        ),
+      );
+      expect(find.text('들어 올린 무게'), findsNothing);
+      expect(find.bySemanticsLabel('근지구력 지수 –, 비교 기록 없음'), findsOneWidget);
+      expect(find.text('체중 80 kg 기준 추정'), findsOneWidget);
+    });
+
+    testWidgets('nothing in the period: one line', (tester) async {
+      await _show(
+        tester,
+        const ArchiveVolumeSection(
+          volume: ArchiveVolume(
+            current: ArchiveAmount(battles: 0, kcal: 0, liftedKg: 0),
+            weightKg: 65,
+            weightAssumed: true,
+          ),
+          period: StatsPeriod.week,
+          holdsOnly: true,
+        ),
+      );
+      expect(find.text('이 기간에 버티기 기록이 없어요.'), findsOneWidget);
     });
   });
 }

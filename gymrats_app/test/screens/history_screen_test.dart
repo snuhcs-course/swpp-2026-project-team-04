@@ -175,6 +175,18 @@ void main() {
     (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
   );
 
+  /// Picks the 전체 tab's scope chip: 전체, 푸쉬업, 스쿼트 or 버티기.
+  Future<void> scope(WidgetTester tester, String label) async {
+    final chip = find.descendant(
+      of: find.byType(ArchiveChips<ArchiveScope>),
+      matching: find.text(label),
+    );
+    await tester.ensureVisible(chip);
+    await tester.pumpAndSettle();
+    await tester.tap(chip);
+    await tester.pumpAndSettle();
+  }
+
   String? chartLabel(WidgetTester tester) {
     // The chart's label, not its title's: "경기별 점수: 150점, …".
     final label = find.bySemanticsLabel(RegExp(r'^경기별 [^:]*: '));
@@ -206,12 +218,25 @@ void main() {
   });
 
   group('전체 tab', () {
+    testWidgets('전체 first: every exercise of the week and the split', (
+      tester,
+    ) async {
+      withBattles();
+      await open(tester);
+      await tester.pumpAndSettle();
+      // Saturday 11-14: the week from Monday 11-09 has three push-ups and a
+      // squat.
+      expect(find.bySemanticsLabel('경기 4판'), findsOneWidget);
+      expect(find.bySemanticsLabel('버티기 0회'), findsOneWidget);
+      expect(find.text('푸쉬업 3판 · 스쿼트 1판 · 버티기 0회'), findsOneWidget);
+    });
+
     testWidgets("this week's push-ups: battles, reps per battle, best "
         'score', (tester) async {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
-      // Saturday 11-14: the week from Monday 11-09 has three push-ups.
+      await scope(tester, '푸쉬업');
       expect(find.bySemanticsLabel('경기 3판'), findsOneWidget);
       expect(find.bySemanticsLabel('경기당 인정 19회'), findsOneWidget);
       expect(find.bySemanticsLabel('최고 점수 240점'), findsOneWidget);
@@ -222,12 +247,12 @@ void main() {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
+      await scope(tester, '푸쉬업');
       await tester.tap(find.text('전체 기간'));
       await tester.pumpAndSettle();
       expect(find.bySemanticsLabel('경기 4판'), findsOneWidget);
       expect(find.bySemanticsLabel('경기당 인정 16.3회'), findsOneWidget);
-      await tester.tap(find.text('스쿼트').first);
-      await tester.pumpAndSettle();
+      await scope(tester, '스쿼트');
       expect(find.bySemanticsLabel('경기 1판'), findsOneWidget);
       expect(find.bySemanticsLabel('최고 점수 490점'), findsOneWidget);
     });
@@ -236,6 +261,7 @@ void main() {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
+      await scope(tester, '푸쉬업');
       await tester.tap(find.text('인정 횟수'));
       await tester.pumpAndSettle();
       expect(chartLabel(tester), '경기별 인정 횟수: 15회, 18회, 24회');
@@ -248,13 +274,15 @@ void main() {
       withBattles([_battles.last]);
       await open(tester);
       await tester.pumpAndSettle();
+      await scope(tester, '푸쉬업');
       expect(find.bySemanticsLabel('경기 0판'), findsOneWidget);
       expect(find.bySemanticsLabel('최고 점수 –'), findsOneWidget);
       expect(find.text('이 기간에 기록된 경기가 없어요.'), findsOneWidget);
       expect(chartLabel(tester), isNull);
     });
 
-    testWidgets('개인 최고 of both exercises, from every battle', (tester) async {
+    testWidgets('개인 최고: 전체 shows both exercises, an exercise only its '
+        'own', (tester) async {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
@@ -264,12 +292,22 @@ void main() {
         scrollable: vertical.first,
       );
       expect(
-        find.bySemanticsLabel('푸쉬업 최고 240점, 인정 24회, 11.14'),
+        find.bySemanticsLabel('푸쉬업 최고 240점, 인정 24회 · 11.14'),
         findsOneWidget,
       );
       expect(
-        find.bySemanticsLabel('스쿼트 최고 490점, 인정 20회, 11.14'),
+        find.bySemanticsLabel('스쿼트 최고 490점, 인정 20회 · 11.14'),
         findsOneWidget,
+      );
+      await scope(tester, '푸쉬업');
+      await tester.scrollUntilVisible(
+        find.text('개인 최고'),
+        200,
+        scrollable: vertical.first,
+      );
+      expect(
+        find.bySemanticsLabel('스쿼트 최고 490점, 인정 20회 · 11.14'),
+        findsNothing,
       );
     });
 
@@ -292,16 +330,11 @@ void main() {
         200,
         scrollable: vertical.first,
       );
-      expect(find.text('이번 주 무효 5회'), findsOneWidget);
+      // One line: no count beside the title (user, 2026-11-26).
+      expect(find.textContaining('무효 5회'), findsNothing);
       expect(find.text('4회'), findsOneWidget);
       expect(find.text('1회'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('스쿼트').first,
-        -200,
-        scrollable: vertical.first,
-      );
-      await tester.tap(find.text('스쿼트').first);
-      await tester.pumpAndSettle();
+      await scope(tester, '스쿼트');
       await tester.scrollUntilVisible(
         find.text('자주 나온 자세 문제'),
         200,
@@ -347,7 +380,7 @@ void main() {
       await tester.tap(find.text('다시 시도'));
       await tester.pumpAndSettle();
       expect(find.byType(ArchiveStatsRetry), findsNothing);
-      expect(find.bySemanticsLabel('경기 3판'), findsOneWidget);
+      expect(find.bySemanticsLabel('경기 4판'), findsOneWidget);
     });
   });
 
@@ -674,18 +707,18 @@ void main() {
       await openWithHolds(tester, [
         holdRecord(endedAt: DateTime(2026, 11, 14, 14, 50)),
       ]);
-      await tester.scrollUntilVisible(
-        find.byType(ArchiveHoldSummary),
-        200,
-        scrollable: vertical.first,
-      );
+      expect(find.bySemanticsLabel('버티기 1회'), findsOneWidget);
+      await scope(tester, '버티기');
       expect(find.bySemanticsLabel('횟수 1회'), findsOneWidget);
+      expect(find.byType(ArchiveHoldChart), findsOneWidget);
     });
 
     testWidgets('no hold: no 버티기 section', (tester) async {
       withBattles();
       await openWithHolds(tester, const []);
-      expect(find.byType(ArchiveHoldSummary), findsNothing);
+      await scope(tester, '버티기');
+      expect(find.byType(ArchiveHoldFigures), findsNothing);
+      expect(find.textContaining('버티기 기록이 아직 없어요'), findsOneWidget);
     });
   });
 }

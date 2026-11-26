@@ -101,13 +101,12 @@ class ArchiveMatchRow extends StatelessWidget {
     };
   }
 
-  /// "푸쉬업 · vs 러너"; an arcade battle names its stage first, as the
-  /// holds do: "STAGE 8 · 푸쉬업 vs 물렁범" (user, 2026-11-26).
+  /// "푸쉬업 · vs 러너"; an arcade battle names its stage instead, as the
+  /// holds do: "STAGE 8 · 푸쉬업", without the opponent (user, 2026-11-26).
   static String titleLine(MatchRecord match) {
     final arcade = _arcade.firstMatch(match.opponentName);
     if (arcade != null) {
-      return '${arcade.group(1)} · ${match.exercise.koreanName} '
-          'vs ${arcade.group(2)}';
+      return '${arcade.group(1)} · ${match.exercise.koreanName}';
     }
     return '${match.exercise.koreanName} · vs ${match.opponentName}';
   }

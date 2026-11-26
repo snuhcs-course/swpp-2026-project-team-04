@@ -76,7 +76,7 @@ void main() {
         find.bySemanticsLabel('유지 점수 ${(100 * 0.7 * 24.6 / 26.7).round()}점'),
         findsOneWidget,
       );
-      expect(find.text('하이 플랭크 · 아케이드 1층 · 별 2/3'), findsOneWidget);
+      expect(find.text('STAGE 3 · 하이 플랭크 · 별 2/3'), findsOneWidget);
     });
 
     testWidgets('자세 분석: the time line, the cards and the most frequent '
@@ -98,7 +98,7 @@ void main() {
     });
 
     testWidgets('운동 분석 without earlier holds: time held and calories on '
-        '65 kg, the endurance index says 비교 기록 없음, no lifted weight', (
+        '65 kg, the endurance index against the goal with 비교 기록 없음', (
       tester,
     ) async {
       await open(tester);
@@ -110,9 +110,10 @@ void main() {
       );
       expect(find.text('65 kg 기준 추정'), findsOneWidget);
       expect(find.text('근지구력 지수'), findsOneWidget);
-      expect(find.bySemanticsLabel('근지구력 지수 –'), findsOneWidget);
-      expect(find.text(noEarlier), findsWidgets);
-      expect(find.text('들어 올린 무게는 움직임이 없는 버티기에는 계산하지 않아요.'), findsOneWidget);
+      // No earlier hold: against the stage's last star, 24.6 of 30 s.
+      expect(find.bySemanticsLabel('근지구력 지수 82'), findsOneWidget);
+      expect(find.text('$noEarlier · 목표 30초 = 100'), findsOneWidget);
+      expect(find.textContaining('들어 올린 무게'), findsNothing);
     });
 
     testWidgets('a given body weight is named', (tester) async {
@@ -129,7 +130,7 @@ void main() {
       expect(find.text('세 번째 별까지 5.4초'), findsOneWidget);
       expect(find.text('변화'), findsOneWidget);
       expect(find.text('하이 플랭크 버틴 시간'), findsOneWidget);
-      expect(find.text(noEarlier), findsNWidgets(2));
+      expect(find.text(noEarlier), findsOneWidget);
       expect(
         find.text('12초쯤 "무릎 떼요" 경고가 나왔어요. 다음엔 그 순간을 넘겨 30초 별을 노려 봐요.'),
         findsOneWidget,

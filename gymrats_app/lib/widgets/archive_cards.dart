@@ -924,15 +924,13 @@ class ArchiveVolumeSection extends StatelessWidget {
             change: now.endurance != null && before?.endurance != null
                 ? '${(now.endurance! - before!.endurance!).round()}'
                 : null,
-            note: now.endurance == null
-                ? '비교 기록 없음'
-                : holdsOnly
-                ? '기록마다 같은 자세 최근 평균 = 100 (첫 기록은 목표 시간)'
-                : '기록마다 최근 평균 = 100',
+            // Only when there is nothing to compare; the basis is the
+            // report's (user, 2026-11-26).
+            note: now.endurance == null ? '비교 기록 없음' : null,
           ),
         ],
         const SizedBox(height: AppSpacing.s8),
-        Text('이 폰에 남은 기록 기준 · $weightNote', style: text.feedbackMeta),
+        Text(weightNote, style: text.feedbackMeta),
       ],
     );
   }

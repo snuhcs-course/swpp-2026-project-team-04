@@ -67,6 +67,25 @@ void main() {
       );
     });
 
+    test('an arcade battle is named by its stage, without the opponent', () {
+      MatchRecord arcade(String name, ExerciseType exercise) => MatchRecord(
+        exercise: exercise,
+        opponentName: name,
+        myReps: 7,
+        opponentReps: 3,
+      );
+      expect(
+        ArchiveMatchRow.titleLine(arcade('STAGE 8 · 물렁범', ExerciseType.pushUp)),
+        'STAGE 8 · 푸쉬업',
+      );
+      expect(
+        ArchiveMatchRow.titleLine(
+          arcade('STAGE 6 R2 · 물렁범', ExerciseType.squat),
+        ),
+        'STAGE 6 R2 · 스쿼트',
+      );
+    });
+
     test('the detail: the time, the kind when known, the opponent leaving', () {
       expect(ArchiveMatchRow.detailLine(_battle()), '16:04 · 아케이드');
       expect(
@@ -262,7 +281,7 @@ void main() {
     );
 
     test('the words', () {
-      expect(ArchiveHoldRow.titleLine(hold()), '하이 플랭크 · 3스테이지');
+      expect(ArchiveHoldRow.titleLine(hold()), 'STAGE 3 · 하이 플랭크');
       expect(ArchiveHoldRow.detailLine(hold()), '21:10 · 버티기 · 경고 2');
       expect(ArchiveHoldRow.detailLine(hold(warnings: 0)), '21:10 · 버티기');
       expect(ArchiveHoldRow.heldWords(hold()), '24.6');
@@ -274,13 +293,13 @@ void main() {
       var taps = 0;
       await _show(tester, ArchiveHoldRow(hold: hold(), onTap: () => taps++));
       expect(find.text('★2'), findsOneWidget);
-      expect(find.text('하이 플랭크 · 3스테이지'), findsOneWidget);
+      expect(find.text('STAGE 3 · 하이 플랭크'), findsOneWidget);
       expect(find.text('24.6 초', findRichText: true), findsOneWidget);
       expect(find.text('별 2/3'), findsOneWidget);
       expect(
         tester.getSemantics(find.byType(ArchiveHoldRow)),
         isSemantics(
-          label: '별 2개\n하이 플랭크 · 3스테이지\n21:10 · 버티기 · 경고 2\n24.6초 버팀\n별 2/3',
+          label: '별 2개\nSTAGE 3 · 하이 플랭크\n21:10 · 버티기 · 경고 2\n24.6초 버팀\n별 2/3',
           hasTapAction: true,
         ),
       );
