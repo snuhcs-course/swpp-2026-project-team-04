@@ -449,7 +449,8 @@ HoldMeColor? _color(Object? value) {
   if (value == 'team') return const HoldMeColor.team();
   final match = RegExp(r'^#([0-9A-Fa-f]{6})$').firstMatch('$value');
   if (match == null) throw FormatException('not a #RRGGBB color: $value');
-  return HoldMeColor(0xFF000000 | int.parse(match[1]!, radix: 16));
+  final argb = 0xFF000000 | int.parse(match[1]!, radix: 16);
+  return HoldMeColor(argb);
 }
 
 Offset _pair(Object? json) {
