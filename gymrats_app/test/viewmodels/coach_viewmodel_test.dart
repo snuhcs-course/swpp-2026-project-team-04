@@ -296,7 +296,7 @@ void main() {
       expect(viewModel.state.index, viewModel.state.questionIndex);
       viewModel.skip();
       expect(viewModel.state.ended, isTrue);
-      expect(viewModel.state.line!.text, startsWith('오늘 이야기는 여기까지!'));
+      expect(viewModel.state.line!.text, startsWith('오늘 이야기는 여기까지다범!'));
       // The end stays.
       viewModel
         ..skip()
@@ -392,7 +392,7 @@ void main() {
       await viewModel.choose(null);
       expect(store.cleared, [(7, ExerciseType.squat)]);
       expect(store.goals, isEmpty);
-      expect(viewModel.state.line!.text, startsWith('알겠어.'));
+      expect(viewModel.state.line!.text, startsWith('알겠다범!'));
     });
 
     test('a failed save still answers; nothing is saved without an account '
@@ -422,7 +422,7 @@ void main() {
       final viewModel = await _ready(store: failing);
       viewModel.skip();
       await viewModel.choose(null);
-      expect(viewModel.state.line!.text, startsWith('알겠어.'));
+      expect(viewModel.state.line!.text, startsWith('알겠다범!'));
     });
 
     test(
@@ -464,7 +464,7 @@ void main() {
       final viewModel = _viewModel(store: store);
       await viewModel.load();
       final script = viewModel.state.script!;
-      expect(script.talk.first.text, startsWith('지난번 미션 기억나범?'));
+      expect(script.talk.first.text, startsWith('지난번 미션 기억나? '));
       expect(script.talk[1].text, '이번엔 18번이라서 딱 2번 모자랐어. 아깝다범!');
       final plain = _viewModel();
       await plain.load();
@@ -518,7 +518,7 @@ void main() {
         ..setInstant(true)
         ..start(atGoal: true);
       expect(viewModel.voice.characterId, 'bear');
-      expect(viewModel.state.line!.text, endsWith('곰?'));
+      expect(viewModel.state.line!.text, startsWith('다음 판 미션을 정할 차례다곰!'));
       await viewModel.choose(viewModel.state.script!.suggestions.first);
       expect(store.goals[(7, ExerciseType.squat)]!.characterId, 'bear');
     });
