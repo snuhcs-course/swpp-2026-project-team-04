@@ -234,10 +234,12 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  /// Tells the timeline the play as it is now.
+  /// Tells the timeline the play as it is now. While setting up nothing on
+  /// the stage moves with the clock: it keeps its time without ticking.
   void _look() {
     final state = widget.state;
     final holding = state.phase == HoldStagePhase.hold;
+    _ticker.muted = state.phase == HoldStagePhase.setup;
     _timeline.look(
       _now.value,
       counting: state.phase == HoldStagePhase.countdown,
@@ -249,23 +251,59 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
   }
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<double>(
-    valueListenable: _now,
-    builder: (context, now, _) => _build(context, now),
-  );
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final warned = state.phase == HoldStagePhase.hold && state.stopped;
+    final still = MediaQuery.disableAnimationsOf(context);
+    // What does not move with the clock is built here, once per change of
+    // the play: a tick gives the same widgets back, which are not built
+    // again.
+    final gym = Positioned.fill(
+      key: const ValueKey('hold-gym-slot'),
+      child: ExcludeSemantics(child: GymBackground(floor: widget.floor.number)),
+    );
+    final hud = state.phase == HoldStagePhase.setup
+        ? null
+        : Positioned(
+            key: const ValueKey('hold-hud-slot'),
+            left: 14,
+            right: 14,
+            top: 26,
+            child: _Hud(
+              stage: widget.stage,
+              progress: state.progress,
+              stopped: warned,
+            ),
+          );
+    final bands = _bands(still);
+    return ValueListenableBuilder<double>(
+      valueListenable: _now,
+      builder: (context, now, _) =>
+          _build(now, still: still, gym: gym, hud: hud, bands: bands),
+    );
+  }
 
-  Widget _build(BuildContext context, double now) {
+  /// The stage at [now]. Every child has a key of its own: one that comes
+  /// or goes (the flying star, a bubble) must not take another's element,
+  /// or that one would start over (a bubble popping in again, the owner's
+  /// breathing).
+  Widget _build(
+    double now, {
+    required bool still,
+    required Widget gym,
+    required Widget? hud,
+    required List<Widget> bands,
+  }) {
     final stage = widget.stage;
     final floor = widget.floor;
     final state = widget.state;
     final progress = state.progress;
     final warned = state.phase == HoldStagePhase.hold && state.stopped;
     final callout = state.phase == HoldStagePhase.hold ? state.callout : null;
-    final showHud = state.phase != HoldStagePhase.setup;
+    final showHud = hud != null;
     final right = holdOwnerRight[floor.owner]?.stage ?? 8;
     final bubbleRight =
         holdBigBubbleRight[floor.owner] ?? holdBigBubbleRight['seal']!;
-    final still = MediaQuery.disableAnimationsOf(context);
     final rig = HoldMeRig.standard;
     final place = rig.placeOf(widget.myCharacter, stage.pose);
     final top = place.topOn(rig);
@@ -289,11 +327,10 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     return Stack(
       clipBehavior: Clip.hardEdge,
       children: [
-        Positioned.fill(
-          child: ExcludeSemantics(child: GymBackground(floor: floor.number)),
-        ),
+        gym,
         if (showHud)
           Positioned(
+            key: const ValueKey('hold-me-slot'),
             left: place.left,
             top: top,
             child: RepaintBoundary(
@@ -309,6 +346,7 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
             ),
           ),
         Positioned(
+          key: const ValueKey('hold-owner-slot'),
           right: right,
           bottom: _Stage._ownerBottom,
           child: ExcludeSemantics(
@@ -326,13 +364,9 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
           ),
         ),
         if (showHud) ...[
+          hud,
           Positioned(
-            left: 14,
-            right: 14,
-            top: 26,
-            child: _Hud(stage: stage, progress: progress, stopped: warned),
-          ),
-          Positioned(
+            key: const ValueKey('hold-bar-slot'),
             left: _Stage._barSide,
             right: _Stage._barSide,
             top: _Stage._barTop,
@@ -370,6 +404,7 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
                   )
                   case final flight?)
                 Positioned.fill(
+                  key: ValueKey('hold-flight-slot-$i'),
                   child: IgnorePointer(
                     child: ExcludeSemantics(
                       child: CustomPaint(
@@ -383,12 +418,14 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
         // "실패!" takes the whistle's place; a start bubble gives way to it.
         if (warned && callout?.kind != HoldCalloutKind.fail)
           Positioned(
+            key: const ValueKey('hold-whistle-slot'),
             right: bubbleRight,
             top: _Stage._bubbleTop,
             child: _Whistle(right: bubbleRight, animate: !still),
           ),
         if (!warned && callout?.kind == HoldCalloutKind.start)
           Positioned(
+            key: const ValueKey('hold-start-slot'),
             right: bubbleRight,
             top: _Stage._bubbleTop,
             child: _StartBubble(
@@ -399,9 +436,15 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
           ),
         if (callout?.kind == HoldCalloutKind.fail || cheering)
           Positioned(
+            // A cheer and "실패!" each come in with their own entrance.
+            key: ValueKey(
+              callout!.kind == HoldCalloutKind.fail
+                  ? 'hold-fail-slot'
+                  : 'hold-cheer-slot',
+            ),
             right: bubbleRight,
             top: _Stage._bubbleTop,
-            child: callout!.kind == HoldCalloutKind.fail
+            child: callout.kind == HoldCalloutKind.fail
                 ? HoldBigBubble.fail(
                     words: callout.words,
                     right: bubbleRight,
@@ -413,7 +456,7 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
                     animate: !still,
                   ),
           ),
-        ..._bands(still),
+        ...bands,
       ],
     );
   }

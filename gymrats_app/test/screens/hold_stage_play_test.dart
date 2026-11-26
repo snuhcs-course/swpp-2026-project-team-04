@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/arcade_catalog.dart';
@@ -459,6 +462,107 @@ void main() {
     });
   });
 
+  group('nothing starts over when the flying star comes or goes (reviewer '
+      'run 1)', () {
+    testWidgets('the cheer stays one bubble, popped in once, past the '
+        'landing at 0.9 s', (tester) async {
+      final play = _Play();
+      await play.star(tester, 15);
+      await tester.pump(const Duration(milliseconds: 850));
+      final bubble = tester.element(find.byKey(_cheer));
+      await tester.pump(const Duration(milliseconds: 49));
+      expect(tester.element(find.byKey(_cheer)), same(bubble));
+      await tester.pump(const Duration(milliseconds: 2));
+      expect(tester.element(find.byKey(_cheer)), same(bubble));
+      // Its 220 ms entrance from 0.8 s is over by 1.03 s.
+      await tester.pump(const Duration(milliseconds: 129));
+      final settled = tester.getSize(find.byKey(_cheer));
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(tester.element(find.byKey(_cheer)), same(bubble));
+      expect(tester.getSize(find.byKey(_cheer)), settled);
+    });
+
+    testWidgets('a warning\'s whistle stays one bubble as the star flies and '
+        'lands', (tester) async {
+      final play = _Play();
+      await play.star(tester, 15);
+      await tester.pump(const Duration(milliseconds: 100));
+      await play.show(tester, _Play.paused(15000));
+      await tester.pump(const Duration(milliseconds: 50));
+      final whistle = tester.element(
+        find.byKey(const ValueKey('hold-whistle')),
+      );
+      for (final ms in [100, 600, 100]) {
+        // Past 220 ms (the star leaves) and 900 ms (it lands).
+        await tester.pump(Duration(milliseconds: ms));
+        expect(
+          tester.element(find.byKey(const ValueKey('hold-whistle'))),
+          same(whistle),
+        );
+      }
+    });
+
+    testWidgets('the owner keeps breathing on from the setup to the 3·2·1', (
+      tester,
+    ) async {
+      final play = _Play();
+      await play.show(
+        tester,
+        const HoldStageState(phase: HoldStagePhase.setup),
+      );
+      final owner = tester.element(find.byKey(const ValueKey('hold-owner')));
+      await play.show(
+        tester,
+        const HoldStageState(
+          phase: HoldStagePhase.countdown,
+          startIn: Duration(seconds: 2),
+        ),
+      );
+      expect(
+        tester.element(find.byKey(const ValueKey('hold-owner'))),
+        same(owner),
+      );
+    });
+  });
+
+  group('against the mockup\'s cheer timeline (A8 spec 8)', () {
+    final golden = jsonDecode(
+      File('test/widgets/hold_me_golden.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+
+    testWidgets('the bubble, its words, the owner\'s face and the first bar '
+        'star at every sampled time from the star', (tester) async {
+      final play = _Play();
+      await play.star(tester, 15);
+      var at = 0;
+      for (final row in golden['cheer'] as List) {
+        final [ms as int, shown as bool, words, face, lit as bool] =
+            row as List;
+        await tester.pump(Duration(milliseconds: ms - at));
+        at = ms;
+        expect(find.byKey(_cheer).evaluate().isNotEmpty, shown, reason: '$ms');
+        if (shown) {
+          expect(
+            find.descendant(
+              of: find.byKey(_cheer),
+              matching: find.text('$words'),
+            ),
+            findsOneWidget,
+          );
+        }
+        expect(_face(tester).name, face, reason: '$ms');
+        expect(_lit(tester).first, lit, reason: '$ms');
+      }
+    });
+
+    test('the bubbles end where the mockup\'s do', () {
+      final ends = golden['bubbleRight'] as Map<String, dynamic>;
+      for (final MapEntry(:key, :value) in ends.entries) {
+        expect(holdBigBubbleRight[key], (value as num).toDouble(), reason: key);
+      }
+    });
+  });
+
   testWidgets('a warning in a star\'s moment: the character warns, the star '
       'still flies and lights the bar, the warning takes the cheer (A8 spec '
       '4, 9.9)', (tester) async {
@@ -520,6 +624,51 @@ void main() {
   });
 
   group('fits (A8 spec 9.12)', () {
+    for (final stage in [3, 5]) {
+      testWidgets('stage $stage: every character stays on the 360 × 390 stage, '
+          'at the top of its hop too', (tester) async {
+        for (final id in ['mouse', 'kangaroo', 'bear', 'penguin', 'seal']) {
+          final play = _Play(stage: stage, character: id);
+          await play.star(tester, play.hold.starSeconds.first);
+          await tester.pump(const Duration(milliseconds: 460));
+          final frame = _me(tester);
+          final place = frame.place;
+          final positioned = _placeOf(tester, const ValueKey('hold-me'));
+          final scale = place.scale;
+          final box = Rect.fromLTWH(
+            positioned.left!,
+            positioned.top! - frame.hop * scale,
+            140 * scale,
+            160 * scale,
+          );
+          const stageRect = Rect.fromLTWH(0, 0, 360, 390);
+          expect(stageRect.intersect(box), box, reason: id);
+          // A drawing may leave its box: its shapes at rest stay on the
+          // stage too.
+          for (final shape in place.drawing ?? const <HoldMeShape>[]) {
+            var bounds = shape.path.getBounds().inflate(shape.width / 2);
+            for (final link in shape.chain) {
+              final m = link.matrix;
+              if (m != null) {
+                bounds = MatrixUtils.transformRect(
+                  Matrix4.fromFloat64List(m),
+                  bounds,
+                );
+              }
+            }
+            final onStage = Rect.fromLTRB(
+              box.left + bounds.left * scale,
+              box.top + bounds.top * scale,
+              box.left + bounds.right * scale,
+              box.top + bounds.bottom * scale,
+            );
+            expect(stageRect.intersect(onStage), onStage, reason: id);
+          }
+          await tester.pumpWidget(const SizedBox());
+        }
+      });
+    }
+
     for (final (size, scale) in [
       (const Size(360, 780), 1.3),
       (const Size(320, 640), 1.0),
