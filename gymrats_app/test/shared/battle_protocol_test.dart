@@ -16,8 +16,8 @@ void main() {
   });
 
   group('a simulated opponent (P10)', () {
-    test('real players get 15 seconds before one is assigned', () {
-      expect(battleVirtualWait, const Duration(seconds: 15));
+    test('real players get 10 seconds before one is assigned', () {
+      expect(battleVirtualWait, const Duration(seconds: 10));
     });
 
     test('reads the nickname and the reps to play', () {

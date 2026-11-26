@@ -11,6 +11,15 @@ import 'package:gymrats_app/screens/matching_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/models/battle_result.dart';
+import 'package:gymrats_app/models/battle_rules.dart';
+import 'package:gymrats_app/screens/result_screen.dart';
+import 'package:gymrats_app/shared/battle_protocol.dart'
+    show battleSetupTimeout;
+import 'package:gymrats_app/services/device/phone_tilt.dart';
+import 'package:gymrats_app/viewmodels/battle_viewmodel.dart';
+import 'package:gymrats_app/viewmodels/result_viewmodel.dart';
+import 'package:gymrats_app/widgets/result_report.dart';
 import 'package:gymrats_app/screens/battle_screen.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
@@ -36,7 +45,10 @@ import 'package:provider/provider.dart';
 // The battle server's own default ready limit, read from the sibling server.
 // ignore: avoid_relative_lib_imports
 import '../../../server/lib/battle_server.dart';
+import '../services/pose/person_behind_test_support.dart';
 import '../support/fakes.dart';
+import '../support/feedback_fakes.dart';
+import '../support/pose_fixtures.dart';
 import '../support/flow_snapshot.dart';
 import '../widgets/battle_test_support.dart';
 
@@ -125,6 +137,42 @@ Future<void> countDownToSetup(WidgetTester tester) async {
   for (var i = 0; i < 3; i++) {
     await tester.pump(const Duration(seconds: 1));
   }
+}
+
+/// A simulated battle (P10) with fakes, as the lobby would play it. With
+/// [setup], the AI battle's pose setup comes before the round (the camera
+/// never shows a ready pose); without, the round starts with the camera.
+BattleViewModel fakeVirtualBattle(Matchup matchup, {bool setup = false}) {
+  final camera = FakeCameraService();
+  final estimator = FakePoseEstimator();
+  final tilt = PhoneTiltMonitor(samples: const Stream.empty());
+  if (setup) {
+    return BattleViewModel.bot(
+      matchup: matchup,
+      counter: BattleViewModel.botCounter(
+        matchup.exercise,
+        camera: camera,
+        estimator: estimator,
+        phoneTilt: tilt,
+      ),
+      opponent: FakeOpponentSource(),
+      repository: FakeUserRepository(),
+      sound: FakeRepSound(),
+    );
+  }
+  return BattleViewModel(
+    matchup: matchup,
+    counter: RepCounterViewModel(
+      camera: camera,
+      estimator: estimator,
+      judge: CadencedRepJudge(),
+      roundLength: battleDuration,
+      phoneTilt: tilt,
+    ),
+    opponent: FakeOpponentSource(),
+    repository: FakeUserRepository(),
+    sound: FakeRepSound(),
+  );
 }
 
 Future<InMemoryAuthRepository> loggedIn() async {
@@ -1529,8 +1577,10 @@ void main() {
           autoJoin: false,
           auth: auth,
           createSession: (u, t, a) => session = _Session(u, t, a),
-          buildVirtualBattle: (matchup) {
+          createVirtualBattle: fakeVirtualBattle,
+          buildVirtualBattle: (matchup, battle) {
             battles.add(matchup);
+            addTearDown(battle.dispose);
             return const Scaffold(body: Text('virtual battle'));
           },
         ),
@@ -1548,22 +1598,24 @@ void main() {
       return (session, battles);
     }
 
-    testWidgets('the versus screen shows the copied nickname, tagged AI', (
-      tester,
-    ) async {
-      final (session, _) = await assigned(tester);
-      expect(find.byType(VersusScreen), findsOneWidget);
-      final versus = tester.widget<VersusScreen>(find.byType(VersusScreen));
-      expect(versus.matchup.opponent.name, '근손실');
-      expect(versus.matchup.opponent.isBot, isTrue);
-      expect(versus.matchup.playerName, '로그인사용자');
-      expect(find.text('근손실'), findsWidgets);
-      // The search is over: its session left and went.
-      expect(session.left, isTrue);
-      expect(session.wasDisposed, isTrue);
-      await tester.pumpWidget(const SizedBox());
-      await tester.pump();
-    });
+    testWidgets(
+      'the versus screen shows the copied nickname with its AI label',
+      (tester) async {
+        final (session, _) = await assigned(tester);
+        expect(find.byType(VersusScreen), findsOneWidget);
+        final versus = tester.widget<VersusScreen>(find.byType(VersusScreen));
+        expect(versus.matchup.opponent.name, '근손실');
+        // Not a fixed-level bot: its result and 다시 대결 go by the main match.
+        expect(versus.matchup.opponent.isBot, isFalse);
+        expect(versus.matchup.playerName, '로그인사용자');
+        expect(find.text('근손실'), findsWidgets);
+        // The search is over: its session left and went.
+        expect(session.left, isTrue);
+        expect(session.wasDisposed, isTrue);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      },
+    );
 
     testWidgets('after the countdown it plays the AI battle at the copied '
         'pace, once', (tester) async {
@@ -1625,6 +1677,202 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await tester.pump();
       expect(ends(), hasLength(1));
+    });
+
+    /// The lobby, opened from a home page, with a simulated battle whose
+    /// setup [setup] or not; the battle starts as its screen opens it.
+    Future<(List<_Session>, List<BattleViewModel>)> openTimed(
+      WidgetTester tester, {
+      required bool setup,
+    }) async {
+      final auth = await loggedIn();
+      final sessions = <_Session>[];
+      final opened = <BattleViewModel>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => OnlineLobbyScreen(
+                      autoJoin: false,
+                      auth: auth,
+                      createSession: (u, t, a) {
+                        final session = _Session(u, t, a);
+                        sessions.add(session);
+                        return session;
+                      },
+                      createVirtualBattle: (m) =>
+                          fakeVirtualBattle(m, setup: setup),
+                      buildVirtualBattle: (matchup, battle) {
+                        if (!opened.contains(battle)) {
+                          opened.add(battle);
+                          unawaited(battle.start());
+                        }
+                        return const Scaffold(body: Text('virtual battle'));
+                      },
+                    ),
+                  ),
+                ),
+                child: const Text('open lobby'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open lobby'));
+      await settle(tester);
+      await tester.tap(find.text('온라인 상대 찾기'));
+      await tester.pump();
+      sessions.last.virtual('근손실', 7);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('확인 (5)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await countDownToSetup(tester);
+      await settle(tester);
+      expect(find.text('virtual battle'), findsOneWidget);
+      return (sessions, opened);
+    }
+
+    testWidgets('a setup past the setup time is cancelled as a real one, and '
+        '다시 매칭 searches again', (tester) async {
+      final (sessions, opened) = await openTimed(tester, setup: true);
+      // Just inside the time: still setting up.
+      await tester.pump(battleSetupTimeout - const Duration(seconds: 2));
+      expect(find.text('virtual battle'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      await settle(tester);
+      expect(find.text('virtual battle'), findsNothing);
+      expect(find.text('경기 취소'), findsOneWidget);
+      expect(find.text('내가 제한 시간 안에 준비하지 못해 경기가 취소됐어요.'), findsOneWidget);
+      expect(find.widgetWithText(AccentButton, '다시 매칭'), findsOneWidget);
+      await tester.tap(find.text('다시 매칭'));
+      await tester.pump();
+      expect(sessions, hasLength(2));
+      expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
+      opened.single.dispose();
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('홈으로 돌아가기 after the setup time closes the lobby', (
+      tester,
+    ) async {
+      final (_, opened) = await openTimed(tester, setup: true);
+      await tester.pump(battleSetupTimeout);
+      await settle(tester);
+      await tester.tap(find.text('홈으로 돌아가기'));
+      await settle(tester);
+      expect(find.byType(OnlineLobbyScreen), findsNothing);
+      expect(find.text('open lobby'), findsOneWidget);
+      opened.single.dispose();
+      await tester.pump();
+    });
+
+    testWidgets('a round that starts in time is never cancelled', (
+      tester,
+    ) async {
+      final (_, opened) = await openTimed(tester, setup: false);
+      expect(opened.single.state.phase, BattlePhase.playing);
+      await tester.pump(battleSetupTimeout + const Duration(seconds: 5));
+      expect(find.text('virtual battle'), findsOneWidget);
+      expect(find.text('경기 취소'), findsNothing);
+      opened.single.dispose();
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('a finished simulated battle names the nickname in the live '
+        'and the saved report, and 다시 대결 searches the main match', (
+      tester,
+    ) async {
+      final (_, battles) = await assigned(tester);
+      await tester.tap(find.text('확인 (5)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await countDownToSetup(tester);
+      await settle(tester);
+      final matchup = battles.single;
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+
+      // The battle as the AI battle screen plays it, to time up.
+      final repository = FakeUserRepository();
+      late BattleResult result;
+      await tester.runAsync(() async {
+        final camera = FakeCameraService();
+        final estimator = FakePoseEstimator();
+        final judge = CadencedRepJudge();
+        final opponent = FakeOpponentSource();
+        var now = Duration.zero;
+        final vm = BattleViewModel(
+          matchup: matchup,
+          counter: RepCounterViewModel(
+            camera: camera,
+            estimator: estimator,
+            judge: judge,
+            clock: () => now,
+            roundLength: battleDuration,
+            phoneTilt: PhoneTiltMonitor(samples: const Stream.empty()),
+          ),
+          opponent: opponent,
+          repository: repository,
+          sound: FakeRepSound(),
+          formReports: InMemoryFormReportStore(),
+          now: () => DateTime(2026, 11, 27, 12),
+        );
+        Future<void> frame(double seconds) async {
+          now = Duration(milliseconds: (seconds * 1000).round());
+          estimator.frames.add(emptyFrame());
+          camera.emit();
+          await pumpEventQueue();
+        }
+
+        await vm.start();
+        judge.closeRep();
+        await frame(5);
+        opponent
+          ..emit()
+          ..emit();
+        await pumpEventQueue();
+        await frame(60);
+        expect(vm.state.phase, BattlePhase.timeUp);
+        result = vm.state.result!;
+        await pumpEventQueue();
+        vm.dispose();
+      });
+
+      // Live report: the nickname, never "RepBot 고수".
+      final live = ResultViewModel.battle(
+        result,
+        history: FakeFeedbackStatsSource(),
+      ).state;
+      expect(
+        ResultSubLine.opponentText(ResultScreen.reportOf(live).opponent),
+        '근손실',
+      );
+      expect(ResultScreen.summaryOf(live), contains('근손실'));
+      // 다시 대결 opens the online lobby with the same exercise.
+      expect(live.rematch, isNull);
+      expect(ResultScreen.rematchOf(live), isNull);
+      expect(live.exercise, ExerciseType.pushUp);
+
+      // Saved: only the player's record, under the nickname.
+      final saved = repository.saved.single;
+      expect(saved.opponentName, '근손실');
+      final reopened = ResultViewModel.record(
+        saved,
+        history: FakeFeedbackStatsSource(),
+      ).state;
+      expect(
+        ResultSubLine.opponentText(ResultScreen.reportOf(reopened).opponent),
+        '근손실',
+      );
     });
 
     testWidgets('without a builder it opens the AI battle screen', (
