@@ -137,6 +137,21 @@ void main() {
       expect(twins.nearest('push_up', 10, excludeId: '8')!.id, '9');
     });
 
+    test('ids compare as numbers: 2 before 10', () {
+      final ids = SkillIndex.build([
+        record('10', '열', [5]),
+        record('2', '둘', [5]),
+        record('100', '백', [5]),
+      ]);
+      expect(ids.nearest('push_up', 5)!.id, '2');
+      expect(ids.nearest('push_up', 9)!.id, '2');
+      expect(ids.nearest('push_up', 1)!.id, '2');
+      expect(ids.nearest('push_up', 5, excludeId: '2')!.id, '10');
+      expect(SkillIndex.compareIds('9', '10'), lessThan(0));
+      expect(SkillIndex.compareIds('12', '12'), 0);
+      expect(SkillIndex.compareIds('21', '12'), greaterThan(0));
+    });
+
     test('a tie below the skill also goes to the smaller id', () {
       final below = SkillIndex.build([
         record('2', '둘', [5]),
@@ -229,7 +244,9 @@ void main() {
           .where((o) => (o.$2 - skill).abs() == best)
           .reduce(
             (a, b) =>
-                a.$2 < b.$2 || a.$2 == b.$2 && a.$1.compareTo(b.$1) < 0 ? a : b,
+                a.$2 < b.$2 || a.$2 == b.$2 && int.parse(a.$1) < int.parse(b.$1)
+                ? a
+                : b,
           );
       expect((found.skill - skill).abs(), best);
       expect(found.id, expected.$1);

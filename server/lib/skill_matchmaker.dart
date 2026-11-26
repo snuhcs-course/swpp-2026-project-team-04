@@ -133,8 +133,14 @@ class SkillIndex {
   /// Ties go to the smaller id, so a search is repeatable.
   static int _bySkill(SkillEntry a, SkillEntry b) {
     final bySkill = a.skill.compareTo(b.skill);
-    return bySkill != 0 ? bySkill : a.id.compareTo(b.id);
+    return bySkill != 0 ? bySkill : compareIds(a.id, b.id);
   }
+
+  /// Orders account ids as numbers ("2" before "10"): they are the API
+  /// server's integer ids, written without leading zeros, so the shorter one
+  /// is the smaller.
+  static int compareIds(String a, String b) =>
+      a.length != b.length ? a.length.compareTo(b.length) : a.compareTo(b);
 
   /// How many accounts have an estimate for [exercise].
   int count(String exercise) => _sorted[exercise]?.length ?? 0;
