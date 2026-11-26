@@ -222,6 +222,25 @@ void main() {
       expect([...order]..sort(), order);
     });
 
+    testWidgets('a star that comes while the stage is covered, just after the '
+        'setup, starts at its beginning (reviewer run 3)', (tester) async {
+      await _Play().show(
+        tester,
+        const HoldStageState(phase: HoldStagePhase.setup),
+      );
+      // The clock ticks on while setting up, then a screen covers the stage.
+      await tester.pump(const Duration(seconds: 2));
+      await _Play(ticking: false).show(tester, _Play.holding(14900));
+      await _Play(ticking: false)
+          .show(tester, _Play.holding(15000, callout: HoldCallout.cheer(1)));
+      // The star's first moment: the crouch has not begun (not 2 s before it).
+      expect(_me(tester).expression, 'atk');
+      expect(_me(tester).sy, closeTo(1, 1e-9));
+      await _Play().show(tester, _Play.holding(15000));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(_me(tester).sy, inInclusiveRange(0.9, 1.1));
+    });
+
     testWidgets('a covered stage stands still, even as the play changes, and '
         'goes on after (reviewer run 2)', (tester) async {
       // Breathing is 1.2 % over 1.5 s: 300 ms in, it would be 1.011.

@@ -212,7 +212,8 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
   /// Milliseconds on the stage's clock at its last tick.
   double _elapsed = 0;
 
-  /// The clock's time the stage was last drawn at.
+  /// Rebuilds the stage at each tick outside the setup; the stage is drawn
+  /// at [_elapsed].
   final _now = ValueNotifier<double>(0);
 
   late HoldMeTimeline _timeline;
@@ -283,8 +284,10 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     final bands = _bands(still);
     return ValueListenableBuilder<double>(
       valueListenable: _now,
-      builder: (context, now, _) =>
-          _build(now, still: still, gym: gym, hud: hud, bands: bands),
+      // Drawn at the time the play was last looked at, so no age is ever
+      // below 0 (a tick may come while setting up, then the screen covered).
+      builder: (context, _, _) =>
+          _build(_elapsed, still: still, gym: gym, hud: hud, bands: bands),
     );
   }
 
