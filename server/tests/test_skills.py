@@ -7,7 +7,7 @@ import pytest
 from django.test import override_settings
 
 from accounts.models import User
-from matches.models import Match
+from matches.models import Match, MatchFeedback, OnlineBattle
 
 from .conftest import sign_up
 from .test_results import SECRET, internal
@@ -15,8 +15,9 @@ from .test_results import SECRET, internal
 START = datetime(2026, 11, 27, 12, 0, tzinfo=timezone.utc)
 
 
-def play(user, reps, exercise="push_up", minutes=0, client_id=None):
+def play(user, reps, exercise="push_up", minutes=0, client_id=None, reason="time_up"):
     return Match.objects.create(
+        reason=reason,
         user=user,
         client_id=client_id or f"{exercise}-{minutes}-{reps}",
         exercise=exercise,
@@ -128,3 +129,100 @@ def test_skills_is_closed_without_a_configured_secret(client, accounts):
 
 def test_skills_answers_an_empty_list_with_no_battles(client, accounts):
     assert internal(client, "skills", {}).json() == {"players": []}
+
+
+def played_for(user, match, ms):
+    """The form report of [match], saying it lasted [ms]."""
+    MatchFeedback.objects.create(
+        user=user,
+        client_id=match.client_id,
+        summary={},
+        report={"version": 1, "roundMs": ms, "reps": [], "samples": [], "poses": []},
+    )
+
+
+def test_skills_scales_a_ko_battle_to_a_full_round(client, accounts):
+    a, _ = accounts
+    played_for(a, play(a, 12, minutes=2, reason="ko"), 20_000)
+    play(a, 10, minutes=1)
+
+    players = players_of(internal(client, "skills", {}))
+
+    # 12 reps in 20 s is 18 in 30 s.
+    assert players[str(a.id)]["recent"]["push_up"] == [18.0, 10]
+
+
+def test_skills_takes_an_online_ko_length_from_the_battle(client, accounts):
+    a, b = accounts
+    play(a, 8, client_id="result-ko-1", reason="ko")
+    play(b, 2, client_id="result-ko-1", reason="ko")
+    OnlineBattle.objects.create(
+        match_id="match-ko-1",
+        result_id="result-ko-1",
+        status=OnlineBattle.FINISHED,
+        started_at=START,
+        ended_at=START + timedelta(seconds=12),
+    )
+
+    players = players_of(internal(client, "skills", {}))
+
+    assert players[str(a.id)]["recent"]["push_up"] == [20.0]
+    assert players[str(b.id)]["recent"]["push_up"] == [5.0]
+
+
+def test_skills_leaves_out_a_ko_under_ten_seconds(client, accounts):
+    a, _ = accounts
+    played_for(a, play(a, 6, minutes=2, reason="ko"), 9_999)
+    played_for(a, play(a, 7, minutes=1, reason="ko"), 10_000)
+
+    players = players_of(internal(client, "skills", {}))
+
+    assert players[str(a.id)]["recent"]["push_up"] == [21.0]
+
+
+def test_skills_leaves_out_a_ko_of_unknown_length(client, accounts):
+    a, b = accounts
+    play(a, 12, minutes=2, reason="ko")
+    # Another account's report under the same client id does not count.
+    played_for(b, play(b, 3, client_id="ko-shared", reason="time_up"), 20_000)
+    play(a, 12, client_id="ko-shared", minutes=1, reason="ko")
+
+    players = players_of(internal(client, "skills", {}))
+
+    assert str(a.id) not in players
+
+
+def test_skills_leaves_out_battles_a_player_left(client, accounts):
+    a, _ = accounts
+    play(a, 1, minutes=3, reason="forfeit")
+    play(a, 2, minutes=2, reason="disconnect_timeout")
+    play(a, 9, minutes=1)
+
+    players = players_of(internal(client, "skills", {}))
+
+    assert players[str(a.id)]["recent"]["push_up"] == [9]
+
+
+def test_skills_fills_the_five_from_battles_that_count(client, accounts):
+    a, _ = accounts
+    for minute in range(5):
+        play(a, 10 + minute, minutes=10 + minute)
+    play(a, 1, minutes=20, reason="forfeit")
+    play(a, 2, minutes=21, reason="ko")  # unknown length
+
+    players = players_of(internal(client, "skills", {}))
+
+    assert players[str(a.id)]["recent"]["push_up"] == [14, 13, 12, 11, 10]
+
+
+def test_skills_ignores_a_report_without_a_usable_length(client, accounts):
+    a, _ = accounts
+    match = play(a, 12, reason="ko")
+    MatchFeedback.objects.create(
+        user=a,
+        client_id=match.client_id,
+        summary={},
+        report={"version": 1, "roundMs": "20000", "reps": [], "samples": [], "poses": []},
+    )
+
+    assert players_of(internal(client, "skills", {})) == {}

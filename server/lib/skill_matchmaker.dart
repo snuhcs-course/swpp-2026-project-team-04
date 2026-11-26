@@ -14,7 +14,7 @@ const skillExercises = ['push_up', 'squat'];
 
 /// The median of the first [recentMatches] values of [reps], newest first;
 /// null when there are none.
-double? medianOf(List<int> reps) {
+double? medianOf(List<num> reps) {
   if (reps.isEmpty) return null;
   final recent = reps.take(recentMatches).toList()..sort();
   final middle = recent.length ~/ 2;
@@ -30,8 +30,9 @@ class SkillRecord {
   /// The battle server's player id (the account id) and nickname.
   final String id, name;
 
-  /// Valid reps per exercise, newest first.
-  final Map<String, List<int>> recent;
+  /// Valid reps per exercise, newest first; a KO battle's are scaled to a
+  /// full round by the API server, so they may have a fraction.
+  final Map<String, List<num>> recent;
 
   /// The record in one `players` item of `POST /internal/skills`; null
   /// when it is not one.
@@ -43,12 +44,14 @@ class SkillRecord {
       return null;
     }
     if (recent is! Map) return null;
-    final reps = <String, List<int>>{};
+    final reps = <String, List<num>>{};
     for (final exercise in skillExercises) {
       final list = recent[exercise];
       if (list == null) continue;
-      if (list is! List || list.any((r) => r is! int || r < 0)) return null;
-      reps[exercise] = list.cast<int>();
+      if (list is! List || list.any((r) => r is! num || !r.isFinite || r < 0)) {
+        return null;
+      }
+      reps[exercise] = list.cast<num>();
     }
     return SkillRecord(id, name, reps);
   }

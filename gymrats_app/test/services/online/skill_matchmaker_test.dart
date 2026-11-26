@@ -22,6 +22,11 @@ void main() {
       expect(medianOf([1, 2, 3, 4, 5, 100, 100]), 3);
     });
 
+    test('takes a KO battle scaled to a full round', () {
+      expect(medianOf([18.0, 10, 12]), 12);
+      expect(medianOf([18.0, 20.5]), 19.25);
+    });
+
     test('one bad battle hardly moves it', () {
       expect(medianOf([12, 0, 11, 13, 12]), 12);
     });
@@ -47,6 +52,17 @@ void main() {
         'push_up': [9, 8],
         'squat': [20],
       });
+    });
+
+    test('reads scaled KO values with a fraction', () {
+      final record = SkillRecord.fromJson({
+        'player_id': '7',
+        'display_name': '진영',
+        'recent': {
+          'push_up': [18.75, 9],
+        },
+      })!;
+      expect(record.recent['push_up'], [18.75, 9]);
     });
 
     test('an exercise not sent has no battle', () {
@@ -83,7 +99,14 @@ void main() {
         'player_id': '7',
         'display_name': '진영',
         'recent': {
-          'push_up': [1.5],
+          'push_up': [double.nan],
+        },
+      },
+      {
+        'player_id': '7',
+        'display_name': '진영',
+        'recent': {
+          'push_up': [-0.5],
         },
       },
     ]) {
