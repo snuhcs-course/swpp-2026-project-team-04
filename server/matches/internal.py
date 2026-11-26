@@ -174,12 +174,16 @@ class ResultSaveView(_InternalView):
         battle.ended_at = ended_at
         battle.save()
 
-        users = User.objects.in_bulk([int(p["player_id"]) for p in players])
+        users = User.objects.in_bulk(
+            [int(p["player_id"]) for p in players if not p["simulated"]]
+        )
         # Points need both players, as in POST /matches. Refusing would lose
         # the result, since the battle server does not retry a refusal.
         scored = all("game_score" in p for p in players)
         saved = 0
         for me, other in ((players[0], players[1]), (players[1], players[0])):
+            if me["simulated"]:
+                continue  # P10: only the real player keeps the battle.
             user = users.get(int(me["player_id"]))
             if user is None:
                 continue  # Account deleted since the battle.
@@ -261,7 +265,7 @@ class SkillsView(_InternalView):
         ):
             return Response(
                 {"limit": [f"An integer from 1 to {SKILL_RECENT_MAX}."]},
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
         rows = list(
             Match.objects.filter(

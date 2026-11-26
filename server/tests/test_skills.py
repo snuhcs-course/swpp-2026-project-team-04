@@ -93,7 +93,7 @@ def test_skills_takes_another_limit(client, accounts):
 def test_skills_refuses_a_bad_limit(client, accounts, limit):
     response = internal(client, "skills", {"limit": limit})
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     assert "limit" in response.json()
 
 
