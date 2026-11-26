@@ -7,16 +7,16 @@ Owner: ishlove77 · 2026-11-27 · branch `feat/iter5-skill-matching`
 | Situation | What happens |
 |---|---|
 | Another real player is waiting for the same exercise in the main queue | Paired at once, first come first served, whatever the skill (unchanged FIFO). |
-| No real player within **10 s** (`battleVirtualWait`; 15 s until the user's change of 2026-11-27) | The battle server sends `match.virtual`: a simulated user that copies the account whose skill estimate is closest to the player's own, shown under that account's nickname alone (PM approval relayed by the user, 2026-11-27; an AI label was dropped). |
-| Simulated user's pose setup | Same limit as a real battle: `battleSetupTimeout` (20 s) from the setup's start. Past it, before the round, the battle closes and the lobby shows "경기 취소 · 내가 제한 시간 안에 준비하지 못해 경기가 취소됐어요." with 다시 매칭 (a new main search) and 홈으로 돌아가기 (user decision 2026-11-27: no difference from a real battle). The time-left pill of a real battle's setup is not shown (it sits inside the AI battle screen, outside P10's files). |
-| Friend battle (`friend_id`) | Never gets a simulated user. |
+| No real player within **10 s** (`battleVirtualWait`; 15 s until the user's change of 2026-11-27) | The battle server opens a match with a **simulated player** that copies the account whose skill estimate is closest to the player's own, under that account's nickname (no AI label: PM approval relayed by the user, 2026-11-27). The phone gets an ordinary `match.found`. |
+| The simulated match | Played by the battle server as a real match (user decision 2026-11-27: no difference from a real opponent). The simulated player opens its setup 4–7 s after the match is found and is ready 3–6 s later; the setup time (20 s), the countdown, fever, combos, KO, forfeit and the result follow the same code as a real match. During the round it makes its planned reps as `rep.updated`. No poses are sent: the online battle screen does not draw the opponent's pose. |
+| Result | `match.finished` as for a real match. The P11 saver gets the simulated player marked `simulated: true` and stores a row only for the real player (an online battle, `is_online: true`, opponent = the nickname); the copied account's history never gets one. 기록보관소, the report and 다시 대결 behave as after any online battle. |
+| Friend battle (`friend_id`) | Never gets a simulated player. |
 | App that does not send `accept_virtual: true` (older app) | Keeps waiting as before. |
 
-The simulated battle runs on the phone as an AI battle (`BotOpponent` at `SimulatedUserPace`) against an opponent named
-by the copied nickname that is not a fixed-level bot (`isBot: false`), so the result says `vs 근손실` (not
-`RepBot 고수`) and 다시 대결 on it searches the same exercise's main match again. Its result is saved with
-`POST /matches` by the player's app only, so the copied account's history never gets a row. (The P11 saver stores a
-row for both players of an online battle, which is why the server does not play the simulated user itself.)
+### The simulated player's reps
+`SimulatedPlayer.planReps`: round(estimate) valid reps give or take one (1–60), plus 0–2 too shallow
+(`insufficient_depth`), spread over the round from 1.5 s to 1.2 s before the end with a little jitter; about 15% of the
+valid reps are excellent, the rest good. Its id is `sim-` and 12 hex characters, never an account id.
 
 ## Skill estimate
 
@@ -36,8 +36,8 @@ row for both players of an online battle, which is why the server does not play 
 - Fewer than 5 that count: the median of those there are. None: the average estimate of all accounts with one, or
   9 reps when nobody has one (`SkillIndex.defaultSkill`).
 - The player's own estimate is taken the same way.
-- The simulated user plays `round(estimate)` valid reps, give or take one, clamped to 1–60. With nobody else to copy it
-  is `RepBot` at the player's own estimate.
+- The simulated player plays about `round(estimate)` valid reps of the copied account. With nobody else to copy it is
+  `RepBot` at the player's own estimate.
 
 ## Data flow
 
@@ -53,10 +53,11 @@ row for both players of an online battle, which is why the server does not play 
 ## Protocol additions (v1, backward compatible)
 
 - `queue.join` payload: optional `accept_virtual: bool`. `true` together with `friend_id` is `INVALID_PAYLOAD`.
-- Server → client `match.virtual` (no `match_id`):
-  `{"exercise": "push_up", "opponent": {"display_name": "근손실", "expected_reps": 7}}`. The player leaves the queue;
-  a real player joining later is not paired with them. The copied account's id is never sent.
-- Deploy order: Django (new route) → battle server → app. An older battle server refuses `accept_virtual`.
+- No new server message: a simulated match is announced and played with the existing ones.
+- Internal (battle server → API server): `POST /internal/skills`; in `POST /internal/results` a player may carry
+  `"simulated": true` with a `sim-` id, and is then not stored.
+- Deploy order: Django (route and saver) → battle server → app. An older battle server refuses `accept_virtual`, and
+  an older Django refuses a result with a simulated player.
 
 ## Cost: building the index vs. searching it
 
@@ -86,7 +87,10 @@ end-to-end assignment under concurrent players separately from these numbers.
 
 ## Open points (PM)
 
-- The copied account's nickname is shown without an AI label (PM approval relayed by the user, 2026-11-27).
-- 다시 대결 from a **reopened** (saved) report of a simulated battle still opens an expert AI battle: the saved record
-  is an AI battle (`is_online: false`) under a plain nickname, so nothing in it tells it apart; changing that needs a
-  stored flag (server and P14/P15 files).
+- The copied account's nickname is shown without a label, and the simulated player is indistinguishable from a person
+  (PM approval relayed by the user, 2026-11-27).
+- The protocol doc (`docs/iteration-2-protocol.md`) needs `accept_virtual` and the simulated player in results.
+- Telemetry (P17/P24): `battle_finished` of a simulated match is `kind: main`; its `scores` carry the `sim-` id, which marks
+  it. A match cancelled before the start has no scores and cannot be told apart.
+- P20: measure the `/internal/skills` read (it loads every countable match row every 5 minutes) and simulated matches
+  under load, apart from the index numbers above.
