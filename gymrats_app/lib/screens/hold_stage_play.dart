@@ -284,8 +284,9 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     final bands = _bands(still);
     return ValueListenableBuilder<double>(
       valueListenable: _now,
-      // Drawn at the time the play was last looked at, so no age is ever
-      // below 0 (a tick may come while setting up, then the screen covered).
+      // Drawn at the clock's latest tick, the time the play is recorded at,
+      // so no age is ever below 0 (a tick may come while setting up, then
+      // the screen covered).
       builder: (context, _, _) =>
           _build(_elapsed, still: still, gym: gym, hud: hud, bands: bands),
     );
