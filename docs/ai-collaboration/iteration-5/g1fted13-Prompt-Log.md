@@ -644,3 +644,90 @@ PR과 폰 확인
 <!-- bee4b4a2 2026-11-26T06:08:24.594Z -->
 [Woohyun Song, 11-26 15:08] "녹화 댓글은 이미 올라갔다([REDACTED:custom_term], 영상 4개 첨부 확인): https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/101#issuecomment-7183978350
 2단계는 끝난 것으로 보고, 댓글을 다시 올리지 않는다. 3단계(TODO 세 곳 채우기, 체크리스트 화면 자리에는 이 댓글 링크)부터 이어서 한다. 4단계 Ready와 Codex 대응, 5단계 보고까지 지난 메시지대로 진행한다. 이 메시지도 프롬프트 기록에 남긴다."
+
+## 2026-11-26 · Woohyun Song · feat/iter5-hold-character
+<!-- f86b9ff8 2026-11-26T13:22:51.638Z -->
+[Woohyun Song, 11-26 22:22] "<pasted_content id=\"2c8e\">
+\"아케이드 버티기 · 내 캐릭터 같이 버티기\" 작업을 시작한다. PM 승인 전이라 로컬에서만 진행한다.
+명세와 시안은 .claude/design/arcade/hold-character/ 에 있다(SPEC.md, design/HoldMe.dc.html, data/, design/drawings/). 읽기만 하고 커밋하지 않는다. 화면 값은 원본에서 가져온다.
+
+승인 전 규칙 (SPEC 0절의 \"커밋하지 않는다\"를 이렇게 바꾼다)
+- 로컬 커밋은 해도 된다. push, PR, 원격 브랜치 만들기는 내가 승인을 알린 뒤에 한다.
+- ID와 브랜치는 임시로 A8, feat/iter5-hold-character이고, 마감은 임시로 11/30/2026이다. 승인 때 바뀌면 브랜치 이름과 ownership.json만 고친다.
+
+1. git status가 깨끗한지, 지금 브랜치가 main인지 확인하고 fetch한다. .claude/design/ 이 git에서 무시되는지 git check-ignore로 보고, 무시되지 않으면 .git/info/exclude에 더한다.
+2. SPEC 0절대로 로컬 ownership.json에 A8 단계를 더하고, origin/main에서 feat/iter5-hold-character를 판다. --status로 확인하고 progress.md에 적는다. Windows 경로는 raw 문자열이나 슬래시로 쓴다.
+3. flutter pub get을 하고, SPEC.md를 끝까지 읽고, HoldMe.dc.html을 본다. 지금 코드를 읽는다: hold_stage_play, hold_stage_viewmodel, hold_judge의 HoldTiming, hold 위젯들, gym_owner_figure, character_figure와 character_rig, W4 홈 리그 데이터, hold_stage_demo.
+4. 알아 둘 것 두 가지:
+   - 지금은 큰 말풍선, 관장 웃는 얼굴(GymOwnerFace.ok), 막대 별 튀기기(popStar)가 모두 cheer callout 하나에 묶여 HoldTiming.cheer(1초) 동안만 보인다. 이번에는 별을 딴 순간에서 각각 800ms, 700ms, 900ms에 시작하므로 따로 떼어야 한다.
+   - 송현우의 P13(마감 11/30, 아직 PR 전)이 hold_stage_viewmodel.dart의 _show(기록 _log), 생성자 인자, _save와 hold_stage_screen.dart, hold_stage_result.dart를 고치고 있다. 뷰모델 변경은 되도록 작게, 그 부분들과 떨어진 곳에 둔다. 시간 재기는 가능하면 위젯 쪽에서 한다. hold_stage_screen.dart와 hold_stage_result.dart는 가능하면 건드리지 않는다. 계획 보고에 P13과 겹칠 수 있는 줄을 적는다.
+5. 코드를 쓰기 전에 SPEC 10절의 계획을 보고하고 기다린다. SPEC 1절에서 정한 것은 다시 묻지 않는다.
+6. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"2c8e\">"
+
+<!-- f86b9ff8 2026-11-26T13:38:33.004Z -->
+[Woohyun Song, 11-26 22:38] "<pasted_content id=\"2c8e\">
+10절 계획을 승인한다. 아래를 반영해서 계획한 작업 순서대로 진행한다. 단계마다 로컬 커밋은 해도 되고, push와 PR은 내가 PM 승인을 알릴 때까지 하지 않는다.
+
+1. 범위 추가 3건을 모두 승인한다. test/widgets/hold_me_golden.json과 test/viewmodels/hold_stage_viewmodel_test.dart를 A8 allow에 더한다. test/design_tokens_test.dart는 예외 줄로 적는다(사유: 새 hold_me_* 파일을 토큰 검사 목록에 더하는 줄, 선조치 후보고). A7(#101)도 같은 파일에 한 줄을 더했으니, main에 들어온 뒤 합칠 때 두 줄을 모두 남긴다.
+2. 3절에서 정한 것 가운데 앞의 세 가지(go 구간, ★2 1350ms부터 힘든 구간 우선, 경고로 끊긴 별 동작은 이어지지 않음)는 그대로 한다.
+3. 움직임 줄이기 중 별 순간은 이렇게 바꾼다. 의자 자세는 만세 자세(up)로 바로 바뀌어 win 표정으로 1.6초 보인 뒤 바로 버팀 자세로 돌아온다. SPEC 7절의 \"각 상태의 자세와 표정\"과, 경고를 움직임 없이 바로 경고 자세로 보이는 것과 맞춘 것이다. 하이 플랭크와 엎드리기는 계획대로 버팀 자세에 win 표정이다. 관장 웃는 얼굴 1.6초도 계획대로 한다.
+4. A7(#101)이 victory_* 파일을 고쳤으므로, A7이 main에 들어오면 이 브랜치를 rebase하고 테스트를 다시 돌린다. 그전에는 origin/main 기준으로 계속한다.
+5. analyze, 전체 test, reviewer APPROVE, 노트까지 마치면 멈추고 보고한다. 데모 실행 명령, 폰에서 볼 항목(다섯 캐릭터 × 두 자세, 별, 경고, 힘든 구간, 애니메이션 줄이기), 찍을 화면 목록도 함께 준다.
+6. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"2c8e\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-hold-character
+<!-- f86b9ff8 2026-11-26T17:14:36.882Z -->
+[Woohyun Song, 11-27 02:14] "<pasted_content id=\"2c8e\">
+PM 승인이 왔다(11/27). A8, feat/iter5-hold-character, 마감 11/29/2026, 예상 3시간. 범위는 별 1·2개 연출, 1.6초 말풍선, 별 3개는 바로 결과로, 지금 계획 그대로다. 현우와 같이 쓰는 뷰모델은 연출 부분만 맞추라고 했는데, 계획대로 뷰모델 코드는 고치지 않는다.
+지금 하던 일을 마친 뒤 아래를 한다.
+1. ownership.json의 A8 due를 11/29/2026으로 바꾸고, progress.md와 예외 줄 사유에 PM 승인(2026-11-27)을 적는다.
+2. main에 A7(#101)과 P14(#100)가 머지됐다(main 38726e8). 아직 그 위가 아니면 fetch 후 rebase하고, design_tokens_test.dart는 A7 줄과 A8 줄을 모두 남긴다. analyze와 전체 test를 다시 돌린다. 송현우의 P13도 곧 PR이 올라오니, A8 PR 전에 P13이 먼저 머지되면 한 번 더 rebase한다.
+3. reviewer APPROVE와 노트까지 마치면 push하고 draft PR을 연다. 본문은 영어로 쓰고, SPEC 12절 체크리스트와 화면 자리를 넣는다. Exceptions 절에는 design_tokens_test.dart, chair_hold_stage_test.dart, PM 승인 날짜를 적는다.
+4. Ready로 바꾸지 말고 멈춰서 보고한다. 데모 실행 명령, 폰에서 볼 항목, 체크리스트 항목별로 찍을 화면 목록을 함께 준다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"2c8e\">"
+
+<!-- f86b9ff8 2026-11-26T17:45:08.943Z -->
+[Woohyun Song, 11-27 02:45] "<pasted_content id=\"2c8e\">
+확인 사항에 답한다.
+1. 예외 두 건(design_tokens_test.dart, chair_hold_stage_test.dart)은 그대로 좋다.
+2. 움직임 줄이기 중 두 번째 별도 win 1.6초로 둔다. 움직일 때 힘든 구간이 ★2 뒤 1.35초부터인 것도 그대로 둔다.
+3. P13이 먼저 머지되면 rebase한다.
+4. TODO 셋 가운데 둘은 지금 채운다. 노트와 PR 본문의 해당 줄만 바꾸고 push한다. Ready로는 바꾸지 않는다.
+   - 시안과 명세를 만든 사람과 도구: claude.ai의 Claude Design 캔버스(\"버티기 · 내 캐릭터 연출 시안\" 페이지)에서 Claude가 세 방향(dir a·b·c), 별 동작 두 가지, 엎드리기 후보 세 가지를 만들었다. 송우현이 A1(같이 버티기, 별마다 제자리에서 통 튀기), 엎드리기 후보 A, 지금 말풍선 자리를 골랐다(11/26). SPEC v1은 claude.ai 프로젝트 채팅에서 Claude가 시안과 코드를 바탕으로 썼다. 계획 단계에서 송우현이 움직임 줄이기 중 의자 자세의 별 순간을 만세 자세로 정했다.
+   - 커버리지: PR #104의 CI 커버리지 댓글을 gh로 읽어 채운다.
+   - 폰 확인: 내가 녹화를 PR 댓글로 올리고 알려 줄 테니 그때 채운다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"2c8e\">
+
+그리고 지금 영어로 답하고 있는데 한국어로 답하도록 해"
+
+<!-- f86b9ff8 2026-11-26T17:58:19.992Z -->
+[Woohyun Song, 11-27 02:58] "<pasted_content id=\"2c8e\">
+폰 확인은 이번에는 하지 않는다. 카메라로 자세 세팅을 할 수 없는 환경이다. 화면 값은 시안에서 뽑은 golden과 위젯 테스트로 확인했으니 그대로 Ready로 간다.
+
+1. PR 본문과 노트의 폰 확인 TODO를 이렇게 채운다: \"실기기 확인은 아직 하지 않았다(카메라 세팅 불가). 화면 값은 시안 JS에서 뽑은 golden과 위젯 테스트로 확인했다. 실기기 확인은 머지 뒤 앱 빌드 때 한다.\" 체크리스트의 화면 자리는 지우고, 각 항목에 해당 테스트 이름만 남긴다.
+2. 앞 메시지의 TODO 두 가지(시안·명세 출처, 커버리지)를 아직 안 채웠으면 함께 채운다. PR 본문은 gh로 지금 본문을 받아 바꿀 줄만 바꾼다. 노트는 커밋하고 push한다. push 뒤에는 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+3. gh pr ready 104로 Ready로 바꾼다. Codex 리뷰가 달릴 때까지 몇 분 간격으로 확인하고, 30분이 지나도 안 달리면 멈추고 보고한다.
+   - A8 범위 안의 실제 문제면 고친다. 관련 테스트와 flutter analyze만 돌리고 로컬 reviewer는 생략한다. push한 뒤 스레드에 고친 커밋을 영어로 짧게 답하고 resolve한다.
+   - 거의 일어나지 않는 경우거나 이 작업과 무관하면, 이유를 영어로 짧게 답하고 resolve한다.
+   - 범위 밖 파일을 고쳐야 하는 지적이면 고치지 말고 멈추고 보고한다.
+   - push 뒤 15분이 지나도 새 리뷰가 안 달리면 PR에 \"@codex review\" 댓글을 단다.
+   - 고치는 것은 2회까지만 한다. 그 뒤에도 지적이 오면 멈추고 보고한다.
+   - 그사이 P13이 main에 머지되어 충돌이 생기면 멈추고 보고한다.
+4. 끝나는 조건: 현재 HEAD에 Codex가 \"Didn't find any major issues\"를 달고, 안 풀린 스레드가 0개이고, CI가 통과한 상태다. 이 상태가 되면 새 커밋, Codex 지적과 처리 결과를 보고한다. 상우나 현우를 GitHub에서 멘션하지 않는다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"2c8e\">"
+
+<!-- f86b9ff8 2026-11-26T18:02:24.514Z -->
+[Woohyun Song, 11-27 03:02] "<pasted_content id=\"2c8e\">
+PR 본문 형식을 바로잡는다. 체크리스트는 내가 명세로 요구했던 것인데, 팀 PR 형식이 아니라서 뺀다.
+1. PR #104 본문을 하네스 pull-request 스킬의 형식(Summary, What it does, How to test, Review notes) 그대로 맞추고, 체크리스트 절은 지운다. gh로 지금 본문을 받아 고치고, 이미 쓴 내용(커버리지, 시안·명세 출처 등)은 살린다.
+   - 체크리스트 항목은 How to test의 Acceptance criteria → tests 표에 항목과 테스트 이름으로 옮긴다.
+   - 폰 확인은 Manual check에 \"Not checked on a device: no camera pose setup was available. Visual values match goldens extracted from the mockup's JS. Device check after merge.\"처럼 적는다.
+   - 예외(design_tokens_test.dart, chair_hold_stage_test.dart, PM 승인 11/27)는 Review notes에 적는다.
+2. 앞 메시지(Ready와 Codex 대응)를 아직 시작하지 않았으면 이 수정 뒤에 진행한다. 이미 Ready로 바꿨으면 본문만 고친다.
+3. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"2c8e\">"

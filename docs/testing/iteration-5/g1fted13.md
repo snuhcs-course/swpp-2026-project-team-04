@@ -1919,3 +1919,184 @@ No server, camera or device is needed:
 - 7.9 PM acceptance → victory_pvp_outcome_test 'PM acceptance (A7): an online battle the server ended' group (draw,
   win, loss)
 - 7.10 Online opponent → online_battle_result_test 'carries the opponent's character, as the stage drew it, …'
+
+#### 2026-11-27 · code at commit `eb91408` (a comment fixed in `091ee2c`) · step A8 `feat/iter5-hold-character` (local step, PM approved 2026-11-27, due 11/29): the user's character holds along on hold stages
+A8 puts the user's character on the empty left of a hold stage, beside the gym owner. It follows the design hand-off's
+spec `hold-character/SPEC.md` v1 (2026-11-26, not committed) and its source `HoldMe.dc.html` (props `dir=a`,
+`act=pop`, `lie=a`):
+- **The character:** GYM마우스 and 그루 hold a rig high plank (home's push-up `up`, sagging to its `down` on a
+  warning). 곰탱이's plank and 펭뚱이's and 물렁범's lying pose are three new drawings. All five hold the chair pose
+  as a rig (hold, arms up `up`, hips up `rise`). It stands on the owner's floor line (y 346), breathes, and strains
+  with grit, shake lines and sweat from 1.35 s after the second star.
+- **A star:** the character crouches, hops 16 px and lands with dust. A star flies from its body to the bar mark
+  and lands at 0.9 s, when the bar star lights and pops. The owner smiles from 0.7 s, and the cheer shows from
+  0.8 s to 2.4 s (was 0 to 1 s). Judging, the star sound, saving and the result are unchanged.
+- **A warning:** the plank sags, the chair pose's hips rise, the drawings tip or flatten, over 180 ms with a jolt,
+  and they come back in 180 ms when the time runs again. A warning in a star's moment ends that moment; the star
+  still flies and lights the bar.
+- **The owner's bubbles:** the start words, "삐익!", the cheer and "실패!" all end at the owner's
+  `holdBigBubbleRight`, 148 down. The big bubble's padding is 5, 22 and 7.
+- **Reduced motion:** each moment's pose and face only. A chair star shows the arms up with `win` for 1.6 s (the
+  user's decision), the bar star lights at once, and the cheer shows at once for 1.6 s.
+- **Where the time is kept:** on the screen. `_Stage` in `hold_stage_play.dart` runs a ticker and feeds a pure
+  `HoldMeTimeline`. The view model is unchanged but for `HoldTiming.cheer` (1 s → 2.4 s), since a teammate's P13 edits
+  it.
+
+The branch started at `origin/main` `cc0df4f`. Once the PM had approved the step (2026-11-27) and A7 (#101) and P14
+(#100) were in `main`, it was rebased on `main` `38726e8`; the hashes here are the rebased ones. The code is eleven
+commits, `189144c` to `eb91408`: `a27b5ac` and `f9c3dae` fix reviewer run 1's findings, `0403faa` run 2's and
+`eb91408` run 3's. I ran these in `gymrats_app/` on Windows, without coverage (this PC's rule):
+
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/widgets/hold_me_rig_test.dart test/widgets/hold_me_scene_test.dart test/widgets/hold_me_figure_test.dart test/screens/hold_stage_play_test.dart test/screens/hold_stage_screen_test.dart test/screens/arcade_hold_stage_test.dart test/viewmodels/hold_stage_viewmodel_test.dart test/services/pose/chair_hold_stage_test.dart test/design_tokens_test.dart
+```
+
+No camera, ML Kit or device is needed:
+- **The stage test** drives `HoldStagePlay` with view model states by hand and pumps the time.
+- **The screen tests** use the existing scripted setup and pose reader (`_Driver`).
+- **Golden values:** `test/widgets/hold_me_golden.json` holds the values from the mockup's own JavaScript, as the
+  test file's header says.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not changed by A8 | 11/27 | – |
+| ViewModel | flutter_test, fakes | 90% | not changed by A8 (only its test's cheer time) | 11/27 | – |
+| Service | flutter_test, fakes | 85% | 95.9% (5506/5742), CI on `c1aa3c9` (`hold_judge.dart`: constants only, 99.0%) | 11/27 | CI comment "Tests and coverage (GitHub Actions)" on PR #104 |
+| View | flutter_test (widget) | 75% | 98.1% (16967/17297), same run | 11/27 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed by A8 | 11/27 | – |
+
+- **Tests:** `flutter test` passed 5088, failed 0 and skipped 10 (2026-11-27, on `eb91408`, with `main`'s A7 and P14
+  tests), and `flutter analyze` found no issues. The 10 skipped tests are the ones already skipped on `main`,
+  untouched. Before the rebase, on the old base: `f04a85e`'s code passed 4977/0/10, `f9c3dae`'s 4986/0/10 and
+  `0403faa`'s 4987/0/10 (my runs and the reviewer's).
+- **The first full run** failed 3: `chair_hold_stage_test.dart`'s 'the two-line start bubble and "좋아!" fit …' at
+  three sizes looked for "좋아!" 0.2 s after the star, the old 1 s cheer. The plan had missed this A5 file. With the
+  user's approval (2026-11-27) it waits for `HoldTiming.cheerBubble` first; its expectations are unchanged.
+- **The step's files:** the nine files in the second command passed 313 tests:
+  - new: hold_me_rig 24, hold_me_scene 33, hold_me_figure 24, hold_stage_play 43
+  - changed: hold_stage_screen 49, hold_stage_viewmodel 34, chair_hold_stage 14, design_tokens 88 (A7's line in
+    too)
+  - unchanged: arcade_hold_stage 4
+- **Ownership:** `ownership_guard.py --check-staged` was OK on each commit, and `--check-diff` was OK (A8 · 17 code
+  paths against `origin/main`; 20 with these notes, after the rebase).
+- **Against the design:**
+  - **The golden test** compares every moment of `hold_me_golden.json` for five characters in two poses: box, move,
+    shadow, face, rig pose, the drawings' turns, effects, the flight and the bar stars. The file has the bundle's
+    moments (go, hold, strain, 15 star times, ★2 at 0/900/1100 ms, 6 warning times). It adds star 220, 460, 620,
+    1200 and 1225 ms and warning 45, 90 and 135 ms with the rig's values. For that, the mockup's `renderVals()` was
+    run in node after it reproduced five bundle moments exactly.
+  - **Deliberate mutations** were each caught, then restored: four in the scene (hop 15, flight bend −45, arms down
+    at 1300, rise 0.5) and five in the stage (bubble top 172, bar lit at once, smile and bubble at once, big bubble
+    top padding 8).
+  - **Reviewer run 1's tests:** four new stage tests fail on `f04a85e`'s stage code and pass on the fix: the cheer
+    and the whistle keep their elements past the star's landing, the owner keeps its element from the setup to the
+    3·2·1, and reduced motion's second star keeps its look for 1.6 s. Reviewer run 2's test fails on `f9c3dae`'s
+    stage code: a stage under a disabled `TickerMode` (a covering screen) stands still, even as the play changes.
+    Reviewer run 3's test fails on `0403faa`'s stage code: a star that comes while the stage is covered, just after
+    the setup, starts at its beginning (the old code drew it 2 s before, twice as tall).
+  - **A render by eye:** a throwaway test (not committed) drew 5 characters × 7 moments per pose. They match
+    `shots/plank_all.png` and `shots/chair_all.png`, with 물렁범's rig showing no teeth as in the mockup.
+- **Fixed after reviewer run 1 (`a27b5ac`, `f9c3dae`):**
+  - **The bubbles popped in twice:** the flying star was an unkeyed child of the stage. When it went at 0.9 s, the
+    cheer (or a warning's whistle) took its element, and its pop-in started over. When the character first showed,
+    the owner's element was replaced, so its breathing restarted. Every child of the stage now has its own key.
+  - **Reduced motion's second star:** its look gave way to the strain at 1.35 s while the cheer still showed. SPEC 7
+    keeps `win` while that bubble shows, so with reduced motion both stars keep their look for 1.6 s.
+  - **The clock's cost:** the parts that do not move with the clock (gym, HUD, bands) are built once per change of
+    the play, and the clock did not tick while setting up (until `0403faa`, which keeps it ticking and only skips the
+    rebuild).
+  - **Tests:** the golden's cheer timeline (36 rows) and the bubbles' right ends now drive a stage test, and every
+    character's box at the top of its hop, and the drawings' shapes, stay on the 360 × 390 stage.
+- **Fixed after reviewer run 2 (`0403faa`; run 2 approved with two Minors):** the stage muted its clock while
+  setting up and unmuted it on every change of the play, which overrode `TickerMode`: a screen covering the stage
+  would not stop its clock. The clock now keeps its time on every tick and leaves the stage unbuilt while setting
+  up; its muting stays with `TickerMode`.
+- **Fixed after reviewer run 3 (`eb91408`; run 3 approved with three Minors):** the stage recorded a star or a
+  warning at the clock's latest tick but drew at its last rebuild, which stands still while setting up. A tick in the
+  setup followed by a covered screen and a star made the star's age −2 s. The stage is now drawn at the time it
+  records. The other two Minors: the rebase on A7 (above), and the stale sentence on the setup's clock (above).
+- **Existing tests changed to the new timing (SPEC 9.13; none weakened):**
+  - `hold_stage_screen_test.dart`:
+    - 'the bar fills toward the third star, its marks light' (lit at 0.9 s)
+    - 'the first and second stars: the good sound at once, then a smile, a lime cheer and a pop, once each (A8 spec
+      5, 6)' (renamed from '… a lime cheer, a smile, a pop and the good sound, once each')
+    - 'the cheer ends at the owner on every floor' (+ top 148)
+    - '"잘한다!" fits …' ×3
+    - 'a warning takes the cheer's place'
+  - `hold_stage_viewmodel_test.dart`: 'the first two stars are cheered for 2.4 s (HoldTiming.cheer, A8 spec 6), the
+    third is not' (was '… for 1 s …').
+  - `chair_hold_stage_test.dart`: 'the two-line start bubble and "좋아!" fit …' ×3 (one wait line).
+- **Out-of-step files, act first and report after:**
+  - `test/design_tokens_test.dart`: five lines adding the new `hold_me_*` files (approved by the user 2026-11-26 and
+    the PM 2026-11-27; A7's `victory_defeat.dart` line, merged with #101, is kept).
+  - `test/services/pose/chair_hold_stage_test.dart` (A5): the wait line above (approved by the user and the PM,
+    2026-11-27).
+- **Coverage:** PR #104's CI comment on `c1aa3c9`
+  ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/104#issuecomment-7199799975),
+  [run](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45869074877)):
+  - **Layers:** Model 99.4% (886/891), ViewModel 98.6% (2552/2589), Service 95.9% (5506/5742), View 98.1%
+    (16967/17297), total 97.7% (26453/27085); every target met. The CI run's own `flutter test`: 5088 passed, 10
+    skipped, 0 failed; server `pytest` 279 passed, 98%.
+  - **Not in the numbers:** four test files timed out in the per-file coverage run (they ran in `flutter test`).
+    One is A8's changed `chair_hold_stage_test.dart`; the others are `settings_screen_test.dart`,
+    `online_battle_session_test.dart` and `chair_hold_test.dart`.
+  - **A8's files,** merged by line from the run's lcov parts:
+    - `hold_me_figure.dart` 100% (164/164)
+    - `hold_me_scene.dart` 98.0% (201/205)
+    - `hold_me_rig.dart` 97.7% (172/176)
+    - `hold_stage_play.dart` 97.4% (485/498)
+    - `hold_judge.dart` 99.0% (102/103)
+    - The two data files are constant strings, with no lines to count.
+  - **Not hit, A8's lines:**
+    - `hold_me_rig.dart` L285–287 (the line-join reader: the data gives no join) and L481 (a wrong JSON type).
+    - `hold_me_scene.dart` L74–79 (`HoldMeMoment.hashCode` and `toString`, used only when a test fails).
+    - `hold_stage_play.dart` L233 (a new timeline when the same stage widget gets another stage, which no flow
+      does).
+  - **Not hit, older lines:** the other 12 in `hold_stage_play.dart` and `hold_judge.dart` L217 predate A8.
+- **Phone check:** not done on a real phone yet: the camera pose setup was not possible (the user's decision,
+  2026-11-27). The screen values were checked against the golden taken from the mockup's JavaScript and by the
+  widget tests. The real-phone check comes with the app build after the merge.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/hold_me_rig_test.dart` (new) | **Data:** versions, box, feet, the floor line at the owner's feet; the ten places (scale, left, top, rig or drawing); the home flags (gBack, pa); RepBot and an unknown character hold as GYM마우스.<br>**Key poses:** GYM마우스 and 그루 hold and sag as home's push-up up and down, 펭뚱이 and 물렁범 sit as home's squat down; every rig pose blends (same keys and steps).<br>**Drawings:** arms and head axes; 37, 22 and 37 shapes in order; faces with the teeth nested in atk; the team lime; the effect art; malformed data rejected. |
+| View | `test/widgets/hold_me_scene_test.dart` (new) | **Golden:** every moment of ten cases against the mockup.<br>**Flight:** it leaves the body at 220 ms and lands on the mark at 900; none with reduced motion.<br>**Timeline:** go in the 3·2·1 and the entry; a star's 1.6 s; ★2 gives way to the strain at 1.35 s; no grit before ★2; stars before the first look; a warning's age and the 180 ms way back; a warning in a star's moment ends it.<br>**Reduced motion:** the chair's arms up with `win`, plank and lying hold with `win`, warning at once, still strain, the cheer windows.<br>**Live:** breathing, shake and sweat cycles; the way back from a warning; the arms' easing; the W5 blend helper; the bar star's lit and pop windows. |
+| View | `test/widgets/hold_me_figure_test.dart` (new) | **Painting:** who draws each character (rig painter or drawing); the shadow; grit's teeth (rig, but not 물렁범; the lying drawings); each face's own shapes; the team lime.<br>**Moves:** the box about the feet; the arm and head turns; 곰탱이's tip and the flattening.<br>**Effects:** drops in opacity layers, shake lines, rays, dust; the flight's trail and star.<br>**Coverage of cases:** all moments on a real canvas; the figure's size and no semantics; repaint rules. |
+| View | `test/screens/hold_stage_play_test.dart` (new) | **The character:** its place in the ten cases; absent while setting up; idle before the time runs; RepBot as GYM마우스; drawn bottom to top; it breathes on the stage's clock.<br>**Kept elements:** the cheer and the whistle past the star's landing, the owner from the setup to the 3·2·1; a covered stage (`TickerMode` off) stands still and goes on after; a star while covered just after the setup starts at its beginning.<br>**The mockup's cheer timeline:** the bubble, its words, the owner's face and the first bar star at its 36 times; the bubbles' right ends.<br>**A star:** the pop, the flight, the bar star dark to 899 ms and lit and popping at 900; it lands on the mark; stars earned before the stage appeared.<br>**The cheer:** smile at 699/700 ms, bubble at 799/800 and 2399/2400; "잘한다!".<br>**Bubbles:** four owners × four bubbles at the owner's right end and 148 with their styles; the paddings.<br>**Moments:** no grit before ★2, grit from 1.35 s; the sag, the whistle and the way back; "실패!" in the new place; a warning in a star's moment; reduced motion, the second star's look for 1.6 s too; the fits at 360 × 780 and 320 × 640, and every character on the stage at the top of its hop. |
+| View | `test/screens/hold_stage_screen_test.dart` (updated) | the seven timing tests above |
+| ViewModel | `test/viewmodels/hold_stage_viewmodel_test.dart` (updated) | the cheer kept 2.4 s (2399 ms there, 2400 ms gone) |
+| Service | `test/services/pose/chair_hold_stage_test.dart` (updated) | the chair fit test waits for the cheer |
+| Design | `test/design_tokens_test.dart` (updated) | the new `hold_me_*` files use only tokens |
+
+### Acceptance criteria → tests (the A8 spec, section 9; the step is not in the local task.md)
+- 9.1 Places → hold_me_rig_test 'where each character stands (A8 spec 3, 9.1)' group; hold_stage_play_test 'the
+  character on the stage (A8 spec 3, 9.1)' group; hold_me_figure_test 'who draws each character (A8 spec 9.1)'
+- 9.2 Key poses → hold_me_rig_test 'key poses (A8 spec 1, 9.2)' group
+- 9.3 Star motion → hold_me_scene_test 'every moment of the mockup (A8 spec 8, 9.3, 9.8)' group, 'the flight to the
+  bar (A8 spec 4, 5)' group
+- 9.4 Bar star → hold_stage_play_test 'the character pops, the star flies, the bar star lights and pops as it lands
+  at 0.9 s'; hold_stage_screen_test 'the first and second stars: the good sound at once, …' (sound and reading at
+  once), 'a clear by two warnings lights the stars held' (result stars unchanged)
+- 9.5 Cheer → hold_stage_play_test 'the bubble from 0.8 s to 2.4 s, the smile from 0.7 s', 'the second star's says
+  "잘한다!"', 'the bubble, its words, the owner's face and the first bar star at every sampled time from the star',
+  'the cheer stays one bubble, popped in once, past the landing at 0.9 s'; hold_stage_viewmodel_test 'the first two
+  stars are cheered for 2.4 s …'
+- 9.6 Bubble places → hold_stage_play_test '<owner>: every bubble ends at the owner, 148 down' ×4, 'the big bubble's
+  padding is 5, 22 and 7; …'
+- 9.7 Strain → hold_stage_play_test 'no grit before the second star; grit 1.35 s after it, to the end';
+  hold_me_scene_test 'no grit before the second star'
+- 9.8 Warning → hold_stage_play_test 'the sag and the whistle; back to the hold in 180 ms', 'a second warning with no
+  star: …'; hold_me_scene_test golden warning times
+- 9.9 Warning in a star → hold_stage_play_test 'a warning in a star's moment: …'; hold_me_scene_test 'a warning in a
+  star's moment ends it for good; …'
+- 9.10 ★3 → hold_stage_screen_test 'a clear: time, stars, the next stage, and its buttons' (unchanged);
+  hold_me_scene_test 'the stars before the first look have no moment, and the third none at all'
+- 9.11 Reduced motion → hold_stage_play_test 'reduced motion (A8 spec 7, 9.11)' group; hold_me_scene_test 'reduced
+  motion (A8 spec 7, 9.11; user 2026-11-26)' group
+- 9.12 Fits → hold_stage_play_test 'fits (A8 spec 9.12)' group ('stage 3: every character stays on the 360 × 390
+  stage, …', 'stage 5: …', and the three sizes); hold_stage_screen_test '"잘한다!" fits …'
+- 9.13 Existing tests → the full `flutter test` above; the changed tests are listed above
