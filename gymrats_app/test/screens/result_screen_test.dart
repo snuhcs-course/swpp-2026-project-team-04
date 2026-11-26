@@ -597,7 +597,7 @@ void main() {
         expect(find.byType(ResultRecentCard), findsNothing);
         expect(find.byType(ResultComparisonPlaceholder), findsNothing);
         expect(find.text('승리'), findsOneWidget);
-        expect(find.text('자세 기록 표로 보기'), findsOneWidget);
+        expect(find.text('상세 리포트 보기'), findsOneWidget);
       });
 
       testWidgets('while they load: the placeholder, no 0 and no chart; then '
@@ -612,7 +612,7 @@ void main() {
         expect(find.text('0'), findsNothing);
         final top = tester.getRect(placeholder).top;
         // The feedback link does not wait for them.
-        expect(find.text('자세 기록 표로 보기'), findsOneWidget);
+        expect(find.text('상세 리포트 보기'), findsOneWidget);
 
         history.gate!.complete();
         await tester.pumpAndSettle();
@@ -638,7 +638,7 @@ void main() {
         expect(find.text('승리'), findsOneWidget);
         expect(find.text('240'), findsOneWidget);
         expect(find.byType(ResultCoachCard), findsOneWidget);
-        expect(find.text('자세 기록 표로 보기'), findsOneWidget);
+        expect(find.text('상세 리포트 보기'), findsOneWidget);
       });
 
       testWidgets('from the app\'s repository, of this battle\'s exercise', (
@@ -715,7 +715,7 @@ void main() {
       ) async {
         await open(tester, _result(form: sampleReport()), history: _earlier());
         expect(find.bySemanticsLabel(cardLine), findsOneWidget);
-        expect(find.text('자세 기록 표로 보기'), findsOneWidget);
+        expect(find.text('상세 리포트 보기'), findsOneWidget);
       });
 
       testWidgets('without a form report there is no card', (tester) async {
@@ -863,10 +863,10 @@ void main() {
         expect(routes.names, [GymRatsApp.matchingRoute]);
       });
 
-      testWidgets('자세 기록 표로 보기 opens this battle\'s feedback on top; '
+      testWidgets('상세 리포트 보기 opens this battle\'s feedback on top; '
           'back comes here again', (tester) async {
         await open(tester, _result(form: _form));
-        await tester.tap(find.text('자세 기록 표로 보기'));
+        await tester.tap(find.text('상세 리포트 보기'));
         await tester.pumpAndSettle();
         expect(routes.names, [GymRatsApp.feedbackRoute]);
         expect(routes.settings.single.arguments, same(_form));
@@ -879,7 +879,7 @@ void main() {
         tester,
       ) async {
         await open(tester, _result());
-        expect(find.text('자세 기록 표로 보기'), findsNothing);
+        expect(find.text('상세 리포트 보기'), findsNothing);
       });
 
       testWidgets('leaving while the earlier battles load: the late answer '
@@ -1591,7 +1591,7 @@ void main() {
       // The character card comes with the form report (A10).
       expect(find.byType(ResultCoachCard), findsOneWidget);
       routes.settings.clear();
-      await tester.tap(find.text('자세 기록 표로 보기'));
+      await tester.tap(find.text('상세 리포트 보기'));
       await tester.pumpAndSettle();
       expect(routes.names, [GymRatsApp.feedbackRoute]);
       expect(routes.settings.single.arguments, same(report));
@@ -1829,7 +1829,7 @@ void main() {
     late _Routes routes;
 
     /// The arcade's map (a stand-in) with [result]'s report over it, as
-    /// 리포트 보기 opens it.
+    /// 상세 리포트 보기 opens it.
     Future<void> openArcade(WidgetTester tester, BattleResult result) async {
       tester.view
         ..physicalSize = const Size(360, 780)

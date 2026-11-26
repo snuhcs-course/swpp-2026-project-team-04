@@ -686,7 +686,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(shownRecord(tester), same(without));
       expectEndLookOnly(tester);
-      expect(find.text('자세 기록 표로 보기'), findsNothing);
+      expect(find.text('상세 리포트 보기'), findsNothing);
       expect(repository.feedbackRequests, isEmpty);
 
       await tester.binding.handlePopRoute();
@@ -695,7 +695,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(shownRecord(tester)!.id, 2);
       expectEndLookOnly(tester);
-      expect(find.text('자세 기록 표로 보기'), findsOneWidget);
+      expect(find.text('상세 리포트 보기'), findsOneWidget);
       expect(repository.feedbackRequests, [2]);
     });
 
@@ -715,7 +715,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(shownRecord(tester)!.id, 1);
       expectEndLookOnly(tester);
-      expect(find.text('자세 기록 표로 보기'), findsOneWidget);
+      expect(find.text('상세 리포트 보기'), findsOneWidget);
       expect(repository.feedbackRequests, [1]);
     });
   });
