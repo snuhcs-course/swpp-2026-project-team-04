@@ -5,6 +5,15 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fix for the Codex review of `6f14022`
+- **Finding (P2):** the tie rule compared account ids as strings, so account 10 came before account 2. Fixed in
+  `server/lib/skill_matchmaker.dart`: `SkillIndex.compareIds` orders them as numbers (shorter first, then text; the ids
+  are integers without leading zeros).
+- **Tests:** new `ids compare as numbers: 2 before 10`; the random full-scan test now checks the tie rule with numeric
+  ids. Both failed with the string comparison and pass now.
+- **Results:** `flutter analyze` no issues; `flutter test` 4938 passed, 0 failed, 10 skipped. Server unchanged
+  (293 passed).
+
 #### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fix for the Codex review of `22ad600`
 - **Finding (P2):** with several accounts at the same estimate just below the player's, `SkillIndex.nearest` took the
   last of them (the largest id), against the documented tie rule (smaller id). Fixed in

@@ -84,6 +84,8 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P10: the Codex review of `22ad600` found that `SkillIndex.nearest` broke its own documented tie rule on the lower
   side (largest id instead of smallest). Claude's random full-scan test compared only distances, so it missed this;
   the test now checks the chosen id and uses half-step skills to force ties.
+- P10: the next Codex review (`6f14022`) found the same tie rule still wrong for multi-digit ids (`"10"` sorts before
+  `"2"` as text); Claude's tests used ids that hid it. Ids now compare as numbers, with a test using 2, 10 and 100.
 - P10: the lobby disposed the online session inside its own listener call (assertion "dispose() called during
   notifyListeners()"), caught by the first widget-test run; the release now runs in a microtask.
 - P10: the first lobby tests used `pumpAndSettle`, which ran the 5 s warning and the 3 s countdown and left the versus

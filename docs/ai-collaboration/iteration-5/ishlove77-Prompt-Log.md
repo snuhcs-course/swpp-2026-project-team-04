@@ -594,3 +594,7 @@ The messages after this summary are the most recent messages from before compact
 
 <!-- 5e0c5b9b 2026-11-26T16:52:35.267Z -->
 [Jinyoung Park, 11-27 01:52] "왔음"
+
+## 2026-11-27 · Jinyoung Park · feat/iter5-skill-matching
+<!-- 5e0c5b9b 2026-11-26T17:00:17.641Z -->
+[Jinyoung Park, 11-27 02:00] "왔음?"
