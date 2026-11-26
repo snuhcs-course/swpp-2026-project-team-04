@@ -13,7 +13,10 @@ import '../widgets/gym_background_art.dart';
 /// `flutter run -t lib/demo/hold_stage_demo.dart`.
 ///
 /// The stars go to an in-memory store for a demo account and show beside
-/// each stage.
+/// each stage. The character picked holds the pose beside the owner (A8
+/// spec 11): STAGE 3 is the quickest high plank (15, 20 and 30 s), STAGE 5
+/// the quickest chair pose (10, 15 and 20 s). "Reduced motion" opens the
+/// stage as a phone that asks for less motion (A8 spec 7).
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   // As the app will at start-up (A3): every drawing's paths at once.
@@ -40,16 +43,20 @@ class _HoldStageDemoState extends State<HoldStageDemo> {
   final Map<int, int> _stars = {};
   HoldStageExit? _lastExit;
   String _character = CharacterRig.defaultId;
+  bool _still = false;
 
   Future<void> _open(int stage) async {
     final exit = await Navigator.push<HoldStageExit>(
       context,
       MaterialPageRoute(
-        builder: (_) => HoldStageScreen(
-          stage: stage,
-          myCharacter: _character,
-          progressStore: _store,
-          accountId: _account,
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: _still),
+          child: HoldStageScreen(
+            stage: stage,
+            myCharacter: _character,
+            progressStore: _store,
+            accountId: _account,
+          ),
         ),
       ),
     );
@@ -78,6 +85,11 @@ class _HoldStageDemoState extends State<HoldStageDemo> {
               ],
               onChanged: (id) => setState(() => _character = id ?? _character),
             ),
+          ),
+          SwitchListTile(
+            title: const Text('Reduced motion'),
+            value: _still,
+            onChanged: (on) => setState(() => _still = on),
           ),
           for (final stage in holds)
             ListTile(
