@@ -1077,6 +1077,13 @@ These were made from the A5 session at the user's word; their full evidence is i
   - `test/viewmodels/coach_viewmodel_test.dart`: 5 lines (the exception).
 - **Review:** the `reviewer` subagent: run 1 APPROVE on `c7157ef` with four Minor points, all fixed; run 2
   CHANGES_REQUESTED on `bc36d8c` (two Major and three Minor points in the notes and the PR draft, all fixed; item d).
+- **Rebase onto `main` (11-27):** after A8 (#104) merged, the three notes files conflicted. Claude Code rebased the
+  branch onto `037b58e`, as the user asked (not a merge). A small script resolved each conflict: A8's section
+  first, then A9's. It checked that the A9 code was unchanged and that each file was exactly main's file plus A9's
+  lines. The commits are now `07aee1a`, `1434cd2`, `0274949`, `14b5067` and `122f0ad` (they were `c7157ef`,
+  `d68cfd9`, `bc36d8c`, `1a707b6` and `5937c1b`). `extract_prompts.py` also offered the automatic summary written
+  when this session's context was compacted. That is not an input prompt, so only the user's request went into the
+  log.
 - **Not done by AI:**
   - Woohyun Song decided the result card (neither of the plan's two options: it stays P15's, and `ending` stays
     readable) and the PR's shape (SPEC v1.1); the PM approved the two files, and the exception was act first, report

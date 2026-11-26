@@ -2172,6 +2172,12 @@ and `MemoryGoalStore`.
 - **Phone check:** not checked on a device yet (the user's decision, 11-27): it is checked at the team meeting
   after the merge (11/29). The wording and the overflow are covered by the tests above. No demo can open the talk:
   `lib/demo/battle_demo.dart` routes only the result and the next battle, not `/coach` (reviewer run 2).
+- **Rebase onto `main` (11/27):** A8 (#104, `037b58e`) merged first, and its notes conflicted with A9's in the three
+  personal notes files; no code file conflicted. The branch was rebased onto `037b58e`, keeping both A8's and A9's
+  sections. The commits are now `07aee1a` (was `c7157ef`), `1434cd2` (`d68cfd9`), `0274949` (`bc36d8c`), `14b5067`
+  (`1a707b6`) and `122f0ad` (`5937c1b`), with the same A9 code. On `122f0ad`: `flutter analyze` found no issues; the
+  full `flutter test` passed 5092, failed 0 and skipped 10 (129 more than before: the tests that came with #104). The
+  coverage above is from before the rebase; the run on the rebased head is in PR #105's CI comment.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |

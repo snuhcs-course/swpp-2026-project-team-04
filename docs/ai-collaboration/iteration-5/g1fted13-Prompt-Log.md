@@ -780,3 +780,14 @@ PM 승인이 왔다(11/27): A9, feat/iter5-coach-voice, 마감 11/30/2026, 예�
 3. 끝나는 조건: 현재 HEAD에 Codex의 👍 반응이나 \"Didn't find any major issues\"가 있고, 안 풀린 스레드가 0개이고, CI가 통과한 상태다. 이 상태가 되면 새 커밋과 Codex 처리 결과를 보고한다. 상우나 현우를 GitHub에서 멘션하지 않는다.
 4. 이 메시지를 프롬프트 기록에 남긴다.
 </pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-26T23:44:31.331Z -->
+[Woohyun Song, 11-27 08:44] "<pasted_content id=\"c294\">
+PR #105가 main과 충돌한다. A8(#104, 037b58e)이 머지되면서 개인 노트 세 파일(docs/ai-collaboration/iteration-5/[REDACTED:custom_term]-Prompt-Log.md, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md, docs/testing/iteration-5/[REDACTED:custom_term].md)에서 A8 절과 A9 절이 부딪쳤다. 코드 파일은 충돌하지 않는다.
+1. fetch한 뒤 origin/main 위로 rebase한다. merge로 풀면 하네스 커밋 전 검사가 main에서 들어온 A8 파일 때문에 막히므로 rebase로 한다. 세 파일 모두 A8 절과 A9 절을 둘 다 남기고, 프롬프트 기록은 두 작업의 항목을 키가 겹치지 않게 모두 남긴다. 코드 파일에서 충돌이 나면 멈추고 보고한다.
+2. flutter analyze와 전체 test를 다시 돌린다.
+3. git push --force-with-lease origin feat/iter5-coach-voice 로 이 브랜치에만 올린다. main에는 절대 push하지 않는다. pre-push 검사가 강제 push를 막으면 멈추고 보고한다. push 뒤에는 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+4. A9 코드가 바뀌지 않았으므로 Codex 리뷰는 다시 요청하지 않는다. PR 본문에 HEAD가 적힌 곳이 있으면 새 HEAD로 고친다. 새 HEAD에서 CI가 통과하고 GitHub의 충돌 표시가 사라지면 보고한다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
