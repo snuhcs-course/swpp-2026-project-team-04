@@ -922,10 +922,15 @@ These were made from the A5 session at the user's word; their full evidence is i
 ## A8 `feat/iter5-hold-character` – Hold stage: my character holds along (local step, PM approved 2026-11-27), 2026-11-26
 
 ### a. Where AI was used
-- **The hand-off:** `SPEC.md` v1 and the mockups `HoldMe.dc.html` (with `HoldMeLiveA`, `HoldMeAAll`,
-  `HoldMeLieA`, the data and the shots) on the canvas "GymRats 메인 메뉴 시안". Woohyun Song chose direction A1
-  (hold together, a pop at each star), the lying pose A, and the bubbles' place (2026-11-26).
-  TODO(Woohyun Song): who made the spec and the mockups, and with which tool and model.
+- **The hand-off** (Woohyun Song's account, 2026-11-27):
+  - **The mockups:** `HoldMe.dc.html` (with `HoldMeLiveA`, `HoldMeAAll`, `HoldMeLieA`, the data and the shots) were
+    made by Claude in the Claude Design canvas on claude.ai (canvas "GymRats 메인 메뉴 시안", page "버티기 · 내 캐릭터
+    연출 시안"). Claude made three directions (`dir` a, b, c), two star actions and three lying candidates.
+  - **The choices:** Woohyun Song chose direction A1 (hold together, a pop at each star in place), the lying pose
+    A, and the bubbles' current place (2026-11-26).
+  - **The spec:** `SPEC.md` v1 was written by Claude in a claude.ai project chat, from the mockups and the code.
+  - **In planning:** Woohyun Song decided that with reduced motion the chair pose's star moment shows the arms-up
+    pose.
 - **Planning:** before any code, Claude Code read the spec, the mockup's `calc()` and markup, the rig data, and the
   hold stage, character and victory code. It reported the plan of spec section 10 and waited. The user approved it
   with three scope additions and one change: reduced motion's chair star (Prompt Log, 11-26 22:38).
@@ -959,7 +964,8 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **Not done by AI:**
   - The user chose the direction and the place, decided reduced motion's chair star, and approved each scope
     addition.
-  - The phone check comes after the push and the draft PR.
+  - No real-phone check yet: the camera pose setup was not possible, so the user moved it to the app build after
+    the merge (2026-11-27).
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-26] "지금은 큰 말풍선, 관장 웃는 얼굴(GymOwnerFace.ok), 막대 별 튀기기(popStar)가 모두 cheer callout 하나에 묶여 HoldTiming.cheer(1초) 동안만 보인다. 이번에는 별을 딴 순간에서 각각 800ms, 700ms, 900ms에 시작하므로 따로 떼어야 한다."

@@ -1964,8 +1964,8 @@ No camera, ML Kit or device is needed:
 |---|---|---|---|---|---|
 | Model | flutter_test | 90% | not changed by A8 | 11/27 | – |
 | ViewModel | flutter_test, fakes | 90% | not changed by A8 (only its test's cheer time) | 11/27 | – |
-| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (`hold_judge.dart`: constants only) | 11/27 | CI comment "Tests and coverage (GitHub Actions)" on the A8 PR |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment (the four `hold_me_*` code files, `hold_stage_play.dart`) | 11/27 | same CI comment |
+| Service | flutter_test, fakes | 85% | 95.9% (5506/5742), CI on `c1aa3c9` (`hold_judge.dart`: constants only, 99.0%) | 11/27 | CI comment "Tests and coverage (GitHub Actions)" on PR #104 |
+| View | flutter_test (widget) | 75% | 98.1% (16967/17297), same run | 11/27 | same CI comment |
 | API server | pytest, pytest-django, pytest-cov | 90% | not changed by A8 | 11/27 | – |
 
 - **Tests:** `flutter test` passed 5088, failed 0 and skipped 10 (2026-11-27, on `eb91408`, with `main`'s A7 and P14
@@ -2034,9 +2034,31 @@ No camera, ML Kit or device is needed:
     the PM 2026-11-27; A7's `victory_defeat.dart` line, merged with #101, is kept).
   - `test/services/pose/chair_hold_stage_test.dart` (A5): the wait line above (approved by the user and the PM,
     2026-11-27).
-- **Coverage:** TODO(Woohyun Song): copy the A8 PR's CI comment (commit, run link, per-layer numbers, A8's files).
-- **Phone check:** TODO(Woohyun Song): the demo on the phone (five characters × the two poses, a star, a warning,
-  the strain, reduced motion), with the recordings in the draft PR.
+- **Coverage:** PR #104's CI comment on `c1aa3c9`
+  ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/104#issuecomment-7199799975),
+  [run](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45869074877)):
+  - **Layers:** Model 99.4% (886/891), ViewModel 98.6% (2552/2589), Service 95.9% (5506/5742), View 98.1%
+    (16967/17297), total 97.7% (26453/27085); every target met. The CI run's own `flutter test`: 5088 passed, 10
+    skipped, 0 failed; server `pytest` 279 passed, 98%.
+  - **Not in the numbers:** four test files timed out in the per-file coverage run (they ran in `flutter test`).
+    One is A8's changed `chair_hold_stage_test.dart`; the others are `settings_screen_test.dart`,
+    `online_battle_session_test.dart` and `chair_hold_test.dart`.
+  - **A8's files,** merged by line from the run's lcov parts:
+    - `hold_me_figure.dart` 100% (164/164)
+    - `hold_me_scene.dart` 98.0% (201/205)
+    - `hold_me_rig.dart` 97.7% (172/176)
+    - `hold_stage_play.dart` 97.4% (485/498)
+    - `hold_judge.dart` 99.0% (102/103)
+    - The two data files are constant strings, with no lines to count.
+  - **Not hit, A8's lines:**
+    - `hold_me_rig.dart` L285–287 (the line-join reader: the data gives no join) and L481 (a wrong JSON type).
+    - `hold_me_scene.dart` L74–79 (`HoldMeMoment.hashCode` and `toString`, used only when a test fails).
+    - `hold_stage_play.dart` L233 (a new timeline when the same stage widget gets another stage, which no flow
+      does).
+  - **Not hit, older lines:** the other 12 in `hold_stage_play.dart` and `hold_judge.dart` L217 predate A8.
+- **Phone check:** not done on a real phone yet: the camera pose setup was not possible (the user's decision,
+  2026-11-27). The screen values were checked against the golden taken from the mockup's JavaScript and by the
+  widget tests. The real-phone check comes with the app build after the merge.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
