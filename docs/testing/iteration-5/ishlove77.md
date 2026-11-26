@@ -5,6 +5,16 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fix for the Codex review of `22ad600`
+- **Finding (P2):** with several accounts at the same estimate just below the player's, `SkillIndex.nearest` took the
+  last of them (the largest id), against the documented tie rule (smaller id). Fixed in
+  `server/lib/skill_matchmaker.dart`: the lower side now goes to the start of that estimate's block by binary search.
+- **Tests:** new `a tie below the skill also goes to the smaller id`; `nearest agrees with a full scan on random data`
+  now uses half-step skills (frequent ties) and checks the chosen id against the tie rule. Both failed on `22ad600`
+  and pass now.
+- **Results:** `flutter analyze` no issues; `flutter test` 4937 passed, 0 failed, 10 skipped. Server unchanged
+  (293 passed). Index cost after the fix (three runs, same setup): build 27.0–31.6 ms, 0.50–0.64 µs per lookup.
+
 #### 2026-11-27 · step P10 `feat/iter5-skill-matching` (team plan #6): simulated users and skill-based matchmaking
 Real players in the main queue are still paired at once (FIFO). A player whose app sends `accept_virtual` and who
 finds no real player within 15 s gets `match.virtual`: a simulated user copying the account whose skill estimate (the

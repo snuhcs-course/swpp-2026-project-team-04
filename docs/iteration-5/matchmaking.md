@@ -61,6 +61,9 @@ skills in 0–45, 10 000 lookups (queries taken in turn), no player excluded.
 | 2 | 32.5 ms | 4.4 ms | 0.44 µs |
 | 3 | 26.1 ms | 4.4 ms | 0.44 µs |
 | 4 | 29.0 ms | 5.9 ms | 0.59 µs |
+| 5 (after the tie fix, PR #102 review) | 31.6 ms | 6.4 ms | 0.64 µs |
+| 6 (after the tie fix) | 27.0 ms | 5.1 ms | 0.51 µs |
+| 7 (after the tie fix) | 27.1 ms | 5.0 ms | 0.50 µs |
 
 Building is O(n log n) and happens off the request path, every 5 minutes; a lookup is O(log n) and happens once per
 simulated assignment. P20 should measure the Django query (`/internal/skills`, a window function over `Match`) and the

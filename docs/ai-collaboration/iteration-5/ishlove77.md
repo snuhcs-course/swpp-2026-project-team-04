@@ -81,6 +81,9 @@ Full list: `ishlove77-Prompt-Log.md`.
   P17 telemetry attempt (Claude had left it as a TODO with `_matching = null`), and the design-doc changes were missing.
   Claude's own lobby test for that case checked the key `name` instead of `event`, so it passed while checking nothing;
   rewritten to assert one `found`. Telemetry fixed after a second PM-approved one-line exception.
+- P10: the Codex review of `22ad600` found that `SkillIndex.nearest` broke its own documented tie rule on the lower
+  side (largest id instead of smallest). Claude's random full-scan test compared only distances, so it missed this;
+  the test now checks the chosen id and uses half-step skills to force ties.
 - P10: the lobby disposed the online session inside its own listener call (assertion "dispose() called during
   notifyListeners()"), caught by the first widget-test run; the release now runs in a microtask.
 - P10: the first lobby tests used `pumpAndSettle`, which ran the 5 s warning and the 3 s countdown and left the versus
