@@ -55,6 +55,11 @@ class HoldReportViewModel extends ChangeNotifier {
     }
     final weight = await reading;
     if (_disposed) return;
+    // Only the account's own holds: the phone keeps everyone's.
+    kept = [
+      for (final h in kept)
+        if (h.isOf(record.accountId)) h,
+    ];
     _metrics = HoldMetrics.of(record, weightKg: weight, kept: kept);
     _loaded = true;
     notifyListeners();

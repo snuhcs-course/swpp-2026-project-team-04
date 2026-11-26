@@ -725,6 +725,7 @@ class HistoryViewModel extends ChangeNotifier {
     FeedbackStatsSource? stats,
     this.holdRecords,
     this.formReports,
+    this.accountId,
     DateTime Function()? now,
   }) : _stats =
            stats ??
@@ -742,6 +743,10 @@ class HistoryViewModel extends ChangeNotifier {
   /// The battles' form reports kept on the phone, for 운동량 (P13); null
   /// shows none.
   final FormReportStore? formReports;
+
+  /// The signed-in account: the phone keeps every account's holds, and
+  /// only this one's (or those kept before accounts were) are shown.
+  final int? accountId;
 
   /// How long 운동량 waits for the profile's body weight before using the
   /// default, as the post-game report does.
@@ -832,8 +837,21 @@ class HistoryViewModel extends ChangeNotifier {
   /// The 전체 tab's 운동량 of the chosen period and exercise; null until the
   /// kept reports are read.
   ArchiveVolume? get volume {
-    final reports = _state.reports;
-    if (reports == null) return null;
+    final kept = _state.reports;
+    if (kept == null) return null;
+    // Only the account's own battles: the phone keeps every account's form
+    // reports, and the account's battles on the server tell which are its
+    // (phone check, 2026-11-26). Without them every kept report counts.
+    final points = _state.points;
+    final mine = points == null
+        ? null
+        : {for (final p in points) p.playedAt.millisecondsSinceEpoch};
+    final reports = mine == null
+        ? kept
+        : [
+            for (final r in kept)
+              if (mine.contains(r.endedAt.millisecondsSinceEpoch)) r,
+          ];
     return ArchiveVolume.of(
       reports,
       _state.period,
@@ -924,7 +942,10 @@ class HistoryViewModel extends ChangeNotifier {
     final store = holdRecords;
     if (store == null) return const [];
     try {
-      return await store.list();
+      return [
+        for (final h in await store.list())
+          if (h.isOf(accountId)) h,
+      ];
     } on Object {
       return const [];
     }

@@ -7,6 +7,7 @@ import '../services/feedback/form_report_store.dart';
 import '../services/feedback/hold_record_store.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/history_viewmodel.dart';
 import '../widgets/archive_cards.dart';
 import '../widgets/archive_match_row.dart';
@@ -57,6 +58,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
           repository: context.read<UserRepository>(),
           holdRecords: _holdRecords(),
           formReports: _formReports(),
+          accountId: Provider.of<AuthViewModel?>(
+            context,
+            listen: false,
+          )?.account?.id,
           // One clock for the periods and the rows' words.
           now: widget.now,
         );

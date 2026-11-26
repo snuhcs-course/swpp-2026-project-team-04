@@ -650,6 +650,7 @@ class HoldStageViewModel extends ChangeNotifier {
 
   /// The play as kept for its report: [progress] at its end.
   HoldRecord _record(HoldProgress progress, ArcadeStars stars) => HoldRecord(
+    accountId: accountId,
     endedAt: _wallClock(),
     pose: stage.pose,
     stage: stage.number,

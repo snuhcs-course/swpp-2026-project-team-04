@@ -68,6 +68,7 @@ class HoldRecord {
     this.warnings = const [],
     this.pauses = const [],
     this.endedByWarnings = false,
+    this.accountId,
   });
 
   /// When the hold ended, local time.
@@ -94,6 +95,15 @@ class HoldRecord {
   /// Whether a second warning ended it before the last star.
   final bool endedByWarnings;
 
+  /// The account that played it; null in a record kept before accounts
+  /// were (2026-11-26). The phone keeps every account's holds in one place.
+  final int? accountId;
+
+  /// Whether the signed-in [account] may see it: its own, or a record with
+  /// no account; everything when no one is known to be signed in.
+  bool isOf(int? account) =>
+      account == null || accountId == null || accountId == account;
+
   /// Tells records apart, and names the record's file.
   String get id => endedAt.microsecondsSinceEpoch.toString();
 
@@ -108,6 +118,7 @@ class HoldRecord {
     'warnings': [for (final w in warnings) w.toJson()],
     'pauses': [for (final p in pauses) p.toJson()],
     'ended_by_warnings': endedByWarnings,
+    'account_id': ?accountId,
   };
 
   /// Reads [toJson]'s map; throws on a map it did not write.
@@ -130,5 +141,6 @@ class HoldRecord {
         HoldRecordPause.fromJson(Map<String, Object?>.from(p as Map)),
     ],
     endedByWarnings: json['ended_by_warnings']! as bool,
+    accountId: (json['account_id'] as num?)?.toInt(),
   );
 }
