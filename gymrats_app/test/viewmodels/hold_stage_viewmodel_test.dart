@@ -324,18 +324,23 @@ void main() {
       });
     });
 
-    test('the first two stars are cheered for 1 s, the third is not', () {
+    test('the first two stars are cheered for 2.4 s (HoldTiming.cheer, A8 '
+        'spec 6), the third is not', () {
       fakeAsync((async) {
         final rig = _Rig(async); // Stage 3: 15, 20 and 30 s.
         rig.goAt(async);
-        rig.frames(async, 15200);
+        // The time runs from the first frame: the star on the last one.
+        rig.frames(async, 15100);
         var callout = rig.viewModel.state.callout!;
         expect(callout.kind, HoldCalloutKind.cheer);
         expect(callout.star, 1);
         expect(callout.words, '좋아!');
-        rig.frames(async, 1000);
+        rig.frames(async, 2300);
+        async.elapse(HoldTiming.cheer - const Duration(milliseconds: 2301));
+        expect(rig.viewModel.state.callout, same(callout));
+        async.elapse(const Duration(milliseconds: 1));
         expect(rig.viewModel.state.callout, isNull);
-        rig.frames(async, 4000);
+        rig.frames(async, 2600);
         callout = rig.viewModel.state.callout!;
         expect(callout.star, 2);
         expect(callout.words, '잘한다!');
