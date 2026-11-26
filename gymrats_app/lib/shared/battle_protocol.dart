@@ -31,6 +31,23 @@ const battleSetupTimeout = Duration(seconds: 20);
 /// `match.cancelled` reason when the setup time above ran out.
 const battleSetupTimeoutReason = 'setup_timeout';
 
+/// P10: how long a player who sent `accept_virtual` waits in the main queue
+/// for a real player. Real players are paired at once; after this the
+/// server sends `match.virtual` with a simulated opponent instead.
+const battleVirtualWait = Duration(seconds: 15);
+
+/// The opponent in a `match.virtual` payload (P10): the copied account's
+/// nickname and the valid reps it plays for. Throws [BattleProtocolError]
+/// when [payload] is not one.
+({String name, int expectedReps}) battleVirtualOpponent(
+  Map<String, dynamic> payload,
+) {
+  final opponent = object(payload['opponent']);
+  final name = opponent['display_name'];
+  if (name is! String || name.isEmpty || name.length > 80) invalid();
+  return (name: name, expectedReps: integer(opponent['expected_reps'], 1, 60));
+}
+
 const battleReasons = {
   'insufficient_depth',
   'incomplete_extension',

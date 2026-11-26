@@ -9,6 +9,8 @@ import '../../gymrats_app/lib/models/game_score.dart';
 import '../../gymrats_app/lib/services/game/player_game_score.dart';
 import '../../gymrats_app/lib/shared/battle_protocol.dart';
 import 'result_store.dart';
+import 'simulated_player.dart';
+import 'skill_matchmaker.dart';
 
 String _signature(dynamic value) {
   dynamic canonical(dynamic v) {
@@ -45,6 +47,14 @@ class _Player {
   /// queue.
   String? friend;
   bool queued = false;
+
+  /// Whether the player takes a simulated opponent after [BattleServer.
+  /// virtualAfterMs] in the main queue (P10, `accept_virtual`); an older
+  /// app does not ask and keeps waiting.
+  bool acceptVirtual = false;
+
+  /// When the player's latest `queue.join` was accepted.
+  int queuedAt = 0;
   int lastHeartbeat = 0, rateAt = 0, controls = 0, poseAt = -1000;
   final requests =
       <String, ({String signature, Map<String, dynamic> response})>{};
@@ -96,10 +106,16 @@ class BattleServer {
     this.heartbeatTimeoutMs = 15000,
     this.results,
     BattleTelemetry? telemetry,
+    SkillSource? skills,
+    int? virtualAfterMs,
+    this.skillRefreshMs = 300000,
     this.rules = battleRules,
   }) : _telemetry =
            telemetry ??
            (results is BattleTelemetry ? results as BattleTelemetry : null),
+       _skillSource =
+           skills ?? (results is SkillSource ? results as SkillSource : null),
+       virtualAfterMs = virtualAfterMs ?? battleVirtualWait.inMilliseconds,
        durationMs = durationMs ?? battleDuration.inMilliseconds,
        setupTimeoutMs = setupTimeoutMs ?? battleSetupTimeout.inMilliseconds;
   final BattleAuthenticator authenticate;
@@ -113,6 +129,24 @@ class BattleServer {
   /// P17: where each match's end is recorded as `battle_finished`; the P11
   /// store by default, null to record nothing.
   final BattleTelemetry? _telemetry;
+
+  /// P10: the recent battles the skill estimates are taken from; the P11
+  /// store by default, null to give every player the default estimate.
+  final SkillSource? _skillSource;
+
+  /// P10: how long a player who accepts it waits in the main queue for a
+  /// real player before a simulated one is assigned.
+  final int virtualAfterMs;
+
+  /// P10: how often the estimates are read again, so AI battles the phones
+  /// saved count too.
+  final int skillRefreshMs;
+  SkillIndex _skills = SkillIndex.empty();
+  int? _skillsReadAt;
+  bool _readingSkills = false;
+
+  /// The estimates the simulated opponents are chosen by.
+  SkillIndex get skills => _skills;
   final int durationMs,
       countdownMs,
       readyTimeoutMs,
@@ -158,12 +192,32 @@ class BattleServer {
         );
       } catch (_) {}
     }
+    // Not awaited: players can join meanwhile, at the default estimate.
+    unawaited(_readSkills());
     _http = await HttpServer.bind(
       address ?? InternetAddress.loopbackIPv4,
       port,
     );
     _http!.listen((request) => unawaited(_upgrade(request)));
     _timer = Timer.periodic(Duration(milliseconds: tickMs), (_) => _tick());
+  }
+
+  /// Reads the estimates again; a failure keeps the ones there are.
+  Future<void> _readSkills() async {
+    final source = _skillSource;
+    if (source == null || _readingSkills) return;
+    _readingSkills = true;
+    try {
+      final records = await source.loadSkills().timeout(
+        const Duration(seconds: 10),
+      );
+      _skills = SkillIndex.build(records);
+    } catch (_) {
+      // Kept as they were; read again at the next refresh.
+    } finally {
+      _skillsReadAt = now;
+      _readingSkills = false;
+    }
   }
 
   Future<void> _upgrade(HttpRequest request) async {
@@ -356,7 +410,12 @@ class BattleServer {
           'server_sent_ms': now,
         });
       case 'queue.join':
-        fields(payload, {'exercise', 'avatar_id', 'friend_id'});
+        fields(payload, {
+          'exercise',
+          'avatar_id',
+          'friend_id',
+          'accept_virtual',
+        });
         if (!{'push_up', 'squat'}.contains(payload['exercise'])) invalid();
         // Optional (W3); any short id, passed on without reading it.
         if (payload.containsKey('avatar_id') &&
@@ -369,6 +428,14 @@ class BattleServer {
                 payload['friend_id'] == p.identity.id)) {
           invalid('INVALID_FRIEND');
         }
+        // Optional (P10): a simulated opponent after the wait, main queue
+        // only.
+        if (payload.containsKey('accept_virtual') &&
+            (payload['accept_virtual'] is! bool ||
+                payload['accept_virtual'] == true &&
+                    payload.containsKey('friend_id'))) {
+          invalid();
+        }
         if (p.queued) invalid('ALREADY_QUEUED');
         if (p.match != null && !p.match!.terminal) invalid('ALREADY_IN_MATCH');
         p.requests
@@ -377,6 +444,8 @@ class BattleServer {
         p.avatar = payload['avatar_id'] as String?;
         p.exercise = payload['exercise'] as String;
         p.friend = payload['friend_id'] as String?;
+        p.acceptVirtual = payload['accept_virtual'] == true;
+        p.queuedAt = now;
         p.queued = true;
         _queue.addLast(p);
         final response = reply('queue.joined', {'queue_id': p.identity.id});
@@ -809,6 +878,19 @@ class BattleServer {
     });
   }
 
+  /// P10: [p] waited [virtualAfterMs] without a real player, so it leaves
+  /// the queue with a simulated opponent. Once only: it is no longer queued.
+  void _assignVirtual(_Player p) {
+    p.queued = false;
+    _queue.remove(p);
+    final opponent = SimulatedPlayer.forPlayer(
+      _skills,
+      playerId: p.identity.id,
+      exercise: p.exercise,
+    );
+    _send(p, 'match.virtual', opponent.toPayload(p.exercise));
+  }
+
   void _tick() {
     for (final p in _players.values) {
       if (p.socket case final socket?) {
@@ -817,6 +899,21 @@ class BattleServer {
           unawaited(socket.close(4000, 'Heartbeat timeout'));
         }
       }
+    }
+    // Real players were paired as they joined; whoever still waits after
+    // the wait gets a simulated opponent.
+    for (final p in _queue.toList()) {
+      if (p.queued &&
+          p.acceptVirtual &&
+          p.friend == null &&
+          p.socket?.readyState == WebSocket.open &&
+          now - p.queuedAt >= virtualAfterMs) {
+        _assignVirtual(p);
+      }
+    }
+    if (_skillsReadAt case final readAt?
+        when !_closing && now - readAt >= skillRefreshMs) {
+      unawaited(_readSkills());
     }
     for (final m in _matches.values.toList()) {
       if (m.terminal) {
