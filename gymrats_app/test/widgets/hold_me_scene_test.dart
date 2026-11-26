@@ -330,6 +330,22 @@ void main() {
       }
     });
 
+    test('with reduced motion a star\'s look lasts 1.6 s, the second\'s '
+        'too (spec 7)', () {
+      final line = timeline();
+      at(line, 0, heldMs: 19900);
+      at(line, 100, heldMs: 20000);
+      expect(
+        line.momentAt(100 + 1400, still: true),
+        const HoldMeMoment.star(2, 1400),
+      );
+      expect(line.momentAt(100 + 1400).kind, HoldMeKind.strain);
+      expect(
+        line.momentAt(100 + 1600, still: true),
+        const HoldMeMoment.strain(),
+      );
+    });
+
     test('the stars before the first look have no moment, and the third '
         'none at all', () {
       final line = timeline();

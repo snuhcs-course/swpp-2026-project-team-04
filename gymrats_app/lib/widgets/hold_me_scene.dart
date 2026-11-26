@@ -178,8 +178,10 @@ class HoldMeTimeline {
     return at == null ? null : nowMs - at;
   }
 
-  /// What the character is doing at [nowMs].
-  HoldMeMoment momentAt(double nowMs) {
+  /// What the character is doing at [nowMs]. With [still] (reduced motion)
+  /// a star's look lasts its whole moment, the second's too: its smile
+  /// goes with the cheer's 1.6 s (A8 spec 7).
+  HoldMeMoment momentAt(double nowMs, {bool still = false}) {
     if (_counting || _entering) return const HoldMeMoment.go();
     if (_stopped) {
       final at = _warnAt;
@@ -195,7 +197,7 @@ class HoldMeTimeline {
       final age = nowMs - at;
       // A warning in a star's moment ends it for good (A8 spec 4).
       final cut = warnAt != null && warnAt >= at;
-      final strain = last == 2 && age >= HoldMeTimes.strainAfter;
+      final strain = last == 2 && !still && age >= HoldMeTimes.strainAfter;
       if (age < HoldMeTimes.star && !cut && !strain) {
         return HoldMeMoment.star(last, age);
       }

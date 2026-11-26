@@ -338,7 +338,7 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
                 key: const ValueKey('hold-me'),
                 frame: HoldMeScene.frameAt(
                   place,
-                  _timeline.momentAt(now),
+                  _timeline.momentAt(now, still: still),
                   liveMs: now,
                   still: still,
                 ),

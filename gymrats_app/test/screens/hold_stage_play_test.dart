@@ -611,6 +611,21 @@ void main() {
       expect(_me(tester).expression, 'atk');
     });
 
+    testWidgets('the second star\'s look lasts the cheer\'s 1.6 s too, then '
+        'the strain', (tester) async {
+      _reduceMotion(tester);
+      final play = _Play(stage: 5);
+      final place = rig.placeOf('mouse', HoldPose.chair);
+      await play.star(tester, 15, n: 2);
+      await tester.pump(const Duration(milliseconds: 1400));
+      expect(_me(tester).pose, same(place.keyPoses['up']));
+      expect(_me(tester).expression, 'win');
+      expect(_face(tester), GymOwnerFace.ok);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(_me(tester).expression, 'grit');
+      expect(_face(tester), GymOwnerFace.watch);
+    });
+
     testWidgets('no breath; a warning\'s pose at once', (tester) async {
       _reduceMotion(tester);
       final play = _Play();
