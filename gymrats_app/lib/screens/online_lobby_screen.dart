@@ -7,26 +7,19 @@ import '../config/server_config.dart';
 import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/matchup.dart';
-import '../services/feedback/form_report_store.dart';
-import '../services/matching/bot_matchmaker.dart';
-import '../services/opponent/bot_opponent.dart';
 import '../services/telemetry/telemetry_service.dart';
 import '../services/auth/auth_repository.dart';
 import '../services/friends/friend_repository.dart';
 import '../services/user/user_repository.dart';
 import '../services/online/online_battle_session.dart';
-import '../shared/battle_protocol.dart' show battleSetupTimeout;
 import '../theme/app_theme.dart';
-import '../widgets/accent_button.dart';
 import '../widgets/battle_stage_model.dart';
 import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
-import '../widgets/sound_battle.dart' show NoRepBeep;
-import '../viewmodels/battle_viewmodel.dart';
 import '../viewmodels/friends_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
-import 'battle_screen.dart' show BattleScreen, BattleSetupListener;
+import 'battle_screen.dart' show BattleSetupListener;
 import 'matching_screen.dart';
 import 'online_battle_screen.dart';
 import 'online_synthetic_battle_screen.dart';
@@ -36,13 +29,6 @@ typedef OnlineSessionFactory = OnlineBattleSession Function(
   Uri endpoint,
   String accessToken,
   String character,
-);
-
-/// The screen that plays a simulated opponent's battle (P10) with
-/// [viewModel]; tests give one without the camera.
-typedef VirtualBattleBuilder = Widget Function(
-  Matchup matchup,
-  BattleViewModel viewModel,
 );
 
 /// Uses the existing signed-in account, with no second login or token editor.
@@ -62,8 +48,6 @@ class OnlineLobbyScreen extends StatefulWidget {
     this.friendBattle,
     this.friends,
     this.invitePollEvery = const Duration(seconds: 2),
-    this.buildVirtualBattle,
-    this.createVirtualBattle,
   });
   final AuthRepository auth;
 
@@ -94,14 +78,6 @@ class OnlineLobbyScreen extends StatefulWidget {
   /// this lobby, without changing it.
   final ValueChanged<BattleStageCue>? onCue;
   final BattleSetupListener? onSetup;
-
-  /// Plays the battle against a simulated opponent; null opens the AI
-  /// battle screen at its pace.
-  final VirtualBattleBuilder? buildVirtualBattle;
-
-  /// Makes the simulated opponent's battle; null makes the AI battle at its
-  /// pace. Tests give one with fakes.
-  final BattleViewModel Function(Matchup matchup)? createVirtualBattle;
 
   @override
   State<OnlineLobbyScreen> createState() => _OnlineLobbyScreenState();
@@ -134,25 +110,6 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   /// from the queue's answer to the join until found, cancelled, timed out
   /// (a friend who did not come) or failed.
   MatchingTelemetry? _matching;
-
-  /// The simulated opponent's battle (P10), once the server assigned one:
-  /// the search is over and its session gone.
-  Matchup? _virtual;
-
-  /// The simulated battle while it is open, watched for its setup time.
-  BattleViewModel? _virtualBattleModel;
-
-  /// Counts [battleSetupTimeout] from the simulated battle's setup, as the
-  /// battle server does for a real one; stopped by the round's start.
-  Timer? _setupTimer;
-  bool _virtualRoundStarted = false;
-
-  /// The simulated battle's setup ran out of time: the lobby says so, as
-  /// after a real one.
-  bool _setupTimedOut = false;
-
-  /// The lobby's own route, which a timed-out battle is closed back to.
-  ModalRoute<Object?>? _lobbyRoute;
 
   @override
   void initState() {
@@ -259,148 +216,8 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
 
   void _changed() {
     if (!mounted || _session == null) return;
-    if (_session!.virtualOpponent case final assigned?) {
-      _takeVirtual(assigned);
-      return;
-    }
     _follow(_session!);
     setState(() {});
-  }
-
-  /// No real player came in time (P10): the battle is against [assigned],
-  /// played here as an AI battle under its nickname, so only the user's own
-  /// record keeps it.
-  void _takeVirtual(VirtualOpponent assigned) {
-    if (_virtual != null) return;
-    // P17: the search ends as found.
-    _followMatching(_session!);
-    _matching = null;
-    // Not while the session may be telling its listeners.
-    scheduleMicrotask(() {
-      if (_virtual != null) _release();
-    });
-    setState(() {
-      _virtual = Matchup(
-        exercise: widget.exercise,
-        playerName: widget.auth.session?.account.nickname ?? '나',
-        // Under the copied nickname alone (PM, 2026-11-27), and not a
-        // fixed-level bot: the result names it, and 다시 대결 searches the
-        // main match it came from.
-        opponent: Opponent(
-          name: assigned.name,
-          isBot: false,
-          characterId: CharacterRig.defaultId,
-          pace: SimulatedUserPace(assigned.expectedReps),
-        ),
-      );
-    });
-  }
-
-  /// Opens [matchup]'s battle over the lobby. Its setup has
-  /// [battleSetupTimeout], as a real battle's: past it, the battle closes
-  /// and the lobby says the match was cancelled. A battle that finished or
-  /// was left closes the lobby too, as after a real one.
-  Future<void> _openVirtualBattle(Matchup matchup) async {
-    if (_opened) return;
-    _opened = true;
-    _lobbyRoute = ModalRoute.of(context);
-    final battle =
-        widget.createVirtualBattle?.call(matchup) ??
-        _virtualBattle(context, matchup);
-    _virtualBattleModel = battle..addListener(_virtualChanged);
-    _virtualRoundStarted = false;
-    _virtualChanged();
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            widget.buildVirtualBattle?.call(matchup, battle) ??
-            BattleScreen(
-              matchup: matchup,
-              myCharacter: widget.myCharacter,
-              createViewModel: () => battle,
-            ),
-      ),
-    );
-    _stopWatchingVirtual();
-    if (!mounted) return;
-    if (_setupTimedOut) {
-      setState(() {});
-      return;
-    }
-    final route = ModalRoute.of(context);
-    if (route == null || !route.isActive) return;
-    if (route.isCurrent) {
-      Navigator.pop(context);
-    } else {
-      Navigator.removeRoute(context, route);
-    }
-  }
-
-  /// Starts the setup time when the simulated battle's setup is on, and
-  /// stops it for good once the round starts.
-  void _virtualChanged() {
-    final phase = _virtualBattleModel?.state.phase;
-    if (phase == BattlePhase.playing || phase == BattlePhase.timeUp) {
-      _virtualRoundStarted = true;
-      _setupTimer?.cancel();
-    } else if (phase == BattlePhase.setup &&
-        !_virtualRoundStarted &&
-        _setupTimer == null) {
-      _setupTimer = Timer(battleSetupTimeout, _setupTimeUp);
-    }
-  }
-
-  /// The setup time ran out before the round: the battle closes, as the
-  /// battle server cancels a real one.
-  void _setupTimeUp() {
-    if (!mounted || _virtualRoundStarted) return;
-    _setupTimedOut = true;
-    _stopWatchingVirtual();
-    final lobby = _lobbyRoute;
-    if (lobby != null && lobby.isActive) {
-      Navigator.popUntil(context, (route) => route == lobby);
-    }
-    setState(() {});
-  }
-
-  void _stopWatchingVirtual() {
-    _setupTimer?.cancel();
-    _setupTimer = null;
-    _virtualBattleModel?.removeListener(_virtualChanged);
-    _virtualBattleModel = null;
-  }
-
-  /// 다시 매칭 after a simulated battle's setup ran out: a new search.
-  Future<void> _searchAgainAfterTimeout() async {
-    setState(() {
-      _setupTimedOut = false;
-      _virtual = null;
-      _opened = false;
-    });
-    final next = _start()?..addListener(_changed);
-    setState(() {});
-    await next?.connect();
-  }
-
-  /// The AI battle at the simulated opponent's pace, as the battle screen
-  /// makes any other AI battle.
-  BattleViewModel _virtualBattle(BuildContext context, Matchup matchup) {
-    final counter =
-        widget.createCounter?.call() ??
-        BattleViewModel.botCounter(matchup.exercise);
-    return BattleViewModel.bot(
-      matchup: matchup,
-      counter: counter,
-      opponent: BotOpponent(
-        passDepth: counter.passDepth,
-        difficulty: matchup.opponent.pace!,
-      ),
-      repository: context.read<UserRepository>(),
-      sound: const NoRepBeep(),
-      formReports: context.read<FormReportStore>(),
-      characterId: widget.myCharacter,
-    );
   }
 
   /// Acts on what [session] says now: a refused login signs out, and a
@@ -526,7 +343,6 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
 
   @override
   void dispose() {
-    _stopWatchingVirtual();
     _elapsedTimer?.cancel();
     unawaited(_expiry?.cancel());
     _release();
@@ -537,66 +353,6 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   @override
   Widget build(BuildContext context) {
     final session = _session, login = widget.auth.session;
-    if (_setupTimedOut) {
-      // As a real battle cancelled by its setup time says it: the simulated
-      // opponent is always ready.
-      final text = Theme.of(context).textTheme;
-      return Scaffold(
-        body: GridBackground(
-          child: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.s24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '경기 취소',
-                      textAlign: TextAlign.center,
-                      style: text.headlineMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.s12),
-                    Text(
-                      '내가 제한 시간 안에 준비하지 못해 경기가 취소됐어요.',
-                      textAlign: TextAlign.center,
-                      style: text.bodyLarge?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s24),
-                    AccentButton(
-                      title: '다시 매칭',
-                      onPressed: () => unawaited(_searchAgainAfterTimeout()),
-                    ),
-                    const SizedBox(height: AppSpacing.s8),
-                    TextButton(
-                      onPressed: () => unawaited(_cancelSearch()),
-                      child: const Text('홈으로 돌아가기'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    if (_virtual case final matchup?) {
-      return VersusScreen(
-        matchup: matchup,
-        characters: BattleCharacters(
-          me: widget.myCharacter,
-          opponent: matchup.opponent.characterId!,
-        ),
-        onStartSetup: () => _openVirtualBattle(matchup),
-        onLeave: () async {
-          _virtual = null;
-          await _cancelSearch();
-        },
-        warningAutoClose: _warningAutoClose,
-        autoSetupIn: _autoSetupIn,
-      );
-    }
     final busy = session != null && !session.terminal;
     if (busy && session.opponent != null) {
       return VersusScreen(

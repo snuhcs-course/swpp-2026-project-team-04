@@ -11,7 +11,7 @@ import 'package:gymrats_app/shared/battle_protocol.dart';
 /// older server (`UNKNOWN_TYPE`) or the current one does. It records what
 /// the app sent.
 class _StubServer {
-  _StubServer(this._http, this.setupAnswer, {this.virtual}) {
+  _StubServer(this._http, this.setupAnswer) {
     _http.listen((request) async {
       final socket = await WebSocketTransformer.upgrade(request);
       _socket = socket;
@@ -22,16 +22,10 @@ class _StubServer {
 
   static Future<_StubServer> start({
     Map<String, dynamic>? Function(Map<dynamic, dynamic> message)? setupAnswer,
-    Map<String, dynamic>? virtual,
   }) async => _StubServer(
     await HttpServer.bind(InternetAddress.loopbackIPv4, 0),
     setupAnswer,
-    virtual: virtual,
   );
-
-  /// P10: answers a join with this `match.virtual` payload instead of a
-  /// match.
-  final Map<String, dynamic>? virtual;
 
   final HttpServer _http;
   final Map<String, dynamic>? Function(Map<dynamic, dynamic> message)?
@@ -68,10 +62,6 @@ class _StubServer {
     switch (message['type']) {
       case 'queue.join':
         send('queue.joined', {'queue_id': 'me'}, requestId: rid);
-        if (virtual case final payload?) {
-          send('match.virtual', payload);
-          return;
-        }
         send('match.found', {
           'players': [
             {'player_id': 'me', 'display_name': 'Me'},
@@ -152,88 +142,6 @@ void main() {
     test('the main match sends no friend_id', () async {
       final join = await joined();
       expect((join['payload'] as Map).containsKey('friend_id'), isFalse);
-    });
-
-    test('the main match accepts a simulated opponent (P10)', () async {
-      final join = await joined();
-      expect(join['payload']['accept_virtual'], isTrue);
-    });
-
-    test('a friend battle does not accept one (P10)', () async {
-      final join = await joined(friendId: '42');
-      expect((join['payload'] as Map).containsKey('accept_virtual'), isFalse);
-    });
-  });
-
-  group('a simulated opponent (P10)', () {
-    Future<OnlineBattleSession> assigned(Map<String, dynamic> payload) async {
-      final server = await _StubServer.start(virtual: payload);
-      addTearDown(server.close);
-      final session = OnlineBattleSession(
-        endpoint: server.endpoint,
-        accessToken: 'test-only',
-        allowInsecureLoopback: true,
-      );
-      addTearDown(session.dispose);
-      await session.connect();
-      await _until(
-        () =>
-            session.phase == OnlinePhase.virtualAssigned ||
-            session.error != null,
-      );
-      return session;
-    }
-
-    test('match.virtual ends the search with the opponent to play', () async {
-      final session = await assigned({
-        'exercise': 'push_up',
-        'opponent': {'display_name': '근손실', 'expected_reps': 7},
-      });
-      expect(session.phase, OnlinePhase.virtualAssigned);
-      expect(session.terminal, isTrue);
-      expect(session.virtualOpponent!.name, '근손실');
-      expect(session.virtualOpponent!.expectedReps, 7);
-      expect(session.opponent, isNull);
-      expect(session.matchId, isNull);
-      // The socket is closed and not opened again.
-      await _until(() => !session.connected);
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(session.phase, OnlinePhase.virtualAssigned);
-    });
-
-    test('a malformed one ends the search as failed', () async {
-      final server = await _StubServer.start(
-        virtual: {
-          'exercise': 'push_up',
-          'opponent': {'display_name': '', 'expected_reps': 0},
-        },
-      );
-      addTearDown(server.close);
-      final session = OnlineBattleSession(
-        endpoint: server.endpoint,
-        accessToken: 'test-only',
-        allowInsecureLoopback: true,
-      );
-      addTearDown(session.dispose);
-      await session.connect();
-      await _until(() => session.phase == OnlinePhase.failed);
-      expect(session.virtualOpponent, isNull);
-      expect(session.error, '상대를 찾지 못했어요. 다시 시도해주세요.');
-      // Closed, and not opened again.
-      await _until(() => !session.connected);
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(session.phase, OnlinePhase.failed);
-    });
-
-    test('one arriving after a match was found is ignored', () async {
-      final (session, server) = await preparing();
-      server.send('match.virtual', {
-        'exercise': 'push_up',
-        'opponent': {'display_name': '근손실', 'expected_reps': 7},
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(session.virtualOpponent, isNull);
-      expect(session.phase, OnlinePhase.preparing);
     });
   });
 

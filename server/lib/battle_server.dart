@@ -60,6 +60,18 @@ class _Player {
       <String, ({String signature, Map<String, dynamic> response})>{};
 }
 
+/// A simulated player in a match (P10): when it opens its setup and gets
+/// ready, and the reps it makes, played by the server's ticks.
+class _Simulation {
+  _Simulation(this.player, this.reps, this.setupAt, this.readyAt);
+  final _Player player;
+  final List<Map<String, dynamic>> reps;
+  final int setupAt, readyAt;
+
+  /// The index in [reps] of the next rep to make.
+  int next = 0;
+}
+
 class _Match {
   _Match(this.id, this.players, this.created, this.readyDeadline)
     : roster = [
@@ -89,6 +101,12 @@ class _Match {
   String status = 'preparing';
   int? start, end, ended;
   Map<String, dynamic>? result;
+
+  /// The simulated player of this match, if it has one (P10).
+  _Simulation? simulation;
+
+  /// A KO landed and the match is about to finish: no rep counts after it.
+  bool koLanded = false;
   bool get terminal => {'finished', 'cancelled', 'void'}.contains(status);
 }
 
@@ -109,6 +127,9 @@ class BattleServer {
     SkillSource? skills,
     int? virtualAfterMs,
     this.skillRefreshMs = 300000,
+    Random? simulationRandom,
+    this.simulatedSetupMs = (4000, 7000),
+    this.simulatedReadyMs = (3000, 6000),
     this.rules = battleRules,
   }) : _telemetry =
            telemetry ??
@@ -116,6 +137,7 @@ class BattleServer {
        _skillSource =
            skills ?? (results is SkillSource ? results as SkillSource : null),
        virtualAfterMs = virtualAfterMs ?? battleVirtualWait.inMilliseconds,
+       _simulationRandom = simulationRandom ?? Random(),
        durationMs = durationMs ?? battleDuration.inMilliseconds,
        setupTimeoutMs = setupTimeoutMs ?? battleSetupTimeout.inMilliseconds;
   final BattleAuthenticator authenticate;
@@ -147,6 +169,14 @@ class BattleServer {
 
   /// The estimates the simulated opponents are chosen by.
   SkillIndex get skills => _skills;
+
+  /// P10: a simulated player opens its setup this long (at least, at most,
+  /// in ms) after the match is found, as a person takes the warning and the
+  /// countdown, and is ready this long after that.
+  final (int, int) simulatedSetupMs, simulatedReadyMs;
+  final Random _simulationRandom;
+  int _between((int, int) range) =>
+      range.$1 + _simulationRandom.nextInt(range.$2 - range.$1 + 1);
   final int durationMs,
       countdownMs,
       readyTimeoutMs,
@@ -479,28 +509,7 @@ class BattleServer {
         _expireBeforeStart(m);
         if (m.status != 'preparing' || payload['ready'] is! bool)
           invalid('INVALID_STATE');
-        if (payload['ready'] == true) {
-          m.ready.add(p.identity.id);
-        } else {
-          m.ready.remove(p.identity.id);
-        }
-        _broadcast(m, 'match.ready_state', {
-          'ready_player_ids': m.ready.toList(),
-        });
-        if (m.ready.length == 2) {
-          m.status = 'scheduled';
-          m.start = now + countdownMs;
-          m.end = m.start! + durationMs;
-          _broadcast(m, 'match.start', {
-            'start_at_ms': m.start,
-            'end_at_ms': m.end,
-          });
-          _store(
-            (store) => store.started(m.id, m.start!, [
-              for (final player in m.players) player.identity.id,
-            ]),
-          );
-        }
+        _setReady(m, p, payload['ready'] == true);
         return reply('request.accepted', {});
       case 'rep.submit':
         fields(payload, {'rep_seq', 'elapsed_ms', 'valid', 'reason', 'grade'});
@@ -524,42 +533,7 @@ class BattleServer {
         if (elapsed < (m.lastRepElapsed[id] ?? 0) ||
             elapsed > now - m.start! + 1000)
           invalid();
-        final scores = m.scores[id]!;
-        scores[payload['valid'] == true ? 0 : 1]++;
-        m.lastRepElapsed[id] = elapsed;
-        final game = m.games[id]!;
-        final earned =
-            game
-                .addRep(
-                  grade,
-                  Duration(milliseconds: elapsed),
-                  kneePushup: payload['reason'] == 'knees_down',
-                )
-                ?.points ??
-            0;
-        final ack = {
-          'rep_seq': seq,
-          'valid_reps': scores[0],
-          'invalid_reps': scores[1],
-          'combo': game.combo,
-          'points': earned,
-          'game_score': game.points,
-        };
-        accepted[seq] = {
-          'submitted': Map<String, dynamic>.from(payload),
-          'ack': ack,
-        };
-        _send(m.players.firstWhere((other) => other != p), 'rep.updated', {
-          'player_id': id,
-          ...payload,
-          ...ack,
-        }, matchId: m.id);
-        final other = m.games[m.players.firstWhere((o) => o != p).identity.id]!;
-        // ACK is queued before match.finished, like match.found after the join.
-        if (rules.isKo(game.points - other.points)) {
-          scheduleMicrotask(() => _finish(m, 'ko'));
-        }
-        return reply('rep.accepted', ack);
+        return reply('rep.accepted', _acceptRep(m, p, payload, grade));
       case 'match.leave':
         fields(payload, {'reason'});
         if (payload['reason'] != 'user_exit') invalid();
@@ -601,6 +575,80 @@ class BattleServer {
   /// nothing. The depth and the elbow angle stay on the phone, which judges
   /// them. An app that sends no grade is scored as good, and its rejected reps
   /// as nothing. Shallow reps and completed knee push-ups can earn Average.
+  /// [p] is ready or not in [m]; with both ready the round is scheduled.
+  void _setReady(_Match m, _Player p, bool ready) {
+    if (ready) {
+      m.ready.add(p.identity.id);
+    } else {
+      m.ready.remove(p.identity.id);
+    }
+    _broadcast(m, 'match.ready_state', {'ready_player_ids': m.ready.toList()});
+    if (m.ready.length == 2) {
+      m.status = 'scheduled';
+      m.start = now + countdownMs;
+      m.end = m.start! + durationMs;
+      _broadcast(m, 'match.start', {
+        'start_at_ms': m.start,
+        'end_at_ms': m.end,
+      });
+      _store(
+        (store) => store.started(m.id, m.start!, [
+          for (final player in m.players) player.identity.id,
+        ]),
+      );
+    }
+  }
+
+  /// Scores [p]'s checked rep [payload] in [m], tells the other player and
+  /// returns the acknowledgement. A KO ends the match after it.
+  Map<String, dynamic> _acceptRep(
+    _Match m,
+    _Player p,
+    Map<String, dynamic> payload,
+    GameGrade? grade,
+  ) {
+    final id = p.identity.id;
+    final seq = payload['rep_seq'] as int,
+        elapsed = payload['elapsed_ms'] as int;
+    final scores = m.scores[id]!;
+    scores[payload['valid'] == true ? 0 : 1]++;
+    m.lastRepElapsed[id] = elapsed;
+    final game = m.games[id]!;
+    final earned =
+        game
+            .addRep(
+              grade,
+              Duration(milliseconds: elapsed),
+              kneePushup: payload['reason'] == 'knees_down',
+            )
+            ?.points ??
+        0;
+    final ack = {
+      'rep_seq': seq,
+      'valid_reps': scores[0],
+      'invalid_reps': scores[1],
+      'combo': game.combo,
+      'points': earned,
+      'game_score': game.points,
+    };
+    m.reps[id]![seq] = {
+      'submitted': Map<String, dynamic>.from(payload),
+      'ack': ack,
+    };
+    _send(m.players.firstWhere((other) => other != p), 'rep.updated', {
+      'player_id': id,
+      ...payload,
+      ...ack,
+    }, matchId: m.id);
+    final other = m.games[m.players.firstWhere((o) => o != p).identity.id]!;
+    // ACK is queued before match.finished, like match.found after the join.
+    if (rules.isKo(game.points - other.points)) {
+      m.koLanded = true;
+      scheduleMicrotask(() => _finish(m, 'ko'));
+    }
+    return ack;
+  }
+
   GameGrade? _grade(Map<String, dynamic> payload, {required bool pushUp}) {
     final grade = payload['grade'];
     if (payload['valid'] != true) {
@@ -647,28 +695,34 @@ class BattleServer {
         if (first != null) break;
       }
       if (first == null || second == null) break;
-      final pair = [first, second];
       _queue.remove(first);
       _queue.remove(second);
-      final m = _Match(_id(), pair, now, now + readyTimeoutMs);
-      _matches[m.id] = m;
-      for (final p in pair) {
-        p.queued = false;
-        p.match = m;
-        m.scores[p.identity.id] = [0, 0];
-        m.games[p.identity.id] = PlayerGameScore(rules);
-        m.reps[p.identity.id] = {};
-      }
-      _broadcast(m, 'match.found', {
-        'players': _roster(m),
-        'duration_ms': durationMs,
-        'ready_deadline_ms': m.readyDeadline,
-        'fever_start_ms': rules.feverStart.inMilliseconds,
-        'ko_lead': rules.koLead,
-        'average_points': rules.averagePoints,
-        'knee_average': rules.kneeAverageEnabled,
-      });
+      _open([first, second]);
     }
+  }
+
+  /// A new match of [pair], announced to them with `match.found`.
+  _Match _open(List<_Player> pair, {_Simulation? simulation}) {
+    final m = _Match(_id(), pair, now, now + readyTimeoutMs)
+      ..simulation = simulation;
+    _matches[m.id] = m;
+    for (final p in pair) {
+      p.queued = false;
+      p.match = m;
+      m.scores[p.identity.id] = [0, 0];
+      m.games[p.identity.id] = PlayerGameScore(rules);
+      m.reps[p.identity.id] = {};
+    }
+    _broadcast(m, 'match.found', {
+      'players': _roster(m),
+      'duration_ms': durationMs,
+      'ready_deadline_ms': m.readyDeadline,
+      'fever_start_ms': rules.feverStart.inMilliseconds,
+      'ko_lead': rules.koLead,
+      'average_points': rules.averagePoints,
+      'knee_average': rules.kneeAverageEnabled,
+    });
+    return m;
   }
 
   Map<String, dynamic> _snapshot(_Match m) => {
@@ -845,6 +899,8 @@ class BattleServer {
           for (final player in m.result!['players'] as List)
             {
               'player_id': player['player_id'],
+              if (SimulatedPlayer.isSimulatedId(player['player_id'] as String))
+                'simulated': true,
               'display_name': m.roster.firstWhere(
                 (r) => r['player_id'] == player['player_id'],
               )['display_name'],
@@ -878,17 +934,70 @@ class BattleServer {
     });
   }
 
-  /// P10: [p] waited [virtualAfterMs] without a real player, so it leaves
-  /// the queue with a simulated opponent. Once only: it is no longer queued.
+  /// P10: [p] waited [virtualAfterMs] without a real player, so it gets a
+  /// match with a simulated one, found as a real match is. Once only: it is
+  /// no longer queued.
   void _assignVirtual(_Player p) {
     p.queued = false;
     _queue.remove(p);
-    final opponent = SimulatedPlayer.forPlayer(
+    final copy = SimulatedPlayer.forPlayer(
       _skills,
       playerId: p.identity.id,
       exercise: p.exercise,
     );
-    _send(p, 'match.virtual', opponent.toPayload(p.exercise));
+    final player = _Player(
+      BattleIdentity(
+        // Short enough for the API server's 20-character player ids.
+        '${SimulatedPlayer.idPrefix}${_id().substring(0, 12)}',
+        copy.displayName,
+      ),
+    )..exercise = p.exercise;
+    final setupAt = now + _between(simulatedSetupMs);
+    _open(
+      [p, player],
+      simulation: _Simulation(
+        player,
+        copy.planReps(_simulationRandom, durationMs: durationMs),
+        setupAt,
+        setupAt + _between(simulatedReadyMs),
+      ),
+    );
+  }
+
+  /// Plays [m]'s simulated player for now: its setup and ready before the
+  /// round, and its reps that are due during it.
+  void _simulate(_Match m) {
+    final sim = m.simulation;
+    if (sim == null || m.terminal) return;
+    final id = sim.player.identity.id;
+    if (m.status == 'preparing') {
+      if (now >= sim.setupAt && m.setupOpen.add(id)) {
+        if (m.setupOpen.length == 2) {
+          m.setupDeadline = now + setupTimeoutMs;
+        }
+        _broadcast(m, 'match.setup_state', _setupState(m));
+      }
+      if (now >= sim.readyAt &&
+          m.setupOpen.contains(id) &&
+          !m.ready.contains(id)) {
+        _setReady(m, sim.player, true);
+      }
+      return;
+    }
+    if (!_playing(m)) return;
+    final elapsed = now - m.start!;
+    while (!m.terminal &&
+        !m.koLanded &&
+        sim.next < sim.reps.length &&
+        (sim.reps[sim.next]['elapsed_ms'] as int) <= elapsed) {
+      final rep = sim.reps[sim.next++];
+      _acceptRep(
+        m,
+        sim.player,
+        rep,
+        _grade(rep, pushUp: sim.player.exercise == 'push_up'),
+      );
+    }
   }
 
   void _tick() {
@@ -927,9 +1036,11 @@ class BattleServer {
       }
       if (m.start == null) {
         _expireBeforeStart(m);
+        _simulate(m);
         continue;
       }
       if (now >= m.start!) m.status = 'playing';
+      _simulate(m);
       final expired = m.disconnected.entries
           .where((e) => now >= e.value)
           .toList();

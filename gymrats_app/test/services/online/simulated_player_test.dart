@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 
 // ignore: avoid_relative_lib_imports
@@ -82,16 +84,78 @@ void main() {
     expect(high.expectedReps, SimulatedPlayer.maxReps);
   });
 
-  test('the payload has the nickname and reps, never the account id', () {
-    final payload = SimulatedPlayer.forPlayer(
-      index,
-      playerId: '3',
-      exercise: 'push_up',
-    ).toPayload('push_up');
-    expect(payload, {
-      'exercise': 'push_up',
-      'opponent': {'display_name': '쥐돌이', 'expected_reps': 11},
+  group('planReps', () {
+    const player = SimulatedPlayer(
+      displayName: '근손실',
+      expectedReps: 12,
+      playerSkill: 11,
+    );
+
+    test('plans the estimate give or take one, and up to two misses', () {
+      for (var seed = 0; seed < 50; seed++) {
+        final plan = player.planReps(Random(seed), durationMs: 30000);
+        final valid = plan.where((r) => r['valid'] == true).length;
+        expect(valid, inInclusiveRange(11, 13));
+        expect(plan.length - valid, inInclusiveRange(0, 2));
+      }
     });
-    expect(payload.toString(), isNot(contains('player_id')));
+
+    test('reps are numbered and in order inside the round', () {
+      final plan = player.planReps(Random(1), durationMs: 30000);
+      for (var i = 0; i < plan.length; i++) {
+        expect(plan[i]['rep_seq'], i + 1);
+        expect(plan[i]['elapsed_ms'], inInclusiveRange(1500, 29999));
+        if (i > 0) {
+          expect(
+            plan[i]['elapsed_ms'] as int,
+            greaterThan(plan[i - 1]['elapsed_ms'] as int),
+          );
+        }
+      }
+    });
+
+    test('payloads are what an app sends: valid good or excellent, misses '
+        'too shallow', () {
+      final plan = player.planReps(Random(2), durationMs: 30000);
+      for (final rep in plan) {
+        expect(rep.keys.toSet(), {
+          'rep_seq',
+          'elapsed_ms',
+          'valid',
+          'reason',
+          'grade',
+        });
+        if (rep['valid'] == true) {
+          expect(rep['reason'], isNull);
+          expect(rep['grade'], anyOf('good', 'excellent'));
+        } else {
+          expect(rep['reason'], 'insufficient_depth');
+          expect(rep['grade'], isNull);
+        }
+      }
+    });
+
+    test('some valid reps go deep enough to be excellent', () {
+      const many = SimulatedPlayer(
+        displayName: '헬창',
+        expectedReps: 40,
+        playerSkill: 40,
+      );
+      final grades = many
+          .planReps(Random(3), durationMs: 30000)
+          .map((r) => r['grade']);
+      expect(grades, contains('excellent'));
+      expect(grades, contains('good'));
+    });
+
+    test('a round too short for the margins still fits', () {
+      final plan = player.planReps(Random(4), durationMs: 1000);
+      expect(plan.last['elapsed_ms'] as int, lessThan(1000));
+    });
+  });
+
+  test('simulated ids are told apart from account ids', () {
+    expect(SimulatedPlayer.isSimulatedId('sim-0a1b2c3d4e5f'), isTrue);
+    expect(SimulatedPlayer.isSimulatedId('12'), isFalse);
   });
 }
