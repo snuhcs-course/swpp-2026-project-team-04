@@ -152,9 +152,11 @@ class ReportMetrics {
 
   final ReportPace pace;
 
-  /// Counted reps against the mean of up to [recentCount] earlier battles of
-  /// the same exercise and round length, as 100 = that mean; null without
-  /// such battles.
+  /// Counted reps per second against the mean of up to [recentCount]
+  /// earlier battles of the same exercise, of any round length, as 100 =
+  /// that mean; null without such battles. By the rate, a round cut short
+  /// by a KO compares with every other (user, 2026-11-26); the counts
+  /// elsewhere still compare rounds of one length.
   final int? enduranceIndex;
 
   int get validReps => splitValid.fold(0, (a, b) => a + b);
@@ -219,13 +221,15 @@ class ReportMetrics {
     }
     final active = last > report.roundLength ? report.roundLength : last;
 
-    final previous = earlierOf(report, earlier).take(recentCount).toList();
+    final peers = enduranceOf(report, earlier).take(recentCount).toList();
     int? endurance;
-    if (previous.isNotEmpty) {
-      final mean =
-          previous.fold<int>(0, (sum, r) => sum + r.validReps) /
-          previous.length;
-      if (mean > 0) endurance = (valid / mean * 100).round();
+    final rate = rateOf(report);
+    if (peers.isNotEmpty && rate != null) {
+      final rates = [for (final r in peers) ?rateOf(r)];
+      final mean = rates.isEmpty
+          ? 0.0
+          : rates.fold(0.0, (sum, r) => sum + r) / rates.length;
+      if (mean > 0) endurance = (rate / mean * 100).round();
     }
 
     return ReportMetrics(
@@ -310,6 +314,26 @@ class ReportMetrics {
     }
     return (sum / weights * 100).round();
   }
+
+  /// Counted reps per second of [report]'s round; null for a round of no
+  /// length.
+  static double? rateOf(FormReport report) {
+    final seconds = report.roundLength.inMilliseconds / 1000;
+    if (seconds <= 0) return null;
+    return report.validReps / seconds;
+  }
+
+  /// The earlier battles the endurance index compares by rate, newest
+  /// first, from [kept]: the same exercise, any round length, ended before
+  /// [report].
+  static List<FormReport> enduranceOf(
+    FormReport report,
+    List<FormReport> kept,
+  ) => [
+    for (final r in kept)
+      if (r.exercise == report.exercise && r.endedAt.isBefore(report.endedAt))
+        r,
+  ]..sort((a, b) => b.endedAt.compareTo(a.endedAt));
 
   /// Earlier battles that [report] can be compared with, newest first, from
   /// [kept] (the phone's reports in any order): the same exercise and the
