@@ -5,6 +5,7 @@ import '../models/battle_rules.dart';
 import '../models/form_report.dart';
 import '../models/match_record.dart';
 import '../services/api/api_client.dart';
+import '../services/feedback/feedback_stats.dart';
 import '../services/feedback/form_analyzer.dart';
 import '../services/feedback/form_report_store.dart';
 import '../services/feedback/report_metrics.dart';
@@ -332,13 +333,44 @@ class FeedbackViewModel extends ChangeNotifier {
 
   /// The reports kept on this phone; none when there is no store or it
   /// cannot be read.
+  /// The battles kept on this phone that are the signed-in account's.
+  ///
+  /// The phone keeps every account's reports in one place, so a phone
+  /// shared by testers would compare one account with another's battles
+  /// (phone check, 2026-11-26). A kept report counts only when the
+  /// account's own battles on the server ([FeedbackStatsSource]) have one
+  /// that ended at the same moment. Without that list (no source, offline,
+  /// or past [weightWait]) every kept report counts, as before.
   Future<List<FormReport>> _kept() async {
     final store = _phoneReports;
     if (store == null) return const [];
+    final reading = _accountBattles();
+    List<FormReport> kept;
     try {
-      return await store.list();
+      kept = await store.list();
     } on Exception {
       return const [];
+    }
+    final mine = await reading;
+    if (mine == null) return kept;
+    return [
+      for (final r in kept)
+        if (mine.contains(r.endedAt.millisecondsSinceEpoch)) r,
+    ];
+  }
+
+  /// When the signed-in account's battles ended, in milliseconds; null
+  /// when they cannot be read.
+  Future<Set<int>?> _accountBattles() async {
+    final source = _profiles;
+    if (source is! FeedbackStatsSource) return null;
+    try {
+      final points = await (source as FeedbackStatsSource)
+          .fetchStatsPoints()
+          .timeout(weightWait);
+      return {for (final p in points) p.playedAt.millisecondsSinceEpoch};
+    } on Object {
+      return null;
     }
   }
 
