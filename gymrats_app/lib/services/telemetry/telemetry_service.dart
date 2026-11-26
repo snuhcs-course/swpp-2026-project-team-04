@@ -408,7 +408,8 @@ class MatchingTelemetry {
         'kind': friend ? 'friend' : 'main',
       });
     }
-    if (session.opponent != null) {
+    // P10: a simulated opponent assigned after the wait is found too.
+    if (session.opponent != null || session.virtualOpponent != null) {
       _attempt?.finish('found');
     } else if (session.terminal) {
       _attempt?.finish('error');

@@ -10,6 +10,11 @@ import 'package:gymrats_app/screens/login_screen.dart';
 import 'package:gymrats_app/screens/matching_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
+import 'package:gymrats_app/models/matchup.dart';
+import 'package:gymrats_app/screens/battle_screen.dart';
+import 'package:gymrats_app/services/feedback/form_report_store.dart';
+import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
+import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/rep_counter_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
@@ -44,6 +49,13 @@ class _Session extends OnlineBattleSession {
     playerId = 'me';
     connected = true;
     phase = OnlinePhase.queued;
+    notifyListeners();
+  }
+
+  /// P10: no real player came in time.
+  void virtual(String name, int reps) {
+    virtualOpponent = VirtualOpponent(name, reps);
+    phase = OnlinePhase.virtualAssigned;
     notifyListeners();
   }
 
@@ -1500,6 +1512,163 @@ void main() {
       unawaited(navigator.pushNamed(GymRatsApp.friendsRoute));
       await settle(tester);
       expect(find.text('헬창#0002'), findsOneWidget);
+    });
+  });
+
+  group('a simulated opponent (P10)', () {
+    Future<(_Session, List<Matchup>)> assigned(
+      WidgetTester tester, {
+      Telemetry? telemetry,
+    }) async {
+      final auth = await loggedIn();
+      late _Session session;
+      final battles = <Matchup>[];
+      Widget app = MaterialApp(
+        theme: AppTheme.dark,
+        home: OnlineLobbyScreen(
+          autoJoin: false,
+          auth: auth,
+          createSession: (u, t, a) => session = _Session(u, t, a),
+          buildVirtualBattle: (matchup) {
+            battles.add(matchup);
+            return const Scaffold(body: Text('virtual battle'));
+          },
+        ),
+      );
+      if (telemetry != null) {
+        app = Provider<Telemetry>.value(value: telemetry, child: app);
+      }
+      await tester.pumpWidget(app);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('온라인 상대 찾기'));
+      await tester.pump();
+      session.virtual('근손실', 7);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      return (session, battles);
+    }
+
+    testWidgets('the versus screen shows the copied nickname, tagged AI', (
+      tester,
+    ) async {
+      final (session, _) = await assigned(tester);
+      expect(find.byType(VersusScreen), findsOneWidget);
+      final versus = tester.widget<VersusScreen>(find.byType(VersusScreen));
+      expect(versus.matchup.opponent.name, '근손실');
+      expect(versus.matchup.opponent.isBot, isTrue);
+      expect(versus.matchup.playerName, '로그인사용자');
+      expect(find.text('근손실'), findsWidgets);
+      // The search is over: its session left and went.
+      expect(session.left, isTrue);
+      expect(session.wasDisposed, isTrue);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('after the countdown it plays the AI battle at the copied '
+        'pace, once', (tester) async {
+      final (_, battles) = await assigned(tester);
+      await tester.tap(find.text('확인 (5)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await countDownToSetup(tester);
+      await settle(tester);
+      expect(find.text('virtual battle'), findsOneWidget);
+      expect(battles, hasLength(1));
+      final opponent = battles.single.opponent;
+      expect(opponent.name, '근손실');
+      expect(opponent.pace, isA<SimulatedUserPace>());
+      expect((opponent.pace! as SimulatedUserPace).expectedReps, 7);
+      expect(battles.single.exercise, ExerciseType.pushUp);
+      // The battle took the lobby's place.
+      expect(find.byType(OnlineLobbyScreen), findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+      expect(battles, hasLength(1));
+    });
+
+    testWidgets('leaving the versus screen ends it with no battle', (
+      tester,
+    ) async {
+      final (_, battles) = await assigned(tester);
+      await tester.tap(find.text('확인 (5)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ExitDialog),
+          matching: find.text('게임 나가기'),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(seconds: 5));
+      expect(battles, isEmpty);
+      expect(find.byType(VersusScreen), findsNothing);
+      expect(find.text('온라인 상대 찾기'), findsOneWidget);
+    });
+
+    testWidgets('the search ends as found, once (P17)', (tester) async {
+      final telemetry = Telemetry();
+      await assigned(tester, telemetry: telemetry);
+      final start = telemetry.pending.firstWhere(
+        (e) => e['event'] == 'matching_started',
+      );
+      expect(start['kind'], 'main');
+      List<Map<String, Object?>> ends() => telemetry.pending
+          .where((e) => e['event'] == 'matching_finished')
+          .toList();
+      expect(ends().single['result'], 'found');
+      expect(ends().single['attempt_id'], start['attempt_id']);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(ends(), hasLength(1));
+    });
+
+    testWidgets('without a builder it opens the AI battle screen', (
+      tester,
+    ) async {
+      final auth = await loggedIn();
+      late _Session session;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<UserRepository>.value(value: FakeUserRepository()),
+            Provider<FormReportStore>.value(value: InMemoryFormReportStore()),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: OnlineLobbyScreen(
+              autoJoin: false,
+              auth: auth,
+              createSession: (u, t, a) => session = _Session(u, t, a),
+              createCounter: () => RepCounterViewModel(
+                camera: FakeCameraService(),
+                estimator: FakePoseEstimator(),
+                roundLength: const Duration(days: 1),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('온라인 상대 찾기'));
+      await tester.pump();
+      session.virtual('근손실', 7);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('확인 (5)'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await countDownToSetup(tester);
+      await settle(tester);
+      final battle = tester.widget<BattleScreen>(find.byType(BattleScreen));
+      expect(battle.matchup.opponent.name, '근손실');
+      expect(battle.createViewModel, isNotNull);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
     });
   });
 }

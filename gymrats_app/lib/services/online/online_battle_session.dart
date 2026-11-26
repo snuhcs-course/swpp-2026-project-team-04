@@ -29,6 +29,20 @@ enum OnlinePhase {
   cancelled,
   voided,
   failed,
+
+  /// No real player came in time: the server sent a simulated opponent
+  /// ([OnlineBattleSession.virtualOpponent], P10), played on the phone as
+  /// an AI battle. The session's work is done.
+  virtualAssigned,
+}
+
+/// The simulated opponent the server assigned (P10): the account whose
+/// skill is closest to the user's, under its nickname, playing for
+/// [expectedReps] valid reps.
+class VirtualOpponent {
+  const VirtualOpponent(this.name, this.expectedReps);
+  final String name;
+  final int expectedReps;
 }
 
 class OnlinePlayer {
@@ -110,6 +124,9 @@ class OnlineBattleSession extends ChangeNotifier {
   OnlinePhase phase = OnlinePhase.idle;
   String? playerId, matchId, queueId, error;
   OnlinePlayer? opponent;
+
+  /// Set with [OnlinePhase.virtualAssigned]; null otherwise.
+  VirtualOpponent? virtualOpponent;
   int durationMs = 30000;
   int? startAtMs, endAtMs;
   int myReps = 0, myInvalidReps = 0, opponentReps = 0;
@@ -179,6 +196,7 @@ class OnlineBattleSession extends ChangeNotifier {
     OnlinePhase.cancelled,
     OnlinePhase.voided,
     OnlinePhase.failed,
+    OnlinePhase.virtualAssigned,
   }.contains(phase);
   bool get roundRunning =>
       startAtMs != null &&
@@ -241,6 +259,8 @@ class OnlineBattleSession extends ChangeNotifier {
       'exercise': exercise == ExerciseType.squat ? 'squat' : 'push_up',
       'avatar_id': avatarId,
       'friend_id': ?friendId,
+      // P10: the main match takes a simulated opponent after the wait.
+      if (friendId == null) 'accept_virtual': true,
     }),
   );
 
@@ -366,6 +386,24 @@ class OnlineBattleSession extends ChangeNotifier {
         if (matchId == null) phase = OnlinePhase.queued;
       } else if (type == 'queue.cancelled') {
         phase = OnlinePhase.cancelled;
+      } else if (type == 'match.virtual' && matchId == null && !terminal) {
+        // The server already took the user out of the queue: one that cannot
+        // be read ends the search, as nobody can be paired with it any more.
+        final ({String name, int expectedReps}) assigned;
+        try {
+          assigned = battleVirtualOpponent(p);
+        } on BattleProtocolError {
+          error = '상대를 찾지 못했어요. 다시 시도해주세요.';
+          phase = OnlinePhase.failed;
+          _retry?.cancel();
+          unawaited(_socket?.close());
+          _notify();
+          return;
+        }
+        virtualOpponent = VirtualOpponent(assigned.name, assigned.expectedReps);
+        phase = OnlinePhase.virtualAssigned;
+        _retry?.cancel();
+        unawaited(_socket?.close());
       } else if (type == 'match.found') {
         matchId = m['match_id'] as String;
         _matchNotFound = false;
