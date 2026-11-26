@@ -910,6 +910,10 @@ class ArchiveVolumeSection extends StatelessWidget {
                   }(),
             down: before != null && now.liftedKg < before.liftedKg,
           ),
+        ],
+        // A hold lifts nothing but has an endurance index too (user,
+        // 2026-11-26).
+        if (now.battles > 0 || now.holds > 0) ...[
           const Divider(height: 1, color: AppColors.facetLight),
           _VolumeRow(
             name: '근지구력 지수',
@@ -920,7 +924,11 @@ class ArchiveVolumeSection extends StatelessWidget {
             change: now.endurance != null && before?.endurance != null
                 ? '${(now.endurance! - before!.endurance!).round()}'
                 : null,
-            note: now.endurance == null ? '비교 기록 없음' : '경기마다 최근 평균 = 100',
+            note: now.endurance == null
+                ? '비교 기록 없음'
+                : holdsOnly
+                ? '기록마다 같은 자세 최근 평균 = 100 (첫 기록은 목표 시간)'
+                : '기록마다 최근 평균 = 100',
           ),
         ],
         const SizedBox(height: AppSpacing.s8),

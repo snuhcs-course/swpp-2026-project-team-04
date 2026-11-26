@@ -318,13 +318,18 @@ class ArchiveAmount {
     List<FormReport> kept,
     double? weightKg, {
     Iterable<HoldRecord> holds = const [],
+    List<HoldRecord> keptHolds = const [],
   }) {
     var kcal = 0.0, lifted = 0.0, count = 0, held = 0;
+    final endurances = <num>[];
     for (final h in holds) {
       held++;
       kcal += HoldMetrics.kcalOf(h, weightKg ?? HoldMetrics.defaultWeightKg);
+      // As the hold report: against the pose's recent holds, or the stage's
+      // goal for the first (user, 2026-11-26).
+      final m = HoldMetrics.of(h, weightKg: weightKg, kept: keptHolds);
+      if (m.endurance ?? m.goalEndurance case final e?) endurances.add(e);
     }
-    final endurances = <int>[];
     for (final r in reports) {
       final m = ReportMetrics.of(r, weightKg: weightKg, earlier: kept);
       count++;
@@ -339,7 +344,7 @@ class ArchiveAmount {
       liftedKg: lifted,
       endurance: endurances.isEmpty
           ? null
-          : endurances.fold(0, (a, b) => a + b) / endurances.length,
+          : endurances.fold<num>(0, (a, b) => a + b) / endurances.length,
     );
   }
 }
@@ -408,6 +413,7 @@ class ArchiveVolume {
       kept,
       weightKg,
       holds: played.where((h) => between(h.endedAt, from, to)),
+      keptHolds: holds,
     );
     return ArchiveVolume(
       current: amount(start, null),
