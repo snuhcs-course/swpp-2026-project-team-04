@@ -15,6 +15,7 @@ import 'package:gymrats_app/viewmodels/feedback_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/login_viewmodel.dart';
 
 import '../support/fakes.dart';
+import '../support/feedback_fakes.dart';
 import '../support/form_report_fixtures.dart';
 
 final _endedAt = DateTime.utc(2026, 10, 21, 3, 0, 5, 250);
@@ -374,6 +375,41 @@ void main() {
       expect(state.history.recentCount, 2);
       expect(state.history.meanValidReps, 3);
       expect(state.history.trend.map((p) => p.validReps), [2, 4, 6]);
+    });
+
+    test("only the account's own kept battles are compared: the phone keeps "
+        'every account\'s (phone check, 2026-11-26)', () async {
+      // 30 and 20 minutes before: only the 20-minute one is this account's.
+      await keep([(2, 30), (4, 20)]);
+      final account = FakeStatsUserRepository()
+        ..reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+      account.stats.points = [
+        statsPoint(1, _endedAt.subtract(const Duration(minutes: 20))),
+        statsPoint(7, _endedAt),
+      ];
+      final model = FeedbackViewModel(
+        match: _match(),
+        repository: account,
+        phoneReports: phone,
+      );
+      await model.load();
+      expect(model.state.history.trend.map((p) => p.validReps), [4, 6]);
+      expect(model.state.metrics!.enduranceIndex, 150);
+    });
+
+    test("when the account's battles cannot be read, every kept battle is "
+        'compared, as offline', () async {
+      await keep([(2, 30), (4, 20)]);
+      final account = FakeStatsUserRepository()
+        ..reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+      account.stats.error = Exception('offline');
+      final model = FeedbackViewModel(
+        match: _match(),
+        repository: account,
+        phoneReports: phone,
+      );
+      await model.load();
+      expect(model.state.history.trend.map((p) => p.validReps), [2, 4, 6]);
     });
 
     test('the given body weight is used for the estimates', () async {
