@@ -20,9 +20,13 @@ import '../support/form_report_fixtures.dart';
 
 final _endedAt = DateTime.utc(2026, 10, 21, 3, 0, 5, 250);
 
-MatchRecord _match({int? id = 7, DateTime? playedAt}) => MatchRecord(
+MatchRecord _match({
+  int? id = 7,
+  DateTime? playedAt,
+  ExerciseType exercise = ExerciseType.pushUp,
+}) => MatchRecord(
   id: id,
-  exercise: ExerciseType.pushUp,
+  exercise: exercise,
   opponentName: 'RepBot',
   myReps: 3,
   opponentReps: 1,
@@ -400,12 +404,12 @@ void main() {
       final account = FakeStatsUserRepository()
         ..reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
       final model = FeedbackViewModel(
-        match: _match(),
+        match: _match(exercise: ExerciseType.squat),
         repository: account,
         phoneReports: phone,
       );
       await model.load();
-      expect(account.stats.calls.map((c) => c.exercise), [ExerciseType.pushUp]);
+      expect(account.stats.calls.map((c) => c.exercise), [ExerciseType.squat]);
     });
 
     test('an account list that takes over two seconds is not waited for: '
