@@ -676,3 +676,15 @@ PR과 폰 확인
 5. analyze, 전체 test, reviewer APPROVE, 노트까지 마치면 멈추고 보고한다. 데모 실행 명령, 폰에서 볼 항목(다섯 캐릭터 × 두 자세, 별, 경고, 힘든 구간, 애니메이션 줄이기), 찍을 화면 목록도 함께 준다.
 6. 이 메시지를 프롬프트 기록에 남긴다.
 </pasted_content id=\"2c8e\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-hold-character
+<!-- f86b9ff8 2026-11-26T17:14:36.882Z -->
+[Woohyun Song, 11-27 02:14] "<pasted_content id=\"2c8e\">
+PM 승인이 왔다(11/27). A8, feat/iter5-hold-character, 마감 11/29/2026, 예상 3시간. 범위는 별 1·2개 연출, 1.6초 말풍선, 별 3개는 바로 결과로, 지금 계획 그대로다. 현우와 같이 쓰는 뷰모델은 연출 부분만 맞추라고 했는데, 계획대로 뷰모델 코드는 고치지 않는다.
+지금 하던 일을 마친 뒤 아래를 한다.
+1. ownership.json의 A8 due를 11/29/2026으로 바꾸고, progress.md와 예외 줄 사유에 PM 승인(2026-11-27)을 적는다.
+2. main에 A7(#101)과 P14(#100)가 머지됐다(main 38726e8). 아직 그 위가 아니면 fetch 후 rebase하고, design_tokens_test.dart는 A7 줄과 A8 줄을 모두 남긴다. analyze와 전체 test를 다시 돌린다. 송현우의 P13도 곧 PR이 올라오니, A8 PR 전에 P13이 먼저 머지되면 한 번 더 rebase한다.
+3. reviewer APPROVE와 노트까지 마치면 push하고 draft PR을 연다. 본문은 영어로 쓰고, SPEC 12절 체크리스트와 화면 자리를 넣는다. Exceptions 절에는 design_tokens_test.dart, chair_hold_stage_test.dart, PM 승인 날짜를 적는다.
+4. Ready로 바꾸지 말고 멈춰서 보고한다. 데모 실행 명령, 폰에서 볼 항목, 체크리스트 항목별로 찍을 화면 목록을 함께 준다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"2c8e\">"

@@ -919,7 +919,7 @@ These were made from the A5 session at the user's word; their full evidence is i
 - Read the mockup's helper components against the app's code before planning: here they showed that nothing in the
   character engine had to change.
 
-## A8 `feat/iter5-hold-character` – Hold stage: my character holds along (local step, waiting for the PM's approval), 2026-11-26
+## A8 `feat/iter5-hold-character` – Hold stage: my character holds along (local step, PM approved 2026-11-27), 2026-11-26
 
 ### a. Where AI was used
 - **The hand-off:** `SPEC.md` v1 and the mockups `HoldMe.dc.html` (with `HoldMeLiveA`, `HoldMeAAll`,
@@ -939,20 +939,22 @@ These were made from the A5 session at the user's word; their full evidence is i
     copies. The script checks each copy is the same text as its group in `HoldMe.dc.html`.
   - `test/widgets/hold_me_golden.json`: picked from the bundle's golden. Extra mid-curve moments came from the
     mockup's own `renderVals()` run in node, after the run reproduced five bundle moments exactly.
-- **The code and tests:** Claude Code wrote all of it, in ten local commits (`93eb273` to `3470312`; `29f3135`
-  and `598e46b` fix reviewer run 1's findings, `3470312` run 2's).
+- **The code and tests:** Claude Code wrote all of it, in eleven commits (`189144c` to `eb91408`, as rebased on
+  `main` `38726e8` with A7 and P14; `a27b5ac` and `f9c3dae` fix reviewer run 1's findings, `0403faa` run 2's,
+  `eb91408` run 3's).
   - **Parser:** `lib/widgets/hold_me_rig.dart` (`HoldMeRig` L17, `HoldMePlace` L107, `HoldMeShape` L251).
   - **Pure scene:** `lib/widgets/hold_me_scene.dart` (`HoldMeTimeline` L122, `HoldMeCheer` L319,
     `HoldMeScene.frameAt` L388, `flightAt` L538).
   - **Painters:** `lib/widgets/hold_me_figure.dart` (`HoldMePainter` L39, `HoldMeFlightPainter` L210). The rig is
     drawn by the existing `CharacterFigurePainter` with the home and W5 drawing changes (`_paintRig` L91).
-  - **The stage:** `lib/screens/hold_stage_play.dart` `_StageState` (L203–514): the ticker, the timeline, the
-    character, the flight, the bar stars and the bubbles, each child keyed (`_build` L295).
+  - **The stage:** `lib/screens/hold_stage_play.dart` `_StageState` (L203–517): the ticker, the timeline, the
+    character, the flight, the bar stars and the bubbles, each child keyed (`_build` L298).
   - **Timing values:** `HoldTiming` in `lib/services/pose/hold_judge.dart` (L29–49).
   - **Demo:** a reduced-motion switch in `lib/demo/hold_stage_demo.dart`.
   - **Tests:** four new test files and four changed ones (the testing notes' table).
-- **Review:** the `reviewer` subagent ran on the code (run 1 on `ff3aa48`: CHANGES_REQUESTED) and on the fixes and
-  these notes (run 2 on `4689a12`: APPROVE with two Minors, fixed in `3470312` and this line; item d).
+- **Review:** the `reviewer` subagent ran on the code (run 1 on `f04a85e`: CHANGES_REQUESTED), on the fixes and
+  these notes (run 2 on `4a3fea8`: APPROVE with two Minors, fixed in `0403faa` and this line), and on that fix (run 3
+  on `8b8f1a8`: APPROVE with three Minors, fixed in `eb91408`, the rebase and the testing notes); item d.
 - **Not done by AI:**
   - The user chose the direction and the place, decided reduced motion's chair star, and approved each scope
     addition.
@@ -991,20 +993,29 @@ These were made from the A5 session at the user's word; their full evidence is i
   Stack. When it went at 0.9 s, the cheer's (or a warning whistle's) unkeyed `Positioned` took its element, and the
   bubble's pop-in started over. The same slip replaced the owner's element when the character first showed. Claude
   Code's tests looked for each widget, never at whether it kept its element. The reviewer measured it in a probe
-  test (the cheer 121 wide at 901 ms against 243 at rest). Fixed in `29f3135` with a key per child. Four new tests
+  test (the cheer 121 wide at 901 ms against 243 at rest). Fixed in `a27b5ac` with a key per child. Four new tests
   fail on the old code. Cost: one fix commit and a full run.
 - **Reviewer run 1 (Minor):**
   - With reduced motion, the second star's look gave way to the strain at 1.35 s while the cheer still showed, which
-    SPEC 7 does not allow. It followed the motion rule. Fixed in `598e46b`.
+    SPEC 7 does not allow. It followed the motion rule. Fixed in `f9c3dae`.
   - The clock rebuilt the whole stage every frame, setup included.
   - The golden's cheer timeline was committed but read by no test.
   - The fit test could not fail for the character.
-  - All three were fixed in `29f3135`.
+  - All three were fixed in `a27b5ac`.
 - **Reviewer run 2 (Minor):** to stop the clock during the setup, Claude Code set the ticker's `muted` itself on
   every change of the play. That overrode the muting `TickerMode` gives a covered screen, so a covered stage would
   keep ticking. The reviewer showed it in a probe. Now the ticker keeps its time and only leaves the stage unbuilt
-  during the setup (`3470312`). A new test fails on the old code (its first version passed on the old code too,
+  during the setup (`0403faa`). A new test fails on the old code (its first version passed on the old code too,
   since its two 375 ms pumps made a full breathing half-cycle, where the breath is back at 1).
+- **Reviewer run 3 (Minor): an age below zero.** That fix recorded times at the clock's latest tick but still drew
+  at the last rebuild, which stands still during the setup. A tick in the setup, then a covered screen and a star,
+  made the star's age −2 s, and the character was drawn twice as tall for a frame. No route in the app covers the
+  stage like that today; the reviewer found it in a probe. The stage now draws at the time it records (`eb91408`),
+  with the probe as a regression test.
+- **The rebase on A7 (#101):** both A7 and A8 had appended to the three personal notes, so Git split the appends into
+  several conflicting hunks around lines the two sections share. Instead of editing the markers, a script rebuilt
+  each file as `main`'s file plus exactly what the A8 commit had appended. `git range-diff` showed every code commit
+  unchanged.
 - **Timeline edge:** a stage first seen while already paused recorded the warning's start at that first look. The
   timeline test 'a stage that starts stopped shows the warning in full' failed, and the look now leaves it unset.
 - **Test-side mistakes, caught by their first runs:**
