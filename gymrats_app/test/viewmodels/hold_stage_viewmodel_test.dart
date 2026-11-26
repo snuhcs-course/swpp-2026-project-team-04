@@ -948,12 +948,15 @@ void main() {
           async,
           definition: _scripted(reader),
           records: records,
+          accountId: 7,
         );
         rig.goAt(async);
         warnOnce(rig, reader, async, 16500);
         reader.answer = const HoldReading.broken(_knee);
         rig.frames(async, 600);
         final record = rig.viewModel.state.record!;
+        // Kept for the signed-in account: the phone's store is shared.
+        expect(record.accountId, 7);
         expect(record.pose, HoldPose.plank);
         expect(record.stage, 3);
         expect(record.stars, 1);
