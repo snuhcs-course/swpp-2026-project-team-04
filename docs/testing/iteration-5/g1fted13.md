@@ -1789,6 +1789,9 @@ frustration on a white stand, so a draw looked like a loss. It follows the desig
 - **The opponent's character:** the online result now keeps it (`characterId: session.opponent?.character`), and
   the result screen passes the battle's opponent to the scene in one argument. Without one the scene draws the
   default character, or RepBot for a bot, as the stages do.
+- **AI 1v1 too:** the result screen plays the scene for every battle just played except an arcade one
+  (`result_screen.dart` L274, L380). A non-arcade bot battle (reached from an old bot report's 다시 대결) now gets
+  the same loss and draw scenes; in a draw the opponent is RepBot, as on its stage (reviewer run 3).
 
 The branch starts at `origin/main` `cc0df4f`; `main` had not moved at the push. I ran these in `gymrats_app/` on
 Windows, without coverage (this PC's rule):

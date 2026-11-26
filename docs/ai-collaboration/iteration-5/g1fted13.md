@@ -852,7 +852,8 @@ These were made from the A5 session at the user's word; their full evidence is i
   - `d6c917e`: `lib/screens/result_screen.dart` L513, and the PM acceptance test.
   - `cd7677e`: `lib/demo/result_scene_demo.dart`.
   - Tests: 4 new files and 6 changed ones (the testing notes' table).
-- **Review:** the `reviewer` subagent ran twice: run 1 CHANGES_REQUESTED, run 2 APPROVE (item d).
+- **Review:** the `reviewer` subagent ran three times: run 1 CHANGES_REQUESTED, run 2 APPROVE on the code, run 3
+  APPROVE on the commits and these notes, with two Minor points fixed before the push (item d).
 - **Not done by AI:**
   - The user and the PM decided the open points and the PR's shape: decisions A, B and C, the order before P15, and
     the Win/Loss/Draw checklist.
@@ -881,6 +882,9 @@ These were made from the A5 session at the user's word; their full evidence is i
   - Major: no test tapped through a draw (SPEC 7.5). Added for a loss and a draw; it fails when the draw's skip
     button is hidden.
   - Minor: two doc comments in `victory_scene.dart` still described W5's loss.
+- **Reviewer run 3 (notes):** the notes said the reviewer ran twice, and the testing notes did not say that a
+  non-arcade AI 1v1 report plays the same scenes (the result screen turns the scene off only for past and arcade
+  reports). Both added before the push.
 - **The progress.md write:** the first Python heredoc held Windows paths in normal strings and raised a
   SyntaxWarning for `\d`. The user asked for a check. The three harness files were re-read: no tab, newline or
   control character had replaced a backslash. Later scripts use forward slashes.
