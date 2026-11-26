@@ -820,3 +820,92 @@ These were made from the A5 session at the user's word; their full evidence is i
 ### Takeaway
 - Render comparisons at the smallest size with large text catch what overflow tests do not. Look at the pictures
   before calling a screen done.
+
+## A7 `feat/iter5-defeat-pose` – PvP 패배 포즈 추가 및 무승부 표시 수정 (a separate task in the PM's merge plan), 2026-11-26
+
+### a. Where AI was used
+- **The hand-off:** `ldfx/SPEC.md` v2 and the mockups `LdA.dc.html` (lose and draw), `LdAFrames`, `LdALose`,
+  `LdADraw`, with `ChB`, `ChX` and `W5Report` (not committed). The screen values come from `LdA.dc.html` as they are;
+  this session (Claude Code, Claude Opus 5.5) moved them to Flutter. TODO(Woohyun Song): who made SPEC v2 and the LdA
+  mockups, and with which tool (the spec names the canvas "GymRats 메인 메뉴 시안", page "패배·무승부 연출 시안",
+  direction A).
+- **Planning:** before any code, Claude Code read the spec, the mockups and the victory, result and character code.
+  It found that the mockup's two characters are the app's own drawings: `ChB` (guard and fist) is the battle stage's
+  `CharacterFigurePainter` with the stage's draw patch, and `ChX` `frus` is the W5 rig's `frustrate` motion. So no
+  character file had to change. It reported the plan of spec section 9 with three open points (where the values
+  live, a new file or not, the overlay's argument) and waited. The user and the PM approved it with decisions A, B
+  and C and the due date (Prompt Log, 11-26 11:49).
+- **Local harness (not committed):**
+  - The A7 step and five exception lines.
+  - The v3 reinstall had put back `resolve()` in `.claude/hooks/ownership_guard.py`. Through the `.claude` junction
+    the hook then read the main folder's branch, and the edit check let every file of this worktree through. Claude
+    Code found it when `--status` showed the wrong branch and restored the one line from the backup.
+- **Generated, then checked:** `test/widgets/victory_defeat_golden.json` was written by running `LdA.dc.html`'s own
+  `renderVals()` in node, with `toFixed` made exact. The script is not committed (the user's decision).
+- **The code and tests:** Claude Code wrote all of it, in four commits after the code reviews passed:
+  - `4a1266d` the scenes:
+    - `lib/widgets/victory_defeat.dart` (new, L1–675): the values `VictoryDefeat` (L36), the frames
+      `VictoryDefeatScene` (L228; loss L383, fighters L463).
+    - `lib/widgets/victory_scene.dart`: the new frame types (L619–845).
+    - `lib/widgets/victory_overlay.dart`: the painter's new layers (L327–620), `opponent` (L52, L57).
+  - `c146864`: `lib/services/game/online_battle_result.dart` L50.
+  - `d6c917e`: `lib/screens/result_screen.dart` L513, and the PM acceptance test.
+  - `cd7677e`: `lib/demo/result_scene_demo.dart`.
+  - Tests: 4 new files and 6 changed ones (the testing notes' table).
+- **Review:** the `reviewer` subagent ran twice: run 1 CHANGES_REQUESTED, run 2 APPROVE (item d).
+- **Not done by AI:**
+  - The user and the PM decided the open points and the PR's shape: decisions A, B and C, the order before P15, and
+    the Win/Loss/Draw checklist.
+  - The phone check is the user's (TODO(Woohyun Song): its result).
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-26] "4. 코드를 쓰기 전에 SPEC.md 9절의 계획을 보고하고 기다린다."
+- [Woohyun Song, 11-26] "2. progress.md를 쓸 때 SyntaxWarning(invalid escape sequence)이 났다. progress.md와 ownership 파일을 다시 열어, Windows 경로의 역슬래시가 깨진 곳(특히 \t, \n이 탭이나 줄바꿈으로 바뀐 곳)이 없는지 확인하고 고친다."
+- [Woohyun Song, 11-26] "8. … Draw: LOSE나 '패배' 대신 '무승부' 문구가 나오고, 장면에 내 캐릭터와 상대 캐릭터가 함께 나온다(주먹을 맞부딪치는 순간)."
+
+### c. What AI did well
+- **Reusing the drawings:** by reading `ChB.dc.html` and `ChX.dc.html` against the app, Claude Code showed that the
+  draw's fighters and the loss's frustration already exist in the app. No `character_*` file or asset changed, and the
+  W5 rig file stayed the bundle's.
+- **A golden that matches the formulas:** the mockup rounds positions to 0.1 px for its CSS, which is coarser than
+  the 0.01 tolerance. Making `toFixed` exact in the node run kept the formulas' own values. The reviewer re-ran the
+  extraction and got byte-identical output. Three deliberate mistakes (an ease, a 1 ms shift, a rate) each made the
+  test fail.
+- **The PM's criteria through every screen:** one test file follows a server-ended draw, win and loss through the
+  stage's verdict and poses, the report's scene and title, the 기록보관소 row and the report opened from it.
+- **Render comparison:** a throwaway test drew the twelve LdAFrames moments with the app's fonts into one sheet,
+  compared by eye with `shots/LdAFrames.png` before the review.
+
+### d. Hallucinations / errors
+- **Reviewer run 1:**
+  - Major: no test tapped through a draw (SPEC 7.5). Added for a loss and a draw; it fails when the draw's skip
+    button is hidden.
+  - Minor: two doc comments in `victory_scene.dart` still described W5's loss.
+- **The progress.md write:** the first Python heredoc held Windows paths in normal strings and raised a
+  SyntaxWarning for `\d`. The user asked for a check. The three harness files were re-read: no tab, newline or
+  control character had replaced a backslash. Later scripts use forward slashes.
+- **Smaller slips, each caught by a failing run:**
+  - `[700.0, 1000, 1400]` inferred `List<num>` (analyze).
+  - The demo test tapped the opponent row's 곰탱이 instead of mine (the name is in both rows).
+  - The demo test used `pageBack` on a screen with no back button; it now uses system back.
+  - An unquoted heredoc mangled a path in the export step.
+- **Timing tests:** three unrelated timing tests failed once each in full runs and passed alone (testing notes). They
+  were not changed.
+
+### e. Prompt revisions
+- **The exceptions' wording:**
+  - Before (first message): the two exceptions are "선조치 후보고".
+  - After (11-26 11:49): "PM approved 2026-11-26", due 11/28, and the `result_screen_test.dart` line widened to the
+    one old-scene test.
+  - Why it worked: the PM's approval came between the plan and the code, so the harness and the PR could say so.
+- **The PR's shape:**
+  - Before: the spec asked only for a phone check proposal.
+  - After: a checklist of the PM's three cases with the test names and a place for the user's screenshots.
+  - Why it worked: each PM case maps to named tests and to one picture.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Read the mockup's helper components against the app's code before planning: here they showed that nothing in the
+  character engine had to change.

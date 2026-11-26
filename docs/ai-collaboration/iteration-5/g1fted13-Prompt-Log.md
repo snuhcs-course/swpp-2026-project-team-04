@@ -562,3 +562,39 @@ PR 전에 할 일: 아케이드 PR(#90, #92, #91)이 곧 main에 들어간다. �
 3. push하고 main을 대상으로 PR을 연다. Draft가 아닌 일반 PR로 연다. 본문은 영어로 쓰고, Exceptions 절에 범위 밖 파일과 그 이유를 적는다.
 4. PR 번호와 HEAD를 보고한다.
 </pasted_content id=\"ec32\">"
+
+## 2026-11-26 · Woohyun Song · feat/iter5-defeat-pose
+<!-- bee4b4a2 2026-11-26T02:34:04.051Z -->
+[Woohyun Song, 11-26 11:34] "<pasted_content id=\"50f7\">
+\"PvP 패배 포즈 추가 및 무승부 표시 수정\"(A7) 작업을 시작한다. 하네스를 v3로 다시 설치했다. 명세와 시안은 C:\dev\handoff\ldfx 에 있다(SPEC.md v2, design/, shots/). 저장소 밖 폴더라 읽기만 하고, 복사하거나 커밋하지 않는다. 화면 값은 .dc.html 원본을 그대로 쓴다.
+1. git status가 깨끗한지 확인하고 fetch한다. SPEC.md 0절대로 로컬 ownership.json에 A7 단계를 더하고, ownership-exceptions.txt에 예외 두 곳을 적은 뒤, origin/main에서 feat/iter5-defeat-pose 브랜치를 판다. --status로 A7이 보이는지 확인하고, 더한 내용은 progress.md에 적는다.
+2. flutter pub get을 하고 SPEC.md를 끝까지 읽는다. design/LdA.dc.html과 shots/LdAFrames.png를 본다.
+3. 지금 코드를 읽는다: victory_scene, victory_rig_data, victory_overlay, victory_motion, result_screen, result_report, online_battle_result, battle_online_events, 캐릭터 엔진(character_motion, character_figure, character_rig), 대결 무대의 선수 그림.
+4. 코드를 쓰기 전에 SPEC.md 9절의 계획을 보고하고 기다린다.
+5. SPEC 0절과 1절에서 정한 것은 다시 묻지 않는다.
+6. 이 메시지를 이 작업의 프롬프트 기록에 남긴다.
+</pasted_content id=\"50f7\">"
+<!-- bee4b4a2 2026-11-26T02:49:14.830Z -->
+[Woohyun Song, 11-26 11:49] "<pasted_content id=\"50f7\">
+9절 계획을 승인한다. 아래를 반영해서 계획한 작업 순서대로 진행한다.
+
+PM 승인 (11/26)
+1. PM이 A7, feat/iter5-defeat-pose, 별도 PR, 마감 11/28/2026을 승인했다. 예외 두 곳(result_screen.dart의 VictoryOverlay 인자, online_battle_result.dart의 상대 캐릭터)도 승인했다. ownership.json의 A7 due를 11/28/2026으로 바꾼다. 이 두 파일과 그 테스트의 예외 줄 사유는 \"선조치 후보고\"에서 \"PM approved 2026-11-26\"으로 바꾼다. progress.md에도 적는다.
+2. progress.md를 쓸 때 SyntaxWarning(invalid escape sequence)이 났다. progress.md와 ownership 파일을 다시 열어, Windows 경로의 역슬래시가 깨진 곳(특히 \t, \n이 탭이나 줄바꿈으로 바뀐 곳)이 없는지 확인하고 고친다. 앞으로 경로는 raw 문자열이나 슬래시로 쓴다. 그다음 --status를 다시 돌린다.
+
+결정
+3. A, B, C 모두 권한 대로 한다. LdA 값은 Dart 상수로 두고, W5 rig JSON과 asset은 그대로 두며, victory_rig_data.dart는 머리 주석만 고친다. 새 파일 victory_defeat.dart를 만들고, design_tokens_test.dart에 한 줄을 더한다(예외 사유: 선조치 후보고, 새 victory 파일을 토큰 검사 목록에 더하는 한 줄). VictoryOverlay에는 Opponent?를 넘긴다.
+4. result_screen.dart는 P15(송현우, 마감 11/30)와 겹친다. A7이 먼저 머지될 예정이니, 기존 VictoryOverlay 호출의 인자 순서와 줄바꿈은 그대로 두고 인자 한 줄만 더한다.
+5. allow에 test/widgets/victory_defeat_golden.json, lib/demo/result_scene_demo.dart, test/demo/result_scene_demo_test.dart를 더한다. result_screen_test.dart 예외 문구는 옛 패배·무승부 장면을 고정하던 테스트 한 건을 고치는 데까지 넓힌다.
+6. \"따로 말이 없으면 시안대로\"라고 한 두 가지는 시안대로 한다. 물렁범 좌절은 760ms에서 끝 자세로 넘어가고, 무승부 880~1500ms에는 대기 움직임을 넣는다.
+7. 무승부 끝 자리가 바뀌어 지난 리포트와 아케이드 리포트의 무승부 자리도 바뀌는 것은 받아들인다. PR 본문에 적는다.
+
+PR과 폰 확인
+8. PR 본문은 영어로 쓴다. PM이 확인할 세 경우를 체크리스트로 두고, 각 항목에 해당 테스트 이름과 폰 화면(스크린샷이나 짧은 녹화, 내가 붙임)을 넣을 자리를 만든다.
+   - Win: 기존 승리 연출이 그대로 나온다.
+   - Loss: 빨간 컷인과 패배(좌절) 포즈가 나온다.
+   - Draw: LOSE나 '패배' 대신 '무승부' 문구가 나오고, 장면에 내 캐릭터와 상대 캐릭터가 함께 나온다(주먹을 맞부딪치는 순간). 끝 자리는 시안대로 내 캐릭터 하나와 반반 받침이다.
+   Exceptions 절에는 예외 파일과 PM 승인 날짜를 적는다. 데모 실행 방법과, 확인 후 앱을 다시 설치해야 한다는 점도 적는다.
+9. reviewer APPROVE까지 마치면 push하고 draft PR을 연다. 그다음 멈추고 나에게 알려 준다. 데모 실행 명령, 폰에서 볼 항목(결과 5가지, 확인할 캐릭터 조합, 애니메이션 줄이기), 찍어야 할 화면 목록을 함께 준다. Ready로 바꾸는 것은 폰 확인 뒤에 한다.
+10. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"50f7\">"

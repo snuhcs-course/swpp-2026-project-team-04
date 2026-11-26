@@ -1772,3 +1772,127 @@ No server, Google account, camera or secure storage is needed:
 - 9-6 Overflow → login_screen_test and social_signup_screen_test: the '… text 1.3: …' tests at both sizes
 - 9-7 Existing screens → the full `flutter test` above (home, battle and victory character tests unchanged and
   passing; the id sign-up screen's tests unchanged); character_rig_test's color test
+
+#### 2026-11-26 · code at commits `4a1266d`, `c146864`, `d6c917e` and `cd7677e` · step A7 `feat/iter5-defeat-pose` (PvP 패배 포즈 추가 및 무승부 표시 수정, a separate task in the PM's merge plan)
+A7 changes what the battle report plays when it opens after a PvP battle (online 1v1 and friend battles; both reach
+`ResultScreen` through `onlineBattleResult`). Before it, only a win had a cut-in; a loss and a draw showed the same
+frustration on a white stand, so a draw looked like a loss. It follows the design hand-off's `ldfx/SPEC.md` v2
+(2026-11-26, not committed) and its mockup `LdA.dc.html` ("거울 컷인"), whose values are used as they are:
+- **Loss:** a red panel (`AppColors.danger`) with white rain shuts down from the top. My character drops in and
+  frustrates (the W5 `frustrate` motion) at 2.2 times under the band 패배, which comes in from the left and sags.
+  The panel and the character then shrink onto the seat's white stand: the same end look as before.
+- **Draw:** a lime half and a pink half meet on a slant. My character and the opponent hop in and bump fists (a
+  spark, a shake), then spring back into the battle stage's guard pose under the band 무승부. The opponent leaves to
+  the right and mine sits on a lime and pink stand. No frustration and no 패배 appear anywhere.
+- **Unchanged:** the win's scenes (KO, time, opponent left), the sounds, the report's titles, the skip on a tap,
+  and reduced motion showing only the end look (now the loss's or the draw's).
+- **The opponent's character:** the online result now keeps it (`characterId: session.opponent?.character`), and
+  the result screen passes the battle's opponent to the scene in one argument. Without one the scene draws the
+  default character, or RepBot for a bot, as the stages do.
+
+The branch starts at `origin/main` `cc0df4f`; `main` had not moved at the push. I ran these in `gymrats_app/` on
+Windows, without coverage (this PC's rule):
+
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/widgets/victory_defeat_scene_test.dart test/widgets/victory_pvp_outcome_test.dart test/widgets/victory_scene_test.dart test/widgets/victory_overlay_test.dart test/widgets/victory_seat_test.dart test/widgets/victory_motion_test.dart test/screens/result_screen_test.dart test/services/game/online_battle_result_test.dart test/design_tokens_test.dart test/demo/result_scene_demo_test.dart
+```
+
+No server, camera or device is needed:
+- **Fakes:** a finished `OnlineBattleSession` set up by hand (no socket), `MemoryCharacterStore` for my character.
+- **Golden values:** `test/widgets/victory_defeat_golden.json` holds values from the design's own JavaScript. A node
+  script ran `LdA.dc.html`'s `renderVals()` with `toFixed` made exact (the design rounds positions to 0.1 px for CSS,
+  coarser than the test's 0.01). The times are SPEC 6's and the times inside every stretch and next to every switch.
+  The test file's header has the method; the script stays outside the repo (the user's decision).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not changed by A7 | 11/26 | CI comment "Tests and coverage (GitHub Actions)" on the A7 PR |
+| ViewModel | flutter_test, fakes | 90% | not changed by A7 | 11/26 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (`online_battle_result.dart`) | 11/26 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment (the victory files, `result_screen.dart`) | 11/26 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed by A7 | 11/26 | same CI comment |
+
+- **Tests:** `flutter analyze` found no issues. The full `flutter test` on the code (the reviewer's second run, the
+  same tree as the commits) passed 4903, failed 0 and skipped 10. The 10 skipped are the ones already skipped on
+  `main` (a live server smoke test and 9 known push-up judge errors), untouched.
+- **Timing tests that failed once in a full run:**
+  - My first full run (before the last test was added) passed 4900, skipped 10 and failed 1:
+    `online_battle_integration_test.dart` 'both phones show the same score, …'.
+  - One of the reviewer's runs failed 2: `voice_guidance_test.dart` 'a line the engine never finishes gives way
+    after maxUtterance' and `online_battle_integration_test.dart` 'server deduplicates verdicts, …'.
+  - All three are timing tests in files A7 does not touch. Alone they passed: the integration file 3/3 times
+    (74 tests), both files together 97/97. The next full run passed them.
+- **The step's files:** the ten files in the last command passed 307 tests on `cd7677e`:
+  - new: victory_defeat_scene 19, victory_pvp_outcome 15, result_scene_demo 3
+  - changed: victory_scene 22, victory_overlay 25, victory_seat 17, result_screen 88, online_battle_result 9,
+    design_tokens 83
+  - unchanged, run with them: victory_motion 26 (the W5 rig data and motions)
+- **Ownership:** `ownership_guard.py --check-staged` was OK on each commit, and `--check-worktree` was OK with 18
+  paths before the commits.
+- **Golden checks:**
+  - Each loss sample is compared for all five characters (40 times each) and each draw sample (43 times) for all
+    five. The compared values are the stand, the panel shapes and insets, the rain, the figure or both fighters
+    (feet, scale, facing, pose, frustration clock), the spark, the shake and the band.
+  - The reviewer ran the extraction again on `LdA.dc.html`: byte-identical output, within 5e-7 of the committed file.
+  - Three deliberate mistakes in `victory_defeat.dart` each made the golden test fail (the band's sag ease, the
+    frustration starting at 149 ms, the shake rate 0.34), and were undone.
+- **Against the design (by eye):** a throwaway widget test (not committed) drew the result screen at LdAFrames'
+  twelve times with the app's fonts into one sheet. Compared with `shots/LdAFrames.png`, every frame matches: the
+  shutter, the fall, the landing with the band, the sag, the shrink, the seat; the halves, the hops, the fists and
+  spark, the guard with 무승부, the opponent leaving, the half and half stand.
+- **The draw's skip:** the reviewer's first run found no test that taps through a draw (SPEC 7.5). The test
+  'draw (A7): a tap anywhere jumps to its end look and ends it once, …' was added, with the same for a loss. It fails
+  when the draw's skip button is hidden.
+- **Changed existing tests (old loss and draw only):** W5's "a loss and a draw are the same frustration, 760 ms
+  (물렁범 820 ms), no panel or band" was pinned in victory_scene_test, victory_overlay_test, victory_seat_test and
+  one result_screen_test test. Those expectations now check A7's scenes. No win expectation changed. The W5 golden's
+  loss samples (`victory_golden.json` `lose`) are no longer read; its `loseStill` still checks the loss's end look.
+- **Decisions kept as the design (the user, 2026-11-26):** 물렁범's frustration (820 ms) stops at 760 ms and then
+  shows its end pose; the draw's two characters move as the stage's idle from 880 to 1500 ms.
+- **Out-of-step files (PM approved 2026-11-26, except the last):**
+  - `lib/screens/result_screen.dart` (P15): one argument line, `opponent: widget.result?.matchup.opponent,`.
+  - `test/screens/result_screen_test.dart`: the one test that pinned the old scene, and a new opponent test.
+  - `lib/services/game/online_battle_result.dart` and its test: the opponent's character.
+  - `test/design_tokens_test.dart`: one line for `victory_defeat.dart` (act first and report after).
+- **Coverage:** TODO(Woohyun Song): copy the A7 PR's CI comment (commit, run link, per-layer numbers, A7's files).
+- **Phone check:** TODO(Woohyun Song): the user's check with `lib/demo/result_scene_demo.dart` (results, character
+  pairs, reduced motion; screenshots or clips in the PR).
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/victory_defeat_scene_test.dart` (new) | **Golden:** every loss sample for the five characters and every draw sample, as listed above; the golden has SPEC 6's times.<br>**Loss:** the panel is `AppColors.danger`, stripes and rain white; the frustration at 2.2 times on the big feet line after landing, its clock from 150 ms; 물렁범 stops at 760 ms and ends on its end pose; the band 패배 from the left (a win's from the right, its turn the rig's).<br>**Draw:** every 5 ms never the frustration, 패배, a hit or knocked-out pose, the band 무승부, the opponent the one given; lime and pink halves with the design's stripes; the stage's idle 880–1500 ms on one clock, not before or after, the end still.<br>**Other screens:** 412 × 915: the halves meet in the middle, the big scene scaled, the shutter, the shrink and the end follow the seat. |
+| View | `test/widgets/victory_pvp_outcome_test.dart` (new) | **PM acceptance**, for a server-ended draw, win and loss: the stage shows only DRAW, WIN! or LOSE and the matching poses (a draw: both in guard throughout); the report plays the draw, time-win or loss scene with the opponent, titled 무승부, 승리 or 패배, every 50 ms never the wrong motion or band, then the seat; the 기록보관소 row "푸쉬업 · 무승부/승리/패배" (a draw has no 패); the report opened from it shows only the end look and the title.<br>**Fit (SPEC 7.8):** loss and draw at 360 × 780 with text 1.3, 320 × 640, 320 × 640 with text 1.3: no exception while playing or after, the seat inside the screen. |
+| View | `test/widgets/victory_overlay_test.dart` (updated) | **A7:** a loss: the red cut-in (red pixels where the report was), the band 패배, 2.2 times, the end at 2000 ms on the white stand; a draw: lime and pink pixels, both fighters bumping fists, every 10 ms no frustration or 패배, the end in guard on the lime and pink stand; the opponent drawn as the stages draw it (its own, RepBot for a bot without one, else the default); a tap skips a loss and a draw to the end look once; reduced motion for a win, a loss and a draw; the painter repaints for a new opponent and paints every result at the A7 times.<br>**Unchanged:** every win test. |
+| View | `test/widgets/victory_scene_test.dart` (updated) | a loss ends on W5's end look (`loseStill`); a win 2100 ms, a loss and a draw 2000 ms; bands 패배 and 무승부, no confetti but a win's; the win tests unchanged |
+| View | `test/widgets/victory_seat_test.dart` (updated) | the draw's seat: my character alone in guard at the seat's feet, on the lime and pink stand; win and loss seats unchanged |
+| View | `test/screens/result_screen_test.dart` (updated) | a loss and a draw play A7's cut-in with their band, no confetti, and end on the seat at 2000 ms (was: no cut-in, 760/820 ms); the scene gets the battle's opponent, and a draw draws them beside my character |
+| Service | `test/services/game/online_battle_result_test.dart` (updated) | the online result carries the opponent's character; none without an opponent |
+| Design | `test/design_tokens_test.dart` (updated) | `victory_defeat.dart` uses only tokens |
+| Demo | `test/demo/result_scene_demo_test.dart` (new) | a draw against 펭뚱이 with 곰탱이 plays both and ends on the seat, back returns to the picker; 애니메이션 줄이기 opens on the end look; the made-up battle for each result, RepBot as a bot, an opponent not known |
+
+### Acceptance criteria → tests (SPEC 7; the PM's criteria are 7.9)
+- 7.1 Result decision → victory_scene_test 'a win by KO, by time or by the opponent leaving; a loss; a draw'
+  (unchanged); victory_defeat_scene_test golden loss vs draw; victory_pvp_outcome_test '<outcome>: the report plays
+  the <scene> scene with the opponent, …'
+- 7.2 Loss → victory_defeat_scene_test 'its panel is AppColors.danger, …', 'frustrates at 2.2 times on the big feet
+  line, after landing', 'ends where W5's loss did: …', 'its band is 패배 and comes from the left; …';
+  victory_overlay_test 'a loss: the red cut-in over the report, …'
+- 7.3 Draw → victory_defeat_scene_test 'never shows the frustration, 패배, a knocked-out or hit pose; …';
+  victory_overlay_test 'a draw: lime and pink halves, …'; result_screen_test 'the scene gets the battle's opponent:
+  a draw draws them beside my character (A7)'; victory_seat_test 'draw: …'
+- 7.4 No opponent → victory_overlay_test 'the draw's opponent is drawn as the stages draw it: …';
+  online_battle_result_test 'carries the opponent's character, …'
+- 7.5 Skip and reduced motion → victory_overlay_test 'lose (A7): a tap anywhere jumps to its end look …', 'draw (A7):
+  …', '<result>: with reduced motion only the end look shows, from the start' (koWin, lose, draw)
+- 7.6 Golden → victory_defeat_scene_test '<id>: a loss matches the design at every golden time', '<id>: a draw
+  matches the design at every golden time', 'has SPEC 6's times and the times between, for every character'
+- 7.7 Existing screens → the full `flutter test` above (win, report, home, stage and character tests pass; only the
+  old loss/draw expectations changed, as listed)
+- 7.8 Overflow → victory_pvp_outcome_test 'the scene fits (SPEC 7.8)' group
+- 7.9 PM acceptance → victory_pvp_outcome_test 'PM acceptance (A7): an online battle the server ended' group (draw,
+  win, loss)
+- 7.10 Online opponent → online_battle_result_test 'carries the opponent's character, as the stage drew it, …'
