@@ -47,19 +47,21 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 
 ### P10 `feat/iter5-skill-matching` (team plan #6, simulated users and skill-based matchmaking, 2026-11-27)
 - Battle server: `server/lib/skill_matchmaker.dart` and `server/lib/simulated_player.dart` (whole files: median of the
-  latest 5 battles, sorted index with binary search, cost measurement, the simulated opponent), the 15 s assignment,
-  `accept_virtual`, `match.virtual` and the estimate refresh in `server/lib/battle_server.dart`, `loadSkills` in
-  `server/lib/result_store.dart`: Claude Code.
-- Server: `SkillsView` (`POST /internal/skills`) in `server/matches/internal.py`, its route, and
-  `server/tests/test_skills.py`: Claude Code.
-- App: `battleVirtualWait`/`battleVirtualOpponent` in `lib/shared/battle_protocol.dart`, `OnlinePhase.virtualAssigned`
-  and `VirtualOpponent` in `online_battle_session.dart`, `SimulatedUserPace` in `bot_matchmaker.dart`, the simulated
-  opponent's versus screen and AI battle in `online_lobby_screen.dart`, the one-line `found` case in
-  `telemetry_service.dart`, every P10 test, and `docs/iteration-5/matchmaking.md`: Claude Code.
-- Manual check on the Android emulator against local Django and battle servers with a throwaway database: Claude Code
-  (adb taps and screenshots).
-- Not used: the estimate rule (median of the latest 5), real players first with no skill limit, the 15 s wait, and
-  showing the copied account's nickname (the user's decisions); the scope exceptions (PM approval).
+  latest 5, sorted index with binary search and numeric tie order, cost measurement, the simulated player's rep plan),
+  and in `server/lib/battle_server.dart` the 10 s wait, `accept_virtual`, the simulated match player (`_open`,
+  `_setReady`, `_acceptRep`, `_simulate`), the estimate refresh; `loadSkills` in `server/lib/result_store.dart`:
+  Claude Code.
+- Server: `SkillsView` (`POST /internal/skills`, KO scaling) and the simulated-player skip in `ResultSaveView`
+  (`server/matches/internal.py`), `OnlinePlayerSerializer.simulated` (`serializers.py`), the route, and
+  `server/tests/test_skills.py`, the P10 cases in `test_results.py`: Claude Code.
+- App: `accept_virtual` in `online_battle_session.dart` and `battleVirtualWait` in `lib/shared/battle_protocol.dart`;
+  the battle server tests under `gymrats_app/test/services/online/`; `docs/iteration-5/matchmaking.md`: Claude Code.
+- Manual checks: local Django and battle servers with a throwaway database, the Android emulator (adb taps,
+  screenshots, database edits between matches) and the user's Galaxy over USB: Claude Code; the battles on the phone
+  were played by the user.
+- Not used: the estimate rule, real players first, the wait (15 s, then 10 s), KO scaling with a 10 s floor, showing
+  the nickname without a label, and "no difference from a real user" (the user's decisions, PM approvals relayed);
+  the scope exceptions (PM).
 
 ## 2. Prompt History
 [Jinyoung Park, 11-23] "task 수행해. 근데 회원가입할때 구글이랑 카카오톡 둘다 지원하게 해주고, 회원가입시 … 이런식으로 키, 몸무게 추가 정보도 받게 해줘."
@@ -75,6 +77,16 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 Full list: `ishlove77-Prompt-Log.md`.
 
 ## 3. Problems and How They Were Caught
+- P10, design churn: the simulated opponent was first played on the phone as an AI battle, to keep the copied
+  account's history clean. The PM review (`1a164d6`) found that this showed "RepBot 고수" in the result and sent
+  다시 대결 to an expert bot; patching it took an AI label, a setup timer in the lobby and still left visible
+  differences (screen, archive line, saved rematch). After the user asked for "실제 user랑 차이 없게", the battle
+  server now plays the simulated player in a real match and the saver skips it; most of the earlier app code was
+  removed. Claude's first choice optimized for scope (fewer outside files) over the user's goal.
+- P10: the reviewer found that a KO by the simulated player could still be followed by its later reps in the same
+  tick (the KO only scheduled the finish); fixed with a flag and a test that fails without it.
+- P10: Claude left temporary local-test edits (local server address, insecure loopback) in the working tree while
+  other changes went on; caught before committing by `git status` and reverted each time.
 - P10: the first design could not see bot battles at all (the battle server only knows online results), so the
   estimates needed a Django endpoint outside P10's files; Claude stopped and asked, and the PM approved the exception.
 - P10: the reviewer subagent returned CHANGES_REQUESTED: a search ending with a simulated opponent never finished its
@@ -158,8 +170,12 @@ Full list: `ishlove77-Prompt-Log.md`.
   latest 5 battles.
 - P10 data source: battle-server-only estimates (online results only, lost on restart) → Django `/internal/skills`
   read at start and every 5 minutes (user chose option A, PM approved).
-- P10 simulated battle: played on the phone as an AI battle, because the P11 saver writes a row for both players of
-  an online battle and would put the battle in the copied account's history.
+- P10 simulated battle: first played on the phone as an AI battle (the P11 saver writes a row for both players) →
+  the user asked for no difference from a real user → played by the battle server in a real match, and the saver skips
+  the simulated player (PM approval relayed by the user).
+- P10 label: nickname only (user) → AI label as the PM's condition (PR review) → label dropped (PM approval relayed).
+- P10 wait: 15 s → 10 s (user). KO battles: raw reps → scaled to 30 s, under 10 s left out (user, after Claude
+  pointed out that KO wins understate the estimate).
 
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so

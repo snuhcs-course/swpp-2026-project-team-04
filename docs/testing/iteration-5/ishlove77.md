@@ -5,6 +5,47 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): the simulated opponent played by the battle server
+After the PM's review of `1a164d6` and the user's decisions (10 s wait, KO battles scaled to 30 s, no difference from
+a real user), the battle server now plays the simulated opponent as a player of a real match, and the result saver
+stores a row for the real player only. The app's own simulated path (match.virtual, AI battle, setup timer) is gone;
+the app keeps `accept_virtual`. Commands from `gymrats_app/` and `server/` on macOS (Flutter 3.47.5 / Dart 3.13.4,
+Python 3.12); commit = the PR head.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.4% | 11/27 | `coverage_per_file.sh` + `coverage_by_layer.py` |
+| ViewModel | flutter_test, fakes | 90% | 98.5% | 11/27 | same run |
+| Service | flutter_test, fakes, loopback stand-ins | 85% | 97.6% (online_battle_session 92.4%, battle_protocol 97.9%) | 11/27 | same run |
+| View | flutter_test (widget) | 75% | 97.7% | 11/27 | same run |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% (matches/internal.py 95%, matches/serializers.py 100%) | 11/27 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 4933 passed, 0 failed, 10 skipped (the existing opt-in live
+  server and device checks). Server `pytest` 306 passed, 0 failed (22 in `test_skills.py`, 6 new in
+  `test_results.py`).
+- **Coverage notes:** the per-file runner left out `online_preparation_test`, `social_signup_screen_test`,
+  `online_battle_session_test` and `simulated_player_test` (180 s timeouts; they pass in the plain run). The battle
+  server files (`server/lib/*.dart`) are outside the Flutter package and not in lcov; they are covered by 25
+  server-level tests (`skill_matching_test.dart`), 36 unit tests (`skill_matchmaker_test.dart`,
+  `simulated_player_test.dart`) and the existing battle server suites.
+- **Shortfalls:** none against the targets.
+- **Manual check:** Android emulator (Medium Phone) and Galaxy S23 Ultra over USB, against this branch's Django API
+  and battle server run locally with a throwaway database (app endpoints changed only for the run and reverted).
+  Emulator, push-up: estimate 9 → MATCH FOUND "테스터 vs 근손실" (no AI tag) after 10 s; the online setup screen with
+  "남은 시간" and "상대 · 준비 완료"; after 20 s the online "경기 취소" screen with 다시 매칭; estimate raised to 21 →
+  헬창, lowered to 3 → 초보쥐 (database edited between, battle server restarted to reload). Galaxy, squat (played by
+  the user): a full battle against the simulated player ended in a KO win, stored as the player's online battle only
+  (no row for the copied account). Not checked: two real phones in one match, the production servers.
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `test/services/online/skill_matching_test.dart` (rewritten) | Service (battle server) | real players paired at once, real player within the wait first, simulated match found with the closest account, it opens setup and gets ready, a full battle ends as a real one with the simulated player marked in the stored result, setup timeout, forfeit, KO by it and by the player (no rep after a KO), reconnect and resume, each player's own match, cancel, disconnect, older app, friend battles, `accept_virtual` checks, an app `OnlineBattleSession` playing it to the end, estimate reads, `loadSkills` |
+| `test/services/online/simulated_player_test.dart` (updated) | Service (battle server) | closest account, never the player, average for a new player, RepBot fallback, 1–60 reps, rep plan (count, order, payloads, excellent share, short rounds), sim ids |
+| `server/tests/test_results.py` (updated) | Server | a simulated opponent keeps no record (only the player's online row, nickname as opponent), malformed or unmarked simulated players refused, two simulated players refused |
+| `server/tests/test_skills.py` (updated) | Server | KO scaled to 30 s, online KO length, KO under 10 s and of unknown length left out, left battles left out, five filled from battles that count, unusable report length, bad limit 422 |
+| `test/services/online/online_battle_session_test.dart` (updated) | Service | `accept_virtual` in the main match only |
+| `test/shared/battle_protocol_test.dart` (updated) | Service | 10 s wait |
+
 #### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fix for the Codex review of `6f14022`
 - **Finding (P2):** the tie rule compared account ids as strings, so account 10 came before account 2. Fixed in
   `server/lib/skill_matchmaker.dart`: `SkillIndex.compareIds` orders them as numbers (shorter first, then text; the ids
