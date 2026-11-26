@@ -44,7 +44,11 @@ BattleResult? onlineBattleResult(
     matchup: Matchup(
       exercise: session.exercise,
       playerName: playerName,
-      opponent: Opponent(name: session.opponent?.name ?? '상대', isBot: false),
+      opponent: Opponent(
+        name: session.opponent?.name ?? '상대',
+        isBot: false,
+        characterId: session.opponent?.character,
+      ),
     ),
     myReps: session.myReps,
     myInvalidReps: session.myInvalidReps,

@@ -562,3 +562,85 @@ PR 전에 할 일: 아케이드 PR(#90, #92, #91)이 곧 main에 들어간다. �
 3. push하고 main을 대상으로 PR을 연다. Draft가 아닌 일반 PR로 연다. 본문은 영어로 쓰고, Exceptions 절에 범위 밖 파일과 그 이유를 적는다.
 4. PR 번호와 HEAD를 보고한다.
 </pasted_content id=\"ec32\">"
+
+## 2026-11-26 · Woohyun Song · feat/iter5-defeat-pose
+<!-- bee4b4a2 2026-11-26T02:34:04.051Z -->
+[Woohyun Song, 11-26 11:34] "<pasted_content id=\"50f7\">
+\"PvP 패배 포즈 추가 및 무승부 표시 수정\"(A7) 작업을 시작한다. 하네스를 v3로 다시 설치했다. 명세와 시안은 C:\dev\handoff\ldfx 에 있다(SPEC.md v2, design/, shots/). 저장소 밖 폴더라 읽기만 하고, 복사하거나 커밋하지 않는다. 화면 값은 .dc.html 원본을 그대로 쓴다.
+1. git status가 깨끗한지 확인하고 fetch한다. SPEC.md 0절대로 로컬 ownership.json에 A7 단계를 더하고, ownership-exceptions.txt에 예외 두 곳을 적은 뒤, origin/main에서 feat/iter5-defeat-pose 브랜치를 판다. --status로 A7이 보이는지 확인하고, 더한 내용은 progress.md에 적는다.
+2. flutter pub get을 하고 SPEC.md를 끝까지 읽는다. design/LdA.dc.html과 shots/LdAFrames.png를 본다.
+3. 지금 코드를 읽는다: victory_scene, victory_rig_data, victory_overlay, victory_motion, result_screen, result_report, online_battle_result, battle_online_events, 캐릭터 엔진(character_motion, character_figure, character_rig), 대결 무대의 선수 그림.
+4. 코드를 쓰기 전에 SPEC.md 9절의 계획을 보고하고 기다린다.
+5. SPEC 0절과 1절에서 정한 것은 다시 묻지 않는다.
+6. 이 메시지를 이 작업의 프롬프트 기록에 남긴다.
+</pasted_content id=\"50f7\">"
+<!-- bee4b4a2 2026-11-26T02:49:14.830Z -->
+[Woohyun Song, 11-26 11:49] "<pasted_content id=\"50f7\">
+9절 계획을 승인한다. 아래를 반영해서 계획한 작업 순서대로 진행한다.
+
+PM 승인 (11/26)
+1. PM이 A7, feat/iter5-defeat-pose, 별도 PR, 마감 11/28/2026을 승인했다. 예외 두 곳(result_screen.dart의 VictoryOverlay 인자, online_battle_result.dart의 상대 캐릭터)도 승인했다. ownership.json의 A7 due를 11/28/2026으로 바꾼다. 이 두 파일과 그 테스트의 예외 줄 사유는 \"선조치 후보고\"에서 \"PM approved 2026-11-26\"으로 바꾼다. progress.md에도 적는다.
+2. progress.md를 쓸 때 SyntaxWarning(invalid escape sequence)이 났다. progress.md와 ownership 파일을 다시 열어, Windows 경로의 역슬래시가 깨진 곳(특히 \t, \n이 탭이나 줄바꿈으로 바뀐 곳)이 없는지 확인하고 고친다. 앞으로 경로는 raw 문자열이나 슬래시로 쓴다. 그다음 --status를 다시 돌린다.
+
+결정
+3. A, B, C 모두 권한 대로 한다. LdA 값은 Dart 상수로 두고, W5 rig JSON과 asset은 그대로 두며, victory_rig_data.dart는 머리 주석만 고친다. 새 파일 victory_defeat.dart를 만들고, design_tokens_test.dart에 한 줄을 더한다(예외 사유: 선조치 후보고, 새 victory 파일을 토큰 검사 목록에 더하는 한 줄). VictoryOverlay에는 Opponent?를 넘긴다.
+4. result_screen.dart는 P15(송현우, 마감 11/30)와 겹친다. A7이 먼저 머지될 예정이니, 기존 VictoryOverlay 호출의 인자 순서와 줄바꿈은 그대로 두고 인자 한 줄만 더한다.
+5. allow에 test/widgets/victory_defeat_golden.json, lib/demo/result_scene_demo.dart, test/demo/result_scene_demo_test.dart를 더한다. result_screen_test.dart 예외 문구는 옛 패배·무승부 장면을 고정하던 테스트 한 건을 고치는 데까지 넓힌다.
+6. \"따로 말이 없으면 시안대로\"라고 한 두 가지는 시안대로 한다. 물렁범 좌절은 760ms에서 끝 자세로 넘어가고, 무승부 880~1500ms에는 대기 움직임을 넣는다.
+7. 무승부 끝 자리가 바뀌어 지난 리포트와 아케이드 리포트의 무승부 자리도 바뀌는 것은 받아들인다. PR 본문에 적는다.
+
+PR과 폰 확인
+8. PR 본문은 영어로 쓴다. PM이 확인할 세 경우를 체크리스트로 두고, 각 항목에 해당 테스트 이름과 폰 화면(스크린샷이나 짧은 녹화, 내가 붙임)을 넣을 자리를 만든다.
+   - Win: 기존 승리 연출이 그대로 나온다.
+   - Loss: 빨간 컷인과 패배(좌절) 포즈가 나온다.
+   - Draw: LOSE나 '패배' 대신 '무승부' 문구가 나오고, 장면에 내 캐릭터와 상대 캐릭터가 함께 나온다(주먹을 맞부딪치는 순간). 끝 자리는 시안대로 내 캐릭터 하나와 반반 받침이다.
+   Exceptions 절에는 예외 파일과 PM 승인 날짜를 적는다. 데모 실행 방법과, 확인 후 앱을 다시 설치해야 한다는 점도 적는다.
+9. reviewer APPROVE까지 마치면 push하고 draft PR을 연다. 그다음 멈추고 나에게 알려 준다. 데모 실행 명령, 폰에서 볼 항목(결과 5가지, 확인할 캐릭터 조합, 애니메이션 줄이기), 찍어야 할 화면 목록을 함께 준다. Ready로 바꾸는 것은 폰 확인 뒤에 한다.
+10. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"50f7\">"
+<!-- bee4b4a2 2026-11-26T05:44:00.347Z -->
+[Woohyun Song, 11-26 14:44] "<pasted_content id=\"50f7\">
+폰 확인을 마쳤고 모두 이상 없었다(SM S947N, 데모 release 빌드: 결과 5가지, 캐릭터 조합, 애니메이션 줄이기, 탭 건너뛰기). 이제 PR #101을 마무리해서 Ready로 바꾸고, Codex 리뷰 대응까지 한다. 순서대로 진행하고, 막히면 그 자리에서 멈추고 보고한다.
+
+1. 녹화 확인
+- 녹화 4개가 C:\dev\handoff\a7-recordings 에 있다. 이름이 1-win, 2-loss, 3-draw, 4-draw-reduce-motion이면 그대로 쓰고, 아니면 찍은 시각 순서로 Win, Loss, Draw, Draw(애니메이션 줄이기 켬)로 본다.
+- 이 폴더는 저장소 밖이다. 녹화를 저장소로 복사하거나 커밋하지 않는다.
+- 파일마다 크기를 본다. 10MB가 넘으면 ffmpeg가 있을 때만 줄인다. 줄인 파일은 같은 폴더에 새 이름으로 둔다. ffmpeg가 없으면 설치하지 말고 멈추고 보고한다.
+- 프레임을 볼 도구가 있으면 각 영상에서 몇 장을 뽑아, 알림 미리보기나 이메일 같은 개인 정보가 찍혔는지 확인한다. 찍혔으면 올리지 말고 보고한다.
+
+2. PR에 녹화 댓글 올리기
+- gh로는 첨부가 안 되므로, 연결된 브라우저로 PR #101을 연다. 먼저 GitHub에 [REDACTED:custom_term]으로 로그인되어 있는지 확인하고, 아니면 멈춘다.
+- 댓글 칸에 아래 글을 쓰고, 각 항목 밑에 해당 영상을 파일 업로드로 넣은 뒤 댓글을 올린다. 이 댓글 하나를 올리는 것은 내가 허락한다.
+  Phone check (SM S947N, release build of lib/demo/result_scene_demo.dart): all four cases look as expected.
+  1. Win (KO): unchanged from main.
+  2. Loss: red cut-in with rain, 2.2x frustrate pose, '패배' band, white seat.
+  3. Draw: both characters fist-bump, then guard pose, '무승부' band, half lime/pink seat. No LOSE text or frustrate pose.
+  4. Draw with reduce motion on: end pose only.
+- 브라우저로 파일 업로드가 안 되면 글만 올리지 말고 멈추고 보고한다.
+
+3. TODO([REDACTED:custom_term]) 세 곳 채우기 (노트와 PR 본문)
+- 시안과 명세를 만든 사람과 도구:
+  - 시안(LdA): claude.ai의 Claude Design 캔버스(\"패배·무승부 연출 시안\" 페이지)에서 Claude가 A·B·C 세 방향을 만들었다. 송우현이 A(거울 컷인), 패배 판 #FF3B30, 무승부도 A 그대로를 골랐다.
+  - SPEC v2: claude.ai 프로젝트 채팅에서 Claude(Opus 5.5)가 시안, 코드, PM 인수 기준을 바탕으로 썼다. 송우현이 시안 방향과 색, A7 처리 방식을 정했다. 11/26 PM 승인(마감 11/28, 예외 두 곳)은 v3에 반영됐다.
+- CI 커버리지 숫자: PR #101의 CI 커버리지 댓글을 gh로 읽어서 채운다.
+- 폰 확인 결과: 맨 위 내용으로 채운다. 체크리스트의 화면 자리에는 2번에서 올린 댓글의 링크를 넣는다.
+- PR 본문은 gh로 지금 본문을 받아 바꿀 줄만 바꾼다. 노트는 커밋하고 push한다. push 뒤에는 지난번처럼 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+
+4. Ready와 Codex 리뷰
+- gh pr ready 101로 Ready로 바꾼다. Codex 리뷰가 달릴 때까지 몇 분 간격으로 확인한다. 30분이 지나도 안 달리면 멈추고 보고한다.
+- 지적이 오면 하나씩 판단한다.
+  - A7 범위 안의 실제 문제면 고친다. 시간이 없으니 관련 테스트와 flutter analyze만 돌리고, 로컬 reviewer는 생략한다. push한 뒤 스레드에 고친 커밋을 영어로 짧게 답하고 resolve한다.
+  - 거의 일어나지 않는 경우거나 이 작업과 무관하면, 이유를 영어로 짧게 답하고 resolve한다.
+  - 범위 밖 파일을 고쳐야 하는 지적이면 고치지 말고 멈추고 보고한다.
+  - push 뒤 15분이 지나도 새 리뷰가 안 달리면 PR에 \"@codex review\" 댓글을 단다.
+- 고치는 것은 2회까지만 한다. 그 뒤에도 지적이 오면 멈추고 보고한다.
+- 끝나는 조건: 현재 HEAD에 Codex가 \"Didn't find any major issues\"를 달고, 안 풀린 스레드가 0개이고, CI가 통과한 상태다. 이 상태가 되면 보고한다.
+- 상우나 현우를 GitHub에서 멘션하거나 따로 연락하지 않는다. 머지 요청은 내가 한다.
+
+5. 마지막 보고: 올린 댓글 링크, 새 커밋, Codex 지적과 처리 결과, 끝나는 조건을 만족했는지 알려 준다. 이 메시지도 프롬프트 기록에 남긴다.
+</pasted_content id=\"50f7\">"
+<!-- bee4b4a2 2026-11-26T05:52:44.473Z -->
+[Woohyun Song, 11-26 14:52] "계속. 녹화 4개의 개인 정보는 내가 확인했다. 상태 표시줄의 시각과 아이콘뿐이고, 알림 미리보기나 이메일은 없다. 그대로 올려도 된다. 2단계(로그인 확인 → 댓글과 영상 4개 업로드)부터 이어서 한다."
+<!-- bee4b4a2 2026-11-26T06:08:24.594Z -->
+[Woohyun Song, 11-26 15:08] "녹화 댓글은 이미 올라갔다([REDACTED:custom_term], 영상 4개 첨부 확인): https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/101#issuecomment-7183978350
+2단계는 끝난 것으로 보고, 댓글을 다시 올리지 않는다. 3단계(TODO 세 곳 채우기, 체크리스트 화면 자리에는 이 댓글 링크)부터 이어서 한다. 4단계 Ready와 Codex 대응, 5단계 보고까지 지난 메시지대로 진행한다. 이 메시지도 프롬프트 기록에 남긴다."

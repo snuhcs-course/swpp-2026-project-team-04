@@ -155,18 +155,13 @@ void main() {
         );
       });
 
-      test('$id: a loss matches every golden time, and a draw is the same', () {
+      // A7 replaced W5's loss and draw (their times are in
+      // victory_defeat_scene_test.dart); a loss still ends where W5's did.
+      test('$id: a loss ends on W5\'s end look (loseStill)', () {
         final lose = designScene(id, VictoryResult.lose);
-        final draw = designScene(id, VictoryResult.draw);
-        for (final sample
-            in (golden[id]['lose'] as List).cast<Map<String, dynamic>>()) {
-          final t = (sample['tMs'] as num).toDouble();
-          _expectScene(lose.at(t), sample, '$id lose t=$t');
-          _expectScene(draw.at(t), sample, '$id draw t=$t');
-        }
         final still = golden[id]['loseStill'] as Map<String, dynamic>;
         _expectScene(lose.end, still, '$id loseStill');
-        _expectScene(draw.end, still, '$id drawStill');
+        _expectScene(lose.at(lose.endMs), still, '$id lose at its end');
       });
     }
 
@@ -187,19 +182,24 @@ void main() {
       }
     });
 
-    test('a win ends at 2100 ms, a loss at 760 ms (물렁범 820 ms)', () {
+    test('a win ends at 2100 ms; a loss and a draw at 2000 ms whatever the '
+        'character (A7)', () {
       expect(designScene('bear', VictoryResult.timeWin).endMs, 2100);
-      expect(designScene('bear', VictoryResult.lose).endMs, 760);
-      expect(designScene('seal', VictoryResult.draw).endMs, 820);
       expect(designScene('seal', VictoryResult.leftWin).endMs, 2100);
+      for (final id in victoryIds) {
+        expect(designScene(id, VictoryResult.lose).endMs, 2000, reason: id);
+        expect(designScene(id, VictoryResult.draw).endMs, 2000, reason: id);
+      }
     });
 
-    test('the band reads the result (spec 4); a loss or a draw has none, '
-        'nor a panel or confetti', () {
+    test('the band reads the result (spec 4; A7 패배 and 무승부); only a win '
+        'has confetti', () {
       for (final (result, words) in [
         (VictoryResult.koWin, 'KO 승리'),
         (VictoryResult.timeWin, '판정승'),
         (VictoryResult.leftWin, '기권승'),
+        (VictoryResult.lose, '패배'),
+        (VictoryResult.draw, '무승부'),
       ]) {
         expect(designScene('mouse', result).at(900).band!.text, words);
       }
@@ -207,8 +207,7 @@ void main() {
         final scene = designScene('kangaroo', result);
         for (final t in [0.0, 300, 900, 1700]) {
           final frame = scene.at(t.toDouble());
-          expect(frame.band, isNull);
-          expect(frame.panel, isNull);
+          expect(frame.panel, isNotNull);
           expect(frame.confetti, isEmpty);
         }
       }

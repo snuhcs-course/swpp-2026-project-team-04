@@ -6,6 +6,13 @@
 /// Change it in the bundle and copy it here; it extends `characterRigJson`
 /// (w3-rig-2) and `characterMotionJson` (w4-home-rig-1), which it does not
 /// change.
+///
+/// Its `scene.lose.rule` (a loss and a draw are the same frustration on the
+/// seat, no cut-in, band or confetti) is W5's and no longer the app's: A7's
+/// design (`LdA`) gives a loss a red cut-in and a draw a lime and pink one
+/// with both characters (`victory_defeat.dart`). The file stays as the
+/// bundle wrote it; the scene still takes its seat, big scene, band,
+/// panel, stand and frustrations from it.
 library;
 
 const victoryRigJson = r'''

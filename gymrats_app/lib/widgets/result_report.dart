@@ -88,7 +88,7 @@ class ResultReportData {
 }
 
 /// The result report (BResult): the verdict, both scores and the user's
-/// reps, the character card with 자세 기록 표로 보기 under it (A10, as the
+/// reps, the character card with 상세 리포트 보기 under it (A10, as the
 /// UxGoal report places it), then the cards the data has, and 홈으로 /
 /// 다시 대결 at the bottom. On a short screen or with large text the page
 /// scrolls.
@@ -116,7 +116,7 @@ class ResultReport extends StatelessWidget {
   /// 다시 대결.
   final VoidCallback onRematch;
 
-  /// 자세 기록 표로 보기, shown when [ResultReportData.hasFeedback].
+  /// 상세 리포트 보기, shown when [ResultReportData.hasFeedback].
   final VoidCallback onOpenFeedback;
 
   /// The character card's 이야기 듣기 and 건너뛰기 (to the goal question);

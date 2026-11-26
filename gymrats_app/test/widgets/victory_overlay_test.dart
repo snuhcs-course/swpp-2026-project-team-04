@@ -4,7 +4,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/widgets/battle_fx_motion.dart';
+import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/victory_motion.dart';
 import 'package:gymrats_app/widgets/victory_overlay.dart';
 import 'package:gymrats_app/widgets/victory_scene.dart';
@@ -23,6 +26,7 @@ class _Backdrop extends StatelessWidget {
     this.onButton,
     this.pictureKey,
     this.onEnd,
+    this.opponent,
   });
 
   final VictoryResult result;
@@ -32,6 +36,7 @@ class _Backdrop extends StatelessWidget {
   final VoidCallback? onButton;
   final Key? pictureKey;
   final VoidCallback? onEnd;
+  final Opponent? opponent;
 
   static const buttonText = '홈으로';
 
@@ -65,6 +70,7 @@ class _Backdrop extends StatelessWidget {
                       seat: designSeat,
                       play: play,
                       onEnd: onEnd,
+                      opponent: opponent,
                     ),
                   ),
                 ],
@@ -102,16 +108,34 @@ VictoryFrame _frame(WidgetTester tester) =>
     _painter(tester).frameIn(tester.getSize(find.byType(VictoryOverlay)));
 
 /// Whether [frame] is the end look: the stand and the still end pose, open
-/// and whole, nothing else.
+/// and whole, nothing else. A draw's end pose is my character alone in
+/// guard (A7).
 bool _isEnd(VictoryFrame frame) =>
     frame.panel == null &&
     frame.band == null &&
     frame.confetti.isEmpty &&
+    frame.rain.isEmpty &&
+    frame.spark == null &&
+    frame.shake == 0 &&
     frame.stand?.scaleX == 1 &&
     frame.stand?.opacity == 1 &&
+    (_stillOnSeat(frame) || _guardOnSeat(frame));
+
+bool _stillOnSeat(VictoryFrame frame) =>
+    frame.fighters.isEmpty &&
     (frame.figure?.still ?? false) &&
     frame.figure?.foot == const Offset(286, 168) &&
     frame.figure?.opacity == 1;
+
+bool _guardOnSeat(VictoryFrame frame) =>
+    frame.figure == null &&
+    frame.fighters.length == 1 &&
+    frame.fighters.single.side == BattleSide.me &&
+    frame.fighters.single.pose == BattlePose.idle &&
+    frame.fighters.single.idle.up == 0 &&
+    frame.fighters.single.idle.rockDeg == 0 &&
+    frame.fighters.single.foot == const Offset(286, 168) &&
+    frame.fighters.single.opacity == 1;
 
 Finder _skip(String label) => find.bySemanticsLabel(label);
 
@@ -248,49 +272,125 @@ void main() {
     });
   });
 
-  group('a loss or a draw (spec 6)', () {
-    testWidgets('frustrates once on a white stand, over the report, and '
-        'stops at 760 ms', (tester) async {
+  group('a loss and a draw (A7)', () {
+    testWidgets('a loss: the red cut-in over the report, my character '
+        'frustrating big under the band 패배, then the end look on the white '
+        'stand at 2000 ms', (tester) async {
       final semantics = tester.ensureSemantics();
       final key = GlobalKey();
       await _show(
         tester,
         _Backdrop(result: VictoryResult.lose, pictureKey: key),
       );
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 900));
       final frame = _frame(tester);
-      expect(frame.panel, isNull);
-      expect(frame.band, isNull);
-      expect(frame.confetti, isEmpty);
-      expect(frame.figure!.timeMs, 300);
-      expect(frame.figure!.foot, const Offset(286, 168));
+      expect(frame.panel, isA<VictoryShutter>());
+      expect(frame.rain, hasLength(18));
+      expect(frame.band!.text, '패배');
+      expect(frame.figure!.motion, VictoryMotionKind.frustrate);
+      expect(frame.figure!.scale, closeTo(2.2, 1e-9));
+      expect(frame.fighters, isEmpty);
       expect(_skip(VictoryOverlay.skipLabel), findsOneWidget);
       final color = _reader(tester, await _picture(tester, key));
-      expect(await color(20, 700), AppColors.background);
-      expect(_near(await color(250, 171), AppColors.card), isTrue);
+      // Red where the report's ground was, at the top and the bottom.
+      for (final (x, y) in const [(20.0, 700.0), (330.0, 30.0)]) {
+        final c = await color(x, y);
+        expect(c.r, greaterThan(0.85), reason: '($x, $y) $c');
+        expect(c.g, lessThan(0.5), reason: '($x, $y) $c');
+        expect(c.b, lessThan(0.5), reason: '($x, $y) $c');
+      }
 
-      await tester.pump(const Duration(milliseconds: 459));
+      await tester.pump(const Duration(milliseconds: 1099));
+      expect(_isEnd(_frame(tester)), isFalse);
       expect(_skip(VictoryOverlay.skipLabel), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 1));
-      expect(_isEnd(_frame(tester)), isTrue);
+      final end = _frame(tester);
+      expect(_isEnd(end), isTrue);
+      expect(end.stand!.color, AppColors.card);
+      expect(end.stand!.rightColor, isNull);
+      expect(end.figure!.motion, VictoryMotionKind.frustrate);
       expect(_skip(VictoryOverlay.skipLabel), findsNothing);
       expect(tester.binding.hasScheduledFrame, isFalse);
       semantics.dispose();
     });
 
-    testWidgets('물렁범 stops at 820 ms; a draw is a loss\'s scene', (
-      tester,
-    ) async {
+    testWidgets('a draw: lime and pink halves, both characters bumping '
+        'fists, no frustration and no 패배; then mine alone in guard on the '
+        'lime and pink stand', (tester) async {
+      final key = GlobalKey();
       await _show(
         tester,
-        const _Backdrop(result: VictoryResult.draw, characterId: 'seal'),
+        _Backdrop(
+          result: VictoryResult.draw,
+          characterId: 'bear',
+          opponent: const Opponent(
+            name: '진영',
+            isBot: false,
+            characterId: 'seal',
+          ),
+          pictureKey: key,
+        ),
       );
-      await tester.pump(const Duration(milliseconds: 819));
-      expect(_isEnd(_frame(tester)), isFalse);
-      expect(_frame(tester).stand!.color, AppColors.card);
-      await tester.pump(const Duration(milliseconds: 1));
-      expect(_isEnd(_frame(tester)), isTrue);
-      expect(_frame(tester).figure!.frame.expression, 'tongue');
+      await tester.pump(const Duration(milliseconds: 560));
+      final bump = _frame(tester);
+      expect(bump.panel, isA<VictorySplit>());
+      expect(bump.figure, isNull);
+      expect(bump.spark, isNotNull);
+      expect(bump.shake, isNot(0));
+      expect(
+        [for (final f in bump.fighters) (f.characterId, f.side, f.pose)],
+        [
+          ('seal', BattleSide.opponent, BattlePose.attack),
+          ('bear', BattleSide.me, BattlePose.attack),
+        ],
+      );
+      expect(bump.fighters.first.mirrored, isTrue);
+      expect(bump.fighters.last.mirrored, isFalse);
+      final color = _reader(tester, await _picture(tester, key));
+      expect(_near(await color(10, 100), AppColors.accent, by: 110), isTrue);
+      expect(_near(await color(350, 700), AppColors.opponent, by: 90), isTrue);
+
+      await tester.pump(const Duration(milliseconds: 440));
+      expect(_frame(tester).band!.text, '무승부');
+      // Every 10 ms of it: never the frustration, never 패배.
+      final painter = _painter(tester);
+      final scene = painter.sceneIn(designSize);
+      for (var t = 0.0; t <= 2000; t += 10) {
+        final frame = scene.at(t);
+        expect(frame.figure, isNull, reason: 't=$t');
+        expect(frame.band?.text, anyOf(isNull, '무승부'), reason: 't=$t');
+      }
+
+      await tester.pump(const Duration(milliseconds: 1000));
+      final end = _frame(tester);
+      expect(_isEnd(end), isTrue);
+      expect(end.fighters.single.characterId, 'bear');
+      expect(end.stand!.color, AppColors.accent);
+      expect(end.stand!.rightColor, AppColors.opponent);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+
+    testWidgets('the draw\'s opponent is drawn as the stages draw it: its '
+        'own character, RepBot for a bot without one, else the default', (
+      tester,
+    ) async {
+      for (final (opponent, drawn) in const [
+        (Opponent(name: 'A', isBot: false, characterId: 'penguin'), 'penguin'),
+        (Opponent(name: 'B', isBot: false), 'mouse'),
+        (Opponent(name: 'AI 봇 · 초보', isBot: true), 'bot'),
+        (Opponent(name: 'C', isBot: true, characterId: 'kangaroo'), 'kangaroo'),
+        (null, 'mouse'),
+      ]) {
+        expect(VictoryOverlay.opponentCharacterOf(opponent), drawn);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await _show(
+          tester,
+          _Backdrop(result: VictoryResult.draw, opponent: opponent),
+        );
+        await tester.pump(const Duration(milliseconds: 1000));
+        expect(_painter(tester).opponentId, drawn);
+        expect(_frame(tester).fighters.first.characterId, drawn);
+      }
     });
   });
 
@@ -315,6 +415,45 @@ void main() {
       expect(pressed, 1);
       semantics.dispose();
     });
+
+    for (final result in [VictoryResult.lose, VictoryResult.draw]) {
+      testWidgets('${result.name} (A7): a tap anywhere jumps to its end look '
+          'and ends it once, not reaching the report\'s button', (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        var pressed = 0;
+        var ended = 0;
+        await _show(
+          tester,
+          _Backdrop(
+            result: result,
+            onButton: () => pressed++,
+            onEnd: () => ended++,
+          ),
+        );
+        // Mid-scene: a draw's fists meet, a loss's character is down.
+        await tester.pump(const Duration(milliseconds: 560));
+        expect(_isEnd(_frame(tester)), isFalse);
+        expect(_skip(VictoryOverlay.skipLabel), findsOneWidget);
+        await tester.tap(find.text(_Backdrop.buttonText), warnIfMissed: false);
+        await tester.pump();
+        expect(pressed, 0);
+        expect(ended, 1);
+        final end = _frame(tester);
+        expect(_isEnd(end), isTrue);
+        expect(
+          result == VictoryResult.draw ? _guardOnSeat(end) : _stillOnSeat(end),
+          isTrue,
+        );
+        expect(_skip(VictoryOverlay.skipLabel), findsNothing);
+        expect(tester.binding.hasScheduledFrame, isFalse);
+        await tester.tap(find.text(_Backdrop.buttonText));
+        expect(pressed, 1);
+        expect(ended, 1);
+        semantics.dispose();
+      });
+    }
 
     testWidgets('a screen reader skips with the button\'s action', (
       tester,
@@ -354,17 +493,26 @@ void main() {
       expect(tester.binding.hasScheduledFrame, isFalse);
     });
 
-    for (final result in [VictoryResult.koWin, VictoryResult.draw]) {
+    for (final (result, left, right) in const [
+      (VictoryResult.koWin, AppColors.accent, null),
+      (VictoryResult.lose, AppColors.card, null),
+      (VictoryResult.draw, AppColors.accent, AppColors.opponent),
+    ]) {
       testWidgets('${result.name}: with reduced motion only the end look '
           'shows, from the start', (tester) async {
         final semantics = tester.ensureSemantics();
         await _show(tester, _Backdrop(result: result, reduceMotion: true));
         final frame = _frame(tester);
         expect(_isEnd(frame), isTrue);
-        expect(
-          frame.stand!.color,
-          result.isWin ? AppColors.accent : AppColors.card,
-        );
+        expect(frame.stand!.color, left);
+        expect(frame.stand!.rightColor, right);
+        // A loss's end pose is the frustration's, a draw's the guard.
+        expect(frame.figure?.motion, switch (result) {
+          VictoryResult.lose => VictoryMotionKind.frustrate,
+          VictoryResult.draw => null,
+          _ => VictoryMotionKind.celebrate,
+        });
+        expect(frame.fighters, hasLength(result == VictoryResult.draw ? 1 : 0));
         expect(_skip(VictoryOverlay.skipWinLabel), findsNothing);
         expect(_skip(VictoryOverlay.skipLabel), findsNothing);
         expect(tester.binding.hasScheduledFrame, isFalse);
@@ -526,6 +674,7 @@ void main() {
       VictoryPainter painter({
         VictoryResult result = VictoryResult.koWin,
         String id = 'mouse',
+        String opponentId = 'mouse',
         Offset seat = designSeat,
         bool over = false,
       }) {
@@ -533,6 +682,7 @@ void main() {
         return VictoryPainter(
           rig: rig,
           character: rig.characterOf(id),
+          opponentId: opponentId,
           result: result,
           seat: seat,
           clock: clock,
@@ -545,6 +695,7 @@ void main() {
       expect(base.shouldRepaint(painter()), isFalse);
       expect(base.shouldRepaint(painter(result: VictoryResult.lose)), isTrue);
       expect(base.shouldRepaint(painter(id: 'seal')), isTrue);
+      expect(base.shouldRepaint(painter(opponentId: 'bot')), isTrue);
       expect(base.shouldRepaint(painter(seat: Offset.zero)), isTrue);
       expect(base.shouldRepaint(painter(over: true)), isTrue);
     });
@@ -559,13 +710,28 @@ void main() {
             final painter = VictoryPainter(
               rig: rig,
               character: rig.characterOf(id),
+              opponentId: 'bot',
               result: result,
               seat: designSeat,
               clock: clock,
               over: false,
               bandStyle: const TextStyle(fontSize: 62),
             );
-            for (final t in [0, 150, 300, 700, 1250, 1650, 1900, 2099]) {
+            for (final t in [
+              0,
+              150,
+              300,
+              400,
+              560,
+              640,
+              700,
+              1000,
+              1250,
+              1650,
+              1750,
+              1900,
+              2099,
+            ]) {
               clock.value = t.toDouble();
               final recorder = ui.PictureRecorder();
               painter.paint(Canvas(recorder), size);
