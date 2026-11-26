@@ -137,6 +137,19 @@ void main() {
       expect(twins.nearest('push_up', 10, excludeId: '8')!.id, '9');
     });
 
+    test('a tie below the skill also goes to the smaller id', () {
+      final below = SkillIndex.build([
+        record('2', '둘', [5]),
+        record('1', '하나', [5]),
+        record('3', '셋', [5]),
+      ]);
+      expect(below.nearest('push_up', 10)!.id, '1');
+      expect(below.nearest('push_up', 10, excludeId: '1')!.id, '2');
+      expect(below.nearest('push_up', 10, excludeId: '2')!.id, '1');
+      expect(below.nearest('push_up', 0)!.id, '1');
+      expect(below.nearest('push_up', 0, excludeId: '1')!.id, '2');
+    });
+
     test('nobody else to copy is null', () {
       final alone = SkillIndex.build([
         record('1', '혼자', [10]),
@@ -202,14 +215,24 @@ void main() {
     ];
     final index = SkillIndex.build(records);
     for (var i = 0; i < 500; i++) {
-      final skill = random.nextDouble() * 45;
+      // Whole and half values hit ties between estimates often.
+      final skill = random.nextInt(90) / 2;
       final exclude = '${random.nextInt(300)}';
       final found = index.nearest('push_up', skill, excludeId: exclude)!;
-      final best = records
-          .where((r) => r.id != exclude)
-          .map((r) => (medianOf(r.recent['push_up']!)! - skill).abs())
-          .reduce(min);
+      final others = [
+        for (final r in records)
+          if (r.id != exclude) (r.id, medianOf(r.recent['push_up']!)!),
+      ];
+      final best = others.map((o) => (o.$2 - skill).abs()).reduce(min);
+      // The documented tie rule: the lower estimate, then the smaller id.
+      final expected = others
+          .where((o) => (o.$2 - skill).abs() == best)
+          .reduce(
+            (a, b) =>
+                a.$2 < b.$2 || a.$2 == b.$2 && a.$1.compareTo(b.$1) < 0 ? a : b,
+          );
       expect((found.skill - skill).abs(), best);
+      expect(found.id, expected.$1);
     }
   });
 
@@ -234,7 +257,13 @@ void main() {
   });
 
   test('no lookup costs nothing per lookup', () {
-    final cost = measureSkillIndex([record('1', 'a', [1])], [1], lookups: 0);
+    final cost = measureSkillIndex(
+      [
+        record('1', 'a', [1]),
+      ],
+      [1],
+      lookups: 0,
+    );
     expect(cost.microsPerLookup, 0);
   });
 }

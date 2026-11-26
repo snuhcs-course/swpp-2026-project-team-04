@@ -115,6 +115,21 @@ class SkillIndex {
   final Map<String, Map<String, SkillEntry>> _byId;
   final Map<String, double> _average;
 
+  /// The index of the first entry of [list] with an estimate of at least
+  /// [skill], or its length.
+  static int _firstAtLeast(List<SkillEntry> list, double skill) {
+    var low = 0, high = list.length;
+    while (low < high) {
+      final mid = (low + high) >> 1;
+      if (list[mid].skill < skill) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+    return low;
+  }
+
   /// Ties go to the smaller id, so a search is repeatable.
   static int _bySkill(SkillEntry a, SkillEntry b) {
     final bySkill = a.skill.compareTo(b.skill);
@@ -139,19 +154,16 @@ class SkillIndex {
   SkillEntry? nearest(String exercise, double skill, {String? excludeId}) {
     final list = _sorted[exercise];
     if (list == null || list.isEmpty) return null;
-    // First entry with an estimate >= skill.
-    var low = 0, high = list.length;
-    while (low < high) {
-      final mid = (low + high) >> 1;
-      if (list[mid].skill < skill) {
-        low = mid + 1;
-      } else {
-        high = mid;
-      }
-    }
-    // Walk out from there, skipping the player themself.
+    final low = _firstAtLeast(list, skill);
+    // Walk out from there, skipping the player themself. Above, [low] is
+    // already the smallest id of its estimate; below, go to the start of
+    // the nearest lower estimate, so a tie there also takes the smallest id.
     var below = low - 1, above = low;
     if (below >= 0 && list[below].id == excludeId) below--;
+    if (below >= 0) {
+      below = _firstAtLeast(list, list[below].skill);
+      if (list[below].id == excludeId) below++;
+    }
     if (above < list.length && list[above].id == excludeId) above++;
     final down = below >= 0 ? list[below] : null;
     final up = above < list.length ? list[above] : null;
