@@ -1142,26 +1142,6 @@ class ArchiveHoldWarnings extends StatelessWidget {
   }
 }
 
-/// The exercise chips of the 전체 tab.
-class ArchiveExerciseChips extends StatelessWidget {
-  const ArchiveExerciseChips({
-    super.key,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final ExerciseType selected;
-  final ValueChanged<ExerciseType> onSelected;
-
-  @override
-  Widget build(BuildContext context) => ArchiveChips<ExerciseType>(
-    values: ExerciseType.values,
-    labelOf: (e) => e.koreanName,
-    selected: selected,
-    onSelected: onSelected,
-  );
-}
-
 /// In the 전체 tab's place when the battles of the period failed to load:
 /// one line and "다시 시도".
 class ArchiveStatsRetry extends StatelessWidget {

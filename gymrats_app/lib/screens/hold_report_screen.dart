@@ -15,7 +15,7 @@ import '../widgets/archive_chart.dart';
 /// The report of one played hold (P13, design H-A, as the post-game
 /// report's D-3 sections): the date and the hold score, 자세 분석 (the time
 /// line of the hold, its keep rate, warnings and goal, and the most
-/// frequent warning), 운동 분석 (time held, calories, endurance), the
+/// frequent warning), 운동 분석 (time held and calories), the
 /// highlights, 변화 over the last holds of the pose, and the coach's line.
 class HoldReportScreen extends StatefulWidget {
   const HoldReportScreen({
@@ -180,7 +180,7 @@ class _ChangeChip extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.s8,
-              vertical: AppSpacing.s4 / 2,
+              vertical: AppSpacing.s4,
             ),
             child: Text(
               '${up ? '+' : '-'}$value$unit',

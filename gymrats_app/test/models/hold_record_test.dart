@@ -12,7 +12,9 @@ HoldRecord holdRecord({
   List<HoldRecordWarning>? warnings,
   List<HoldRecordPause>? pauses,
   bool endedByWarnings = true,
+  int? accountId,
 }) => HoldRecord(
+  accountId: accountId,
   endedAt: endedAt ?? DateTime(2026, 11, 26, 21, 10),
   pose: pose,
   stage: 3,

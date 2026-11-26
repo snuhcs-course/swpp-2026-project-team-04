@@ -85,11 +85,11 @@ void main() {
     testWidgets('the chosen chip in ink, the others white; a tap picks', (
       tester,
     ) async {
-      ExerciseType? picked;
+      ArchiveScope? picked;
       await _show(
         tester,
-        ArchiveExerciseChips(
-          selected: ExerciseType.pushUp,
+        ArchiveScopeChips(
+          selected: ArchiveScope.pushUp,
           onSelected: (e) => picked = e,
         ),
       );
@@ -103,7 +103,7 @@ void main() {
       expect(fill('푸쉬업'), AppColors.ink);
       expect(fill('스쿼트'), AppColors.card);
       await tester.tap(find.text('스쿼트'));
-      expect(picked, ExerciseType.squat);
+      expect(picked, ArchiveScope.squat);
       expect(tester.getSize(find.text('스쿼트')).height, lessThan(44));
       expect(
         tester

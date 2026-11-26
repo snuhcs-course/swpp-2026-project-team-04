@@ -15,16 +15,18 @@ import '../widgets/auth_form.dart';
 import 'hold_report_screen.dart';
 import 'result_screen.dart';
 
-/// 운동일지 (P13, draft C), opened from home's 03 / ARCHIVE (named 기록보관소
-/// there): two tabs.
+/// 운동일지 (P13, draft C), opened from home's 03 / ARCHIVE (named 운동일지
+/// there too): two tabs.
 ///
-/// - **전체:** a period (이번 주, 이번 달, 전체 기간) and an exercise; the
-///   battles, counted reps per battle and best score; the battles' scores or
-///   reps in time; the bests of every exercise; the most frequent reject
-///   reasons; and the holds (P13).
+/// - **전체:** a period (이번 주, 이번 달, 전체 기간) and a scope (전체, 푸쉬업,
+///   스쿼트, 버티기). For battles: the battles, counted reps per battle and
+///   best score; 운동량 against the period before; the scores or reps in
+///   time; the bests; the most frequent reject reasons. For 버티기: the
+///   holds, the time held, the longest hold, 운동량, each hold in time, the
+///   poses' bests and the warnings.
 /// - **경기:** chips for 전체, an exercise, 온라인 or 아케이드, and the battles
-///   by day, loaded page by page as the list scrolls. A row opens its
-///   battle's report.
+///   and holds by day, loaded page by page as the list scrolls. A row opens
+///   its report.
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key, this.createViewModel, this.now});
 
@@ -324,14 +326,9 @@ class _OverviewTab extends StatelessWidget {
           ),
       ];
     }
-    final every = state.scope == ArchiveScope.all;
-    final holds = vm.holdSummary;
     return [
       ArchiveSection(
-        child: ArchiveSummary(
-          growth: growth,
-          holds: every ? holds?.count ?? 0 : 0,
-        ),
+        child: ArchiveSummary(growth: growth, holds: vm.summaryHolds),
       ),
       _gap,
       if (vm.volume case final volume?) ...[
@@ -348,15 +345,7 @@ class _OverviewTab extends StatelessWidget {
           children: [
             const ArchiveSectionTitle('개인 최고'),
             const SizedBox(height: AppSpacing.s12),
-            // One exercise shows its own best; 전체 every exercise's and
-            // every pose's (user, 2026-11-26).
-            ArchiveBests(
-              bests: [
-                for (final b in growth.bests)
-                  if (every || b.exercise == state.exercise) b,
-              ],
-              holds: every ? holds?.bests ?? const [] : const [],
-            ),
+            ArchiveBests(bests: vm.scopeBests, holds: vm.scopeHoldBests),
           ],
         ),
       ),

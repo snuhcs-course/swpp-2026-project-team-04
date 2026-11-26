@@ -17,6 +17,7 @@ import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/feedback/form_report_store.dart';
 import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
 import 'package:gymrats_app/viewmodels/history_viewmodel.dart';
 import 'package:gymrats_app/widgets/archive_cards.dart';
 import 'package:gymrats_app/widgets/archive_match_row.dart';
@@ -25,6 +26,7 @@ import 'package:provider/provider.dart';
 
 import '../support/feedback_fakes.dart';
 import '../models/hold_record_test.dart' show holdRecord;
+import '../support/auth_fakes.dart';
 import '../support/fakes.dart';
 import '../support/form_report_fixtures.dart';
 import '../widgets/battle_test_support.dart';
@@ -642,8 +644,9 @@ void main() {
   group('holds (P13)', () {
     Future<void> openWithHolds(
       WidgetTester tester,
-      List<HoldRecord> holds,
-    ) async {
+      List<HoldRecord> holds, {
+      AuthViewModel? auth,
+    }) async {
       final store = InMemoryHoldRecordStore();
       for (final h in holds) {
         await store.save(h);
@@ -657,6 +660,8 @@ void main() {
             Provider<UserRepository>.value(value: repository),
             Provider<FormReportStore>.value(value: InMemoryFormReportStore()),
             Provider<HoldRecordStore>.value(value: store),
+            if (auth != null)
+              ChangeNotifierProvider<AuthViewModel>.value(value: auth),
           ],
           child: MaterialApp(
             theme: AppTheme.light,
@@ -680,6 +685,24 @@ void main() {
       await tester.tap(find.byType(ArchiveHoldRow));
       await tester.pumpAndSettle();
       expect(find.byType(HoldReportScreen), findsOneWidget);
+    });
+
+    testWidgets("the app's signed-in account is the archive's: another "
+        "account's hold on the same phone is not listed", (tester) async {
+      final repository = ScriptedAuthRepository();
+      await repository.logIn(loginId: 'woohyun', password: 'pw');
+      final auth = AuthViewModel(repository: repository);
+      final mine = auth.account!.id;
+      withBattles();
+      await openWithHolds(tester, [
+        holdRecord(endedAt: DateTime(2026, 11, 14, 14, 50), accountId: mine),
+        holdRecord(
+          endedAt: DateTime(2026, 11, 14, 15, 50),
+          accountId: mine + 1,
+        ),
+      ], auth: auth);
+      await toMatches(tester);
+      expect(find.byType(ArchiveHoldRow), findsOneWidget);
     });
 
     testWidgets('아케이드 lists the arcade battles with the holds; there is '

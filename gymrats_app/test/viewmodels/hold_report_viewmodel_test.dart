@@ -49,6 +49,30 @@ void main() {
     expect(vm.metrics.best, isTrue);
   });
 
+  test("only the account's own holds and those kept before accounts are "
+      "compared: the phone keeps every account's (phone check, "
+      '2026-11-26)', () async {
+    HoldRecord earlierOf(int? account, int day, int ms) => holdRecord(
+      accountId: account,
+      endedAt: DateTime(2026, 11, day, 9),
+      heldMs: ms,
+      elapsedMs: ms,
+      warnings: const [],
+      pauses: const [],
+    );
+    final mine = holdRecord(accountId: 7);
+    final store = InMemoryHoldRecordStore();
+    await store.save(earlierOf(8, 23, 60000));
+    await store.save(earlierOf(null, 24, 10000));
+    await store.save(earlierOf(7, 25, 20000));
+    await store.save(mine);
+    final vm = HoldReportViewModel(record: mine, store: store);
+    await vm.load();
+    // Account 8's 60 s hold is left out: (10 + 20) / 2.
+    expect(vm.metrics.recentHeld, 15);
+    expect(vm.metrics.trend.map((h) => h.accountId), [null, 7, 7]);
+  });
+
   test('a given body weight is used', () {
     final vm = HoldReportViewModel(record: record, weightKg: 80);
     expect(vm.metrics.weightKg, 80);

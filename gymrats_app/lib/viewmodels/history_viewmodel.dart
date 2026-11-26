@@ -914,10 +914,6 @@ class HistoryViewModel extends ChangeNotifier {
     if (scope != _state.scope) _set(_state.copyWith(scope: scope));
   }
 
-  /// Shows [exercise] on the 전체 tab.
-  void setExercise(ExerciseType exercise) =>
-      setScope(ArchiveScope.of(exercise));
-
   /// The 전체 tab's values for the chosen period and exercise; null until
   /// the battles load.
   ArchiveGrowth? get growth {
@@ -946,6 +942,28 @@ class HistoryViewModel extends ChangeNotifier {
     if (holds.isEmpty) return null;
     return ArchiveHolds.of(holds, _state.period, _now());
   }
+
+  /// The holds the summary counts: all of the period under 전체, none under
+  /// one exercise.
+  int get summaryHolds =>
+      _state.scope == ArchiveScope.all ? holdSummary?.count ?? 0 : 0;
+
+  /// 개인 최고 of the scope: one exercise shows its own best, 전체 every
+  /// exercise's (user, 2026-11-26).
+  List<ArchiveBest> get scopeBests {
+    final bests = growth?.bests ?? const <ArchiveBest>[];
+    final exercise = _state.exercise;
+    if (_state.scope == ArchiveScope.all || exercise == null) return bests;
+    return [
+      for (final b in bests)
+        if (b.exercise == exercise) b,
+    ];
+  }
+
+  /// The poses' bests beside [scopeBests]: only under 전체.
+  List<HoldRecord> get scopeHoldBests => _state.scope == ArchiveScope.all
+      ? holdSummary?.bests ?? const []
+      : const [];
 
   /// [next] with the user's chip, period and exercise from [kept].
   static HistoryState _choices(HistoryState kept, HistoryState next) => next

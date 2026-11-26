@@ -383,7 +383,7 @@ void main() {
       vm
         ..setFilter(ArchiveFilter.squat)
         ..setPeriod(StatsPeriod.month)
-        ..setExercise(ExerciseType.squat);
+        ..setScope(ArchiveScope.squat);
       expect(told, 3);
       repository.historyPages = [
         [_played(today)],
@@ -445,7 +445,7 @@ void main() {
     test("this week's push-ups: battles, reps per battle, best score and "
         'the chart, oldest first', () async {
       await vm.load();
-      vm.setExercise(ExerciseType.pushUp);
+      vm.setScope(ArchiveScope.pushUp);
       final growth = vm.growth!;
       expect(growth.period, StatsPeriod.week);
       expect(growth.exercise, ExerciseType.pushUp);
@@ -476,11 +476,11 @@ void main() {
     test('전체 기간 and squats', () async {
       await vm.load();
       vm
-        ..setExercise(ExerciseType.pushUp)
+        ..setScope(ArchiveScope.pushUp)
         ..setPeriod(StatsPeriod.all);
       expect(vm.growth!.matches, 3);
       expect(vm.growth!.bestScore, 200);
-      vm.setExercise(ExerciseType.squat);
+      vm.setScope(ArchiveScope.squat);
       expect(vm.growth!.matches, 1);
       expect(vm.growth!.issues, isEmpty);
     });
@@ -816,7 +816,9 @@ void main() {
       await reports.save(
         sampleReport(valid: 9, endedAt: DateTime(2026, 11, 12, 13)),
       );
-      final stats = FakeFeedbackStatsSource([statsPoint(1, mine, reps: 6)]);
+      final stats = FakeFeedbackStatsSource([
+        statsPoint(1, mine, reps: 6, score: 100),
+      ]);
       repository.historyPages = [
         [_played(mine)],
       ];
@@ -830,7 +832,17 @@ void main() {
       );
       await vm.load();
       expect(vm.state.holds.map((h) => h.accountId), [null, 7]);
-      vm.setExercise(ExerciseType.pushUp);
+      // 전체 counts the holds and shows the poses' bests beside the
+      // exercises'; one exercise shows only its own (user, 2026-11-26).
+      expect(vm.summaryHolds, 2);
+      expect(vm.scopeHoldBests.map((h) => h.pose), [HoldPose.plank]);
+      expect(vm.scopeBests.map((b) => b.exercise), [ExerciseType.pushUp]);
+      vm.setScope(ArchiveScope.squat);
+      expect(vm.summaryHolds, 0);
+      expect(vm.scopeHoldBests, isEmpty);
+      expect(vm.scopeBests, isEmpty);
+      vm.setScope(ArchiveScope.pushUp);
+      expect(vm.scopeBests.map((b) => b.exercise), [ExerciseType.pushUp]);
       expect(vm.volume!.current.battles, 1);
       expect(vm.volume!.current.liftedKg, closeTo(6 * 65 * 0.64, 1e-9));
       expect(holdRecordIsOf(null, 7), isTrue);

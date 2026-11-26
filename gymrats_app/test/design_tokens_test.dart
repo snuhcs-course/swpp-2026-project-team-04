@@ -19,6 +19,7 @@ const _checked = [
   'lib/screens/feedback_stats_screen.dart',
   'lib/screens/help_screen.dart',
   'lib/screens/history_screen.dart',
+  'lib/screens/hold_report_screen.dart',
   'lib/screens/hold_stage_art.dart',
   'lib/screens/hold_stage_brief.dart',
   'lib/screens/hold_stage_play.dart',
