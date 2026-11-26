@@ -18,3 +18,6 @@ Updated scoring and tutorial expectations. Exercised the shared score path and t
 Server pytest: 239 passed. accounts/friends_views.py: 184/184 statements. Two concurrent API clients start with an empty pair and end with one accepted friendship visible to both. Tested retry exhaustion and unrelated database errors.
 
 Independent re-review reproduced simultaneous 503 responses. The updated endpoint writes first and resolves a pair uniqueness conflict within the transaction. Full server suite: 245 passed; friends_views.py 187/187 statements. Added malformed JSON regressions.
+
+### 2026-11-27 · P10 protocol handoff
+Validated the documented virtual-assignment JSON example and field names, target range, wait and friend-queue flag rules against PR #102 at `1a164d6`. No runtime code changed in the documentation branch.

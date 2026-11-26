@@ -104,11 +104,12 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 | 방향 | 이벤트 | 주요 payload 및 동작 |
 |---|---|---|
 | 서버→앱 | `session.welcome` | `player_id`, `connection_id`, `heartbeat_interval_ms: 5000`, `heartbeat_timeout_ms: 15000` |
-| 앱→서버 | `queue.join` | `exercise`, `avatar_id`(선택, 캐릭터 id, 4절). v1은 `push_up`만 지원. 서버가 참가 요청을 수락한 순서(FIFO)대로 두 명씩 매칭 |
+| 앱→서버 | `queue.join` | `exercise`, `avatar_id`(선택, 캐릭터 id, 4절). 운동은 `push_up` 또는 `squat`. 같은 운동의 일반 대기열은 FIFO. 친구 대전의 `friend_id`와 Iteration 5의 선택 필드 `accept_virtual`은 아래 참조 |
 | 서버→앱 | `queue.joined` | `queue_id`. 대기열 참가 확인, 상대를 찾을 때까지 유지. 취소·접속 종료 시 대기열에서 제거하며 재참가는 맨 뒤에 추가 |
 | 앱→서버 | `queue.cancel` | `queue_id` |
 | 서버→앱 | `queue.cancelled` | `queue_id`. 실제 대기열에서 제거 완료 |
 | 서버→앱 | `match.found` | `players`, `duration_ms: 30000`, `ready_deadline_ms` |
+| 서버→앱 | `match.virtual` | 일반 대기열에서 가상 상대를 수락한 앱에 한 번 전송. payload는 `exercise`, `opponent.display_name`, `opponent.expected_reps` |
 | 앱→서버 | `match.ready` | `ready: true/false`. 카메라·시작 자세가 준비됐는지 알림 |
 | 서버→앱 | `match.ready_state` | `ready_player_ids` |
 | 서버→앱 | `match.start` | `start_at_ms`, `end_at_ms`. 서버가 두 사용자 모두 준비된 경우 한 번 발행 |
@@ -133,6 +134,27 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 앱은 연결 후 `clock.sync`를 3회 보내며 payload에 `client_sent_ms`를 넣는다. 서버는 `clock.synced`로 같은 값과 `server_received_ms`, `server_sent_ms`를 돌려준다. 앱은 응답 수신 시각을 기록하고 왕복 지연이 가장 작은 표본으로 서버 시각 오프셋을 추정한다. 연결 복구 때도 다시 측정한다.
 
 앱은 서버 시각 추정치로 카운트다운을 표시하되 최종 판정은 서버가 한다. 타이머 진행은 단조 시계에 기준점을 고정해 기기 벽시계 변경의 영향을 막는다. 기본 종료 시각은 `start_at_ms + 30000`이고, 앱이 백그라운드에 가거나 연결이 끊겨도 멈추지 않는다. 서버의 경기 제한 시간 측정에도 단조 시계를 사용한다. 앱은 이전 60초 서버의 응답도 해석할 수 있지만, 30초 규칙과 새 거절 사유를 실제 적용하려면 이 통합본의 서버 배포가 필요하다.
+
+### 일반 대기열의 가상 상대 (Iteration 5 · P10)
+
+`queue.join.payload.accept_virtual`은 선택적 불리언이다. 같은 운동의 실제 상대가 대기 중이면 실력 차와 관계없이 먼저 들어온 사람과 즉시 매칭해 `match.found`를 보낸다.
+
+| 참가 요청 | 동작 |
+|---|---|
+| 일반 대전, 필드 생략 또는 `false` | 실제 상대를 계속 기다린다. |
+| 일반 대전, `true` | 15초가 지나도 대기 중이면 서버의 다음 확인 시 대기열에서 제거하고 `match.virtual`을 한 번 보낸다. 취소했거나 연결을 종료한 요청에는 보내지 않는다. |
+| 유효한 `friend_id`, 필드 생략 또는 `false` | 지정한 친구를 기다린다. |
+| 유효한 `friend_id`와 `accept_virtual: true`, 또는 불리언이 아닌 `accept_virtual` | `INVALID_PAYLOAD`로 거절한다. |
+
+서버 응답 예시
+
+```json
+{"v":1,"type":"match.virtual","server_time_ms":1800000000000,"payload":{"exercise":"push_up","opponent":{"display_name":"근손실","expected_reps":7}}}
+```
+
+`match.virtual`에는 `match_id`나 상대 계정 ID가 없다. 앱은 표시 이름과 목표 유효 횟수(정수 1~60)를 받아 VS 화면에서 AI로 표시한 뒤 기기에서 봇 대결을 진행한다. 실제 상대와 주고받는 `match.ready`는 보내지 않는다. 결과는 플레이한 계정에만 저장한다.
+
+배포 순서는 Django의 내부 조회 라우트 → 대전 서버 → 앱이다. 이 변경에 DB 마이그레이션은 없다. 구버전 대전 서버는 새 참가 필드를 거절한다.
 
 ## 6. 관절 데이터
 

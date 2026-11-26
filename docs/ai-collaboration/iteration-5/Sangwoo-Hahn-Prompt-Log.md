@@ -17,3 +17,6 @@
 그럼 지금 문제 해결해서 브랜치 수정 및 커밋과 푸쉬할 수 있어?
 
 코덱스 리뷰 및 머지 요청 원문: codex 리뷰 후 머지까지 해줘
+
+### 2026-11-27 · P10 protocol handoff (excerpt)
+넘기는 일: docs/iteration-2-protocol.md에 새 메시지를 추가해 줘. 내 범위 밖 파일이야.

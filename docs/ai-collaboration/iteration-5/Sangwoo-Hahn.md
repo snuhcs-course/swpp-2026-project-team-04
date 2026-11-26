@@ -17,3 +17,6 @@ Codex updated the shared knee-rep points rule, tutorial copy and regression test
 Codex implemented and tested bounded transaction retries for SQLite contention in the friend request endpoint at the PM's request. No manual edits reported.
 
 Independent Codex review identified a remaining SQLite lock-upgrade race and malformed request handling. Codex updated the implementation and regression tests before re-review.
+
+### 2026-11-27 · P10 protocol handoff
+Codex compared the wire contract in PR #102 with the PM handoff and documented the optional flag and the virtual assignment. Inspecting the validator clarified that a valid friend request can explicitly set the flag to false. No manual edits were reported.
