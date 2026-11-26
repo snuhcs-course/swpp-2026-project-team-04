@@ -731,3 +731,35 @@ PR 본문 형식을 바로잡는다. 체크리스트는 내가 명세로 요구�
 2. 앞 메시지(Ready와 Codex 대응)를 아직 시작하지 않았으면 이 수정 뒤에 진행한다. 이미 Ready로 바꿨으면 본문만 고친다.
 3. 이 메시지를 프롬프트 기록에 남긴다.
 </pasted_content id=\"2c8e\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-26T17:31:31.138Z -->
+[Woohyun Song, 11-27 02:31] "<pasted_content id=\"c294\">
+\"코치 대화 · 캐릭터 어미 다듬기\" 작업을 시작한다. PM 승인 전이라 로컬에서만 진행한다.
+명세는 C:\dev\handoff\coach-voice\SPEC.md 이다. 저장소 밖 파일이라 읽기만 하고, 복사하거나 커밋하지 않는다.
+
+1. git status가 깨끗한지 확인하고 fetch한다. 이 worktree의 A7 브랜치(feat/iter5-defeat-pose)는 main에 머지됐다. SPEC 0절대로 로컬 ownership.json에 A9 단계를 더하고(due는 임시 11/30/2026), origin/main에서 feat/iter5-coach-voice를 원격 추적 없이 판다. --status로 확인하고 progress.md에 적는다. Windows 경로는 raw 문자열이나 슬래시로 쓴다.
+2. 로컬 커밋은 해도 된다. push, PR, 원격 브랜치는 내가 PM 승인을 알린 뒤에 한다.
+3. flutter pub get을 하고 SPEC.md를 끝까지 읽는다. coach_script.dart, coach_viewmodel.dart, 코치 화면 위젯, 그리고 coach_script_test, coach_viewmodel_test, coach_screen_test를 읽는다.
+4. 코드를 쓰기 전에 SPEC 8절의 계획을 보고하고 기다린다. SPEC 1절과 2절의 대사 표는 정해진 것이라 다시 묻지 않는다. 다만 넘침 때문에 줄여야 할 문장이 있으면 계획 보고에 적는다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+<!-- f10a982c 2026-11-26T17:49:34.774Z -->
+[Woohyun Song, 11-27 02:49] "<pasted_content id=\"c294\">
+PM 승인이 왔다(11/27): A9, feat/iter5-coach-voice, 마감 11/30/2026, 예상 1시간. PM은 coach_script.dart와 coach_script_test.dart 두 파일만 고치라고 했다. 이제 push와 PR을 해도 된다.
+
+결과 카드는 A도 B도 아니고 이렇게 한다.
+- 결과 카드의 \"이번 판 이야기해 줄게{e}!\"는 P15(송현우, \"경기 종료 후 캐릭터 멘트와 리포트 진입\") 범위라 A9에서 고치지 않는다. result_cards.dart, result_screen.dart와 그 테스트는 건드리지 않는다. 현우에게는 내가 따로 알린다.
+- 그래서 ending은 지금처럼 읽을 수 있게 둔다. 주석에 \"결과 카드용. 코치 대사는 exclaim만 쓴다\"라고 적는다. coach_script.dart 안의 대사는 모두 exclaim으로 만들고, 규칙은 계획한 테스트로 지킨다.
+- coach_viewmodel_test.dart 5곳은 대사가 바뀌어 고칠 수밖에 없다. PM이 승인한 두 파일 밖이므로 선조치 후보고로 예외 줄과 PR Exceptions 절에 적는다. coach_screen_test.dart는 고치지 않으니 allow에서 빼도 된다.
+나머지 계획(exclaim 모양, 아홉 곳, 규칙 검사 테스트, 기존 테스트 수정, 넘침)은 그대로 승인한다.
+
+진행 순서:
+1. ownership.json의 A9 due를 11/30/2026으로 확정하고, progress.md에 PM 승인(2026-11-27)을 적는다. .codex-harness는 A8 세션과 같은 파일이므로 줄을 더하거나 해당 줄만 고친다.
+2. 코드와 테스트, analyze, 전체 test, reviewer APPROVE, 노트까지 마친다.
+3. push하고 draft PR을 연다. 본문은 영어로 쓰고, SPEC 7절대로 대사 전후 표(그루)와 체크리스트를 넣는다. Exceptions 절에는 coach_viewmodel_test.dart를 적는다. 결과 카드 문장은 P15에서 다룬다고 Notes에 한 줄 적는다.
+4. Ready로 바꾸지 말고 멈춰서 보고한다. battle_demo로 질문 줄과 끝 줄을 띄우는 명령과 찍을 화면 두 장을 함께 준다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+<!-- f10a982c 2026-11-26T18:02:30.177Z -->
+[Woohyun Song, 11-27 03:02] "SPEC.md가 v1.1로 바뀌었다(C:\dev\handoff\coach-voice\SPEC.md, 0절 예외 문구와 7절 PR만 바뀜). PR 본문에 체크리스트 절을 만들지 않고, 하네스 pull-request 스킬의 형식을 그대로 따른다. 대사 전후 표는 What it does에, 테스트는 How to test의 Acceptance criteria → tests 표에, 폰 확인은 Manual check에 넣는다. coach_viewmodel_test.dart 예외와 결과 카드 문장을 P15에서 다룬다는 점은 Review notes에 적는다. 앞 메시지의 \"체크리스트\"와 \"Exceptions 절\"은 이것으로 바꾼다. 이 메시지를 프롬프트 기록에 남긴다."

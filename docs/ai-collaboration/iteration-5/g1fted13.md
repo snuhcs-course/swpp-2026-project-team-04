@@ -1047,3 +1047,85 @@ These were made from the A5 session at the user's word; their full evidence is i
 ### Takeaway
 - When a shared timing value changes, search every test for it and for the keys it drives (`hold-cheer`,
   `HoldTiming.cheer`, "좋아!") before the plan, not only the step's own files.
+
+## A9 `feat/iter5-coach-voice` – 코치 대화 · 캐릭터 어미 다듬기 (a separate task approved by the PM 2026-11-27), 2026-11-27
+
+### a. Where AI was used
+- **The hand-off:** `coach-voice/SPEC.md` v1, then v1.1 (only the exception wording and the PR's shape changed),
+  outside the repo and not committed. Its dialogue table is the user's decision and was used as written.
+  TODO(Woohyun Song): who wrote SPEC v1 and v1.1, and with which tool.
+- **Planning:** before any code, Claude Code (Claude Opus 5.5) read the spec, `coach_script.dart`, the coach view
+  model, screen and widgets, and their three tests. It reported the plan of spec section 8 and waited (Prompt Log,
+  11-27 02:31). It also found a reader of `CoachVoice.ending` that the spec had not listed: the result card's line
+  "이번 판 이야기해 줄게{e}!" (`result_screen.dart` L180, `result_cards.dart` L446), which breaks the same rule. Before
+  the plan it measured every new line with the app's fonts in a throwaway test (not committed), so the plan could say
+  that no sentence needed shortening.
+- **Local harness (not committed):** the A9 step, its allow list narrowed to the PM's two files, and one exception
+  line for `coach_viewmodel_test.dart`. `.codex-harness` is a junction shared with the A8 session in the main folder,
+  so every change added or edited single lines.
+- **The code and tests:** Claude Code wrote all of it, in commits `c7157ef` (the code and tests) and `d68cfd9` (the reviewer's two test fixes):
+  - `lib/services/feedback/coach_script.dart`: `CoachVoice.exclaim` (L249–255), the doc of `ending` (L245–247), and
+    every line of the talk through `exclaim` (L693, L744, L758, L770, L791, L810, L866, L881, L894, L980, L993,
+    the question L1049–1059, the answers L1062–1091, the end L1094–1097).
+  - `test/services/feedback/coach_script_test.dart`: the helpers `_endings`, `_talks`, `_branchMarks`, the new group
+    "the ending only after "~다", before "!" (A9 spec 1 and 5)", and the 14 old expectations.
+  - `test/viewmodels/coach_viewmodel_test.dart`: 5 lines (the exception).
+- **Review:** the `reviewer` subagent: run 1 APPROVE on `c7157ef` with four Minor points, all fixed (item d).
+- **Not done by AI:**
+  - The user and the PM decided the result card (neither of the plan's two options: it stays P15's, and
+    `ending` stays readable), the two files and the exception, and the PR's shape (SPEC v1.1).
+  - The phone check is the user's. TODO(Woohyun Song): the result of the phone check.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-27] "4. 코드를 쓰기 전에 SPEC 8절의 계획을 보고하고 기다린다. SPEC 1절과 2절의 대사 표는 정해진 것이라 다시 묻지 않는다. 다만 넘침 때문에 줄여야 할 문장이 있으면 계획 보고에 적는다."
+- [Woohyun Song, 11-27] "결과 카드는 A도 B도 아니고 이렇게 한다."
+- [Woohyun Song, 11-27] "PR 본문에 체크리스트 절을 만들지 않고, 하네스 pull-request 스킬의 형식을 그대로 따른다."
+
+### c. What AI did well
+- **A rule test that can fail:** the rule check builds 21 talks for each of the five characters and checks every
+  line. A table of 34 branch marks fails the test when a talk is dropped and a branch goes unsaid. Four deliberate
+  mistakes in `coach_script.dart` (the old end line, a typed-in "수고했다범!", the ending twice, the old question)
+  each made it fail, and the file was put back identical.
+- **The overflow question answered before the code:** measuring the new lines with the app's fonts at the overflow
+  test's sizes showed that the longer questions still fit, so the plan could leave the widgets alone, and
+  `coach_screen_test.dart` passed unchanged.
+- **The unlisted reader of `ending`:** found by a search before the plan, so the PM could decide the result card
+  before any code depended on making `ending` private.
+
+### d. Hallucinations / errors
+- **The spec's count:** SPEC 5.4 said about 36 places in `coach_script_test.dart`. The search found 14 tests (18
+  lines) that expected the changed lines. The other lines with an ending ("수고했다범!", "미션 성공이다범!") already
+  follow the rule and did not change.
+- **Slips in this session, each caught:**
+  - progress.md first said 33 branch marks; a count of the map gave 34.
+  - One mutation command broke on shell quoting; the mutations then ran from a small script file.
+  - Two edits of progress.md were refused because the A8 session had changed the shared file; each was re-read
+    and the edit applied to the current text only.
+- **Reviewer run 1 (Minor points, all fixed):**
+  - The rule test's branch set was shared by the five characters, so it checked less than its comment said; now
+    each character must say every branch.
+  - `coach_viewmodel_test.dart` L467 had been narrowed to the line's fixed words; it expects the whole recall line
+    again.
+  - The wiki Requirements 5.6 (criterion 4) still quotes the old shapes "다음 판 미션, 뭐로 할까…?" and "지난번
+    미션 기억나…?"; it is now a design-doc change for the PM (the PR's Review notes).
+  - The local exception line still said "PR Exceptions"; it now says Review notes (SPEC v1.1).
+
+### e. Prompt revisions
+- **The result card:**
+  - Before (the plan): A, fix the card's line too (scope added to `result_cards.dart`, one line of P15's
+    `result_screen.dart`), or B, leave the card and keep `ending` public.
+  - After (11-27 02:49): neither. The card line is P15's, `ending` stays readable with a doc saying the talk uses
+    `exclaim` only, and the rule is held by tests.
+  - Why it worked: the plan named the files and owners, so the PM could keep A9 to two files.
+- **The PR's shape:**
+  - Before (the approval message and SPEC v1): a checklist and an Exceptions section.
+  - After (SPEC v1.1, 11-27 03:02): the `pull-request` skill's sections only; the table in What it does, the tests in
+    How to test, the exception and the P15 note in Review notes.
+  - Why it worked: the body follows the same skill as the team's other PRs.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Search for every reader of a field before planning to hide it: here the one reader outside the spec decided the
+  design.

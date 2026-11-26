@@ -2100,3 +2100,86 @@ No camera, ML Kit or device is needed:
 - 9.12 Fits → hold_stage_play_test 'fits (A8 spec 9.12)' group ('stage 3: every character stays on the 360 × 390
   stage, …', 'stage 5: …', and the three sizes); hold_stage_screen_test '"잘한다!" fits …'
 - 9.13 Existing tests → the full `flutter test` above; the changed tests are listed above
+
+#### 2026-11-27 · code at commits `c7157ef` and `d68cfd9` (the reviewer's two test fixes) · step A9 `feat/iter5-coach-voice` (코치 대화 · 캐릭터 어미 다듬기, a separate task approved by the PM 2026-11-27)
+A9 fixes how the characters end their sentences in the talk after a battle (`lib/services/feedback/coach_script.dart`,
+from iteration 4's A10 and A11). Each character has an ending (GYM마우스 찍, 그루 깡, 곰탱이 곰, 펭뚱이 펭, 물렁범 범).
+Before, the script glued it to the end of any sentence, which gave lines like "뭐로 할까깡?", "잘했어범!" and
+"리포트로 돌아갈게찍.". It follows the hand-off `coach-voice/SPEC.md` v1.1 (2026-11-27, not committed):
+- **The rule:** the ending comes only right after a sentence ending in '다', and '!' follows it. Questions (…까?,
+  …나?), suggestions (…자), promises (…게) and …어 take no ending, and a line has it at most once.
+- **One way in:** `CoachVoice.exclaim(saying)` (L249–255) asserts that `saying` ends in '다' and returns `saying`
+  + ending + '!'. Every line in `coach_script.dart` now gets the ending through it. `CoachVoice.ending` stays readable
+  because the result card's line (`result_cards.dart`, P15's) still reads it (the PM's decision, 2026-11-27).
+- **Nine lines rewritten** (SPEC 2), e.g. 그루's question "다음 판 미션, 뭐로 할까깡?" → "다음 판 미션을 정할
+  차례다깡! 뭐로 할까?". The eight lines that already followed the rule say the same words. The marked runs stay
+  where they were.
+
+The branch starts at `origin/main` `38726e8` (A7 #101 and P14 #100 in). I ran these in `gymrats_app/` on Windows,
+without coverage (this PC's rule):
+
+```sh
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/services/feedback/coach_script_test.dart test/viewmodels/coach_viewmodel_test.dart test/screens/coach_screen_test.dart
+```
+
+No server, camera or device is needed: the talk is built from made-up form reports (`test/support/goal_fixtures.dart`)
+and `MemoryGoalStore`.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | not changed by A9 | 11/27 | CI comment "Tests and coverage (GitHub Actions)" on the A9 PR |
+| ViewModel | flutter_test, fakes | 90% | not changed by A9 | 11/27 | same CI comment |
+| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the A9 PR's CI comment; `coach_script.dart` from its lcov parts | 11/27 | same CI comment |
+| View | flutter_test (widget) | 75% | not changed by A9 | 11/27 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed by A9 | 11/27 | same CI comment |
+
+- **Tests:** `flutter analyze` found no issues. The full `flutter test` passed 4963, failed 0 and skipped 10 on the
+  code of `c7157ef`, and the same again on `d68cfd9` after the reviewer's test fixes. The 10 skipped are the ones already skipped on `main` (a live server smoke test and 9
+  known push-up judge errors), untouched.
+- **The step's files:** the three files in the last command passed 118 tests on `c7157ef`: coach_script 72 (68 before, 4
+  new), coach_viewmodel 26, coach_screen 20 (unchanged). On `origin/main` `38726e8` the same files passed 114.
+- **Review:** the reviewer's run 1 on `c7157ef` approved with four Minor points. Two changed the tests in `d68cfd9`:
+  the branch check now runs for each character, and the recall test expects the whole line again (as before
+  A9). The two files passed again (72, 26).
+- **Mutations:** four deliberate mistakes in `coach_script.dart`, each undone (the file compared identical after):
+  the old end line "…돌아갈게{e}." (the rule test and the table test failed), "수고했다범!" typed by hand (the rule
+  test: GYM마우스 said 다범!), the ending twice in the pace line (the rule test: 2 > 1), and the old reached question
+  "다음 미션은 뭐로 할까{e}?" (the rule and table tests).
+- **Overflow (SPEC 4):** `coach_screen_test.dart` is unchanged and passes: every page at 360×780, 393×852, 320×640
+  with 1.3× text and 360×780 with 2× text (capped at 1.5×), and the four-line check for every character. Before the
+  code, a throwaway measurement (app fonts, bold, all five endings, not committed) gave at most 3 lines at 360 and
+  1× and at most 4 at 320 and 1.3× or 360 and 1.5× for every new line, one line more than before at most. No
+  sentence had to be shortened, and no coach widget changed.
+- **Changed existing tests:** 14 tests in `coach_script_test.dart` that expected the old lines (the four questions,
+  the two answers, the end, the slowed pace, the good point ×2, the recall, the voice test now checks the new rule, the
+  W11 step test now uses `exclaim`); 5 lines in `coach_viewmodel_test.dart` (L299, L395, L425, L467 now the whole recall line, L521). The two
+  `.ending` checks of the voice test stay (it is still public). No other test changed.
+- **Out-of-step file:** `test/viewmodels/coach_viewmodel_test.dart`, only the 5 lines above, outside the two files the
+  PM approved (act first and report after, 2026-11-27).
+- **Coverage:** TODO(Woohyun Song): the A9 PR's CI comment "Tests and coverage (GitHub Actions)" (commit, run link,
+  layers, `coach_script.dart` from the run's lcov parts); not measured on this PC.
+- **Phone check:** TODO(Woohyun Song): the question line and the end line in the talk on the phone (a release build
+  of `lib/demo/battle_demo.dart`); not checked yet.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Service | `test/services/feedback/coach_script_test.dart` (updated) | **New (A9):** `exclaim` puts each character's ending and '!' after a saying in '다'; it asserts on a question, a suggestion, a promise, …어, a closed sentence and an empty one; every line of 21 talks × 5 characters (talk, question, each answer, the end) has the ending only right after '다' and right before '!', at most once, never before '?', and no other character's ending, and each character says all 34 branches; the nine changed lines word for word for all five characters with their marked runs, 그루's question as the spec writes it, 이었 after a final consonant.<br>**Updated:** the 14 tests that expected the old lines |
+| ViewModel | `test/viewmodels/coach_viewmodel_test.dart` (updated) | the 5 lines that expected the old answer, end, recall and question |
+
+### Acceptance criteria → tests (SPEC 5)
+- 5.1 The rule on every branch → coach_script_test 'every line of every branch, for every character: the ending only
+  right after "다" and right before "!", at most once, never before "?", and no other character's ending'
+- 5.2 The nine lines → coach_script_test 'the nine changed lines, word for word, for every character, with the marked
+  runs where they were (spec 2)'
+- 5.3 The function fails on other sayings → coach_script_test 'exclaim fails on a saying that does not end in "~다": a
+  question, a suggestion, a promise, "~어", or one already closed'; 'exclaim puts each character's ending and "!"
+  after a saying in "~다"'
+- 5.4 Old tests → the 14 updated coach_script_test tests and the 5 coach_viewmodel_test lines above; the full
+  `flutter test`
+- 5.5 Overflow → coach_screen_test 'every page fits <size> without an overflow; every choice is above the dialog box
+  and can be tapped' (4 sizes) and 'every line of a squat and a push-up battle, for every character', 'the check of
+  the last goal (A11 spec 6), reached and missed, of each kind, for every character' (unchanged)
