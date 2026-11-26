@@ -45,6 +45,22 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
   the play-again row, removing the rule line, and the app-wide banner with 거절 · 수락 (the user's decisions on the
   emulator).
 
+### P10 `feat/iter5-skill-matching` (team plan #6, simulated users and skill-based matchmaking, 2026-11-27)
+- Battle server: `server/lib/skill_matchmaker.dart` and `server/lib/simulated_player.dart` (whole files: median of the
+  latest 5 battles, sorted index with binary search, cost measurement, the simulated opponent), the 15 s assignment,
+  `accept_virtual`, `match.virtual` and the estimate refresh in `server/lib/battle_server.dart`, `loadSkills` in
+  `server/lib/result_store.dart`: Claude Code.
+- Server: `SkillsView` (`POST /internal/skills`) in `server/matches/internal.py`, its route, and
+  `server/tests/test_skills.py`: Claude Code.
+- App: `battleVirtualWait`/`battleVirtualOpponent` in `lib/shared/battle_protocol.dart`, `OnlinePhase.virtualAssigned`
+  and `VirtualOpponent` in `online_battle_session.dart`, `SimulatedUserPace` in `bot_matchmaker.dart`, the simulated
+  opponent's versus screen and AI battle in `online_lobby_screen.dart`, the one-line `found` case in
+  `telemetry_service.dart`, every P10 test, and `docs/iteration-5/matchmaking.md`: Claude Code.
+- Manual check on the Android emulator against local Django and battle servers with a throwaway database: Claude Code
+  (adb taps and screenshots).
+- Not used: the estimate rule (median of the latest 5), real players first with no skill limit, the 15 s wait, and
+  showing the copied account's nickname (the user's decisions); the scope exceptions (PM approval).
+
 ## 2. Prompt History
 [Jinyoung Park, 11-23] "task 수행해. 근데 회원가입할때 구글이랑 카카오톡 둘다 지원하게 해주고, 회원가입시 … 이런식으로 키, 몸무게 추가 정보도 받게 해줘."
 [Jinyoung Park, 11-24] "카카오도, google가입도 닉네임은 필요함"
@@ -53,9 +69,23 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 [Jinyoung Park, 11-24] "friend추가하는 기능은 닉네임으로 추가?"
 [Jinyoung Park, 11-24] "최근 설정으로 다시 하기 대신에 친구와의 대전으로 이름 바꿔서 저기 배치해주고 30초, 점수 높은쪽 승리 이거는 뺴자"
 [Jinyoung Park, 11-24] "상대방이 대전 걸면 위의 친구가 대전을 신청했어요 이런식으로 뜨게 하면 안된 ㅏ"
+[Jinyoung Park, 11-27] "유져의 실력 추정치는 최근 5개의 경긱 각가을 평균을 구하고 그것의 median으로 해서 평가를 좀 해줘. 그리고 그 user의 닉네임이 배틀시에 떠야함. …"
+[Jinyoung Park, 11-27] "일단 바로 실제 유저 있으면 매칭 시켜 그다음에 없을때 가상 유저만 실력 비슷한 유저로(즉, 실제 유저는 바로 바로 매칭시켜()"
+[Jinyoung Park, 11-27] "실제 유저 대기 시간 15초"
 Full list: `ishlove77-Prompt-Log.md`.
 
 ## 3. Problems and How They Were Caught
+- P10: the first design could not see bot battles at all (the battle server only knows online results), so the
+  estimates needed a Django endpoint outside P10's files; Claude stopped and asked, and the PM approved the exception.
+- P10: the reviewer subagent returned CHANGES_REQUESTED: a search ending with a simulated opponent never finished its
+  P17 telemetry attempt (Claude had left it as a TODO with `_matching = null`), and the design-doc changes were missing.
+  Claude's own lobby test for that case checked the key `name` instead of `event`, so it passed while checking nothing;
+  rewritten to assert one `found`. Telemetry fixed after a second PM-approved one-line exception.
+- P10: the lobby disposed the online session inside its own listener call (assertion "dispose() called during
+  notifyListeners()"), caught by the first widget-test run; the release now runs in a microtask.
+- P10: the first lobby tests used `pumpAndSettle`, which ran the 5 s warning and the 3 s countdown and left the versus
+  screen before the check; found with a debug print and replaced by explicit pumps.
+
 - The reviewer subagent returned CHANGES_REQUESTED three times on P7 (logged in the progress file's Review log):
   the server accepted `NaN` for height and weight (DRF `FloatField` passes min/max) and stored it before a 500 — fixed
   with a finite check and NaN/Infinity tests; the design-doc note named `google-auth` though the code used PyJWT; the
@@ -118,6 +148,14 @@ Full list: `ishlove77-Prompt-Log.md`.
   and released by the app when the battle ends.
 
 ## 4. Revisions and Decisions
+- P10 matchmaking: task.md asked for the smallest expected skill gap among real players with a P5 tolerance → the user
+  chose real players at once (FIFO) and skill only for the simulated opponent after 15 s, estimated as the median of the
+  latest 5 battles.
+- P10 data source: battle-server-only estimates (online results only, lost on restart) → Django `/internal/skills`
+  read at start and every 5 minutes (user chose option A, PM approved).
+- P10 simulated battle: played on the phone as an AI battle, because the P11 saver writes a row for both players of
+  an online battle and would put the battle in the copied account's history.
+
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so
   the server answers `signup_required` and creates nothing until the nickname step.
@@ -133,7 +171,7 @@ Full list: `ishlove77-Prompt-Log.md`.
   waiting rooms read it every 2 s, and an accepted invite not paired within 30 s ends the wait.
 
 ## 5. Manual Fixes
-None observed in P7 or P9: every code change was made by Claude Code and checked by the user.
+None observed in P7, P9 or P10: every code change was made by Claude Code and checked by the user.
 
 ## 6. Reflection
 TODO(Jinyoung Park): what worked and what to change, at the end of the iteration.

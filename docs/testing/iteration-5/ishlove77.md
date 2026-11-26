@@ -5,6 +5,52 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (team plan #6): simulated users and skill-based matchmaking
+Real players in the main queue are still paired at once (FIFO). A player whose app sends `accept_virtual` and who
+finds no real player within 15 s gets `match.virtual`: a simulated user copying the account whose skill estimate (the
+median valid reps of the latest 5 battles per exercise) is closest to theirs, under that account's nickname. The phone
+plays it as an AI battle at that pace. The battle server reads the estimates from the new loopback-only
+`POST /internal/skills`. Commands from `gymrats_app/` and `server/` on macOS (Flutter 3.47.5 / Dart 3.13.4,
+Python 3.12). The commit is the PR head; see the PR for its hash.
+
+| Component | Frameworks | Target | Actual (P10 files) | Date | Command / Report |
+|---|---|---|---|---|---|
+| Service | flutter_test, fakes, loopback HTTP/WebSocket stand-ins | 85% | bot_matchmaker 100% (13/13), battle_protocol 98.1% (52/53), telemetry_service 88.6% (163/184), online_battle_session 76.2% (400/525, see below) | 11/27 | `coverage_per_file.sh` + `coverage_by_layer.py --files` |
+| View | flutter_test (widget) | 75% | online_lobby_screen 95.7% (242/253) | 11/27 | same run |
+| All client layers | | | Model 99.4%, ViewModel 98.5%, Service 95.7%, View 97.4%, total 97.2% | 11/27 | `coverage_by_layer.py coverage/lcov.info` |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total; matches/internal.py 94% | 11/27 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 4936 passed, 0 failed, 10 skipped (the existing opt-in live server and device checks). Server `pytest` 293 passed, 0 failed
+  (15 in `test_skills.py`).
+- **Coverage notes:** `online_battle_session.dart` shows 76.2% because its own test file
+  (`online_battle_session_test.dart`) hit the per-file runner's 180 s timeout and is not in the numbers; the run also
+  left out `ai_eval_test`, two demo tests, `arcade_flow_test`, `online_preparation_test` and
+  `social_signup_screen_test` (timeouts, unchanged by P10). The per-file run was taken before the reviewer's round-2
+  fixes (malformed `match.virtual`, telemetry line). The new battle server files (`server/lib/skill_matchmaker.dart`,
+  `simulated_player.dart`) sit outside the Flutter package and are not reported in lcov; they are covered by 36
+  unit tests and 18 server-level tests.
+- **Shortfalls:** none against the layer targets.
+- **Cost measured for P20** (`skill_matchmaker_test.dart` "measures the build apart from the lookups (P20 setup)",
+  `Random(20)`, 10 000 accounts, 10 000 lookups, Apple M4, JIT): build 20.7–32.5 ms, 0.17–0.59 µs per lookup over
+  four runs; table in `docs/iteration-5/matchmaking.md`.
+- **Manual check:** Android emulator (Medium Phone) against the working-tree Django API and battle server on this Mac
+  with a throwaway database (accounts with medians 9, 9, 20 and 4), app endpoints changed only for the run and
+  reverted: the online push-up search waited 15 s, then MATCH FOUND showed "테스터 vs 근손실 AI" (the closest
+  estimate), the AI battle's pose setup opened, the leave dialog named 근손실, and telemetry stored
+  `matching_finished` with `found` for both searches. Not checked: finishing the AI battle (the emulator camera cannot
+  pass the pose setup) and two real phones.
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_skills.py` | Server | latest five per exercise newest first, accounts with no battle left out, a time tie goes to the newer row, another limit, bad limits refused, only nicknames and reps sent, secret required, closed through the proxy, from another host and without a configured secret, empty list |
+| `test/services/online/skill_matchmaker_test.dart` | Service (battle server) | median (odd, even, latest five only, outliers, none), record parsing and malformed records, nearest estimate, never the player themself, ties, nobody to copy, average and default for new players, exercises apart, repeated account, rebuild, nearest equals a full scan on random data, build and lookup cost measured apart |
+| `test/services/online/simulated_player_test.dart` | Service (battle server) | copies the closest account by nickname, never the player, new player from the average, RepBot fallback, 1–60 reps, payload without the account id |
+| `test/services/online/skill_matching_test.dart` | Service (battle server) | real players paired at once, a real player within the wait taken first, closest account after the wait, assigned once and never paired, joining again, cancel and disconnect get none, older app keeps waiting, friend battles never get one and may not ask, `accept_virtual` type, estimates read at start and refreshed, failed read keeps them, a slow read does not hold up the start, RepBot at the default skill, `HttpResultStore.loadSkills` request, malformed records, error |
+| `test/services/online/online_battle_session_test.dart` (updated) | Service | `accept_virtual` only in the main match, `match.virtual` ends the search with the opponent, a malformed one ends it as failed, one after a match is ignored |
+| `test/screens/online_lobby_screen_test.dart` (updated) | View | versus screen with the copied nickname tagged AI, AI battle at the copied pace once after the countdown, leaving the versus screen, the search ends as found once (P17), default builder opens the AI battle screen |
+| `test/services/matching/bot_matchmaker_test.dart` (updated) | Service | `SimulatedUserPace` range, at least one rep, a planned round makes about that many reps |
+| `test/shared/battle_protocol_test.dart` (updated) | Service | 15 s wait, `match.virtual` opponent parsing and malformed payloads |
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fix for the Codex review of `978e092`
 One P2 finding was fixed: on the friends page, a 수락 that comes back after another battle (or the exercise sheet) has
 opened over the page no longer opens a second lobby; the accepted invite is taken back, so the friend's waiting room

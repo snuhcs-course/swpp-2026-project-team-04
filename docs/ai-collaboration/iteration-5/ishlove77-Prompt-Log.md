@@ -556,3 +556,34 @@ The messages after this summary are the most recent messages from before compact
 ## 2026-11-24 · Jinyoung Park · feat/iter5-friend-battles
 <!-- b7f2c482 2026-11-24T08:58:51.601Z -->
 [Jinyoung Park, 11-24 17:58] "됐음?"
+
+## 2026-11-27 · Jinyoung Park · feat/iter5-skill-matching
+<!-- 5e0c5b9b 2026-11-26T15:06:39.420Z -->
+[Jinyoung Park, 11-27 00:06] "다음 task가 뭐지?"
+
+<!-- 5e0c5b9b 2026-11-26T15:11:50.384Z -->
+[Jinyoung Park, 11-27 00:11] "유져의 실력 추정치는 최근 5개의 경긱 각가을 평균을 구하고 그것의 median으로 해서 평가를 좀 해줘. 그리고 그 user의 닉네임이 배틀시에 떠야함. 내 생각에는 그렇게 구한 실력추정치를 저장해 놓은 자료구조를 만들고 실제 어떤 유저가 배틀 시에는 실력추정치에 가장 가까운 실력추정치의 유저의 가상 플레어가 뜨도록. 또한 현 플레이어의 실력 추정치도 최근 5개의경기 median 이용."
+
+<!-- 5e0c5b9b 2026-11-26T15:14:42.222Z -->
+[Jinyoung Park, 11-27 00:14] "일단 바로 실제 유저 있으면 매칭 시켜 그다음에 없을때 가상 유저만 실력 비슷한 유저로(즉, 실제 유저는 바로 바로 매칭시켜()"
+
+<!-- 5e0c5b9b 2026-11-26T15:15:53.672Z -->
+[Jinyoung Park, 11-27 00:15] "실제 유저 대기 시간 15초"
+
+<!-- 5e0c5b9b 2026-11-26T15:16:22.375Z -->
+[Jinyoung Park, 11-27 00:16] "1번으로 하고 task 수행해"
+
+<!-- 5e0c5b9b 2026-11-26T15:22:12.525Z -->
+[Jinyoung Park, 11-27 00:22] "A로 ㄱㄱ"
+
+<!-- 5e0c5b9b 2026-11-26T15:24:08.946Z -->
+[Jinyoung Park, 11-27 00:24] "승인함"
+
+<!-- 5e0c5b9b 2026-11-26T16:22:50.695Z -->
+[Jinyoung Park, 11-27 01:22] "ㅇㅇ ㄱㄱ"
+
+<!-- 5e0c5b9b 2026-11-26T16:29:45.322Z -->
+[Jinyoung Park, 11-27 01:29] "ㅇㅇ 근데 한번 emulator로 testing 가능?"
+
+<!-- 5e0c5b9b 2026-11-26T16:44:08.715Z -->
+[Jinyoung Park, 11-27 01:44] "됬으면 PR 날리고 main merge후 배포"
