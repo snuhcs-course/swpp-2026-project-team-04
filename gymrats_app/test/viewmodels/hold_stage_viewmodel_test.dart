@@ -1081,7 +1081,39 @@ void main() {
         rig.viewModel.dispose();
       });
     });
+
+    test('a record save that never finishes does not hold back the stars: '
+        'they are saved first (송우현, 2026-11-26)', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final store = MemoryArcadeProgressStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          store: store,
+          accountId: 7,
+          records: _StuckRecords(),
+        );
+        rig.goAt(async);
+        rig.frames(async, rig.viewModel.stage.starSeconds.last * 1000 + 500);
+        async.flushMicrotasks();
+        late ArcadeProgress saved;
+        store.read(7).then((p) => saved = p);
+        async.flushMicrotasks();
+        expect(saved.bestOf(3), 3);
+        rig.viewModel.dispose();
+      });
+    });
   });
+}
+
+/// A record store whose saves never finish.
+class _StuckRecords implements HoldRecordStore {
+  @override
+  Future<void> save(HoldRecord record) => Completer<void>().future;
+
+  @override
+  Future<List<HoldRecord>> list() async => const [];
 }
 
 class _FailingRecords implements HoldRecordStore {

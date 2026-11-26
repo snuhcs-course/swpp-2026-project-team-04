@@ -663,25 +663,27 @@ class HoldStageViewModel extends ChangeNotifier {
     endedByWarnings: progress.end == HoldEnd.warnings,
   );
 
-  /// Keeps the play's stars: the store keeps a stage's most.
+  /// Keeps the play's stars (the store keeps a stage's most), then its
+  /// record for the report. The stars come first, so a record that fails
+  /// or never finishes cannot hold them back (송우현, 2026-11-26).
   Future<void> _save(ArcadeStars stars) async {
-    final record = _state.record;
-    final records = this.records;
-    if (record != null && records != null) {
-      try {
-        await records.save(record);
-      } on Object {
-        // The report of this play is lost; the stars are kept below.
-      }
-    }
     final store = this.store;
     final account = accountId;
-    if (store == null || account == null) return;
+    if (store != null && account != null) {
+      try {
+        await store.recordStage(account, stage.number, stars.count);
+      } on Object {
+        // The stars of this play are lost; the saved ones stay (A2's store
+        // writes nothing when it cannot read).
+      }
+    }
+    final record = _state.record;
+    final records = this.records;
+    if (record == null || records == null) return;
     try {
-      await store.recordStage(account, stage.number, stars.count);
+      await records.save(record);
     } on Object {
-      // The stars of this play are lost; the saved ones stay (A2's store
-      // writes nothing when it cannot read).
+      // The report of this play is lost; the stars are kept above.
     }
   }
 
