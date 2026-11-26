@@ -201,11 +201,18 @@ class _Stage extends StatefulWidget {
 }
 
 class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
-  late final _ticker = createTicker(
-    (elapsed) => _now.value = elapsed.inMicroseconds / 1000,
-  );
+  /// The clock's time at each tick. While setting up nothing on the stage
+  /// moves with it, so it keeps the time without rebuilding the stage. Its
+  /// muting is left to the stage's [TickerMode], as any ticker's.
+  late final _ticker = createTicker((elapsed) {
+    _elapsed = elapsed.inMicroseconds / 1000;
+    if (widget.state.phase != HoldStagePhase.setup) _now.value = _elapsed;
+  });
 
-  /// Milliseconds on the stage's clock.
+  /// Milliseconds on the stage's clock at its last tick.
+  double _elapsed = 0;
+
+  /// The clock's time the stage was last drawn at.
   final _now = ValueNotifier<double>(0);
 
   late HoldMeTimeline _timeline;
@@ -234,14 +241,12 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  /// Tells the timeline the play as it is now. While setting up nothing on
-  /// the stage moves with the clock: it keeps its time without ticking.
+  /// Tells the timeline the play as it is now.
   void _look() {
     final state = widget.state;
     final holding = state.phase == HoldStagePhase.hold;
-    _ticker.muted = state.phase == HoldStagePhase.setup;
     _timeline.look(
-      _now.value,
+      _elapsed,
       counting: state.phase == HoldStagePhase.countdown,
       entering: holding && state.progress.state == HoldState.entering,
       stopped: holding && state.stopped,

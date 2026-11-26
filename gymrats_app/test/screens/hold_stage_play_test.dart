@@ -28,6 +28,7 @@ class _Play {
     this.goAge,
     this.size = const Size(412, 915),
     this.textScale = 1,
+    this.ticking = true,
   });
 
   /// Stage 3 is the first floor's high plank (15, 20 and 30 s), 5 its chair
@@ -37,6 +38,9 @@ class _Play {
   final double? goAge;
   final Size size;
   final double textScale;
+
+  /// Whether the screen's tickers run: off when another screen covers it.
+  final bool ticking;
 
   ArcadeHoldStage get hold => ArcadeCatalog.stage(stage) as ArcadeHoldStage;
 
@@ -50,18 +54,21 @@ class _Play {
       MaterialApp(
         theme: AppTheme.light,
         home: Scaffold(
-          body: HoldStagePlay(
-            stage: hold,
-            floor: ArcadeCatalog.floorOf(hold),
-            definition: HoldPoses.of(hold.pose),
-            state: state,
-            setup: null,
-            frame: null,
-            myCharacter: character,
-            goAge: goAge,
-            onLeave: null,
-            onGuideCrop: (_) {},
-            onCameraBox: (_) {},
+          body: TickerMode(
+            enabled: ticking,
+            child: HoldStagePlay(
+              stage: hold,
+              floor: ArcadeCatalog.floorOf(hold),
+              definition: HoldPoses.of(hold.pose),
+              state: state,
+              setup: null,
+              frame: null,
+              myCharacter: character,
+              goAge: goAge,
+              onLeave: null,
+              onGuideCrop: (_) {},
+              onCameraBox: (_) {},
+            ),
           ),
         ),
       ),
@@ -213,6 +220,20 @@ void main() {
       ];
       expect(order, everyElement(greaterThanOrEqualTo(0)));
       expect([...order]..sort(), order);
+    });
+
+    testWidgets('a covered stage stands still, even as the play changes, and '
+        'goes on after (reviewer run 2)', (tester) async {
+      // Breathing is 1.2 % over 1.5 s: 300 ms in, it would be 1.011.
+      await _Play(ticking: false).show(tester, _Play.holding(5000));
+      final before = _me(tester).sy;
+      await tester.pump(const Duration(milliseconds: 150));
+      await _Play(ticking: false).show(tester, _Play.holding(5100));
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(_me(tester).sy, before);
+      await _Play().show(tester, _Play.holding(5200));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(_me(tester).sy, isNot(before));
     });
 
     testWidgets('it breathes on the stage\'s own clock', (tester) async {
