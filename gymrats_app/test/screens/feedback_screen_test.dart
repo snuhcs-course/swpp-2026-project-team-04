@@ -109,7 +109,7 @@ void main() {
         FeedbackScreen(
           report: report,
           form: state.form,
-          metrics: ReportMetrics.of(report, earlier: kept),
+          metrics: ReportMetrics.of(report),
           history: ReportHistory.of(report, kept),
         ),
       ),
@@ -153,7 +153,7 @@ void main() {
     });
 
     testWidgets('운동 분석 shows counted reps, calories and lifted weight on '
-        'the assumed 65 kg, and endurance against the recent mean', (
+        'the assumed 65 kg against the recent mean; no endurance index', (
       tester,
     ) async {
       final report = feedbackReport(depths: List.filled(6, 1.2));
@@ -165,11 +165,10 @@ void main() {
       expect(find.text('${(6 * 65 * 0.64).round()}'), findsOneWidget);
       // Both are estimates on the default weight, and say so.
       expect(find.text('체중 65 kg(기본값) 기준 추정'), findsNWidgets(2));
-      expect(find.text('150'), findsOneWidget);
-      expect(find.text('평균 = 100'), findsOneWidget);
+      expect(find.text('근지구력 지수'), findsNothing);
+      expect(find.textContaining('= 100'), findsNothing);
       expect(find.text('+2'), findsWidgets);
-      expect(find.text('+50'), findsOneWidget);
-      expect(find.text('평균 이하'), findsNWidgets(4));
+      expect(find.text('평균 이하'), findsNWidgets(3));
       expect(find.bySemanticsLabel('평균 이상'), findsWidgets);
     });
 
@@ -260,8 +259,8 @@ void main() {
       expect(checkIn('개인 최고까지 2회'), findsNothing);
     });
 
-    testWidgets('변화 shows the recent counted reps, their scores and dates, '
-        'this battle last', (tester) async {
+    testWidgets('변화 shows the recent counted reps, their scores, round '
+        'lengths and dates, this battle last', (tester) async {
       await show(
         tester,
         feedbackReport(depths: List.filled(6, 1.2)),
@@ -273,6 +272,9 @@ void main() {
       expect(find.text('11.13'), findsOneWidget);
       expect(find.text('11.14'), findsOneWidget);
       expect(find.text('이번'), findsOneWidget);
+      // Rounds of any length are compared, so each one's length shows.
+      expect(find.text('경기 시간'), findsOneWidget);
+      expect(find.text('30초'), findsNWidgets(3));
     });
 
     testWidgets('the coach line is how to fix the first issue', (tester) async {
@@ -306,7 +308,8 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(find.text('최근 평균과 비교'), findsOneWidget);
-      expect(find.text('150'), findsOneWidget);
+      // 6 counted reps against the kept battle's 4.
+      expect(find.text('+2'), findsWidgets);
     });
 
     testWidgets('opened with only a report and no store, it still shows the '
@@ -631,7 +634,7 @@ void main() {
           FeedbackScreen(
             report: report,
             form: FeedbackViewModel.fromReport(report).state.form,
-            metrics: ReportMetrics.of(report, earlier: kept),
+            metrics: ReportMetrics.of(report),
             history: ReportHistory.of(report, kept),
           ),
         ),

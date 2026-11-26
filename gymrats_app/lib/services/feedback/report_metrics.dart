@@ -61,8 +61,9 @@ enum ReportPace {
 }
 
 /// Everything the post-game report measures of one battle (P14): the form
-/// score from five axes, the estimated calories and lifted weight, the
-/// muscular endurance against recent battles, and how the reps were spread.
+/// score from five axes, the estimated calories and lifted weight, and how
+/// the reps were spread. Comparisons with recent battles are by counts
+/// (user, 2026-11-26: no endurance index).
 ///
 /// The numbers come from the reps the judge already kept; nothing here
 /// judges a rep again. Axes that could not be measured are left out of the
@@ -82,7 +83,6 @@ class ReportMetrics {
     required this.splitInvalid,
     required this.rejectCounts,
     required this.pace,
-    this.enduranceIndex,
   });
 
   /// Body weight used when the user gave none.
@@ -112,8 +112,7 @@ class ReportMetrics {
   /// A mean descent of this or shorter is a drop, not a rep (tempo 0).
   static const dropDescent = Duration(milliseconds: 250);
 
-  /// How many earlier battles of the same exercise the endurance index
-  /// compares with.
+  /// How many earlier battles of the same exercise the means compare with.
   static const recentCount = 5;
 
   /// The round is cut into this many equal parts for the pace.
@@ -152,13 +151,6 @@ class ReportMetrics {
 
   final ReportPace pace;
 
-  /// Counted reps per second against the mean of up to [recentCount]
-  /// earlier battles of the same exercise, of any round length, as 100 =
-  /// that mean; null without such battles. By the rate, a round cut short
-  /// by a KO compares with every other (user, 2026-11-26); the counts
-  /// elsewhere still compare rounds of one length.
-  final int? enduranceIndex;
-
   int get validReps => splitValid.fold(0, (a, b) => a + b);
   int get invalidReps => splitInvalid.fold(0, (a, b) => a + b);
 
@@ -190,13 +182,10 @@ class ReportMetrics {
   }
 
   /// Measures [report]. [weightKg] is the user's body weight, null when not
-  /// known. [earlier] are other battles kept on the phone, in any order; only
-  /// those of the same exercise and round length that ended before [report]
-  /// count (see [earlierOf]).
+  /// known.
   factory ReportMetrics.of(
     FormReport report, {
     double? weightKg,
-    List<FormReport> earlier = const [],
     FormAnalyzer analyzer = const FormAnalyzer(),
     BattleRules rules = battleRules,
   }) {
@@ -221,17 +210,6 @@ class ReportMetrics {
     }
     final active = last > report.roundLength ? report.roundLength : last;
 
-    final peers = enduranceOf(report, earlier).take(recentCount).toList();
-    int? endurance;
-    final rate = rateOf(report);
-    if (peers.isNotEmpty && rate != null) {
-      final rates = [for (final r in peers) ?rateOf(r)];
-      final mean = rates.isEmpty
-          ? 0.0
-          : rates.fold(0.0, (sum, r) => sum + r) / rates.length;
-      if (mean > 0) endurance = (rate / mean * 100).round();
-    }
-
     return ReportMetrics(
       exercise: report.exercise,
       roundLength: report.roundLength,
@@ -249,7 +227,6 @@ class ReportMetrics {
           ..sort((a, b) => b.$2.compareTo(a.$2)),
       ),
       pace: paceOf(splitValid),
-      enduranceIndex: endurance,
     );
   }
 
@@ -315,36 +292,14 @@ class ReportMetrics {
     return (sum / weights * 100).round();
   }
 
-  /// Counted reps per second of [report]'s round; null for a round of no
-  /// length.
-  static double? rateOf(FormReport report) {
-    final seconds = report.roundLength.inMilliseconds / 1000;
-    if (seconds <= 0) return null;
-    return report.validReps / seconds;
-  }
-
-  /// The earlier battles the endurance index compares by rate, newest
-  /// first, from [kept]: the same exercise, any round length, ended before
-  /// [report].
-  static List<FormReport> enduranceOf(
-    FormReport report,
-    List<FormReport> kept,
-  ) => [
-    for (final r in kept)
-      if (r.exercise == report.exercise && r.endedAt.isBefore(report.endedAt))
-        r,
-  ]..sort((a, b) => b.endedAt.compareTo(a.endedAt));
-
-  /// Earlier battles that [report] can be compared with, newest first, from
-  /// [kept] (the phone's reports in any order): the same exercise and the
-  /// same round length (so a round cut short by a KO is only compared with
-  /// others as long, and never with a full one), ended before [report].
+  /// Earlier battles that [report] is compared with, newest first, from
+  /// [kept] (the phone's reports in any order): the same exercise, ended
+  /// before [report], of any round length, so a round cut short by a KO is
+  /// compared too (user, 2026-11-26).
   static List<FormReport> earlierOf(FormReport report, List<FormReport> kept) {
     final earlier = [
       for (final r in kept)
-        if (r.exercise == report.exercise &&
-            r.roundLength == report.roundLength &&
-            r.endedAt.isBefore(report.endedAt))
+        if (r.exercise == report.exercise && r.endedAt.isBefore(report.endedAt))
           r,
     ]..sort((a, b) => b.endedAt.compareTo(a.endedAt));
     return earlier;
@@ -367,15 +322,20 @@ class ReportTrendPoint {
     required this.endedAt,
     required this.validReps,
     this.score,
+    this.roundLength = Duration.zero,
   });
 
   final DateTime endedAt;
   final int validReps;
   final int? score;
+
+  /// How long the round lasted: rounds of any length are compared, so the
+  /// trend shows it beside the counts.
+  final Duration roundLength;
 }
 
 /// The rows of the report's 운동 분석.
-enum ReportRowKind { validReps, kcal, liftedKg, endurance }
+enum ReportRowKind { validReps, kcal, liftedKg }
 
 /// One row of 운동 분석: its value, the change from the recent mean and the
 /// share of the 평균 이하 · 평균 · 평균 이상 bar; no change and no bar without
@@ -390,9 +350,9 @@ class ReportRow {
 }
 
 /// The report's battle against the user's recent battles of the same
-/// exercise and round length kept on the phone (P14): the means the changes
-/// and the dashed average use, the personal best, and the last battles for
-/// the trend.
+/// exercise kept on the phone, of any round length (P14): the means the
+/// changes and the dashed average use, the personal best, and the last
+/// battles for the trend.
 class ReportHistory {
   const ReportHistory({
     required this.recentCount,
@@ -429,6 +389,7 @@ class ReportHistory {
           ReportTrendPoint(
             endedAt: report.endedAt,
             validReps: report.validReps,
+            roundLength: report.roundLength,
             score: ReportMetrics.scoreOf(
               ReportMetrics.axesOf(report, analyzer: analyzer, rules: rules),
             ),
@@ -481,6 +442,7 @@ class ReportHistory {
           ReportTrendPoint(
             endedAt: r.endedAt,
             validReps: r.validReps,
+            roundLength: r.roundLength,
             score: ReportMetrics.scoreOf(
               ReportMetrics.axesOf(r, analyzer: analyzer, rules: rules),
             ),
@@ -544,7 +506,7 @@ extension ReportComparison on ReportHistory {
   }
 
   /// The 운동 분석 rows of [metrics]: the counted reps, the estimated
-  /// calories and lifted weight, and, with earlier battles, the endurance.
+  /// calories and lifted weight.
   List<ReportRow> rowsOf(ReportMetrics metrics) {
     ReportRow row(ReportRowKind kind, double value, double? mean) => ReportRow(
       kind,
@@ -552,13 +514,10 @@ extension ReportComparison on ReportHistory {
       change: mean == null ? null : value - mean,
       bar: mean == null ? null : barShare(value, mean),
     );
-    final endurance = metrics.enduranceIndex;
     return [
       row(ReportRowKind.validReps, metrics.validReps.toDouble(), meanValidReps),
       row(ReportRowKind.kcal, metrics.kcal, meanKcal),
       row(ReportRowKind.liftedKg, metrics.liftedKg, meanLiftedKg),
-      if (endurance != null)
-        row(ReportRowKind.endurance, endurance.toDouble(), 100),
     ];
   }
 

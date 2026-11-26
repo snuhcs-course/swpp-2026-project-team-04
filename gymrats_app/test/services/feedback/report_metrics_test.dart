@@ -229,40 +229,21 @@ void main() {
     });
   });
 
-  group('endurance against recent battles', () {
-    test('is counted reps against the mean of up to five earlier battles of '
-        'the same exercise, as 100', () {
-      final earlier = [
-        for (var i = 0; i < 7; i++)
-          report(counted(i < 5 ? 16 : 2), endedMinute: 9 - i),
+  group('the battles compared with', () {
+    test('the same exercise, ended before, newest first; other exercises, '
+        'later battles and the battle itself do not count', () {
+      final shown = report(counted(18));
+      final kept = [
+        shown,
+        report(counted(30), endedMinute: 20),
+        report(counted(4), endedMinute: 5, exercise: ExerciseType.squat),
+        report(counted(9), endedMinute: 1),
+        report(counted(12), endedMinute: 8),
       ];
-      final m = ReportMetrics.of(report(counted(18)), earlier: earlier);
-      expect(m.enduranceIndex, 113);
-    });
-
-    test(
-      'other exercises, later battles and the battle itself do not count',
-      () {
-        final earlier = [
-          report(counted(18), endedMinute: 10),
-          report(counted(30), endedMinute: 20),
-          report(counted(4), endedMinute: 5, exercise: ExerciseType.squat),
-          report(counted(9), endedMinute: 1),
-        ];
-        final m = ReportMetrics.of(report(counted(18)), earlier: earlier);
-        expect(m.enduranceIndex, 200);
-      },
-    );
-
-    test('is absent without earlier battles or when they counted nothing', () {
-      expect(ReportMetrics.of(report(counted(18))).enduranceIndex, isNull);
-      expect(
-        ReportMetrics.of(
-          report(counted(18)),
-          earlier: [report(const [], endedMinute: 1)],
-        ).enduranceIndex,
-        isNull,
-      );
+      expect(ReportMetrics.earlierOf(shown, kept).map((r) => r.validReps), [
+        12,
+        9,
+      ]);
     });
   });
 
@@ -384,7 +365,7 @@ void main() {
         report(counted(13), endedMinute: 7),
       ];
       final h = ReportHistory.of(shown, kept);
-      final lines = h.highlights(ReportMetrics.of(shown, earlier: kept));
+      final lines = h.highlights(ReportMetrics.of(shown));
       expect(lines.map((l) => l.text), [
         '첫 10초 무효 없이 7회',
         '최근 평균보다 2회 더',
@@ -409,7 +390,7 @@ void main() {
         report([...counted(4), rep(29000, valid: false)], endedMinute: 9),
       ];
       final h = ReportHistory.of(shown, kept);
-      final m = ReportMetrics.of(shown, earlier: kept);
+      final m = ReportMetrics.of(shown);
       expect(h.scoreChange(m), closeTo(m.score! - h.meanScore!, 1e-9));
       // Accuracy 6 of 7 against 4 of 5: 86 - 80.
       expect(h.axisChange(m, ReportAxis.accuracy), 6);
@@ -419,8 +400,8 @@ void main() {
       expect(ReportHistory.none.axisChange(m, ReportAxis.accuracy), isNull);
     });
 
-    test('운동 분석 rows: change and bar only with a mean, endurance only with '
-        'earlier battles', () {
+    test('운동 분석 rows: the counted reps, calories and lifted weight; change '
+        'and bar only with a mean; no endurance index (user, 2026-11-26)', () {
       final shown = report([...counted(17), rep(30000)]);
       final alone = ReportHistory.none.rowsOf(ReportMetrics.of(shown));
       expect(alone.map((r) => r.kind), [
@@ -432,9 +413,13 @@ void main() {
       expect(alone.first.value, 18);
 
       final kept = [report(counted(12), endedMinute: 9)];
-      final m = ReportMetrics.of(shown, earlier: kept);
+      final m = ReportMetrics.of(shown);
       final rows = ReportHistory.of(shown, kept).rowsOf(m);
-      expect(rows.map((r) => r.kind), [...ReportRowKind.values]);
+      expect(rows.map((r) => r.kind), [
+        ReportRowKind.validReps,
+        ReportRowKind.kcal,
+        ReportRowKind.liftedKg,
+      ]);
       expect(rows[0].change, 6);
       expect(rows[0].bar, 1.0);
       expect(
@@ -442,51 +427,36 @@ void main() {
         closeTo(m.kcal - ReportMetrics.of(kept[0]).kcal, 1e-9),
       );
       expect(rows[2].change, closeTo(6 * 65 * 0.64, 1e-9));
-      expect(rows[3].value, 150);
-      expect(rows[3].change, 50);
     });
   });
 
   group('a round cut short by a KO', () {
     final ko = Duration(seconds: 17);
 
-    test('is compared only with battles of the same length; the endurance '
-        'index compares every round by reps per second', () {
+    test('is compared by counts with every round of the exercise, of any '
+        'length; the trend shows each round\'s length (user, 2026-11-26)', () {
       final shown = report(counted(10, untilMs: 17000), round: ko);
       final kept = [
         report(counted(20), endedMinute: 9),
         report(counted(8, untilMs: 17000), round: ko, endedMinute: 8),
       ];
-      expect(ReportMetrics.earlierOf(shown, kept).map((r) => r.validReps), [8]);
-      // 10/17 per second against the mean of 20/30 and 8/17.
-      expect(
-        ReportMetrics.of(shown, earlier: kept).enduranceIndex,
-        ((10 / 17) / ((20 / 30 + 8 / 17) / 2) * 100).round(),
-      );
+      expect(ReportMetrics.earlierOf(shown, kept).map((r) => r.validReps), [
+        20,
+        8,
+      ]);
       final h = ReportHistory.of(shown, kept);
-      expect(h.meanValidReps, 8);
-      expect(h.bestValidReps, 8);
-      expect(h.trend.map((p) => p.validReps), [8, 10]);
+      expect(h.hasHistory, isTrue);
+      expect(h.meanValidReps, 14);
+      expect(h.bestValidReps, 20);
+      expect(h.trend.map((p) => p.validReps), [8, 20, 10]);
+      expect(h.trend.map((p) => p.roundLength.inSeconds), [17, 30, 17]);
     });
 
-    test('with no other KO round of that length the counts have nothing to '
-        'compare, but the endurance index has the full round (PR #100, '
-        'user 2026-11-26)', () {
+    test('a first battle alone has only its own round in the trend', () {
       final shown = report(counted(10, untilMs: 17000), round: ko);
-      final kept = [report(counted(20), endedMinute: 9)];
-      expect(ReportHistory.of(shown, kept).hasHistory, isFalse);
-      expect(
-        ReportMetrics.of(shown, earlier: kept).enduranceIndex,
-        ((10 / 17) / (20 / 30) * 100).round(),
-      );
-    });
-
-    test('the rate of a round, none for a round of no length', () {
-      expect(ReportMetrics.rateOf(report(counted(15))), 0.5);
-      expect(
-        ReportMetrics.rateOf(report(counted(3), round: Duration.zero)),
-        isNull,
-      );
+      final h = ReportHistory.of(shown, const []);
+      expect(h.hasHistory, isFalse);
+      expect(h.trend.single.roundLength, ko);
     });
 
     test('is read in its own thirds, labelled by their real seconds', () {

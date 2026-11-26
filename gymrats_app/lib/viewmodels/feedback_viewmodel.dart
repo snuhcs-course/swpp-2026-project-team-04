@@ -2,6 +2,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/battle_rules.dart';
+import '../models/exercise_type.dart';
 import '../models/form_report.dart';
 import '../models/match_record.dart';
 import '../services/api/api_client.dart';
@@ -210,6 +211,10 @@ class FeedbackViewModel extends ChangeNotifier {
   /// How long a loaded report waits for the profile's body weight.
   static const weightWait = Duration(seconds: 2);
 
+  /// How long the comparison waits for the account's own battles before it
+  /// uses every kept report, as offline.
+  static const accountWait = Duration(seconds: 2);
+
   FeedbackState _state = const FeedbackState();
   bool _loading = false;
   bool _disposed = false;
@@ -227,12 +232,7 @@ class FeedbackViewModel extends ChangeNotifier {
     report: report,
     form: FormFeedback.of(report, analyzer: analyzer),
     fromPhone: fromPhone,
-    metrics: ReportMetrics.of(
-      report,
-      weightKg: weightKg,
-      earlier: kept,
-      analyzer: analyzer,
-    ),
+    metrics: ReportMetrics.of(report, weightKg: weightKg, analyzer: analyzer),
     history: ReportHistory.of(
       report,
       kept,
@@ -257,6 +257,9 @@ class FeedbackViewModel extends ChangeNotifier {
     // Asked alongside the report. The profile read first sends any queued
     // battles, so it gets a short limit and then the default weight is used.
     final weight = _readWeight().timeout(weightWait, onTimeout: () => null);
+    // The kept battles and the account's own are read alongside too; the
+    // read never fails (see [_kept]).
+    final keeping = _kept(match.exercise);
     try {
       final id = match.id;
       final report = id == null ? null : await repository.fetchFeedback(id);
@@ -267,11 +270,11 @@ class FeedbackViewModel extends ChangeNotifier {
                 report,
                 analyzer,
                 weightKg: await weight,
-                kept: await _kept(),
+                kept: await keeping,
               ),
       );
     } on Exception catch (e) {
-      final kept = await _kept();
+      final kept = await keeping;
       final copy = _phoneCopy(kept);
       _setState(
         copy != null
@@ -304,7 +307,7 @@ class FeedbackViewModel extends ChangeNotifier {
     }
     _compared = true;
     final reading = _readWeight();
-    final kept = await _kept();
+    final kept = await _kept(report.exercise);
     final weight = await reading;
     if (kept.isEmpty && weight == weightKg) return;
     _setState(
@@ -331,20 +334,20 @@ class FeedbackViewModel extends ChangeNotifier {
     }
   }
 
-  /// The reports kept on this phone; none when there is no store or it
-  /// cannot be read.
-  /// The battles kept on this phone that are the signed-in account's.
+  /// The battles kept on this phone that are the signed-in account's; none
+  /// when there is no store or it cannot be read.
   ///
   /// The phone keeps every account's reports in one place, so a phone
   /// shared by testers would compare one account with another's battles
   /// (phone check, 2026-11-26). A kept report counts only when the
-  /// account's own battles on the server ([FeedbackStatsSource]) have one
-  /// that ended at the same moment. Without that list (no source, offline,
-  /// or past [weightWait]) every kept report counts, as before.
-  Future<List<FormReport>> _kept() async {
+  /// account's own [exercise] battles on the server ([FeedbackStatsSource])
+  /// have one that ended at the same moment. Without that list (no source,
+  /// offline, or past [accountWait]) every kept report counts, as before:
+  /// a phone shared offline still mixes accounts.
+  Future<List<FormReport>> _kept(ExerciseType exercise) async {
     final store = _phoneReports;
     if (store == null) return const [];
-    final reading = _accountBattles();
+    final reading = _accountBattles(exercise);
     List<FormReport> kept;
     try {
       kept = await store.list();
@@ -359,15 +362,15 @@ class FeedbackViewModel extends ChangeNotifier {
     ];
   }
 
-  /// When the signed-in account's battles ended, in milliseconds; null
-  /// when they cannot be read.
-  Future<Set<int>?> _accountBattles() async {
+  /// When the signed-in account's [exercise] battles ended, in
+  /// milliseconds; null when they cannot be read.
+  Future<Set<int>?> _accountBattles(ExerciseType exercise) async {
     final source = _profiles;
     if (source is! FeedbackStatsSource) return null;
     try {
       final points = await (source as FeedbackStatsSource)
-          .fetchStatsPoints()
-          .timeout(weightWait);
+          .fetchStatsPoints(exercise: exercise)
+          .timeout(accountWait);
       return {for (final p in points) p.playedAt.millisecondsSinceEpoch};
     } on Object {
       return null;

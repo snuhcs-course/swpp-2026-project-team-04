@@ -18,9 +18,9 @@ import '../widgets/feedback_parts.dart';
 import '../widgets/form_fault_clip.dart';
 
 /// The post-game report of one battle (P14, design D-3): the form score, the
-/// five-axis form analysis against the recent battles, the estimated
-/// calories, lifted weight and endurance, the highlights, the trend and the
-/// coach's line. 자세 분석 자세히 보기 opens the evidence ([FeedbackDetailScreen]).
+/// five-axis form analysis against the recent battles, the counted reps and
+/// the estimated calories and lifted weight, the highlights, the trend and
+/// the coach's line. 자세 분석 자세히 보기 opens the evidence ([FeedbackDetailScreen]).
 ///
 /// It draws what [FeedbackViewModel] made of [report] and only words it.
 /// Opened with only a report (the result screen's route), it makes that view
@@ -776,9 +776,9 @@ class ReportRadarPainter extends CustomPainter {
       old.textScaler != textScaler;
 }
 
-/// 운동 분석: the counted reps, the estimated calories and lifted weight and
-/// the endurance index, each with its change from the recent mean and its
-/// place on the 평균 이하 · 평균 · 평균 이상 bar.
+/// 운동 분석: the counted reps and the estimated calories and lifted weight,
+/// each with its change from the recent mean and its place on the 평균
+/// 이하 · 평균 · 평균 이상 bar.
 class _ExerciseSection extends StatelessWidget {
   const _ExerciseSection({required this.metrics, required this.history});
 
@@ -813,13 +813,6 @@ class _ExerciseSection extends StatelessWidget {
         note: estimate,
         value: '${row.value.round()}',
         unit: 'kg',
-        change: row.change,
-        bar: row.bar,
-      ),
-      ReportRowKind.endurance => _ExerciseRow(
-        label: '근지구력 지수',
-        value: '${row.value.round()}',
-        unit: '평균 = 100',
         change: row.change,
         bar: row.bar,
       ),
@@ -1091,7 +1084,7 @@ class _TrendSection extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final trend = history.trend;
     // Without an earlier battle there is nothing to compare: the section
-    // stays and says so, as the hold report does (user, 2026-11-26).
+    // stays and says so (user, 2026-11-26).
     if (trend.length < 2) {
       return _Section(
         child: Column(
@@ -1140,6 +1133,15 @@ class _TrendSection extends StatelessWidget {
             label: '자세 점수',
             cells: [for (final p in trend) p.score?.toString() ?? '—'],
             style: text.coachChipNumber,
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          _TrendRow(
+            label: '경기 시간',
+            cells: [
+              for (final p in trend)
+                '${(p.roundLength.inMilliseconds / 1000).round()}초',
+            ],
+            style: text.statsAxis,
           ),
           const SizedBox(height: AppSpacing.s4),
           _TrendRow(

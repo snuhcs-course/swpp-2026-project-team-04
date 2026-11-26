@@ -20,9 +20,13 @@ import '../support/form_report_fixtures.dart';
 
 final _endedAt = DateTime.utc(2026, 10, 21, 3, 0, 5, 250);
 
-MatchRecord _match({int? id = 7, DateTime? playedAt}) => MatchRecord(
+MatchRecord _match({
+  int? id = 7,
+  DateTime? playedAt,
+  ExerciseType exercise = ExerciseType.pushUp,
+}) => MatchRecord(
   id: id,
-  exercise: ExerciseType.pushUp,
+  exercise: exercise,
   opponentName: 'RepBot',
   myReps: 3,
   opponentReps: 1,
@@ -371,7 +375,6 @@ void main() {
       final state = model.state;
       expect(state.metrics!.validReps, 6);
       expect(state.metrics!.weightAssumed, isTrue);
-      expect(state.metrics!.enduranceIndex, 200);
       expect(state.history.recentCount, 2);
       expect(state.history.meanValidReps, 3);
       expect(state.history.trend.map((p) => p.validReps), [2, 4, 6]);
@@ -394,7 +397,62 @@ void main() {
       );
       await model.load();
       expect(model.state.history.trend.map((p) => p.validReps), [4, 6]);
-      expect(model.state.metrics!.enduranceIndex, 150);
+      expect(model.state.history.meanValidReps, 4);
+    });
+
+    test("the account's battles are asked for by the exercise shown", () async {
+      final account = FakeStatsUserRepository()
+        ..reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+      final model = FeedbackViewModel(
+        match: _match(exercise: ExerciseType.squat),
+        repository: account,
+        phoneReports: phone,
+      );
+      await model.load();
+      expect(account.stats.calls.map((c) => c.exercise), [ExerciseType.squat]);
+    });
+
+    test('an account list that takes over two seconds is not waited for: '
+        'every kept battle is compared, as offline', () {
+      fakeAsync((async) {
+        keep([(2, 30), (4, 20)]);
+        async.flushMicrotasks();
+        final account = FakeStatsUserRepository()
+          ..reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+        account.stats
+          ..points = [statsPoint(7, _endedAt)]
+          ..gate = Completer<void>();
+        final model = FeedbackViewModel(
+          match: _match(),
+          repository: account,
+          phoneReports: phone,
+        );
+        model.load();
+        async.elapse(
+          FeedbackViewModel.accountWait - const Duration(milliseconds: 1),
+        );
+        expect(model.state.phase, FeedbackPhase.loading);
+        async.elapse(const Duration(milliseconds: 2));
+        expect(model.state.phase, FeedbackPhase.ready);
+        expect(model.state.history.trend.map((p) => p.validReps), [2, 4, 6]);
+      });
+    });
+
+    test("a report in hand is compared only with the account's own kept "
+        'battles too', () async {
+      await keep([(2, 30), (4, 20)]);
+      final account = FakeStatsUserRepository();
+      account.stats.points = [
+        statsPoint(1, _endedAt.subtract(const Duration(minutes: 30))),
+        statsPoint(7, _endedAt),
+      ];
+      final model = FeedbackViewModel.fromReport(
+        sampleReport(valid: 6, endedAt: _endedAt),
+        phoneReports: phone,
+        profiles: account,
+      );
+      await model.load();
+      expect(model.state.history.trend.map((p) => p.validReps), [2, 6]);
     });
 
     test("when the account's battles cannot be read, every kept battle is "
@@ -465,7 +523,6 @@ void main() {
       model.addListener(() => notified++);
       await model.load();
       expect(model.state.history.meanValidReps, 4);
-      expect(model.state.metrics!.enduranceIndex, 150);
       await model.load();
       expect(notified, 1);
     });
