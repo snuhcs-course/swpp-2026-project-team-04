@@ -1065,12 +1065,13 @@ These were made from the A5 session at the user's word; their full evidence is i
   so every change added or edited single lines.
 - **The code and tests:** Claude Code wrote all of it, in commits `c7157ef` (the code and tests) and `d68cfd9` (the reviewer's two test fixes):
   - `lib/services/feedback/coach_script.dart`: `CoachVoice.exclaim` (L249–255), the doc of `ending` (L245–247), and
-    every line of the talk through `exclaim` (L693, L744, L758, L770, L791, L810, L866, L881, L894, L980, L993,
-    the question L1049–1059, the answers L1062–1091, the end L1094–1097).
+    every line of the talk through `exclaim` (L693, L744, L758, L770, L791, L810, L866, L894, L980, L993,
+    the question L1049–1059, the answers L1062–1091, the end L1094–1097); the slowed pace (L881) now has none.
   - `test/services/feedback/coach_script_test.dart`: the helpers `_endings`, `_talks`, `_branchMarks`, the new group
     "the ending only after "~다", before "!" (A9 spec 1 and 5)", and the 14 old expectations.
   - `test/viewmodels/coach_viewmodel_test.dart`: 5 lines (the exception).
-- **Review:** the `reviewer` subagent: run 1 APPROVE on `c7157ef` with four Minor points, all fixed (item d).
+- **Review:** the `reviewer` subagent: run 1 APPROVE on `c7157ef` with four Minor points, all fixed; run 2
+  CHANGES_REQUESTED on `bc36d8c` (two Major and three Minor points in the notes and the PR draft, all fixed; item d).
 - **Not done by AI:**
   - The user and the PM decided the result card (neither of the plan's two options: it stays P15's, and
     `ending` stays readable), the two files and the exception, and the PR's shape (SPEC v1.1).
@@ -1093,14 +1094,15 @@ These were made from the A5 session at the user's word; their full evidence is i
   before any code depended on making `ending` private.
 
 ### d. Hallucinations / errors
-- **The spec's count:** SPEC 5.4 said about 36 places in `coach_script_test.dart`. The search found 14 tests (18
-  lines) that expected the changed lines. The other lines with an ending ("수고했다범!", "미션 성공이다범!") already
+- **The spec's count:** SPEC 5.4 said about 36 places in `coach_script_test.dart`. The diff changed 12 tests (14
+  expectations, 18 lines) that expected the changed lines. The other lines with an ending ("수고했다범!", "미션 성공이다범!") already
   follow the rule and did not change.
 - **Slips in this session, each caught:**
   - progress.md first said 33 branch marks; a count of the map gave 34.
   - One mutation command broke on shell quoting; the mutations then ran from a small script file.
-  - Two edits of progress.md were refused because the A8 session had changed the shared file; each was re-read
-    and the edit applied to the current text only.
+  - Three edits of progress.md were refused: twice "File has not been read yet" and once "File content has changed
+    since it was last read" (the file is shared with the A8 session). Each time it was re-read and the edit applied
+    to the current text only.
 - **Reviewer run 1 (Minor points, all fixed):**
   - The rule test's branch set was shared by the five characters, so it checked less than its comment said; now
     each character must say every branch.
@@ -1109,6 +1111,17 @@ These were made from the A5 session at the user's word; their full evidence is i
   - The wiki Requirements 5.6 (criterion 4) still quotes the old shapes "다음 판 미션, 뭐로 할까…?" and "지난번
     미션 기억나…?"; it is now a design-doc change for the PM (the PR's Review notes).
   - The local exception line still said "PR Exceptions"; it now says Review notes (SPEC v1.1).
+- **Reviewer run 2 (notes and the PR draft):**
+  - Major, a claim that was not checked: the plan before the code (11-27) and the drafts said the battle demo's result opens
+    the talk. It does not: the result screen pushes `/coach` (`result_screen.dart` L394), and
+    `lib/demo/battle_demo.dart` L98–112 routes only the result and the next battle. The phone check is now planned in
+    the app, and the user was told.
+  - Major: "14 tests" was the count of changed expectations, not tests (12), and the PR had no list of them (SPEC
+    5.4). Both fixed.
+  - Minor: the refused edits above were described with a cause the transcript does not show; L881 was listed as an
+    `exclaim` line; the PR called the spec the design hand-off's (who wrote it is still a TODO).
+  - Minor: a Python `write_text` turned the whole local `ownership-exceptions.txt` from LF to CRLF (Windows newline
+    translation), though progress.md said LF was kept. Restored to LF; the file is the old one plus the A9 line.
 
 ### e. Prompt revisions
 - **The result card:**

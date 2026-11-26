@@ -2153,21 +2153,22 @@ and `MemoryGoalStore`.
   code, a throwaway measurement (app fonts, bold, all five endings, not committed) gave at most 3 lines at 360 and
   1× and at most 4 at 320 and 1.3× or 360 and 1.5× for every new line, one line more than before at most. No
   sentence had to be shortened, and no coach widget changed.
-- **Changed existing tests:** 14 tests in `coach_script_test.dart` that expected the old lines (the four questions,
-  the two answers, the end, the slowed pace, the good point ×2, the recall, the voice test now checks the new rule, the
-  W11 step test now uses `exclaim`); 5 lines in `coach_viewmodel_test.dart` (L299, L395, L425, L467 now the whole recall line, L521). The two
+- **Changed existing tests:** 12 tests (14 expectations) in `coach_script_test.dart` that expected the old lines
+  (four on the question, the two answers with the end, the slowed pace, the good point ×2, the recall, the voice test
+  now checks the new rule, the W11 step test now uses `exclaim`); 5 lines in `coach_viewmodel_test.dart` (L299, L395, L425, L467 now the whole recall line, L521). The two
   `.ending` checks of the voice test stay (it is still public). No other test changed.
 - **Out-of-step file:** `test/viewmodels/coach_viewmodel_test.dart`, only the 5 lines above, outside the two files the
   PM approved (act first and report after, 2026-11-27).
 - **Coverage:** TODO(Woohyun Song): the A9 PR's CI comment "Tests and coverage (GitHub Actions)" (commit, run link,
   layers, `coach_script.dart` from the run's lcov parts); not measured on this PC.
-- **Phone check:** TODO(Woohyun Song): the question line and the end line in the talk on the phone (a release build
-  of `lib/demo/battle_demo.dart`); not checked yet.
+- **Phone check:** TODO(Woohyun Song): the question line and the end line in the talk on the phone, in the app (an
+  AI 1v1 battle, the report's character card, the talk); not checked yet. No demo can open the talk:
+  `lib/demo/battle_demo.dart` routes only the result and the next battle, not `/coach` (reviewer run 2).
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
 |---|---|---|
-| Service | `test/services/feedback/coach_script_test.dart` (updated) | **New (A9):** `exclaim` puts each character's ending and '!' after a saying in '다'; it asserts on a question, a suggestion, a promise, …어, a closed sentence and an empty one; every line of 21 talks × 5 characters (talk, question, each answer, the end) has the ending only right after '다' and right before '!', at most once, never before '?', and no other character's ending, and each character says all 34 branches; the nine changed lines word for word for all five characters with their marked runs, 그루's question as the spec writes it, 이었 after a final consonant.<br>**Updated:** the 14 tests that expected the old lines |
+| Service | `test/services/feedback/coach_script_test.dart` (updated) | **New (A9):** `exclaim` puts each character's ending and '!' after a saying in '다'; it asserts on a question, a suggestion, a promise, …어, a closed sentence and an empty one; every line of 21 talks × 5 characters (talk, question, each answer, the end) has the ending only right after '다' and right before '!', at most once, never before '?', and no other character's ending, and each character says all 34 branches; the nine changed lines word for word for all five characters with their marked runs, 그루's question as the spec writes it, 이었 after a final consonant.<br>**Updated:** the 12 tests (14 expectations) that expected the old lines |
 | ViewModel | `test/viewmodels/coach_viewmodel_test.dart` (updated) | the 5 lines that expected the old answer, end, recall and question |
 
 ### Acceptance criteria → tests (SPEC 5)
@@ -2178,7 +2179,7 @@ and `MemoryGoalStore`.
 - 5.3 The function fails on other sayings → coach_script_test 'exclaim fails on a saying that does not end in "~다": a
   question, a suggestion, a promise, "~어", or one already closed'; 'exclaim puts each character's ending and "!"
   after a saying in "~다"'
-- 5.4 Old tests → the 14 updated coach_script_test tests and the 5 coach_viewmodel_test lines above; the full
+- 5.4 Old tests → the 12 updated coach_script_test tests and the 5 coach_viewmodel_test lines above; the full
   `flutter test`
 - 5.5 Overflow → coach_screen_test 'every page fits <size> without an overflow; every choice is above the dialog box
   and can be tapped' (4 sizes) and 'every line of a squat and a push-up battle, for every character', 'the check of
