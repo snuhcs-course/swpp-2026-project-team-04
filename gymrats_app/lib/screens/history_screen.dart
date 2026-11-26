@@ -256,10 +256,10 @@ class _OverviewTab extends StatelessWidget {
       ];
     }
     final period = vm.state.period;
+    // The same order as an exercise's: the summary, the volume, each play
+    // in time, the bests and what went wrong most (user, 2026-11-26).
     return [
-      ArchiveSection(
-        child: ArchiveHoldSummary(holds: holds, period: period),
-      ),
+      ArchiveSection(child: ArchiveHoldFigures(holds: holds)),
       if (vm.volume case final volume?) ...[
         _gap,
         ArchiveSection(
@@ -271,11 +271,24 @@ class _OverviewTab extends StatelessWidget {
         ),
       ],
       _gap,
+      ArchiveSection(child: ArchiveHoldChart(holds: holds.points)),
+      _gap,
       ArchiveSection(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ArchiveSectionTitle('자주 받은 경고', detail: archivePeriodLabel(period)),
+            const ArchiveSectionTitle('개인 최고'),
+            const SizedBox(height: AppSpacing.s12),
+            ArchiveBests(holds: holds.bests),
+          ],
+        ),
+      ),
+      _gap,
+      ArchiveSection(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const ArchiveSectionTitle('자주 받은 경고'),
             const SizedBox(height: AppSpacing.s12),
             ArchiveHoldWarnings(warnings: holds.warnings),
           ],
@@ -330,14 +343,15 @@ class _OverviewTab extends StatelessWidget {
           children: [
             const ArchiveSectionTitle('개인 최고'),
             const SizedBox(height: AppSpacing.s12),
-            ArchiveBests(bests: growth.bests),
-            if (every && holds != null && holds.bests.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.s8),
-              Text(
-                '버티기 최고 · ${[for (final b in holds.bests) '${b.pose.label} ${ArchiveHoldSummary.time(b.held)}'].join(' · ')}',
-                style: text.feedbackMeta,
-              ),
-            ],
+            // One exercise shows its own best; 전체 every exercise's and
+            // every pose's (user, 2026-11-26).
+            ArchiveBests(
+              bests: [
+                for (final b in growth.bests)
+                  if (every || b.exercise == state.exercise) b,
+              ],
+              holds: every ? holds?.bests ?? const [] : const [],
+            ),
           ],
         ),
       ),
@@ -346,12 +360,7 @@ class _OverviewTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ArchiveSectionTitle(
-              '자주 나온 자세 문제',
-              detail:
-                  '${archivePeriodLabel(growth.period)} 무효 '
-                  '${growth.issues.fold(0, (sum, i) => sum + i.count)}회',
-            ),
+            const ArchiveSectionTitle('자주 나온 자세 문제'),
             const SizedBox(height: AppSpacing.s12),
             ArchiveIssues(issues: growth.issues),
           ],

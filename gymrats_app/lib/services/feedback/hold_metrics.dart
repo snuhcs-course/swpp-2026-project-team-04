@@ -160,6 +160,14 @@ class HoldMetrics {
     return (words: words.first, holds: counts[words.first]!, of: holds.length);
   }
 
+  /// Without earlier holds of the pose: the time held against the stage's
+  /// last star, as 100 = the goal (user, 2026-11-26).
+  double? get goalEndurance {
+    final goal = goalSeconds;
+    if (goal <= 0) return null;
+    return seconds(record.held) / goal * 100;
+  }
+
   /// The endurance index: the time held against [recentHeld], as 100 =
   /// that mean; null without earlier holds or when they held nothing.
   double? get endurance {

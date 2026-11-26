@@ -189,6 +189,8 @@ class ArchiveHolds {
     this.trends = const {},
     this.keepRate,
     this.warnings = const [],
+    this.points = const [],
+    this.bestHeld,
   });
 
   /// Holds in the period.
@@ -216,6 +218,13 @@ class ArchiveHolds {
   final List<({String words, int count})> warnings;
 
   static const warningCount = 3;
+
+  /// The period's holds of every pose, oldest first, at most [trendCount]
+  /// of the newest: 경기별 버틴 시간.
+  final List<HoldRecord> points;
+
+  /// The longest hold of the period; null without one.
+  final Duration? bestHeld;
 
   static ArchiveHolds of(
     List<HoldRecord> all,
@@ -260,6 +269,14 @@ class ArchiveHolds {
           : inPeriod.fold(0.0, (sum, h) => sum + HoldMetrics.keepRateOf(h)) /
                 inPeriod.length,
       warnings: warnings.take(warningCount).toList(),
+      points: () {
+        final sorted = [...inPeriod]
+          ..sort((a, b) => a.endedAt.compareTo(b.endedAt));
+        return sorted.skip(math.max(0, sorted.length - trendCount)).toList();
+      }(),
+      bestHeld: inPeriod.isEmpty
+          ? null
+          : inPeriod.map((h) => h.held).reduce((a, b) => a > b ? a : b),
       bests: [
         for (final pose in HoldPose.values)
           ?all

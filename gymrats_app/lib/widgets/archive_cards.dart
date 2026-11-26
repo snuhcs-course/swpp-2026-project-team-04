@@ -84,7 +84,12 @@ class ArchiveSectionTitle extends StatelessWidget {
         Expanded(
           child: Semantics(
             header: true,
-            child: Text(title, style: text.lobbyCardTitle),
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.lobbyCardTitle,
+            ),
           ),
         ),
         if (detail != null) ...[
@@ -497,67 +502,103 @@ String archiveDay(DateTime at) {
   return '${local.month}.${local.day.toString().padLeft(2, '0')}';
 }
 
-/// "개인 최고": each exercise's best score with its reps and day, on grey
-/// tiles.
+/// "24.6초", or "1분 12초" from a minute: a hold's time.
+String archiveHoldTime(Duration d) {
+  final tenths = (d.inMilliseconds / 100).round();
+  if (tenths >= 600) {
+    final seconds = (tenths / 10).round();
+    return '${seconds ~/ 60}분 ${seconds % 60}초';
+  }
+  final value = tenths / 10;
+  return value == value.roundToDouble()
+      ? '${value.toStringAsFixed(0)}초'
+      : '${value.toStringAsFixed(1)}초';
+}
+
+/// "개인 최고": each exercise's best score with its reps and day, and each
+/// hold pose's longest hold with its day, on grey tiles two to a row.
 class ArchiveBests extends StatelessWidget {
-  const ArchiveBests({super.key, required this.bests});
+  const ArchiveBests({super.key, this.bests = const [], this.holds = const []});
 
   final List<ArchiveBest> bests;
+
+  /// Each pose's longest hold.
+  final List<HoldRecord> holds;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    if (bests.isEmpty) {
-      return Text('점수가 기록된 경기가 아직 없어요.', style: text.feedbackMeta);
+    final tiles = <({String name, String value, String unit, String line})>[
+      for (final b in bests)
+        (
+          name: b.exercise.koreanName,
+          value: '${b.score}',
+          unit: '점',
+          line: '인정 ${b.reps}회 · ${archiveDay(b.playedAt)}',
+        ),
+      for (final h in holds)
+        (
+          name: h.pose.label,
+          value: archiveHoldTime(h.held),
+          unit: '',
+          line: '버티기 · ${archiveDay(h.endedAt)}',
+        ),
+    ];
+    if (tiles.isEmpty) {
+      return Text('기록된 최고 기록이 아직 없어요.', style: text.feedbackMeta);
     }
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final (index, best) in bests.indexed) ...[
-          if (index > 0) const SizedBox(width: AppSpacing.s8),
-          Expanded(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: AppColors.cardHigh,
-                borderRadius: BorderRadius.all(
-                  Radius.circular(AppRadius.small),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.s12),
-                child: Semantics(
-                  container: true,
-                  label:
-                      '${best.exercise.koreanName} 최고 ${best.score}점, '
-                      '인정 ${best.reps}회, ${archiveDay(best.playedAt)}',
-                  child: ExcludeSemantics(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          best.exercise.koreanName,
-                          style: text.feedbackMeta,
-                        ),
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '${best.score}',
-                                style: text.feedbackStat,
-                              ),
-                              TextSpan(text: ' 점', style: text.archiveLabel),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '인정 ${best.reps}회 · ${archiveDay(best.playedAt)}',
-                          style: text.feedbackMeta,
-                        ),
-                      ],
+    Widget tile(({String name, String value, String unit, String line}) t) =>
+        DecoratedBox(
+          decoration: const BoxDecoration(
+            color: AppColors.cardHigh,
+            borderRadius: BorderRadius.all(Radius.circular(AppRadius.small)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.s12),
+            child: Semantics(
+              container: true,
+              label: '${t.name} 최고 ${t.value}${t.unit}, ${t.line}',
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t.name, style: text.feedbackMeta),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: t.value, style: text.feedbackStat),
+                          if (t.unit.isNotEmpty)
+                            TextSpan(
+                              text: ' ${t.unit}',
+                              style: text.archiveLabel,
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
+                    Text(t.line, style: text.feedbackMeta),
+                  ],
                 ),
               ),
+            ),
+          ),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < tiles.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.s8),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tile(tiles[i])),
+                const SizedBox(width: AppSpacing.s8),
+                Expanded(
+                  child: i + 1 < tiles.length
+                      ? tile(tiles[i + 1])
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
           ),
         ],
@@ -633,172 +674,132 @@ class ArchiveIssues extends StatelessWidget {
   }
 }
 
-/// "버티기" on the 전체 tab (P13): the period's holds and time held, each
-/// pose's longest hold, and a pose's time held in the period as a trend
-/// (the pose picked by chips); one hold says there is nothing to compare.
-class ArchiveHoldSummary extends StatefulWidget {
-  const ArchiveHoldSummary({
-    super.key,
-    required this.holds,
-    required this.period,
-  });
+/// 버티기's summary on the 전체 tab, as an exercise's (user, 2026-11-26):
+/// holds, time held and the longest hold of the period.
+class ArchiveHoldFigures extends StatelessWidget {
+  const ArchiveHoldFigures({super.key, required this.holds});
 
   final ArchiveHolds holds;
-  final StatsPeriod period;
 
   @override
-  State<ArchiveHoldSummary> createState() => _ArchiveHoldSummaryState();
-
-  /// "24.6초", or "1분 12초" from a minute.
-  static String time(Duration d) {
-    final tenths = (d.inMilliseconds / 100).round();
-    if (tenths >= 600) {
-      final seconds = (tenths / 10).round();
-      return '${seconds ~/ 60}분 ${seconds % 60}초';
-    }
-    final value = tenths / 10;
-    return value == value.roundToDouble()
-        ? '${value.toStringAsFixed(0)}초'
-        : '${value.toStringAsFixed(1)}초';
+  Widget build(BuildContext context) {
+    final best = holds.bestHeld;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _Figure(value: '${holds.count}', unit: '회', name: '횟수'),
+        ),
+        Expanded(
+          child: _Figure(
+            value: archiveHoldTime(holds.held),
+            unit: '',
+            name: '버틴 시간',
+          ),
+        ),
+        Expanded(
+          child: _Figure(
+            value: best == null ? '–' : archiveHoldTime(best),
+            unit: '',
+            name: '최고 버틴 시간',
+          ),
+        ),
+      ],
+    );
   }
 }
 
-class _ArchiveHoldSummaryState extends State<ArchiveHoldSummary> {
-  HoldPose? _picked;
+/// A hold's dot: a high plank in green, a chair pose in ink.
+Color holdPoseColor(HoldPose pose) => switch (pose) {
+  HoldPose.plank => AppColors.statusGood,
+  HoldPose.chair => AppColors.ink,
+};
+
+/// "경기별 버틴 시간": the period's holds in time, as 경기별 점수 is for the
+/// battles; the poses told apart by colour when both are there.
+class ArchiveHoldChart extends StatelessWidget {
+  const ArchiveHoldChart({super.key, required this.holds});
+
+  /// Oldest first.
+  final List<HoldRecord> holds;
+
+  static const _legendDot = 10.0;
+
+  static String _oneDecimal(num v) {
+    final rounded = (v * 10).round() / 10;
+    return rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(1);
+  }
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final holds = widget.holds;
-    final period = widget.period;
-    final time = ArchiveHoldSummary.time;
-    final held = time(holds.held);
-    // The picked pose, else the first with holds in the period.
-    final poses = [
-      for (final pose in HoldPose.values)
-        if (holds.trends.containsKey(pose)) pose,
-    ];
-    final pose = poses.contains(_picked)
-        ? _picked!
-        : (poses.isEmpty ? null : poses.first);
-    final trend = pose == null ? const <HoldRecord>[] : holds.trends[pose]!;
+    final mixed = holds.map((h) => h.pose).toSet().length > 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ArchiveSectionTitle('버티기', detail: archivePeriodLabel(period)),
+        const ArchiveSectionTitle('경기별 버틴 시간'),
         const SizedBox(height: AppSpacing.s12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _Figure(value: '${holds.count}', unit: '회', name: '횟수'),
-            ),
-            Expanded(
-              child: _Figure(value: held, unit: '', name: '버틴 시간'),
-            ),
-            Expanded(
-              child: _Figure(
-                value: holds.keepRate == null
-                    ? '–'
-                    : '${(holds.keepRate! * 100).round()}',
-                unit: holds.keepRate == null ? '' : '%',
-                name: '평균 유지율',
-              ),
-            ),
-          ],
-        ),
-        if (holds.bests.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final (index, best) in holds.bests.indexed) ...[
-                if (index > 0) const SizedBox(width: AppSpacing.s8),
-                Expanded(
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(
-                      color: AppColors.cardHigh,
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(AppRadius.small),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.s12),
-                      child: Semantics(
-                        container: true,
-                        label:
-                            '${best.pose.label} 최고 ${time(best.held)}, '
-                            '${archiveDay(best.endedAt)}',
-                        child: ExcludeSemantics(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(best.pose.label, style: text.feedbackMeta),
-                              Text(time(best.held), style: text.feedbackStat),
-                              Text(
-                                '최고 · ${archiveDay(best.endedAt)}',
-                                style: text.feedbackMeta,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-        const SizedBox(height: AppSpacing.s16),
-        ArchiveSectionTitle(
-          '자세별 버틴 시간',
-          detail: pose == null ? null : '${trend.length}회',
-        ),
-        const SizedBox(height: AppSpacing.s12),
-        if (poses.length > 1) ...[
-          ArchiveChips<HoldPose>(
-            values: poses,
-            labelOf: (p) => p.label,
-            selected: pose!,
-            onSelected: (p) => setState(() => _picked = p),
-          ),
-          const SizedBox(height: AppSpacing.s12),
-        ],
-        if (pose == null)
+        if (holds.isEmpty)
           Text('이 기간에 기록된 버티기가 없어요.', style: text.feedbackMeta)
-        else if (trend.length < 2)
-          Text(
-            '${pose.label} ${time(trend.single.held)} · 비교 기록 없음',
-            style: text.feedbackMeta,
-          )
         else ...[
           Semantics(
             container: true,
             label:
-                '${pose.label} 버틴 시간: '
-                '${[for (final h in trend) time(h.held)].join(', ')}',
+                '경기별 버틴 시간: '
+                '${[for (final h in holds) archiveHoldTime(h.held)].join(', ')}',
             child: ExcludeSemantics(
               child: SizedBox(
                 height: ArchiveScoreChart.height,
                 child: CustomPaint(
                   painter: ArchiveTrendPainter(
                     values: [
-                      for (final h in trend) h.held.inMilliseconds / 1000,
+                      for (final h in holds) h.held.inMilliseconds / 1000,
                     ],
                     labelStyle: text.coachChipNumber,
                     meanStyle: text.statsAxis,
                     format: _oneDecimal,
+                    colors: mixed
+                        ? [for (final h in holds) holdPoseColor(h.pose)]
+                        : null,
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.s8),
+          if (mixed) ...[
+            ExcludeSemantics(
+              child: Wrap(
+                spacing: AppSpacing.s12,
+                children: [
+                  for (final pose in HoldPose.values)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox.square(
+                          dimension: _legendDot,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: holdPoseColor(pose),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.s4),
+                        Text(pose.label, style: text.feedbackMeta),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s8),
+          ],
           ExcludeSemantics(
             child: Row(
               children: [
-                for (final h in trend)
+                for (final h in holds)
                   Expanded(
                     child: Text(
                       archiveDay(h.endedAt),
@@ -813,13 +814,6 @@ class _ArchiveHoldSummaryState extends State<ArchiveHoldSummary> {
         ],
       ],
     );
-  }
-
-  static String _oneDecimal(num v) {
-    final rounded = (v * 10).round() / 10;
-    return rounded == rounded.roundToDouble()
-        ? rounded.toStringAsFixed(0)
-        : rounded.toStringAsFixed(1);
   }
 }
 

@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/arcade_catalog.dart';
 import '../models/hold_record.dart';
 import '../services/feedback/hold_metrics.dart';
 import '../services/feedback/hold_record_store.dart';
@@ -206,7 +205,6 @@ class _ScoreSection extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final r = metrics.record;
     final recent = metrics.recentScore;
-    final floor = ArcadeCatalog.floorOf(ArcadeCatalog.stage(r.stage));
     return ColoredBox(
       color: AppColors.card,
       child: Column(
@@ -242,7 +240,7 @@ class _ScoreSection extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpacing.s4),
                       Text(
-                        '${r.pose.label} · 아케이드 ${floor.number}층 · '
+                        'STAGE ${r.stage} · ${r.pose.label} · '
                         '별 ${r.stars}/${r.starSeconds.length}',
                         style: text.feedbackMeta,
                       ),
@@ -721,7 +719,6 @@ class _ExerciseSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
     final held = HoldMetrics.seconds(metrics.record.held);
     final recentHeld = metrics.recentHeld;
     final recentKcal = metrics.recentKcal;
@@ -751,7 +748,15 @@ class _ExerciseSection extends StatelessWidget {
         // Without an earlier hold of the pose there is nothing to compare
         // with (PM, 2026-11-26): the row says so.
         if (endurance == null)
-          _Row(name: '근지구력 지수', value: '–', unit: '', note: noEarlier)
+          _Row(
+            name: '근지구력 지수',
+            value: switch (metrics.goalEndurance) {
+              final goal? => '${goal.round()}',
+              null => '–',
+            },
+            unit: '',
+            note: '$noEarlier · 목표 ${metrics.goalSeconds}초 = 100',
+          )
         else
           _Row(
             name: '근지구력 지수',
@@ -760,8 +765,6 @@ class _ExerciseSection extends StatelessWidget {
             change: endurance - 100,
             note: '같은 자세 최근 평균 = 100',
           ),
-        const SizedBox(height: AppSpacing.s8),
-        Text('들어 올린 무게는 움직임이 없는 버티기에는 계산하지 않아요.', style: text.feedbackMeta),
       ],
     );
   }

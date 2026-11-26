@@ -101,9 +101,20 @@ class ArchiveMatchRow extends StatelessWidget {
     };
   }
 
-  /// "푸쉬업 · vs 러너".
-  static String titleLine(MatchRecord match) =>
-      '${match.exercise.koreanName} · vs ${match.opponentName}';
+  /// "푸쉬업 · vs 러너"; an arcade battle names its stage first, as the
+  /// holds do: "STAGE 8 · 푸쉬업 vs 물렁범" (user, 2026-11-26).
+  static String titleLine(MatchRecord match) {
+    final arcade = _arcade.firstMatch(match.opponentName);
+    if (arcade != null) {
+      return '${arcade.group(1)} · ${match.exercise.koreanName} '
+          'vs ${arcade.group(2)}';
+    }
+    return '${match.exercise.koreanName} · vs ${match.opponentName}';
+  }
+
+  /// The name an arcade battle keeps: "STAGE 8 · 물렁범" or
+  /// "STAGE 6 R1 · 물렁범" (`Opponent.arcadeName`).
+  static final _arcade = RegExp(r'^(STAGE \d+(?: R[12])?) · (.+)$');
 
   /// "16:04 · 온라인 · 상대 나감": the time when kept, the kind when the
   /// server said it, and the opponent leaving.
@@ -301,9 +312,9 @@ class ArchiveHoldRow extends StatelessWidget {
   static const _chevron = 18.0;
   static const _failTint = 0.22;
 
-  /// "하이 플랭크 · 3스테이지".
+  /// "STAGE 3 · 하이 플랭크", as an arcade battle names its stage.
   static String titleLine(HoldRecord hold) =>
-      '${hold.pose.label} · ${hold.stage}스테이지';
+      'STAGE ${hold.stage} · ${hold.pose.label}';
 
   /// "21:10 · 버티기 · 경고 2".
   static String detailLine(HoldRecord hold) {
