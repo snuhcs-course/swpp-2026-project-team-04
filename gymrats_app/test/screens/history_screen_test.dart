@@ -183,13 +183,13 @@ void main() {
   }
 
   group('the page (P13, draft C)', () {
-    testWidgets('back, the title 기록보관소 and the 전체 · 경기 tabs, 전체 '
+    testWidgets('back, the title 운동일지 and the 전체 · 경기 tabs, 전체 '
         'first', (tester) async {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
       expect(find.byTooltip('뒤로'), findsOneWidget);
-      expect(find.text('기록보관소'), findsOneWidget);
+      expect(find.text('운동일지'), findsOneWidget);
       expect(find.widgetWithText(Tab, '전체'), findsOneWidget);
       expect(find.widgetWithText(Tab, '경기'), findsOneWidget);
       expect(find.byType(ArchivePeriodPicker), findsOneWidget);
@@ -310,32 +310,22 @@ void main() {
       expect(find.text('이 기간에 무효 처리된 횟수가 없어요.'), findsOneWidget);
     });
 
-    testWidgets('기간별 통계 자세히 보기 opens the statistics on the same '
-        'clock', (tester) async {
+    testWidgets('the 전체 tab has no way into 기간별 통계 any more (user, '
+        '2026-11-26)', (tester) async {
       withBattles();
       await open(tester);
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.text('기간별 통계 자세히 보기'),
-        200,
-        scrollable: vertical.first,
-      );
-      await tester.ensureVisible(find.text('기간별 통계 자세히 보기'));
+      await tester.drag(vertical.first, const Offset(0, -3000));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('기간별 통계 자세히 보기'));
-      await tester.pumpAndSettle();
-      expect(find.byType(FeedbackStatsScreen), findsOneWidget);
-      expect(find.text('이번 주 · 11/9 월 ~ 11/15 일'), findsOneWidget);
+      expect(find.textContaining('기간별 통계'), findsNothing);
+      expect(find.byType(FeedbackStatsScreen), findsNothing);
     });
 
-    testWidgets('no statistics source: a note, no way into the statistics', (
-      tester,
-    ) async {
+    testWidgets('no statistics source: a note', (tester) async {
       final plain = FakeUserRepository()..historyPages = [_battles];
       await open(tester, using: plain);
       await tester.pumpAndSettle();
       expect(find.text('기간별 기록은 서버에 연결되어 있을 때 볼 수 있어요.'), findsOneWidget);
-      expect(find.text('기간별 통계 자세히 보기'), findsNothing);
     });
 
     testWidgets('while the period loads a spinner; a failure offers 다시 '
@@ -513,7 +503,7 @@ void main() {
       await open(tester);
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.text('기록보관소'), findsOneWidget);
+      expect(find.text('운동일지'), findsOneWidget);
       repository.historyGate!.complete();
       await tester.pumpAndSettle();
       expect(find.byType(CircularProgressIndicator), findsNothing);
@@ -659,22 +649,23 @@ void main() {
       expect(find.byType(HoldReportScreen), findsOneWidget);
     });
 
-    testWidgets('버티기 lists only the holds', (tester) async {
+    testWidgets('아케이드 lists the arcade battles with the holds; there is '
+        'no 버티기 chip', (tester) async {
       withBattles();
       await openWithHolds(tester, [
         holdRecord(endedAt: DateTime(2026, 11, 14, 14, 50)),
       ]);
       await toMatches(tester);
-      // The last chip: it may need the row scrolled to it first.
-      final chip = find.descendant(
-        of: find.byType(ArchiveChips<ArchiveFilter>),
-        matching: find.text('버티기'),
+      expect(
+        find.descendant(
+          of: find.byType(ArchiveChips<ArchiveFilter>),
+          matching: find.text('버티기'),
+        ),
+        findsNothing,
       );
-      await tester.ensureVisible(chip);
+      await tester.tap(find.text('아케이드'));
       await tester.pumpAndSettle();
-      await tester.tap(chip);
-      await tester.pumpAndSettle();
-      expect(find.byType(ArchiveMatchRow), findsNothing);
+      expect(shownIds(tester), [5, 3]);
       expect(find.byType(ArchiveHoldRow), findsOneWidget);
     });
 

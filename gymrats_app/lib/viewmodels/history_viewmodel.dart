@@ -35,8 +35,7 @@ enum ArchiveFilter {
   pushUp('푸쉬업'),
   squat('스쿼트'),
   online('온라인'),
-  arcade('아케이드'),
-  hold('버티기');
+  arcade('아케이드');
 
   const ArchiveFilter(this.label);
 
@@ -51,11 +50,11 @@ enum ArchiveFilter {
     squat => match.exercise == ExerciseType.squat,
     online => match.isOnline == true,
     arcade => match.isOnline == false,
-    hold => false,
   };
 
-  /// Whether the arcade's holds are listed: under 전체, 아케이드 and 버티기.
-  bool get keepsHolds => this == all || this == arcade || this == hold;
+  /// Whether the arcade's holds are listed: under 전체 and 아케이드, with the
+  /// arcade's battles (no chip of their own, user 2026-11-26).
+  bool get keepsHolds => this == all || this == arcade;
 }
 
 /// One row of the 경기 tab: a battle or a played hold (P13).

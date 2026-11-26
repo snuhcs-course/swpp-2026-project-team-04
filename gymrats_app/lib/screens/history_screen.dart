@@ -6,22 +6,20 @@ import '../services/feedback/feedback_stats.dart';
 import '../services/feedback/hold_record_store.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
-import '../viewmodels/feedback_stats_viewmodel.dart';
 import '../viewmodels/history_viewmodel.dart';
 import '../widgets/archive_cards.dart';
 import '../widgets/archive_match_row.dart';
 import '../widgets/auth_form.dart';
-import 'feedback_stats_screen.dart';
 import 'hold_report_screen.dart';
 import 'result_screen.dart';
 
-/// 기록보관소 (P13, draft C "운동일지"), opened from home's 03 / ARCHIVE: two
-/// tabs. The title stays 기록보관소, as home's menu names it.
+/// 운동일지 (P13, draft C), opened from home's 03 / ARCHIVE (named 기록보관소
+/// there): two tabs.
 ///
 /// - **전체:** a period (이번 주, 이번 달, 전체 기간) and an exercise; the
 ///   battles, counted reps per battle and best score; the battles' scores or
 ///   reps in time; the bests of every exercise; the most frequent reject
-///   reasons; and the way into 기간별 통계.
+///   reasons; and the holds (P13).
 /// - **경기:** chips for 전체, an exercise, 온라인 or 아케이드, and the battles
 ///   by day, loaded page by page as the list scrolls. A row opens its
 ///   battle's report.
@@ -80,18 +78,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   DateTime _now() => widget.now?.call() ?? DateTime.now();
 
-  /// 기간별 통계 on this week and both exercises, on the same clock.
-  void _openStats(FeedbackStatsSource source) => Navigator.push<void>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => FeedbackStatsScreen(
-        createViewModel: () =>
-            FeedbackStatsViewModel(source: source, now: widget.now),
-        now: widget.now,
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<HistoryViewModel>.value(
@@ -125,12 +111,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                         HistoryPhase.ready => TabBarView(
                           children: [
-                            _OverviewTab(
-                              onOpenStats: source == null
-                                  ? null
-                                  : () => _openStats(source),
-                              hasSource: source != null,
-                            ),
+                            _OverviewTab(hasSource: source != null),
                             _MatchesTab(now: _now),
                           ],
                         ),
@@ -147,7 +128,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
-/// The back button and "기록보관소" on white, then the 전체 | 경기 tabs with an
+/// The back button and "운동일지" on white, then the 전체 | 경기 tabs with an
 /// ink line under the chosen one.
 class _Top extends StatelessWidget {
   const _Top();
@@ -183,7 +164,7 @@ class _Top extends StatelessWidget {
                 Expanded(
                   child: Semantics(
                     header: true,
-                    child: Text('기록보관소', style: text.lobbyCardTitle),
+                    child: Text('운동일지', style: text.lobbyCardTitle),
                   ),
                 ),
               ],
@@ -213,9 +194,8 @@ const _gap = SizedBox(height: AppSpacing.s8);
 
 /// The 전체 tab: the period and exercise, then what they hold.
 class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({required this.onOpenStats, required this.hasSource});
+  const _OverviewTab({required this.hasSource});
 
-  final VoidCallback? onOpenStats;
   final bool hasSource;
 
   @override
@@ -224,7 +204,6 @@ class _OverviewTab extends StatelessWidget {
     final state = vm.state;
     final growth = vm.growth;
     final text = Theme.of(context).textTheme;
-    final onOpenStats = this.onOpenStats;
     return ListView(
       padding: const EdgeInsets.only(
         top: AppSpacing.s8,
@@ -294,40 +273,6 @@ class _OverviewTab extends StatelessWidget {
           _gap,
           ArchiveSection(
             child: ArchiveHoldSummary(holds: holds, period: state.period),
-          ),
-        ],
-        if (onOpenStats != null) ...[
-          _gap,
-          Material(
-            color: AppColors.card,
-            child: InkWell(
-              onTap: onOpenStats,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  minHeight: kMinInteractiveDimension,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s20,
-                    vertical: AppSpacing.s12,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '기간별 통계 자세히 보기',
-                          style: text.reportCardTitle,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        color: AppColors.textMuted,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           ),
         ],
       ],

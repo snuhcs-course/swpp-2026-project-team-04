@@ -339,7 +339,6 @@ void main() {
         '스쿼트',
         '온라인',
         '아케이드',
-        '버티기',
       ]);
     });
 
@@ -536,8 +535,8 @@ void main() {
       expect(days.first.holds, hasLength(1));
     });
 
-    test('버티기 lists only the holds, 아케이드 battles and holds, an '
-        'exercise only battles', () async {
+    test('아케이드 lists the arcade battles and the holds, an exercise and '
+        '온라인 only battles', () async {
       final store = InMemoryHoldRecordStore();
       await store.save(hold(DateTime(2026, 11, 13, 12)));
       repository.historyPages = [
@@ -545,16 +544,15 @@ void main() {
       ];
       vm = HistoryViewModel(repository: repository, holdRecords: store);
       await vm.load();
-      vm.setFilter(ArchiveFilter.hold);
-      expect(vm.state.days.single.entries.single, isA<ArchiveHoldEntry>());
       vm.setFilter(ArchiveFilter.arcade);
       expect(vm.state.days.single.entries, hasLength(2));
       vm.setFilter(ArchiveFilter.pushUp);
       expect(vm.state.days.single.holds, isEmpty);
+      vm.setFilter(ArchiveFilter.online);
+      expect(vm.state.days, isEmpty);
       expect(ArchiveFilter.values.where((f) => f.keepsHolds), [
         ArchiveFilter.all,
         ArchiveFilter.arcade,
-        ArchiveFilter.hold,
       ]);
     });
 
