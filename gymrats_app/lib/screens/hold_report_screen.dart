@@ -7,6 +7,7 @@ import '../models/arcade_catalog.dart';
 import '../models/hold_record.dart';
 import '../services/feedback/hold_metrics.dart';
 import '../services/feedback/hold_record_store.dart';
+import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/hold_report_viewmodel.dart';
 import '../widgets/archive_cards.dart';
@@ -42,7 +43,17 @@ class _HoldReportScreenState extends State<HoldReportScreen> {
     record: widget.record,
     store: widget.store,
     weightKg: widget.weightKg,
+    profiles: _profiles(),
   );
+
+  /// The app's account data, for the body weight; none in tests without it.
+  UserRepository? _profiles() {
+    try {
+      return context.read<UserRepository>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
 
   @override
   void initState() {

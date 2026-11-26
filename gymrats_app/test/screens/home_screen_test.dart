@@ -60,7 +60,7 @@ const _systemBars = FakeViewPadding(top: 24, bottom: 48);
 // The status bar and the gesture bar.
 const _gestureBars = FakeViewPadding(top: 24, bottom: 24);
 
-const _titles = ['게임 시작', '캐릭터', '기록보관소', '환경설정'];
+const _titles = ['게임 시작', '캐릭터', '운동일지', '환경설정'];
 
 double _scrollRoom(WidgetTester tester) => tester
     .state<ScrollableState>(find.byType(Scrollable))
@@ -202,7 +202,7 @@ void main() {
     final items = tester
         .widgetList<LobbyMenuItem>(find.byType(LobbyMenuItem))
         .toList();
-    expect(items.map((item) => item.title), ['게임 시작', '캐릭터', '기록보관소', '환경설정']);
+    expect(items.map((item) => item.title), ['게임 시작', '캐릭터', '운동일지', '환경설정']);
     expect(items.map((item) => item.tag), [
       '01 / PLAY',
       '02 / CHARACTER',
@@ -242,8 +242,8 @@ void main() {
     expect(room.bottom, top(_row('게임 시작')));
     expect(top(find.text('GYMMOUSE')), lessThan(room.top));
     expect(top(find.text('게임 시작')), lessThan(top(find.text('캐릭터'))));
-    expect(top(find.text('캐릭터')), lessThan(top(find.text('기록보관소'))));
-    expect(top(find.text('기록보관소')), lessThan(top(find.text('환경설정'))));
+    expect(top(find.text('캐릭터')), lessThan(top(find.text('운동일지'))));
+    expect(top(find.text('운동일지')), lessThan(top(find.text('환경설정'))));
   });
 
   testWidgets('the account\'s character stands there, and a new choice '
@@ -390,10 +390,10 @@ void main() {
 
   testWidgets('기록보관소 opens the history page', (tester) async {
     await open(tester);
-    await tapAndSettle(tester, find.text('기록보관소'));
+    await tapAndSettle(tester, find.text('운동일지'));
     expect(find.text('history page'), findsOneWidget);
     await back(tester);
-    expect(find.text('기록보관소'), findsOneWidget);
+    expect(find.text('운동일지'), findsOneWidget);
   });
 
   for (final (name, finder) in [
@@ -437,7 +437,7 @@ void main() {
     for (final (name, entry) in [
       ('the play page', '게임 시작'),
       ('캐릭터 선택', '캐릭터'),
-      ('the history page', '기록보관소'),
+      ('the history page', '운동일지'),
       ('settings', '환경설정'),
     ]) {
       testWidgets('after $name', (tester) async {
@@ -463,7 +463,7 @@ void main() {
           opponentReps: 9,
         ),
       );
-      await tapAndSettle(tester, find.text('기록보관소'));
+      await tapAndSettle(tester, find.text('운동일지'));
       await back(tester);
       await tapAndSettle(tester, find.text('게임 시작'));
       final home = tester
@@ -625,7 +625,7 @@ void main() {
       for (final (title, opened) in [
         ('게임 시작', find.byType(PlayScreen)),
         ('캐릭터', find.text('character page')),
-        ('기록보관소', find.text('history page')),
+        ('운동일지', find.text('history page')),
         ('환경설정', find.byType(SettingsScreen)),
       ]) {
         await tester.dragUntilVisible(

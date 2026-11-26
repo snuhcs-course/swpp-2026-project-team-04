@@ -750,6 +750,252 @@ class _ArchiveHoldSummaryState extends State<ArchiveHoldSummary> {
   }
 }
 
+/// "이번 주 운동량" on the 전체 tab (P13, draft C): estimated calories,
+/// lifted weight and the mean endurance index of the period's battles kept
+/// on this phone, each against the period before with two bars (this one in
+/// green, the one before in grey); 전체 기간 has no period before.
+class ArchiveVolumeSection extends StatelessWidget {
+  const ArchiveVolumeSection({
+    super.key,
+    required this.volume,
+    required this.period,
+  });
+
+  final ArchiveVolume volume;
+  final StatsPeriod period;
+
+  /// "지난 주", "지난 달".
+  static String previousLabel(StatsPeriod period) => switch (period) {
+    StatsPeriod.week => '지난 주',
+    StatsPeriod.month => '지난 달',
+    StatsPeriod.all => '',
+  };
+
+  /// "750 kg", or "4.2 t" from a tonne.
+  static (String, String) weight(double kg) =>
+      kg >= 1000 ? (_oneDecimal(kg / 1000), 't') : ('${kg.round()}', 'kg');
+
+  static String _oneDecimal(num v) {
+    final rounded = (v * 10).round() / 10;
+    return rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final now = volume.current;
+    final before = volume.previous;
+    final (lifted, liftedUnit) = weight(now.liftedKg);
+    final weightNote = volume.weightAssumed
+        ? '${volume.weightKg.round()} kg 기준 추정'
+        : '체중 ${_oneDecimal(volume.weightKg)} kg 기준 추정';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ArchiveSectionTitle(
+          '${archivePeriodLabel(period)} 운동량',
+          trailing: before == null
+              ? null
+              : _Legend(
+                  now: archivePeriodLabel(period),
+                  before: previousLabel(period),
+                ),
+        ),
+        if (now.battles == 0) ...[
+          const SizedBox(height: AppSpacing.s12),
+          Text('이 기간에 이 폰에 남은 경기가 없어요.', style: text.feedbackMeta),
+        ] else ...[
+          _VolumeRow(
+            name: '예상 소모 칼로리',
+            value: _oneDecimal(now.kcal),
+            unit: 'kcal',
+            now: now.kcal,
+            before: before?.kcal,
+            change: before == null ? null : _oneDecimal(now.kcal - before.kcal),
+          ),
+          const Divider(height: 1, color: AppColors.facetLight),
+          _VolumeRow(
+            name: '들어 올린 무게',
+            value: lifted,
+            unit: liftedUnit,
+            now: now.liftedKg,
+            before: before?.liftedKg,
+            change: before == null
+                ? null
+                : () {
+                    final (v, u) = weight(
+                      (now.liftedKg - before.liftedKg).abs(),
+                    );
+                    return '$v $u';
+                  }(),
+            down: before != null && now.liftedKg < before.liftedKg,
+          ),
+          const Divider(height: 1, color: AppColors.facetLight),
+          _VolumeRow(
+            name: '근지구력 지수',
+            value: now.endurance == null ? '–' : '${now.endurance!.round()}',
+            unit: '',
+            now: now.endurance ?? 0,
+            before: before?.endurance,
+            change: now.endurance != null && before?.endurance != null
+                ? '${(now.endurance! - before!.endurance!).round()}'
+                : null,
+            note: now.endurance == null ? '비교 기록 없음' : '경기마다 최근 평균 = 100',
+          ),
+        ],
+        const SizedBox(height: AppSpacing.s8),
+        Text('이 폰에 남은 경기 기준 · $weightNote', style: text.feedbackMeta),
+      ],
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  const _Legend({required this.now, required this.before});
+
+  final String now;
+  final String before;
+
+  static const _box = 10.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.feedbackMeta;
+    Widget item(Color color, String label) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox.square(
+          dimension: _box,
+          child: ColoredBox(color: color),
+        ),
+        const SizedBox(width: AppSpacing.s4),
+        Text(label, style: style),
+      ],
+    );
+    return ExcludeSemantics(
+      child: Wrap(
+        spacing: AppSpacing.s8,
+        children: [
+          item(AppColors.statusGood, now),
+          item(AppColors.inactive, before),
+        ],
+      ),
+    );
+  }
+}
+
+class _VolumeRow extends StatelessWidget {
+  const _VolumeRow({
+    required this.name,
+    required this.value,
+    required this.unit,
+    required this.now,
+    this.before,
+    this.change,
+    this.down,
+    this.note,
+  });
+
+  final String name;
+  final String value;
+  final String unit;
+  final double now;
+  final double? before;
+
+  /// The change's words without its sign; null without a period before.
+  final String? change;
+
+  /// Whether the change is down; by default when [change] starts with "-".
+  final bool? down;
+  final String? note;
+
+  static const _bar = 12.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final before = this.before;
+    final change = this.change;
+    final note = this.note;
+    final isDown = down ?? (change?.startsWith('-') ?? false);
+    final shown = change?.replaceFirst('-', '');
+    final most = [now, ?before, 1e-9].reduce((a, b) => a > b ? a : b);
+    Widget bar(double value, Color color) => ClipRRect(
+      borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
+      child: SizedBox(
+        height: _bar,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(
+            widthFactor: (value / most).clamp(0.0, 1.0),
+            heightFactor: 1,
+            child: ColoredBox(color: color),
+          ),
+        ),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 5,
+            child: Semantics(
+              container: true,
+              label: [
+                '$name $value$unit',
+                if (shown != null) '${isDown ? '감소' : '증가'} $shown',
+                ?note,
+              ].join(', '),
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: text.feedbackMeta),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: value, style: text.statsIssueName),
+                          if (unit.isNotEmpty)
+                            TextSpan(text: ' $unit', style: text.archiveLabel),
+                        ],
+                      ),
+                    ),
+                    if (shown != null)
+                      Text(
+                        '${isDown ? '-' : '+'}$shown',
+                        style: text.coachChipNumber,
+                      ),
+                    if (note != null) Text(note, style: text.feedbackMeta),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s12),
+          Expanded(
+            flex: 6,
+            child: ExcludeSemantics(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  bar(now, AppColors.statusGood),
+                  if (before != null) ...[
+                    const SizedBox(height: AppSpacing.s4),
+                    bar(before, AppColors.inactive),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// The exercise chips of the 전체 tab.
 class ArchiveExerciseChips extends StatelessWidget {
   const ArchiveExerciseChips({

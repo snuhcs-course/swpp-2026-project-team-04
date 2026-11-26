@@ -348,7 +348,7 @@ void main() {
   ) async {
     final auth = signedInAuth();
     await start(tester, auth);
-    await tester.tap(find.text('기록보관소'));
+    await tester.tap(find.text('운동일지'));
     await tester.pumpAndSettle();
     expect(find.byType(HistoryScreen), findsOneWidget);
 
@@ -363,9 +363,9 @@ void main() {
 
   // Updated for the game lobby (W1): the 홈 | 기록 tabs are gone, and the
   // lobby's 기록보관소 opens the history as a page with a back button.
-  testWidgets('"기록보관소" opens the history as a page', (tester) async {
+  testWidgets('"운동일지" opens the history as a page', (tester) async {
     await start(tester, signedInAuth());
-    await tester.tap(find.text('기록보관소'));
+    await tester.tap(find.text('운동일지'));
     await tester.pumpAndSettle();
     expect(find.byType(HistoryScreen), findsOneWidget);
     expect(find.text('운동일지'), findsOneWidget);

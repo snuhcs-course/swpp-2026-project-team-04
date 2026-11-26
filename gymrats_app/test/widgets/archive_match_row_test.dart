@@ -151,13 +151,18 @@ void main() {
       expect(find.textContaining('인정'), findsNothing);
     });
 
-    testWidgets('the gain chip only with a gain', (tester) async {
+    testWidgets('개인 최고 beside the title only with a gain (draft C)', (
+      tester,
+    ) async {
       await _show(tester, ArchiveMatchRow(match: _battle(), bestGain: 55));
-      expect(find.byKey(const ValueKey('archive-gain-chip')), findsOneWidget);
-      expect(find.text('55'), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp('최고 기록 55점 경신')), findsOneWidget);
+      expect(find.byKey(const ValueKey('archive-best-badge')), findsOneWidget);
+      expect(find.text('개인 최고'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp('개인 최고, 최고 기록 55점 경신')),
+        findsOneWidget,
+      );
       await _show(tester, ArchiveMatchRow(match: _battle()));
-      expect(find.byKey(const ValueKey('archive-gain-chip')), findsNothing);
+      expect(find.byKey(const ValueKey('archive-best-badge')), findsNothing);
     });
 
     testWidgets('a loss and a draw get their own chip colors', (tester) async {

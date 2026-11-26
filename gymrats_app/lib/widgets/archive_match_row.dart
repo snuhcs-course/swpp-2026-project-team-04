@@ -70,8 +70,8 @@ class ArchiveDayHeader extends StatelessWidget {
 /// One battle in the journal's 경기 tab (P13, draft C): a result chip (승,
 /// 패, 무, KO승 or KO패), "푸쉬업 · vs 러너", the time and the kind (온라인,
 /// 아케이드, 상대 나감), the user's score with its unit and the counted reps,
-/// and a lime "↑55" chip when it raised the exercise's best. Tappable when
-/// [onTap] is set.
+/// and "개인 최고" beside the title when it raised the exercise's best.
+/// Tappable when [onTap] is set.
 class ArchiveMatchRow extends StatelessWidget {
   const ArchiveMatchRow({
     super.key,
@@ -181,11 +181,21 @@ class ArchiveMatchRow extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          titleLine(match),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: text.reportCardTitle,
+                        // The title, and "개인 최고" beside it when the battle
+                        // raised the exercise's best (draft C).
+                        Wrap(
+                          spacing: AppSpacing.s8,
+                          runSpacing: AppSpacing.s4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              titleLine(match),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.reportCardTitle,
+                            ),
+                            if (gain != null) _BestBadge(gain: gain),
+                          ],
                         ),
                         if (detail.isNotEmpty)
                           Text(
@@ -221,10 +231,6 @@ class ArchiveMatchRow extends StatelessWidget {
                       ),
                       if (score != null)
                         Text('인정 ${match.myReps}회', style: quiet),
-                      if (gain != null) ...[
-                        const SizedBox(height: AppSpacing.s4),
-                        _GainChip(gain: gain),
-                      ],
                     ],
                   ),
                   const SizedBox(width: AppSpacing.s4),
@@ -243,43 +249,36 @@ class ArchiveMatchRow extends StatelessWidget {
   }
 }
 
-/// "↑55" in ink on a lime band: the battle set a new best by 55 points.
-class _GainChip extends StatelessWidget {
-  const _GainChip({required this.gain});
+/// "개인 최고" in green on a pale lime band, beside a battle's title when
+/// it raised the exercise's best (draft C); a screen reader hears by how
+/// much.
+class _BestBadge extends StatelessWidget {
+  const _BestBadge({required this.gain});
 
   final int gain;
 
-  static const _radius = 6.0;
-  static const _arrowSize = 12.0;
-  static const _strength = 0.6;
+  static const label = '개인 최고';
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '최고 기록 $gain점 경신',
+      label: '$label, 최고 기록 $gain점 경신',
       child: ExcludeSemantics(
         child: DecoratedBox(
-          key: const ValueKey('archive-gain-chip'),
-          decoration: BoxDecoration(
-            color: AppColors.accent.withValues(alpha: _strength),
-            borderRadius: const BorderRadius.all(Radius.circular(_radius)),
+          key: const ValueKey('archive-best-badge'),
+          decoration: const BoxDecoration(
+            color: AppColors.selectedFill,
+            borderRadius: BorderRadius.all(Radius.circular(AppRadius.small)),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.arrow_upward_rounded,
-                  size: _arrowSize,
-                  color: AppColors.ink,
-                ),
-                Text(
-                  '$gain',
-                  style: Theme.of(context).textTheme.archiveRowGain
-                      .copyWith(color: AppColors.ink),
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s8,
+              vertical: AppSpacing.s4 / 2,
+            ),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.archiveRowGain
+                  .copyWith(color: AppColors.ink),
             ),
           ),
         ),

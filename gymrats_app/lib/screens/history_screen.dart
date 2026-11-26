@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/hold_record.dart';
 import '../services/feedback/feedback_stats.dart';
+import '../services/feedback/form_report_store.dart';
 import '../services/feedback/hold_record_store.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
@@ -55,10 +56,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
         HistoryViewModel(
           repository: context.read<UserRepository>(),
           holdRecords: _holdRecords(),
+          formReports: _formReports(),
           // One clock for the periods and the rows' words.
           now: widget.now,
         );
     _viewModel.load();
+  }
+
+  /// The battles' form reports kept on the phone, for 운동량 (P13).
+  FormReportStore? _formReports() {
+    try {
+      return context.read<FormReportStore>();
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 
   /// The app's kept holds (P13); none without one, as in tests.
@@ -228,6 +239,12 @@ class _OverviewTab extends StatelessWidget {
         if (growth != null) ...[
           ArchiveSection(child: ArchiveSummary(growth: growth)),
           _gap,
+          if (vm.volume case final volume?) ...[
+            ArchiveSection(
+              child: ArchiveVolumeSection(volume: volume, period: state.period),
+            ),
+            _gap,
+          ],
           ArchiveSection(child: ArchiveScoreChart(points: growth.points)),
           _gap,
           ArchiveSection(

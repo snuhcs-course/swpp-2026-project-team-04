@@ -5,11 +5,14 @@ import 'package:flutter/foundation.dart';
 import '../models/arcade_stage.dart';
 import '../models/exercise_type.dart';
 import '../models/feedback_stats.dart';
+import '../models/form_report.dart';
 import '../models/hold_record.dart';
 import '../models/match_record.dart';
 import '../models/rep_event.dart';
 import '../services/api/api_client.dart';
 import '../services/feedback/feedback_stats.dart';
+import '../services/feedback/form_report_store.dart';
+import '../services/feedback/report_metrics.dart';
 import '../services/feedback/hold_record_store.dart';
 import '../services/user/user_repository.dart';
 import 'login_viewmodel.dart';
@@ -217,6 +220,116 @@ class ArchiveHolds {
   }
 }
 
+/// One period's 운동량 of an exercise (P13, draft C): calories, lifted
+/// weight and the mean endurance index, from the battles kept on this
+/// phone, by P14's [ReportMetrics].
+class ArchiveAmount {
+  const ArchiveAmount({
+    required this.battles,
+    required this.kcal,
+    required this.liftedKg,
+    this.endurance,
+  });
+
+  /// Battles kept on the phone in the period.
+  final int battles;
+  final double kcal;
+  final double liftedKg;
+
+  /// The mean endurance index of the battles that have one.
+  final double? endurance;
+
+  static ArchiveAmount of(
+    Iterable<FormReport> reports,
+    List<FormReport> kept,
+    double? weightKg,
+  ) {
+    var kcal = 0.0, lifted = 0.0, count = 0;
+    final endurances = <int>[];
+    for (final r in reports) {
+      final m = ReportMetrics.of(r, weightKg: weightKg, earlier: kept);
+      count++;
+      kcal += m.kcal;
+      lifted += m.liftedKg;
+      if (m.enduranceIndex case final e?) endurances.add(e);
+    }
+    return ArchiveAmount(
+      battles: count,
+      kcal: kcal,
+      liftedKg: lifted,
+      endurance: endurances.isEmpty
+          ? null
+          : endurances.fold(0, (a, b) => a + b) / endurances.length,
+    );
+  }
+}
+
+/// The 전체 tab's 운동량: this period against the one before (none for 전체
+/// 기간), and the body weight the estimates use.
+class ArchiveVolume {
+  const ArchiveVolume({
+    required this.current,
+    required this.weightKg,
+    required this.weightAssumed,
+    this.previous,
+  });
+
+  final ArchiveAmount current;
+
+  /// The period before; null for 전체 기간.
+  final ArchiveAmount? previous;
+
+  /// The weight used, and whether it is the 65 kg default because the
+  /// profile has none.
+  final double weightKg;
+  final bool weightAssumed;
+
+  /// The start of the period before [period]'s, as of [now]; null for
+  /// [StatsPeriod.all].
+  static DateTime? previousStart(StatsPeriod period, DateTime now) {
+    final start = const FeedbackStatsCalculator().periodStart(period, now);
+    if (start == null) return null;
+    return switch (period) {
+      StatsPeriod.week => DateTime(start.year, start.month, start.day - 7),
+      StatsPeriod.month => DateTime(start.year, start.month - 1),
+      StatsPeriod.all => null,
+    };
+  }
+
+  static ArchiveVolume of(
+    List<FormReport> kept,
+    StatsPeriod period,
+    ExerciseType exercise,
+    DateTime now, {
+    double? weightKg,
+  }) {
+    final start = const FeedbackStatsCalculator().periodStart(period, now);
+    final before = previousStart(period, now);
+    bool between(DateTime at, DateTime? from, DateTime? to) =>
+        (from == null || !at.isBefore(from)) && (to == null || at.isBefore(to));
+    final ofExercise = [
+      for (final r in kept)
+        if (r.exercise == exercise && !r.endedAt.isAfter(now)) r,
+    ];
+    return ArchiveVolume(
+      current: ArchiveAmount.of(
+        ofExercise.where((r) => between(r.endedAt, start, null)),
+        kept,
+        weightKg,
+      ),
+      previous: before == null
+          ? null
+          : ArchiveAmount.of(
+              ofExercise.where((r) => between(r.endedAt, before, start)),
+              kept,
+              weightKg,
+            ),
+      weightKg: weightKg ?? ReportMetrics.defaultWeightKg,
+      weightAssumed: weightKg == null,
+    );
+  }
+}
+
 /// One battle on the 전체 tab's chart: its score (null when none was kept)
 /// and its counted reps.
 class ArchivePoint {
@@ -383,6 +496,8 @@ class HistoryState {
     this.period = StatsPeriod.week,
     this.exercise = ExerciseType.pushUp,
     this.holds = const [],
+    this.reports,
+    this.weightKg,
   });
 
   final HistoryPhase phase;
@@ -425,6 +540,13 @@ class HistoryState {
   /// The holds kept on the phone, newest first (P13).
   final List<HoldRecord> holds;
 
+  /// The battles' form reports kept on the phone, for 운동량; null until
+  /// read or without a store.
+  final List<FormReport>? reports;
+
+  /// The body weight in the user's profile; null when none or unread.
+  final double? weightKg;
+
   /// The loaded battles [filter] keeps, newest first.
   List<MatchRecord> get filtered => [
     for (final m in matches)
@@ -458,6 +580,8 @@ class HistoryState {
     StatsPeriod? period,
     ExerciseType? exercise,
     List<HoldRecord>? holds,
+    List<FormReport>? reports,
+    double? weightKg,
   }) => HistoryState(
     phase: phase ?? this.phase,
     matches: matches ?? this.matches,
@@ -472,6 +596,8 @@ class HistoryState {
     period: period ?? this.period,
     exercise: exercise ?? this.exercise,
     holds: holds ?? this.holds,
+    reports: reports ?? this.reports,
+    weightKg: weightKg ?? this.weightKg,
   );
 }
 
@@ -486,6 +612,7 @@ class HistoryViewModel extends ChangeNotifier {
     this.pageSize = 20,
     FeedbackStatsSource? stats,
     this.holdRecords,
+    this.formReports,
     DateTime Function()? now,
   }) : _stats =
            stats ??
@@ -499,6 +626,14 @@ class HistoryViewModel extends ChangeNotifier {
 
   /// The holds kept on the phone (P13); null lists none.
   final HoldRecordStore? holdRecords;
+
+  /// The battles' form reports kept on the phone, for 운동량 (P13); null
+  /// shows none.
+  final FormReportStore? formReports;
+
+  /// How long 운동량 waits for the profile's body weight before using the
+  /// default, as the post-game report does.
+  static const weightWait = Duration(seconds: 2);
   final FeedbackStatsSource? _stats;
   final DateTime Function() _now;
   static const _calculator = FeedbackStatsCalculator();
@@ -552,7 +687,48 @@ class HistoryViewModel extends ChangeNotifier {
     } finally {
       _fetching = false;
     }
-    if (loaded) await _loadArchive(load);
+    if (loaded || _state.holds.isNotEmpty) {
+      await Future.wait([_loadArchive(load), _loadVolume(load)]);
+    }
+  }
+
+  /// Reads the kept form reports and the profile's body weight for 운동량.
+  Future<void> _loadVolume(int load) async {
+    final store = formReports;
+    if (store == null) return;
+    Future<double?> weight() async {
+      try {
+        final profile = await _repository.fetchProfile().timeout(weightWait);
+        return profile.weightKg;
+      } on Object {
+        return null;
+      }
+    }
+
+    final reading = weight();
+    List<FormReport> reports;
+    try {
+      reports = await store.list();
+    } on Object {
+      reports = const [];
+    }
+    final kg = await reading;
+    if (load != _loads) return;
+    _set(_state.copyWith(reports: reports, weightKg: kg));
+  }
+
+  /// The 전체 tab's 운동량 of the chosen period and exercise; null until the
+  /// kept reports are read.
+  ArchiveVolume? get volume {
+    final reports = _state.reports;
+    if (reports == null) return null;
+    return ArchiveVolume.of(
+      reports,
+      _state.period,
+      _state.exercise,
+      _now(),
+      weightKg: _state.weightKg,
+    );
   }
 
   /// Loads the next older page. Does nothing on the last page or while a
