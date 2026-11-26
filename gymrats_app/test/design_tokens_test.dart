@@ -83,6 +83,7 @@ const _checked = [
   'lib/widgets/result_report.dart',
   'lib/widgets/safe_warning_dialog.dart',
   'lib/widgets/tutorial_rep_bot.dart',
+  'lib/widgets/victory_defeat.dart',
   'lib/widgets/victory_motion.dart',
   'lib/widgets/victory_overlay.dart',
   'lib/widgets/victory_rig_data.dart',
