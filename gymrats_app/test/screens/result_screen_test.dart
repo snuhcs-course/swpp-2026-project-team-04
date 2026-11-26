@@ -1110,13 +1110,12 @@ void main() {
       });
     }
 
-    for (final (outcome, character, endMs) in const [
-      (MatchOutcome.lose, 'bear', 760),
-      (MatchOutcome.draw, 'seal', 820),
+    for (final (outcome, character, words) in const [
+      (MatchOutcome.lose, 'bear', '패배'),
+      (MatchOutcome.draw, 'seal', '무승부'),
     ]) {
-      testWidgets('a ${outcome.name}: no cut-in and no band; $character '
-          'frustrates once on the seat on a white stand, then the end look '
-          'stays ($endMs ms)', (tester) async {
+      testWidgets('a ${outcome.name}: the A7 cut-in with the band $words, no '
+          'confetti; $character ends on the seat at 2000 ms', (tester) async {
         final semantics = tester.ensureSemantics();
         final scene = outcome == MatchOutcome.lose
             ? VictoryResult.lose
@@ -1132,22 +1131,47 @@ void main() {
         );
         expect(tester.widget<VictoryOverlay>(sceneOverlay).result, scene);
         expect(find.bySemanticsLabel(VictoryOverlay.skipLabel), findsOneWidget);
-        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 900));
         final frame = frameNow(tester);
-        expect(frame.panel, isNull);
-        expect(frame.band, isNull);
+        expect(frame.panel, isNotNull);
+        expect(frame.band!.text, words);
         expect(frame.confetti, isEmpty);
-        expect(frame.stand!.color, AppColors.card);
-        expect(frame.figure!.foot, seatPlace(tester) + const Offset(86, 132));
-        expect(frame.figure!.scale, closeTo(0.66, 0.001));
 
-        await tester.pump(Duration(milliseconds: endMs - 301));
+        await tester.pump(const Duration(milliseconds: 1099));
         expect(sceneOverlay, findsOneWidget);
         await tester.pump(const Duration(milliseconds: 1));
         expectSeat(tester, scene, character);
         semantics.dispose();
       });
     }
+
+    testWidgets('the scene gets the battle\'s opponent: a draw draws them '
+        'beside my character (A7)', (tester) async {
+      const opponent = Opponent(
+        name: '진영',
+        isBot: false,
+        characterId: 'penguin',
+      );
+      await openScene(
+        tester,
+        _result(
+          matchup: const Matchup(
+            exercise: ExerciseType.pushUp,
+            playerName: '우현',
+            opponent: opponent,
+          ),
+          outcome: MatchOutcome.draw,
+          opponentScore: 240,
+        ),
+        character: 'bear',
+      );
+      expect(tester.widget<VictoryOverlay>(sceneOverlay).opponent, opponent);
+      await tester.pump(const Duration(milliseconds: 560));
+      expect(
+        [for (final fighter in frameNow(tester).fighters) fighter.characterId],
+        ['penguin', 'bear'],
+      );
+    });
 
     testWidgets('a tap anywhere skips to the end look on the seat; that tap '
         'does not reach the report\'s button, the next one does', (
