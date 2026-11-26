@@ -283,7 +283,7 @@ class _BestBadge extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.s8,
-              vertical: AppSpacing.s4 / 2,
+              vertical: AppSpacing.s4,
             ),
             child: Text(
               label,
