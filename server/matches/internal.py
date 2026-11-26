@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import F, Q, Window
+from django.db.models.functions import RowNumber
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -204,3 +205,46 @@ class ResultSaveView(_InternalView):
         return Response(
             {"result_id": result_id, "saved": saved}, status=status.HTTP_201_CREATED
         )
+
+
+# P10: how many battles an estimate is taken over, by default and at most.
+SKILL_RECENT = 5
+SKILL_RECENT_MAX = 10
+
+
+class SkillsView(_InternalView):
+    """P10: every account's latest battles per exercise, for the battle
+    server's skill estimates. Only nicknames and valid reps leave."""
+
+    def handle(self, request):
+        limit = request.data.get("limit", SKILL_RECENT)
+        if (
+            not isinstance(limit, int)
+            or isinstance(limit, bool)
+            or not 1 <= limit <= SKILL_RECENT_MAX
+        ):
+            return Response(
+                {"limit": [f"An integer from 1 to {SKILL_RECENT_MAX}."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ranked = (
+            Match.objects.filter(exercise__in=["push_up", "squat"])
+            .annotate(
+                rank=Window(
+                    RowNumber(),
+                    partition_by=[F("user_id"), F("exercise")],
+                    order_by=[F("played_at").desc(), F("id").desc()],
+                )
+            )
+            .filter(rank__lte=limit)
+            .order_by("user_id", "exercise", "-played_at", "-id")
+            .values_list("user_id", "user__nickname", "exercise", "my_reps")
+        )
+        players = {}
+        for user_id, nickname, exercise, reps in ranked:
+            player = players.setdefault(
+                user_id,
+                {"player_id": str(user_id), "display_name": nickname, "recent": {}},
+            )
+            player["recent"].setdefault(exercise, []).append(reps)
+        return Response({"players": list(players.values())})
