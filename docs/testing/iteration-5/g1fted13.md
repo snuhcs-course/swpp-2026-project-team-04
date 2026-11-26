@@ -1920,7 +1920,7 @@ No server, camera or device is needed:
   win, loss)
 - 7.10 Online opponent → online_battle_result_test 'carries the opponent's character, as the stage drew it, …'
 
-#### 2026-11-27 · code at commit `eb91408` · step A8 `feat/iter5-hold-character` (local step, PM approved 2026-11-27, due 11/29): the user's character holds along on hold stages
+#### 2026-11-27 · code at commit `eb91408` (a comment fixed in `091ee2c`) · step A8 `feat/iter5-hold-character` (local step, PM approved 2026-11-27, due 11/29): the user's character holds along on hold stages
 A8 puts the user's character on the empty left of a hold stage, beside the gym owner. It follows the design hand-off's
 spec `hold-character/SPEC.md` v1 (2026-11-26, not committed) and its source `HoldMe.dc.html` (props `dir=a`,
 `act=pop`, `lie=a`):

@@ -929,7 +929,7 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **Planning:** before any code, Claude Code read the spec, the mockup's `calc()` and markup, the rig data, and the
   hold stage, character and victory code. It reported the plan of spec section 10 and waited. The user approved it
   with three scope additions and one change: reduced motion's chair star (Prompt Log, 11-26 22:38).
-- **Local harness (not committed):** step A8 in `ownership.json` (provisional ID, branch and due date), and its
+- **Local harness (not committed):** step A8 in `ownership.json` (ID, branch and due 11/29 as the PM approved them on 2026-11-27), and its
   allow list from spec section 0 plus two approved paths. Two exception lines: `design_tokens_test.dart` and, after
   the full run, `chair_hold_stage_test.dart` (item d).
 - **Generated, then checked (scripts not committed, as the spec says):**
@@ -947,18 +947,19 @@ These were made from the A5 session at the user's word; their full evidence is i
     `HoldMeScene.frameAt` L388, `flightAt` L538).
   - **Painters:** `lib/widgets/hold_me_figure.dart` (`HoldMePainter` L39, `HoldMeFlightPainter` L210). The rig is
     drawn by the existing `CharacterFigurePainter` with the home and W5 drawing changes (`_paintRig` L91).
-  - **The stage:** `lib/screens/hold_stage_play.dart` `_StageState` (L203–517): the ticker, the timeline, the
-    character, the flight, the bar stars and the bubbles, each child keyed (`_build` L298).
+  - **The stage:** `lib/screens/hold_stage_play.dart` `_StageState` (L203–518): the ticker, the timeline, the
+    character, the flight, the bar stars and the bubbles, each child keyed (`_build` L299).
   - **Timing values:** `HoldTiming` in `lib/services/pose/hold_judge.dart` (L29–49).
   - **Demo:** a reduced-motion switch in `lib/demo/hold_stage_demo.dart`.
   - **Tests:** four new test files and four changed ones (the testing notes' table).
 - **Review:** the `reviewer` subagent ran on the code (run 1 on `f04a85e`: CHANGES_REQUESTED), on the fixes and
   these notes (run 2 on `4a3fea8`: APPROVE with two Minors, fixed in `0403faa` and this line), and on that fix (run 3
-  on `8b8f1a8`: APPROVE with three Minors, fixed in `eb91408`, the rebase and the testing notes); item d.
+  on `8b8f1a8`: APPROVE with three Minors, fixed in `eb91408`, the rebase and the testing notes), and on the rebased
+  branch (run 4 on `523ba89`: APPROVE with three wording Minors, fixed in `091ee2c` and these notes); item d.
 - **Not done by AI:**
   - The user chose the direction and the place, decided reduced motion's chair star, and approved each scope
     addition.
-  - The phone check comes after the PM's approval.
+  - The phone check comes after the push and the draft PR.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-26] "지금은 큰 말풍선, 관장 웃는 얼굴(GymOwnerFace.ok), 막대 별 튀기기(popStar)가 모두 cheer callout 하나에 묶여 HoldTiming.cheer(1초) 동안만 보인다. 이번에는 별을 딴 순간에서 각각 800ms, 700ms, 900ms에 시작하므로 따로 떼어야 한다."
