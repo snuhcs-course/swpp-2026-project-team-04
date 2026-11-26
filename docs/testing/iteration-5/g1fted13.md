@@ -1814,8 +1814,8 @@ No server, camera or device is needed:
 |---|---|---|---|---|---|
 | Model | flutter_test | 90% | not changed by A7 | 11/26 | CI comment "Tests and coverage (GitHub Actions)" on the A7 PR |
 | ViewModel | flutter_test, fakes | 90% | not changed by A7 | 11/26 | same CI comment |
-| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment (`online_battle_result.dart`) | 11/26 | same CI comment |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment (the victory files, `result_screen.dart`) | 11/26 | same CI comment |
+| Service | flutter_test, fakes | 85% | 95.8% (5318/5554); `online_battle_result.dart` 100% (28/28) | 11/26 | same CI comment, `6abda70` |
+| View | flutter_test (widget) | 75% | 98.1% (15813/16122); A7's view files 99.7% (1023/1026) | 11/26 | same CI comment, `6abda70` |
 | API server | pytest, pytest-django, pytest-cov | 90% | not changed by A7 | 11/26 | same CI comment |
 
 - **Tests:** `flutter analyze` found no issues. The full `flutter test` on the code (the reviewer's second run, the
@@ -1860,9 +1860,29 @@ No server, camera or device is needed:
   - `test/screens/result_screen_test.dart`: the one test that pinned the old scene, and a new opponent test.
   - `lib/services/game/online_battle_result.dart` and its test: the opponent's character.
   - `test/design_tokens_test.dart`: one line for `victory_defeat.dart` (act first and report after).
-- **Coverage:** TODO(Woohyun Song): copy the A7 PR's CI comment (commit, run link, per-layer numbers, A7's files).
-- **Phone check:** TODO(Woohyun Song): the user's check with `lib/demo/result_scene_demo.dart` (results, character
-  pairs, reduced motion; screenshots or clips in the PR).
+- **Coverage**, from PR #101's CI comment "Tests and coverage (GitHub Actions)" on `6abda70`
+  ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/101#issuecomment-7182715489), [run](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45754485036); not measured on this PC):
+  - Layers: Model 99.4% (886/891), ViewModel 98.5% (2506/2543), Service 95.8% (5318/5554), View 98.1%
+    (15813/16122), Other 95.8%, total 97.6% (25065/25676); every target met. The CI run's own `flutter test`:
+    4903 passed, 10 skipped, 0 failed. Server `pytest` 278 passed, 98%.
+  - Left out of the numbers by the CI (they timed out in the per-file coverage run, but ran in `flutter test`):
+    `online_battle_session_test`, `chair_hold_test`, `settings_screen_test`, `chair_hold_stage_test`, none of
+    them A7's.
+  - A7's files, merged by line from the run's lcov parts (downloaded with `gh run download`):
+    `victory_defeat.dart` 100% (232/232), `victory_scene.dart` 99.6% (253/254), `victory_overlay.dart` 99.4%
+    (331/333), `result_screen.dart` 100% (207/207), `online_battle_result.dart` 100% (28/28); together 99.7%
+    (1051/1054). The lines not hit: `victory_scene.dart` L904, the rig reader's error for a non-number (as
+    before A7), and `victory_overlay.dart` L406–407, the switch arm for a shrink holding a win's panel, which no
+    scene builds. The demo (excluded from the targets) is 92.6% (75/81).
+- **Phone check, done 2026-11-26** by the user (SM S947N, a release build of `lib/demo/result_scene_demo.dart`,
+  the cable out): the five results, character pairs, reduced motion and the tap skip all looked as expected.
+  Four recordings are in [the PR's comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/101#issuecomment-7183978350) (Win, Loss, Draw, Draw with reduced motion; not in the
+  repo):
+  - Win (KO): unchanged from `main`.
+  - Loss: the red cut-in with rain, the frustration at 2.2 times, the band 패배, the white seat.
+  - Draw: both characters bump fists, then the guard pose, the band 무승부, the lime and pink seat; no LOSE text
+    and no frustration.
+  - Draw with reduced motion: the end pose only.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |

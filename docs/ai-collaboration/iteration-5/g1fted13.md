@@ -826,9 +826,13 @@ These were made from the A5 session at the user's word; their full evidence is i
 ### a. Where AI was used
 - **The hand-off:** `ldfx/SPEC.md` v2 and the mockups `LdA.dc.html` (lose and draw), `LdAFrames`, `LdALose`,
   `LdADraw`, with `ChB`, `ChX` and `W5Report` (not committed). The screen values come from `LdA.dc.html` as they are;
-  this session (Claude Code, Claude Opus 5.5) moved them to Flutter. TODO(Woohyun Song): who made SPEC v2 and the LdA
-  mockups, and with which tool (the spec names the canvas "GymRats 메인 메뉴 시안", page "패배·무승부 연출 시안",
-  direction A).
+  this session (Claude Code, Claude Opus 5.5) moved them to Flutter. Who made them (Woohyun Song, 2026-11-26):
+  - **The mockups (LdA):** Claude made three directions, A, B and C, in Claude Design on claude.ai (the canvas
+    "GymRats 메인 메뉴 시안", page "패배·무승부 연출 시안"). Woohyun Song chose A ("거울 컷인"), the loss panel's
+    #FF3B30, and A as it is for the draw.
+  - **SPEC v2:** Claude (Opus 5.5) wrote it in a claude.ai project chat from the mockups, the code and the PM's
+    acceptance criteria. Woohyun Song set the mockup's direction and colors and how A7 is run. The PM's approval
+    of 11/26 (due 11/28, the two exceptions) went into its v3.
 - **Planning:** before any code, Claude Code read the spec, the mockups and the victory, result and character code.
   It found that the mockup's two characters are the app's own drawings: `ChB` (guard and fist) is the battle stage's
   `CharacterFigurePainter` with the stage's draw patch, and `ChX` `frus` is the W5 rig's `frustrate` motion. So no
@@ -857,7 +861,8 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **Not done by AI:**
   - The user and the PM decided the open points and the PR's shape: decisions A, B and C, the order before P15, and
     the Win/Loss/Draw checklist.
-  - The phone check is the user's (TODO(Woohyun Song): its result).
+  - The phone check was the user's (2026-11-26, SM S947N, a release build of the demo): all four cases as
+    expected; the four recordings are in PR #101's comment, posted by the user.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-26] "4. 코드를 쓰기 전에 SPEC.md 9절의 계획을 보고하고 기다린다."

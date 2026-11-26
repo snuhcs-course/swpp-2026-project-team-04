@@ -598,3 +598,49 @@ PR과 폰 확인
 9. reviewer APPROVE까지 마치면 push하고 draft PR을 연다. 그다음 멈추고 나에게 알려 준다. 데모 실행 명령, 폰에서 볼 항목(결과 5가지, 확인할 캐릭터 조합, 애니메이션 줄이기), 찍어야 할 화면 목록을 함께 준다. Ready로 바꾸는 것은 폰 확인 뒤에 한다.
 10. 이 메시지를 프롬프트 기록에 남긴다.
 </pasted_content id=\"50f7\">"
+<!-- bee4b4a2 2026-11-26T05:44:00.347Z -->
+[Woohyun Song, 11-26 14:44] "<pasted_content id=\"50f7\">
+폰 확인을 마쳤고 모두 이상 없었다(SM S947N, 데모 release 빌드: 결과 5가지, 캐릭터 조합, 애니메이션 줄이기, 탭 건너뛰기). 이제 PR #101을 마무리해서 Ready로 바꾸고, Codex 리뷰 대응까지 한다. 순서대로 진행하고, 막히면 그 자리에서 멈추고 보고한다.
+
+1. 녹화 확인
+- 녹화 4개가 C:\dev\handoff\a7-recordings 에 있다. 이름이 1-win, 2-loss, 3-draw, 4-draw-reduce-motion이면 그대로 쓰고, 아니면 찍은 시각 순서로 Win, Loss, Draw, Draw(애니메이션 줄이기 켬)로 본다.
+- 이 폴더는 저장소 밖이다. 녹화를 저장소로 복사하거나 커밋하지 않는다.
+- 파일마다 크기를 본다. 10MB가 넘으면 ffmpeg가 있을 때만 줄인다. 줄인 파일은 같은 폴더에 새 이름으로 둔다. ffmpeg가 없으면 설치하지 말고 멈추고 보고한다.
+- 프레임을 볼 도구가 있으면 각 영상에서 몇 장을 뽑아, 알림 미리보기나 이메일 같은 개인 정보가 찍혔는지 확인한다. 찍혔으면 올리지 말고 보고한다.
+
+2. PR에 녹화 댓글 올리기
+- gh로는 첨부가 안 되므로, 연결된 브라우저로 PR #101을 연다. 먼저 GitHub에 [REDACTED:custom_term]으로 로그인되어 있는지 확인하고, 아니면 멈춘다.
+- 댓글 칸에 아래 글을 쓰고, 각 항목 밑에 해당 영상을 파일 업로드로 넣은 뒤 댓글을 올린다. 이 댓글 하나를 올리는 것은 내가 허락한다.
+  Phone check (SM S947N, release build of lib/demo/result_scene_demo.dart): all four cases look as expected.
+  1. Win (KO): unchanged from main.
+  2. Loss: red cut-in with rain, 2.2x frustrate pose, '패배' band, white seat.
+  3. Draw: both characters fist-bump, then guard pose, '무승부' band, half lime/pink seat. No LOSE text or frustrate pose.
+  4. Draw with reduce motion on: end pose only.
+- 브라우저로 파일 업로드가 안 되면 글만 올리지 말고 멈추고 보고한다.
+
+3. TODO([REDACTED:custom_term]) 세 곳 채우기 (노트와 PR 본문)
+- 시안과 명세를 만든 사람과 도구:
+  - 시안(LdA): claude.ai의 Claude Design 캔버스(\"패배·무승부 연출 시안\" 페이지)에서 Claude가 A·B·C 세 방향을 만들었다. 송우현이 A(거울 컷인), 패배 판 #FF3B30, 무승부도 A 그대로를 골랐다.
+  - SPEC v2: claude.ai 프로젝트 채팅에서 Claude(Opus 5.5)가 시안, 코드, PM 인수 기준을 바탕으로 썼다. 송우현이 시안 방향과 색, A7 처리 방식을 정했다. 11/26 PM 승인(마감 11/28, 예외 두 곳)은 v3에 반영됐다.
+- CI 커버리지 숫자: PR #101의 CI 커버리지 댓글을 gh로 읽어서 채운다.
+- 폰 확인 결과: 맨 위 내용으로 채운다. 체크리스트의 화면 자리에는 2번에서 올린 댓글의 링크를 넣는다.
+- PR 본문은 gh로 지금 본문을 받아 바꿀 줄만 바꾼다. 노트는 커밋하고 push한다. push 뒤에는 지난번처럼 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+
+4. Ready와 Codex 리뷰
+- gh pr ready 101로 Ready로 바꾼다. Codex 리뷰가 달릴 때까지 몇 분 간격으로 확인한다. 30분이 지나도 안 달리면 멈추고 보고한다.
+- 지적이 오면 하나씩 판단한다.
+  - A7 범위 안의 실제 문제면 고친다. 시간이 없으니 관련 테스트와 flutter analyze만 돌리고, 로컬 reviewer는 생략한다. push한 뒤 스레드에 고친 커밋을 영어로 짧게 답하고 resolve한다.
+  - 거의 일어나지 않는 경우거나 이 작업과 무관하면, 이유를 영어로 짧게 답하고 resolve한다.
+  - 범위 밖 파일을 고쳐야 하는 지적이면 고치지 말고 멈추고 보고한다.
+  - push 뒤 15분이 지나도 새 리뷰가 안 달리면 PR에 \"@codex review\" 댓글을 단다.
+- 고치는 것은 2회까지만 한다. 그 뒤에도 지적이 오면 멈추고 보고한다.
+- 끝나는 조건: 현재 HEAD에 Codex가 \"Didn't find any major issues\"를 달고, 안 풀린 스레드가 0개이고, CI가 통과한 상태다. 이 상태가 되면 보고한다.
+- 상우나 현우를 GitHub에서 멘션하거나 따로 연락하지 않는다. 머지 요청은 내가 한다.
+
+5. 마지막 보고: 올린 댓글 링크, 새 커밋, Codex 지적과 처리 결과, 끝나는 조건을 만족했는지 알려 준다. 이 메시지도 프롬프트 기록에 남긴다.
+</pasted_content id=\"50f7\">"
+<!-- bee4b4a2 2026-11-26T05:52:44.473Z -->
+[Woohyun Song, 11-26 14:52] "계속. 녹화 4개의 개인 정보는 내가 확인했다. 상태 표시줄의 시각과 아이콘뿐이고, 알림 미리보기나 이메일은 없다. 그대로 올려도 된다. 2단계(로그인 확인 → 댓글과 영상 4개 업로드)부터 이어서 한다."
+<!-- bee4b4a2 2026-11-26T06:08:24.594Z -->
+[Woohyun Song, 11-26 15:08] "녹화 댓글은 이미 올라갔다([REDACTED:custom_term], 영상 4개 첨부 확인): https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/101#issuecomment-7183978350
+2단계는 끝난 것으로 보고, 댓글을 다시 올리지 않는다. 3단계(TODO 세 곳 채우기, 체크리스트 화면 자리에는 이 댓글 링크)부터 이어서 한다. 4단계 Ready와 Codex 대응, 5단계 보고까지 지난 메시지대로 진행한다. 이 메시지도 프롬프트 기록에 남긴다."
