@@ -464,7 +464,7 @@ void main() {
       final viewModel = _viewModel(store: store);
       await viewModel.load();
       final script = viewModel.state.script!;
-      expect(script.talk.first.text, startsWith('지난번 미션 기억나? '));
+      expect(script.talk.first.text, '지난번 미션 기억나? ‘스쿼트 20회 인정받기’였다범!');
       expect(script.talk[1].text, '이번엔 18번이라서 딱 2번 모자랐어. 아깝다범!');
       final plain = _viewModel();
       await plain.load();

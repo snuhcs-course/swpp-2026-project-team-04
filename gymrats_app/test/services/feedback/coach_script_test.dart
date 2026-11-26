@@ -1063,9 +1063,9 @@ void main() {
     test('every line of every branch, for every character: the ending only '
         'right after "다" and right before "!", at most once, never before '
         '"?", and no other character\'s ending', () {
-      final branches = <String>{};
-      var lines = 0;
       for (final MapEntry(key: id, value: ending) in _endings.entries) {
+        final branches = <String>{};
+        var lines = 0;
         for (final (name, input) in _talks(id)) {
           final script = _build(input);
           for (final line in [
@@ -1091,10 +1091,10 @@ void main() {
             lines++;
           }
         }
+        // Every branch of the talk was said by this character.
+        expect(branches, _branchMarks.keys.toSet(), reason: id);
+        expect(lines, greaterThan(_talks(id).length), reason: id);
       }
-      // Every branch of the talk was said, by each of the five.
-      expect(branches, _branchMarks.keys.toSet());
-      expect(lines, greaterThan(5 * _talks('mouse').length));
     });
 
     test('the nine changed lines, word for word, for every character, with '
