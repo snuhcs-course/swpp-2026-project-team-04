@@ -70,9 +70,8 @@ void main() {
       expect(HoldMetrics.of(holdRecord(stars: 3)).nextStar, isNull);
     });
 
-    test('without earlier holds: no means, no endurance, not a best', () {
+    test('without earlier holds: no means, not a best', () {
       expect(metrics.recentHeld, isNull);
-      expect(metrics.endurance, isNull);
       expect(metrics.best, isFalse);
       expect(metrics.trend, [record]);
       expect(metrics.highlights, ['처음 12초 경고 없이']);
@@ -117,7 +116,6 @@ void main() {
     test('means of the five latest earlier holds of the pose', () {
       const mean = (23.0 + 20.1 + 22.3 + 17.4 + 18.0) / 5;
       expect(metrics.recentHeld, closeTo(mean, 0.0001));
-      expect(metrics.endurance, closeTo(24.6 / mean * 100, 0.0001));
       expect(metrics.recentScore, 100);
     });
 
@@ -165,16 +163,15 @@ void main() {
       final m = HoldMetrics.of(short, kept: kept);
       expect(m.best, isFalse);
       expect(m.highlights.where((l) => l.startsWith('최근 평균')), isEmpty);
-      expect(m.endurance, lessThan(100));
+      expect(m.recentHeld, greaterThan(10));
     });
   });
 
-  test('a hold of no time: keep rate 0, endurance absent when the means '
-      'are 0', () {
+  test('a hold of no time: keep rate 0; a hold with no time counts as held '
+      'through', () {
     final none = holdRecord(heldMs: 0, elapsedMs: 0, warnings: const []);
     expect(HoldMetrics.keepRateOf(none), 0);
     expect(HoldMetrics.keepRateOf(holdRecord(heldMs: 1000, elapsedMs: 0)), 1);
-    expect(HoldMetrics.of(none, kept: [_earlier(1, 0)]).endurance, isNull);
   });
 
   test('one decimal, none when whole; the stars\' words', () {

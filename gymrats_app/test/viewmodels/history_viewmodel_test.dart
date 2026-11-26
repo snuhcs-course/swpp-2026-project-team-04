@@ -770,8 +770,6 @@ void main() {
       expect(push.previous!.battles, 1);
       expect(push.current.liftedKg, closeTo(6 * 80 * 0.64, 1e-9));
       expect(push.weightAssumed, isFalse);
-      // Twice the reps per second of the battle before.
-      expect(push.current.endurance, 200);
 
       final every = ArchiveVolume.of(
         kept,
@@ -794,8 +792,6 @@ void main() {
       expect(onlyHolds.current.battles, 0);
       expect(onlyHolds.current.liftedKg, 0);
       expect(onlyHolds.current.holds, 1);
-      // A first hold: against the stage's goal, 20 of 30 s.
-      expect(onlyHolds.current.endurance, closeTo(20 / 30 * 100, 1e-9));
 
       expect(
         ArchiveVolume.of(kept, StatsPeriod.all, ArchiveScope.all, now).previous,

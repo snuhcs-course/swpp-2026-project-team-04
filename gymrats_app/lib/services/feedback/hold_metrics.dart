@@ -21,8 +21,6 @@ enum HoldStatus {
 ///   30, one 15, two 0).
 /// - **Calories:** MET [met] × 3.5 × body weight ÷ 200 × minutes held; a
 ///   hold is moderate calisthenics, lighter than push-ups (8.0).
-/// - **Endurance:** the time held against the mean of up to [recentCount]
-///   earlier holds of the same pose, as 100 = that mean.
 /// - No lifted weight: a hold does not move the body.
 class HoldMetrics {
   const HoldMetrics({
@@ -158,22 +156,6 @@ class HoldMetrics {
         return (ia < 0 ? own.length : ia).compareTo(ib < 0 ? own.length : ib);
       });
     return (words: words.first, holds: counts[words.first]!, of: holds.length);
-  }
-
-  /// Without earlier holds of the pose: the time held against the stage's
-  /// last star, as 100 = the goal (user, 2026-11-26).
-  double? get goalEndurance {
-    final goal = goalSeconds;
-    if (goal <= 0) return null;
-    return seconds(record.held) / goal * 100;
-  }
-
-  /// The endurance index: the time held against [recentHeld], as 100 =
-  /// that mean; null without earlier holds or when they held nothing.
-  double? get endurance {
-    final mean = recentHeld;
-    if (mean == null || mean <= 0) return null;
-    return seconds(record.held) / mean * 100;
   }
 
   /// The keep rate's status: 90 % and up 우수, 70 % and up 표준.

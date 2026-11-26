@@ -103,7 +103,7 @@ class _HoldReportScreenState extends State<HoldReportScreen> {
 
 const _gap = SizedBox(height: AppSpacing.s8);
 
-/// What the endurance index and 변화 say for the first hold of a pose.
+/// What 변화 says for the first hold of a pose.
 const noEarlier = '비교 기록 없음';
 
 /// "26.11.26(목) 21:10", in the phone's time.
@@ -710,8 +710,9 @@ class HoldTimelinePainter extends CustomPainter {
       old.axisStyle != axisStyle;
 }
 
-/// 운동 분석: the time held, the calories and the endurance index, each
-/// with its change against the recent mean when there is one.
+/// 운동 분석: the time held and the calories, each with its change against
+/// the recent mean when there is one. No endurance index: the reports judge
+/// by counts and time (user, 2026-11-26).
 class _ExerciseSection extends StatelessWidget {
   const _ExerciseSection({required this.metrics});
 
@@ -722,7 +723,6 @@ class _ExerciseSection extends StatelessWidget {
     final held = HoldMetrics.seconds(metrics.record.held);
     final recentHeld = metrics.recentHeld;
     final recentKcal = metrics.recentKcal;
-    final endurance = metrics.endurance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -744,27 +744,6 @@ class _ExerciseSection extends StatelessWidget {
               ? '${HoldMetrics.defaultWeightKg.round()} kg 기준 추정'
               : '체중 ${HoldMetrics.oneDecimal(metrics.weightKg)} kg 기준 추정',
         ),
-        const Divider(height: 1, color: AppColors.facetLight),
-        // Without an earlier hold of the pose there is nothing to compare
-        // with (PM, 2026-11-26): the row says so.
-        if (endurance == null)
-          _Row(
-            name: '근지구력 지수',
-            value: switch (metrics.goalEndurance) {
-              final goal? => '${goal.round()}',
-              null => '–',
-            },
-            unit: '',
-            note: '$noEarlier · 목표 ${metrics.goalSeconds}초 = 100',
-          )
-        else
-          _Row(
-            name: '근지구력 지수',
-            value: '${endurance.round()}',
-            unit: '',
-            change: endurance - 100,
-            note: '같은 자세 최근 평균 = 100',
-          ),
       ],
     );
   }

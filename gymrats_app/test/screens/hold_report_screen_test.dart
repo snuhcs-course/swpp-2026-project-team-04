@@ -98,9 +98,7 @@ void main() {
     });
 
     testWidgets('운동 분석 without earlier holds: time held and calories on '
-        '65 kg, the endurance index against the goal with 비교 기록 없음', (
-      tester,
-    ) async {
+        '65 kg; no endurance index (user, 2026-11-26)', (tester) async {
       await open(tester);
       await scrollTo(tester, find.text('운동 분석'));
       expect(find.bySemanticsLabel('버틴 시간 24.6초'), findsOneWidget);
@@ -109,10 +107,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('65 kg 기준 추정'), findsOneWidget);
-      expect(find.text('근지구력 지수'), findsOneWidget);
-      // No earlier hold: against the stage's last star, 24.6 of 30 s.
-      expect(find.bySemanticsLabel('근지구력 지수 82'), findsOneWidget);
-      expect(find.text('$noEarlier · 목표 30초 = 100'), findsOneWidget);
+      expect(find.text('근지구력 지수'), findsNothing);
+      expect(find.textContaining('= 100'), findsNothing);
       expect(find.textContaining('들어 올린 무게'), findsNothing);
     });
 
@@ -137,7 +133,7 @@ void main() {
       );
     });
 
-    testWidgets('with earlier holds: changes, the endurance index and 변화', (
+    testWidgets('with earlier holds: changes against the recent mean and 변화', (
       tester,
     ) async {
       final store = InMemoryHoldRecordStore();
@@ -147,14 +143,7 @@ void main() {
       await store.save(record);
       await open(tester, store: store);
       expect(find.bySemanticsLabel(RegExp('^최근 평균보다 .* 적음')), findsWidgets);
-      await scrollTo(tester, find.text('근지구력 지수'));
-      expect(find.text('같은 자세 최근 평균 = 100'), findsOneWidget);
-      expect(
-        find.bySemanticsLabel(
-          '근지구력 지수 ${(24.6 / ((22.3 + 20.1 + 23.0) / 3) * 100).round()}',
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('근지구력 지수'), findsNothing);
       await scrollTo(tester, find.text('변화'));
       expect(find.text('최근 4회 · 하이 플랭크 버틴 시간'), findsOneWidget);
       expect(

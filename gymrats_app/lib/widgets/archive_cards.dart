@@ -817,9 +817,8 @@ class ArchiveHoldChart extends StatelessWidget {
   }
 }
 
-/// "이번 주 운동량" on the 전체 tab (P13, draft C): estimated calories,
-/// lifted weight and the mean endurance index of the period's battles kept
-/// on this phone, each against the period before with two bars (this one in
+/// "이번 주 운동량" on the 전체 tab (P13, draft C): estimated calories and
+/// lifted weight of the period's battles kept on this phone, each against the period before with two bars (this one in
 /// green, the one before in grey); 전체 기간 has no period before.
 class ArchiveVolumeSection extends StatelessWidget {
   const ArchiveVolumeSection({
@@ -832,8 +831,7 @@ class ArchiveVolumeSection extends StatelessWidget {
   final ArchiveVolume volume;
   final StatsPeriod period;
 
-  /// 버티기: calories only; a hold lifts no weight and has no rep-based
-  /// endurance.
+  /// 버티기: calories only; a hold lifts no weight.
   final bool holdsOnly;
 
   /// "지난 주", "지난 달".
@@ -909,24 +907,6 @@ class ArchiveVolumeSection extends StatelessWidget {
                     return '$v $u';
                   }(),
             down: before != null && now.liftedKg < before.liftedKg,
-          ),
-        ],
-        // A hold lifts nothing but has an endurance index too (user,
-        // 2026-11-26).
-        if (now.battles > 0 || now.holds > 0) ...[
-          const Divider(height: 1, color: AppColors.facetLight),
-          _VolumeRow(
-            name: '근지구력 지수',
-            value: now.endurance == null ? '–' : '${now.endurance!.round()}',
-            unit: '',
-            now: now.endurance ?? 0,
-            before: before?.endurance,
-            change: now.endurance != null && before?.endurance != null
-                ? '${(now.endurance! - before!.endurance!).round()}'
-                : null,
-            // Only when there is nothing to compare; the basis is the
-            // report's (user, 2026-11-26).
-            note: now.endurance == null ? '비교 기록 없음' : null,
           ),
         ],
         const SizedBox(height: AppSpacing.s8),

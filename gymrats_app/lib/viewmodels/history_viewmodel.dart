@@ -290,15 +290,14 @@ class ArchiveHolds {
   }
 }
 
-/// One period's 운동량 of an exercise (P13, draft C): calories, lifted
-/// weight and the mean endurance index, from the battles kept on this
-/// phone, by P14's [ReportMetrics].
+/// One period's 운동량 of an exercise (P13, draft C): calories and lifted
+/// weight, from the battles kept on this phone, by P14's [ReportMetrics].
+/// No endurance index: the reports judge by counts (user, 2026-11-26).
 class ArchiveAmount {
   const ArchiveAmount({
     required this.battles,
     required this.kcal,
     required this.liftedKg,
-    this.endurance,
     this.holds = 0,
   });
 
@@ -310,41 +309,27 @@ class ArchiveAmount {
   final double kcal;
   final double liftedKg;
 
-  /// The mean endurance index of the battles that have one.
-  final double? endurance;
-
   static ArchiveAmount of(
     Iterable<FormReport> reports,
-    List<FormReport> kept,
     double? weightKg, {
     Iterable<HoldRecord> holds = const [],
-    List<HoldRecord> keptHolds = const [],
   }) {
     var kcal = 0.0, lifted = 0.0, count = 0, held = 0;
-    final endurances = <num>[];
     for (final h in holds) {
       held++;
       kcal += HoldMetrics.kcalOf(h, weightKg ?? HoldMetrics.defaultWeightKg);
-      // As the hold report: against the pose's recent holds, or the stage's
-      // goal for the first (user, 2026-11-26).
-      final m = HoldMetrics.of(h, weightKg: weightKg, kept: keptHolds);
-      if (m.endurance ?? m.goalEndurance case final e?) endurances.add(e);
     }
     for (final r in reports) {
-      final m = ReportMetrics.of(r, weightKg: weightKg, earlier: kept);
+      final m = ReportMetrics.of(r, weightKg: weightKg);
       count++;
       kcal += m.kcal;
       lifted += m.liftedKg;
-      if (m.enduranceIndex case final e?) endurances.add(e);
     }
     return ArchiveAmount(
       battles: count,
       holds: held,
       kcal: kcal,
       liftedKg: lifted,
-      endurance: endurances.isEmpty
-          ? null
-          : endurances.fold<num>(0, (a, b) => a + b) / endurances.length,
     );
   }
 }
@@ -410,10 +395,8 @@ class ArchiveVolume {
     ];
     ArchiveAmount amount(DateTime? from, DateTime? to) => ArchiveAmount.of(
       battles.where((r) => between(r.endedAt, from, to)),
-      kept,
       weightKg,
       holds: played.where((h) => between(h.endedAt, from, to)),
-      keptHolds: holds,
     );
     return ArchiveVolume(
       current: amount(start, null),

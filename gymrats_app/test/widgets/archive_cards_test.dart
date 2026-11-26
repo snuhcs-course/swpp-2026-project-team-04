@@ -496,23 +496,17 @@ void main() {
       battles: 3,
       kcal: 26,
       liftedKg: 4200,
-      endurance: 108,
       holds: 1,
     );
 
-    testWidgets('운동량: calories, lifted weight and endurance against the '
+    testWidgets('운동량: calories and lifted weight against the '
         'period before, the weight it assumed; no other note', (tester) async {
       await _show(
         tester,
         const ArchiveVolumeSection(
           volume: ArchiveVolume(
             current: amount,
-            previous: ArchiveAmount(
-              battles: 2,
-              kcal: 22,
-              liftedKg: 3600,
-              endurance: 100,
-            ),
+            previous: ArchiveAmount(battles: 2, kcal: 22, liftedKg: 3600),
             weightKg: 65,
             weightAssumed: true,
           ),
@@ -526,14 +520,15 @@ void main() {
         findsOneWidget,
       );
       expect(find.bySemanticsLabel('들어 올린 무게 4.2t, 증가 600 kg'), findsOneWidget);
-      expect(find.bySemanticsLabel('근지구력 지수 108, 증가 8'), findsOneWidget);
+      expect(find.text('근지구력 지수'), findsNothing);
       expect(find.text('65 kg 기준 추정'), findsOneWidget);
       expect(find.textContaining('이 폰에 남은'), findsNothing);
       expect(find.textContaining('= 100'), findsNothing);
     });
 
-    testWidgets('버티기: calories and endurance, no lifted weight; nothing to '
-        'compare says so', (tester) async {
+    testWidgets('버티기: calories only, no lifted weight or endurance', (
+      tester,
+    ) async {
       await _show(
         tester,
         const ArchiveVolumeSection(
@@ -552,7 +547,7 @@ void main() {
         ),
       );
       expect(find.text('들어 올린 무게'), findsNothing);
-      expect(find.bySemanticsLabel('근지구력 지수 –, 비교 기록 없음'), findsOneWidget);
+      expect(find.text('근지구력 지수'), findsNothing);
       expect(find.text('체중 80 kg 기준 추정'), findsOneWidget);
     });
 
