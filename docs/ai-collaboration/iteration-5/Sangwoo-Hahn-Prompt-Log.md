@@ -20,3 +20,6 @@
 
 ### 2026-11-27 · P10 protocol handoff (excerpt)
 넘기는 일: docs/iteration-2-protocol.md에 새 메시지를 추가해 줘. 내 범위 밖 파일이야.
+
+### 2026-11-27 · Revised P10 protocol handoff
+docs/iteration-2-protocol.md에 accept_virtual과 결과의 simulated 선수 추가 부탁해.

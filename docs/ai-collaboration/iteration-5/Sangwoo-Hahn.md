@@ -20,3 +20,6 @@ Independent Codex review identified a remaining SQLite lock-upgrade race and mal
 
 ### 2026-11-27 · P10 protocol handoff
 Codex compared the wire contract in PR #102 with the PM handoff and documented the optional flag and the virtual assignment. Inspecting the validator clarified that a valid friend request can explicitly set the flag to false. No manual edits were reported.
+
+### 2026-11-27 · Revised P10 protocol handoff
+Codex traced the server-managed match and updated the protocol handoff in #103 against #102 at `71fcdc3`. The flag belongs to the internal result payload. The client follows the standard online match flow.

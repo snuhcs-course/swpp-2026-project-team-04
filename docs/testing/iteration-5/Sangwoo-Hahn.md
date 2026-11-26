@@ -21,3 +21,6 @@ Independent re-review reproduced simultaneous 503 responses. The updated endpoin
 
 ### 2026-11-27 · P10 protocol handoff
 Validated the documented virtual-assignment JSON example and field names, target range, wait and friend-queue flag rules against PR #102 at `1a164d6`. No runtime code changed in the documentation branch.
+
+### 2026-11-27 · Revised P10 protocol handoff
+Compared the revised queue and result contract against #102 at `71fcdc3`, including friend validation, queue/setup clocks, the WebSocket versus internal result payloads, and pre-start telemetry. Checked the documented simulated-player JSON against the serializer fields. Documentation only.

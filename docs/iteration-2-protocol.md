@@ -19,7 +19,7 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 |---|---|
 | 경기 길이 | AI 대결과 동일한 30초 (서버가 최종 시간 관리) |
 | 시작 | 두 사용자 준비 후 서버가 3초 뒤의 공통 시작 시각 지정 |
-| 준비 제한 | 매칭 후 60초 이내 준비하지 않으면 경기 취소 |
+| 준비 제한 | 양쪽 카메라가 모두 열리기 전에는 매칭 시 공지한 60초 마감, 모두 열린 뒤에는 서버가 공지한 20초 세팅 마감을 적용 |
 | 자세 전송 | 최대 10 FPS, 관절 33개 이하 |
 | 일시적 통신 끊김 | 10초 재접속 유예, 경기 시간은 계속 진행 |
 | 직접 나가기 | 경기 전 취소, 경기 중 기권패 |
@@ -109,7 +109,6 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 | 앱→서버 | `queue.cancel` | `queue_id` |
 | 서버→앱 | `queue.cancelled` | `queue_id`. 실제 대기열에서 제거 완료 |
 | 서버→앱 | `match.found` | `players`, `duration_ms: 30000`, `ready_deadline_ms` |
-| 서버→앱 | `match.virtual` | 일반 대기열에서 가상 상대를 수락한 앱에 한 번 전송. payload는 `exercise`, `opponent.display_name`, `opponent.expected_reps` |
 | 앱→서버 | `match.ready` | `ready: true/false`. 카메라·시작 자세가 준비됐는지 알림 |
 | 서버→앱 | `match.ready_state` | `ready_player_ids` |
 | 서버→앱 | `match.start` | `start_at_ms`, `end_at_ms`. 서버가 두 사용자 모두 준비된 경우 한 번 발행 |
@@ -119,13 +118,13 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 | 앱↔서버 | `pose.frame` | 아래 관절 데이터. 서버는 상대에게만 중계 |
 | 앱→서버 | `match.leave` | `reason: user_exit` |
 | 서버→앱 | `match.connection_state` | `player_id`, `state: disconnected/reconnected`, `reconnect_deadline_ms` (끊김 시) |
-| 서버→앱 | `match.cancelled` | `reason: user_exit/ready_timeout/disconnected_before_start`, `ended_at_ms` |
+| 서버→앱 | `match.cancelled` | `reason` (예: `user_exit`, `ready_timeout`, `setup_timeout`, `disconnected_before_start`), `ended_at_ms` |
 | 서버→앱 | `match.finished` | 최종 점수·승자·종료 사유 |
 | 서버→앱 | `match.void` | `reason: both_disconnected/server_restarted/server_error`, `ended_at_ms`. 승패·점수 반영 없음 |
 | 앱→서버 | `match.resume` | 재인증된 연결에서 이전 `match_id` 재참가 요청 |
 | 서버→앱 | `match.snapshot` | 현재 상태·참가자·아바타·점수·시각·마지막 수락 `rep_seq`·연결 상태 |
 
-`players`는 정확히 두 명의 `{player_id, display_name, avatar_id}` 배열이다. `avatar_id`는 그 선수가 `queue.join`에 보냈을 때만 있다(4절). 사용자명은 인증 프로필에서 가져온다. 한 사용자는 대기열 또는 활성 매칭 하나에만 속한다. 자기 자신과의 매칭, 같은 사용자의 중복 참가를 막는다.
+`players`는 정확히 두 명의 `{player_id, display_name, avatar_id}` 배열이다. `avatar_id`는 그 선수가 `queue.join`에 보냈을 때만 있다(4절). 실제 선수의 표시 이름은 인증 프로필에서, P10 가상 선수의 표시 이름은 대전 서버에서 가져온다. 한 사용자는 대기열 또는 활성 매칭 하나에만 속한다. 자기 자신과의 매칭, 같은 사용자의 중복 참가를 막는다.
 
 준비 중 한 명이 나가면 상대도 취소 안내 후 홈으로 돌아간다. `match.start` 이후 준비 취소·카메라 오류가 나면 시작을 몰래 미루지 않고 해당 사용자의 `match.leave` 또는 연결 종료 정책으로 처리한다. 시작 전 상대가 나간 경우 서버가 `cancelled`로 확정할 수 있다.
 
@@ -137,24 +136,28 @@ P7~P10의 서버 매칭, Flutter 연결, 상대 자세 동기화, 결과 및 연
 
 ### 일반 대기열의 가상 상대 (Iteration 5 · P10)
 
-`queue.join.payload.accept_virtual`은 선택적 불리언이다. 같은 운동의 실제 상대가 대기 중이면 실력 차와 관계없이 먼저 들어온 사람과 즉시 매칭해 `match.found`를 보낸다.
+같은 운동의 실제 참가자는 실력과 관계없이 대기 순서대로 즉시 매칭한다. 새 앱은 일반 매칭의 `queue.join`에 선택적 불리언 `accept_virtual`을 보낸다.
 
-| 참가 요청 | 동작 |
+| 참가 요청 | 서버 동작 |
 |---|---|
 | 일반 대전, 필드 생략 또는 `false` | 실제 상대를 계속 기다린다. |
-| 일반 대전, `true` | 15초가 지나도 대기 중이면 서버의 다음 확인 시 대기열에서 제거하고 `match.virtual`을 한 번 보낸다. 취소했거나 연결을 종료한 요청에는 보내지 않는다. |
+| 일반 대전, `true` | 10초 뒤에도 대기 중이면 다음 대기열 점검 때 서버가 가상 선수를 같은 경기에 참가시키고 일반 `match.found`를 보낸다. 대기 중 취소하거나 연결을 종료하면 배정 대상에서 빠진다. |
 | 유효한 `friend_id`, 필드 생략 또는 `false` | 지정한 친구를 기다린다. |
-| 유효한 `friend_id`와 `accept_virtual: true`, 또는 불리언이 아닌 `accept_virtual` | `INVALID_PAYLOAD`로 거절한다. |
+| 유효한 `friend_id`와 `accept_virtual: true` 또는 불리언이 아닌 `accept_virtual` | `INVALID_PAYLOAD`로 거절한다. |
 
-서버 응답 예시
+가상 선수는 경기 전용 `sim-` ID와 표시 이름을 가진다. 대전 서버가 가까운 실력의 다른 계정을 골라 닉네임과 목표 반복 횟수를 정한다. 폰은 일반 온라인 경기의 VS·세팅·결과·기록 화면을 사용하고 상대 닉네임을 표시한다. 양쪽 카메라가 열린 뒤 세팅 마감은 20초다. 경기 시작, KO와 종료에는 기존 온라인 메시지를 사용한다.
+
+**대전 서버 → Django 결과 저장.** 대전 서버는 `POST /internal/results`의 `players[]` 중 가상 선수에만 `simulated: true`를 넣는다. 이 필드는 내부 저장 요청에서 사용한다. 앱이 받는 `match.finished.players[]`에는 이 필드가 없다. 가상 선수 ID는 `sim-`에 소문자 16진수 1~16자, 실제 선수는 양의 정수 계정 ID 문자열이며 `simulated`의 기본값은 `false`다. 서로 다른 선수 두 명 중 한 명 이상이 실제 선수여야 한다. 실제 선수의 기록에 상대 닉네임과 점수를 저장하고, 닉네임을 가져온 계정에는 경기 기록을 만들지 않는다.
+
+내부 결과 저장 요청의 선수 항목 예시
 
 ```json
-{"v":1,"type":"match.virtual","server_time_ms":1800000000000,"payload":{"exercise":"push_up","opponent":{"display_name":"근손실","expected_reps":7}}}
+{"player_id":"sim-01ad","simulated":true,"display_name":"근손실","valid_reps":7,"invalid_reps":1,"game_score":70,"outcome":"loss"}
 ```
 
-`match.virtual`에는 `match_id`나 상대 계정 ID가 없다. 앱은 표시 이름과 목표 유효 횟수(정수 1~60)를 받아 VS 화면에서 AI로 표시한 뒤 기기에서 봇 대결을 진행한다. 실제 상대와 주고받는 `match.ready`는 보내지 않는다. 결과는 플레이한 계정에만 저장한다.
+**텔레메트리.** 가상 상대 경기의 `battle_finished.kind`는 `main`이다. 점수가 있는 경기는 `scores[].player_id`의 `sim-` 접두사로 구분한다. 시작 전 취소되어 `scores`가 비어 있으면 이 이벤트만으로는 상대 유형을 구분할 수 없다.
 
-배포 순서는 Django의 내부 조회 라우트 → 대전 서버 → 앱이다. 이 변경에 DB 마이그레이션은 없다. 구버전 대전 서버는 새 참가 필드를 거절한다.
+Django의 내부 조회·결과 저장 API, 대전 서버, 앱 순서로 배포한다. P10에는 DB 마이그레이션이 없다. 구버전 Django는 가상 선수 결과를, 구버전 대전 서버는 새 참가 필드를 거절한다.
 
 ## 6. 관절 데이터
 
