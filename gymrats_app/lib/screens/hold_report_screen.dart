@@ -806,7 +806,7 @@ class _Row extends StatelessWidget {
                     child: Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(text: value, style: text.statsIssueName),
+                          TextSpan(text: value, style: text.feedbackStat),
                           if (unit.isNotEmpty)
                             TextSpan(text: ' $unit', style: text.archiveLabel),
                         ],

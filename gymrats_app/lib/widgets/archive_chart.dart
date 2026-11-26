@@ -56,9 +56,14 @@ class ArchiveTrendPainter extends CustomPainter {
     required this.labelStyle,
     required this.meanStyle,
     this.format = whole,
+    this.colors,
   });
 
   final List<num> values;
+
+  /// Each point's colour when the points are of different kinds (전체's
+  /// push-ups and squats); then the line between them is grey.
+  final List<Color>? colors;
   final TextStyle labelStyle;
   final TextStyle meanStyle;
   final String Function(num value) format;
@@ -110,8 +115,9 @@ class ArchiveTrendPainter extends CustomPainter {
       alignLeft: true,
     );
 
+    final colors = this.colors;
     final line = Paint()
-      ..color = AppColors.statusGood
+      ..color = colors == null ? AppColors.statusGood : AppColors.inactive
       ..strokeWidth = _line
       ..style = PaintingStyle.stroke
       ..strokeJoin = StrokeJoin.round;
@@ -120,7 +126,13 @@ class ArchiveTrendPainter extends CustomPainter {
     }
     for (var i = 0; i < points.length; i++) {
       final last = i == points.length - 1;
-      if (last) {
+      if (colors != null) {
+        canvas.drawCircle(
+          points[i],
+          last ? _lastDot : _dot + 1,
+          Paint()..color = colors[i],
+        );
+      } else if (last) {
         canvas.drawCircle(
           points[i],
           _lastDot,
@@ -164,5 +176,6 @@ class ArchiveTrendPainter extends CustomPainter {
       !listEquals(old.values, values) ||
       old.labelStyle != labelStyle ||
       old.meanStyle != meanStyle ||
-      old.format != format;
+      old.format != format ||
+      !listEquals(old.colors, colors);
 }

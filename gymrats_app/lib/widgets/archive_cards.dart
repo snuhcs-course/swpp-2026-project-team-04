@@ -274,7 +274,7 @@ class _Figure extends StatelessWidget {
             Text.rich(
               TextSpan(
                 children: [
-                  TextSpan(text: value, style: text.statsIssueName),
+                  TextSpan(text: value, style: text.feedbackStat),
                   if (unit.isNotEmpty)
                     TextSpan(text: ' $unit', style: text.archiveLabel),
                 ],
@@ -291,9 +291,19 @@ class _Figure extends StatelessWidget {
 
 /// The period's battles, counted reps per battle and best score.
 class ArchiveSummary extends StatelessWidget {
-  const ArchiveSummary({super.key, required this.growth});
+  const ArchiveSummary({super.key, required this.growth, this.holds = 0});
 
   final ArchiveGrowth growth;
+
+  /// The period's holds, shown for 전체 in the best score's place.
+  final int holds;
+
+  /// "푸쉬업 3판 · 스쿼트 1판 · 버티기 2회".
+  static String split(ArchiveGrowth growth, int holds) => [
+    for (final MapEntry(:key, :value) in growth.perExercise.entries)
+      '${key.koreanName} $value판',
+    '버티기 $holds회',
+  ].join(' · ');
 
   /// "5.5", or "6" when it is whole.
   static String perMatch(double value) {
@@ -306,7 +316,8 @@ class ArchiveSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final best = growth.bestScore;
-    return Row(
+    final every = growth.exercise == null;
+    final figures = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
@@ -320,11 +331,25 @@ class ArchiveSummary extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: _Figure(
-            value: best == null ? '–' : '$best',
-            unit: best == null ? '' : '점',
-            name: '최고 점수',
-          ),
+          child: every
+              ? _Figure(value: '$holds', unit: '회', name: '버티기')
+              : _Figure(
+                  value: best == null ? '–' : '$best',
+                  unit: best == null ? '' : '점',
+                  name: '최고 점수',
+                ),
+        ),
+      ],
+    );
+    if (!every) return figures;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        figures,
+        const SizedBox(height: AppSpacing.s8),
+        Text(
+          split(growth, holds),
+          style: Theme.of(context).textTheme.feedbackMeta,
         ),
       ],
     );
@@ -355,8 +380,16 @@ class ArchiveScoreChart extends StatefulWidget {
   State<ArchiveScoreChart> createState() => _ArchiveScoreChartState();
 }
 
+/// A battle's dot on 전체's chart: push-ups in green, squats in ink.
+Color exerciseColor(ExerciseType exercise) => switch (exercise) {
+  ExerciseType.pushUp => AppColors.statusGood,
+  ExerciseType.squat => AppColors.ink,
+};
+
 class _ArchiveScoreChartState extends State<ArchiveScoreChart> {
   ArchiveMeasure _measure = ArchiveMeasure.score;
+
+  static const _legendDot = 10.0;
 
   @override
   Widget build(BuildContext context) {
@@ -370,6 +403,7 @@ class _ArchiveScoreChartState extends State<ArchiveScoreChart> {
         _measure == ArchiveMeasure.score ? p.score! : p.reps,
     ];
     final unit = _measure == ArchiveMeasure.score ? '점' : '회';
+    final mixed = shown.map((p) => p.exercise).toSet().length > 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -400,12 +434,42 @@ class _ArchiveScoreChartState extends State<ArchiveScoreChart> {
                     values: values,
                     labelStyle: text.coachChipNumber,
                     meanStyle: text.statsAxis,
+                    colors: mixed
+                        ? [for (final p in shown) exerciseColor(p.exercise)]
+                        : null,
                   ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.s8),
+          if (mixed) ...[
+            ExcludeSemantics(
+              child: Wrap(
+                spacing: AppSpacing.s12,
+                children: [
+                  for (final e in ExerciseType.values)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox.square(
+                          dimension: _legendDot,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: exerciseColor(e),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.s4),
+                        Text(e.koreanName, style: text.feedbackMeta),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s8),
+          ],
           ExcludeSemantics(
             child: Row(
               children: [
@@ -479,7 +543,7 @@ class ArchiveBests extends StatelessWidget {
                             children: [
                               TextSpan(
                                 text: '${best.score}',
-                                style: text.statsIssueName,
+                                style: text.feedbackStat,
                               ),
                               TextSpan(text: ' 점', style: text.archiveLabel),
                             ],
@@ -632,6 +696,15 @@ class _ArchiveHoldSummaryState extends State<ArchiveHoldSummary> {
             Expanded(
               child: _Figure(value: held, unit: '', name: '버틴 시간'),
             ),
+            Expanded(
+              child: _Figure(
+                value: holds.keepRate == null
+                    ? '–'
+                    : '${(holds.keepRate! * 100).round()}',
+                unit: holds.keepRate == null ? '' : '%',
+                name: '평균 유지율',
+              ),
+            ),
           ],
         ),
         if (holds.bests.isNotEmpty) ...[
@@ -661,7 +734,7 @@ class _ArchiveHoldSummaryState extends State<ArchiveHoldSummary> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(best.pose.label, style: text.feedbackMeta),
-                              Text(time(best.held), style: text.statsIssueName),
+                              Text(time(best.held), style: text.feedbackStat),
                               Text(
                                 '최고 · ${archiveDay(best.endedAt)}',
                                 style: text.feedbackMeta,
@@ -759,10 +832,15 @@ class ArchiveVolumeSection extends StatelessWidget {
     super.key,
     required this.volume,
     required this.period,
+    this.holdsOnly = false,
   });
 
   final ArchiveVolume volume;
   final StatsPeriod period;
+
+  /// 버티기: calories only; a hold lifts no weight and has no rep-based
+  /// endurance.
+  final bool holdsOnly;
 
   /// "지난 주", "지난 달".
   static String previousLabel(StatsPeriod period) => switch (period) {
@@ -803,9 +881,12 @@ class ArchiveVolumeSection extends StatelessWidget {
                   before: previousLabel(period),
                 ),
         ),
-        if (now.battles == 0) ...[
+        if (now.battles == 0 && now.holds == 0) ...[
           const SizedBox(height: AppSpacing.s12),
-          Text('이 기간에 이 폰에 남은 경기가 없어요.', style: text.feedbackMeta),
+          Text(
+            holdsOnly ? '이 기간에 버티기 기록이 없어요.' : '이 기간에 이 폰에 남은 기록이 없어요.',
+            style: text.feedbackMeta,
+          ),
         ] else ...[
           _VolumeRow(
             name: '예상 소모 칼로리',
@@ -814,7 +895,10 @@ class ArchiveVolumeSection extends StatelessWidget {
             now: now.kcal,
             before: before?.kcal,
             change: before == null ? null : _oneDecimal(now.kcal - before.kcal),
+            note: !holdsOnly && now.holds > 0 ? '버티기 ${now.holds}회 포함' : null,
           ),
+        ],
+        if (!holdsOnly && (now.battles > 0 || now.holds > 0)) ...[
           const Divider(height: 1, color: AppColors.facetLight),
           _VolumeRow(
             name: '들어 올린 무게',
@@ -846,7 +930,7 @@ class ArchiveVolumeSection extends StatelessWidget {
           ),
         ],
         const SizedBox(height: AppSpacing.s8),
-        Text('이 폰에 남은 경기 기준 · $weightNote', style: text.feedbackMeta),
+        Text('이 폰에 남은 기록 기준 · $weightNote', style: text.feedbackMeta),
       ],
     );
   }
@@ -957,7 +1041,7 @@ class _VolumeRow extends StatelessWidget {
                     Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(text: value, style: text.statsIssueName),
+                          TextSpan(text: value, style: text.feedbackStat),
                           if (unit.isNotEmpty)
                             TextSpan(text: ' $unit', style: text.archiveLabel),
                         ],
@@ -992,6 +1076,88 @@ class _VolumeRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 전체 · 푸쉬업 · 스쿼트 · 버티기 on the 전체 tab (user, 2026-11-26).
+class ArchiveScopeChips extends StatelessWidget {
+  const ArchiveScopeChips({
+    super.key,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final ArchiveScope selected;
+  final ValueChanged<ArchiveScope> onSelected;
+
+  @override
+  Widget build(BuildContext context) => ArchiveChips<ArchiveScope>(
+    values: ArchiveScope.values,
+    labelOf: (s) => s.label,
+    selected: selected,
+    onSelected: onSelected,
+  );
+}
+
+/// "자주 받은 경고" for 버티기: the period's warnings, most first, as bars.
+class ArchiveHoldWarnings extends StatelessWidget {
+  const ArchiveHoldWarnings({super.key, required this.warnings});
+
+  final List<({String words, int count})> warnings;
+
+  static const _barHeight = 10.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    if (warnings.isEmpty) {
+      return Text('이 기간에 받은 경고가 없어요.', style: text.feedbackMeta);
+    }
+    final most = warnings.first.count;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (index, w) in warnings.indexed) ...[
+          if (index > 0) const SizedBox(height: AppSpacing.s12),
+          MergeSemantics(
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(w.words, style: text.reportCardTitle),
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                Expanded(
+                  flex: 2,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.all(
+                      Radius.circular(AppRadius.small),
+                    ),
+                    child: SizedBox(
+                      height: _barHeight,
+                      child: Stack(
+                        children: [
+                          const Positioned.fill(
+                            child: ColoredBox(color: AppColors.facetLight),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: w.count / most,
+                            heightFactor: 1,
+                            child: const ColoredBox(color: AppColors.warning),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                Text('${w.count}회', style: text.coachChipNumber),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

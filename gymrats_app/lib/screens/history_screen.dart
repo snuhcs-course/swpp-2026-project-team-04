@@ -203,7 +203,10 @@ class _Top extends StatelessWidget {
 
 const _gap = SizedBox(height: AppSpacing.s8);
 
-/// The 전체 tab: the period and exercise, then what they hold.
+/// The 전체 tab: the period and the scope (전체, 푸쉬업, 스쿼트, 버티기), then
+/// what they hold. 전체 sums every exercise and the holds; an exercise shows
+/// its battles; 버티기 only what fits a hold (no score, reps or lifted
+/// weight).
 class _OverviewTab extends StatelessWidget {
   const _OverviewTab({required this.hasSource});
 
@@ -213,8 +216,8 @@ class _OverviewTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<HistoryViewModel>();
     final state = vm.state;
-    final growth = vm.growth;
     final text = Theme.of(context).textTheme;
+    final hold = state.scope == ArchiveScope.hold;
     return ListView(
       padding: const EdgeInsets.only(
         top: AppSpacing.s8,
@@ -228,52 +231,67 @@ class _OverviewTab extends StatelessWidget {
             children: [
               ArchivePeriodPicker(value: state.period, onChanged: vm.setPeriod),
               const SizedBox(height: AppSpacing.s12),
-              ArchiveExerciseChips(
-                selected: state.exercise,
-                onSelected: vm.setExercise,
-              ),
+              ArchiveScopeChips(selected: state.scope, onSelected: vm.setScope),
             ],
           ),
         ),
         _gap,
-        if (growth != null) ...[
-          ArchiveSection(child: ArchiveSummary(growth: growth)),
-          _gap,
-          if (vm.volume case final volume?) ...[
-            ArchiveSection(
-              child: ArchiveVolumeSection(volume: volume, period: state.period),
-            ),
-            _gap,
+        ...hold ? _holds(vm, text) : _battles(vm, text),
+      ],
+    );
+  }
+
+  /// 버티기: the holds' summary, bests and trend, their calories and their
+  /// warnings.
+  List<Widget> _holds(HistoryViewModel vm, TextTheme text) {
+    final holds = vm.holdSummary;
+    if (holds == null) {
+      return [
+        ArchiveSection(
+          child: Text(
+            '버티기 기록이 아직 없어요. 아케이드의 버티기 스테이지를 하면 여기에 모여요.',
+            style: text.feedbackMeta,
+          ),
+        ),
+      ];
+    }
+    final period = vm.state.period;
+    return [
+      ArchiveSection(
+        child: ArchiveHoldSummary(holds: holds, period: period),
+      ),
+      if (vm.volume case final volume?) ...[
+        _gap,
+        ArchiveSection(
+          child: ArchiveVolumeSection(
+            volume: volume,
+            period: period,
+            holdsOnly: true,
+          ),
+        ),
+      ],
+      _gap,
+      ArchiveSection(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ArchiveSectionTitle('자주 받은 경고', detail: archivePeriodLabel(period)),
+            const SizedBox(height: AppSpacing.s12),
+            ArchiveHoldWarnings(warnings: holds.warnings),
           ],
-          ArchiveSection(child: ArchiveScoreChart(points: growth.points)),
-          _gap,
-          ArchiveSection(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const ArchiveSectionTitle('개인 최고'),
-                const SizedBox(height: AppSpacing.s12),
-                ArchiveBests(bests: growth.bests),
-              ],
-            ),
-          ),
-          _gap,
-          ArchiveSection(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ArchiveSectionTitle(
-                  '자주 나온 자세 문제',
-                  detail:
-                      '${archivePeriodLabel(growth.period)} 무효 '
-                      '${growth.issues.fold(0, (sum, i) => sum + i.count)}회',
-                ),
-                const SizedBox(height: AppSpacing.s12),
-                ArchiveIssues(issues: growth.issues),
-              ],
-            ),
-          ),
-        ] else if (state.statsFailed)
+        ),
+      ),
+    ];
+  }
+
+  /// 전체 or one exercise: the summary, the volume, the scores in time, the
+  /// bests and the reject reasons.
+  List<Widget> _battles(HistoryViewModel vm, TextTheme text) {
+    final state = vm.state;
+    final growth = vm.growth;
+    if (growth == null) {
+      return [
+        if (state.statsFailed)
           ArchiveStatsRetry(onRetry: vm.load)
         else if (!hasSource)
           ArchiveSection(
@@ -286,14 +304,60 @@ class _OverviewTab extends StatelessWidget {
           const ArchiveSection(
             child: Center(child: CircularProgressIndicator()),
           ),
-        if (vm.holdSummary case final holds?) ...[
-          _gap,
-          ArchiveSection(
-            child: ArchiveHoldSummary(holds: holds, period: state.period),
-          ),
-        ],
+      ];
+    }
+    final every = state.scope == ArchiveScope.all;
+    final holds = vm.holdSummary;
+    return [
+      ArchiveSection(
+        child: ArchiveSummary(
+          growth: growth,
+          holds: every ? holds?.count ?? 0 : 0,
+        ),
+      ),
+      _gap,
+      if (vm.volume case final volume?) ...[
+        ArchiveSection(
+          child: ArchiveVolumeSection(volume: volume, period: state.period),
+        ),
+        _gap,
       ],
-    );
+      ArchiveSection(child: ArchiveScoreChart(points: growth.points)),
+      _gap,
+      ArchiveSection(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const ArchiveSectionTitle('개인 최고'),
+            const SizedBox(height: AppSpacing.s12),
+            ArchiveBests(bests: growth.bests),
+            if (every && holds != null && holds.bests.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.s8),
+              Text(
+                '버티기 최고 · ${[for (final b in holds.bests) '${b.pose.label} ${ArchiveHoldSummary.time(b.held)}'].join(' · ')}',
+                style: text.feedbackMeta,
+              ),
+            ],
+          ],
+        ),
+      ),
+      _gap,
+      ArchiveSection(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ArchiveSectionTitle(
+              '자주 나온 자세 문제',
+              detail:
+                  '${archivePeriodLabel(growth.period)} 무효 '
+                  '${growth.issues.fold(0, (sum, i) => sum + i.count)}회',
+            ),
+            const SizedBox(height: AppSpacing.s12),
+            ArchiveIssues(issues: growth.issues),
+          ],
+        ),
+      ),
+    ];
   }
 }
 

@@ -12,6 +12,7 @@ import '../models/rep_event.dart';
 import '../services/api/api_client.dart';
 import '../services/feedback/feedback_stats.dart';
 import '../services/feedback/form_report_store.dart';
+import '../services/feedback/hold_metrics.dart';
 import '../services/feedback/report_metrics.dart';
 import '../services/feedback/hold_record_store.dart';
 import '../services/user/user_repository.dart';
@@ -58,6 +59,31 @@ enum ArchiveFilter {
   /// Whether the arcade's holds are listed: under 전체 and 아케이드, with the
   /// arcade's battles (no chip of their own, user 2026-11-26).
   bool get keepsHolds => this == all || this == arcade;
+}
+
+/// What the 전체 tab analyses (P13): every exercise, one exercise, or the
+/// holds (user, 2026-11-26).
+enum ArchiveScope {
+  all('전체'),
+  pushUp('푸쉬업'),
+  squat('스쿼트'),
+  hold('버티기');
+
+  const ArchiveScope(this.label);
+
+  final String label;
+
+  /// The exercise of a single-exercise scope; null for 전체 and 버티기.
+  ExerciseType? get exercise => switch (this) {
+    pushUp => ExerciseType.pushUp,
+    squat => ExerciseType.squat,
+    all || hold => null,
+  };
+
+  static ArchiveScope of(ExerciseType exercise) => switch (exercise) {
+    ExerciseType.pushUp => pushUp,
+    ExerciseType.squat => squat,
+  };
 }
 
 /// One row of the 경기 tab: a battle or a played hold (P13).
@@ -161,6 +187,8 @@ class ArchiveHolds {
     required this.held,
     required this.bests,
     this.trends = const {},
+    this.keepRate,
+    this.warnings = const [],
   });
 
   /// Holds in the period.
@@ -178,6 +206,16 @@ class ArchiveHolds {
 
   /// How many holds a pose's trend chart shows.
   static const trendCount = 10;
+
+  /// The mean keep rate (time held over time from GO) of the period's
+  /// holds; null without one.
+  final double? keepRate;
+
+  /// The period's warnings by their words, most first, at most
+  /// [warningCount].
+  final List<({String words, int count})> warnings;
+
+  static const warningCount = 3;
 
   static ArchiveHolds of(
     List<HoldRecord> all,
@@ -203,10 +241,25 @@ class ArchiveHolds {
             .toList();
       }
     }
+    final warned = <String, int>{};
+    for (final h in inPeriod) {
+      for (final w in h.warnings) {
+        warned[w.words] = (warned[w.words] ?? 0) + 1;
+      }
+    }
+    final warnings = [
+      for (final MapEntry(:key, :value) in warned.entries)
+        (words: key, count: value),
+    ]..sort((a, b) => b.count.compareTo(a.count));
     return ArchiveHolds(
       count: inPeriod.length,
       held: inPeriod.fold(Duration.zero, (sum, h) => sum + h.held),
       trends: trends,
+      keepRate: inPeriod.isEmpty
+          ? null
+          : inPeriod.fold(0.0, (sum, h) => sum + HoldMetrics.keepRateOf(h)) /
+                inPeriod.length,
+      warnings: warnings.take(warningCount).toList(),
       bests: [
         for (final pose in HoldPose.values)
           ?all
@@ -229,10 +282,14 @@ class ArchiveAmount {
     required this.kcal,
     required this.liftedKg,
     this.endurance,
+    this.holds = 0,
   });
 
   /// Battles kept on the phone in the period.
   final int battles;
+
+  /// Holds in the period, whose calories are in [kcal].
+  final int holds;
   final double kcal;
   final double liftedKg;
 
@@ -242,9 +299,14 @@ class ArchiveAmount {
   static ArchiveAmount of(
     Iterable<FormReport> reports,
     List<FormReport> kept,
-    double? weightKg,
-  ) {
-    var kcal = 0.0, lifted = 0.0, count = 0;
+    double? weightKg, {
+    Iterable<HoldRecord> holds = const [],
+  }) {
+    var kcal = 0.0, lifted = 0.0, count = 0, held = 0;
+    for (final h in holds) {
+      held++;
+      kcal += HoldMetrics.kcalOf(h, weightKg ?? HoldMetrics.defaultWeightKg);
+    }
     final endurances = <int>[];
     for (final r in reports) {
       final m = ReportMetrics.of(r, weightKg: weightKg, earlier: kept);
@@ -255,6 +317,7 @@ class ArchiveAmount {
     }
     return ArchiveAmount(
       battles: count,
+      holds: held,
       kcal: kcal,
       liftedKg: lifted,
       endurance: endurances.isEmpty
@@ -296,34 +359,42 @@ class ArchiveVolume {
     };
   }
 
+  /// [scope]'s amounts: one exercise's battles, every battle and hold
+  /// (전체), or the holds alone (버티기, calories only).
   static ArchiveVolume of(
     List<FormReport> kept,
     StatsPeriod period,
-    ExerciseType exercise,
+    ArchiveScope scope,
     DateTime now, {
     double? weightKg,
+    List<HoldRecord> holds = const [],
   }) {
     final start = const FeedbackStatsCalculator().periodStart(period, now);
     final before = previousStart(period, now);
     bool between(DateTime at, DateTime? from, DateTime? to) =>
         (from == null || !at.isBefore(from)) && (to == null || at.isBefore(to));
-    final ofExercise = [
-      for (final r in kept)
-        if (r.exercise == exercise && !r.endedAt.isAfter(now)) r,
+    final exercise = scope.exercise;
+    final battles = [
+      if (scope != ArchiveScope.hold)
+        for (final r in kept)
+          if ((exercise == null || r.exercise == exercise) &&
+              !r.endedAt.isAfter(now))
+            r,
     ];
+    final played = [
+      if (scope == ArchiveScope.all || scope == ArchiveScope.hold)
+        for (final h in holds)
+          if (!h.endedAt.isAfter(now)) h,
+    ];
+    ArchiveAmount amount(DateTime? from, DateTime? to) => ArchiveAmount.of(
+      battles.where((r) => between(r.endedAt, from, to)),
+      kept,
+      weightKg,
+      holds: played.where((h) => between(h.endedAt, from, to)),
+    );
     return ArchiveVolume(
-      current: ArchiveAmount.of(
-        ofExercise.where((r) => between(r.endedAt, start, null)),
-        kept,
-        weightKg,
-      ),
-      previous: before == null
-          ? null
-          : ArchiveAmount.of(
-              ofExercise.where((r) => between(r.endedAt, before, start)),
-              kept,
-              weightKg,
-            ),
+      current: amount(start, null),
+      previous: before == null ? null : amount(before, start),
       weightKg: weightKg ?? ReportMetrics.defaultWeightKg,
       weightAssumed: weightKg == null,
     );
@@ -333,11 +404,17 @@ class ArchiveVolume {
 /// One battle on the 전체 tab's chart: its score (null when none was kept)
 /// and its counted reps.
 class ArchivePoint {
-  const ArchivePoint({required this.playedAt, required this.reps, this.score});
+  const ArchivePoint({
+    required this.playedAt,
+    required this.reps,
+    this.score,
+    this.exercise = ExerciseType.pushUp,
+  });
 
   final DateTime playedAt;
   final int reps;
   final int? score;
+  final ExerciseType exercise;
 }
 
 /// An exercise's best score of all time, with its reps and day.
@@ -376,10 +453,13 @@ class ArchiveGrowth {
     required this.points,
     required this.bests,
     required this.issues,
+    this.perExercise = const {},
   });
 
   final StatsPeriod period;
-  final ExerciseType exercise;
+
+  /// The exercise; null for every exercise (전체).
+  final ExerciseType? exercise;
 
   /// Battles of [exercise] in [period].
   final int matches;
@@ -402,6 +482,9 @@ class ArchiveGrowth {
   /// [issueCount].
   final List<ArchiveIssue> issues;
 
+  /// Battles of each exercise in the period.
+  final Map<ExerciseType, int> perExercise;
+
   /// How many battles the chart shows.
   static const chartCount = 10;
 
@@ -415,13 +498,13 @@ class ArchiveGrowth {
   static ArchiveGrowth of(
     List<StatsPoint> all,
     StatsPeriod period,
-    ExerciseType exercise,
+    ExerciseType? exercise,
     DateTime now,
   ) {
     final start = _calculator.periodStart(period, now);
     final inPeriod = [
       for (final p in all)
-        if (p.exercise == exercise &&
+        if ((exercise == null || p.exercise == exercise) &&
             (start == null || !p.playedAt.isBefore(start)) &&
             !p.playedAt.isAfter(now))
           p,
@@ -444,10 +527,19 @@ class ArchiveGrowth {
         for (final p in inPeriod.skip(
           math.max(0, inPeriod.length - chartCount),
         ))
-          ArchivePoint(playedAt: p.playedAt, reps: p.reps, score: p.score),
+          ArchivePoint(
+            playedAt: p.playedAt,
+            reps: p.reps,
+            score: p.score,
+            exercise: p.exercise,
+          ),
       ],
       bests: [for (final e in ExerciseType.values) ?_bestOf(all, e, now)],
       issues: issues.take(issueCount).toList(),
+      perExercise: {
+        for (final e in ExerciseType.values)
+          e: inPeriod.where((p) => p.exercise == e).length,
+      },
     );
   }
 
@@ -494,7 +586,7 @@ class HistoryState {
     this.points,
     this.filter = ArchiveFilter.all,
     this.period = StatsPeriod.week,
-    this.exercise = ExerciseType.pushUp,
+    this.scope = ArchiveScope.all,
     this.holds = const [],
     this.reports,
     this.weightKg,
@@ -533,9 +625,12 @@ class HistoryState {
   /// The 경기 tab's chip.
   final ArchiveFilter filter;
 
-  /// The 전체 tab's period and exercise.
+  /// The 전체 tab's period and scope.
   final StatsPeriod period;
-  final ExerciseType exercise;
+  final ArchiveScope scope;
+
+  /// The scope's exercise; null for 전체 and 버티기.
+  ExerciseType? get exercise => scope.exercise;
 
   /// The holds kept on the phone, newest first (P13).
   final List<HoldRecord> holds;
@@ -578,7 +673,7 @@ class HistoryState {
     List<StatsPoint>? points,
     ArchiveFilter? filter,
     StatsPeriod? period,
-    ExerciseType? exercise,
+    ArchiveScope? scope,
     List<HoldRecord>? holds,
     List<FormReport>? reports,
     double? weightKg,
@@ -594,7 +689,7 @@ class HistoryState {
     points: points ?? this.points,
     filter: filter ?? this.filter,
     period: period ?? this.period,
-    exercise: exercise ?? this.exercise,
+    scope: scope ?? this.scope,
     holds: holds ?? this.holds,
     reports: reports ?? this.reports,
     weightKg: weightKg ?? this.weightKg,
@@ -725,9 +820,10 @@ class HistoryViewModel extends ChangeNotifier {
     return ArchiveVolume.of(
       reports,
       _state.period,
-      _state.exercise,
+      _state.scope,
       _now(),
       weightKg: _state.weightKg,
+      holds: _state.holds,
     );
   }
 
@@ -789,10 +885,14 @@ class HistoryViewModel extends ChangeNotifier {
     if (period != _state.period) _set(_state.copyWith(period: period));
   }
 
-  /// Shows [exercise] on the 전체 tab.
-  void setExercise(ExerciseType exercise) {
-    if (exercise != _state.exercise) _set(_state.copyWith(exercise: exercise));
+  /// Shows [scope] on the 전체 tab.
+  void setScope(ArchiveScope scope) {
+    if (scope != _state.scope) _set(_state.copyWith(scope: scope));
   }
+
+  /// Shows [exercise] on the 전체 tab.
+  void setExercise(ExerciseType exercise) =>
+      setScope(ArchiveScope.of(exercise));
 
   /// The 전체 tab's values for the chosen period and exercise; null until
   /// the battles load.
@@ -821,12 +921,8 @@ class HistoryViewModel extends ChangeNotifier {
   }
 
   /// [next] with the user's chip, period and exercise from [kept].
-  static HistoryState _choices(HistoryState kept, HistoryState next) =>
-      next.copyWith(
-        filter: kept.filter,
-        period: kept.period,
-        exercise: kept.exercise,
-      );
+  static HistoryState _choices(HistoryState kept, HistoryState next) => next
+      .copyWith(filter: kept.filter, period: kept.period, scope: kept.scope);
 
   static String _message(Exception e) =>
       e is ApiException ? e.message : genericErrorMessage;
