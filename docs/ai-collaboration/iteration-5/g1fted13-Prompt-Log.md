@@ -720,3 +720,14 @@ PM 승인이 왔다(11/27). A8, feat/iter5-hold-character, 마감 11/29/2026, �
 4. 끝나는 조건: 현재 HEAD에 Codex가 \"Didn't find any major issues\"를 달고, 안 풀린 스레드가 0개이고, CI가 통과한 상태다. 이 상태가 되면 새 커밋, Codex 지적과 처리 결과를 보고한다. 상우나 현우를 GitHub에서 멘션하지 않는다.
 5. 이 메시지를 프롬프트 기록에 남긴다.
 </pasted_content id=\"2c8e\">"
+
+<!-- f86b9ff8 2026-11-26T18:02:24.514Z -->
+[Woohyun Song, 11-27 03:02] "<pasted_content id=\"2c8e\">
+PR 본문 형식을 바로잡는다. 체크리스트는 내가 명세로 요구했던 것인데, 팀 PR 형식이 아니라서 뺀다.
+1. PR #104 본문을 하네스 pull-request 스킬의 형식(Summary, What it does, How to test, Review notes) 그대로 맞추고, 체크리스트 절은 지운다. gh로 지금 본문을 받아 고치고, 이미 쓴 내용(커버리지, 시안·명세 출처 등)은 살린다.
+   - 체크리스트 항목은 How to test의 Acceptance criteria → tests 표에 항목과 테스트 이름으로 옮긴다.
+   - 폰 확인은 Manual check에 \"Not checked on a device: no camera pose setup was available. Visual values match goldens extracted from the mockup's JS. Device check after merge.\"처럼 적는다.
+   - 예외(design_tokens_test.dart, chair_hold_stage_test.dart, PM 승인 11/27)는 Review notes에 적는다.
+2. 앞 메시지(Ready와 Codex 대응)를 아직 시작하지 않았으면 이 수정 뒤에 진행한다. 이미 Ready로 바꿨으면 본문만 고친다.
+3. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"2c8e\">"
