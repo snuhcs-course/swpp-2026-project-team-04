@@ -510,6 +510,7 @@ class _ResultScreenState extends State<ResultScreen> {
             characterId: character,
             seat: seat,
             onEnd: _endScene,
+            opponent: widget.result?.matchup.opponent,
           ),
       ],
     );

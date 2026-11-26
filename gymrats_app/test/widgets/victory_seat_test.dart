@@ -6,6 +6,7 @@ import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
 import 'package:gymrats_app/models/matchup.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
+import 'package:gymrats_app/widgets/battle_fx_motion.dart';
 import 'package:gymrats_app/widgets/result_report.dart';
 import 'package:gymrats_app/widgets/victory_overlay.dart';
 import 'package:gymrats_app/widgets/victory_scene.dart';
@@ -352,9 +353,16 @@ void main() {
             as VictoryPainter;
 
     for (final result in VictoryResult.values) {
+      final draw = result == VictoryResult.draw;
+      final stand = result.isWin
+          ? 'lime'
+          : draw
+          ? 'lime and pink, my character in guard'
+          : 'white';
       testWidgets('${result.name}: the stand and the end pose in a 144 x 148 '
-          'box, the stand ${result.isWin ? 'lime' : 'white'}; no button, '
-          'nothing for screen readers', (tester) async {
+          'box, the stand $stand; no button, nothing for screen readers', (
+        tester,
+      ) async {
         final semantics = tester.ensureSemantics();
         await tester.pumpWidget(
           battleTestApp(
@@ -381,10 +389,21 @@ void main() {
         expect(frame.stand!.rect.topLeft, const Offset(44, 129));
         expect(
           frame.stand!.color,
-          result.isWin ? AppColors.accent : AppColors.card,
+          result.isWin || draw ? AppColors.accent : AppColors.card,
         );
-        expect(frame.figure!.foot, const Offset(86, 132));
-        expect(frame.figure!.still, isTrue);
+        // A draw's stand is half lime and half pink (A7).
+        expect(frame.stand!.rightColor, draw ? AppColors.opponent : isNull);
+        if (draw) {
+          // No frustration: my character alone, in the stage's guard pose.
+          expect(frame.figure, isNull);
+          final mine = frame.fighters.single;
+          expect(mine.characterId, 'bear');
+          expect(mine.pose, BattlePose.idle);
+          expect(mine.foot, const Offset(86, 132));
+        } else {
+          expect(frame.figure!.foot, const Offset(86, 132));
+          expect(frame.figure!.still, isTrue);
+        }
         expect(tester.binding.hasScheduledFrame, isFalse);
         expect(find.bySemanticsLabel(RegExp('연출 건너뛰기')), findsNothing);
         semantics.dispose();

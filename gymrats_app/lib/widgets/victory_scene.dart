@@ -2,14 +2,21 @@ import 'dart:math' as math;
 import 'dart:ui' show Color, Offset, RRect, Radius, Rect, Size, lerpDouble;
 
 import '../models/battle_result.dart';
+import '../models/character_idle_motion.dart';
+import '../models/character_rig.dart';
 import '../models/game_score.dart';
 import '../models/match_record.dart';
+import 'battle_fx_motion.dart' show BattlePose;
+import 'battle_stage_model.dart' show BattleSide;
 import 'character_motion.dart';
+import 'victory_defeat.dart';
 import 'victory_motion.dart';
 
 /// How the battle ended for me, as the victory scene shows it: a win by KO,
 /// by time or because the opponent left gets the cut-in with its band
-/// (spec 1 and 4); a loss or a draw the frustration (spec 6).
+/// (spec 1 and 4); a loss the red cut-in with the frustration, a draw the
+/// lime and pink one with the two characters in guard (A7,
+/// [VictoryDefeat]).
 enum VictoryResult {
   koWin('ko'),
   timeWin('time'),
@@ -19,8 +26,9 @@ enum VictoryResult {
 
   const VictoryResult(this.bandKey);
 
-  /// The key of the band's words in the rig (`band.text`); null when the
-  /// scene has no band.
+  /// The key of the band's words in the rig (`band.text`): a win's. Null for
+  /// a loss and a draw, whose bands (패배, 무승부) are A7's
+  /// ([VictoryDefeat.loseWords], [VictoryDefeat.drawWords]).
   final String? bandKey;
 
   bool get isWin => bandKey != null;
@@ -174,7 +182,8 @@ class VictorySceneValues {
 
   final double winEndMs;
 
-  /// A frustration's end by character id.
+  /// A frustration's end by character id: the W5 loss's end. A7's loss and
+  /// draw end at [VictoryDefeat.endMs] instead.
   final Map<String, double> loseEndMs;
 
   final VictoryBandValues band;
@@ -239,7 +248,7 @@ class VictoryPanelValues {
 
 /// The stand under the seated character (spec 2): [rect] on the design's
 /// screen, corners [radius], an ink edge [border] inside; lime for a win,
-/// white for a loss or a draw.
+/// white for a loss (a draw's is half lime and half pink, A7).
 class VictoryStandValues {
   const VictoryStandValues({
     required this.rect,
@@ -308,9 +317,9 @@ class VictoryConfettoValues {
   final Color color;
 }
 
-/// The times of the win's and the loss's formulas (spec 3 and 6, written
-/// out in the rig's `scene.win` and `scene.lose`), in ms from the moment
-/// the report opens.
+/// The times of the win's formulas (spec 3, written out in the rig's
+/// `scene.win`), in ms from the moment the report opens. A loss's and a
+/// draw's are A7's, in [VictoryDefeat].
 abstract final class VictoryTimes {
   /// The panel sweeps in from the left over 0 to [wipeMs]; its edge leans
   /// [wipeLean] either way and ends [wipeLean] * 2 past the right side.
@@ -359,11 +368,6 @@ abstract final class VictoryTimes {
   /// The win's lime stand opens from [standFromMs] for [standMs].
   static const standFromMs = 1900.0;
   static const standMs = 200.0;
-
-  /// A loss's white stand opens over [loseStandMs]; the character shows
-  /// within [loseFadeMs].
-  static const loseStandMs = 200.0;
-  static const loseFadeMs = 150.0;
 }
 
 /// Where the scene is on a real screen: the overlay's [size] and the
@@ -406,13 +410,15 @@ class VictoryLayout {
 }
 
 /// The victory scene of one result and one character on one layout: what
-/// each layer shows at a time (spec 3 and 6), and the end look (spec 8).
+/// each layer shows at a time (spec 3 and 6; a loss and a draw in
+/// [VictoryDefeatScene]), and the end look (spec 8).
 class VictoryScene {
   VictoryScene({
     required this.rig,
     required this.character,
     required this.result,
     required this.layout,
+    this.opponentId = CharacterRig.defaultId,
   });
 
   final VictoryRig rig;
@@ -420,28 +426,28 @@ class VictoryScene {
   final VictoryResult result;
   final VictoryLayout layout;
 
+  /// The opponent's character in a draw, drawn as the battle stage draws
+  /// it (a `CharacterRig` id; an unknown one draws the default).
+  final String opponentId;
+
   VictorySceneValues get _values => rig.scene;
 
-  /// When it ends: 2100 ms for a win, the frustration's length for a loss
-  /// or a draw (760; 물렁범 820).
-  double get endMs => endMsOf(rig, character, result);
+  /// When it ends: 2100 ms for a win, 2000 ms for a loss or a draw.
+  double get endMs => endMsOf(rig, result);
 
   /// [endMs] without a layout.
-  static double endMsOf(
-    VictoryRig rig,
-    VictoryCharacter character,
-    VictoryResult result,
-  ) => result.isWin
-      ? rig.scene.winEndMs
-      : rig.scene.loseEndMs[character.id] ?? character.frustrate.motion.durMs;
+  static double endMsOf(VictoryRig rig, VictoryResult result) =>
+      result.isWin ? rig.scene.winEndMs : VictoryDefeat.endMs;
 
-  /// The scene [tMs] ms after the report opened. A win shows its end look
-  /// from [endMs] on; a loss's frustration stops by itself in its end pose.
-  VictoryFrame at(double tMs) => result.isWin ? _win(tMs) : _lose(tMs);
+  /// The scene [tMs] ms after the report opened; its end look from [endMs]
+  /// on.
+  VictoryFrame at(double tMs) => result.isWin ? _win(tMs) : defeatAt(tMs);
 
   /// The end look: the stand and the end pose on the seat, nothing else
   /// (after the scene, after a tap, with reduced motion, for a past report).
+  /// A draw's is my character in guard ([VictoryDefeatScene.drawEnd]).
   VictoryFrame get end {
+    if (result == VictoryResult.draw) return drawEnd;
     final motion = result.isWin ? character.celebrate : character.frustrate;
     return VictoryFrame(
       stand: _stand(1),
@@ -469,22 +475,6 @@ class VictoryScene {
           : null,
       figure: _celebrating(t),
       confetti: t >= VictoryTimes.confettiFromMs ? _confetti(t) : const [],
-    );
-  }
-
-  VictoryFrame _lose(double t) {
-    final rounded = t.roundToDouble();
-    return VictoryFrame(
-      stand: _stand(_eo(t / VictoryTimes.loseStandMs)),
-      figure: VictoryFigure(
-        foot: layout.nearSeat(_values.seatFoot),
-        scale: _values.seatScale,
-        opacity: _clamp(t / VictoryTimes.loseFadeMs),
-        motion: VictoryMotionKind.frustrate,
-        timeMs: rounded,
-        endBlend: 0,
-        frame: character.frustrate.frameAt(rounded),
-      ),
     );
   }
 
@@ -530,6 +520,7 @@ class VictoryScene {
           VictoryTimes.bandSlide *
           (1 - _eo((t - VictoryTimes.bandFromMs) / VictoryTimes.bandInMs)),
       dy: -VictoryTimes.bandRise * out,
+      rotDeg: _values.band.rotateDeg,
       opacity: 1 - out,
     );
   }
@@ -628,27 +619,48 @@ class VictoryScene {
 class VictoryFrame {
   const VictoryFrame({
     this.panel,
+    this.rain = const [],
     this.band,
     this.stand,
     this.figure,
+    this.fighters = const [],
+    this.spark,
+    this.shake = 0,
     this.confetti = const [],
   });
 
   final VictoryPanel? panel;
+
+  /// A loss's rain on the red panel, inside the panel's shape.
+  final List<VictoryRaindrop> rain;
   final VictoryBand? band;
   final VictoryStand? stand;
+
+  /// My character in a motion: celebrating (a win) or frustrating (a loss).
   final VictoryFigure? figure;
+
+  /// The characters as the battle stage draws them (a draw), in drawing
+  /// order: the opponent, then mine.
+  final List<VictoryFighter> fighters;
+
+  /// The spark where a draw's fists meet.
+  final VictorySpark? spark;
+
+  /// How far the characters' layer (figure, fighters, spark) is moved
+  /// across, in the design's points.
+  final double shake;
   final List<VictoryConfetto> confetti;
 }
 
-/// The lime panel's shape on the screen, at [opacity].
+/// A panel's shape on the screen, at [opacity].
 sealed class VictoryPanel {
   const VictoryPanel({required this.opacity});
 
   final double opacity;
 }
 
-/// The panel sweeping in: the polygon left of a leaning edge at [x].
+/// The win's lime panel sweeping in: the polygon left of a leaning edge at
+/// [x].
 class VictoryWipe extends VictoryPanel {
   const VictoryWipe({required this.x, required this.polygon})
     : super(opacity: 1);
@@ -657,8 +669,28 @@ class VictoryWipe extends VictoryPanel {
   final List<Offset> polygon;
 }
 
+/// A loss's red panel with its rain: the [polygon] above a leaning edge
+/// while it comes down, the whole screen when [polygon] is null.
+class VictoryShutter extends VictoryPanel {
+  const VictoryShutter({this.polygon}) : super(opacity: 1);
+
+  final List<Offset>? polygon;
+}
+
+/// A draw's two halves: the [lime] polygon on the left, the [pink] one on
+/// the right, and the ink [seam] between them once they meet.
+class VictorySplit extends VictoryPanel {
+  const VictorySplit({required this.lime, required this.pink, this.seam})
+    : super(opacity: 1);
+
+  final List<Offset> lime;
+  final List<Offset> pink;
+  final ({Offset top, Offset bottom})? seam;
+}
+
 /// The panel shrinking into the seat: the screen less these insets, with
-/// round corners; [e] is how far (0 to 1).
+/// round corners; [e] is how far (0 to 1). It shows [inner] inside: the
+/// win's lime panel when null.
 class VictoryShrink extends VictoryPanel {
   const VictoryShrink({
     required this.e,
@@ -668,6 +700,7 @@ class VictoryShrink extends VictoryPanel {
     required this.left,
     required this.radius,
     required super.opacity,
+    this.inner,
   });
 
   final double e;
@@ -676,6 +709,10 @@ class VictoryShrink extends VictoryPanel {
   final double bottom;
   final double left;
   final double radius;
+
+  /// The panel inside the shrinking shape, its whole look at the end of
+  /// coming in: a loss's [VictoryShutter], a draw's [VictorySplit].
+  final VictoryPanel? inner;
 
   /// The panel on a screen of [size].
   RRect rectIn(Size size) => RRect.fromLTRBR(
@@ -688,44 +725,52 @@ class VictoryShrink extends VictoryPanel {
 }
 
 /// The band's words and where it is: moved ([dx], [dy]) from its place, in
-/// the design's points.
+/// the design's points, and turned [rotDeg].
 class VictoryBand {
   const VictoryBand({
     required this.text,
     required this.dx,
     required this.dy,
+    required this.rotDeg,
     required this.opacity,
   });
 
   final String text;
   final double dx;
   final double dy;
+  final double rotDeg;
   final double opacity;
 }
 
-/// The stand on the screen, opened [scaleX] of its width about its middle.
+/// The stand on the screen, opened [scaleX] of its width about its middle:
+/// [color], or [color] on its left half and [rightColor] on its right.
 class VictoryStand {
   const VictoryStand({
     required this.rect,
     required this.color,
+    this.rightColor,
     required this.scaleX,
     required this.opacity,
   });
 
   final Rect rect;
   final Color color;
+  final Color? rightColor;
   final double scaleX;
   final double opacity;
 }
 
 /// The character on the screen: its feet (70, 150 of its box) at [foot],
-/// [scale] times its size, in [frame]. [timeMs] is the motion's clock and
-/// [endBlend] how far it has blended into its end pose; a still picture
-/// (the end look) has no clock.
+/// [scale] times its size (and [stretchX] by [stretchY] more, a landing's
+/// squash), in [frame]. [timeMs] is the motion's clock and [endBlend] how
+/// far it has blended into its end pose; a still picture (the end look) has
+/// no clock.
 class VictoryFigure {
   const VictoryFigure({
     required this.foot,
     required this.scale,
+    this.stretchX = 1,
+    this.stretchY = 1,
     required this.opacity,
     required this.motion,
     required this.timeMs,
@@ -735,6 +780,8 @@ class VictoryFigure {
 
   final Offset foot;
   final double scale;
+  final double stretchX;
+  final double stretchY;
   final double opacity;
   final VictoryMotionKind motion;
   final double? timeMs;
@@ -742,6 +789,56 @@ class VictoryFigure {
   final CharacterMotionFrame frame;
 
   bool get still => timeMs == null;
+}
+
+/// A character as the battle stage draws it (W3): [characterId] in [pose]
+/// and [side]'s team color, its feet (70, 150 of its box) at [foot], [scale]
+/// times its size, facing left when [mirrored], moved about its feet by
+/// [idle] (the stage's idle motion).
+class VictoryFighter {
+  const VictoryFighter({
+    required this.characterId,
+    required this.side,
+    required this.pose,
+    required this.foot,
+    required this.scale,
+    required this.mirrored,
+    required this.opacity,
+    required this.idle,
+  });
+
+  final String characterId;
+  final BattleSide side;
+  final BattlePose pose;
+  final Offset foot;
+  final double scale;
+  final bool mirrored;
+  final double opacity;
+  final IdleSample idle;
+}
+
+/// The spark of a draw's fists at [center] (the design's points), turned
+/// [rotDeg] and [scale] times its size.
+class VictorySpark {
+  const VictorySpark({
+    required this.center,
+    required this.rotDeg,
+    required this.scale,
+    required this.opacity,
+  });
+
+  final Offset center;
+  final double rotDeg;
+  final double scale;
+  final double opacity;
+}
+
+/// One streak of a loss's rain: its unturned top left in the design's
+/// points ([VictoryDefeat] has its size and turn).
+class VictoryRaindrop {
+  const VictoryRaindrop({required this.topLeft});
+
+  final Offset topLeft;
 }
 
 /// One piece of confetti: its unturned top left in the design's points,
