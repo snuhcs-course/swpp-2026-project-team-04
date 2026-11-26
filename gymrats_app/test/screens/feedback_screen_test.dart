@@ -141,12 +141,14 @@ void main() {
     });
 
     testWidgets('without earlier battles: no comparison toggle, change chips, '
-        'average bars, endurance or trend', (tester) async {
+        'average bars or endurance; 변화 says 비교 기록 없음', (tester) async {
       await show(tester, feedbackReport());
       expect(find.text('최근 평균과 비교'), findsNothing);
       expect(find.text('평균 이하'), findsNothing);
       expect(find.text('개인 최고 갱신'), findsNothing);
-      expect(find.text('변화'), findsNothing);
+      await tester.scrollUntilVisible(find.text('변화'), 200);
+      expect(find.text('변화'), findsOneWidget);
+      expect(find.text('비교 기록 없음'), findsOneWidget);
       expect(find.text('근지구력 지수'), findsNothing);
     });
 

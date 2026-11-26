@@ -128,10 +128,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             _gap,
             _ExerciseSection(metrics: metrics, history: history),
             ..._highlights(metrics, history),
-            if (history.trend.length >= 2) ...[
-              _gap,
-              _TrendSection(history: history),
-            ],
+            _gap,
+            _TrendSection(history: history),
             _gap,
             _CoachSection(
               line: form.coachLine,
@@ -1092,6 +1090,20 @@ class _TrendSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final trend = history.trend;
+    // Without an earlier battle there is nothing to compare: the section
+    // stays and says so, as the hold report does (user, 2026-11-26).
+    if (trend.length < 2) {
+      return _Section(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SectionTitle('변화', detail: '인정 횟수'),
+            const SizedBox(height: AppSpacing.s12),
+            Text('비교 기록 없음', style: text.feedbackMeta),
+          ],
+        ),
+      );
+    }
     String day(DateTime t) {
       final l = t.toLocal();
       return '${l.month}.${l.day.toString().padLeft(2, '0')}';
