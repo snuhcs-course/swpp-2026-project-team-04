@@ -23,6 +23,9 @@ import '../widgets/battle_fx_motion.dart';
 import '../widgets/character_figure.dart';
 import '../widgets/gym_background.dart';
 import '../widgets/gym_owner_figure.dart';
+import '../widgets/hold_me_figure.dart';
+import '../widgets/hold_me_rig.dart';
+import '../widgets/hold_me_scene.dart';
 import 'hold_stage_art.dart';
 import 'hold_stage_brief.dart';
 
@@ -39,11 +42,16 @@ import 'hold_stage_brief.dart';
 ///   marks and the user's face at its end (amber while paused).
 /// - Holding: a green frame in the camera box; paused, a red one, the
 ///   warning's big words and icon, and the owner blowing the whistle.
-/// - The owner's bubbles (the hold effects spec 3 to 5): the pose's start
-///   words after GO in the whistle's white bubble; at the first and second
-///   star a big lime cheer, with a smile and the star popping on the bar;
-///   at a second warning with no star a big red "실패!" over the whistle,
-///   with the warning kept in the camera box until the result.
+/// - The user's character beside the owner, holding the pose along (A8):
+///   it breathes, hops at a star while the star flies to its bar mark,
+///   sags or rises on a warning, and strains toward the last star.
+/// - The owner's bubbles (the hold effects spec 3 to 5), all above the
+///   owner's side (A8 spec 6): the pose's start words after GO in the
+///   whistle's white bubble; at the first and second star a big lime cheer
+///   from 0.8 s to 2.4 s, with a smile from 0.7 s and the bar star lighting
+///   and popping as the flying star lands at 0.9 s; at a second warning
+///   with no star a big red "실패!" over the whistle, with the warning kept
+///   in the camera box until the result.
 class HoldStagePlay extends StatelessWidget {
   const HoldStagePlay({
     super.key,
@@ -155,8 +163,16 @@ String holdClock(Duration held) {
   return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
 }
 
-/// The stage, in its 360 x 390 design points.
-class _Stage extends StatelessWidget {
+/// The stage, in its 360 x 390 design points, drawn bottom to top (A8 spec
+/// 3): the gym, the user's character, the owner, the HUD and the bar, a
+/// star flying to the bar, the owner's bubbles, the 3·2·1 and GO! bands.
+///
+/// It keeps its own clock (a ticker, which reduced motion does not slow)
+/// and a [HoldMeTimeline] that it feeds the play at each change: the
+/// character's moments, the bar stars' lighting, the cheer bubble and the
+/// owner's smile are timed from the star, the warning or the time running
+/// again on that clock (A8 spec 4 to 7).
+class _Stage extends StatefulWidget {
   const _Stage({
     required this.stage,
     required this.floor,
@@ -171,30 +187,177 @@ class _Stage extends StatelessWidget {
   final String myCharacter;
   final double? goAge;
 
-  static const _bubbleLeft = 30.0;
-  static const _bubbleTop = 196.0;
-  static const _bigBubbleTop = 172.0;
+  /// Every bubble of the owner's ends at the owner's [holdBigBubbleRight]
+  /// with its top here (A8 spec 6).
+  static const _bubbleTop = 148.0;
   static const _ownerBottom = 34.0;
+
+  /// The bar: its sides and top on the stage.
+  static const _barSide = 22.0;
+  static const _barTop = 102.0;
+
+  @override
+  State<_Stage> createState() => _StageState();
+}
+
+class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
+  /// The clock's time at each tick. While setting up nothing on the stage
+  /// moves with it, so it keeps the time without rebuilding the stage. Its
+  /// muting is left to the stage's [TickerMode], as any ticker's.
+  late final _ticker = createTicker((elapsed) {
+    _elapsed = elapsed.inMicroseconds / 1000;
+    if (widget.state.phase != HoldStagePhase.setup) _now.value = _elapsed;
+  });
+
+  /// Milliseconds on the stage's clock at its last tick.
+  double _elapsed = 0;
+
+  /// Rebuilds the stage at each tick outside the setup; the stage is drawn
+  /// at [_elapsed].
+  final _now = ValueNotifier<double>(0);
+
+  late HoldMeTimeline _timeline;
+
+  @override
+  void initState() {
+    super.initState();
+    _timeline = HoldMeTimeline(widget.stage.starSeconds);
+    _look();
+    _ticker.start();
+  }
+
+  @override
+  void didUpdateWidget(_Stage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.stage != widget.stage) {
+      _timeline = HoldMeTimeline(widget.stage.starSeconds);
+    }
+    _look();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    _now.dispose();
+    super.dispose();
+  }
+
+  /// Tells the timeline the play as it is now.
+  void _look() {
+    final state = widget.state;
+    final holding = state.phase == HoldStagePhase.hold;
+    _timeline.look(
+      _elapsed,
+      counting: state.phase == HoldStagePhase.countdown,
+      entering: holding && state.progress.state == HoldState.entering,
+      stopped: holding && state.stopped,
+      held: state.progress.held,
+      ended: state.progress.ended,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final state = widget.state;
+    final warned = state.phase == HoldStagePhase.hold && state.stopped;
+    final still = MediaQuery.disableAnimationsOf(context);
+    // What does not move with the clock is built here, once per change of
+    // the play: a tick gives the same widgets back, which are not built
+    // again.
+    final gym = Positioned.fill(
+      key: const ValueKey('hold-gym-slot'),
+      child: ExcludeSemantics(child: GymBackground(floor: widget.floor.number)),
+    );
+    final hud = state.phase == HoldStagePhase.setup
+        ? null
+        : Positioned(
+            key: const ValueKey('hold-hud-slot'),
+            left: 14,
+            right: 14,
+            top: 26,
+            child: _Hud(
+              stage: widget.stage,
+              progress: state.progress,
+              stopped: warned,
+            ),
+          );
+    final bands = _bands(still);
+    return ValueListenableBuilder<double>(
+      valueListenable: _now,
+      // Drawn at the clock's latest tick, the time the play is recorded at,
+      // so no age is ever below 0 (a tick may come while setting up, then
+      // the screen covered).
+      builder: (context, _, _) =>
+          _build(_elapsed, still: still, gym: gym, hud: hud, bands: bands),
+    );
+  }
+
+  /// The stage at [now]. Every child has a key of its own: one that comes
+  /// or goes (the flying star, a bubble) must not take another's element,
+  /// or that one would start over (a bubble popping in again, the owner's
+  /// breathing).
+  Widget _build(
+    double now, {
+    required bool still,
+    required Widget gym,
+    required Widget? hud,
+    required List<Widget> bands,
+  }) {
+    final stage = widget.stage;
+    final floor = widget.floor;
+    final state = widget.state;
     final progress = state.progress;
     final warned = state.phase == HoldStagePhase.hold && state.stopped;
     final callout = state.phase == HoldStagePhase.hold ? state.callout : null;
-    final showHud = state.phase != HoldStagePhase.setup;
+    final showHud = hud != null;
     final right = holdOwnerRight[floor.owner]?.stage ?? 8;
     final bubbleRight =
         holdBigBubbleRight[floor.owner] ?? holdBigBubbleRight['seal']!;
-    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final rig = HoldMeRig.standard;
+    final place = rig.placeOf(widget.myCharacter, stage.pose);
+    final top = place.topOn(rig);
+    // The cheer's time comes from its star: the bubble and the smile show
+    // in their part of it (A8 spec 6, 7).
+    final cheerAge = callout?.kind == HoldCalloutKind.cheer
+        ? _timeline.starAge(callout!.star, now)
+        : null;
+    final cheering =
+        callout?.kind == HoldCalloutKind.cheer &&
+        HoldMeCheer.bubbleAt(cheerAge, still: still);
+    final smiling =
+        callout?.kind == HoldCalloutKind.cheer &&
+        HoldMeCheer.smileAt(cheerAge, still: still);
+    final starAges = [
+      for (var n = 1; n <= stage.starSeconds.length; n++)
+        _timeline.starAge(n, now),
+    ];
+    final ends = stage.endsAt.inMilliseconds;
+    const barWidth = BattleFx.stageWidth - 2 * _Stage._barSide;
     return Stack(
       clipBehavior: Clip.hardEdge,
       children: [
-        Positioned.fill(
-          child: ExcludeSemantics(child: GymBackground(floor: floor.number)),
-        ),
+        gym,
+        if (showHud)
+          Positioned(
+            key: const ValueKey('hold-me-slot'),
+            left: place.left,
+            top: top,
+            child: RepaintBoundary(
+              child: HoldMeFigure(
+                key: const ValueKey('hold-me'),
+                frame: HoldMeScene.frameAt(
+                  place,
+                  _timeline.momentAt(now, still: still),
+                  liveMs: now,
+                  still: still,
+                ),
+              ),
+            ),
+          ),
         Positioned(
+          key: const ValueKey('hold-owner-slot'),
           right: right,
-          bottom: _ownerBottom,
+          bottom: _Stage._ownerBottom,
           child: ExcludeSemantics(
             child: HoldOwner(
               key: const ValueKey('hold-owner'),
@@ -202,7 +365,7 @@ class _Stage extends StatelessWidget {
               scale: 1.2,
               face: warned
                   ? GymOwnerFace.blow
-                  : callout?.kind == HoldCalloutKind.cheer
+                  : smiling
                   ? GymOwnerFace.ok
                   : GymOwnerFace.watch,
               idle: true,
@@ -210,65 +373,106 @@ class _Stage extends StatelessWidget {
           ),
         ),
         if (showHud) ...[
+          hud,
           Positioned(
-            left: 14,
-            right: 14,
-            top: 26,
-            child: _Hud(stage: stage, progress: progress, stopped: warned),
-          ),
-          Positioned(
-            left: 22,
-            right: 22,
-            top: 102,
+            key: const ValueKey('hold-bar-slot'),
+            left: _Stage._barSide,
+            right: _Stage._barSide,
+            top: _Stage._barTop,
             height: 52,
             child: _Bar(
               stage: stage,
               progress: progress,
               stopped: warned,
-              myCharacter: myCharacter,
-              popStar: callout?.kind == HoldCalloutKind.cheer
-                  ? callout!.star
-                  : null,
-              animate: !reducedMotion,
+              myCharacter: widget.myCharacter,
+              // A bar star lights when the star flying to it lands.
+              lit: [
+                for (final (i, seconds) in stage.starSeconds.indexed)
+                  progress.held >= Duration(seconds: seconds) &&
+                      HoldMeCheer.litAt(starAges[i], still: still),
+              ],
+              popStar: [
+                for (final (i, age) in starAges.indexed)
+                  if (HoldMeCheer.popAt(age, still: still)) i + 1,
+              ].lastOrNull,
+              animate: !still,
             ),
           ),
+          for (final (i, age) in starAges.indexed)
+            if (age != null)
+              if (HoldMeScene.flightAt(
+                    place,
+                    top,
+                    age,
+                    Offset(
+                      _Stage._barSide +
+                          barWidth * stage.starSeconds[i] * 1000 / ends,
+                      _Stage._barTop + _Bar._starTop + _Bar._star / 2,
+                    ),
+                    still: still,
+                  )
+                  case final flight?)
+                Positioned.fill(
+                  key: ValueKey('hold-flight-slot-$i'),
+                  child: IgnorePointer(
+                    child: ExcludeSemantics(
+                      child: CustomPaint(
+                        key: ValueKey('hold-flying-star-$i'),
+                        painter: HoldMeFlightPainter(flight),
+                      ),
+                    ),
+                  ),
+                ),
         ],
         // "실패!" takes the whistle's place; a start bubble gives way to it.
         if (warned && callout?.kind != HoldCalloutKind.fail)
           Positioned(
-            left: _bubbleLeft,
-            top: _bubbleTop,
-            child: _Whistle(animate: !reducedMotion),
+            key: const ValueKey('hold-whistle-slot'),
+            right: bubbleRight,
+            top: _Stage._bubbleTop,
+            child: _Whistle(right: bubbleRight, animate: !still),
           ),
         if (!warned && callout?.kind == HoldCalloutKind.start)
           Positioned(
-            left: _bubbleLeft,
-            top: _bubbleTop,
-            child: _StartBubble(lines: callout!.lines, animate: !reducedMotion),
-          ),
-        if (callout != null && callout.kind != HoldCalloutKind.start)
-          Positioned(
+            key: const ValueKey('hold-start-slot'),
             right: bubbleRight,
-            top: _bigBubbleTop,
+            top: _Stage._bubbleTop,
+            child: _StartBubble(
+              lines: callout!.lines,
+              right: bubbleRight,
+              animate: !still,
+            ),
+          ),
+        if (callout?.kind == HoldCalloutKind.fail || cheering)
+          Positioned(
+            // A cheer and "실패!" each come in with their own entrance.
+            key: ValueKey(
+              callout!.kind == HoldCalloutKind.fail
+                  ? 'hold-fail-slot'
+                  : 'hold-cheer-slot',
+            ),
+            right: bubbleRight,
+            top: _Stage._bubbleTop,
             child: callout.kind == HoldCalloutKind.fail
                 ? HoldBigBubble.fail(
                     words: callout.words,
                     right: bubbleRight,
-                    animate: !reducedMotion,
+                    animate: !still,
                   )
                 : HoldBigBubble.cheer(
                     words: callout.words,
                     right: bubbleRight,
-                    animate: !reducedMotion,
+                    animate: !still,
                   ),
           ),
-        ..._bands(reducedMotion),
+        ...bands,
       ],
     );
   }
 
   /// The battle's 3·2·1 and GO! (`battle_fx_motion.dart`), over the stage.
   List<Widget> _bands(bool reducedMotion) {
+    final state = widget.state;
     final left = state.startIn;
     if (state.phase == HoldStagePhase.countdown && left != null) {
       final ms = left.inMilliseconds.toDouble().clamp(0.0, 3000.0);
@@ -292,7 +496,7 @@ class _Stage extends StatelessWidget {
         ),
       ];
     }
-    final age = goAge;
+    final age = widget.goAge;
     final go = age == null ? null : BattleFx.pop(age, 700);
     if (go == null) return const [];
     return [
@@ -425,6 +629,7 @@ class _Bar extends StatelessWidget {
     required this.progress,
     required this.stopped,
     required this.myCharacter,
+    required this.lit,
     required this.popStar,
     required this.animate,
   });
@@ -436,9 +641,17 @@ class _Bar extends StatelessWidget {
   final bool stopped;
   final String myCharacter;
 
-  /// The star (1 or 2) being cheered: it pops, unless [animate] is off.
+  /// Each star mark's light: on once the star flying to it lands (A8 spec
+  /// 5), while the fill already passes it.
+  final List<bool> lit;
+
+  /// The star (1 or 2) that just lit: it pops, unless [animate] is off.
   final int? popStar;
   final bool animate;
+
+  /// A star mark: its top over the bar and its size.
+  static const _starTop = -6.0;
+  static const _star = 22.0;
 
   static const _trackTop = 18.0;
   static const _trackHeight = 18.0;
@@ -493,15 +706,15 @@ class _Bar extends StatelessWidget {
                   child: const ColoredBox(color: AppColors.ink),
                 ),
                 Positioned(
-                  left: width * seconds * 1000 / ends - 11,
-                  top: -6,
+                  left: width * seconds * 1000 / ends - _star / 2,
+                  top: _starTop,
                   child: _StarPop(
                     popping: animate && popStar == i + 1,
                     index: i,
                     child: HoldStar(
                       key: ValueKey('hold-mark-star-$i'),
-                      size: 22,
-                      lit: progress.held >= Duration(seconds: seconds),
+                      size: _star,
+                      lit: lit[i],
                     ),
                   ),
                 ),
@@ -570,13 +783,16 @@ class _Face extends StatelessWidget {
 
 /// The owner's "삐익!" bubble, popping in unless motion is reduced.
 class _Whistle extends StatelessWidget {
-  const _Whistle({required this.animate});
+  const _Whistle({required this.right, required this.animate});
 
+  /// Where the bubble ends on the right of the stage.
+  final double right;
   final bool animate;
 
   @override
   Widget build(BuildContext context) => _SmallBubble(
     boxKey: const ValueKey('hold-whistle'),
+    right: right,
     animate: animate,
     child: Text('삐익!', style: Theme.of(context).textTheme.holdWhistle),
   );
@@ -585,9 +801,16 @@ class _Whistle extends StatelessWidget {
 /// The owner's start words after GO, a line each, in the whistle's bubble
 /// (the hold effects spec 3; the design's `P16Hold scene=go guide=bubble`).
 class _StartBubble extends StatelessWidget {
-  const _StartBubble({required this.lines, required this.animate});
+  const _StartBubble({
+    required this.lines,
+    required this.right,
+    required this.animate,
+  });
 
   final List<String> lines;
+
+  /// Where the bubble ends on the right of the stage.
+  final double right;
   final bool animate;
 
   @override
@@ -595,6 +818,7 @@ class _StartBubble extends StatelessWidget {
     final style = Theme.of(context).textTheme.holdStartBubble;
     return _SmallBubble(
       boxKey: const ValueKey('hold-start'),
+      right: right,
       animate: animate,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -610,15 +834,19 @@ class _StartBubble extends StatelessWidget {
 
 /// The whistle's white bubble with its tail toward the owner, popping in
 /// unless motion is reduced. Its words shrink only where they would not fit
-/// the stage.
+/// the stage left of its right end (A8 spec 6).
 class _SmallBubble extends StatelessWidget {
   const _SmallBubble({
     required this.boxKey,
+    required this.right,
     required this.animate,
     required this.child,
   });
 
   final Key boxKey;
+
+  /// Where the bubble ends on the right of the 360-point stage.
+  final double right;
   final bool animate;
   final Widget child;
 
@@ -633,9 +861,8 @@ class _SmallBubble extends StatelessWidget {
   static const _edge = 2.5;
   static const _corner = 16.0;
 
-  /// The room the bubble may take: the stage less its left and a margin.
-  static const _maxWidth =
-      BattleFx.stageWidth - _Stage._bubbleLeft - AppSpacing.s20;
+  /// The room the bubble may take left of its right end, as the big one.
+  static const _margin = AppSpacing.s8;
 
   @override
   Widget build(BuildContext context) {
@@ -645,7 +872,9 @@ class _SmallBubble extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _maxWidth),
+            constraints: BoxConstraints(
+              maxWidth: BattleFx.stageWidth - right - _margin,
+            ),
             child: Container(
               key: boxKey,
               padding: _pad,
@@ -726,9 +955,10 @@ class HoldBigBubble extends StatelessWidget {
   final bool failing;
   final bool animate;
 
-  static const _padTop = 8.0;
-  static const _padSide = 24.0;
-  static const _padBottom = 12.0;
+  /// A8 spec 6: 5, 22 and 7 (were 8, 24 and 12).
+  static const _padTop = 5.0;
+  static const _padSide = 22.0;
+  static const _padBottom = 7.0;
   static const _pad = EdgeInsets.fromLTRB(
     _padSide,
     _padTop,
