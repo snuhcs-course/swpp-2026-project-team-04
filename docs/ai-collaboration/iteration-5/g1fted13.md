@@ -939,20 +939,20 @@ These were made from the A5 session at the user's word; their full evidence is i
     copies. The script checks each copy is the same text as its group in `HoldMe.dc.html`.
   - `test/widgets/hold_me_golden.json`: picked from the bundle's golden. Extra mid-curve moments came from the
     mockup's own `renderVals()` run in node, after the run reproduced five bundle moments exactly.
-- **The code and tests:** Claude Code wrote all of it, in nine local commits (`93eb273` to `598e46b`; the last two
-  fix reviewer run 1's findings).
+- **The code and tests:** Claude Code wrote all of it, in ten local commits (`93eb273` to `3470312`; `29f3135`
+  and `598e46b` fix reviewer run 1's findings, `3470312` run 2's).
   - **Parser:** `lib/widgets/hold_me_rig.dart` (`HoldMeRig` L17, `HoldMePlace` L107, `HoldMeShape` L251).
   - **Pure scene:** `lib/widgets/hold_me_scene.dart` (`HoldMeTimeline` L122, `HoldMeCheer` L319,
     `HoldMeScene.frameAt` L388, `flightAt` L538).
   - **Painters:** `lib/widgets/hold_me_figure.dart` (`HoldMePainter` L39, `HoldMeFlightPainter` L210). The rig is
     drawn by the existing `CharacterFigurePainter` with the home and W5 drawing changes (`_paintRig` L91).
-  - **The stage:** `lib/screens/hold_stage_play.dart` `_StageState` (L203–509): the ticker, the timeline, the
-    character, the flight, the bar stars and the bubbles, each child keyed (`_build` L290).
+  - **The stage:** `lib/screens/hold_stage_play.dart` `_StageState` (L203–514): the ticker, the timeline, the
+    character, the flight, the bar stars and the bubbles, each child keyed (`_build` L295).
   - **Timing values:** `HoldTiming` in `lib/services/pose/hold_judge.dart` (L29–49).
   - **Demo:** a reduced-motion switch in `lib/demo/hold_stage_demo.dart`.
   - **Tests:** four new test files and four changed ones (the testing notes' table).
-- **Review:** the `reviewer` subagent ran on the code (run 1: CHANGES_REQUESTED, item d) and again on the fixes and
-  these notes (run 2: TODO(review)).
+- **Review:** the `reviewer` subagent ran on the code (run 1 on `ff3aa48`: CHANGES_REQUESTED) and on the fixes and
+  these notes (run 2 on `4689a12`: APPROVE with two Minors, fixed in `3470312` and this line; item d).
 - **Not done by AI:**
   - The user chose the direction and the place, decided reduced motion's chair star, and approved each scope
     addition.
@@ -1000,6 +1000,11 @@ These were made from the A5 session at the user's word; their full evidence is i
   - The golden's cheer timeline was committed but read by no test.
   - The fit test could not fail for the character.
   - All three were fixed in `29f3135`.
+- **Reviewer run 2 (Minor):** to stop the clock during the setup, Claude Code set the ticker's `muted` itself on
+  every change of the play. That overrode the muting `TickerMode` gives a covered screen, so a covered stage would
+  keep ticking. The reviewer showed it in a probe. Now the ticker keeps its time and only leaves the stage unbuilt
+  during the setup (`3470312`). A new test fails on the old code (its first version passed on the old code too,
+  since its two 375 ms pumps made a full breathing half-cycle, where the breath is back at 1).
 - **Timeline edge:** a stage first seen while already paused recorded the warning's start at that first look. The
   timeline test 'a stage that starts stopped shows the warning in full' failed, and the look now leaves it unset.
 - **Test-side mistakes, caught by their first runs:**
