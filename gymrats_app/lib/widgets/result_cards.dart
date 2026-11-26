@@ -599,14 +599,15 @@ class ResultCoachCard extends StatelessWidget {
   }
 }
 
-/// "자세 기록 표로 보기 ›" at the right under the character card: the form
-/// feedback screen with its table (A10 spec 2).
+/// "상세 리포트 보기 ›" at the right under the character card: the form
+/// feedback report (A10 spec 2; "자세 기록 표로 보기" until P14 replaced the
+/// table with the report).
 class ResultFeedbackLink extends StatelessWidget {
   const ResultFeedbackLink({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 
-  static const label = '자세 기록 표로 보기';
+  static const label = '상세 리포트 보기';
   static const _chevronSize = 14.0;
   static const height = 44.0;
 

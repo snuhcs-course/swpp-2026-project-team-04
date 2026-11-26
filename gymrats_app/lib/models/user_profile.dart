@@ -27,6 +27,7 @@ class UserProfile {
     this.bests = const {},
     this.lastMatch,
     this.unsentMatches = 0,
+    this.weightKg,
   });
 
   /// Name in the greeting, e.g. "우현".
@@ -47,6 +48,10 @@ class UserProfile {
   /// retried on the next load; not in [bestReps], [bests] or [lastMatch] until
   /// then.
   final int unsentMatches;
+
+  /// The body weight the user gave at sign-up, with consent; null when they
+  /// gave none. The post-game report's estimates use it.
+  final double? weightKg;
 
   /// The best of [exercise]; null with nothing to show, as before its first
   /// battle. A server that sends only [bestReps] kept nothing per exercise, so

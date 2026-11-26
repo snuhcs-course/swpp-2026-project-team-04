@@ -7,6 +7,7 @@ import '../models/match_record.dart';
 import '../services/api/api_client.dart';
 import '../services/feedback/form_analyzer.dart';
 import '../services/feedback/form_report_store.dart';
+import '../services/feedback/report_metrics.dart';
 import '../services/user/user_repository.dart';
 import 'login_viewmodel.dart';
 
@@ -95,6 +96,26 @@ class FormFeedback {
 
   /// Counted reps per second of the round played.
   final double repsPerSecond;
+
+  /// The findings to fix, in the analyzer's order.
+  List<FormFinding> get issues => [
+    for (final f in findings)
+      if (f.kind == FindingKind.issue) f,
+  ];
+
+  /// The findings that went well.
+  List<FormFinding> get goods => [
+    for (final f in findings)
+      if (f.kind == FindingKind.good) f,
+  ];
+
+  /// The report's 코치 한마디: how to fix the first issue, else the first
+  /// thing done well, else a plain line.
+  String get coachLine {
+    final issue = issues.firstOrNull;
+    if (issue != null) return issue.fix ?? issue.detail;
+    return goods.firstOrNull?.title ?? '다음 대결에서 더 많은 횟수를 노려 봐요.';
+  }
 }
 
 /// Immutable state rendered by the stored-feedback screen.
@@ -105,6 +126,8 @@ class FeedbackState {
     this.form,
     this.fromPhone = false,
     this.errorMessage,
+    this.metrics,
+    this.history = ReportHistory.none,
   });
 
   final FeedbackPhase phase;
@@ -121,6 +144,13 @@ class FeedbackState {
 
   /// Why loading failed, for the failed phase.
   final String? errorMessage;
+
+  /// The post-game report's numbers of [report] (P14); set with it.
+  final ReportMetrics? metrics;
+
+  /// [report] against the recent battles kept on this phone; empty until
+  /// they are read, and when there are none.
+  final ReportHistory history;
 }
 
 /// Loads the form report of one past battle, so the same feedback screen
@@ -140,24 +170,44 @@ class FeedbackViewModel extends ChangeNotifier {
     required UserRepository this._repository,
     this._phoneReports,
     this.analyzer = const FormAnalyzer(),
-  });
+    this.weightKg,
+  }) : _profiles = _repository;
 
-  /// Ready at once with [report]; [load] then does nothing.
+  /// Ready at once with [report] on [weightKg]. [load] then reads the
+  /// recent battles kept on the phone for the comparisons and, without
+  /// [weightKg], the body weight from [profiles]; it does nothing without
+  /// either.
   FeedbackViewModel.fromReport(
     FormReport report, {
     this.analyzer = const FormAnalyzer(),
+    this._phoneReports,
+    this.weightKg,
+    this._profiles,
   }) : match = null,
        _repository = null,
-       _phoneReports = null,
-       _state = _ready(report, analyzer);
+       _state = _ready(report, analyzer, weightKg: weightKg);
 
   /// The past battle whose report is loaded; null for [fromReport].
   final MatchRecord? match;
   final UserRepository? _repository;
   final FormReportStore? _phoneReports;
 
+  /// Where the body weight is read when [weightKg] is not given.
+  final UserRepository? _profiles;
+
   /// The rules the feedback is computed with.
   final FormAnalyzer analyzer;
+
+  /// The user's body weight for the estimates when known up front; null
+  /// reads it from the profile, and without one there the report uses
+  /// [ReportMetrics.defaultWeightKg] and says it is assumed.
+  final double? weightKg;
+
+  /// The weight the numbers use: [weightKg], else the profile's once read.
+  double? _weight;
+
+  /// How long a loaded report waits for the profile's body weight.
+  static const weightWait = Duration(seconds: 2);
 
   FeedbackState _state = const FeedbackState();
   bool _loading = false;
@@ -169,33 +219,68 @@ class FeedbackViewModel extends ChangeNotifier {
     FormReport report,
     FormAnalyzer analyzer, {
     bool fromPhone = false,
+    double? weightKg,
+    List<FormReport> kept = const [],
   }) => FeedbackState(
     phase: FeedbackPhase.ready,
     report: report,
     form: FormFeedback.of(report, analyzer: analyzer),
     fromPhone: fromPhone,
+    metrics: ReportMetrics.of(
+      report,
+      weightKg: weightKg,
+      earlier: kept,
+      analyzer: analyzer,
+    ),
+    history: ReportHistory.of(
+      report,
+      kept,
+      weightKg: weightKg,
+      analyzer: analyzer,
+    ),
   );
 
-  /// Loads the report. Does nothing while a load is running, so a double
-  /// tap on retry sends one request, and nothing for [fromReport].
+  /// Loads the report, then compares it with the recent battles kept on
+  /// this phone. Does nothing while a load is running, so a double tap on
+  /// retry sends one request. For [fromReport] it only reads the recent
+  /// battles, once.
   Future<void> load() async {
     final match = this.match, repository = _repository;
-    if (_disposed || _loading || match == null || repository == null) return;
+    if (_disposed || _loading) return;
+    if (match == null || repository == null) {
+      await _compareFromReport();
+      return;
+    }
     _loading = true;
     _setState(const FeedbackState());
+    // Asked alongside the report. The profile read first sends any queued
+    // battles, so it gets a short limit and then the default weight is used.
+    final weight = _readWeight().timeout(weightWait, onTimeout: () => null);
     try {
       final id = match.id;
       final report = id == null ? null : await repository.fetchFeedback(id);
       _setState(
         report == null
             ? const FeedbackState(phase: FeedbackPhase.missing)
-            : _ready(report, analyzer),
+            : _ready(
+                report,
+                analyzer,
+                weightKg: await weight,
+                kept: await _kept(),
+              ),
       );
     } on Exception catch (e) {
-      final copy = await _phoneCopy();
+      final kept = await _kept();
+      final copy = _phoneCopy(kept);
       _setState(
         copy != null
-            ? _ready(copy, analyzer, fromPhone: true)
+            ? _ready(
+                copy,
+                analyzer,
+                fromPhone: true,
+                weightKg: await weight,
+                kept: kept,
+              )
             : FeedbackState(
                 phase: FeedbackPhase.failed,
                 errorMessage: e is ApiException
@@ -208,21 +293,65 @@ class FeedbackViewModel extends ChangeNotifier {
     }
   }
 
-  Future<FormReport?> _phoneCopy() async {
-    final store = _phoneReports, playedAt = match?.playedAt;
-    if (store == null || playedAt == null) return null;
+  bool _compared = false;
+
+  Future<void> _compareFromReport() async {
+    final report = _state.report;
+    if (_compared || report == null) return;
+    if (_phoneReports == null && (weightKg != null || _profiles == null)) {
+      return;
+    }
+    _compared = true;
+    final reading = _readWeight();
+    final kept = await _kept();
+    final weight = await reading;
+    if (kept.isEmpty && weight == weightKg) return;
+    _setState(
+      _ready(
+        report,
+        analyzer,
+        fromPhone: _state.fromPhone,
+        weightKg: weight,
+        kept: kept,
+      ),
+    );
+  }
+
+  /// [weightKg], else the body weight in the user's profile; null when the
+  /// profile has none or cannot be read, so the report assumes the default.
+  Future<double?> _readWeight() async {
+    final known = weightKg ?? _weight;
+    final profiles = _profiles;
+    if (known != null || profiles == null) return known;
     try {
-      final reports = await store.list();
-      return reports
-          .where(
-            (r) =>
-                r.endedAt.millisecondsSinceEpoch ==
-                playedAt.millisecondsSinceEpoch,
-          )
-          .firstOrNull;
+      return _weight = (await profiles.fetchProfile()).weightKg;
     } on Exception {
       return null;
     }
+  }
+
+  /// The reports kept on this phone; none when there is no store or it
+  /// cannot be read.
+  Future<List<FormReport>> _kept() async {
+    final store = _phoneReports;
+    if (store == null) return const [];
+    try {
+      return await store.list();
+    } on Exception {
+      return const [];
+    }
+  }
+
+  FormReport? _phoneCopy(List<FormReport> kept) {
+    final playedAt = match?.playedAt;
+    if (playedAt == null) return null;
+    return kept
+        .where(
+          (r) =>
+              r.endedAt.millisecondsSinceEpoch ==
+              playedAt.millisecondsSinceEpoch,
+        )
+        .firstOrNull;
   }
 
   void _setState(FeedbackState state) {
