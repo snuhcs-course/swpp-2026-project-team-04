@@ -918,3 +918,109 @@ These were made from the A5 session at the user's word; their full evidence is i
 ### Takeaway
 - Read the mockup's helper components against the app's code before planning: here they showed that nothing in the
   character engine had to change.
+
+## A8 `feat/iter5-hold-character` – Hold stage: my character holds along (local step, waiting for the PM's approval), 2026-11-26
+
+### a. Where AI was used
+- **The hand-off:** `SPEC.md` v1 and the mockups `HoldMe.dc.html` (with `HoldMeLiveA`, `HoldMeAAll`,
+  `HoldMeLieA`, the data and the shots) on the canvas "GymRats 메인 메뉴 시안". Woohyun Song chose direction A1
+  (hold together, a pop at each star), the lying pose A, and the bubbles' place (2026-11-26).
+  TODO(Woohyun Song): who made the spec and the mockups, and with which tool and model.
+- **Planning:** before any code, Claude Code read the spec, the mockup's `calc()` and markup, the rig data, and the
+  hold stage, character and victory code. It reported the plan of spec section 10 and waited. The user approved it
+  with three scope additions and one change: reduced motion's chair star (Prompt Log, 11-26 22:38).
+- **Local harness (not committed):** step A8 in `ownership.json` (provisional ID, branch and due date), and its
+  allow list from spec section 0 plus two approved paths. Two exception lines: `design_tokens_test.dart` and, after
+  the full run, `chair_hold_stage_test.dart` (item d).
+- **Generated, then checked (scripts not committed, as the spec says):**
+  - `lib/widgets/hold_me_rig_data.dart`: the bundle's `hold_me_rig.json` with each list on one line. The script
+    asserts it is JSON-equal to the bundle file.
+  - `lib/widgets/hold_me_drawing_data.dart`: the three drawings and the effect art, converted from the `.svg.txt`
+    copies. The script checks each copy is the same text as its group in `HoldMe.dc.html`.
+  - `test/widgets/hold_me_golden.json`: picked from the bundle's golden. Extra mid-curve moments came from the
+    mockup's own `renderVals()` run in node, after the run reproduced five bundle moments exactly.
+- **The code and tests:** Claude Code wrote all of it, in nine local commits (`93eb273` to `598e46b`; the last two
+  fix reviewer run 1's findings).
+  - **Parser:** `lib/widgets/hold_me_rig.dart` (`HoldMeRig` L17, `HoldMePlace` L107, `HoldMeShape` L251).
+  - **Pure scene:** `lib/widgets/hold_me_scene.dart` (`HoldMeTimeline` L122, `HoldMeCheer` L319,
+    `HoldMeScene.frameAt` L388, `flightAt` L538).
+  - **Painters:** `lib/widgets/hold_me_figure.dart` (`HoldMePainter` L39, `HoldMeFlightPainter` L210). The rig is
+    drawn by the existing `CharacterFigurePainter` with the home and W5 drawing changes (`_paintRig` L91).
+  - **The stage:** `lib/screens/hold_stage_play.dart` `_StageState` (L203–509): the ticker, the timeline, the
+    character, the flight, the bar stars and the bubbles, each child keyed (`_build` L290).
+  - **Timing values:** `HoldTiming` in `lib/services/pose/hold_judge.dart` (L29–49).
+  - **Demo:** a reduced-motion switch in `lib/demo/hold_stage_demo.dart`.
+  - **Tests:** four new test files and four changed ones (the testing notes' table).
+- **Review:** the `reviewer` subagent ran on the code (run 1: CHANGES_REQUESTED, item d) and again on the fixes and
+  these notes (run 2: TODO(review)).
+- **Not done by AI:**
+  - The user chose the direction and the place, decided reduced motion's chair star, and approved each scope
+    addition.
+  - The phone check comes after the PM's approval.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-26] "지금은 큰 말풍선, 관장 웃는 얼굴(GymOwnerFace.ok), 막대 별 튀기기(popStar)가 모두 cheer callout 하나에 묶여 HoldTiming.cheer(1초) 동안만 보인다. 이번에는 별을 딴 순간에서 각각 800ms, 700ms, 900ms에 시작하므로 따로 떼어야 한다."
+- [Woohyun Song, 11-26] "뷰모델 변경은 되도록 작게, 그 부분들과 떨어진 곳에 둔다. 시간 재기는 가능하면 위젯 쪽에서 한다."
+- [Woohyun Song, 11-26] "3. 움직임 줄이기 중 별 순간은 이렇게 바꾼다. 의자 자세는 만세 자세(up)로 바로 바뀌어 win 표정으로 1.6초 보인 뒤 바로 버팀 자세로 돌아온다."
+
+### c. What AI did well
+- **No change to the view model's code:** the cheer callout already lived in the view model for `HoldTiming.cheer`.
+  Raising that value to 2.4 s and timing the 0.7/0.8/0.9 s parts on the screen kept `hold_stage_viewmodel.dart`,
+  `hold_stage_screen.dart` and `hold_stage_result.dart` untouched. Those are the files a teammate's P13 edits.
+- **Reusing the engine:** the rig characters use the W5 victory rig's drawing changes and its `grit` (atk + teeth)
+  through `CharacterFigurePainter` and `blendPoseTables`. No character, victory or owner file changed, so the spec's
+  exception for character files was not needed.
+- **The mockup as the test oracle:** running the mockup's own `renderVals()` in node gave rig values at mid-curve
+  times the bundle's golden lacked. Nine deliberate mutations, four in the scene and five in the stage, were each
+  caught by the tests.
+- **A render by eye before wiring:** a throwaway test drew 5 characters × 7 moments per pose. It matched the
+  bundle's shots before the stage was touched.
+
+### d. Hallucinations / errors
+- **A test missed in the plan:** the plan listed the hold screen and view model tests that pin the 1 s cheer. It
+  missed `test/services/pose/chair_hold_stage_test.dart` (A5), which looked for "좋아!" 0.2 s after the star. The
+  first full run failed it at three sizes. Claude Code then tried to add an ownership exception line itself; the
+  permission check refused it, since no approval existed yet. It asked the user, who approved it (2026-11-27). Cost:
+  one more full run.
+- **Converter and script slips:**
+  - The drawings' converter first rejected the teeth group nested inside the atk group.
+  - Its JSON then lacked the closing brace.
+  - A scripted edit of the golden extractor left an unescaped quote.
+  - All were caught by the scripts' own checks before any file reached the repo.
+- **Reviewer run 1 (Major): bubbles popping in twice.** The flying star was an unkeyed child of the stage's
+  Stack. When it went at 0.9 s, the cheer's (or a warning whistle's) unkeyed `Positioned` took its element, and the
+  bubble's pop-in started over. The same slip replaced the owner's element when the character first showed. Claude
+  Code's tests looked for each widget, never at whether it kept its element. The reviewer measured it in a probe
+  test (the cheer 121 wide at 901 ms against 243 at rest). Fixed in `29f3135` with a key per child. Four new tests
+  fail on the old code. Cost: one fix commit and a full run.
+- **Reviewer run 1 (Minor):**
+  - With reduced motion, the second star's look gave way to the strain at 1.35 s while the cheer still showed, which
+    SPEC 7 does not allow. It followed the motion rule. Fixed in `598e46b`.
+  - The clock rebuilt the whole stage every frame, setup included.
+  - The golden's cheer timeline was committed but read by no test.
+  - The fit test could not fail for the character.
+  - All three were fixed in `29f3135`.
+- **Timeline edge:** a stage first seen while already paused recorded the warning's start at that first look. The
+  timeline test 'a stage that starts stopped shows the warning in full' failed, and the look now leaves it unset.
+- **Test-side mistakes, caught by their first runs:**
+  - An `expect` outside a test.
+  - Drawing counts that forgot the strain's sweat and the landing's dust.
+  - Comparing `Paint` colors as doubles: Paint keeps 32-bit colors.
+  - Recorded canvas calls that keep null optional arguments.
+  - A view model test that put the star on the 15000 ms frame, when the time runs from the first frame (15100).
+- **The token check's false hit:** `HoldMeColor(0xFF000000 | …)` matched the raw-color rule `Color\(0x`. The value
+  is now built first.
+
+### e. Prompt revisions
+- **Reduced motion's star:**
+  - Before (the plan): the hold pose with `win` for every pose.
+  - After (11-26 22:38): the chair pose jumps to its arms-up pose with `win` for 1.6 s, then straight back.
+  - Why it worked: it matches spec section 7's "each moment's pose and face" and the warning, which also shows its
+    pose at once.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- When a shared timing value changes, search every test for it and for the keys it drives (`hold-cheer`,
+  `HoldTiming.cheer`, "좋아!") before the plan, not only the step's own files.
