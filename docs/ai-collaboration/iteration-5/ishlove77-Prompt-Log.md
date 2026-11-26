@@ -587,3 +587,10 @@ The messages after this summary are the most recent messages from before compact
 
 <!-- 5e0c5b9b 2026-11-26T16:44:08.715Z -->
 [Jinyoung Park, 11-27 01:44] "됬으면 PR 날리고 main merge후 배포"
+
+## 2026-11-27 · Jinyoung Park · feat/iter5-skill-matching
+<!-- 5e0c5b9b 2026-11-26T16:50:47.197Z -->
+[Jinyoung Park, 11-27 01:50] "ㅇㅇ 왔음?"
+
+<!-- 5e0c5b9b 2026-11-26T16:52:35.267Z -->
+[Jinyoung Park, 11-27 01:52] "왔음"
