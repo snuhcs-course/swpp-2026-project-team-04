@@ -1084,7 +1084,7 @@ class _TrendSection extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     final trend = history.trend;
     // Without an earlier battle there is nothing to compare: the section
-    // stays and says so, as the hold report does (user, 2026-11-26).
+    // stays and says so (user, 2026-11-26).
     if (trend.length < 2) {
       return _Section(
         child: Column(
