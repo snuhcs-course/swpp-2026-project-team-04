@@ -371,7 +371,6 @@ void main() {
       final state = model.state;
       expect(state.metrics!.validReps, 6);
       expect(state.metrics!.weightAssumed, isTrue);
-      expect(state.metrics!.enduranceIndex, 200);
       expect(state.history.recentCount, 2);
       expect(state.history.meanValidReps, 3);
       expect(state.history.trend.map((p) => p.validReps), [2, 4, 6]);
@@ -394,7 +393,7 @@ void main() {
       );
       await model.load();
       expect(model.state.history.trend.map((p) => p.validReps), [4, 6]);
-      expect(model.state.metrics!.enduranceIndex, 150);
+      expect(model.state.history.meanValidReps, 4);
     });
 
     test("when the account's battles cannot be read, every kept battle is "
@@ -465,7 +464,6 @@ void main() {
       model.addListener(() => notified++);
       await model.load();
       expect(model.state.history.meanValidReps, 4);
-      expect(model.state.metrics!.enduranceIndex, 150);
       await model.load();
       expect(notified, 1);
     });

@@ -227,12 +227,7 @@ class FeedbackViewModel extends ChangeNotifier {
     report: report,
     form: FormFeedback.of(report, analyzer: analyzer),
     fromPhone: fromPhone,
-    metrics: ReportMetrics.of(
-      report,
-      weightKg: weightKg,
-      earlier: kept,
-      analyzer: analyzer,
-    ),
+    metrics: ReportMetrics.of(report, weightKg: weightKg, analyzer: analyzer),
     history: ReportHistory.of(
       report,
       kept,
