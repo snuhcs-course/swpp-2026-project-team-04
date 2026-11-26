@@ -2132,7 +2132,7 @@ and `MemoryGoalStore`.
 |---|---|---|---|---|---|
 | Model | flutter_test | 90% | not changed by A9 | 11/27 | CI comment "Tests and coverage (GitHub Actions)" on the A9 PR |
 | ViewModel | flutter_test, fakes | 90% | not changed by A9 | 11/27 | same CI comment |
-| Service | flutter_test, fakes | 85% | TODO(Woohyun Song): from the A9 PR's CI comment; `coach_script.dart` from its lcov parts | 11/27 | same CI comment |
+| Service | flutter_test, fakes | 85% | 95.9% (5505/5739); `coach_script.dart` 100% (367/367) | 11/27 | same CI comment, `1a707b6` |
 | View | flutter_test (widget) | 75% | not changed by A9 | 11/27 | same CI comment |
 | API server | pytest, pytest-django, pytest-cov | 90% | not changed by A9 | 11/27 | same CI comment |
 
@@ -2159,10 +2159,18 @@ and `MemoryGoalStore`.
   `.ending` checks of the voice test stay (it is still public). No other test changed.
 - **Out-of-step file:** `test/viewmodels/coach_viewmodel_test.dart`, only the 5 lines above, outside the two files the
   PM approved (act first and report after, 2026-11-27).
-- **Coverage:** TODO(Woohyun Song): the A9 PR's CI comment "Tests and coverage (GitHub Actions)" (commit, run link,
-  layers, `coach_script.dart` from the run's lcov parts); not measured on this PC.
-- **Phone check:** TODO(Woohyun Song): the question line and the end line in the talk on the phone, in the app (an
-  AI 1v1 battle, the report's character card, the talk); not checked yet. No demo can open the talk:
+- **Coverage**, from PR #105's CI comment "Tests and coverage (GitHub Actions)" on `1a707b6`
+  ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/105#issuecomment-7201542714), [run](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45881177254); not measured on this PC):
+  - Layers: Model 99.4% (886/891), ViewModel 98.6% (2552/2589), Service 95.9% (5505/5739), View 98.1%
+    (16345/16666), Other 95.8%, total 97.7% (25830/26451); every target met. The CI run's own `flutter test`:
+    4963 passed, 10 skipped, 0 failed. Server `pytest` 279 passed, 98%.
+  - Left out of the numbers by the CI (they timed out in the per-file coverage run, but ran in `flutter test`):
+    `chair_hold_stage_test`, `settings_screen_test`, `online_battle_session_test`, `chair_hold_test`, none of
+    them A9's.
+  - A9's file, merged by line from the run's lcov parts (downloaded with `gh run download`): `coach_script.dart`
+    100% (367/367).
+- **Phone check:** not checked on a device yet (the user's decision, 11-27): it is checked at the team meeting
+  after the merge (11/29). The wording and the overflow are covered by the tests above. No demo can open the talk:
   `lib/demo/battle_demo.dart` routes only the result and the next battle, not `/coach` (reviewer run 2).
 
 ### Test cases added or changed in this step

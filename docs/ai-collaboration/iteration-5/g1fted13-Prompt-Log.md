@@ -763,3 +763,20 @@ PM 승인이 왔다(11/27): A9, feat/iter5-coach-voice, 마감 11/30/2026, 예�
 </pasted_content id=\"c294\">"
 <!-- f10a982c 2026-11-26T18:02:30.177Z -->
 [Woohyun Song, 11-27 03:02] "SPEC.md가 v1.1로 바뀌었다(C:\dev\handoff\coach-voice\SPEC.md, 0절 예외 문구와 7절 PR만 바뀜). PR 본문에 체크리스트 절을 만들지 않고, 하네스 pull-request 스킬의 형식을 그대로 따른다. 대사 전후 표는 What it does에, 테스트는 How to test의 Acceptance criteria → tests 표에, 폰 확인은 Manual check에 넣는다. coach_viewmodel_test.dart 예외와 결과 카드 문장을 P15에서 다룬다는 점은 Review notes에 적는다. 앞 메시지의 \"체크리스트\"와 \"Exceptions 절\"은 이것으로 바꾼다. 이 메시지를 프롬프트 기록에 남긴다."
+<!-- f10a982c 2026-11-26T19:12:06.751Z -->
+[Woohyun Song, 11-27 04:12] "<pasted_content id=\"c294\">
+폰 확인은 이번에는 하지 않는다. 모두 머지된 뒤 토요일 팀 회의에서 실기기로 확인한다. 그대로 Ready로 간다.
+
+1. 노트와 PR 본문의 TODO(Woohyun Song) 세 곳을 채운다. PR 본문은 gh로 지금 본문을 받아 해당 줄만 바꾼다. 노트는 커밋하고 push한 뒤 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+   - 명세를 만든 사람과 도구: 문제는 데모 영상을 찍다가 발견해 11/25 팀 회의에서 공유했다. SPEC v1과 v1.1은 claude.ai 프로젝트 채팅에서 Claude(Opus 5.5)가 coach_script.dart를 읽고 썼다. 규칙('-다!' 뒤에만 어미)과 아홉 곳의 새 대사는 Claude가 제안했고 송우현이 확인했다. v1.1은 PR 형식만 바꿨다. 결과 카드 문장을 P15로 넘기기로 한 것은 송우현이 정했다.
+   - CI 커버리지: PR #105의 CI 커버리지 댓글을 gh로 읽어 채운다.
+   - 폰 확인: Manual check에 \"Not checked on a device yet: checked at the team meeting after merge (11/29). Wording and overflow are covered by tests.\"처럼 적는다.
+2. gh pr ready 105로 Ready로 바꾸고 Codex 리뷰를 기다린다. 몇 분 간격으로 확인하고, 30분이 지나도 아무 반응이 없으면 멈추고 보고한다.
+   - Codex bot이 PR에 👍 반응만 남기면 검토를 마쳤고 지적이 없다는 뜻이다. 이때는 \"@codex review\"를 다시 요청하지 않는다. 그 뒤에 코드를 바꾼 커밋을 올렸을 때만 새 리뷰를 기다린다.
+   - A9 범위 안의 실제 문제면 고친다. 관련 테스트와 flutter analyze만 돌리고 로컬 reviewer는 생략한다. push한 뒤 스레드에 고친 커밋을 영어로 짧게 답하고 resolve한다.
+   - 거의 일어나지 않는 경우거나 이 작업과 무관하면, 이유를 영어로 짧게 답하고 resolve한다.
+   - 범위 밖 파일을 고쳐야 하는 지적이면 고치지 말고 멈추고 보고한다.
+   - 고치는 것은 2회까지만 한다. 그 뒤에도 지적이 오면 멈추고 보고한다.
+3. 끝나는 조건: 현재 HEAD에 Codex의 👍 반응이나 \"Didn't find any major issues\"가 있고, 안 풀린 스레드가 0개이고, CI가 통과한 상태다. 이 상태가 되면 새 커밋과 Codex 처리 결과를 보고한다. 상우나 현우를 GitHub에서 멘션하지 않는다.
+4. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"

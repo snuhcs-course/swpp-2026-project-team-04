@@ -1,6 +1,6 @@
 # AI Collaboration notes: Iteration 5 (2026-11-21 ~ 2026-12-04) – Woohyun Song
 Status: draft (iteration open) | Written by: Woohyun Song | Merged by the PM into `AI-Collaboration-Report-Iteration-5.md` (P27)
-Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data; P8's spec and state mockups); Claude on claude.ai with the Claude Design canvas (the arcade art)
+Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data; P8's spec and state mockups; A9's spec); Claude on claude.ai with the Claude Design canvas (the arcade art)
 
 Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. Input prompts are in
 [g1fted13-Prompt-Log.md](g1fted13-Prompt-Log.md).
@@ -1052,8 +1052,13 @@ These were made from the A5 session at the user's word; their full evidence is i
 
 ### a. Where AI was used
 - **The hand-off:** `coach-voice/SPEC.md` v1, then v1.1 (only the exception wording and the PR's shape changed),
-  outside the repo and not committed. Its dialogue table is the user's decision and was used as written.
-  TODO(Woohyun Song): who wrote SPEC v1 and v1.1, and with which tool.
+  outside the repo and not committed; its dialogue table was used as written. Who made it (Woohyun Song,
+  2026-11-27):
+  - The problem was found while recording the demo video and shared at the team meeting on 11/25.
+  - SPEC v1 and v1.1: Claude (Opus 5.5) wrote them in a claude.ai project chat after reading `coach_script.dart`.
+    Claude proposed the rule (the ending only after '-다!') and the nine new lines; Woohyun Song checked them. v1.1
+    changed only the PR's shape.
+  - Woohyun Song decided to leave the result card's line to P15.
 - **Planning:** before any code, Claude Code (Claude Opus 5.5) read the spec, `coach_script.dart`, the coach view
   model, screen and widgets, and their three tests. It reported the plan of spec section 8 and waited (Prompt Log,
   11-27 02:31). It also found a reader of `CoachVoice.ending` that the spec had not listed: the result card's line
@@ -1073,9 +1078,11 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **Review:** the `reviewer` subagent: run 1 APPROVE on `c7157ef` with four Minor points, all fixed; run 2
   CHANGES_REQUESTED on `bc36d8c` (two Major and three Minor points in the notes and the PR draft, all fixed; item d).
 - **Not done by AI:**
-  - The user and the PM decided the result card (neither of the plan's two options: it stays P15's, and
-    `ending` stays readable), the two files and the exception, and the PR's shape (SPEC v1.1).
-  - The phone check is the user's. TODO(Woohyun Song): the result of the phone check.
+  - Woohyun Song decided the result card (neither of the plan's two options: it stays P15's, and `ending` stays
+    readable) and the PR's shape (SPEC v1.1); the PM approved the two files, and the exception was act first, report
+    after.
+  - The phone check: not done on a device for this PR (the user's decision, 11-27). It is checked on a real phone
+    at the team meeting after the merge (11/29); the wording and the overflow are covered by the tests.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
 - [Woohyun Song, 11-27] "4. 코드를 쓰기 전에 SPEC 8절의 계획을 보고하고 기다린다. SPEC 1절과 2절의 대사 표는 정해진 것이라 다시 묻지 않는다. 다만 넘침 때문에 줄여야 할 문장이 있으면 계획 보고에 적는다."
