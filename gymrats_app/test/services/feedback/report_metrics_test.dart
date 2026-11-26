@@ -450,29 +450,44 @@ void main() {
   group('a round cut short by a KO', () {
     final ko = Duration(seconds: 17);
 
-    test('is compared only with battles of the same length', () {
+    test('is compared only with battles of the same length; the endurance '
+        'index compares every round by reps per second', () {
       final shown = report(counted(10, untilMs: 17000), round: ko);
       final kept = [
         report(counted(20), endedMinute: 9),
         report(counted(8, untilMs: 17000), round: ko, endedMinute: 8),
       ];
       expect(ReportMetrics.earlierOf(shown, kept).map((r) => r.validReps), [8]);
-      expect(ReportMetrics.of(shown, earlier: kept).enduranceIndex, 125);
+      // 10/17 per second against the mean of 20/30 and 8/17.
+      expect(
+        ReportMetrics.of(shown, earlier: kept).enduranceIndex,
+        ((10 / 17) / ((20 / 30 + 8 / 17) / 2) * 100).round(),
+      );
       final h = ReportHistory.of(shown, kept);
       expect(h.meanValidReps, 8);
       expect(h.bestValidReps, 8);
       expect(h.trend.map((p) => p.validReps), [8, 10]);
     });
 
-    test(
-      'with no other KO round of that length there is nothing to compare',
-      () {
-        final shown = report(counted(10, untilMs: 17000), round: ko);
-        final kept = [report(counted(20), endedMinute: 9)];
-        expect(ReportHistory.of(shown, kept).hasHistory, isFalse);
-        expect(ReportMetrics.of(shown, earlier: kept).enduranceIndex, isNull);
-      },
-    );
+    test('with no other KO round of that length the counts have nothing to '
+        'compare, but the endurance index has the full round (PR #100, '
+        'user 2026-11-26)', () {
+      final shown = report(counted(10, untilMs: 17000), round: ko);
+      final kept = [report(counted(20), endedMinute: 9)];
+      expect(ReportHistory.of(shown, kept).hasHistory, isFalse);
+      expect(
+        ReportMetrics.of(shown, earlier: kept).enduranceIndex,
+        ((10 / 17) / (20 / 30) * 100).round(),
+      );
+    });
+
+    test('the rate of a round, none for a round of no length', () {
+      expect(ReportMetrics.rateOf(report(counted(15))), 0.5);
+      expect(
+        ReportMetrics.rateOf(report(counted(3), round: Duration.zero)),
+        isNull,
+      );
+    });
 
     test('is read in its own thirds, labelled by their real seconds', () {
       final shown = report([
