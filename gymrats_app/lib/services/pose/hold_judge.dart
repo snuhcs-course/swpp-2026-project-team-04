@@ -30,6 +30,20 @@ abstract final class HoldTiming {
   /// (effects spec 4).
   static const cheer = Duration(seconds: 1);
 
+  /// From a star, when the cheer bubble comes (A8 spec 6).
+  static const cheerBubble = Duration(milliseconds: 800);
+
+  /// From a star, when the owner starts to smile (A8 spec 6).
+  static const cheerSmile = Duration(milliseconds: 700);
+
+  /// With reduced motion, the cheer bubble and the smile from the star for
+  /// this long (A8 spec 7).
+  static const cheerStill = Duration(milliseconds: 1600);
+
+  /// From a star, when the star flying from the character lands on its bar
+  /// mark, which lights and pops then (A8 spec 5).
+  static const starLands = Duration(milliseconds: 900);
+
   /// A filled star's pop on the bar: bigger, then back (effects spec 4).
   static const starPop = Duration(milliseconds: 300);
 
