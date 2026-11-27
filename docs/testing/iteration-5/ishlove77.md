@@ -5,6 +5,19 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fixes for the Codex review of `ae1e9c7`
+Code at commits `a7d6135` (legacy kind) and `d4bc830` (database ranking).
+- **Finding 1 (P2, unknown kind counted as main):** a result without `kind` (an older battle server) and every row
+  stored before migration 0004 were `main`, so a friend battle could score. They are now `legacy` and never score.
+  Tests: `test_a_result_without_a_kind_is_kept_as_legacy`, `test_a_battle_of_unknown_kind_does_not_count` (the
+  rankings test helper now sends `kind: main` by default).
+- **Finding 2 (P2, every row loaded in Python):** the database now picks the scoring rows, sums the points, ranks
+  with a window function and returns the top 50 only; my own row's rank is a count. Test:
+  `test_the_global_ranking_reads_a_fixed_number_of_queries` (at most 5 queries) and
+  `test_a_battle_of_an_id_that_holds_mine_does_not_count` (fails if the id is matched without its quotes). The seeded demo data gives the same
+  answer as before. Not done: an index on `Match.played_at` (outside P11's approved paths; PM follow-up).
+- **Results:** server `pytest` 367 passed, 0 failed, 98% (`matches/rankings.py` 100%). No app change.
+
 #### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): rankings split by exercise, no stretch past the end
 Code at commits `8395855` (server), `5ae5975` (app tabs), `148669d` (stretch fix).
 - **Change (user decision, PM approval relayed):** push-ups and squats are ranked apart. The endpoint takes

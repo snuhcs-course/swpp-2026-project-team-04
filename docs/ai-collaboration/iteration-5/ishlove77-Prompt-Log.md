@@ -754,3 +754,16 @@ The messages after this summary are the most recent messages from before compact
 
 <!-- ad7bb226 2026-11-27T16:54:14.045Z -->
 [Jinyoung Park, 11-28 01:54] "split해야함"
+
+## 2026-11-28 · Jinyoung Park · feat/iter5-weekly-rankings
+<!-- ad7bb226 2026-11-27T17:22:22.874Z -->
+[Jinyoung Park, 11-28 02:22] "push했음?"
+
+<!-- ad7bb226 2026-11-27T17:39:56.444Z -->
+[Jinyoung Park, 11-28 02:39] "어캐됨?"
+
+<!-- ad7bb226 2026-11-27T17:47:58.161Z -->
+[Jinyoung Park, 11-28 02:47] "아니 한국어로 나한테 달라고"
+
+<!-- ad7bb226 2026-11-27T17:50:20.571Z -->
+[Jinyoung Park, 11-28 02:50] "고치라고"

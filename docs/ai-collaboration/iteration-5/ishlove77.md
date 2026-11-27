@@ -103,6 +103,10 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P11, scrolling: the user saw the whole rankings page scroll on the emulator and cut off the header; the widget
   tests had only checked that rows render. The header, tabs and week now stay fixed and only the rows scroll,
   covered by `only the rows scroll: the header, tabs and week stay`.
+- P11, Codex review of `ae1e9c7`: Claude's `kind` defaulted to `main` for results without one, so friend battles
+  stored before the deploy could score, and the global ranking loaded every weekly row into Python. Claude first
+  proposed a deploy-order note and a reasoned reply; the user asked for code fixes ("고치라고"): unknown kind is now
+  `legacy` and never scores, and the database sums and ranks.
 - P11, stretch: after the scroll fix, the user still saw the rows stretch when pulling past the end ("그 화면
   늘어지는거 봤음?"). Claude had checked screenshots only at rest, so it missed Android's stretch overscroll; a
   screenshot taken mid-pull showed it. Fixed with overscroll off on the list and a widget test that failed before.
