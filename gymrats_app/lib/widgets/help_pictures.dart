@@ -19,8 +19,15 @@ class HelpPicture extends StatelessWidget {
 
   final TutorialPage page;
 
-  static const width = 300.0;
-  static const height = 220.0;
+  /// The board of a page's picture (A12 design `TutDraft`, 316 x 248); the
+  /// page about the game is taller ([welcomeHeight], `TutX` g0).
+  static const width = 316.0;
+  static const height = 248.0;
+  static const welcomeHeight = 326.0;
+
+  /// The board [page]'s picture is drawn on.
+  static Size sizeOf(TutorialPage page) =>
+      Size(width, page.step == TutorialStep.welcome ? welcomeHeight : height);
 
   /// How deep RepBot is on each grade page (0 top, 1 bottom).
   static const gradeDepth = {
@@ -62,15 +69,18 @@ class HelpPicture extends StatelessWidget {
       TutorialStep.ko => _ko(context),
       TutorialStep.report => _report(context, squat),
     };
+    // A drawing scaled as a whole: its words keep the drawing's size
+    // whatever the system text size (the page's own words follow it).
     return Semantics(
       image: true,
       label: HelpRules.of(page).title,
       child: ExcludeSemantics(
-        child: FittedBox(
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: Stack(clipBehavior: Clip.none, children: children),
+        child: MediaQuery.withNoTextScaling(
+          child: FittedBox(
+            child: SizedBox.fromSize(
+              size: sizeOf(page),
+              child: Stack(clipBehavior: Clip.none, children: children),
+            ),
           ),
         ),
       ),
