@@ -738,3 +738,19 @@ The messages after this summary are the most recent messages from before compact
 
 <!-- ad7bb226 2026-11-27T15:45:18.774Z -->
 [Jinyoung Park, 11-28 00:45] "올려"
+
+## 2026-11-28 · Jinyoung Park · feat/iter5-weekly-rankings
+<!-- ad7bb226 2026-11-27T16:34:04.481Z -->
+[Jinyoung Park, 11-28 01:34] "어캐됨"
+
+<!-- ad7bb226 2026-11-27T16:44:03.026Z -->
+[Jinyoung Park, 11-28 01:44] "이거 꼭 해야함?"
+
+<!-- ad7bb226 2026-11-27T16:44:20.126Z -->
+[Jinyoung Park, 11-28 01:44] "한국어로 말해 pr 날려라"
+
+<!-- ad7bb226 2026-11-27T16:53:57.582Z -->
+[Jinyoung Park, 11-28 01:53] "근데 지금 squatt, pushup별개로 있지?"
+
+<!-- ad7bb226 2026-11-27T16:54:14.045Z -->
+[Jinyoung Park, 11-28 01:54] "split해야함"

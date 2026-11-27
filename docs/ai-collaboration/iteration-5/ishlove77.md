@@ -91,6 +91,7 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 [Jinyoung Park, 11-27] "일단 바로 실제 유저 있으면 매칭 시켜 그다음에 없을때 가상 유저만 실력 비슷한 유저로(즉, 실제 유저는 바로 바로 매칭시켜()"
 [Jinyoung Park, 11-27] "실제 유저 대기 시간 15초"
 [Jinyoung Park, 11-27] "너가 recommen한거로 가되 무면 그래도 +3은 줘야지"
+[Jinyoung Park, 11-28] "근데 지금 squatt, pushup별개로 있지?"
 [Jinyoung Park, 11-27] "전체 랭킹에서 내리기 하면 하면 뭔가 이상하게 화면이 되는데 그거랑 그다음에 위에 KO 승 10, 승 5, 무 3, 패 1 이런거 싹다 위에 글 자체를 없애주고, 그리고 지금 승점 제대로 계산된거 맞나"
 Full list: `ishlove77-Prompt-Log.md`.
 
@@ -102,6 +103,9 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P11, scrolling: the user saw the whole rankings page scroll on the emulator and cut off the header; the widget
   tests had only checked that rows render. The header, tabs and week now stay fixed and only the rows scroll,
   covered by `only the rows scroll: the header, tabs and week stay`.
+- P11, stretch: after the scroll fix, the user still saw the rows stretch when pulling past the end ("그 화면
+  늘어지는거 봤음?"). Claude had checked screenshots only at rest, so it missed Android's stretch overscroll; a
+  screenshot taken mid-pull showed it. Fixed with overscroll off on the list and a widget test that failed before.
 - P11, tests: two first-draft server tests expected rank 4 after a tie and 400 for a bad scope; pytest showed the
   code was right (competition ranks 1, 1, 3; this project answers 422), so the tests were fixed.
 - P11, friend battles: Claude found that friend battles could not be told apart in the database, so the rule
@@ -205,6 +209,9 @@ Full list: `ishlove77-Prompt-Log.md`.
 ## 4. Revisions and Decisions
 - P11 points: Claude proposed KO win 10, win 5, loss 1, leaving 0 → the user added draw +3. Rules line on the
   rankings screen: shown → removed (user, after the emulator check).
+- P11 exercises: one ranking over push-ups and squats → the user asked whether they were apart, then decided to
+  split them (11-28, after PR #108 opened); Claude proposed the two tab rows and the user chose 전체/친구 on top with
+  푸쉬업/스쿼트 under it. The reviewer then caught that the notes still described one combined ranking.
 - P11 friends tab: the user chose the same weekly global points ranked among friends, not points from friend
   battles; friend battles never count.
 

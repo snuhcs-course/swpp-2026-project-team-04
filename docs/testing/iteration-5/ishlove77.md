@@ -5,6 +5,27 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): rankings split by exercise, no stretch past the end
+Code at commits `8395855` (server), `5ae5975` (app tabs), `148669d` (stretch fix).
+- **Change (user decision, PM approval relayed):** push-ups and squats are ranked apart. The endpoint takes
+  `exercise=push_up|squat` (default `push_up`, unknown value 422) and answers with `exercise`. The screen has the
+  전체/친구 tabs and under them a 푸쉬업/스쿼트 row; it opens on 전체 · 푸쉬업, and each choice keeps the other.
+- **Tests:** server `test_push_ups_and_squats_rank_apart`, `test_friends_rank_each_exercise_apart`,
+  `test_without_an_exercise_the_ranking_is_push_ups`, `test_an_unknown_exercise_is_refused`; repository `asks for the
+  friends scope of squats by name`, `a reply of an exercise it does not know is a server error`; view model
+  `choosing squats reads them in the shown scope and keeps push-ups`, `choosing the shown exercise does nothing`;
+  screen `the exercise tabs sit under the scope tabs, push-ups first`, `squats show their own ranking in each scope`.
+- **Stretch fix:** the user saw the rows stretch on Android when pulling the list past its end (Android 12 stretch
+  overscroll). The list now turns overscroll off; `pulling past the end does not stretch the rows` failed before the
+  fix (it found a `StretchingOverscrollIndicator`) and passes now.
+- **Results:** `flutter analyze` no issues; `flutter test` 5326 passed, 0 failed, 10 skipped. Server `pytest` 364
+  passed, 0 failed, 98% (`matches/rankings.py` 100%). Changed files (reviewer's run over the changed tests):
+  rankings_repository 100%, weekly_rankings_viewmodel 100%, weekly_rankings_screen 100%.
+- **Manual check:** Android emulator, the rankings screen with answers this branch's Django code computed (push-up
+  and squat battles seeded): push-ups unchanged (36, 19, …); squats apart (근손실 20 first; 데모 1+1+3 = 5 tied with
+  단짝 at 2); the friends tab of squats shows squat points only; pulling past the end of the list no longer stretches
+  the rows.
+
 #### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (team plan #13): weekly global and friends rankings
 `GET /api/matches/rankings/weekly?scope=global|friends` sums this week's points (Monday 00:00 KST) from main online
 battles stored by the battle server: KO win 10, win 5, draw 3, loss 1, own forfeit or disconnect 0, void 0. Friend
