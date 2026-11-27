@@ -1,9 +1,14 @@
+import '../../models/exercise_type.dart';
 import '../api/api_client.dart';
 
 /// Whose weekly points a ranking lists: everyone's, or only mine and my
 /// friends'. Friend battles are not ranked: the friends ranking takes the
 /// same weekly points as the global one.
 enum RankingScope { global, friends }
+
+/// Which ranking: a scope of one exercise's points. Push-ups and squats are
+/// ranked apart.
+typedef RankingKey = (RankingScope, ExerciseType);
 
 /// One player's row in a weekly ranking.
 class RankingEntry {
@@ -45,10 +50,12 @@ class RankingEntry {
       Object.hash(rank, userId, nickname, points, battles, wins, koWins, isMe);
 }
 
-/// This week's ranking: Monday 00:00 KST up to the next Monday.
+/// This week's ranking of one exercise: Monday 00:00 KST up to the next
+/// Monday.
 class WeeklyRanking {
   const WeeklyRanking({
     required this.scope,
+    this.exercise = ExerciseType.pushUp,
     required this.weekStart,
     required this.weekEnd,
     required this.entries,
@@ -56,6 +63,7 @@ class WeeklyRanking {
   });
 
   final RankingScope scope;
+  final ExerciseType exercise;
   final DateTime weekStart;
   final DateTime weekEnd;
 
@@ -75,7 +83,7 @@ abstract final class RankingPoints {
 
 /// Reads weekly rankings.
 abstract interface class RankingsRepository {
-  Future<WeeklyRanking> fetchWeekly(RankingScope scope);
+  Future<WeeklyRanking> fetchWeekly(RankingScope scope, ExerciseType exercise);
 }
 
 /// [RankingsRepository] over the GymRats API (`/matches/rankings/weekly`).
@@ -85,15 +93,21 @@ class ServerRankingsRepository implements RankingsRepository {
   final ApiClient _api;
 
   @override
-  Future<WeeklyRanking> fetchWeekly(RankingScope scope) async {
+  Future<WeeklyRanking> fetchWeekly(
+    RankingScope scope,
+    ExerciseType exercise,
+  ) async {
     final json = await _api.get(
       '/matches/rankings/weekly',
-      query: {'scope': scope.name},
+      query: {'scope': scope.name, 'exercise': _wire[exercise]!},
     );
     try {
       final body = json! as Map<String, Object?>;
       return WeeklyRanking(
         scope: RankingScope.values.byName(body['scope']! as String),
+        exercise: _wire.entries
+            .singleWhere((e) => e.value == body['exercise'])
+            .key,
         weekStart: DateTime.parse(body['week_start']! as String),
         weekEnd: DateTime.parse(body['week_end']! as String),
         entries: (body['entries']! as List).map(_entry).toList(),
@@ -104,6 +118,11 @@ class ServerRankingsRepository implements RankingsRepository {
       throw const ApiException(ApiErrorKind.server);
     }
   }
+
+  static const _wire = {
+    ExerciseType.pushUp: 'push_up',
+    ExerciseType.squat: 'squat',
+  };
 
   static RankingEntry _entry(Object? json) {
     final e = json! as Map<String, Object?>;
@@ -121,22 +140,28 @@ class ServerRankingsRepository implements RankingsRepository {
 }
 
 /// [RankingsRepository] kept in memory: the app's stand-in without a server
-/// (tests, demos). It returns [rankings] per scope, or an empty week.
+/// (tests, demos). It returns [rankings] per scope and exercise, or an empty
+/// week.
 class InMemoryRankingsRepository implements RankingsRepository {
-  InMemoryRankingsRepository({Map<RankingScope, WeeklyRanking>? rankings})
+  InMemoryRankingsRepository({Map<RankingKey, WeeklyRanking>? rankings})
     : _rankings = {...?rankings};
 
-  final Map<RankingScope, WeeklyRanking> _rankings;
+  final Map<RankingKey, WeeklyRanking> _rankings;
 
-  /// How many times each scope was read.
-  final Map<RankingScope, int> reads = {};
+  /// How many times each ranking was read.
+  final Map<RankingKey, int> reads = {};
 
   @override
-  Future<WeeklyRanking> fetchWeekly(RankingScope scope) async {
-    reads[scope] = (reads[scope] ?? 0) + 1;
-    return _rankings[scope] ??
+  Future<WeeklyRanking> fetchWeekly(
+    RankingScope scope,
+    ExerciseType exercise,
+  ) async {
+    final key = (scope, exercise);
+    reads[key] = (reads[key] ?? 0) + 1;
+    return _rankings[key] ??
         WeeklyRanking(
           scope: scope,
+          exercise: exercise,
           weekStart: DateTime.utc(2026, 11, 22, 15),
           weekEnd: DateTime.utc(2026, 11, 29, 15),
           entries: const [],

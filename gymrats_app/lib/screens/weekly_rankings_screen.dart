@@ -2,14 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/exercise_type.dart';
+import '../models/exercise_type_korean.dart';
 import '../services/rankings/rankings_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/weekly_rankings_viewmodel.dart';
 import '../widgets/lobby_parts.dart';
 
 /// 주간 랭킹 (P11), from the online battle's exercise sheet: this week's
-/// points of online battles, everyone's or among me and my friends. Friend
-/// battles never score; the friends tab ranks the same points.
+/// points of online battles, everyone's or among me and my friends, of
+/// push-ups or of squats. Friend battles never score; the friends tab ranks
+/// the same points.
 class WeeklyRankingsScreen extends StatefulWidget {
   const WeeklyRankingsScreen({super.key, required this.createViewModel});
 
@@ -79,6 +82,12 @@ class _WeeklyRankingsScreenState extends State<WeeklyRankingsScreen> {
                     selected: _vm.scope,
                     onSelected: (scope) => unawaited(_vm.select(scope)),
                   ),
+                  const SizedBox(height: AppSpacing.s8),
+                  _ExerciseTabs(
+                    selected: _vm.exercise,
+                    onSelected: (exercise) =>
+                        unawaited(_vm.selectExercise(exercise)),
+                  ),
                   const SizedBox(height: AppSpacing.s16),
                   if (_vm.error case final error?)
                     _Notice(error, onRetry: () => unawaited(_vm.retry()))
@@ -91,9 +100,7 @@ class _WeeklyRankingsScreenState extends State<WeeklyRankingsScreen> {
                     ),
                     const SizedBox(height: AppSpacing.s8),
                     if (ranking.entries.isEmpty)
-                      const _Empty(
-                        '이번 주 온라인 대결 기록이 아직 없어요. 첫 승점을 올려 보세요!',
-                      )
+                      const _Empty('이번 주 온라인 대결 기록이 아직 없어요. 첫 승점을 올려 보세요!')
                     else
                       // As tall as its rows, scrolling when they do not fit.
                       Flexible(child: _Board(entries: ranking.entries)),
@@ -147,6 +154,27 @@ class _ScopeTabs extends StatelessWidget {
       segments: const [
         ButtonSegment(value: RankingScope.global, label: Text('전체')),
         ButtonSegment(value: RankingScope.friends, label: Text('친구')),
+      ],
+      selected: {selected},
+      onSelectionChanged: (choice) => onSelected(choice.single),
+    ),
+  );
+}
+
+class _ExerciseTabs extends StatelessWidget {
+  const _ExerciseTabs({required this.selected, required this.onSelected});
+
+  final ExerciseType selected;
+  final ValueChanged<ExerciseType> onSelected;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: SegmentedButton<ExerciseType>(
+      showSelectedIcon: false,
+      segments: [
+        for (final exercise in ExerciseType.values)
+          ButtonSegment(value: exercise, label: Text(exercise.koreanName)),
       ],
       selected: {selected},
       onSelectionChanged: (choice) => onSelected(choice.single),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/rankings/rankings_repository.dart';
 import 'package:http/http.dart' as http;
@@ -23,8 +24,13 @@ Map<String, Object?> _row(
   'is_me': me,
 };
 
-Map<String, Object?> _body({String scope = 'global', Object? me}) => {
+Map<String, Object?> _body({
+  String scope = 'global',
+  String exercise = 'push_up',
+  Object? me,
+}) => {
   'scope': scope,
+  'exercise': exercise,
   'week_start': '2026-11-23T00:00:00+09:00',
   'week_end': '2026-11-30T00:00:00+09:00',
   'entries': [_row(2, '헬창'), _row(1, '쥐돌이', rank: 2, points: 6, me: true)],
@@ -56,13 +62,20 @@ void main() {
         _body(me: _row(1, '쥐돌이', rank: 2, points: 6, me: true)),
       );
 
-      final ranking = await repo.fetchWeekly(RankingScope.global);
+      final ranking = await repo.fetchWeekly(
+        RankingScope.global,
+        ExerciseType.pushUp,
+      );
 
       expect(sent.single.method, 'GET');
       expect(sent.single.url.path, '/api/matches/rankings/weekly');
-      expect(sent.single.url.queryParameters, {'scope': 'global'});
+      expect(sent.single.url.queryParameters, {
+        'scope': 'global',
+        'exercise': 'push_up',
+      });
       expect(sent.single.headers['Authorization'], 'Bearer jwt');
       expect(ranking.scope, RankingScope.global);
+      expect(ranking.exercise, ExerciseType.pushUp);
       expect(ranking.weekStart, DateTime.utc(2026, 11, 22, 15));
       expect(ranking.weekEnd, DateTime.utc(2026, 11, 29, 15));
       expect(ranking.entries, [
@@ -90,20 +103,31 @@ void main() {
       expect(ranking.me, ranking.entries.last);
     });
 
-    test('asks for the friends scope by name', () async {
+    test('asks for the friends scope of squats by name', () async {
       final repo = repository(
-        _body(scope: 'friends', me: _row(1, '쥐돌이', me: true)),
+        _body(
+          scope: 'friends',
+          exercise: 'squat',
+          me: _row(1, '쥐돌이', me: true),
+        ),
       );
 
-      final ranking = await repo.fetchWeekly(RankingScope.friends);
+      final ranking = await repo.fetchWeekly(
+        RankingScope.friends,
+        ExerciseType.squat,
+      );
 
-      expect(sent.single.url.queryParameters, {'scope': 'friends'});
+      expect(sent.single.url.queryParameters, {
+        'scope': 'friends',
+        'exercise': 'squat',
+      });
       expect(ranking.scope, RankingScope.friends);
+      expect(ranking.exercise, ExerciseType.squat);
     });
 
     test('a week without my battle has no row of mine', () async {
       final ranking = await repository(_body())
-          .fetchWeekly(RankingScope.global);
+          .fetchWeekly(RankingScope.global, ExerciseType.pushUp);
 
       expect(ranking.me, isNull);
     });
@@ -112,7 +136,22 @@ void main() {
       final repo = repository({'scope': 'global', 'entries': 'none'});
 
       await expectLater(
-        repo.fetchWeekly(RankingScope.global),
+        repo.fetchWeekly(RankingScope.global, ExerciseType.pushUp),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.kind,
+            'kind',
+            ApiErrorKind.server,
+          ),
+        ),
+      );
+    });
+
+    test('a reply of an exercise it does not know is a server error', () async {
+      final repo = repository(_body(exercise: 'plank'));
+
+      await expectLater(
+        repo.fetchWeekly(RankingScope.global, ExerciseType.pushUp),
         throwsA(
           isA<ApiException>().having(
             (e) => e.kind,
@@ -127,7 +166,7 @@ void main() {
       final repo = repository({'detail': 'nope'}, status: 401);
 
       await expectLater(
-        repo.fetchWeekly(RankingScope.global),
+        repo.fetchWeekly(RankingScope.global, ExerciseType.pushUp),
         throwsA(isA<ApiException>()),
       );
     });
@@ -187,15 +226,25 @@ void main() {
         me: null,
       );
       final repo = InMemoryRankingsRepository(
-        rankings: {RankingScope.friends: week},
+        rankings: {(RankingScope.friends, ExerciseType.pushUp): week},
       );
 
-      expect(await repo.fetchWeekly(RankingScope.friends), same(week));
-      final empty = await repo.fetchWeekly(RankingScope.global);
+      expect(
+        await repo.fetchWeekly(RankingScope.friends, ExerciseType.pushUp),
+        same(week),
+      );
+      final empty = await repo.fetchWeekly(
+        RankingScope.friends,
+        ExerciseType.squat,
+      );
 
-      expect(empty.scope, RankingScope.global);
+      expect(empty.scope, RankingScope.friends);
+      expect(empty.exercise, ExerciseType.squat);
       expect(empty.entries, isEmpty);
-      expect(repo.reads, {RankingScope.friends: 1, RankingScope.global: 1});
+      expect(repo.reads, {
+        (RankingScope.friends, ExerciseType.pushUp): 1,
+        (RankingScope.friends, ExerciseType.squat): 1,
+      });
     });
   });
 }

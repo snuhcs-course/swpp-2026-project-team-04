@@ -1,54 +1,66 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/exercise_type.dart';
 import '../services/api/api_client.dart';
 import '../services/rankings/rankings_repository.dart';
 
 /// The weekly rankings screen (P11): this week's global ranking, or the same
-/// points among me and my friends. Each scope is read once when first shown
-/// and kept; [retry] reads the shown one again.
+/// points among me and my friends, of push-ups or of squats. Each ranking is
+/// read once when first shown and kept; [retry] reads the shown one again.
 class WeeklyRankingsViewModel extends ChangeNotifier {
   WeeklyRankingsViewModel({required this._repository});
 
   final RankingsRepository _repository;
 
   RankingScope scope = RankingScope.global;
-  final _rankings = <RankingScope, WeeklyRanking>{};
-  final _errors = <RankingScope, String>{};
-  final _loading = <RankingScope>{};
+  ExerciseType exercise = ExerciseType.pushUp;
+  final _rankings = <RankingKey, WeeklyRanking>{};
+  final _errors = <RankingKey, String>{};
+  final _loading = <RankingKey>{};
   bool _disposed = false;
 
-  /// The shown scope's week; null until read.
-  WeeklyRanking? get ranking => _rankings[scope];
+  RankingKey get _shown => (scope, exercise);
 
-  /// Why the shown scope could not be read; null otherwise.
-  String? get error => _errors[scope];
+  /// The shown ranking's week; null until read.
+  WeeklyRanking? get ranking => _rankings[_shown];
 
-  bool get loading => _loading.contains(scope);
+  /// Why the shown ranking could not be read; null otherwise.
+  String? get error => _errors[_shown];
 
-  /// Reads the shown scope unless it is read or being read.
-  Future<void> load() => _load(scope);
+  bool get loading => _loading.contains(_shown);
 
-  /// Shows [next], reading it the first time.
+  /// Reads the shown ranking unless it is read or being read.
+  Future<void> load() => _load(_shown);
+
+  /// Shows the [next] scope of the shown exercise, reading it the first time.
   Future<void> select(RankingScope next) async {
     if (next == scope) return;
     scope = next;
     _notify();
-    await _load(next);
+    await _load(_shown);
   }
 
-  /// Reads the shown scope again after an error.
+  /// Shows the [next] exercise in the shown scope, reading it the first time.
+  Future<void> selectExercise(ExerciseType next) async {
+    if (next == exercise) return;
+    exercise = next;
+    _notify();
+    await _load(_shown);
+  }
+
+  /// Reads the shown ranking again after an error.
   Future<void> retry() {
-    _rankings.remove(scope);
-    return _load(scope);
+    _rankings.remove(_shown);
+    return _load(_shown);
   }
 
-  Future<void> _load(RankingScope which) async {
+  Future<void> _load(RankingKey which) async {
     if (_loading.contains(which) || _rankings.containsKey(which)) return;
     _loading.add(which);
     _errors.remove(which);
     _notify();
     try {
-      _rankings[which] = await _repository.fetchWeekly(which);
+      _rankings[which] = await _repository.fetchWeekly(which.$1, which.$2);
     } on Object catch (error) {
       _errors[which] = error is ApiException
           ? error.message

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/screens/weekly_rankings_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/rankings/rankings_repository.dart';
@@ -45,16 +46,21 @@ class _Failing implements RankingsRepository {
   _Failing(this.then);
 
   @override
-  Future<WeeklyRanking> fetchWeekly(RankingScope scope) async {
+  Future<WeeklyRanking> fetchWeekly(
+    RankingScope scope,
+    ExerciseType exercise,
+  ) async {
     if (fail) throw const ApiException(ApiErrorKind.network);
-    return then.fetchWeekly(scope);
+    return then.fetchWeekly(scope, exercise);
   }
 }
 
 class _Never implements RankingsRepository {
   @override
-  Future<WeeklyRanking> fetchWeekly(RankingScope scope) =>
-      Completer<WeeklyRanking>().future;
+  Future<WeeklyRanking> fetchWeekly(
+    RankingScope scope,
+    ExerciseType exercise,
+  ) => Completer<WeeklyRanking>().future;
 }
 
 void main() {
@@ -101,7 +107,9 @@ void main() {
   ) async {
     await open(
       tester,
-      InMemoryRankingsRepository(rankings: {RankingScope.global: global}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.global, ExerciseType.pushUp): global},
+      ),
     );
 
     expect(find.text('주간 랭킹'), findsOneWidget);
@@ -123,7 +131,9 @@ void main() {
   testWidgets('my row is on the selected fill', (tester) async {
     await open(
       tester,
-      InMemoryRankingsRepository(rankings: {RankingScope.global: global}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.global, ExerciseType.pushUp): global},
+      ),
     );
     final mine = tester.widget<ColoredBox>(
       find
@@ -143,7 +153,10 @@ void main() {
     tester,
   ) async {
     final repo = InMemoryRankingsRepository(
-      rankings: {RankingScope.global: global, RankingScope.friends: friends},
+      rankings: {
+        (RankingScope.global, ExerciseType.pushUp): global,
+        (RankingScope.friends, ExerciseType.pushUp): friends,
+      },
     );
     await open(tester, repo);
 
@@ -152,13 +165,16 @@ void main() {
 
     expect(find.text('단짝'), findsOneWidget);
     expect(find.text('헬창'), findsNothing);
-    expect(repo.reads, {RankingScope.global: 1, RankingScope.friends: 1});
+    expect(repo.reads, {
+      (RankingScope.global, ExerciseType.pushUp): 1,
+      (RankingScope.friends, ExerciseType.pushUp): 1,
+    });
 
     await tester.tap(find.text('전체'));
     await tester.pumpAndSettle();
     expect(find.text('헬창'), findsOneWidget);
     // Kept, not read again.
-    expect(repo.reads[RankingScope.global], 1);
+    expect(repo.reads[(RankingScope.global, ExerciseType.pushUp)], 1);
   });
 
   testWidgets('my row comes under the list when the top stops above it', (
@@ -169,7 +185,9 @@ void main() {
     ], me: entry(77, '쥐돌이', points: 1, me: true, id: 9));
     await open(
       tester,
-      InMemoryRankingsRepository(rankings: {RankingScope.global: top}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.global, ExerciseType.pushUp): top},
+      ),
     );
 
     expect(find.text('77'), findsOneWidget);
@@ -188,7 +206,9 @@ void main() {
     ]);
     await open(
       tester,
-      InMemoryRankingsRepository(rankings: {RankingScope.friends: alone}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.friends, ExerciseType.pushUp): alone},
+      ),
     );
     await tester.tap(find.text('친구'));
     await tester.pumpAndSettle();
@@ -199,7 +219,9 @@ void main() {
 
   testWidgets('a failed read offers to try again', (tester) async {
     final repo = _Failing(
-      InMemoryRankingsRepository(rankings: {RankingScope.global: global}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.global, ExerciseType.pushUp): global},
+      ),
     );
     await open(tester, repo);
 
@@ -217,7 +239,9 @@ void main() {
     final semantics = tester.ensureSemantics();
     await open(
       tester,
-      InMemoryRankingsRepository(rankings: {RankingScope.global: global}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.global, ExerciseType.pushUp): global},
+      ),
     );
     expect(find.bySemanticsLabel('1위, 헬창, 25점, 3전 2승 · KO 1'), findsOneWidget);
     semantics.dispose();
@@ -233,7 +257,9 @@ void main() {
     ], me: entry(77, '쥐돌이', points: 1, me: true, id: 99));
     await open(
       tester,
-      InMemoryRankingsRepository(rankings: {RankingScope.global: many}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.global, ExerciseType.pushUp): many},
+      ),
       size: const Size(320, 640),
     );
     expect(tester.takeException(), isNull);
@@ -249,7 +275,9 @@ void main() {
     ], me: entry(77, '쥐돌이', points: 1, me: true, id: 99));
     await open(
       tester,
-      InMemoryRankingsRepository(rankings: {RankingScope.global: many}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.global, ExerciseType.pushUp): many},
+      ),
     );
     double top(Finder f) => tester.getTopLeft(f).dy;
     final title = top(find.text('주간 랭킹'));
@@ -274,7 +302,9 @@ void main() {
   testWidgets('a short list keeps its own height', (tester) async {
     await open(
       tester,
-      InMemoryRankingsRepository(rankings: {RankingScope.friends: friends}),
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.friends, ExerciseType.pushUp): friends},
+      ),
     );
     await tester.tap(find.text('친구'));
     await tester.pumpAndSettle();
@@ -283,6 +313,61 @@ void main() {
       matching: find.byType(Card),
     );
     expect(tester.getSize(card).height, lessThan(400));
+  });
+
+  testWidgets('the exercise tabs sit under the scope tabs, push-ups first', (
+    tester,
+  ) async {
+    await open(tester, InMemoryRankingsRepository());
+    expect(
+      tester.getTopLeft(find.text('전체')).dy,
+      lessThan(tester.getTopLeft(find.text('푸쉬업')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('푸쉬업')).dy,
+      tester.getTopLeft(find.text('스쿼트')).dy,
+    );
+    final tabs = tester.widget<SegmentedButton<ExerciseType>>(
+      find.byType(SegmentedButton<ExerciseType>),
+    );
+    expect(tabs.selected, {ExerciseType.pushUp});
+  });
+
+  testWidgets('squats show their own ranking in each scope', (tester) async {
+    final squats = week(RankingScope.global, [entry(1, '스쿼트왕', points: 40)]);
+    final squatFriends = week(RankingScope.friends, [
+      entry(1, '단짝', points: 9),
+      entry(2, '쥐돌이', points: 3, me: true),
+    ]);
+    final repo = InMemoryRankingsRepository(
+      rankings: {
+        (RankingScope.global, ExerciseType.pushUp): global,
+        (RankingScope.global, ExerciseType.squat): squats,
+        (RankingScope.friends, ExerciseType.squat): squatFriends,
+      },
+    );
+    await open(tester, repo);
+
+    await tester.tap(find.text('스쿼트'));
+    await tester.pumpAndSettle();
+    expect(find.text('스쿼트왕'), findsOneWidget);
+    expect(find.text('헬창'), findsNothing);
+
+    // The exercise stays when the scope changes.
+    await tester.tap(find.text('친구'));
+    await tester.pumpAndSettle();
+    expect(find.text('9점'), findsOneWidget);
+    expect(find.text('스쿼트왕'), findsNothing);
+
+    await tester.tap(find.text('전체'));
+    await tester.tap(find.text('푸쉬업'));
+    await tester.pumpAndSettle();
+    expect(find.text('헬창'), findsOneWidget);
+    expect(repo.reads, {
+      (RankingScope.global, ExerciseType.pushUp): 1,
+      (RankingScope.global, ExerciseType.squat): 1,
+      (RankingScope.friends, ExerciseType.squat): 1,
+    });
   });
 
   test('the week label reads Korean dates whatever the zone given', () {

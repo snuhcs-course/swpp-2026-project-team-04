@@ -1,29 +1,35 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/rankings/rankings_repository.dart';
 import 'package:gymrats_app/viewmodels/weekly_rankings_viewmodel.dart';
 
 WeeklyRanking week(
   RankingScope scope, {
+  ExerciseType exercise = ExerciseType.pushUp,
   List<RankingEntry> entries = const [],
 }) => WeeklyRanking(
   scope: scope,
+  exercise: exercise,
   weekStart: DateTime.utc(2026, 11, 22, 15),
   weekEnd: DateTime.utc(2026, 11, 29, 15),
   entries: entries,
   me: null,
 );
 
-/// Answers each read with the next completer of its scope.
+/// Answers each read with the next completer; [calls] keeps the scopes read
+/// and [exercises] their exercises.
 class ScriptedRankings implements RankingsRepository {
   final calls = <RankingScope>[];
+  final exercises = <ExerciseType>[];
   final pending = <Completer<WeeklyRanking>>[];
 
   @override
-  Future<WeeklyRanking> fetchWeekly(RankingScope scope) {
+  Future<WeeklyRanking> fetchWeekly(RankingScope scope, ExerciseType exercise) {
     calls.add(scope);
+    exercises.add(exercise);
     final answer = Completer<WeeklyRanking>();
     pending.add(answer);
     return answer.future;
@@ -42,8 +48,9 @@ void main() {
     vm.addListener(() => changes++);
   });
 
-  test('starts on the global ranking, loading it', () async {
+  test('starts on the global ranking of push-ups, loading it', () async {
     expect(vm.scope, RankingScope.global);
+    expect(vm.exercise, ExerciseType.pushUp);
     final loading = vm.load();
     expect(vm.loading, isTrue);
     expect(vm.ranking, isNull);
@@ -55,7 +62,56 @@ void main() {
     expect(vm.loading, isFalse);
     expect(vm.ranking!.scope, RankingScope.global);
     expect(repo.calls, [RankingScope.global]);
+    expect(repo.exercises, [ExerciseType.pushUp]);
     expect(changes, 2);
+  });
+
+  test(
+    'choosing squats reads them in the shown scope and keeps push-ups',
+    () async {
+      final pushUps = vm.load();
+      repo.pending.single.complete(week(RankingScope.global));
+      await pushUps;
+
+      final squats = vm.selectExercise(ExerciseType.squat);
+      expect(vm.exercise, ExerciseType.squat);
+      expect(vm.ranking, isNull);
+      expect(vm.loading, isTrue);
+      repo.pending.last.complete(
+        week(RankingScope.global, exercise: ExerciseType.squat),
+      );
+      await squats;
+      expect(vm.ranking!.exercise, ExerciseType.squat);
+
+      // The friends tab keeps squats.
+      final friends = vm.select(RankingScope.friends);
+      repo.pending.last.complete(
+        week(RankingScope.friends, exercise: ExerciseType.squat),
+      );
+      await friends;
+      expect(vm.ranking!.scope, RankingScope.friends);
+      expect(vm.ranking!.exercise, ExerciseType.squat);
+
+      await vm.select(RankingScope.global);
+      await vm.selectExercise(ExerciseType.pushUp);
+      expect(vm.ranking!.exercise, ExerciseType.pushUp);
+      expect(repo.exercises, [
+        ExerciseType.pushUp,
+        ExerciseType.squat,
+        ExerciseType.squat,
+      ]);
+      expect(repo.calls, [
+        RankingScope.global,
+        RankingScope.global,
+        RankingScope.friends,
+      ]);
+    },
+  );
+
+  test('choosing the shown exercise does nothing', () async {
+    await vm.selectExercise(ExerciseType.pushUp);
+    expect(repo.calls, isEmpty);
+    expect(changes, 0);
   });
 
   test('a second load while one is on, or after it, reads nothing', () async {
