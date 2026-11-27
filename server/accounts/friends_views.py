@@ -40,6 +40,11 @@ ACCEPT_HOLD = timedelta(minutes=2)
 # shown code can be read back.
 _CODE = re.compile(r"\A(?P<nickname>.{1,12})#(?P<tag>[0-9]{4,10})\Z", re.DOTALL)
 
+# A character id as the battle server takes it in `avatar_id`
+# (shared/battle_protocol.dart, isBattleAvatarId): 1 to 32 lowercase
+# letters, digits and "_".
+_CHARACTER = re.compile(r"\A[a-z0-9_]{1,32}\Z")
+
 
 def friend_code(user):
     return f"{user.nickname}#{user.id:04d}"
@@ -77,6 +82,7 @@ def _invite(invite):
         "exercise": invite.exercise,
         "status": _invite_status(invite),
         "expires_at": _expires_at(invite).isoformat(),
+        "character": invite.character,
     }
 
 
@@ -230,17 +236,24 @@ def _cancel_open_invites(user):
 
 
 class FriendInvitesView(APIView):
-    """POST /friends/invites {"friend_id", "exercise"}: invites a friend to
-    a battle. My earlier open invites are cancelled: one wait at a time."""
+    """POST /friends/invites {"friend_id", "exercise", "character"?}: invites
+    a friend to a battle. My earlier open invites are cancelled: one wait at
+    a time. "character" (A11) is my character id for the friend's screens;
+    an older app sends none, and the invite keeps "" then."""
 
     def post(self, request):
         me = request.user
         body = _body(request)
         friend_id, exercise = body.get("friend_id"), body.get("exercise")
+        character = body.get("character")
         if not isinstance(friend_id, int) or isinstance(friend_id, bool):
             return _error("invalid_friend", status.HTTP_400_BAD_REQUEST)
         if exercise not in ("push_up", "squat"):
             return _error("invalid_exercise", status.HTTP_400_BAD_REQUEST)
+        if character is None:
+            character = ""
+        elif not isinstance(character, str) or not _CHARACTER.match(character):
+            return _error("invalid_character", status.HTTP_400_BAD_REQUEST)
         friend = User.objects.filter(id=friend_id).first()
         if friend is None or not are_friends(me, friend):
             return _error("not_friends", status.HTTP_403_FORBIDDEN)
@@ -252,7 +265,10 @@ class FriendInvitesView(APIView):
             try:
                 with transaction.atomic():
                     invite = FriendBattleInvite.objects.create(
-                        from_user=me, to_user=friend, exercise=exercise
+                        from_user=me,
+                        to_user=friend,
+                        exercise=exercise,
+                        character=character,
                     )
                 break
             except IntegrityError:
