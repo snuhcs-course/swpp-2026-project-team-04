@@ -23,6 +23,7 @@ class HoldReportScreen extends StatefulWidget {
     required this.record,
     this.store,
     this.weightKg,
+    this.accountId,
   });
 
   final HoldRecord record;
@@ -32,6 +33,9 @@ class HoldReportScreen extends StatefulWidget {
 
   /// The user's body weight; null uses 65 kg and says so.
   final double? weightKg;
+
+  /// The signed-in account, for a record kept before accounts.
+  final int? accountId;
 
   @override
   State<HoldReportScreen> createState() => _HoldReportScreenState();
@@ -43,6 +47,7 @@ class _HoldReportScreenState extends State<HoldReportScreen> {
     store: widget.store,
     weightKg: widget.weightKg,
     profiles: _profiles(),
+    accountId: widget.accountId,
   );
 
   /// The app's account data, for the body weight; none in tests without it.
@@ -601,11 +606,20 @@ class HoldTimelinePainter extends CustomPainter {
     canvas
       ..save()
       ..clipRRect(rounded);
-    // Held time: everything but the pauses.
-    canvas.drawRect(
-      bar,
-      Paint()..color = AppColors.ink.withValues(alpha: heldAlpha),
-    );
+    // Held time: the spans the hold kept; a record kept before them
+    // shows everything but the pauses (PR #106 Codex review).
+    final held = Paint()..color = AppColors.ink.withValues(alpha: heldAlpha);
+    final spans = record.heldSpans;
+    if (spans == null) {
+      canvas.drawRect(bar, held);
+    } else {
+      for (final s in spans) {
+        canvas.drawRect(
+          Rect.fromLTRB(xOf(s.start, w), _barTop, xOf(s.end, w), bar.bottom),
+          held,
+        );
+      }
+    }
     for (final p in record.pauses) {
       final left = xOf(p.start, w), right = xOf(p.end, w);
       final box = Rect.fromLTRB(

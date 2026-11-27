@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/arcade_stage.dart';
 import 'package:gymrats_app/models/hold_record.dart';
 import 'package:gymrats_app/screens/hold_report_screen.dart';
 import 'package:gymrats_app/services/feedback/hold_record_store.dart';
@@ -199,6 +200,47 @@ void main() {
       expect(painter.shouldRepaint(painter), isFalse);
     });
 
+    test('the bar fills only the held spans; a record kept before them '
+        'fills all but the pauses (PR #106 Codex review)', () {
+      List<Rect> rectsOf(HoldRecord r) {
+        final canvas = _RecordingCanvas();
+        HoldTimelinePainter(
+          record: r,
+          starStyle: const TextStyle(),
+          warningStyle: const TextStyle(),
+          axisStyle: const TextStyle(),
+        ).paint(canvas, const Size(200, 80));
+        return canvas.rects;
+      }
+
+      final spanned = HoldRecord(
+        endedAt: DateTime(2026, 11, 27, 9),
+        pose: HoldPose.chair,
+        stage: 5,
+        held: const Duration(seconds: 17),
+        elapsed: const Duration(seconds: 20),
+        stars: 1,
+        starSeconds: const [15, 20, 30],
+        heldSpans: const [
+          HoldRecordSpan(
+            start: Duration(seconds: 2),
+            end: Duration(seconds: 12),
+          ),
+          HoldRecordSpan(
+            start: Duration(seconds: 13),
+            end: Duration(seconds: 20),
+          ),
+        ],
+      );
+      final held = rectsOf(spanned);
+      expect(held.map((r) => (r.left, r.right)), [
+        (20.0, 120.0),
+        (130.0, 200.0),
+      ]);
+      final old = rectsOf(record);
+      expect((old.first.left, old.first.right), (0.0, 200.0));
+    });
+
     test('the words a screen reader hears', () {
       expect(
         HoldTimeline.words(record),
@@ -215,4 +257,15 @@ void main() {
       expect(holdReportDate(DateTime(2027, 1, 4, 8, 5)), '27.01.04(월) 08:05');
     });
   });
+}
+
+/// Keeps the rectangles a painter draws; ignores everything else.
+class _RecordingCanvas implements Canvas {
+  final rects = <Rect>[];
+
+  @override
+  void drawRect(Rect rect, Paint paint) => rects.add(rect);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

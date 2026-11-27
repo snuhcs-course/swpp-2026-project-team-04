@@ -482,6 +482,7 @@ void _openHold(BuildContext context, HoldRecord hold) => Navigator.push<void>(
     builder: (_) => HoldReportScreen(
       record: hold,
       store: context.read<HistoryViewModel>().holdRecords,
+      accountId: context.read<HistoryViewModel>().accountId,
     ),
   ),
 );

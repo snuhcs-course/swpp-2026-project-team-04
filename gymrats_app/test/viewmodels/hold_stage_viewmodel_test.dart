@@ -146,6 +146,21 @@ HoldPoseDefinition _scripted(
   startWords: startWords,
 );
 
+/// A progress store whose stage saves wait for [release].
+class _SlowStore extends MemoryArcadeProgressStore {
+  final release = Completer<void>();
+
+  @override
+  Future<ArcadeProgress> recordStage(
+    int accountId,
+    int number,
+    int stars,
+  ) async {
+    await release.future;
+    return super.recordStage(accountId, number, stars);
+  }
+}
+
 class _FailingStore implements ArcadeProgressStore {
   int records = 0;
 
@@ -975,6 +990,21 @@ void main() {
         expect(pause.length, greaterThan(Duration.zero));
         expect(record.held, rig.viewModel.state.progress.held);
         expect(record.elapsed, greaterThan(record.held));
+        // The time line: the spans the pose was really held add up to the
+        // time held, within a frame, and none overlaps a pause (PR #106).
+        final spans = record.heldSpans!;
+        final spanned = spans.fold(Duration.zero, (a, s) => a + s.length);
+        expect(
+          (spanned - record.held).inMilliseconds.abs(),
+          lessThanOrEqualTo(100),
+        );
+        for (final s in spans) {
+          expect(s.start, greaterThanOrEqualTo(Duration.zero));
+          expect(s.end, lessThanOrEqualTo(record.elapsed));
+          for (final p in record.pauses) {
+            expect(s.end <= p.start || s.start >= p.end, isTrue);
+          }
+        }
         expect(record.endedAt.isAfter(DateTime(2026, 11, 26, 21, 10)), isTrue);
         // Not kept until the result.
         late List<HoldRecord> kept;
@@ -1083,6 +1113,36 @@ void main() {
         store.read(7).then((p) => saved = p);
         async.flushMicrotasks();
         expect(saved.bestOf(3), 3);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('다시 하기 while the stars are being saved: the finished play is '
+        'still kept, not the next one (PR #106 Codex review)', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final store = _SlowStore();
+        final records = InMemoryHoldRecordStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          store: store,
+          accountId: 7,
+          records: records,
+        );
+        rig.goAt(async);
+        rig.frames(async, rig.viewModel.stage.starSeconds.last * 1000 + 500);
+        async.flushMicrotasks();
+        final played = rig.viewModel.state.record!;
+        expect(rig.viewModel.state.phase, HoldStagePhase.result);
+        rig.viewModel.playAgain();
+        expect(rig.viewModel.state.record, isNull);
+        store.release.complete();
+        async.flushMicrotasks();
+        late List<HoldRecord> kept;
+        records.list().then((r) => kept = r);
+        async.flushMicrotasks();
+        expect(kept.single, same(played));
         rig.viewModel.dispose();
       });
     });

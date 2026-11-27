@@ -259,6 +259,11 @@ class HoldStageViewModel extends ChangeNotifier {
   final List<HoldRecordPause> _pauses = [];
   Duration? _pausedAt;
 
+  /// When the pose was really held, from GO, for the report's time line.
+  final List<HoldRecordSpan> _heldSpans = [];
+  Duration? _heldFrom;
+  Duration _loggedAt = Duration.zero;
+
   /// With the camera running, no frame for this long is an unknown pose.
   final Duration missingAfter;
 
@@ -453,6 +458,9 @@ class HoldStageViewModel extends ChangeNotifier {
     _warnings.clear();
     _pauses.clear();
     _pausedAt = null;
+    _heldSpans.clear();
+    _heldFrom = null;
+    _loggedAt = Duration.zero;
     _guideJudge = judge.readsGuide
         ? null
         : _createGuideJudge(definition.setupExercise);
@@ -609,7 +617,8 @@ class HoldStageViewModel extends ChangeNotifier {
     _cue(HoldStageCue(HoldStageCueKind.ended, count: stars.count));
     final setup = _setup;
     if (setup != null) unawaited(setup.releaseCamera());
-    unawaited(_save(stars));
+    // This play's record, taken now: 다시 하기 during the save clears it.
+    unawaited(_save(stars, _state.record));
   }
 
   /// Drops [callout] after [after], unless another took its place.
@@ -646,7 +655,23 @@ class HoldStageViewModel extends ChangeNotifier {
       _pauses.add(HoldRecordPause(start: pausedAt, end: at));
       _pausedAt = null;
     }
+    // Held while the time held grows: not while a chair is being entered,
+    // nor while a broken pose waits to become a warning.
+    final grew = progress.held - before.held;
+    if (grew > Duration.zero) {
+      _heldFrom ??= at - grew < _loggedAt ? _loggedAt : at - grew;
+    } else if (_heldFrom case final from?) {
+      _heldSpans.add(HoldRecordSpan(start: from, end: _loggedAt));
+      _heldFrom = null;
+    }
+    _loggedAt = at;
   }
+
+  /// [_heldSpans] with the one still open closed at [at].
+  List<HoldRecordSpan> _heldUntil(Duration at) => List.unmodifiable([
+    ..._heldSpans,
+    if (_heldFrom case final from?) HoldRecordSpan(start: from, end: at),
+  ]);
 
   /// The play as kept for its report: [progress] at its end.
   HoldRecord _record(HoldProgress progress, ArcadeStars stars) => HoldRecord(
@@ -660,13 +685,14 @@ class HoldStageViewModel extends ChangeNotifier {
     starSeconds: stage.starSeconds,
     warnings: List.unmodifiable(_warnings),
     pauses: List.unmodifiable(_pauses),
+    heldSpans: _heldUntil(_now() - _goAt),
     endedByWarnings: progress.end == HoldEnd.warnings,
   );
 
   /// Keeps the play's stars (the store keeps a stage's most), then its
   /// record for the report. The stars come first, so a record that fails
   /// or never finishes cannot hold them back (송우현, 2026-11-26).
-  Future<void> _save(ArcadeStars stars) async {
+  Future<void> _save(ArcadeStars stars, HoldRecord? record) async {
     final store = this.store;
     final account = accountId;
     if (store != null && account != null) {
@@ -677,7 +703,6 @@ class HoldStageViewModel extends ChangeNotifier {
         // writes nothing when it cannot read).
       }
     }
-    final record = _state.record;
     final records = this.records;
     if (record == null || records == null) return;
     try {

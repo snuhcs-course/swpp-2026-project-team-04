@@ -107,6 +107,37 @@ void main() {
       );
     });
 
+    test('the held spans go to JSON and back; a record kept before them '
+        'has none', () {
+      final spans = [
+        const HoldRecordSpan(
+          start: Duration(seconds: 2),
+          end: Duration(seconds: 12),
+        ),
+        const HoldRecordSpan(
+          start: Duration(seconds: 13),
+          end: Duration(seconds: 20),
+        ),
+      ];
+      final record = HoldRecord(
+        endedAt: DateTime(2026, 11, 27, 9),
+        pose: HoldPose.chair,
+        stage: 5,
+        held: const Duration(seconds: 17),
+        elapsed: const Duration(seconds: 20),
+        stars: 1,
+        starSeconds: const [15, 20, 30],
+        heldSpans: spans,
+      );
+      final read = HoldRecord.fromJson(record.toJson());
+      expect(read.heldSpans!.map((s) => (s.start, s.end)), [
+        for (final s in spans) (s.start, s.end),
+      ]);
+      final old = record.toJson()..remove('held_spans');
+      expect(HoldRecord.fromJson(old).heldSpans, isNull);
+      expect(holdRecord().toJson().containsKey('held_spans'), isFalse);
+    });
+
     test('the id is the end time', () {
       final at = DateTime(2026, 11, 26, 21, 10);
       expect(holdRecord(endedAt: at).id, '${at.microsecondsSinceEpoch}');

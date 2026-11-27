@@ -52,6 +52,10 @@ class HoldRecordPause {
   );
 }
 
+/// A stretch of a hold from GO, as [HoldRecordPause] is: when the pose was
+/// really held (the report's time line).
+typedef HoldRecordSpan = HoldRecordPause;
+
 /// One played hold stage, kept on the phone for its report and the archive
 /// (P13): the pose, the time held and the time from GO to the end, the
 /// warnings and pauses, and the stars against the stage's star seconds.
@@ -67,6 +71,7 @@ class HoldRecord {
     required this.starSeconds,
     this.warnings = const [],
     this.pauses = const [],
+    this.heldSpans,
     this.endedByWarnings = false,
     this.accountId,
   });
@@ -91,6 +96,11 @@ class HoldRecord {
   final List<int> starSeconds;
   final List<HoldRecordWarning> warnings;
   final List<HoldRecordPause> pauses;
+
+  /// When the pose was really held, from GO; null in a record kept before
+  /// they were (PR #106 Codex review), whose time line shows every moment
+  /// but the pauses as held.
+  final List<HoldRecordSpan>? heldSpans;
 
   /// Whether a second warning ended it before the last star.
   final bool endedByWarnings;
@@ -117,6 +127,7 @@ class HoldRecord {
     'star_seconds': starSeconds,
     'warnings': [for (final w in warnings) w.toJson()],
     'pauses': [for (final p in pauses) p.toJson()],
+    'held_spans': ?heldSpans?.map((s) => s.toJson()).toList(),
     'ended_by_warnings': endedByWarnings,
     'account_id': ?accountId,
   };
@@ -140,6 +151,13 @@ class HoldRecord {
       for (final p in json['pauses']! as List)
         HoldRecordPause.fromJson(Map<String, Object?>.from(p as Map)),
     ],
+    heldSpans: switch (json['held_spans']) {
+      final List spans => [
+        for (final s in spans)
+          HoldRecordSpan.fromJson(Map<String, Object?>.from(s as Map)),
+      ],
+      _ => null,
+    },
     endedByWarnings: json['ended_by_warnings']! as bool,
     accountId: (json['account_id'] as num?)?.toInt(),
   );

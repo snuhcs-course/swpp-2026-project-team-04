@@ -15,9 +15,14 @@ class HoldReportViewModel extends ChangeNotifier {
     this.store,
     this.weightKg,
     this.profiles,
+    this.accountId,
   }) : _metrics = HoldMetrics.of(record, weightKg: weightKg);
 
   final HoldRecord record;
+
+  /// The signed-in account. A record kept before accounts has none, so its
+  /// report compares with this account's holds (PR #106 Codex review).
+  final int? accountId;
 
   /// The holds kept on the phone; null compares with nothing.
   final HoldRecordStore? store;
@@ -55,10 +60,12 @@ class HoldReportViewModel extends ChangeNotifier {
     }
     final weight = await reading;
     if (_disposed) return;
-    // Only the account's own holds: the phone keeps everyone's.
+    // Only the account's own holds: the phone keeps everyone's. A record
+    // kept before accounts is the signed-in account's.
+    final owner = record.accountId ?? accountId;
     kept = [
       for (final h in kept)
-        if (h.isOf(record.accountId)) h,
+        if (h.isOf(owner)) h,
     ];
     _metrics = HoldMetrics.of(record, weightKg: weight, kept: kept);
     _loaded = true;

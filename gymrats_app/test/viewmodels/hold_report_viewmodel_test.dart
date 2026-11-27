@@ -73,6 +73,33 @@ void main() {
     expect(vm.metrics.trend.map((h) => h.accountId), [null, 7, 7]);
   });
 
+  test(
+    'a record kept before accounts compares with the signed-in '
+    "account's holds, not another account's (PR #106 Codex review)",
+    () async {
+      HoldRecord earlierOf(int? account, int day, int ms) => holdRecord(
+        accountId: account,
+        endedAt: DateTime(2026, 11, day, 9),
+        heldMs: ms,
+        elapsedMs: ms,
+        warnings: const [],
+        pauses: const [],
+      );
+      final legacy = holdRecord();
+      final store = InMemoryHoldRecordStore();
+      await store.save(earlierOf(8, 23, 60000));
+      await store.save(earlierOf(7, 25, 20000));
+      await store.save(legacy);
+      final vm = HoldReportViewModel(
+        record: legacy,
+        store: store,
+        accountId: 7,
+      );
+      await vm.load();
+      expect(vm.metrics.recentHeld, 20);
+    },
+  );
+
   test('a given body weight is used', () {
     final vm = HoldReportViewModel(record: record, weightKg: 80);
     expect(vm.metrics.weightKg, 80);
