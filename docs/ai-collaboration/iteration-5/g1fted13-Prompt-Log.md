@@ -875,3 +875,15 @@ push 뒤에는 post-push 확인을 하고 PR을 올려서 링크를 알려줘. C
 <!-- 04ed7449 2026-11-27T11:40:17.766Z -->
 [Woohyun Song, 11-27 20:40] "제안대로 해줘. 새 커밋 하나로 docs/testing/iteration-5/[REDACTED:custom_term].md의 그 경로를 \"the local design hand-off for A11 (kept outside the repo)\"로 바꾸고 push해. 이력은 다시 쓰지 마. fe39058 시점의 트리에 남는 건 그대로 두고, main의 Testing-Documentation.md 줄도 원래 있던 거라 건드리지 마.
 push 뒤에 post-push 확인을 다시 돌려서 최신 트리 검사가 통과하는지 보여주고, 통과하면 PR을 올려서 링크를 알려줘. 나머지는 지난 지시 그대로야. CI 코멘트가 오면 커버리지 TODO를 채우고, Codex 봇이 👍만 남기면 @codex review를 다시 요청하지 마."
+
+## 2026-11-27 · Woohyun Song · feat/iter5-friend-battle-ui
+<!-- 04ed7449 2026-11-27T12:24:23.440Z -->
+[Woohyun Song, 11-27 21:24] "<pasted_content id=\"f1c7\">
+둘 다 이렇게 하자.
+
+1. online_lobby_screen.dart L478–480의 친구 대결용 두 갈래는 지워. 친구 대결이 아닌 레이더 화면은 그대로여야 하니 flutter analyze, online_lobby 관련 테스트, 전체 flutter test를 돌리고 reviewer도 다시 받아.
+2. 노트의 커버리지 숫자는 다시 고치지 말고, 이미 적은 숫자가 어느 커밋의 CI 결과인지(SHA)만 같은 커밋에서 밝혀 둬. 커밋 → CI → 노트 수정이 반복되지 않게 하려는 거야.
+3. 1과 2를 커밋 하나로 묶어 push하고 post-push 확인을 돌려.
+4. 그 최종 HEAD에서 PR에 @codex review를 한 번만 요청해. 상우의 머지 조건이 현재 HEAD의 Codex 결과라서, 👍 뒤에 HEAD가 바뀐 이번 경우만 예외로 다시 요청하는 거야. 그 뒤로는 커밋을 더 만들지 마.
+5. Codex 결과(👍든 댓글이든)와 CI 결과가 나오면 알려줘. 지적이 있으면 고치기 전에 먼저 보여줘.
+</pasted_content id=\"f1c7\">"

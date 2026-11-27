@@ -471,14 +471,11 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
         child: Scaffold(
           body: GridBackground(
             child: SafeArea(
+              // The main match only: a friend battle waits in its own room
+              // (_friendWait, A11).
               child: BattleSearchView(
                 exercise: widget.exercise,
-                title: switch (widget.friendBattle) {
-                  null => '실시간 상대를 찾는 중',
-                  final battle when battle.inviting =>
-                    '${battle.friend.nickname}님의 수락을 기다리는 중',
-                  final battle => '${battle.friend.nickname}님을 기다리는 중',
-                },
+                title: '실시간 상대를 찾는 중',
                 duration: Duration(milliseconds: session.durationMs),
                 searchArea: BattleSearchRadar(
                   animation: _radar,
