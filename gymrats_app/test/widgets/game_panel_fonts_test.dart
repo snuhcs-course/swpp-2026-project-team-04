@@ -34,6 +34,13 @@ void main() {
     testWidgets('at 360 wide and text scale $scale the tutorial\'s grade '
         'pages keep each grade and its points on one line', (tester) async {
       await _loadAppFonts(tester);
+      // The tutorial's pictures move until the device asks for reduced
+      // motion (A12); held still, pumpAndSettle returns.
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
       tester.platformDispatcher.textScaleFactorTestValue = scale;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       tester.view.physicalSize = const Size(360, 740);

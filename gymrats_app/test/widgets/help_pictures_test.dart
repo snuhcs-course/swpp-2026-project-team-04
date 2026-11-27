@@ -7,7 +7,10 @@ import 'package:gymrats_app/widgets/character_figure.dart';
 import 'package:gymrats_app/widgets/help_pictures.dart';
 import 'package:gymrats_app/widgets/help_rules.dart';
 import 'package:gymrats_app/widgets/pose_silhouette_guide.dart';
+import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
+import 'package:gymrats_app/widgets/tutorial_figure_painters.dart';
 import 'package:gymrats_app/widgets/tutorial_rep_bot.dart';
+import 'package:gymrats_app/widgets/tutorial_setup_scenes.dart';
 
 void main() {
   Future<void> show(WidgetTester tester, TutorialPage page) async {
@@ -27,9 +30,8 @@ void main() {
   const pushUp = ExerciseType.pushUp;
   const squat = ExerciseType.squat;
 
-  testWidgets('every page draws without errors and is named by its title', (
-    tester,
-  ) async {
+  testWidgets('every page draws without errors and is named for a screen '
+      'reader', (tester) async {
     final handle = tester.ensureSemantics();
     for (final exercise in ExerciseType.values) {
       for (final step in TutorialStep.values) {
@@ -37,7 +39,7 @@ void main() {
         await show(tester, page);
         expect(tester.takeException(), isNull, reason: '$page');
         expect(
-          find.bySemanticsLabel(HelpRules.of(page).title),
+          find.bySemanticsLabel(HelpPicture.labelOf(page)),
           findsOneWidget,
           reason: '$page',
         );
@@ -96,11 +98,53 @@ void main() {
     expect(find.text('선 안 = 준비 완료'), findsOneWidget);
   });
 
-  testWidgets('squat setup has no guide line', (tester) async {
+  testWidgets('squat setup: the standing guide, outside then inside', (
+    tester,
+  ) async {
     await show(tester, const TutorialPage(squat, TutorialStep.setup));
     expect(find.byType(PoseSilhouetteGuide), findsNothing);
-    expect(find.text('인식 완료'), findsOneWidget);
-    expect(find.text('상대를 기다리는 중…'), findsOneWidget);
+    expect(
+      tester
+          .widgetList<StandingSilhouetteGuide>(
+            find.byType(StandingSilhouetteGuide),
+          )
+          .map((guide) => guide.ready),
+      [false, true],
+    );
+    expect(find.byType(TutorialSetupCameras), findsOneWidget);
+  });
+
+  testWidgets('page 1 shows a person doing the exercise in front of the '
+      'phone on the wall, as a silhouette', (tester) async {
+    for (final exercise in ExerciseType.values) {
+      await show(tester, TutorialPage(exercise, TutorialStep.intro));
+      final scene = tester.widget<TutorialWallScene>(
+        find.byType(TutorialWallScene),
+      );
+      expect(scene.squat, exercise == squat);
+      expect(find.byType(TutorialSidePerson), findsOneWidget);
+      expect(find.byType(TutorialRepBot), findsNothing);
+    }
+  });
+
+  test('pages 1 and 2 are named as the design names their pictures', () {
+    expect(
+      HelpPicture.labelOf(const TutorialPage(pushUp, TutorialStep.intro)),
+      '벽에 기대어 세운 폰 앞에서 푸시업을 하는 그림',
+    );
+    expect(
+      HelpPicture.labelOf(const TutorialPage(squat, TutorialStep.intro)),
+      '벽에 기대어 세운 폰 앞에서 두 손을 모으고 스쿼트를 하는 그림',
+    );
+    expect(
+      HelpPicture.labelOf(const TutorialPage(pushUp, TutorialStep.setup)),
+      '왼쪽은 몸이 선 밖이라 흰 선, 오른쪽은 몸이 선 안에 들어와 초록 선이 된 카메라 화면',
+    );
+    expect(
+      HelpPicture.labelOf(const TutorialPage(squat, TutorialStep.setup)),
+      '왼쪽은 몸이 선 밖이라 흰 선, 오른쪽은 두 손을 가슴 앞에 모으고 선 안에 '
+      '들어와 초록 선이 된 카메라 화면',
+    );
   });
 
   testWidgets('the battle pages use the stage\'s characters', (tester) async {

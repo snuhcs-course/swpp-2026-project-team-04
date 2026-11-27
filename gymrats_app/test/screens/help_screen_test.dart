@@ -486,6 +486,12 @@ void main() {
   group('튜토리얼 텔레메트리 (P17)', () {
     Future<Telemetry> showWith(WidgetTester tester, Widget home) async {
       final telemetry = Telemetry();
+      // Held still, as in [show], so pumpAndSettle returns.
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
       tester.view.physicalSize = const Size(412, 915);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
