@@ -299,6 +299,29 @@ void main() {
     expect(tester.getBottomLeft(find.text('선수50')).dy, lessThan(mine));
   });
 
+  testWidgets('pulling past the end does not stretch the rows', (tester) async {
+    final many = week(RankingScope.global, [
+      for (var i = 1; i <= 50; i++) entry(i, '선수$i', points: 1000 - i),
+    ]);
+    await open(
+      tester,
+      InMemoryRankingsRepository(
+        rankings: {(RankingScope.global, ExerciseType.pushUp): many},
+      ),
+    );
+    final row = find.text('선수3');
+
+    // Pull down at the top, held, as a finger past the end would.
+    final gesture = await tester.startGesture(tester.getCenter(row));
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
+
+    expect(find.byType(StretchingOverscrollIndicator), findsNothing);
+    expect(find.byType(GlowingOverscrollIndicator), findsNothing);
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('a short list keeps its own height', (tester) async {
     await open(
       tester,

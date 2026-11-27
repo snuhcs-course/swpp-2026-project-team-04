@@ -183,7 +183,8 @@ class _ExerciseTabs extends StatelessWidget {
 }
 
 /// Rows of a ranking on one card; they scroll inside it when the card is
-/// given less height than they need.
+/// given less height than they need. Pulling past either end stops there:
+/// Android's stretch would draw the rows taller.
 class _Board extends StatelessWidget {
   const _Board({required this.entries});
 
@@ -193,12 +194,15 @@ class _Board extends StatelessWidget {
   Widget build(BuildContext context) => Card(
     margin: EdgeInsets.zero,
     clipBehavior: Clip.antiAlias,
-    child: ListView.separated(
-      shrinkWrap: true,
-      padding: EdgeInsets.zero,
-      itemCount: entries.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (_, index) => _Row(entries[index]),
+    child: ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (_, index) => _Row(entries[index]),
+      ),
     ),
   );
 }
