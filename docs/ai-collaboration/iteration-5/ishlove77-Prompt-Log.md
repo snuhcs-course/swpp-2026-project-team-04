@@ -665,3 +665,17 @@ The messages after this summary are the most recent messages from before compact
 
 <!-- 5e0c5b9b 2026-11-26T18:45:59.406Z -->
 [Jinyoung Park, 11-27 03:45] ">"
+
+## 2026-11-27 · Jinyoung Park · feat/iter5-skill-matching
+<!-- 5e0c5b9b 2026-11-27T09:39:35.245Z -->
+[Jinyoung Park, 11-27 18:39] "확인해봐"
+
+<!-- 5e0c5b9b 2026-11-27T09:40:32.914Z -->
+[Jinyoung Park, 11-27 18:40] "<pasted_content id=\"ffc5\">
+진영님, #102의 71fcdc3 독립 리뷰를 마쳤어요. CI 7개는 모두 통과했고, 10초 대기 후 서버가 가상 상대를 배정하고 닉네임만 표시하는 흐름도 확인했어요. 수정할 P2가 두 건 있어 머지는 보류했어요.
+1. KO 경기 시간 — 실제 9.5초에 끝난 7회짜리 KO가 처음에는 정상적으로 제외됐는데, 폰 리포트가 올라오자 10초로 처리돼 매칭에 21회로 반영됐어요. 서버 시간이 있으면 그 값을 우선하고, 없을 때만 폰 시간을 써 주세요. 리포트 업로드 전후 모두 제외되는 테스트도 부탁드려요. 독립 리뷰
+2. 최근 5경기 조회 — /internal/skills가 전체 경기 이력을 메모리에 올린 뒤 5개를 고르고 있어요. 짧거나 길이를 모르는 KO를 제외한 다음, 사용자·종목별로 유효한 최근 5경기만 가져오도록 수정해 주세요. GitHub Codex 스레드
+프로토콜 문서에는 accept_virtual, 내부 결과의 simulated 필드, 시작 전 취소는 텔레메트리로 상대 유형을 구분할 수 없다는 점까지 반영했어요. 두 건 수정 후 새 HEAD를 알려주시면 재리뷰와 CI를 확인하고 머지할게요.
+</pasted_content id=\"ffc5\">
+
+ 그리고 현재 codex도 확ㅇ니해봐"
