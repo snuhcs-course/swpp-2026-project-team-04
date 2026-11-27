@@ -225,45 +225,42 @@ void main() {
         expect(seat.fighters, hasLength(outcome == 'draw' ? 1 : 0));
       });
 
-      testWidgets(
-        '$outcome: the 운동일지 row chip reads "$row"; the report opened from '
-        'it shows only the end look, titled $title',
-        (tester) async {
-          final record = onlineBattleResult(
-            _finished(outcome),
-            playerName: '우현',
-          )!.record;
-          expect(record.outcome, switch (outcome) {
-            'draw' => MatchOutcome.draw,
-            'win' => MatchOutcome.win,
-            _ => MatchOutcome.lose,
-          });
-          expect(ArchiveMatchRow.chipLabel(record), row);
-          await _open(tester, Scaffold(body: ArchiveMatchRow(match: record)));
-          expect(find.text(row), findsOneWidget);
-          if (outcome == 'draw') {
-            expect(find.textContaining('패'), findsNothing);
-          }
+      testWidgets('$outcome: 운동일지 reads "$row"; the report opened from '
+          'it shows only the end look, titled $title', (tester) async {
+        final record = onlineBattleResult(
+          _finished(outcome),
+          playerName: '우현',
+        )!.record;
+        expect(record.outcome, switch (outcome) {
+          'draw' => MatchOutcome.draw,
+          'win' => MatchOutcome.win,
+          _ => MatchOutcome.lose,
+        });
+        expect(ArchiveMatchRow.chipLabel(record), row);
+        await _open(tester, Scaffold(body: ArchiveMatchRow(match: record)));
+        expect(find.text(row), findsOneWidget);
+        if (outcome == 'draw') {
+          expect(find.textContaining('패'), findsNothing);
+        }
 
-          await _open(tester, ResultScreen.record(record: record));
-          await tester.pumpAndSettle();
-          expect(_playing, findsNothing);
-          expect(find.text(title), findsWidgets);
-          expect(
-            tester.widget<VictorySeat>(find.byType(VictorySeat)).result,
-            scene,
-          );
-          final seat = _seatFrame(tester);
-          if (outcome == 'draw') {
-            expect(find.text('패배'), findsNothing);
-            expect(seat.figure, isNull);
-            expect(seat.fighters.single.characterId, 'bear');
-            expect(seat.fighters.single.pose, BattlePose.idle);
-          } else {
-            expect(seat.figure, isNotNull);
-          }
-        },
-      );
+        await _open(tester, ResultScreen.record(record: record));
+        await tester.pumpAndSettle();
+        expect(_playing, findsNothing);
+        expect(find.text(title), findsWidgets);
+        expect(
+          tester.widget<VictorySeat>(find.byType(VictorySeat)).result,
+          scene,
+        );
+        final seat = _seatFrame(tester);
+        if (outcome == 'draw') {
+          expect(find.text('패배'), findsNothing);
+          expect(seat.figure, isNull);
+          expect(seat.fighters.single.characterId, 'bear');
+          expect(seat.fighters.single.pose, BattlePose.idle);
+        } else {
+          expect(seat.figure, isNotNull);
+        }
+      });
     }
   });
 
