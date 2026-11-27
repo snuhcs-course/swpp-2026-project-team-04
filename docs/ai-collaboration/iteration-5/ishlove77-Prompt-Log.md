@@ -777,3 +777,10 @@ The messages after this summary are the most recent messages from before compact
 
 <!-- ad7bb226 2026-11-27T18:24:41.486Z -->
 [Jinyoung Park, 11-28 03:24] "다 고쳐"
+
+## 2026-11-28 · Jinyoung Park · feat/iter5-weekly-rankings
+<!-- ad7bb226 2026-11-27T18:38:47.703Z -->
+[Jinyoung Park, 11-28 03:38] "어캐됨?"
+
+<!-- ad7bb226 2026-11-27T18:39:17.850Z -->
+[Jinyoung Park, 11-28 03:39] "고쳐"

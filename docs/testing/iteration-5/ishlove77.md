@@ -5,6 +5,15 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `76fa05c`
+Code at commit `00cc5f6`.
+- **Finding (P2):** a read asked just before Monday 00:00 KST and answered after it kept last week, with no timer
+  left. The view model now remembers when it asked; if the week ended while the read was on, it reads once more. An
+  old week asked for after its end (the phone's clock ahead) is kept, so it never loops.
+- **Tests:** `a read that crosses the end of the week reads the new one` (fails without the fix), `an old week again
+  after that is kept, read only twice`.
+- **Results:** `flutter analyze` no issues; `flutter test` 5336 passed, 0 failed, 10 skipped. No server change.
+
 #### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `31dc5ce`
 Code at commit `cb4107b`.
 - **Finding (P2):** a kept ranking was shown for good when the screen stayed open past Monday 00:00 KST. The view
