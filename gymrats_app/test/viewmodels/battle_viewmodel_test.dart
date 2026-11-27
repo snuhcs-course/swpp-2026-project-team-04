@@ -282,7 +282,7 @@ void main() {
   });
 
   test("the form report keeps the battle's character when one is given "
-      '(A11), and none without', () async {
+      '(A11) and the account that played (A10), and none without', () async {
     final played = BattleViewModel(
       matchup: _matchup,
       counter: RepCounterViewModel(
@@ -302,12 +302,17 @@ void main() {
     );
     addTearDown(played.dispose);
     expect(vm.characterId, isNull);
+    expect(vm.accountId, isNull);
+    // The screen sets the signed-in account (A10).
+    played.accountId = 7;
     await played.start();
     await frame(60);
     await pumpEventQueue();
     final form = played.state.result!.form!;
     expect(form.characterId, 'bear');
+    expect(form.accountId, 7);
     expect(repository.savedReports.single!.characterId, 'bear');
+    expect((await reports.list()).single.accountId, 7);
   });
 
   test('a battle left early is not saved', () async {

@@ -1187,8 +1187,10 @@ void main() {
 
     testWidgets('a KO from the server plays the ring-out; the result keeps '
         'the time played, rounded up, and the report is sent with my '
-        'character', (tester) async {
-      await open(tester);
+        'character and kept for my account (A10)', (tester) async {
+      final auth = await _signedIn();
+      addTearDown(auth.dispose);
+      await open(tester, goals: MemoryGoalStore(), auth: auth);
       session.rules = battleRules;
       session.myScore = 120;
       session.opponentScore = 20;
@@ -1209,6 +1211,9 @@ void main() {
       expect(result.form!.characterId, 'bear');
       expect(repository.savedFeedback.single.$2.characterId, 'bear');
       expect((await reports.list()).single.characterId, 'bear');
+      // Whose battle it was, for the comparisons on a shared phone (A10).
+      expect(result.form!.accountId, auth.account!.id);
+      expect((await reports.list()).single.accountId, auth.account!.id);
       await tester.pumpWidget(const SizedBox());
     });
 

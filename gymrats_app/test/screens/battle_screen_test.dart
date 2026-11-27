@@ -1629,6 +1629,18 @@ void main() {
       await close(tester);
     });
 
+    testWidgets("the battle's report is kept for the signed-in account; "
+        'none without one (A10)', (tester) async {
+      final auth = await _signedIn();
+      addTearDown(auth.dispose);
+      await open(tester, goals: MemoryGoalStore(), auth: auth);
+      expect(viewModel.accountId, 1);
+      await close(tester);
+      await open(tester, goals: MemoryGoalStore());
+      expect(viewModel.accountId, isNull);
+      await close(tester);
+    });
+
     testWidgets('without a signed-in account nothing is read', (tester) async {
       final store = _CountingGoalStore()
         ..goals[(1, ExerciseType.pushUp)] = _goal(GoalKind.reps, 2);

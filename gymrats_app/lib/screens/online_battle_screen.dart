@@ -329,6 +329,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
         headPose: _counter.headPose,
         // Mine as sent, so 기록보관소 shows it later.
         characterId: session.character,
+        // Whose battle it was, for the comparisons on a shared phone (A10).
+        accountId: Provider.of<AuthViewModel?>(
+          context,
+          listen: false,
+        )?.account?.id,
       );
       _formReport = report;
       unawaited(_saveReport(report));

@@ -308,6 +308,7 @@ class FormReport {
     this.handsPose,
     this.headPose,
     this.characterId,
+    this.accountId,
   });
 
   final DateTime endedAt;
@@ -340,6 +341,11 @@ class FormReport {
   /// played then; null in a report saved before it was kept.
   final String? characterId;
 
+  /// The signed-in account that played the battle (A10), so a phone that
+  /// several accounts use compares each one only with its own; null in a
+  /// report saved before it was kept.
+  final int? accountId;
+
   /// File name and identity: the end time is unique per battle.
   String get id => endedAt.millisecondsSinceEpoch.toString();
 
@@ -360,6 +366,7 @@ class FormReport {
     'handsPose': handsPose?.toJson(),
     'headPose': headPose?.toJson(),
     'characterId': ?characterId,
+    'accountId': ?accountId,
   };
 
   factory FormReport.fromJson(Map<String, Object?> json) => FormReport(
@@ -389,6 +396,10 @@ class FormReport {
     headPose: _pose(json['headPose']),
     characterId: switch (json['characterId']) {
       final String id => id,
+      _ => null,
+    },
+    accountId: switch (json['accountId']) {
+      final int id => id,
       _ => null,
     },
   );

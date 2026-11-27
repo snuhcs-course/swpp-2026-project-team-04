@@ -312,6 +312,10 @@ class BattleViewModel extends ChangeNotifier {
   /// keeps none.
   final String? characterId;
 
+  /// The signed-in account, kept in the battle's form report (A10); the
+  /// screen sets it from the app's sign-in. Null keeps none.
+  int? accountId;
+
   /// The user's camera, reps, and round clock. The screen shows its preview
   /// and landmarks directly.
   ///
@@ -814,6 +818,7 @@ class BattleViewModel extends ChangeNotifier {
         handsPose: counter.handsPose,
         headPose: counter.headPose,
         characterId: characterId,
+        accountId: accountId,
       ),
     );
     _setState(
