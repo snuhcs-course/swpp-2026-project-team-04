@@ -63,6 +63,22 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
   the nickname without a label, and "no difference from a real user" (the user's decisions, PM approvals relayed);
   the scope exceptions (PM).
 
+### P11 `feat/iter5-weekly-rankings` (team plan #13, weekly global and friends rankings, 2026-11-27 ~ 11-28)
+- Server: `server/matches/rankings.py` (whole file: KST week bounds, points, the tally over main online battles,
+  global top 50 with my row, friends scope, shared ranks), the route, `OnlineBattle.kind` with migration `0004`,
+  `kind` in `OnlineResultSerializer` and `ResultSaveView`, `kind` in the battle server's result body
+  (`server/lib/battle_server.dart`), `server/tests/test_weekly_rankings.py` and the kind cases in `test_results.py`
+  (`d861fbf`, `545d24f`): Claude Code.
+- App: `lib/services/rankings/rankings_repository.dart`, `lib/viewmodels/weekly_rankings_viewmodel.dart`,
+  `lib/screens/weekly_rankings_screen.dart`, the 주간 랭킹 row and podium icon in `lib/widgets/exercise_sheet.dart`,
+  the route in `lib/main.dart` and `play_screen.dart`, and their tests (`7f6d020`): Claude Code.
+- Manual check: a scratchpad entry point and a seed script that runs the real Django code on an in-memory database,
+  shown on the Android emulator: Claude Code.
+- Not used: the point values (draw +3), which battles count (simulated opponent counts for the real player only;
+  friend, offline AI and arcade battles do not), the week start, the entry point and its icon, and friends ranking as
+  the global points among friends (the user's decisions); the scope exception for `exercise_sheet.dart` and the
+  battle kind (PM approval relayed by the user).
+
 ## 2. Prompt History
 [Jinyoung Park, 11-23] "task 수행해. 근데 회원가입할때 구글이랑 카카오톡 둘다 지원하게 해주고, 회원가입시 … 이런식으로 키, 몸무게 추가 정보도 받게 해줘."
 [Jinyoung Park, 11-24] "카카오도, google가입도 닉네임은 필요함"
@@ -74,9 +90,24 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 [Jinyoung Park, 11-27] "유져의 실력 추정치는 최근 5개의 경긱 각가을 평균을 구하고 그것의 median으로 해서 평가를 좀 해줘. 그리고 그 user의 닉네임이 배틀시에 떠야함. …"
 [Jinyoung Park, 11-27] "일단 바로 실제 유저 있으면 매칭 시켜 그다음에 없을때 가상 유저만 실력 비슷한 유저로(즉, 실제 유저는 바로 바로 매칭시켜()"
 [Jinyoung Park, 11-27] "실제 유저 대기 시간 15초"
+[Jinyoung Park, 11-27] "너가 recommen한거로 가되 무면 그래도 +3은 줘야지"
+[Jinyoung Park, 11-27] "전체 랭킹에서 내리기 하면 하면 뭔가 이상하게 화면이 되는데 그거랑 그다음에 위에 KO 승 10, 승 5, 무 3, 패 1 이런거 싹다 위에 글 자체를 없애주고, 그리고 지금 승점 제대로 계산된거 맞나"
 Full list: `ishlove77-Prompt-Log.md`.
 
 ## 3. Problems and How They Were Caught
+- P11, demo data: the first emulator run used rankings typed by hand, and some totals could not come from the point
+  rules. When the user asked whether the points were right, Claude replaced them with answers computed by the real
+  server code (a seed script posting battles to `/internal/results` on an in-memory database) and checked each total
+  by hand (e.g. 10+5+3+1+0 = 19). Lesson: demo numbers must come from the code under test.
+- P11, scrolling: the user saw the whole rankings page scroll on the emulator and cut off the header; the widget
+  tests had only checked that rows render. The header, tabs and week now stay fixed and only the rows scroll,
+  covered by `only the rows scroll: the header, tabs and week stay`.
+- P11, tests: two first-draft server tests expected rank 4 after a tie and 400 for a bad scope; pytest showed the
+  code was right (competition ranks 1, 1, 3; this project answers 422), so the tests were fixed.
+- P11, friend battles: Claude found that friend battles could not be told apart in the database, so the rule
+  "friend battles do not count" could not be kept without a new `kind` field; it asked for a PM scope exception
+  before touching those files.
+
 - P10, design churn: the simulated opponent was first played on the phone as an AI battle, to keep the copied
   account's history clean. The PM review (`1a164d6`) found that this showed "RepBot 고수" in the result and sent
   다시 대결 to an expert bot; patching it took an AI label, a setup timer in the lobby and still left visible
@@ -172,6 +203,11 @@ Full list: `ishlove77-Prompt-Log.md`.
   and released by the app when the battle ends.
 
 ## 4. Revisions and Decisions
+- P11 points: Claude proposed KO win 10, win 5, loss 1, leaving 0 → the user added draw +3. Rules line on the
+  rankings screen: shown → removed (user, after the emulator check).
+- P11 friends tab: the user chose the same weekly global points ranked among friends, not points from friend
+  battles; friend battles never count.
+
 - P10 matchmaking: task.md asked for the smallest expected skill gap among real players with a P5 tolerance → the user
   chose real players at once (FIFO) and skill only for the simulated opponent after 15 s, estimated as the median of the
   latest 5 battles.
@@ -199,7 +235,7 @@ Full list: `ishlove77-Prompt-Log.md`.
   waiting rooms read it every 2 s, and an accepted invite not paired within 30 s ends the wait.
 
 ## 5. Manual Fixes
-None observed in P7, P9 or P10: every code change was made by Claude Code and checked by the user.
+None observed in P7, P9, P10 or P11: every code change was made by Claude Code and checked by the user.
 
 ## 6. Reflection
 TODO(Jinyoung Park): what worked and what to change, at the end of the iteration.

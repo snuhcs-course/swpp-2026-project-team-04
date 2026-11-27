@@ -5,6 +5,48 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (team plan #13): weekly global and friends rankings
+`GET /api/matches/rankings/weekly?scope=global|friends` sums this week's points (Monday 00:00 KST) from main online
+battles stored by the battle server: KO win 10, win 5, draw 3, loss 1, own forfeit or disconnect 0, void 0. Friend
+battles are told apart by the new `OnlineBattle.kind`. The online exercise sheet gets a 주간 랭킹 row that opens a
+rankings screen with 전체 and 친구 tabs. Commands from `gymrats_app/` and `server/` on macOS (Flutter 3.47.5 /
+Dart 3.13.4, Python 3.12) on code commit `5b00ab3` (P11 merged with `origin/main` `32d2106`).
+
+| Component | Frameworks | Target | Actual (P11 files) | Date | Command / Report |
+|---|---|---|---|---|---|
+| Service | flutter_test, http MockClient | 85% | rankings_repository 100% | 11/28 | `flutter test --coverage <P11 test files>` + `coverage_by_layer.py --files` |
+| ViewModel | flutter_test, fakes | 90% | weekly_rankings_viewmodel 100% | 11/28 | same run |
+| View | flutter_test (widget) | 75% | weekly_rankings_screen 100%, play_screen 100%, exercise_sheet 97.7% | 11/28 | same run |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total; matches/rankings.py 100% | 11/28 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 5320 passed, 0 failed, 10 skipped (the existing opt-in live
+  server and device checks). Server `pytest` 360 passed, 0 failed (18 in `test_weekly_rankings.py`, 3 new kind cases
+  in `test_results.py`).
+- **Coverage notes:** the full per-file run (`coverage_per_file.sh`, 248 files) was too slow on this Mac and was
+  stopped after 169 files; coverage was measured over the six P11 test files instead (122 tests). Layer totals for the
+  whole app are in the P10 entry below and P11 only adds files at or above the targets. The battle server's
+  `kind` field (`server/lib/battle_server.dart`) is outside lcov and covered by `a friend battle is stored as kind
+  friend` and the main-battle body check in `battle_result_store_test.dart`.
+- **Shortfalls:** none against the targets. `lib/main.dart` wiring of the route is not tested (excluded from
+  coverage; `main_test.dart` is outside P11's paths).
+- **Manual check:** Android emulator (Medium Phone) with a scratchpad entry point: `GymRatsApp` with
+  `ServerRankingsRepository` over a `MockClient` serving answers that this branch's Django code computed on an
+  in-memory database from 20 battles posted to `/internal/results`. Totals matched a hand count (10+5+3+1+0 = 19 and
+  five more players), the friend battle and last week's battle were left out, ties shared a rank, scrolling kept the
+  header fixed, the friends tab showed a 0-point friend, and back returned to the sheet. Not checked: production
+  servers, real battles.
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_weekly_rankings.py` | Server | points per outcome and end reason, week bounds, sums, leaving, this week only, resent result once, app-saved rows, simulated opponent, friend battle, void and unfinished, a battle I was not in, shared ranks, top 50 with my row apart, friends with 0 points, deleted friend, unknown scope 422, login 401 |
+| `server/tests/test_results.py` (updated) | Server | kind kept, no kind is main, unknown kind 422 |
+| `test/services/rankings/rankings_repository_test.dart` | Service | request path, scope and token, parsing, no row of mine, unreadable reply, error status, value equality, point constants, in-memory fake |
+| `test/viewmodels/weekly_rankings_viewmodel_test.dart` | ViewModel | starts on global, no double read, tab switch with cache, slow scope under its own tab, errors and retry, dispose guard |
+| `test/screens/weekly_rankings_screen_test.dart` | View | spinner, list with dates and no rules line, ties, my row fill, friends tab, my row under the list, empty week, only me in friends, error and retry, semantics, 50 rows at text scale 1.6 on 320×640, only rows scroll, short list height, KST week label |
+| `test/widgets/exercise_sheet_test.dart` (updated) | View | no title line, the line when given, rankings row only with a target, its place and podium, semantics, small phone |
+| `test/screens/play_screen_test.dart` (updated) | View | no "온라인 1v1 · 30초", the rankings row opens the rankings and back returns to the sheet |
+| `test/services/online/battle_result_store_test.dart` (updated) | Service (battle server) | `kind` main and friend in the stored body |
+
 #### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): the simulated player's character
 - **Change:** the simulated player no longer always shows the default character. It shows the character the copied
   account last joined with (kept in the battle server's memory), or else a selectable one at random, never RepBot.
