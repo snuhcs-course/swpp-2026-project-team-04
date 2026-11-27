@@ -1162,3 +1162,91 @@ These were made from the A5 session at the user's word; their full evidence is i
 ### Takeaway
 - Search for every reader of a field before planning to hide it: here the one reader outside the spec decided the
   design.
+
+## A11 `feat/iter5-friend-battle-ui` – 친구와의 대전 개편 (an Unexpected task approved by the PM 2026-11-27, due 12/1), 2026-11-27
+
+### a. Where AI was used
+- **The hand-off:** `.claude/design/a11-friend-battle-ui/SPEC.md` v2 (2026-11-27, with the PM's approval) and its design bundle (`design/Fr*.dc.html`, the canvas page "친구 대전 · 신청과 알림 시안", confirmed by the user on 11/27), local and not committed.
+  - TODO(Woohyun Song): who wrote SPEC v2 and the designs, and with which tool.
+- **Planning:** Claude Code (Claude Opus 5.5) did this before any code (Prompt Log, 11-27 17:31):
+  - It added the local A11 step and 14 exception lines for the P9 files (not committed), and created the branch from `origin/main` `819e4ca`.
+  - It read the spec, the four designs and the code, then reported the plan of SPEC 10 and waited.
+  - The reading found three things the spec had not foreseen:
+    - The friends page has no `HomeViewModel`, so it had no profile for `showExerciseSheet`.
+    - The lobby drops the wait view model when a wait ends, so the end's kind was lost.
+    - `GoalSticker.period` and `poseAt` are already public, so `exercise_sheet.dart` did not need a change.
+  - The plan asked three questions: the card's scale, `endedBy`, and the profile.
+- **The user's answers (11-27 17:51):**
+  - The picture's scale formula and a least card height of 132 (not the plan's fixed 1×).
+  - `endedBy` approved, and the profile as a route argument with a re-read after a battle.
+  - Four out-of-scope test files approved, and P11's space left out.
+- **The code and tests:** Claude Code wrote all of it, in seven commits:
+  - `c133c40`, the server: the optional `character` field (`friends_views.py` L43–46, L250–256), the model field and migration `0006`.
+  - `40025b5`, the data and view models: `BattleInvite.character` and `secondsLeftAt` (`friend_repository.dart` L67–80); `_LocalExpiry` (`friends_viewmodel.dart` L280); `FriendWaitEnd` (L317); the 1 s ticks; the profile (L146–185).
+  - `4112df9`, the theme: `FriendColors` and `FriendText` (`app_theme.dart` L2147 on).
+  - `92d0360`, the 게임 시작 card: `FriendBattleCard.pictureScale` (`friend_battle_card.dart` L58), `FriendWaitSticker`, and `ArcadeFriendPanel` (`arcade_play_card.dart` L328).
+  - `ab07d2e`, the friends page and the alert: `friend_invite_parts.dart`, `friends_screen.dart`.
+  - `9bea2be`, the waiting room: `friend_wait_view.dart`, `online_lobby_screen.dart` `_friendWait` (L381).
+  - `a5af8c1`, the token list.
+  - Each intermediate commit was analyzed in a throwaway worktree; all were clean.
+- **Review:** the `reviewer` subagent ran three times:
+  - Run 1: CHANGES_REQUESTED, with 2 Major and 2 Minor points (item d).
+  - Run 2: APPROVE, with 1 Minor (a test's name promised more than it checked; fixed).
+  - Run 3: APPROVE on the user's closing changes, with no findings.
+- **Not done by AI:**
+  - The PM approved the task and the P9 files.
+  - Woohyun Song made the six decisions:
+    - the scale formula;
+    - '친구 추가' as the label (SPEC 1's list had left it out by mistake);
+    - the device-clock rule;
+    - the reduced-motion test setup kept;
+    - P11's harness line left untouched;
+    - the two-phone check deferred to the team meeting on 11/28, after the merge.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-27] "명세 0절대로 로컬 하네스(ownership.json, ownership-exceptions.txt)에 A11 단계를 더하고, origin/main에서 브랜치를 만든 뒤, 10절의 계획 보고까지만 해줘. 코드는 내가 계획을 확인한 다음에 써."
+- [Woohyun Song, 11-27] "1. 카드가 152와 다를 때 (질문 1): 1배 고정 대신 배율 s 하나로 정해."
+- [Woohyun Song, 11-27] "2. 기기 시계가 빠를 때: 받은 신청이 아예 안 보이는 건 고치자."
+
+### c. What AI did well
+- **Problems found before any code:** the missing profile on the friends page, and the wait's end being lost in `_release()`. Both reached the plan as questions, so the user decided them before they became bugs.
+- **A layout that measures well:**
+  - The play page measures its children (`IntrinsicHeight`), and a `LayoutBuilder` cannot be measured.
+  - So the card reports its least height through a tight `ConstrainedBox` and takes the given height when laid out (`friend_battle_card.dart` L74).
+  - The scale is tested at 360×780, 320×640 and 412×915, with Do Hyeon loaded, and the name is not shrunk.
+- **One count everywhere:** `secondsLeftAt` is used by the alert, the friends page and the waiting room. A test runs the three on one invite and one clock.
+- **Words kept in step without touching the file:** the waiting room's setup words are checked word for word against the matching screen's card, so `matching_screen.dart` stayed unchanged.
+
+### d. Hallucinations / errors
+- **The device-clock approach:**
+  - The first code dropped an invite already at 0 by the phone's clock the moment it was read. On a phone over a minute ahead, no invite would ever show, and before A11 they did.
+  - The reviewer (run 1, Minor 3) flagged it, and Woohyun Song set the rule now in `_LocalExpiry`: hide at 0 only an invite first seen with time left.
+- **Styles changed in the views (run 1, Major):** three places changed a font family or a paint beyond color and weight, against Design Documentation 2.5.1. They are now named styles.
+- **The Design doc changes block was missing (run 1, Major):** it is now in the step's notes, with the wiki lines made stale by removing 규칙 보기 (Requirements L395–396 and L465; Design Documentation L137, L434 and L629).
+- **The code field's name (run 1, Minor):** the redesign had dropped its label for a screen reader; it is restored with existing words.
+- **The label read too literally:** Claude Code kept '친구 코드로 추가' because '친구 추가' was not in SPEC 1's word list. The user ruled that the list was wrong and the design right.
+- **Found only by the full run:** 4 failures in two test files outside A11's scope, where finders looked for the old one-line texts (`main_test.dart` L256, `home_screen_test.dart` L380). They were fixed after the exception lines were added.
+- **Slips in this session, each caught by a test or a check:**
+  - A test measured the `FractionallySizedBox` instead of its fill.
+  - Two `Paint` colors compared unequal although both were the same ink.
+  - `find.textContaining('1')` also matched '01 / PLAY'.
+  - Two `open()` calls in one test reused the first app's navigator.
+  - A script assumed LF in a file with CRLF (it wrote nothing).
+  - `TextField` has no `semanticsLabel` parameter.
+  - The first full run kept the old `useProfile` notification, which was later removed.
+
+### e. Prompt revisions
+- **The card's height:**
+  - Before (the plan): draw the picture at 1× and bottom-align it, with the sky above, so a taller card would not crop.
+  - After (11-27 17:51): the formula `s = min(h/152, (w−128)/190, 1.3)` and a least height of 132.
+  - Why it worked: one number fixes both narrow and tall phones, and the tests pin it at three sizes.
+- **The device clock:**
+  - Before (the code after run 1): an invite at 0 on arrival was over on this phone, and the trade-off was only recorded.
+  - After (11-27 20:12): only an invite first seen with time left can end by the local clock; one first seen at 0 shows 0:00 until the server's list drops it.
+  - Why it worked: the rule keeps the PM's "count only from `expires_at`" and removes the case where no invite ever appears.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Check how a screen is measured before choosing its layout widgets: the page's `IntrinsicHeight` decided how the card could fill the rest.

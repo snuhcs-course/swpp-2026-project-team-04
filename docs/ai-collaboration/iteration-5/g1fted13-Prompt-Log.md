@@ -811,3 +811,48 @@ PM 요청(11/27)으로 코치 마지막 대사를 바꾼다. 현우의 A10이 �
 4. 이 메시지를 프롬프트 기록에 넣고, 모든 커밋을 push한 뒤 PR에 \"@codex review\"를 한 번 단다(코드가 바뀌었으므로). 그 뒤로는 지적을 고칠 때 말고는 커밋하지 않는다. 지적 대응은 지난번 기준대로 한다. 범위 안의 실제 문제는 고치고 관련 테스트와 analyze만 돌린다. 드문 경우는 영어로 답하고 resolve한다. 범위 밖 파일이 필요하면 멈춘다. 고치는 것은 2회까지다. 30분 안에 반응이 없으면 보고한다.
 5. 현재 HEAD에 Codex의 👍나 \"Didn't find any major issues\"가 있고, 안 풀린 스레드가 0개이고, CI가 통과하면 보고한다. GitHub에서 상우나 현우를 멘션하지 않는다.
 </pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-friend-battle-ui
+<!-- 04ed7449 2026-11-27T08:31:47.019Z -->
+[Woohyun Song, 11-27 17:31] ".claude/design/a11-friend-battle-ui/ 에 A11 묶음을 넣었어. SPEC.md와 design/INDEX.md부터 읽고, .claude/design/INDEX.md에도 이 묶음을 한 줄로 추가해줘.
+PM(상우)이 11/27에 승인했어. 작업 ID는 Unexpected A11, 브랜치는 feat/iter5-friend-battle-ui, 마감은 12/1이야. P9 파일 수정도 승인받았어.
+명세 0절대로 로컬 하네스(ownership.json, ownership-exceptions.txt)에 A11 단계를 더하고, origin/main에서 브랜치를 만든 뒤, 10절의 계획 보고까지만 해줘. 코드는 내가 계획을 확인한 다음에 써."
+
+<!-- 04ed7449 2026-11-27T08:51:15.036Z -->
+[Woohyun Song, 11-27 17:51] "<pasted_content id=\"f1c7\">
+계획 좋아. 이 순서대로 구현 시작해줘. 질문 답과 추가 지시야.
+
+1. 카드가 152와 다를 때 (질문 1): 1배 고정 대신 배율 s 하나로 정해.
+   s = min(카드 높이 / 152, (카드 안쪽 폭 − 128) / 190, 1.3)
+   그림 칸 폭은 190 × s이고, 190×152 그림 상자를 s배로 그림 칸 아래 가운데에 붙여. 남는 위쪽은 하늘색 그대로 둬. 이름 칸은 나머지 폭이야(최소 128).
+   친구 칸 최소 높이는 92 대신 132로 해. 360×780에서는 s가 정확히 1이라 시안과 같아야 하고, 320폭에서는 그림만 줄고 이름은 줄지 않아야 해. 360×780, 320×640, 412×915에서 s와 그림 칸 폭을 확인하는 테스트를 넣어줘.
+2. endedBy (질문 2): 승인. declined, expired(서버 상태든 기기 시계든), other를 테스트로 확인하고, PR 본문의 friends_viewmodel 변경 설명과 progress.md에 이유를 적어.
+3. 종목 시트 프로필 (질문 3): 화면 이동 인자로 넘기는 방법 승인. 인자가 없을 때 쓰는 UserRepository.fetchProfile 경로를, 친구 화면에서 연 대결이 끝나고 돌아왔을 때도 한 번 불러서 최고 기록이 옛 값으로 남지 않게 해. 읽기가 실패하면 갖고 있던 프로필을 그대로 써.
+4. 범위 밖 테스트: test/theme/app_theme_test.dart(카드 이름 크기 26→30, 새 토큰 확인)와 test/design_tokens_test.dart(새 friend_*.dart를 검사 목록에 추가)는 선조치 후보고로 승인. 고치기 전에 ownership-exceptions.txt에 날짜·A11·사유 줄을 더하고, PR Exceptions 절에도 남겨.
+5. P11 주간 랭킹은 내 작업이 아니라 진영이형 작업이야. A11에서는 랭킹 바로가기 자리를 따로 비워 두지 말고 시안대로 친구 칸을 끝까지 늘려. 게임 시작 아래 빈자리가 없어진다는 점은 내가 진영이형에게 직접 알릴게. PR 본문 Notes에는 \"The play screen no longer has free space under the cards; P11's ranking entry needs its own place\" 한 줄만 남겨.
+6. 단계마다 flutter analyze와 관련 테스트를 돌리고, 서버 단계 끝나면 pytest 결과를 먼저 보여줘. PR 본문은 하네스 pull-request 스킬의 팀 형식 그대로 영어로 쓰고, 따로 체크리스트 절은 만들지 마.
+</pasted_content id=\"f1c7\">"
+
+<!-- 04ed7449 2026-11-27T11:12:32.249Z -->
+[Woohyun Song, 11-27 20:12] "<pasted_content id=\"f1c7\">
+확인했어. 이렇게 마무리하자.
+
+1. 친구 추가 묶음 이름: 시안대로 '친구 추가'로 바꿔. 명세 1절 새 글자 목록에서 빠진 건 명세 쪽 실수고, 원본 시안과 PM이 승인한 화면이 '친구 추가'야. progress.md의 결정 기록도 고쳐줘.
+2. 기기 시계가 빠를 때: 받은 신청이 아예 안 보이는 건 고치자.
+   - 남은 시간 숫자와 막대는 지금처럼 서버 expires_at으로만 그려.
+   - 로컬 시계로 0이 돼서 숨기거나 목록에서 빼는 건, 이 기기에서 처음 봤을 때 남은 시간이 0보다 컸던 신청에만 해.
+   - 처음 봤을 때부터 0인 신청(기기 시계가 60초 넘게 빠른 경우)은 0:00과 빈 막대로 두고, 서버 목록에서 빠질 때까지 알림과 친구 화면에 그대로 보여 줘. 서버는 만료된 신청을 목록에서 빼니까 길어야 다음 읽기(5초)까지야. 수락은 지금처럼 서버가 판단해.
+   - 알림 뷰모델과 친구 화면 뷰모델 둘 다 이 규칙이야. 각각 테스트를 더해줘: 정상 시계에서는 0에서 숨김, 빠른 시계에서는 처음부터 0이어도 보이고 다음 읽기에서 서버 목록에 없으면 사라짐.
+   - 기다리기 링은 지금대로 둬(0이어도 화면을 끝내지 않으니까).
+   - PR에는 이 내용을 결정으로 적어.
+3. reduced motion 테스트 설정은 그대로 좋아.
+4. main_test.dart, home_screen_test.dart 수정도 승인. Exceptions 절에 넣어줘.
+5. ownership.json의 P11 줄은 PM 하네스 값이니 고치지 마.
+6. 폰 확인 일정: 명세 11절의 폰 두 대 확인은 머지 전에 하지 않고, 머지 뒤 11/28(토) 팀 회의 때 해. progress.md 결정 기록, 테스트 노트, PR의 Manual check에 \"Two-phone check (SPEC 11) is deferred to the team meeting on Sat 11/28, after merge\"라고 적고, 그때 서버 반영(명세 13절 1~2)이 끝나 있으면 13절 3의 초대 동작 확인도 같이 한다고 적어.
+7. online_battle_integration_test.dart가 전체 실행 중에 한 번 실패하고 단독으로 세 번 통과한 건 테스트 노트에 적어 둬. CI에서 같은 테스트만 실패하면 다시 돌릴 거야.
+8. 위 수정 뒤 flutter analyze, 관련 테스트, reviewer를 다시 돌리고, 통과하면 커밋해. 그다음 테스트 노트와 AI 협업 노트를 써.
+9. push 직전에 한 번 멈추고 알려줘. 공개 레포에 올라갈 프롬프트 로그를 내가 훑어본 뒤에 push하라고 할게.
+10. push 뒤에 PR을 올려. PR 본문은 하네스 pull-request 스킬의 팀 형식 그대로 영어로 쓰고, 따로 체크리스트 절은 만들지 마. Exceptions 절에는 P9 파일과 선조치 후보고한 테스트 파일들을 넣고, Notes에는 머지 뒤 반영 순서(명세 13절)와 \"The play screen no longer has free space under the cards; P11's ranking entry needs its own place\" 한 줄을 넣어. PR을 올리면 링크를 알려줘.
+</pasted_content id=\"f1c7\">
+
+그리고 응답은 한국어로 해"

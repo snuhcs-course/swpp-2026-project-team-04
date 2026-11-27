@@ -2208,3 +2208,115 @@ and `MemoryGoalStore`.
 - 5.5 Overflow → coach_screen_test 'every page fits <size> without an overflow; every choice is above the dialog box
   and can be tapped' (4 sizes) and 'every line of a squat and a push-up battle, for every character', 'the check of
   the last goal (A11 spec 6), reached and missed, of each kind, for every character' (unchanged)
+
+#### 2026-11-27 · code at commits `c133c40` to `a5af8c1` (seven commits) · step A11 `feat/iter5-friend-battle-ui` (친구와의 대전 개편, an Unexpected task approved by the PM 2026-11-27, due 12/1)
+A11 redraws the friend battle flow in the style of the two cards above it on 게임 시작 (SPEC v2, `.claude/design/a11-friend-battle-ui/`, not committed). The features stay the same: friend requests, invites, accept and decline, the minute, pairing. The changes:
+- **게임 시작:** 친구와의 대전 is a card down to the screen's bottom:
+  - 그루 against 곰탱이 on a sky panel, scaled by `s = min(h/152, (w−128)/190, 1.3)` (the user's decision), so the name keeps at least 128.
+  - The two-line name, an arrow chip, and an orange "수락 대기!" sticker while a request or an invite waits.
+  - 규칙 보기 is gone, and the two card names are Do Hyeon 30, centered.
+- **The friends page:**
+  - The groups come in a new order: invites (each a card with the inviter's character, the time left and its bar), requests to me, friends (a lime 대결), the requests I sent, then 친구 추가 (my code, the code field).
+  - 대결 opens the online battle's exercise sheet, with the profile 게임 시작 passed.
+- **The alert:** it shows the inviter's character, "{nickname}님이" over the exercise line, the time left, and a bar along the bottom.
+- **The waiting room:** a friend battle no longer uses the radar. It waits on MATCH FOUND's board, with the minute on a ring, in five states (CHALLENGE, MATCHING, DECLINED, TIME OUT, CLOSED).
+- **Time left:** all three places count from the server's `expires_at` (`BattleInvite.secondsLeftAt`). An invite hides at 0 by the phone's clock only if it had time left when this phone first saw it (the user's decision).
+- **The server:** the invite takes an optional `character` (`invalid_character` for a malformed one) and returns it in every reply; migration `0006`. An older app's body still works.
+
+The branch starts at `origin/main` `819e4ca`. I ran these on Windows, without client coverage (this PC's rule):
+
+```sh
+cd gymrats_app
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/viewmodels/friends_viewmodel_test.dart test/services/friends/friend_repository_test.dart test/screens/friends_screen_test.dart test/screens/online_lobby_screen_test.dart test/screens/play_screen_test.dart test/widgets/friend_battle_card_test.dart test/widgets/friend_invite_parts_test.dart test/widgets/friend_wait_view_test.dart test/widgets/arcade_play_card_test.dart test/theme/app_theme_test.dart test/design_tokens_test.dart test/main_test.dart test/screens/home_screen_test.dart
+cd ../server
+.venv/Scripts/python -m pytest -q --cov=accounts --cov=matches --cov=gymrats
+```
+
+No server, camera or device is needed:
+- The client tests use `InMemoryFriendRepository` with a test clock, `FakeUserRepository`, an `ApiClient` on `MockClient`, and fake battle sessions.
+- The server tests use an in-memory SQLite database.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/27 | CI comment "Tests and coverage (GitHub Actions)" on the A11 PR |
+| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/27 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment | 11/27 | same CI comment |
+| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/27 | same CI comment |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% (`friends_views.py` 100%, `0006` 100%) | 11/27 | `.venv/Scripts/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests on `a5af8c1`:**
+  - `flutter analyze` found no issues.
+  - The full `flutter test` passed 5205, failed 0 and skipped 10. The 10 are the ones already skipped on `main`: a live server smoke test and 9 known push-up judge errors.
+  - Each of the six commits before it also passed `flutter analyze` on its own, in a throwaway worktree.
+- **The step's files:**
+  - friends_viewmodel 84, friend_repository 21, app_theme 44, play_screen 31, friend_battle_card 13, arcade_play_card 4, friends_screen 64, friend_invite_parts 9, online_lobby_screen 47, friend_wait_view 14, design_tokens, main_test and home_screen_test.
+  - The 13 files in the second command passed 517.
+  - Server: `test_friends.py` 105 (88 before, 17 new); the whole server suite 296 (279 on `819e4ca`). `makemigrations --check` found nothing missing.
+- **Earlier full runs on the working tree:**
+  - Run 1: 5194 passed, 10 skipped, 4 failed. The 4 were finders for the old one-line texts in two files outside A11's scope; they were fixed (below).
+  - Run 2: 5198 passed, 10 skipped, 1 failed: `test/services/online/online_battle_integration_test.dart` 'a knee push-up earns zero on both phones even in fever' (L1314, expected 1, got 0).
+    - That test runs a real local battle server under the full run's load. A11 changes nothing in `lib/services/online`, `test/services/online`, `server/lib` or `server/bin`.
+    - The file passed alone 3 times out of 3 (74/74), and the run on `a5af8c1` passed it.
+    - If CI fails on that test only, it is run again (the user's decision).
+- **Review:** the `reviewer` subagent ran three times.
+  - Run 1: CHANGES_REQUESTED, with 2 Major points (the design-doc notes; three styles changed beyond color and weight in the views) and 2 Minor points (an invite at 0 dropped on arrival; the code field's name for a screen reader). All four were handled.
+  - Run 2: APPROVE, with 1 Minor point (a test's name); fixed.
+  - Run 3: APPROVE on the user's closing changes (the label, the device-clock rule).
+- **Changed existing tests (SPEC 9.11):**
+  - `play_screen_test.dart`:
+    - The two description lines and 규칙 보기 (present → absent).
+    - '규칙 보기 opens the rules' → 'no 규칙 보기 link: nothing here opens the rules (A11 spec 3)'.
+    - The overflow tests' target and the semantics label.
+    - The dot tests became sticker tests.
+    - The online card's GYM마우스 test is scoped to that card.
+    - The friend-card group got a reduced-motion setUp.
+  - `friends_screen_test.dart`:
+    - A file-level reduced-motion setUp: the cards' and the alert's characters idle without end, and a page cannot settle under a running ticker. The busyRoutes and accept test bodies are unchanged.
+    - The old sheet title → `ExerciseSheet` and its subtitle; the old invite line → the card; the alert's one-line sentence → its two lines (3 tests).
+    - The old field label → the '친구 추가' group label.
+    - `open()` now provides a `UserRepository`.
+  - `online_lobby_screen_test.dart`: the two one-line titles → two lines, the DECLINED title, and 매칭 취소 → 신청 취소.
+  - `friends_viewmodel_test.dart`: the fake's `invite` signature.
+- **Out-of-step files:**
+  - `test/theme/app_theme_test.dart` (L628 26 → 30, plus the new tokens) and `test/design_tokens_test.dart` (the three new widget files): approved by the user before the edit.
+  - `test/main_test.dart` L256 and `test/screens/home_screen_test.dart` L380 (finders only): act first and report after (SPEC 0), then approved by the user.
+- **Coverage:** from the PR's CI comment once it runs (not measured on this PC).
+  - TODO(Woohyun Song): the layer numbers, the CI run, and the A11 files' lines from the run's lcov parts.
+- **Phone check:** Two-phone check (SPEC 11) is deferred to the team meeting on Sat 11/28, after merge.
+  - If the server deploy (SPEC 13 steps 1–2) is done by then, the invite check of SPEC 13 step 3 is done at the same time.
+  - Until then, the server's character field is checked only by the local pytest, and the old server's reply (no field, GYM마우스) only by the repository tests.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Server | `server/tests/test_friends.py` (updated) | an invite with a character, without one (an older app's body, still accepted), a null one, the longest one, ten malformed ones (400 `invalid_character`, no invite), the shape check before the friendship check, the field in every invite reply |
+| Service | `test/services/friends/friend_repository_test.dart` (updated) | the invite sends my character only in the avatar id shape; an older server's reply without one, a null and a number read as ""; the in-memory repository keeps it; `secondsLeftAt` rounds up and cuts to 0..60; `withStatus` keeps the character |
+| ViewModel | `test/viewmodels/friends_viewmodel_test.dart` (updated) | the friends page counts from `expires_at`, ticks only while invites are listed, drops at 0 an invite first seen with time left (a normal clock and one 10 s ahead), keeps one first seen at 0 (a clock over a minute ahead) until the server's list drops it; the profile given, read, read again, kept on a failed read, one read at a time; the wait sends my character, counts 60 until the invite is made, `endedBy` declined / expired (server and device clock) / other; the alert counts down, goes at 0 and is not offered again, shows one first seen at 0 until the server's list drops it, lets the server judge an accept at 0, does not tick while hidden; the three count the same seconds from one `expires_at` |
+| Design | `test/theme/app_theme_test.dart` (updated) | `arcadeCardName` 30; `FriendColors`; every `FriendText` style's family, size and weight, the number-font styles and the "?"'s stroke |
+| Design | `test/design_tokens_test.dart` (updated) | the three new widget files use only tokens |
+| View | `test/widgets/arcade_play_card_test.dart` (updated) | the two names Do Hyeon 30, centered in the name room |
+| View | `test/widgets/friend_battle_card_test.dart` (new) | the scale formula; the least height when measured; the panel width and the drawing at the panel's bottom center at four sizes; the name and the arrow chip's place; one button (the sticker too); the sticker only while waiting, its place and look at any text size; its shake as the mission sticker's and its rest with reduced motion; what a screen reader hears |
+| View | `test/widgets/friend_invite_parts_test.dart` (new) | `friendClock`; the character drawn or GYM마우스; the alert's sentence; the bar's share; 거절 and 수락 (1 : 1.6, off while busy); the figure on its disc; a long nickname; the error card's frame |
+| View | `test/widgets/friend_wait_view_test.dart` (new) | each state's band and title; the setup words the same as the matching screen's; waiting (✕ pill, ring, seconds, "?", setup card), the "?"'s look, the circle; joining (‹, VS, the inviter mirrored); declined (gray, ✕, faded "?", both buttons); expired (0, empty ring); closed without retry; seconds cut to 60; idle motion; no overflow in every state at three sizes |
+| View | `test/screens/play_screen_test.dart` (updated) | no 규칙 보기; the card 12 under the two cards down to the bottom margin (360×780, 412×915); 그루 against 곰탱이 with VS, the name, a sky arrow; the sticker only while something waits, with its screen-reader sentence; the profile as the route argument; the panel 190, 150, 242 wide at 360×780, 320×640, 412×915 with the name unshrunk; overflow at 360×780 ×1.3 and 320×640 |
+| View | `test/screens/friends_screen_test.dart` (updated) | the five groups in order; the invite card; the countdown and the card leaving at 0; 0:00 and an empty bar with a clock over a minute ahead; GYM마우스 for no or an unknown character; both buttons off while answering; the friend row; my code; the sheet's profile (given, read, read again after a battle, kept on a failed read, none: a notice); the code field's screen-reader name; the idle motion; overflow; the alert's content, frame, countdown, leaving at 0, 0:00 with a fast clock until the server's list drops it, screen reader, overflow |
+| View | `test/screens/online_lobby_screen_test.dart` (updated) | inviting (CHALLENGE, the title, me and "?", the ring at 60, the setup card, my character sent); the number and the ring following `expires_at`; accepted (MATCHING, VS, the inviter's character); declined; TIME OUT; CLOSED with the end's words; 친구 목록으로; back while waiting still asks; overflow; the main match keeps the radar |
+| App flow | `test/main_test.dart`, `test/screens/home_screen_test.dart` (updated) | the finders for the alert's second line and the card's two-line name only |
+
+### Acceptance criteria → tests (SPEC 9; the step is not in the local task.md)
+- 9.1 게임 시작 → play_screen_test 'shows the two cards and the friend card, no AI 1v1, no again row and no rules link (P16 spec 3, 13.1; A11 spec 3)', 'at 360 x 780 the card starts 12 under the two cards and runs to the page's bottom margin (A11 spec 3)', 'its picture: 그루 against 곰탱이 on discs with VS, the two-line name and a sky arrow (A11 spec 3)'; arcade_play_card_test 'the names are Do Hyeon 30, centered in the name room (A11 spec 3)'
+- The scale (the user's answer 1) → friend_battle_card_test 'min(height / 152, (width − 128) / 190, 1.3)'; play_screen_test 'at 320 x 640 the panel is 150.0 wide, the name keeps its room and its size' (and the 360 × 780, 412 × 915 cases)
+- 9.2 The sticker → play_screen_test 'a sticker for a friend request, gone after coming back', 'a sticker for a battle invite'; friend_battle_card_test 'the sticker shakes as the 미션 sticker does, every 2.5 s', 'it holds still with reduced motion, at its 6° rest'
+- 9.3 The friends page → friends_screen_test 'five groups in order: invites, requests to me, friends, requests I sent, then my code and the code field (spec 4)', 'an invite card: the inviter's character on the pink panel, the nickname, 1:00, the exercise pill, a full bar and both buttons (spec 4)', 'the time left counts down from expires_at every second, and at 0 the card leaves the page (spec 4, 9.3)'
+- 9.4 The exercise sheet → friends_screen_test '대결 asks for the exercise on the online battle's sheet, then opens the waiting room (A11 spec 1)'
+- 9.5 The waiting room → online_lobby_screen_test 'inviting: CHALLENGE, 신청 취소, the two-line title, me on lime, "?" for the friend and the minute on the ring (spec 5)', 'accepted: MATCHING, 나가기, VS, and the inviter's character facing me instead of "?" (spec 5)', 'declined: …', 'a minute without an answer: TIME OUT, 0 and an empty ring (spec 5)', 'ended otherwise: CLOSED with the end's own words; the invited side has only 친구 목록으로 (spec 5)'; `endedBy` → friends_viewmodel_test 'declined → declined', 'the server says expired → expired', 'the device clock says the minute is over (server not reached) → expired, though the invite still reads pending', 'cancelled, not paired in time, or not sent → other'
+- 9.6 The main match → online_lobby_screen_test 'the main match keeps the radar, not the friend waiting room (A11 spec 9.6)'
+- 9.7 The alert → friends_screen_test 'the inviter's character, "{nickname}님이", the exercise line, the time left, its bar and both buttons (spec 6)', 'it counts down each second, and at 0 it goes and the invite is not offered again (spec 6, 9.7)'; the busyRoutes and accept tests unchanged
+- 9.8 The character and old apps → test_friends.py 'test_an_invite_without_a_character_is_kept_empty_and_still_accepted', 'test_a_malformed_character_is_refused'; friend_repository_test 'reads the inviter's character; an older server's reply without one reads as ""'; friends_screen_test 'no character, or one that cannot be picked: GYM마우스 (spec 7)'
+- 9.9 One count → friends_viewmodel_test 'the alert, the friends page and the waiting room count the same seconds from one expires_at (A11 spec 9.9)'; online_lobby_screen_test 'the number and the ring follow the invite's expires_at every second (spec 5, 9.9)'
+- The device-clock rule (the user's decision) → friends_viewmodel_test 'a normal clock: the card leaves when the count reaches 0 (user, 2026-11-27)', 'a clock over a minute ahead: an invite at 0 from the first sight stays listed at 0 while the server lists it, and goes with the next read that does not (user, 2026-11-27)', and the alert's two; friends_screen_test 'a phone clock over a minute ahead: …' (page and alert)
+- 9.10 Overflow → play_screen_test 'fits 360 x 780 at 1.3 times the text without overflow, scrolling if it must', 'fits a small phone, 320 x 640 without overflow, scrolling if it must'; friends_screen_test 'nothing overflows at …', 'it fits …'; online_lobby_screen_test 'it fits …'; friend_wait_view_test 'no overflow at …'
+- 9.11 Old tests → the list above; the full `flutter test`
