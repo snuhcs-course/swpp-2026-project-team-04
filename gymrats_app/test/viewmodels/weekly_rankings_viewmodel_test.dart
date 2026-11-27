@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
@@ -43,7 +44,11 @@ void main() {
 
   setUp(() {
     repo = ScriptedRankings();
-    vm = WeeklyRankingsViewModel(repository: repo);
+    // Wednesday of the week of week(), whatever today is.
+    vm = WeeklyRankingsViewModel(
+      repository: repo,
+      now: () => DateTime.utc(2026, 11, 25),
+    );
     changes = 0;
     vm.addListener(() => changes++);
   });
@@ -206,5 +211,158 @@ void main() {
     repo.pending.single.complete(week(RankingScope.global));
     await loading;
     expect(changes, 1);
+  });
+
+  group('when the week ends', () {
+    // The week of week(): it ends on Monday 11.30 00:00 KST.
+    final weekEnd = DateTime.utc(2026, 11, 29, 15);
+    late DateTime now;
+
+    setUp(() {
+      now = weekEnd.subtract(const Duration(hours: 1));
+      vm = WeeklyRankingsViewModel(repository: repo, now: () => now);
+    });
+
+    Future<void> answer(int index, RankingScope scope) async {
+      repo.pending[index].complete(week(scope));
+      await pumpEventQueue();
+    }
+
+    test('coming back after it reads the shown ranking again', () async {
+      unawaited(vm.load());
+      await answer(0, RankingScope.global);
+
+      await vm.refreshIfWeekEnded();
+      expect(repo.calls, hasLength(1));
+
+      now = weekEnd;
+      unawaited(vm.refreshIfWeekEnded());
+      expect(vm.ranking, isNull);
+      expect(vm.loading, isTrue);
+      expect(repo.calls, hasLength(2));
+    });
+
+    test('a tab kept from the old week is read again when chosen', () async {
+      unawaited(vm.load());
+      await answer(0, RankingScope.global);
+      unawaited(vm.select(RankingScope.friends));
+      await answer(1, RankingScope.friends);
+
+      now = weekEnd.add(const Duration(minutes: 1));
+      unawaited(vm.select(RankingScope.global));
+
+      expect(vm.ranking, isNull);
+      expect(repo.calls, [
+        RankingScope.global,
+        RankingScope.friends,
+        RankingScope.global,
+      ]);
+    });
+
+    test('the open screen reads again at the end of the week', () {
+      fakeAsync((async) {
+        vm = WeeklyRankingsViewModel(
+          repository: repo,
+          now: () =>
+              weekEnd.subtract(const Duration(hours: 1)).add(async.elapsed),
+        );
+        unawaited(vm.load());
+        repo.pending.single.complete(week(RankingScope.global));
+        async.flushMicrotasks();
+        expect(repo.calls, hasLength(1));
+
+        async.elapse(const Duration(minutes: 59));
+        expect(repo.calls, hasLength(1));
+        async.elapse(const Duration(minutes: 1));
+        expect(repo.calls, hasLength(2));
+        vm.dispose();
+      });
+    });
+
+    test('a week already over by the phone\'s clock is not read on and on', () {
+      fakeAsync((async) {
+        vm = WeeklyRankingsViewModel(
+          repository: repo,
+          now: () => weekEnd.add(const Duration(minutes: 5)),
+        );
+        unawaited(vm.load());
+        repo.pending.single.complete(week(RankingScope.global));
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(hours: 1));
+        expect(repo.calls, hasLength(1));
+        expect(vm.ranking, isNotNull);
+        vm.dispose();
+      });
+    });
+
+    test('a timer that fires early by the clock waits again', () {
+      fakeAsync((async) {
+        var lag = Duration.zero;
+        vm = WeeklyRankingsViewModel(
+          repository: repo,
+          now: () => weekEnd
+              .subtract(const Duration(hours: 1))
+              .add(async.elapsed)
+              .subtract(lag),
+        );
+        unawaited(vm.load());
+        repo.pending.single.complete(week(RankingScope.global));
+        async.flushMicrotasks();
+
+        // The clock was set back a minute during the week.
+        lag = const Duration(minutes: 1);
+        async.elapse(const Duration(hours: 1));
+        expect(repo.calls, hasLength(1));
+        async.elapse(const Duration(minutes: 1));
+        expect(repo.calls, hasLength(2));
+        vm.dispose();
+      });
+    });
+
+    test('a kept tab shown again still reads at the end of the week', () {
+      fakeAsync((async) {
+        vm = WeeklyRankingsViewModel(
+          repository: repo,
+          now: () =>
+              weekEnd.subtract(const Duration(hours: 1)).add(async.elapsed),
+        );
+        unawaited(vm.load());
+        repo.pending.single.complete(week(RankingScope.global));
+        async.flushMicrotasks();
+        // Friends fail, which leaves no ranking shown, then back to global.
+        unawaited(vm.select(RankingScope.friends));
+        repo.pending.last.completeError(StateError('down'));
+        async.flushMicrotasks();
+        unawaited(vm.select(RankingScope.global));
+        async.flushMicrotasks();
+        expect(repo.calls, hasLength(2));
+
+        async.elapse(const Duration(hours: 1));
+        expect(repo.calls, [
+          RankingScope.global,
+          RankingScope.friends,
+          RankingScope.global,
+        ]);
+        vm.dispose();
+      });
+    });
+
+    test('dispose stops the end-of-week read', () {
+      fakeAsync((async) {
+        vm = WeeklyRankingsViewModel(
+          repository: repo,
+          now: () =>
+              weekEnd.subtract(const Duration(hours: 1)).add(async.elapsed),
+        );
+        unawaited(vm.load());
+        repo.pending.single.complete(week(RankingScope.global));
+        async.flushMicrotasks();
+        vm.dispose();
+
+        async.elapse(const Duration(hours: 2));
+        expect(repo.calls, hasLength(1));
+      });
+    });
   });
 }

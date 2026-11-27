@@ -35,14 +35,24 @@ class WeeklyRankingsScreen extends StatefulWidget {
   State<WeeklyRankingsScreen> createState() => _WeeklyRankingsScreenState();
 }
 
-class _WeeklyRankingsScreenState extends State<WeeklyRankingsScreen> {
+class _WeeklyRankingsScreenState extends State<WeeklyRankingsScreen>
+    with WidgetsBindingObserver {
   late final WeeklyRankingsViewModel _vm = widget.createViewModel();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _vm.addListener(_changed);
     unawaited(_vm.load());
+  }
+
+  /// Back from the background, perhaps in a new week.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_vm.refreshIfWeekEnded());
+    }
   }
 
   void _changed() {
@@ -51,6 +61,7 @@ class _WeeklyRankingsScreenState extends State<WeeklyRankingsScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _vm
       ..removeListener(_changed)
       ..dispose();

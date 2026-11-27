@@ -77,8 +77,11 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark,
         home: WeeklyRankingsScreen(
-          createViewModel: () =>
-              WeeklyRankingsViewModel(repository: repository),
+          // Wednesday of the week of week(), whatever today is.
+          createViewModel: () => WeeklyRankingsViewModel(
+            repository: repository,
+            now: () => DateTime.utc(2026, 11, 25),
+          ),
         ),
       ),
     );
@@ -391,6 +394,39 @@ void main() {
       (RankingScope.global, ExerciseType.squat): 1,
       (RankingScope.friends, ExerciseType.squat): 1,
     });
+  });
+
+  testWidgets('back from the background in a new week, it reads again', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 11, 25);
+    final repo = InMemoryRankingsRepository(
+      rankings: {(RankingScope.global, ExerciseType.pushUp): global},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: WeeklyRankingsScreen(
+          createViewModel: () =>
+              WeeklyRankingsViewModel(repository: repo, now: () => now),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final key = (RankingScope.global, ExerciseType.pushUp);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(repo.reads[key], 1);
+
+    // Monday after the week of week().
+    now = DateTime.utc(2026, 11, 30, 1);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(repo.reads[key], 2);
+    expect(find.text('헬창'), findsOneWidget);
   });
 
   test('the week label reads Korean dates whatever the zone given', () {
