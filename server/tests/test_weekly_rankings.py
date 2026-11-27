@@ -44,7 +44,9 @@ def people(client):
 _ids = iter(range(1, 10**6))
 
 
-def battle(a, b, *, outcomes=("win", "loss"), reason="time_up", at=NOW, kind=None):
+def battle(
+    a, b, *, outcomes=("win", "loss"), reason="time_up", at=NOW, kind=None, exercise=None
+):
     """One online battle as the battle server reports it: a row per player."""
     n = next(_ids)
     body = {
@@ -52,6 +54,7 @@ def battle(a, b, *, outcomes=("win", "loss"), reason="time_up", at=NOW, kind=Non
         "result_id": f"result-{n:04d}",
         "reason": reason,
         **({"kind": kind} if kind else {}),
+        **({"exercise": exercise} if exercise else {}),
         "ended_at_ms": int(at.timestamp() * 1000),
         "players": [
             {
@@ -73,8 +76,9 @@ def store(client, body):
     return body
 
 
-def weekly(client, me, scope=None):
-    query = f"?scope={scope}" if scope else ""
+def weekly(client, me, scope=None, exercise=None):
+    params = [f"{k}={v}" for k, v in (("scope", scope), ("exercise", exercise)) if v]
+    query = "?" + "&".join(params) if params else ""
     response = client.get(f"/matches/rankings/weekly{query}", **me.headers)
     assert response.status_code == 200, response.content
     return response.json()
@@ -322,3 +326,60 @@ def test_a_deleted_friend_leaves_the_ranking(client, people):
     User.objects.filter(id=b.id).delete()
 
     assert [r["nickname"] for r in weekly(client, a, "friends")["entries"]] == ["우현"]
+
+
+def test_push_ups_and_squats_rank_apart(client, people):
+    a, b, c, _ = people
+    store(client, battle(a, b, reason="ko"))  # push-ups by default
+    store(client, battle(c, a, exercise="squat"))
+    store(client, battle(c, b, exercise="squat", outcomes=("draw", "draw")))
+
+    push_ups = weekly(client, a, exercise="push_up")
+    squats = weekly(client, a, exercise="squat")
+
+    assert push_ups["exercise"] == "push_up"
+    assert [(r["nickname"], r["points"]) for r in push_ups["entries"]] == [
+        (a.name, 10),
+        (b.name, 1),
+    ]
+    assert squats["exercise"] == "squat"
+    assert [(r["nickname"], r["points"]) for r in squats["entries"]] == [
+        (c.name, 8),
+        (b.name, 3),
+        (a.name, 1),
+    ]
+    assert squats["me"]["rank"] == 3
+
+
+def test_friends_rank_each_exercise_apart(client, people):
+    a, b, _, _ = people
+    FriendRequest.objects.create(
+        from_user_id=a.id, to_user_id=b.id, accepted_at=NOW
+    )
+    store(client, battle(a, b, exercise="squat"))
+
+    push_ups = weekly(client, a, "friends", "push_up")
+    squats = weekly(client, a, "friends", "squat")
+
+    assert {r["points"] for r in push_ups["entries"]} == {0}
+    assert [(r["nickname"], r["points"]) for r in squats["entries"]] == [
+        (a.name, 5),
+        (b.name, 1),
+    ]
+
+
+def test_without_an_exercise_the_ranking_is_push_ups(client, people):
+    a, b, _, _ = people
+    store(client, battle(a, b, exercise="squat"))
+
+    body = weekly(client, a)
+
+    assert body["exercise"] == "push_up"
+    assert body["entries"] == []
+
+
+def test_an_unknown_exercise_is_refused(client, people):
+    response = client.get(
+        "/matches/rankings/weekly?exercise=plank", **people[0].headers
+    )
+    assert response.status_code == 422

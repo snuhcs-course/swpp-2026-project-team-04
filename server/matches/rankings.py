@@ -1,7 +1,8 @@
 """Weekly rankings (Iteration 5, P11).
 
-GET /matches/rankings/weekly?scope=global|friends ranks players by the points
-of this week's online battles: a KO win 10, any other win 5 (an opponent's
+GET /matches/rankings/weekly?scope=global|friends&exercise=push_up|squat ranks
+players by the points of this week's online battles of that exercise (push-ups
+and squats are ranked apart): a KO win 10, any other win 5 (an opponent's
 forfeit or disconnect included), a draw 3, a loss 1, and 0 for a loss by
 one's own forfeit or disconnect. A week starts on Monday 00:00 KST.
 
@@ -35,6 +36,7 @@ GLOBAL_LIMIT = 50
 
 class RankingQuery(serializers.Serializer):
     scope = serializers.ChoiceField(choices=["global", "friends"], default="global")
+    exercise = serializers.ChoiceField(choices=["push_up", "squat"], default="push_up")
 
 
 def week_bounds(now):
@@ -55,14 +57,17 @@ def points(outcome, reason):
     return LEFT if reason in ("forfeit", "disconnect_timeout") else LOSS
 
 
-def _tally(start, end, user_ids=None):
-    """{user_id: tally} of the online battles played in [start, end)."""
+def _tally(start, end, exercise, user_ids=None):
+    """{user_id: tally} of the [exercise]'s online battles played in
+    [start, end)."""
     battles = OnlineBattle.objects.filter(
         result_id=OuterRef("client_id"),
         status=OnlineBattle.FINISHED,
         kind=OnlineBattle.MAIN,
     )
-    rows = Match.objects.filter(played_at__gte=start, played_at__lt=end)
+    rows = Match.objects.filter(
+        played_at__gte=start, played_at__lt=end, exercise=exercise
+    )
     if user_ids is not None:
         rows = rows.filter(user_id__in=user_ids)
     rows = rows.annotate(players=Subquery(battles.values("player_ids")[:1])).filter(
@@ -120,23 +125,25 @@ class WeeklyRankingView(APIView):
         query = RankingQuery(data=request.query_params)
         query.is_valid(raise_exception=True)
         scope = query.validated_data["scope"]
+        exercise = query.validated_data["exercise"]
         me = request.user
         start, end = week_bounds(timezone.now())
         if scope == "friends":
             # Me and every friend, with or without a battle this week.
             ids = _friend_ids(me) | {me.id}
-            tallies = _tally(start, end, ids)
+            tallies = _tally(start, end, exercise, ids)
             rows = _ranked(User.objects.filter(id__in=ids), tallies, me.id)
             mine = next(r for r in rows if r["is_me"])
         else:
             # Only players with a battle this week.
-            tallies = _tally(start, end)
+            tallies = _tally(start, end, exercise)
             rows = _ranked(User.objects.filter(id__in=tallies), tallies, me.id)
             mine = next((r for r in rows if r["is_me"]), None)
             rows = rows[:GLOBAL_LIMIT]
         return Response(
             {
                 "scope": scope,
+                "exercise": exercise,
                 "week_start": start.isoformat(),
                 "week_end": end.isoformat(),
                 "entries": rows,
