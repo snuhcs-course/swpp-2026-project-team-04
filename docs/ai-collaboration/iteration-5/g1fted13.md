@@ -1,6 +1,6 @@
 # AI Collaboration notes: Iteration 5 (2026-11-21 ~ 2026-12-04) – Woohyun Song
 Status: draft (iteration open) | Written by: Woohyun Song | Merged by the PM into `AI-Collaboration-Report-Iteration-5.md` (P27)
-Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data; P8's spec and state mockups; A9's spec); Claude on claude.ai with the Claude Design canvas (the arcade art)
+Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data; P8's spec and state mockups; A9's spec; A11's spec and its screenshots); Claude on claude.ai with the Claude Design canvas (the arcade art)
 
 Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. Input prompts are in
 [g1fted13-Prompt-Log.md](g1fted13-Prompt-Log.md).
@@ -1167,7 +1167,10 @@ These were made from the A5 session at the user's word; their full evidence is i
 
 ### a. Where AI was used
 - **The hand-off:** `.claude/design/a11-friend-battle-ui/SPEC.md` v2 (2026-11-27, with the PM's approval) and its design bundle (`design/Fr*.dc.html`, the canvas page "친구 대전 · 신청과 알림 시안", confirmed by the user on 11/27), local and not committed.
-  - TODO(Woohyun Song): who wrote SPEC v2 and the designs, and with which tool.
+  - Who made them (Woohyun Song, 2026-11-27):
+    - The designs: Woohyun Song made them with Claude on the Claude Design canvas ("GymRats 메인 메뉴 시안", page "친구 대전 · 신청과 알림 시안"), over several rounds. Claude drew the candidates: friend card A, B and C, alert A, B and C, two name alignments, and six panel colors. Woohyun Song chose among them and said what to change, and so settled: friend card A, name A1 (two lines, centered), the first sky color, 그루 and 곰탱이 at 0.65, alert A (the top banner), the inviter's character shown, the "수락 대기!" sticker instead of a count, the new order of the friends page, and the minute's ring instead of the radar.
+    - SPEC v1: Claude on claude.ai (Claude Opus 5.5) read the team repo's `main` code and the settled designs and wrote the draft; Woohyun Song reviewed it. The same session made the bundle's screenshots by drawing the `.dc.html` originals.
+    - SPEC v2: the same Claude added the PM's conditions for the approval (the A11 number and branch, the 12/1 due date, the P9 files, both the ring and the banner counting from the server's `expires_at`, older apps still working, the deploy order after the merge) and the 11/28 phone-check date; Woohyun Song checked it.
 - **Planning:** Claude Code (Claude Opus 5.5) did this before any code (Prompt Log, 11-27 17:31):
   - It added the local A11 step and 14 exception lines for the P9 files (not committed), and created the branch from `origin/main` `819e4ca`.
   - It read the spec, the four designs and the code, then reported the plan of SPEC 10 and waited.
