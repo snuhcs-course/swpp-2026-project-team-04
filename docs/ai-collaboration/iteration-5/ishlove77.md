@@ -87,6 +87,9 @@ Full list: `ishlove77-Prompt-Log.md`.
   rounded up, so a 9.5 s online KO counted once its report arrived (fixed by preferring the battle server's time),
   and the skills read loaded the whole match history into Python (moved into one database query with a window
   function; Codex flagged the same).
+- P10: asked whether a simulated battle now differs from a real one, Claude listed what still differs (default
+  character, even rep pacing, never leaving, a friend's nickname, telemetry ids) rather than answering "no"; the user
+  chose to fix the character in this PR.
 - P10: the reviewer found that a KO by the simulated player could still be followed by its later reps in the same
   tick (the KO only scheduled the finish); fixed with a flag and a test that fails without it.
 - P10: Claude left temporary local-test edits (local server address, insecure loopback) in the working tree while

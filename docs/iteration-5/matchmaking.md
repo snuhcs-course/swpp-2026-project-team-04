@@ -17,6 +17,8 @@ Owner: ishlove77 · 2026-11-27 · branch `feat/iter5-skill-matching`
 `SimulatedPlayer.planReps`: round(estimate) valid reps give or take one (1–60), plus 0–2 too shallow
 (`insufficient_depth`), spread over the round from 1.5 s to 1.2 s before the end with a little jitter; about 15% of the
 valid reps are excellent, the rest good. Its id is `sim-` and 12 hex characters, never an account id.
+It shows the character the copied account last joined with (since the battle server started), or else a character
+a person may pick, at random; never RepBot.
 
 ## Skill estimate
 
@@ -90,6 +92,8 @@ end-to-end assignment under concurrent players separately from these numbers.
 - The copied account's nickname is shown without a label, and the simulated player is indistinguishable from a person
   (PM approval relayed by the user, 2026-11-27).
 - The protocol doc (`docs/iteration-2-protocol.md`) needs `accept_virtual` and the simulated player in results.
+- The copied character is kept in the battle server's memory only: after a restart it is random until that account
+  joins again.
 - Telemetry (P17/P24): `battle_finished` of a simulated match is `kind: main`; its `scores` carry the `sim-` id, which marks
   it. A match cancelled before the start has no scores and cannot be told apart.
 - P20: measure the `/internal/skills` read and simulated matches under load, apart from the index numbers above. The

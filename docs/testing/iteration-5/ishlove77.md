@@ -5,6 +5,16 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): the simulated player's character
+- **Change:** the simulated player no longer always shows the default character. It shows the character the copied
+  account last joined with (kept in the battle server's memory), or else a selectable one at random, never RepBot.
+- **Tests:** new in `test/services/online/skill_matching_test.dart`: `the simulated player shows a character a person
+  may pick`, `it shows the character the copied account last joined with`, `a character no person may pick is not
+  copied`.
+- **Results:** `flutter analyze` no issues; `flutter test test/services/online/ test/shared/` 215 passed, 1 skipped
+  (the opt-in public wss check); `dart compile kernel bin/server.dart` builds. No Django or app change (server 310
+  passed, client full run 5033 passed stand).
+
 #### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fixes for the PM's review of `71fcdc3`
 - **P2 1 (KO length):** a real 9.5 s online KO of 7 reps was left out until the phone's report (time played rounded up
   to 10 s) arrived, and then counted as 21. `SkillsView` now takes a KO's length from the battle server's start and end
