@@ -124,9 +124,9 @@ VictoryFrame _seatFrame(WidgetTester tester) {
 void main() {
   group('PM acceptance (A7): an online battle the server ended', () {
     for (final (outcome, verdict, scene, title, row) in const [
-      ('draw', 'DRAW', VictoryResult.draw, '무승부', '푸쉬업 · 무승부'),
-      ('win', 'WIN!', VictoryResult.timeWin, '승리', '푸쉬업 · 승리'),
-      ('loss', 'LOSE', VictoryResult.lose, '패배', '푸쉬업 · 패배'),
+      ('draw', 'DRAW', VictoryResult.draw, '무승부', '무'),
+      ('win', 'WIN!', VictoryResult.timeWin, '승리', '승'),
+      ('loss', 'LOSE', VictoryResult.lose, '패배', '패'),
     ]) {
       final others = {'DRAW', 'WIN!', 'LOSE'}..remove(verdict);
 
@@ -225,47 +225,45 @@ void main() {
         expect(seat.fighters, hasLength(outcome == 'draw' ? 1 : 0));
       });
 
-      testWidgets('$outcome: 기록보관소 reads "$row"; the report opened from '
-          'it shows only the end look, titled $title', (tester) async {
-        final record = onlineBattleResult(
-          _finished(outcome),
-          playerName: '우현',
-        )!.record;
-        expect(record.outcome, switch (outcome) {
-          'draw' => MatchOutcome.draw,
-          'win' => MatchOutcome.win,
-          _ => MatchOutcome.lose,
-        });
-        expect(ArchiveMatchRow.resultLine(record), row);
-        await _open(
-          tester,
-          Scaffold(
-            body: ArchiveMatchRow(match: record, now: DateTime(2026, 11, 26)),
-          ),
-        );
-        expect(find.textContaining(row), findsOneWidget);
-        if (outcome == 'draw') {
-          expect(find.textContaining('패'), findsNothing);
-        }
+      testWidgets(
+        '$outcome: the 운동일지 row chip reads "$row"; the report opened from '
+        'it shows only the end look, titled $title',
+        (tester) async {
+          final record = onlineBattleResult(
+            _finished(outcome),
+            playerName: '우현',
+          )!.record;
+          expect(record.outcome, switch (outcome) {
+            'draw' => MatchOutcome.draw,
+            'win' => MatchOutcome.win,
+            _ => MatchOutcome.lose,
+          });
+          expect(ArchiveMatchRow.chipLabel(record), row);
+          await _open(tester, Scaffold(body: ArchiveMatchRow(match: record)));
+          expect(find.text(row), findsOneWidget);
+          if (outcome == 'draw') {
+            expect(find.textContaining('패'), findsNothing);
+          }
 
-        await _open(tester, ResultScreen.record(record: record));
-        await tester.pumpAndSettle();
-        expect(_playing, findsNothing);
-        expect(find.text(title), findsWidgets);
-        expect(
-          tester.widget<VictorySeat>(find.byType(VictorySeat)).result,
-          scene,
-        );
-        final seat = _seatFrame(tester);
-        if (outcome == 'draw') {
-          expect(find.text('패배'), findsNothing);
-          expect(seat.figure, isNull);
-          expect(seat.fighters.single.characterId, 'bear');
-          expect(seat.fighters.single.pose, BattlePose.idle);
-        } else {
-          expect(seat.figure, isNotNull);
-        }
-      });
+          await _open(tester, ResultScreen.record(record: record));
+          await tester.pumpAndSettle();
+          expect(_playing, findsNothing);
+          expect(find.text(title), findsWidgets);
+          expect(
+            tester.widget<VictorySeat>(find.byType(VictorySeat)).result,
+            scene,
+          );
+          final seat = _seatFrame(tester);
+          if (outcome == 'draw') {
+            expect(find.text('패배'), findsNothing);
+            expect(seat.figure, isNull);
+            expect(seat.fighters.single.characterId, 'bear');
+            expect(seat.fighters.single.pose, BattlePose.idle);
+          } else {
+            expect(seat.figure, isNotNull);
+          }
+        },
+      );
     }
   });
 
