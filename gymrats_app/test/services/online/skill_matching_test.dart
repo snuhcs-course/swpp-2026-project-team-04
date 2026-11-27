@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
 
 // ignore: avoid_relative_lib_imports
@@ -70,9 +71,10 @@ class _Wire {
     String exercise = 'push_up',
     bool? virtual = true,
     String? friend,
+    String avatar = 'mouse',
   }) => send('queue.join', {
     'exercise': exercise,
-    'avatar_id': 'mouse',
+    'avatar_id': avatar,
     'friend_id': ?friend,
     'accept_virtual': ?virtual,
   });
@@ -141,6 +143,7 @@ void main() {
         'a' => const BattleIdentity('1', '쥐돌이'),
         'b' => const BattleIdentity('2', '헬창'),
         'c' => const BattleIdentity('3', '근육'),
+        'g' => const BattleIdentity('7', '근손실'),
         _ => null,
       },
       tickMs: 20,
@@ -220,6 +223,50 @@ void main() {
     // The copied account's id never reaches the phone.
     expect(a.events.toString(), isNot(contains("'7'")));
     expect(a.last('match.found')['payload']['duration_ms'], 3000);
+  });
+
+  test('the simulated player shows a character a person may pick', () async {
+    final s = await server(_Skills(skills));
+    final a = await open(s, 'a');
+    a.join();
+    await _until(() => a.has('match.found'));
+    final character = a.roster.singleWhere(simulated)['avatar_id'];
+    expect(
+      CharacterRig.standard.selectable.map((art) => art.id),
+      contains(character),
+    );
+  });
+
+  test('it shows the character the copied account last joined with', () async {
+    final s = await server(_Skills(skills));
+    // 근손실 (7) joins as the seal, then leaves the queue.
+    final copied = await open(s, 'g');
+    copied.join(avatar: 'seal', virtual: false);
+    await _until(() => copied.has('queue.joined'));
+    copied.send('queue.cancel', {'queue_id': '7'});
+    await _until(() => copied.has('queue.cancelled'));
+    final a = await open(s, 'a');
+    a.join();
+    await _until(() => a.has('match.found'));
+    final opponent = a.roster.singleWhere(simulated);
+    expect(opponent['display_name'], '근손실');
+    expect(opponent['avatar_id'], 'seal');
+  });
+
+  test('a character no person may pick is not copied', () async {
+    final s = await server(_Skills(skills));
+    final copied = await open(s, 'g');
+    copied.join(avatar: CharacterRig.botId, virtual: false);
+    await _until(() => copied.has('queue.joined'));
+    copied.send('queue.cancel', {'queue_id': '7'});
+    await _until(() => copied.has('queue.cancelled'));
+    final a = await open(s, 'a');
+    a.join();
+    await _until(() => a.has('match.found'));
+    expect(
+      a.roster.singleWhere(simulated)['avatar_id'],
+      isNot(CharacterRig.botId),
+    );
   });
 
   test(

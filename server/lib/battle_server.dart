@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:math';
 
 import '../../gymrats_app/lib/models/battle_rules.dart';
+import '../../gymrats_app/lib/models/character_rig.dart';
 import '../../gymrats_app/lib/models/game_score.dart';
 import '../../gymrats_app/lib/services/game/player_game_score.dart';
 import '../../gymrats_app/lib/shared/battle_protocol.dart';
@@ -175,6 +176,10 @@ class BattleServer {
   /// countdown, and is ready this long after that.
   final (int, int) simulatedSetupMs, simulatedReadyMs;
   final Random _simulationRandom;
+
+  /// P10: the character each player last joined with, when it is one a
+  /// person may pick; a simulated player copying them shows it.
+  final _characters = <String, String>{};
   int _between((int, int) range) =>
       range.$1 + _simulationRandom.nextInt(range.$2 - range.$1 + 1);
   final int durationMs,
@@ -472,6 +477,10 @@ class BattleServer {
             .clear(); // Prior match is terminal; retain all IDs of the new one.
         p.match = null;
         p.avatar = payload['avatar_id'] as String?;
+        if (p.avatar case final id?
+            when CharacterRig.standard.selectableOrDefault(id) == id) {
+          _characters[p.identity.id] = id;
+        }
         p.exercise = payload['exercise'] as String;
         p.friend = payload['friend_id'] as String?;
         p.acceptVirtual = payload['accept_virtual'] == true;
@@ -945,13 +954,16 @@ class BattleServer {
       playerId: p.identity.id,
       exercise: p.exercise,
     );
-    final player = _Player(
-      BattleIdentity(
-        // Short enough for the API server's 20-character player ids.
-        '${SimulatedPlayer.idPrefix}${_id().substring(0, 12)}',
-        copy.displayName,
-      ),
-    )..exercise = p.exercise;
+    final player =
+        _Player(
+            BattleIdentity(
+              // Short enough for the API server's 20-character player ids.
+              '${SimulatedPlayer.idPrefix}${_id().substring(0, 12)}',
+              copy.displayName,
+            ),
+          )
+          ..exercise = p.exercise
+          ..avatar = _characterFor(copy.copiedId);
     final setupAt = now + _between(simulatedSetupMs);
     _open(
       [p, player],
@@ -962,6 +974,14 @@ class BattleServer {
         setupAt + _between(simulatedReadyMs),
       ),
     );
+  }
+
+  /// The character a simulated player copying [copiedId] shows: the one that
+  /// account last joined with, or else one a person may pick, at random.
+  String _characterFor(String? copiedId) {
+    if (_characters[copiedId] case final known?) return known;
+    final choices = CharacterRig.standard.selectable;
+    return choices[_simulationRandom.nextInt(choices.length)].id;
   }
 
   /// Plays [m]'s simulated player for now: its setup and ready before the
