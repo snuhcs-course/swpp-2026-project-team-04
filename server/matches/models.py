@@ -91,10 +91,12 @@ class OnlineBattle(models.Model):
     match_id = models.CharField(max_length=64, unique=True)
     result_id = models.CharField(max_length=36, unique=True, null=True)
     status = models.CharField(max_length=10, default=ACTIVE)
-    # "main" or "friend" (P11: friend battles are left out of the weekly
-    # rankings). An older battle server sends none: main.
-    MAIN, FRIEND = "main", "friend"
-    kind = models.CharField(max_length=8, default=MAIN)
+    # "main" or "friend" (P11: only main battles score in the weekly
+    # rankings). "legacy" when it is not known: a battle stored before kinds
+    # existed, or a result from an older battle server, which may have been
+    # a friend battle and so never scores.
+    MAIN, FRIEND, LEGACY = "main", "friend", "legacy"
+    kind = models.CharField(max_length=8, default=LEGACY)
     reason = models.CharField(max_length=30, blank=True, default="")
     # Battle-server player ids (Django user ids as strings).
     player_ids = models.JSONField(default=list)

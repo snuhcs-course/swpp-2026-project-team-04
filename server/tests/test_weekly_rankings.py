@@ -45,7 +45,14 @@ _ids = iter(range(1, 10**6))
 
 
 def battle(
-    a, b, *, outcomes=("win", "loss"), reason="time_up", at=NOW, kind=None, exercise=None
+    a,
+    b,
+    *,
+    outcomes=("win", "loss"),
+    reason="time_up",
+    at=NOW,
+    kind="main",
+    exercise=None,
 ):
     """One online battle as the battle server reports it: a row per player."""
     n = next(_ids)
@@ -192,6 +199,19 @@ def test_a_friend_battle_does_not_count(client, people):
     a, b, *_ = people
     store(client, battle(a, b, reason="ko", kind="friend"))
     store(client, battle(a, b, kind="main"))
+
+    assert points_of(weekly(client, a)) == {"우현": 5, "진영": 1}
+
+
+def test_a_battle_of_unknown_kind_does_not_count(client, people):
+    # Stored before kinds existed, or by an older battle server: it may have
+    # been a friend battle.
+    a, b, *_ = people
+    body = battle(a, b, reason="ko")
+    del body["kind"]
+    store(client, body)
+    store(client, battle(a, b))
+    assert OnlineBattle.objects.filter(kind=OnlineBattle.LEGACY).count() == 1
 
     assert points_of(weekly(client, a)) == {"우현": 5, "진영": 1}
 

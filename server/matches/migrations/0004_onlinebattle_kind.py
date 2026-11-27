@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='onlinebattle',
             name='kind',
-            field=models.CharField(default='main', max_length=8),
+            field=models.CharField(default='legacy', max_length=8),
         ),
     ]

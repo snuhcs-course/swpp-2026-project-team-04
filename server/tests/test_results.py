@@ -459,10 +459,11 @@ def test_the_result_keeps_the_battles_kind(client, players, kind):
     assert OnlineBattle.objects.get().kind == kind
 
 
-def test_a_result_without_a_kind_is_a_main_battle(client, players):
+def test_a_result_without_a_kind_is_kept_as_legacy(client, players):
+    # An older battle server sends no kind; it may have been a friend battle.
     a, b = players
     assert internal(client, "results", result(a, b)).status_code == 201
-    assert OnlineBattle.objects.get().kind == "main"
+    assert OnlineBattle.objects.get().kind == "legacy"
 
 
 def test_an_unknown_kind_is_refused(client, players):
