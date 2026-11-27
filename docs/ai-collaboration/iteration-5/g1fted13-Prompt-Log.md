@@ -731,3 +731,83 @@ PR 본문 형식을 바로잡는다. 체크리스트는 내가 명세로 요구�
 2. 앞 메시지(Ready와 Codex 대응)를 아직 시작하지 않았으면 이 수정 뒤에 진행한다. 이미 Ready로 바꿨으면 본문만 고친다.
 3. 이 메시지를 프롬프트 기록에 남긴다.
 </pasted_content id=\"2c8e\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-26T17:31:31.138Z -->
+[Woohyun Song, 11-27 02:31] "<pasted_content id=\"c294\">
+\"코치 대화 · 캐릭터 어미 다듬기\" 작업을 시작한다. PM 승인 전이라 로컬에서만 진행한다.
+명세는 C:\dev\handoff\coach-voice\SPEC.md 이다. 저장소 밖 파일이라 읽기만 하고, 복사하거나 커밋하지 않는다.
+
+1. git status가 깨끗한지 확인하고 fetch한다. 이 worktree의 A7 브랜치(feat/iter5-defeat-pose)는 main에 머지됐다. SPEC 0절대로 로컬 ownership.json에 A9 단계를 더하고(due는 임시 11/30/2026), origin/main에서 feat/iter5-coach-voice를 원격 추적 없이 판다. --status로 확인하고 progress.md에 적는다. Windows 경로는 raw 문자열이나 슬래시로 쓴다.
+2. 로컬 커밋은 해도 된다. push, PR, 원격 브랜치는 내가 PM 승인을 알린 뒤에 한다.
+3. flutter pub get을 하고 SPEC.md를 끝까지 읽는다. coach_script.dart, coach_viewmodel.dart, 코치 화면 위젯, 그리고 coach_script_test, coach_viewmodel_test, coach_screen_test를 읽는다.
+4. 코드를 쓰기 전에 SPEC 8절의 계획을 보고하고 기다린다. SPEC 1절과 2절의 대사 표는 정해진 것이라 다시 묻지 않는다. 다만 넘침 때문에 줄여야 할 문장이 있으면 계획 보고에 적는다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+<!-- f10a982c 2026-11-26T17:49:34.774Z -->
+[Woohyun Song, 11-27 02:49] "<pasted_content id=\"c294\">
+PM 승인이 왔다(11/27): A9, feat/iter5-coach-voice, 마감 11/30/2026, 예상 1시간. PM은 coach_script.dart와 coach_script_test.dart 두 파일만 고치라고 했다. 이제 push와 PR을 해도 된다.
+
+결과 카드는 A도 B도 아니고 이렇게 한다.
+- 결과 카드의 \"이번 판 이야기해 줄게{e}!\"는 P15(송현우, \"경기 종료 후 캐릭터 멘트와 리포트 진입\") 범위라 A9에서 고치지 않는다. result_cards.dart, result_screen.dart와 그 테스트는 건드리지 않는다. 현우에게는 내가 따로 알린다.
+- 그래서 ending은 지금처럼 읽을 수 있게 둔다. 주석에 \"결과 카드용. 코치 대사는 exclaim만 쓴다\"라고 적는다. coach_script.dart 안의 대사는 모두 exclaim으로 만들고, 규칙은 계획한 테스트로 지킨다.
+- coach_viewmodel_test.dart 5곳은 대사가 바뀌어 고칠 수밖에 없다. PM이 승인한 두 파일 밖이므로 선조치 후보고로 예외 줄과 PR Exceptions 절에 적는다. coach_screen_test.dart는 고치지 않으니 allow에서 빼도 된다.
+나머지 계획(exclaim 모양, 아홉 곳, 규칙 검사 테스트, 기존 테스트 수정, 넘침)은 그대로 승인한다.
+
+진행 순서:
+1. ownership.json의 A9 due를 11/30/2026으로 확정하고, progress.md에 PM 승인(2026-11-27)을 적는다. .codex-harness는 A8 세션과 같은 파일이므로 줄을 더하거나 해당 줄만 고친다.
+2. 코드와 테스트, analyze, 전체 test, reviewer APPROVE, 노트까지 마친다.
+3. push하고 draft PR을 연다. 본문은 영어로 쓰고, SPEC 7절대로 대사 전후 표(그루)와 체크리스트를 넣는다. Exceptions 절에는 coach_viewmodel_test.dart를 적는다. 결과 카드 문장은 P15에서 다룬다고 Notes에 한 줄 적는다.
+4. Ready로 바꾸지 말고 멈춰서 보고한다. battle_demo로 질문 줄과 끝 줄을 띄우는 명령과 찍을 화면 두 장을 함께 준다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+<!-- f10a982c 2026-11-26T18:02:30.177Z -->
+[Woohyun Song, 11-27 03:02] "SPEC.md가 v1.1로 바뀌었다(C:\dev\handoff\coach-voice\SPEC.md, 0절 예외 문구와 7절 PR만 바뀜). PR 본문에 체크리스트 절을 만들지 않고, 하네스 pull-request 스킬의 형식을 그대로 따른다. 대사 전후 표는 What it does에, 테스트는 How to test의 Acceptance criteria → tests 표에, 폰 확인은 Manual check에 넣는다. coach_viewmodel_test.dart 예외와 결과 카드 문장을 P15에서 다룬다는 점은 Review notes에 적는다. 앞 메시지의 \"체크리스트\"와 \"Exceptions 절\"은 이것으로 바꾼다. 이 메시지를 프롬프트 기록에 남긴다."
+<!-- f10a982c 2026-11-26T19:12:06.751Z -->
+[Woohyun Song, 11-27 04:12] "<pasted_content id=\"c294\">
+폰 확인은 이번에는 하지 않는다. 모두 머지된 뒤 토요일 팀 회의에서 실기기로 확인한다. 그대로 Ready로 간다.
+
+1. 노트와 PR 본문의 TODO(Woohyun Song) 세 곳을 채운다. PR 본문은 gh로 지금 본문을 받아 해당 줄만 바꾼다. 노트는 커밋하고 push한 뒤 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+   - 명세를 만든 사람과 도구: 문제는 데모 영상을 찍다가 발견해 11/25 팀 회의에서 공유했다. SPEC v1과 v1.1은 claude.ai 프로젝트 채팅에서 Claude(Opus 5.5)가 coach_script.dart를 읽고 썼다. 규칙('-다!' 뒤에만 어미)과 아홉 곳의 새 대사는 Claude가 제안했고 송우현이 확인했다. v1.1은 PR 형식만 바꿨다. 결과 카드 문장을 P15로 넘기기로 한 것은 송우현이 정했다.
+   - CI 커버리지: PR #105의 CI 커버리지 댓글을 gh로 읽어 채운다.
+   - 폰 확인: Manual check에 \"Not checked on a device yet: checked at the team meeting after merge (11/29). Wording and overflow are covered by tests.\"처럼 적는다.
+2. gh pr ready 105로 Ready로 바꾸고 Codex 리뷰를 기다린다. 몇 분 간격으로 확인하고, 30분이 지나도 아무 반응이 없으면 멈추고 보고한다.
+   - Codex bot이 PR에 👍 반응만 남기면 검토를 마쳤고 지적이 없다는 뜻이다. 이때는 \"@codex review\"를 다시 요청하지 않는다. 그 뒤에 코드를 바꾼 커밋을 올렸을 때만 새 리뷰를 기다린다.
+   - A9 범위 안의 실제 문제면 고친다. 관련 테스트와 flutter analyze만 돌리고 로컬 reviewer는 생략한다. push한 뒤 스레드에 고친 커밋을 영어로 짧게 답하고 resolve한다.
+   - 거의 일어나지 않는 경우거나 이 작업과 무관하면, 이유를 영어로 짧게 답하고 resolve한다.
+   - 범위 밖 파일을 고쳐야 하는 지적이면 고치지 말고 멈추고 보고한다.
+   - 고치는 것은 2회까지만 한다. 그 뒤에도 지적이 오면 멈추고 보고한다.
+3. 끝나는 조건: 현재 HEAD에 Codex의 👍 반응이나 \"Didn't find any major issues\"가 있고, 안 풀린 스레드가 0개이고, CI가 통과한 상태다. 이 상태가 되면 새 커밋과 Codex 처리 결과를 보고한다. 상우나 현우를 GitHub에서 멘션하지 않는다.
+4. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-26T23:44:31.331Z -->
+[Woohyun Song, 11-27 08:44] "<pasted_content id=\"c294\">
+PR #105가 main과 충돌한다. A8(#104, 037b58e)이 머지되면서 개인 노트 세 파일(docs/ai-collaboration/iteration-5/[REDACTED:custom_term]-Prompt-Log.md, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md, docs/testing/iteration-5/[REDACTED:custom_term].md)에서 A8 절과 A9 절이 부딪쳤다. 코드 파일은 충돌하지 않는다.
+1. fetch한 뒤 origin/main 위로 rebase한다. merge로 풀면 하네스 커밋 전 검사가 main에서 들어온 A8 파일 때문에 막히므로 rebase로 한다. 세 파일 모두 A8 절과 A9 절을 둘 다 남기고, 프롬프트 기록은 두 작업의 항목을 키가 겹치지 않게 모두 남긴다. 코드 파일에서 충돌이 나면 멈추고 보고한다.
+2. flutter analyze와 전체 test를 다시 돌린다.
+3. git push --force-with-lease origin feat/iter5-coach-voice 로 이 브랜치에만 올린다. main에는 절대 push하지 않는다. pre-push 검사가 강제 push를 막으면 멈추고 보고한다. push 뒤에는 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+4. A9 코드가 바뀌지 않았으므로 Codex 리뷰는 다시 요청하지 않는다. PR 본문에 HEAD가 적힌 곳이 있으면 새 HEAD로 고친다. 새 HEAD에서 CI가 통과하고 GitHub의 충돌 표시가 사라지면 보고한다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-27T02:45:36.086Z -->
+[Woohyun Song, 11-27 11:45] "<pasted_content id=\"c294\">
+PM 머지 규칙상 Codex 결과가 현재 HEAD에 있어야 하는데, rebase로 HEAD가 바뀌었다. HEAD가 바뀐 경우라 예외로 리뷰를 한 번 요청한다.
+1. 이 메시지를 먼저 프롬프트 기록에 넣고 커밋해서 push한다. 이 커밋이 마지막 커밋이다. 리뷰 요청 뒤에는 지적을 고칠 때 말고는 커밋하지 않는다.
+2. PR에 \"@codex review\" 댓글을 한 번 단다. 새 HEAD 기준으로 👍 반응이나 \"Didn't find any major issues\"가 달리고, 안 풀린 스레드가 0개이고, CI가 통과하면 보고한다.
+3. 지적이 오면 지난 기준대로 한다. A9 범위 안의 실제 문제는 고치고 관련 테스트와 analyze만 돌린다. 드문 경우는 영어로 이유를 답하고 resolve한다. 범위 밖 파일이 필요하면 멈춘다. 고치는 것은 2회까지다. 30분 안에 반응이 없으면 멈추고 보고한다.
+</pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-27T06:12:32.885Z -->
+[Woohyun Song, 11-27 15:12] "<pasted_content id=\"c294\">
+PM 요청(11/27)으로 코치 마지막 대사를 바꾼다. 현우의 A10이 대화 끝 버튼을 [돌아가기] [상세 리포트로 →]로 바꾸기 때문이다. 버튼과 결과 카드는 현우가 맡고, A9는 마지막 대사와 그 테스트만 맡는다.
+1. CoachScript.end를 \"오늘 이야기는 여기까지다{e}! 자세한 건 상세 리포트에서 볼 수 있어.\"로 바꾼다. 앞 문장은 지금처럼 exclaim으로 만든다. coach_stage.dart 같은 위젯과 버튼은 건드리지 않는다.
+2. 대사 표 테스트와 끝 줄을 기대하는 기존 테스트를 새 문장으로 고친다. 규칙 검사 테스트는 그대로 통과해야 한다. coach_screen_test의 넘침 테스트도 고치지 않고 통과해야 한다. 넘치면 \"여기까지다{e}! 자세한 건 상세 리포트에서 볼 수 있어.\"로 줄이고 보고한다.
+3. flutter analyze와 전체 test를 돌린다. 로컬 reviewer는 생략한다. 노트에 바뀐 대사와 PM 요청을 적고, PR 본문의 대사 전후 표(끝 줄)와 HEAD가 적힌 줄을 고친다. 위키 Requirements에 옛 끝 줄을 인용한 곳이 있으면 Review notes의 P26 항목에 함께 적는다.
+4. 이 메시지를 프롬프트 기록에 넣고, 모든 커밋을 push한 뒤 PR에 \"@codex review\"를 한 번 단다(코드가 바뀌었으므로). 그 뒤로는 지적을 고칠 때 말고는 커밋하지 않는다. 지적 대응은 지난번 기준대로 한다. 범위 안의 실제 문제는 고치고 관련 테스트와 analyze만 돌린다. 드문 경우는 영어로 답하고 resolve한다. 범위 밖 파일이 필요하면 멈춘다. 고치는 것은 2회까지다. 30분 안에 반응이 없으면 보고한다.
+5. 현재 HEAD에 Codex의 👍나 \"Didn't find any major issues\"가 있고, 안 풀린 스레드가 0개이고, CI가 통과하면 보고한다. GitHub에서 상우나 현우를 멘션하지 않는다.
+</pasted_content id=\"c294\">"
