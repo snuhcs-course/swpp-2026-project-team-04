@@ -2178,6 +2178,16 @@ and `MemoryGoalStore`.
   (`1a707b6`) and `122f0ad` (`5937c1b`), with the same A9 code. On `122f0ad`: `flutter analyze` found no issues; the
   full `flutter test` passed 5092, failed 0 and skipped 10 (129 more than before: the tests that came with #104). The
   coverage above is from before the rebase; the run on the rebased head is in PR #105's CI comment.
+- **The last line (the PM's request, 11/27):** A10 (송현우) changes the buttons at the talk's end to [돌아가기] and
+  [상세 리포트로 →], so `CoachScript.end` now says "오늘 이야기는 여기까지다{e}! 자세한 건 상세 리포트에서 볼 수
+  있어." (was "… 리포트로 돌아갈게."). The first sentence is still made by `exclaim`; no widget or button changed
+  (they are A10's). Tests: three expectations in `coach_script_test.dart` now expect the new line: '6, the answer to
+  사양할래, and 7, the end', 'the ending follows "~다" before "!" only, never a question or a promise (A9 spec 1)' and
+  row 9 of 'the nine changed lines, word for word, for every character, with the marked runs where they were (spec
+  2)'. `coach_viewmodel_test.dart` L299 checks only the line's start and did not change. The rule test and the
+  unchanged `coach_screen_test.dart` overflow tests pass, so the line was not shortened. `flutter analyze` found no
+  issues; the three files passed 118 (72, 26, 20); the full `flutter test` passed 5092, failed 0 and skipped 10 on
+  `bef1d1b`. The local reviewer was skipped for this change (the user's decision); Codex reviews it on the PR.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |

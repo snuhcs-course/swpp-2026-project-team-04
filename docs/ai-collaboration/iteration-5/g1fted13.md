@@ -1084,6 +1084,12 @@ These were made from the A5 session at the user's word; their full evidence is i
   `d68cfd9`, `bc36d8c`, `1a707b6` and `5937c1b`). `extract_prompts.py` also offered the automatic summary written
   when this session's context was compacted. That is not an input prompt, so only the user's request went into the
   log.
+- **The last line (11-27):** the user relayed the PM's request for a new end line, because A10 (송현우) changes the
+  talk's end buttons to [돌아가기] and [상세 리포트로 →]. The request gave the new line, "오늘 이야기는
+  여기까지다{e}! 자세한 건 상세 리포트에서 볼 수 있어.", and split the work: A10 owns the buttons and the result card,
+  A9 the line and its tests. Claude Code
+  changed `CoachScript.end` (`coach_script.dart` L1094–1099, commit `bef1d1b`) and the three test expectations, and checked that the
+  rule and overflow tests pass unchanged. It also searched the wiki: Requirements does not quote the old end line.
 - **Not done by AI:**
   - Woohyun Song decided the result card (neither of the plan's two options: it stays P15's, and `ending` stays
     readable) and the PR's shape (SPEC v1.1); the PM approved the two files, and the exception was act first, report
