@@ -26,9 +26,24 @@ abstract final class HoldTiming {
   /// effects spec 3). A pose with an entry keeps it until the time starts.
   static const startBubble = Duration(seconds: 2);
 
-  /// The owner's cheer bubble and smile at the first and second star
-  /// (effects spec 4).
-  static const cheer = Duration(seconds: 1);
+  /// The owner's cheer at the first and second star, from the star until
+  /// its bubble and the owner's smile go (effects spec 4; A8 spec 6: was
+  /// 1 s). The bubble shows from [cheerBubble], the smile from [cheerSmile].
+  static const cheer = Duration(milliseconds: 2400);
+
+  /// From a star, when the cheer bubble comes (A8 spec 6).
+  static const cheerBubble = Duration(milliseconds: 800);
+
+  /// From a star, when the owner starts to smile (A8 spec 6).
+  static const cheerSmile = Duration(milliseconds: 700);
+
+  /// With reduced motion, the cheer bubble and the smile from the star for
+  /// this long (A8 spec 7).
+  static const cheerStill = Duration(milliseconds: 1600);
+
+  /// From a star, when the star flying from the character lands on its bar
+  /// mark, which lights and pops then (A8 spec 5).
+  static const starLands = Duration(milliseconds: 900);
 
   /// A filled star's pop on the bar: bigger, then back (effects spec 4).
   static const starPop = Duration(milliseconds: 300);

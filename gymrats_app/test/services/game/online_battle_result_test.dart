@@ -85,6 +85,19 @@ void main() {
       expect(result.departure, BattleDeparture.none);
     });
 
+    test('carries the opponent\'s character, as the stage drew it, for the '
+        'report\'s draw scene (A7); none without an opponent', () {
+      final result = onlineBattleResult(
+        _finished('time_up', outcome: 'draw'),
+        playerName: '우현',
+      )!;
+      expect(result.matchup.opponent.characterId, 'seal');
+      final unknown = _finished('time_up', outcome: 'draw')..opponent = null;
+      final none = onlineBattleResult(unknown, playerName: '우현')!;
+      expect(none.matchup.opponent.characterId, isNull);
+      expect(none.matchup.opponent.name, '상대');
+    });
+
     test('a KO keeps the time played, rounded up to the second', () {
       final result = onlineBattleResult(_finished('ko'), playerName: '우현')!;
       expect(result.end, GameEnd.ko);

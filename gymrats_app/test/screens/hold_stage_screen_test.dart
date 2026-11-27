@@ -500,6 +500,9 @@ void main() {
       );
       HoldStar star(int i) =>
           tester.widget<HoldStar>(find.byKey(ValueKey('hold-mark-star-$i')));
+      // Lit when the star flying from the character lands (A8 spec 5).
+      expect([star(0).lit, star(1).lit, star(2).lit], [false, false, false]);
+      await tester.pump(HoldTiming.starLands);
       expect([star(0).lit, star(1).lit, star(2).lit], [true, false, false]);
       for (final seconds in ['15초', '20초', '30초']) {
         expect(find.text(seconds), findsOneWidget);
@@ -1012,14 +1015,28 @@ void main() {
       expect(find.byKey(const ValueKey('hold-whistle')), findsOneWidget);
     });
 
-    testWidgets('the first and second stars: a lime cheer, a smile, a pop '
-        'and the good sound, once each', (tester) async {
+    testWidgets('the first and second stars: the good sound at once, then a '
+        'smile, a lime cheer and a pop, once each (A8 spec 5, 6)', (
+      tester,
+    ) async {
       final driver = _Driver(); // Stage 3: 15, 20 and 30 s.
       final said = driver.listen(tester);
       await driver.open(tester);
       await driver.go(tester);
       await driver.hold(tester, 15200);
       await tester.pump();
+      // The star is earned, heard and read now.
+      expect(
+        driver.effects.played.where((e) => e == SoundEffect.good),
+        hasLength(1),
+      );
+      expect(said, contains('15초, 별 하나, 좋아!'));
+      expect(find.byKey(const ValueKey('hold-cheer')), findsNothing);
+      expect(owner(tester).face, GymOwnerFace.watch);
+      await tester.pump(HoldTiming.cheerSmile);
+      expect(owner(tester).face, GymOwnerFace.ok);
+      expect(find.byKey(const ValueKey('hold-cheer')), findsNothing);
+      await tester.pump(HoldTiming.cheerBubble - HoldTiming.cheerSmile);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('hold-cheer')),
@@ -1027,19 +1044,17 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(owner(tester).face, GymOwnerFace.ok);
+      expect(find.byKey(const ValueKey('hold-star-pop-0')), findsNothing);
+      await tester.pump(HoldTiming.starLands - HoldTiming.cheerBubble);
       expect(find.byKey(const ValueKey('hold-star-pop-0')), findsOneWidget);
-      expect(
-        driver.effects.played.where((e) => e == SoundEffect.good),
-        hasLength(1),
-      );
-      expect(said, contains('15초, 별 하나, 좋아!'));
-      await tester.pump(HoldTiming.cheer);
+      // The view model drops the cheer at 2.4 s.
+      await tester.pump(HoldTiming.cheer - HoldTiming.starLands);
+      await tester.pump();
       expect(find.byKey(const ValueKey('hold-cheer')), findsNothing);
       expect(owner(tester).face, GymOwnerFace.watch);
       expect(find.byKey(const ValueKey('hold-star-pop-0')), findsNothing);
       await driver.hold(tester, 5000);
-      await tester.pump();
+      await tester.pump(HoldTiming.starLands);
       expect(find.text('잘한다!'), findsOneWidget);
       expect(find.byKey(const ValueKey('hold-star-pop-1')), findsOneWidget);
       expect(
@@ -1068,6 +1083,7 @@ void main() {
         final first = ArcadeCatalog.stage(stage) as ArcadeHoldStage;
         await driver.hold(tester, first.starSeconds.first * 1000 + 200);
         await tester.pump();
+        await tester.pump(HoldTiming.cheerBubble);
         final positioned = tester.widget<Positioned>(
           find
               .ancestor(
@@ -1077,6 +1093,7 @@ void main() {
               .first,
         );
         expect(positioned.right, holdBigBubbleRight[owner], reason: owner);
+        expect(positioned.top, 148, reason: owner);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       }
@@ -1098,7 +1115,8 @@ void main() {
         await driver.go(tester);
         expect(find.byKey(const ValueKey('hold-start')), findsOneWidget);
         await driver.hold(tester, 20200);
-        await tester.pump(HoldTiming.failPop);
+        await tester.pump(HoldTiming.cheerBubble);
+        await tester.pump(const Duration(milliseconds: 300));
         expect(find.text('잘한다!'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
@@ -1125,6 +1143,7 @@ void main() {
       await driver.go(tester);
       await driver.hold(tester, 15200);
       await tester.pump();
+      await tester.pump(HoldTiming.cheerBubble);
       expect(find.text('좋아!'), findsOneWidget);
       await driver.hold(tester, 600, const HoldReading.broken(_low));
       expect(find.text('좋아!'), findsNothing);

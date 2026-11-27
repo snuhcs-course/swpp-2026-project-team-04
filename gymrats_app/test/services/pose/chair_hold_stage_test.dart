@@ -394,6 +394,8 @@ void main() {
       expect(tester.takeException(), isNull);
       // Seated to the first star (10 s): the cheer.
       await driver.sit(tester, 10900);
+      // The cheer comes 0.8 s after the star (A8 spec 6).
+      await tester.pump(HoldTiming.cheerBubble);
       await tester.pump(HoldTiming.failPop);
       expect(find.text('좋아!'), findsOneWidget);
       expect(tester.takeException(), isNull);
