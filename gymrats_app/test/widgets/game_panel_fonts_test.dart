@@ -54,12 +54,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       // The push-up's grade pages follow intro, setup and battle.
-      for (final label in const [
-        'EXCELLENT +15',
-        'GOOD +10',
-        'AVERAGE +5',
-        'FAIL 0점',
-      ]) {
+      // A12: the grades' bands and the fail page's reject sign, on the
+      // game screen in each page's bubble.
+      for (final label in const ['EXCELLENT', 'GOOD', 'AVERAGE', '무릎 떼기']) {
         while (find.text(label).hitTestable().evaluate().isEmpty) {
           await tester.tap(find.text('다음'));
           await tester.pumpAndSettle();

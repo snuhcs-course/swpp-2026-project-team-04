@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/tutorial_page.dart';
 import '../theme/app_theme.dart';
-import 'battle_fx_motion.dart';
-import 'battle_stage_model.dart';
-import 'character_figure.dart';
 import 'help_rules.dart';
+import 'tutorial_draft.dart';
 import 'tutorial_rep_bot.dart';
 import 'tutorial_setup_scenes.dart';
 
@@ -29,28 +26,6 @@ class HelpPicture extends StatelessWidget {
   static Size sizeOf(TutorialPage page) =>
       Size(width, page.step == TutorialStep.welcome ? welcomeHeight : height);
 
-  /// How deep RepBot is on each grade page (0 top, 1 bottom).
-  static const gradeDepth = {
-    TutorialStep.excellent: 1.0,
-    TutorialStep.good: 0.75,
-    TutorialStep.average: 0.35,
-    TutorialStep.fail: 0.15,
-  };
-
-  /// The opponent's score on the KO page; mine is [HelpRules.koLead] more,
-  /// so the scores, the label and the full bar agree with the rules.
-  static const koLoserScore = 145;
-
-  /// The squat's pass line, at the good page's depth.
-  static const squatPassDepth = 0.75;
-
-  /// The stage's characters for the battle pages: (mine, the opponent's).
-  static (String, String) charactersOf(ExerciseType? exercise) =>
-      switch (exercise) {
-        ExerciseType.squat => ('penguin', 'kangaroo'),
-        _ => ('mouse', 'seal'),
-      };
-
   /// What a screen reader hears for [page]'s picture: the A12 design's
   /// `aria-label` where the page has its new picture, else the title.
   static String labelOf(TutorialPage page) {
@@ -66,6 +41,14 @@ class HelpPicture extends StatelessWidget {
                   '선 안에 들어와 초록 선이 된 카메라 화면'
             : '왼쪽은 몸이 선 밖이라 흰 선, 오른쪽은 몸이 선 안에 들어와 '
                   '초록 선이 된 카메라 화면',
+      TutorialStep.battle ||
+      TutorialStep.combo ||
+      TutorialStep.fever ||
+      TutorialStep.ko => TutorialDraftLabel.wayA,
+      TutorialStep.excellent ||
+      TutorialStep.good ||
+      TutorialStep.average ||
+      TutorialStep.fail => TutorialDraftLabel.wayB(page.exercise!),
       _ => HelpRules.of(page).title,
     };
   }
@@ -73,23 +56,28 @@ class HelpPicture extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final squat = page.exercise == ExerciseType.squat;
+    final exercise = page.exercise ?? ExerciseType.pushUp;
     final Widget picture = switch (page.step) {
       TutorialStep.intro => TutorialWallScene(squat: squat),
       TutorialStep.setup => TutorialSetupCameras(squat: squat),
-      _ => Stack(
+      TutorialStep.battle ||
+      TutorialStep.combo ||
+      TutorialStep.fever ||
+      TutorialStep.ko => TutorialPhoneZoom(exercise: exercise, step: page.step),
+      TutorialStep.excellent ||
+      TutorialStep.good ||
+      TutorialStep.average ||
+      TutorialStep.fail => TutorialPersonBubble(
+        exercise: exercise,
+        step: page.step,
+      ),
+      TutorialStep.welcome => Stack(
         clipBehavior: Clip.none,
-        children: switch (page.step) {
-          TutorialStep.welcome => _welcome(),
-          TutorialStep.battle => _battle(context, fever: false),
-          TutorialStep.excellent ||
-          TutorialStep.good ||
-          TutorialStep.average ||
-          TutorialStep.fail => _grade(context, squat),
-          TutorialStep.combo => _combo(context),
-          TutorialStep.fever => _battle(context, fever: true),
-          TutorialStep.ko => _ko(context),
-          _ => _report(context, squat),
-        },
+        children: _welcome(),
+      ),
+      TutorialStep.report => Stack(
+        clipBehavior: Clip.none,
+        children: _report(context, squat),
       ),
     };
     // A drawing scaled as a whole: its words keep the drawing's size
@@ -139,284 +127,6 @@ class HelpPicture extends StatelessWidget {
       ),
     ),
   ];
-
-  /// A good rep and the next one close behind it, which adds the bonus.
-  List<Widget> _combo(BuildContext context) {
-    final (mine, theirs) = charactersOf(page.exercise);
-    return [
-      const Positioned(
-        left: 16,
-        right: 16,
-        top: 8,
-        child: _Hud(mine: 120, theirs: 85, time: '0:15', fever: false),
-      ),
-      const Positioned(left: 0, right: 0, top: 200, child: _Floor()),
-      Positioned(
-        left: 16,
-        top: 100,
-        child: CharacterFigure(
-          characterId: mine,
-          pose: BattlePose.attack,
-          scale: 0.65,
-        ),
-      ),
-      Positioned(
-        right: 16,
-        top: 100,
-        child: Transform.flip(
-          flipX: true,
-          child: CharacterFigure(
-            characterId: theirs,
-            side: BattleSide.opponent,
-            scale: 0.65,
-          ),
-        ),
-      ),
-      Positioned(
-        left: 0,
-        right: 0,
-        top: 92,
-        child: Center(
-          child: _Pill(
-            label: '+${HelpRules.good}',
-            color: AppColors.accent,
-            textColor: AppColors.ink,
-          ),
-        ),
-      ),
-      Positioned(
-        left: 0,
-        right: 0,
-        top: 124,
-        child: Center(
-          child: _Pill(
-            label: 'COMBO +${HelpRules.comboBonus}',
-            color: AppColors.warning,
-            textColor: AppColors.ink,
-          ),
-        ),
-      ),
-      Positioned(
-        left: 0,
-        right: 0,
-        top: 206,
-        child: Center(
-          child: Text(
-            '${HelpRules.comboSeconds}초 안에 다음 동작',
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: AppColors.textSecondary),
-          ),
-        ),
-      ),
-    ];
-  }
-
-  List<Widget> _grade(BuildContext context, bool squat) {
-    final (label, color, textColor) = switch (page.step) {
-      TutorialStep.excellent => (
-        'EXCELLENT +${HelpRules.excellent}',
-        AppColors.accent,
-        AppColors.ink,
-      ),
-      TutorialStep.good => (
-        'GOOD +${HelpRules.good}',
-        AppColors.ink,
-        AppColors.onInk,
-      ),
-      TutorialStep.average => (
-        'AVERAGE +${HelpRules.average}',
-        AppColors.warning,
-        AppColors.ink,
-      ),
-      _ => ('FAIL 0점', AppColors.danger, AppColors.ink),
-    };
-    final depth = gradeDepth[page.step]!;
-    return [
-      Positioned(left: 0, right: 0, top: 206, child: const _Floor()),
-      if (squat)
-        Positioned(
-          left: 60,
-          right: 0,
-          top: 50,
-          height: 160,
-          child: TutorialRepBot(
-            figure: RepBotFigure.squatFront,
-            depth: depth,
-            passDepth: squatPassDepth,
-          ),
-        )
-      else
-        Positioned(
-          left: 48,
-          top: 50,
-          width: 204,
-          height: 168,
-          child: TutorialRepBot(figure: RepBotFigure.pushUpSide, depth: depth),
-        ),
-      Positioned(
-        left: 0,
-        right: 0,
-        top: 8,
-        child: Center(
-          child: _Pill(label: label, color: color, textColor: textColor),
-        ),
-      ),
-      if (page.step == TutorialStep.fail)
-        const Positioned(
-          right: 24,
-          top: 80,
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              color: AppColors.danger,
-              shape: CircleBorder(),
-            ),
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.s4),
-              child: Icon(Icons.close, color: AppColors.onInk),
-            ),
-          ),
-        ),
-    ];
-  }
-
-  /// The battle screen in small; in [fever] the last seconds' look.
-  List<Widget> _battle(BuildContext context, {required bool fever}) {
-    final (mine, theirs) = charactersOf(page.exercise);
-    return [
-      if (fever)
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.all(
-                Radius.circular(AppRadius.card),
-              ),
-              border: Border.all(color: AppColors.fever, width: AppSpacing.s4),
-            ),
-          ),
-        ),
-      Positioned(
-        left: 16,
-        right: 16,
-        top: 8,
-        child: _Hud(
-          mine: fever ? 190 : 120,
-          theirs: fever ? 150 : 85,
-          time: fever ? '0:08' : '0:18',
-          fever: fever,
-        ),
-      ),
-      if (fever)
-        Positioned(
-          left: 0,
-          right: 0,
-          top: 82,
-          child: Center(
-            child: _Pill(
-              label: 'FEVER TIME ×${HelpRules.feverMultiplier}',
-              color: AppColors.fever,
-              textColor: AppColors.ink,
-            ),
-          ),
-        ),
-      Positioned(left: 0, right: 0, top: 204, child: const _Floor()),
-      Positioned(
-        left: 16,
-        top: 100,
-        child: CharacterFigure(
-          characterId: mine,
-          pose: BattlePose.attack,
-          scale: 0.65,
-        ),
-      ),
-      Positioned(
-        right: 16,
-        top: 100,
-        child: Transform.flip(
-          flipX: true,
-          child: CharacterFigure(
-            characterId: theirs,
-            pose: fever ? BattlePose.hit : BattlePose.idle,
-            side: BattleSide.opponent,
-            scale: 0.65,
-          ),
-        ),
-      ),
-      Positioned(
-        left: 0,
-        right: 0,
-        top: 118,
-        child: Center(
-          child: _Pill(
-            label: fever
-                ? '+${HelpRules.feverExcellent}'
-                : '+${HelpRules.good}',
-            color: fever ? AppColors.fever : AppColors.accent,
-            textColor: AppColors.ink,
-          ),
-        ),
-      ),
-    ];
-  }
-
-  List<Widget> _ko(BuildContext context) {
-    final (mine, theirs) = charactersOf(page.exercise);
-    return [
-      Positioned(
-        left: 16,
-        right: 16,
-        top: 8,
-        child: _Hud(
-          mine: koLoserScore + HelpRules.koLead,
-          theirs: koLoserScore,
-          time: '0:12',
-          fever: false,
-        ),
-      ),
-      Positioned(
-        left: 0,
-        right: 0,
-        top: 80,
-        child: Center(
-          child: _Pill(
-            label: '${HelpRules.koLead}점 차',
-            color: AppColors.ink,
-            textColor: AppColors.onInk,
-          ),
-        ),
-      ),
-      Positioned(
-        left: 0,
-        right: 0,
-        top: 112,
-        child: Center(
-          child: Text('K.O.!', style: Theme.of(context).textTheme.displaySmall),
-        ),
-      ),
-      Positioned(left: 0, right: 0, top: 204, child: const _Floor()),
-      Positioned(
-        left: 4,
-        top: 110,
-        child: CharacterFigure(
-          characterId: mine,
-          pose: BattlePose.win,
-          scale: 0.58,
-        ),
-      ),
-      Positioned(
-        right: 4,
-        top: 110,
-        child: Transform.flip(
-          flipX: true,
-          child: CharacterFigure(
-            characterId: theirs,
-            pose: BattlePose.knockedOut,
-            side: BattleSide.opponent,
-            scale: 0.58,
-          ),
-        ),
-      ),
-    ];
-  }
 
   /// A result card in small, with the way to the form feedback.
   List<Widget> _report(BuildContext context, bool squat) {
@@ -497,81 +207,6 @@ class HelpPicture extends StatelessWidget {
         ),
       ),
     ];
-  }
-}
-
-/// The score line of the battle screen: both scores, the time and the bar.
-class _Hud extends StatelessWidget {
-  const _Hud({
-    required this.mine,
-    required this.theirs,
-    required this.time,
-    required this.fever,
-  });
-
-  final int mine;
-  final int theirs;
-  final String time;
-
-  final bool fever;
-
-  /// My part of the bar, 0 to 1, as the game draws it for these scores.
-  double get share => battleRules.barShare(mine - theirs);
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final side = text.labelSmall?.copyWith(color: AppColors.textSecondary);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('나', style: side),
-                Text('$mine', style: text.titleLarge),
-              ],
-            ),
-            const Spacer(),
-            _Pill(
-              label: time,
-              color: fever ? AppColors.fever : AppColors.ink,
-              textColor: fever ? AppColors.ink : AppColors.onInk,
-            ),
-            const Spacer(),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('상대', style: side),
-                Text('$theirs', style: text.titleLarge),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.s8),
-        ClipRRect(
-          borderRadius: const BorderRadius.all(Radius.circular(AppRadius.mark)),
-          child: SizedBox(
-            height: AppSpacing.s12,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: (share * 100).round(),
-                  child: const ColoredBox(color: AppColors.accent),
-                ),
-                Expanded(
-                  flex: 100 - (share * 100).round(),
-                  child: const ColoredBox(color: AppColors.opponent),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
 
