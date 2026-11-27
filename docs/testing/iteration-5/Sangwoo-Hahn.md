@@ -24,3 +24,6 @@ Validated the documented virtual-assignment JSON example and field names, target
 
 ### 2026-11-27 · Revised P10 protocol handoff
 Compared the revised queue and result contract against #102 at `71fcdc3`, including friend validation, queue/setup clocks, the WebSocket versus internal result payloads, and pre-start telemetry. Checked the documented simulated-player JSON against the serializer fields. Documentation only.
+
+### 2026-11-27 · P10 protocol merge check
+Checked the protocol against the P10 merge commit `5d7bc6e`. Parsed the simulated result example, checked its fields against OnlinePlayerSerializer and compared the queue/setup timers, avatar selection and fallback name with the battle server. All checks passed.

@@ -23,3 +23,6 @@
 
 ### 2026-11-27 · Revised P10 protocol handoff
 docs/iteration-2-protocol.md에 accept_virtual과 결과의 simulated 선수 추가 부탁해.
+
+### 2026-11-27 · P10 protocol merge check
+P10 머지됐으니까 후속 프로토콜 문서 PR #103도 확인하고 문제없으면 Sangwoo-Hahn으로 머지해줘.

@@ -23,3 +23,6 @@ Codex compared the wire contract in PR #102 with the PM handoff and documented t
 
 ### 2026-11-27 · Revised P10 protocol handoff
 Codex traced the server-managed match and updated the protocol handoff in #103 against #102 at `71fcdc3`. The flag belongs to the internal result payload. The client follows the standard online match flow.
+
+### 2026-11-27 · P10 protocol merge check
+Codex reconciled the protocol with merged P10. The real client supplies its avatar ID, while the battle server selects the simulated player's character.
