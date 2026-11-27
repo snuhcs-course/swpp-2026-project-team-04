@@ -5,9 +5,14 @@ import 'package:flutter/material.dart';
 import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
 import '../models/tutorial_page.dart';
+import '../services/feedback/coach_script.dart';
 import '../theme/app_theme.dart';
+import '../utils/korean_josa.dart';
 import 'battle_banner.dart';
 import 'battle_fx_motion.dart';
+import 'character_figure.dart';
+import 'coach_graphics.dart';
+import 'coach_parts.dart';
 import 'help_rules.dart';
 import 'tutorial_figure_painters.dart';
 import 'tutorial_game_shot.dart';
@@ -17,7 +22,8 @@ import 'tutorial_setup_scenes.dart';
 /// The tutorial pictures from page 3 on (A12 design `TutDraft`, 316 x 248):
 /// way a, the game screen on a phone beside what to look at on it, made
 /// large; way b, the person in front of the phone on the wall with the game
-/// screen in a bubble over the phone.
+/// screen in a bubble over the phone; way d, a character talking about the
+/// battle (the report page).
 abstract final class TutorialDraft {
   static const size = Size(316, 248);
 
@@ -543,7 +549,218 @@ class _BubbleTailPainter extends CustomPainter {
 abstract final class TutorialDraftLabel {
   static const wayA = '왼쪽은 그 순간의 게임 화면 전체, 오른쪽은 그 화면에서 눈여겨볼 표시를 크게 보여 줌';
 
+  /// Way b's, with the object's particle fitted to the exercise's name
+  /// (the design's fixed '를' read '푸시업를'; user 2026-11-28).
   static String wayB(ExerciseType exercise) =>
-      '사람이 벽에 기댄 폰 앞에서 ${HelpRules.exerciseName(exercise)}를 하고, '
+      '사람이 벽에 기댄 폰 앞에서 '
+      '${Josa.eulReul.after(HelpRules.exerciseName(exercise))} 하고, '
       '폰 위 말풍선에 그때의 게임 장면';
+}
+
+/// Way d (`TutDraft` d): a character talking about the battle in the
+/// coach's dialog, mid-talk (A12 spec 1: 물렁범 for both exercises), with
+/// the pace card of a battle that slowed down later over them.
+class TutorialCoachTalk extends StatelessWidget {
+  const TutorialCoachTalk({super.key});
+
+  /// Who talks (the design's `who`).
+  static const speaker = 'seal';
+
+  /// A battle that slowed down after the start: its reps in each 5 s, and
+  /// the usual (`MsGfx` pace2).
+  static const pace = CoachPaceGraphic(
+    buckets: [5, 5, 2, 2, 2, 2],
+    sliceSeconds: 5,
+    usual: [3, 3, 2.7, 2.7, 2.3, 2.3],
+    mark: CoachPaceMark.late,
+  );
+
+  /// The line, its marked words on the highlighter, in [speaker]'s voice:
+  /// "멈추지 않고 같은 속도로 하는 게 중요하다범! 처음부터 너무 달리지 말자."
+  static List<CoachPiece> lineOf(CoachVoice voice) => [
+    const CoachPiece('멈추지 않고 '),
+    const CoachPiece('같은 속도로', marked: true),
+    CoachPiece(' 하는 게 ${voice.exclaim('중요하다')} 처음부터 너무 달리지 말자.'),
+  ];
+
+  /// The pace card: its place and width, and how small (as designed).
+  static const _cardAt = Offset(146, 10);
+  static const _cardWidth = 328.0;
+  static const _cardScale = 0.49;
+
+  /// The character: where its 140 x 160 box is, and how small.
+  static const _figureAt = Offset(22, 2);
+  static const _figureScale = 0.84;
+
+  /// The dialog box, its edge and shadow, and its line's place.
+  static const _dialogWidth = 296.0;
+  static const _dialog = Rect.fromLTWH(10, 120, _dialogWidth, 118);
+  static const _dialogEdge = 3.0;
+  static const _dialogShadow = 0.12;
+  static const _dialogDrop = 5.0;
+  static const _cornerNarrow = 22.0;
+  static const _cornerTopLeft = 26.0;
+  static const _cornerBottomRight = 28.0;
+  static const _shape = BorderRadius.only(
+    topLeft: Radius.circular(_cornerTopLeft),
+    topRight: Radius.circular(_cornerNarrow),
+    bottomRight: Radius.circular(_cornerBottomRight),
+    bottomLeft: Radius.circular(_cornerNarrow),
+  );
+  static const _lineLeft = 18.0;
+  static const _lineRight = 16.0;
+  static const _lineTop = 22.0;
+
+  /// The line is the design's 14.5 high: the coach card's 15 laid out this
+  /// much wider and drawn this much smaller, so it breaks where the
+  /// design's does (the style itself stays as it is, wiki 2.5.1 rule 3).
+  static const _lineScale = 14.5 / 15;
+  static const _lineWidth =
+      (_dialogWidth - 2 * _dialogEdge - _lineLeft - _lineRight) / _lineScale;
+
+  /// The next mark at the dialog's bottom, and the name tag's place.
+  static const _markSize = Size(18, 13);
+  static const _markBottom = 8.0;
+  static const _tagAt = Offset(22, 104);
+  static const _tagTurn = -4.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final voice = CoachVoice.of(speaker);
+    return SizedBox.fromSize(
+      size: TutorialDraft.size,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          const Positioned.fill(
+            child: CustomPaint(
+              painter: TutorialGridPainter(
+                background: AppColors.background,
+                alpha: 0.07,
+              ),
+            ),
+          ),
+          Positioned(
+            left: _cardAt.dx,
+            top: _cardAt.dy,
+            child: Transform.scale(
+              scale: _cardScale,
+              alignment: Alignment.topLeft,
+              child: const SizedBox(
+                width: _cardWidth,
+                child: CoachGraphicCard(graphic: pace),
+              ),
+            ),
+          ),
+          Positioned(
+            left: _figureAt.dx,
+            top: _figureAt.dy,
+            child: Transform.scale(
+              scale: _figureScale,
+              alignment: Alignment.topLeft,
+              child: CharacterFigure(characterId: voice.characterId),
+            ),
+          ),
+          Positioned.fromRect(
+            rect: _dialog,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: _shape,
+                border: Border.all(color: AppColors.ink, width: _dialogEdge),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.ink.withValues(alpha: _dialogShadow),
+                    offset: const Offset(0, _dialogDrop),
+                  ),
+                ],
+              ),
+              // Inside the edge, as the design's box.
+              child: Padding(
+                padding: const EdgeInsets.all(_dialogEdge),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: _lineLeft,
+                      top: _lineTop,
+                      child: Transform.scale(
+                        scale: _lineScale,
+                        alignment: Alignment.topLeft,
+                        child: SizedBox(
+                          width: _lineWidth,
+                          child: CoachMarkedText(
+                            pieces: lineOf(voice),
+                            style: text.coachCardLine,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: _markBottom,
+                      child: Center(
+                        child: CustomPaint(
+                          size: _markSize,
+                          painter: const _NextMarkPainter(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: _tagAt.dx,
+            top: _tagAt.dy,
+            // Turned about its middle, as the coach's tag.
+            child: Transform.rotate(
+              angle: _tagTurn * math.pi / 180,
+              child: CoachNameTag(name: voice.name, small: true),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// What a screen reader hears: the design's `aria-label`, with the
+  /// subject's particle fitted to the name (the design's fixed '가' read
+  /// '물렁범가'; user 2026-11-28).
+  static String label(CoachVoice voice) =>
+      '${Josa.iGa.after(voice.name)} 대화창에서 이번 판을 이야기해 주는 장면. '
+      '위에는 5초마다 인정 횟수 그래프, 아래 대화창에 같은 속도로 하는 게 '
+      '${voice.exclaim('중요하다')}';
+}
+
+/// The dialog's next mark: a lime triangle down with an ink edge.
+class _NextMarkPainter extends CustomPainter {
+  const _NextMarkPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // The design's 22 x 16 icon: M2 2 H20 L11 14 Z.
+    final x = size.width / 22;
+    final y = size.height / 16;
+    final mark = Path()
+      ..moveTo(2 * x, 2 * y)
+      ..lineTo(20 * x, 2 * y)
+      ..lineTo(11 * x, 14 * y)
+      ..close();
+    canvas
+      ..drawPath(mark, Paint()..color = AppColors.accent)
+      ..drawPath(
+        mark,
+        Paint()
+          ..color = AppColors.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5 * x
+          ..strokeJoin = StrokeJoin.round,
+      );
+  }
+
+  @override
+  bool shouldRepaint(_NextMarkPainter oldDelegate) => false;
 }

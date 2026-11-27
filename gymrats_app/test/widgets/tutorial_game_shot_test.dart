@@ -376,7 +376,8 @@ void main() {
         final band = TutorialGameScene.online(950 + 160);
         expect(band.grade, GameGrade.good);
         expect(band.bandOpacity, 1);
-        expect(band.points, '+${rules.goodPoints}');
+        // GOOD alone on the clip's stage.
+        expect(band.points, isNull);
         expect(TutorialGameScene.online(950 + 750).frame, isNull);
         // The star shows from 80 ms after the blow.
         expect(TutorialGameScene.online(950 + 100).hit, 1);
@@ -390,6 +391,44 @@ void main() {
       expect(TutorialGameScene.online(6000 + 950).myScore, 90);
       expect(TutorialGameScene.online(9000 + 950).myScore, 70);
       expect(TutorialGameScene.online(0).lead, 15);
+    });
+
+    test('the clip\'s own stage (TutShotOnline): GOOD alone at 158, the star '
+        'box at 228, the players\' nicknames, the band popping 0.8 wide', () {
+      final band = TutorialGameScene.online(950 + 160);
+      expect(band.points, isNull);
+      expect(band.bandTop, 158);
+      expect(band.starTop, 228);
+      expect(band.bandNarrow, 0.8);
+      expect((band.myName, band.opponentName), ('hellohello', 'squatking'));
+      final still = TutorialGameScene.of(pushUp, TutorialStep.good);
+      expect((still.bandTop, still.starTop, still.bandNarrow), (150, 222, 1));
+      expect((still.myName, still.opponentName), ('나', '상대'));
+      // The user attacks from the blow; the opponent is hit from 80 ms.
+      final blow = TutorialGameScene.online(950 + 10);
+      expect(blow.attacks, isTrue);
+      expect(blow.hit, 0);
+    });
+
+    testWidgets('drawn: the star from its box at 228, the band narrowed', (
+      tester,
+    ) async {
+      await show(tester, TutorialGameScene.online(950 + 160));
+      expect(stage(tester).frame.star!.centerY, 228 + 60);
+      expect(stage(tester).state.myName, 'hellohello');
+      final narrowed = tester
+          .widgetList<Transform>(
+            find.ancestor(
+              of: find.text('GOOD'),
+              matching: find.byType(Transform),
+            ),
+          )
+          .where((t) {
+            final m = t.transform.storage;
+            return (m[0] - 0.8 * m[5]).abs() < 1e-6 && m[5] != 0;
+          });
+      expect(narrowed, isNotEmpty);
+      expect(find.text('+10'), findsNothing);
     });
 
     test('the still for reduced motion is just after the blow', () {

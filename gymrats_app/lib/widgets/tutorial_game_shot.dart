@@ -37,6 +37,7 @@ class TutorialGameScene {
     this.grade,
     this.points,
     this.hit = 0,
+    this.attacking,
     this.fever = false,
     this.knockout = false,
     this.frame,
@@ -49,8 +50,13 @@ class TutorialGameScene {
     this.starScale,
     this.bandOpacity = 1,
     this.bandScale = 1,
+    this.bandNarrow = 1,
     this.myScoreBump = 1,
     this.myRepsBump = 1,
+    this.bandTop = 150,
+    this.starTop = 222,
+    this.myName = '나',
+    this.opponentName = '상대',
   });
 
   final bool squat;
@@ -72,6 +78,11 @@ class TutorialGameScene {
   /// excellent (the design's `hit`). From 1 the opponent is hit and the
   /// star shows.
   final double hit;
+
+  /// Whether the user's character is attacking: from the blow on in the
+  /// welcome clip, before the opponent is hit ([hit] from 80 ms); else
+  /// whenever there is a blow.
+  final bool? attacking;
   final bool fever;
 
   /// The user won by a knockout: the opponent lies down, K.O. over them.
@@ -98,8 +109,21 @@ class TutorialGameScene {
   final double? starScale;
   final double bandOpacity;
   final double bandScale;
+
+  /// How much narrower than tall the clip's band pops (the design's 0.8).
+  final double bandNarrow;
   final double myScoreBump;
   final double myRepsBump;
+
+  /// Where the grade row's top is, and the star box's top (the stills'
+  /// `TutGame` 150 and 222; the clip's `TutShotOnline` 158 and 228).
+  final double bandTop;
+  final double starTop;
+
+  /// The names over the scores: '나' and '상대' on the stills; the clip's
+  /// players' nicknames.
+  final String myName;
+  final String opponentName;
 
   /// The two characters: GYM마우스 against 물렁범 for push-ups, 펭뚱이
   /// against 그루 for squats (A12 spec 1); the welcome clip pits GYM마우스
@@ -243,7 +267,7 @@ class TutorialGameScene {
 
   /// The welcome clip [ms] in (`TutShotOnline`, a 3 s loop): GYM마우스's
   /// push-up goes down, reaches the bottom at 0.95 s (its shoulder line
-  /// green, the camera's frame green, the blow landing with GOOD and +10),
+  /// green, the camera's frame green, the blow landing with GOOD alone),
   /// and comes back up; every third loop the scores start over.
   static TutorialGameScene online(double ms) {
     const cycle = 3000.0, down0 = 250.0, down1 = 950.0, up0 = 1250.0;
@@ -289,8 +313,10 @@ class TutorialGameScene {
       opponentReps: 4,
       secondsLeft: math.max(1, 24 - (ms / 1000).floor() % 9),
       grade: bandIn > 0 ? GameGrade.good : null,
-      points: '+$good',
+      // GOOD alone on the clip's stage (`TutShotOnline`).
+      points: null,
       hit: attack && d >= 80 ? 1 : 0,
+      attacking: attack,
       camera: camera,
       frame: hit && d < 720 ? BattleFxCameraFrame.good : null,
       bottom: camera.lineY! >= 233,
@@ -304,6 +330,11 @@ class TutorialGameScene {
           : 0.5,
       bandOpacity: bandIn * (1 - bandOut),
       bandScale: pop(bandIn),
+      bandNarrow: _clipBandNarrow,
+      bandTop: _clipBandTop,
+      starTop: _clipStarTop,
+      myName: 'hellohello',
+      opponentName: 'squatking',
       myScoreBump: hit && d < 280 ? 1 + 0.2 * math.sin(math.pi * d / 280) : 1,
       myRepsBump: hit && d >= 80 && d < 340
           ? 1 + 0.3 * math.sin(math.pi * (d - 80) / 260)
@@ -311,9 +342,19 @@ class TutorialGameScene {
     );
   }
 
+  /// The clip's band and star tops (`TutShotOnline`).
+  static const _clipBandTop = 158.0;
+  static const _clipStarTop = 228.0;
+
+  /// The clip's GOOD band, narrower than tall as it pops (`goodS`).
+  static const _clipBandNarrow = 0.8;
+
   /// Where the welcome clip holds when the device asks for reduced motion:
   /// just after the blow landed (the design's still, `t` 960).
   static const welcomeStillMs = 960.0;
+
+  /// Whether the user's character attacks.
+  bool get attacks => attacking ?? hit > 0;
 
   /// The user's lead, and the user's share of the health bar.
   int get lead => myScore - opponentScore;
@@ -348,8 +389,7 @@ class TutorialGameShot extends StatelessWidget {
   static const _cameraSize = Size(292, 390);
   static const _startLineY = 156.0;
 
-  /// The grade row's top, its turn, and the points' size.
-  static const _bandTop = 150.0;
+  /// The grade row's turn, and the points' size.
   static const _bandTurn = -4.0;
   static const _pointsSize = 40.0;
   static const _bandGap = 8.0;
@@ -358,9 +398,10 @@ class TutorialGameShot extends StatelessWidget {
   static const _knockoutTop = 148.0;
   static const _knockoutSize = 92.0;
 
-  /// The star: its box's top left in the design, its turn, and its size
-  /// for a hard (excellent) blow and a good one.
-  static const _starOffset = Offset(-14 + 60, 222 + 60);
+  /// The star: its middle from the meeting point and from its box's top
+  /// ([TutorialGameScene.starTop]), its turn, and its size for a hard
+  /// (excellent) blow and a good one.
+  static const _starOffset = Offset(-14 + 60, 60);
   static const _starTurn = 8.0;
   static const _hardStar = 0.95;
   static const _goodStar = 0.75;
@@ -409,7 +450,7 @@ class TutorialGameShot extends StatelessWidget {
     final me = fighter(
       pose: s.knockout
           ? BattlePose.win
-          : (s.hit > 0 ? BattlePose.attack : BattlePose.idle),
+          : (s.attacks ? BattlePose.attack : BattlePose.idle),
       footX:
           fightAt -
           BattleFx.reach +
@@ -440,7 +481,7 @@ class TutorialGameShot extends StatelessWidget {
       star: struck && s.starOpacity > 0
           ? BattleFxStar(
               centerX: fightAt + _starOffset.dx,
-              centerY: _starOffset.dy,
+              centerY: s.starTop + _starOffset.dy,
               rotation: _starTurn,
               diameter: BattleStarPainter.width * starScale,
               opacity: s.starOpacity,
@@ -475,8 +516,8 @@ class TutorialGameShot extends StatelessWidget {
     );
     final state = BattleStageState(
       phase: BattleStagePhase.playing,
-      myName: '나',
-      opponentName: '상대',
+      myName: s.myName,
+      opponentName: s.opponentName,
       remaining: Duration(seconds: s.secondsLeft),
       roundLength: battleDuration,
       myScore: s.myScore,
@@ -513,13 +554,18 @@ class TutorialGameShot extends StatelessWidget {
             Positioned(
               left: AppSpacing.s12,
               right: AppSpacing.s12,
-              top: _bandTop,
+              top: s.bandTop,
               child: Opacity(
                 opacity: s.bandOpacity.clamp(0.0, 1.0),
                 child: Transform.rotate(
                   angle: _bandTurn * math.pi / 180,
-                  child: Transform.scale(
-                    scale: s.bandScale,
+                  child: Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.diagonal3Values(
+                      s.bandScale * s.bandNarrow,
+                      s.bandScale,
+                      1,
+                    ),
                     child: _GradeRow(grade: grade, points: s.points),
                   ),
                 ),

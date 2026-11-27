@@ -3,8 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/tutorial_page.dart';
+import 'package:gymrats_app/services/feedback/coach_script.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/battle_fx_motion.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/widgets/coach_graphics.dart';
+import 'package:gymrats_app/widgets/coach_parts.dart';
 import 'package:gymrats_app/widgets/tutorial_draft.dart';
 import 'package:gymrats_app/widgets/tutorial_figure_painters.dart';
 import 'package:gymrats_app/widgets/tutorial_game_shot.dart';
@@ -196,15 +200,112 @@ void main() {
     });
   });
 
-  test('the names a screen reader hears', () {
+  test('the names a screen reader hears, their particles fitted to the '
+      'words before them (user 2026-11-28)', () {
     expect(
       TutorialDraftLabel.wayA,
       '왼쪽은 그 순간의 게임 화면 전체, 오른쪽은 그 화면에서 눈여겨볼 표시를 크게 보여 줌',
     );
     expect(
+      TutorialDraftLabel.wayB(pushUp),
+      '사람이 벽에 기댄 폰 앞에서 푸시업을 하고, 폰 위 말풍선에 그때의 게임 장면',
+    );
+    expect(
       TutorialDraftLabel.wayB(squat),
       '사람이 벽에 기댄 폰 앞에서 스쿼트를 하고, 폰 위 말풍선에 그때의 게임 장면',
     );
+    final report = TutorialCoachTalk.label(
+      CoachVoice.of(TutorialCoachTalk.speaker),
+    );
+    expect(
+      report,
+      '물렁범이 대화창에서 이번 판을 이야기해 주는 장면. 위에는 5초마다 인정 '
+      '횟수 그래프, 아래 대화창에 같은 속도로 하는 게 중요하다범!',
+    );
+    for (final label in [
+      TutorialDraftLabel.wayB(pushUp),
+      TutorialDraftLabel.wayB(squat),
+      report,
+    ]) {
+      expect(label, isNot(contains('푸시업를')));
+      expect(label, isNot(contains('물렁범가')));
+    }
+  });
+
+  group('way d: a character talking about the battle', () {
+    testWidgets('물렁범 in the coach\'s dialog, mid-talk, the pace card of a '
+        'battle that slowed down over them', (tester) async {
+      await show(tester, const TutorialCoachTalk());
+      final card = tester.widget<CoachGraphicCard>(
+        find.byType(CoachGraphicCard),
+      );
+      final pace = card.graphic as CoachPaceGraphic;
+      expect(pace.buckets, [5, 5, 2, 2, 2, 2]);
+      expect(pace.sliceSeconds, 5);
+      expect(pace.usual, [3, 3, 2.7, 2.7, 2.3, 2.3]);
+      expect(pace.mark, CoachPaceMark.late);
+      expect(find.text('평소보다 느려졌어요'), findsOneWidget);
+      expect(
+        tester.widget<CoachNameTag>(find.byType(CoachNameTag)).name,
+        '물렁범',
+      );
+      expect(
+        tester
+            .widget<CharacterFigure>(find.byType(CharacterFigure))
+            .characterId,
+        'seal',
+      );
+      final line = tester.widget<CoachMarkedText>(find.byType(CoachMarkedText));
+      expect(line.pieces.where((piece) => piece.marked).single.text, '같은 속도로');
+      expect(
+        line.pieces.map((piece) => piece.text).join(),
+        '멈추지 않고 같은 속도로 하는 게 중요하다범! 처음부터 너무 달리지 말자.',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('where things are, as designed: the card at (146, 10) ×0.49, '
+        'the character at (22, 2) ×0.84, the dialog (10, 120) 296×118 with its '
+        'line inside the 3 edge, the tag turned about its middle', (
+      tester,
+    ) async {
+      await show(tester, const TutorialCoachTalk());
+      final at = tester.getTopLeft(find.byType(TutorialCoachTalk));
+      final card = tester.getRect(find.byType(CoachGraphicCard));
+      expect(card.topLeft - at, const Offset(146, 10));
+      expect(card.width, moreOrLessEquals(328 * 0.49));
+      final figure = tester.getRect(find.byType(CharacterFigure));
+      expect(figure.topLeft - at, const Offset(22, 2));
+      final dialog = tester.getRect(
+        find
+            .ancestor(
+              of: find.byType(CoachMarkedText),
+              matching: find.byType(DecoratedBox),
+            )
+            .last,
+      );
+      expect(dialog.topLeft - at, const Offset(10, 120));
+      expect(dialog.size, const Size(296, 118));
+      final line = tester.getRect(find.byType(CoachMarkedText));
+      expect(line.topLeft - at, const Offset(10 + 3 + 18, 120 + 3 + 22));
+      // The design's 14.5 line from the card's 15: laid out wider, drawn
+      // smaller, as wide as the room inside the dialog.
+      expect(line.width, moreOrLessEquals(296 - 2 * 3 - 18 - 16));
+      final tag = tester.widget<Transform>(
+        find
+            .ancestor(
+              of: find.byType(CoachNameTag),
+              matching: find.byType(Transform),
+            )
+            .first,
+      );
+      expect(tag.alignment, Alignment.center);
+    });
+
+    test('the line takes the speaker\'s own ending', () {
+      final penguin = TutorialCoachTalk.lineOf(CoachVoice.of('penguin'));
+      expect(penguin.map((piece) => piece.text).join(), contains('중요하다펭!'));
+    });
   });
 
   group('where things are, as designed', () {

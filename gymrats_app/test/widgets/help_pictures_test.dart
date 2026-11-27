@@ -11,6 +11,7 @@ import 'package:gymrats_app/widgets/tutorial_figure_painters.dart';
 import 'package:gymrats_app/widgets/tutorial_game_shot.dart';
 import 'package:gymrats_app/widgets/tutorial_rep_bot.dart';
 import 'package:gymrats_app/widgets/tutorial_setup_scenes.dart';
+import 'package:gymrats_app/widgets/tutorial_welcome.dart';
 
 void main() {
   Future<void> show(WidgetTester tester, TutorialPage page) async {
@@ -109,27 +110,6 @@ void main() {
     );
   });
 
-  testWidgets('the game page shows RepBot squatting and doing a push-up', (
-    tester,
-  ) async {
-    await show(tester, TutorialPage.welcome);
-    final figures = tester
-        .widgetList<TutorialRepBot>(find.byType(TutorialRepBot))
-        .map((repBot) => repBot.figure);
-    expect(figures, [RepBotFigure.squatFront, RepBotFigure.pushUpSide]);
-    expect(find.text('1:1 대결'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('the report shows the way to the form feedback', (tester) async {
-    await show(tester, const TutorialPage(pushUp, TutorialStep.report));
-    expect(find.text('자세 피드백 보기'), findsOneWidget);
-    expect(find.text('Average'), findsOneWidget);
-    await show(tester, const TutorialPage(squat, TutorialStep.report));
-    expect(find.text('Average'), findsNothing);
-    expect(find.text('무효'), findsOneWidget);
-  });
-
   testWidgets('the battle, combo, fever and KO pages are way a: the game '
       'screen on a phone and its marks made large', (tester) async {
     for (final exercise in ExerciseType.values) {
@@ -186,7 +166,34 @@ void main() {
     );
     expect(
       HelpPicture.labelOf(const TutorialPage(pushUp, TutorialStep.fail)),
-      '사람이 벽에 기댄 폰 앞에서 푸시업를 하고, 폰 위 말풍선에 그때의 게임 장면',
+      '사람이 벽에 기댄 폰 앞에서 푸시업을 하고, 폰 위 말풍선에 그때의 게임 장면',
     );
+  });
+
+  testWidgets('the game page shows the online battle playing and the arcade '
+      'map; the report pages a character talking', (tester) async {
+    await show(tester, TutorialPage.welcome);
+    expect(find.byType(TutorialWelcome), findsOneWidget);
+    expect(find.byType(TutorialOnlineClip), findsOneWidget);
+    expect(find.byType(TutorialArcadeShot), findsOneWidget);
+    expect(find.byType(TutorialRepBot), findsNothing);
+    for (final exercise in ExerciseType.values) {
+      await show(tester, TutorialPage(exercise, TutorialStep.report));
+      expect(find.byType(TutorialCoachTalk), findsOneWidget);
+    }
+  });
+
+  test('the game page and the report are named as the design names them '
+      '(the report\'s particle fitted)', () {
+    expect(
+      HelpPicture.labelOf(TutorialPage.welcome),
+      '온라인 대결 게임 중 화면과 아케이드 지도 화면 스크린샷',
+    );
+    for (final exercise in ExerciseType.values) {
+      expect(
+        HelpPicture.labelOf(TutorialPage(exercise, TutorialStep.report)),
+        startsWith('물렁범이 대화창에서'),
+      );
+    }
   });
 }
