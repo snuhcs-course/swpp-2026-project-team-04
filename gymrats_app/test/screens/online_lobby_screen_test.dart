@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/config/server_config.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/character_rig.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/screens/online_lobby_screen.dart';
 import 'package:gymrats_app/screens/login_screen.dart';
@@ -26,6 +27,7 @@ import 'package:gymrats_app/services/pose/setup_checker.dart';
 import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/widgets/battle_stage_model.dart';
 import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/widgets/friend_wait_view.dart';
 import 'package:provider/provider.dart';
 
 // The battle server's own default ready limit, read from the sibling server.
@@ -1134,6 +1136,8 @@ void main() {
       InMemoryFriendRepository repo,
       FriendBattle battle, {
       Telemetry? telemetry,
+      DateTime Function()? now,
+      String myCharacter = CharacterRig.defaultId,
     }) async {
       final auth = await loggedIn();
       final sessions = <_Session>[];
@@ -1153,6 +1157,8 @@ void main() {
                         exercise: battle.exercise,
                         friendBattle: battle,
                         friends: repo,
+                        now: now,
+                        myCharacter: myCharacter,
                         createSession: (u, t, a) {
                           final session = _Session(u, t, a);
                           sessions.add(session);
@@ -1192,7 +1198,8 @@ void main() {
         const FriendBattle(friend: friend, exercise: ExerciseType.squat),
       );
       expect(sessions.single.friendId, '2');
-      expect(find.text('헬창님의 수락을 기다리는 중'), findsOneWidget);
+      // A11: the friend battle's own waiting room, a two-line title.
+      expect(find.text('헬창님의\n수락을 기다리는 중'), findsOneWidget);
       final invite = repo.invites.single;
       expect(invite.to, friend);
       expect(invite.exercise, ExerciseType.squat);
@@ -1215,7 +1222,8 @@ void main() {
       await tester.pump();
       expect(sessions.single.left, isTrue);
       expect(sessions.single.wasDisposed, isTrue);
-      expect(find.text('헬창님이 대결 신청을 거절했어요.'), findsOneWidget);
+      // A11: the waiting room's DECLINED title.
+      expect(find.text('헬창님이\n대결 신청을 거절했어요'), findsOneWidget);
       expect(find.text('헬창님에게 다시 신청'), findsOneWidget);
       expect(find.text('온라인 상대 찾기'), findsNothing);
 
@@ -1295,7 +1303,8 @@ void main() {
         repo,
         const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
       );
-      await tester.tap(find.text('매칭 취소'));
+      // A11: the waiting room's 신청 취소 does what 매칭 취소 did.
+      await tester.tap(find.text('신청 취소'));
       await settle(tester);
       expect(sessions.single.left, isTrue);
       expect(find.text('home'), findsOneWidget);
@@ -1318,7 +1327,7 @@ void main() {
         ),
       );
       expect(sessions.single.friendId, '2');
-      expect(find.text('헬창님을 기다리는 중'), findsOneWidget);
+      expect(find.text('헬창님을\n기다리는 중'), findsOneWidget);
       expect(repo.invites, hasLength(1));
       await repo.cancelInvite(sent.id);
       await tester.pump(const Duration(seconds: 2));
@@ -1501,6 +1510,316 @@ void main() {
       await settle(tester);
       expect(find.text('헬창#0002'), findsOneWidget);
     });
+
+    group('A11: the friend battle\'s own waiting room', () {
+      late DateTime clock;
+
+      setUp(() => clock = DateTime(2026, 11, 27, 12));
+
+      InMemoryFriendRepository clocked() => InMemoryFriendRepository(
+        me: me,
+        people: const [friend],
+        now: () => clock,
+      )..friends.add(friend);
+
+      Finder inBoard(Finder of) =>
+          find.descendant(of: find.byType(FriendWaitView), matching: of);
+
+      testWidgets('inviting: CHALLENGE, 신청 취소, the two-line title, me on '
+          'lime, "?" for the friend and the minute on the ring (spec 5)', (
+        tester,
+      ) async {
+        final repo = clocked();
+        await openLobby(
+          tester,
+          repo,
+          const FriendBattle(friend: friend, exercise: ExerciseType.squat),
+          now: () => clock,
+          myCharacter: 'kangaroo',
+        );
+        expect(find.byType(FriendWaitView), findsOneWidget);
+        expect(find.byType(BattleSearchRadar), findsNothing);
+        expect(find.text('CHALLENGE'), findsOneWidget);
+        expect(find.text('신청 취소'), findsOneWidget);
+        expect(find.text('헬창님의\n수락을 기다리는 중'), findsOneWidget);
+        expect(find.text('스쿼트 · 30초', findRichText: true), findsOneWidget);
+        expect(find.text('나'), findsOneWidget);
+        expect(find.text('로그인사용자'), findsOneWidget);
+        expect(find.text('친구'), findsOneWidget);
+        expect(find.text('헬창'), findsOneWidget);
+        expect(find.text('?'), findsNWidgets(2), reason: 'edge and fill');
+        final mine = tester.widget<CharacterIdleFigure>(
+          inBoard(find.byType(CharacterIdleFigure)).first,
+        );
+        expect((mine.characterId, mine.side), ('kangaroo', BattleSide.me));
+        expect(
+          inBoard(find.byType(CharacterIdleFigure))
+              .evaluate()
+              .map((e) => (e.widget as CharacterIdleFigure).characterId),
+          everyElement('kangaroo'),
+          reason: 'no friend character before an accept',
+        );
+        expect(find.text('60'), findsOneWidget);
+        expect(
+          tester.widget<FriendWaitRing>(find.byType(FriendWaitRing)).sweep,
+          1,
+        );
+        expect(find.text(FriendWaitView.prepTitle), findsOneWidget);
+        expect(
+          find.text(FriendWaitView.tipOf(ExerciseType.squat)),
+          findsOneWidget,
+        );
+        // My character goes with the invite (A11 spec 7).
+        expect(repo.invites.single.character, 'kangaroo');
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      });
+
+      testWidgets('the number and the ring follow the invite\'s expires_at '
+          'every second (spec 5, 9.9)', (tester) async {
+        final repo = clocked();
+        await openLobby(
+          tester,
+          repo,
+          const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+          now: () => clock,
+        );
+        final expires = repo.invites.single.expiresAt;
+        clock = expires.subtract(const Duration(seconds: 42));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text('42'), findsOneWidget);
+        expect(
+          tester.widget<FriendWaitRing>(find.byType(FriendWaitRing)).sweep,
+          closeTo(42 / 60, 1e-12),
+        );
+        clock = expires.subtract(const Duration(seconds: 9));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text('9'), findsOneWidget);
+        // The same count as the alert's and the friends page's.
+        expect(repo.invites.single.secondsLeftAt(clock), 9);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      });
+
+      testWidgets('accepted: MATCHING, 나가기, VS, and the inviter\'s character '
+          'facing me instead of "?" (spec 5)', (tester) async {
+        final repo = clocked();
+        final sent = repo.receiveInvite(
+          friend,
+          ExerciseType.pushUp,
+          character: 'bear',
+        );
+        final accepted = await repo.acceptInvite(sent.id);
+        await openLobby(
+          tester,
+          repo,
+          FriendBattle(
+            friend: friend,
+            exercise: ExerciseType.pushUp,
+            accepted: accepted,
+          ),
+          now: () => clock,
+        );
+        expect(find.text('MATCHING'), findsOneWidget);
+        expect(find.text('나가기'), findsOneWidget);
+        expect(find.text('헬창님을\n기다리는 중'), findsOneWidget);
+        expect(find.text('VS'), findsOneWidget);
+        expect(find.text('?'), findsNothing);
+        expect(find.byType(FriendWaitRing), findsNothing);
+        expect(
+          {
+            for (final e in inBoard(
+              find.byType(CharacterIdleFigure),
+            ).evaluate())
+              (
+                (e.widget as CharacterIdleFigure).characterId,
+                (e.widget as CharacterIdleFigure).side,
+              ),
+          },
+          {('mouse', BattleSide.me), ('bear', BattleSide.opponent)},
+        );
+        expect(find.text(FriendWaitView.prepTitle), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      });
+
+      testWidgets('declined: DECLINED, 나가기, ✕, the friend\'s cell gray with '
+          '"?" dimmed, 다시 신청 and 친구 목록으로 (spec 5)', (tester) async {
+        final repo = clocked();
+        await openLobby(
+          tester,
+          repo,
+          const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+          now: () => clock,
+        );
+        repo.answer(repo.invites.single.id, InviteStatus.declined);
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump();
+        expect(find.text('DECLINED'), findsOneWidget);
+        expect(find.text('나가기'), findsOneWidget);
+        expect(find.text('헬창님이\n대결 신청을 거절했어요'), findsOneWidget);
+        expect(find.byType(FriendWaitRing), findsNothing);
+        expect(find.text('?'), findsNWidgets(2));
+        expect(
+          tester
+              .widget<Opacity>(
+                find
+                    .ancestor(
+                      of: find.text('?').first,
+                      matching: find.byType(Opacity),
+                    )
+                    .first,
+              )
+              .opacity,
+          0.45,
+        );
+        expect(
+          tester
+              .widgetList<ColoredBox>(inBoard(find.byType(ColoredBox)))
+              .map((b) => b.color),
+          contains(FriendColors.quiet),
+        );
+        expect(find.text(FriendWaitView.prepTitle), findsNothing);
+        expect(find.text('헬창님에게 다시 신청'), findsOneWidget);
+        expect(find.text('친구 목록으로'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      });
+
+      testWidgets('a minute without an answer: TIME OUT, 0 and an empty ring '
+          '(spec 5)', (tester) async {
+        final repo = clocked();
+        await openLobby(
+          tester,
+          repo,
+          const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+          now: () => clock,
+        );
+        clock = clock.add(const Duration(minutes: 1));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump();
+        expect(find.text('TIME OUT'), findsOneWidget);
+        expect(find.text('헬창님이\n1분 안에 수락하지 않았어요'), findsOneWidget);
+        expect(find.text('0'), findsOneWidget);
+        expect(
+          tester.widget<FriendWaitRing>(find.byType(FriendWaitRing)).sweep,
+          0,
+        );
+        expect(find.text('헬창님에게 다시 신청'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      });
+
+      testWidgets('ended otherwise: CLOSED with the end\'s own words; the '
+          'invited side has only 친구 목록으로 (spec 5)', (tester) async {
+        final repo = clocked();
+        final sent = repo.receiveInvite(friend, ExerciseType.pushUp);
+        final accepted = await repo.acceptInvite(sent.id);
+        await openLobby(
+          tester,
+          repo,
+          FriendBattle(
+            friend: friend,
+            exercise: ExerciseType.pushUp,
+            accepted: accepted,
+          ),
+          now: () => clock,
+        );
+        await repo.cancelInvite(sent.id);
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump();
+        expect(find.text('CLOSED'), findsOneWidget);
+        expect(find.text('헬창님이 대결을 취소했어요.'), findsOneWidget);
+        expect(find.text('헬창님에게 다시 신청'), findsNothing);
+        expect(find.text('친구 목록으로'), findsOneWidget);
+        expect(find.text('?'), findsNWidgets(2));
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      });
+
+      testWidgets('친구 목록으로 closes the waiting room', (tester) async {
+        final repo = clocked();
+        await openLobby(
+          tester,
+          repo,
+          const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+          now: () => clock,
+        );
+        repo.answer(repo.invites.single.id, InviteStatus.declined);
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump();
+        await tester.tap(find.text('친구 목록으로'));
+        await settle(tester);
+        expect(find.byType(OnlineLobbyScreen), findsNothing);
+        expect(find.text('home'), findsOneWidget);
+      });
+
+      testWidgets('going back while waiting still asks first', (tester) async {
+        final repo = clocked();
+        final sessions = await openLobby(
+          tester,
+          repo,
+          const FriendBattle(friend: friend, exercise: ExerciseType.pushUp),
+          now: () => clock,
+        );
+        await tester.binding.handlePopRoute();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.byType(ExitDialog), findsOneWidget);
+        expect(sessions.single.left, isFalse);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
+      });
+
+      for (final (size, scale) in const [
+        (Size(360, 780), 1.3),
+        (Size(320, 640), 1.0),
+      ]) {
+        testWidgets('it fits ${size.width.toInt()} x ${size.height.toInt()} '
+            'with $scale times the text (spec 9.10)', (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          final repo = clocked();
+          await openLobby(
+            tester,
+            repo,
+            const FriendBattle(friend: friend, exercise: ExerciseType.squat),
+            now: () => clock,
+          );
+          expect(tester.takeException(), isNull);
+          repo.answer(repo.invites.single.id, InviteStatus.declined);
+          await tester.pump(const Duration(seconds: 2));
+          await tester.pump();
+          expect(tester.takeException(), isNull);
+          expect(find.text('친구 목록으로'), findsOneWidget);
+          await tester.pumpWidget(const SizedBox());
+          await tester.pump();
+        });
+      }
+    });
+  });
+
+  testWidgets('the main match keeps the radar, not the friend waiting room '
+      '(A11 spec 9.6)', (tester) async {
+    final auth = await loggedIn();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: OnlineLobbyScreen(
+          auth: auth,
+          createSession: (u, t, a) => _Session(u, t, a),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(BattleSearchRadar), findsOneWidget);
+    expect(find.text('실시간 상대를 찾는 중'), findsOneWidget);
+    expect(find.byType(FriendWaitView), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
   });
 }
 

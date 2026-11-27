@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/friends/friend_repository.dart';
 import 'package:gymrats_app/viewmodels/friends_viewmodel.dart';
+
+import '../support/fakes.dart';
 
 const _me = FriendPerson(id: 1, nickname: '쥐돌이', code: '쥐돌이#0001');
 const _friend = FriendPerson(id: 2, nickname: '헬창', code: '헬창#0002');
@@ -42,11 +45,19 @@ class _Repo extends InMemoryFriendRepository {
   /// Called with each invite as soon as it is made, as the friend's app.
   void Function(BattleInvite made)? onInvited;
 
+  /// The `character` of each invite sent, in order.
+  final sentCharacters = <String?>[];
+
   @override
-  Future<BattleInvite> invite(int friendId, ExerciseType exercise) async {
+  Future<BattleInvite> invite(
+    int friendId,
+    ExerciseType exercise, {
+    String? character,
+  }) async {
+    sentCharacters.add(character);
     await holdInvite?.future;
     _maybeFail();
-    final made = await super.invite(friendId, exercise);
+    final made = await super.invite(friendId, exercise, character: character);
     onInvited?.call(made);
     return made;
   }
@@ -969,6 +980,559 @@ void main() {
         expect(vm.current, isNotNull);
         vm.dispose();
       });
+    });
+  });
+
+  group('A11: time left from expires_at, the character, how a wait ended', () {
+    final start = DateTime(2026, 11, 27, 12);
+
+    group('FriendsViewModel', () {
+      test(
+        'counts an invite to me down from the server\'s expires_at',
+        () async {
+          var clock = start;
+          final repo = _Repo(now: () => clock);
+          final invite = repo.receiveInvite(_friend, ExerciseType.squat);
+          final vm = FriendsViewModel(repository: repo, now: () => clock);
+          addTearDown(vm.dispose);
+          await vm.load();
+          expect(vm.secondsLeft(invite), 60);
+          clock = start.add(const Duration(milliseconds: 17200));
+          expect(vm.secondsLeft(invite), 43);
+          clock = start.add(const Duration(seconds: 75));
+          expect(vm.secondsLeft(invite), 0);
+        },
+      );
+
+      test('an invite whose time is up here leaves the list at the next tick '
+          'and stays out, though the server still lists it', () {
+        fakeAsync((async) {
+          // The device's clock runs 10 s ahead of the server's.
+          var server = start;
+          final repo = _Repo(now: () => server);
+          final vm = FriendsViewModel(
+            repository: repo,
+            now: () => server.add(const Duration(seconds: 10)),
+          );
+          var heard = 0;
+          vm.addListener(() => heard++);
+          final invite = repo.receiveInvite(_friend, ExerciseType.squat);
+          unawaited(vm.load());
+          async.flushMicrotasks();
+          expect(vm.overview!.invites.single.id, invite.id);
+          expect(vm.secondsLeft(invite), 50);
+          heard = 0;
+          server = server.add(const Duration(seconds: 3));
+          async.elapse(const Duration(seconds: 1));
+          expect(heard, 1, reason: 'one tick, one change');
+          expect(vm.secondsLeft(vm.overview!.invites.single), 47);
+          server = start.add(const Duration(seconds: 50));
+          async.elapse(const Duration(seconds: 1));
+          expect(vm.overview!.invites, isEmpty);
+          // The server's minute is not over: it still lists the invite.
+          unawaited(vm.load());
+          async.flushMicrotasks();
+          expect(vm.overview!.invites, isEmpty);
+          vm.dispose();
+        });
+      });
+
+      test('a normal clock: the card leaves when the count reaches 0 (user, '
+          '2026-11-27)', () {
+        fakeAsync((async) {
+          var clock = start;
+          final repo = _Repo(now: () => clock);
+          final vm = FriendsViewModel(repository: repo, now: () => clock);
+          repo.receiveInvite(_friend, ExerciseType.squat);
+          unawaited(vm.load());
+          async.flushMicrotasks();
+          clock = start.add(const Duration(seconds: 59));
+          async.elapse(const Duration(seconds: 1));
+          expect(vm.secondsLeft(vm.overview!.invites.single), 1);
+          clock = start.add(const Duration(seconds: 60));
+          async.elapse(const Duration(seconds: 1));
+          expect(vm.overview!.invites, isEmpty);
+          vm.dispose();
+        });
+      });
+
+      test('a clock over a minute ahead: an invite at 0 from the first sight '
+          'stays listed at 0 while the server lists it, and goes with the '
+          'next read that does not (user, 2026-11-27)', () {
+        fakeAsync((async) {
+          var server = start;
+          final repo = _Repo(now: () => server);
+          final vm = FriendsViewModel(
+            repository: repo,
+            now: () => server.add(const Duration(seconds: 61)),
+          );
+          final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+          unawaited(vm.load());
+          async.flushMicrotasks();
+          final shown = vm.overview!.invites.single;
+          expect(shown.id, sent.id);
+          expect(vm.secondsLeft(shown), 0);
+          // Ticks and a read while the server still lists it: it stays.
+          server = start.add(const Duration(seconds: 30));
+          async.elapse(const Duration(seconds: 3));
+          unawaited(vm.load());
+          async.flushMicrotasks();
+          expect(vm.overview!.invites.single.id, sent.id);
+          // The server's minute is over: its list no longer has it.
+          server = start.add(const Duration(seconds: 60));
+          unawaited(vm.load());
+          async.flushMicrotasks();
+          expect(vm.overview!.invites, isEmpty);
+          vm.dispose();
+        });
+      });
+
+      test('ticks only while an invite to me is listed', () {
+        fakeAsync((async) {
+          var clock = start;
+          final repo = _Repo(now: () => clock);
+          final vm = FriendsViewModel(repository: repo, now: () => clock);
+          var heard = 0;
+          vm.addListener(() => heard++);
+          unawaited(vm.load());
+          async.flushMicrotasks();
+          heard = 0;
+          async.elapse(const Duration(seconds: 5));
+          expect(heard, 0, reason: 'nothing to count');
+          repo.receiveInvite(_friend, ExerciseType.pushUp);
+          unawaited(vm.load());
+          async.flushMicrotasks();
+          heard = 0;
+          clock = clock.add(const Duration(seconds: 3));
+          async.elapse(const Duration(seconds: 3));
+          expect(heard, 3);
+          clock = clock.add(const Duration(minutes: 1));
+          async.elapse(const Duration(seconds: 1));
+          expect(vm.overview!.invites, isEmpty);
+          heard = 0;
+          async.elapse(const Duration(seconds: 5));
+          expect(heard, 0, reason: 'the last invite went: no more ticks');
+          vm.dispose();
+          expect(async.periodicTimerCount, 0);
+        });
+      });
+
+      test('a given profile is used as is; none given reads one', () async {
+        final users = FakeUserRepository()
+          ..profile = const UserProfile(name: '읽음');
+        final given = FriendsViewModel(repository: _Repo());
+        addTearDown(given.dispose);
+        given.useProfile(const UserProfile(name: '넘김'), users: users);
+        expect(given.profile!.name, '넘김');
+        expect(users.fetchCount, 0);
+        expect((await given.profileForSheet())!.name, '넘김');
+        expect(users.fetchCount, 0);
+
+        final none = FriendsViewModel(repository: _Repo());
+        addTearDown(none.dispose);
+        none.useProfile(null, users: users);
+        await pumpEventQueue();
+        expect(users.fetchCount, 1);
+        expect(none.profile!.name, '읽음');
+      });
+
+      test(
+        'refreshProfile reads again; a failed read keeps the profile held',
+        () async {
+          final users = FakeUserRepository();
+          final vm = FriendsViewModel(repository: _Repo());
+          addTearDown(vm.dispose);
+          vm.useProfile(
+            const UserProfile(name: '예전', bestReps: 3),
+            users: users,
+          );
+          users.profile = const UserProfile(name: '새로', bestReps: 9);
+          expect((await vm.refreshProfile())!.bestReps, 9);
+          expect(vm.profile!.bestReps, 9);
+          users.error = Exception('offline');
+          expect((await vm.refreshProfile())!.bestReps, 9);
+          expect(vm.profile!.name, '새로');
+        },
+      );
+
+      test('one profile read at a time; none without a source', () async {
+        final users = FakeUserRepository()..gate = Completer<void>();
+        final vm = FriendsViewModel(repository: _Repo());
+        addTearDown(vm.dispose);
+        expect(await vm.profileForSheet(), isNull, reason: 'nothing to read');
+        vm.useProfile(null, users: users);
+        final second = vm.refreshProfile();
+        expect(users.fetchCount, 1);
+        users.gate!.complete();
+        expect((await second)!.name, '우현');
+        expect(users.fetchCount, 1);
+      });
+    });
+
+    group('FriendInviteWaitViewModel', () {
+      late DateTime clock;
+      late _Repo repo;
+
+      setUp(() {
+        clock = start;
+        repo = _Repo(now: () => clock)..friends.add(_friend);
+      });
+
+      FriendInviteWaitViewModel inviting({String? character}) {
+        final vm = FriendInviteWaitViewModel(
+          repository: repo,
+          battle: const FriendBattle(
+            friend: _friend,
+            exercise: ExerciseType.squat,
+          ),
+          character: character,
+          pollEvery: const Duration(hours: 1),
+          now: () => clock,
+        );
+        addTearDown(vm.dispose);
+        return vm;
+      }
+
+      test('my invite carries my character', () async {
+        final vm = inviting(character: 'kangaroo');
+        await vm.start();
+        expect(repo.sentCharacters, ['kangaroo']);
+        expect(vm.invite!.character, 'kangaroo');
+      });
+
+      test('without a character the invite goes as an older app\'s', () async {
+        final vm = inviting();
+        await vm.start();
+        expect(repo.sentCharacters, [null]);
+        expect(vm.invite!.character, '');
+      });
+
+      test('secondsLeft is the full minute until the invite is made, then '
+          'counts from its expires_at, cut to 0..60', () async {
+        repo.holdInvite = Completer<void>();
+        final vm = inviting();
+        final started = vm.start();
+        expect(vm.secondsLeft, 60);
+        clock = start.add(const Duration(seconds: 2));
+        repo.holdInvite!.complete();
+        await started;
+        expect(vm.secondsLeft, 60, reason: 'made at +2 s, open for a minute');
+        clock = start.add(const Duration(milliseconds: 44500));
+        expect(vm.secondsLeft, 18);
+        clock = start.add(const Duration(minutes: 3));
+        expect(vm.secondsLeft, 0);
+        // A device clock behind the server's never shows more than 60.
+        clock = start.subtract(const Duration(minutes: 3));
+        expect(vm.secondsLeft, 60);
+      });
+
+      test('endedBy is null while the wait goes on', () async {
+        final vm = inviting();
+        await vm.start();
+        await vm.check();
+        expect(vm.ended, isNull);
+        expect(vm.endedBy, isNull);
+      });
+
+      test('declined → declined', () async {
+        final vm = inviting();
+        await vm.start();
+        repo.answer(vm.invite!.id, InviteStatus.declined);
+        await vm.check();
+        expect(vm.endedBy, FriendWaitEnd.declined);
+      });
+
+      test('the server says expired → expired', () async {
+        final vm = inviting();
+        await vm.start();
+        clock = clock.add(const Duration(minutes: 1));
+        await vm.check();
+        expect(vm.invite!.status, InviteStatus.expired);
+        expect(vm.endedBy, FriendWaitEnd.expired);
+      });
+
+      test('the device clock says the minute is over (server not reached) → '
+          'expired, though the invite still reads pending', () async {
+        final vm = inviting();
+        await vm.start();
+        repo.failWith = const ApiException(ApiErrorKind.network);
+        clock = clock.add(const Duration(minutes: 1));
+        await vm.check();
+        expect(vm.invite!.status, InviteStatus.pending);
+        expect(vm.endedBy, FriendWaitEnd.expired);
+      });
+
+      test('cancelled, not paired in time, or not sent → other', () async {
+        final cancelled = inviting();
+        await cancelled.start();
+        repo.answer(cancelled.invite!.id, InviteStatus.cancelled);
+        await cancelled.check();
+        expect(cancelled.endedBy, FriendWaitEnd.other);
+
+        final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+        final accepted = await repo.acceptInvite(sent.id);
+        final unpaired = FriendInviteWaitViewModel(
+          repository: repo,
+          battle: FriendBattle(
+            friend: _friend,
+            exercise: ExerciseType.squat,
+            accepted: accepted,
+          ),
+          pollEvery: const Duration(hours: 1),
+          now: () => clock,
+        );
+        addTearDown(unpaired.dispose);
+        await unpaired.start();
+        clock = clock.add(const Duration(seconds: 30));
+        await unpaired.check();
+        expect(unpaired.ended, contains('연결하지 못했어요'));
+        expect(unpaired.endedBy, FriendWaitEnd.other);
+
+        repo.friends.clear();
+        final refused = inviting();
+        await refused.start();
+        expect(refused.ended, contains('친구에게만'));
+        expect(refused.endedBy, FriendWaitEnd.other);
+      });
+    });
+
+    group('FriendInviteAlertViewModel', () {
+      test('secondsLeft counts the shown invite from its expires_at; 0 without '
+          'one', () async {
+        var clock = start;
+        final repo = _Repo(now: () => clock);
+        final vm = FriendInviteAlertViewModel(
+          repository: repo,
+          pollEvery: const Duration(hours: 1),
+          now: () => clock,
+        );
+        addTearDown(vm.dispose);
+        expect(vm.secondsLeft, 0);
+        repo.receiveInvite(_friend, ExerciseType.squat, character: 'bear');
+        vm.setSignedIn(true);
+        await pumpEventQueue();
+        expect(vm.current!.character, 'bear');
+        expect(vm.secondsLeft, 60);
+        clock = start.add(const Duration(seconds: 21));
+        expect(vm.secondsLeft, 39);
+      });
+
+      test('at 0 the alert goes, and the invite is not offered again', () {
+        fakeAsync((async) {
+          var server = start;
+          final repo = _Repo(now: () => server);
+          // The device's clock runs 5 s ahead: the server still lists it.
+          final vm = FriendInviteAlertViewModel(
+            repository: repo,
+            pollEvery: const Duration(hours: 1),
+            now: () => server.add(const Duration(seconds: 5)),
+          );
+          repo.receiveInvite(_friend, ExerciseType.squat);
+          vm.setSignedIn(true);
+          async.flushMicrotasks();
+          expect(vm.visible, isTrue);
+          var heard = 0;
+          vm.addListener(() => heard++);
+          server = start.add(const Duration(seconds: 1));
+          async.elapse(const Duration(seconds: 1));
+          expect(heard, 1, reason: 'a tick tells the new count');
+          expect(vm.secondsLeft, 54);
+          server = start.add(const Duration(seconds: 55));
+          async.elapse(const Duration(seconds: 1));
+          expect(vm.current, isNull);
+          expect(vm.visible, isFalse);
+          unawaited(vm.check());
+          async.flushMicrotasks();
+          expect(vm.current, isNull, reason: 'over here, whatever the read');
+          expect(async.periodicTimerCount, 1, reason: 'only the reading');
+          vm.dispose();
+        });
+      });
+
+      test('a normal clock: the alert goes when the count reaches 0 (user, '
+          '2026-11-27)', () {
+        fakeAsync((async) {
+          var clock = start;
+          final repo = _Repo(now: () => clock);
+          final vm = FriendInviteAlertViewModel(
+            repository: repo,
+            pollEvery: const Duration(hours: 1),
+            now: () => clock,
+          );
+          repo.receiveInvite(_friend, ExerciseType.squat);
+          vm.setSignedIn(true);
+          async.flushMicrotasks();
+          expect(vm.secondsLeft, 60);
+          clock = start.add(const Duration(seconds: 59));
+          async.elapse(const Duration(seconds: 1));
+          expect(vm.visible, isTrue);
+          clock = start.add(const Duration(seconds: 60));
+          async.elapse(const Duration(seconds: 1));
+          expect(vm.current, isNull);
+          expect(vm.visible, isFalse);
+          vm.dispose();
+        });
+      });
+
+      test('a clock over a minute ahead: an invite at 0 from the first sight '
+          'shows 0:00 while the server lists it, and goes with the next read '
+          'that does not (user, 2026-11-27)', () {
+        fakeAsync((async) {
+          var server = start;
+          final repo = _Repo(now: () => server);
+          final vm = FriendInviteAlertViewModel(
+            repository: repo,
+            pollEvery: const Duration(seconds: 5),
+            now: () => server.add(const Duration(seconds: 61)),
+          );
+          final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+          vm.setSignedIn(true);
+          async.flushMicrotasks();
+          expect(vm.current!.id, sent.id);
+          expect(vm.visible, isTrue);
+          expect(vm.secondsLeft, 0);
+          // Ticks and reads while the server still lists it: it stays.
+          server = start.add(const Duration(seconds: 30));
+          async.elapse(const Duration(seconds: 5));
+          expect(vm.current!.id, sent.id);
+          expect(vm.secondsLeft, 0);
+          // The server's minute is over: its list no longer has it.
+          server = start.add(const Duration(seconds: 60));
+          async.elapse(const Duration(seconds: 5));
+          expect(vm.current, isNull);
+          expect(vm.visible, isFalse);
+          vm.dispose();
+        });
+      });
+
+      test(
+        'a clock over a minute ahead: 수락 is the server\'s to judge',
+        () async {
+          final server = start;
+          final repo = _Repo(now: () => server);
+          final vm = FriendInviteAlertViewModel(
+            repository: repo,
+            pollEvery: const Duration(hours: 1),
+            now: () => server.add(const Duration(seconds: 61)),
+          );
+          addTearDown(vm.dispose);
+          final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+          vm.setSignedIn(true);
+          await pumpEventQueue();
+          expect(vm.secondsLeft, 0);
+          final accepted = await vm.accept();
+          expect(accepted!.id, sent.id);
+          expect(accepted.status, InviteStatus.accepted);
+        },
+      );
+
+      test('no ticking while hidden or with nothing to show', () {
+        fakeAsync((async) {
+          final repo = _Repo(now: () => start);
+          final vm = FriendInviteAlertViewModel(
+            repository: repo,
+            pollEvery: const Duration(hours: 1),
+            now: () => start,
+          );
+          var heard = 0;
+          vm.addListener(() => heard++);
+          vm.setSignedIn(true);
+          async.flushMicrotasks();
+          heard = 0;
+          async.elapse(const Duration(seconds: 3));
+          expect(heard, 0, reason: 'nothing to show');
+          repo.receiveInvite(_friend, ExerciseType.squat);
+          unawaited(vm.check());
+          async.flushMicrotasks();
+          vm.setHidden(true);
+          heard = 0;
+          async.elapse(const Duration(seconds: 3));
+          expect(heard, 0, reason: 'hidden');
+          vm.setHidden(false);
+          async.flushMicrotasks();
+          heard = 0;
+          async.elapse(const Duration(seconds: 2));
+          expect(heard, 2);
+          vm.dispose();
+          expect(async.periodicTimerCount, 0);
+        });
+      });
+
+      test('an accept on its way is not cut off at 0: the server decides', () {
+        fakeAsync((async) {
+          var clock = start;
+          final repo = _Repo(now: () => start);
+          final vm = FriendInviteAlertViewModel(
+            repository: repo,
+            pollEvery: const Duration(hours: 1),
+            now: () => clock,
+          );
+          repo.receiveInvite(_friend, ExerciseType.squat);
+          vm.setSignedIn(true);
+          async.flushMicrotasks();
+          repo.holdAccept = Completer<void>();
+          BattleInvite? accepted;
+          unawaited(vm.accept().then((a) => accepted = a));
+          async.flushMicrotasks();
+          clock = start.add(const Duration(minutes: 1));
+          async.elapse(const Duration(seconds: 1));
+          expect(vm.current, isNotNull, reason: 'still answering');
+          repo.holdAccept!.complete();
+          async.flushMicrotasks();
+          expect(accepted!.status, InviteStatus.accepted);
+          vm.dispose();
+        });
+      });
+    });
+
+    test('the alert, the friends page and the waiting room count the same '
+        'seconds from one expires_at (A11 spec 9.9)', () async {
+      var clock = start;
+      // The inviter's phone and mine, on the same server clock.
+      final inviterRepo = InMemoryFriendRepository(
+        me: _friend,
+        people: const [_me],
+        now: () => clock,
+      )..friends.add(_me);
+      final wait = FriendInviteWaitViewModel(
+        repository: inviterRepo,
+        battle: const FriendBattle(friend: _me, exercise: ExerciseType.squat),
+        pollEvery: const Duration(hours: 1),
+        now: () => clock,
+      );
+      addTearDown(wait.dispose);
+      await wait.start();
+      final repo = _Repo(now: () => clock);
+      repo.invites.add(
+        BattleInvite(
+          id: wait.invite!.id,
+          from: _friend,
+          to: _me,
+          exercise: ExerciseType.squat,
+          status: InviteStatus.pending,
+          expiresAt: wait.invite!.expiresAt,
+        ),
+      );
+      final page = FriendsViewModel(repository: repo, now: () => clock);
+      final alert = FriendInviteAlertViewModel(
+        repository: repo,
+        pollEvery: const Duration(hours: 1),
+        now: () => clock,
+      );
+      addTearDown(page.dispose);
+      addTearDown(alert.dispose);
+      await page.load();
+      alert.setSignedIn(true);
+      await pumpEventQueue();
+      for (final after in [0, 17, 42, 59]) {
+        clock = start.add(Duration(seconds: after));
+        final shown = page.overview!.invites.single;
+        expect(
+          [page.secondsLeft(shown), alert.secondsLeft, wait.secondsLeft],
+          everyElement(60 - after),
+          reason: '+$after s',
+        );
+      }
     });
   });
 }

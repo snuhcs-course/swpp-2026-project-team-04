@@ -2,19 +2,28 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../main.dart';
+import '../models/battle_rules.dart';
 import '../models/exercise_type.dart';
-import '../models/exercise_type_korean.dart';
+import '../models/user_profile.dart';
 import '../services/friends/friend_repository.dart';
+import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/friends_viewmodel.dart';
+import '../widgets/arcade_parts.dart';
+import '../widgets/exercise_sheet.dart';
+import '../widgets/friend_invite_parts.dart';
 import '../widgets/lobby_parts.dart';
 
-/// 친구와의 대전 (P9), from 게임 시작's 친구와의 대전 row: my friend code to share, a
-/// friend request by code, battle invites and friend requests to answer,
-/// and my friends, each with 대결. A friend's 대결 asks for the exercise and
-/// opens the waiting room; an accepted invite opens it at once.
+/// 친구와의 대전 (P9, A11 spec 4), from 게임 시작's friend card: battle
+/// invites to me (each a card with the inviter's character and the time
+/// left), friend requests to me, my friends (each with 대결), the requests
+/// I sent, then my friend code and a friend request by code. A friend's 대결
+/// asks for the exercise on the online battle's sheet and opens the waiting
+/// room; an accepted invite opens it at once. The page's route argument is
+/// home's profile, for the sheet's bests.
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({
     super.key,
@@ -30,7 +39,7 @@ class FriendsScreen extends StatefulWidget {
   final Duration refreshEvery;
 
   /// Asks for the exercise of a battle with a friend; null shows the
-  /// screen's own two-choice sheet.
+  /// online battle's exercise sheet ([showExerciseSheet]).
   final Future<ExerciseType?> Function(BuildContext context, FriendPerson)?
   pickExercise;
 
@@ -42,6 +51,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   late final FriendsViewModel _vm = widget.createViewModel();
   final _code = TextEditingController();
   Timer? _refresh;
+  bool _profileTaken = false;
 
   @override
   void initState() {
@@ -52,6 +62,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
       // Not while a battle opened from here is on top.
       if (ModalRoute.of(context)?.isCurrent ?? false) unawaited(_vm.load());
     });
+  }
+
+  /// Once: home's profile from the route, and the app's [UserRepository]
+  /// to read it with when there is none, or again after a battle.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_profileTaken) return;
+    _profileTaken = true;
+    final given = ModalRoute.of(context)?.settings.arguments;
+    _vm.useProfile(
+      given is UserProfile ? given : null,
+      users: Provider.of<UserRepository?>(context, listen: false),
+    );
   }
 
   void _changed() {
@@ -113,7 +137,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
       GymRatsApp.onlineBattleRoute,
       arguments: battle,
     );
-    if (mounted) unawaited(_vm.load());
+    if (!mounted) return;
+    unawaited(_vm.load());
+    // The battle may have set new bests for the next exercise sheet.
+    unawaited(_vm.refreshProfile());
   }
 
   @override
@@ -124,45 +151,30 @@ class _FriendsScreenState extends State<FriendsScreen> {
       behind: const LobbyWatermark('1V1', left: 150),
       children: [
         const LobbyPageHeader(tag: '01 / PLAY · FRIENDS', title: '친구와의 대전'),
-        const SizedBox(height: AppSpacing.s16),
-        if (overview == null)
+        if (overview == null) ...[
+          const SizedBox(height: AppSpacing.s16),
           _vm.loadError == null
               ? const Center(child: CircularProgressIndicator())
-              : _Notice(_vm.loadError!, onRetry: () => unawaited(_vm.load()))
-        else ...[
-          _MyCode(code: overview.code, onCopy: () => _copy(overview.code)),
-          const SizedBox(height: AppSpacing.s12),
-          _AddFriend(
-            controller: _code,
-            busy: _vm.adding,
-            error: _vm.addError,
-            notice: _vm.addNotice,
-            onSubmit: () => unawaited(_add()),
-          ),
+              : _Notice(_vm.loadError!, onRetry: () => unawaited(_vm.load())),
+        ] else ...[
           if (_vm.actionError case final error?) ...[
-            const SizedBox(height: AppSpacing.s12),
+            const SizedBox(height: AppSpacing.s16),
             _Notice(error),
           ],
           if (overview.invites.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.s16),
-            _Group(
-              label: '받은 대결 신청',
-              rows: [
-                for (final invite in overview.invites)
-                  _PersonRow(
-                    person: invite.from,
-                    line: '${invite.exercise.koreanName} 대결 · 1분 안에 수락',
-                    actions: _answers(
-                      invite.id,
-                      onAccept: () => unawaited(_accept(invite)),
-                      onDecline: () => unawaited(_vm.declineInvite(invite.id)),
-                    ),
-                  ),
-              ],
-            ),
+            const _GroupLabel('받은 대결 신청'),
+            for (final (index, invite) in overview.invites.indexed) ...[
+              if (index > 0) const SizedBox(height: AppSpacing.s8),
+              FriendInviteCard(
+                invite: invite,
+                secondsLeft: _vm.secondsLeft(invite),
+                busy: _vm.busy.contains(invite.id),
+                onAccept: () => unawaited(_accept(invite)),
+                onDecline: () => unawaited(_vm.declineInvite(invite.id)),
+              ),
+            ],
           ],
-          if (overview.incoming.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.s16),
+          if (overview.incoming.isNotEmpty)
             _Group(
               label: '받은 친구 요청',
               rows: [
@@ -178,8 +190,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ),
               ],
             ),
-          ],
-          const SizedBox(height: AppSpacing.s16),
           _Group(
             label: '친구 ${overview.friends.length}',
             rows: [
@@ -194,27 +204,34 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ),
                 ),
               for (final friend in overview.friends)
-                _PersonRow(
-                  person: friend,
-                  actions: [
-                    OutlinedButton(
-                      onPressed: () => unawaited(_challenge(friend)),
-                      child: const Text('대결'),
-                    ),
-                  ],
+                _FriendRow(
+                  friend: friend,
+                  onChallenge: () => unawaited(_challenge(friend)),
                 ),
             ],
           ),
-          if (overview.outgoing.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.s16),
+          if (overview.outgoing.isNotEmpty)
             _Group(
               label: '보낸 친구 요청',
               rows: [
                 for (final request in overview.outgoing)
-                  _PersonRow(person: request.person, line: '수락을 기다리는 중'),
+                  _PersonRow(
+                    person: request.person,
+                    line: '수락을 기다리는 중',
+                    restyled: false,
+                  ),
               ],
             ),
-          ],
+          const _GroupLabel('친구 추가'),
+          _AddFriend(
+            code: overview.code,
+            onCopy: () => _copy(overview.code),
+            controller: _code,
+            busy: _vm.adding,
+            error: _vm.addError,
+            notice: _vm.addNotice,
+            onSubmit: () => unawaited(_add()),
+          ),
         ],
       ],
     );
@@ -240,95 +257,51 @@ class _FriendsScreenState extends State<FriendsScreen> {
     ];
   }
 
-  /// 푸시업 or 스쿼트 for a battle with [friend]; null when closed.
-  static Future<ExerciseType?> _pickExercise(
+  /// The online battle's exercise sheet for a battle with [friend], with
+  /// the bests of the profile held (A11 spec 1); null when closed, or when
+  /// no profile can be had ([FriendsViewModel.actionError] says why).
+  Future<ExerciseType?> _pickExercise(
     BuildContext context,
     FriendPerson friend,
-  ) => showModalBottomSheet<ExerciseType>(
-    context: context,
-    backgroundColor: AppColors.card,
-    showDragHandle: true,
-    builder: (sheet) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.s20,
-          0,
-          AppSpacing.s20,
-          AppSpacing.s16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '${friend.nickname}님과 무엇으로 대결할까요?',
-              style: Theme.of(sheet).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            for (final exercise in ExerciseType.values) ...[
-              OutlinedButton(
-                onPressed: () => Navigator.pop(sheet, exercise),
-                child: Text(exercise.koreanName),
-              ),
-              const SizedBox(height: AppSpacing.s8),
-            ],
-          ],
+  ) async {
+    final profile = await _vm.profileForSheet();
+    if (profile == null || !context.mounted) return null;
+    return showExerciseSheet(
+      context,
+      subtitle: '${friend.nickname}님과 친구 1v1 · ${battleDuration.inSeconds}초',
+      profile: profile,
+    );
+  }
+}
+
+/// A group's name: bold gray, 20 above it and 8 under it.
+class _GroupLabel extends StatelessWidget {
+  const _GroupLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: AppSpacing.s20, bottom: AppSpacing.s8),
+    child: Semantics(
+      header: true,
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w700,
         ),
       ),
     ),
   );
 }
 
-/// 내 친구 코드, with a copy button.
-class _MyCode extends StatelessWidget {
-  const _MyCode({required this.code, required this.onCopy});
-
-  final String code;
-  final VoidCallback onCopy;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.s16,
-          AppSpacing.s12,
-          AppSpacing.s8,
-          AppSpacing.s12,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '내 친구 코드',
-                    style: text.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  SelectableText(code, style: text.titleLarge),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: onCopy,
-              tooltip: '친구 코드 복사',
-              color: AppColors.line,
-              icon: const Icon(Icons.copy_rounded),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The code field and 요청, with the last request's answer under them.
+/// The add-friend card (A11 spec 4): 내 친구 코드 with a copy button, a
+/// line, then the code field and 요청; the last request's answer under it.
 class _AddFriend extends StatelessWidget {
   const _AddFriend({
+    required this.code,
+    required this.onCopy,
     required this.controller,
     required this.busy,
     required this.onSubmit,
@@ -336,43 +309,168 @@ class _AddFriend extends StatelessWidget {
     this.notice,
   });
 
+  final String code;
+  final VoidCallback onCopy;
   final TextEditingController controller;
   final bool busy;
   final VoidCallback onSubmit;
   final String? error, notice;
 
+  static const _codePadding = EdgeInsets.fromLTRB(
+    AppSpacing.s16,
+    _rowOver,
+    AppSpacing.s8,
+    _rowOver,
+  );
+  static const _fieldPadding = EdgeInsets.fromLTRB(
+    AppSpacing.s12,
+    _rowOver,
+    _rowOver,
+    _rowOver,
+  );
+  static const _rowOver = 10.0;
+  static const _copy = 44.0;
+  static const _copyIcon = 22.0;
+  static const _control = 44.0;
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final tag = code.lastIndexOf('#');
+    final fieldEdge = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.small),
+      borderSide: const BorderSide(color: AppColors.border),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                enabled: !busy,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSubmit(),
-                decoration: InputDecoration(
-                  labelText: '친구 코드로 추가',
-                  hintText: '닉네임#0000',
-                  errorText: error,
-                  errorMaxLines: 2,
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: _codePadding,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('내 친구 코드', style: text.friendCodeLabel),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: tag < 0 ? code : code.substring(0, tag),
+                                ),
+                                if (tag >= 0)
+                                  TextSpan(
+                                    text: code.substring(tag),
+                                    style: text.friendCodeTag,
+                                  ),
+                              ],
+                            ),
+                            style: text.friendCode,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: onCopy,
+                      tooltip: '친구 코드 복사',
+                      color: AppColors.line,
+                      iconSize: _copyIcon,
+                      constraints: const BoxConstraints.tightFor(
+                        width: _copy,
+                        height: _copy,
+                      ),
+                      icon: const Icon(Icons.copy_rounded),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.s8),
-            FilledButton(
-              onPressed: busy ? null : onSubmit,
-              child: const Text('요청'),
-            ),
-          ],
+              const Divider(height: 1, thickness: 1, color: FriendColors.quiet),
+              Padding(
+                padding: _fieldPadding,
+                child: Row(
+                  children: [
+                    Expanded(
+                      // The field's name for a screen reader: it shows no
+                      // label of its own, only the hint.
+                      child: Semantics(
+                        label: '친구 코드로 추가',
+                        child: TextField(
+                          controller: controller,
+                          enabled: !busy,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => onSubmit(),
+                          style: text.friendCodeInput,
+                          decoration: InputDecoration(
+                            hintText: '닉네임#0000',
+                            hintStyle: text.friendCodeInput.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                            isDense: true,
+                            filled: true,
+                            fillColor: AppColors.cardHigh,
+                            constraints: const BoxConstraints(
+                              minHeight: _control,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.s12,
+                              vertical: AppSpacing.s12,
+                            ),
+                            border: fieldEdge,
+                            enabledBorder: fieldEdge,
+                            disabledBorder: fieldEdge,
+                            focusedBorder: fieldEdge.copyWith(
+                              borderSide: const BorderSide(
+                                color: AppColors.ink,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.s8),
+                    FilledButton(
+                      onPressed: busy ? null : onSubmit,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, _control),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.s16,
+                        ),
+                        backgroundColor: AppColors.ink,
+                        foregroundColor: AppColors.card,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.small),
+                        ),
+                        textStyle: text.friendButton,
+                      ),
+                      child: const Text('요청'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+        if (error case final error?)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.s8),
+            child: Text(
+              error,
+              style: text.bodySmall?.copyWith(color: AppColors.danger),
+            ),
+          ),
         if (notice case final notice?)
           Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.s4),
+            padding: const EdgeInsets.only(top: AppSpacing.s8),
             child: Text(
               notice,
               style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
@@ -383,7 +481,7 @@ class _AddFriend extends StatelessWidget {
   }
 }
 
-/// A bold gray [label] over a card of [rows] with lines between them.
+/// A group's [label] over a card of [rows] with quiet lines between them.
 class _Group extends StatelessWidget {
   const _Group({required this.label, required this.rows});
 
@@ -394,23 +492,19 @@ class _Group extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Semantics(
-        header: true,
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      const SizedBox(height: AppSpacing.s8),
+      _GroupLabel(label),
       Card(
+        margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
             for (final (index, row) in rows.indexed) ...[
-              if (index > 0) const Divider(height: 1),
+              if (index > 0)
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: FriendColors.quiet,
+                ),
               row,
             ],
           ],
@@ -420,17 +514,103 @@ class _Group extends StatelessWidget {
   );
 }
 
-/// A person's nickname and code (or [line]), then [actions] at the right.
-class _PersonRow extends StatelessWidget {
-  const _PersonRow({required this.person, this.line, this.actions = const []});
+/// A friend in the list (A11 spec 4): the nickname over the friend code,
+/// and the lime 대결 at the right; at least 64 high.
+class _FriendRow extends StatelessWidget {
+  const _FriendRow({required this.friend, required this.onChallenge});
 
-  final FriendPerson person;
-  final String? line;
-  final List<Widget> actions;
+  final FriendPerson friend;
+  final VoidCallback onChallenge;
+
+  static const _height = 64.0;
+  static const _padding = EdgeInsets.fromLTRB(
+    AppSpacing.s16,
+    AppSpacing.s4,
+    AppSpacing.s12,
+    AppSpacing.s4,
+  );
+  static const _button = 40.0;
+  static const _buttonPadding = EdgeInsets.fromLTRB(
+    _buttonStart,
+    0,
+    AppSpacing.s12,
+    0,
+  );
+  static const _buttonStart = 14.0;
+  static const _edge = 2.0;
+  static const _arrow = 16.0;
+  static const _arrowStroke = 2.8;
+  static const _arrowGap = 6.0;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _height),
+      child: Padding(
+        padding: _padding,
+        child: Row(
+          children: [
+            Expanded(
+              child: _PersonWords(
+                nickname: friend.nickname,
+                line: friend.code,
+                restyled: true,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.s12),
+            OutlinedButton(
+              onPressed: onChallenge,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, _button),
+                padding: _buttonPadding,
+                backgroundColor: AppColors.accent,
+                foregroundColor: AppColors.ink,
+                side: const BorderSide(color: AppColors.ink, width: _edge),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.small),
+                ),
+                textStyle: text.friendChallenge,
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('대결'),
+                  SizedBox(width: _arrowGap),
+                  ArcadeGlyphIcon(
+                    ArcadeGlyph.arrow,
+                    size: _arrow,
+                    color: AppColors.ink,
+                    strokeWidth: _arrowStroke,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A person's nickname and code (or [line]), then [actions] at the right:
+/// friend requests both ways. Requests to me take the friend rows' words
+/// ([restyled], A11 spec 4); the ones I sent keep theirs.
+class _PersonRow extends StatelessWidget {
+  const _PersonRow({
+    required this.person,
+    this.line,
+    this.actions = const [],
+    this.restyled = true,
+  });
+
+  final FriendPerson person;
+  final String? line;
+  final List<Widget> actions;
+  final bool restyled;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.s16,
@@ -439,27 +619,51 @@ class _PersonRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  person.nickname,
-                  style: text.lobbyRowTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  line ?? person.code,
-                  style: text.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+            child: _PersonWords(
+              nickname: person.nickname,
+              line: line ?? person.code,
+              restyled: restyled,
             ),
           ),
           ...actions,
         ],
       ),
+    );
+  }
+}
+
+/// A [nickname] over its [line], in the friend rows' words when
+/// [restyled], else in the rows' old words.
+class _PersonWords extends StatelessWidget {
+  const _PersonWords({
+    required this.nickname,
+    required this.line,
+    required this.restyled,
+  });
+
+  final String nickname, line;
+  final bool restyled;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          nickname,
+          style: restyled ? text.friendRowName : text.lobbyRowTitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          line,
+          style: restyled
+              ? text.friendRowCode
+              : text.bodySmall?.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
     );
   }
 }
@@ -559,9 +763,10 @@ class FriendInviteRouteWatch extends NavigatorObserver with ChangeNotifier {
 }
 
 /// The app-wide alert of a friend's battle invite (P9), above every page:
-/// "deadlift님이 스쿼트 대결을 신청했어요" with 거절 and 수락. 수락 opens the
-/// waiting room through [navigator]. It follows [routes] (hidden during a
-/// battle and on the friends page) and the app's lifecycle.
+/// "deadlift님이 스쿼트 대결을 신청했어요" with the inviter's character, the
+/// time left, 거절 and 수락 (A11 spec 6). 수락 opens the waiting room
+/// through [navigator]. It follows [routes] (hidden during a battle and on
+/// the friends page) and the app's lifecycle.
 class FriendInviteOverlay extends StatefulWidget {
   const FriendInviteOverlay({
     super.key,
@@ -661,79 +866,23 @@ class _FriendInviteOverlayState extends State<FriendInviteOverlay>
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.s12),
-                child: invite == null
-                    ? _AlertCard(line: vm.error!)
-                    : _AlertCard(
-                        line:
-                            '${invite.from.nickname}님이 '
-                            '${invite.exercise.koreanName} 대결을 신청했어요',
-                        busy: vm.answering,
-                        onDecline: () => unawaited(vm.decline()),
-                        onAccept: () => unawaited(_accept()),
-                      ),
+                // A Material for the buttons' ink, over any page.
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: invite == null
+                      ? FriendAlertErrorCard(line: vm.error!)
+                      : FriendInviteAlertCard(
+                          invite: invite,
+                          secondsLeft: vm.secondsLeft,
+                          busy: vm.answering,
+                          onDecline: () => unawaited(vm.decline()),
+                          onAccept: () => unawaited(_accept()),
+                        ),
+                ),
               ),
             ),
           ),
       ],
-    );
-  }
-}
-
-/// The alert's card: an icon, [line], and 거절 · 수락 when given.
-class _AlertCard extends StatelessWidget {
-  const _AlertCard({
-    required this.line,
-    this.busy = false,
-    this.onDecline,
-    this.onAccept,
-  });
-
-  final String line;
-  final bool busy;
-  final VoidCallback? onDecline, onAccept;
-
-  /// The icon chip's size, and the card's lift above the page.
-  static const _chip = 40.0, _elevation = 6.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final onAccept = this.onAccept, onDecline = this.onDecline;
-    return Semantics(
-      liveRegion: true,
-      child: Material(
-        color: AppColors.card,
-        elevation: _elevation,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AppRadius.small)),
-          side: BorderSide(color: AppColors.border),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.s12),
-          child: Row(
-            children: [
-              const LobbyArrowChip(size: _chip, icon: Icons.group_rounded),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(child: Text(line, style: text.lobbyRowTitle)),
-              if (onDecline != null) ...[
-                const SizedBox(width: AppSpacing.s4),
-                TextButton(
-                  onPressed: busy ? null : onDecline,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                  ),
-                  child: const Text('거절'),
-                ),
-              ],
-              if (onAccept != null)
-                OutlinedButton(
-                  onPressed: busy ? null : onAccept,
-                  child: const Text('수락'),
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

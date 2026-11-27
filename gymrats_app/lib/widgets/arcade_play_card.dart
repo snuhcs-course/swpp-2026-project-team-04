@@ -7,10 +7,10 @@ import 'lobby_parts.dart';
 
 /// One of 게임 시작's two cards (P16 spec 3, design `PlayX`): a color panel
 /// with its characters, a slanted shade and an arrow chip, and the name
-/// under it. 온라인 대결: 펭뚱이 against GYM마우스 on two discs with VS
-/// between them, on lime. 아케이드: 1F's gym owner in goggles on a floor
-/// line, on pink. The pictures are fixed: the online card's lower
-/// character is always GYM마우스, not the user's.
+/// under it, centered (A11 spec 3). 온라인 대결: 펭뚱이 against GYM마우스 on
+/// two discs with VS between them, on lime. 아케이드: 1F's gym owner in
+/// goggles on a floor line, on pink. The pictures are fixed: the online
+/// card's lower character is always GYM마우스, not the user's.
 class ArcadePlayCard extends StatelessWidget {
   const ArcadePlayCard._({
     required this.name,
@@ -66,7 +66,9 @@ class ArcadePlayCard extends StatelessWidget {
   static const _arrowInset = 10.0;
   static const _arrow = 18.0;
   static const _arrowStroke = 2.8;
-  static const _nameSide = 14.0;
+
+  /// The name's room at either side (A11 `FrPlay` `names=new`: 10).
+  static const _nameSide = 10.0;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +137,6 @@ class ArcadePlayCard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: _nameSide),
                     child: Align(
-                      alignment: Alignment.centerLeft,
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: LobbySkew(
@@ -159,23 +160,27 @@ class ArcadePlayCard extends StatelessWidget {
   }
 }
 
-/// [color] with [shade] under a slanted edge: from 62% down on the left to
-/// 34% on the right when it [rises], the other way when not (the design's
-/// `clip-path` polygons).
+/// [color] with [shade] under a slanted edge: from [low] down on the left to
+/// [high] on the right when it [rises] (62% and 34% on the two cards), the
+/// other way when not (the design's `clip-path` polygons).
 class _PanelPainter extends CustomPainter {
-  const _PanelPainter(this.color, this.shade, {required this.rises});
+  const _PanelPainter(
+    this.color,
+    this.shade, {
+    required this.rises,
+    this.low = 0.62,
+    this.high = 0.34,
+  });
 
   final Color color;
   final Color shade;
   final bool rises;
-
-  static const _low = 0.62;
-  static const _high = 0.34;
+  final double low, high;
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(Offset.zero & size, Paint()..color = color);
-    final (left, right) = rises ? (_low, _high) : (_high, _low);
+    final (left, right) = rises ? (low, high) : (high, low);
     canvas.drawPath(
       Path()..addPolygon([
         Offset(0, size.height * left),
@@ -191,7 +196,9 @@ class _PanelPainter extends CustomPainter {
   bool shouldRepaint(_PanelPainter oldDelegate) =>
       oldDelegate.color != color ||
       oldDelegate.shade != shade ||
-      oldDelegate.rises != rises;
+      oldDelegate.rises != rises ||
+      oldDelegate.low != low ||
+      oldDelegate.high != high;
 }
 
 /// Where a character's 140 x 160 box goes for its feet at [feet] in the
@@ -243,15 +250,6 @@ class _OnlinePicture extends StatelessWidget {
   static const discShade = 0.55;
   static const discEdge = 3.0;
   static const _vs = Offset(76, 136);
-  static const _vsPadding = EdgeInsets.fromLTRB(
-    AppSpacing.s8,
-    _vsOver,
-    AppSpacing.s8,
-    _vsUnder,
-  );
-  static const _vsOver = 1.0;
-  static const _vsUnder = 2.0;
-  static const _vsCorners = 8.0;
 
   @override
   Widget build(BuildContext context) {
@@ -272,29 +270,118 @@ class _OnlinePicture extends StatelessWidget {
             _scale,
             const ArcadeFigure(id: 'mouse', side: BattleSide.me),
           ),
-          Positioned(
-            left: _vs.dx,
-            top: _vs.dy,
-            child: FractionalTranslation(
-              translation: const Offset(-0.5, 0),
-              child: Container(
-                padding: _vsPadding,
-                decoration: BoxDecoration(
-                  color: AppColors.ink,
-                  borderRadius: BorderRadius.circular(_vsCorners),
-                ),
-                child: LobbySkew(
-                  degrees: 10,
-                  alignment: Alignment.center,
-                  child: Text(
-                    'VS',
-                    style: Theme.of(context).textTheme.arcadeVsChip,
-                  ),
+          _vsChip(_vs),
+        ],
+      ),
+    );
+  }
+}
+
+/// The ink "VS" chip with its middle on [at]'s x and its top on [at]'s y,
+/// slanted 10° (the online card's and the friend card's).
+Widget _vsChip(Offset at) => Positioned(
+  left: at.dx,
+  top: at.dy,
+  child: const FractionalTranslation(
+    translation: Offset(-0.5, 0),
+    child: _VsChip(),
+  ),
+);
+
+class _VsChip extends StatelessWidget {
+  const _VsChip();
+
+  static const _padding = EdgeInsets.fromLTRB(
+    AppSpacing.s8,
+    _over,
+    AppSpacing.s8,
+    _under,
+  );
+  static const _over = 1.0;
+  static const _under = 2.0;
+  static const _corners = 8.0;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: _padding,
+    decoration: BoxDecoration(
+      color: AppColors.ink,
+      borderRadius: BorderRadius.circular(_corners),
+    ),
+    child: LobbySkew(
+      degrees: 10,
+      alignment: Alignment.center,
+      child: Text('VS', style: Theme.of(context).textTheme.arcadeVsChip),
+    ),
+  );
+}
+
+/// 친구와의 대전's picture panel (A11 spec 3, `FrPlay` shape a, figure big):
+/// 그루 (the user's team, lime) and 곰탱이 (the opponent's, pink, facing
+/// left) on two discs with VS between their chests, on [AppColors.fever]
+/// with its shade under an edge rising from 72% down on the left to 46% on
+/// the right. Still pictures with the white edge, as on the cards above.
+///
+/// The [picture]-sized drawing is drawn at [scale] at the panel's bottom
+/// center; the panel is as high and wide as its parent makes it (the friend
+/// card: [picture]'s width times [scale]), the sky filling above.
+class ArcadeFriendPanel extends StatelessWidget {
+  const ArcadeFriendPanel({super.key, this.scale = 1});
+
+  final double scale;
+
+  /// The drawing's box, its coordinates as designed.
+  static const picture = Size(190, 152);
+
+  static const _meFeet = Offset(52, 132);
+  static const _friendFeet = Offset(142, 132);
+  static const _figureScale = 0.65;
+  static const _discWidth = 68.0;
+  static const _vs = Offset(97, 76);
+  static const _shadeLeft = 0.72;
+  static const _shadeRight = 0.46;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: CustomPaint(
+        painter: const _PanelPainter(
+          AppColors.fever,
+          FriendColors.skyShade,
+          rises: true,
+          low: _shadeLeft,
+          high: _shadeRight,
+        ),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: SizedBox.fromSize(
+            size: picture * scale,
+            child: FittedBox(
+              child: SizedBox.fromSize(
+                size: picture,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _disc(_meFeet.dx, _meFeet.dy, _discWidth),
+                    _disc(_friendFeet.dx, _friendFeet.dy, _discWidth),
+                    _standing(
+                      _meFeet,
+                      _figureScale,
+                      const ArcadeFigure(id: 'kangaroo', side: BattleSide.me),
+                    ),
+                    _standing(
+                      _friendFeet,
+                      _figureScale,
+                      const ArcadeFigure(id: 'bear'),
+                      mirror: true,
+                    ),
+                    _vsChip(_vs),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

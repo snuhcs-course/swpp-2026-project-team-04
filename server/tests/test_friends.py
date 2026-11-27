@@ -943,3 +943,105 @@ def test_friend_creation_requires_an_object(client, two, body, endpoint, detail)
     response = client.post(f"/friends/{endpoint}", body, content_type="application/json", **headers)
     assert response.status_code == 400
     assert response.json()["detail"] == detail
+
+
+# A11: the inviter's character id travels with the invite, so the friend's
+# alert and waiting room draw it. An older app sends none.
+
+
+def _invite_as(client, me, friend_id, character, exercise="squat"):
+    return client.post(
+        "/friends/invites",
+        {"friend_id": friend_id, "exercise": exercise, "character": character},
+        format="json",
+        **me,
+    )
+
+
+def test_an_invite_carries_the_inviters_character(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    created = _invite_as(client, a, b_id, "kangaroo")
+    assert created.status_code == 201
+    invite = created.json()
+    assert invite["character"] == "kangaroo"
+    assert FriendBattleInvite.objects.get(id=invite["invite_id"]).character == "kangaroo"
+
+    # The friend reads it in the friends list and in the invite itself.
+    listed = client.get("/friends", **b).json()["invites"]
+    assert [i["character"] for i in listed] == ["kangaroo"]
+    read = client.get(f"/friends/invites/{invite['invite_id']}", **b).json()
+    assert read["character"] == "kangaroo"
+    accepted = client.post(f"/friends/invites/{invite['invite_id']}/accept", **b)
+    assert accepted.status_code == 200
+    assert accepted.json()["character"] == "kangaroo"
+
+
+def test_an_invite_without_a_character_is_kept_empty_and_still_accepted(client, two):
+    # The body an older app sends: no "character" at all.
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    created = _invite(client, a, b_id, "squat")
+    assert created.status_code == 201
+    invite = created.json()
+    assert invite["character"] == ""
+    assert FriendBattleInvite.objects.get(id=invite["invite_id"]).character == ""
+
+    listed = client.get("/friends", **b).json()["invites"]
+    assert [(i["invite_id"], i["character"]) for i in listed] == [
+        (invite["invite_id"], "")
+    ]
+    accepted = client.post(f"/friends/invites/{invite['invite_id']}/accept", **b)
+    assert accepted.status_code == 200
+    assert accepted.json()["status"] == "accepted"
+    assert accepted.json()["character"] == ""
+    seen = client.get(f"/friends/invites/{invite['invite_id']}", **a).json()
+    assert seen["status"] == "accepted"
+
+
+def test_a_null_character_counts_as_none(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    created = _invite_as(client, a, b_id, None)
+    assert created.status_code == 201
+    assert created.json()["character"] == ""
+
+
+def test_the_longest_character_id_is_kept(client, two):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    created = _invite_as(client, a, b_id, "a_1" + "z" * 29)
+    assert created.status_code == 201
+    assert created.json()["character"] == "a_1" + "z" * 29
+
+
+@pytest.mark.parametrize(
+    "character",
+    ["", "Mouse", "mouse!", "곰탱이", "z" * 33, "mouse\n", 5, True, [], {}],
+)
+def test_a_malformed_character_is_refused(client, two, character):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    response = _invite_as(client, a, b_id, character)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "invalid_character"}
+    assert not FriendBattleInvite.objects.exists()
+
+
+def test_a_malformed_character_is_refused_before_the_friendship_check(client, two):
+    (_, a), (b_id, _) = two
+    response = _invite_as(client, a, b_id, "Mouse")
+    assert response.status_code == 400
+    assert response.json() == {"detail": "invalid_character"}
+
+
+@pytest.mark.parametrize("action", ["decline", "cancel"])
+def test_every_invite_reply_has_the_character(client, two, action):
+    (a_id, a), (b_id, b) = two
+    _befriend(client, (a_id, a), (b_id, b))
+    invite_id = _invite_as(client, a, b_id, "seal").json()["invite_id"]
+    answer = client.post(
+        f"/friends/invites/{invite_id}/{action}", **(b if action == "decline" else a)
+    )
+    assert answer.status_code == 200
+    assert answer.json()["character"] == "seal"

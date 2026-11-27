@@ -180,6 +180,113 @@ void main() {
       await repo.invite(2, ExerciseType.squat);
       expect(jsonDecode(sent.single.body)['exercise'], 'squat');
     });
+
+    test('an invite sends my character id (A11)', () async {
+      final repo = repository((_) => {..._invite(), 'character': 'kangaroo'});
+      final invite = await repo.invite(
+        2,
+        ExerciseType.squat,
+        character: 'kangaroo',
+      );
+      expect(jsonDecode(sent.single.body), {
+        'friend_id': 2,
+        'exercise': 'squat',
+        'character': 'kangaroo',
+      });
+      expect(invite.character, 'kangaroo');
+    });
+
+    test('a character id the server would refuse is left out, as an older '
+        'app sends', () async {
+      final repo = repository((_) => _invite());
+      for (final bad in [null, '', 'Mouse', 'mouse!', 'z' * 33]) {
+        await repo.invite(2, ExerciseType.pushUp, character: bad);
+        expect(jsonDecode(sent.last.body), {
+          'friend_id': 2,
+          'exercise': 'push_up',
+        }, reason: '$bad');
+      }
+    });
+
+    test('reads the inviter\'s character; an older server\'s reply without '
+        'one reads as ""', () async {
+      for (final (reply, expected) in [
+        ({..._invite(), 'character': 'bear'}, 'bear'),
+        (_invite(), ''),
+        ({..._invite(), 'character': null}, ''),
+        ({..._invite(), 'character': 7}, ''),
+      ]) {
+        final repo = repository(
+          (request) => request.url.path.endsWith('/friends')
+              ? {
+                  'code': '쥐돌이#0001',
+                  'friends': [],
+                  'incoming': [],
+                  'outgoing': [],
+                  'invites': [reply],
+                }
+              : reply,
+        );
+        expect((await repo.fetchInvite(7)).character, expected);
+        expect((await repo.acceptInvite(7)).character, expected);
+        expect((await repo.fetchOverview()).invites.single.character, expected);
+      }
+    });
+  });
+
+  group('BattleInvite (A11)', () {
+    final expires = DateTime.utc(2026, 11, 27, 12, 1);
+    final invite = BattleInvite(
+      id: 1,
+      from: const FriendPerson(id: 2, nickname: '헬창', code: '헬창#0002'),
+      to: const FriendPerson(id: 1, nickname: '쥐돌이', code: '쥐돌이#0001'),
+      exercise: ExerciseType.squat,
+      status: InviteStatus.pending,
+      expiresAt: expires,
+      character: 'seal',
+    );
+
+    test('secondsLeftAt rounds up to whole seconds and cuts to 0..60', () {
+      expect(
+        invite.secondsLeftAt(expires.subtract(const Duration(minutes: 1))),
+        60,
+      );
+      expect(
+        invite.secondsLeftAt(
+          expires.subtract(const Duration(seconds: 42, milliseconds: 1)),
+        ),
+        43,
+      );
+      expect(
+        invite.secondsLeftAt(expires.subtract(const Duration(seconds: 42))),
+        42,
+      );
+      expect(
+        invite.secondsLeftAt(expires.subtract(const Duration(milliseconds: 1))),
+        1,
+      );
+      expect(invite.secondsLeftAt(expires), 0);
+      expect(invite.secondsLeftAt(expires.add(const Duration(hours: 1))), 0);
+      // A device clock behind the server's: never more than the minute.
+      expect(
+        invite.secondsLeftAt(expires.subtract(const Duration(hours: 1))),
+        60,
+      );
+      expect(BattleInvite.ttl, const Duration(minutes: 1));
+    });
+
+    test('withStatus keeps the character; it defaults to ""', () {
+      expect(invite.withStatus(InviteStatus.accepted).character, 'seal');
+      final plain = BattleInvite(
+        id: 1,
+        from: invite.from,
+        to: invite.to,
+        exercise: ExerciseType.pushUp,
+        status: InviteStatus.pending,
+        expiresAt: expires,
+      );
+      expect(plain.character, '');
+    });
   });
 
   group('InMemoryFriendRepository', () {
@@ -256,6 +363,31 @@ void main() {
       expect((await repo.fetchInvite(first.id)).status, InviteStatus.cancelled);
       // My own invites are not ones to answer.
       expect((await repo.fetchOverview()).invites, isEmpty);
+    });
+
+    test('an invite keeps the character as the server does (A11)', () async {
+      repo.friends.add(b);
+      expect(
+        (await repo.invite(
+          2,
+          ExerciseType.pushUp,
+          character: 'seal',
+        )).character,
+        'seal',
+      );
+      expect((await repo.invite(2, ExerciseType.pushUp)).character, '');
+      expect(
+        (await repo.invite(
+          2,
+          ExerciseType.pushUp,
+          character: 'Seal',
+        )).character,
+        '',
+      );
+      final sent = repo.receiveInvite(b, ExerciseType.squat, character: 'bear');
+      expect((await repo.fetchOverview()).invites.single.character, 'bear');
+      expect((await repo.acceptInvite(sent.id)).character, 'bear');
+      expect(repo.receiveInvite(b, ExerciseType.squat).character, '');
     });
 
     test('invites to me show newest first until their minute is up', () async {
