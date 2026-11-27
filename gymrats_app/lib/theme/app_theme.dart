@@ -1315,10 +1315,11 @@ extension ArcadeText on TextTheme {
     leadingDistribution: TextLeadingDistribution.even,
   );
 
-  /// A 게임 시작 card's name, "온라인 대결", "아케이드": Do Hyeon 26.
+  /// A 게임 시작 card's name, "온라인 대결", "아케이드": Do Hyeon 30 (A11,
+  /// `FrPlay` nameSize; 26 before).
   TextStyle get arcadeCardName => _arcade(
     family: AppFonts.display,
-    size: 26,
+    size: 30,
     weight: FontWeight.w400,
     height: 1,
   );
@@ -2139,4 +2140,208 @@ extension AuthText on TextTheme {
 
   /// The sign-up screen's title: Do Hyeon 30 on 36.
   TextStyle get authTitle => authLime.copyWith(fontSize: 30, height: 36 / 30);
+}
+
+/// The friend battle screens' colors (A11, `FrPlay`, `FrFriends`,
+/// `FrWait`, `FrAlert`) that [AppColors] lacks.
+abstract final class FriendColors {
+  /// The shade under the slanted edge of 친구와의 대전's sky panel, under
+  /// [AppColors.fever].
+  static const skyShade = Color(0xFF22D3EE);
+
+  /// The quiet gray: a time bar's and the ring's track, the lines between
+  /// friends, an ended wait's lower cell and its band.
+  static const quiet = Color(0xFFE3E6EC);
+}
+
+/// The friend battle screens' text styles (A11). Like the rest of the app
+/// they follow the system text size, but for the sticker.
+extension FriendText on TextTheme {
+  TextStyle _friend({
+    required String family,
+    required double size,
+    FontWeight weight = FontWeight.w400,
+    double? height,
+    double spacing = 0,
+    Color color = AppColors.ink,
+  }) => bodyMedium!.copyWith(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: spacing,
+    color: color,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// "친구와의 / 대전" on 게임 시작's friend card: Do Hyeon 31 on 1.08.
+  TextStyle get friendCardName =>
+      _friend(family: AppFonts.display, size: 31, height: 1.08);
+
+  /// "수락 대기!" on its orange sticker: Do Hyeon 19.
+  TextStyle get friendSticker =>
+      _friend(family: AppFonts.display, size: 19, height: 1);
+
+  /// The inviter in an invite card and the alert ("deadlift님이"): Do Hyeon
+  /// 24 on 28.
+  TextStyle get friendInviteName =>
+      _friend(family: AppFonts.display, size: 24, height: 28 / 24);
+
+  /// The time left, "0:48": Oxanium 700, 15 on 20.
+  TextStyle get friendClock => _friend(
+    family: AppFonts.number,
+    size: 15,
+    weight: FontWeight.w700,
+    height: 20 / 15,
+  );
+
+  /// "스쿼트 대결을 신청했어요" in the alert: 15 bold on 22.
+  TextStyle get friendInviteLine => _friend(
+    family: AppFonts.body,
+    size: 15,
+    weight: FontWeight.w700,
+    height: 22 / 15,
+  );
+
+  /// "스쿼트 대결" on its pill: 13 bold on 20; also "나", "친구" in the
+  /// waiting room.
+  TextStyle get friendPill => _friend(
+    family: AppFonts.body,
+    size: 13,
+    weight: FontWeight.w700,
+    height: 20 / 13,
+  );
+
+  /// 거절, 요청, 친구 목록으로: 15 bold.
+  TextStyle get friendButton =>
+      _friend(family: AppFonts.body, size: 15, weight: FontWeight.w700);
+
+  /// 수락 on its lime button: Do Hyeon 20.
+  TextStyle get friendAccept =>
+      _friend(family: AppFonts.display, size: 20, height: 1);
+
+  /// A friend's nickname in the list: Do Hyeon 21 on 26.
+  TextStyle get friendRowName =>
+      _friend(family: AppFonts.display, size: 21, height: 26 / 21);
+
+  /// A friend's code under it: Oxanium 600, 12 on 16, gray.
+  TextStyle get friendRowCode => _friend(
+    family: AppFonts.number,
+    size: 12,
+    weight: FontWeight.w600,
+    height: 16 / 12,
+    color: AppColors.textMuted,
+  );
+
+  /// 대결 on a friend's row: Do Hyeon 19.
+  TextStyle get friendChallenge =>
+      _friend(family: AppFonts.display, size: 19, height: 1);
+
+  /// "내 친구 코드": 12 on 16, gray.
+  TextStyle get friendCodeLabel => _friend(
+    family: AppFonts.body,
+    size: 12,
+    height: 16 / 12,
+    color: AppColors.textSecondary,
+  );
+
+  /// My code itself: 18 bold on 24.
+  TextStyle get friendCode => _friend(
+    family: AppFonts.body,
+    size: 18,
+    weight: FontWeight.w700,
+    height: 24 / 18,
+  );
+
+  /// My code's tag, "#0042": [friendCode] in [AppFonts.number].
+  TextStyle get friendCodeTag =>
+      friendCode.copyWith(fontFamily: AppFonts.number);
+
+  /// What is typed in the code field, and its hint: 15.
+  TextStyle get friendCodeInput => _friend(family: AppFonts.body, size: 15);
+
+  /// The waiting room's 신청 취소 / 나가기: 14 bold.
+  TextStyle get friendWaitBack =>
+      _friend(family: AppFonts.body, size: 14, weight: FontWeight.w700);
+
+  /// Its band, "CHALLENGE": Oxanium 700, 15 on 20, spaced 3.
+  TextStyle get friendWaitTag => _friend(
+    family: AppFonts.number,
+    size: 15,
+    weight: FontWeight.w700,
+    height: 20 / 15,
+    spacing: 3,
+  );
+
+  /// "스쿼트 · 30초" under the band: 14 bold on 20, gray.
+  TextStyle get friendWaitInfo => _friend(
+    family: AppFonts.body,
+    size: 14,
+    weight: FontWeight.w700,
+    height: 20 / 14,
+    color: AppColors.textSecondary,
+  );
+
+  /// Its "30": [friendWaitInfo] in [AppFonts.number].
+  TextStyle get friendWaitInfoNumber =>
+      friendWaitInfo.copyWith(fontFamily: AppFonts.number);
+
+  /// The two-line title: Do Hyeon 30 on 36.
+  TextStyle get friendWaitTitle =>
+      _friend(family: AppFonts.display, size: 30, height: 36 / 30);
+
+  /// A player's nickname on the board: Do Hyeon 28 on 34.
+  TextStyle get friendWaitName =>
+      _friend(family: AppFonts.display, size: 28, height: 34 / 28);
+
+  /// The friend's "?": Oxanium 800, 150 (white over [friendMysteryEdge]).
+  TextStyle get friendMystery => _friend(
+    family: AppFonts.number,
+    size: 150,
+    weight: FontWeight.w800,
+    height: 1,
+  );
+
+  /// The "?"'s 7 ink edge, drawn under its fill (`FrWait`'s `stroke-width
+  /// 7`, `paint-order: stroke`).
+  TextStyle get friendMysteryEdge => friendMystery.copyWith(
+    foreground: Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7
+      ..strokeJoin = StrokeJoin.round
+      ..color = AppColors.ink,
+  );
+
+  /// The seconds in the ring: Oxanium 800, 32, tight.
+  TextStyle get friendSeconds => _friend(
+    family: AppFonts.number,
+    size: 32,
+    weight: FontWeight.w800,
+    height: 1,
+    spacing: -1,
+  );
+
+  /// "VS" in the circle once the friend accepted: Oxanium 800, 34, tight.
+  TextStyle get friendVs => _friend(
+    family: AppFonts.number,
+    size: 34,
+    weight: FontWeight.w800,
+    height: 1,
+    spacing: -1,
+  );
+
+  /// "기다리는 동안 자리를 준비해 두세요": 15 bold on 22.
+  TextStyle get friendPrepTitle => friendInviteLine;
+
+  /// The exercise's placement words under it: 14 on 21, gray.
+  TextStyle get friendPrepTip => _friend(
+    family: AppFonts.body,
+    size: 14,
+    height: 21 / 14,
+    color: AppColors.textSecondary,
+  );
+
+  /// "deadlift님에게 다시 신청": Do Hyeon 24 on 30.
+  TextStyle get friendRetry =>
+      _friend(family: AppFonts.display, size: 24, height: 30 / 24);
 }
