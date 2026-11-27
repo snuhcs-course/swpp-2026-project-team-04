@@ -348,6 +348,41 @@ void main() {
       });
     });
 
+    test('a read that crosses the end of the week reads the new one', () async {
+      final loading = vm.load();
+      // Monday 00:00 comes while the read is on.
+      now = weekEnd.add(const Duration(seconds: 1));
+      repo.pending.single.complete(week(RankingScope.global));
+      await pumpEventQueue();
+
+      expect(repo.calls, hasLength(2));
+      expect(vm.ranking, isNull);
+      expect(vm.loading, isTrue);
+      final next = WeeklyRanking(
+        scope: RankingScope.global,
+        weekStart: weekEnd,
+        weekEnd: weekEnd.add(const Duration(days: 7)),
+        entries: const [],
+        me: null,
+      );
+      repo.pending.last.complete(next);
+      await loading;
+      expect(vm.ranking, same(next));
+    });
+
+    test('an old week again after that is kept, read only twice', () async {
+      final loading = vm.load();
+      now = weekEnd.add(const Duration(seconds: 1));
+      repo.pending.single.complete(week(RankingScope.global));
+      await pumpEventQueue();
+      // The server still answers the old week: its clock is behind.
+      repo.pending.last.complete(week(RankingScope.global));
+      await loading;
+
+      expect(repo.calls, hasLength(2));
+      expect(vm.ranking!.weekEnd, weekEnd);
+    });
+
     test('dispose stops the end-of-week read', () {
       fakeAsync((async) {
         vm = WeeklyRankingsViewModel(

@@ -91,7 +91,14 @@ class WeeklyRankingsViewModel extends ChangeNotifier {
     _errors.remove(which);
     _notify();
     try {
-      _rankings[which] = await _repository.fetchWeekly(which.$1, which.$2);
+      final asked = _now();
+      var answer = await _repository.fetchWeekly(which.$1, which.$2);
+      if (answer.weekEnd.isAfter(asked) && !answer.weekEnd.isAfter(_now())) {
+        // The week ended while this was read: read the new one, once. (Asked
+        // after its end, an old week means the phone's clock is ahead.)
+        answer = await _repository.fetchWeekly(which.$1, which.$2);
+      }
+      _rankings[which] = answer;
     } on Object catch (error) {
       _errors[which] = error is ApiException
           ? error.message
