@@ -2241,10 +2241,10 @@ No server, camera or device is needed:
 
 | Component | Frameworks | Target | Actual | Date | Command / Report |
 |---|---|---|---|---|---|
-| Model | flutter_test | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/27 | CI comment "Tests and coverage (GitHub Actions)" on the A11 PR |
-| ViewModel | flutter_test, fakes | 90% | TODO(Woohyun Song): from the PR's CI comment | 11/27 | same CI comment |
-| Service | flutter_test, MockClient, fakes | 85% | TODO(Woohyun Song): from the PR's CI comment | 11/27 | same CI comment |
-| View | flutter_test (widget) | 75% | TODO(Woohyun Song): from the PR's CI comment | 11/27 | same CI comment |
+| Model | flutter_test | 90% | 99.4% (886/891) | 11/27 | CI comment "Tests and coverage (GitHub Actions)" on PR #107, `cdd58fc` |
+| ViewModel | flutter_test, fakes | 90% | 98.6% (2627/2664); `friends_viewmodel.dart` 100% (303/303) | 11/27 | same CI comment |
+| Service | flutter_test, MockClient, fakes | 85% | 97.6% (5612/5750); `friend_repository.dart` 100% (194/194) | 11/27 | same CI comment |
+| View | flutter_test (widget) | 75% | 98.2% (17541/17865) | 11/27 | same CI comment |
 | API server | pytest, pytest-django, pytest-cov | 90% | 98% (`friends_views.py` 100%, `0006` 100%) | 11/27 | `.venv/Scripts/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
 
 - **Tests on `a5af8c1`:**
@@ -2283,8 +2283,13 @@ No server, camera or device is needed:
 - **Out-of-step files:**
   - `test/theme/app_theme_test.dart` (L628 26 → 30, plus the new tokens) and `test/design_tokens_test.dart` (the three new widget files): approved by the user before the edit.
   - `test/main_test.dart` L256 and `test/screens/home_screen_test.dart` L380 (finders only): act first and report after (SPEC 0), then approved by the user.
-- **Coverage:** from the PR's CI comment once it runs (not measured on this PC).
-  - TODO(Woohyun Song): the layer numbers, the CI run, and the A11 files' lines from the run's lcov parts.
+- **Coverage**, from PR #107's CI comment "Tests and coverage (GitHub Actions)" on `cdd58fc`
+  ([comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/107#issuecomment-7217666963), [run](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/45992774304); not measured on this PC):
+  - Layers: Model 99.4% (886/891), ViewModel 98.6% (2627/2664), Service 97.6% (5612/5750), View 98.2% (17541/17865), Other 96.1%, total 98.1% (27265/27793); every target met.
+  - The CI run's own `flutter test`: 5205 passed, 10 skipped, 0 failed, the integration test that failed once locally included. Server `pytest` 296 passed, 98%.
+  - Left out of the numbers by the CI (they timed out in the per-file coverage run, but ran in `flutter test`): `online_battle_session_test`, `chair_hold_test`, neither of them A11's.
+  - A11's files, merged by line from the run's lcov parts (downloaded with `gh run download`): `play_screen.dart` 100% (50/50), `friend_battle_card.dart` 100% (72/72), `friends_viewmodel.dart` 100% (303/303), `friend_repository.dart` 100% (194/194), `friends_screen.dart` 99.1% (328/331), `friend_invite_parts.dart` 99.4% (158/159), `friend_wait_view.dart` 99.3% (267/269), `arcade_play_card.dart` 95.1% (117/123), `online_lobby_screen.dart` 95.1% (234/246), `app_theme.dart` 99.8% (399/400); together 98.8% (2122/2147).
+  - The lines missed in A11's code are three painters' `shouldRepaint` (`arcade_play_card.dart` L195–201, `friend_invite_parts.dart` L116, `friend_wait_view.dart` L354–356) and two arms of the radar's title for friend battles (`online_lobby_screen.dart` L478–480), which no longer run: a friend battle now always shows its own waiting room. The others were missed before A11.
 - **Phone check:** Two-phone check (SPEC 11) is deferred to the team meeting on Sat 11/28, after merge.
   - If the server deploy (SPEC 13 steps 1–2) is done by then, the invite check of SPEC 13 step 3 is done at the same time.
   - Until then, the server's character field is checked only by the local pytest, and the old server's reply (no field, GYM마우스) only by the repository tests.

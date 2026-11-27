@@ -870,3 +870,8 @@ PM(상우)이 11/27에 승인했어. 작업 ID는 Unexpected A11, 브랜치는 f
 
 push 뒤에는 post-push 확인을 하고 PR을 올려서 링크를 알려줘. CI 코멘트가 오면 커버리지 TODO를 채워. Codex 봇이 👍 반응만 남기면 검토했고 지적이 없다는 뜻이니 @codex review를 다시 요청하지 마. 지적이 있으면 고칠 내용을 먼저 정리해서 보여줘.
 </pasted_content id=\"f1c7\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-friend-battle-ui
+<!-- 04ed7449 2026-11-27T11:40:17.766Z -->
+[Woohyun Song, 11-27 20:40] "제안대로 해줘. 새 커밋 하나로 docs/testing/iteration-5/[REDACTED:custom_term].md의 그 경로를 \"the local design hand-off for A11 (kept outside the repo)\"로 바꾸고 push해. 이력은 다시 쓰지 마. fe39058 시점의 트리에 남는 건 그대로 두고, main의 Testing-Documentation.md 줄도 원래 있던 거라 건드리지 마.
+push 뒤에 post-push 확인을 다시 돌려서 최신 트리 검사가 통과하는지 보여주고, 통과하면 PR을 올려서 링크를 알려줘. 나머지는 지난 지시 그대로야. CI 코멘트가 오면 커버리지 TODO를 채우고, Codex 봇이 👍만 남기면 @codex review를 다시 요청하지 마."
