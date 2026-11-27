@@ -1093,7 +1093,9 @@ class CoachScript {
   /// Item 7: the last line.
   CoachLine get end => CoachLine(
     pose: CoachPose.win,
-    pieces: [CoachPiece('${voice.exclaim('오늘 이야기는 여기까지다')} 리포트로 돌아갈게.')],
+    pieces: [
+      CoachPiece('${voice.exclaim('오늘 이야기는 여기까지다')} 자세한 건 상세 리포트에서 볼 수 있어.'),
+    ],
   );
 }
 

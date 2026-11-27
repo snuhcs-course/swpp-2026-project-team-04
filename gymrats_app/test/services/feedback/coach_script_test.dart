@@ -428,7 +428,7 @@ void main() {
       expect(declined.text, '알겠다범! 이번엔 미션 없이 편하게 해 보자. 다음에 또 이야기하자.');
       expect(declined.pose, CoachPose.idle);
       expect(declined.graphic, isNull);
-      expect(script.end.text, '오늘 이야기는 여기까지다범! 리포트로 돌아갈게.');
+      expect(script.end.text, '오늘 이야기는 여기까지다범! 자세한 건 상세 리포트에서 볼 수 있어.');
       expect(script.end.graphic, isNull);
     });
   });
@@ -1010,7 +1010,7 @@ void main() {
       );
       expect(script.talk.first.text, startsWith('수고했다깡!'));
       expect(script.question.text, '다음 판 미션을 정할 차례다깡! 뭐로 할까?');
-      expect(script.end.text, '오늘 이야기는 여기까지다깡! 리포트로 돌아갈게.');
+      expect(script.end.text, '오늘 이야기는 여기까지다깡! 자세한 건 상세 리포트에서 볼 수 있어.');
     });
 
     test('a push-up goal says 을 after 푸쉬업', () {
@@ -1141,7 +1141,7 @@ void main() {
             '좋다$e! ‘스쿼트 20회 인정받기’ 미션 접수! 스쿼트를 고르면 다시 보여 줄게. 다음 판에서 깨 보자!',
             ['‘스쿼트 20회 인정받기’'],
           ),
-          ('9', first.end, '오늘 이야기는 여기까지다$e! 리포트로 돌아갈게.', []),
+          ('9', first.end, '오늘 이야기는 여기까지다$e! 자세한 건 상세 리포트에서 볼 수 있어.', []),
         ];
         for (final (number, line, text, marks) in rows) {
           expect(line.text, text, reason: '$id, line $number');
