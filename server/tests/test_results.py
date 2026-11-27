@@ -385,3 +385,65 @@ def test_late_recover_spares_battles_the_new_process_started(client, players):
 
 def test_recover_needs_the_boot_time(client):
     assert internal(client, "battles/recover", {}).status_code == 422
+
+
+# P10: the battle server's simulated opponent keeps no record.
+def simulated_result(a, sim_id="sim-0a1b2c3d4e5f", simulated=True, reps=(9, 12)):
+    body = result(a, a, reps=reps, outcomes=("loss", "win"))
+    body["players"][1] = {
+        "player_id": sim_id,
+        "display_name": "근손실",
+        "valid_reps": reps[1],
+        "invalid_reps": 1,
+        "outcome": "win",
+        "simulated": simulated,
+    }
+    return body
+
+
+def test_a_simulated_opponent_keeps_no_record(client, players):
+    a, _ = players
+    response = internal(client, "results", simulated_result(a))
+
+    assert response.status_code == 201, response.content
+    assert response.json()["saved"] == 1
+    rows = Match.objects.all()
+    assert rows.count() == 1
+    row = rows.get()
+    assert row.user_id == a["user"]["id"]
+    assert row.opponent_name == "근손실"
+    assert (row.my_reps, row.opponent_reps, row.outcome) == (9, 12, "loss")
+    assert history(client, a)[0]["is_online"] is True
+    assert OnlineBattle.objects.get().player_ids == [
+        str(a["user"]["id"]),
+        "sim-0a1b2c3d4e5f",
+    ]
+
+
+@pytest.mark.parametrize(
+    "sim_id, simulated",
+    [
+        ("sim-0a1b2c3d4e5f", False),  # a sim- id must say it is simulated
+        ("42", True),  # an account is never simulated
+        ("sim-NOTHEX", True),
+        ("sim-" + "a" * 17, True),
+    ],
+)
+def test_a_simulated_player_must_be_marked_and_well_formed(
+    client, players, sim_id, simulated
+):
+    a, _ = players
+    response = internal(
+        client, "results", simulated_result(a, sim_id=sim_id, simulated=simulated)
+    )
+
+    assert response.status_code == 422
+    assert Match.objects.count() == 0
+
+
+def test_two_simulated_players_are_refused(client, players):
+    a, _ = players
+    body = simulated_result(a)
+    body["players"][0] = {**body["players"][1], "player_id": "sim-1", "outcome": "loss"}
+
+    assert internal(client, "results", body).status_code == 422
