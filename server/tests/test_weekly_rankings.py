@@ -258,6 +258,31 @@ def test_a_row_of_a_battle_i_was_not_in_does_not_count(client, people):
     assert "우현" not in points_of(weekly(client, a))
 
 
+def test_a_battle_of_an_id_that_holds_mine_does_not_count(client, people):
+    # Player "31" holds the digits of player 3; only "3" names player 3.
+    a, b, *_ = people
+    OnlineBattle.objects.create(
+        match_id="m-longer-id",
+        result_id="r-longer-id",
+        status=OnlineBattle.FINISHED,
+        kind=OnlineBattle.MAIN,
+        player_ids=[f"{a.id}1", f"1{a.id}"],
+    )
+    Match.objects.create(
+        user_id=a.id,
+        client_id="r-longer-id",
+        exercise="push_up",
+        opponent_name=b.name,
+        my_reps=30,
+        opponent_reps=0,
+        played_at=NOW,
+        outcome="win",
+        reason="ko",
+    )
+
+    assert points_of(weekly(client, a)) == {}
+
+
 def test_equal_points_share_a_rank_and_the_next_rank_skips(client, people):
     a, b, c, d = people
     store(client, battle(a, d, reason="ko"))  # a 10, d 1
@@ -286,6 +311,26 @@ def test_global_lists_the_top_and_keeps_my_row_apart(client, people, monkeypatch
     assert [r["nickname"] for r in body["entries"]] == ["우현", "진영"]
     # Tied with 상우, so third as well, below the listed two.
     assert (body["me"]["nickname"], body["me"]["rank"]) == ("현우", 3)
+
+
+def test_the_global_ranking_reads_a_fixed_number_of_queries(
+    client, people, monkeypatch, django_assert_max_num_queries
+):
+    # The database sums and ranks; the view reads the top only, however many
+    # battles the week holds.
+    a, b, c, d = people
+    monkeypatch.setattr(rankings, "GLOBAL_LIMIT", 1)
+    for _ in range(5):
+        store(client, battle(a, b, reason="ko"))
+        store(client, battle(c, d))
+
+    with django_assert_max_num_queries(5):
+        body = weekly(client, d, "global")
+
+    assert [r["nickname"] for r in body["entries"]] == ["우현"]
+    # 우현 50, 상우 25, then 진영 and 현우 tie at 5.
+    me = body["me"]
+    assert (me["points"], me["battles"], me["rank"]) == (5, 5, 3)
 
 
 def befriend(a, b, accepted=True):
