@@ -226,3 +226,65 @@ def test_skills_ignores_a_report_without_a_usable_length(client, accounts):
     )
 
     assert players_of(internal(client, "skills", {})) == {}
+
+
+def online_ko(a, b, seconds, client_id="result-ko-9"):
+    """An online KO of a (7 reps) over b that the battle server timed."""
+    play(a, 7, client_id=client_id, reason="ko")
+    play(b, 1, client_id=client_id, reason="ko")
+    OnlineBattle.objects.create(
+        match_id=f"match-{client_id}",
+        result_id=client_id,
+        status=OnlineBattle.FINISHED,
+        started_at=START,
+        ended_at=START + timedelta(seconds=seconds),
+    )
+    return Match.objects.get(user=a, client_id=client_id)
+
+
+def test_skills_leaves_out_a_short_online_ko_before_and_after_its_report(
+    client, accounts
+):
+    a, b = accounts
+    match = online_ko(a, b, 9.5)
+
+    assert str(a.id) not in players_of(internal(client, "skills", {}))
+
+    # The phone rounds the time played up to the second: 10 s. The battle
+    # server's own 9.5 s still decides.
+    played_for(a, match, 10_000)
+
+    assert str(a.id) not in players_of(internal(client, "skills", {}))
+
+
+def test_skills_prefers_the_battle_servers_length_to_the_phones(client, accounts):
+    a, b = accounts
+    match = online_ko(a, b, 12)
+    played_for(a, match, 20_000)
+
+    players = players_of(internal(client, "skills", {}))
+
+    # 7 reps in the server's 12 s, not the phone's 20 s.
+    assert players[str(a.id)]["recent"]["push_up"] == [17.5]
+
+
+def test_skills_reads_only_the_latest_battles_that_count_in_one_query(
+    client, accounts
+):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    a, b = accounts
+    for minute in range(40):
+        play(a, minute, minutes=minute)
+        play(b, minute, minutes=minute, exercise="squat")
+
+    with CaptureQueriesContext(connection) as queries:
+        players = players_of(internal(client, "skills", {}))
+
+    assert players[str(a.id)]["recent"]["push_up"] == [39, 38, 37, 36, 35]
+    assert players[str(b.id)]["recent"]["squat"] == [39, 38, 37, 36, 35]
+    # One query, cut to the latest five per account and exercise in the
+    # database (a window function), not in Python.
+    assert len(queries) == 1
+    assert "ROW_NUMBER" in queries[0]["sql"].upper()

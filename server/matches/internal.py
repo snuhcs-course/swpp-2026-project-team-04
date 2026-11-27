@@ -8,11 +8,22 @@ went through /api/ is refused even though it also arrives from 127.0.0.1.
 """
 
 import hmac
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import (
+    DurationField,
+    ExpressionWrapper,
+    F,
+    FloatField,
+    OuterRef,
+    Q,
+    Subquery,
+    Window,
+)
+from django.db.models.fields.json import KT
+from django.db.models.functions import Cast, RowNumber
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -220,30 +231,40 @@ SKILL_ROUND_MS = 30_000
 SKILL_MIN_KO_MS = 10_000
 
 
-def _ko_lengths(rows):
-    """How long each KO battle in rows lasted, in ms, by (user_id,
-    client_id): from its form report (roundMs, the time played) or, for an
-    online battle without one, from the battle server's start and end."""
-    keys = {(user_id, client_id) for user_id, client_id, *_ in rows}
-    if not keys:
-        return {}
-    users_of = {}
-    for user_id, client_id in keys:
-        users_of.setdefault(client_id, []).append(user_id)
-    lengths = {}
-    for battle in OnlineBattle.objects.filter(
-        result_id__in=users_of, started_at__isnull=False, ended_at__isnull=False
-    ).values("result_id", "started_at", "ended_at"):
-        ms = (battle["ended_at"] - battle["started_at"]).total_seconds() * 1000
-        for user_id in users_of[battle["result_id"]]:
-            lengths[(user_id, battle["result_id"])] = ms
-    for user_id, client_id, report in MatchFeedback.objects.filter(
-        client_id__in=users_of
-    ).values_list("user_id", "client_id", "report"):
-        ms = report.get("roundMs") if isinstance(report, dict) else None
-        if (user_id, client_id) in keys and isinstance(ms, (int, float)) and ms > 0:
-            lengths[(user_id, client_id)] = ms
-    return lengths
+def _server_length():
+    """A KO battle's length by the battle server's own start and end, for an
+    online battle; null for any other."""
+    return Subquery(
+        OnlineBattle.objects.filter(
+            result_id=OuterRef("client_id"),
+            started_at__isnull=False,
+            ended_at__isnull=False,
+        )
+        .annotate(
+            length=ExpressionWrapper(
+                F("ended_at") - F("started_at"), output_field=DurationField()
+            )
+        )
+        .values("length")[:1],
+        output_field=DurationField(),
+    )
+
+
+def _reported_length():
+    """A KO battle's length by the phone's form report (roundMs, the time
+    played, rounded up to the second), only when it is a number of at least
+    SKILL_MIN_KO_MS; null otherwise. A string or a huge value is not one."""
+    return Subquery(
+        MatchFeedback.objects.filter(
+            user=OuterRef("user"),
+            client_id=OuterRef("client_id"),
+            report__roundMs__gte=SKILL_MIN_KO_MS,
+            report__roundMs__lt=10**9,
+        )
+        .annotate(ms=Cast(KT("report__roundMs"), FloatField()))
+        .values("ms")[:1],
+        output_field=FloatField(),
+    )
 
 
 class SkillsView(_InternalView):
@@ -267,34 +288,50 @@ class SkillsView(_InternalView):
                 {"limit": [f"An integer from 1 to {SKILL_RECENT_MAX}."]},
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
-        rows = list(
+        # Battles that count, decided in the database: a KO's length is the
+        # battle server's when it has one, and only else the phone's report.
+        # Then only the latest `limit` of them per account and exercise leave
+        # the database.
+        minimum = timedelta(milliseconds=SKILL_MIN_KO_MS)
+        rows = (
             Match.objects.filter(
                 exercise__in=["push_up", "squat"], reason__in=["time_up", "ko"]
             )
+            .annotate(server_length=_server_length(), reported_ms=_reported_length())
+            .filter(
+                Q(reason="time_up")
+                | Q(server_length__gte=minimum)
+                | Q(server_length__isnull=True, reported_ms__isnull=False)
+            )
+            .annotate(
+                rank=Window(
+                    RowNumber(),
+                    partition_by=[F("user_id"), F("exercise")],
+                    order_by=[F("played_at").desc(), F("id").desc()],
+                )
+            )
+            .filter(rank__lte=limit)
             .order_by("user_id", "exercise", "-played_at", "-id")
             .values_list(
-                "user_id", "client_id", "user__nickname", "exercise", "my_reps", "reason"
+                "user_id",
+                "user__nickname",
+                "exercise",
+                "my_reps",
+                "reason",
+                "server_length",
+                "reported_ms",
             )
         )
-        lengths = _ko_lengths([r for r in rows if r[5] == "ko"])
         players = {}
-        for user_id, client_id, nickname, exercise, reps, reason in rows:
-            player = players.get(user_id)
-            recent = player["recent"].get(exercise, []) if player else []
-            if len(recent) >= limit:
-                continue
+        for user_id, nickname, exercise, reps, reason, server, reported in rows:
             if reason == "ko":
-                ms = lengths.get((user_id, client_id))
-                if ms is None or ms < SKILL_MIN_KO_MS:
-                    continue
+                ms = server.total_seconds() * 1000 if server is not None else reported
                 value = round(reps * SKILL_ROUND_MS / min(ms, SKILL_ROUND_MS), 2)
             else:
                 value = reps
-            if player is None:
-                player = players[user_id] = {
-                    "player_id": str(user_id),
-                    "display_name": nickname,
-                    "recent": {},
-                }
+            player = players.setdefault(
+                user_id,
+                {"player_id": str(user_id), "display_name": nickname, "recent": {}},
+            )
             player["recent"].setdefault(exercise, []).append(value)
         return Response({"players": list(players.values())})
