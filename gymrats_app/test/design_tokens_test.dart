@@ -91,7 +91,6 @@ const _checked = [
   'lib/widgets/result_cards.dart',
   'lib/widgets/result_report.dart',
   'lib/widgets/safe_warning_dialog.dart',
-  'lib/widgets/tutorial_rep_bot.dart',
   'lib/widgets/tutorial_draft.dart',
   'lib/widgets/tutorial_figure_painters.dart',
   'lib/widgets/tutorial_game_shot.dart',

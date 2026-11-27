@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
@@ -9,7 +11,6 @@ import 'package:gymrats_app/widgets/pose_silhouette_squat.dart';
 import 'package:gymrats_app/widgets/tutorial_draft.dart';
 import 'package:gymrats_app/widgets/tutorial_figure_painters.dart';
 import 'package:gymrats_app/widgets/tutorial_game_shot.dart';
-import 'package:gymrats_app/widgets/tutorial_rep_bot.dart';
 import 'package:gymrats_app/widgets/tutorial_setup_scenes.dart';
 import 'package:gymrats_app/widgets/tutorial_welcome.dart';
 
@@ -86,7 +87,6 @@ void main() {
       );
       expect(scene.squat, exercise == squat);
       expect(find.byType(TutorialSidePerson), findsOneWidget);
-      expect(find.byType(TutorialRepBot), findsNothing);
     }
   });
 
@@ -149,7 +149,6 @@ void main() {
         );
         expect((bubble.exercise, bubble.step), (exercise, step));
         expect(find.byType(TutorialGameShot), findsOneWidget);
-        expect(find.byType(TutorialRepBot), findsNothing);
       }
     }
   });
@@ -176,7 +175,6 @@ void main() {
     expect(find.byType(TutorialWelcome), findsOneWidget);
     expect(find.byType(TutorialOnlineClip), findsOneWidget);
     expect(find.byType(TutorialArcadeShot), findsOneWidget);
-    expect(find.byType(TutorialRepBot), findsNothing);
     for (final exercise in ExerciseType.values) {
       await show(tester, TutorialPage(exercise, TutorialStep.report));
       expect(find.byType(TutorialCoachTalk), findsOneWidget);
@@ -195,5 +193,20 @@ void main() {
         startsWith('물렁범이 대화창에서'),
       );
     }
+  });
+
+  test('nothing draws the RepBot mannequin any more: its file is gone and '
+      'no app file names it', () {
+    expect(File('lib/widgets/tutorial_rep_bot.dart').existsSync(), isFalse);
+    final users = [
+      for (final file in Directory('lib').listSync(recursive: true))
+        if (file is File &&
+            file.path.endsWith('.dart') &&
+            RegExp(
+              r'TutorialRepBot|tutorial_rep_bot|RepBotFigure|RepBotPainter',
+            ).hasMatch(file.readAsStringSync()))
+          file.path,
+    ];
+    expect(users, isEmpty);
   });
 }
