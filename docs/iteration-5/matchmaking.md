@@ -31,8 +31,8 @@ valid reps are excellent, the rest good. Its id is `sim-` and 12 hex characters,
   | KO under 10 s, or of unknown length | left out (the opponent hardly played; scaling would overstate the pace) |
   | Forfeit, disconnect | left out |
 
-  A KO's length comes from its form report (`roundMs`, the time played, rounded up to the second) or, for an online
-  battle without one, from the battle server's start and end.
+  A KO's length is the battle server's start-to-end for an online battle, and only otherwise the phone's form report
+  (`roundMs`, the time played rounded up to the second, so a 9.5 s KO reads as 10 s there). PM review of `71fcdc3`.
 - Fewer than 5 that count: the median of those there are. None: the average estimate of all accounts with one, or
   9 reps when nobody has one (`SkillIndex.defaultSkill`).
 - The player's own estimate is taken the same way.
@@ -92,5 +92,6 @@ end-to-end assignment under concurrent players separately from these numbers.
 - The protocol doc (`docs/iteration-2-protocol.md`) needs `accept_virtual` and the simulated player in results.
 - Telemetry (P17/P24): `battle_finished` of a simulated match is `kind: main`; its `scores` carry the `sim-` id, which marks
   it. A match cancelled before the start has no scores and cannot be told apart.
-- P20: measure the `/internal/skills` read (it loads every countable match row every 5 minutes) and simulated matches
-  under load, apart from the index numbers above.
+- P20: measure the `/internal/skills` read and simulated matches under load, apart from the index numbers above. The
+  read is one query: countable battles are chosen in the database and cut to the latest `limit` per account and
+  exercise by a window function (PM and Codex review of `71fcdc3`), so it does not load the whole history.

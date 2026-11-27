@@ -5,6 +5,19 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fixes for the PM's review of `71fcdc3`
+- **P2 1 (KO length):** a real 9.5 s online KO of 7 reps was left out until the phone's report (time played rounded up
+  to 10 s) arrived, and then counted as 21. `SkillsView` now takes a KO's length from the battle server's start and end
+  when there is one, and from the phone's report only otherwise.
+- **P2 2 (query, also Codex inline 4712457652):** `/internal/skills` loaded every countable row into Python. Countable
+  battles are now chosen in the database and cut to the latest `limit` per account and exercise by a window function,
+  in one query.
+- **Tests (server):** new `test_skills_leaves_out_a_short_online_ko_before_and_after_its_report`,
+  `test_skills_prefers_the_battle_servers_length_to_the_phones`,
+  `test_skills_reads_only_the_latest_battles_that_count_in_one_query`; all three failed on `71fcdc3`.
+- **Results:** server `pytest` 310 passed, 0 failed, 98% (`matches/internal.py` 95%). No Dart or app change, so the
+  client numbers of the entry below stand (5033 passed, 10 skipped).
+
 #### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): the simulated opponent played by the battle server
 After the PM's review of `1a164d6` and the user's decisions (10 s wait, KO battles scaled to 30 s, no difference from
 a real user), the battle server now plays the simulated opponent as a player of a real match, and the result saver
