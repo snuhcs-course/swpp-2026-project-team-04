@@ -447,3 +447,27 @@ def test_two_simulated_players_are_refused(client, players):
     body["players"][0] = {**body["players"][1], "player_id": "sim-1", "outcome": "loss"}
 
     assert internal(client, "results", body).status_code == 422
+
+
+# P11: friend battles are kept apart from main ones for the weekly rankings.
+@pytest.mark.parametrize("kind", ["main", "friend"])
+def test_the_result_keeps_the_battles_kind(client, players, kind):
+    a, b = players
+    body = result(a, b)
+    body["kind"] = kind
+    assert internal(client, "results", body).status_code == 201
+    assert OnlineBattle.objects.get().kind == kind
+
+
+def test_a_result_without_a_kind_is_a_main_battle(client, players):
+    a, b = players
+    assert internal(client, "results", result(a, b)).status_code == 201
+    assert OnlineBattle.objects.get().kind == "main"
+
+
+def test_an_unknown_kind_is_refused(client, players):
+    a, b = players
+    body = result(a, b)
+    body["kind"] = "arcade"
+    assert internal(client, "results", body).status_code == 422
+    assert not Match.objects.exists()

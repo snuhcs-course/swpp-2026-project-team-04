@@ -903,6 +903,8 @@ class BattleServer {
         'result_id': m.result!['result_id'],
         'reason': reason,
         'exercise': m.players.first.exercise,
+        // P11: friend battles are left out of the weekly rankings.
+        'kind': m.players.first.friend == null ? 'main' : 'friend',
         'ended_at_ms': m.ended,
         'players': [
           for (final player in m.result!['players'] as List)

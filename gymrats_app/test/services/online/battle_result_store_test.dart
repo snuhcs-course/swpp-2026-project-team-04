@@ -71,14 +71,22 @@ void main() {
     return s;
   }
 
-  Future<(Wire, Wire)> playing(BattleServer s) async {
+  Future<(Wire, Wire)> playing(BattleServer s, {bool friends = false}) async {
     final a = await Wire.open(s, 'alpha'), b = await Wire.open(s, 'beta');
     addTearDown(a.close);
     addTearDown(b.close);
-    a.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'avatar_01'});
+    a.send('queue.join', {
+      'exercise': 'push_up',
+      'avatar_id': 'avatar_01',
+      if (friends) 'friend_id': '2',
+    });
     // Two sockets race: only alpha joining first makes the player order fixed.
     await a.next('queue.joined');
-    b.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'avatar_02'});
+    b.send('queue.join', {
+      'exercise': 'push_up',
+      'avatar_id': 'avatar_02',
+      if (friends) 'friend_id': '1',
+    });
     final found = await a.next('match.found');
     await b.next('match.found');
     a.match = b.match = found['match_id'] as String;
@@ -91,6 +99,16 @@ void main() {
   }
 
   group('battle server and the P11 store', () {
+    test('a friend battle is stored as kind friend', () async {
+      final store = FakeResultStore();
+      final s = await server(store);
+      final (a, b) = await playing(s, friends: true);
+      await a.next('match.finished');
+      await b.next('match.finished');
+      await until(() => store.results.isNotEmpty);
+      expect(store.results.single['kind'], 'friend');
+    });
+
     test('a started battle is recorded with both players', () async {
       final store = FakeResultStore();
       final s = await server(store);
@@ -122,6 +140,7 @@ void main() {
       expect(saved['match_id'], a.match);
       expect(saved['result_id'], finished['payload']['result_id']);
       expect(saved['reason'], 'time_up');
+      expect(saved['kind'], 'main');
       expect(saved['players'], [
         {
           'player_id': '1',
