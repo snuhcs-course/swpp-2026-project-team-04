@@ -27,7 +27,7 @@ class CoachStage extends StatelessWidget {
     required this.onTap,
     required this.onSkip,
     required this.onChoose,
-    required this.onRestart,
+    required this.onReport,
     required this.onLeave,
     this.arrowOn = true,
     this.reducedMotion = false,
@@ -48,10 +48,10 @@ class CoachStage extends StatelessWidget {
   /// A goal, or null for '사양할래'.
   final ValueChanged<GoalSuggestion?> onChoose;
 
-  /// 처음부터 다시.
-  final VoidCallback onRestart;
+  /// 상세 리포트로: this battle's report (P15).
+  final VoidCallback onReport;
 
-  /// 리포트로.
+  /// 돌아가기: back to the battle's result (P15).
   final VoidCallback onLeave;
 
   /// The blinking "next" mark's phase (the screen toggles it).
@@ -273,7 +273,7 @@ class CoachStage extends StatelessWidget {
                 right: boxSide,
                 bottom: buttonsBottom,
                 height: buttonsHeight,
-                child: _EndButtons(onRestart: onRestart, onLeave: onLeave),
+                child: _EndButtons(onReport: onReport, onLeave: onLeave),
               ),
             Positioned(
               left: sideMargin,
@@ -617,11 +617,15 @@ class _NextMarkPainter extends CustomPainter {
   bool shouldRepaint(_NextMarkPainter oldDelegate) => false;
 }
 
-/// 처음부터 다시 (white) and 리포트로 (ink, a lime arrow).
+/// 돌아가기 (white) and 상세 리포트로 (ink, a lime arrow): the next step is
+/// the battle's report (P15, PM 2026-11-27).
 class _EndButtons extends StatelessWidget {
-  const _EndButtons({required this.onRestart, required this.onLeave});
+  const _EndButtons({required this.onReport, required this.onLeave});
 
-  final VoidCallback onRestart;
+  static const back = '돌아가기';
+  static const report = '상세 리포트로';
+
+  final VoidCallback onReport;
   final VoidCallback onLeave;
 
   static const _edge = 1.5;
@@ -640,7 +644,7 @@ class _EndButtons extends StatelessWidget {
       children: [
         Expanded(
           child: OutlinedButton(
-            onPressed: onRestart,
+            onPressed: onLeave,
             style: OutlinedButton.styleFrom(
               backgroundColor: AppColors.card,
               foregroundColor: AppColors.ink,
@@ -649,14 +653,14 @@ class _EndButtons extends StatelessWidget {
             ),
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text('처음부터 다시', maxLines: 1, style: style),
+              child: Text(back, maxLines: 1, style: style),
             ),
           ),
         ),
         const SizedBox(width: _gap),
         Expanded(
           child: FilledButton(
-            onPressed: onLeave,
+            onPressed: onReport,
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.ink,
               foregroundColor: AppColors.onInk,
@@ -668,7 +672,7 @@ class _EndButtons extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '리포트로',
+                    report,
                     maxLines: 1,
                     style: style.copyWith(color: AppColors.onInk),
                   ),

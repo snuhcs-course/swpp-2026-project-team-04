@@ -398,7 +398,7 @@ class ResultDashedLine extends CustomPainter {
 
 /// The way into the character's talk (A10 spec 2, UxGoal report): the
 /// character idle on a lime disc and a white floor at the left, its name
-/// tag, "이번 판 이야기해 줄게! 할 말이 N개 있어.", and 이야기 듣기 and
+/// tag, "이번 판 이야기 시간이다! 할 말이 N개 있어.", and 이야기 듣기 and
 /// 건너뛰기 (straight to the goal question). The buttons wait while the
 /// talk loads.
 class ResultCoachCard extends StatelessWidget {
@@ -443,7 +443,8 @@ class ResultCoachCard extends StatelessWidget {
 
   /// The card's sentence.
   static List<CoachPiece> lineOf(ResultCoachEntry entry) => [
-    CoachPiece('이번 판 이야기해 줄게${entry.ending}!'),
+    // The ending only after "-다" (송우현, A9, 2026-11-27).
+    CoachPiece('이번 판 이야기 시간이다${entry.ending}!'),
     if (entry.lineCount case final count?) ...[
       const CoachPiece(' 할 말이 '),
       CoachPiece('$count개', marked: true),
@@ -601,14 +602,15 @@ class ResultCoachCard extends StatelessWidget {
 
 /// "상세 리포트 보기 ›" at the right under the character card: the form
 /// feedback report (A10 spec 2; "자세 기록 표로 보기" until P14 replaced the
-/// table with the report).
+/// table with the report). In ink and the talk's choice size, so it reads
+/// as the way to the report, under the one accent button (P15).
 class ResultFeedbackLink extends StatelessWidget {
   const ResultFeedbackLink({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 
   static const label = '상세 리포트 보기';
-  static const _chevronSize = 14.0;
+  static const _chevronSize = 20.0;
   static const height = 44.0;
 
   @override
@@ -622,11 +624,11 @@ class ResultFeedbackLink extends StatelessWidget {
         icon: const Icon(Icons.chevron_right_rounded, size: _chevronSize),
         label: const Text(label),
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.textSecondary,
+          foregroundColor: AppColors.ink,
           padding: EdgeInsets.zero,
           minimumSize: const Size(0, height),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          textStyle: text.coachSmallBold,
+          textStyle: text.coachChoice,
         ),
       ),
     );

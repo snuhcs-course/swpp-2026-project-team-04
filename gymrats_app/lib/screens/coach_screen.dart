@@ -14,13 +14,18 @@ import '../widgets/grid_background.dart';
 ///
 /// It draws [viewModel], which the result screen owns and has [started]
 /// (from the first line or at the question), and only forwards taps. Back,
-/// like 리포트로, returns to the report; a goal not picked is not saved.
+/// like 돌아가기, returns to the battle's result; 상세 리포트로 calls
+/// [onReport] (P15); a goal not picked is not saved.
 ///
 /// [started]: CoachViewModel.start
 class CoachScreen extends StatefulWidget {
-  const CoachScreen({super.key, required this.viewModel});
+  const CoachScreen({super.key, required this.viewModel, this.onReport});
 
   final CoachViewModel viewModel;
+
+  /// Opens the battle's report in the talk's place; without it 상세
+  /// 리포트로 only leaves, as 돌아가기 does.
+  final VoidCallback? onReport;
 
   /// One letter every 32 ms, as the design types.
   static const letterTime = Duration(milliseconds: 32);
@@ -91,7 +96,8 @@ class _CoachScreenState extends State<CoachScreen> {
                   onTap: viewModel.tap,
                   onSkip: viewModel.skip,
                   onChoose: viewModel.choose,
-                  onRestart: viewModel.restart,
+                  onReport:
+                      widget.onReport ?? () => Navigator.maybePop(context),
                   onLeave: () => Navigator.maybePop(context),
                   arrowOn: _arrowOn,
                   reducedMotion: _reducedMotion,
