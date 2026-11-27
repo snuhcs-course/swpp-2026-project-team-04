@@ -5,6 +5,20 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `31dc5ce`
+Code at commit `cb4107b`.
+- **Finding (P2):** a kept ranking was shown for good when the screen stayed open past Monday 00:00 KST. The view
+  model now drops kept rankings whose week has ended when a tab is chosen, reads the shown one again at the week's
+  end (a timer, not set when the week is already over by the phone's clock) and when the app comes back to the
+  front. The view model takes the clock, so the tests no longer depend on today's date.
+- **Tests:** view model `coming back after it reads the shown ranking again`, `a tab kept from the old week is read
+  again when chosen`, `the open screen reads again at the end of the week`, `a week already over by the phone's clock
+  is not read on and on`, `a timer that fires early by the clock waits again`, `a kept tab shown again still reads
+  at the end of the week`, `dispose stops the end-of-week read`; screen `back from the background in a new week, it
+  reads again`. Each new test failed with its part of the fix taken out.
+- **Results:** `flutter analyze` no issues; `flutter test` 5334 passed, 0 failed, 10 skipped; weekly_rankings_viewmodel
+  100%, weekly_rankings_screen 100%. No server change (367 passed).
+
 #### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fixes for the Codex review of `ae1e9c7`
 Code at commits `a7d6135` (legacy kind) and `d4bc830` (database ranking).
 - **Finding 1 (P2, unknown kind counted as main):** a result without `kind` (an older battle server) and every row

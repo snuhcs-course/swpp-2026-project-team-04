@@ -107,6 +107,9 @@ Full list: `ishlove77-Prompt-Log.md`.
   stored before the deploy could score, and the global ranking loaded every weekly row into Python. Claude first
   proposed a deploy-order note and a reasoned reply; the user asked for code fixes ("고치라고"): unknown kind is now
   `legacy` and never scores, and the database sums and ranks.
+- P11, Codex review of `31dc5ce`: the view model kept each ranking for good, so an open screen showed last week
+  after Monday 00:00. While fixing it, Claude noticed that its own tests used the real clock against a week ending
+  11-30 and would have started failing that day; the tests now pass a fixed clock.
 - P11, stretch: after the scroll fix, the user still saw the rows stretch when pulling past the end ("그 화면
   늘어지는거 봤음?"). Claude had checked screenshots only at rest, so it missed Android's stretch overscroll; a
   screenshot taken mid-pull showed it. Fixed with overscroll off on the list and a widget test that failed before.
