@@ -2210,7 +2210,7 @@ and `MemoryGoalStore`.
   the last goal (A11 spec 6), reached and missed, of each kind, for every character' (unchanged)
 
 #### 2026-11-27 · code at commits `c133c40` to `a5af8c1` (seven commits) · step A11 `feat/iter5-friend-battle-ui` (친구와의 대전 개편, an Unexpected task approved by the PM 2026-11-27, due 12/1)
-A11 redraws the friend battle flow in the style of the two cards above it on 게임 시작 (SPEC v2, `.claude/design/a11-friend-battle-ui/`, not committed). The features stay the same: friend requests, invites, accept and decline, the minute, pairing. The changes:
+A11 redraws the friend battle flow in the style of the two cards above it on 게임 시작 (SPEC v2, the local design hand-off for A11 (kept outside the repo), not committed). The features stay the same: friend requests, invites, accept and decline, the minute, pairing. The changes:
 - **게임 시작:** 친구와의 대전 is a card down to the screen's bottom:
   - 그루 against 곰탱이 on a sky panel, scaled by `s = min(h/152, (w−128)/190, 1.3)` (the user's decision), so the name keeps at least 128.
   - The two-line name, an arrow chip, and an orange "수락 대기!" sticker while a request or an invite waits.
