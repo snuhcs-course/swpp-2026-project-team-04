@@ -688,7 +688,9 @@ void main() {
     });
 
     testWidgets("the app's signed-in account is the archive's: another "
-        "account's hold on the same phone is not listed", (tester) async {
+        "account's hold on the same phone is not listed; a hold kept before "
+        "accounts opens its report for the signed-in account (PR #106 "
+        'Codex review)', (tester) async {
       final repository = ScriptedAuthRepository();
       await repository.logIn(loginId: 'woohyun', password: 'pw');
       final auth = AuthViewModel(repository: repository);
@@ -700,9 +702,18 @@ void main() {
           endedAt: DateTime(2026, 11, 14, 15, 50),
           accountId: mine + 1,
         ),
+        holdRecord(endedAt: DateTime(2026, 11, 14, 16, 50)),
       ], auth: auth);
       await toMatches(tester);
-      expect(find.byType(ArchiveHoldRow), findsOneWidget);
+      expect(find.byType(ArchiveHoldRow), findsNWidgets(2));
+      // The newest row is the hold kept before accounts.
+      await tester.tap(find.byType(ArchiveHoldRow).first);
+      await tester.pumpAndSettle();
+      final report = tester.widget<HoldReportScreen>(
+        find.byType(HoldReportScreen),
+      );
+      expect(report.record.accountId, isNull);
+      expect(report.accountId, mine);
     });
 
     testWidgets('아케이드 lists the arcade battles with the holds; there is '
