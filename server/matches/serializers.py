@@ -141,7 +141,10 @@ class MatchSerializer(serializers.ModelSerializer):
 
 # AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
 class OnlinePlayerSerializer(serializers.Serializer):
-    player_id = serializers.RegexField(r"^[1-9][0-9]{0,18}$")
+    # An account id; a simulated player's (P10) is "sim-" and hex instead.
+    player_id = serializers.RegexField(r"^([1-9][0-9]{0,18}|sim-[0-9a-f]{1,16})$")
+    # P10: the battle server's simulated opponent, which no account keeps.
+    simulated = serializers.BooleanField(required=False, default=False)
     display_name = serializers.CharField(min_length=1, max_length=80)
     valid_reps = serializers.IntegerField(min_value=0, max_value=1000)
     invalid_reps = serializers.IntegerField(min_value=0, max_value=1000)
@@ -164,6 +167,11 @@ class OnlineResultSerializer(serializers.Serializer):
     def validate_players(self, value):
         if len(value) != 2 or value[0]["player_id"] == value[1]["player_id"]:
             raise serializers.ValidationError("two different players")
+        for player in value:
+            if player["simulated"] != player["player_id"].startswith("sim-"):
+                raise serializers.ValidationError("simulated players use sim- ids")
+        if all(p["simulated"] for p in value):
+            raise serializers.ValidationError("a real player is needed")
         outcomes = sorted(p["outcome"] for p in value)
         if outcomes not in (["draw", "draw"], ["loss", "win"]):
             raise serializers.ValidationError("outcomes do not match")

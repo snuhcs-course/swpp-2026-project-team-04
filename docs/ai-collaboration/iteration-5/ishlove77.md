@@ -45,6 +45,24 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
   the play-again row, removing the rule line, and the app-wide banner with 거절 · 수락 (the user's decisions on the
   emulator).
 
+### P10 `feat/iter5-skill-matching` (team plan #6, simulated users and skill-based matchmaking, 2026-11-27)
+- Battle server: `server/lib/skill_matchmaker.dart` and `server/lib/simulated_player.dart` (whole files: median of the
+  latest 5, sorted index with binary search and numeric tie order, cost measurement, the simulated player's rep plan),
+  and in `server/lib/battle_server.dart` the 10 s wait, `accept_virtual`, the simulated match player (`_open`,
+  `_setReady`, `_acceptRep`, `_simulate`), the estimate refresh; `loadSkills` in `server/lib/result_store.dart`:
+  Claude Code.
+- Server: `SkillsView` (`POST /internal/skills`, KO scaling) and the simulated-player skip in `ResultSaveView`
+  (`server/matches/internal.py`), `OnlinePlayerSerializer.simulated` (`serializers.py`), the route, and
+  `server/tests/test_skills.py`, the P10 cases in `test_results.py`: Claude Code.
+- App: `accept_virtual` in `online_battle_session.dart` and `battleVirtualWait` in `lib/shared/battle_protocol.dart`;
+  the battle server tests under `gymrats_app/test/services/online/`; `docs/iteration-5/matchmaking.md`: Claude Code.
+- Manual checks: local Django and battle servers with a throwaway database, the Android emulator (adb taps,
+  screenshots, database edits between matches) and the user's Galaxy over USB: Claude Code; the battles on the phone
+  were played by the user.
+- Not used: the estimate rule, real players first, the wait (15 s, then 10 s), KO scaling with a 10 s floor, showing
+  the nickname without a label, and "no difference from a real user" (the user's decisions, PM approvals relayed);
+  the scope exceptions (PM).
+
 ## 2. Prompt History
 [Jinyoung Park, 11-23] "task 수행해. 근데 회원가입할때 구글이랑 카카오톡 둘다 지원하게 해주고, 회원가입시 … 이런식으로 키, 몸무게 추가 정보도 받게 해줘."
 [Jinyoung Park, 11-24] "카카오도, google가입도 닉네임은 필요함"
@@ -53,9 +71,45 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 [Jinyoung Park, 11-24] "friend추가하는 기능은 닉네임으로 추가?"
 [Jinyoung Park, 11-24] "최근 설정으로 다시 하기 대신에 친구와의 대전으로 이름 바꿔서 저기 배치해주고 30초, 점수 높은쪽 승리 이거는 뺴자"
 [Jinyoung Park, 11-24] "상대방이 대전 걸면 위의 친구가 대전을 신청했어요 이런식으로 뜨게 하면 안된 ㅏ"
+[Jinyoung Park, 11-27] "유져의 실력 추정치는 최근 5개의 경긱 각가을 평균을 구하고 그것의 median으로 해서 평가를 좀 해줘. 그리고 그 user의 닉네임이 배틀시에 떠야함. …"
+[Jinyoung Park, 11-27] "일단 바로 실제 유저 있으면 매칭 시켜 그다음에 없을때 가상 유저만 실력 비슷한 유저로(즉, 실제 유저는 바로 바로 매칭시켜()"
+[Jinyoung Park, 11-27] "실제 유저 대기 시간 15초"
 Full list: `ishlove77-Prompt-Log.md`.
 
 ## 3. Problems and How They Were Caught
+- P10, design churn: the simulated opponent was first played on the phone as an AI battle, to keep the copied
+  account's history clean. The PM review (`1a164d6`) found that this showed "RepBot 고수" in the result and sent
+  다시 대결 to an expert bot; patching it took an AI label, a setup timer in the lobby and still left visible
+  differences (screen, archive line, saved rematch). After the user asked for "실제 user랑 차이 없게", the battle
+  server now plays the simulated player in a real match and the saver skips it; most of the earlier app code was
+  removed. Claude's first choice optimized for scope (fewer outside files) over the user's goal.
+- P10: the PM's independent review of `71fcdc3` found two things Claude's tests had missed: the phone's KO time is
+  rounded up, so a 9.5 s online KO counted once its report arrived (fixed by preferring the battle server's time),
+  and the skills read loaded the whole match history into Python (moved into one database query with a window
+  function; Codex flagged the same).
+- P10: asked whether a simulated battle now differs from a real one, Claude listed what still differs (default
+  character, even rep pacing, never leaving, a friend's nickname, telemetry ids) rather than answering "no"; the user
+  chose to fix the character in this PR.
+- P10: the reviewer found that a KO by the simulated player could still be followed by its later reps in the same
+  tick (the KO only scheduled the finish); fixed with a flag and a test that fails without it.
+- P10: Claude left temporary local-test edits (local server address, insecure loopback) in the working tree while
+  other changes went on; caught before committing by `git status` and reverted each time.
+- P10: the first design could not see bot battles at all (the battle server only knows online results), so the
+  estimates needed a Django endpoint outside P10's files; Claude stopped and asked, and the PM approved the exception.
+- P10: the reviewer subagent returned CHANGES_REQUESTED: a search ending with a simulated opponent never finished its
+  P17 telemetry attempt (Claude had left it as a TODO with `_matching = null`), and the design-doc changes were missing.
+  Claude's own lobby test for that case checked the key `name` instead of `event`, so it passed while checking nothing;
+  rewritten to assert one `found`. Telemetry fixed after a second PM-approved one-line exception.
+- P10: the Codex review of `22ad600` found that `SkillIndex.nearest` broke its own documented tie rule on the lower
+  side (largest id instead of smallest). Claude's random full-scan test compared only distances, so it missed this;
+  the test now checks the chosen id and uses half-step skills to force ties.
+- P10: the next Codex review (`6f14022`) found the same tie rule still wrong for multi-digit ids (`"10"` sorts before
+  `"2"` as text); Claude's tests used ids that hid it. Ids now compare as numbers, with a test using 2, 10 and 100.
+- P10: the lobby disposed the online session inside its own listener call (assertion "dispose() called during
+  notifyListeners()"), caught by the first widget-test run; the release now runs in a microtask.
+- P10: the first lobby tests used `pumpAndSettle`, which ran the 5 s warning and the 3 s countdown and left the versus
+  screen before the check; found with a debug print and replaced by explicit pumps.
+
 - The reviewer subagent returned CHANGES_REQUESTED three times on P7 (logged in the progress file's Review log):
   the server accepted `NaN` for height and weight (DRF `FloatField` passes min/max) and stored it before a 500 — fixed
   with a finite check and NaN/Infinity tests; the design-doc note named `google-auth` though the code used PyJWT; the
@@ -118,6 +172,18 @@ Full list: `ishlove77-Prompt-Log.md`.
   and released by the app when the battle ends.
 
 ## 4. Revisions and Decisions
+- P10 matchmaking: task.md asked for the smallest expected skill gap among real players with a P5 tolerance → the user
+  chose real players at once (FIFO) and skill only for the simulated opponent after 15 s, estimated as the median of the
+  latest 5 battles.
+- P10 data source: battle-server-only estimates (online results only, lost on restart) → Django `/internal/skills`
+  read at start and every 5 minutes (user chose option A, PM approved).
+- P10 simulated battle: first played on the phone as an AI battle (the P11 saver writes a row for both players) →
+  the user asked for no difference from a real user → played by the battle server in a real match, and the saver skips
+  the simulated player (PM approval relayed by the user).
+- P10 label: nickname only (user) → AI label as the PM's condition (PR review) → label dropped (PM approval relayed).
+- P10 wait: 15 s → 10 s (user). KO battles: raw reps → scaled to 30 s, under 10 s left out (user, after Claude
+  pointed out that KO wins understate the estimate).
+
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so
   the server answers `signup_required` and creates nothing until the nickname step.
@@ -133,7 +199,7 @@ Full list: `ishlove77-Prompt-Log.md`.
   waiting rooms read it every 2 s, and an accepted invite not paired within 30 s ends the wait.
 
 ## 5. Manual Fixes
-None observed in P7 or P9: every code change was made by Claude Code and checked by the user.
+None observed in P7, P9 or P10: every code change was made by Claude Code and checked by the user.
 
 ## 6. Reflection
 TODO(Jinyoung Park): what worked and what to change, at the end of the iteration.
