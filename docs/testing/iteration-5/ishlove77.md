@@ -5,6 +5,14 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `706349e`
+Fix at commit `b2942c5`.
+- **Finding (P1):** on a fresh instance step 3 restored into `/srv/gymrats/data` before anything created it. Step 2's
+  fresh setup now creates it (`jinyoung:gymrats`, 2775) before any restore, and step 3 says the backup on a fresh
+  instance must come from a copy off the lost machine (none exists yet, finding 3). Reviewer subagent: APPROVE
+  (2 Minor applied). Documentation only; no code or test change.
+- **Results:** unchanged (server `pytest` 372 passed, 98%).
+
 #### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `a724bf4`
 Fix at commit `a05099e`.
 - **Finding (P1):** the `migrate` command added in the previous round had no working directory and no environment,

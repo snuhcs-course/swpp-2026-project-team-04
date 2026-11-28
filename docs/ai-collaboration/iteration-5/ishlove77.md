@@ -148,6 +148,10 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P21, Codex review of `a724bf4` (P1): the `migrate` command Claude wrote in that fix could not run (no working
   directory, no `.env`, so Django stops on the missing secrets). A fix that adds a command needs the command checked
   against the settings and the unit, as the reviewer then did. Fixed in `a05099e`.
+- P21, Codex review of `706349e` (P1): the data directory was created after the restore on a fresh instance. Five
+  Codex rounds in a row (`e4b3411` to `706349e`) each found one more gap in the static IP failover procedure, which
+  was written but never run; a written procedure is not verified until the admin rehearses it (finding 6). Fixed in
+  `b2942c5`.
 
 - P20, wrong claim on the team server: after the first try through an SSH tunnel failed, Claude told the user the
   test server "died early". It had not: its process shows as `dart:load-serve`, which `ps -C load-server` missed.
