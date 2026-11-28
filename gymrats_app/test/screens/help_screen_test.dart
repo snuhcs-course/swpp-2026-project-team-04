@@ -248,7 +248,9 @@ void main() {
     expect(pill, findsOneWidget);
     expect(tester.getSize(pill).height, 46);
     final edge =
-        ((tester.widget<Container>(pill).decoration! as ShapeDecoration).shape
+        ((tester.widget<Container>(pill).foregroundDecoration!
+                        as ShapeDecoration)
+                    .shape
                 as StadiumBorder)
             .side;
     expect(edge.color, AppColors.ink);
@@ -276,6 +278,45 @@ void main() {
     await tapNext(tester);
     expect(half('푸시업'), (AppColors.accent, FontWeight.w700));
     expect(half('스쿼트'), (AppColors.card, FontWeight.w500));
+  });
+
+  testWidgets("the tabs' ink edge is drawn over the halves, which are "
+      'clipped to the round pill inside it', (tester) async {
+    await show(tester, HelpScreen(onStart: () {}), size: const Size(360, 780));
+    final pill = find.byWidgetPredicate(
+      (widget) =>
+          widget is Container &&
+          widget.constraints?.minHeight == 46 &&
+          widget.foregroundDecoration is ShapeDecoration,
+    );
+    expect(pill, findsOneWidget);
+    final container = tester.widget<Container>(pill);
+    // Under the halves only the white stadium, with no edge of its own.
+    final fill = container.decoration! as ShapeDecoration;
+    expect(fill.color, AppColors.card);
+    expect((fill.shape as StadiumBorder).side, BorderSide.none);
+    // On top, the 2 ink edge.
+    final edge =
+        ((container.foregroundDecoration! as ShapeDecoration).shape
+                as StadiumBorder)
+            .side;
+    expect((edge.color, edge.width), (AppColors.ink, 2.0));
+    // Drawn inside the pill, so its inner rim is the clip below.
+    expect(edge.strokeAlign, BorderSide.strokeAlignInside);
+
+    final clip = find.descendant(of: pill, matching: find.byType(ClipPath));
+    expect(clip, findsOneWidget);
+    final clipper = tester.widget<ClipPath>(clip).clipper;
+    expect(clipper, isA<ShapeBorderClipper>());
+    expect((clipper! as ShapeBorderClipper).shape, isA<StadiumBorder>());
+    // The clip sits just inside the edge: the pill less 2 on every side.
+    final outer = tester.getRect(pill);
+    expect(tester.getRect(clip), outer.deflate(2));
+    // Both halves are inside the clip.
+    expect(
+      find.descendant(of: clip, matching: find.byType(DecoratedBox)),
+      findsNWidgets(2),
+    );
   });
 
   testWidgets('the card is white with a 2 ink edge and 22 corners', (
