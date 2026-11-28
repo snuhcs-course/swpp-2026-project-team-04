@@ -7,6 +7,16 @@ These notes cover Jinyoung Park's Iteration 5 steps, items a–f per the guideli
 team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session Exporter before every push).
 
 ## 1. Where AI Was Used
+### P21 `feat/iter5-failover` (team plan #15, restart, backup restoration and failover rehearsal, 2026-11-28)
+- Rehearsal: the commands for the two production restarts (run after the user's OK), the separate environment on the
+  team server (`/srv/gymrats/rehearsal-p21`, restored from the latest backup, deleted afterwards), the check script
+  for history, sign-up, login, matching, result saving and a battle cut by a crash, the hang watcher, and the timing:
+  Claude Code (scripts not committed; the ones run on the server were deleted with the rehearsal folder).
+- `docs/iteration-5/server-failover.md` (`0d2266a`) and `server/tests/test_failover.py` (`63b5dde`): Claude Code.
+- Not used: where each rehearsal ran (production restarts now; a separate environment on the same server once the
+  Lightsail console turned out to be admin-only) and leaving the static IP failover as a procedure (the user's
+  decisions).
+
 ### P7 `feat/iter5-google-auth` (team plan #1, Google sign-in and sign-up, 2026-11-23 ~ 11-24)
 - Server: `server/accounts/google_auth.py` (whole file: ID token check with Google's keys), the Google login view,
   nickname rule and body info view in `server/accounts/views.py`, `serializers.py`, `models.py`, migration
@@ -45,6 +55,49 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
   the play-again row, removing the rule line, and the app-wide banner with 거절 · 수락 (the user's decisions on the
   emulator).
 
+### P10 `feat/iter5-skill-matching` (team plan #6, simulated users and skill-based matchmaking, 2026-11-27)
+- Battle server: `server/lib/skill_matchmaker.dart` and `server/lib/simulated_player.dart` (whole files: median of the
+  latest 5, sorted index with binary search and numeric tie order, cost measurement, the simulated player's rep plan),
+  and in `server/lib/battle_server.dart` the 10 s wait, `accept_virtual`, the simulated match player (`_open`,
+  `_setReady`, `_acceptRep`, `_simulate`), the estimate refresh; `loadSkills` in `server/lib/result_store.dart`:
+  Claude Code.
+- Server: `SkillsView` (`POST /internal/skills`, KO scaling) and the simulated-player skip in `ResultSaveView`
+  (`server/matches/internal.py`), `OnlinePlayerSerializer.simulated` (`serializers.py`), the route, and
+  `server/tests/test_skills.py`, the P10 cases in `test_results.py`: Claude Code.
+- App: `accept_virtual` in `online_battle_session.dart` and `battleVirtualWait` in `lib/shared/battle_protocol.dart`;
+  the battle server tests under `gymrats_app/test/services/online/`; `docs/iteration-5/matchmaking.md`: Claude Code.
+- Manual checks: local Django and battle servers with a throwaway database, the Android emulator (adb taps,
+  screenshots, database edits between matches) and the user's Galaxy over USB: Claude Code; the battles on the phone
+  were played by the user.
+- Not used: the estimate rule, real players first, the wait (15 s, then 10 s), KO scaling with a 10 s floor, showing
+  the nickname without a label, and "no difference from a real user" (the user's decisions, PM approvals relayed);
+  the scope exceptions (PM).
+
+### P11 `feat/iter5-weekly-rankings` (team plan #13, weekly global and friends rankings, 2026-11-27 ~ 11-28)
+- Server: `server/matches/rankings.py` (whole file: KST week bounds, points, the tally over main online battles,
+  global top 50 with my row, friends scope, shared ranks), the route, `OnlineBattle.kind` with migration `0004`,
+  `kind` in `OnlineResultSerializer` and `ResultSaveView`, `kind` in the battle server's result body
+  (`server/lib/battle_server.dart`), `server/tests/test_weekly_rankings.py` and the kind cases in `test_results.py`
+  (`d861fbf`, `545d24f`): Claude Code.
+- App: `lib/services/rankings/rankings_repository.dart`, `lib/viewmodels/weekly_rankings_viewmodel.dart`,
+  `lib/screens/weekly_rankings_screen.dart`, the 주간 랭킹 row and podium icon in `lib/widgets/exercise_sheet.dart`,
+  the route in `lib/main.dart` and `play_screen.dart`, and their tests (`7f6d020`): Claude Code.
+- Manual check: a scratchpad entry point and a seed script that runs the real Django code on an in-memory database,
+  shown on the Android emulator: Claude Code.
+- Not used: the point values (draw +3), which battles count (simulated opponent counts for the real player only;
+  friend, offline AI and arcade battles do not), the week start, the entry point and its icon, and friends ranking as
+  the global points among friends (the user's decisions); the scope exception for `exercise_sheet.dart` and the
+  battle kind (PM approval relayed by the user).
+
+### P20 `feat/iter5-matching-load` (team plan #12, matchmaking benchmark and load test, 2026-11-28)
+- Tools: `server/benchmarks/matchmaking/` (load bot, runner and statistics, load client and test server, skill index
+  and `/internal/skills` benches, their tests) (`db5948c`): Claude Code.
+- Runs and write-up: the four Mac scenarios, the two team-server runs (both binaries cross-compiled and run on the
+  server over loopback, folder removed afterwards), `docs/iteration-5/matchmaking-load.md` and the raw JSON
+  (`a87f5e9`): Claude Code; each server step was approved by the user first.
+- Not used: running on the team server at all, moving the client onto it after the tunnel attempt, and dropping the
+  simulated-wait rows from the tables (the user's decisions).
+
 ## 2. Prompt History
 [Jinyoung Park, 11-23] "task 수행해. 근데 회원가입할때 구글이랑 카카오톡 둘다 지원하게 해주고, 회원가입시 … 이런식으로 키, 몸무게 추가 정보도 받게 해줘."
 [Jinyoung Park, 11-24] "카카오도, google가입도 닉네임은 필요함"
@@ -53,9 +106,134 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 [Jinyoung Park, 11-24] "friend추가하는 기능은 닉네임으로 추가?"
 [Jinyoung Park, 11-24] "최근 설정으로 다시 하기 대신에 친구와의 대전으로 이름 바꿔서 저기 배치해주고 30초, 점수 높은쪽 승리 이거는 뺴자"
 [Jinyoung Park, 11-24] "상대방이 대전 걸면 위의 친구가 대전을 신청했어요 이런식으로 뜨게 하면 안된 ㅏ"
+[Jinyoung Park, 11-27] "유져의 실력 추정치는 최근 5개의 경긱 각가을 평균을 구하고 그것의 median으로 해서 평가를 좀 해줘. 그리고 그 user의 닉네임이 배틀시에 떠야함. …"
+[Jinyoung Park, 11-27] "일단 바로 실제 유저 있으면 매칭 시켜 그다음에 없을때 가상 유저만 실력 비슷한 유저로(즉, 실제 유저는 바로 바로 매칭시켜()"
+[Jinyoung Park, 11-27] "실제 유저 대기 시간 15초"
+[Jinyoung Park, 11-27] "너가 recommen한거로 가되 무면 그래도 +3은 줘야지"
+[Jinyoung Park, 11-28] "근데 지금 squatt, pushup별개로 있지?"
+[Jinyoung Park, 11-27] "전체 랭킹에서 내리기 하면 하면 뭔가 이상하게 화면이 되는데 그거랑 그다음에 위에 KO 승 10, 승 5, 무 3, 패 1 이런거 싹다 위에 글 자체를 없애주고, 그리고 지금 승점 제대로 계산된거 맞나"
+[Jinyoung Park, 11-28] "task 수행해"
+[Jinyoung Park, 11-28] "팀서버도 ㄱㄱ"
+[Jinyoung Park, 11-28] "가상 상대 대기 시간은 빼도 ㄱㅊ을듯"
+[Jinyoung Park, 11-28] "P21 task 수행해"
+[Jinyoung Park, 11-28] "콘솔 작업을 내가 해야함?"
+[Jinyoung Park, 11-28] "관리자라 ㅠㅠ"
 Full list: `ishlove77-Prompt-Log.md`.
 
 ## 3. Problems and How They Were Caught
+- P21, check script: the first three runs against the restored environment stopped on bugs in Claude's own test
+  client, not in the server: no keep-alive ping (closed 4000), no answer to the server's pings while it read the other
+  player's socket (closed 1001), and request ids reused across the two connections (`REQUEST_ID_REUSED`). Each was
+  read from the close code and fixed; the fourth run's numbers are the ones recorded.
+- P21, tests: the first `test_failover.py` restored right after the backup, so the reviewer subagent found the tests
+  still passed with `restore()` doing nothing. They now change the data between backup and restore (a new password,
+  a later battle, a sign-up, a voided battle); with a no-op restore 4 of 5 fail.
+- P21, detection time: Claude first wrote the worst case as about 3 min, counting 60 s per check; the reviewer
+  pointed out that each failed check also waits 5 s, so the checks came 65 s apart and the worst case is about
+  3 min 16 s, above the 3 min draft target.
+- P21, plan: Claude planned the restore and detection on a temporary Lightsail instance that the user would create;
+  only the team admin has the console, so the plan changed to a separate environment on the team server.
+- P21, Codex review of `e4b3411` (P1): the failover procedure restored the backup on a replacement booted from a
+  snapshot without stopping the services, which start at boot; the battle server's one-time recovery would then run
+  on the snapshot's database and leave battles from a newer backup `active` for good. Neither Claude nor the reviewer
+  subagent had checked what a snapshot starts at boot. Fixed in the procedure (`f00735e`): stop both right after
+  boot, restore, then start the API before the battle server.
+- P21, Codex review of `fab012b` (P1 ×2): the procedure did not bring a stale snapshot's code up to the release
+  before `migrate`, and gave a fresh instance no IP certificate. Claude's first fix said only "run
+  `install-https.sh`"; the reviewer subagent found it stops at its first line on a fresh instance (no nginx site
+  yet) and that a snapshot's 6-day certificate may already be expired. Fixed in `25139d3` after a second review.
+- P21, Codex review of `17dbf12` (P1): the procedure trusted `/health`, which does not query the database, so a
+  restored file the API cannot write would pass. Claude first proposed a login as the write check; the code showed
+  login does not write, so the check is a permission test plus a login and history read (`ed5f1be`).
+- P21, Codex review of `a724bf4` (P1): the `migrate` command Claude wrote in that fix could not run (no working
+  directory, no `.env`, so Django stops on the missing secrets). A fix that adds a command needs the command checked
+  against the settings and the unit, as the reviewer then did. Fixed in `a05099e`.
+- P21, Codex review of `706349e` (P1): the data directory was created after the restore on a fresh instance. Five
+  Codex rounds in a row (`e4b3411` to `706349e`) each found one more gap in the static IP failover procedure, which
+  was written but never run; a written procedure is not verified until the admin rehearses it (finding 6). Fixed in
+  `b2942c5`.
+
+- P20, wrong claim on the team server: after the first try through an SSH tunnel failed, Claude told the user the
+  test server "died early". It had not: its process shows as `dart:load-serve`, which `ps -C load-server` missed.
+  Caught when the next run failed with "Address already in use" on port 8090 and that run's client had reached the
+  old server. Cost: two discarded runs (about 10 minutes); the run script then checked the port and the new server.
+- P20, CPU read wrong: the tables first gave `ps %cpu` samples as the 5 s load. The reviewer pointed out that on
+  Linux it is the average over the process's life (on macOS a decaying average); the team-server load was worked back
+  from the timed samples (peak 33.5% / 36.7%, not 22.6% / 25.1%), and the other rows now say what they are.
+- P20, unsafe bench: the reviewer found that `skills_endpoint_bench.py` would wipe and migrate whatever database
+  `DATABASE_URL` named in the shell (it only defaulted the test settings), e.g. production after loading the server's
+  `.env`. Now forced to the in-memory database and refused otherwise, with tests.
+- P20, smaller misses caught before the results: a server option passed as one shell word was silently ignored
+  (S3 ran with the production wait; the server now refuses unknown arguments); `WebSocket.connect` hides the HTTP
+  status of a refused upgrade (the bot now upgrades by hand to tell 401 from 503); the error tally lost counts
+  without a code; the doc said the countdown was inside found→start. Each was caught by a test or the reviewer.
+- P20, Codex review of PR #111 (`0ea34e2`): a connection finishing after the connect timeout was left open, a bot
+  stopped while connecting could keep its socket, and the client ignored unknown options. None of them showed in
+  the reported runs, but the first two are exactly what an overloaded run (like the discarded tunnel attempt) hits.
+  Fixed in `2ef4630` with four tests that fail on the old code.
+- P20, second Codex review (`bd2e5f3`): the skill table of Claude's test server had only numeric account ids and
+  none of the bots, so the first S3 claimed to load "skill matching" while every bot used the average estimate.
+  Neither the reviewer nor Claude noticed it from the numbers. Fixed in `d691e47`; S3 was run again (24 accounts
+  copied instead of one) and the old run is kept in the JSON as superseded.
+- P20, found in the battle server (not fixed, owner's file): an uncaught `StreamSink is closed` from the `catch`
+  path of `BattleServer._receive`, seen only with server and client in one process; reported in the results doc.
+
+- P11, demo data: the first emulator run used rankings typed by hand, and some totals could not come from the point
+  rules. When the user asked whether the points were right, Claude replaced them with answers computed by the real
+  server code (a seed script posting battles to `/internal/results` on an in-memory database) and checked each total
+  by hand (e.g. 10+5+3+1+0 = 19). Lesson: demo numbers must come from the code under test.
+- P11, scrolling: the user saw the whole rankings page scroll on the emulator and cut off the header; the widget
+  tests had only checked that rows render. The header, tabs and week now stay fixed and only the rows scroll,
+  covered by `only the rows scroll: the header, tabs and week stay`.
+- P11, Codex review of `ae1e9c7`: Claude's `kind` defaulted to `main` for results without one, so friend battles
+  stored before the deploy could score, and the global ranking loaded every weekly row into Python. Claude first
+  proposed a deploy-order note and a reasoned reply; the user asked for code fixes ("고치라고"): unknown kind is now
+  `legacy` and never scores, and the database sums and ranks.
+- P11, Codex review of `31dc5ce`: the view model kept each ranking for good, so an open screen showed last week
+  after Monday 00:00. While fixing it, Claude noticed that its own tests used the real clock against a week ending
+  11-30 and would have started failing that day; the tests now pass a fixed clock.
+- P11, stretch: after the scroll fix, the user still saw the rows stretch when pulling past the end ("그 화면
+  늘어지는거 봤음?"). Claude had checked screenshots only at rest, so it missed Android's stretch overscroll; a
+  screenshot taken mid-pull showed it. Fixed with overscroll off on the list and a widget test that failed before.
+- P11, tests: two first-draft server tests expected rank 4 after a tie and 400 for a bad scope; pytest showed the
+  code was right (competition ranks 1, 1, 3; this project answers 422), so the tests were fixed.
+- P11, friend battles: Claude found that friend battles could not be told apart in the database, so the rule
+  "friend battles do not count" could not be kept without a new `kind` field; it asked for a PM scope exception
+  before touching those files.
+
+- P10, design churn: the simulated opponent was first played on the phone as an AI battle, to keep the copied
+  account's history clean. The PM review (`1a164d6`) found that this showed "RepBot 고수" in the result and sent
+  다시 대결 to an expert bot; patching it took an AI label, a setup timer in the lobby and still left visible
+  differences (screen, archive line, saved rematch). After the user asked for "실제 user랑 차이 없게", the battle
+  server now plays the simulated player in a real match and the saver skips it; most of the earlier app code was
+  removed. Claude's first choice optimized for scope (fewer outside files) over the user's goal.
+- P10: the PM's independent review of `71fcdc3` found two things Claude's tests had missed: the phone's KO time is
+  rounded up, so a 9.5 s online KO counted once its report arrived (fixed by preferring the battle server's time),
+  and the skills read loaded the whole match history into Python (moved into one database query with a window
+  function; Codex flagged the same).
+- P10: asked whether a simulated battle now differs from a real one, Claude listed what still differs (default
+  character, even rep pacing, never leaving, a friend's nickname, telemetry ids) rather than answering "no"; the user
+  chose to fix the character in this PR.
+- P10: the reviewer found that a KO by the simulated player could still be followed by its later reps in the same
+  tick (the KO only scheduled the finish); fixed with a flag and a test that fails without it.
+- P10: Claude left temporary local-test edits (local server address, insecure loopback) in the working tree while
+  other changes went on; caught before committing by `git status` and reverted each time.
+- P10: the first design could not see bot battles at all (the battle server only knows online results), so the
+  estimates needed a Django endpoint outside P10's files; Claude stopped and asked, and the PM approved the exception.
+- P10: the reviewer subagent returned CHANGES_REQUESTED: a search ending with a simulated opponent never finished its
+  P17 telemetry attempt (Claude had left it as a TODO with `_matching = null`), and the design-doc changes were missing.
+  Claude's own lobby test for that case checked the key `name` instead of `event`, so it passed while checking nothing;
+  rewritten to assert one `found`. Telemetry fixed after a second PM-approved one-line exception.
+- P10: the Codex review of `22ad600` found that `SkillIndex.nearest` broke its own documented tie rule on the lower
+  side (largest id instead of smallest). Claude's random full-scan test compared only distances, so it missed this;
+  the test now checks the chosen id and uses half-step skills to force ties.
+- P10: the next Codex review (`6f14022`) found the same tie rule still wrong for multi-digit ids (`"10"` sorts before
+  `"2"` as text); Claude's tests used ids that hid it. Ids now compare as numbers, with a test using 2, 10 and 100.
+- P10: the lobby disposed the online session inside its own listener call (assertion "dispose() called during
+  notifyListeners()"), caught by the first widget-test run; the release now runs in a microtask.
+- P10: the first lobby tests used `pumpAndSettle`, which ran the 5 s warning and the 3 s countdown and left the versus
+  screen before the check; found with a debug print and replaced by explicit pumps.
+
 - The reviewer subagent returned CHANGES_REQUESTED three times on P7 (logged in the progress file's Review log):
   the server accepted `NaN` for height and weight (DRF `FloatField` passes min/max) and stored it before a 500 — fixed
   with a finite check and NaN/Infinity tests; the design-doc note named `google-auth` though the code used PyJWT; the
@@ -118,6 +296,38 @@ Full list: `ishlove77-Prompt-Log.md`.
   and released by the app when the battle ends.
 
 ## 4. Revisions and Decisions
+- P21 environment: temporary Lightsail instance with a new static IP (user, first answer) → the console is admin-only
+  → a separate environment on the team server for detection and restore, and the static IP failover as a procedure
+  for the admin (user).
+- P21 order: the first draft of the failover procedure did not say which service starts first; the reviewer noted
+  that the battle server asks the API once at start-up to void cut battles and ignores a failure, so the procedure
+  now starts the API first and restarts the battle server if the API was not up.
+
+- P20 scenarios: one 200-user run → also a simulated-heavy run (`--virtual-after-ms 0`), since with 200 users online
+  only 2 of 600 battles got a simulated opponent (Claude's proposal); the team server added at the user's request
+  ("팀서버도 ㄱㄱ"), first with the client on the Mac through a tunnel, then both on the server (user's choice after the
+  tunnel attempt); the simulated-opponent wait rows dropped from the tables (user: it is just the 10 s setting).
+
+- P11 points: Claude proposed KO win 10, win 5, loss 1, leaving 0 → the user added draw +3. Rules line on the
+  rankings screen: shown → removed (user, after the emulator check).
+- P11 exercises: one ranking over push-ups and squats → the user asked whether they were apart, then decided to
+  split them (11-28, after PR #108 opened); Claude proposed the two tab rows and the user chose 전체/친구 on top with
+  푸쉬업/스쿼트 under it. The reviewer then caught that the notes still described one combined ranking.
+- P11 friends tab: the user chose the same weekly global points ranked among friends, not points from friend
+  battles; friend battles never count.
+
+- P10 matchmaking: task.md asked for the smallest expected skill gap among real players with a P5 tolerance → the user
+  chose real players at once (FIFO) and skill only for the simulated opponent after 15 s, estimated as the median of the
+  latest 5 battles.
+- P10 data source: battle-server-only estimates (online results only, lost on restart) → Django `/internal/skills`
+  read at start and every 5 minutes (user chose option A, PM approved).
+- P10 simulated battle: first played on the phone as an AI battle (the P11 saver writes a row for both players) →
+  the user asked for no difference from a real user → played by the battle server in a real match, and the saver skips
+  the simulated player (PM approval relayed by the user).
+- P10 label: nickname only (user) → AI label as the PM's condition (PR review) → label dropped (PM approval relayed).
+- P10 wait: 15 s → 10 s (user). KO battles: raw reps → scaled to 30 s, under 10 s left out (user, after Claude
+  pointed out that KO wins understate the estimate).
+
 - Kakao: built (user, 11-23) → PM excluded it from Iteration 5 (11-24) → removed from UI and code (user, 11-24).
 - Google nickname: first taken from the Google profile (fallback "GymRat") → the user asked for a chosen nickname, so
   the server answers `signup_required` and creates nothing until the nickname step.
@@ -133,7 +343,7 @@ Full list: `ishlove77-Prompt-Log.md`.
   waiting rooms read it every 2 s, and an accepted invite not paired within 30 s ends the wait.
 
 ## 5. Manual Fixes
-None observed in P7 or P9: every code change was made by Claude Code and checked by the user.
+None observed in P7, P9, P10, P11, P20 or P21: every code change was made by Claude Code and checked by the user.
 
 ## 6. Reflection
 TODO(Jinyoung Park): what worked and what to change, at the end of the iteration.

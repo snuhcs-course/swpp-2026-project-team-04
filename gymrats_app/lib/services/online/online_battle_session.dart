@@ -241,6 +241,8 @@ class OnlineBattleSession extends ChangeNotifier {
       'exercise': exercise == ExerciseType.squat ? 'squat' : 'push_up',
       'avatar_id': avatarId,
       'friend_id': ?friendId,
+      // P10: the main match takes a simulated opponent after the wait.
+      if (friendId == null) 'accept_virtual': true,
     }),
   );
 

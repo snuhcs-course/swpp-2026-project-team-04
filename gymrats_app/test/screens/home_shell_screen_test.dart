@@ -33,7 +33,7 @@ void main() {
     );
     // History opens from the lobby's 기록보관소 now.
     expect(find.byType(NavigationBar), findsNothing);
-    expect(find.text('기록보관소'), findsOneWidget);
+    expect(find.text('운동일지'), findsOneWidget);
   });
 
   testWidgets('home can be replaced for tests', (tester) async {

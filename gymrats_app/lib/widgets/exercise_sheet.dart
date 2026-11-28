@@ -14,12 +14,15 @@ import '../theme/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'coach_parts.dart';
 
-/// Asks which exercise to battle in, under the line [subtitle]. Null when the
-/// user closes the sheet without choosing.
+/// Asks which exercise to battle in, under the line [subtitle] when there is
+/// one. With [onRankings], a 주간 랭킹 row under the cards opens the weekly
+/// rankings over the sheet (P11). Null when the user closes the sheet
+/// without choosing.
 Future<ExerciseType?> showExerciseSheet(
   BuildContext context, {
-  required String subtitle,
+  String? subtitle,
   required UserProfile profile,
+  VoidCallback? onRankings,
 }) => showModalBottomSheet<ExerciseType>(
   context: context,
   backgroundColor: AppColors.card,
@@ -30,7 +33,11 @@ Future<ExerciseType?> showExerciseSheet(
     borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
     side: BorderSide(color: AppColors.border),
   ),
-  builder: (_) => ExerciseSheet(subtitle: subtitle, profile: profile),
+  builder: (_) => ExerciseSheet(
+    subtitle: subtitle,
+    profile: profile,
+    onRankings: onRankings,
+  ),
 );
 
 /// One card per exercise, side by side. Tapping a card closes the sheet with it.
@@ -42,12 +49,16 @@ Future<ExerciseType?> showExerciseSheet(
 class ExerciseSheet extends StatefulWidget {
   const ExerciseSheet({
     super.key,
-    required this.subtitle,
+    this.subtitle,
     required this.profile,
+    this.onRankings,
   });
 
-  final String subtitle;
+  final String? subtitle;
   final UserProfile profile;
+
+  /// Opens the weekly rankings; null shows no rankings row.
+  final VoidCallback? onRankings;
 
   @override
   State<ExerciseSheet> createState() => _ExerciseSheetState();
@@ -78,12 +89,18 @@ class _ExerciseSheetState extends State<ExerciseSheet>
               alignment: Alignment.centerLeft,
               style: text.headlineMedium,
             ),
-            const SizedBox(height: AppSpacing.s4),
-            Text(
-              subtitle,
-              style: text.bodyMedium?.copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: AppSpacing.s24),
+            if (subtitle != null) ...[
+              const SizedBox(height: AppSpacing.s4),
+              Text(
+                subtitle,
+                style: text.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s24),
+            ] else
+              // P11: no line, so the cards come up.
+              const SizedBox(height: AppSpacing.s16),
             // Hidden for the moment the goals take to read: the stickers
             // come with the cards.
             Opacity(
@@ -107,11 +124,124 @@ class _ExerciseSheetState extends State<ExerciseSheet>
                 ),
               ),
             ),
+            if (widget.onRankings case final open?) ...[
+              const SizedBox(height: AppSpacing.s16),
+              WeeklyRankingsRow(onTap: open),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+/// 주간 랭킹 (P11): a long row under the exercise cards, with the podium.
+class WeeklyRankingsRow extends StatelessWidget {
+  const WeeklyRankingsRow({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  static const _chip = 48.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      label: '주간 랭킹, 이번 주 전체와 친구 순위',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Card(
+        margin: EdgeInsets.zero,
+        color: AppColors.cardHigh,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s16,
+              vertical: AppSpacing.s12,
+            ),
+            child: Row(
+              children: [
+                const RankingPodiumIcon(size: _chip),
+                const SizedBox(width: AppSpacing.s16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('주간 랭킹', style: text.titleLarge),
+                      const SizedBox(height: AppSpacing.s4),
+                      Text(
+                        '이번 주 전체·친구 순위 보기',
+                        style: text.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.line),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A podium with a star over its top step, on a rounded square.
+class RankingPodiumIcon extends StatelessWidget {
+  const RankingPodiumIcon({super.key, this.size = 48});
+
+  final double size;
+
+  static const _edge = 1.5;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: AppColors.fever,
+      borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
+      border: Border.all(color: AppColors.ink, width: _edge),
+    ),
+    child: CustomPaint(painter: _PodiumPainter()),
+  );
+}
+
+/// Drawn on a 24×24 box: three steps, the middle one highest, and a star
+/// over it.
+class _PodiumPainter extends CustomPainter {
+  _PodiumPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.width / 24;
+    final fill = Paint()..color = AppColors.ink;
+    Rect step(double left, double top) =>
+        Rect.fromLTRB(left * s, top * s, (left + 5) * s, 19 * s);
+    canvas
+      ..drawRect(step(4.5, 14), fill)
+      ..drawRect(step(9.5, 11), fill)
+      ..drawRect(step(14.5, 15.5), fill);
+    // A five-point star centred over the middle step.
+    final star = Path();
+    const points = 5;
+    final centre = Offset(12 * s, 7 * s);
+    for (var i = 0; i < points * 2; i++) {
+      final r = (i.isEven ? 3.2 : 1.4) * s;
+      final a = -math.pi / 2 + i * math.pi / points;
+      final p = centre + Offset(math.cos(a) * r, math.sin(a) * r);
+      i == 0 ? star.moveTo(p.dx, p.dy) : star.lineTo(p.dx, p.dy);
+    }
+    canvas.drawPath(star..close(), fill);
+  }
+
+  @override
+  bool shouldRepaint(_PodiumPainter oldDelegate) => false;
 }
 
 /// The exercise's drawing, its name and the user's best in it.

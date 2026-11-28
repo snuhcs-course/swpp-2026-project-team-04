@@ -9,14 +9,11 @@ import '../../models/rep_event.dart';
 /// Apart from `player_game_score.dart`: the battle server gets a rep's grade
 /// from the phone, so it does not import this or [RepEvent].
 extension RepGrading on BattleRules {
-  /// Whether rejected [rep] is average: a knee push-up or a shallow rep with measured flexion.
+  /// Only a depth rejection with measured flexion can earn Average.
   bool earnsAverage(RepEvent rep) =>
       !rep.valid &&
-      ((rep.reason == RejectReason.kneesDown &&
-              kneeAverageEnabled &&
-              averagePoints > 0) ||
-          (rep.reason == RejectReason.insufficientDepth &&
-              isAverage(rep.minElbowAngle)));
+      rep.reason == RejectReason.insufficientDepth &&
+      isAverage(rep.minElbowAngle);
 
   /// The grade of [rep]; null when it was rejected and earned nothing.
   GameGrade? gradeOf(RepEvent rep, {required double passDepth}) {

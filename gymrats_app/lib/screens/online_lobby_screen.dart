@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../config/server_config.dart';
+import '../models/battle_rules.dart';
 import '../models/character_rig.dart';
 import '../models/exercise_type.dart';
 import '../models/matchup.dart';
@@ -16,6 +17,8 @@ import '../theme/app_theme.dart';
 import '../widgets/battle_stage_model.dart';
 import '../widgets/character_figure.dart';
 import '../widgets/exit_dialog.dart';
+import '../widgets/friend_invite_parts.dart';
+import '../widgets/friend_wait_view.dart';
 import '../widgets/grid_background.dart';
 import '../viewmodels/friends_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
@@ -48,16 +51,22 @@ class OnlineLobbyScreen extends StatefulWidget {
     this.friendBattle,
     this.friends,
     this.invitePollEvery = const Duration(seconds: 2),
+    this.now,
   });
   final AuthRepository auth;
 
   /// A battle with this friend only (P9); null searches the main match.
-  /// The waiting room then sends or holds the invite through [friends].
+  /// The waiting room then sends or holds the invite through [friends],
+  /// and shows the friend battle's own wait ([FriendWaitView], A11).
   final FriendBattle? friendBattle;
   final FriendRepository? friends;
 
   /// How often a friend battle's waiting room reads the invite.
   final Duration invitePollEvery;
+
+  /// The clock the invite's time left is counted on; the device's when
+  /// null (tests set one).
+  final DateTime Function()? now;
   final ExerciseType exercise;
   final OnlineSessionFactory? createSession;
   final Future<void> Function()? onAuthenticationFailed;
@@ -97,6 +106,10 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
 
   /// The friend battle's invite while waiting for the friend (P9).
   FriendInviteWaitViewModel? _wait;
+
+  /// How the last friend wait ended (A11): kept after [_wait] goes, for
+  /// the ended waiting room's band and title.
+  FriendWaitEnd? _friendEnd;
   StreamSubscription<void>? _expiry;
   bool _opened = false;
   bool _authFailureHandled = false;
@@ -172,10 +185,14 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
   void _startWait() {
     final battle = widget.friendBattle, friends = widget.friends;
     if (battle == null || friends == null) return;
+    _friendEnd = null;
     final wait = FriendInviteWaitViewModel(
       repository: friends,
       battle: battle,
+      // The same character the battle sends as `avatar_id` (A11 spec 7).
+      character: widget.myCharacter,
       pollEvery: widget.invitePollEvery,
+      now: widget.now,
     )..addListener(_waitChanged);
     _wait = wait;
     unawaited(wait.start());
@@ -187,8 +204,13 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     final why = wait?.ended;
     if (!mounted || why == null || session?.opponent != null) return;
     _matching?.inviteEnded(wait?.invite?.status);
+    // Before the wait goes with the search: how it ended.
+    final end = wait?.endedBy ?? FriendWaitEnd.other;
     _release();
-    setState(() => _error = why);
+    setState(() {
+      _error = why;
+      _friendEnd = end;
+    });
   }
 
   /// Stops [_wait]; [leaving] takes its invite back too.
@@ -350,6 +372,66 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
     super.dispose();
   }
 
+  /// A friend battle's waiting room (A11 spec 5) instead of the radar:
+  /// while I wait for the friend's accept (or, invited, to be paired), and
+  /// once the wait is over. The seconds come from my invite's `expires_at`
+  /// ([FriendInviteWaitViewModel.secondsLeft]), redrawn by the search's
+  /// one-second tick. The back pill does what 매칭 취소 did; going back while
+  /// waiting asks first, as before.
+  Widget _friendWait(
+    FriendBattle battle,
+    OnlineBattleSession? session, {
+    required bool busy,
+  }) {
+    final login = widget.auth.session;
+    final accepted = battle.accepted;
+    final state = busy
+        ? (battle.inviting ? FriendWaitState.waiting : FriendWaitState.joining)
+        : switch (_friendEnd) {
+            FriendWaitEnd.declined => FriendWaitState.declined,
+            FriendWaitEnd.expired => FriendWaitState.expired,
+            FriendWaitEnd.other || null => FriendWaitState.closed,
+          };
+    final page = Scaffold(
+      body: GridBackground(
+        child: SafeArea(
+          child: FriendWaitView(
+            state: state,
+            friendName: battle.friend.nickname,
+            myName: login?.account.nickname ?? '나',
+            myCharacter: widget.myCharacter,
+            friendCharacter: accepted == null
+                ? null
+                : friendInviteCharacter(accepted),
+            exercise: widget.exercise,
+            duration: session == null
+                ? battleDuration
+                : Duration(milliseconds: session.durationMs),
+            secondsLeft: _wait?.secondsLeft ?? BattleInvite.ttl.inSeconds,
+            closedTitle: _error ?? session?.error ?? '매칭이 종료됐어요. 다시 상대를 찾아주세요.',
+            onBack: () => unawaited(_cancelSearch()),
+            onToList: () => unawaited(_cancelSearch()),
+            // An invite I accepted cannot be sent again from here.
+            onRetry: battle.inviting && login != null
+                ? () {
+                    if (_session != null) _release();
+                    unawaited(_join());
+                  }
+                : null,
+          ),
+        ),
+      ),
+    );
+    if (!busy) return page;
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_askToLeave());
+      },
+      child: page,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = _session, login = widget.auth.session;
@@ -375,6 +457,11 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
         autoSetupIn: _autoSetupIn,
       );
     }
+    final friendBattle = widget.friendBattle;
+    if (friendBattle != null &&
+        (busy || _friendEnd != null || _error != null || session != null)) {
+      return _friendWait(friendBattle, session, busy: busy);
+    }
     if (busy) {
       return PopScope<Object?>(
         canPop: false,
@@ -384,14 +471,11 @@ class _OnlineLobbyScreenState extends State<OnlineLobbyScreen>
         child: Scaffold(
           body: GridBackground(
             child: SafeArea(
+              // The main match only: a friend battle waits in its own room
+              // (_friendWait, A11).
               child: BattleSearchView(
                 exercise: widget.exercise,
-                title: switch (widget.friendBattle) {
-                  null => '실시간 상대를 찾는 중',
-                  final battle when battle.inviting =>
-                    '${battle.friend.nickname}님의 수락을 기다리는 중',
-                  final battle => '${battle.friend.nickname}님을 기다리는 중',
-                },
+                title: '실시간 상대를 찾는 중',
                 duration: Duration(milliseconds: session.durationMs),
                 searchArea: BattleSearchRadar(
                   animation: _radar,

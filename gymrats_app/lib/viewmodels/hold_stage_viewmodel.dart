@@ -9,11 +9,13 @@ import '../models/arcade_stage.dart';
 import '../models/exercise_type.dart';
 import '../models/hold_progress.dart';
 import '../models/hold_reading.dart';
+import '../models/hold_record.dart';
 import '../models/pose_frame.dart';
 import '../models/setup_silhouette_alignment.dart';
 import '../models/setup_squat_silhouette_alignment.dart';
 import '../services/arcade/arcade_progress_store.dart';
 import '../services/arcade/arcade_star_judge.dart';
+import '../services/feedback/hold_record_store.dart';
 import '../services/pose/exercise_judge.dart';
 import '../services/pose/hold_judge.dart';
 import '../services/pose/hold_pose_definition.dart';
@@ -125,6 +127,7 @@ class HoldStageState {
     this.guide = JudgeSnapshot.initial,
     this.callout,
     this.ending = false,
+    this.record,
   });
 
   final HoldStagePhase phase;
@@ -152,6 +155,10 @@ class HoldStageState {
   /// [stars] are the play's already.
   final bool ending;
 
+  /// The play kept for its report and the archive (P13), from the end of the
+  /// hold; null before it.
+  final HoldRecord? record;
+
   /// Whether the clock stands and the warning shows: paused, or [ending].
   bool get stopped =>
       ending || (phase == HoldStagePhase.hold && progress.paused);
@@ -172,6 +179,7 @@ class HoldStageState {
     HoldCallout? callout,
     bool clearCallout = false,
     bool? ending,
+    HoldRecord? record,
   }) => HoldStageState(
     phase: phase ?? this.phase,
     progress: progress ?? this.progress,
@@ -180,6 +188,7 @@ class HoldStageState {
     guide: guide ?? this.guide,
     callout: clearCallout ? null : callout ?? this.callout,
     ending: ending ?? this.ending,
+    record: record ?? this.record,
   );
 }
 
@@ -199,13 +208,17 @@ class HoldStageState {
 /// When the hold ends the stars are counted from the time held
 /// ([ArcadeStarJudge.hold]) and kept in [store] for [accountId], when both
 /// are given; the camera is let go. Stages are not battles: nothing goes to
-/// the match records (spec 10).
+/// the match records (spec 10). The play itself (time held, warnings and
+/// pauses from GO, stars) is kept in [records] for its report and the
+/// archive (P13), on the phone only.
 class HoldStageViewModel extends ChangeNotifier {
   HoldStageViewModel({
     required int stage,
     HoldPoseDefinition? definition,
     this.store,
     this.accountId,
+    this.records,
+    DateTime Function()? wallClock,
     SetupViewModel Function(
       ExerciseType exercise,
       bool Function(PoseFrame, Size, bool) guideMatcher,
@@ -218,7 +231,8 @@ class HoldStageViewModel extends ChangeNotifier {
   }) : stage = _holdStage(stage),
        _createSetup = createSetup ?? _defaultSetup,
        _createGuideJudge = createGuideJudge ?? judgeFor,
-       _clock = clock ?? _stopwatchClock() {
+       _clock = clock ?? _stopwatchClock(),
+       _wallClock = wallClock ?? DateTime.now {
     floor = ArcadeCatalog.floorOf(this.stage);
     this.definition = definition ?? HoldPoses.of(this.stage.pose);
   }
@@ -233,6 +247,22 @@ class HoldStageViewModel extends ChangeNotifier {
   /// Where the stars are kept; null keeps none.
   final ArcadeProgressStore? store;
   final int? accountId;
+
+  /// Where the plays are kept for their report (P13); null keeps none.
+  final HoldRecordStore? records;
+  final DateTime Function() _wallClock;
+
+  /// From GO: when it was, the warnings and the pauses so far, and when the
+  /// open pause began.
+  Duration _goAt = Duration.zero;
+  final List<HoldRecordWarning> _warnings = [];
+  final List<HoldRecordPause> _pauses = [];
+  Duration? _pausedAt;
+
+  /// When the pose was really held, from GO, for the report's time line.
+  final List<HoldRecordSpan> _heldSpans = [];
+  Duration? _heldFrom;
+  Duration _loggedAt = Duration.zero;
 
   /// With the camera running, no frame for this long is an unknown pose.
   final Duration missingAfter;
@@ -424,6 +454,13 @@ class HoldStageViewModel extends ChangeNotifier {
     final now = _now();
     judge.go(now);
     _lastFrameAt = now;
+    _goAt = now;
+    _warnings.clear();
+    _pauses.clear();
+    _pausedAt = null;
+    _heldSpans.clear();
+    _heldFrom = null;
+    _loggedAt = Duration.zero;
     _guideJudge = judge.readsGuide
         ? null
         : _createGuideJudge(definition.setupExercise);
@@ -479,6 +516,7 @@ class HoldStageViewModel extends ChangeNotifier {
   /// ended.
   void _show(HoldProgress progress, {JudgeSnapshot? guide}) {
     final before = _state.progress;
+    _log(before, progress);
     var callout = _state.callout;
     if (progress.warningCount > before.warningCount) {
       _cue(
@@ -527,6 +565,7 @@ class HoldStageViewModel extends ChangeNotifier {
     _calloutTimer?.cancel();
     _calloutTimer = null;
     final stars = ArcadeStarJudge.hold(stage, progress.held);
+    final record = _record(progress, stars);
     if (progress.end != HoldEnd.warnings) {
       _setState(
         _state.copyWith(
@@ -534,6 +573,7 @@ class HoldStageViewModel extends ChangeNotifier {
           stars: stars,
           guide: guide,
           clearCallout: true,
+          record: record,
         ),
       );
       _finish();
@@ -550,6 +590,7 @@ class HoldStageViewModel extends ChangeNotifier {
         ending: true,
         callout: fail,
         clearCallout: fail == null,
+        record: record,
       ),
     );
     if (fail != null) {
@@ -576,7 +617,8 @@ class HoldStageViewModel extends ChangeNotifier {
     _cue(HoldStageCue(HoldStageCueKind.ended, count: stars.count));
     final setup = _setup;
     if (setup != null) unawaited(setup.releaseCamera());
-    unawaited(_save(stars));
+    // This play's record, taken now: 다시 하기 during the save clears it.
+    unawaited(_save(stars, _state.record));
   }
 
   /// Drops [callout] after [after], unless another took its place.
@@ -597,16 +639,76 @@ class HoldStageViewModel extends ChangeNotifier {
     _endTimer = null;
   }
 
-  /// Keeps the play's stars: the store keeps a stage's most.
-  Future<void> _save(ArcadeStars stars) async {
+  /// The warnings and pauses of the hold, from GO (P13).
+  void _log(HoldProgress before, HoldProgress progress) {
+    final at = _now() - _goAt;
+    if (progress.warningCount > before.warningCount) {
+      final fault = progress.warnings.last;
+      _warnings.add(
+        HoldRecordWarning(at: at, faultId: fault.id, words: fault.words),
+      );
+    }
+    final pausedAt = _pausedAt;
+    if (progress.paused && pausedAt == null) {
+      _pausedAt = at;
+    } else if (!progress.paused && pausedAt != null) {
+      _pauses.add(HoldRecordPause(start: pausedAt, end: at));
+      _pausedAt = null;
+    }
+    // Held while the time held grows: not while a chair is being entered,
+    // nor while a broken pose waits to become a warning.
+    final grew = progress.held - before.held;
+    if (grew > Duration.zero) {
+      _heldFrom ??= at - grew < _loggedAt ? _loggedAt : at - grew;
+    } else if (_heldFrom case final from?) {
+      _heldSpans.add(HoldRecordSpan(start: from, end: _loggedAt));
+      _heldFrom = null;
+    }
+    _loggedAt = at;
+  }
+
+  /// [_heldSpans] with the one still open closed at [at].
+  List<HoldRecordSpan> _heldUntil(Duration at) => List.unmodifiable([
+    ..._heldSpans,
+    if (_heldFrom case final from?) HoldRecordSpan(start: from, end: at),
+  ]);
+
+  /// The play as kept for its report: [progress] at its end.
+  HoldRecord _record(HoldProgress progress, ArcadeStars stars) => HoldRecord(
+    accountId: accountId,
+    endedAt: _wallClock(),
+    pose: stage.pose,
+    stage: stage.number,
+    held: progress.held,
+    elapsed: _now() - _goAt,
+    stars: stars.count,
+    starSeconds: stage.starSeconds,
+    warnings: List.unmodifiable(_warnings),
+    pauses: List.unmodifiable(_pauses),
+    heldSpans: _heldUntil(_now() - _goAt),
+    endedByWarnings: progress.end == HoldEnd.warnings,
+  );
+
+  /// Keeps the play's stars (the store keeps a stage's most), then its
+  /// record for the report. The stars come first, so a record that fails
+  /// or never finishes cannot hold them back (송우현, 2026-11-26).
+  Future<void> _save(ArcadeStars stars, HoldRecord? record) async {
     final store = this.store;
     final account = accountId;
-    if (store == null || account == null) return;
+    if (store != null && account != null) {
+      try {
+        await store.recordStage(account, stage.number, stars.count);
+      } on Object {
+        // The stars of this play are lost; the saved ones stay (A2's store
+        // writes nothing when it cannot read).
+      }
+    }
+    final records = this.records;
+    if (record == null || records == null) return;
     try {
-      await store.recordStage(account, stage.number, stars.count);
+      await records.save(record);
     } on Object {
-      // The stars of this play are lost; the saved ones stay (A2's store
-      // writes nothing when it cannot read).
+      // The report of this play is lost; the stars are kept above.
     }
   }
 

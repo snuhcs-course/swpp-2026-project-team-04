@@ -1,4 +1,5 @@
 import '../../models/exercise_type.dart';
+import '../../shared/battle_protocol.dart';
 import '../api/api_client.dart';
 
 /// The friend code that finds [nickname]'s account: `nickname#tag`, the
@@ -51,6 +52,7 @@ class BattleInvite {
     required this.exercise,
     required this.status,
     required this.expiresAt,
+    this.character = '',
   });
 
   final int id;
@@ -59,6 +61,24 @@ class BattleInvite {
   final InviteStatus status;
   final DateTime expiresAt;
 
+  /// The inviter's character id as their app sent it (A11), for the
+  /// friend's alert and waiting room; "" when an older app or server sent
+  /// none. Draw it through `CharacterRig.selectableOrDefault`.
+  final String character;
+
+  /// How long an invite stays open: the server's INVITE_TTL.
+  static const ttl = Duration(minutes: 1);
+
+  /// The whole seconds left at [now] until [expiresAt], rounded up and cut
+  /// to 0..60: the one count the alert, the friends page and the waiting
+  /// room show (A11 spec 1). [expiresAt] is the server's; a device clock
+  /// off from it moves the count, never past these bounds.
+  int secondsLeftAt(DateTime now) {
+    final left = expiresAt.difference(now).inMilliseconds;
+    if (left <= 0) return 0;
+    return ((left + 999) ~/ 1000).clamp(0, ttl.inSeconds);
+  }
+
   BattleInvite withStatus(InviteStatus status) => BattleInvite(
     id: id,
     from: from,
@@ -66,6 +86,7 @@ class BattleInvite {
     exercise: exercise,
     status: status,
     expiresAt: expiresAt,
+    character: character,
   );
 }
 
@@ -110,8 +131,15 @@ abstract interface class FriendRepository {
   Future<void> declineRequest(int requestId);
 
   /// Invites the friend with [friendId] to a battle of [exercise]. My
-  /// earlier open invite, if any, is cancelled.
-  Future<BattleInvite> invite(int friendId, ExerciseType exercise);
+  /// earlier open invite, if any, is cancelled. [character], my character
+  /// id, goes along when it has the battle server's avatar id shape
+  /// ([isBattleAvatarId]); otherwise the invite goes without it, as an
+  /// older app's does.
+  Future<BattleInvite> invite(
+    int friendId,
+    ExerciseType exercise, {
+    String? character,
+  });
 
   /// The invite as it stands now, for the waiting rooms.
   Future<BattleInvite> fetchInvite(int inviteId);
@@ -180,10 +208,15 @@ class ServerFriendRepository implements FriendRepository {
       _api.post('/friends/requests/$requestId/decline', const {});
 
   @override
-  Future<BattleInvite> invite(int friendId, ExerciseType exercise) async {
+  Future<BattleInvite> invite(
+    int friendId,
+    ExerciseType exercise, {
+    String? character,
+  }) async {
     final json = await _api.post('/friends/invites', {
       'friend_id': friendId,
       'exercise': _exerciseName(exercise),
+      if (isBattleAvatarId(character)) 'character': character,
     });
     return _read(() => _invite(json));
   }
@@ -232,6 +265,11 @@ class ServerFriendRepository implements FriendRepository {
       },
       status: InviteStatus.values.byName(i['status']! as String),
       expiresAt: DateTime.parse(i['expires_at']! as String),
+      // A server from before A11 sends no character: "" draws the default.
+      character: switch (i['character']) {
+        final String id => id,
+        _ => '',
+      },
     );
   }
 
@@ -288,8 +326,13 @@ class InMemoryFriendRepository implements FriendRepository {
       ? invite.withStatus(InviteStatus.expired)
       : invite;
 
-  /// [from] invites me to a battle of [exercise], as a friend's app would.
-  BattleInvite receiveInvite(FriendPerson from, ExerciseType exercise) {
+  /// [from] invites me to a battle of [exercise], as a friend's app would,
+  /// with their [character] ("" as an older app's).
+  BattleInvite receiveInvite(
+    FriendPerson from,
+    ExerciseType exercise, {
+    String character = '',
+  }) {
     final invite = BattleInvite(
       id: _nextId++,
       from: from,
@@ -297,6 +340,7 @@ class InMemoryFriendRepository implements FriendRepository {
       exercise: exercise,
       status: InviteStatus.pending,
       expiresAt: _now().add(ttl),
+      character: character,
     );
     invites.add(invite);
     return invite;
@@ -359,7 +403,11 @@ class InMemoryFriendRepository implements FriendRepository {
   }
 
   @override
-  Future<BattleInvite> invite(int friendId, ExerciseType exercise) async {
+  Future<BattleInvite> invite(
+    int friendId,
+    ExerciseType exercise, {
+    String? character,
+  }) async {
     final friend = friends.where((f) => f.id == friendId).firstOrNull;
     if (friend == null) _refuse('not_friends');
     for (var n = 0; n < invites.length; n++) {
@@ -374,6 +422,8 @@ class InMemoryFriendRepository implements FriendRepository {
       exercise: exercise,
       status: InviteStatus.pending,
       expiresAt: _now().add(ttl),
+      // As the server keeps it: "" when none or a malformed one was sent.
+      character: isBattleAvatarId(character) ? character! : '',
     );
     invites.add(invite);
     return invite;

@@ -25,6 +25,7 @@ import 'screens/setup_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/social_signup_screen.dart';
 import 'screens/versus_screen.dart';
+import 'screens/weekly_rankings_screen.dart';
 import 'services/device/device_controls.dart';
 import 'services/telemetry/telemetry_service.dart';
 import 'services/api/api_client.dart';
@@ -33,10 +34,12 @@ import 'services/auth/auth_repository.dart';
 import 'services/auth/google_sign_in_service.dart';
 import 'services/auth/token_store.dart';
 import 'services/feedback/form_report_store.dart';
+import 'services/feedback/hold_record_store.dart';
 import 'services/feedback/goal_store.dart';
 import 'services/friends/friend_repository.dart';
 import 'services/matching/bot_matchmaker.dart';
 import 'services/matching/matchmaker.dart';
+import 'services/rankings/rankings_repository.dart';
 import 'services/user/character_store.dart';
 import 'services/user/rules_seen_store.dart';
 import 'services/user/settings_store.dart';
@@ -50,6 +53,7 @@ import 'viewmodels/body_info_viewmodel.dart';
 import 'viewmodels/character_viewmodel.dart';
 import 'viewmodels/coach_viewmodel.dart';
 import 'viewmodels/friends_viewmodel.dart';
+import 'viewmodels/weekly_rankings_viewmodel.dart';
 import 'viewmodels/help_viewmodel.dart';
 import 'viewmodels/login_viewmodel.dart';
 import 'viewmodels/settings_viewmodel.dart';
@@ -82,7 +86,9 @@ Future<void> main() async {
       rulesSeenStore: SecureRulesSeenStore(),
       settingsStore: SecureSettingsStore(),
       arcadeStore: SecureArcadeProgressStore(),
+      holdRecords: FileHoldRecordStore(),
       friendRepository: ServerFriendRepository(api: api),
+      rankingsRepository: ServerRankingsRepository(api: api),
       // P17: P6's events, sent with the login; kept on the phone meanwhile.
       telemetry: Telemetry(
         send: httpTelemetrySender(api),
@@ -112,8 +118,10 @@ class GymRatsApp extends StatefulWidget {
     this.rulesSeenStore,
     this.settingsStore,
     this.arcadeStore,
+    this.holdRecords,
     this.googleSignIn,
     this.friendRepository,
+    this.rankingsRepository,
     this.telemetry,
   });
 
@@ -147,9 +155,17 @@ class GymRatsApp extends StatefulWidget {
   /// [MemoryArcadeProgressStore].
   final ArcadeProgressStore? arcadeStore;
 
+  /// Keeps the played holds for their report and the archive (P13).
+  /// Defaults to [InMemoryHoldRecordStore].
+  final HoldRecordStore? holdRecords;
+
   /// Friends and friend battle invites (P9). Defaults to an empty
   /// [InMemoryFriendRepository].
   final FriendRepository? friendRepository;
+
+  /// Weekly rankings (P11). Defaults to an empty
+  /// [InMemoryRankingsRepository].
+  final RankingsRepository? rankingsRepository;
 
   /// Where the screens record P6's telemetry events (P17). Defaults to one
   /// that only keeps them in memory and sends nothing.
@@ -159,6 +175,9 @@ class GymRatsApp extends StatefulWidget {
 
   /// 친구와의 대전 (P9).
   static const friendsRoute = '/friends';
+
+  /// 주간 랭킹 (P11), from the online battle's exercise sheet.
+  static const weeklyRankingsRoute = '/weekly-rankings';
 
   /// The nickname of a new Google account; its argument is the
   /// [SocialSignupRequest].
@@ -309,6 +328,9 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),
         ChangeNotifierProvider<ArcadeViewModel>.value(value: _arcade),
         Provider<FormReportStore>(create: (_) => FileFormReportStore()),
+        Provider<HoldRecordStore>(
+          create: (_) => widget.holdRecords ?? InMemoryHoldRecordStore(),
+        ),
         Provider<GoalStore>(create: (_) => SecureGoalStore()),
         Provider<Telemetry>.value(value: _telemetry),
       ],
@@ -388,6 +410,15 @@ class _GymRatsAppState extends State<GymRatsApp> {
             settings: settings,
             builder: (_) => FriendsScreen(
               createViewModel: () => FriendsViewModel(repository: _friends),
+            ),
+          ),
+          GymRatsApp.weeklyRankingsRoute => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => WeeklyRankingsScreen(
+              createViewModel: () => WeeklyRankingsViewModel(
+                repository:
+                    widget.rankingsRepository ?? InMemoryRankingsRepository(),
+              ),
             ),
           ),
           GymRatsApp.characterRoute => MaterialPageRoute<void>(

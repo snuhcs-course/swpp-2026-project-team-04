@@ -731,3 +731,451 @@ PR 본문 형식을 바로잡는다. 체크리스트는 내가 명세로 요구�
 2. 앞 메시지(Ready와 Codex 대응)를 아직 시작하지 않았으면 이 수정 뒤에 진행한다. 이미 Ready로 바꿨으면 본문만 고친다.
 3. 이 메시지를 프롬프트 기록에 남긴다.
 </pasted_content id=\"2c8e\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-26T17:31:31.138Z -->
+[Woohyun Song, 11-27 02:31] "<pasted_content id=\"c294\">
+\"코치 대화 · 캐릭터 어미 다듬기\" 작업을 시작한다. PM 승인 전이라 로컬에서만 진행한다.
+명세는 C:\dev\handoff\coach-voice\SPEC.md 이다. 저장소 밖 파일이라 읽기만 하고, 복사하거나 커밋하지 않는다.
+
+1. git status가 깨끗한지 확인하고 fetch한다. 이 worktree의 A7 브랜치(feat/iter5-defeat-pose)는 main에 머지됐다. SPEC 0절대로 로컬 ownership.json에 A9 단계를 더하고(due는 임시 11/30/2026), origin/main에서 feat/iter5-coach-voice를 원격 추적 없이 판다. --status로 확인하고 progress.md에 적는다. Windows 경로는 raw 문자열이나 슬래시로 쓴다.
+2. 로컬 커밋은 해도 된다. push, PR, 원격 브랜치는 내가 PM 승인을 알린 뒤에 한다.
+3. flutter pub get을 하고 SPEC.md를 끝까지 읽는다. coach_script.dart, coach_viewmodel.dart, 코치 화면 위젯, 그리고 coach_script_test, coach_viewmodel_test, coach_screen_test를 읽는다.
+4. 코드를 쓰기 전에 SPEC 8절의 계획을 보고하고 기다린다. SPEC 1절과 2절의 대사 표는 정해진 것이라 다시 묻지 않는다. 다만 넘침 때문에 줄여야 할 문장이 있으면 계획 보고에 적는다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+<!-- f10a982c 2026-11-26T17:49:34.774Z -->
+[Woohyun Song, 11-27 02:49] "<pasted_content id=\"c294\">
+PM 승인이 왔다(11/27): A9, feat/iter5-coach-voice, 마감 11/30/2026, 예상 1시간. PM은 coach_script.dart와 coach_script_test.dart 두 파일만 고치라고 했다. 이제 push와 PR을 해도 된다.
+
+결과 카드는 A도 B도 아니고 이렇게 한다.
+- 결과 카드의 \"이번 판 이야기해 줄게{e}!\"는 P15(송현우, \"경기 종료 후 캐릭터 멘트와 리포트 진입\") 범위라 A9에서 고치지 않는다. result_cards.dart, result_screen.dart와 그 테스트는 건드리지 않는다. 현우에게는 내가 따로 알린다.
+- 그래서 ending은 지금처럼 읽을 수 있게 둔다. 주석에 \"결과 카드용. 코치 대사는 exclaim만 쓴다\"라고 적는다. coach_script.dart 안의 대사는 모두 exclaim으로 만들고, 규칙은 계획한 테스트로 지킨다.
+- coach_viewmodel_test.dart 5곳은 대사가 바뀌어 고칠 수밖에 없다. PM이 승인한 두 파일 밖이므로 선조치 후보고로 예외 줄과 PR Exceptions 절에 적는다. coach_screen_test.dart는 고치지 않으니 allow에서 빼도 된다.
+나머지 계획(exclaim 모양, 아홉 곳, 규칙 검사 테스트, 기존 테스트 수정, 넘침)은 그대로 승인한다.
+
+진행 순서:
+1. ownership.json의 A9 due를 11/30/2026으로 확정하고, progress.md에 PM 승인(2026-11-27)을 적는다. .codex-harness는 A8 세션과 같은 파일이므로 줄을 더하거나 해당 줄만 고친다.
+2. 코드와 테스트, analyze, 전체 test, reviewer APPROVE, 노트까지 마친다.
+3. push하고 draft PR을 연다. 본문은 영어로 쓰고, SPEC 7절대로 대사 전후 표(그루)와 체크리스트를 넣는다. Exceptions 절에는 coach_viewmodel_test.dart를 적는다. 결과 카드 문장은 P15에서 다룬다고 Notes에 한 줄 적는다.
+4. Ready로 바꾸지 말고 멈춰서 보고한다. battle_demo로 질문 줄과 끝 줄을 띄우는 명령과 찍을 화면 두 장을 함께 준다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+<!-- f10a982c 2026-11-26T18:02:30.177Z -->
+[Woohyun Song, 11-27 03:02] "SPEC.md가 v1.1로 바뀌었다(C:\dev\handoff\coach-voice\SPEC.md, 0절 예외 문구와 7절 PR만 바뀜). PR 본문에 체크리스트 절을 만들지 않고, 하네스 pull-request 스킬의 형식을 그대로 따른다. 대사 전후 표는 What it does에, 테스트는 How to test의 Acceptance criteria → tests 표에, 폰 확인은 Manual check에 넣는다. coach_viewmodel_test.dart 예외와 결과 카드 문장을 P15에서 다룬다는 점은 Review notes에 적는다. 앞 메시지의 \"체크리스트\"와 \"Exceptions 절\"은 이것으로 바꾼다. 이 메시지를 프롬프트 기록에 남긴다."
+<!-- f10a982c 2026-11-26T19:12:06.751Z -->
+[Woohyun Song, 11-27 04:12] "<pasted_content id=\"c294\">
+폰 확인은 이번에는 하지 않는다. 모두 머지된 뒤 토요일 팀 회의에서 실기기로 확인한다. 그대로 Ready로 간다.
+
+1. 노트와 PR 본문의 TODO(Woohyun Song) 세 곳을 채운다. PR 본문은 gh로 지금 본문을 받아 해당 줄만 바꾼다. 노트는 커밋하고 push한 뒤 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+   - 명세를 만든 사람과 도구: 문제는 데모 영상을 찍다가 발견해 11/25 팀 회의에서 공유했다. SPEC v1과 v1.1은 claude.ai 프로젝트 채팅에서 Claude(Opus 5.5)가 coach_script.dart를 읽고 썼다. 규칙('-다!' 뒤에만 어미)과 아홉 곳의 새 대사는 Claude가 제안했고 송우현이 확인했다. v1.1은 PR 형식만 바꿨다. 결과 카드 문장을 P15로 넘기기로 한 것은 송우현이 정했다.
+   - CI 커버리지: PR #105의 CI 커버리지 댓글을 gh로 읽어 채운다.
+   - 폰 확인: Manual check에 \"Not checked on a device yet: checked at the team meeting after merge (11/29). Wording and overflow are covered by tests.\"처럼 적는다.
+2. gh pr ready 105로 Ready로 바꾸고 Codex 리뷰를 기다린다. 몇 분 간격으로 확인하고, 30분이 지나도 아무 반응이 없으면 멈추고 보고한다.
+   - Codex bot이 PR에 👍 반응만 남기면 검토를 마쳤고 지적이 없다는 뜻이다. 이때는 \"@codex review\"를 다시 요청하지 않는다. 그 뒤에 코드를 바꾼 커밋을 올렸을 때만 새 리뷰를 기다린다.
+   - A9 범위 안의 실제 문제면 고친다. 관련 테스트와 flutter analyze만 돌리고 로컬 reviewer는 생략한다. push한 뒤 스레드에 고친 커밋을 영어로 짧게 답하고 resolve한다.
+   - 거의 일어나지 않는 경우거나 이 작업과 무관하면, 이유를 영어로 짧게 답하고 resolve한다.
+   - 범위 밖 파일을 고쳐야 하는 지적이면 고치지 말고 멈추고 보고한다.
+   - 고치는 것은 2회까지만 한다. 그 뒤에도 지적이 오면 멈추고 보고한다.
+3. 끝나는 조건: 현재 HEAD에 Codex의 👍 반응이나 \"Didn't find any major issues\"가 있고, 안 풀린 스레드가 0개이고, CI가 통과한 상태다. 이 상태가 되면 새 커밋과 Codex 처리 결과를 보고한다. 상우나 현우를 GitHub에서 멘션하지 않는다.
+4. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-26T23:44:31.331Z -->
+[Woohyun Song, 11-27 08:44] "<pasted_content id=\"c294\">
+PR #105가 main과 충돌한다. A8(#104, 037b58e)이 머지되면서 개인 노트 세 파일(docs/ai-collaboration/iteration-5/[REDACTED:custom_term]-Prompt-Log.md, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md, docs/testing/iteration-5/[REDACTED:custom_term].md)에서 A8 절과 A9 절이 부딪쳤다. 코드 파일은 충돌하지 않는다.
+1. fetch한 뒤 origin/main 위로 rebase한다. merge로 풀면 하네스 커밋 전 검사가 main에서 들어온 A8 파일 때문에 막히므로 rebase로 한다. 세 파일 모두 A8 절과 A9 절을 둘 다 남기고, 프롬프트 기록은 두 작업의 항목을 키가 겹치지 않게 모두 남긴다. 코드 파일에서 충돌이 나면 멈추고 보고한다.
+2. flutter analyze와 전체 test를 다시 돌린다.
+3. git push --force-with-lease origin feat/iter5-coach-voice 로 이 브랜치에만 올린다. main에는 절대 push하지 않는다. pre-push 검사가 강제 push를 막으면 멈추고 보고한다. push 뒤에는 작성자, 금지 문구, 하네스 파일 확인을 다시 한다.
+4. A9 코드가 바뀌지 않았으므로 Codex 리뷰는 다시 요청하지 않는다. PR 본문에 HEAD가 적힌 곳이 있으면 새 HEAD로 고친다. 새 HEAD에서 CI가 통과하고 GitHub의 충돌 표시가 사라지면 보고한다.
+5. 이 메시지를 프롬프트 기록에 남긴다.
+</pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-27T02:45:36.086Z -->
+[Woohyun Song, 11-27 11:45] "<pasted_content id=\"c294\">
+PM 머지 규칙상 Codex 결과가 현재 HEAD에 있어야 하는데, rebase로 HEAD가 바뀌었다. HEAD가 바뀐 경우라 예외로 리뷰를 한 번 요청한다.
+1. 이 메시지를 먼저 프롬프트 기록에 넣고 커밋해서 push한다. 이 커밋이 마지막 커밋이다. 리뷰 요청 뒤에는 지적을 고칠 때 말고는 커밋하지 않는다.
+2. PR에 \"@codex review\" 댓글을 한 번 단다. 새 HEAD 기준으로 👍 반응이나 \"Didn't find any major issues\"가 달리고, 안 풀린 스레드가 0개이고, CI가 통과하면 보고한다.
+3. 지적이 오면 지난 기준대로 한다. A9 범위 안의 실제 문제는 고치고 관련 테스트와 analyze만 돌린다. 드문 경우는 영어로 이유를 답하고 resolve한다. 범위 밖 파일이 필요하면 멈춘다. 고치는 것은 2회까지다. 30분 안에 반응이 없으면 멈추고 보고한다.
+</pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-coach-voice
+<!-- f10a982c 2026-11-27T06:12:32.885Z -->
+[Woohyun Song, 11-27 15:12] "<pasted_content id=\"c294\">
+PM 요청(11/27)으로 코치 마지막 대사를 바꾼다. 현우의 A10이 대화 끝 버튼을 [돌아가기] [상세 리포트로 →]로 바꾸기 때문이다. 버튼과 결과 카드는 현우가 맡고, A9는 마지막 대사와 그 테스트만 맡는다.
+1. CoachScript.end를 \"오늘 이야기는 여기까지다{e}! 자세한 건 상세 리포트에서 볼 수 있어.\"로 바꾼다. 앞 문장은 지금처럼 exclaim으로 만든다. coach_stage.dart 같은 위젯과 버튼은 건드리지 않는다.
+2. 대사 표 테스트와 끝 줄을 기대하는 기존 테스트를 새 문장으로 고친다. 규칙 검사 테스트는 그대로 통과해야 한다. coach_screen_test의 넘침 테스트도 고치지 않고 통과해야 한다. 넘치면 \"여기까지다{e}! 자세한 건 상세 리포트에서 볼 수 있어.\"로 줄이고 보고한다.
+3. flutter analyze와 전체 test를 돌린다. 로컬 reviewer는 생략한다. 노트에 바뀐 대사와 PM 요청을 적고, PR 본문의 대사 전후 표(끝 줄)와 HEAD가 적힌 줄을 고친다. 위키 Requirements에 옛 끝 줄을 인용한 곳이 있으면 Review notes의 P26 항목에 함께 적는다.
+4. 이 메시지를 프롬프트 기록에 넣고, 모든 커밋을 push한 뒤 PR에 \"@codex review\"를 한 번 단다(코드가 바뀌었으므로). 그 뒤로는 지적을 고칠 때 말고는 커밋하지 않는다. 지적 대응은 지난번 기준대로 한다. 범위 안의 실제 문제는 고치고 관련 테스트와 analyze만 돌린다. 드문 경우는 영어로 답하고 resolve한다. 범위 밖 파일이 필요하면 멈춘다. 고치는 것은 2회까지다. 30분 안에 반응이 없으면 보고한다.
+5. 현재 HEAD에 Codex의 👍나 \"Didn't find any major issues\"가 있고, 안 풀린 스레드가 0개이고, CI가 통과하면 보고한다. GitHub에서 상우나 현우를 멘션하지 않는다.
+</pasted_content id=\"c294\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-friend-battle-ui
+<!-- 04ed7449 2026-11-27T08:31:47.019Z -->
+[Woohyun Song, 11-27 17:31] ".claude/design/a11-friend-battle-ui/ 에 A11 묶음을 넣었어. SPEC.md와 design/INDEX.md부터 읽고, .claude/design/INDEX.md에도 이 묶음을 한 줄로 추가해줘.
+PM(상우)이 11/27에 승인했어. 작업 ID는 Unexpected A11, 브랜치는 feat/iter5-friend-battle-ui, 마감은 12/1이야. P9 파일 수정도 승인받았어.
+명세 0절대로 로컬 하네스(ownership.json, ownership-exceptions.txt)에 A11 단계를 더하고, origin/main에서 브랜치를 만든 뒤, 10절의 계획 보고까지만 해줘. 코드는 내가 계획을 확인한 다음에 써."
+
+<!-- 04ed7449 2026-11-27T08:51:15.036Z -->
+[Woohyun Song, 11-27 17:51] "<pasted_content id=\"f1c7\">
+계획 좋아. 이 순서대로 구현 시작해줘. 질문 답과 추가 지시야.
+
+1. 카드가 152와 다를 때 (질문 1): 1배 고정 대신 배율 s 하나로 정해.
+   s = min(카드 높이 / 152, (카드 안쪽 폭 − 128) / 190, 1.3)
+   그림 칸 폭은 190 × s이고, 190×152 그림 상자를 s배로 그림 칸 아래 가운데에 붙여. 남는 위쪽은 하늘색 그대로 둬. 이름 칸은 나머지 폭이야(최소 128).
+   친구 칸 최소 높이는 92 대신 132로 해. 360×780에서는 s가 정확히 1이라 시안과 같아야 하고, 320폭에서는 그림만 줄고 이름은 줄지 않아야 해. 360×780, 320×640, 412×915에서 s와 그림 칸 폭을 확인하는 테스트를 넣어줘.
+2. endedBy (질문 2): 승인. declined, expired(서버 상태든 기기 시계든), other를 테스트로 확인하고, PR 본문의 friends_viewmodel 변경 설명과 progress.md에 이유를 적어.
+3. 종목 시트 프로필 (질문 3): 화면 이동 인자로 넘기는 방법 승인. 인자가 없을 때 쓰는 UserRepository.fetchProfile 경로를, 친구 화면에서 연 대결이 끝나고 돌아왔을 때도 한 번 불러서 최고 기록이 옛 값으로 남지 않게 해. 읽기가 실패하면 갖고 있던 프로필을 그대로 써.
+4. 범위 밖 테스트: test/theme/app_theme_test.dart(카드 이름 크기 26→30, 새 토큰 확인)와 test/design_tokens_test.dart(새 friend_*.dart를 검사 목록에 추가)는 선조치 후보고로 승인. 고치기 전에 ownership-exceptions.txt에 날짜·A11·사유 줄을 더하고, PR Exceptions 절에도 남겨.
+5. P11 주간 랭킹은 내 작업이 아니라 진영이형 작업이야. A11에서는 랭킹 바로가기 자리를 따로 비워 두지 말고 시안대로 친구 칸을 끝까지 늘려. 게임 시작 아래 빈자리가 없어진다는 점은 내가 진영이형에게 직접 알릴게. PR 본문 Notes에는 \"The play screen no longer has free space under the cards; P11's ranking entry needs its own place\" 한 줄만 남겨.
+6. 단계마다 flutter analyze와 관련 테스트를 돌리고, 서버 단계 끝나면 pytest 결과를 먼저 보여줘. PR 본문은 하네스 pull-request 스킬의 팀 형식 그대로 영어로 쓰고, 따로 체크리스트 절은 만들지 마.
+</pasted_content id=\"f1c7\">"
+
+<!-- 04ed7449 2026-11-27T11:12:32.249Z -->
+[Woohyun Song, 11-27 20:12] "<pasted_content id=\"f1c7\">
+확인했어. 이렇게 마무리하자.
+
+1. 친구 추가 묶음 이름: 시안대로 '친구 추가'로 바꿔. 명세 1절 새 글자 목록에서 빠진 건 명세 쪽 실수고, 원본 시안과 PM이 승인한 화면이 '친구 추가'야. progress.md의 결정 기록도 고쳐줘.
+2. 기기 시계가 빠를 때: 받은 신청이 아예 안 보이는 건 고치자.
+   - 남은 시간 숫자와 막대는 지금처럼 서버 expires_at으로만 그려.
+   - 로컬 시계로 0이 돼서 숨기거나 목록에서 빼는 건, 이 기기에서 처음 봤을 때 남은 시간이 0보다 컸던 신청에만 해.
+   - 처음 봤을 때부터 0인 신청(기기 시계가 60초 넘게 빠른 경우)은 0:00과 빈 막대로 두고, 서버 목록에서 빠질 때까지 알림과 친구 화면에 그대로 보여 줘. 서버는 만료된 신청을 목록에서 빼니까 길어야 다음 읽기(5초)까지야. 수락은 지금처럼 서버가 판단해.
+   - 알림 뷰모델과 친구 화면 뷰모델 둘 다 이 규칙이야. 각각 테스트를 더해줘: 정상 시계에서는 0에서 숨김, 빠른 시계에서는 처음부터 0이어도 보이고 다음 읽기에서 서버 목록에 없으면 사라짐.
+   - 기다리기 링은 지금대로 둬(0이어도 화면을 끝내지 않으니까).
+   - PR에는 이 내용을 결정으로 적어.
+3. reduced motion 테스트 설정은 그대로 좋아.
+4. main_test.dart, home_screen_test.dart 수정도 승인. Exceptions 절에 넣어줘.
+5. ownership.json의 P11 줄은 PM 하네스 값이니 고치지 마.
+6. 폰 확인 일정: 명세 11절의 폰 두 대 확인은 머지 전에 하지 않고, 머지 뒤 11/28(토) 팀 회의 때 해. progress.md 결정 기록, 테스트 노트, PR의 Manual check에 \"Two-phone check (SPEC 11) is deferred to the team meeting on Sat 11/28, after merge\"라고 적고, 그때 서버 반영(명세 13절 1~2)이 끝나 있으면 13절 3의 초대 동작 확인도 같이 한다고 적어.
+7. online_battle_integration_test.dart가 전체 실행 중에 한 번 실패하고 단독으로 세 번 통과한 건 테스트 노트에 적어 둬. CI에서 같은 테스트만 실패하면 다시 돌릴 거야.
+8. 위 수정 뒤 flutter analyze, 관련 테스트, reviewer를 다시 돌리고, 통과하면 커밋해. 그다음 테스트 노트와 AI 협업 노트를 써.
+9. push 직전에 한 번 멈추고 알려줘. 공개 레포에 올라갈 프롬프트 로그를 내가 훑어본 뒤에 push하라고 할게.
+10. push 뒤에 PR을 올려. PR 본문은 하네스 pull-request 스킬의 팀 형식 그대로 영어로 쓰고, 따로 체크리스트 절은 만들지 마. Exceptions 절에는 P9 파일과 선조치 후보고한 테스트 파일들을 넣고, Notes에는 머지 뒤 반영 순서(명세 13절)와 \"The play screen no longer has free space under the cards; P11's ranking entry needs its own place\" 한 줄을 넣어. PR을 올리면 링크를 알려줘.
+</pasted_content id=\"f1c7\">
+
+그리고 응답은 한국어로 해"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-friend-battle-ui
+<!-- 04ed7449 2026-11-27T11:34:05.896Z -->
+[Woohyun Song, 11-27 20:34] "<pasted_content id=\"f1c7\">
+내가 응답을 한국어로 하라고 했는데 왜 안 하는 거야.
+프롬프트 로그 확인했어. 크롬 확장 블록을 뺀 것, '그리고 응답은 한국어로 해', 상우·진영이형 이름 모두 공개돼도 괜찮아. push해줘.
+
+노트의 TODO(명세와 시안 작성자·도구)는 이렇게 채워:
+- 시안: 내가 Claude Design 캔버스(\"GymRats 메인 메뉴 시안\"의 \"친구 대전 · 신청과 알림 시안\" 페이지)에서 Claude와 여러 번 주고받으며 만들었어. Claude가 후보(친구 칸 A·B·C, 알림 A·B·C, 이름 정렬 두 가지, 칸 색 여섯 가지)를 그리고, 내가 고르고 고칠 점을 지시해 확정했어: 친구 칸 A, 이름 A1(두 줄 가운데 정렬), 맨 처음 하늘색, 그루·곰탱이 0.65배, 알림 A(위 배너), 보낸 친구 캐릭터 표시, 개수 대신 '수락 대기!' 스티커, 친구 화면 순서 변경, 레이더 대신 1분 링.
+- 명세 v1: claude.ai의 Claude(Claude Opus 5.5)가 팀 레포 main 코드와 확정 시안을 읽고 초안을 썼고 내가 검토했어. 묶음의 스크린샷도 같은 세션에서 .dc.html 원본을 그려 만들었어.
+- 명세 v2: PM 상우의 승인 조건(A11 번호와 브랜치, 12/1 마감, P9 파일 승인, 링과 배너 모두 서버 expires_at 기준, 기존 앱 호환, 머지 뒤 반영 순서)과 11/28 폰 확인 일정을 같은 Claude가 반영했고 내가 확인했어.
+
+push 뒤에는 post-push 확인을 하고 PR을 올려서 링크를 알려줘. CI 코멘트가 오면 커버리지 TODO를 채워. Codex 봇이 👍 반응만 남기면 검토했고 지적이 없다는 뜻이니 @codex review를 다시 요청하지 마. 지적이 있으면 고칠 내용을 먼저 정리해서 보여줘.
+</pasted_content id=\"f1c7\">"
+
+## 2026-11-27 · Woohyun Song · feat/iter5-friend-battle-ui
+<!-- 04ed7449 2026-11-27T11:40:17.766Z -->
+[Woohyun Song, 11-27 20:40] "제안대로 해줘. 새 커밋 하나로 docs/testing/iteration-5/[REDACTED:custom_term].md의 그 경로를 \"the local design hand-off for A11 (kept outside the repo)\"로 바꾸고 push해. 이력은 다시 쓰지 마. fe39058 시점의 트리에 남는 건 그대로 두고, main의 Testing-Documentation.md 줄도 원래 있던 거라 건드리지 마.
+push 뒤에 post-push 확인을 다시 돌려서 최신 트리 검사가 통과하는지 보여주고, 통과하면 PR을 올려서 링크를 알려줘. 나머지는 지난 지시 그대로야. CI 코멘트가 오면 커버리지 TODO를 채우고, Codex 봇이 👍만 남기면 @codex review를 다시 요청하지 마."
+
+## 2026-11-27 · Woohyun Song · feat/iter5-friend-battle-ui
+<!-- 04ed7449 2026-11-27T12:24:23.440Z -->
+[Woohyun Song, 11-27 21:24] "<pasted_content id=\"f1c7\">
+둘 다 이렇게 하자.
+
+1. online_lobby_screen.dart L478–480의 친구 대결용 두 갈래는 지워. 친구 대결이 아닌 레이더 화면은 그대로여야 하니 flutter analyze, online_lobby 관련 테스트, 전체 flutter test를 돌리고 reviewer도 다시 받아.
+2. 노트의 커버리지 숫자는 다시 고치지 말고, 이미 적은 숫자가 어느 커밋의 CI 결과인지(SHA)만 같은 커밋에서 밝혀 둬. 커밋 → CI → 노트 수정이 반복되지 않게 하려는 거야.
+3. 1과 2를 커밋 하나로 묶어 push하고 post-push 확인을 돌려.
+4. 그 최종 HEAD에서 PR에 @codex review를 한 번만 요청해. 상우의 머지 조건이 현재 HEAD의 Codex 결과라서, 👍 뒤에 HEAD가 바뀐 이번 경우만 예외로 다시 요청하는 거야. 그 뒤로는 커밋을 더 만들지 마.
+5. Codex 결과(👍든 댓글이든)와 CI 결과가 나오면 알려줘. 지적이 있으면 고치기 전에 먼저 보여줘.
+</pasted_content id=\"f1c7\">"
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial
+<!-- 6edf15d3 2026-11-27T16:35:53.536Z -->
+[Woohyun Song, 11-28 01:35] "<pasted_content id=\"16e8\">
+튜토리얼 개편(A12) 작업을 시작하자. 아직 PM 승인 전이야.
+
+명세와 디자인 원본은 .claude/design/tutorial/ 에 있어: SPEC.md, design/INDEX.md, design/*.dc.html, design/src/(사람 그림 원래 스크립트), screenshots/(22장 확정 화면). 값은 .dc.html이 기준이고, 명세의 숫자와 다르면 원본이 맞아.
+
+1. 작업 폴더는 이 저장소(C:\dev\swpp-2026-project-team-04)이고, 브랜치는 A11 머지(32d2106)가 들어간 origin/main에서 만들어 둔 feat/iter5-tutorial이야. python .claude/hooks/ownership_guard.py --status로 확인하고, SPEC.md 0절대로 로컬 하네스에 A12 단계를 더한 뒤 progress.md에 적어.
+2. 코드를 쓰기 전에 SPEC.md 9절의 여덟 가지를 보고하고 멈춰. 내가 확인하면 시작해.
+3. SPEC.md 8절 순서대로, 단계마다 flutter analyze, flutter test, reviewer APPROVE를 받고 로컬 커밋까지만 해. 커밋 메시지와 저장소 규칙은 CLAUDE.md와 github 스킬을 따라.
+4. 단계가 끝날 때마다 바뀐 장을 screenshots/의 같은 장과 비교해서 다른 점을 알려 줘.
+5. push, 원격 브랜치, PR은 내가 PM 승인을 알려 줄 때까지 하지 마.
+6. 원본과 다르게 해야 하는 곳이나 주인이 있는 파일을 고쳐야 하는 곳이 생기면 먼저 물어봐. 꼭 필요하면 0절의 선조치 후보고 규칙대로 최소 변경만 하고, ownership-exceptions.txt와 progress.md에 사유를 적어.
+7. 다 끝나면 전체 검사 결과, 레이어별 커버리지, 커밋 목록을 알려 주고 멈춰.
+</pasted_content id=\"16e8\">"
+
+<!-- 6edf15d3 2026-11-27T16:51:58.820Z -->
+[Woohyun Song, 11-28 01:51] "<pasted_content id=\"16e8\">
+보고 확인했어. 계획대로 진행해. 질문 답은 이렇게 할게.
+
+1. 거절 표지 글자: 앱 그대로('무릎 떼기', '더 앉기', '더 깊게'). SPEC 10절의 폰 확인 문구도 \"푸시업 Fail에 '무릎 떼기' 표지가 보인다\"로 progress.md에 고쳐 적어.
+2. '인정!' 알약: 빼. 실제 게임에 없는 표시라서 SPEC 1절 원칙(\"게임에 실제로 나오는 표시만\")대로 초록 테두리만 남겨. 움짤, 방식 a의 폰 화면, 방식 b의 말풍선 모두 같아.
+3. 등급 띠 옆 점수: 원본대로 한 장면에 같이 그려. 다만 모양은 게임의 점수 표시와 같게 만들고, 그게 안 되면 원본의 잉크 알약으로 해.
+4. 아케이드 스크린샷: 머리줄('아케이드'와 별 수)과 아래 줄('도전')을 같은 토큰으로 튜토리얼 안에 다시 그려. 원래 위젯 파일은 건드리지 마.
+5. settings_screen_test, game_panel_fonts_test: 최소 변경으로 고쳐. 두 파일은 주인 단계가 없으니 A12 allow에 더하고, 선조치 후보고로 progress.md와 PR Review notes에 사유를 적어.
+6. design_tokens_test: 새 tutorial_*.dart 줄을 더하는 것도 허용해. ownership.json의 only 설명을 \"tutorial_rep_bot 줄 빼기, 새 tutorial_* 줄 더하기\"로 고쳐.
+7. '다음' 버튼: AccentButton 그대로.
+
+색 표는 하나만 바꿔: 회색 점은 원본 #C3C9D4 대신 지금 _PageDots가 쓰는 색을 그대로 써.
+직접 그리는 탭은 화면 읽기에서 지금처럼 탭과 선택 상태가 읽히고, 누르는 영역이 48 이상이어야 해. 이걸 help_screen_test에 넣어.
+
+이 결정들을 progress.md Decisions에 날짜와 함께 적고 1단계(문구와 화면 틀)부터 시작해.
+</pasted_content id=\"16e8\">"
+
+<!-- 6edf15d3 2026-11-27T18:12:57.818Z -->
+[Woohyun Song, 11-28 03:12] "<pasted_content id=\"16e8\">
+화면 읽기 문장의 '푸시업를', '물렁범가'는 시안 원본의 맞춤법 실수야. 원본대로 두지 말고 고쳐.
+- 조사는 고정 문자열로 붙이지 말고 lib/utils/korean_josa.dart의 Josa를 써: 방식 b는 Josa.eulReul.after(운동 이름)으로 '푸시업을'/'스쿼트를', 리포트 장은 Josa.iGa.after(캐릭터 이름)으로 '물렁범이'가 나오게.
+- 3단계 커밋은 지금 흐름대로 하고, 이 수정은 4단계 커밋에 함께 넣어. 방식 b 문장이 3단계 파일에 있으면 4단계에서 같이 고치면 돼.
+- 테스트에 두 운동의 방식 b 문장, 리포트 장 문장의 조사가 맞는지 확인을 더해 (푸시업을, 스쿼트를, 물렁범이).
+- 시안 원본(.claude/design/tutorial/design/TutDraft.dc.html)의 이 두 문장은 틀린 것으로 보고, 나머지 aria-label 문장은 원본 그대로 써.
+</pasted_content id=\"16e8\">"
+
+<!-- 6edf15d3 2026-11-27T19:41:11.928Z -->
+[Woohyun Song, 11-28 04:41] "로컬 PNG 도구로 22장을 뽑아서 C:\dev\tutorial-check\ 폴더에 저장해 줘. 파일 이름은 screenshots/와 같게(TutG0_g0.png 등). 저장소에는 넣지 마."
+
+<!-- 6edf15d3 2026-11-28T03:36:46.625Z -->
+[Woohyun Song, 11-28 12:36] "<pasted_content id=\"16e8\">
+A12 튜토리얼 개편 PR을 올린다. PM 한상우가 11/28에 Unexpected A12로 승인했다(브랜치 feat/iter5-tutorial, 예상 6시간, 오늘 회의 전 머지 목표). 승인 조건은 장 순서·판정·P17 텔레메트리를 그대로 두는 것이고, 공용 파일을 수정했다면 PR 본문에 이유와 변경 범위를 적는 것이다. 이번 PR은 이미 커밋된 22장 확정안만 다룬다. 랭킹 소개 장(게임 소개 2장)은 넣지 않는다.
+
+1. 상태 확인: 저장소 루트에서 python .claude/hooks/ownership_guard.py --status, git status. 현재 브랜치가 feat/iter5-tutorial이고 작업 트리가 깨끗하며, 로컬 커밋 5개(c0ff240, 8f07b6d, 726b536, 95e96c0, b63a776)가 아직 origin에 없는지 확인한다.
+2. 최신 main 반영: git fetch origin. origin/main이 375a9b7(P11 #108 주간 랭킹 머지)를 포함하는지 확인한 뒤 git rebase origin/main. 충돌이 나면 해결하지 말고 멈춰서 충돌 파일과 양쪽 내용을 보고한다.
+3. PM 등록 확인: origin/main의 .codex-harness/iteration-5/team-plan.md 등에 PM이 등록한 A12 정의(소유 경로, 기한)가 있으면 그것을 기준으로 삼는다. 로컬에 임시로 넣은 A12 항목과 다른 점이 있으면 보고한다.
+4. 범위 점검: git diff --stat origin/main...HEAD, ownership_guard --check-diff. A12 소유 경로 밖에서 바뀐 파일(특히 tutorial_viewmodel.dart, main.dart, app_theme.dart, 공용 위젯·유틸)은 파일마다 바꾼 이유와 범위를 정리한다. tutorial_viewmodel.dart의 pagesFor 순서와 텔레메트리 코드(tutorial_started, last_page)가 origin/main과 같은지 git diff로 확인한다.
+5. 검사: gymrats_app/에서 flutter pub get, flutter analyze, flutter test(design_tokens_test 포함). server/는 바꾸지 않았으면 생략한다. coverage_per_file.sh와 coverage_by_layer.py로 바뀐 파일의 계층별 커버리지를 잰다.
+6. reviewer 서브에이전트로 rebase 후 diff를 검토받아 APPROVE까지 고치고, progress.md Review log에 기록한다.
+7. 개인 노트(push 전): docs/testing/iteration-5/[REDACTED:custom_term].md에 이번 push 결과 항목, Session Exporter --yes와 extract_prompts.py로 프롬프트 로그, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md 항목 a–f에 A12 증거. 커밋 메시지는 Conventional Commits 영어.
+8. 1~7이 모두 통과하면 git push -u origin feat/iter5-tutorial을 하고 CLAUDE.md의 push 후 검증을 모두 실행한다. 하나라도 실패하면 push 전후 어느 시점이든 멈추고 보고한다.
+9. 이어서 pull-request 스킬로 main 대상 PR을 연다. 본문에 다음을 넣는다: 11/28 PM 승인(Unexpected A12) 사실, '공용 파일 변경' 단락(파일·이유·범위, 없으면 '없음'), 장 순서·판정·텔레메트리를 유지했다는 확인과 그 근거(diff 결과), How to test, 테스트 케이스 표, 수용 기준→테스트, HEAD 커밋 기준 결과·커버리지, 그리고 폰 확인 항목(작은 글씨, 무릎 푸시업 기각 장면)은 오늘 회의 때 실기기로 확인 예정이라는 문장. 그다음 현재 HEAD SHA로 독립 Codex 리뷰를 받는다.
+10. 끝나면 PR 번호, HEAD SHA, 검사 결과, 공용 파일 목록을 나에게 보고한다.
+</pasted_content id=\"16e8\">"
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial
+<!-- Left out on purpose: the conversation summary the client inserted at 11-28 13:52 after the context ran out (not the user's text). Its key stays so a later export does not add it again. Added by hand after the 14:08 prompt: the user's typed answer to the question on Codex's two threads (11-28 14:12), which the extractor does not read because it arrives inside a tool result; the text is from the redacted export. -->
+<!-- 6edf15d3 2026-11-28T04:52:42.070Z -->
+
+<!-- 6edf15d3 2026-11-28T05:08:58.275Z -->
+[Woohyun Song, 11-28 14:08] "codex 리뷰 결과 나왔어. 확인해봐"
+
+[Woohyun Song, 11-28 14:12] "t=1150으로 바꿔. 디자이너가 11/28에 SPEC 4절(v1.2)과 디자인 원본(TutShotOnline 기본값)도 1150으로 고쳤어. 그러니 progress.md와 PR 본문에는 '원본에서 벗어남'이 아니라 '11/28 SPEC 수정: 960은 바닥 순간 10ms 뒤라 GOOD이 거의 안 보이던 원본 오류'로 적어. 나머지 절차(새 커밋 하나, push, push 후 검증, @codex review 재요청)는 네가 제안한 대로 진행해."
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial
+<!-- 6edf15d3 2026-11-28T05:45:27.667Z -->
+[Woohyun Song, 11-28 14:45] "영어 말고 한국어로 답해.
+우선 기존 codex 리뷰를 resolve했으면 comment 달고 resolve 처리하던지 해.
+그리고 새로운 codex comment가 왔어. 확인해"
+
+## 2026-11-28 · Woohyun Song · feat/iter5-ranking-tutorial
+<!-- 34d5c565 2026-11-28T06:00:00.089Z -->
+[Woohyun Song, 11-28 15:00] "<pasted_content id=\"4fb1\">
+이번 작업은 Iteration 5의 A13 \"튜토리얼 게임 소개 2장 + 주간 랭킹 화면 개편\"이다. PM 한상우에게 11/28에 범위 승인을 요청했고 아직 답이 없다. 이 지시는 명세 0절(시작 조건, 브랜치를 따는 곳)보다 우선한다.
+
+[이 폴더]
+C:\dev\swpp-arcade-art는 원래 저장소(C:\dev\swpp-2026-project-team-04)의 worktree다. 원래 폴더에서는 다른 세션이 A12(feat/iter5-tutorial, PR #110)의 Codex 지적을 고치고 있다. 파일은 이 폴더 안에서만 고치고, CLAUDE.md는 고치지 않는다. 하네스는 지금 설치된 것을 그대로 쓴다. progress.md와 ownership.json을 원래 폴더 세션과 같이 쓰는 경우에는 고치기 직전에 다시 읽고 A13 줄만 고친다.
+
+1. 상태 확인
+- 저장소 루트에서 python .claude/hooks/ownership_guard.py --status(또는 python3), git status, 현재 브랜치를 확인한다.
+- 작업 트리가 깨끗하지 않으면 멈추고 보고한다. 지금 브랜치 feat/iter5-coach-voice는 main에 머지되어 있다.
+- 이 폴더의 .claude와 .codex-harness가 원래 폴더와 연결된 것인지, 따로인지 확인해서 보고한다.
+
+2. 명세 묶음
+- 다운로드 폴더의 a13-bundle.zip(%USERPROFILE%\Downloads\a13-bundle.zip)을 .claude/design/에 푼다. 결과로 .claude/design/a13/SPEC.md가 생겨야 한다.
+- 디자인 원본은 같은 폴더의 design/(목록은 design/INDEX.md)이고, 화면 PNG는 screenshots/다. 이 폴더는 커밋하지 않는다.
+- SPEC.md를 처음부터 끝까지 읽는다.
+
+3. 브랜치
+- git fetch origin 후 git switch -c feat/iter5-ranking-tutorial origin/feat/iter5-tutorial 로 A12 PR #110의 최신 커밋 위에 새 브랜치를 만든다.
+- 앞으로 A12 세션이 origin/feat/iter5-tutorial에 새 커밋을 올리면, git merge origin/feat/iter5-tutorial 로 받아 온다. rebase는 하지 않는다.
+- A12가 main에 머지되면 git merge origin/main 으로 받는다.
+- merge는 그냥 git merge로 하고 --no-verify는 쓰지 않는다. 훅에 막히면 멈추고 알려 준다.
+- 개인 기록 파일(docs/testing/iteration-5/[REDACTED:custom_term].md, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md, 프롬프트 로그)에서 충돌이 나면 A12 절과 A13 절을 모두 남기는 식으로 푼다.
+
+4. 하네스
+- ownership.json에 A13 단계를 명세 0절대로 더한다. allow에는 새 파일 lib/models/ranking_standing.dart와 test/models/ranking_standing_test.dart를 추가로 넣는다.
+- progress.md에 A13 절을 만든다. 범위, PM 승인 대기, A12 위에 얹은 브랜치라는 점, Next step을 적는다.
+- 내 작업분은 git diff origin/feat/iter5-tutorial...HEAD로 본다. A12가 main에 머지된 뒤에는 git diff origin/main...HEAD로 본다. A12에서 물려받은 파일은 읽기만 한다.
+
+5. 계산 위치(명세 3.6절 변경)
+- 주 이름, 남은 시간 문구, 진행 막대, 내 순위 카드의 목표 줄 계산은 새 파일 lib/models/ranking_standing.dart에 순수 함수(또는 값 클래스)로 만든다. 시계는 인자로 받는다.
+- weekly_rankings_viewmodel.dart(P11)에는 나중에 이 함수를 부르는 getter만 더한다.
+- 새 파일은 progress.md의 \"Design doc changes\"에 적는다.
+
+6. 계획 보고
+- 명세 7절의 계획 보고를 써서 나에게 보여 준다. 코드는 아직 쓰지 않는다.
+- 보고에 A12 세션과 겹칠 수 있는 파일 목록과 그 파일을 언제 고칠지도 넣는다.
+
+7. 진행 순서(내가 계획을 승인한 뒤)
+- 단계마다 flutter analyze, flutter test, reviewer APPROVE를 거쳐 로컬 커밋한다. 커밋 메시지는 Conventional Commits, 영어다. reviewer는 A13 작업분만 본다.
+  가. 지금 바로: 새 파일만 만든다.
+     - tutorial_modes.dart와 그 테스트
+     - ranking_standing.dart와 그 테스트
+     - 랭킹 화면 부품 위젯 lib/widgets/weekly_rankings_*.dart와 그 테스트: 이번 주 배너, 탭 한 줄, 내 순위 카드, 목록 줄, 친구 없음 카드, 점수 규칙 시트
+     - tutorial_page.dart의 TutorialStep.modes 추가
+  나. A12가 main에 머지된 뒤: help_screen.dart, help_pictures.dart, help_rules.dart에 2장을 연결한다.
+  다. 내가 \"PM 승인 왔어\"라고 말한 뒤: tutorial_viewmodel.dart(P17)의 pagesFor와 positionOf, weekly_rankings_screen.dart(P11)를 부품으로 다시 짜고, weekly_rankings_viewmodel.dart(P11)에 getter를 연결한다. ownership-exceptions.txt에 이유를 적는다.
+- 나와 다 순서가 막히면 할 수 있는 데까지 하고 멈춰서 보고한다.
+
+8. push와 PR
+- push, 원격 브랜치, PR은 두 조건이 모두 맞을 때만 한다. 내가 PM 승인을 알렸고, A12가 main에 머지되었을 때다.
+- 그때 git merge origin/main을 하고, 전체 검사(flutter analyze, flutter test, 커버리지, ownership_guard --check-diff)를 다시 돌린 뒤 main을 대상으로 PR을 연다.
+- PR은 pull-request 스킬로 열고 명세 9절의 공용 파일 변경 절을 넣는다. 현재 HEAD SHA에서 Codex 리뷰를 받는다.
+- PM 승인은 왔는데 A12가 아직 머지 전이면 PR을 열지 말고 나에게 물어본다.
+- main에는 절대 push하지 않는다.
+
+9. push 전 기록
+- CLAUDE.md Workflow 7번대로 테스트 기록, 세션 내보내기와 프롬프트 로그, AI 협업 기록에 A13 절을 쓴다.
+</pasted_content id=\"4fb1\">"
+
+<!-- 34d5c565 2026-11-28T06:08:33.012Z -->
+[Woohyun Song, 11-28 15:08] "<pasted_content id=\"4fb1\">
+계획 승인한다. 세 가지 답은 다음과 같다.
+
+1. 글자 크기는 A안으로 한다.
+- app_theme.dart에 A11의 FriendText와 같은 방식으로 RankingText를 더하고, 디자인 값(Do Hyeon 21·18, 본문 9.5·10.5·11.5·12.5·13.5·14.5 등)을 이름 붙은 스타일로 만든다.
+- 각 스타일은 기존 테마 스타일에서 copyWith로 만들고, app_theme_test.dart로 확인한다. Oxanium 40·32·26·20·18처럼 테마에 이미 있는 크기는 기존 스타일을 쓴다.
+- app_theme.dart는 하네스에서 A11(송우현) 단계의 파일이다. 담당자 승인(송우현, 2026-11-28)으로 처리한다. A13 allow에 app_theme.dart와 app_theme_test.dart를 더하고, ownership-exceptions.txt와 progress.md(Decisions and notes, Design doc changes)에 날짜와 이유를 적는다.
+- 명세 4절의 \"새 글자 스타일 상수는 만들지 않는다\"는 이 결정으로 바뀐다. PR 공용 파일 절에도 적는다.
+- 가 단계에서 바로 만들고, 랭킹 부품은 처음부터 RankingText를 쓴다.
+- 튜토리얼 그림(TutorialModes) 안의 글자는 A12와 같은 Transform.scale 방식 그대로 둔다.
+
+2. ranking_standing.dart는 제안대로 한다.
+- 순수 값(등수, 점수, 전적의 레코드, 주 시작·끝, now)을 받고, 값 클래스를 돌려준다. 값 클래스에는 종류(기록 없음, 친구 없음, 1위, 위가 있음, 50위 밖), 목표 등수, 점수 차, 막대 비율이 들어간다.
+- 한국어 문구(주 이름, 남은 시간, 목표 줄)도 같은 파일의 함수로 만들어 단위 테스트로 확인한다.
+- models에서 services를 import하지 않는다.
+
+3. 튜토리얼 연결 시점은 제안대로 한다. TutorialStep.modes, help 세 파일, tutorial_viewmodel.dart는 #110 머지와 PM 승인이 모두 된 뒤 한 단계로 묶는다. 가 단계에서는 TutorialModes 위젯과 그 테스트만 만든다.
+
+가 단계부터 시작해라. 단계마다 flutter analyze, flutter test, reviewer APPROVE를 거쳐 로컬 커밋한다. 공유 파일(progress.md, ownership.json, design_tokens_test.dart)은 고치기 직전에 다시 읽고 A13 줄만 고친다.
+</pasted_content id=\"4fb1\">"
+
+<!-- 34d5c565 2026-11-28T06:59:24.117Z -->
+[Woohyun Song, 11-28 15:59] "네트워크 연결이 불안정했었어. 작업을 계속 이어서 진행해줘"
+
+<!-- 34d5c565 2026-11-28T08:52:53.171Z -->
+[Woohyun Song, 11-28 17:52] "<pasted_content id=\"4fb1\">
+PM 한상우가 2026-11-28 17:49에 A13을 승인했다. 송우현 담당, 11/30(월) 마감, 예상 6시간이고, 튜토리얼 소개 한 장 추가와 주간 랭킹 화면 개편을 한 PR로 진행한다. A12 PR #110은 main에 머지되었다(머지 커밋 eda5256). PM은 \"최신 main에서 feat/iter5-ranking-tutorial로 시작\"하라고 했다.
+
+1. 최신 main으로 옮기기
+- git fetch origin 후 git rebase origin/main 으로 A13 로컬 커밋을 최신 main(지금 5e607fb) 위로 옮긴다. 아직 push하지 않았으니 rebase가 맞다.
+- A12 커밋은 main에 이미 있으니 빠지고, A12를 받아 온 merge 커밋도 사라지는 것이 정상이다.
+- 충돌이 나면 멈추고 보고한다.
+- 옮긴 뒤 flutter analyze, flutter test를 다시 돌린다.
+
+2. 하네스 정리
+- A12가 머지되었으니 ownership.json의 A13에서 stack_base와 after의 A12를 뺀다.
+- ownership_guard --check-diff가 origin/main 기준으로 A13 파일만 잡는지 확인한다.
+- progress.md와 ownership-exceptions.txt에 PM 승인(2026-11-28 17:49, 범위: P17 tutorial_viewmodel.dart, P11 weekly_rankings_screen.dart·weekly_rankings_viewmodel.dart)과 app_theme.dart 담당자 승인(송우현, A11, 2026-11-28)을 적는다.
+
+3. 표기 수정
+- 랭킹 화면의 운동 탭 글자는 '푸시업'을 직접 적지 말고 지금 화면처럼 exercise.koreanName을 쓴다. 앱의 이름표는 '푸쉬업'이다.
+- progress.md Decisions의 '푸시업' 항목은 이 내용으로 바꾼다.
+- 튜토리얼 2장 그림의 아이콘 이름은 튜토리얼 표기('푸시업')를 그대로 둔다.
+
+4. 나+다 단계를 한 단계로 진행한다
+- 튜토리얼: TutorialStep.modes, help 세 파일, tutorial_viewmodel.dart의 pagesFor·positionOf를 연결한다. 텔레메트리 코드는 그대로 둔다.
+- 랭킹: weekly_rankings_screen.dart를 부품으로 다시 짜고, weekly_rankings_viewmodel.dart에 getter를 연결한다.
+- 계획 보고 7번에 적은 기존 테스트를 고친다. 데이터와 다시 읽기 테스트는 그대로 통과해야 한다.
+- flutter analyze, flutter test, reviewer APPROVE를 거쳐 로컬 커밋한다.
+- dart format은 이번에 바꾼 파일에만 돌린다.
+
+5. 마무리와 PR
+- 전체 검사를 돌린다: flutter analyze, flutter test, coverage_per_file.sh와 coverage_by_layer.py로 계층별 커버리지, ownership_guard --check-diff.
+- CLAUDE.md Workflow 7번대로 개인 기록 세 가지(테스트 기록, 세션 내보내기와 프롬프트 로그, AI 협업 기록)에 A13 절을 쓰고 커밋한다.
+- git push -u origin feat/iter5-ranking-tutorial 를 하고, CLAUDE.md의 push 후 검증을 모두 실행한다.
+- pull-request 스킬로 main 대상 PR을 연다. 본문은 영어로 쓰고 다음을 넣는다.
+  - PM 승인 사실
+  - 공용 파일 절: P17 tutorial_viewmodel.dart(pages_total 22→23, last_page는 3번 장부터 1씩 커짐), P11 랭킹 화면 재구성과 더한 getter, app_theme.dart의 RankingText(A11 담당자 승인), design_tokens_test 등록
+  - Review notes: G3 이름표, '확인' 버튼 높이, 목표 줄 규칙 두 가지
+  - 명세 8절의 Manual check
+- 현재 HEAD에서 '@codex review'를 요청한다.
+- 끝나면 PR 번호, HEAD SHA, 검사 결과, 계층별 커버리지, 공용 파일 목록을 보고한다.
+</pasted_content id=\"4fb1\">"
+
+<!-- 34d5c565 2026-11-28T08:36:37.863Z -->
+<!-- 34d5c565 2026-11-28T10:29:28.225Z -->
+<!-- Left out on purpose: the two conversation summaries the client inserted at 11-28 17:36 and 19:29 after the context ran out (not the user's text). Their keys stay so a later export does not add them again. Added on 11-28 with the follow-up `feat/iter5-tutorial-tab-edge`: the last two A13 prompts (19:51, 20:41), which came after this section was written. -->
+
+<!-- 34d5c565 2026-11-28T10:51:10.120Z -->
+[Woohyun Song, 11-28 19:51] "<pasted_content id=\"4fb1\">
+개인 기록 두 곳의 A13 TODO를 아래 내용으로 채워라. 문장은 각 노트의 다른 절과 같은 언어와 형식으로 맞추고, 따옴표 안의 한국어 프롬프트는 그대로 둔다. 프롬프트 로그에 없는 내용이면 노트에만 적는다.
+
+1. AI 협업 노트(docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md): 디자인과 SPEC 출처
+- 만든 곳: claude.ai 채팅(프로젝트 \"소개원실 팀 프로젝트\", Claude Opus 5.5)과 Claude Design 캔버스 \"GymRats 메인 메뉴 시안\", 2026-11-28. 송우현이 방향을 정하고 시안을 골랐다. Claude가 PR #108(주간 랭킹)과 PR #110(A12) 코드를 읽고 시안, SPEC v1.0, 디자인 묶음(a13-bundle)을 만들었다.
+- 튜토리얼 2장: 시안 A·B·C 중 A를 고름 → A를 바탕으로 5안 → 송우현이 온라인 대결 설명에 '1:1 대결, KO승 10점·승리 5점… 점수로 주간 랭킹'을 넣으라고 요청 → 4안 중 A6 확정. 송우현이 손본 것: 아래 설명 문장 삭제, VS가 GYM마우스와 겹치는 것 수정, 의자 자세 아이콘의 벽 기둥 삭제, 시계 위치·크기 조정, 의자 자세 사람 크기를 스쿼트와 맞춤.
+- 주간 랭킹: Claude가 main 2e59012의 P11 코드를 보고 지금 화면을 캔버스에 재현함 → 1차 A·B·C는 채택되지 않음 → 송우현이 다른 게임의 리더보드를 참고 자료로 주고, 점수 규칙 줄을 빼고 '?' 시트로 옮기라고 하고, 이번 주 정보를 크게 하라고 요청 → D1~D5 중 D1 확정 → 친구 탭과 예외 상태를 그린 뒤 확정.
+- 대표 프롬프트(원문 그대로):
+  \"진영이 형 PR 및 코드를 GitHub에서 꼼꼼히 파악해서 랭킹 시스템을 파악하고 나에게 설명해봐. 그리고 그 다음에 두 번째 장을 어떻게 구성할지 claude design으로 시안을 뽑은 후에 claude code 작업으로 옮겨보자.\"
+  \"A~C 모두 'KO승 10점, 승리 5점, ..' 과 같은 규칙이 순위표 바로 위에 있는데 이 부분은 없애줘. '?' 버튼 같은 걸 놓고 눌렀을 때 점수규칙을 볼 수 있게 하는 게 맞아.\"
+- 사람이 바로잡은 AI 산출물:
+  (1) 시안에 '푸시업'을 적었지만 앱 이름표는 '푸쉬업'이라 랭킹 탭은 koreanName을 쓰게 함.
+  (2) SPEC 4절의 \"새 글자 스타일을 만들지 않는다\"가 디자인 토큰 규칙과 맞지 않아서, 송우현이 RankingText 추가로 결정함.
+  (3) 계산을 P11 뷰모델 대신 models/ranking_standing.dart에 두고, 튜토리얼 연결을 한 단계로 묶음.
+
+2. 테스트 노트(docs/testing/iteration-5/[REDACTED:custom_term].md): 폰 확인
+- 폰 확인 TODO를 \"머지 뒤 실기기로 확인 예정(명세 8절 항목)\"으로 바꾸고, 확인할 항목을 명세 8절 그대로 적는다. A12 노트와 같은 방식이다.
+- 확인 결과는 머지 뒤 폰에서 본 다음 내가 알려 주면 그때 채운다.
+
+3. 커밋과 push 시점
+- 두 노트를 고치고 로컬 커밋한다(docs, Conventional Commits, 영어).
+- 지금 42abe74에서 Codex 리뷰가 돌고 있으니 바로 push하지 않는다. Codex와 CI 결과가 나오면 지적 대응 커밋과 함께 한 번에 push한다.
+- push한 뒤에는 새 HEAD에서 '@codex review'를 다시 요청하고, PR 본문의 결과와 Reviews 줄을 새 HEAD로 갱신한다.
+- Codex 지적이 없으면 이 노트 커밋만 push하고 똑같이 다시 요청한다.
+</pasted_content id=\"4fb1\">"
+
+<!-- 34d5c565 2026-11-28T11:41:06.999Z -->
+[Woohyun Song, 11-28 20:41] "Codex 결과와 CI 모두 문제없어"
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial-tab-edge
+<!-- Cut: the client's injected browser notice in front of the 21:10 prompt (not the user's text). Redacted by hand: the phone's device ID in the 21:10 prompt. -->
+<!-- b65cd53d 2026-11-28T12:10:08.946Z -->
+[Woohyun Song, 11-28 21:10] "<pasted_content id=\"df03\">
+이번 작업은 Iteration 5 A13(튜토리얼 게임 소개 2장 + 주간 랭킹 화면 개편, PR #113, main 머지 커밋 1f54fad)의 머지 뒤 후속 수정이다. 실기기에서 버그 하나를 찾았다.
+
+[버그]
+튜토리얼 화면(HelpScreen) 위쪽의 푸시업·스쿼트 탭에서 알약 모양 잉크 테두리의 양 끝이 깨져 보인다. 둥근 끝에서 테두리 일부가 가려지고 각진 모서리가 드러난다. 기기는 Galaxy S26+이고, 최신 main의 release 빌드에서 확인했다.
+
+[원인]
+gymrats_app/lib/screens/help_screen.dart의 _ExerciseTabs가 원인이다.
+- 지금은 Container의 decoration(ShapeDecoration, StadiumBorder, 2px 잉크 side)으로 테두리를 먼저 그린다.
+- 그 위에 두 칸 색 Row를 child로 그리고, clipBehavior는 Clip.antiAlias다.
+- Container가 테두리 두께만큼 안으로 들인 네모 Row를 그리는데, 둥근 양 끝에서 이 네모의 모서리가 안쪽 곡선 밖으로 나가 테두리를 덮는다.
+- 같은 문제를 A13에서 랭킹 탭(gymrats_app/lib/widgets/weekly_rankings_tabs.dart)이 이미 고쳤다. 그 파일의 방식을 그대로 따른다. main에서 같은 모양으로 짠 곳은 이 탭 한 곳뿐이다.
+
+[순서]
+1. 시작
+- CLAUDE.md Workflow 1번대로 ownership_guard --status, progress.md, task.md를 확인한다.
+- git status로 작업 트리가 깨끗한지 확인한다. 지금 이 폴더는 origin/main(1f54fad)에 detached 상태일 것이다. git fetch origin 후 origin/main이 1f54fad 이후인지 확인한다.
+
+2. 브랜치와 하네스
+- 이 수정은 A13 단계의 후속 수정으로 처리한다. help_screen.dart와 help_screen_test.dart는 ownership.json A13의 allow에 있다.
+- origin/main에서 이 수정용 브랜치를 새로 만든다. 하네스의 브랜치 규칙(단계별 feat/iter5-* 브랜치)을 확인해서 ownership_guard가 받아 주는 이름으로 만든다.
+- 머지된 feat/iter5-ranking-tutorial을 다시 쓸 수 없으면 새 이름을 쓰고, ownership.json의 A13 branch만 바꾼다. 무엇을 바꿨는지 progress.md에 적는다.
+- 고치기 전에 ownership_guard --check-paths로 두 파일을 확인한다. 막히면 멈추고 물어본다.
+
+3. 고치기
+- _ExerciseTabs를 weekly_rankings_tabs.dart와 같은 방식으로 바꾼다.
+  - decoration은 바탕색(AppColors.card)과 StadiumBorder 모양만 둔다.
+  - 테두리(AppColors.ink, 2px StadiumBorder side)는 foregroundDecoration으로 맨 위에 그린다.
+  - 두 칸 Row는 ClipPath(clipper: ShapeBorderClipper(shape: StadiumBorder()))로 감싸 둥근 모양 안으로 자른다.
+- 가운데 칸막이, 글자와 굵기, 탭 높이(46, 누르는 영역 kMinInteractiveDimension), Semantics(탭 바, 탭 위치 문구)는 그대로 둔다.
+- 화면에서 쓰는 값은 app_theme.dart 토큰만 쓴다(design_tokens_test).
+- test/screens/help_screen_test.dart에 테스트를 더한다. weekly_rankings_tabs_test.dart와 같은 식으로, 테두리가 foregroundDecoration에 있고 칸들이 StadiumBorder 모양으로 잘리는지 확인한다.
+
+4. 검사와 커밋
+- gymrats_app/에서 flutter analyze, flutter test를 돌리고, reviewer 서브에이전트로 이 수정만 검토받아 APPROVE까지 고친다. progress.md Review log에 적는다.
+- dart format은 이번에 바꾼 파일에만 돌린다.
+- 로컬 커밋한다. 메시지는 Conventional Commits 영어, 예: fix(tutorial): keep the exercise tabs' ink edge whole at the round ends.
+
+5. 폰 확인을 위해 멈추기
+- 커밋하면 push하기 전에 멈추고 나에게 브랜치 이름과 커밋을 알려 준다. 내가 이 폴더에서 release 빌드를 폰에 깔아 확인한다(flutter 기기 ID [REDACTED:device_id]).
+
+6. push와 PR(내가 \"괜찮아\"라고 한 뒤)
+- CLAUDE.md Workflow 7번대로 개인 기록 세 가지에 이 수정 절을 짧게 더하고 커밋한다. 세 가지는 docs/testing/iteration-5/[REDACTED:custom_term].md, 세션 내보내기와 프롬프트 로그, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md다.
+- push하고 CLAUDE.md의 push 후 검증을 모두 실행한다.
+- pull-request 스킬로 main 대상 PR을 연다. 본문은 영어로 쓰고, 원인, 바꾼 것, 테스트, 실기기 확인 결과를 넣는다.
+- 현재 HEAD에서 '@codex review'를 요청한다.
+- PR 번호와 HEAD SHA를 보고한다.
+</pasted_content id=\"df03\">"
+
+<!-- b65cd53d 2026-11-28T12:30:18.272Z -->
+[Woohyun Song, 11-28 21:30] "괜찮아. 실기기 확인 결과: Galaxy S26+ (SM-S947N), Android 17, 980a565 release 빌드(C:\dev\swpp-arcade-art에서 빌드). 튜토리얼의 푸시업·스쿼트 탭 양 끝 잉크 테두리가 끊기지 않고 둥글게 보인다. 게임 소개 장(둘 다 안 고름), 푸시업 고름, 스쿼트 고름 세 상태 모두 확인했다. 이 결과를 PR 본문과 테스트 기록에 넣고 6단계를 진행해."

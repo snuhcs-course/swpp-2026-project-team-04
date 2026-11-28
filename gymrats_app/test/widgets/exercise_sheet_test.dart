@@ -86,6 +86,8 @@ void main() {
     GoalStore? goals,
     AuthViewModel? auth,
     bool settle = true,
+    String? subtitle = '온라인 1v1 · 30초',
+    VoidCallback? onRankings,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -100,8 +102,9 @@ void main() {
             onPressed: () async {
               answer = await showExerciseSheet(
                 context,
-                subtitle: '온라인 1v1 · 30초',
+                subtitle: subtitle,
                 profile: profile,
+                onRankings: onRankings,
               );
               answered = true;
             },
@@ -197,6 +200,82 @@ void main() {
     expect(find.byType(ExerciseSheet), findsNothing);
     expect(answered, isTrue);
     expect(answer, isNull);
+  });
+
+  group('the weekly rankings row (P11)', () {
+    testWidgets('without a line the cards come up under the question', (
+      tester,
+    ) async {
+      await open(tester, subtitle: null);
+      expect(find.text('온라인 1v1 · 30초'), findsNothing);
+      final question = tester.getBottomLeft(find.text('어떤 종목으로 붙을까요?'));
+      final card = tester.getTopLeft(
+        find.ancestor(of: find.text('푸쉬업'), matching: find.byType(Card)),
+      );
+      expect(card.dy - question.dy, AppSpacing.s16);
+    });
+
+    testWidgets('the line shows when one is given', (tester) async {
+      await open(tester);
+      expect(find.text('온라인 1v1 · 30초'), findsOneWidget);
+    });
+
+    testWidgets('shows only with somewhere to open', (tester) async {
+      await open(tester);
+      expect(find.byType(WeeklyRankingsRow), findsNothing);
+    });
+
+    testWidgets('sits under the cards with its podium and opens the rankings', (
+      tester,
+    ) async {
+      var opened = 0;
+      await open(tester, subtitle: null, onRankings: () => opened++);
+      final row = find.byType(WeeklyRankingsRow);
+      expect(row, findsOneWidget);
+      expect(
+        find.descendant(of: row, matching: find.byType(RankingPodiumIcon)),
+        findsOneWidget,
+      );
+      expect(find.text('이번 주 전체·친구 순위 보기'), findsOneWidget);
+      final cards = tester.getBottomLeft(
+        find.ancestor(of: find.text('푸쉬업'), matching: find.byType(Card)),
+      );
+      expect(tester.getTopLeft(row).dy, greaterThan(cards.dy));
+      // As wide as both cards together.
+      expect(
+        tester.getSize(row).width,
+        closeTo(tester.getSize(find.byType(IntrinsicHeight)).width, 0.5),
+      );
+
+      await tester.tap(find.text('주간 랭킹'));
+      await tester.pumpAndSettle();
+      expect(opened, 1);
+      // The sheet stays open, still asking.
+      expect(answered, isFalse);
+    });
+
+    testWidgets('reads as one button to a screen reader', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await open(tester, subtitle: null, onRankings: () {});
+      expect(
+        find.bySemanticsLabel('주간 랭킹, 이번 주 전체와 친구 순위'),
+        findsOneWidget,
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('fits a small phone with a large text size', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await open(
+        tester,
+        size: const Size(320, 640),
+        subtitle: null,
+        onRankings: () {},
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byType(WeeklyRankingsRow), findsOneWidget);
+    });
   });
 
   group('the personal best', () {

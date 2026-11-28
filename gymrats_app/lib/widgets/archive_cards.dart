@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../models/arcade_stage.dart';
 import '../models/exercise_type.dart';
 import '../models/exercise_type_korean.dart';
 import '../models/feedback_stats.dart';
+import '../models/hold_record.dart';
+import '../models/reject_reason_korean.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/history_viewmodel.dart';
 import 'archive_chart.dart';
 
-/// A white card with a border, as the archive's cards are drawn (BArchive).
+/// A white card with a border, as the archive's cards were drawn (BArchive);
+/// the statistics screen still uses it.
 class ArchiveCard extends StatelessWidget {
   const ArchiveCard({
     super.key,
@@ -28,512 +33,675 @@ class ArchiveCard extends StatelessWidget {
   );
 }
 
-/// "최근 7일": the reps and battles of the last 7 days, the streak chip
-/// (hidden at 0 days), and a bar per day, oldest first, today in ink.
-class ArchiveWeekCard extends StatelessWidget {
-  const ArchiveWeekCard({super.key, required this.stats});
+/// One full-width white section of the journal (P13, draft C), on the grey
+/// page as the post-game report's sections are.
+class ArchiveSection extends StatelessWidget {
+  const ArchiveSection({
+    super.key,
+    required this.child,
+    this.padding = defaultPadding,
+  });
 
-  final ArchiveStats stats;
+  static const defaultPadding = EdgeInsets.fromLTRB(
+    AppSpacing.s20,
+    AppSpacing.s20,
+    AppSpacing.s20,
+    AppSpacing.s16,
+  );
 
-  /// The bars' room, the least bar and a day without battles, as designed.
-  static const barsHeight = 58.0;
-  static const barMinHeight = 6.0;
-  static const zeroBarHeight = 3.0;
-  static const _barRadius = 6.0;
-  static const _zeroRadius = 2.0;
-  static const _chipHeight = 32.0;
-  static const _flameSize = 16.0;
+  final Widget child;
+  final EdgeInsets padding;
 
-  static const _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: AppColors.card,
+    child: Padding(padding: padding, child: child),
+  );
+}
 
-  /// The first of the 7 days in the card's name, e.g. "11/8".
-  static String sinceLabel(DayReps day) => '${day.date.month}/${day.date.day}';
+/// A section's title, with a quiet [detail] or a [trailing] control at the
+/// right end.
+class ArchiveSectionTitle extends StatelessWidget {
+  const ArchiveSectionTitle(
+    this.title, {
+    super.key,
+    this.detail,
+    this.trailing,
+  });
 
-  /// The bar's letter under it: the weekday, "오늘" for the last one.
-  static String dayLabel(DayReps day, {required bool isToday}) =>
-      isToday ? '오늘' : _weekdays[day.date.weekday - 1];
+  final String title;
+  final String? detail;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final days = stats.weekDaily;
-    final heights = archiveBarHeights(
-      [for (final day in days) day.reps],
-      max: barsHeight,
-      min: barMinHeight,
-      zero: zeroBarHeight,
-    );
-    String label(int i) => dayLabel(days[i], isToday: i == days.length - 1);
-    return ArchiveCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // "최근 7일 · 11/8 ~ 오늘": the last 7 days up to today,
-                    // unlike the statistics' week from Monday (W7-STATS 6).
-                    Text.rich(
-                      TextSpan(
-                        text: '최근 7일',
-                        children: [
-                          if (days.isNotEmpty)
-                            TextSpan(
-                              text: ' · ${sinceLabel(days.first)} ~ 오늘',
-                              style: text.bodySmall?.copyWith(
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                        ],
-                      ),
-                      style: text.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    Text.rich(
-                      TextSpan(
-                        text: '${stats.weekReps}',
-                        children: [
-                          TextSpan(
-                            text: '회',
-                            style: text.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          TextSpan(
-                            text: '  · ${stats.weekMatches}판',
-                            style: text.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                      style: text.archiveTotal.copyWith(color: AppColors.ink),
-                    ),
-                  ],
-                ),
-              ),
-              if (stats.streakDays > 0) ...[
-                const SizedBox(width: AppSpacing.s12),
-                _StreakChip(days: stats.streakDays),
-              ],
-            ],
-          ),
-          if (days.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.s12),
-            Semantics(
-              label: [
-                for (var i = 0; i < days.length; i++)
-                  '${label(i)} ${days[i].reps}회',
-              ].join(', '),
-              child: ExcludeSemantics(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: barsHeight,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          for (var i = 0; i < days.length; i++) ...[
-                            if (i > 0) const SizedBox(width: AppSpacing.s8),
-                            Expanded(
-                              child: Container(
-                                key: ValueKey('archive-bar-$i'),
-                                height: heights[i],
-                                decoration: BoxDecoration(
-                                  color: days[i].reps == 0
-                                      ? AppColors.border
-                                      : i == days.length - 1
-                                      ? AppColors.ink
-                                      : AppColors.chartBar,
-                                  borderRadius: BorderRadius.all(
-                                    Radius.circular(
-                                      days[i].reps == 0
-                                          ? _zeroRadius
-                                          : _barRadius,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s4),
-                    Row(
-                      children: [
-                        for (var i = 0; i < days.length; i++) ...[
-                          if (i > 0) const SizedBox(width: AppSpacing.s8),
-                          Expanded(
-                            child: Text(
-                              label(i),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              softWrap: false,
-                              overflow: TextOverflow.visible,
-                              style: i == days.length - 1
-                                  ? text.labelSmall?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.ink,
-                                    )
-                                  : text.labelSmall?.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                      color: AppColors.textMuted,
-                                    ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// "8일 연속" in white on an ink pill, after a lime flame (palette B: light
-/// text and a lime icon on a dark fill).
-class _StreakChip extends StatelessWidget {
-  const _StreakChip({required this.days});
-
-  final int days;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: ArchiveWeekCard._chipHeight),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
-      decoration: const ShapeDecoration(
-        color: AppColors.ink,
-        shape: StadiumBorder(),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.local_fire_department_rounded,
-            size: ArchiveWeekCard._flameSize,
-            color: AppColors.accent,
-          ),
-          const SizedBox(width: AppSpacing.s4),
-          Text(
-            '$days일 연속',
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(fontWeight: FontWeight.w700, color: AppColors.onInk),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// "점수 성장": one exercise's scores as a line graph, picked with the
-/// 푸쉬업 / 스쿼트 tabs, with the rise from the first score to the best and
-/// the first battle's date under the graph. An exercise without a scored
-/// battle shows a short line instead.
-class ArchiveGrowthCard extends StatefulWidget {
-  const ArchiveGrowthCard({super.key, required this.growth});
-
-  /// Score history per exercise; a missing one counts as no scores.
-  final Map<ExerciseType, ScoreGrowth> growth;
-
-  /// The graph's height, as designed.
-  static const chartHeight = 96.0;
-
-  /// The first battle's date under the graph, e.g. "10/28".
-  static String dateLabel(DateTime time) {
-    final local = time.toLocal();
-    return '${local.month}/${local.day}';
-  }
-
-  /// The line beside the rise, e.g. "첫 기록 80점 → 최고 240점"; only the
-  /// first score when there is one.
-  static String caption(ScoreGrowth growth) {
-    final first = growth.firstScore!;
-    return growth.scores.length == 1
-        ? '첫 기록 $first점'
-        : '첫 기록 $first점 → 최고 ${growth.bestScore}점';
-  }
-
-  /// What a screen reader says for the graph.
-  static String graphLabel(ScoreGrowth growth) {
-    final name = growth.exercise.koreanName;
-    final first = growth.firstScore!;
-    final best = growth.bestScore!;
-    return best > first
-        ? '$name 점수 그래프, 첫 기록 $first점에서 최고 $best점으로 올랐어요'
-        : '$name 점수 그래프, 첫 기록 $first점, 최고 $best점';
-  }
-
-  @override
-  State<ArchiveGrowthCard> createState() => _ArchiveGrowthCardState();
-}
-
-class _ArchiveGrowthCardState extends State<ArchiveGrowthCard> {
-  var _exercise = ExerciseType.values.first;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final growth = widget.growth[_exercise];
-    final hasScores = growth != null && growth.scores.isNotEmpty;
-    return ArchiveCard(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s12,
-        AppSpacing.s16,
-        AppSpacing.s12,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: AppSpacing.s12,
-            children: [
-              Text('점수 성장', style: text.lobbyRowTitle),
-              _ExerciseTabs(
-                selected: _exercise,
-                onSelect: (exercise) => setState(() => _exercise = exercise),
-              ),
-            ],
-          ),
-          if (hasScores)
-            ..._graph(context, growth)
-          else
-            _NoScores(exercise: _exercise),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _graph(BuildContext context, ScoreGrowth growth) {
-    final text = Theme.of(context).textTheme;
-    final rise = growth.bestScore! - growth.firstScore!;
-    final firstPlayedAt = growth.firstPlayedAt;
-    return [
-      const SizedBox(height: AppSpacing.s4),
-      Row(
-        children: [
-          if (rise > 0) ...[
-            _RiseChip(rise: rise),
-            const SizedBox(width: AppSpacing.s8),
-          ],
-          Flexible(
+    final detail = this.detail;
+    final trailing = this.trailing;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Semantics(
+            header: true,
             child: Text(
-              ArchiveGrowthCard.caption(growth),
-              style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: text.lobbyCardTitle,
             ),
-          ),
-        ],
-      ),
-      const SizedBox(height: AppSpacing.s8),
-      Semantics(
-        image: true,
-        label: ArchiveGrowthCard.graphLabel(growth),
-        child: SizedBox(
-          height: ArchiveGrowthCard.chartHeight,
-          child: CustomPaint(
-            key: const ValueKey('archive-growth-chart'),
-            painter: ArchiveGrowthPainter(
-              scores: growth.scores,
-              valueStyle: text.archiveChartValue,
-              textScaler: MediaQuery.textScalerOf(context)
-                  .clamp(maxScaleFactor: _valueMaxScale),
-            ),
-            size: Size.infinite,
           ),
         ),
-      ),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            firstPlayedAt == null
-                ? ''
-                : ArchiveGrowthCard.dateLabel(firstPlayedAt),
-            style: text.labelSmall?.copyWith(color: AppColors.textMuted),
-          ),
-          Text(
-            '오늘',
-            style: text.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+        if (detail != null) ...[
+          const SizedBox(width: AppSpacing.s8),
+          Flexible(
+            child: Text(
+              detail,
+              textAlign: TextAlign.end,
+              style: text.feedbackMeta,
             ),
           ),
         ],
-      ),
-    ];
+        ?trailing,
+      ],
+    );
   }
-
-  /// The value over the last point grows with the system text size only so
-  /// far, so it stays inside the graph.
-  static const _valueMaxScale = 1.5;
 }
 
-/// "↑ 160점" in ink on a lime band: how much the best beat the first score.
-class _RiseChip extends StatelessWidget {
-  const _RiseChip({required this.rise});
+/// The period's words: 이번 주, 이번 달, 전체 기간.
+String archivePeriodLabel(StatsPeriod period) => switch (period) {
+  StatsPeriod.week => '이번 주',
+  StatsPeriod.month => '이번 달',
+  StatsPeriod.all => '전체 기간',
+};
 
-  final int rise;
+/// 이번 주 · 이번 달 · 전체 기간 as a segmented control on a grey track, the
+/// chosen one white and bold.
+class ArchivePeriodPicker extends StatelessWidget {
+  const ArchivePeriodPicker({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
 
-  static const _radius = 10.0;
-  static const _arrowSize = 18.0;
-  static const _strength = 0.6;
+  final StatsPeriod value;
+  final ValueChanged<StatsPeriod> onChanged;
+
+  static const order = [StatsPeriod.week, StatsPeriod.month, StatsPeriod.all];
+  static const _height = 44.0;
+  static const _inset = AppSpacing.s4;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.facetLight,
+        borderRadius: BorderRadius.all(Radius.circular(AppRadius.small)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(_inset),
+        child: Row(
+          children: [
+            for (final period in order)
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: period == value,
+                  child: Material(
+                    color: period == value
+                        ? AppColors.card
+                        : AppColors.facetLight,
+                    borderRadius: const BorderRadius.all(
+                      Radius.circular(AppRadius.small),
+                    ),
+                    child: InkWell(
+                      borderRadius: const BorderRadius.all(
+                        Radius.circular(AppRadius.small),
+                      ),
+                      onTap: () => onChanged(period),
+                      child: SizedBox(
+                        height: _height - 2 * _inset,
+                        child: Center(
+                          child: Text(
+                            archivePeriodLabel(period),
+                            maxLines: 1,
+                            style: period == value
+                                ? text.reportCardTitle
+                                : text.feedbackMeta,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A row of pill chips, the chosen one in ink; it scrolls sideways when it
+/// does not fit.
+class ArchiveChips<T> extends StatelessWidget {
+  const ArchiveChips({
+    super.key,
+    required this.values,
+    required this.labelOf,
+    required this.selected,
+    required this.onSelected,
+    this.scrolls = true,
+  });
+
+  final List<T> values;
+  final String Function(T) labelOf;
+  final T selected;
+  final ValueChanged<T> onSelected;
+
+  /// Whether the row scrolls sideways; off where it sits in another row.
+  final bool scrolls;
+
+  static const _height = 44.0;
+  static const _edge = 1.5;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (index, value) in values.indexed) ...[
+          if (index > 0) const SizedBox(width: AppSpacing.s8),
+          Semantics(
+            button: true,
+            selected: value == selected,
+            child: Material(
+              color: value == selected ? AppColors.ink : AppColors.card,
+              shape: StadiumBorder(
+                side: value == selected
+                    ? BorderSide.none
+                    : const BorderSide(color: AppColors.border, width: _edge),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => onSelected(value),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: _height),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.s16,
+                    ),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Text(
+                        labelOf(value),
+                        maxLines: 1,
+                        style: text.archiveLabel.copyWith(
+                          color: value == selected
+                              ? AppColors.onInk
+                              : AppColors.ink,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+    if (!scrolls) return row;
+    return SingleChildScrollView(scrollDirection: Axis.horizontal, child: row);
+  }
+}
+
+/// A big number with its unit, and its name under it.
+class _Figure extends StatelessWidget {
+  const _Figure({required this.value, required this.unit, required this.name});
+
+  final String value;
+  final String unit;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     return Semantics(
-      label: '$rise점 올랐어요',
+      container: true,
+      label: '$name $value$unit',
       child: ExcludeSemantics(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.accent.withValues(alpha: _strength),
-            borderRadius: const BorderRadius.all(Radius.circular(_radius)),
-          ),
-          child: Padding(
-            padding: AppHighlight.tightBandPadding,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.arrow_upward_rounded,
-                  size: _arrowSize,
-                  color: AppColors.ink,
-                ),
-                Text.rich(
-                  TextSpan(
-                    text: '$rise',
-                    children: [TextSpan(text: '점', style: text.archiveLabel)],
-                  ),
-                  style: text.archiveGain.copyWith(color: AppColors.ink),
-                ),
-              ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: value, style: text.feedbackStat),
+                  if (unit.isNotEmpty)
+                    TextSpan(text: ' $unit', style: text.archiveLabel),
+                ],
+              ),
+              maxLines: 1,
             ),
-          ),
+            Text(name, style: text.feedbackMeta),
+          ],
         ),
       ),
     );
   }
 }
 
-/// The short line for an exercise without a scored battle.
-class _NoScores extends StatelessWidget {
-  const _NoScores({required this.exercise});
+/// The period's battles, counted reps per battle and best score.
+class ArchiveSummary extends StatelessWidget {
+  const ArchiveSummary({super.key, required this.growth, this.holds = 0});
 
-  final ExerciseType exercise;
+  final ArchiveGrowth growth;
+
+  /// The period's holds, shown for 전체 in the best score's place.
+  final int holds;
+
+  /// "푸쉬업 3판 · 스쿼트 1판 · 버티기 2회".
+  static String split(ArchiveGrowth growth, int holds) => [
+    for (final MapEntry(:key, :value) in growth.perExercise.entries)
+      '${key.koreanName} $value판',
+    '버티기 $holds회',
+  ].join(' · ');
+
+  /// "5.5", or "6" when it is whole.
+  static String perMatch(double value) {
+    final rounded = (value * 10).round() / 10;
+    return rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(1);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s16),
-      child: Column(
-        children: [
-          Text(
-            '아직 점수 기록이 없어요',
-            textAlign: TextAlign.center,
-            style: text.lobbyRowTitle,
+    final best = growth.bestScore;
+    final every = growth.exercise == null;
+    final figures = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _Figure(value: '${growth.matches}', unit: '판', name: '경기'),
+        ),
+        Expanded(
+          child: _Figure(
+            value: perMatch(growth.repsPerMatch),
+            unit: '회',
+            name: '경기당 인정',
           ),
-          const SizedBox(height: AppSpacing.s4),
-          Text(
-            '${exercise.koreanName} 대결을 마치면 점수가 쌓여요.',
-            textAlign: TextAlign.center,
-            style: text.bodySmall?.copyWith(color: AppColors.textSecondary),
-          ),
-        ],
-      ),
+        ),
+        Expanded(
+          child: every
+              ? _Figure(value: '$holds', unit: '회', name: '버티기')
+              : _Figure(
+                  value: best == null ? '–' : '$best',
+                  unit: best == null ? '' : '점',
+                  name: '최고 점수',
+                ),
+        ),
+      ],
+    );
+    if (!every) return figures;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        figures,
+        const SizedBox(height: AppSpacing.s8),
+        Text(
+          split(growth, holds),
+          style: Theme.of(context).textTheme.feedbackMeta,
+        ),
+      ],
     );
   }
 }
 
-/// 푸쉬업 | 스쿼트 on a pale track; the picked one is white on ink. Each tab
-/// is drawn 40 high, as designed, and takes taps over 48.
-class _ExerciseTabs extends StatelessWidget {
-  const _ExerciseTabs({required this.selected, required this.onSelect});
+/// What the chart shows of each battle.
+enum ArchiveMeasure {
+  score('점수'),
+  reps('인정 횟수');
 
-  final ExerciseType selected;
-  final ValueChanged<ExerciseType> onSelect;
+  const ArchiveMeasure(this.label);
 
-  static const _trackHeight = 44.0;
-  static const _tabHeight = 40.0;
-  static const _inset = 2.0;
-  static const _tabRadius = 10.0;
+  final String label;
+}
+
+/// "경기별 점수": the period's battles in time, by score or by counted reps,
+/// with their mean as a dashed line and the newest in green; the days under
+/// it. Battles without a kept score are left out of the score view.
+class ArchiveScoreChart extends StatefulWidget {
+  const ArchiveScoreChart({super.key, required this.points});
+
+  final List<ArchivePoint> points;
+
+  static const height = 150.0;
+
+  @override
+  State<ArchiveScoreChart> createState() => _ArchiveScoreChartState();
+}
+
+/// A battle's dot on 전체's chart: push-ups in green, squats in ink.
+Color exerciseColor(ExerciseType exercise) => switch (exercise) {
+  ExerciseType.pushUp => AppColors.statusGood,
+  ExerciseType.squat => AppColors.ink,
+};
+
+class _ArchiveScoreChartState extends State<ArchiveScoreChart> {
+  ArchiveMeasure _measure = ArchiveMeasure.score;
+
+  static const _legendDot = 10.0;
 
   @override
   Widget build(BuildContext context) {
-    final label = Theme.of(context).textTheme.archiveLabel;
-    return Stack(
-      alignment: Alignment.center,
+    final text = Theme.of(context).textTheme;
+    final shown = [
+      for (final p in widget.points)
+        if (_measure == ArchiveMeasure.reps || p.score != null) p,
+    ];
+    final values = [
+      for (final p in shown)
+        _measure == ArchiveMeasure.score ? p.score! : p.reps,
+    ];
+    final unit = _measure == ArchiveMeasure.score ? '점' : '회';
+    final mixed = shown.map((p) => p.exercise).toSet().length > 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Positioned.fill(
-          child: Center(
-            child: SizedBox(
-              height: _trackHeight,
-              width: double.infinity,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.facetLight,
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(AppRadius.small),
+        ArchiveSectionTitle(
+          '경기별 ${_measure.label}',
+          trailing: ArchiveChips<ArchiveMeasure>(
+            values: ArchiveMeasure.values,
+            labelOf: (m) => m.label,
+            selected: _measure,
+            onSelected: (m) => setState(() => _measure = m),
+            scrolls: false,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s12),
+        if (values.isEmpty)
+          Text('이 기간에 기록된 경기가 없어요.', style: text.feedbackMeta)
+        else ...[
+          Semantics(
+            container: true,
+            label:
+                '경기별 ${_measure.label}: '
+                '${[for (final v in values) '$v$unit'].join(', ')}',
+            child: ExcludeSemantics(
+              child: SizedBox(
+                height: ArchiveScoreChart.height,
+                child: CustomPaint(
+                  painter: ArchiveTrendPainter(
+                    values: values,
+                    labelStyle: text.coachChipNumber,
+                    meanStyle: text.statsAxis,
+                    colors: mixed
+                        ? [for (final p in shown) exerciseColor(p.exercise)]
+                        : null,
                   ),
                 ),
               ),
             ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: _inset),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final (index, exercise) in ExerciseType.values.indexed) ...[
-                if (index > 0) const SizedBox(width: _inset),
-                TextButton(
-                  onPressed: () => onSelect(exercise),
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(0, _tabHeight),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.s12,
+          const SizedBox(height: AppSpacing.s8),
+          if (mixed) ...[
+            ExcludeSemantics(
+              child: Wrap(
+                spacing: AppSpacing.s12,
+                children: [
+                  for (final e in ExerciseType.values)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox.square(
+                          dimension: _legendDot,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: exerciseColor(e),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.s4),
+                        Text(e.koreanName, style: text.feedbackMeta),
+                      ],
                     ),
-                    tapTargetSize: MaterialTapTargetSize.padded,
-                    backgroundColor: exercise == selected
-                        ? AppColors.ink
-                        : Colors.transparent,
-                    foregroundColor: exercise == selected
-                        ? AppColors.onInk
-                        : AppColors.textSecondary,
-                    textStyle: label,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(_tabRadius),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s8),
+          ],
+          ExcludeSemantics(
+            child: Row(
+              children: [
+                for (final p in shown)
+                  Expanded(
+                    child: Text(
+                      archiveDay(p.playedAt),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      style: text.statsAxis,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "11.23", in the phone's time.
+String archiveDay(DateTime at) {
+  final local = at.toLocal();
+  return '${local.month}.${local.day.toString().padLeft(2, '0')}';
+}
+
+/// "24.6초", or "1분 12초" from a minute: a hold's time.
+String archiveHoldTime(Duration d) {
+  final tenths = (d.inMilliseconds / 100).round();
+  if (tenths >= 600) {
+    final seconds = (tenths / 10).round();
+    return '${seconds ~/ 60}분 ${seconds % 60}초';
+  }
+  final value = tenths / 10;
+  return value == value.roundToDouble()
+      ? '${value.toStringAsFixed(0)}초'
+      : '${value.toStringAsFixed(1)}초';
+}
+
+/// "개인 최고": each exercise's best score with its reps and day, and each
+/// hold pose's longest hold with its day, on grey tiles two to a row.
+class ArchiveBests extends StatelessWidget {
+  const ArchiveBests({super.key, this.bests = const [], this.holds = const []});
+
+  final List<ArchiveBest> bests;
+
+  /// Each pose's longest hold.
+  final List<HoldRecord> holds;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final tiles = <({String name, String value, String unit, String line})>[
+      for (final b in bests)
+        (
+          name: b.exercise.koreanName,
+          value: '${b.score}',
+          unit: '점',
+          line: '인정 ${b.reps}회 · ${archiveDay(b.playedAt)}',
+        ),
+      for (final h in holds)
+        (
+          name: h.pose.label,
+          value: archiveHoldTime(h.held),
+          unit: '',
+          line: '버티기 · ${archiveDay(h.endedAt)}',
+        ),
+    ];
+    if (tiles.isEmpty) {
+      return Text('기록된 최고 기록이 아직 없어요.', style: text.feedbackMeta);
+    }
+    Widget tile(({String name, String value, String unit, String line}) t) =>
+        DecoratedBox(
+          decoration: const BoxDecoration(
+            color: AppColors.cardHigh,
+            borderRadius: BorderRadius.all(Radius.circular(AppRadius.small)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.s12),
+            child: Semantics(
+              container: true,
+              label: '${t.name} 최고 ${t.value}${t.unit}, ${t.line}',
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t.name, style: text.feedbackMeta),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: t.value, style: text.feedbackStat),
+                          if (t.unit.isNotEmpty)
+                            TextSpan(
+                              text: ' ${t.unit}',
+                              style: text.archiveLabel,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Text(t.line, style: text.feedbackMeta),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < tiles.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.s8),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tile(tiles[i])),
+                const SizedBox(width: AppSpacing.s8),
+                Expanded(
+                  child: i + 1 < tiles.length
+                      ? tile(tiles[i + 1])
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "자주 나온 자세 문제": the period's reject reasons as warning bars against
+/// the most frequent, most first.
+class ArchiveIssues extends StatelessWidget {
+  const ArchiveIssues({super.key, required this.issues});
+
+  final List<ArchiveIssue> issues;
+
+  static const _barHeight = 10.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    if (issues.isEmpty) {
+      return Text('이 기간에 무효 처리된 횟수가 없어요.', style: text.feedbackMeta);
+    }
+    final most = issues.first.count;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (index, issue) in issues.indexed) ...[
+          if (index > 0) const SizedBox(height: AppSpacing.s12),
+          MergeSemantics(
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    issue.reason.koreanMessage,
+                    maxLines: 2,
+                    style: text.reportCardTitle,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                Expanded(
+                  flex: 2,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.all(
+                      Radius.circular(AppRadius.small),
+                    ),
+                    child: SizedBox(
+                      height: _barHeight,
+                      child: Stack(
+                        children: [
+                          const Positioned.fill(
+                            child: ColoredBox(color: AppColors.facetLight),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: issue.count / most,
+                            heightFactor: 1,
+                            child: const ColoredBox(color: AppColors.warning),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  // Inside the button, so its node says it is the picked one.
-                  child: Semantics(
-                    selected: exercise == selected,
-                    child: Text(exercise.koreanName),
-                  ),
                 ),
+                const SizedBox(width: AppSpacing.s8),
+                Text('${issue.count}회', style: text.coachChipNumber),
               ],
-            ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 버티기's summary on the 전체 tab, as an exercise's (user, 2026-11-26):
+/// holds, time held and the longest hold of the period.
+class ArchiveHoldFigures extends StatelessWidget {
+  const ArchiveHoldFigures({super.key, required this.holds});
+
+  final ArchiveHolds holds;
+
+  @override
+  Widget build(BuildContext context) {
+    final best = holds.bestHeld;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _Figure(value: '${holds.count}', unit: '회', name: '횟수'),
+        ),
+        Expanded(
+          child: _Figure(
+            value: archiveHoldTime(holds.held),
+            unit: '',
+            name: '버틴 시간',
+          ),
+        ),
+        Expanded(
+          child: _Figure(
+            value: best == null ? '–' : archiveHoldTime(best),
+            unit: '',
+            name: '최고 버틴 시간',
           ),
         ),
       ],
@@ -541,8 +709,441 @@ class _ExerciseTabs extends StatelessWidget {
   }
 }
 
-/// In the cards' place when the summary failed while the list shows: one
-/// line and "다시 시도".
+/// A hold's dot: a high plank in green, a chair pose in ink.
+Color holdPoseColor(HoldPose pose) => switch (pose) {
+  HoldPose.plank => AppColors.statusGood,
+  HoldPose.chair => AppColors.ink,
+};
+
+/// "경기별 버틴 시간": the period's holds in time, as 경기별 점수 is for the
+/// battles; the poses told apart by colour when both are there.
+class ArchiveHoldChart extends StatelessWidget {
+  const ArchiveHoldChart({super.key, required this.holds});
+
+  /// Oldest first.
+  final List<HoldRecord> holds;
+
+  static const _legendDot = 10.0;
+
+  static String _oneDecimal(num v) {
+    final rounded = (v * 10).round() / 10;
+    return rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final mixed = holds.map((h) => h.pose).toSet().length > 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const ArchiveSectionTitle('경기별 버틴 시간'),
+        const SizedBox(height: AppSpacing.s12),
+        if (holds.isEmpty)
+          Text('이 기간에 기록된 버티기가 없어요.', style: text.feedbackMeta)
+        else ...[
+          Semantics(
+            container: true,
+            label:
+                '경기별 버틴 시간: '
+                '${[for (final h in holds) archiveHoldTime(h.held)].join(', ')}',
+            child: ExcludeSemantics(
+              child: SizedBox(
+                height: ArchiveScoreChart.height,
+                child: CustomPaint(
+                  painter: ArchiveTrendPainter(
+                    values: [
+                      for (final h in holds) h.held.inMilliseconds / 1000,
+                    ],
+                    labelStyle: text.coachChipNumber,
+                    meanStyle: text.statsAxis,
+                    format: _oneDecimal,
+                    colors: mixed
+                        ? [for (final h in holds) holdPoseColor(h.pose)]
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          if (mixed) ...[
+            ExcludeSemantics(
+              child: Wrap(
+                spacing: AppSpacing.s12,
+                children: [
+                  for (final pose in HoldPose.values)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox.square(
+                          dimension: _legendDot,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: holdPoseColor(pose),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.s4),
+                        Text(pose.label, style: text.feedbackMeta),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s8),
+          ],
+          ExcludeSemantics(
+            child: Row(
+              children: [
+                for (final h in holds)
+                  Expanded(
+                    child: Text(
+                      archiveDay(h.endedAt),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      style: text.statsAxis,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// "이번 주 운동량" on the 전체 tab (P13, draft C): estimated calories and
+/// lifted weight of the period's battles kept on this phone, each against the period before with two bars (this one in
+/// green, the one before in grey); 전체 기간 has no period before.
+class ArchiveVolumeSection extends StatelessWidget {
+  const ArchiveVolumeSection({
+    super.key,
+    required this.volume,
+    required this.period,
+    this.holdsOnly = false,
+  });
+
+  final ArchiveVolume volume;
+  final StatsPeriod period;
+
+  /// 버티기: calories only; a hold lifts no weight.
+  final bool holdsOnly;
+
+  /// "지난 주", "지난 달".
+  static String previousLabel(StatsPeriod period) => switch (period) {
+    StatsPeriod.week => '지난 주',
+    StatsPeriod.month => '지난 달',
+    StatsPeriod.all => '',
+  };
+
+  /// "750 kg", or "4.2 t" from a tonne.
+  static (String, String) weight(double kg) =>
+      kg >= 1000 ? (_oneDecimal(kg / 1000), 't') : ('${kg.round()}', 'kg');
+
+  static String _oneDecimal(num v) {
+    final rounded = (v * 10).round() / 10;
+    return rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final now = volume.current;
+    final before = volume.previous;
+    final (lifted, liftedUnit) = weight(now.liftedKg);
+    final weightNote = volume.weightAssumed
+        ? '${volume.weightKg.round()} kg 기준 추정'
+        : '체중 ${_oneDecimal(volume.weightKg)} kg 기준 추정';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ArchiveSectionTitle(
+          '${archivePeriodLabel(period)} 운동량',
+          trailing: before == null
+              ? null
+              : _Legend(
+                  now: archivePeriodLabel(period),
+                  before: previousLabel(period),
+                ),
+        ),
+        if (now.battles == 0 && now.holds == 0) ...[
+          const SizedBox(height: AppSpacing.s12),
+          Text(
+            holdsOnly ? '이 기간에 버티기 기록이 없어요.' : '이 기간에 이 폰에 남은 기록이 없어요.',
+            style: text.feedbackMeta,
+          ),
+        ] else ...[
+          _VolumeRow(
+            name: '예상 소모 칼로리',
+            value: _oneDecimal(now.kcal),
+            unit: 'kcal',
+            now: now.kcal,
+            before: before?.kcal,
+            change: before == null ? null : _oneDecimal(now.kcal - before.kcal),
+            note: !holdsOnly && now.holds > 0 ? '버티기 ${now.holds}회 포함' : null,
+          ),
+        ],
+        if (!holdsOnly && (now.battles > 0 || now.holds > 0)) ...[
+          const Divider(height: 1, color: AppColors.facetLight),
+          _VolumeRow(
+            name: '들어 올린 무게',
+            value: lifted,
+            unit: liftedUnit,
+            now: now.liftedKg,
+            before: before?.liftedKg,
+            change: before == null
+                ? null
+                : () {
+                    final (v, u) = weight(
+                      (now.liftedKg - before.liftedKg).abs(),
+                    );
+                    return '$v $u';
+                  }(),
+            down: before != null && now.liftedKg < before.liftedKg,
+          ),
+        ],
+        const SizedBox(height: AppSpacing.s8),
+        Text(weightNote, style: text.feedbackMeta),
+      ],
+    );
+  }
+}
+
+class _Legend extends StatelessWidget {
+  const _Legend({required this.now, required this.before});
+
+  final String now;
+  final String before;
+
+  static const _box = 10.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.feedbackMeta;
+    Widget item(Color color, String label) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox.square(
+          dimension: _box,
+          child: ColoredBox(color: color),
+        ),
+        const SizedBox(width: AppSpacing.s4),
+        Text(label, style: style),
+      ],
+    );
+    return ExcludeSemantics(
+      child: Wrap(
+        spacing: AppSpacing.s8,
+        children: [
+          item(AppColors.statusGood, now),
+          item(AppColors.inactive, before),
+        ],
+      ),
+    );
+  }
+}
+
+class _VolumeRow extends StatelessWidget {
+  const _VolumeRow({
+    required this.name,
+    required this.value,
+    required this.unit,
+    required this.now,
+    this.before,
+    this.change,
+    this.down,
+    this.note,
+  });
+
+  final String name;
+  final String value;
+  final String unit;
+  final double now;
+  final double? before;
+
+  /// The change's words without its sign; null without a period before.
+  final String? change;
+
+  /// Whether the change is down; by default when [change] starts with "-".
+  final bool? down;
+  final String? note;
+
+  static const _bar = 12.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final before = this.before;
+    final change = this.change;
+    final note = this.note;
+    final isDown = down ?? (change?.startsWith('-') ?? false);
+    final shown = change?.replaceFirst('-', '');
+    final most = [now, ?before, 1e-9].reduce((a, b) => a > b ? a : b);
+    Widget bar(double value, Color color) => ClipRRect(
+      borderRadius: const BorderRadius.all(Radius.circular(AppRadius.small)),
+      child: SizedBox(
+        height: _bar,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(
+            widthFactor: (value / most).clamp(0.0, 1.0),
+            heightFactor: 1,
+            child: ColoredBox(color: color),
+          ),
+        ),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 5,
+            child: Semantics(
+              container: true,
+              label: [
+                '$name $value$unit',
+                if (shown != null) '${isDown ? '감소' : '증가'} $shown',
+                ?note,
+              ].join(', '),
+              child: ExcludeSemantics(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: text.feedbackMeta),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: value, style: text.feedbackStat),
+                          if (unit.isNotEmpty)
+                            TextSpan(text: ' $unit', style: text.archiveLabel),
+                        ],
+                      ),
+                    ),
+                    if (shown != null)
+                      Text(
+                        '${isDown ? '-' : '+'}$shown',
+                        style: text.coachChipNumber,
+                      ),
+                    if (note != null) Text(note, style: text.feedbackMeta),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s12),
+          Expanded(
+            flex: 6,
+            child: ExcludeSemantics(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  bar(now, AppColors.statusGood),
+                  if (before != null) ...[
+                    const SizedBox(height: AppSpacing.s4),
+                    bar(before, AppColors.inactive),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 전체 · 푸쉬업 · 스쿼트 · 버티기 on the 전체 tab (user, 2026-11-26).
+class ArchiveScopeChips extends StatelessWidget {
+  const ArchiveScopeChips({
+    super.key,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final ArchiveScope selected;
+  final ValueChanged<ArchiveScope> onSelected;
+
+  @override
+  Widget build(BuildContext context) => ArchiveChips<ArchiveScope>(
+    values: ArchiveScope.values,
+    labelOf: (s) => s.label,
+    selected: selected,
+    onSelected: onSelected,
+  );
+}
+
+/// "자주 받은 경고" for 버티기: the period's warnings, most first, as bars.
+class ArchiveHoldWarnings extends StatelessWidget {
+  const ArchiveHoldWarnings({super.key, required this.warnings});
+
+  final List<({String words, int count})> warnings;
+
+  static const _barHeight = 10.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    if (warnings.isEmpty) {
+      return Text('이 기간에 받은 경고가 없어요.', style: text.feedbackMeta);
+    }
+    final most = warnings.first.count;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (index, w) in warnings.indexed) ...[
+          if (index > 0) const SizedBox(height: AppSpacing.s12),
+          MergeSemantics(
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(w.words, style: text.reportCardTitle),
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                Expanded(
+                  flex: 2,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.all(
+                      Radius.circular(AppRadius.small),
+                    ),
+                    child: SizedBox(
+                      height: _barHeight,
+                      child: Stack(
+                        children: [
+                          const Positioned.fill(
+                            child: ColoredBox(color: AppColors.facetLight),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: w.count / most,
+                            heightFactor: 1,
+                            child: const ColoredBox(color: AppColors.warning),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s8),
+                Text('${w.count}회', style: text.coachChipNumber),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// In the 전체 tab's place when the battles of the period failed to load:
+/// one line and "다시 시도".
 class ArchiveStatsRetry extends StatelessWidget {
   const ArchiveStatsRetry({super.key, required this.onRetry});
 
@@ -551,15 +1152,10 @@ class ArchiveStatsRetry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    return ArchiveCard(
+    return ArchiveSection(
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              '최근 7일과 점수 성장을 불러오지 못했어요',
-              style: text.bodyMedium?.copyWith(color: AppColors.textSecondary),
-            ),
-          ),
+          Expanded(child: Text('기간별 기록을 불러오지 못했어요', style: text.feedbackMeta)),
           const SizedBox(width: AppSpacing.s12),
           OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
         ],

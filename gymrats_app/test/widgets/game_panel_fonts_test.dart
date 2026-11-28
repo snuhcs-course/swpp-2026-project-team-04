@@ -34,6 +34,13 @@ void main() {
     testWidgets('at 360 wide and text scale $scale the tutorial\'s grade '
         'pages keep each grade and its points on one line', (tester) async {
       await _loadAppFonts(tester);
+      // The tutorial's pictures move until the device asks for reduced
+      // motion (A12); held still, pumpAndSettle returns.
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
       tester.platformDispatcher.textScaleFactorTestValue = scale;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       tester.view.physicalSize = const Size(360, 740);
@@ -47,12 +54,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       // The push-up's grade pages follow intro, setup and battle.
-      for (final label in const [
-        'EXCELLENT +15',
-        'GOOD +10',
-        'AVERAGE +5',
-        'FAIL 0점',
-      ]) {
+      // A12: the grades' bands and the fail page's reject sign, on the
+      // game screen in each page's bubble.
+      for (final label in const ['EXCELLENT', 'GOOD', 'AVERAGE', '무릎 떼기']) {
         while (find.text(label).hitTestable().evaluate().isEmpty) {
           await tester.tap(find.text('다음'));
           await tester.pumpAndSettle();
