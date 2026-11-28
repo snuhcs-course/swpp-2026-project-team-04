@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../main.dart';
-import '../models/battle_rules.dart';
 import '../services/friends/friend_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/home_viewmodel.dart';
@@ -25,10 +24,12 @@ class PlayScreen extends StatelessWidget {
   /// Asks for the exercise, then opens the online lobby. Closing the sheet
   /// stays here.
   Future<void> _startOnline(BuildContext context) async {
+    // P11: no "온라인 1v1 · 30초" line; the weekly rankings under the cards.
     final exercise = await showExerciseSheet(
       context,
-      subtitle: '온라인 1v1 · ${battleDuration.inSeconds}초',
       profile: context.read<HomeViewModel>().state.profile!,
+      onRankings: () =>
+          Navigator.pushNamed(context, GymRatsApp.weeklyRankingsRoute),
     );
     if (exercise == null || !context.mounted) return;
     Navigator.pushNamed(

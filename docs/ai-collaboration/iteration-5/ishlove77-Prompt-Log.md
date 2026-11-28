@@ -695,3 +695,92 @@ The messages after this summary are the most recent messages from before compact
 
 <!-- 5e0c5b9b 2026-11-27T09:55:03.536Z -->
 [Jinyoung Park, 11-27 18:55] "그리고 너가 알아서 코덱스 추가 리뷰 있는지도 검사좀 하고 만약 문제 있으면 수정"
+
+## 2026-11-28 · Jinyoung Park · feat/iter5-weekly-rankings
+<!-- 5e0c5b9b 2026-11-27T10:16:11.694Z -->
+[Jinyoung Park, 11-27 19:16] "머지됐음 배포 ㄱㄱ"
+
+<!-- 5e0c5b9b 2026-11-27T10:16:51.978Z -->
+[Jinyoung Park, 11-27 19:16] "상우게게 보낼 메세지 추천"
+
+<!-- 5e0c5b9b 2026-11-27T12:03:10.098Z -->
+[Jinyoung Park, 11-27 21:03] "merge 됬으면 전체 서버 배포 ㄱㄱ"
+
+<!-- 5e0c5b9b 2026-11-27T12:29:16.643Z -->
+[Jinyoung Park, 11-27 21:29] "그러면 다음 task는 이제 뭐지?"
+
+<!-- ad7bb226 2026-11-27T12:29:59.855Z -->
+[Jinyoung Park, 11-27 21:29] "task를 수행해보자. 일단 지금어떻게 실행할지만 알려줘봐"
+
+<!-- ad7bb226 2026-11-27T12:32:58.472Z -->
+[Jinyoung Park, 11-27 21:32] "아니 주간 랭킹부터 ㄱㄱ"
+
+<!-- ad7bb226 2026-11-27T12:38:16.279Z -->
+[Jinyoung Park, 11-27 21:38] "일단지금 승점 구조가 어캐 되지?"
+
+<!-- ad7bb226 2026-11-27T12:40:14.625Z -->
+[Jinyoung Park, 11-27 21:40] "그러면 다시 물어봐봐 내가 답해줄게"
+
+<!-- ad7bb226 2026-11-27T12:52:12.442Z -->
+[Jinyoung Park, 11-27 21:52] "download밑으로 옮겨놔"
+
+<!-- ad7bb226 2026-11-27T12:52:37.749Z -->
+[Jinyoung Park, 11-27 21:52] "승인"
+
+<!-- ad7bb226 2026-11-27T13:02:01.801Z -->
+[Jinyoung Park, 11-27 22:02] "리뷰 끝나면 알려줘"
+
+<!-- ad7bb226 2026-11-27T13:26:49.751Z -->
+[Jinyoung Park, 11-27 22:26] "emulator에서 testdata넣어서 한번 실행해봐"
+
+<!-- ad7bb226 2026-11-27T13:44:41.232Z -->
+[Jinyoung Park, 11-27 22:44] "전체 랭킹에서 내리기 하면 하면 뭔가 이상하게 화면이 되는데 그거랑 그다음에 위에 KO 승 10, 승 5, 무 3, 패 1 이런거 싹다 위에 글 자체를 없애주고, 그리고 지금 승점 제대로 계산된거 맞나"
+
+<!-- ad7bb226 2026-11-27T15:45:18.774Z -->
+[Jinyoung Park, 11-28 00:45] "올려"
+
+## 2026-11-28 · Jinyoung Park · feat/iter5-weekly-rankings
+<!-- ad7bb226 2026-11-27T16:34:04.481Z -->
+[Jinyoung Park, 11-28 01:34] "어캐됨"
+
+<!-- ad7bb226 2026-11-27T16:44:03.026Z -->
+[Jinyoung Park, 11-28 01:44] "이거 꼭 해야함?"
+
+<!-- ad7bb226 2026-11-27T16:44:20.126Z -->
+[Jinyoung Park, 11-28 01:44] "한국어로 말해 pr 날려라"
+
+<!-- ad7bb226 2026-11-27T16:53:57.582Z -->
+[Jinyoung Park, 11-28 01:53] "근데 지금 squatt, pushup별개로 있지?"
+
+<!-- ad7bb226 2026-11-27T16:54:14.045Z -->
+[Jinyoung Park, 11-28 01:54] "split해야함"
+
+## 2026-11-28 · Jinyoung Park · feat/iter5-weekly-rankings
+<!-- ad7bb226 2026-11-27T17:22:22.874Z -->
+[Jinyoung Park, 11-28 02:22] "push했음?"
+
+<!-- ad7bb226 2026-11-27T17:39:56.444Z -->
+[Jinyoung Park, 11-28 02:39] "어캐됨?"
+
+<!-- ad7bb226 2026-11-27T17:47:58.161Z -->
+[Jinyoung Park, 11-28 02:47] "아니 한국어로 나한테 달라고"
+
+<!-- ad7bb226 2026-11-27T17:50:20.571Z -->
+[Jinyoung Park, 11-28 02:50] "고치라고"
+
+## 2026-11-28 · Jinyoung Park · feat/iter5-weekly-rankings
+<!-- ad7bb226 2026-11-27T18:08:35.135Z -->
+[Jinyoung Park, 11-28 03:08] "어캐됨"
+
+<!-- ad7bb226 2026-11-27T18:24:30.617Z -->
+[Jinyoung Park, 11-28 03:24] "됬음?"
+
+<!-- ad7bb226 2026-11-27T18:24:41.486Z -->
+[Jinyoung Park, 11-28 03:24] "다 고쳐"
+
+## 2026-11-28 · Jinyoung Park · feat/iter5-weekly-rankings
+<!-- ad7bb226 2026-11-27T18:38:47.703Z -->
+[Jinyoung Park, 11-28 03:38] "어캐됨?"
+
+<!-- ad7bb226 2026-11-27T18:39:17.850Z -->
+[Jinyoung Park, 11-28 03:39] "고쳐"

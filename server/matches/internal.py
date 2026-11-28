@@ -181,6 +181,7 @@ class ResultSaveView(_InternalView):
         battle.result_id = result_id
         battle.status = OnlineBattle.FINISHED
         battle.reason = data["reason"]
+        battle.kind = data["kind"]
         battle.player_ids = [p["player_id"] for p in players]
         battle.ended_at = ended_at
         battle.save()

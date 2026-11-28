@@ -5,6 +5,105 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `76fa05c`
+Code at commit `00cc5f6`.
+- **Finding (P2):** a read asked just before Monday 00:00 KST and answered after it kept last week, with no timer
+  left. The view model now remembers when it asked; if the week ended while the read was on, it reads once more. An
+  old week asked for after its end (the phone's clock ahead) is kept, so it never loops.
+- **Tests:** `a read that crosses the end of the week reads the new one` (fails without the fix), `an old week again
+  after that is kept, read only twice`.
+- **Results:** `flutter analyze` no issues; `flutter test` 5336 passed, 0 failed, 10 skipped. No server change.
+
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `31dc5ce`
+Code at commit `cb4107b`.
+- **Finding (P2):** a kept ranking was shown for good when the screen stayed open past Monday 00:00 KST. The view
+  model now drops kept rankings whose week has ended when a tab is chosen, reads the shown one again at the week's
+  end (a timer, not set when the week is already over by the phone's clock) and when the app comes back to the
+  front. The view model takes the clock, so the tests no longer depend on today's date.
+- **Tests:** view model `coming back after it reads the shown ranking again`, `a tab kept from the old week is read
+  again when chosen`, `the open screen reads again at the end of the week`, `a week already over by the phone's clock
+  is not read on and on`, `a timer that fires early by the clock waits again`, `a kept tab shown again still reads
+  at the end of the week`, `dispose stops the end-of-week read`; screen `back from the background in a new week, it
+  reads again`. Each new test failed with its part of the fix taken out.
+- **Results:** `flutter analyze` no issues; `flutter test` 5334 passed, 0 failed, 10 skipped; weekly_rankings_viewmodel
+  100%, weekly_rankings_screen 100%. No server change (367 passed).
+
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fixes for the Codex review of `ae1e9c7`
+Code at commits `a7d6135` (legacy kind) and `d4bc830` (database ranking).
+- **Finding 1 (P2, unknown kind counted as main):** a result without `kind` (an older battle server) and every row
+  stored before migration 0004 were `main`, so a friend battle could score. They are now `legacy` and never score.
+  Tests: `test_a_result_without_a_kind_is_kept_as_legacy`, `test_a_battle_of_unknown_kind_does_not_count` (the
+  rankings test helper now sends `kind: main` by default).
+- **Finding 2 (P2, every row loaded in Python):** the database now picks the scoring rows, sums the points, ranks
+  with a window function and returns the top 50 only; my own row's rank is a count. Test:
+  `test_the_global_ranking_reads_a_fixed_number_of_queries` (at most 5 queries) and
+  `test_a_battle_of_an_id_that_holds_mine_does_not_count` (fails if the id is matched without its quotes). The seeded demo data gives the same
+  answer as before. Not done: an index on `Match.played_at` (outside P11's approved paths; PM follow-up).
+- **Results:** server `pytest` 367 passed, 0 failed, 98% (`matches/rankings.py` 100%). No app change.
+
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): rankings split by exercise, no stretch past the end
+Code at commits `8395855` (server), `5ae5975` (app tabs), `148669d` (stretch fix).
+- **Change (user decision, PM approval relayed):** push-ups and squats are ranked apart. The endpoint takes
+  `exercise=push_up|squat` (default `push_up`, unknown value 422) and answers with `exercise`. The screen has the
+  전체/친구 tabs and under them a 푸쉬업/스쿼트 row; it opens on 전체 · 푸쉬업, and each choice keeps the other.
+- **Tests:** server `test_push_ups_and_squats_rank_apart`, `test_friends_rank_each_exercise_apart`,
+  `test_without_an_exercise_the_ranking_is_push_ups`, `test_an_unknown_exercise_is_refused`; repository `asks for the
+  friends scope of squats by name`, `a reply of an exercise it does not know is a server error`; view model
+  `choosing squats reads them in the shown scope and keeps push-ups`, `choosing the shown exercise does nothing`;
+  screen `the exercise tabs sit under the scope tabs, push-ups first`, `squats show their own ranking in each scope`.
+- **Stretch fix:** the user saw the rows stretch on Android when pulling the list past its end (Android 12 stretch
+  overscroll). The list now turns overscroll off; `pulling past the end does not stretch the rows` failed before the
+  fix (it found a `StretchingOverscrollIndicator`) and passes now.
+- **Results:** `flutter analyze` no issues; `flutter test` 5326 passed, 0 failed, 10 skipped. Server `pytest` 364
+  passed, 0 failed, 98% (`matches/rankings.py` 100%). Changed files (reviewer's run over the changed tests):
+  rankings_repository 100%, weekly_rankings_viewmodel 100%, weekly_rankings_screen 100%.
+- **Manual check:** Android emulator, the rankings screen with answers this branch's Django code computed (push-up
+  and squat battles seeded): push-ups unchanged (36, 19, …); squats apart (근손실 20 first; 데모 1+1+3 = 5 tied with
+  단짝 at 2); the friends tab of squats shows squat points only; pulling past the end of the list no longer stretches
+  the rows.
+
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (team plan #13): weekly global and friends rankings
+`GET /api/matches/rankings/weekly?scope=global|friends` sums this week's points (Monday 00:00 KST) from main online
+battles stored by the battle server: KO win 10, win 5, draw 3, loss 1, own forfeit or disconnect 0, void 0. Friend
+battles are told apart by the new `OnlineBattle.kind`. The online exercise sheet gets a 주간 랭킹 row that opens a
+rankings screen with 전체 and 친구 tabs. Commands from `gymrats_app/` and `server/` on macOS (Flutter 3.47.5 /
+Dart 3.13.4, Python 3.12) on code commit `5b00ab3` (P11 merged with `origin/main` `32d2106`).
+
+| Component | Frameworks | Target | Actual (P11 files) | Date | Command / Report |
+|---|---|---|---|---|---|
+| Service | flutter_test, http MockClient | 85% | rankings_repository 100% | 11/28 | `flutter test --coverage <P11 test files>` + `coverage_by_layer.py --files` |
+| ViewModel | flutter_test, fakes | 90% | weekly_rankings_viewmodel 100% | 11/28 | same run |
+| View | flutter_test (widget) | 75% | weekly_rankings_screen 100%, play_screen 100%, exercise_sheet 97.7% | 11/28 | same run |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total; matches/rankings.py 100% | 11/28 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 5320 passed, 0 failed, 10 skipped (the existing opt-in live
+  server and device checks). Server `pytest` 360 passed, 0 failed (18 in `test_weekly_rankings.py`, 3 new kind cases
+  in `test_results.py`).
+- **Coverage notes:** the full per-file run (`coverage_per_file.sh`, 248 files) was too slow on this Mac and was
+  stopped after 169 files; coverage was measured over the six P11 test files instead (122 tests). Layer totals for the
+  whole app are in the P10 entry below and P11 only adds files at or above the targets. The battle server's
+  `kind` field (`server/lib/battle_server.dart`) is outside lcov and covered by `a friend battle is stored as kind
+  friend` and the main-battle body check in `battle_result_store_test.dart`.
+- **Shortfalls:** none against the targets. `lib/main.dart` wiring of the route is not tested (excluded from
+  coverage; `main_test.dart` is outside P11's paths).
+- **Manual check:** Android emulator (Medium Phone) with a scratchpad entry point: `GymRatsApp` with
+  `ServerRankingsRepository` over a `MockClient` serving answers that this branch's Django code computed on an
+  in-memory database from 20 battles posted to `/internal/results`. Totals matched a hand count (10+5+3+1+0 = 19 and
+  five more players), the friend battle and last week's battle were left out, ties shared a rank, scrolling kept the
+  header fixed, the friends tab showed a 0-point friend, and back returned to the sheet. Not checked: production
+  servers, real battles.
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_weekly_rankings.py` | Server | points per outcome and end reason, week bounds, sums, leaving, this week only, resent result once, app-saved rows, simulated opponent, friend battle, void and unfinished, a battle I was not in, shared ranks, top 50 with my row apart, friends with 0 points, deleted friend, unknown scope 422, login 401 |
+| `server/tests/test_results.py` (updated) | Server | kind kept, no kind is main, unknown kind 422 |
+| `test/services/rankings/rankings_repository_test.dart` | Service | request path, scope and token, parsing, no row of mine, unreadable reply, error status, value equality, point constants, in-memory fake |
+| `test/viewmodels/weekly_rankings_viewmodel_test.dart` | ViewModel | starts on global, no double read, tab switch with cache, slow scope under its own tab, errors and retry, dispose guard |
+| `test/screens/weekly_rankings_screen_test.dart` | View | spinner, list with dates and no rules line, ties, my row fill, friends tab, my row under the list, empty week, only me in friends, error and retry, semantics, 50 rows at text scale 1.6 on 320×640, only rows scroll, short list height, KST week label |
+| `test/widgets/exercise_sheet_test.dart` (updated) | View | no title line, the line when given, rankings row only with a target, its place and podium, semantics, small phone |
+| `test/screens/play_screen_test.dart` (updated) | View | no "온라인 1v1 · 30초", the rankings row opens the rankings and back returns to the sheet |
+| `test/services/online/battle_result_store_test.dart` (updated) | Service (battle server) | `kind` main and friend in the stored body |
+
 #### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): the simulated player's character
 - **Change:** the simulated player no longer always shows the default character. It shows the character the copied
   account last joined with (kept in the battle server's memory), or else a selectable one at random, never RepBot.

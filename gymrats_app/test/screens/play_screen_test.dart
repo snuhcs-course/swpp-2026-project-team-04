@@ -94,6 +94,8 @@ void main() {
           ),
           GymRatsApp.arcadeRoute: (_) =>
               const Scaffold(body: Text('arcade map')),
+          GymRatsApp.weeklyRankingsRoute: (_) =>
+              const Scaffold(body: Text('weekly rankings')),
         },
       ),
     );
@@ -204,7 +206,9 @@ void main() {
     // The main match: no mode to pick first (friends have their own row).
     expect(find.text('메인 매치'), findsNothing);
     expect(find.byType(ExerciseSheet), findsOneWidget);
-    expect(find.text('온라인 1v1 · 30초'), findsOneWidget);
+    // P11: no "온라인 1v1 · 30초" line; the weekly rankings row instead.
+    expect(find.text('온라인 1v1 · 30초'), findsNothing);
+    expect(find.byType(WeeklyRankingsRow), findsOneWidget);
     // The sheet reads each exercise's own best.
     expect(find.text('개인 최고 240점', findRichText: true), findsOneWidget);
     expect(find.text('개인 최고 30회', findRichText: true), findsOneWidget);
@@ -217,6 +221,20 @@ void main() {
       ),
     );
     expect(find.text('lobby ${ExerciseType.squat}'), findsOneWidget);
+  });
+
+  testWidgets('the sheet\'s weekly rankings row opens the rankings over it', (
+    tester,
+  ) async {
+    await open(tester);
+    await tapAndSettle(tester, find.text('온라인 대결'));
+    await tapAndSettle(tester, find.text('주간 랭킹'));
+    expect(find.text('weekly rankings'), findsOneWidget);
+
+    // Back comes to the sheet, still asking for the exercise.
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(ExerciseSheet), findsOneWidget);
   });
 
   testWidgets('closing the online sheet stays here with no lobby', (

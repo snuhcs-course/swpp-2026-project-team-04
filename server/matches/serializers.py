@@ -160,6 +160,9 @@ class OnlineResultSerializer(serializers.Serializer):
     match_id = serializers.CharField(min_length=1, max_length=64)
     result_id = serializers.CharField(min_length=8, max_length=36)
     exercise = serializers.ChoiceField(choices=["push_up", "squat"], default="push_up")
+    # P11. An older battle server sends none: legacy, which never scores,
+    # since it may have been a friend battle.
+    kind = serializers.ChoiceField(choices=["main", "friend"], default="legacy")
     reason = serializers.ChoiceField(choices=REASONS)
     ended_at_ms = serializers.IntegerField(min_value=0, max_value=2**53)
     players = OnlinePlayerSerializer(many=True)
