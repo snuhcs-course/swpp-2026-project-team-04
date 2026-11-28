@@ -102,9 +102,14 @@ instance from it, attaching the static IP, and the app reaching the new machine.
 Procedure for the admin (P6, unchanged), with what this rehearsal adds:
 1. Announce the switch in the team chat.
 2. Create an instance from the latest snapshot (or a fresh instance with the code and a DB backup restored as in 4).
-3. Put `.env` back (it is not in backups); restore the newest DB backup if it is newer than the snapshot; run
-   `pragma integrity_check`, then **`migrate`** and `migrate --check` (a backup older than the code needs
-   migrations; in 4 three were applied).
+   On a snapshot both services start at boot (`gymrats-battle` is enabled by `install-battle.sh` and pulls in
+   `gymrats-api`), so as soon as it is up run `sudo systemctl stop gymrats-battle gymrats-api` and check both are
+   inactive; after any reboot before step 4, stop them again. Otherwise the battle server's one-time start-up recovery runs against the snapshot's database, and a
+   newer backup restored after it brings back `active` battles that are never voided; the API's open connections
+   would also overlap the restore.
+3. Put `.env` back (it is not in backups); with both services stopped, restore the newest DB backup if it is newer
+   than the snapshot; run `pragma integrity_check`, then **`migrate`** and `migrate --check` (a backup older than the
+   code needs migrations; in 4 three were applied).
 4. Start `gymrats-api` and check its `/health` **before** starting `gymrats-battle`, then nginx; check `/health` on
    both ports. The battle server asks the API once at start-up (10 s limit, an error is ignored) to void the battles
    that were running at the backup (seen in 4); if the API was not up, restart `gymrats-battle` again once it is.
@@ -126,8 +131,8 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
    so (5, step 3).
 5. **A battle cut by a crash stays `active` until the battle server starts again**, then becomes `void`
    (`server_restarted`) with no history rows. That start-up call is made once and its failure is ignored, so the
-   API must be up first (5, step 4). While the battle server is down, the players' apps show the
-   connection lost.
+   API must be up first (5, step 4); on a replacement booted from a snapshot, both services must be stopped before
+   the restore (5, step 2). While the battle server is down, the players' apps show the connection lost.
 6. **Static IP failover is not rehearsed** and needs the team admin before beta.
 
 ## Automated checks
