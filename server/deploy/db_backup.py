@@ -19,6 +19,7 @@ import gzip
 import json
 import os
 import shutil
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -224,7 +225,17 @@ def fetch(name, dest, remote, *, run=None, log=log):
         unpacked.unlink(missing_ok=True)
 
 
+class Terminated(Exception):
+    """systemd stopped the run (the unit's time limit, or a stop by hand)."""
+
+
+def _on_sigterm(signum, frame):
+    # An exception, so `finally` blocks clean up and backup() still sends the alert.
+    raise Terminated("stopped by SIGTERM (time limit reached or stopped by hand)")
+
+
 def main(argv=None):
+    signal.signal(signal.SIGTERM, _on_sigterm)
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("backup")

@@ -8,6 +8,7 @@ import gzip
 import json
 import os
 import shutil
+import signal
 import sqlite3
 import stat
 import sys
@@ -75,6 +76,14 @@ class Recorder:
 
     def sleep(self, seconds):
         self.slept.append(seconds)
+
+
+@pytest.fixture(autouse=True)
+def keep_sigterm():
+    """main() installs a SIGTERM handler; put pytest's back after each test."""
+    before = signal.getsignal(signal.SIGTERM)
+    yield
+    signal.signal(signal.SIGTERM, before)
 
 
 @pytest.fixture
@@ -329,6 +338,29 @@ def test_a_copy_that_fails_its_check_does_not_replace_the_database(database, tmp
     assert db_backup.fetch("gymrats-20261128T060000Z-scheduled.db.gz", database,
                            "offsite:gymrats-backups", run=rclone, log=lines.append) == 1
     assert reps(database) == [10, 11, 12, 13]
+
+
+def test_a_stop_by_systemd_cleans_up_and_alerts(database, tmp_path, monkeypatch):
+    """SIGTERM at the unit's time limit, here during the wait before the 2nd try."""
+    rec = Recorder()
+
+    def stopped(seconds):
+        db_backup._on_sigterm(15, None)
+
+    code = db_backup.backup(database, tmp_path / "backups", "offsite:b", "", now=NOW,
+                            run=FakeRclone(tmp_path / "o", fail_uploads=3), send=rec.send,
+                            sleep=stopped, log=rec.lines.append)
+    assert code == 1
+    assert "Terminated" in rec.sent[0] and "SIGTERM" in rec.sent[0]
+
+
+def test_the_command_turns_sigterm_into_a_failure(monkeypatch):
+    seen = []
+    monkeypatch.setattr(db_backup.signal, "signal", lambda sig, handler: seen.append((sig, handler)))
+    monkeypatch.delenv("BACKUP_REMOTE", raising=False)
+    with pytest.raises(SystemExit):
+        db_backup.main(["list"])
+    assert seen == [(db_backup.signal.SIGTERM, db_backup._on_sigterm)]
 
 
 def test_list_and_fetch_need_a_remote(monkeypatch):
