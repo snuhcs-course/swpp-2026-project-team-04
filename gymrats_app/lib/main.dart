@@ -323,6 +323,7 @@ class _GymRatsAppState extends State<GymRatsApp> {
         ),
         ChangeNotifierProvider<AuthViewModel>.value(value: _auth),
         Provider<FriendRepository>.value(value: _friends),
+        Provider<RankingsRepository?>.value(value: widget.rankingsRepository),
         ChangeNotifierProvider<HelpViewModel>.value(value: _help),
         ChangeNotifierProvider<SettingsViewModel>.value(value: _settings),
         ChangeNotifierProvider<CharacterViewModel>.value(value: _characters),

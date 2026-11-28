@@ -4,6 +4,7 @@ import '../../models/form_report.dart';
 import '../../models/game_score.dart';
 import '../../models/match_record.dart';
 import '../../models/matchup.dart';
+import '../../models/ranking_ladder.dart';
 import '../online/online_battle_session.dart';
 
 /// The result screen's view of an online battle the server has finished:
@@ -14,10 +15,14 @@ import '../online/online_battle_session.dart';
 /// (cancelled, void, a connection error), and when the server gave no
 /// outcome for the user. A battle the user left themself never comes here:
 /// that screen closes without a result.
+///
+/// A battle that is not a friend battle counts in the weekly ranking (A15):
+/// it carries [rankingBefore], the ranking read when it started.
 BattleResult? onlineBattleResult(
   OnlineBattleSession session, {
   required String playerName,
   FormReport? report,
+  RankingSnapshot? rankingBefore,
 }) {
   if (session.phase != OnlinePhase.finished || session.matchUnconfirmed) {
     return null;
@@ -70,5 +75,7 @@ BattleResult? onlineBattleResult(
         : outcome == MatchOutcome.win
         ? BattleDeparture.opponentLeft
         : BattleDeparture.myConnectionLost,
+    ranked: session.friendId == null,
+    rankingBefore: rankingBefore,
   );
 }

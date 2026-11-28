@@ -1404,3 +1404,88 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **e. Prompt revisions:** none; the first prompt named the cause, the file to copy and the checks.
 - **f. Manual fixes and why:** none. No code was edited by hand, so there is no marker.
 - **Takeaway:** when a review finds a drawing fault, search the whole app for the same pattern, including read-only files, and report the matches to their owner.
+
+## A15 `feat/iter5-score-ladder` – 온라인 대결 점수 변동 · 순위 사다리 (an Unexpected task approved by the PM 2026-11-29), 2026-11-29
+
+### a. Where AI was used
+- **The hand-off:** `.claude/design/a15/SPEC.md` (v1, now v1.2) and the design files in `.claude/design/a15/design/` (`SpScene.dc.html` `v="E"`, `INDEX.md`), local and not committed.
+- **Where the idea came from:** the 2026-11-28 team meeting suggested showing, on the result's character-motion scene, how the points rise (or stay) after an online battle.
+- **Where the designs came from:** Claude on claude.ai made designs A–E on the Claude Design canvas "GymRats 메인 메뉴 시안", page "온라인 대결 점수 변동 시안". The reference was a capture Woohyun Song gave of Overwatch's competitive skill-rating change screen. Woohyun Song and the team chose E (the rank ladder) over A–D together in a meeting.
+- **Where SPEC v1 came from:** Claude on claude.ai wrote it. It read the public repo's `server/matches/rankings.py`, `server/lib/battle_server.dart` and the app's `result_report.dart` and `victory_overlay.dart`, and put two facts into the spec, which is why the design reads the ranking twice (before and after the battle):
+  - the battle server sends `match.finished` to the app before it stores the result in Django, so a ranking read right after the report opens may not have this battle yet;
+  - the global ranking lists only the top 50, and my row comes separately.
+- **Planning:** Claude Code (Claude Opus 5.5) did the planning before any code.
+  - It added the local A15 step and the five PM-approved exception lines.
+  - It read the SPEC, the design and the scene, report and battle screen code.
+  - It reported SPEC 10's six items: where the before ranking is read, the lines per file owned by others, the model's shape, the 0.88 s decision and the HOLD in the scene, the chip in the seat, and the demo and tests.
+- **The code and tests:** Claude Code wrote all of it, in six commits.
+  - `868e0aa`: `lib/models/ranking_ladder.dart` (the design's `pick`/`win`/`startSlot`/`finalSlot`, server ranks only) and the shared case data `ScoreLadderCase` in the demo.
+  - `efc329b`: `lib/viewmodels/ranking_ladder_viewmodel.dart` (the reads at 0, 0.4, 1, 2 and 4 s, stopping after 6 s; `decide()`) and two optional fields in `battle_result.dart`.
+  - `6b2821d`: six `RankingText` styles in `app_theme.dart`.
+  - `34606d9`: the HOLD in `victory_scene.dart` and `victory_defeat.dart` (the design's `bt` as `heldTime`), the band lift, `victory_ladder.dart`, and the overlay and seat wiring.
+  - `f3a4256`: the lines in `online_battle_screen.dart`, `online_battle_result.dart`, `result_screen.dart` and `main.dart`, with two new test files.
+  - `dc17bd7`: the demo picker.
+- **The expected values:** a node script ran the design's own `renderVals()`. It is kept outside the repo; the method is in the test headers. Its output became the tables in `ranking_ladder_test.dart` and `victory_ladder_golden.json`.
+- **Review:** the `reviewer` subagent ran eight times (item d).
+- **Not done by AI:**
+  - The PM approved the scope and set the server-ranks-only condition.
+  - Woohyun Song made the decisions in items d and e.
+  - The phone check is after the merge.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- The claude.ai chat that made the designs and SPEC v1 is not in the Prompt Log (it holds the Claude Code sessions), and its prompts are not quoted here.
+- [Woohyun Song, 11-29] "A15 작업을 시작해. PM 상우가 11/29에 승인했어."
+- [Woohyun Song, 11-29] "5. 명세 10절의 여섯 가지를 계획으로 보고하고 멈춰. 특히 경기 전 랭킹을 받는 정확한 자리(어느 상태 변화에서 부르는지), 주인이 다른 파일마다 바꾸는 줄 수, 0.88초에 갈래를 정해 HOLD를 기존 VictoryScene 시간표에 넣는 방법을 분명히 적어. 내가 "진행"이라고 하면 코드를 써."
+- [Woohyun Song, 11-29] "상우가 승인하면서 조건을 붙였어. "경기 결과가 랭킹에 늦게 반영되더라도 리포트는 바로 열리고, 등수는 서버에서 확인된 값만 표시되게 해 주세요.""
+- [Woohyun Song, 11-29] "남의 기존 테스트 파일은 고치지 마. 대신 대결 화면·결과 화면 테스트를 victory_ladder_test.dart에 몰아넣지 말고, 새 테스트 파일 두 개를 만들어 A15 allow에 더해."
+
+### c. What AI did well
+- **Two server facts found while writing the spec (claude.ai):** reading `battle_server.dart` (`match.finished` sent before the Django store) and `rankings.py` (top 50, my row apart) led to the before/after reads, before any app code was written.
+- **The design's logic, ported once:**
+  - The model's table of 8 cases × 5 results came from the design's `renderVals()`, and all 97 first-run tests passed.
+  - That covers the ties, the tie at the server's 50-row cut (`enter` draw) and the design's stable-sort order.
+  - A trace of the server's ordering (`server/matches/rankings.py`, points, then nickname, then id) explained why my row can be missing from the 50 rows yet ranked 50th.
+- **A HOLD that leaves the old scenes alone:**
+  - Only the formulas the design reads with `bt` were switched to `heldTime`, and big-scene branches use `t < outFromMs` where the design uses `T < X0`.
+  - The 124 existing victory, defeat and overlay tests passed unchanged right after the switch.
+- **Checking before coding:**
+  - The plan checked open PRs that touch `result_screen.dart` (none).
+  - Before the push it found PR #121 (송현우), which also changes `online_battle_screen.dart`, and showed with `git merge-tree` that the two merge without a conflict.
+
+### d. Hallucinations / errors
+- **Text styles (reviewer 다 runs 1–2, Major):**
+  - First the ladder built its own styles with `fontFamily:`. Then the fix only resized theme styles with `apply(fontSizeFactor:)`, citing the W5 band.
+  - Both break wiki 2.5.1 rule 3 (views change only a style's color and weight). That rule was already in `progress.md` from A11 and W2, so the AI should have found it.
+  - Cost: two review rounds. Woohyun Song chose named styles in `RankingText` (item e).
+- **A getter that fixed the path (reviewer 나 run 1, Minor):** reading `chip` or `holds` before 0.88 s would have fixed the path at `late` for good. It was not reachable from the current wiring, but phase 다 could have hit it. Replaced with an explicit `decide()`.
+- **Test harness mistakes, caught by failing tests:**
+  - A test report showed the seat from the start, so the seat chose the path at 0 s. The real report shows the seat only after the scene.
+  - A late-chip test expected the chip absent while it was in the tree at opacity 0.
+  - A demo chip below the fold was tapped before the scroll settled.
+- **A formatter run too wide again:** `dart format lib/widgets/` rewrote `character_motion.dart` and `player_avatar.dart` (not A15's). Both were reverted before any commit. This is the same slip as A13's Takeaway.
+- **Two problems found by Codex on PR #122 (`53f5b90`, both P2 on `ranking_ladder.dart`):**
+  - Starting slots compared other players' points after the battle with mine before it, so a player who played during my battle could start on the wrong side of my row.
+  - A battle across the Monday 00:00 KST week reset compared two weeks' rankings: the chip could never come, or a ladder could mix the weeks.
+  - Neither was caught by the reviewer runs or the tests. Woohyun Song decided to fix both in this PR: rows start by their points before the battle (`a2560a3`), and across a week reset there is no ladder, only the chip once the new week has the battle (`221401d`).
+- **The picker pushed A7's demo switch out of view.** The existing demo test failed, so the new chips moved below 리포트 열기 instead of the test being edited.
+
+### e. Prompt revisions
+- **The estimated path:**
+  - Before (the plan, SPEC v1 2.4): with no confirmed after at 0.88 s, add N to the before ranking and draw the ladder from that estimate.
+  - After (11-29, the PM's condition): "LadderPath에서 estimated를 없애. 갈래는 confirmed, late, none 세 가지야." and "화면의 등수는 모두 서버 값이어야 해."
+  - Why it worked: only server values appear, the report never waits, and the model and view model lost a branch and its tests. Woohyun Song decided to drop the estimated branch from the AI's SPEC v1 under the PM's 11-29 condition; SPEC 2.4–2.5 were rewritten to match (v1.2).
+- **Text sizes:**
+  - Before: keep sizes in the widget file because SPEC 5 says "새 글자 스타일 상수는 만들지 않는다".
+  - After (11-29, the user's choice in a question): "app_theme에 이름 붙은 스타일 추가 (Recommended)".
+  - Why it worked: it follows A13's precedent and the team rule. SPEC 5 changed for styles only.
+
+### f. Manual fixes and why
+- **Code:** none. No code was edited by hand in this step, so there are no manual-fix markers. Woohyun Song's part was the decisions above and the PM's relayed condition.
+- **The design, before it was confirmed:** after the first designs, Woohyun Song asked for three things. From them Claude added the "E 확정" area: a redrawing of today's app report as the base (`SpReport`), the rank chip left on the report, and a board of the ten cases.
+  1. Keep the points on the report after the scene ends.
+  2. The first designs' report base was an old placeholder without '상세 리포트 보기'; it must have it, as the app does now.
+  3. Check many cases, such as a large rank and being alone.
+
+### Takeaway
+- Search `progress.md` "Decisions and notes" for a team rule before choosing a precedent from older code.
+- Format files by name, never by folder.

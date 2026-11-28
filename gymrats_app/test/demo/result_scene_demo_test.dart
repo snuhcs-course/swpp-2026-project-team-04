@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/demo/result_scene_demo.dart';
 import 'package:gymrats_app/models/battle_result.dart';
 import 'package:gymrats_app/models/game_score.dart';
+import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/match_record.dart';
+import 'package:gymrats_app/models/ranking_ladder.dart';
 import 'package:gymrats_app/screens/result_screen.dart';
+import 'package:gymrats_app/services/rankings/rankings_repository.dart';
 import 'package:gymrats_app/widgets/victory_overlay.dart';
 import 'package:gymrats_app/widgets/victory_scene.dart';
 
@@ -106,5 +109,103 @@ void main() {
       VictoryOverlay.opponentCharacterOf(unknown.matchup.opponent),
       'mouse',
     );
+  });
+
+  group('순위 경우 (A15)', () {
+    /// Picks KO 승리 and the ladder's [name], opens the report and plays
+    /// [ms] of its scene.
+    Future<VictoryOverlay> openCase(
+      WidgetTester tester,
+      String name, {
+      int ms = 1500,
+    }) async {
+      await _start(tester);
+      await _tap(tester, 'KO 승리');
+      // The cases are below the button: scroll to the chip first.
+      await tester.ensureVisible(find.text(name).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(name).last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('리포트 열기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('리포트 열기'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      await tester.pump();
+      final overlay = tester.widget<VictoryOverlay>(_playing);
+      for (var left = ms; left > 0; left -= 50) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      return overlay;
+    }
+
+    testWidgets('base: the ladder plays in the hold and the chip stays', (
+      tester,
+    ) async {
+      final overlay = await openCase(tester, 'base');
+      expect(overlay.ladder!.path, LadderPath.confirmed);
+      expect(find.text('펭귄짱'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1500));
+      // Held: still playing past the scene's old end.
+      expect(_playing, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+      expect(_playing, findsNothing);
+      expect(find.text('29'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('리포트 열기'), findsOneWidget);
+    });
+
+    testWidgets('late: no ladder, the scene as before', (tester) async {
+      final overlay = await openCase(tester, 'late', ms: 1000);
+      expect(overlay.ladder!.path, LadderPath.late);
+      expect(find.text('펭귄짱'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 1200));
+      expect(_playing, findsNothing);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('none: a friend battle, no ladder', (tester) async {
+      final overlay = await openCase(tester, 'none', ms: 100);
+      expect(overlay.ladder, isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    });
+
+    test('battleOf makes a case ranked with its ranking before', () {
+      final ranked = ResultScenePicker.battleOf(
+        VictoryResult.koWin,
+        'penguin',
+        ladderCase: 'mid',
+      );
+      expect(ranked.ranked, isTrue);
+      expect(ranked.rankingBefore!.me!.rank, 20);
+      final friend = ResultScenePicker.battleOf(
+        VictoryResult.koWin,
+        'penguin',
+        ladderCase: 'none',
+      );
+      expect(friend.ranked, isFalse);
+      expect(friend.rankingBefore, isNull);
+      final plain = ResultScenePicker.battleOf(VictoryResult.lose, null);
+      expect(plain.ranked, isFalse);
+    });
+
+    test('every case answers with its ranking after the battle', () async {
+      for (final MapEntry(key: name, value: c) in ScoreLadderCase.all.entries) {
+        final after = await c
+            .rankings(VictoryResult.draw)
+            .fetchWeekly(RankingScope.global, ExerciseType.pushUp);
+        expect(after.me!.points, (c.old ?? 0) + 3, reason: name);
+        expect(after.me!.battles, (c.old == null ? 0 : 4) + 1, reason: name);
+      }
+      final late = await ScoreLadderCase.all['late']!
+          .rankings(VictoryResult.koWin, late: true)
+          .fetchWeekly(RankingScope.global, ExerciseType.pushUp);
+      expect(late.me!.battles, ScoreLadderCase.myBattles);
+    });
   });
 }

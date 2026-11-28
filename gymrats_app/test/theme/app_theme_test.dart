@@ -815,6 +815,13 @@ void main() {
         (text.rankingEmptyTitle, AppFonts.body, 15.0, FontWeight.w700, 20 / 15),
         (text.rankingEmptyLine, AppFonts.body, 12.0, FontWeight.w400, 17 / 12),
         (text.rankingButton, AppFonts.body, 14.5, FontWeight.w700, null),
+        // The rank ladder and its chip (A15).
+        (text.ladderNumber, AppFonts.number, 19.0, FontWeight.w800, null),
+        (text.ladderRankNarrow, AppFonts.number, 15.0, FontWeight.w800, null),
+        (text.ladderGain, AppFonts.number, 13.0, FontWeight.w800, null),
+        (text.rankChipNumber, AppFonts.number, 14.0, FontWeight.w800, null),
+        (text.rankChipGain, AppFonts.number, 11.0, FontWeight.w800, null),
+        (text.rankChipUnit, AppFonts.body, 10.0, FontWeight.w700, null),
       ]) {
         expect(
           (style.fontFamily, style.fontSize, style.fontWeight, style.height),

@@ -2566,3 +2566,129 @@ Acceptance criteria → tests (the user's bug report; the step is not in the loc
 - Height, text, weights and the chosen half are unchanged → 'the tabs are drawn as the design's pill: 46 high with a 2 ink edge, the chosen half lime and bold, none chosen on the game page'
 - Taps and screen-reader tabs are unchanged → 'the tabs jump to an exercise and follow the page', 'a screen reader hears the two tabs as tabs of one tab bar, with which is chosen; each takes taps 48 high or more' (unchanged, passing)
 - Tokens only → design_tokens_test
+
+#### 2026-11-29 · code at commits `868e0aa` to `dc17bd7` (six commits, on `origin/main` `de436d5`) · step A15 `feat/iter5-score-ladder` (온라인 대결 점수 변동 · 순위 사다리, an Unexpected task approved by the PM 2026-11-29, due 12/1)
+After a ranked online battle (not a friend battle), the report's win, loss or draw cut-in holds its big moment 1.2 s longer when the weekly ranking after the battle is confirmed by 0.88 s. The ranking rows come in, my row climbs past the players it passed, and it shrinks into a rank chip that stays on the report's seat. The values come from the design `SpScene.dc.html` `v="E"`. Under the PM's condition every rank shown is the server's, and nothing waits for a ranking: a ranking confirmed later shows only the chip, and one never confirmed leaves nothing. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter analyze
+flutter test
+flutter test test/models/ranking_ladder_test.dart test/viewmodels/ranking_ladder_viewmodel_test.dart test/widgets/victory_ladder_test.dart test/services/game/online_battle_result_ranked_test.dart test/screens/score_ladder_wiring_test.dart test/demo/result_scene_demo_test.dart test/theme/app_theme_test.dart test/design_tokens_test.dart
+```
+
+No server, camera or device is needed:
+- The rankings come from `InMemoryRankingsRepository` and small fakes in the test files. These fakes answer in order, fail, never answer, or confirm only from the nth read.
+- The ladder view model gets an injected clock with `fake_async`.
+- The battle screen runs on `FakeCameraService`, `FakePoseEstimator` and `FakeRepJudge`, with a session whose server messages are set by hand.
+
+- **Tests on `dc17bd7`:**
+  - `flutter analyze` found no issues.
+  - The full `flutter test`: 5781 passed, 0 failed, 11 skipped. Ten are the ones skipped on `main` (a live server smoke test and nine known push-up judge errors); the eleventh is a local, untracked capture tool, so CI shows 10.
+  - The eight files in the last command: 342 passed.
+- **Golden values:** the expected values come from the design's own `renderVals()`, run with node and never committed. The method is in the headers of `ranking_ladder_test.dart` and `victory_ladder_test.dart`.
+  - `ranking_ladder_test.dart` checks the rows, slots, ranks and rank cell for 8 cases × 5 results.
+  - `victory_ladder_golden.json` (265 KB) covers:
+    - the ladder frames for base, mid, enter, big, solo and king (KO and loss) and top (KO), at SPEC 8.4's times and next to every switch;
+    - the still look;
+    - the held scene of all five results, and the same scene without the hold;
+    - the late chip's curve.
+- **Coverage:** not measured on this PC (the local rule). The numbers come from the PR #122 CI comment "Tests and coverage (GitHub Actions)" on `53f5b90` (2026-11-29 03:48 KST, [run 46176525062](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/46176525062), [comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/122#issuecomment-7244068328)). CI measures one test file at a time in four shards; its app code is the same as `dc17bd7` (`53f5b90` changed only two test-file comments and the notes).
+
+  | Component | Frameworks | Target | Actual | Date | Command / Report |
+  |---|---|---|---|---|---|
+  | Model | flutter_test | 90% | 99.5% (1106/1111) | 11/29 | CI `coverage_per_file.sh` + `coverage_by_layer.py` |
+  | ViewModel | flutter_test, fakes | 90% | 98.8% (3138/3176) | 11/29 | same |
+  | Service | flutter_test, MockClient, fakes | 85% | 97.4% (5773/5926) | 11/29 | same |
+  | View | flutter_test (widget) | 75% | 98.3% (20387/20745) | 11/29 | same |
+  | API server | pytest, pytest-django, pytest-cov | 90% | 98% (429 passed; `server/` unchanged) | 11/29 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+  - Every target is met; the total is 98.2% (31059/31640).
+  - CI's `flutter test` gave 5781 passed, 10 skipped, 0 failed.
+  - CI left five files out of the coverage numbers after a 240 s timeout, none of them this change's: `simulated_player_test.dart`, `iter5_pose_evaluation_test.dart`, `arcade_star_judge_test.dart`, `sound_services_test.dart` and `online_battle_session_test.dart`. They ran in its `flutter test`.
+- **Review:** the `reviewer` subagent ran eight times, once or more per phase.
+  - 가 (pure model):
+    - Run 1: CHANGES_REQUESTED. Major: no "Design doc changes" block. Minor: no three-character rank cell test, a comment about the outside row, no equal-lowest-rows case.
+    - Run 2: APPROVE.
+  - 나 (view model):
+    - Run 1: APPROVE with two Minors. A getter fixed the path for good; the ladder was rebuilt on every read. Both fixed with an explicit `decide()`.
+    - Run 2: APPROVE with two small Minors, both fixed.
+  - 다 (scene, ladder, chip):
+    - Run 1: CHANGES_REQUESTED. Major: the widget built its own text styles (`fontFamily`). Minor: points baseline, cell width, no chip wider than 140, the narrow seat.
+    - Run 2: CHANGES_REQUESTED. Sizes were still changed in the widget with `apply(fontSizeFactor:)`.
+    - Run 3: APPROVE, after the user chose named theme styles in A13's `RankingText`.
+  - 라 (wiring, demo): run 1 APPROVE with one Minor, a ranked battle without the ranking before. That test was added.
+- **Changed existing tests:** none of other people's.
+  - `test/theme/app_theme_test.dart` and `test/design_tokens_test.dart` got rows added only; existing rows unchanged.
+  - My A7 demo test got new tests. Its three old tests are untouched; the new picker chips sit below 리포트 열기, so the old layout stays.
+  - The existing victory, defeat, result screen, online battle and preparation tests pass unchanged.
+- **Phone check:** after the merge (SPEC 9). TODO(g1fted13): the demo cases on the Galaxy S26+ (`flutter run -d <device-id> --release -t lib/demo/result_scene_demo.dart`), a real two-phone online battle, and a large system text size.
+
+![A15 score ladder scenes](../../images/testing/a15-score-ladder-sheet.png)
+
+*Scenes rendered from the branch HEAD's widgets by a temporary widget test (not committed, not phone photos): `ResultScreen` with `VictoryOverlay` at 360×780, device pixel ratio 3, the app's fonts loaded, GYM마우스 against 펭뚱이, using the demo's `ScoreLadderCase` data.* (The two "base · KO win · end" scenes also carry a made-up form report, so the character card and '상세 리포트 보기' show.)
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/ranking_ladder_test.dart` (new) | the design's picks for 8 cases × 5 results (rows, from/to slots, rank texts, rank cell 40/46/58 and 19/17/15); every rank is the server's (others' after rank from after, before rank from the same id in before or else unchanged; mine from both `me`s); passing 4+ shows the nearest two and 20 → 15; ties (1, 1, 3) with mine above; 1,204 with commas; 322 points; first battle from the bottom; alone – → 1; outside the list (last row, dots, mine; equal lowest rows); equal to the 50th but cut from the list; a three-character rank; an empty list; the paths confirmed / late / none (friend battle, no before, 0 points; two battles more; no row of mine); `chipOf`; `rankText` |
+| ViewModel | `test/viewmodels/ranking_ladder_viewmodel_test.dart` (new) | reads at once and stops once confirmed; a ranking without the battle is not taken and is read again at 0.4, 1, 2 and 4 s, then stops; no answer after 6 s; a failed read is read again; confirmed after 0.88 s gives only the chip, before 0.88 s the ladder; getters do not choose the path, `decide()` does, once; nothing waits (the report opens while reading); dispose turns timers off and drops the answer; one read however often `load` is called; no reads for a friend battle, no before or 0 points; `fetchBefore` (global ranking, null on failure, no row before the first battle); `pointsOf` as the server; `of(BattleResult)` |
+| View | `test/widgets/victory_ladder_test.dart` + `victory_ladder_golden.json` (new) | the ladder frames, still look, held scene (5 results, with and without the hold) and late chip curve against the design; end times 3.3/3.2 s with the hold and 2.1/2.0 s without; the held clock; on screen: a confirmed ranking plays the ladder and ends at 3.3 s with the chip and its sentence; a tap before 0.88 s; late (no rank drawn, then only the chip, at once or 0.3 s after the seat shows); never confirmed; reduced motion; no ladder no chip; the chip at the seat's top within 140 × 26; big, king and the first-place tie fit 360 × 780 ×1.3 and 320 × 640; a chip wider than 140 is scaled down; the ladder is skipped by screen readers; the rank cell draws its digits at the cell's size; the first-place cell |
+| Service | `test/services/game/online_battle_result_ranked_test.dart` (new) | a battle that is not a friend battle is ranked and carries the ranking before; without it none; a friend battle is not ranked; no result, no ranking |
+| View | `test/screens/score_ladder_wiring_test.dart` (new) | the battle screen reads the global ranking once when `match.start` sets the start; none for a friend battle; the ranking goes with the result; the result opens at once when the ranking fails or never comes; without the app's rankings nothing is read; the result screen makes the ladder only for a ranked battle and gives the same one to the scene and the seat; a ranked battle without the before plays as before (no read, the old end, no chip); no Provider or a null one plays as before |
+| View (demo) | `test/demo/result_scene_demo_test.dart` (updated) | 순위 경우: base plays the ladder and keeps the chip; late has no ladder; none is a friend battle; `battleOf` with a case; every case's made-up server answers with its ranking after |
+| Design | `test/theme/app_theme_test.dart` (updated), `test/design_tokens_test.dart` (updated) | the six new `RankingText` styles' families, sizes and weights; `victory_ladder.dart` uses only tokens |
+
+### Acceptance criteria → tests (SPEC 8; the step is not in the local task.md)
+- 8.1 Picks → ranking_ladder_test group 'RankingLadder.of matches the design', 'passing four or more shows the two nearest and the real ranks', 'equal points share a rank (1, 1, 3) and mine stands above', 'ranks of 1,000 and more get commas and the widest cell', 'three-digit points stay as they are', 'still outside the list: its last row, the dots and mine'
+- 8.2 Paths and server ranks → ranking_ladder_test group 'RankingLadder.pathOf', group "every rank shown is the server's"; victory_ladder_test 'late: the scene as before, no rank drawn until the ranking is confirmed, then only the chip', 'never confirmed: nothing is left'
+- 8.3 Reading and reading again → ranking_ladder_viewmodel_test 'does not take a ranking without the battle and reads it again at 0.4, 1, 2 and 4 seconds, then stops', 'takes no answer after 6 seconds', 'the report opens while the ranking is read: nothing waits', 'closing the report turns the timers off and drops the answer'
+- 8.4 Golden → victory_ladder_test group 'the ladder matches the design', 'the still look is the chip alone', group 'the held scene matches the design'
+- 8.5 Scene → victory_ladder_test group "the scene's times", 'a tap before 0.88 s skips to the end look with the chip', 'reduced motion: the end look with the chip at once'
+- 8.6 Unranked results unchanged → score_ladder_wiring_test 'a battle that is not ranked gets no ladder and reads nothing', 'a friend battle reads no ranking and is not ranked', 'with no RankingsRepository Provider a ranked battle plays as before'; the existing victory and report tests unchanged and passing
+- 8.7 Overflow → victory_ladder_test '… fits 360 x 780, text x1.3', '… fits 320 x 640', 'a chip wider than 140 is made smaller to fit'
+- 8.8 Screen reader → victory_ladder_test 'chipLabel reads rank, week and battle in one sentence', 'the ladder is decoration: screen readers skip it'
+- 8.9 Tokens → design_tokens_test; app_theme_test
+- Wiring (user, 2026-11-29) → score_ladder_wiring_test 'reads the global ranking once, when match.start sets the start', 'the result opens at once when the ranking fails', '… never comes'; online_battle_result_ranked_test
+
+#### 2026-11-29 · code at commits `a2560a3` and `221401d` (on PR #122 `53f5b90`) · step A15 `feat/iter5-score-ladder`, the Codex follow-up
+Codex's review of `53f5b90` (PR #122, two P2 threads on `gymrats_app/lib/models/ranking_ladder.dart`) found two problems. The user decided to fix both in this PR.
+- **Starting slots (`a2560a3`):** another player may play while my battle runs. Their row's start compared their points after it with mine before it, so it could start on the wrong side of my row. Rows now start by their points in the ranking before (by their points now when they were not in it) and end by their points now. Row picking is unchanged. With the same points before and after, every start is the design's: the design table and the golden pass unchanged.
+- **The week reset (`221401d`):** a battle across Monday 00:00 KST has a ranking before from last week and one after from the new week. `RankingSnapshot` now keeps the ranking's `weekStart`. Across two weeks there is no ladder and nothing of last week is used. The chip shows once the new week has the battle (`after.me.battles == 1`), as on the late path. Rankings of the same week, or of a week not known, work as before.
+
+I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter analyze
+flutter test test/models/ranking_ladder_test.dart test/viewmodels/ranking_ladder_viewmodel_test.dart test/widgets/victory_ladder_test.dart
+flutter test
+```
+
+- `flutter analyze` found no issues.
+- The three related files: 179 passed, 0 failed.
+- The full `flutter test`: 5793 passed, 0 failed, 11 skipped (the same skips as above).
+- **Coverage:** from the PR #122 CI comment "Tests and coverage (GitHub Actions)" on `9cdf5c0` (2026-11-29 04:32 KST, [run 46180389371](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/46180389371), [comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/122#issuecomment-7244068328); its app code is the same as `221401d`, with one test comment changed).
+
+  | Component | Frameworks | Target | Actual | Date | Command / Report |
+  |---|---|---|---|---|---|
+  | Model | flutter_test | 90% | 99.6% (1121/1126) | 11/29 | CI `coverage_per_file.sh` + `coverage_by_layer.py` |
+  | ViewModel | flutter_test, fakes | 90% | 98.8% (3139/3177) | 11/29 | same |
+  | Service | flutter_test, MockClient, fakes | 85% | 97.4% (5773/5926) | 11/29 | same |
+  | View | flutter_test (widget) | 75% | 98.3% (20387/20745) | 11/29 | same |
+  | API server | pytest, pytest-django, pytest-cov | 90% | 98% (429 passed; `server/` unchanged) | 11/29 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+  - Every target is met; the total is 98.2% (31075/31656).
+  - CI's `flutter test` gave 5793 passed, 10 skipped, 0 failed.
+  - CI left out the same five timed-out files as on `53f5b90`, none of them this change's.
+- **Review:** the `reviewer` subagent checked each fix. Starting slots: APPROVE with one Minor (no direct test of the first battle or a newcomer), and two tests were added. The week reset: APPROVE with two Minors (a doc line named the wrong check; no test of the new week without the battle yet), both fixed.
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/ranking_ladder_test.dart` (updated) | a player who played during my battle starts where the ranking before had them; my first battle with rows that moved; a newcomer among rows that moved; across a week reset: the new week's first battle is late (never the ladder) with the new week's chip, one battle more than last week is not this battle, the new week without the battle yet confirms nothing, no row last week is still late, the same week gives the ladder, a week not known counts as the same |
+| ViewModel | `test/viewmodels/ranking_ladder_viewmodel_test.dart` (updated) | across a week reset only the chip with the new week's values, no ladder, no more reads; `snapshotOf` keeps the week |
+| View | `test/widgets/victory_ladder_test.dart` (updated) | across a week reset on screen: no ladder and nothing of last week, the scene ends without the hold, then only the chip '주간 랭킹 7위, 이번 주 10점, 이번 판 10점' |
+
+Acceptance criteria → tests (the user's decision on the two Codex findings):
+- Rows start by their points before, end by their points now → 'a player who played during my battle starts where the ranking before had them', 'my first battle: rows above me start in the order before', 'a newcomer starts by its points now among rows that moved'; unchanged results → the design table and golden tests, unmodified
+- Across a week reset only the chip, no ladder, nothing of last week → "the new week's first battle: late, never the ladder", "across a week reset: only the chip, with the new week's values", "across a week reset: no ladder and nothing of last week, then only the chip with the new week's values"

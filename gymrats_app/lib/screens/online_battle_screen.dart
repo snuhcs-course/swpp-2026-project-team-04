@@ -10,6 +10,7 @@ import '../models/exercise_type.dart';
 import '../models/feedback_goal.dart';
 import '../models/form_report.dart';
 import '../models/pose_frame.dart';
+import '../models/ranking_ladder.dart';
 import '../models/setup_hint_short.dart';
 import '../models/setup_silhouette_alignment.dart';
 import '../models/setup_squat_silhouette_alignment.dart';
@@ -20,10 +21,12 @@ import '../services/feedback/goal_store.dart';
 import '../services/game/online_battle_result.dart';
 import '../services/online/online_battle_session.dart';
 import '../services/pose/setup_checker.dart';
+import '../services/rankings/rankings_repository.dart';
 import '../services/telemetry/telemetry_service.dart';
 import '../services/user/user_repository.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../viewmodels/ranking_ladder_viewmodel.dart';
 import '../viewmodels/rep_counter_viewmodel.dart';
 import '../widgets/accent_button.dart';
 import '../widgets/battle_arena.dart';
@@ -111,6 +114,11 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
   PoseFrame? _seen;
   FormReport? _formReport;
   bool _reportCreated = false;
+
+  /// The weekly ranking read once the server set the start (A15), for the
+  /// result's rank ladder; null until it comes, or when it cannot be read.
+  RankingSnapshot? _rankingBefore;
+  bool _rankingBeforeAsked = false;
   bool _setupReady = false,
       _roundStarted = false,
       _stopping = false,
@@ -365,6 +373,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
 
   void _onSession() {
     _setupTelemetry?.follow(session);
+    _askRankingBefore();
     _syncRound();
     _syncReady();
     final theirs = OnlineStageEvents.opponentRep(_theirs, session);
@@ -372,6 +381,23 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
     if (theirs != null) _stage.rep(theirs);
     _tellSetup();
     if (mounted) setState(() {});
+  }
+
+  /// Reads the battle's weekly ranking once, when `match.start` set the
+  /// start, for a battle that counts (not a friend battle). Nothing waits
+  /// for it: an answer after the result opened is dropped.
+  void _askRankingBefore() {
+    if (_rankingBeforeAsked || session.startAtMs == null) return;
+    if (session.friendId != null) return;
+    _rankingBeforeAsked = true;
+    final rankings = Provider.of<RankingsRepository?>(context, listen: false);
+    if (rankings == null) return;
+    unawaited(
+      RankingLadderViewModel.fetchBefore(
+        rankings,
+        session.exercise,
+      ).then((before) => _rankingBefore = before),
+    );
   }
 
   /// Gives [OnlineBattleScreen.onSetup] the setup's status and the time to
@@ -601,6 +627,7 @@ class _OnlineBattleScreenState extends State<OnlineBattleScreen>
       session,
       playerName: widget.playerName,
       report: _formReport,
+      rankingBefore: _rankingBefore,
     );
     if (result == null) return;
     _resultOpened = true;

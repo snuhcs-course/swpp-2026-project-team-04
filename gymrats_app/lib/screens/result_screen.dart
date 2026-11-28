@@ -16,10 +16,12 @@ import '../models/match_record.dart';
 import '../models/matchup.dart';
 import '../services/feedback/feedback_stats.dart';
 import '../services/feedback/goal_store.dart';
+import '../services/rankings/rankings_repository.dart';
 import '../services/user/user_repository.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/character_viewmodel.dart';
 import '../viewmodels/coach_viewmodel.dart';
+import '../viewmodels/ranking_ladder_viewmodel.dart';
 import '../viewmodels/result_viewmodel.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/result_cards.dart';
@@ -240,6 +242,10 @@ class _ResultScreenState extends State<ResultScreen> {
   /// Set once a leaving button is pressed, so a second tap does nothing.
   bool _leaving = false;
 
+  /// The weekly rank ladder of a ranked online battle just played (A15),
+  /// with the app's rankings; null for every other report.
+  RankingLadderViewModel? _ladder;
+
   /// The report's seat, to find where the scene ends.
   final _seatKey = GlobalKey();
 
@@ -273,6 +279,11 @@ class _ResultScreenState extends State<ResultScreen> {
     // A past report shows only the scene's end look; an arcade report none
     // (its clear or fail already did the same, P16 spec 13.4).
     if (record != null || _arcade) _sceneOver = true;
+    final rankings = Provider.of<RankingsRepository?>(context, listen: false);
+    if (widget.result case final result?
+        when result.ranked && rankings != null) {
+      _ladder = RankingLadderViewModel.of(result, repository: rankings)..load();
+    }
     _viewModel.addListener(_makeCoach);
     unawaited(
       _viewModel.load().whenComplete(() {
@@ -366,6 +377,7 @@ class _ResultScreenState extends State<ResultScreen> {
     _coach
       ?..removeListener(_onCoachChanged)
       ..dispose();
+    _ladder?.dispose();
     super.dispose();
   }
 
@@ -518,7 +530,11 @@ class _ResultScreenState extends State<ResultScreen> {
                   key: _seatKey,
                   child: playing || character == null
                       ? const SizedBox.expand()
-                      : VictorySeat(result: scene, characterId: character),
+                      : VictorySeat(
+                          result: scene,
+                          characterId: character,
+                          ladder: _ladder,
+                        ),
                 ),
               ),
             ),
@@ -531,6 +547,7 @@ class _ResultScreenState extends State<ResultScreen> {
             seat: seat,
             onEnd: _endScene,
             opponent: widget.result?.matchup.opponent,
+            ladder: _ladder,
           ),
       ],
     );
