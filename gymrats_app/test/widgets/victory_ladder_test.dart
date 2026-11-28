@@ -1,5 +1,5 @@
-// The A15 rank ladder over the victory scene against the design
-// (.claude/design/a15/design/SpScene.dc.html, v="E").
+// The A15 rank ladder over the victory scene against the design (the local
+// A15 design hand-off's SpScene.dc.html, v="E").
 //
 // How victory_ladder_golden.json was made (the script and the design stay
 // outside the repo): a node script read SpScene.dc.html, took its

@@ -1,4 +1,4 @@
-// The ladder's picks are the design's: .claude/design/a15/design/
+// The ladder's picks are the design's: the local A15 design hand-off's
 // SpScene.dc.html (v="E", the A15 final), its renderVals() run with node
 // (DCLogic stubbed, props v=E, sc=<case>, result=<result>, t=1000 and 2400).
 // For each row of e.rows: the name, the points (w.s at 2400), the slot
