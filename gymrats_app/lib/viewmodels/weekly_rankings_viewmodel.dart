@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/exercise_type.dart';
+import '../models/ranking_standing.dart';
 import '../services/api/api_client.dart';
 import '../services/rankings/rankings_repository.dart';
 
@@ -38,6 +39,103 @@ class WeeklyRankingsViewModel extends ChangeNotifier {
   String? get error => _errors[_shown];
 
   bool get loading => _loading.contains(_shown);
+
+  // The screen's words for the shown ranking (A13 spec 3.6), worked out in
+  // `ranking_standing.dart` with this view model's clock.
+
+  bool get _friends => scope == RankingScope.friends;
+
+  /// The banner's week, "11월 4주차"; null until read.
+  String? get weekName => switch (ranking) {
+    final shown? => RankingWeek.name(shown.weekStart),
+    null => null,
+  };
+
+  /// The banner's flag, "1일 9시간 남음" now; null until read.
+  String? get timeLeft => switch (ranking) {
+    final shown? => RankingWeek.timeLeft(shown.weekEnd, _now()),
+    null => null,
+  };
+
+  /// How much of the shown week has gone by now, 0 to 1; 0 until read.
+  double get weekProgress => switch (ranking) {
+    final shown? => RankingWeek.progress(
+      shown.weekStart,
+      shown.weekEnd,
+      _now(),
+    ),
+    null => 0,
+  };
+
+  /// My row in the shown ranking: the server's for everyone (also below the
+  /// list), mine among the rows for friends; null before my first battle
+  /// of the week in the global ranking, or until read.
+  RankingEntry? get myEntry {
+    final shown = ranking;
+    if (shown == null) return null;
+    return _friends
+        ? shown.entries.where((entry) => entry.isMe).firstOrNull
+        : shown.me;
+  }
+
+  /// My card's rank, points and goal line; null until read.
+  RankingStanding? get standing {
+    final shown = ranking;
+    if (shown == null) return null;
+    return RankingStanding.of(
+      me: _row(shown.me),
+      entries: [for (final entry in shown.entries) ?_row(entry)],
+      friends: _friends,
+    );
+  }
+
+  /// My name on my card: my row's, else [accountNickname] (no global row
+  /// before my first battle), else '나'.
+  String myName(String? accountNickname) =>
+      myEntry?.nickname ?? accountNickname ?? '나';
+
+  /// My record this week, "4전 2승 · KO 1" or '이번 주 기록 없음'.
+  String get myRecord => recordOf(myEntry);
+
+  /// [entry]'s record as a row writes it; '이번 주 기록 없음' for none.
+  static String recordOf(RankingEntry? entry) => RankingWeek.record(
+    battles: entry?.battles ?? 0,
+    wins: entry?.wins ?? 0,
+    koWins: entry?.koWins ?? 0,
+  );
+
+  /// The friends tab with nobody but me: the card asking for friends
+  /// instead of a list.
+  bool get noFriends => _friends && (ranking?.entries.length ?? 0) < 2;
+
+  /// The list's name, 'TOP 50' or '나와 친구 n명'; null until read.
+  String? get listTitle => switch (ranking) {
+    final shown? => RankingList.title(
+      friends: _friends,
+      count: shown.entries.length,
+    ),
+    null => null,
+  };
+
+  /// The note right of the list's name; null until read.
+  String? get listNote => switch (ranking) {
+    final shown? => RankingList.note(
+      friends: _friends,
+      me: _row(shown.me),
+      entries: [for (final entry in shown.entries) ?_row(entry)],
+    ),
+    null => null,
+  };
+
+  static StandingRow? _row(RankingEntry? entry) => switch (entry) {
+    final e? => (
+      rank: e.rank,
+      points: e.points,
+      battles: e.battles,
+      isMe: e.isMe,
+    ),
+    null => null,
+  };
 
   /// Reads the shown ranking unless it is read or being read.
   Future<void> load() {

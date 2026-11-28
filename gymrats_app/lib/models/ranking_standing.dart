@@ -219,3 +219,33 @@ abstract final class RankingWeek {
     required int koWins,
   }) => battles == 0 ? '이번 주 기록 없음' : '$battles전 $wins승 · KO $koWins';
 }
+
+/// The words over the list (A13 spec 3.5): its name on the left, a note on
+/// the right.
+abstract final class RankingList {
+  /// The note when nothing more needs saying.
+  static const sharedRanks = '같은 점수는 같은 등수';
+
+  /// 'TOP 50' for everyone; '나와 친구 n명' among [count] rows, mine one of
+  /// them, on the friends tab ([friends]).
+  static String title({required bool friends, required int count}) =>
+      friends ? '나와 친구 ${count - 1}명' : 'TOP 50';
+
+  /// The note right of the title: '50위 안에 들면 목록에 나와요' when the
+  /// global list stops above my row [me]; nothing when I have no global row
+  /// yet (`RankG3`); '이번 주 아직 아무도 대결하지 않았어요' when no friend
+  /// nor I has had a battle; [sharedRanks] otherwise.
+  static String note({
+    required bool friends,
+    required StandingRow? me,
+    required List<StandingRow> entries,
+  }) {
+    if (friends) {
+      return entries.every((row) => row.battles == 0)
+          ? '이번 주 아직 아무도 대결하지 않았어요'
+          : sharedRanks;
+    }
+    if (me == null) return '';
+    return entries.any((row) => row.isMe) ? sharedRanks : '50위 안에 들면 목록에 나와요';
+  }
+}

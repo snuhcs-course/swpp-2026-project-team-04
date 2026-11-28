@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/ranking_standing.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/rankings/rankings_repository.dart';
 import 'package:gymrats_app/viewmodels/weekly_rankings_viewmodel.dart';
@@ -398,6 +399,168 @@ void main() {
         async.elapse(const Duration(hours: 2));
         expect(repo.calls, hasLength(1));
       });
+    });
+  });
+
+  group("the screen's words (A13 spec 3.6)", () {
+    RankingEntry e(
+      int rank,
+      int points, {
+      bool me = false,
+      int battles = 3,
+      String name = '친구',
+    }) => RankingEntry(
+      rank: rank,
+      userId: rank + (me ? 100 : 0),
+      nickname: me ? '쥐돌이' : name,
+      points: points,
+      battles: battles,
+      wins: battles == 0 ? 0 : 2,
+      koWins: battles == 0 ? 0 : 1,
+      isMe: me,
+    );
+
+    WeeklyRanking ranking(
+      RankingScope scope,
+      List<RankingEntry> entries, {
+      RankingEntry? me,
+    }) => WeeklyRanking(
+      scope: scope,
+      exercise: ExerciseType.pushUp,
+      weekStart: DateTime.utc(2026, 11, 22, 15),
+      weekEnd: DateTime.utc(2026, 11, 29, 15),
+      entries: entries,
+      me: me,
+    );
+
+    Future<void> shown(WeeklyRanking answer) async {
+      final loading = vm.load();
+      repo.pending.last.complete(answer);
+      await loading;
+    }
+
+    test('nothing to say until read', () {
+      expect(vm.weekName, isNull);
+      expect(vm.timeLeft, isNull);
+      expect(vm.weekProgress, 0);
+      expect(vm.myEntry, isNull);
+      expect(vm.standing, isNull);
+      expect(vm.myRecord, '이번 주 기록 없음');
+      expect(vm.noFriends, isFalse);
+      expect(vm.listTitle, isNull);
+      expect(vm.listNote, isNull);
+    });
+
+    test('the week by this clock: its name, the time left, how far it has '
+        'gone', () async {
+      await shown(ranking(RankingScope.global, const []));
+      expect(vm.weekName, '11월 4주차');
+      expect(vm.timeLeft, '4일 15시간 남음');
+      expect(vm.weekProgress, closeTo(57 / 168, 1e-9));
+    });
+
+    test('the clock moves the time left and the bar to their ends', () async {
+      var now = DateTime.utc(2026, 11, 22, 15);
+      final clocked = WeeklyRankingsViewModel(repository: repo, now: () => now);
+      addTearDown(clocked.dispose);
+      final loading = clocked.load();
+      repo.pending.last.complete(ranking(RankingScope.global, const []));
+      await loading;
+      expect(clocked.weekProgress, 0);
+      expect(clocked.timeLeft, '7일 0시간 남음');
+      now = DateTime.utc(2026, 11, 29, 14, 30);
+      expect(clocked.timeLeft, '30분 남음');
+      now = DateTime.utc(2026, 11, 29, 15);
+      expect(clocked.weekProgress, 1);
+      expect(clocked.timeLeft, '곧 새로 시작해요');
+    });
+
+    test('global: my row from the server, the goal above me, the list '
+        'words', () async {
+      final mine = e(4, 19, me: true);
+      await shown(
+        ranking(RankingScope.global, [
+          e(1, 31),
+          e(2, 23),
+          e(3, 22),
+          mine,
+        ], me: mine),
+      );
+      expect(vm.myEntry, mine);
+      expect(vm.myRecord, '3전 2승 · KO 1');
+      expect(vm.standing!.kind, StandingKind.behind);
+      expect(vm.standing!.goalLine, '3위까지 3점');
+      expect(vm.listTitle, 'TOP 50');
+      expect(vm.listNote, '같은 점수는 같은 등수');
+      expect(vm.noFriends, isFalse);
+    });
+
+    test('global, below the list: the goal at its last row', () async {
+      await shown(
+        ranking(RankingScope.global, [e(50, 6)], me: e(63, 4, me: true)),
+      );
+      expect(vm.standing!.kind, StandingKind.outsideList);
+      expect(vm.standing!.goalLine, '50위까지 2점');
+      expect(vm.listNote, '50위 안에 들면 목록에 나와요');
+    });
+
+    test('global, before my first battle: unranked, no note', () async {
+      await shown(ranking(RankingScope.global, [e(1, 31)]));
+      expect(vm.myEntry, isNull);
+      expect(vm.standing!.unranked, isTrue);
+      expect(vm.standing!.plainLine, '대결하면 순위에 올라요');
+      expect(vm.listNote, isEmpty);
+    });
+
+    test('friends: mine among the rows; first, ahead of 2nd', () async {
+      final friends = vm.select(RankingScope.friends);
+      repo.pending.last.complete(
+        ranking(RankingScope.friends, [e(1, 19, me: true), e(2, 15)]),
+      );
+      await friends;
+      expect(vm.myEntry?.nickname, '쥐돌이');
+      expect(vm.standing!.kind, StandingKind.first);
+      expect(vm.standing!.goalLine, '2위보다 4점 앞섬');
+      expect(vm.listTitle, '나와 친구 1명');
+      expect(vm.noFriends, isFalse);
+    });
+
+    test('friends with only me: the card asking for friends', () async {
+      final friends = vm.select(RankingScope.friends);
+      repo.pending.last.complete(
+        ranking(RankingScope.friends, [e(1, 19, me: true)]),
+      );
+      await friends;
+      expect(vm.noFriends, isTrue);
+      expect(vm.standing!.kind, StandingKind.noFriends);
+      expect(vm.standing!.goalLine, isNull);
+    });
+
+    test('friends, nobody played: – for everyone and the note', () async {
+      final friends = vm.select(RankingScope.friends);
+      repo.pending.last.complete(
+        ranking(RankingScope.friends, [
+          e(1, 0, battles: 0),
+          e(1, 0, battles: 0, me: true),
+        ]),
+      );
+      await friends;
+      expect(vm.myRecord, '이번 주 기록 없음');
+      expect(vm.standing!.plainLine, '대결하면 점수가 쌓여요');
+      expect(vm.listNote, '이번 주 아직 아무도 대결하지 않았어요');
+    });
+
+    test("my name: my row's, else the account's, else 나", () async {
+      expect(vm.myName('우현'), '우현');
+      expect(vm.myName(null), '나');
+      final mine = e(4, 19, me: true);
+      await shown(ranking(RankingScope.global, [mine], me: mine));
+      expect(vm.myName('우현'), '쥐돌이');
+    });
+
+    test("a row's record", () {
+      expect(WeeklyRankingsViewModel.recordOf(e(1, 5)), '3전 2승 · KO 1');
+      expect(WeeklyRankingsViewModel.recordOf(null), '이번 주 기록 없음');
     });
   });
 }

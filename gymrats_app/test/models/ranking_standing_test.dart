@@ -329,4 +329,53 @@ void main() {
       expect(a.toString(), contains('StandingKind.first'));
     });
   });
+
+  group('the list heading (spec 3.5)', () {
+    test('TOP 50 for everyone, 나와 친구 n명 for friends', () {
+      expect(RankingList.title(friends: false, count: 50), 'TOP 50');
+      expect(RankingList.title(friends: true, count: 4), '나와 친구 3명');
+      expect(RankingList.title(friends: true, count: 1), '나와 친구 0명');
+    });
+
+    test('the note: shared ranks, how to get listed, or nothing yet', () {
+      final listed = [row(1, 31), row(2, 19, me: true)];
+      expect(
+        RankingList.note(friends: false, me: listed.last, entries: listed),
+        RankingList.sharedRanks,
+      );
+      expect(RankingList.sharedRanks, '같은 점수는 같은 등수');
+      expect(
+        RankingList.note(
+          friends: false,
+          me: row(63, 4, me: true),
+          entries: [row(50, 6)],
+        ),
+        '50위 안에 들면 목록에 나와요',
+      );
+      // RankG3: no global row of mine, no note.
+      expect(
+        RankingList.note(friends: false, me: null, entries: [row(1, 31)]),
+        isEmpty,
+      );
+    });
+
+    test('friends: shared ranks, or nobody has played this week', () {
+      expect(
+        RankingList.note(
+          friends: true,
+          me: null,
+          entries: [row(1, 19, me: true), row(2, 0, battles: 0)],
+        ),
+        RankingList.sharedRanks,
+      );
+      expect(
+        RankingList.note(
+          friends: true,
+          me: null,
+          entries: [row(1, 0, battles: 0), row(1, 0, battles: 0, me: true)],
+        ),
+        '이번 주 아직 아무도 대결하지 않았어요',
+      );
+    });
+  });
 }
