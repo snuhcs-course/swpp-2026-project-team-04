@@ -143,6 +143,16 @@ void main() {
       final join = await joined();
       expect((join['payload'] as Map).containsKey('friend_id'), isFalse);
     });
+
+    test('the main match accepts a simulated opponent (P10)', () async {
+      final join = await joined();
+      expect(join['payload']['accept_virtual'], isTrue);
+    });
+
+    test('a friend battle does not accept one (P10)', () async {
+      final join = await joined(friendId: '42');
+      expect((join['payload'] as Map).containsKey('accept_virtual'), isFalse);
+    });
   });
 
   group('the setup time (P12)', () {

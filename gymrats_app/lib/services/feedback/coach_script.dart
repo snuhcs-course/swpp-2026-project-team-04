@@ -215,7 +215,8 @@ class CoachGoalResultGraphic extends CoachGraphic {
 }
 
 /// Who talks: the character's name tag and the ending put after its
-/// sentences (A10 spec 4.4).
+/// sentences (A10 spec 4.4). The ending follows only a sentence that ends
+/// in '다', and '!' follows it ([exclaim], A9 spec 1).
 class CoachVoice {
   const CoachVoice._(this.characterId, this.name, this.ending);
 
@@ -241,8 +242,17 @@ class CoachVoice {
   /// e.g. "물렁범".
   final String name;
 
-  /// e.g. "범", as in "수고했다범!".
+  /// e.g. "범", as in "수고했다범!". For the result card's line; the talk's
+  /// lines put it on with [exclaim] only.
   final String ending;
+
+  /// [saying], which ends in '다', with the ending and '!': `exclaim('좋다')`
+  /// is '좋다깡!' for 그루. A question (…까?), a suggestion (…자), a promise
+  /// (…게) or a sentence in …어 takes no ending.
+  String exclaim(String saying) {
+    assert(saying.endsWith('다'), 'The ending follows only "다": "$saying"');
+    return '$saying$ending!';
+  }
 }
 
 /// One battle's pace: counted reps in each of the round's slices.
@@ -672,16 +682,15 @@ abstract final class CoachSteps {
   static List<CoachLine> lastGoal(CoachFacts f, CoachVoice v) {
     final goal = f.lastGoal, result = f.lastResult;
     if (goal == null || result == null) return const [];
-    final e = v.ending;
     final rig = CharacterRig.standard;
     final setWith = rig.art(rig.selectableOrDefault(goal.characterId)).name;
     final quoted = '‘${goal.title}’';
     final recall = CoachLine(
       pose: CoachPose.idle,
       pieces: [
-        CoachPiece('지난번 미션 기억나$e? '),
+        const CoachPiece('지난번 미션 기억나? '),
         CoachPiece(quoted, marked: true),
-        CoachPiece('${Josa.ieot.of(goal.title)}지.'),
+        CoachPiece(v.exclaim('${Josa.ieot.of(goal.title)}다')),
       ],
       graphic: CoachGoalGraphic(
         title: goal.title,
@@ -695,13 +704,13 @@ abstract final class CoachSteps {
       recall,
       CoachLine(
         pose: result.reached ? CoachPose.win : CoachPose.hit,
-        pieces: result.reached ? _reached(result, e) : _missed(result, e),
+        pieces: result.reached ? _reached(result, v) : _missed(result, v),
         graphic: CoachGoalResultGraphic(title: goal.title, result: result),
       ),
     ];
   }
 
-  static List<CoachPiece> _reached(GoalProgress r, String e) {
+  static List<CoachPiece> _reached(GoalProgress r, CoachVoice v) {
     final value = CoachPiece('${r.value}번', marked: true);
     return [
       ...switch (r.kind) {
@@ -732,11 +741,11 @@ abstract final class CoachSteps {
         ],
       },
       const CoachPiece('미션 성공', marked: true),
-      CoachPiece('이다$e!'),
+      CoachPiece(v.exclaim('이다')),
     ];
   }
 
-  static List<CoachPiece> _missed(GoalProgress r, String e) {
+  static List<CoachPiece> _missed(GoalProgress r, CoachVoice v) {
     final value = CoachPiece('${r.value}번', marked: true);
     final gap = CoachPiece('${(r.value - r.target).abs()}번', marked: true);
     // task.md W11 decision 14: too many rejections, not too few reps.
@@ -746,7 +755,7 @@ abstract final class CoachSteps {
         value,
         const CoachPiece('이라 미션보다 '),
         gap,
-        CoachPiece(' 많았어. 아깝다$e!'),
+        CoachPiece(' 많았어. ${v.exclaim('아깝다')}'),
       ];
     }
     return [
@@ -758,7 +767,7 @@ abstract final class CoachSteps {
       value,
       const CoachPiece('이라서 딱 '),
       gap,
-      CoachPiece(' 모자랐어. 아깝다$e!'),
+      CoachPiece(' 모자랐어. ${v.exclaim('아깝다')}'),
     ];
   }
 
@@ -766,7 +775,6 @@ abstract final class CoachSteps {
   /// After the check of a goal of counted reps, which said them already,
   /// only the average is left (A11 spec 6.3), and nothing without one.
   static List<CoachLine> summary(CoachFacts f, CoachVoice v) {
-    final e = v.ending;
     final reps = f.validReps;
     final average = f.average;
     final difference = average == null ? 0 : reps - average;
@@ -780,7 +788,7 @@ abstract final class CoachSteps {
             > 0 => [
               CoachPiece('$last보다 '),
               CoachPiece('$difference번 더', marked: true),
-              CoachPiece(' 했어. 좋다$e!'),
+              CoachPiece(' 했어. ${v.exclaim('좋다')}'),
             ],
             0 => [CoachPiece('$last만큼 했어.')],
             _ => [CoachPiece('$last보다는 ${-difference}번 적었지만 괜찮아.')],
@@ -799,7 +807,7 @@ abstract final class CoachSteps {
             ? CoachPose.win
             : CoachPose.idle,
         pieces: [
-          CoachPiece('수고했다$e! 이번 ${f.exerciseName}에서 '),
+          CoachPiece('${v.exclaim('수고했다')} 이번 ${f.exerciseName}에서 '),
           CoachPiece('$reps번', marked: true),
           const CoachPiece(' 인정받았어.'),
           if (average != null)
@@ -825,7 +833,6 @@ abstract final class CoachSteps {
   /// Item 2, with four counted reps or more: the pace.
   static List<CoachLine> pace(CoachFacts f, CoachVoice v) {
     if (f.validReps < minRepsForPace) return const [];
-    final e = v.ending;
     final usual = f.usualRates;
     final slice = f.pace.sliceSeconds;
     CoachPaceGraphic card(CoachPaceMark mark, {bool againstStart = false}) =>
@@ -856,7 +863,7 @@ abstract final class CoachSteps {
           pieces: [
             const CoachPiece('멈추지 않고 '),
             const CoachPiece('같은 속도로', marked: true),
-            CoachPiece(' 하는 게 중요하다$e! 처음부터 너무 달리지 말자.'),
+            CoachPiece(' 하는 게 ${v.exclaim('중요하다')} 처음부터 너무 달리지 말자.'),
           ],
           graphic: card(CoachPaceMark.late),
         ),
@@ -871,7 +878,7 @@ abstract final class CoachSteps {
           pieces: [
             const CoachPiece('후반에 속도가 '),
             CoachPiece('${f.slowdownPercent}%', marked: true),
-            CoachPiece(' 떨어졌어. 처음부터 끝까지 같은 속도로 가 보자$e.'),
+            const CoachPiece(' 떨어졌어. 처음부터 끝까지 같은 속도로 가 보자.'),
           ],
           // The card compares with the start too, as the line does.
           graphic: card(CoachPaceMark.late, againstStart: true),
@@ -884,7 +891,7 @@ abstract final class CoachSteps {
         pieces: [
           const CoachPiece('처음부터 끝까지 '),
           const CoachPiece('고른 속도', marked: true),
-          CoachPiece('였어. 좋다$e!'),
+          CoachPiece('였어. ${v.exclaim('좋다')}'),
         ],
         graphic: card(CoachPaceMark.none),
       ),
@@ -960,7 +967,6 @@ abstract final class CoachSteps {
   /// Item 4, when there is one: a new longest combo, else the first good
   /// point. A record needs earlier battles to beat (task.md W10 decision 2).
   static List<CoachLine> praise(CoachFacts f, CoachVoice v) {
-    final e = v.ending;
     final best = f.earlierBestCombo;
     final combo = f.longestCombo;
     if (best != null && combo >= 2 && combo > best) {
@@ -971,7 +977,7 @@ abstract final class CoachSteps {
             // "대신" only follows something to fix.
             CoachPiece(f.issues.isEmpty ? '콤보는 ' : '대신 콤보는 '),
             CoachPiece('$combo번', marked: true),
-            CoachPiece('까지 이어 갔어. 지금까지 중에 가장 길다$e!'),
+            CoachPiece('까지 이어 갔어. ${v.exclaim('지금까지 중에 가장 길다')}'),
           ],
           graphic: CoachComboGraphic(combo: combo, previousBest: best),
         ),
@@ -984,7 +990,7 @@ abstract final class CoachSteps {
         pose: CoachPose.win,
         pieces: [
           CoachPiece('‘${good.title}’', marked: true),
-          CoachPiece('${Josa.eunNeun.of(good.title)} 잘했어$e!'),
+          CoachPiece(v.exclaim('${Josa.eunNeun.of(good.title)} 잘했다')),
         ],
       ),
     ];
@@ -1040,39 +1046,40 @@ class CoachScript {
 
   /// Item 5: the goal question; after a check of the last goal, about the
   /// next one (A11 spec 6.4).
-  CoachLine get question {
-    final e = voice.ending;
-    return CoachLine(
-      pose: CoachPose.idle,
-      pieces: [
-        CoachPiece(switch (facts.lastResult?.reached) {
-          null => '다음 판 미션, 뭐로 할까$e?',
-          true => '다음 미션은 뭐로 할까$e?',
-          false => '미션을 어떻게 할까$e?',
-        }),
-      ],
-      asksGoal: true,
-    );
-  }
+  CoachLine get question => CoachLine(
+    pose: CoachPose.idle,
+    pieces: [
+      CoachPiece(switch (facts.lastResult?.reached) {
+        null => '${voice.exclaim('다음 판 미션을 정할 차례다')} 뭐로 할까?',
+        true => '${voice.exclaim('다음 미션을 정할 차례다')} 뭐로 할까?',
+        false => '${voice.exclaim('미션을 다시 정할 차례다')} 어떻게 할까?',
+      }),
+    ],
+    asksGoal: true,
+  );
 
   /// Item 6: the line after the user picked [goal], or declined (null).
   CoachLine answer(GoalSuggestion? goal) {
-    final e = voice.ending;
     if (goal == null) {
       return CoachLine(
         pose: CoachPose.idle,
-        pieces: [CoachPiece('알겠어. 이번엔 미션 없이 편하게 해 보자. 다음에 또 이야기하자$e!')],
+        pieces: [
+          CoachPiece(
+            '${voice.exclaim('알겠다')} 이번엔 미션 없이 편하게 해 보자. '
+            '다음에 또 이야기하자.',
+          ),
+        ],
       );
     }
     final exercise = facts.exerciseName;
     return CoachLine(
       pose: CoachPose.win,
       pieces: [
-        const CoachPiece('좋아! '),
+        CoachPiece('${voice.exclaim('좋다')} '),
         CoachPiece('‘${goal.title}’', marked: true),
         CoachPiece(
           ' 미션 접수! ${Josa.eulReul.after(exercise)} 고르면 '
-          '다시 보여 줄게. 다음 판에서 깨 보자$e!',
+          '다시 보여 줄게. 다음 판에서 깨 보자!',
         ),
       ],
       graphic: CoachGoalGraphic(
@@ -1086,7 +1093,9 @@ class CoachScript {
   /// Item 7: the last line.
   CoachLine get end => CoachLine(
     pose: CoachPose.win,
-    pieces: [CoachPiece('오늘 이야기는 여기까지! 리포트로 돌아갈게${voice.ending}.')],
+    pieces: [
+      CoachPiece('${voice.exclaim('오늘 이야기는 여기까지다')} 자세한 건 상세 리포트에서 볼 수 있어.'),
+    ],
   );
 }
 

@@ -17,3 +17,15 @@
 그럼 지금 문제 해결해서 브랜치 수정 및 커밋과 푸쉬할 수 있어?
 
 코덱스 리뷰 및 머지 요청 원문: codex 리뷰 후 머지까지 해줘
+
+### 2026-11-27 · P10 protocol handoff (excerpt)
+넘기는 일: docs/iteration-2-protocol.md에 새 메시지를 추가해 줘. 내 범위 밖 파일이야.
+
+### 2026-11-27 · Revised P10 protocol handoff
+docs/iteration-2-protocol.md에 accept_virtual과 결과의 simulated 선수 추가 부탁해.
+
+### 2026-11-27 · P10 protocol merge check
+P10 머지됐으니까 후속 프로토콜 문서 PR #103도 확인하고 문제없으면 Sangwoo-Hahn으로 머지해줘.
+
+### 2026-11-28 · P11 weekly rankings follow-up
+P11에서 내 후속으로 남긴 Match.played_at 인덱스 추가, 디자인 토큰 검사에 랭킹 화면 등록, 랭킹 라우트 테스트 추가까지 한 PR로 처리하고 Codex 리뷰랑 CI 통과하면 머지해줘.

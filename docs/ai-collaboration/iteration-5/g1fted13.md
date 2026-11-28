@@ -1,6 +1,6 @@
 # AI Collaboration notes: Iteration 5 (2026-11-21 ~ 2026-12-04) – Woohyun Song
 Status: draft (iteration open) | Written by: Woohyun Song | Merged by the PM into `AI-Collaboration-Report-Iteration-5.md` (P27)
-Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data; P8's spec and state mockups); Claude on claude.ai with the Claude Design canvas (the arcade art)
+Tools used: Claude Code (Opus 5.5), with the repo's `reviewer` subagent; Claude Design (the user's design canvas); Claude on claude.ai (A2's spec and data; P8's spec and state mockups; A9's spec; A11's spec and its screenshots); Claude on claude.ai with the Claude Design canvas (the arcade art)
 
 Evidence per step, items a–f of the AI Collaboration Report Guidelines v1.1. Input prompts are in
 [g1fted13-Prompt-Log.md](g1fted13-Prompt-Log.md).
@@ -1047,3 +1047,209 @@ These were made from the A5 session at the user's word; their full evidence is i
 ### Takeaway
 - When a shared timing value changes, search every test for it and for the keys it drives (`hold-cheer`,
   `HoldTiming.cheer`, "좋아!") before the plan, not only the step's own files.
+
+## A9 `feat/iter5-coach-voice` – 코치 대화 · 캐릭터 어미 다듬기 (a separate task approved by the PM 2026-11-27), 2026-11-27
+
+### a. Where AI was used
+- **The hand-off:** `coach-voice/SPEC.md` v1, then v1.1 (only the exception wording and the PR's shape changed),
+  outside the repo and not committed; its dialogue table was used as written. Who made it (Woohyun Song,
+  2026-11-27):
+  - The problem was found while recording the demo video and shared at the team meeting on 11/25.
+  - SPEC v1 and v1.1: Claude (Opus 5.5) wrote them in a claude.ai project chat after reading `coach_script.dart`.
+    Claude proposed the rule (the ending only after '-다!') and the nine new lines; Woohyun Song checked them. v1.1
+    changed only the PR's shape.
+  - Woohyun Song decided to leave the result card's line to P15.
+- **Planning:** before any code, Claude Code (Claude Opus 5.5) read the spec, `coach_script.dart`, the coach view
+  model, screen and widgets, and their three tests. It reported the plan of spec section 8 and waited (Prompt Log,
+  11-27 02:31). It also found a reader of `CoachVoice.ending` that the spec had not listed: the result card's line
+  "이번 판 이야기해 줄게{e}!" (`result_screen.dart` L180, `result_cards.dart` L446), which breaks the same rule. Before
+  the plan it measured every new line with the app's fonts in a throwaway test (not committed), so the plan could say
+  that no sentence needed shortening.
+- **Local harness (not committed):** the A9 step, its allow list narrowed to the PM's two files, and one exception
+  line for `coach_viewmodel_test.dart`. `.codex-harness` is a junction shared with the A8 session in the main folder,
+  so every change added or edited single lines.
+- **The code and tests:** Claude Code wrote all of it, in commits `c7157ef` (the code and tests) and `d68cfd9` (the reviewer's two test fixes):
+  - `lib/services/feedback/coach_script.dart`: `CoachVoice.exclaim` (L249–255), the doc of `ending` (L245–247), and
+    every line of the talk through `exclaim` (L693, L744, L758, L770, L791, L810, L866, L894, L980, L993,
+    the question L1049–1059, the answers L1062–1091, the end L1094–1097); the slowed pace (L881) now has none.
+  - `test/services/feedback/coach_script_test.dart`: the helpers `_endings`, `_talks`, `_branchMarks`, the new group
+    "the ending only after "~다", before "!" (A9 spec 1 and 5)", and the 14 old expectations.
+  - `test/viewmodels/coach_viewmodel_test.dart`: 5 lines (the exception).
+- **Review:** the `reviewer` subagent: run 1 APPROVE on `c7157ef` with four Minor points, all fixed; run 2
+  CHANGES_REQUESTED on `bc36d8c` (two Major and three Minor points in the notes and the PR draft, all fixed; item d).
+- **Rebase onto `main` (11-27):** after A8 (#104) merged, the three notes files conflicted. Claude Code rebased the
+  branch onto `037b58e`, as the user asked (not a merge). A small script resolved each conflict: A8's section
+  first, then A9's. It checked that the A9 code was unchanged and that each file was exactly main's file plus A9's
+  lines. The commits are now `07aee1a`, `1434cd2`, `0274949`, `14b5067` and `122f0ad` (they were `c7157ef`,
+  `d68cfd9`, `bc36d8c`, `1a707b6` and `5937c1b`). `extract_prompts.py` also offered the automatic summary written
+  when this session's context was compacted. That is not an input prompt, so only the user's request went into the
+  log.
+- **The last line (11-27):** the user relayed the PM's request for a new end line, because A10 (송현우) changes the
+  talk's end buttons to [돌아가기] and [상세 리포트로 →]. The request gave the new line, "오늘 이야기는
+  여기까지다{e}! 자세한 건 상세 리포트에서 볼 수 있어.", and split the work: A10 owns the buttons and the result card,
+  A9 the line and its tests. Claude Code
+  changed `CoachScript.end` (`coach_script.dart` L1094–1099, commit `bef1d1b`) and the three test expectations, and checked that the
+  rule and overflow tests pass unchanged. It also searched the wiki: Requirements does not quote the old end line.
+- **Not done by AI:**
+  - Woohyun Song decided the result card (neither of the plan's two options: it stays P15's, and `ending` stays
+    readable) and the PR's shape (SPEC v1.1); the PM approved the two files, and the exception was act first, report
+    after.
+  - The phone check: not done on a device for this PR (the user's decision, 11-27). It is checked on a real phone
+    at the team meeting after the merge (11/29); the wording and the overflow are covered by the tests.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-27] "4. 코드를 쓰기 전에 SPEC 8절의 계획을 보고하고 기다린다. SPEC 1절과 2절의 대사 표는 정해진 것이라 다시 묻지 않는다. 다만 넘침 때문에 줄여야 할 문장이 있으면 계획 보고에 적는다."
+- [Woohyun Song, 11-27] "결과 카드는 A도 B도 아니고 이렇게 한다."
+- [Woohyun Song, 11-27] "PR 본문에 체크리스트 절을 만들지 않고, 하네스 pull-request 스킬의 형식을 그대로 따른다."
+
+### c. What AI did well
+- **A rule test that can fail:** the rule check builds 21 talks for each of the five characters and checks every
+  line. A table of 34 branch marks fails the test when a talk is dropped and a branch goes unsaid. Four deliberate
+  mistakes in `coach_script.dart` (the old end line, a typed-in "수고했다범!", the ending twice, the old question)
+  each made it fail, and the file was put back identical.
+- **The overflow question answered before the code:** measuring the new lines with the app's fonts at the overflow
+  test's sizes showed that the longer questions still fit, so the plan could leave the widgets alone, and
+  `coach_screen_test.dart` passed unchanged.
+- **The unlisted reader of `ending`:** found by a search before the plan, so the PM could decide the result card
+  before any code depended on making `ending` private.
+
+### d. Hallucinations / errors
+- **The spec's count:** SPEC 5.4 said about 36 places in `coach_script_test.dart`. The diff changed 12 tests (14
+  expectations, 18 lines) that expected the changed lines. The other lines with an ending ("수고했다범!", "미션 성공이다범!") already
+  follow the rule and did not change.
+- **Slips in this session, each caught:**
+  - progress.md first said 33 branch marks; a count of the map gave 34.
+  - One mutation command broke on shell quoting; the mutations then ran from a small script file.
+  - Three edits of progress.md were refused: twice "File has not been read yet" and once "File content has changed
+    since it was last read" (the file is shared with the A8 session). Each time it was re-read and the edit applied
+    to the current text only.
+- **Reviewer run 1 (Minor points, all fixed):**
+  - The rule test's branch set was shared by the five characters, so it checked less than its comment said; now
+    each character must say every branch.
+  - `coach_viewmodel_test.dart` L467 had been narrowed to the line's fixed words; it expects the whole recall line
+    again.
+  - The wiki Requirements 5.6 (criterion 4) still quotes the old shapes "다음 판 미션, 뭐로 할까…?" and "지난번
+    미션 기억나…?"; it is now a design-doc change for the PM (the PR's Review notes).
+  - The local exception line still said "PR Exceptions"; it now says Review notes (SPEC v1.1).
+- **Reviewer run 2 (notes and the PR draft):**
+  - Major, a claim that was not checked: the plan before the code (11-27) and the drafts said the battle demo's result opens
+    the talk. It does not: the result screen pushes `/coach` (`result_screen.dart` L394), and
+    `lib/demo/battle_demo.dart` L98–112 routes only the result and the next battle. The phone check is now planned in
+    the app, and the user was told.
+  - Major: "14 tests" was the count of changed expectations, not tests (12), and the PR had no list of them (SPEC
+    5.4). Both fixed.
+  - Minor: the refused edits above were described with a cause the transcript does not show; L881 was listed as an
+    `exclaim` line; the PR called the spec the design hand-off's (who wrote it is still a TODO).
+  - Minor: a Python `write_text` turned the whole local `ownership-exceptions.txt` from LF to CRLF (Windows newline
+    translation), though progress.md said LF was kept. Restored to LF; the file is the old one plus the A9 line.
+
+### e. Prompt revisions
+- **The result card:**
+  - Before (the plan): A, fix the card's line too (scope added to `result_cards.dart`, one line of P15's
+    `result_screen.dart`), or B, leave the card and keep `ending` public.
+  - After (11-27 02:49): neither. The card line is P15's, `ending` stays readable with a doc saying the talk uses
+    `exclaim` only, and the rule is held by tests.
+  - Why it worked: the plan named the files and owners, so the PM could keep A9 to two files.
+- **The PR's shape:**
+  - Before (the approval message and SPEC v1): a checklist and an Exceptions section.
+  - After (SPEC v1.1, 11-27 03:02): the `pull-request` skill's sections only; the table in What it does, the tests in
+    How to test, the exception and the P15 note in Review notes.
+  - Why it worked: the body follows the same skill as the team's other PRs.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Search for every reader of a field before planning to hide it: here the one reader outside the spec decided the
+  design.
+
+## A11 `feat/iter5-friend-battle-ui` – 친구와의 대전 개편 (an Unexpected task approved by the PM 2026-11-27, due 12/1), 2026-11-27
+
+### a. Where AI was used
+- **The hand-off:** `.claude/design/a11-friend-battle-ui/SPEC.md` v2 (2026-11-27, with the PM's approval) and its design bundle (`design/Fr*.dc.html`, the canvas page "친구 대전 · 신청과 알림 시안", confirmed by the user on 11/27), local and not committed.
+  - Who made them (Woohyun Song, 2026-11-27):
+    - The designs: Woohyun Song made them with Claude on the Claude Design canvas ("GymRats 메인 메뉴 시안", page "친구 대전 · 신청과 알림 시안"), over several rounds. Claude drew the candidates: friend card A, B and C, alert A, B and C, two name alignments, and six panel colors. Woohyun Song chose among them and said what to change, and so settled: friend card A, name A1 (two lines, centered), the first sky color, 그루 and 곰탱이 at 0.65, alert A (the top banner), the inviter's character shown, the "수락 대기!" sticker instead of a count, the new order of the friends page, and the minute's ring instead of the radar.
+    - SPEC v1: Claude on claude.ai (Claude Opus 5.5) read the team repo's `main` code and the settled designs and wrote the draft; Woohyun Song reviewed it. The same session made the bundle's screenshots by drawing the `.dc.html` originals.
+    - SPEC v2: the same Claude added the PM's conditions for the approval (the A11 number and branch, the 12/1 due date, the P9 files, both the ring and the banner counting from the server's `expires_at`, older apps still working, the deploy order after the merge) and the 11/28 phone-check date; Woohyun Song checked it.
+- **Planning:** Claude Code (Claude Opus 5.5) did this before any code (Prompt Log, 11-27 17:31):
+  - It added the local A11 step and 14 exception lines for the P9 files (not committed), and created the branch from `origin/main` `819e4ca`.
+  - It read the spec, the four designs and the code, then reported the plan of SPEC 10 and waited.
+  - The reading found three things the spec had not foreseen:
+    - The friends page has no `HomeViewModel`, so it had no profile for `showExerciseSheet`.
+    - The lobby drops the wait view model when a wait ends, so the end's kind was lost.
+    - `GoalSticker.period` and `poseAt` are already public, so `exercise_sheet.dart` did not need a change.
+  - The plan asked three questions: the card's scale, `endedBy`, and the profile.
+- **The user's answers (11-27 17:51):**
+  - The picture's scale formula and a least card height of 132 (not the plan's fixed 1×).
+  - `endedBy` approved, and the profile as a route argument with a re-read after a battle.
+  - Four out-of-scope test files approved, and P11's space left out.
+- **The code and tests:** Claude Code wrote all of it, in seven commits:
+  - `c133c40`, the server: the optional `character` field (`friends_views.py` L43–46, L250–256), the model field and migration `0006`.
+  - `40025b5`, the data and view models: `BattleInvite.character` and `secondsLeftAt` (`friend_repository.dart` L67–80); `_LocalExpiry` (`friends_viewmodel.dart` L280); `FriendWaitEnd` (L317); the 1 s ticks; the profile (L146–185).
+  - `4112df9`, the theme: `FriendColors` and `FriendText` (`app_theme.dart` L2147 on).
+  - `92d0360`, the 게임 시작 card: `FriendBattleCard.pictureScale` (`friend_battle_card.dart` L58), `FriendWaitSticker`, and `ArcadeFriendPanel` (`arcade_play_card.dart` L328).
+  - `ab07d2e`, the friends page and the alert: `friend_invite_parts.dart`, `friends_screen.dart`.
+  - `9bea2be`, the waiting room: `friend_wait_view.dart`, `online_lobby_screen.dart` `_friendWait` (L381).
+  - `a5af8c1`, the token list.
+  - Each intermediate commit was analyzed in a throwaway worktree; all were clean.
+- **Review:** the `reviewer` subagent ran three times:
+  - Run 1: CHANGES_REQUESTED, with 2 Major and 2 Minor points (item d).
+  - Run 2: APPROVE, with 1 Minor (a test's name promised more than it checked; fixed).
+  - Run 3: APPROVE on the user's closing changes, with no findings.
+- **Not done by AI:**
+  - The PM approved the task and the P9 files.
+  - Woohyun Song made the six decisions:
+    - the scale formula;
+    - '친구 추가' as the label (SPEC 1's list had left it out by mistake);
+    - the device-clock rule;
+    - the reduced-motion test setup kept;
+    - P11's harness line left untouched;
+    - the two-phone check deferred to the team meeting on 11/28, after the merge.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-27] "명세 0절대로 로컬 하네스(ownership.json, ownership-exceptions.txt)에 A11 단계를 더하고, origin/main에서 브랜치를 만든 뒤, 10절의 계획 보고까지만 해줘. 코드는 내가 계획을 확인한 다음에 써."
+- [Woohyun Song, 11-27] "1. 카드가 152와 다를 때 (질문 1): 1배 고정 대신 배율 s 하나로 정해."
+- [Woohyun Song, 11-27] "2. 기기 시계가 빠를 때: 받은 신청이 아예 안 보이는 건 고치자."
+
+### c. What AI did well
+- **Problems found before any code:** the missing profile on the friends page, and the wait's end being lost in `_release()`. Both reached the plan as questions, so the user decided them before they became bugs.
+- **A layout that measures well:**
+  - The play page measures its children (`IntrinsicHeight`), and a `LayoutBuilder` cannot be measured.
+  - So the card reports its least height through a tight `ConstrainedBox` and takes the given height when laid out (`friend_battle_card.dart` L74).
+  - The scale is tested at 360×780, 320×640 and 412×915, with Do Hyeon loaded, and the name is not shrunk.
+- **One count everywhere:** `secondsLeftAt` is used by the alert, the friends page and the waiting room. A test runs the three on one invite and one clock.
+- **Words kept in step without touching the file:** the waiting room's setup words are checked word for word against the matching screen's card, so `matching_screen.dart` stayed unchanged.
+
+### d. Hallucinations / errors
+- **The device-clock approach:**
+  - The first code dropped an invite already at 0 by the phone's clock the moment it was read. On a phone over a minute ahead, no invite would ever show, and before A11 they did.
+  - The reviewer (run 1, Minor 3) flagged it, and Woohyun Song set the rule now in `_LocalExpiry`: hide at 0 only an invite first seen with time left.
+- **Styles changed in the views (run 1, Major):** three places changed a font family or a paint beyond color and weight, against Design Documentation 2.5.1. They are now named styles.
+- **The Design doc changes block was missing (run 1, Major):** it is now in the step's notes, with the wiki lines made stale by removing 규칙 보기 (Requirements L395–396 and L465; Design Documentation L137, L434 and L629).
+- **The code field's name (run 1, Minor):** the redesign had dropped its label for a screen reader; it is restored with existing words.
+- **The label read too literally:** Claude Code kept '친구 코드로 추가' because '친구 추가' was not in SPEC 1's word list. The user ruled that the list was wrong and the design right.
+- **Found only by the full run:** 4 failures in two test files outside A11's scope, where finders looked for the old one-line texts (`main_test.dart` L256, `home_screen_test.dart` L380). They were fixed after the exception lines were added.
+- **Slips in this session, each caught by a test or a check:**
+  - A test measured the `FractionallySizedBox` instead of its fill.
+  - Two `Paint` colors compared unequal although both were the same ink.
+  - `find.textContaining('1')` also matched '01 / PLAY'.
+  - Two `open()` calls in one test reused the first app's navigator.
+  - A script assumed LF in a file with CRLF (it wrote nothing).
+  - `TextField` has no `semanticsLabel` parameter.
+  - The first full run kept the old `useProfile` notification, which was later removed.
+
+### e. Prompt revisions
+- **The card's height:**
+  - Before (the plan): draw the picture at 1× and bottom-align it, with the sky above, so a taller card would not crop.
+  - After (11-27 17:51): the formula `s = min(h/152, (w−128)/190, 1.3)` and a least height of 132.
+  - Why it worked: one number fixes both narrow and tall phones, and the tests pin it at three sizes.
+- **The device clock:**
+  - Before (the code after run 1): an invite at 0 on arrival was over on this phone, and the trade-off was only recorded.
+  - After (11-27 20:12): only an invite first seen with time left can end by the local clock; one first seen at 0 shows 0:00 until the server's list drops it.
+  - Why it worked: the rule keeps the PM's "count only from `expires_at`" and removes the case where no invite ever appears.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Check how a screen is measured before choosing its layout widgets: the page's `IntrinsicHeight` decided how the card could fill the rest.

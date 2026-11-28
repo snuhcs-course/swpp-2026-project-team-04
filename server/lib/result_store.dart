@@ -3,6 +3,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'skill_matchmaker.dart';
+
 /// Where the battle server keeps what must outlive it (P11, protocol §8):
 /// battles that started, their final results, and battles that ended void.
 abstract interface class BattleResultStore {
@@ -30,7 +32,10 @@ abstract interface class BattleTelemetry {
 /// Calls the Django P11 saver (`/internal/...`) over loopback HTTP with the
 /// shared secret. Bodies and the secret are never logged. It also records
 /// P17's `battle_finished` at `/internal/telemetry/battle`.
-class HttpResultStore implements BattleResultStore, BattleTelemetry {
+/// P10: it also reads every account's recent battles from
+/// `/internal/skills` for the skill estimates.
+class HttpResultStore
+    implements BattleResultStore, BattleTelemetry, SkillSource {
   HttpResultStore(
     Uri base,
     this._secret, {
@@ -82,6 +87,25 @@ class HttpResultStore implements BattleResultStore, BattleTelemetry {
   Future<void> battleFinished(Map<String, dynamic> event) =>
       _post('telemetry/battle', event);
 
+  /// Every account's record is about 100 bytes: room for tens of
+  /// thousands.
+  static const _skillsMaxBytes = 8 << 20;
+
+  /// Accounts with a malformed record are left out; a failed read is an
+  /// error, so the battle server keeps the estimates it has.
+  @override
+  Future<List<SkillRecord>> loadSkills() async {
+    final body = await _post('skills', {
+      'limit': recentMatches,
+    }, maxBytes: _skillsMaxBytes);
+    final players = body?['players'];
+    if (players is! List) throw StateError('skills unavailable');
+    return [
+      for (final raw in players)
+        if (SkillRecord.fromJson(raw) case final record?) record,
+    ];
+  }
+
   @override
   Future<Map<String, Set<String>>> recover(int bootedAtMs) async {
     final body = await _post('battles/recover', {'booted_at_ms': bootedAtMs});
@@ -105,8 +129,9 @@ class HttpResultStore implements BattleResultStore, BattleTelemetry {
   /// idempotent on the Django side, so a retry never stores twice.
   Future<Map<String, dynamic>?> _post(
     String path,
-    Map<String, dynamic> body,
-  ) async {
+    Map<String, dynamic> body, {
+    int maxBytes = 65536,
+  }) async {
     final uri = base.resolve(path);
     for (var attempt = 0; ; attempt++) {
       int? status;
@@ -114,6 +139,7 @@ class HttpResultStore implements BattleResultStore, BattleTelemetry {
         final (code, reply) = await _send(
           uri,
           body,
+          maxBytes,
         ).timeout(const Duration(seconds: 5));
         status = code;
         if (code < 300) return reply;
@@ -138,6 +164,7 @@ class HttpResultStore implements BattleResultStore, BattleTelemetry {
   Future<(int, Map<String, dynamic>?)> _send(
     Uri uri,
     Map<String, dynamic> body,
+    int maxBytes,
   ) async {
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
     try {
@@ -153,7 +180,7 @@ class HttpResultStore implements BattleResultStore, BattleTelemetry {
       final received = <int>[];
       await for (final chunk in response) {
         received.addAll(chunk);
-        if (received.length > 65536) break;
+        if (received.length > maxBytes) break;
       }
       Map<String, dynamic>? reply;
       try {

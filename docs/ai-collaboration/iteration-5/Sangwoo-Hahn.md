@@ -17,3 +17,15 @@ Codex updated the shared knee-rep points rule, tutorial copy and regression test
 Codex implemented and tested bounded transaction retries for SQLite contention in the friend request endpoint at the PM's request. No manual edits reported.
 
 Independent Codex review identified a remaining SQLite lock-upgrade race and malformed request handling. Codex updated the implementation and regression tests before re-review.
+
+### 2026-11-27 · P10 protocol handoff
+Codex compared the wire contract in PR #102 with the PM handoff and documented the optional flag and the virtual assignment. Inspecting the validator clarified that a valid friend request can explicitly set the flag to false. No manual edits were reported.
+
+### 2026-11-27 · Revised P10 protocol handoff
+Codex traced the server-managed match and updated the protocol handoff in #103 against #102 at `71fcdc3`. The flag belongs to the internal result payload. The client follows the standard online match flow.
+
+### 2026-11-27 · P10 protocol merge check
+Codex reconciled the protocol with merged P10. The real client supplies its avatar ID, while the battle server selects the simulated player's character.
+
+### 2026-11-28 · P11 weekly rankings follow-up
+Codex implemented the three PM follow-ups from #108. An independent read-only Codex reviewer checked the four implementation and test files against `375a9b7`, verified migration reversibility and returned APPROVE with no findings. No human code edits were reported.
