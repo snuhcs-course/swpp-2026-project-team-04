@@ -143,6 +143,12 @@ def check_once(services, state_path, webhook, *, probe=healthy, restart_unit=res
     save_state(state_path, counts)
     # Every due restart is requested first: a slow webhook cannot hold up the next one.
     restarted = {name: restart_unit(name) for name in due}
+    failed = [name for name, ok in restarted.items() if not ok]
+    if failed:
+        # Not queued: the next failed check tries again instead of waiting for three more.
+        for name in failed:
+            counts[name] = FAILURES_TO_RESTART - 1
+        save_state(state_path, counts)
     for name, ok in restarted.items():
         message = (
             f"[GymRats] {name} on {host} failed {FAILURES_TO_RESTART} health checks in a row"

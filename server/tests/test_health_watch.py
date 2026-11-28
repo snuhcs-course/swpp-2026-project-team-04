@@ -147,6 +147,16 @@ def test_a_passing_check_clears_the_count(api, battle, tmp_path):
     assert rec.restarted == []
 
 
+def test_a_restart_that_was_not_queued_is_tried_again_on_the_next_failure(api, tmp_path):
+    rec, state = Recorder(restart_ok=False), tmp_path / "state.json"
+    api.status = 500
+    for _ in range(3):
+        counts = run({"gymrats-api": api.url}, state, rec)
+    assert counts == {"gymrats-api": 2} and rec.restarted == ["gymrats-api"]
+    run({"gymrats-api": api.url}, state, rec)  # the 4th failure, not the 6th
+    assert rec.restarted == ["gymrats-api", "gymrats-api"]
+
+
 def test_a_failed_restart_is_reported(api, tmp_path):
     rec, state = Recorder(restart_ok=False), tmp_path / "state.json"
     api.status = 500
