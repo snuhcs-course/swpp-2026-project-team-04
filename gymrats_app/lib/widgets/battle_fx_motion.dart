@@ -683,7 +683,7 @@ class _SideFx {
 /// The bands of one rep: "MISS" for a swing that missed, or the grade word
 /// and then the points for a blow that landed.
 class _Pop {
-  const _Pop(this.at, this.grade, this.points);
+  const _Pop(this.at, this.grade, this.points, {this.showZeroOnMiss = false});
 
   /// When the first band pops up: as the blow lands, or 110 ms into a miss.
   final double at;
@@ -691,6 +691,7 @@ class _Pop {
   /// Null for a miss.
   final GameGrade? grade;
   final int points;
+  final bool showZeroOnMiss;
 }
 
 class _Sign {
@@ -945,11 +946,14 @@ class BattleFxTimeline {
       }
     } else {
       side.act = _Act(_ActKind.miss, now, power);
-      // The player's knee correction replaces the generic MISS banner.
-      side.pop =
-          event.side == BattleSide.me && event.reason == RejectReason.kneesDown
-          ? null
-          : _Pop(now + 110, null, 0);
+      side.pop = _Pop(
+        now + 110,
+        null,
+        0,
+        showZeroOnMiss:
+            event.side == BattleSide.me &&
+            event.reason == RejectReason.kneesDown,
+      );
       _cues.add((now, BattleStageCue(BattleCueKind.miss, side: event.side)));
     }
     // The sign is only for the user's own rep that did not count; the latest
@@ -1622,12 +1626,12 @@ class BattleFxTimeline {
         if (miss != null) {
           add(
             BattleFxBanner(
-              text: 'MISS',
+              text: rep.showZeroOnMiss ? 'MISS +0' : 'MISS',
               top: 155,
               textSize: 84,
               tone: BattleFxTone.plain,
               opacity: miss.opacity,
-              dx: -sign * 56,
+              dx: rep.showZeroOnMiss ? -24 : -sign * 56,
               rotation: sign * 7,
               scaleX: 0.78 * miss.scale,
               scaleY: miss.scale,

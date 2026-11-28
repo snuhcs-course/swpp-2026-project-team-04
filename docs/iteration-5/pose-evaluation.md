@@ -4,7 +4,7 @@ Evaluated on November 28, 2026 against [main at d10d0dc](https://github.com/snuh
 
 ## Counts, reasons and points
 
-The measurements below describe the evaluated commit. In the subsequent battle-feedback fix, a knee rejection still earns zero points and zero valid reps, but receives no grade. The player's battle screen shows the knee correction alone.
+The measurements below describe the evaluated commit. In the subsequent battle-feedback fix, a knee rejection still earns zero points and zero valid reps, but receives no grade. The player's battle screen shows MISS +0 alongside the knee correction.
 
 | Recordings | Correct motion counted (M1) | Incorrect motion uncounted (M2) | Exact rejection reason (M3) | Incorrect with no event | Extra valid / rejected events | Count expected → replay | Base points expected → replay |
 |---|---:|---:|---:|---:|---:|---:|---:|

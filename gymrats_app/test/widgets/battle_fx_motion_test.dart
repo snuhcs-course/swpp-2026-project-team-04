@@ -1256,19 +1256,25 @@ void main() {
       expect(texts(both, 520), ['+10']);
     });
 
-    test('a knee correction clears the last score and a later ordinary '
-        'miss still gets its banner', () {
-      final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
-      expect(texts(fx, 599), ['+10']);
-      fx.rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 600);
-      expect(texts(fx, 600), isEmpty);
-      expect(texts(fx, 720), isEmpty);
-      expect(fx.frame(720).sign!.text, '무릎을 바닥에서 떼요');
-      fx.rep(_rep(BattleSide.me, null, reason: RejectReason.phoneMoved), 1600);
-      expect(texts(fx, 1600), isEmpty);
-      expect(texts(fx, 1720), ['MISS']);
-      expect(fx.frame(1720).banners.single.scaleY, lessThan(1));
-    });
+    test(
+      'a knee rejection replaces the last score with MISS +0 and an ordinary '
+      'miss still gets its banner',
+      () {
+        final fx = BattleFxTimeline()..rep(_good(BattleSide.me), 0);
+        expect(texts(fx, 599), ['+10']);
+        fx.rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 600);
+        expect(texts(fx, 600), isEmpty);
+        expect(texts(fx, 720), ['MISS +0']);
+        expect(fx.frame(720).sign!.text, '무릎을 바닥에서 떼요');
+        fx.rep(
+          _rep(BattleSide.me, null, reason: RejectReason.phoneMoved),
+          1600,
+        );
+        expect(texts(fx, 1600), isEmpty);
+        expect(texts(fx, 1720), ['MISS']);
+        expect(fx.frame(1720).banners.single.scaleY, lessThan(1));
+      },
+    );
 
     test('a time-up or a player leaving lets the bands play out; only a '
         'knockout clears them', () {

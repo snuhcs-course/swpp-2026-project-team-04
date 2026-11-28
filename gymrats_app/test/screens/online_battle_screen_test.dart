@@ -191,36 +191,39 @@ void main() {
   SetupHintShort? cueOf(WidgetTester tester) =>
       tester.widget<BattleCameraArea>(find.byType(BattleCameraArea)).setupCue;
 
-  testWidgets('a knee push-up shows only the correction in the online arena', (
-    tester,
-  ) async {
-    await open(tester);
-    session
-      ..rules = battleRules
-      ..phase = OnlinePhase.playing
-      ..startAtMs = session.serverNow
-      ..endAtMs = session.serverNow + 30000
-      ..notifyListeners();
-    await tester.pump();
-    judge.closeRep(reason: RejectReason.kneesDown);
-    await pose(tester);
-    for (final ms in [150, 200, 200]) {
-      await wait(tester, ms);
-      expect(find.text('무릎을\n바닥에서\n떼요'), findsOneWidget);
-      final label = tester.getRect(find.text('무릎을\n바닥에서\n떼요'));
-      final screen = tester.getRect(find.byType(BattleArena));
-      expect(label.left, greaterThanOrEqualTo(screen.left));
-      expect(label.right, lessThanOrEqualTo(screen.right));
-      expect(label.bottom, lessThanOrEqualTo(screen.bottom));
-      for (final label in ['AVERAGE', '+0', 'MISS']) {
-        expect(find.text(label), findsNothing);
+  testWidgets(
+    'a knee push-up shows MISS +0 and the correction in the online arena',
+    (tester) async {
+      await open(tester);
+      session
+        ..rules = battleRules
+        ..phase = OnlinePhase.playing
+        ..startAtMs = session.serverNow
+        ..endAtMs = session.serverNow + 30000
+        ..notifyListeners();
+      await tester.pump();
+      judge.closeRep(reason: RejectReason.kneesDown);
+      await pose(tester);
+      for (final ms in [150, 200, 200]) {
+        await wait(tester, ms);
+        expect(find.text('무릎을\n바닥에서\n떼요'), findsOneWidget);
+        final label = tester.getRect(find.text('무릎을\n바닥에서\n떼요'));
+        final screen = tester.getRect(find.byType(BattleArena));
+        expect(label.left, greaterThanOrEqualTo(screen.left));
+        expect(label.right, lessThanOrEqualTo(screen.right));
+        expect(label.bottom, lessThanOrEqualTo(screen.bottom));
+        expect(find.text('AVERAGE'), findsNothing);
+        expect(find.text('MISS +0'), findsOneWidget);
+        final banner = tester.getRect(find.text('MISS +0'));
+        expect(screen.contains(banner.topLeft), isTrue);
+        expect(screen.contains(banner.bottomRight), isTrue);
       }
-    }
-    final arena = tester.widget<BattleArena>(find.byType(BattleArena));
-    expect(arena.state.myScore, 0);
-    expect(arena.state.myReps, 0);
-    await tester.pumpWidget(const SizedBox());
-  });
+      final arena = tester.widget<BattleArena>(find.byType(BattleArena));
+      expect(arena.state.myScore, 0);
+      expect(arena.state.myReps, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   group('the setup time (P12)', () {
     testWidgets(
