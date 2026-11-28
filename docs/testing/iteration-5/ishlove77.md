@@ -5,6 +5,15 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `a724bf4`
+Fix at commit `a05099e`.
+- **Finding (P1):** the `migrate` command added in the previous round had no working directory and no environment,
+  so Django would stop on the missing secrets. Step 3 now runs it as `jinyoung` from `/srv/gymrats/backend` with
+  `/srv/gymrats/.env` loaded in that shell only, after the write check; it also checks `DATABASE_URL` (without it
+  Django falls back to an empty database) and that the service users are in `gymrats`. Reviewer subagent: APPROVE
+  (3 Minor applied). Documentation only; no code or test change.
+- **Results:** unchanged (server `pytest` 372 passed, 98%).
+
 #### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `17dbf12`
 Fix at commit `ed5f1be`.
 - **Finding (P1):** a restored database not writable by the API user (`jinyoung`) would pass `/health`, which does

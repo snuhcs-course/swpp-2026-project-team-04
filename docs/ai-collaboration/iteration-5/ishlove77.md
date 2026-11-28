@@ -145,6 +145,9 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P21, Codex review of `17dbf12` (P1): the procedure trusted `/health`, which does not query the database, so a
   restored file the API cannot write would pass. Claude first proposed a login as the write check; the code showed
   login does not write, so the check is a permission test plus a login and history read (`ed5f1be`).
+- P21, Codex review of `a724bf4` (P1): the `migrate` command Claude wrote in that fix could not run (no working
+  directory, no `.env`, so Django stops on the missing secrets). A fix that adds a command needs the command checked
+  against the settings and the unit, as the reviewer then did. Fixed in `a05099e`.
 
 - P20, wrong claim on the team server: after the first try through an SSH tunnel failed, Claude told the user the
   test server "died early". It had not: its process shows as `dart:load-serve`, which `ps -C load-server` missed.
