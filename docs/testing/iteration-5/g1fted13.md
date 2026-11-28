@@ -2497,14 +2497,14 @@ No server, camera or device is needed: the rankings tests use `InMemoryRankingsR
   - `tutorial_viewmodel_test.dart` (P17): only the page count (22 → 23, 21 → 22 without Average), the indexes and positions ((1, 2), (2, 2), push-ups from 2, squats from 13), the page after the first (`TutorialPage.modes`), and one `pages_total` 23 check.
   - `tutorial_page_test.dart`, `help_rules_test.dart`, `help_pictures_test.dart`, `help_screen_test.dart` (A12's): the step list, the 23 pages' words, the modes page without a body, one more 다음 where a test meant the first push-up page, the second game page's board, the dots' sentence, and the tab finder (page 2's picture also writes '푸시업').
   - `weekly_rankings_screen_test.dart` (P11): the data and reload tests keep their checks; only their finders changed (tabs found inside the tab row, points without '점'), and they now set up `CharacterViewModel`. These tests are: the friends tab reads once, squats in each scope, back from the background in a new week, a failed read and 다시 시도, and the week label. The old-look tests now check the new look: `SegmentedButton` is now one tab row, '(나)' is now the 나 mark, the `Card` list is now 46-high rows, and my row under the list is now my card. The 1.6× small-phone test is kept.
-- **Phone check:** to be done on a real phone after the merge, with the cable out (SPEC 8's items). The result will be added after that check.
+- **Phone check (Woohyun Song, 2026-11-28, after the merge):** Galaxy S26+ (SM-S947N), Android 17, release build of `980a565` (the follow-up below, which holds all of A13 from `1f54fad`). Every item of SPEC 8 passed:
   - **Tutorial page 2:** the picture is not cut; the four point cells and the icon names can be read.
   - **Rankings:**
     - The banner's time left matches the real time.
     - The '?' sheet opens and closes.
     - Changing the tabs changes my card and the list.
     - My character is the one chosen now.
-    - The friends tab matches the number of my friends, and '친구 추가하러 가기' goes to the '친구와의 대전' screen.
+    - The friends tab shows as many friends as I have, and '친구 추가하러 가기' goes to the '친구와의 대전' screen.
   - **Text size:** neither screen overflows with a large system text size.
 
 ### Test cases added or changed in this step
@@ -2543,10 +2543,19 @@ flutter test
 - `flutter analyze` found no issues.
 - The two related files: 131 passed, 0 failed.
 - The full `flutter test`: 5588 passed, 0 failed, 10 skipped, the same tests as before and none of this change's: `public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 recordings in `pushup_error_cases_test.dart` (known judge errors, each with its reason in `knownErrors`), as listed in A2's entry.
-- **Coverage:** not measured on this PC (the local rule; it hangs). The change is in one View file, and the new test runs every new line.
-  TODO(Woohyun Song): copy the per-layer numbers from the PR's CI comment "Tests and coverage (GitHub Actions)" on its head commit.
+- **Coverage:** not measured on this PC (the local rule; it hangs). The change is in one View file, and the new test runs every new line. From the PR #115 CI comment "Tests and coverage (GitHub Actions)" on `e798f52` (2026-11-28 22:04 KST, [run 46146515982](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/46146515982), [comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/115#issuecomment-7239677228); one test file at a time in four shards; `e798f52` has the same code as `980a565`):
+
+  | Component | Frameworks | Target | Actual | Date | Command / Report |
+  |---|---|---|---|---|---|
+  | Model | flutter_test | 90% | 99.5% (1022/1027) | 11/28 | CI `coverage_per_file.sh` + `coverage_by_layer.py` |
+  | ViewModel | flutter_test, fakes | 90% | 98.8% (3063/3101) | 11/28 | same |
+  | Service | flutter_test, MockClient, fakes | 85% | 96.4% (5716/5928) | 11/28 | same |
+  | View | flutter_test (widget) | 75% | 98.2% (20015/20372) | 11/28 | same |
+  | API server | pytest, pytest-django, pytest-cov | 90% | 98% (367 passed; `server/` unchanged) | 11/28 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+  Every target is met; total 97.9% (30458/31097). CI's `flutter test` gave 5588 passed, 10 skipped, 0 failed. CI left three files out of the coverage numbers after a 240 s timeout, none of them this change's: `online_battle_session_test.dart`, `background_music_test.dart`, `simulated_player_test.dart`. They ran in its `flutter test`.
 - **Review:** reviewer run 4 APPROVE. Minor 1: the test did not pin that the edge is drawn inside the pill (`strokeAlign`), so a stroke moved outward would still pass. Fixed with `BorderSide.strokeAlignInside`. Minor 2: these notes were still missing before the push. Fixed here.
-- **Phone check (Woohyun Song, 2026-11-28):** Galaxy S26+ (SM-S947N), Android 17, release build of `980a565` built in `C:\dev\swpp-arcade-art`. The tutorial's 푸시업/스쿼트 tabs keep their ink edge whole and round at both ends in all three states: the game pages (neither chosen), 푸시업 chosen, and 스쿼트 chosen. A13's own phone check (SPEC 8, above) is still to be done.
+- **Phone check (Woohyun Song, 2026-11-28):** Galaxy S26+ (SM-S947N), Android 17, release build of `980a565` built in `C:\dev\swpp-arcade-art`. The tutorial's 푸시업/스쿼트 tabs keep their ink edge whole and round at both ends in all three states: the game pages (neither chosen), 푸시업 chosen, and 스쿼트 chosen. The same build passed A13's own phone check (SPEC 8, above).
 
 | Layer | File | What it covers |
 |---|---|---|
