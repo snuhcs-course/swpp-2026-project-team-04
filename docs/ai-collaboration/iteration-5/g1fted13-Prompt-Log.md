@@ -887,3 +887,80 @@ push 뒤에 post-push 확인을 다시 돌려서 최신 트리 검사가 통과�
 4. 그 최종 HEAD에서 PR에 @codex review를 한 번만 요청해. 상우의 머지 조건이 현재 HEAD의 Codex 결과라서, 👍 뒤에 HEAD가 바뀐 이번 경우만 예외로 다시 요청하는 거야. 그 뒤로는 커밋을 더 만들지 마.
 5. Codex 결과(👍든 댓글이든)와 CI 결과가 나오면 알려줘. 지적이 있으면 고치기 전에 먼저 보여줘.
 </pasted_content id=\"f1c7\">"
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial
+<!-- 6edf15d3 2026-11-27T16:35:53.536Z -->
+[Woohyun Song, 11-28 01:35] "<pasted_content id=\"16e8\">
+튜토리얼 개편(A12) 작업을 시작하자. 아직 PM 승인 전이야.
+
+명세와 디자인 원본은 .claude/design/tutorial/ 에 있어: SPEC.md, design/INDEX.md, design/*.dc.html, design/src/(사람 그림 원래 스크립트), screenshots/(22장 확정 화면). 값은 .dc.html이 기준이고, 명세의 숫자와 다르면 원본이 맞아.
+
+1. 작업 폴더는 이 저장소(C:\dev\swpp-2026-project-team-04)이고, 브랜치는 A11 머지(32d2106)가 들어간 origin/main에서 만들어 둔 feat/iter5-tutorial이야. python .claude/hooks/ownership_guard.py --status로 확인하고, SPEC.md 0절대로 로컬 하네스에 A12 단계를 더한 뒤 progress.md에 적어.
+2. 코드를 쓰기 전에 SPEC.md 9절의 여덟 가지를 보고하고 멈춰. 내가 확인하면 시작해.
+3. SPEC.md 8절 순서대로, 단계마다 flutter analyze, flutter test, reviewer APPROVE를 받고 로컬 커밋까지만 해. 커밋 메시지와 저장소 규칙은 CLAUDE.md와 github 스킬을 따라.
+4. 단계가 끝날 때마다 바뀐 장을 screenshots/의 같은 장과 비교해서 다른 점을 알려 줘.
+5. push, 원격 브랜치, PR은 내가 PM 승인을 알려 줄 때까지 하지 마.
+6. 원본과 다르게 해야 하는 곳이나 주인이 있는 파일을 고쳐야 하는 곳이 생기면 먼저 물어봐. 꼭 필요하면 0절의 선조치 후보고 규칙대로 최소 변경만 하고, ownership-exceptions.txt와 progress.md에 사유를 적어.
+7. 다 끝나면 전체 검사 결과, 레이어별 커버리지, 커밋 목록을 알려 주고 멈춰.
+</pasted_content id=\"16e8\">"
+
+<!-- 6edf15d3 2026-11-27T16:51:58.820Z -->
+[Woohyun Song, 11-28 01:51] "<pasted_content id=\"16e8\">
+보고 확인했어. 계획대로 진행해. 질문 답은 이렇게 할게.
+
+1. 거절 표지 글자: 앱 그대로('무릎 떼기', '더 앉기', '더 깊게'). SPEC 10절의 폰 확인 문구도 \"푸시업 Fail에 '무릎 떼기' 표지가 보인다\"로 progress.md에 고쳐 적어.
+2. '인정!' 알약: 빼. 실제 게임에 없는 표시라서 SPEC 1절 원칙(\"게임에 실제로 나오는 표시만\")대로 초록 테두리만 남겨. 움짤, 방식 a의 폰 화면, 방식 b의 말풍선 모두 같아.
+3. 등급 띠 옆 점수: 원본대로 한 장면에 같이 그려. 다만 모양은 게임의 점수 표시와 같게 만들고, 그게 안 되면 원본의 잉크 알약으로 해.
+4. 아케이드 스크린샷: 머리줄('아케이드'와 별 수)과 아래 줄('도전')을 같은 토큰으로 튜토리얼 안에 다시 그려. 원래 위젯 파일은 건드리지 마.
+5. settings_screen_test, game_panel_fonts_test: 최소 변경으로 고쳐. 두 파일은 주인 단계가 없으니 A12 allow에 더하고, 선조치 후보고로 progress.md와 PR Review notes에 사유를 적어.
+6. design_tokens_test: 새 tutorial_*.dart 줄을 더하는 것도 허용해. ownership.json의 only 설명을 \"tutorial_rep_bot 줄 빼기, 새 tutorial_* 줄 더하기\"로 고쳐.
+7. '다음' 버튼: AccentButton 그대로.
+
+색 표는 하나만 바꿔: 회색 점은 원본 #C3C9D4 대신 지금 _PageDots가 쓰는 색을 그대로 써.
+직접 그리는 탭은 화면 읽기에서 지금처럼 탭과 선택 상태가 읽히고, 누르는 영역이 48 이상이어야 해. 이걸 help_screen_test에 넣어.
+
+이 결정들을 progress.md Decisions에 날짜와 함께 적고 1단계(문구와 화면 틀)부터 시작해.
+</pasted_content id=\"16e8\">"
+
+<!-- 6edf15d3 2026-11-27T18:12:57.818Z -->
+[Woohyun Song, 11-28 03:12] "<pasted_content id=\"16e8\">
+화면 읽기 문장의 '푸시업를', '물렁범가'는 시안 원본의 맞춤법 실수야. 원본대로 두지 말고 고쳐.
+- 조사는 고정 문자열로 붙이지 말고 lib/utils/korean_josa.dart의 Josa를 써: 방식 b는 Josa.eulReul.after(운동 이름)으로 '푸시업을'/'스쿼트를', 리포트 장은 Josa.iGa.after(캐릭터 이름)으로 '물렁범이'가 나오게.
+- 3단계 커밋은 지금 흐름대로 하고, 이 수정은 4단계 커밋에 함께 넣어. 방식 b 문장이 3단계 파일에 있으면 4단계에서 같이 고치면 돼.
+- 테스트에 두 운동의 방식 b 문장, 리포트 장 문장의 조사가 맞는지 확인을 더해 (푸시업을, 스쿼트를, 물렁범이).
+- 시안 원본(.claude/design/tutorial/design/TutDraft.dc.html)의 이 두 문장은 틀린 것으로 보고, 나머지 aria-label 문장은 원본 그대로 써.
+</pasted_content id=\"16e8\">"
+
+<!-- 6edf15d3 2026-11-27T19:41:11.928Z -->
+[Woohyun Song, 11-28 04:41] "로컬 PNG 도구로 22장을 뽑아서 C:\dev\tutorial-check\ 폴더에 저장해 줘. 파일 이름은 screenshots/와 같게(TutG0_g0.png 등). 저장소에는 넣지 마."
+
+<!-- 6edf15d3 2026-11-28T03:36:46.625Z -->
+[Woohyun Song, 11-28 12:36] "<pasted_content id=\"16e8\">
+A12 튜토리얼 개편 PR을 올린다. PM 한상우가 11/28에 Unexpected A12로 승인했다(브랜치 feat/iter5-tutorial, 예상 6시간, 오늘 회의 전 머지 목표). 승인 조건은 장 순서·판정·P17 텔레메트리를 그대로 두는 것이고, 공용 파일을 수정했다면 PR 본문에 이유와 변경 범위를 적는 것이다. 이번 PR은 이미 커밋된 22장 확정안만 다룬다. 랭킹 소개 장(게임 소개 2장)은 넣지 않는다.
+
+1. 상태 확인: 저장소 루트에서 python .claude/hooks/ownership_guard.py --status, git status. 현재 브랜치가 feat/iter5-tutorial이고 작업 트리가 깨끗하며, 로컬 커밋 5개(c0ff240, 8f07b6d, 726b536, 95e96c0, b63a776)가 아직 origin에 없는지 확인한다.
+2. 최신 main 반영: git fetch origin. origin/main이 375a9b7(P11 #108 주간 랭킹 머지)를 포함하는지 확인한 뒤 git rebase origin/main. 충돌이 나면 해결하지 말고 멈춰서 충돌 파일과 양쪽 내용을 보고한다.
+3. PM 등록 확인: origin/main의 .codex-harness/iteration-5/team-plan.md 등에 PM이 등록한 A12 정의(소유 경로, 기한)가 있으면 그것을 기준으로 삼는다. 로컬에 임시로 넣은 A12 항목과 다른 점이 있으면 보고한다.
+4. 범위 점검: git diff --stat origin/main...HEAD, ownership_guard --check-diff. A12 소유 경로 밖에서 바뀐 파일(특히 tutorial_viewmodel.dart, main.dart, app_theme.dart, 공용 위젯·유틸)은 파일마다 바꾼 이유와 범위를 정리한다. tutorial_viewmodel.dart의 pagesFor 순서와 텔레메트리 코드(tutorial_started, last_page)가 origin/main과 같은지 git diff로 확인한다.
+5. 검사: gymrats_app/에서 flutter pub get, flutter analyze, flutter test(design_tokens_test 포함). server/는 바꾸지 않았으면 생략한다. coverage_per_file.sh와 coverage_by_layer.py로 바뀐 파일의 계층별 커버리지를 잰다.
+6. reviewer 서브에이전트로 rebase 후 diff를 검토받아 APPROVE까지 고치고, progress.md Review log에 기록한다.
+7. 개인 노트(push 전): docs/testing/iteration-5/[REDACTED:custom_term].md에 이번 push 결과 항목, Session Exporter --yes와 extract_prompts.py로 프롬프트 로그, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md 항목 a–f에 A12 증거. 커밋 메시지는 Conventional Commits 영어.
+8. 1~7이 모두 통과하면 git push -u origin feat/iter5-tutorial을 하고 CLAUDE.md의 push 후 검증을 모두 실행한다. 하나라도 실패하면 push 전후 어느 시점이든 멈추고 보고한다.
+9. 이어서 pull-request 스킬로 main 대상 PR을 연다. 본문에 다음을 넣는다: 11/28 PM 승인(Unexpected A12) 사실, '공용 파일 변경' 단락(파일·이유·범위, 없으면 '없음'), 장 순서·판정·텔레메트리를 유지했다는 확인과 그 근거(diff 결과), How to test, 테스트 케이스 표, 수용 기준→테스트, HEAD 커밋 기준 결과·커버리지, 그리고 폰 확인 항목(작은 글씨, 무릎 푸시업 기각 장면)은 오늘 회의 때 실기기로 확인 예정이라는 문장. 그다음 현재 HEAD SHA로 독립 Codex 리뷰를 받는다.
+10. 끝나면 PR 번호, HEAD SHA, 검사 결과, 공용 파일 목록을 나에게 보고한다.
+</pasted_content id=\"16e8\">"
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial
+<!-- Left out on purpose: the conversation summary the client inserted at 11-28 13:52 after the context ran out (not the user's text). Its key stays so a later export does not add it again. Added by hand after the 14:08 prompt: the user's typed answer to the question on Codex's two threads (11-28 14:12), which the extractor does not read because it arrives inside a tool result; the text is from the redacted export. -->
+<!-- 6edf15d3 2026-11-28T04:52:42.070Z -->
+
+<!-- 6edf15d3 2026-11-28T05:08:58.275Z -->
+[Woohyun Song, 11-28 14:08] "codex 리뷰 결과 나왔어. 확인해봐"
+
+[Woohyun Song, 11-28 14:12] "t=1150으로 바꿔. 디자이너가 11/28에 SPEC 4절(v1.2)과 디자인 원본(TutShotOnline 기본값)도 1150으로 고쳤어. 그러니 progress.md와 PR 본문에는 '원본에서 벗어남'이 아니라 '11/28 SPEC 수정: 960은 바닥 순간 10ms 뒤라 GOOD이 거의 안 보이던 원본 오류'로 적어. 나머지 절차(새 커밋 하나, push, push 후 검증, @codex review 재요청)는 네가 제안한 대로 진행해."
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial
+<!-- 6edf15d3 2026-11-28T05:45:27.667Z -->
+[Woohyun Song, 11-28 14:45] "영어 말고 한국어로 답해.
+우선 기존 codex 리뷰를 resolve했으면 comment 달고 resolve 처리하던지 해.
+그리고 새로운 codex comment가 왔어. 확인해"

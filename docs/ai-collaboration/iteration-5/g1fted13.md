@@ -1253,3 +1253,58 @@ These were made from the A5 session at the user's word; their full evidence is i
 
 ### Takeaway
 - Check how a screen is measured before choosing its layout widgets: the page's `IntrinsicHeight` decided how the card could fill the rest.
+
+## A12 `feat/iter5-tutorial` – 튜토리얼 개편 · 그림, 문구, 화면 틀 (an Unexpected task approved by the PM 2026-11-28), 2026-11-28
+
+### a. Where AI was used
+- **The hand-off:** `.claude/design/tutorial/SPEC.md` v1.1 and its design bundle (`design/Tut*.dc.html`, `design/ref/`, the figure scripts `design/src/figcore_c.js`, `cam2.js`, `cam3.js`, and 22 confirmed screenshots), local and not committed. The user confirmed the designs on 11/28.
+  - TODO(Woohyun Song): who made the designs and SPEC v1.1, and with which tool (as recorded for A11).
+- **Planning:** Claude Code (Claude Opus 5.5) added the local A12 step (`ownership.json`), read the spec, the originals and the code, and reported SPEC 9's eight items before any code (Prompt Log, 11-28 01:35). The reading found four points the spec had not foreseen, each asked as a question:
+  - The real reject sign's band says '무릎 떼기' (`signLabel`); the design's '무릎을 바닥에서 떼요' is only what a screen reader hears (`koreanMessage`).
+  - The game has no '인정!' pill on the camera, only a green frame.
+  - The tutorial's new loops would hang two tests outside A12 that open the tutorial without reduced motion.
+  - `ArcadeMap` alone has no header or 도전 bar; those are private to the arcade screen.
+- **The user's answers (11-28 01:51, 03:12):** seven decisions (the real sign words, no 인정! pill, points shaped as the game's, the arcade header and bar redrawn, the two outside tests changed minimally, the token list widened, `AccentButton` kept), the real frame colors on average and fail, and the screen-reader particles fixed with `Josa`.
+- **The code and tests:** Claude Code wrote all of it, phase by phase (SPEC 8), in five commits (rebased onto `2e59012` before the push):
+  - `bd53b8f`: the words (`help_rules.dart`) and the frame (`help_screen.dart`: `_ExerciseTabs` with tab semantics, the card, dots, 이전).
+  - `0c2a056`: `tutorial_person.dart`, a line-by-line Dart port of the design's joint engine and camera figures; `tutorial_figure_painters.dart`; pages 1–2 (`tutorial_setup_scenes.dart`).
+  - `346c71f`: `tutorial_game_shot.dart` (a still battle screen from `BattleStage`, `BattleCameraArea`, `ChestHeightGuidePainter`/`SquatHeightPainter`, `BattleRejectSignView`), ways a and b (`tutorial_draft.dart`).
+  - `69bb735`: the game page (`tutorial_welcome.dart`: the online clip, the arcade shot) and way d (the coach talk); the particle fix.
+  - `3dc2c2c`: the RepBot mannequin removed.
+- **Review:** the `reviewer` subagent ran ten times (item d), the last after the second rebase (APPROVE, no findings).
+- **PR review:** Codex reviewed `0490bc6` on PR #110 and left two P2 threads, then `11c81d6` and left one more (item d); Claude Code made each fix in one commit, and the `reviewer` subagent checked them (runs 11 and 12).
+- **Checking against the design:** a local capture tool (a test file kept out of git) drew each page with the app's fonts for comparison with the screenshots after every phase; the 22 pages were saved outside the repo for the user.
+- **Not done by AI:** the PM approved the task and its conditions; Woohyun Song confirmed the designs and made every decision above; the phone check is the team's, at the 11/28 meeting.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-28] "2. 코드를 쓰기 전에 SPEC.md 9절의 여덟 가지를 보고하고 멈춰. 내가 확인하면 시작해."
+- [Woohyun Song, 11-28] "2. '인정!' 알약: 빼. 실제 게임에 없는 표시라서 SPEC 1절 원칙(\"게임에 실제로 나오는 표시만\")대로 초록 테두리만 남겨."
+- [Woohyun Song, 11-28] "화면 읽기 문장의 '푸시업를', '물렁범가'는 시안 원본의 맞춤법 실수야. 원본대로 두지 말고 고쳐."
+
+### c. What AI did well
+- **A port checked against its source:** the joint engine's expected numbers in `tutorial_person_test.dart` come from running the design's own JS with node; every joint matched to 1e-3 on the first run.
+- **The real game's parts, not copies:** the battle stills are assembled from the stage's widgets and the game's line painters, fed with a pose frame as large as the drawn camera, so the tutorial shows what the game draws.
+- **Spec gaps raised before code:** the sign's words, the missing 인정! pill and the hanging tests reached the plan as questions, so the user ruled on them first.
+
+### d. Hallucinations / errors
+- **CSS box model misread twice (reviewer runs 4 and 6, Major):** the design's `border-box` puts a child inside the border; the phone, the bubble, the battle bar and then the screenshots were placed at the outer edge. Caught by the reviewer's pixel probes; fixed with padding by the edge and tests that pin the rectangles.
+- **Accessibility on Android (run 1, Major):** `SemanticsRole.tab` is not passed to Android in Flutter 3.47.5, so TalkBack would not have heard tabs; a button flag and the position as the value were added. Still to be heard on a phone.
+- **The clip took the stills' values (run 6, Major):** a '+10' band, the band and star tops and the names came from `TutGame`, not `TutShotOnline`.
+- **The combo mark (run 4, Major):** drawn upright at full width instead of the game's rest (−6°, ×0.72).
+- **Smaller slips:** a whole-picture `IgnorePointer` made `game_panel_fonts_test` fail (found by the full run); the wall stripes slanted the wrong way; a decorative painter swallowed taps; `Rect.width` used in a constant; text styles first resized with `fontSizeFactor` (wiki 2.5.1 rule 3; changed before review).
+- **A literal kept too long:** the design's '푸시업를' and '물렁범가' were kept as "the original"; the user ruled them misspellings.
+- **A design value ported without checking what it shows (Codex on PR #110, two P2):** the game page's still for reduced motion took the design's t=960 (SPEC v1.1), 10 ms after the push-up's bottom, where GOOD is at 6% opacity and 0.21× its size. Ten reviewer runs and the tests checked the still's frame, shoulder line and attack, not the band. The designer fixed SPEC 4 (v1.2) and the design's default to 1150 on 11/28; `welcomeStillMs` follows, and both still tests now pin GOOD at full opacity and size. Cost: one small commit and another Codex round.
+- **A reused part's look taken as the design's (Codex on PR #110, P2):** the battle stills reuse the stage's own bar, which fills up to the fighters' meeting point, so the KO scene's bar stopped at about 83% while the design's KO fills it to the end. The KO test checked the bar's screen-reader value (100%), not its drawn fill. Fixed by the user's choice: only the KO scene's bar is filled to the end; the test now measures the drawn fill.
+
+### e. Prompt revisions
+- **The particles:**
+  - Before (the phase 3 report): keep the design's labels word for word, misspelled particles included, and ask later.
+  - After (11-28 03:12): "조사는 고정 문자열로 붙이지 말고 lib/utils/korean_josa.dart의 Josa를 써".
+  - Why it worked: the particle now follows the word before it, and a test pins all three.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Read a design's box model (CSS `border-box`) before porting positions: two of the three Major rounds came from it.
+- When a still is taken from an animation, check every animated value at that moment, not only the ones the spec names.
