@@ -316,6 +316,10 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P21 follow-up, Codex review of `82c2c43` (4 × P2): restart order, pruning during an outage, a restore that could
   overwrite a good database with a bad copy, and file modes while writing. Each was cheap to fix, so all were fixed
   (`832de3d`, `79d79e3`); five of the six new tests fail on the previous commit.
+- P21 follow-up, Codex review of `2b3bad4` (2 × P2): the same per-read timeout mistake in the webhook call, and
+  SIGTERM at the unit's limit skipping cleanup and the alert. Claude's first test for the webhook passed on the old
+  code, because it tested a silent server instead of a trickling one; checking each new test against the previous
+  commit caught it (`0b9a600`, `10966a8`).
 
 ## 4. Revisions and Decisions
 - P21 follow-up: the PM fixed RTO 30 min / RPO 24 h and asked for the health check and a 12 h backup off the

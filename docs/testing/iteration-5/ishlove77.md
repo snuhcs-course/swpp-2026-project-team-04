@@ -5,6 +5,20 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `2b3bad4`
+Fix at commits `0b9a600` (webhook) and `10966a8` (backup).
+- **Findings (P2 ×2):** (1) a webhook that trickles its answer could hold an alert past the unit's limit → the whole
+  POST runs in a thread with a 5 s deadline; (2) at the backup unit's 25 min limit systemd's SIGTERM skipped the
+  cleanup and the alert → a handler raises `Terminated`, so `finally` cleans up and the alert is sent;
+  `TimeoutStopSec=30` leaves time for it. Tests restore pytest's SIGTERM handler after each test (reviewer subagent).
+- **Tests:** `test_a_webhook_that_trickles_its_answer_is_given_up_after_the_limit`,
+  `test_a_stop_by_systemd_cleans_up_and_alerts`, `test_the_command_turns_sigterm_into_a_failure` (all 3 fail on
+  `2b3bad4`). The first webhook test passed on the old code too (the server sent nothing, so the per-read timeout was
+  enough); it was rewritten to send one byte every 50 ms. The handler is called directly; no test sends a real
+  signal.
+- **Results:** server `pytest` 427 passed, 0 failed (55 in the two files: 24 + 31); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
 #### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `82c2c43`
 Fix at commits `832de3d` (health check) and `79d79e3` (backup).
 - **Findings (P2 ×4):** (1) a slow webhook could delay the second restart → every due restart is requested before any
