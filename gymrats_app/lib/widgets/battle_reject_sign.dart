@@ -354,16 +354,14 @@ class BattleRejectSignView extends StatelessWidget {
                       maxWidth: sign.reason == RejectReason.kneesDown
                           ? BattleFx.stageWidth - 48
                           : double.infinity,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: BattleBand(
-                          text: sign.text,
-                          style: theme.stageSignLabel,
-                          color: sign.tone.color,
-                          sidePadding: _labelSidePadding,
-                          topPadding: _labelTopPadding,
-                          edge: labelEdge,
-                        ),
+                      child: BattleBand(
+                        text: sign.text,
+                        style: theme.stageSignLabel,
+                        color: sign.tone.color,
+                        sidePadding: _labelSidePadding,
+                        topPadding: _labelTopPadding,
+                        edge: labelEdge,
+                        wrap: sign.reason == RejectReason.kneesDown,
                       ),
                     ),
                   ),

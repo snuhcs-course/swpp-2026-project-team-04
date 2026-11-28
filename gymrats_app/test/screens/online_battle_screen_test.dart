@@ -211,6 +211,7 @@ void main() {
       final screen = tester.getRect(find.byType(BattleArena));
       expect(label.left, greaterThanOrEqualTo(screen.left));
       expect(label.right, lessThanOrEqualTo(screen.right));
+      expect(label.bottom, lessThanOrEqualTo(screen.bottom));
       for (final label in ['AVERAGE', '+0', 'MISS']) {
         expect(find.text(label), findsNothing);
       }
