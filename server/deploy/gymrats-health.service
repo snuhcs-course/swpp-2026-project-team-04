@@ -1,0 +1,13 @@
+[Unit]
+Description=GymRats health check: restart a service after 3 failed checks in a row
+After=network.target
+
+[Service]
+Type=oneshot
+# Root, so it can restart the two units. The script is installed root-owned outside the
+# group-writable /srv/gymrats tree, and reads only ALERT_WEBHOOK_URL from the env file
+# (no EnvironmentFile=, so the other secrets are not loaded).
+StateDirectory=gymrats-health
+ExecStart=/usr/bin/python3 /usr/local/lib/gymrats/health_watch.py --state /var/lib/gymrats-health/state.json --env-file /srv/gymrats/.env
+# Worst case: 5 s check + 2 x (10 s restart request + 5 s webhook) = 35 s.
+TimeoutStartSec=40
