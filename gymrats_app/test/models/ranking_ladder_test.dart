@@ -894,6 +894,76 @@ void main() {
       );
     });
 
+    group('across a week reset (Monday 00:00 KST)', () {
+      final lastWeek = DateTime.utc(2026, 11, 22, 15);
+      final thisWeek = DateTime.utc(2026, 11, 29, 15);
+      RankingSnapshot week(
+        DateTime start,
+        LadderEntry? me, {
+        int others = 30,
+      }) => RankingSnapshot(
+        weekStart: start,
+        entries: [_entry(1, others, 1), ?me],
+        me: me,
+      );
+
+      test("the new week's first battle: late, never the ladder", () {
+        final before = week(lastWeek, _entry(9, 19, 4, battles: 4));
+        final after = week(thisWeek, _entry(9, 10, 2, battles: 1), others: 12);
+        expect(RankingLadder.sameWeek(before, after), isFalse);
+        expect(RankingLadder.confirms(before, after), isTrue);
+        expect(path(before: before, after: after), LadderPath.late);
+        // The chip has only the new week's values and the battle's points.
+        expect(RankingLadder.chipOf(after, 10), (
+          rank: 2,
+          points: 10,
+          gained: 10,
+        ));
+      });
+
+      test('one battle more than last week is not this battle', () {
+        final before = week(lastWeek, _entry(9, 19, 4, battles: 4));
+        final after = week(thisWeek, _entry(9, 10, 2, battles: 5));
+        expect(RankingLadder.confirms(before, after), isFalse);
+        expect(path(before: before, after: after), LadderPath.late);
+      });
+
+      test("no row last week and the new week's first battle: still late", () {
+        final before = week(lastWeek, null);
+        final after = week(thisWeek, _entry(9, 10, 2, battles: 1));
+        expect(RankingLadder.confirms(before, after), isTrue);
+        expect(path(before: before, after: after), LadderPath.late);
+      });
+
+      test('the new week without the battle yet: nothing is confirmed', () {
+        final before = week(lastWeek, _entry(9, 19, 4, battles: 4));
+        for (final after in [
+          week(thisWeek, null),
+          week(thisWeek, _entry(9, 0, 2, battles: 0)),
+        ]) {
+          expect(RankingLadder.confirms(before, after), isFalse);
+          expect(path(before: before, after: after), LadderPath.late);
+        }
+      });
+
+      test('the same week as before: the ladder as usual', () {
+        final before = week(thisWeek, _entry(9, 19, 2, battles: 4));
+        final after = week(thisWeek, _entry(9, 29, 2, battles: 5));
+        expect(RankingLadder.sameWeek(before, after), isTrue);
+        expect(path(before: before, after: after), LadderPath.confirmed);
+      });
+
+      test('a week not known counts as the same week', () {
+        final before = RankingSnapshot(
+          entries: const [],
+          me: _entry(9, 19, 2, battles: 4),
+        );
+        final after = week(thisWeek, _entry(9, 29, 2, battles: 5));
+        expect(RankingLadder.sameWeek(before, after), isTrue);
+        expect(RankingLadder.sameWeek(after, before), isTrue);
+      });
+    });
+
     test('none for a friend battle, no ranking before, or no points', () {
       expect(path(ranked: false, after: confirmed), LadderPath.none);
       expect(path(noBefore: true, after: confirmed), LadderPath.none);

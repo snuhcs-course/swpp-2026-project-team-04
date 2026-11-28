@@ -199,6 +199,7 @@ class RankingLadderViewModel extends ChangeNotifier {
 
   /// [ranking] as the ladder reads it.
   static RankingSnapshot snapshotOf(WeeklyRanking ranking) => RankingSnapshot(
+    weekStart: ranking.weekStart,
     entries: [for (final entry in ranking.entries) _entryOf(entry)],
     me: switch (ranking.me) {
       final me? => _entryOf(me),

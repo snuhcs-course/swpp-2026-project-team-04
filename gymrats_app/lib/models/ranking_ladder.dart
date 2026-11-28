@@ -23,10 +23,14 @@ typedef LadderEntry = ({
 /// (the server's top rows), and my row [me], also when the list stops above
 /// it. [me] is null before my first battle of the week.
 class RankingSnapshot {
-  const RankingSnapshot({required this.entries, this.me});
+  const RankingSnapshot({required this.entries, this.me, this.weekStart});
 
   final List<LadderEntry> entries;
   final LadderEntry? me;
+
+  /// The start of the ranking's week (Monday 00:00 KST, as the server gives
+  /// it); null when not known.
+  final DateTime? weekStart;
 
   /// Whether [entry] is my row.
   bool isMine(LadderEntry entry) => entry.userId == me?.userId;
@@ -111,21 +115,34 @@ class RankingLadder {
     required int points,
   }) {
     if (!ranked || before == null || points <= 0) return LadderPath.none;
-    return after != null && confirms(before, after)
+    // Across a week's reset the two rankings are not one week's change: no
+    // ladder, only the chip once the new week has the battle.
+    return after != null && sameWeek(before, after) && confirms(before, after)
         ? LadderPath.confirmed
         : LadderPath.late;
   }
 
-  /// Whether [after] has the battle [before] did not: one battle more.
+  /// Whether [before] and [after] are the same week's ranking (true when
+  /// either week is not known).
+  static bool sameWeek(RankingSnapshot before, RankingSnapshot after) =>
+      before.weekStart == null ||
+      after.weekStart == null ||
+      before.weekStart == after.weekStart;
+
+  /// Whether [after] has the battle [before] did not: one battle more in
+  /// the same week, or, when a new week began meanwhile, the new week's
+  /// first battle (nothing of [before] is used then).
   static bool confirms(RankingSnapshot before, RankingSnapshot after) =>
-      after.me?.battles == (before.me?.battles ?? 0) + 1;
+      sameWeek(before, after)
+      ? after.me?.battles == (before.me?.battles ?? 0) + 1
+      : after.me?.battles == 1;
 
   /// The rank chip's values from a confirmed [after].
   static RankChipValues chipOf(RankingSnapshot after, int gained) =>
       (rank: after.me!.rank, points: after.me!.points, gained: gained);
 
   /// The ladder of a battle worth [points] from [before] to a confirmed
-  /// [after] (the caller checked [confirms]). Rows are picked by points;
+  /// [after] (the caller got [LadderPath.confirmed] from [pathOf]: the same week and [confirms]). Rows are picked by points;
   /// each rank is the server's: an other's after rank from [after], its
   /// before rank the same player's in [before] (not there: the after rank,
   /// so it does not turn); mine from both [RankingSnapshot.me]s.

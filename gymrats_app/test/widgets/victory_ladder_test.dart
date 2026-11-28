@@ -642,6 +642,65 @@ void main() {
       expect(_chipOpacity(tester), 1);
     });
 
+    testWidgets('across a week reset: no ladder and nothing of last week, '
+        'then only the chip with the new week\'s values', (tester) async {
+      final lastWeek = DateTime.utc(2026, 11, 22, 15);
+      final thisWeek = DateTime.utc(2026, 11, 29, 15);
+      final base = ScoreLadderCase.all['base']!;
+      final mine = RankingEntry(
+        rank: 7,
+        userId: ScoreLadderCase.myId,
+        nickname: ScoreLadderCase.myName,
+        points: 10,
+        battles: 1,
+        wins: 1,
+        koWins: 1,
+        isMe: true,
+      );
+      final newWeek = WeeklyRanking(
+        scope: RankingScope.global,
+        weekStart: thisWeek,
+        weekEnd: DateTime.utc(2026, 12, 6, 15),
+        entries: [mine],
+        me: mine,
+      );
+      final ladder = RankingLadderViewModel(
+        repository: _Rankings(newWeek, newWeek),
+        exercise: ExerciseType.pushUp,
+        ranked: true,
+        before: RankingSnapshot(
+          weekStart: lastWeek,
+          entries: base.before.entries,
+          me: base.before.me,
+        ),
+        points: RankingPoints.koWin,
+        elapsed: () => Duration.zero,
+      )..load();
+      addTearDown(ladder.dispose);
+      var ended = 0;
+      await _show(
+        tester,
+        _Report(
+          result: VictoryResult.koWin,
+          ladder: ladder,
+          onEnd: () => ended++,
+        ),
+      );
+      await _play(tester, 1500);
+      expect(ladder.path, LadderPath.late);
+      expect(find.text('펭귄짱'), findsNothing);
+      await _play(tester, 1000);
+      // The scene without the hold, then the chip: 7위, 10점, +10.
+      expect(ended, 1);
+      expect(
+        find.bySemanticsLabel('주간 랭킹 7위, 이번 주 10점, 이번 판 10점'),
+        findsOneWidget,
+      );
+      // Last week's rank and points are nowhere.
+      expect(find.text('19'), findsNothing);
+      expect(find.text('4'), findsNothing);
+    });
+
     testWidgets('never confirmed: nothing is left', (tester) async {
       final ladder = _viewModel('base', VictoryResult.koWin, confirmedFrom: 0);
       addTearDown(ladder.dispose);

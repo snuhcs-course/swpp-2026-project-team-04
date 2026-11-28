@@ -251,6 +251,55 @@ void main() {
     });
   });
 
+  test('across a week reset: only the chip, with the new week\'s values', () {
+    fakeAsync((async) {
+      final before = RankingSnapshot(
+        weekStart: DateTime.utc(2026, 11, 22, 15),
+        entries: _base.before.entries,
+        me: _base.before.me,
+      );
+      final mine = RankingEntry(
+        rank: 3,
+        userId: ScoreLadderCase.myId,
+        nickname: ScoreLadderCase.myName,
+        points: 10,
+        battles: 1,
+        wins: 1,
+        koWins: 1,
+        isMe: true,
+      );
+      final newWeek = WeeklyRanking(
+        scope: RankingScope.global,
+        weekStart: DateTime.utc(2026, 11, 29, 15),
+        weekEnd: DateTime.utc(2026, 12, 6, 15),
+        entries: [mine],
+        me: mine,
+      );
+      final repository = _ScriptedRankings([
+        newWeek,
+      ], clock: () => async.elapsed);
+      final viewModel = _viewModel(repository, async, before: before)..load();
+      async.flushMicrotasks();
+      expect(viewModel.after?.weekStart, DateTime.utc(2026, 11, 29, 15));
+      async.elapse(const Duration(milliseconds: 880));
+      expect(viewModel.decide(), LadderPath.late);
+      expect(viewModel.holds, isFalse);
+      expect(viewModel.ladder, isNull);
+      expect(viewModel.chip, (rank: 3, points: 10, gained: 10));
+      // Confirmed: no more reads.
+      async.elapse(const Duration(seconds: 7));
+      expect(repository.readsAt, hasLength(1));
+      viewModel.dispose();
+    });
+  });
+
+  test('snapshotOf keeps the ranking\'s week', () {
+    expect(
+      RankingLadderViewModel.snapshotOf(_confirmed).weekStart,
+      DateTime.utc(2026, 11, 22, 15),
+    );
+  });
+
   test('a ranking confirmed before 0.88 s gives the ladder', () {
     fakeAsync((async) {
       final repository = _ScriptedRankings([
