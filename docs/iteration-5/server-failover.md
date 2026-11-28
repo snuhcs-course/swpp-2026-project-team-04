@@ -107,14 +107,41 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
    inactive; after any reboot before step 4, stop them again. Otherwise the battle server's one-time start-up
    recovery runs against the snapshot's database, and a newer backup restored after it brings back `active` battles
    that are never voided; the API's open connections would also overlap the restore.
-3. Put `.env` back (it is not in backups); with both services stopped, restore the newest DB backup if it is newer
-   than the snapshot; run `pragma integrity_check`, then **`migrate`** and `migrate --check` (a backup older than the
-   code needs migrations; in 4 three were applied).
-4. Start `gymrats-api` and check its `/health` **before** starting `gymrats-battle`, then nginx; check `/health` on
-   both ports. The battle server asks the API once at start-up (10 s limit, an error is ignored) to void the battles
+   **A fresh instance first needs what the snapshot would bring:** nginx and `python3-venv` installed; the `gymrats`
+   group and the `jinyoung` and `sangwoo` users the units run as; `/srv/gymrats` with the group; the API code in
+   `/srv/gymrats/backend` with its `.venv` and requirements; `server/deploy/gymrats-api.service` installed and
+   `daemon-reload` (not started); `server/deploy/nginx-gymrats-http.conf` installed as
+   `/etc/nginx/sites-available/gymrats`, linked into `sites-enabled`, `sites-enabled/default` removed (both claim
+   `default_server`), then `nginx -t` and a reload. `install-https.sh` in step 5 expects that site to exist.
+3. Put `.env` back (it is not in backups; group `gymrats`, mode 640, as the battle server reads it as `sangwoo`;
+   check key names only). **Bring the API up to the release in production** if the snapshot is
+   older than the last deploy (the commit is in the deploy notes): copy that commit's `server/` into
+   `/srv/gymrats/backend`, install its requirements, reinstall `gymrats-api.service` and `daemon-reload` if the unit
+   changed, without starting the service. With both services stopped, restore the newest DB backup if it is newer
+   than the snapshot; run `pragma integrity_check`, then **`migrate`** and `migrate --check` with the current code (a
+   backup older than the code needs migrations; in 4 three were applied).
+4. Start `gymrats-api` and check its `/health` **before** starting the battle server. Then the battle server: on a
+   fresh instance always, and on a snapshot whose battle release is behind, deploy the production commit with
+   `server/deploy/install-battle.sh` (run from an upload directory holding that commit's `source.tar`, as the script
+   says), which starts it; otherwise `sudo systemctl start gymrats-battle`. Then `sudo nginx -t && sudo systemctl
+   reload nginx` (the new API code may change the included `nginx-gymrats-api.conf`), and check `/health` on both
+   ports. The battle server asks the API once at start-up (10 s limit, an error is ignored) to void the battles
    that were running at the backup (seen in 4); if the API was not up, restart `gymrats-battle` again once it is.
-5. Move the static IP `52.78.38.225` to the new instance. The IP certificate files in `/srv/gymrats/battle/tls` come
-   with a snapshot, so the same IP keeps a valid certificate until it expires (`gymrats-cert-renew.timer` renews it).
+5. Move the static IP `52.78.38.225` to the new instance and check that its Lightsail firewall allows 80 (needed to
+   issue the certificate) and 443 (firewall rules belong to each instance). Then the IP certificate, which is issued
+   for the IP, so only after it is attached:
+   - **Snapshot:** the files in `/srv/gymrats/battle/tls` come along, but they are short-lived certificates (about
+     6 days), so an older snapshot brings an expired one, and the renewal timer's first run (10 min after boot) came
+     before the IP was attached; the next is 6 h later. Check the date with `openssl x509 -enddate -noout -in
+     /srv/gymrats/battle/tls/config/live/52.78.38.225/fullchain.pem` and run `sudo systemctl start
+     gymrats-cert-renew.service`.
+   - **Fresh instance:** create the certbot virtualenv the script expects (`python3 -m venv
+     /srv/gymrats/battle/certbot-venv`, then its `pip install certbot` at the version production runs; the
+     `shortlived` profile needs a recent one)
+     and run `server/deploy/install-https.sh`, which installs the HTTPS site, issues the certificate and enables the
+     renewal timer.
+   Either way, `curl https://52.78.38.225/battle-health` must answer before step 6; until then HTTPS and WSS do not
+   work for the installed app.
 6. From outside: `/api/health`, a login, history, a battle and a stored result with the installed app; note the
    restored data time.
 
@@ -133,7 +160,10 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
    (`server_restarted`) with no history rows. That start-up call is made once and its failure is ignored, so the
    API must be up first (5, step 4); on a replacement booted from a snapshot, both services must be stopped before
    the restore (5, step 2). While the battle server is down, the players' apps show the connection lost.
-6. **Static IP failover is not rehearsed** and needs the team admin before beta.
+6. **Static IP failover is not rehearsed** and needs the team admin before beta. On a replacement, the code must be
+   brought up to the production release before `migrate` if the snapshot is older than the last deploy; a fresh
+   instance needs users, nginx's HTTP site and the battle release set up first; and the IP certificate must be
+   renewed (snapshot) or issued (fresh) after the IP is attached, with ports 80 and 443 open (5, steps 2–5).
 
 ## Automated checks
 
