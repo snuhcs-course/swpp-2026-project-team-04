@@ -9,6 +9,7 @@ import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/lobby_parts.dart';
+import 'body_settings_screen.dart';
 
 /// 환경설정, from home's menu and its profile chip: the nickname, the safety
 /// notice switch and the rules again, the sound switches and logout, in
@@ -82,6 +83,18 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => _copy(context, code),
                 end: const Icon(Icons.copy_rounded, color: AppColors.line),
               ),
+            _Row(
+              title: '키·몸무게',
+              line: '리포트의 칼로리·무게 계산에 써요',
+              onTap: () => Navigator.push<void>(
+                context,
+                MaterialPageRoute(builder: (_) => const BodySettingsScreen()),
+              ),
+              end: const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.line,
+              ),
+            ),
             _Row(
               title: '캐릭터',
               onTap: () =>

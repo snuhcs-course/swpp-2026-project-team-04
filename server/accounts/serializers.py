@@ -64,6 +64,7 @@ def auth_response(user: User) -> dict:
 
 
 class ProfileSerializer(UserSerializer):
+    height_cm = serializers.FloatField(allow_null=True)
     weight_kg = serializers.FloatField(allow_null=True)
     best_reps = serializers.IntegerField(allow_null=True)
     # {exercise: {score, reps}}, for each exercise played.
@@ -72,6 +73,7 @@ class ProfileSerializer(UserSerializer):
 
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + [
+            "height_cm",
             "weight_kg",
             "best_reps",
             "bests",

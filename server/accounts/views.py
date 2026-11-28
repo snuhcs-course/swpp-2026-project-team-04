@@ -161,8 +161,10 @@ class MeView(APIView):
             "id": user.id,
             "login_id": user.login_id,
             "nickname": user.nickname,
-            # Only the user's own weight, saved with consent; the post-game
-            # report's estimates use it (P14).
+            # Only the user's own height and weight, saved with consent: the
+            # post-game report's estimates use the weight (P14), and settings
+            # show both to change them.
+            "height_cm": user.height_cm,
             "weight_kg": user.weight_kg,
             "best_reps": mine.aggregate(best=Max("my_reps"))["best"],
             # Max skips battles saved before points were kept.

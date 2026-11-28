@@ -28,6 +28,7 @@ class UserProfile {
     this.lastMatch,
     this.unsentMatches = 0,
     this.weightKg,
+    this.heightCm,
   });
 
   /// Name in the greeting, e.g. "우현".
@@ -52,6 +53,10 @@ class UserProfile {
   /// The body weight the user gave at sign-up, with consent; null when they
   /// gave none. The post-game report's estimates use it.
   final double? weightKg;
+
+  /// The height the user gave with the weight; null when they gave none.
+  /// Settings show it to change it.
+  final double? heightCm;
 
   /// The best of [exercise]; null with nothing to show, as before its first
   /// battle. A server that sends only [bestReps] kept nothing per exercise, so
