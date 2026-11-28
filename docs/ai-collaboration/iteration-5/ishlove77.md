@@ -79,6 +79,15 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
   the global points among friends (the user's decisions); the scope exception for `exercise_sheet.dart` and the
   battle kind (PM approval relayed by the user).
 
+### P20 `feat/iter5-matching-load` (team plan #12, matchmaking benchmark and load test, 2026-11-28)
+- Tools: `server/benchmarks/matchmaking/` (load bot, runner and statistics, load client and test server, skill index
+  and `/internal/skills` benches, their tests) (`db5948c`): Claude Code.
+- Runs and write-up: the four Mac scenarios, the two team-server runs (both binaries cross-compiled and run on the
+  server over loopback, folder removed afterwards), `docs/iteration-5/matchmaking-load.md` and the raw JSON
+  (`a87f5e9`): Claude Code; each server step was approved by the user first.
+- Not used: running on the team server at all, moving the client onto it after the tunnel attempt, and dropping the
+  simulated-wait rows from the tables (the user's decisions).
+
 ## 2. Prompt History
 [Jinyoung Park, 11-23] "task 수행해. 근데 회원가입할때 구글이랑 카카오톡 둘다 지원하게 해주고, 회원가입시 … 이런식으로 키, 몸무게 추가 정보도 받게 해줘."
 [Jinyoung Park, 11-24] "카카오도, google가입도 닉네임은 필요함"
@@ -93,9 +102,29 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 [Jinyoung Park, 11-27] "너가 recommen한거로 가되 무면 그래도 +3은 줘야지"
 [Jinyoung Park, 11-28] "근데 지금 squatt, pushup별개로 있지?"
 [Jinyoung Park, 11-27] "전체 랭킹에서 내리기 하면 하면 뭔가 이상하게 화면이 되는데 그거랑 그다음에 위에 KO 승 10, 승 5, 무 3, 패 1 이런거 싹다 위에 글 자체를 없애주고, 그리고 지금 승점 제대로 계산된거 맞나"
+[Jinyoung Park, 11-28] "task 수행해"
+[Jinyoung Park, 11-28] "팀서버도 ㄱㄱ"
+[Jinyoung Park, 11-28] "가상 상대 대기 시간은 빼도 ㄱㅊ을듯"
 Full list: `ishlove77-Prompt-Log.md`.
 
 ## 3. Problems and How They Were Caught
+- P20, wrong claim on the team server: after the first try through an SSH tunnel failed, Claude told the user the
+  test server "died early". It had not: its process shows as `dart:load-serve`, which `ps -C load-server` missed.
+  Caught when the next run failed with "Address already in use" on port 8090 and that run's client had reached the
+  old server. Cost: two discarded runs (about 10 minutes); the run script then checked the port and the new server.
+- P20, CPU read wrong: the tables first gave `ps %cpu` samples as the 5 s load. The reviewer pointed out that on
+  Linux it is the average over the process's life (on macOS a decaying average); the team-server load was worked back
+  from the timed samples (peak 33.5% / 36.7%, not 22.6% / 25.1%), and the other rows now say what they are.
+- P20, unsafe bench: the reviewer found that `skills_endpoint_bench.py` would wipe and migrate whatever database
+  `DATABASE_URL` named in the shell (it only defaulted the test settings), e.g. production after loading the server's
+  `.env`. Now forced to the in-memory database and refused otherwise, with tests.
+- P20, smaller misses caught before the results: a server option passed as one shell word was silently ignored
+  (S3 ran with the production wait; the server now refuses unknown arguments); `WebSocket.connect` hides the HTTP
+  status of a refused upgrade (the bot now upgrades by hand to tell 401 from 503); the error tally lost counts
+  without a code; the doc said the countdown was inside found→start. Each was caught by a test or the reviewer.
+- P20, found in the battle server (not fixed, owner's file): an uncaught `StreamSink is closed` from the `catch`
+  path of `BattleServer._receive`, seen only with server and client in one process; reported in the results doc.
+
 - P11, demo data: the first emulator run used rankings typed by hand, and some totals could not come from the point
   rules. When the user asked whether the points were right, Claude replaced them with answers computed by the real
   server code (a seed script posting battles to `/internal/results` on an in-memory database) and checked each total
@@ -214,6 +243,11 @@ Full list: `ishlove77-Prompt-Log.md`.
   and released by the app when the battle ends.
 
 ## 4. Revisions and Decisions
+- P20 scenarios: one 200-user run → also a simulated-heavy run (`--virtual-after-ms 0`), since with 200 users online
+  only 2 of 600 battles got a simulated opponent (Claude's proposal); the team server added at the user's request
+  ("팀서버도 ㄱㄱ"), first with the client on the Mac through a tunnel, then both on the server (user's choice after the
+  tunnel attempt); the simulated-opponent wait rows dropped from the tables (user: it is just the 10 s setting).
+
 - P11 points: Claude proposed KO win 10, win 5, loss 1, leaving 0 → the user added draw +3. Rules line on the
   rankings screen: shown → removed (user, after the emulator check).
 - P11 exercises: one ranking over push-ups and squats → the user asked whether they were apart, then decided to
@@ -249,7 +283,7 @@ Full list: `ishlove77-Prompt-Log.md`.
   waiting rooms read it every 2 s, and an accepted invite not paired within 30 s ends the wait.
 
 ## 5. Manual Fixes
-None observed in P7, P9, P10 or P11: every code change was made by Claude Code and checked by the user.
+None observed in P7, P9, P10, P11 or P20: every code change was made by Claude Code and checked by the user.
 
 ## 6. Reflection
 TODO(Jinyoung Park): what worked and what to change, at the end of the iteration.
