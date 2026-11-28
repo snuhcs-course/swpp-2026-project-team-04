@@ -204,7 +204,24 @@ class RankingLadder {
       pick.add(below[i]);
     }
     final shown = _byPoints(pick);
-    final startSlot = shown.where(atOrAboveOld).length;
+    // Where each row starts: by its points in the ranking before the battle
+    // when it was there (someone else may have played meanwhile), else by
+    // its points now. Equal points keep the order above, so with the same
+    // points before and after it is the design's start. Rows end by their
+    // points now.
+    final pointsBefore = {for (final e in before.entries) e.userId: e.points};
+    int startPoints(LadderEntry o) => pointsBefore[o.userId] ?? o.points;
+    final startSlot = shown
+        .where((o) => old == null || startPoints(o) >= old)
+        .length;
+    final startOrder = [for (var i = 0; i < shown.length; i++) i]
+      ..sort((a, b) {
+        final byPoints = startPoints(shown[b]).compareTo(startPoints(shown[a]));
+        return byPoints != 0 ? byPoints : a.compareTo(b);
+      });
+    final fromSlot = {
+      for (final (k, i) in startOrder.indexed) i: k < startSlot ? k : k + 1,
+    };
     final finalSlot = shown.where((o) => o.points > now).length;
     return RankingLadder._(
       others: [
@@ -214,7 +231,7 @@ class RankingLadder {
             points: entry.points,
             isMe: false,
             order: i,
-            fromSlot: (i < startSlot ? i : i + 1).toDouble(),
+            fromSlot: fromSlot[i]!.toDouble(),
             toSlot: (i < finalSlot ? i : i + 1).toDouble(),
             rankBefore: rankBefore(entry),
             rankAfter: entry.rank,

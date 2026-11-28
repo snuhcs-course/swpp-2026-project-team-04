@@ -682,6 +682,101 @@ void main() {
       expect(ladder.others.last.nickname, '오늘만산다');
     });
 
+    test('a player who played during my battle starts where the ranking '
+        'before had them', () {
+      // C went from 15 to 25 while I went from 18 to 23 (Codex on #122).
+      final before = RankingSnapshot(
+        entries: [
+          _entry(1, 30, 1),
+          _entry(2, 20, 2),
+          _entry(9, 18, 3, battles: 3),
+          _entry(3, 15, 4),
+        ],
+        me: _entry(9, 18, 3, battles: 3),
+      );
+      final after = RankingSnapshot(
+        entries: [
+          _entry(1, 30, 1),
+          _entry(3, 25, 2),
+          _entry(9, 23, 3, battles: 4),
+          _entry(2, 20, 4),
+        ],
+        me: _entry(9, 23, 3, battles: 4),
+      );
+      final ladder = RankingLadder.of(before: before, after: after, points: 5);
+      final slots = {
+        for (final row in ladder.rows) row.nickname: (row.fromSlot, row.toSlot),
+      };
+      // The start is the order before: 선수1, 선수2, me, 선수3.
+      expect(slots, {
+        '선수1': (0.0, 0.0),
+        '선수2': (1.0, 3.0),
+        '선수9': (2.0, 2.0),
+        '선수3': (3.0, 1.0),
+      });
+      // Drawn by the points now, as before.
+      expect(ladder.others.map((row) => row.nickname), ['선수1', '선수3', '선수2']);
+      final c = ladder.others.singleWhere((row) => row.nickname == '선수3');
+      expect((c.rankBefore, c.rankAfter), (4, 2));
+    });
+
+    test('my first battle: rows above me start in the order before', () {
+      // 선수2 went from 15 to 25 while I played my first battle (10).
+      final before = RankingSnapshot(
+        entries: [_entry(1, 20, 1), _entry(2, 15, 2)],
+      );
+      final after = RankingSnapshot(
+        entries: [
+          _entry(2, 25, 1),
+          _entry(1, 20, 2),
+          _entry(9, 10, 3, battles: 1),
+        ],
+        me: _entry(9, 10, 3, battles: 1),
+      );
+      final ladder = RankingLadder.of(before: before, after: after, points: 10);
+      expect(
+        {
+          for (final row in ladder.rows)
+            row.nickname: (row.fromSlot, row.toSlot),
+        },
+        {'선수1': (0.0, 1.0), '선수2': (1.0, 0.0), '선수9': (2.0, 2.0)},
+      );
+    });
+
+    test('a newcomer starts by its points now among rows that moved', () {
+      // 선수4 is new this week (22); 선수3 went from 10 to 21.
+      final before = RankingSnapshot(
+        entries: [
+          _entry(1, 30, 1),
+          _entry(9, 18, 2, battles: 2),
+          _entry(3, 10, 3),
+        ],
+        me: _entry(9, 18, 2, battles: 2),
+      );
+      final after = RankingSnapshot(
+        entries: [
+          _entry(1, 30, 1),
+          _entry(9, 23, 2, battles: 3),
+          _entry(4, 22, 3),
+          _entry(3, 21, 4),
+        ],
+        me: _entry(9, 23, 2, battles: 3),
+      );
+      final ladder = RankingLadder.of(before: before, after: after, points: 5);
+      expect(
+        {
+          for (final row in ladder.rows)
+            row.nickname: (row.fromSlot, row.toSlot),
+        },
+        {
+          '선수1': (0.0, 0.0),
+          '선수4': (1.0, 2.0),
+          '선수9': (2.0, 1.0),
+          '선수3': (3.0, 3.0),
+        },
+      );
+    });
+
     test('a player not in the ranking before keeps one rank', () {
       final before = RankingSnapshot(
         entries: [_entry(1, 30, 1), _entry(9, 10, 2, battles: 1)],
