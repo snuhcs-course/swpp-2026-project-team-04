@@ -229,33 +229,35 @@ extension VictoryDefeatScene on VictoryScene {
   bool get _draw => result == VictoryResult.draw;
 
   /// The scene [tMs] ms after the report opened; the end look from
-  /// [VictoryDefeat.endMs] on.
+  /// [VictoryDefeat.endMs] on (1.2 s later with the rank ladder's hold,
+  /// whose way out reads [heldTime]).
   VictoryFrame defeatAt(double tMs) {
-    if (tMs >= VictoryDefeat.endMs) return end;
+    if (tMs >= endMs) return end;
     final t = math.max(0.0, tMs);
+    final b = heldTime(t);
     if (_draw) {
       return VictoryFrame(
-        stand: _standAt(t),
-        panel: t >= VictoryDefeat.outFromMs
-            ? _shrink(t, _split(1, seam: true))
+        stand: _standAt(b),
+        panel: b >= VictoryDefeat.outFromMs
+            ? _shrink(b, _split(1, seam: true))
             : _split(
                 _eo(t / VictoryDefeat.panelInMs),
                 seam: t >= VictoryDefeat.seamFromMs,
               ),
-        fighters: _fighters(t),
+        fighters: _fighters(t, b),
         spark: _spark(t),
         shake: _shake(t),
-        band: _drawBand(t),
+        band: _drawBand(t, b),
       );
     }
     return VictoryFrame(
-      stand: _standAt(t),
-      panel: t >= VictoryDefeat.outFromMs
-          ? _shrink(t, const VictoryShutter())
+      stand: _standAt(b),
+      panel: b >= VictoryDefeat.outFromMs
+          ? _shrink(b, const VictoryShutter())
           : _shutter(t),
       rain: _rain(t),
-      figure: _falling(t),
-      band: _loseBand(t),
+      figure: _falling(t, b),
+      band: _loseBand(t, b),
     );
   }
 
@@ -379,8 +381,9 @@ extension VictoryDefeatScene on VictoryScene {
       }(),
   ];
 
-  /// My character falling, frustrating big, and going to the seat.
-  VictoryFigure? _falling(double t) {
+  /// My character falling, frustrating big, and going to the seat ([b] the
+  /// way-out time).
+  VictoryFigure? _falling(double t, double b) {
     if (t < VictoryDefeat.enterFromMs) return null;
     final values = rig.scene;
     final motion = character.frustrate;
@@ -410,7 +413,8 @@ extension VictoryDefeatScene on VictoryScene {
         )
         .roundToDouble();
     final big = layout.fromDesign(Offset(character.bigFootX, values.bigFootY));
-    if (t < VictoryDefeat.outFromMs) {
+    // Big until the way out, held or not.
+    if (t < outFromMs) {
       final w = t < VictoryDefeat.landMs + VictoryDefeat.thudMs
           ? math.sin(
               math.pi * (t - VictoryDefeat.landMs) / VictoryDefeat.thudMs,
@@ -428,7 +432,7 @@ extension VictoryDefeatScene on VictoryScene {
         frame: motion.frameAt(time),
       );
     }
-    final e = _eio((t - VictoryDefeat.outFromMs) / VictoryDefeat.seatMs);
+    final e = _eio((b - VictoryDefeat.outFromMs) / VictoryDefeat.seatMs);
     return VictoryFigure(
       foot: Offset.lerp(big, layout.nearSeat(values.seatFoot), e)!,
       scale: lerpDouble(bigScale, values.seatScale, e)!,
@@ -440,27 +444,33 @@ extension VictoryDefeatScene on VictoryScene {
     );
   }
 
-  VictoryBand? _loseBand(double t) {
+  VictoryBand? _loseBand(double t, double b) {
     if (t < VictoryDefeat.loseBandFromMs ||
-        t >= VictoryDefeat.outFromMs + VictoryDefeat.bandOutMs) {
+        b >= VictoryDefeat.outFromMs + VictoryDefeat.bandOutMs) {
       return null;
     }
     final sag = _eio((t - VictoryDefeat.sagFromMs) / VictoryDefeat.sagMs);
-    final out = _clamp((t - VictoryDefeat.outFromMs) / VictoryDefeat.bandOutMs);
+    final out = _clamp((b - VictoryDefeat.outFromMs) / VictoryDefeat.bandOutMs);
+    final lift = bandLiftAt(t);
     return VictoryBand(
       text: VictoryDefeat.loseWords,
       dx:
           -VictoryDefeat.loseBandSlide *
           (1 -
               _eo((t - VictoryDefeat.loseBandFromMs) / VictoryDefeat.bandInMs)),
-      dy: VictoryDefeat.sagDrop * sag + VictoryDefeat.loseBandDrop * out,
+      dy:
+          VictoryDefeat.sagDrop * sag +
+          VictoryDefeat.loseBandDrop * out -
+          VictoryTimes.bandLift * lift,
       rotDeg: VictoryDefeat.loseBandTurnDeg + VictoryDefeat.sagTurnDeg * sag,
       opacity: 1 - out,
+      scale: 1 - VictoryTimes.bandShrink * lift,
     );
   }
 
-  /// The two fighters, the opponent first (mine is drawn over it).
-  List<VictoryFighter> _fighters(double t) {
+  /// The two fighters, the opponent first (mine is drawn over it); [b] is
+  /// the way-out time.
+  List<VictoryFighter> _fighters(double t, double b) {
     if (t < VictoryDefeat.enterFromMs) return const [];
     const s = VictoryDefeat.fighterScale;
     const middle = 180.0;
@@ -519,8 +529,8 @@ extension VictoryDefeatScene on VictoryScene {
     var meScale = scale;
     var opponentFoot = layout.fromDesign(Offset(opponentX, footY - up));
     var opponentOpacity = 1.0;
-    if (t >= VictoryDefeat.outFromMs) {
-      final e = _eio((t - VictoryDefeat.outFromMs) / VictoryDefeat.seatMs);
+    if (t >= outFromMs) {
+      final e = _eio((b - VictoryDefeat.outFromMs) / VictoryDefeat.seatMs);
       meFoot = Offset.lerp(
         layout.fromDesign(const Offset(VictoryDefeat.meBackX, footY)),
         layout.nearSeat(rig.scene.seatFoot),
@@ -528,7 +538,7 @@ extension VictoryDefeatScene on VictoryScene {
       )!;
       meScale = lerpDouble(scale, rig.scene.seatScale, e)!;
       final q = _clamp(
-        (t - VictoryDefeat.outFromMs) / VictoryDefeat.opponentOutMs,
+        (b - VictoryDefeat.outFromMs) / VictoryDefeat.opponentOutMs,
       );
       opponentFoot = layout.fromDesign(
         Offset(
@@ -547,7 +557,7 @@ extension VictoryDefeatScene on VictoryScene {
     final idleMs =
         pose == BattlePose.idle &&
             t >= VictoryDefeat.guardFromMs &&
-            t < VictoryDefeat.outFromMs
+            t < outFromMs
         ? t - VictoryDefeat.guardFromMs
         : null;
     return [
@@ -632,12 +642,13 @@ extension VictoryDefeatScene on VictoryScene {
         (1 - _clamp(since / VictoryDefeat.shakeMs));
   }
 
-  VictoryBand? _drawBand(double t) {
+  VictoryBand? _drawBand(double t, double b) {
     if (t < VictoryDefeat.drawBandFromMs ||
-        t >= VictoryDefeat.outFromMs + VictoryDefeat.bandOutMs) {
+        b >= VictoryDefeat.outFromMs + VictoryDefeat.bandOutMs) {
       return null;
     }
-    final out = _clamp((t - VictoryDefeat.outFromMs) / VictoryDefeat.bandOutMs);
+    final out = _clamp((b - VictoryDefeat.outFromMs) / VictoryDefeat.bandOutMs);
+    final lift = bandLiftAt(t);
     final y =
         -VictoryDefeat.drawBandDrop *
         (1 -
@@ -645,9 +656,10 @@ extension VictoryDefeatScene on VictoryScene {
     return VictoryBand(
       text: VictoryDefeat.drawWords,
       dx: 0,
-      dy: y - VictoryDefeat.drawBandRise * out,
+      dy: y - VictoryDefeat.drawBandRise * out - VictoryTimes.bandLift * lift,
       rotDeg: VictoryDefeat.drawBandTurnDeg,
       opacity: 1 - out,
+      scale: 1 - VictoryTimes.bandShrink * lift,
     );
   }
 }

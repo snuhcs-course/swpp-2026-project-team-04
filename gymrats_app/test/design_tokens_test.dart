@@ -100,6 +100,7 @@ const _checked = [
   'lib/widgets/tutorial_setup_scenes.dart',
   'lib/widgets/tutorial_welcome.dart',
   'lib/widgets/victory_defeat.dart',
+  'lib/widgets/victory_ladder.dart',
   'lib/widgets/victory_motion.dart',
   'lib/widgets/victory_overlay.dart',
   'lib/widgets/victory_rig_data.dart',

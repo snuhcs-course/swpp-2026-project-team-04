@@ -368,6 +368,20 @@ abstract final class VictoryTimes {
   /// The win's lime stand opens from [standFromMs] for [standMs].
   static const standFromMs = 1900.0;
   static const standMs = 200.0;
+
+  /// The rank ladder's hold (A15, the design `SpScene` E): with a ladder to
+  /// play, the big moment is held [holdMs] longer from when the way out was
+  /// due ([outFromMs] for a win, `VictoryDefeat.outFromMs` for a loss and a
+  /// draw), and the way-out formulas run [holdMs] later
+  /// ([VictoryScene.heldTime]).
+  static const holdMs = 1200.0;
+
+  /// Meanwhile the band makes room for the ladder: from [bandLiftFromMs]
+  /// over [bandLiftMs] it rises [bandLift] and shrinks by [bandShrink].
+  static const bandLiftFromMs = 880.0;
+  static const bandLiftMs = 240.0;
+  static const bandLift = 124.0;
+  static const bandShrink = 0.28;
 }
 
 /// Where the scene is on a real screen: the overlay's [size] and the
@@ -419,6 +433,7 @@ class VictoryScene {
     required this.result,
     required this.layout,
     this.opponentId = CharacterRig.defaultId,
+    this.hold = false,
   });
 
   final VictoryRig rig;
@@ -430,14 +445,50 @@ class VictoryScene {
   /// it (a `CharacterRig` id; an unknown one draws the default).
   final String opponentId;
 
+  /// Whether the big moment is held for the rank ladder (A15,
+  /// [VictoryTimes.holdMs]); without it the scene is W5's and A7's.
+  final bool hold;
+
   VictorySceneValues get _values => rig.scene;
 
-  /// When it ends: 2100 ms for a win, 2000 ms for a loss or a draw.
-  double get endMs => endMsOf(rig, result);
+  /// When it ends: 2100 ms for a win, 2000 ms for a loss or a draw; 1.2 s
+  /// later with [hold].
+  double get endMs => endMsOf(rig, result, hold: hold);
 
   /// [endMs] without a layout.
-  static double endMsOf(VictoryRig rig, VictoryResult result) =>
-      result.isWin ? rig.scene.winEndMs : VictoryDefeat.endMs;
+  static double endMsOf(
+    VictoryRig rig,
+    VictoryResult result, {
+    bool hold = false,
+  }) =>
+      (result.isWin ? rig.scene.winEndMs : VictoryDefeat.endMs) +
+      (hold ? VictoryTimes.holdMs : 0);
+
+  /// How long the big moment is held: [VictoryTimes.holdMs] with [hold].
+  double get holdMs => hold ? VictoryTimes.holdMs : 0;
+
+  /// When the way out starts: 1600 ms for a win, 1500 ms for a loss or a
+  /// draw, [holdMs] later.
+  double get outFromMs =>
+      (result.isWin ? VictoryTimes.outFromMs : VictoryDefeat.outFromMs) +
+      holdMs;
+
+  /// The time the way-out formulas read at [t] (the design's `bt`): [t]
+  /// until the way out was due, that time through the hold, then [t] less
+  /// the hold. The coming in, the band's slide and sag, the rain, the
+  /// confetti's flight and the motions' clocks read [t] itself. Without
+  /// [hold] it is [t].
+  double heldTime(double t) {
+    final due = outFromMs - holdMs;
+    if (t < due) return t;
+    return t < outFromMs ? due : t - holdMs;
+  }
+
+  /// How far the band has risen and shrunk for the ladder at [t], 0 to 1;
+  /// 0 without [hold].
+  double bandLiftAt(double t) => hold
+      ? _eio((t - VictoryTimes.bandLiftFromMs) / VictoryTimes.bandLiftMs)
+      : 0;
 
   /// The scene [tMs] ms after the report opened; its end look from [endMs]
   /// on.
@@ -466,21 +517,23 @@ class VictoryScene {
   }
 
   VictoryFrame _win(double t) {
-    if (t >= _values.winEndMs) return end;
+    if (t >= endMs) return end;
+    final b = heldTime(t);
     return VictoryFrame(
-      panel: _panel(t),
-      band: _band(t),
-      stand: t >= VictoryTimes.standFromMs
-          ? _stand(_eo((t - VictoryTimes.standFromMs) / VictoryTimes.standMs))
+      panel: _panel(t, b),
+      band: _band(t, b),
+      stand: b >= VictoryTimes.standFromMs
+          ? _stand(_eo((b - VictoryTimes.standFromMs) / VictoryTimes.standMs))
           : null,
-      figure: _celebrating(t),
-      confetti: t >= VictoryTimes.confettiFromMs ? _confetti(t) : const [],
+      figure: _celebrating(t, b),
+      confetti: t >= VictoryTimes.confettiFromMs ? _confetti(t, b) : const [],
     );
   }
 
-  VictoryPanel _panel(double t) {
+  /// The panel at [t], [b] its way-out time ([heldTime]).
+  VictoryPanel _panel(double t, double b) {
     final size = layout.size;
-    if (t < VictoryTimes.outFromMs) {
+    if (b < VictoryTimes.outFromMs) {
       const lean = VictoryTimes.wipeLean;
       final x = (size.width + lean * 2) * _eo(t / VictoryTimes.wipeMs);
       return VictoryWipe(
@@ -493,7 +546,7 @@ class VictoryScene {
         ],
       );
     }
-    final e = _eio((t - VictoryTimes.outFromMs) / VictoryTimes.panelShrinkMs);
+    final e = _eio((b - VictoryTimes.outFromMs) / VictoryTimes.panelShrinkMs);
     final last = layout.rectNearSeat(_values.panel.seatRect);
     return VictoryShrink(
       e: e,
@@ -504,28 +557,30 @@ class VictoryScene {
       radius: _values.panel.seatRadius * e,
       opacity:
           1 -
-          _clamp((t - VictoryTimes.panelFadeFromMs) / VictoryTimes.panelFadeMs),
+          _clamp((b - VictoryTimes.panelFadeFromMs) / VictoryTimes.panelFadeMs),
     );
   }
 
-  VictoryBand? _band(double t) {
+  VictoryBand? _band(double t, double b) {
     if (t < VictoryTimes.bandFromMs ||
-        t >= VictoryTimes.outFromMs + VictoryTimes.bandOutMs) {
+        b >= VictoryTimes.outFromMs + VictoryTimes.bandOutMs) {
       return null;
     }
-    final out = _clamp((t - VictoryTimes.outFromMs) / VictoryTimes.bandOutMs);
+    final out = _clamp((b - VictoryTimes.outFromMs) / VictoryTimes.bandOutMs);
+    final lift = bandLiftAt(t);
     return VictoryBand(
       text: _values.band.text[result.bandKey]!,
       dx:
           VictoryTimes.bandSlide *
           (1 - _eo((t - VictoryTimes.bandFromMs) / VictoryTimes.bandInMs)),
-      dy: -VictoryTimes.bandRise * out,
+      dy: -VictoryTimes.bandRise * out - VictoryTimes.bandLift * lift,
       rotDeg: _values.band.rotateDeg,
       opacity: 1 - out,
+      scale: 1 - VictoryTimes.bandShrink * lift,
     );
   }
 
-  VictoryFigure? _celebrating(double t) {
+  VictoryFigure? _celebrating(double t, double b) {
     if (t < VictoryTimes.riseFromMs) return null;
     final bigFoot = layout.fromDesign(
       Offset(character.bigFootX, _values.bigFootY),
@@ -550,7 +605,8 @@ class VictoryScene {
       );
     }
     final time = (t - VictoryTimes.celebrateFromMs).roundToDouble();
-    if (t < VictoryTimes.outFromMs) {
+    // Big until the way out, held or not.
+    if (t < outFromMs) {
       return VictoryFigure(
         foot: bigFoot,
         scale: bigScale,
@@ -561,9 +617,9 @@ class VictoryScene {
         frame: motion.frameAt(time),
       );
     }
-    final e = _eio((t - VictoryTimes.outFromMs) / VictoryTimes.seatMs);
+    final e = _eio((b - VictoryTimes.outFromMs) / VictoryTimes.seatMs);
     final endBlend = _eio(
-      (t - VictoryTimes.outFromMs) / VictoryTimes.endBlendMs,
+      (b - VictoryTimes.outFromMs) / VictoryTimes.endBlendMs,
     );
     return VictoryFigure(
       foot: Offset.lerp(bigFoot, layout.nearSeat(_values.seatFoot), e)!,
@@ -576,13 +632,13 @@ class VictoryScene {
     );
   }
 
-  List<VictoryConfetto> _confetti(double t) {
+  List<VictoryConfetto> _confetti(double t, double b) {
     final values = _values.confetti;
     final tc = t - VictoryTimes.confettiFromMs;
     final fade =
         1 -
         _clamp(
-          (t - VictoryTimes.confettiFadeFromMs) / VictoryTimes.confettiFadeMs,
+          (b - VictoryTimes.confettiFadeFromMs) / VictoryTimes.confettiFadeMs,
         );
     final gone =
         layout.size.height +
@@ -725,7 +781,7 @@ class VictoryShrink extends VictoryPanel {
 }
 
 /// The band's words and where it is: moved ([dx], [dy]) from its place, in
-/// the design's points, and turned [rotDeg].
+/// the design's points, [scale] times its size, and turned [rotDeg].
 class VictoryBand {
   const VictoryBand({
     required this.text,
@@ -733,6 +789,7 @@ class VictoryBand {
     required this.dy,
     required this.rotDeg,
     required this.opacity,
+    this.scale = 1,
   });
 
   final String text;
@@ -740,6 +797,10 @@ class VictoryBand {
   final double dy;
   final double rotDeg;
   final double opacity;
+
+  /// How large it is about its middle: smaller while it makes room for the
+  /// rank ladder (A15), else 1.
+  final double scale;
 }
 
 /// The stand on the screen, opened [scaleX] of its width about its middle:

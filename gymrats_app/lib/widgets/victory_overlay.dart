@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../models/character_rig.dart';
 import '../models/matchup.dart';
+import '../models/ranking_ladder.dart';
 import '../theme/app_theme.dart';
+import '../viewmodels/ranking_ladder_viewmodel.dart';
 import 'battle_stage_model.dart' show BattleSide;
 import 'character_figure.dart';
 import 'character_motion.dart';
 import 'victory_defeat.dart';
+import 'victory_ladder.dart';
 import 'victory_motion.dart';
 import 'victory_scene.dart';
 
@@ -39,6 +42,7 @@ class VictoryOverlay extends StatefulWidget {
     this.play = true,
     this.onEnd,
     this.opponent,
+    this.ladder,
   });
 
   final VictoryResult result;
@@ -72,6 +76,12 @@ class VictoryOverlay extends StatefulWidget {
   /// [play] turned off stops it (whoever turned it off knows).
   final VoidCallback? onEnd;
 
+  /// The rank ladder of a ranked online battle (A15); null for every other
+  /// battle, whose scene is as before. The scene asks it for its path at
+  /// [RankingLadder.decideMs] (or when skipped): a confirmed ranking holds
+  /// the big moment for the ladder ([VictoryLadderLayer]).
+  final RankingLadderViewModel? ladder;
+
   /// The seat's size (spec 2).
   static const seatSize = Size(144, 148);
 
@@ -95,7 +105,11 @@ class _VictoryOverlayState extends State<VictoryOverlay>
 
   VictoryRig get _rig => VictoryRig.standard;
 
-  double get _endMs => VictoryScene.endMsOf(_rig, widget.result);
+  double get _endMs => VictoryScene.endMsOf(
+    _rig,
+    widget.result,
+    hold: widget.ladder?.holds ?? false,
+  );
 
   @override
   void didChangeDependencies() {
@@ -116,6 +130,8 @@ class _VictoryOverlayState extends State<VictoryOverlay>
 
   void _tick(Duration elapsed) {
     final ms = elapsed.inMicroseconds / 1000;
+    // The scene is the same whatever the ranking until then.
+    if (ms >= RankingLadder.decideMs) widget.ladder?.decide();
     if (ms >= _endMs) {
       _end();
     } else {
@@ -132,6 +148,7 @@ class _VictoryOverlayState extends State<VictoryOverlay>
   /// The scene ends while playing: played out or skipped.
   void _end() {
     if (_over) return;
+    widget.ladder?.decide();
     setState(_stop);
     widget.onEnd?.call();
   }
@@ -163,6 +180,7 @@ class _VictoryOverlayState extends State<VictoryOverlay>
                 seat: widget.seat,
                 clock: _clock,
                 over: _over,
+                ladder: widget.ladder,
                 bandStyle: Theme.of(context).textTheme.stageBandKorean
                     .apply(
                       fontSizeFactor: band.textSize / StageText.stageBandSize,
@@ -172,6 +190,22 @@ class _VictoryOverlayState extends State<VictoryOverlay>
             ),
           ),
         ),
+        if (widget.ladder case final ladder? when !_over)
+          VictoryLadderLayer(
+            viewModel: ladder,
+            clock: _clock,
+            sceneIn: (size) => VictoryScene(
+              rig: rig,
+              character: character,
+              result: widget.result,
+              layout: VictoryLayout(
+                size: size,
+                seat: widget.seat,
+                values: rig.scene,
+              ),
+              hold: true,
+            ),
+          ),
         if (!_over)
           Semantics(
             button: true,
@@ -194,12 +228,15 @@ class _VictoryOverlayState extends State<VictoryOverlay>
 /// stand and the end pose of [result] (spec 8; a draw's is my character in
 /// guard on the lime and pink stand, A7). The result report keeps it
 /// in its seat after the scene, with reduced motion, and on a past report.
-/// It takes no taps and says nothing to screen readers.
+/// It takes no taps and says nothing to screen readers, but for the rank
+/// chip of a ranked online battle ([ladder], A15): at its top, in the
+/// middle, once its ranking is confirmed ([VictorySeatChip]).
 class VictorySeat extends StatelessWidget {
   const VictorySeat({
     super.key,
     required this.result,
     required this.characterId,
+    this.ladder,
   });
 
   final VictoryResult result;
@@ -207,16 +244,37 @@ class VictorySeat extends StatelessWidget {
   /// My character, as [VictoryOverlay.characterId].
   final String characterId;
 
+  /// The rank ladder, as [VictoryOverlay.ladder]; null leaves no chip.
+  final RankingLadderViewModel? ladder;
+
   @override
-  Widget build(BuildContext context) => SizedBox.fromSize(
-    size: VictoryOverlay.seatSize,
-    child: VictoryOverlay(
+  Widget build(BuildContext context) {
+    final end = VictoryOverlay(
       result: result,
       characterId: characterId,
       seat: Offset.zero,
       play: false,
-    ),
-  );
+    );
+    final ladder = this.ladder;
+    return SizedBox.fromSize(
+      size: VictoryOverlay.seatSize,
+      child: ladder == null
+          ? end
+          : Stack(
+              fit: StackFit.expand,
+              children: [
+                end,
+                Positioned(
+                  top: VictoryLadder.chipTop,
+                  left: 0,
+                  right: 0,
+                  height: VictoryLadder.chipHeight,
+                  child: Center(child: VictorySeatChip(viewModel: ladder)),
+                ),
+              ],
+            ),
+    );
+  }
 }
 
 /// Paints the victory scene's layers at the time [clock] holds (ms), or its
@@ -234,6 +292,7 @@ class VictoryPainter extends CustomPainter {
     required this.clock,
     required this.over,
     required this.bandStyle,
+    this.ladder,
   }) : super(repaint: clock);
 
   final VictoryRig rig;
@@ -249,6 +308,10 @@ class VictoryPainter extends CustomPainter {
   /// The band's words: Do Hyeon at the rig's size and line height.
   final TextStyle bandStyle;
 
+  /// The rank ladder (A15): the scene holds its big moment once it chose a
+  /// confirmed ranking, read at each paint.
+  final RankingLadderViewModel? ladder;
+
   /// The scene on a screen of [size].
   VictoryScene sceneIn(Size size) => VictoryScene(
     rig: rig,
@@ -256,6 +319,7 @@ class VictoryPainter extends CustomPainter {
     result: result,
     layout: VictoryLayout(size: size, seat: seat, values: rig.scene),
     opponentId: opponentId,
+    hold: ladder?.holds ?? false,
   );
 
   /// What the layers show now on a screen of [size].
@@ -631,6 +695,7 @@ class VictoryPainter extends CustomPainter {
         rig.scene.screen.width / 2 + band.dx,
         values.top + height / 2 + band.dy,
       )
+      ..scale(band.scale)
       ..rotate(band.rotDeg * math.pi / 180);
     _inLayer(canvas, band.opacity, () {
       final ground = Rect.fromCenter(
@@ -679,5 +744,6 @@ class VictoryPainter extends CustomPainter {
       oldDelegate.seat != seat ||
       oldDelegate.clock != clock ||
       oldDelegate.over != over ||
-      oldDelegate.bandStyle != bandStyle;
+      oldDelegate.bandStyle != bandStyle ||
+      oldDelegate.ladder != ladder;
 }
