@@ -2327,3 +2327,205 @@ No server, camera or device is needed:
 - The device-clock rule (the user's decision) → friends_viewmodel_test 'a normal clock: the card leaves when the count reaches 0 (user, 2026-11-27)', 'a clock over a minute ahead: an invite at 0 from the first sight stays listed at 0 while the server lists it, and goes with the next read that does not (user, 2026-11-27)', and the alert's two; friends_screen_test 'a phone clock over a minute ahead: …' (page and alert)
 - 9.10 Overflow → play_screen_test 'fits 360 x 780 at 1.3 times the text without overflow, scrolling if it must', 'fits a small phone, 320 x 640 without overflow, scrolling if it must'; friends_screen_test 'nothing overflows at …', 'it fits …'; online_lobby_screen_test 'it fits …'; friend_wait_view_test 'no overflow at …'
 - 9.11 Old tests → the list above; the full `flutter test`
+
+#### 2026-11-28 · code at commits `bd53b8f` to `3dc2c2c` (five commits, on `origin/main` `2e59012`) · step A12 `feat/iter5-tutorial` (튜토리얼 개편 · 그림, 문구, 화면 틀, an Unexpected task approved by the PM 2026-11-28)
+A12 redraws the tutorial (`HelpScreen`: the game page, 11 push-up pages, 10 squat pages) from the confirmed 22-page design (SPEC v1.1, the local design hand-off for A12, kept outside the repo). The page order, the judging and P17's telemetry are unchanged (the PM's conditions): `tutorial_viewmodel.dart`, its test and `tutorial_page.dart` are identical to `origin/main`. The changes:
+- **Words:** no page names RepBot or the bot; the welcome, push-up intro, squat setup, average, fail, combo, fever and report lines are new and one line each; the KO page is told by its title alone.
+- **Frame:** hand-drawn tabs (a tab bar of two tabs with their selected state, a button with its position for TalkBack, 48-high targets), the picture filling a 2-edge card, the design's dots and 이전; 다음 stays the shared `AccentButton`.
+- **People:** ink silhouettes from joint positions, ported from the design's engine (`tutorial_person.dart`); page 1 repeats a push-up (2 s) or a squat with the hands held (2.4 s); page 2 shows the setup's camera with the app's own guides.
+- **Battle pages:** stills of the real battle screen built from the stage's own parts (`tutorial_game_shot.dart`): on a phone with the marks made large (battle, combo, fever, KO) or in a bubble over the person at the grade's depth (the grades). No 인정! pill; the real reject signs (무릎 떼기, 더 앉기, 더 깊게) and frame colors (the user's decisions).
+- **Game page:** an online battle playing on a loop beside the arcade map at stage 8 (`tutorial_welcome.dart`). **Report page:** 물렁범 mid-talk in the coach's dialog over a pace card.
+- **Reduced motion:** every moving picture holds a still; nothing in the pictures takes a tap; the pictures keep their own text size.
+- **Removed:** the RepBot mannequin (`tutorial_rep_bot.dart` and its test).
+
+The branch was made from `origin/main` `32d2106` and rebased before the push onto `375a9b7` (P11 #108), then onto `2e59012` (#109, the rankings follow-up, merged meanwhile); `git range-diff` shows the five patches unchanged both times. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/screens/help_screen_test.dart test/widgets/help_rules_test.dart test/widgets/help_pictures_test.dart test/widgets/tutorial_person_test.dart test/widgets/tutorial_setup_scenes_test.dart test/widgets/tutorial_game_shot_test.dart test/widgets/tutorial_draft_test.dart test/widgets/tutorial_welcome_test.dart test/design_tokens_test.dart test/screens/settings_screen_test.dart test/widgets/game_panel_fonts_test.dart test/viewmodels/tutorial_viewmodel_test.dart
+# coverage: each test file alone with flutter test --coverage --coverage-path=<part>, merged by line,
+# then the per-layer table (the local harness's per-file and per-layer scripts)
+```
+
+No server, camera or device is needed: the tests draw the pictures with fixed values, use `FakeAccessibilityFeatures` for reduced motion, and the telemetry tests use the in-memory `Telemetry`.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.4% (886/891) | 11/28 | `coverage_per_file.py` + `coverage_by_layer.py` on `f03bedd` (the same patches on `375a9b7`; this PC) |
+| ViewModel | flutter_test, fakes | 90% | 98.6% (2692/2729); `tutorial_viewmodel.dart` 100% (unchanged) | 11/28 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 97.8% (5666/5796) | 11/28 | same |
+| View | flutter_test (widget) | 75% | 98.3% (19081/19417); A12's nine files 99.4% (1502/1511) | 11/28 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed, not run | 11/28 | — |
+
+- **Tests on `3dc2c2c` (the head's code):**
+  - `flutter analyze` found no issues.
+  - The full `flutter test`: 5398 passed, 0 failed, 11 skipped (the two more than on `f03bedd` are #109's: its `main_test.dart` test and its design-token row).
+  - On `f03bedd` (the same five patches on `375a9b7`), the full `flutter test` on a quiet machine: 5396 passed, 0 failed, 11 skipped. Ten are the ones skipped on `main` (a live server smoke test and nine known push-up judge errors); the eleventh is my local capture tool, a test file kept out of the repo that skips itself.
+  - The 12 files in the second command passed 241.
+  - An earlier full run, while the reviewer's tests and the session export ran alongside: 5394 passed, 11 skipped, 2 failed, both P10's real-server tests (`test/services/online/skill_matching_test.dart` 'the player can KO the simulated player', a TimeoutException; `test/services/online/online_battle_integration_test.dart` 'two real Flutter sessions match, exchange avatar pose and use server result'). A12 changes nothing under `lib/services`, `test/services` or `server/`; the two files alone passed 102/102 twice (once one other case of the integration file failed, under the same load), and the quiet full run above passed them.
+- **Coverage** (the user asked for it on this PC this time), measured on `f03bedd` before the second rebase (#109 changed two server files and two tests, none of A12's code): `coverage_per_file.py` ran the 253 test files one at a time (about 50 minutes). Three timed out and are left out of the numbers, none of them A12's: `test/screens/social_signup_screen_test.dart`, `test/services/online/online_battle_session_test.dart`, `test/services/online/simulated_player_test.dart`.
+  - Layers: Model 99.4% (886/891), ViewModel 98.6% (2692/2729), Service 97.8% (5666/5796), View 98.3% (19081/19417), Other 98.2% (54/55), total 98.2% (28379/28888); every target met.
+  - A12's files: `help_screen.dart` 99.5% (182/183), `help_pictures.dart` 100% (42/42), `help_rules.dart` 100% (49/49), `tutorial_person.dart` 99.7% (358/359), `tutorial_figure_painters.dart` 100% (99/99), `tutorial_setup_scenes.dart` 100% (189/189), `tutorial_game_shot.dart` 99.6% (222/223), `tutorial_draft.dart` 98.7% (236/239), `tutorial_welcome.dart` 97.7% (125/128); together 99.4% (1502/1511).
+  - The nine lines missed: the tab's screen-reader tap action (`help_screen.dart` L359; the tests check the action is there, not its call), three painters' `shouldRepaint` (`tutorial_draft.dart` L355, L543, L764), four no-op callbacks of buttons drawn as pictures (`tutorial_game_shot.dart` L610, `tutorial_welcome.dart` L287, L376, L456), and the solver's fully straight arm (`tutorial_person.dart` L375).
+- **Review:** the `reviewer` subagent ran ten times, once or more per phase (SPEC 8) and once after each rebase:
+  - Phase 1: run 1 CHANGES_REQUESTED (Major: TalkBack did not hear the tabs as tabs, since Android has no tab role in Flutter 3.47; 3 Minor), run 2 APPROVE.
+  - Phase 2: run 3 APPROVE with 4 Minor (the wall stripes' slant, the camera box's corners, two weak tests), all fixed.
+  - Phase 3: run 4 CHANGES_REQUESTED (Major: the game screen at the phone's and bubble's outer edge, not inside their borders; the combo mark upright at full width), run 5 APPROVE.
+  - Phase 4: run 6 CHANGES_REQUESTED (Major: the screenshots' screen under the frame's edge; no room over the arcade header; the clip drew the stills' values), run 7 APPROVE.
+  - Phase 5 and the whole task: run 8 APPROVE. After the rebase onto `375a9b7`: run 9 APPROVE. After the rebase onto `2e59012`: run 10 APPROVE (no findings; the 13 related files with `main_test.dart` 268 passed).
+- **Changed existing tests (SPEC 7.9):**
+  - `help_screen_test.dart`: `show` and the telemetry group's `showWith` hold motion still (the pictures loop); the KO page has no body line; the tabs are found by their semantics (no `SegmentedButton`); the overflow test runs at text scale (360×780 ×1.3, 320×640 added).
+  - `help_rules_test.dart`: the game page's, combo's and fever's words; 'every page has a title and a body, the grades with their points' → 'every page has a title and a body but the KO page, told by its title alone; the grades with their points'; the squat setup's title.
+  - `help_pictures_test.dart`: nine RepBot and stage-copy tests replaced by the new pictures' tests; named by `labelOf` instead of the title.
+  - `tutorial_rep_bot_test.dart`: deleted with the mannequin.
+- **Shared test files (not A12's own; the user's decisions 5 and 6, act first and report after):**
+  - `test/design_tokens_test.dart`: the `tutorial_rep_bot.dart` line removed, the six new `tutorial_*.dart` files added.
+  - `test/screens/settings_screen_test.dart`: '게임 규칙 다시 보기 opens the rules' turns on reduced motion (+5 lines), since the game page now loops and `pumpAndSettle` would not return.
+  - `test/widgets/game_panel_fonts_test.dart`: reduced motion (+7 lines) and the four labels it looks for ('EXCELLENT +15', 'GOOD +10', 'AVERAGE +5', 'FAIL 0점' no longer exist) → 'EXCELLENT', 'GOOD', 'AVERAGE', '무릎 떼기'. Its name still says "and its points": renaming is outside the allowed change.
+- **Phone check:** at the team meeting on 11/28, after the merge, on a real phone: the small text on the pictures and the knee push-up's reject scene (무릎 떼기), plus SPEC 10's items (the clip's loop, the map not cut, the people's loop, the setup's guide, the coach scene, large text, TalkBack on the tabs).
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/help_rules_test.dart` (updated) | the 22 pages as the design's table, 11 and 10 pages; no RepBot or 봇; KO without a body; the numbers from the rules |
+| View | `test/screens/help_screen_test.dart` (updated) | 게임 규칙, skip and back rules, 완료 and the hint, counters; the tabs' semantics (tab, tab bar, selected, button, position) and 48-high targets; the drawn pill and card; the picture 316×248 / 316×326; dots and 이전; pictures keep their text size; no overflow at 412×915, 360×740, 360×780 ×1.3 and 320×640; P17 telemetry (unchanged tests) |
+| View | `test/widgets/help_pictures_test.dart` (updated) | each page's picture kind and screen-reader name (the design's labels, the particles fitted); the setup guides; no file names the mannequin |
+| View | `test/widgets/tutorial_person_test.dart` (new) | the joints equal the design engine's numbers; the push-up's shoulder lowers; the knee on the floor; the squat's hips lower and hands meet at the chest; the loop in 0..1; placement; the outlines; the camera's line heights |
+| View | `test/widgets/tutorial_setup_scenes_test.dart` (new) | page 1's person loops (2000 / 2400 ms) and holds still under reduced motion; the 1:1 tag; page 2's guides (white, green), the person aside; painters' repaint; the mirrored person |
+| View | `test/widgets/tutorial_game_shot_test.dart` (new) | the design's table per step (scores, clock, grade, points from the rules); signs and frames; the camera person; the drawn shot (bands, chip, star, frame, lines, 2 HIT, fever, K.O., no 인정!); poses, feet and star per step; the welcome clip's timeline and still |
+| View | `test/widgets/tutorial_draft_test.dart` (new) | way a's marks, way b's pose and window, way d's card, name, line and ending; the places as designed; the labels' particles (푸시업을, 스쿼트를, 물렁범이) |
+| View | `test/widgets/tutorial_welcome_test.dart` (new) | the two screenshots and tags; the clip's shoulder line, green frame, GOOD, loop and still; the arcade shot's stage 8, 17/72, header, 도전, no ticks or taps |
+| Design | `test/design_tokens_test.dart` (updated) | the six new widget files use only tokens; the mannequin's line removed |
+| View | `test/screens/settings_screen_test.dart`, `test/widgets/game_panel_fonts_test.dart` (updated) | reduced motion where they open the tutorial; the font test's grade labels |
+
+### Acceptance criteria → tests (SPEC 7; the step is not in the local task.md)
+- 7.1 Words → help_rules_test 'the 22 pages say what the A12 design says (TutX PAGES)', 'no page names RepBot or the bot (RepBot is one arcade character now)', 'every page has a title and a body but the KO page, told by its title alone; the grades with their points'
+- 7.2 Frame → help_screen_test '다음 turns through the game page, every push-up page, then every squat page', 'after sign-up: no back arrow; 건너뛰기 calls onStart', 'after sign-up: the last page has 완료 and its hint instead of 건너뛰기; it calls onStart', 'from home: no 건너뛰기, and back returns home'; the tabs → 'a screen reader hears the two tabs as tabs of one tab bar, with which is chosen; each takes taps 48 high or more'
+- 7.3 Picture kinds and names → help_pictures_test 'every page draws without errors and is named for a screen reader', 'the battle, combo, fever and KO pages are way a: the game screen on a phone and its marks made large', 'the grade pages are way b: the person at the grade's depth and the game screen in a bubble', 'the game page shows the online battle playing and the arcade map; the report pages a character talking'
+- 7.4 Game scenes → tutorial_game_shot_test 'scores, counts, clock and grade per step', 'the reject signs and the camera frame (as the real game, user 2026-11-28)', and the group 'the shot draws the app's own battle screen'
+- 7.5 People → tutorial_person_test 'a push-up: the further down, the lower the shoulder; the hand stays planted', 'a knee push-up: the knee is on the floor and the feet are up', 'a squat: the further down, the lower the hips; the hands meet in front of the chest, the fist held', 'the loop: push-up 2000 ms, squat 2400 ms, always from 0 to 1'
+- 7.6 Clip → tutorial_welcome_test 'as time runs the shoulder line goes down; at the bottom the frame turns green and GOOD comes up; then it loops', 'with reduced motion it is one still, just after the blow' (no 인정! pill, the user's decision 2)
+- 7.7 Overflow → help_screen_test 'every page fits …' (360×780 at ×1.3 and 320×640, all 22 pages)
+- 7.8 Removed → help_pictures_test 'nothing draws the RepBot mannequin any more: its file is gone and no app file names it'; design_tokens_test
+- 7.9 Existing tests → `tutorial_viewmodel_test.dart` unchanged and passing; the changed ones listed above
+- The PM's conditions → `git diff origin/main...HEAD` is empty for `tutorial_viewmodel.dart`, its test, `tutorial_page.dart`, `lib/services/`, `battle_rules.dart`, `game_score.dart`; help_screen_test's group '튜토리얼 텔레메트리 (P17)' passes unchanged
+
+#### 2026-11-28 · code at the commit after `0490bc6` (PR #110) · step A12 `feat/iter5-tutorial`, the Codex follow-up
+Codex's review of `0490bc6` (PR #110, two P2 threads on `gymrats_app/lib/widgets/tutorial_game_shot.dart`) found that the game page's still for reduced motion (`TutorialGameScene.welcomeStillMs`) sat at t=960, 10 ms after the push-up's bottom, where the GOOD band is at 6% opacity and 0.21× its size. 960 was an error in the design (SPEC v1.1 and the design's default); the designer fixed SPEC 4 (v1.2) and the design's default to 1150 on 11/28. The still follows: 0.2 s after the blow, GOOD at full opacity and size, the star up at its full size, the frame and the shoulder line still green. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter analyze
+flutter test test/screens/help_screen_test.dart test/widgets/help_rules_test.dart test/widgets/help_pictures_test.dart test/widgets/tutorial_person_test.dart test/widgets/tutorial_setup_scenes_test.dart test/widgets/tutorial_game_shot_test.dart test/widgets/tutorial_draft_test.dart test/widgets/tutorial_welcome_test.dart test/design_tokens_test.dart test/screens/settings_screen_test.dart test/widgets/game_panel_fonts_test.dart test/viewmodels/tutorial_viewmodel_test.dart
+flutter test
+```
+
+- `flutter analyze` found no issues.
+- The 12 A12-related files: 242 passed (one more than on `f03bedd`: #109's design-token row).
+- The full `flutter test`: 5398 passed, 0 failed, 11 skipped.
+- **Coverage:** not measured again on this PC; the change is one constant, its comment and test assertions. The CI comment on `0490bc6` (GitHub Actions run 46110105549, one test file at a time in four shards): Model 99.4% (886/891), ViewModel 98.6% (2692/2729), Service 97.8% (5666/5796), View 98.3% (18686/19017), server 98% (367 passed); every target met. CI posts the same for the new head.
+- **Review:** reviewer run 11 APPROVE with no findings: every value at t=1150 equals the design's script; the new checks fail at 960 and pass at 1150; nothing else reads the still's time. The still holds the score and rep counters mid-bump (about 1.16× and 1.30×), as the design does at 1150.
+
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/tutorial_game_shot_test.dart` (updated) | 'the still for reduced motion is just after the blow': the still at 1150 ms; GOOD at full opacity and size; the star at full opacity and its full size (0.9); the attack |
+| View | `test/widgets/tutorial_welcome_test.dart` (updated) | 'with reduced motion it is one still, just after the blow': GOOD on screen at full opacity and size |
+
+#### 2026-11-28 · code at the commit after `11c81d6` (PR #110) · step A12 `feat/iter5-tutorial`, the second Codex follow-up
+Codex's review of `11c81d6` (PR #110, one P2 thread on `gymrats_app/lib/widgets/tutorial_game_shot.dart`) found that the KO scene's bar stopped at x=280, about 83%, though the scene is a knockout (share 1). The tutorial reuses the battle stage's own bar, which fills up to the fighters' meeting point (`meetX − 27`); the design's KO (`TutGame`) fills it to the end (`limeW` 306, no edge line) with the fighters at 220. The user decided (11/28) to fill only the KO scene to the end: its frame gets a point past the bar's end (the stage's right edge) as the meeting point, which the stage keeps inside the bar, and the fighters keep their own place (220). The other scenes stay as the real game draws them. The real game's bar at a knockout looks the same (about 83%) and is outside A12; the PR notes it for its owner. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter analyze
+flutter test test/screens/help_screen_test.dart test/widgets/help_rules_test.dart test/widgets/help_pictures_test.dart test/widgets/tutorial_person_test.dart test/widgets/tutorial_setup_scenes_test.dart test/widgets/tutorial_game_shot_test.dart test/widgets/tutorial_draft_test.dart test/widgets/tutorial_welcome_test.dart test/design_tokens_test.dart test/screens/settings_screen_test.dart test/widgets/game_panel_fonts_test.dart test/viewmodels/tutorial_viewmodel_test.dart
+flutter test
+```
+
+- `flutter analyze` found no issues.
+- The 12 A12-related files: 242 passed. The new checks fail on `11c81d6`'s code (the lime 253 wide, not 306) and pass now.
+- The full `flutter test`: 5398 passed, 0 failed, 11 skipped.
+- **Coverage:** not measured again on this PC; the change is the frame's meeting point on a knockout (one line) and test checks. CI posts the per-layer numbers for the new head (on `0490bc6`: Model 99.4%, ViewModel 98.6%, Service 97.8%, View 98.3%, server 98%).
+- **Review:** reviewer run 12 APPROVE: only the bar and the stage's zoom origin (zoom 1) read the frame's meeting point; the fighters, star, banner, chip and scores and the other scenes are unchanged. Two Minor points, both fixed: the first version copied the stage bar's private size (333), now a point past the bar's end that the stage clamps; the test now also checks the edge line lies outside the bar's clipped inside.
+
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/tutorial_game_shot_test.dart` (updated) | 'KO: K.O. over the stage, the opponent down, the bar all the user's': the bar's lime drawn across its whole inside (306), its edge line outside the clipped inside, the fighters either side of 220 |
+
+#### 2026-11-28 · code at commits `9269f48` to `c4a38b7` (eight commits, on `origin/main` `5e607fb`) · step A13 `feat/iter5-ranking-tutorial` (튜토리얼 게임 소개 2장 + 주간 랭킹 화면 개편, an Unexpected task approved by the PM 2026-11-28 17:49, due 11/30)
+A13 adds a second tutorial page about the game, '온라인 대결과 아케이드', and redraws the weekly rankings screen (P11) in the game's look, from the local design hand-off (SPEC v1.0, kept outside the repo). No server, API, points or reload timing changed. The changes:
+- **Tutorial page 2:** `TutorialStep.modes` after the welcome page (22 → 23 pages); its picture `TutorialModes` (`tutorial_modes.dart`): an online battle card with the four points read from `RankingPoints`, and the arcade card with four exercise icons drawn by A12's person engine. The two game pages read '게임 소개 2장 중 n장' with two dots. P17's telemetry code is unchanged; `pages_total` is 23 and `last_page` is one more from page 3 on.
+- **Rankings model:** `ranking_standing.dart`, pure functions with the clock passed in: the week's name ('11월 4주차'), the time left, the week's progress, my card's goal line ('3위까지 3점', '2위보다 4점 앞섬', '50위까지 n점', '대결하면 순위에 올라요'), and the words over the list.
+- **Rankings parts and screen:** a '?' that opens the points rules, the ink week banner, the scope and exercise tabs on one line, my card with my character, the slanted-rank rows, and cards for no friends and an empty week. The view model gets getters only; its loading and reloading are unchanged.
+- **Theme:** a `RankingText` extension in `app_theme.dart` (owner's approval, A11).
+
+The branch was made on A12's branch (PR #110) before #110 merged, then rebased onto `origin/main` `5e607fb` (after #110's merge `eda5256`) with no conflict. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/models/tutorial_page_test.dart test/viewmodels/tutorial_viewmodel_test.dart test/widgets/help_rules_test.dart test/widgets/help_pictures_test.dart test/screens/help_screen_test.dart test/widgets/tutorial_modes_test.dart test/models/ranking_standing_test.dart test/viewmodels/weekly_rankings_viewmodel_test.dart test/screens/weekly_rankings_screen_test.dart test/widgets/weekly_rankings_banner_test.dart test/widgets/weekly_rankings_tabs_test.dart test/widgets/weekly_rankings_my_card_test.dart test/widgets/weekly_rankings_row_test.dart test/widgets/weekly_rankings_empty_card_test.dart test/widgets/weekly_rankings_rules_sheet_test.dart test/theme/app_theme_test.dart test/design_tokens_test.dart
+# coverage: each test file alone (coverage_per_file.py), merged by line, then coverage_by_layer.py
+```
+
+No server, camera or device is needed: the rankings tests use `InMemoryRankingsRepository` and small failing or never-answering fakes, `MemoryCharacterStore` for my character, `ScriptedAuthRepository` for my account name, and a clock passed to the view model.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.5% (1022/1027); `ranking_standing.dart` 100% (80/80), `tutorial_page.dart` 100% (7/7) | 11/28 | `coverage_per_file.py` + `coverage_by_layer.py` on `c4a38b7` (this PC) |
+| ViewModel | flutter_test, fakes | 90% | 98.8% (3063/3101); `weekly_rankings_viewmodel.dart` 100% (108/108), `tutorial_viewmodel.dart` 100% (41/41) | 11/28 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 97.8% (5796/5928) (A13 changes no service) | 11/28 | same |
+| View | flutter_test (widget) | 75% | 98.3% (20446/20809); A13's View files 97.9% (1030/1052) | 11/28 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed, not run | 11/28 | — |
+
+- **Tests on `c4a38b7`:**
+  - `flutter analyze` found no issues.
+  - The full `flutter test`: 5585 passed, 0 failed, 10 skipped (the ones skipped on `main`: a live server smoke test and nine known push-up judge errors).
+  - The 17 files in the second command passed 356.
+- **Coverage** (the user asked for it on this PC this time, as for A12): `coverage_per_file.py` ran the 265 test files one at a time (about an hour). Four timed out and are left out of the numbers, none of them A13's: `test/ai_eval/ai_eval_test.dart`, `test/screens/social_signup_screen_test.dart`, `test/services/online/online_battle_session_test.dart`, `test/services/online/simulated_player_test.dart`. All four ran without a failure in the full `flutter test`.
+  - Layers: Model 99.5% (1022/1027), ViewModel 98.8% (3063/3101), Service 97.8% (5796/5928), View 98.3% (20446/20809), Other 98.2% (54/55), total 98.3% (30381/30920); every target met.
+  - A13's files: `ranking_standing.dart` 100% (80/80), `tutorial_page.dart` 100% (7/7), `weekly_rankings_viewmodel.dart` 100% (108/108), `tutorial_viewmodel.dart` 100% (41/41), `weekly_rankings_screen.dart` 99.2% (122/123), `help_screen.dart` 99.5% (181/182), `help_pictures.dart` 100% (44/44), `help_rules.dart` 100% (50/50), `tutorial_modes.dart` 94.5% (205/217), `weekly_rankings_banner.dart` 96.2% (50/52), `weekly_rankings_tabs.dart` 98.4% (60/61), `weekly_rankings_my_card.dart` 100% (133/133), `weekly_rankings_row.dart` 100% (88/88), `weekly_rankings_empty_card.dart` 89.1% (41/46), `weekly_rankings_rules_sheet.dart` 100% (56/56), `app_theme.dart` 99.5% (436/438); together 98.6% (1702/1726).
+  - The lines missed: painters' and clippers' `shouldRepaint`/`shouldReclip` (`tutorial_modes.dart` L229–232, L657–659; `weekly_rankings_banner.dart` L194–195; `weekly_rankings_empty_card.dart` L166–170), the baseline box's update when its value changes (`tutorial_modes.dart` L739–752; the picture never changes it), the empty card's const constructor line (L14), the back button's `maybePop` (`weekly_rankings_screen.dart` L252), the tab's screen-reader tap action (`weekly_rankings_tabs.dart` L186; the tests check the action is there, not its call; `help_screen.dart` L358 is the same, from A12), and two older styles in `app_theme.dart` (L591, L1516, not A13's).
+- **Review:** the `reviewer` subagent ran three times:
+  - Phase 가 (new files only): run 1 CHANGES_REQUESTED. Major: the fills (tab halves, my card's panel, the rank cells, the goal bar) painted over the ink edge at the rounded corners. Minor: constants holding token values. Run 2 APPROVE after both fixes.
+  - Phase 나+다 (wiring and the screen): run 3 APPROVE with two Minor findings, both fixed. My card's name choice moved from the screen to `WeeklyRankingsViewModel.myName`, with a unit test. The scroll test now checks that the list's own area stays under 'TOP 50'.
+- **Changed existing tests (SPEC 5.7):**
+  - `tutorial_viewmodel_test.dart` (P17): only the page count (22 → 23, 21 → 22 without Average), the indexes and positions ((1, 2), (2, 2), push-ups from 2, squats from 13), the page after the first (`TutorialPage.modes`), and one `pages_total` 23 check.
+  - `tutorial_page_test.dart`, `help_rules_test.dart`, `help_pictures_test.dart`, `help_screen_test.dart` (A12's): the step list, the 23 pages' words, the modes page without a body, one more 다음 where a test meant the first push-up page, the second game page's board, the dots' sentence, and the tab finder (page 2's picture also writes '푸시업').
+  - `weekly_rankings_screen_test.dart` (P11): the data and reload tests keep their checks; only their finders changed (tabs found inside the tab row, points without '점'), and they now set up `CharacterViewModel`. These tests are: the friends tab reads once, squats in each scope, back from the background in a new week, a failed read and 다시 시도, and the week label. The old-look tests now check the new look: `SegmentedButton` is now one tab row, '(나)' is now the 나 mark, the `Card` list is now 46-high rows, and my row under the list is now my card. The 1.6× small-phone test is kept.
+- **Phone check:** to be done on a real phone after the merge, with the cable out (SPEC 8's items). The result will be added after that check.
+  - **Tutorial page 2:** the picture is not cut; the four point cells and the icon names can be read.
+  - **Rankings:**
+    - The banner's time left matches the real time.
+    - The '?' sheet opens and closes.
+    - Changing the tabs changes my card and the list.
+    - My character is the one chosen now.
+    - The friends tab matches the number of my friends, and '친구 추가하러 가기' goes to the '친구와의 대전' screen.
+  - **Text size:** neither screen overflows with a large system text size.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/ranking_standing_test.dart` (new) | the week's name (11.23 → '11월 4주차', 11.30 → '11월 5주차'), the time left in its four ranges and when it is over, progress at 0 and 1, the record line; my standing: unranked, no friends, first, behind (ties included), outside the list, the 50th-row tie; the list's title and note |
+| Model | `test/models/tutorial_page_test.dart` (updated) | the step order with modes; `TutorialPage.modes` |
+| ViewModel | `test/viewmodels/weekly_rankings_viewmodel_test.dart` (updated, new group) | the getters before a read, the week by the injected clock and at its ends, my row (global from the server, friends among the rows), standing and goal lines, my name (row → account → 나), my record, no friends, the list's words |
+| ViewModel | `test/viewmodels/tutorial_viewmodel_test.dart` (updated) | 23 pages, positions (1, 2) and (2, 2), the exercise pages' positions unchanged, `pages_total` 23 |
+| View | `test/screens/weekly_rankings_screen_test.dart` (updated) | spinner under the banner, tabs and ?; the banner's week, dates, time left and progress; the minute redraw; the ? sheet; the list under TOP 50 with ties; rank cell colors; my card (character, scope, rank, points, goal); friends; outside the top; before my first battle (account name, no note); 나 without an account; empty week; no friends → 친구와의 대전; nobody played; error and 다시 시도; a row's sentence; the 1.6× small phone; only the rows scroll; no stretch; rows 46 high 5 apart; tabs on one line; squats in each scope; the reload after the background; six states at 360×780 ×1.3 and 320×640 |
+| View | `test/widgets/weekly_rankings_banner_test.dart`, `weekly_rankings_tabs_test.dart`, `weekly_rankings_my_card_test.dart`, `weekly_rankings_row_test.dart`, `weekly_rankings_empty_card_test.dart`, `weekly_rankings_rules_sheet_test.dart` (new) | each part's look and sizes from the designs, edges drawn over clipped fills, tab semantics (tab, tab bar, button, position, 48-high targets), the rules' points from `RankingPoints`, sentences for screen readers, the text-size cap (1.3×) and shrinking cells, narrow phones and large text |
+| View | `test/widgets/tutorial_modes_test.dart` (new) | the 316×326 board, the points from `RankingPoints` with KO on lime, the screen reader's sentence, the characters, the icons (the design's four calls, clocks on the holds only, everyone on the floor line, the chair pose about the squat's height, clear of the clock, no wall), words at the design's sizes |
+| View | `test/screens/help_screen_test.dart`, `test/widgets/help_rules_test.dart`, `test/widgets/help_pictures_test.dart` (updated) | page 2's title alone, 게임 소개, two dots with the second on, its sentence and picture; the 23 pages' words; the taller board for both game pages |
+| Design | `test/theme/app_theme_test.dart` (updated), `test/design_tokens_test.dart` (updated) | the `RankingText` styles' families, sizes and weights; the seven new widget files use only tokens |
+
+### Acceptance criteria → tests (SPEC 5; the step is not in the local task.md)
+- 5.1 Page order → tutorial_viewmodel_test 'the two game pages, then every push-up page, then every squat page, in battle order', 'counts pages per exercise, as "푸시업 3 / 11" does', 'opening records the start with the page count, once'
+- 5.2 Page 2 → help_screen_test 'page 2 about the game: its title alone, 게임 소개, two dots with the second on, and the modes picture'; help_pictures_test 'game page 2 shows the online battle and arcade picture, named as the A13 design names it, on the taller board'; tutorial_modes_test 'the four points are the ranking's, KO on lime'
+- 5.3 Icons → tutorial_modes_test 'the chair pose is about the squat's height (within 10%)', 'the plank and chair people keep off the clock', 'each tile draws a floor line and no wall'
+- 5.4 View model words → weekly_rankings_viewmodel_test group "the screen's words (A13 spec 3.6)"; ranking_standing_test (week names, time left, progress, goal lines)
+- 5.5 Screen → weekly_rankings_screen_test '? opens the points rules; 확인 closes them', 'the banner names the week, its dates, the time left and how far it has gone', 'my card: my character, the scope, my rank, points and the goal toward the row above', 'my row is lime with its rank on ink; the first is orange', 'friends without a battle this week: – rows and the note', 'friends with only me: no goal, and a card that opens the friends page', 'outside the top: my rank in my card, the goal at the last row, and the note says how to get listed', 'an empty week says so in a card, without a list name', 'a failed read offers to try again; the banner and tabs stay', 'squats show their own ranking in each scope'
+- 5.6 Overflow → weekly_rankings_screen_test group 'no state overflows' (six states × two sizes), 'fifty rows and a large text size fit a small phone'; help_screen_test 'every page fits …'
+- 5.7 Existing tests → listed above; the data and reload tests pass with their checks unchanged
+- 5.8 Tokens → design_tokens_test

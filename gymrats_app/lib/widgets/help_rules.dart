@@ -3,16 +3,22 @@ import '../models/exercise_type.dart';
 import '../models/tutorial_page.dart';
 import '../viewmodels/tutorial_viewmodel.dart';
 
-/// The words of one tutorial page: a one-line title and a line or two.
+/// The words of one tutorial page: a one-line title and a one-line body.
 class HelpPage {
   const HelpPage({required this.title, required this.body});
 
   final String title;
+
+  /// Empty on a page told by its title alone (the KO page, A12 spec 2):
+  /// the page then draws no body line.
   final String body;
+
+  bool get hasBody => body.isNotEmpty;
 }
 
 /// Everything the tutorial says, in one place (team chat 2026-11-14: one
-/// picture and one or two lines a page, the game rules only).
+/// picture and one line a page, the game rules only; A12 spec 2 words).
+/// No page names RepBot or the bot: RepBot is now one arcade character.
 ///
 /// The numbers are the game's, from [battleRules] and [battleDuration];
 /// change them there and the pages follow.
@@ -65,19 +71,21 @@ abstract final class HelpRules {
     return switch (page.step) {
       TutorialStep.welcome => const HelpPage(
         title: '운동으로 겨루는 1:1 대결',
-        body: '푸시업이나 스쿼트로 사람이나 봇과 겨뤄요.',
+        body: '온라인 대결과 아케이드에서 겨뤄요.',
       ),
+      // Told by its title and picture alone (A13 spec 2.3).
+      TutorialStep.modes => const HelpPage(title: '온라인 대결과 아케이드', body: ''),
       TutorialStep.intro => HelpPage(
         title: squat ? '스쿼트로 1:1 대결해요' : '푸시업으로 1:1 대결해요',
         body: squat
             ? '$totalSeconds초 대결이에요. Average는 없어요.'
-            : '다른 사람이나 RepBot과 $totalSeconds초 동안 겨뤄요.',
+            : '$totalSeconds초 동안 상대와 겨뤄요.',
       ),
       TutorialStep.setup =>
         squat
             ? const HelpPage(
-                title: '휴대폰을 보고 서서 준비해요',
-                body: '몸 전체가 보이면 준비 완료예요.',
+                title: '초록 선 안에 몸을 맞춰요',
+                body: '두 손을 가슴 앞에 모으고 서요.',
               )
             : const HelpPage(
                 title: '초록 선 안에 몸을 맞춰요',
@@ -99,29 +107,24 @@ abstract final class HelpRules {
       ),
       TutorialStep.average => HelpPage(
         title: '조금 얕으면 Average',
-        body: '깊이가 부족해도 팔꿈치를 120° 이하로 굽히면 $average점. 무릎을 대면 0점이에요.',
+        body: '기준 깊이에서 조금 모자라면 $average점을 줘요.',
       ),
       TutorialStep.fail => HelpPage(
         title: squat ? '얕게 앉으면 Fail' : '자세가 무너지면 Fail',
-        body: squat ? '기준선보다 얕게 앉으면 0점이에요.' : '너무 얕거나 흐트러지면 0점이에요.',
+        body: squat ? '기준선보다 얕게 앉으면 0점이에요.' : '무릎을 대거나 너무 얕으면 0점이에요.',
       ),
       TutorialStep.combo => HelpPage(
         title: '이어서 하면 콤보',
-        body: 'Good 이상을 $comboSeconds초 안에 이어서 하면 +$comboBonus점이에요.',
+        body: 'Good 이상을 $comboSeconds초 안에 이어서 하면 +$comboBonus점.',
       ),
       TutorialStep.fever => HelpPage(
         title: '마지막 $feverSeconds초는 피버 타임',
-        body: squat
-            ? '모든 점수가 $feverMultiplier배로 들어와요.'
-            : '점수가 $feverMultiplier배가 돼요. 무릎을 대면 피버 중에도 0점이에요.',
+        body: '모든 점수가 $feverMultiplier배로 들어와요.',
       ),
-      TutorialStep.ko => HelpPage(
-        title: '$koLead점 앞서면 KO 승리',
-        body: '체력 바를 끝까지 밀면 바로 끝나요.',
-      ),
+      TutorialStep.ko => HelpPage(title: '$koLead점 앞서면 KO 승리', body: ''),
       TutorialStep.report => const HelpPage(
         title: '끝나면 리포트를 받아요',
-        body: "'자세 피드백 보기'에서 내 자세를 확인해요.",
+        body: '캐릭터가 이번 판을 이야기해 줘요.',
       ),
     };
   }
