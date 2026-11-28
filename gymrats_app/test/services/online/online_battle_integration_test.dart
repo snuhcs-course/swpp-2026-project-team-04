@@ -952,7 +952,8 @@ void main() {
     expect((await a.next('error'))['payload']['code'], 'INVALID_PAYLOAD');
     final result = await b.next('match.finished');
     expect(result['payload']['winner_id'], 'a');
-    expect((result['payload']['players'] as List).first['valid_reps'], 1);
+    final players = result['payload']['players'] as List;
+    expect(players.singleWhere((p) => p['player_id'] == 'a')['valid_reps'], 1);
   });
   test(
     'ready timeout cancels; leaving preparation never fabricates a win',

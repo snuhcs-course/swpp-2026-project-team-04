@@ -320,6 +320,7 @@ class BattleRejectSignView extends StatelessWidget {
                 minHeight: size.height,
               ),
               child: Stack(
+                alignment: Alignment.topCenter,
                 clipBehavior: Clip.none,
                 children: [
                   if (icon != null)
