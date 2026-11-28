@@ -785,4 +785,60 @@ void main() {
       }
     });
   });
+
+  group('the weekly rankings screen (A13)', () {
+    test('the text styles: the designs\' families, sizes and weights', () {
+      final text = theme.textTheme;
+      for (final (style, family, size, weight, height) in [
+        (text.rankingWeekName, AppFonts.display, 21.0, FontWeight.w400, 1.0),
+        (text.rankingListTitle, AppFonts.display, 18.0, FontWeight.w400, null),
+        (text.rankingSheetTitle, AppFonts.display, 28.0, FontWeight.w400, null),
+        (text.rankingRowRankWide, AppFonts.number, 17.0, FontWeight.w800, null),
+        (text.rankingGoalNumber, AppFonts.number, 11.5, FontWeight.w800, null),
+        (text.rankingScopeTab, AppFonts.body, 15.0, FontWeight.w500, null),
+        (text.rankingExerciseTab, AppFonts.body, 13.5, FontWeight.w500, null),
+        (text.rankingName, AppFonts.body, 14.0, FontWeight.w700, 18 / 14),
+        (text.rankingRecord, AppFonts.body, 11.0, FontWeight.w400, 14 / 11),
+        (text.rankingTiny, AppFonts.body, 10.5, FontWeight.w700, null),
+        (text.rankingSmall, AppFonts.body, 11.5, FontWeight.w400, null),
+        (
+          text.rankingRuleDetail,
+          AppFonts.body,
+          11.5,
+          FontWeight.w400,
+          15 / 11.5,
+        ),
+        (text.rankingLead, AppFonts.body, 13.0, FontWeight.w400, null),
+        (text.rankingMeMark, AppFonts.body, 9.5, FontWeight.w700, null),
+        (text.rankingRuleNote, AppFonts.body, 12.5, FontWeight.w400, 17 / 12.5),
+        (text.rankingRuleName, AppFonts.body, 15.0, FontWeight.w700, null),
+        (text.rankingEmptyTitle, AppFonts.body, 15.0, FontWeight.w700, 20 / 15),
+        (text.rankingEmptyLine, AppFonts.body, 12.0, FontWeight.w400, 17 / 12),
+        (text.rankingButton, AppFonts.body, 14.5, FontWeight.w700, null),
+      ]) {
+        expect(
+          (style.fontFamily, style.fontSize, style.fontWeight, style.height),
+          (family, size, weight, height),
+        );
+        expect(style.color, AppColors.ink);
+        expect(style.letterSpacing, 0);
+      }
+    });
+
+    test('the big numbers reuse the number styles of their sizes', () {
+      final text = theme.textTheme;
+      for (final (style, size) in [
+        (text.statsAverage, 40.0),
+        (text.archiveTotal, 32.0),
+        (text.archiveGain, 26.0),
+        (text.statsCount, 20.0),
+        (text.archiveScore, 18.0),
+      ]) {
+        expect(
+          (style.fontFamily, style.fontSize, style.fontWeight),
+          (AppFonts.number, size, FontWeight.w800),
+        );
+      }
+    });
+  });
 }
