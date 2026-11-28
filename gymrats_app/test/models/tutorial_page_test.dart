@@ -6,6 +6,7 @@ void main() {
   test('the steps go in the order of a battle', () {
     expect(TutorialStep.values, [
       TutorialStep.welcome,
+      TutorialStep.modes,
       TutorialStep.intro,
       TutorialStep.setup,
       TutorialStep.battle,
@@ -35,5 +36,8 @@ void main() {
     expect(TutorialPage.welcome.exercise, isNull);
     expect(TutorialPage.welcome.step, TutorialStep.welcome);
     expect(TutorialPage.welcome.toString(), 'TutorialPage(null, welcome)');
+    expect(TutorialPage.modes.exercise, isNull);
+    expect(TutorialPage.modes.step, TutorialStep.modes);
+    expect(TutorialPage.modes, isNot(TutorialPage.welcome));
   });
 }

@@ -601,6 +601,40 @@ class ArcadeResultReasons extends StatelessWidget {
   }
 }
 
+/// "상세 리포트 보기 ›" under a hold's result (P13): its report, 44 high.
+class HoldReportLink extends StatelessWidget {
+  const HoldReportLink({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  static const label = '상세 리포트 보기';
+  static const _height = 44.0;
+  static const _chevron = 18.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.ink,
+          minimumSize: const Size(0, _height),
+          textStyle: text.reportCardTitle,
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label),
+            Icon(Icons.chevron_right_rounded, size: _chevron),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// A hold stage's result (spec 6, the design's `ArcResult` holdClear and
 /// holdFail) in the [ArcadeResultFrame].
 class HoldStageResult extends StatelessWidget {
@@ -615,6 +649,7 @@ class HoldStageResult extends StatelessWidget {
     required this.onNextStage,
     required this.onArcade,
     this.warnings = const [],
+    this.onOpenReport,
   });
 
   final ArcadeHoldStage stage;
@@ -637,6 +672,9 @@ class HoldStageResult extends StatelessWidget {
   /// 아케이드로.
   final VoidCallback onArcade;
 
+  /// 상세 리포트 보기 (P13): the play's report; no link without it.
+  final VoidCallback? onOpenReport;
+
   @override
   Widget build(BuildContext context) {
     final cleared = litStars.any((lit) => lit);
@@ -647,6 +685,12 @@ class HoldStageResult extends StatelessWidget {
     final next = ArcadeCatalog.stages.length > stage.number
         ? ArcadeCatalog.stage(stage.number + 1)
         : null;
+    final onOpenReport = this.onOpenReport;
+    final shown = cleared
+        ? (next == null ? null : ArcadeNextStageCard(next: next))
+        : warnings.isEmpty
+        ? const ArcadeResultStrikes()
+        : ArcadeResultReasons(faults: warnings);
     return ArcadeResultFrame(
       tag: HoldStageBrief.stageTag(stage),
       title: cleared ? '클리어!' : '실패',
@@ -679,11 +723,16 @@ class HoldStageResult extends StatelessWidget {
               opponentLeft: 90,
               opponentBottom: 12,
             ),
-      below: cleared
-          ? (next == null ? null : ArcadeNextStageCard(next: next))
-          : warnings.isEmpty
-          ? const ArcadeResultStrikes()
-          : ArcadeResultReasons(faults: warnings),
+      below: onOpenReport == null
+          ? shown
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ?shown,
+                HoldReportLink(onPressed: onOpenReport),
+              ],
+            ),
       belowGap: cleared
           ? ArcadeResultFrame.nextStageGap
           : ArcadeResultFrame.strikesGap,

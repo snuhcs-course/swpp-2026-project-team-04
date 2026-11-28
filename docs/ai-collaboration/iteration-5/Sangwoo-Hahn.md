@@ -29,3 +29,6 @@ Codex reconciled the protocol with merged P10. The real client supplies its avat
 
 ### 2026-11-28 · P11 weekly rankings follow-up
 Codex implemented the three PM follow-ups from #108. An independent read-only Codex reviewer checked the four implementation and test files against `375a9b7`, verified migration reversibility and returned APPROVE with no findings. No human code edits were reported.
+
+### 2026-11-28 · P20 battle socket follow-up
+Codex implemented the shared WebSocket send guard and two regression tests for the P20 follow-up. The first test run exposed an incorrect assertion on the final result payload. Codex corrected it to check players and reran the three affected suites. An independent read-only Codex reviewer checked the two changed code and test files against 5e607fb and returned APPROVE with no findings. No human code edits were reported.

@@ -144,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
               ),
               LobbyMenuItem(
                 tag: '03 / ARCHIVE',
-                title: '기록보관소',
+                title: '운동일지',
                 onTap: _openArchive,
               ),
               LobbyMenuItem(

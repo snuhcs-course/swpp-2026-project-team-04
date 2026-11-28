@@ -258,6 +258,11 @@ void main() {
   });
 
   testWidgets('게임 규칙 다시 보기 opens the rules', (tester) async {
+    // The rules' first page plays a clip until the device asks for reduced
+    // motion (A12); held still, pumpAndSettle returns.
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await open(tester);
     await tapAndSettle(tester, find.text('게임 규칙 다시 보기'));
     expect(find.byType(HelpScreen), findsOneWidget);

@@ -6,6 +6,10 @@ enum TutorialStep {
   /// or squats against a person or the bot (user 2026-11-15).
   welcome,
 
+  /// The game's two ways to play: online battles for the weekly rankings,
+  /// and the arcade's floors (A13).
+  modes,
+
   /// A 1v1 battle of one exercise against a person or RepBot.
   intro,
 
@@ -35,12 +39,15 @@ enum TutorialStep {
 }
 
 /// One page of the tutorial: a [step] told for one [exercise], or for the
-/// whole game when [exercise] is null ([welcome]).
+/// whole game when [exercise] is null ([welcome], [modes]).
 class TutorialPage {
   const TutorialPage(this.exercise, this.step);
 
   /// The first page, about the game as a whole.
   static const welcome = TutorialPage(null, TutorialStep.welcome);
+
+  /// The second page, about online battles and the arcade.
+  static const modes = TutorialPage(null, TutorialStep.modes);
 
   final ExerciseType? exercise;
   final TutorialStep step;

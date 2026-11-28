@@ -9,17 +9,20 @@ import '../models/arcade_catalog.dart';
 import '../models/arcade_stage.dart';
 import '../models/character_rig.dart';
 import '../models/hold_reading.dart';
+import '../models/hold_record.dart';
 import '../models/setup_silhouette_alignment.dart';
 import '../services/arcade/arcade_progress_store.dart';
 import '../services/audio/background_music.dart';
 import '../services/audio/sound_effects.dart';
 import '../services/audio/sound_services.dart';
+import '../services/feedback/hold_record_store.dart';
 import '../services/device/device_controls.dart';
 import '../theme/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/hold_stage_viewmodel.dart';
 import '../widgets/exit_dialog.dart';
 import '../widgets/grid_background.dart';
+import 'hold_report_screen.dart';
 import 'hold_stage_brief.dart';
 import 'hold_stage_play.dart';
 import 'hold_stage_result.dart';
@@ -141,8 +144,27 @@ class _HoldStageScreenState extends State<HoldStageScreen>
       stage: widget.stage,
       store: store,
       accountId: account,
+      records: _holdRecords(),
     );
   }
+
+  /// The app's kept holds (P13); none without one, as in tests.
+  HoldRecordStore? _holdRecords() {
+    try {
+      return context.read<HoldRecordStore>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  /// The played hold's report on top (P13, design H-A).
+  void _openReport(HoldRecord record) => Navigator.push<void>(
+    context,
+    MaterialPageRoute(
+      builder: (_) =>
+          HoldReportScreen(record: record, store: _viewModel.records),
+    ),
+  );
 
   void _onChanged() {
     final state = _viewModel.state;
@@ -327,6 +349,10 @@ class _HoldStageScreenState extends State<HoldStageScreen>
             onPlayAgain: viewModel.playAgain,
             onNextStage: () => _close(HoldStageExit.nextStage),
             onArcade: () => _close(HoldStageExit.arcade),
+            onOpenReport: switch (state.record) {
+              final record? => () => _openReport(record),
+              null => null,
+            },
           ),
         );
       case HoldStagePhase.setup ||

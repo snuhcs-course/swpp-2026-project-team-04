@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gymrats_app/screens/hold_report_screen.dart';
+import 'package:gymrats_app/services/feedback/hold_record_store.dart';
 import 'package:gymrats_app/models/arcade_catalog.dart';
 import 'package:gymrats_app/models/arcade_stage.dart';
 import 'package:gymrats_app/models/character_rig.dart';
@@ -156,6 +158,9 @@ class _Driver {
   final effects = FakeSoundEffects();
   final music = FakeBackgroundMusic();
   final store = MemoryArcadeProgressStore();
+
+  /// The played holds kept for their report (P13).
+  final records = InMemoryHoldRecordStore();
   final setups = <_ScriptedSetup>[];
   Duration now = Duration.zero;
   late HoldStageViewModel viewModel;
@@ -182,6 +187,7 @@ class _Driver {
       definition: pose(reader),
       store: store,
       accountId: 7,
+      records: records,
       createSetup: (exercise, _) {
         final setup = _ScriptedSetup(exercise);
         setups.add(setup);
@@ -1398,5 +1404,47 @@ void main() {
       ),
     );
     expect(tester.takeException(), isA<AssertionError>());
+  });
+  group('the report of the play (P13)', () {
+    testWidgets('a clear links to its report; the report opens on top with '
+        'the play, back returns to the result', (tester) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.hold(tester, 31000);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect((await driver.records.list()), hasLength(1));
+      await tester.ensureVisible(find.text(HoldReportLink.label));
+      await tester.tap(find.text(HoldReportLink.label));
+      await tester.pumpAndSettle();
+      expect(find.byType(HoldReportScreen), findsOneWidget);
+      expect(
+        tester.widget<HoldReportScreen>(find.byType(HoldReportScreen)).record,
+        same(driver.viewModel.state.record),
+      );
+      expect(find.text('REPORT'), findsOneWidget);
+      await tester.tap(find.byTooltip('뒤로'));
+      await tester.pumpAndSettle();
+      expect(find.text('클리어!'), findsOneWidget);
+    });
+
+    testWidgets('a fail links to its report too, under its reasons', (
+      tester,
+    ) async {
+      final driver = _Driver();
+      await driver.open(tester);
+      await driver.go(tester);
+      await driver.warn(tester, HighPlankFaults.kneeDown);
+      await driver.hold(tester, 700, HoldReading.ok);
+      await driver.hold(tester, 600, const HoldReading.broken(_low));
+      await tester.pump(HoldTiming.endShow);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('실패'), findsOneWidget);
+      expect(find.text(HoldReportLink.label), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(HoldReportLink)).height,
+        greaterThanOrEqualTo(44),
+      );
+    });
   });
 }

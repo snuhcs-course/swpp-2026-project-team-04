@@ -8,9 +8,11 @@ import 'package:gymrats_app/models/arcade_stage.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
 import 'package:gymrats_app/models/hold_progress.dart';
 import 'package:gymrats_app/models/hold_reading.dart';
+import 'package:gymrats_app/models/hold_record.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
 import 'package:gymrats_app/services/device/phone_tilt.dart';
+import 'package:gymrats_app/services/feedback/hold_record_store.dart';
 import 'package:gymrats_app/services/pose/chair_hold.dart';
 import 'package:gymrats_app/services/pose/exercise_judge.dart';
 import 'package:gymrats_app/services/pose/high_plank_hold.dart';
@@ -144,6 +146,21 @@ HoldPoseDefinition _scripted(
   startWords: startWords,
 );
 
+/// A progress store whose stage saves wait for [release].
+class _SlowStore extends MemoryArcadeProgressStore {
+  final release = Completer<void>();
+
+  @override
+  Future<ArcadeProgress> recordStage(
+    int accountId,
+    int number,
+    int stars,
+  ) async {
+    await release.future;
+    return super.recordStage(accountId, number, stars);
+  }
+}
+
 class _FailingStore implements ArcadeProgressStore {
   int records = 0;
 
@@ -181,6 +198,7 @@ class _Rig {
     HoldPoseDefinition? definition,
     ArcadeProgressStore? store,
     int? accountId,
+    HoldRecordStore? records,
     ExerciseRepJudge Function(ExerciseType exercise)? guideJudge,
   }) {
     viewModel = HoldStageViewModel(
@@ -188,6 +206,8 @@ class _Rig {
       definition: definition,
       store: store,
       accountId: accountId,
+      records: records,
+      wallClock: () => DateTime(2026, 11, 26, 21, 10).add(async.elapsed),
       createSetup: (exercise, matcher) {
         final setup = _ScriptedSetup(exercise, matcher);
         setups.add(setup);
@@ -928,4 +948,243 @@ void main() {
       expect(const SetupConfig().minLikelihood, .6);
     });
   });
+  group('the play kept for its report (P13)', () {
+    /// Holds [ms], then breaks the pose for 600 ms and holds again for 700.
+    void warnOnce(_Rig rig, _Reader reader, FakeAsync async, int ms) {
+      rig.frames(async, ms);
+      reader.answer = const HoldReading.broken(_knee);
+      rig.frames(async, 600);
+      reader.answer = HoldReading.ok;
+      rig.frames(async, 700);
+    }
+
+    test('two warnings after a star: the time held and from GO, both '
+        'warnings with their moments, the pause between, saved with the '
+        'result', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final records = InMemoryHoldRecordStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          records: records,
+          accountId: 7,
+        );
+        rig.goAt(async);
+        warnOnce(rig, reader, async, 16500);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        final record = rig.viewModel.state.record!;
+        // Kept for the signed-in account: the phone's store is shared.
+        expect(record.accountId, 7);
+        expect(record.pose, HoldPose.plank);
+        expect(record.stage, 3);
+        expect(record.stars, 1);
+        expect(record.starSeconds, rig.viewModel.stage.starSeconds);
+        expect(record.endedByWarnings, isTrue);
+        expect(record.warnings.map((w) => w.words), ['무릎 떼요', '무릎 떼요']);
+        expect(record.warnings.map((w) => w.faultId), ['knee', 'knee']);
+        expect(record.pauses, hasLength(1));
+        final pause = record.pauses.single;
+        expect(pause.start, record.warnings.first.at);
+        expect(pause.length, greaterThan(Duration.zero));
+        expect(record.held, rig.viewModel.state.progress.held);
+        expect(record.elapsed, greaterThan(record.held));
+        // The time line: the spans the pose was really held add up to the
+        // time held, within a frame, and none overlaps a pause (PR #106).
+        final spans = record.heldSpans!;
+        final spanned = spans.fold(Duration.zero, (a, s) => a + s.length);
+        expect(
+          (spanned - record.held).inMilliseconds.abs(),
+          lessThanOrEqualTo(100),
+        );
+        for (final s in spans) {
+          expect(s.start, greaterThanOrEqualTo(Duration.zero));
+          expect(s.end, lessThanOrEqualTo(record.elapsed));
+          for (final p in record.pauses) {
+            expect(s.end <= p.start || s.start >= p.end, isTrue);
+          }
+        }
+        expect(record.endedAt.isAfter(DateTime(2026, 11, 26, 21, 10)), isTrue);
+        // Not kept until the result.
+        late List<HoldRecord> kept;
+        records.list().then((r) => kept = r);
+        async.flushMicrotasks();
+        expect(kept, isEmpty);
+        async.elapse(HoldTiming.endShow);
+        async.flushMicrotasks();
+        records.list().then((r) => kept = r);
+        async.flushMicrotasks();
+        expect(kept.single, same(record));
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('every star without a warning: no warning, no pause, all stars', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final records = InMemoryHoldRecordStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          records: records,
+        );
+        rig.goAt(async);
+        final last = rig.viewModel.stage.starSeconds.last;
+        rig.frames(async, last * 1000 + 500);
+        async.flushMicrotasks();
+        final state = rig.viewModel.state;
+        expect(state.phase, HoldStagePhase.result);
+        final record = state.record!;
+        expect(record.stars, rig.viewModel.stage.starSeconds.length);
+        expect(record.warnings, isEmpty);
+        expect(record.pauses, isEmpty);
+        expect(record.endedByWarnings, isFalse);
+        late List<HoldRecord> kept;
+        records.list().then((r) => kept = r);
+        async.flushMicrotasks();
+        expect(kept, hasLength(1));
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a GO again starts a new log; 다시 하기 clears the record', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final rig = _Rig(async, definition: _scripted(reader));
+        rig.goAt(async);
+        warnOnce(rig, reader, async, 1000);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        async.elapse(HoldTiming.endShow);
+        async.flushMicrotasks();
+        expect(rig.viewModel.state.record!.warnings, hasLength(2));
+        rig.viewModel.playAgain();
+        expect(rig.viewModel.state.record, isNull);
+        reader.answer = HoldReading.ok;
+        rig.goAt(async);
+        rig.frames(async, rig.viewModel.stage.starSeconds.last * 1000 + 500);
+        async.flushMicrotasks();
+        expect(rig.viewModel.state.record!.warnings, isEmpty);
+        expect(rig.viewModel.state.record!.pauses, isEmpty);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('leaving keeps no record', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final records = InMemoryHoldRecordStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          records: records,
+        );
+        rig.goAt(async);
+        warnOnce(rig, reader, async, 16500);
+        reader.answer = const HoldReading.broken(_knee);
+        rig.frames(async, 600);
+        rig.viewModel.leave();
+        async.elapse(HoldTiming.endShow * 2);
+        async.flushMicrotasks();
+        late List<HoldRecord> kept;
+        records.list().then((r) => kept = r);
+        async.flushMicrotasks();
+        expect(kept, isEmpty);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a record that cannot be saved still keeps the stars', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final store = MemoryArcadeProgressStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          store: store,
+          accountId: 7,
+          records: _FailingRecords(),
+        );
+        rig.goAt(async);
+        rig.frames(async, rig.viewModel.stage.starSeconds.last * 1000 + 500);
+        async.flushMicrotasks();
+        late ArcadeProgress saved;
+        store.read(7).then((p) => saved = p);
+        async.flushMicrotasks();
+        expect(saved.bestOf(3), 3);
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('다시 하기 while the stars are being saved: the finished play is '
+        'still kept, not the next one (PR #106 Codex review)', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final store = _SlowStore();
+        final records = InMemoryHoldRecordStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          store: store,
+          accountId: 7,
+          records: records,
+        );
+        rig.goAt(async);
+        rig.frames(async, rig.viewModel.stage.starSeconds.last * 1000 + 500);
+        async.flushMicrotasks();
+        final played = rig.viewModel.state.record!;
+        expect(rig.viewModel.state.phase, HoldStagePhase.result);
+        rig.viewModel.playAgain();
+        expect(rig.viewModel.state.record, isNull);
+        store.release.complete();
+        async.flushMicrotasks();
+        late List<HoldRecord> kept;
+        records.list().then((r) => kept = r);
+        async.flushMicrotasks();
+        expect(kept.single, same(played));
+        rig.viewModel.dispose();
+      });
+    });
+
+    test('a record save that never finishes does not hold back the stars: '
+        'they are saved first (송우현, 2026-11-26)', () {
+      fakeAsync((async) {
+        final reader = _Reader();
+        final store = MemoryArcadeProgressStore();
+        final rig = _Rig(
+          async,
+          definition: _scripted(reader),
+          store: store,
+          accountId: 7,
+          records: _StuckRecords(),
+        );
+        rig.goAt(async);
+        rig.frames(async, rig.viewModel.stage.starSeconds.last * 1000 + 500);
+        async.flushMicrotasks();
+        late ArcadeProgress saved;
+        store.read(7).then((p) => saved = p);
+        async.flushMicrotasks();
+        expect(saved.bestOf(3), 3);
+        rig.viewModel.dispose();
+      });
+    });
+  });
+}
+
+/// A record store whose saves never finish.
+class _StuckRecords implements HoldRecordStore {
+  @override
+  Future<void> save(HoldRecord record) => Completer<void>().future;
+
+  @override
+  Future<List<HoldRecord>> list() async => const [];
+}
+
+class _FailingRecords implements HoldRecordStore {
+  @override
+  Future<void> save(HoldRecord record) async => throw StateError('no files');
+
+  @override
+  Future<List<HoldRecord>> list() async => const [];
 }
