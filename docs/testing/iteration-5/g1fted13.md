@@ -2624,6 +2624,10 @@ No server, camera or device is needed:
   - The existing victory, defeat, result screen, online battle and preparation tests pass unchanged.
 - **Phone check:** after the merge (SPEC 9). TODO(g1fted13): the demo cases on the Galaxy S26+ (`flutter run -d <device-id> --release -t lib/demo/result_scene_demo.dart`), a real two-phone online battle, and a large system text size.
 
+![A15 score ladder scenes](../../images/testing/a15-score-ladder-sheet.png)
+
+*Scenes rendered from the branch HEAD's widgets by a temporary widget test (not committed, not phone photos): `ResultScreen` with `VictoryOverlay` at 360×780, device pixel ratio 3, the app's fonts loaded, GYM마우스 against 펭뚱이, using the demo's `ScoreLadderCase` data.* (The two "base · KO win · end" scenes also carry a made-up form report, so the character card and '상세 리포트 보기' show.)
+
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
 |---|---|---|
@@ -2664,7 +2668,19 @@ flutter test
 - `flutter analyze` found no issues.
 - The three related files: 179 passed, 0 failed.
 - The full `flutter test`: 5793 passed, 0 failed, 11 skipped (the same skips as above).
-- **Coverage:** TODO(g1fted13): the numbers from the CI comment on the pushed head.
+- **Coverage:** from the PR #122 CI comment "Tests and coverage (GitHub Actions)" on `9cdf5c0` (2026-11-29 04:32 KST, [run 46180389371](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/46180389371), [comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/122#issuecomment-7244068328); its app code is the same as `221401d`, with one test comment changed).
+
+  | Component | Frameworks | Target | Actual | Date | Command / Report |
+  |---|---|---|---|---|---|
+  | Model | flutter_test | 90% | 99.6% (1121/1126) | 11/29 | CI `coverage_per_file.sh` + `coverage_by_layer.py` |
+  | ViewModel | flutter_test, fakes | 90% | 98.8% (3139/3177) | 11/29 | same |
+  | Service | flutter_test, MockClient, fakes | 85% | 97.4% (5773/5926) | 11/29 | same |
+  | View | flutter_test (widget) | 75% | 98.3% (20387/20745) | 11/29 | same |
+  | API server | pytest, pytest-django, pytest-cov | 90% | 98% (429 passed; `server/` unchanged) | 11/29 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+  - Every target is met; the total is 98.2% (31075/31656).
+  - CI's `flutter test` gave 5793 passed, 10 skipped, 0 failed.
+  - CI left out the same five timed-out files as on `53f5b90`, none of them this change's.
 - **Review:** the `reviewer` subagent checked each fix. Starting slots: APPROVE with one Minor (no direct test of the first battle or a newcomer), and two tests were added. The week reset: APPROVE with two Minors (a doc line named the wrong check; no test of the new week without the battle yet), both fixed.
 
 | Layer | File | What it covers |
