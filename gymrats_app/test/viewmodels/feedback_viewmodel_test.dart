@@ -554,6 +554,32 @@ void main() {
       },
     );
 
+    test("offline on a shared phone, the phone copy is compared only with "
+        "its own account's kept battles, not another account's nor one "
+        'saved before accounts (A10)', () async {
+      await keep([(2, 30)]);
+      await keep([(9, 25)], account: 8);
+      await keep([(4, 20)], account: 7);
+      await phone.save(mine(valid: 3));
+      repository.feedbackError = const ApiException(ApiErrorKind.network);
+      final model = vm(_match());
+      await model.load();
+      expect(model.state.fromPhone, isTrue);
+      expect(model.state.history.trend.map((p) => p.validReps), [4, 3]);
+    });
+
+    test('offline, a phone copy saved before accounts has nothing it can '
+        'tell is its own: 비교 기록 없음 (A10)', () async {
+      await keep([(2, 30)]);
+      await keep([(4, 20)], account: 7);
+      await phone.save(sampleReport(valid: 3, endedAt: _endedAt));
+      repository.feedbackError = const ApiException(ApiErrorKind.network);
+      final model = vm(_match());
+      await model.load();
+      expect(model.state.fromPhone, isTrue);
+      expect(model.state.history.hasHistory, isFalse);
+    });
+
     test(
       'an unreadable phone store leaves the report without comparison',
       () async {
