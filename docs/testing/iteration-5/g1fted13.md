@@ -2327,3 +2327,88 @@ No server, camera or device is needed:
 - The device-clock rule (the user's decision) → friends_viewmodel_test 'a normal clock: the card leaves when the count reaches 0 (user, 2026-11-27)', 'a clock over a minute ahead: an invite at 0 from the first sight stays listed at 0 while the server lists it, and goes with the next read that does not (user, 2026-11-27)', and the alert's two; friends_screen_test 'a phone clock over a minute ahead: …' (page and alert)
 - 9.10 Overflow → play_screen_test 'fits 360 x 780 at 1.3 times the text without overflow, scrolling if it must', 'fits a small phone, 320 x 640 without overflow, scrolling if it must'; friends_screen_test 'nothing overflows at …', 'it fits …'; online_lobby_screen_test 'it fits …'; friend_wait_view_test 'no overflow at …'
 - 9.11 Old tests → the list above; the full `flutter test`
+
+#### 2026-11-28 · code at commits `bd53b8f` to `3dc2c2c` (five commits, on `origin/main` `2e59012`) · step A12 `feat/iter5-tutorial` (튜토리얼 개편 · 그림, 문구, 화면 틀, an Unexpected task approved by the PM 2026-11-28)
+A12 redraws the tutorial (`HelpScreen`: the game page, 11 push-up pages, 10 squat pages) from the confirmed 22-page design (SPEC v1.1, the local design hand-off for A12, kept outside the repo). The page order, the judging and P17's telemetry are unchanged (the PM's conditions): `tutorial_viewmodel.dart`, its test and `tutorial_page.dart` are identical to `origin/main`. The changes:
+- **Words:** no page names RepBot or the bot; the welcome, push-up intro, squat setup, average, fail, combo, fever and report lines are new and one line each; the KO page is told by its title alone.
+- **Frame:** hand-drawn tabs (a tab bar of two tabs with their selected state, a button with its position for TalkBack, 48-high targets), the picture filling a 2-edge card, the design's dots and 이전; 다음 stays the shared `AccentButton`.
+- **People:** ink silhouettes from joint positions, ported from the design's engine (`tutorial_person.dart`); page 1 repeats a push-up (2 s) or a squat with the hands held (2.4 s); page 2 shows the setup's camera with the app's own guides.
+- **Battle pages:** stills of the real battle screen built from the stage's own parts (`tutorial_game_shot.dart`): on a phone with the marks made large (battle, combo, fever, KO) or in a bubble over the person at the grade's depth (the grades). No 인정! pill; the real reject signs (무릎 떼기, 더 앉기, 더 깊게) and frame colors (the user's decisions).
+- **Game page:** an online battle playing on a loop beside the arcade map at stage 8 (`tutorial_welcome.dart`). **Report page:** 물렁범 mid-talk in the coach's dialog over a pace card.
+- **Reduced motion:** every moving picture holds a still; nothing in the pictures takes a tap; the pictures keep their own text size.
+- **Removed:** the RepBot mannequin (`tutorial_rep_bot.dart` and its test).
+
+The branch was made from `origin/main` `32d2106` and rebased before the push onto `375a9b7` (P11 #108), then onto `2e59012` (#109, the rankings follow-up, merged meanwhile); `git range-diff` shows the five patches unchanged both times. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/screens/help_screen_test.dart test/widgets/help_rules_test.dart test/widgets/help_pictures_test.dart test/widgets/tutorial_person_test.dart test/widgets/tutorial_setup_scenes_test.dart test/widgets/tutorial_game_shot_test.dart test/widgets/tutorial_draft_test.dart test/widgets/tutorial_welcome_test.dart test/design_tokens_test.dart test/screens/settings_screen_test.dart test/widgets/game_panel_fonts_test.dart test/viewmodels/tutorial_viewmodel_test.dart
+# coverage: each test file alone with flutter test --coverage --coverage-path=<part>, merged by line,
+# then the per-layer table (the local harness's per-file and per-layer scripts)
+```
+
+No server, camera or device is needed: the tests draw the pictures with fixed values, use `FakeAccessibilityFeatures` for reduced motion, and the telemetry tests use the in-memory `Telemetry`.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.4% (886/891) | 11/28 | `coverage_per_file.py` + `coverage_by_layer.py` on `f03bedd` (the same patches on `375a9b7`; this PC) |
+| ViewModel | flutter_test, fakes | 90% | 98.6% (2692/2729); `tutorial_viewmodel.dart` 100% (unchanged) | 11/28 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 97.8% (5666/5796) | 11/28 | same |
+| View | flutter_test (widget) | 75% | 98.3% (19081/19417); A12's nine files 99.4% (1502/1511) | 11/28 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed, not run | 11/28 | — |
+
+- **Tests on `3dc2c2c` (the head's code):**
+  - `flutter analyze` found no issues.
+  - The full `flutter test`: 5398 passed, 0 failed, 11 skipped (the two more than on `f03bedd` are #109's: its `main_test.dart` test and its design-token row).
+  - On `f03bedd` (the same five patches on `375a9b7`), the full `flutter test` on a quiet machine: 5396 passed, 0 failed, 11 skipped. Ten are the ones skipped on `main` (a live server smoke test and nine known push-up judge errors); the eleventh is my local capture tool, a test file kept out of the repo that skips itself.
+  - The 12 files in the second command passed 241.
+  - An earlier full run, while the reviewer's tests and the session export ran alongside: 5394 passed, 11 skipped, 2 failed, both P10's real-server tests (`test/services/online/skill_matching_test.dart` 'the player can KO the simulated player', a TimeoutException; `test/services/online/online_battle_integration_test.dart` 'two real Flutter sessions match, exchange avatar pose and use server result'). A12 changes nothing under `lib/services`, `test/services` or `server/`; the two files alone passed 102/102 twice (once one other case of the integration file failed, under the same load), and the quiet full run above passed them.
+- **Coverage** (the user asked for it on this PC this time), measured on `f03bedd` before the second rebase (#109 changed two server files and two tests, none of A12's code): `coverage_per_file.py` ran the 253 test files one at a time (about 50 minutes). Three timed out and are left out of the numbers, none of them A12's: `test/screens/social_signup_screen_test.dart`, `test/services/online/online_battle_session_test.dart`, `test/services/online/simulated_player_test.dart`.
+  - Layers: Model 99.4% (886/891), ViewModel 98.6% (2692/2729), Service 97.8% (5666/5796), View 98.3% (19081/19417), Other 98.2% (54/55), total 98.2% (28379/28888); every target met.
+  - A12's files: `help_screen.dart` 99.5% (182/183), `help_pictures.dart` 100% (42/42), `help_rules.dart` 100% (49/49), `tutorial_person.dart` 99.7% (358/359), `tutorial_figure_painters.dart` 100% (99/99), `tutorial_setup_scenes.dart` 100% (189/189), `tutorial_game_shot.dart` 99.6% (222/223), `tutorial_draft.dart` 98.7% (236/239), `tutorial_welcome.dart` 97.7% (125/128); together 99.4% (1502/1511).
+  - The nine lines missed: the tab's screen-reader tap action (`help_screen.dart` L359; the tests check the action is there, not its call), three painters' `shouldRepaint` (`tutorial_draft.dart` L355, L543, L764), four no-op callbacks of buttons drawn as pictures (`tutorial_game_shot.dart` L610, `tutorial_welcome.dart` L287, L376, L456), and the solver's fully straight arm (`tutorial_person.dart` L375).
+- **Review:** the `reviewer` subagent ran ten times, once or more per phase (SPEC 8) and once after each rebase:
+  - Phase 1: run 1 CHANGES_REQUESTED (Major: TalkBack did not hear the tabs as tabs, since Android has no tab role in Flutter 3.47; 3 Minor), run 2 APPROVE.
+  - Phase 2: run 3 APPROVE with 4 Minor (the wall stripes' slant, the camera box's corners, two weak tests), all fixed.
+  - Phase 3: run 4 CHANGES_REQUESTED (Major: the game screen at the phone's and bubble's outer edge, not inside their borders; the combo mark upright at full width), run 5 APPROVE.
+  - Phase 4: run 6 CHANGES_REQUESTED (Major: the screenshots' screen under the frame's edge; no room over the arcade header; the clip drew the stills' values), run 7 APPROVE.
+  - Phase 5 and the whole task: run 8 APPROVE. After the rebase onto `375a9b7`: run 9 APPROVE. After the rebase onto `2e59012`: run 10 APPROVE (no findings; the 13 related files with `main_test.dart` 268 passed).
+- **Changed existing tests (SPEC 7.9):**
+  - `help_screen_test.dart`: `show` and the telemetry group's `showWith` hold motion still (the pictures loop); the KO page has no body line; the tabs are found by their semantics (no `SegmentedButton`); the overflow test runs at text scale (360×780 ×1.3, 320×640 added).
+  - `help_rules_test.dart`: the game page's, combo's and fever's words; 'every page has a title and a body, the grades with their points' → 'every page has a title and a body but the KO page, told by its title alone; the grades with their points'; the squat setup's title.
+  - `help_pictures_test.dart`: nine RepBot and stage-copy tests replaced by the new pictures' tests; named by `labelOf` instead of the title.
+  - `tutorial_rep_bot_test.dart`: deleted with the mannequin.
+- **Shared test files (not A12's own; the user's decisions 5 and 6, act first and report after):**
+  - `test/design_tokens_test.dart`: the `tutorial_rep_bot.dart` line removed, the six new `tutorial_*.dart` files added.
+  - `test/screens/settings_screen_test.dart`: '게임 규칙 다시 보기 opens the rules' turns on reduced motion (+5 lines), since the game page now loops and `pumpAndSettle` would not return.
+  - `test/widgets/game_panel_fonts_test.dart`: reduced motion (+7 lines) and the four labels it looks for ('EXCELLENT +15', 'GOOD +10', 'AVERAGE +5', 'FAIL 0점' no longer exist) → 'EXCELLENT', 'GOOD', 'AVERAGE', '무릎 떼기'. Its name still says "and its points": renaming is outside the allowed change.
+- **Phone check:** at the team meeting on 11/28, after the merge, on a real phone: the small text on the pictures and the knee push-up's reject scene (무릎 떼기), plus SPEC 10's items (the clip's loop, the map not cut, the people's loop, the setup's guide, the coach scene, large text, TalkBack on the tabs).
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/help_rules_test.dart` (updated) | the 22 pages as the design's table, 11 and 10 pages; no RepBot or 봇; KO without a body; the numbers from the rules |
+| View | `test/screens/help_screen_test.dart` (updated) | 게임 규칙, skip and back rules, 완료 and the hint, counters; the tabs' semantics (tab, tab bar, selected, button, position) and 48-high targets; the drawn pill and card; the picture 316×248 / 316×326; dots and 이전; pictures keep their text size; no overflow at 412×915, 360×740, 360×780 ×1.3 and 320×640; P17 telemetry (unchanged tests) |
+| View | `test/widgets/help_pictures_test.dart` (updated) | each page's picture kind and screen-reader name (the design's labels, the particles fitted); the setup guides; no file names the mannequin |
+| View | `test/widgets/tutorial_person_test.dart` (new) | the joints equal the design engine's numbers; the push-up's shoulder lowers; the knee on the floor; the squat's hips lower and hands meet at the chest; the loop in 0..1; placement; the outlines; the camera's line heights |
+| View | `test/widgets/tutorial_setup_scenes_test.dart` (new) | page 1's person loops (2000 / 2400 ms) and holds still under reduced motion; the 1:1 tag; page 2's guides (white, green), the person aside; painters' repaint; the mirrored person |
+| View | `test/widgets/tutorial_game_shot_test.dart` (new) | the design's table per step (scores, clock, grade, points from the rules); signs and frames; the camera person; the drawn shot (bands, chip, star, frame, lines, 2 HIT, fever, K.O., no 인정!); poses, feet and star per step; the welcome clip's timeline and still |
+| View | `test/widgets/tutorial_draft_test.dart` (new) | way a's marks, way b's pose and window, way d's card, name, line and ending; the places as designed; the labels' particles (푸시업을, 스쿼트를, 물렁범이) |
+| View | `test/widgets/tutorial_welcome_test.dart` (new) | the two screenshots and tags; the clip's shoulder line, green frame, GOOD, loop and still; the arcade shot's stage 8, 17/72, header, 도전, no ticks or taps |
+| Design | `test/design_tokens_test.dart` (updated) | the six new widget files use only tokens; the mannequin's line removed |
+| View | `test/screens/settings_screen_test.dart`, `test/widgets/game_panel_fonts_test.dart` (updated) | reduced motion where they open the tutorial; the font test's grade labels |
+
+### Acceptance criteria → tests (SPEC 7; the step is not in the local task.md)
+- 7.1 Words → help_rules_test 'the 22 pages say what the A12 design says (TutX PAGES)', 'no page names RepBot or the bot (RepBot is one arcade character now)', 'every page has a title and a body but the KO page, told by its title alone; the grades with their points'
+- 7.2 Frame → help_screen_test '다음 turns through the game page, every push-up page, then every squat page', 'after sign-up: no back arrow; 건너뛰기 calls onStart', 'after sign-up: the last page has 완료 and its hint instead of 건너뛰기; it calls onStart', 'from home: no 건너뛰기, and back returns home'; the tabs → 'a screen reader hears the two tabs as tabs of one tab bar, with which is chosen; each takes taps 48 high or more'
+- 7.3 Picture kinds and names → help_pictures_test 'every page draws without errors and is named for a screen reader', 'the battle, combo, fever and KO pages are way a: the game screen on a phone and its marks made large', 'the grade pages are way b: the person at the grade's depth and the game screen in a bubble', 'the game page shows the online battle playing and the arcade map; the report pages a character talking'
+- 7.4 Game scenes → tutorial_game_shot_test 'scores, counts, clock and grade per step', 'the reject signs and the camera frame (as the real game, user 2026-11-28)', and the group 'the shot draws the app's own battle screen'
+- 7.5 People → tutorial_person_test 'a push-up: the further down, the lower the shoulder; the hand stays planted', 'a knee push-up: the knee is on the floor and the feet are up', 'a squat: the further down, the lower the hips; the hands meet in front of the chest, the fist held', 'the loop: push-up 2000 ms, squat 2400 ms, always from 0 to 1'
+- 7.6 Clip → tutorial_welcome_test 'as time runs the shoulder line goes down; at the bottom the frame turns green and GOOD comes up; then it loops', 'with reduced motion it is one still, just after the blow' (no 인정! pill, the user's decision 2)
+- 7.7 Overflow → help_screen_test 'every page fits …' (360×780 at ×1.3 and 320×640, all 22 pages)
+- 7.8 Removed → help_pictures_test 'nothing draws the RepBot mannequin any more: its file is gone and no app file names it'; design_tokens_test
+- 7.9 Existing tests → `tutorial_viewmodel_test.dart` unchanged and passing; the changed ones listed above
+- The PM's conditions → `git diff origin/main...HEAD` is empty for `tutorial_viewmodel.dart`, its test, `tutorial_page.dart`, `lib/services/`, `battle_rules.dart`, `game_score.dart`; help_screen_test's group '튜토리얼 텔레메트리 (P17)' passes unchanged
