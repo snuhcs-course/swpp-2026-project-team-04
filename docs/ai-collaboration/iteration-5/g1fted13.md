@@ -1308,3 +1308,60 @@ These were made from the A5 session at the user's word; their full evidence is i
 ### Takeaway
 - Read a design's box model (CSS `border-box`) before porting positions: two of the three Major rounds came from it.
 - When a still is taken from an animation, check every animated value at that moment, not only the ones the spec names.
+
+## A13 `feat/iter5-ranking-tutorial` – 튜토리얼 게임 소개 2장 + 주간 랭킹 화면 개편 (an Unexpected task approved by the PM 2026-11-28 17:49), 2026-11-28
+
+### a. Where AI was used
+- **The hand-off:** `.claude/design/a13/SPEC.md` v1.0 with its designs (`design/TutModes.dc.html`, `RankD1`, `RankG2`, `RankG3`, `RankF1`–`RankF3`, `RankRules`) and screenshots, local and not committed.
+  - TODO(Woohyun Song): who made the designs and SPEC v1.0, and with which tool (as recorded for A11 and A12).
+- **Planning:** Claude Code (Claude Opus 5.5) added the local A13 step, read the spec, the originals and the code, and reported SPEC 7's items before any code. The user answered three questions:
+  - The design's text sizes became named styles in a `RankingText` extension (owner's approval).
+  - The calculations moved into a plain model file (`ranking_standing.dart`).
+  - The tutorial wiring waited for A12's merge and the PM's approval.
+- **Order:** the step was started on A12's unmerged branch (the user's instruction), with new files only. After the PM approved and #110 merged, the commits were rebased onto `main`.
+- **The code and tests:** Claude Code wrote all of it, in eight commits:
+  - `9269f48`: `RankingText` in `app_theme.dart`.
+  - `eb27c61`: `ranking_standing.dart` (week words, my standing, goal lines).
+  - `77f9e9d`: `tutorial_modes.dart`, the page 2 picture; the arcade card's parts are private, so their shapes were redrawn.
+  - `7c6b01d`: the six `weekly_rankings_*.dart` parts.
+  - `446e2e4`: tutorial page 2 wired in, including P17's `tutorial_viewmodel.dart`.
+  - `d436819`: the parts fitted to the app's names and large text.
+  - `f84ad93`: the view model's getters.
+  - `c4a38b7`: the screen rebuilt from the parts.
+- **Review:** the `reviewer` subagent ran three times (item d).
+- **Checking against the design:** a local capture test (kept out of git) drew the picture, the parts and then the real screen with the app's fonts, compared with `TutG1`, `RankD1`, `RankF2` and `RankRules`. Two fixes came from it: the row's points were moved to the middle, and the exercise tab's name was changed.
+- **Not done by AI:** the PM approved the scope; Woohyun Song made the decisions above and the naming correction below; the phone check is the team's after the merge.
+
+### b. Prompt history (representative; the input prompts are in the Prompt Log)
+- [Woohyun Song, 11-28] "가 단계부터 시작해라. 단계마다 flutter analyze, flutter test, reviewer APPROVE를 거쳐 로컬 커밋한다. 공유 파일(progress.md, ownership.json, design_tokens_test.dart)은 고치기 직전에 다시 읽고 A13 줄만 고친다."
+- [Woohyun Song, 11-28] "git fetch origin 후 git rebase origin/main 으로 A13 로컬 커밋을 최신 main(지금 5e607fb) 위로 옮긴다. 아직 push하지 않았으니 rebase가 맞다."
+- [Woohyun Song, 11-28] "랭킹 화면의 운동 탭 글자는 '푸시업'을 직접 적지 말고 지금 화면처럼 exercise.koreanName을 쓴다. 앱의 이름표는 '푸쉬업'이다."
+
+### c. What AI did well
+- **Pure rules first:** the goal-line rules were written as a plain model with the clock passed in, so ties, the server's 50-row cut and "no battle yet" were each pinned by a unit test before any widget drew them. The screen then needed only getters.
+- **The data tests kept:** P11's read-once, per-scope, reload-after-the-background and retry tests kept their checks through the redraw; only the finders changed.
+- **A name clash found by reading, not by a failure:** `exercise_sheet.dart` already has a public `WeeklyRankingsRow`. The new row was renamed before any file imported both.
+
+### d. Hallucinations / errors
+- **Fills over rounded edges (reviewer run 1, Major):** the tab halves, my card's panel, the rank cells and the goal bar painted over the ink edge at the corners. The cause was a `Container` border drawn under a child clipped to the outer shape. Fixed with the edge drawn on top and the content clipped inside it (`WeeklyRankingsOutline`); tests pin the paint order.
+- **A formatter run too wide:** `dart format lib test` rewrote nine files outside A13. They were reverted at once and never committed; since then only changed files are formatted.
+- **Large text not tried at P11's size:** the parts were tested at 1.3×, but P11's own test uses 1.6× on a 320 phone, and the banner flag and my card overflowed there. The full suite caught it. The banner and my card now stop growing at 1.3×, and my rank and points shrink to a share of the card.
+- **Design words taken over the app's:** the exercise tab copied the design's '푸시업'; the user ruled the app's label '푸쉬업' (`koreanName`).
+- **Smaller slips:**
+  - wrong expected Mondays in the first week-name tests;
+  - a missing `flutter/rendering.dart` import;
+  - an import of a model file that does not exist;
+  - two weak or failing test finders, found by the reviewer or by running the tests.
+
+### e. Prompt revisions
+- **The exercise name:**
+  - Before (the plan, phase 가): copy the design's label '푸시업', as the tutorial writes it.
+  - After (11-28): "운동 탭 글자는 '푸시업'을 직접 적지 말고 지금 화면처럼 exercise.koreanName을 쓴다."
+  - Why it worked: the tab now follows the app's one source for exercise names, and the tutorial keeps its own label on purpose.
+
+### f. Manual fixes and why
+- None: no code was edited by hand in this step, so there are no manual-fix markers.
+
+### Takeaway
+- Before calling a part done, run the existing screen's own large-text test on it, not only the spec's sizes.
+- Format only the files a change touches.

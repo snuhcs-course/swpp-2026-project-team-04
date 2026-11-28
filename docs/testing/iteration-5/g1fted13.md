@@ -2453,3 +2453,79 @@ flutter test
 | Layer | File | What it covers |
 |---|---|---|
 | View | `test/widgets/tutorial_game_shot_test.dart` (updated) | 'KO: K.O. over the stage, the opponent down, the bar all the user's': the bar's lime drawn across its whole inside (306), its edge line outside the clipped inside, the fighters either side of 220 |
+
+#### 2026-11-28 · code at commits `9269f48` to `c4a38b7` (eight commits, on `origin/main` `5e607fb`) · step A13 `feat/iter5-ranking-tutorial` (튜토리얼 게임 소개 2장 + 주간 랭킹 화면 개편, an Unexpected task approved by the PM 2026-11-28 17:49, due 11/30)
+A13 adds a second tutorial page about the game, '온라인 대결과 아케이드', and redraws the weekly rankings screen (P11) in the game's look, from the local design hand-off (SPEC v1.0, kept outside the repo). No server, API, points or reload timing changed. The changes:
+- **Tutorial page 2:** `TutorialStep.modes` after the welcome page (22 → 23 pages); its picture `TutorialModes` (`tutorial_modes.dart`): an online battle card with the four points read from `RankingPoints`, and the arcade card with four exercise icons drawn by A12's person engine. The two game pages read '게임 소개 2장 중 n장' with two dots. P17's telemetry code is unchanged; `pages_total` is 23 and `last_page` is one more from page 3 on.
+- **Rankings model:** `ranking_standing.dart`, pure functions with the clock passed in: the week's name ('11월 4주차'), the time left, the week's progress, my card's goal line ('3위까지 3점', '2위보다 4점 앞섬', '50위까지 n점', '대결하면 순위에 올라요'), and the words over the list.
+- **Rankings parts and screen:** a '?' that opens the points rules, the ink week banner, the scope and exercise tabs on one line, my card with my character, the slanted-rank rows, and cards for no friends and an empty week. The view model gets getters only; its loading and reloading are unchanged.
+- **Theme:** a `RankingText` extension in `app_theme.dart` (owner's approval, A11).
+
+The branch was made on A12's branch (PR #110) before #110 merged, then rebased onto `origin/main` `5e607fb` (after #110's merge `eda5256`) with no conflict. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter pub get
+flutter analyze
+flutter test
+flutter test test/models/tutorial_page_test.dart test/viewmodels/tutorial_viewmodel_test.dart test/widgets/help_rules_test.dart test/widgets/help_pictures_test.dart test/screens/help_screen_test.dart test/widgets/tutorial_modes_test.dart test/models/ranking_standing_test.dart test/viewmodels/weekly_rankings_viewmodel_test.dart test/screens/weekly_rankings_screen_test.dart test/widgets/weekly_rankings_banner_test.dart test/widgets/weekly_rankings_tabs_test.dart test/widgets/weekly_rankings_my_card_test.dart test/widgets/weekly_rankings_row_test.dart test/widgets/weekly_rankings_empty_card_test.dart test/widgets/weekly_rankings_rules_sheet_test.dart test/theme/app_theme_test.dart test/design_tokens_test.dart
+# coverage: each test file alone (coverage_per_file.py), merged by line, then coverage_by_layer.py
+```
+
+No server, camera or device is needed: the rankings tests use `InMemoryRankingsRepository` and small failing or never-answering fakes, `MemoryCharacterStore` for my character, `ScriptedAuthRepository` for my account name, and a clock passed to the view model.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.5% (1022/1027); `ranking_standing.dart` 100% (80/80), `tutorial_page.dart` 100% (7/7) | 11/28 | `coverage_per_file.py` + `coverage_by_layer.py` on `c4a38b7` (this PC) |
+| ViewModel | flutter_test, fakes | 90% | 98.8% (3063/3101); `weekly_rankings_viewmodel.dart` 100% (108/108), `tutorial_viewmodel.dart` 100% (41/41) | 11/28 | same |
+| Service | flutter_test, MockClient, fakes | 85% | 97.8% (5796/5928) (A13 changes no service) | 11/28 | same |
+| View | flutter_test (widget) | 75% | 98.3% (20446/20809); A13's View files 97.9% (1030/1052) | 11/28 | same |
+| API server | pytest, pytest-django, pytest-cov | 90% | not changed, not run | 11/28 | — |
+
+- **Tests on `c4a38b7`:**
+  - `flutter analyze` found no issues.
+  - The full `flutter test`: 5585 passed, 0 failed, 10 skipped (the ones skipped on `main`: a live server smoke test and nine known push-up judge errors).
+  - The 17 files in the second command passed 356.
+- **Coverage** (the user asked for it on this PC this time, as for A12): `coverage_per_file.py` ran the 265 test files one at a time (about an hour). Four timed out and are left out of the numbers, none of them A13's: `test/ai_eval/ai_eval_test.dart`, `test/screens/social_signup_screen_test.dart`, `test/services/online/online_battle_session_test.dart`, `test/services/online/simulated_player_test.dart`. All four ran without a failure in the full `flutter test`.
+  - Layers: Model 99.5% (1022/1027), ViewModel 98.8% (3063/3101), Service 97.8% (5796/5928), View 98.3% (20446/20809), Other 98.2% (54/55), total 98.3% (30381/30920); every target met.
+  - A13's files: `ranking_standing.dart` 100% (80/80), `tutorial_page.dart` 100% (7/7), `weekly_rankings_viewmodel.dart` 100% (108/108), `tutorial_viewmodel.dart` 100% (41/41), `weekly_rankings_screen.dart` 99.2% (122/123), `help_screen.dart` 99.5% (181/182), `help_pictures.dart` 100% (44/44), `help_rules.dart` 100% (50/50), `tutorial_modes.dart` 94.5% (205/217), `weekly_rankings_banner.dart` 96.2% (50/52), `weekly_rankings_tabs.dart` 98.4% (60/61), `weekly_rankings_my_card.dart` 100% (133/133), `weekly_rankings_row.dart` 100% (88/88), `weekly_rankings_empty_card.dart` 89.1% (41/46), `weekly_rankings_rules_sheet.dart` 100% (56/56), `app_theme.dart` 99.5% (436/438); together 98.6% (1702/1726).
+  - The lines missed: painters' and clippers' `shouldRepaint`/`shouldReclip` (`tutorial_modes.dart` L229–232, L657–659; `weekly_rankings_banner.dart` L194–195; `weekly_rankings_empty_card.dart` L166–170), the baseline box's update when its value changes (`tutorial_modes.dart` L739–752; the picture never changes it), the empty card's const constructor line (L14), the back button's `maybePop` (`weekly_rankings_screen.dart` L252), the tab's screen-reader tap action (`weekly_rankings_tabs.dart` L186; the tests check the action is there, not its call; `help_screen.dart` L358 is the same, from A12), and two older styles in `app_theme.dart` (L591, L1516, not A13's).
+- **Review:** the `reviewer` subagent ran three times:
+  - Phase 가 (new files only): run 1 CHANGES_REQUESTED. Major: the fills (tab halves, my card's panel, the rank cells, the goal bar) painted over the ink edge at the rounded corners. Minor: constants holding token values. Run 2 APPROVE after both fixes.
+  - Phase 나+다 (wiring and the screen): run 3 APPROVE with two Minor findings, both fixed. My card's name choice moved from the screen to `WeeklyRankingsViewModel.myName`, with a unit test. The scroll test now checks that the list's own area stays under 'TOP 50'.
+- **Changed existing tests (SPEC 5.7):**
+  - `tutorial_viewmodel_test.dart` (P17): only the page count (22 → 23, 21 → 22 without Average), the indexes and positions ((1, 2), (2, 2), push-ups from 2, squats from 13), the page after the first (`TutorialPage.modes`), and one `pages_total` 23 check.
+  - `tutorial_page_test.dart`, `help_rules_test.dart`, `help_pictures_test.dart`, `help_screen_test.dart` (A12's): the step list, the 23 pages' words, the modes page without a body, one more 다음 where a test meant the first push-up page, the second game page's board, the dots' sentence, and the tab finder (page 2's picture also writes '푸시업').
+  - `weekly_rankings_screen_test.dart` (P11): the data and reload tests keep their checks; only their finders changed (tabs found inside the tab row, points without '점'), and they now set up `CharacterViewModel`. These tests are: the friends tab reads once, squats in each scope, back from the background in a new week, a failed read and 다시 시도, and the week label. The old-look tests now check the new look: `SegmentedButton` is now one tab row, '(나)' is now the 나 mark, the `Card` list is now 46-high rows, and my row under the list is now my card. The 1.6× small-phone test is kept.
+- **Phone check:** after the merge, with the cable out (SPEC 8):
+  - Tutorial page 2 is not cut, and its points and icon names can be read.
+  - The banner's time left is correct.
+  - The '?' sheet opens and closes.
+  - The tabs change my card and the list.
+  - My character is the one chosen.
+  - The friends tab matches my friends, and '친구 추가하러 가기' opens 친구와의 대전.
+  - Both screens work with large text.
+  - TODO(Woohyun Song): result.
+
+### Test cases added or changed in this step
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/ranking_standing_test.dart` (new) | the week's name (11.23 → '11월 4주차', 11.30 → '11월 5주차'), the time left in its four ranges and when it is over, progress at 0 and 1, the record line; my standing: unranked, no friends, first, behind (ties included), outside the list, the 50th-row tie; the list's title and note |
+| Model | `test/models/tutorial_page_test.dart` (updated) | the step order with modes; `TutorialPage.modes` |
+| ViewModel | `test/viewmodels/weekly_rankings_viewmodel_test.dart` (updated, new group) | the getters before a read, the week by the injected clock and at its ends, my row (global from the server, friends among the rows), standing and goal lines, my name (row → account → 나), my record, no friends, the list's words |
+| ViewModel | `test/viewmodels/tutorial_viewmodel_test.dart` (updated) | 23 pages, positions (1, 2) and (2, 2), the exercise pages' positions unchanged, `pages_total` 23 |
+| View | `test/screens/weekly_rankings_screen_test.dart` (updated) | spinner under the banner, tabs and ?; the banner's week, dates, time left and progress; the minute redraw; the ? sheet; the list under TOP 50 with ties; rank cell colors; my card (character, scope, rank, points, goal); friends; outside the top; before my first battle (account name, no note); 나 without an account; empty week; no friends → 친구와의 대전; nobody played; error and 다시 시도; a row's sentence; the 1.6× small phone; only the rows scroll; no stretch; rows 46 high 5 apart; tabs on one line; squats in each scope; the reload after the background; six states at 360×780 ×1.3 and 320×640 |
+| View | `test/widgets/weekly_rankings_banner_test.dart`, `weekly_rankings_tabs_test.dart`, `weekly_rankings_my_card_test.dart`, `weekly_rankings_row_test.dart`, `weekly_rankings_empty_card_test.dart`, `weekly_rankings_rules_sheet_test.dart` (new) | each part's look and sizes from the designs, edges drawn over clipped fills, tab semantics (tab, tab bar, button, position, 48-high targets), the rules' points from `RankingPoints`, sentences for screen readers, the text-size cap (1.3×) and shrinking cells, narrow phones and large text |
+| View | `test/widgets/tutorial_modes_test.dart` (new) | the 316×326 board, the points from `RankingPoints` with KO on lime, the screen reader's sentence, the characters, the icons (the design's four calls, clocks on the holds only, everyone on the floor line, the chair pose about the squat's height, clear of the clock, no wall), words at the design's sizes |
+| View | `test/screens/help_screen_test.dart`, `test/widgets/help_rules_test.dart`, `test/widgets/help_pictures_test.dart` (updated) | page 2's title alone, 게임 소개, two dots with the second on, its sentence and picture; the 23 pages' words; the taller board for both game pages |
+| Design | `test/theme/app_theme_test.dart` (updated), `test/design_tokens_test.dart` (updated) | the `RankingText` styles' families, sizes and weights; the seven new widget files use only tokens |
+
+### Acceptance criteria → tests (SPEC 5; the step is not in the local task.md)
+- 5.1 Page order → tutorial_viewmodel_test 'the two game pages, then every push-up page, then every squat page, in battle order', 'counts pages per exercise, as "푸시업 3 / 11" does', 'opening records the start with the page count, once'
+- 5.2 Page 2 → help_screen_test 'page 2 about the game: its title alone, 게임 소개, two dots with the second on, and the modes picture'; help_pictures_test 'game page 2 shows the online battle and arcade picture, named as the A13 design names it, on the taller board'; tutorial_modes_test 'the four points are the ranking's, KO on lime'
+- 5.3 Icons → tutorial_modes_test 'the chair pose is about the squat's height (within 10%)', 'the plank and chair people keep off the clock', 'each tile draws a floor line and no wall'
+- 5.4 View model words → weekly_rankings_viewmodel_test group "the screen's words (A13 spec 3.6)"; ranking_standing_test (week names, time left, progress, goal lines)
+- 5.5 Screen → weekly_rankings_screen_test '? opens the points rules; 확인 closes them', 'the banner names the week, its dates, the time left and how far it has gone', 'my card: my character, the scope, my rank, points and the goal toward the row above', 'my row is lime with its rank on ink; the first is orange', 'friends without a battle this week: – rows and the note', 'friends with only me: no goal, and a card that opens the friends page', 'outside the top: my rank in my card, the goal at the last row, and the note says how to get listed', 'an empty week says so in a card, without a list name', 'a failed read offers to try again; the banner and tabs stay', 'squats show their own ranking in each scope'
+- 5.6 Overflow → weekly_rankings_screen_test group 'no state overflows' (six states × two sizes), 'fifty rows and a large text size fit a small phone'; help_screen_test 'every page fits …'
+- 5.7 Existing tests → listed above; the data and reload tests pass with their checks unchanged
+- 5.8 Tokens → design_tokens_test
