@@ -781,12 +781,7 @@ A10 일정과 두 분의 작업 범위를 반영했어요.
 <!-- 9a315516 2026-11-27T06:16:25.516Z -->
 [Hyunwoo Song, 11-27 15:16] "@송현우 현우야, 다 괜찮아! coach_stage 버튼 이름, result_cards 글씨·카드 대사, victory_pvp_outcome_test 기대값 수정 모두 OK. 마지막 대사는 상우 말대로 A9에서 \"오늘 이야기는 여기까지다(어미)! 자세한 건 상세 리포트에서 볼 수 있어.\"로 바꿀게. A9는 coach_stage.dart를 안 건드려서 버튼이랑은 안 겹쳐!"
 
-## 2026-11-29 · Hyunwoo Song · feat/iter5-report-account-scope
-(A10 was set up by the 11-27 14:31 and 14:59 prompts in the section above. This export also brought the
-prompts of 11-27 to 11-29 that were not logged yet, from every step.)
-<!-- 9a315516 2026-11-26T04:44:03.343Z -->
-<!-- 9a315516 2026-11-26T07:56:14.073Z -->
-
+## 2026-11-28 · Hyunwoo Song · feat/iter5-report-entry
 <!-- 9a315516 2026-11-27T07:05:33.683Z -->
 [Hyunwoo Song, 11-27 16:05] "설치해봐"
 
@@ -826,6 +821,10 @@ prompts of 11-27 to 11-29 that were not logged yet, from every step.)
 
 <!-- 9a315516 2026-11-28T12:53:33.633Z -->
 [Hyunwoo Song, 11-28 21:53] "마지막대사는 우현이형이 한거지?"
+
+## 2026-11-29 · Hyunwoo Song · feat/iter5-report-account-scope
+(A10 was set up by the 11-27 14:31 and 14:59 prompts logged under P13 above; the rest of its prompts are
+under P15. Below: the prompts after the P15 log was exported.)
 
 <!-- 9a315516 2026-11-28T13:58:16.606Z -->
 [Hyunwoo Song, 11-28 22:58] "지금 코드나 서버나 세팅 시간 20초로 바뀐거 맞지?"

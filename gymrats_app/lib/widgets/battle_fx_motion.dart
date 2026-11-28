@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import '../models/character_idle_motion.dart';
 import '../models/game_score.dart';
-import '../models/reject_reason_korean.dart';
 import '../models/rep_event.dart';
 import 'battle_stage_model.dart';
 
@@ -398,7 +397,6 @@ class BattleFxPuff {
 /// short label.
 class BattleFxSign {
   const BattleFxSign({
-    this.fullCorrection = false,
     required this.reason,
     required this.average,
     required this.scale,
@@ -415,9 +413,8 @@ class BattleFxSign {
   final double rotation;
   final double opacity;
 
-  /// Live feedback can display the full coaching sentence across several lines.
-  final bool fullCorrection;
-  String get text => fullCorrection ? reason.koreanMessage : reason.signLabel;
+  /// The label: the reason only, e.g. "무릎 떼기".
+  String get text => reason.signLabel;
 
   BattleFxTone get tone => average ? BattleFxTone.average : BattleFxTone.danger;
 }
@@ -1589,7 +1586,6 @@ class BattleFxTimeline {
     final d = now - sign.at;
     if (d < 0 || d >= BattleFx.signMs) return null;
     return BattleFxSign(
-      fullCorrection: sign.reason == RejectReason.kneesDown,
       reason: sign.reason,
       average: sign.average,
       scale: d < 130 ? 0.6 + 0.4 * BattleFx.back(d / 130) : 1,

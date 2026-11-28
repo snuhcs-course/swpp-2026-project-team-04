@@ -248,7 +248,7 @@ void main() {
       );
       expect(find.text('물렁범'), findsOneWidget);
       expect(
-        find.bySemanticsLabel('물렁범, 이번 판 이야기해 줄게범! 할 말이 4개 있어.'),
+        find.bySemanticsLabel('물렁범, 이번 판 이야기 시간이다범! 할 말이 4개 있어.'),
         findsOneWidget,
       );
       expect(find.byKey(const ValueKey('result-coach-character')), findsOne);
@@ -296,7 +296,7 @@ void main() {
           onSkip: () => taps.add('skip'),
         ),
       );
-      expect(find.bySemanticsLabel('GYM마우스, 이번 판 이야기해 줄게찍!'), findsOneWidget);
+      expect(find.bySemanticsLabel('GYM마우스, 이번 판 이야기 시간이다찍!'), findsOneWidget);
       await tester.tap(find.text('이야기 듣기'));
       await tester.tap(find.text('건너뛰기'));
       expect(taps, isEmpty);
@@ -309,10 +309,22 @@ void main() {
   });
 
   group('the feedback link', () {
-    testWidgets('"상세 리포트 보기", 44 high, opens the feedback', (tester) async {
+    testWidgets('"상세 리포트 보기", 44 high, in ink and the talk\'s choice '
+        'size (P15), opens the feedback', (tester) async {
       var opened = 0;
       await show(tester, ResultFeedbackLink(onPressed: () => opened++));
       expect(find.text('상세 리포트 보기'), findsOneWidget);
+      final label = tester.widget<RichText>(
+        find.descendant(
+          of: find.text('상세 리포트 보기'),
+          matching: find.byType(RichText),
+        ),
+      );
+      final context = tester.element(find.text('상세 리포트 보기'));
+      final choice = Theme.of(context).textTheme.coachChoice;
+      expect(label.text.style!.fontSize, choice.fontSize);
+      expect(label.text.style!.fontWeight, FontWeight.w700);
+      expect(label.text.style!.color, AppColors.ink);
       expect(
         tester.getSize(find.byType(TextButton)).height,
         greaterThanOrEqualTo(44),

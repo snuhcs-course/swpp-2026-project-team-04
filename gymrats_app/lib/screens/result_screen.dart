@@ -27,6 +27,7 @@ import '../widgets/result_report.dart';
 import '../widgets/victory_overlay.dart';
 import '../widgets/victory_scene.dart';
 import 'arcade_flow.dart';
+import 'coach_screen.dart';
 
 /// The result report of a battle (BResult): how it ended, both scores, the
 /// user's reps, and the cards its values allow.
@@ -384,14 +385,33 @@ class _ResultScreenState extends State<ResultScreen> {
   );
 
   /// The talk, from its first line or ([atGoal], 건너뛰기) at the goal
-  /// question. Opens on top, so back and 리포트로 come here again.
+  /// question. Opens on top, so back and 돌아가기 come here again; 상세
+  /// 리포트로 puts this battle's report in its place, so back from the
+  /// report comes here too (P15).
   void _openCoach({required bool atGoal}) {
     final coach = _coach;
     if (_leaving || coach == null || coach.lineCount == null) return;
     coach
       ..setInstant(MediaQuery.disableAnimationsOf(context))
       ..start(atGoal: atGoal);
-    Navigator.pushNamed(context, GymRatsApp.coachRoute, arguments: coach);
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        settings: RouteSettings(name: GymRatsApp.coachRoute, arguments: coach),
+        builder: (_) =>
+            CoachScreen(viewModel: coach, onReport: _reportFromCoach),
+      ),
+    );
+  }
+
+  /// 상세 리포트로 in the talk: the report takes the talk's place.
+  void _reportFromCoach() {
+    if (_leaving) return;
+    Navigator.pushReplacementNamed(
+      context,
+      GymRatsApp.feedbackRoute,
+      arguments: _viewModel.state.form,
+    );
   }
 
   /// Opens on top, so back comes here again. Not one of the leaving buttons.

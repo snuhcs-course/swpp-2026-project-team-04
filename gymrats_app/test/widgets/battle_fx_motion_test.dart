@@ -1265,7 +1265,7 @@ void main() {
         fx.rep(_rep(BattleSide.me, null, reason: RejectReason.kneesDown), 600);
         expect(texts(fx, 600), isEmpty);
         expect(texts(fx, 720), ['MISS +0']);
-        expect(fx.frame(720).sign!.text, '무릎을 바닥에서 떼요');
+        expect(fx.frame(720).sign!.text, '무릎 떼기');
         fx.rep(
           _rep(BattleSide.me, null, reason: RejectReason.phoneMoved),
           1600,

@@ -11,6 +11,9 @@ EnvironmentFile=/srv/gymrats/.env
 ExecStart=/srv/gymrats/backend/.venv/bin/gunicorn gymrats.wsgi:application --bind 127.0.0.1:8000 --workers 2 --timeout 15
 Restart=on-failure
 RestartSec=3
+# A hung process that ignores SIGTERM is killed after 10 s (default 90 s), so the
+# health check's restart stays within the 3 min recovery target.
+TimeoutStopSec=10
 
 [Install]
 WantedBy=multi-user.target
