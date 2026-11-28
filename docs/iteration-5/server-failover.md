@@ -119,14 +119,22 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
    `/srv/gymrats/backend`, install its requirements, reinstall `gymrats-api.service` and `daemon-reload` if the unit
    changed, without starting the service. With both services stopped, restore the newest DB backup if it is newer
    than the snapshot; run `pragma integrity_check`, then **`migrate`** and `migrate --check` with the current code (a
-   backup older than the code needs migrations; in 4 three were applied).
+   backup older than the code needs migrations; in 4 three were applied). The API runs as `jinyoung`, so
+   `/srv/gymrats/data` and the restored `gymrats.db` must be writable by it, as on production (both owner
+   `jinyoung`, group `gymrats`; directory 2775, file 644; SQLite writes its journal in the directory). Check with
+   `sudo -u jinyoung test -w /srv/gymrats/data && sudo -u jinyoung test -w /srv/gymrats/data/gymrats.db`; if it
+   fails, `sudo install -d -o jinyoung -g gymrats -m 2775 /srv/gymrats/data` and `sudo chown jinyoung:gymrats` plus
+   `sudo chmod 644` on the file. Run `migrate` as `jinyoung` (`sudo -u jinyoung .venv/bin/python manage.py migrate`).
 4. Start `gymrats-api` and check its `/health` **before** starting the battle server. Then the battle server: on a
    fresh instance always, and on a snapshot whose battle release is behind, deploy the production commit with
    `server/deploy/install-battle.sh` (run from an upload directory holding that commit's `source.tar`, as the script
    says), which starts it; otherwise `sudo systemctl start gymrats-battle`. Then `sudo nginx -t && sudo systemctl
    reload nginx` (the new API code may change the included `nginx-gymrats-api.conf`), and check `/health` on both
-   ports. The battle server asks the API once at start-up (10 s limit, an error is ignored) to void the battles
-   that were running at the backup (seen in 4); if the API was not up, restart `gymrats-battle` again once it is.
+   ports. `/health` does not touch the database, so before moving the IP also log in once on the machine with a team
+   test account, the password typed at a prompt and never in the chat or shell history (`POST :8000/auth/login`) and
+   read that account's `GET :8000/matches`; write access was checked in step 3. The battle server asks the API once
+   at start-up (10 s limit, an error is ignored) to void the battles that were running at the backup (seen in 4); if
+   the API was not up, restart `gymrats-battle` again once it is.
 5. Move the static IP `52.78.38.225` to the new instance and check that its Lightsail firewall allows 80 (needed to
    issue the certificate) and 443 (firewall rules belong to each instance). Then the IP certificate, which is issued
    for the IP, so only after it is attached:
