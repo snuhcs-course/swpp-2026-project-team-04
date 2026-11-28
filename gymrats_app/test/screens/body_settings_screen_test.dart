@@ -136,6 +136,7 @@ void main() {
     await open(tester);
     expect(find.text('저장된 키·몸무게를 불러오지 못했어요.'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
+    expect(find.text('불러온 뒤 저장할 수 있어요'), findsOneWidget);
     profiles.error = null;
     await tester.tap(find.text('다시 시도'));
     await tester.pumpAndSettle();

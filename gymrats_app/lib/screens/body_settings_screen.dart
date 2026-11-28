@@ -166,7 +166,11 @@ class _BodySettingsScreenState extends State<BodySettingsScreen> {
               const SizedBox(height: AppSpacing.s24),
               AccentButton(
                 title: '저장',
-                hint: state.saving ? '저장하는 중…' : null,
+                hint: state.saving
+                    ? '저장하는 중…'
+                    : state.loadFailed
+                    ? '불러온 뒤 저장할 수 있어요'
+                    : null,
                 onPressed: _save,
               ),
             ],
