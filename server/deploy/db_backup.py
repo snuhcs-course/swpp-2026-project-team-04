@@ -60,21 +60,26 @@ def snapshot(database, folder, now):
     name = f"gymrats-{now.strftime('%Y%m%dT%H%M%SZ')}-scheduled.db"
     raw = folder / name
     raw.touch(mode=0o600)
-    source = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
-    target = sqlite3.connect(raw)
-    try:
-        source.backup(target)
-    finally:
-        target.close()
-        source.close()
-    result = integrity(raw)
-    if result != "ok":
-        raw.unlink()
-        raise RuntimeError(f"integrity check of the new backup: {result}")
     packed = folder / (name + ".gz")
-    with open(raw, "rb") as src, gzip.open(packed, "wb") as dst:
-        shutil.copyfileobj(src, dst)
-    raw.unlink()
+    try:
+        source = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
+        target = sqlite3.connect(raw)
+        try:
+            source.backup(target)
+        finally:
+            target.close()
+            source.close()
+        result = integrity(raw)
+        if result != "ok":
+            raise RuntimeError(f"integrity check of the new backup: {result}")
+        with open(raw, "rb") as src, gzip.open(packed, "wb") as dst:
+            shutil.copyfileobj(src, dst)
+    except BaseException:
+        # A partial or unchecked copy is never pruned (only .db.gz is), so remove it.
+        packed.unlink(missing_ok=True)
+        raise
+    finally:
+        raw.unlink(missing_ok=True)
     # Password hashes are inside: owner and group only, whatever the umask.
     packed.chmod(0o640)
     return packed

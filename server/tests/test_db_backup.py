@@ -189,6 +189,38 @@ def test_a_backup_that_fails_its_integrity_check_is_dropped(database, tmp_path, 
     assert list((tmp_path / "backups").iterdir()) == []
 
 
+def test_a_backup_that_fails_halfway_leaves_no_partial_copy(database, tmp_path, monkeypatch):
+    class Broken:
+        def __init__(self, real):
+            self.real = real
+
+        def backup(self, target):
+            raise sqlite3.OperationalError("disk I/O error")
+
+        def close(self):
+            self.real.close()
+
+    real_connect = sqlite3.connect
+    monkeypatch.setattr(db_backup.sqlite3, "connect",
+                        lambda path, **kw: Broken(real_connect(path, **kw)) if kw.get("uri") else real_connect(path, **kw))
+    rec = Recorder()
+    assert run_backup(database, tmp_path, FakeRclone(tmp_path / "o"), rec) == 1
+    assert "disk I/O error" in rec.sent[0]
+    assert list((tmp_path / "backups").iterdir()) == []
+
+
+def test_a_backup_that_fails_while_compressing_leaves_no_partial_copy(database, tmp_path, monkeypatch):
+    def full_disk(src, dst, *args):
+        dst.write(b"partial")
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(db_backup.shutil, "copyfileobj", full_disk)
+    rec = Recorder()
+    assert run_backup(database, tmp_path, FakeRclone(tmp_path / "o"), rec) == 1
+    assert "No space left" in rec.sent[0]
+    assert list((tmp_path / "backups").iterdir()) == []
+
+
 def test_local_copies_older_than_30_days_are_removed(database, tmp_path):
     folder = tmp_path / "backups"
     folder.mkdir()
