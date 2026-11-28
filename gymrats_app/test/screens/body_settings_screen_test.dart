@@ -64,13 +64,13 @@ void main() {
   bool consented(WidgetTester tester) =>
       tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value!;
 
-  testWidgets('the saved height and weight are filled in, the consent given '
-      'with them ticked', (tester) async {
+  testWidgets('the saved height and weight are filled in; the consent box '
+      'starts unticked, each change asks for it', (tester) async {
     await open(tester);
     expect(find.text('키·몸무게'), findsOneWidget);
     expect(fieldText(tester, '키 (cm)'), '175');
     expect(fieldText(tester, '몸무게 (kg)'), '72.5');
-    expect(consented(tester), isTrue);
+    expect(consented(tester), isFalse);
   });
 
   testWidgets('a user who gave none starts empty and unticked', (tester) async {
@@ -92,6 +92,8 @@ void main() {
 
   testWidgets('저장 sends the new values and says so', (tester) async {
     await open(tester);
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
     await tester.enterText(
       find.ancestor(
         of: find.text('몸무게 (kg)'),
@@ -128,9 +130,23 @@ void main() {
     expect(consented(tester), isTrue);
   });
 
+  testWidgets('a failed read says so instead of an empty form; 다시 시도 '
+      'reads again', (tester) async {
+    profiles.error = Exception('offline');
+    await open(tester);
+    expect(find.text('저장된 키·몸무게를 불러오지 못했어요.'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    profiles.error = null;
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(fieldText(tester, '키 (cm)'), '175');
+  });
+
   testWidgets('a failed save shows its message', (tester) async {
     authRepository.bodyInfoError = Exception('boom');
     await open(tester);
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
     await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
     expect(find.text('키·몸무게를 저장했어요'), findsNothing);

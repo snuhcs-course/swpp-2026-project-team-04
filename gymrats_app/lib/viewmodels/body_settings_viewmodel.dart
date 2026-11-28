@@ -10,6 +10,7 @@ import 'login_viewmodel.dart';
 class BodySettingsState {
   const BodySettingsState({
     this.loading = true,
+    this.loadFailed = false,
     this.heightCm,
     this.weightKg,
     this.heightError,
@@ -22,6 +23,10 @@ class BodySettingsState {
 
   /// The saved values are being read.
   final bool loading;
+
+  /// They could not be read: the page says so and offers 다시 시도, rather
+  /// than an empty form that looks like no values were ever given.
+  final bool loadFailed;
 
   /// The values saved now; null when none was given (or could not be read).
   final double? heightCm;
@@ -46,6 +51,7 @@ class BodySettingsState {
 
   BodySettingsState copyWith({
     bool? loading,
+    bool? loadFailed,
     double? heightCm,
     double? weightKg,
     String? heightError,
@@ -56,6 +62,7 @@ class BodySettingsState {
     bool? saved,
   }) => BodySettingsState(
     loading: loading ?? this.loading,
+    loadFailed: loadFailed ?? this.loadFailed,
     heightCm: heightCm ?? this.heightCm,
     weightKg: weightKg ?? this.weightKg,
     heightError: heightError,
@@ -90,8 +97,10 @@ class BodySettingsViewModel extends ChangeNotifier {
         : value.toString();
   }
 
-  /// Reads the saved values; a failed read leaves the fields empty.
+  /// Reads the saved values; a failed read says so ([loadFailed]) and can
+  /// be tried again.
   Future<void> load() async {
+    if (!_state.loading) _set(const BodySettingsState());
     try {
       final profile = await _profiles.fetchProfile();
       _set(
@@ -102,7 +111,7 @@ class BodySettingsViewModel extends ChangeNotifier {
         ),
       );
     } on Exception {
-      _set(const BodySettingsState(loading: false));
+      _set(const BodySettingsState(loading: false, loadFailed: true));
     }
   }
 
@@ -125,7 +134,7 @@ class BodySettingsViewModel extends ChangeNotifier {
     required String weight,
     required bool consent,
   }) async {
-    if (_state.saving || _state.loading) return false;
+    if (_state.saving || _state.loading || _state.loadFailed) return false;
     final heightError = BodyInfoRules.height(height);
     final weightError = BodyInfoRules.weight(weight);
     final consentError = BodyInfoRules.consent(consent);

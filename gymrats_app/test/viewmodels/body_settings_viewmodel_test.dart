@@ -36,19 +36,27 @@ void main() {
     expect(vm.state.hasValues, isTrue);
   });
 
-  test('a user who gave none, or a profile that cannot be read, starts '
-      'empty', () async {
+  test('a user who gave none starts empty', () async {
     profiles.profile = const UserProfile(name: '우현');
     await vm.load();
     expect(vm.state.hasValues, isFalse);
-    final failing = BodySettingsViewModel(
-      profiles: FakeUserRepository()..error = Exception('offline'),
-      auth: auth,
-    );
-    addTearDown(failing.dispose);
-    await failing.load();
-    expect(failing.state.loading, isFalse);
-    expect(failing.state.hasValues, isFalse);
+    expect(vm.state.loadFailed, isFalse);
+  });
+
+  test('a profile that cannot be read says so, saves nothing, and 다시 시도 '
+      'reads it again', () async {
+    profiles.error = Exception('offline');
+    await vm.load();
+    expect(vm.state.loading, isFalse);
+    expect(vm.state.loadFailed, isTrue);
+    expect(await vm.save(height: '176', weight: '70', consent: true), isFalse);
+    expect(authRepository.bodyInfos, isEmpty);
+    profiles.error = null;
+    final reading = vm.load();
+    expect(vm.state.loading, isTrue);
+    expect(vm.state.loadFailed, isFalse);
+    await reading;
+    expect(vm.state.heightCm, 175);
   });
 
   test('the fields show whole numbers without a point', () {

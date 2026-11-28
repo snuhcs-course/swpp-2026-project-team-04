@@ -45,15 +45,14 @@ class _BodySettingsScreenState extends State<BodySettingsScreen> {
       ..load();
   }
 
-  /// Puts the saved values in the fields once they are read; values the
-  /// user gave before were given with consent, so the box starts ticked.
+  /// Puts the saved values in the fields once they are read. The consent
+  /// box starts unticked: each change is saved with the user's own tick.
   void _fillOnce() {
     final state = _viewModel.state;
-    if (_filled || state.loading) return;
+    if (_filled || state.loading || state.loadFailed) return;
     _filled = true;
     _height.text = BodySettingsViewModel.textOf(state.heightCm);
     _weight.text = BodySettingsViewModel.textOf(state.weightKg);
-    setState(() => _consent = state.hasValues);
   }
 
   @override
@@ -94,7 +93,7 @@ class _BodySettingsScreenState extends State<BodySettingsScreen> {
           final state = vm.state;
           final formError = state.formError;
           final consentError = state.consentError;
-          final busy = state.loading || state.saving;
+          final busy = state.loading || state.saving || state.loadFailed;
           return LobbyPage(
             children: [
               const LobbyPageHeader(
@@ -112,7 +111,17 @@ class _BodySettingsScreenState extends State<BodySettingsScreen> {
               const SizedBox(height: AppSpacing.s24),
               if (state.loading)
                 const Center(child: CircularProgressIndicator())
-              else ...[
+              else if (state.loadFailed) ...[
+                const FormErrorMessage('저장된 키·몸무게를 불러오지 못했어요.'),
+                const SizedBox(height: AppSpacing.s12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton(
+                    onPressed: vm.load,
+                    child: const Text('다시 시도'),
+                  ),
+                ),
+              ] else ...[
                 AuthTextField(
                   controller: _height,
                   label: '키 (cm)',

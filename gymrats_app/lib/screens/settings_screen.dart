@@ -11,8 +11,7 @@ import '../widgets/exit_dialog.dart';
 import '../widgets/lobby_parts.dart';
 import 'body_settings_screen.dart';
 
-/// 환경설정, from home's menu and its profile chip: the nickname, 키·몸무게 (to
-/// change them, 2026-11-29), the safety
+/// 환경설정, from home's menu and its profile chip: the nickname, the safety
 /// notice switch and the rules again, the sound switches and logout, in
 /// groups. The switches are the app's [SettingsViewModel], provided above
 /// every screen.
