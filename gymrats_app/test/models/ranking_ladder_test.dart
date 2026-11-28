@@ -684,7 +684,7 @@ void main() {
 
     test('a player who played during my battle starts where the ranking '
         'before had them', () {
-      // C went from 15 to 25 while I went from 18 to 23 (Codex on #122).
+      // C went from 15 to 25 while I went from 18 to 23 (PR #122 review).
       final before = RankingSnapshot(
         entries: [
           _entry(1, 30, 1),
