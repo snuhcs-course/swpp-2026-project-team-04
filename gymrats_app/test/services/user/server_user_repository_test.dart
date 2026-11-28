@@ -93,18 +93,22 @@ void main() {
     );
     expect(profile.unsentMatches, 0);
     expect(profile.weightKg, isNull);
+    expect(profile.heightCm, isNull);
   });
 
-  test('reads the body weight the user gave', () async {
+  test('reads the body weight and height the user gave', () async {
     answer = (_) => _json({
       'id': 1,
       'login_id': 'woohyun',
       'nickname': '우현',
+      'height_cm': 175.5,
       'weight_kg': 70,
       'best_reps': null,
       'last_match': null,
     });
-    expect((await repository.fetchProfile()).weightKg, 70.0);
+    final profile = await repository.fetchProfile();
+    expect(profile.weightKg, 70.0);
+    expect(profile.heightCm, 175.5);
   });
 
   test('a new user has no record', () async {

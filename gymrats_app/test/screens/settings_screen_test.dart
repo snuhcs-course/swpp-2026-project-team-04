@@ -3,10 +3,13 @@ import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
+import 'package:gymrats_app/models/user_profile.dart';
+import 'package:gymrats_app/screens/body_settings_screen.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/screens/settings_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/auth_viewmodel.dart';
+import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/viewmodels/settings_viewmodel.dart';
 import 'package:gymrats_app/widgets/exit_dialog.dart';
 import 'package:provider/provider.dart';
@@ -99,6 +102,7 @@ void main() {
       '프로필',
       '닉네임',
       '우현',
+      '키·몸무게',
       '캐릭터',
       '게임',
       '매 경기 안전 안내',
@@ -191,6 +195,39 @@ void main() {
       );
       semantics.dispose();
     });
+  });
+
+  testWidgets('키·몸무게 opens its page with the saved values, from the '
+      "app's account and profile (2026-11-29)", (tester) async {
+    tester.view.physicalSize = const Size(412, 915);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final settings = SettingsViewModel();
+    addTearDown(settings.dispose);
+    final auth = AuthViewModel(repository: signedInAuth());
+    await auth.restore();
+    addTearDown(auth.dispose);
+    final profiles = FakeUserRepository()
+      ..profile = const UserProfile(name: '우현', heightCm: 175, weightKg: 70);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SettingsViewModel>.value(value: settings),
+          ChangeNotifierProvider<AuthViewModel>.value(value: auth),
+          Provider<UserRepository>.value(value: profiles),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const SettingsScreen(nickname: '우현'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('리포트의 칼로리·무게 계산에 써요'), findsOneWidget);
+    await tapAndSettle(tester, find.text('키·몸무게'));
+    expect(find.byType(BodySettingsScreen), findsOneWidget);
+    expect(find.text('175'), findsOneWidget);
+    expect(profiles.fetchCount, 1);
   });
 
   testWidgets('캐릭터 opens the character selection', (tester) async {

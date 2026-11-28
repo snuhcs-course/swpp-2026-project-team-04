@@ -49,6 +49,7 @@ class ServerUserRepository implements UserRepository, FeedbackStatsSource {
         lastMatch: last == null ? null : _match(last as Map<String, Object?>),
         unsentMatches: _queuedForMe.where((q) => q.record != null).length,
         weightKg: (json['weight_kg'] as num?)?.toDouble(),
+        heightCm: (json['height_cm'] as num?)?.toDouble(),
       );
     });
   }
