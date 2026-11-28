@@ -221,6 +221,34 @@ def test_a_backup_that_fails_while_compressing_leaves_no_partial_copy(database, 
     assert list((tmp_path / "backups").iterdir()) == []
 
 
+def test_old_local_copies_are_removed_even_when_the_upload_fails(database, tmp_path):
+    folder = tmp_path / "backups"
+    folder.mkdir()
+    old = folder / f"gymrats-{(NOW - timedelta(days=31)):%Y%m%dT%H%M%SZ}-scheduled.db.gz"
+    old.write_bytes(b"x")
+    rec = Recorder()
+    assert run_backup(database, tmp_path, FakeRclone(tmp_path / "o", fail_uploads=3), rec) == 1
+    assert not old.exists()
+    assert [p.name for p in folder.iterdir()] == ["gymrats-20261128T060000Z-scheduled.db.gz"]
+
+
+def test_the_compressed_copy_is_640_while_it_is_written(database, tmp_path, monkeypatch):
+    modes = []
+    real = db_backup.shutil.copyfileobj
+
+    def watch(src, dst, *args):
+        modes.append(stat.S_IMODE(os.stat(tmp_path / "backups" / "gymrats-20261128T060000Z-scheduled.db.gz").st_mode))
+        real(src, dst, *args)
+
+    monkeypatch.setattr(db_backup.shutil, "copyfileobj", watch)
+    old = os.umask(0o002)
+    try:
+        assert run_backup(database, tmp_path, FakeRclone(tmp_path / "offsite"), Recorder()) == 0
+    finally:
+        os.umask(old)
+    assert modes == [0o640]
+
+
 def test_local_copies_older_than_30_days_are_removed(database, tmp_path):
     folder = tmp_path / "backups"
     folder.mkdir()
@@ -247,10 +275,30 @@ def test_the_copy_off_the_server_restores_the_database(database, tmp_path):
                            "offsite:gymrats-backups", run=rclone, log=lines.append)
 
     assert code == 0
-    assert lines == [f"{database}: integrity ok"]
+    assert lines == ["gymrats-20261128T060000Z-scheduled.db.gz: integrity ok", f"{database}: replaced"]
     assert reps(database) == [10, 11, 12]
-    assert not Path(str(database) + ".gz").exists()
+    assert sorted(p.name for p in database.parent.iterdir()) == ["gymrats.db"]  # no temporary files
     assert stat.S_IMODE(database.stat().st_mode) == 0o640
+
+
+def test_the_download_is_not_readable_by_others(database, tmp_path):
+    rclone = FakeRclone(tmp_path / "offsite")
+    run_backup(database, tmp_path, rclone, Recorder())
+    seen = []
+
+    def watching(*args):
+        seen.append(os.umask(0o022))
+        os.umask(seen[-1])
+        return rclone(*args)
+
+    old = os.umask(0o002)
+    try:
+        db_backup.fetch("gymrats-20261128T060000Z-scheduled.db.gz", tmp_path / "r.db",
+                        "offsite:gymrats-backups", run=watching, log=lambda m: None)
+        assert os.umask(old) == 0o002  # restored afterwards
+    finally:
+        os.umask(old)
+    assert seen == [0o027]
 
 
 def test_fetching_a_copy_that_is_not_there_fails(tmp_path):
@@ -260,15 +308,27 @@ def test_fetching_a_copy_that_is_not_there_fails(tmp_path):
     assert code == 1 and "object not found" in lines[0]
 
 
-def test_a_damaged_copy_is_reported_after_fetching(tmp_path, monkeypatch):
+def test_a_damaged_copy_is_reported_and_does_not_replace_the_database(database, tmp_path):
     rclone = FakeRclone(tmp_path / "offsite")
     (tmp_path / "offsite" / "b").mkdir(parents=True)
     (tmp_path / "offsite" / "b" / "bad.db.gz").write_bytes(gzip.compress(b"x" * 4096))
-    monkeypatch.setattr(db_backup, "integrity", lambda path: "file is not a database")
     lines = []
-    assert db_backup.fetch("bad.db.gz", tmp_path / "x.db", "offsite:b", run=rclone,
-                           log=lines.append) == 1
-    assert "file is not a database" in lines[0]
+    assert db_backup.fetch("bad.db.gz", database, "offsite:b", run=rclone, log=lines.append) == 1
+    assert "not a database" in lines[0]
+    assert reps(database) == [10, 11, 12]  # the database already there is kept
+    assert sorted(p.name for p in database.parent.iterdir()) == ["gymrats.db"]
+
+
+def test_a_copy_that_fails_its_check_does_not_replace_the_database(database, tmp_path, monkeypatch):
+    rclone = FakeRclone(tmp_path / "offsite")
+    run_backup(database, tmp_path, rclone, Recorder())
+    monkeypatch.setattr(db_backup, "integrity", lambda path: "row 3 missing from index")
+    with sqlite3.connect(database) as db:
+        db.execute("insert into matches_match (my_reps) values (13)")
+    lines = []
+    assert db_backup.fetch("gymrats-20261128T060000Z-scheduled.db.gz", database,
+                           "offsite:gymrats-backups", run=rclone, log=lines.append) == 1
+    assert reps(database) == [10, 11, 12, 13]
 
 
 def test_list_and_fetch_need_a_remote(monkeypatch):

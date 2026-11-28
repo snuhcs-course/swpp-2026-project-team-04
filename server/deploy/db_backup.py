@@ -72,7 +72,10 @@ def snapshot(database, folder, now):
         result = integrity(raw)
         if result != "ok":
             raise RuntimeError(f"integrity check of the new backup: {result}")
-        with open(raw, "rb") as src, gzip.open(packed, "wb") as dst:
+        # Created 640 from the start (not after writing), whatever the umask.
+        fd = os.open(packed, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.fchmod(fd, 0o640)
+        with open(raw, "rb") as src, open(fd, "wb") as out, gzip.GzipFile(fileobj=out, mode="wb") as dst:
             shutil.copyfileobj(src, dst)
     except BaseException:
         # A partial or unchecked copy is never pruned (only .db.gz is), so remove it.
@@ -80,8 +83,6 @@ def snapshot(database, folder, now):
         raise
     finally:
         raw.unlink(missing_ok=True)
-    # Password hashes are inside: owner and group only, whatever the umask.
-    packed.chmod(0o640)
     return packed
 
 
@@ -145,6 +146,17 @@ def backup(database, folder, remote, webhook, *, now=None, run=None, send=notify
 def _backup(database, folder, remote, webhook, *, now, run, send, sleep, delays, host, log):
     now = now or datetime.now(timezone.utc)
     try:
+        return _take_and_upload(database, folder, remote, webhook, now=now, run=run, send=send,
+                                sleep=sleep, delays=delays, host=host, log=log)
+    finally:
+        # Also when the upload fails: a long outage must not keep old copies for good.
+        # The newest copy is never older than 30 days, so it is always kept.
+        for name in prune(folder, now):
+            log(f"removed old local backup {name}")
+
+
+def _take_and_upload(database, folder, remote, webhook, *, now, run, send, sleep, delays, host, log):
+    try:
         packed = snapshot(database, folder, now)
     except (sqlite3.Error, OSError, RuntimeError) as error:
         message = f"[GymRats] DB backup on {host} FAILED before upload: {error}"
@@ -164,8 +176,6 @@ def _backup(database, folder, remote, webhook, *, now, run, send, sleep, delays,
         error = upload(packed, remote, run=run)
         if error is None:
             log(f"uploaded to {remote} (try {attempt})")
-            for name in prune(folder, now):
-                log(f"removed old local backup {name}")
             return 0
         log(f"upload try {attempt} failed: {error}")
     message = (
@@ -178,21 +188,40 @@ def _backup(database, folder, remote, webhook, *, now, run, send, sleep, delays,
 
 
 def fetch(name, dest, remote, *, run=None, log=log):
-    """Downloads one copy from `remote`, unpacks it to `dest` and checks it."""
+    """Downloads one copy from `remote`, unpacks it next to `dest` and checks it.
+
+    `dest` is replaced only when the copy passes the integrity check, so a bad copy
+    never overwrites a database that is already there.
+    """
     run = run or rclone
     dest = Path(dest)
-    packed = dest.with_name(dest.name + ".gz")
-    done = run("copyto", f"{remote.rstrip('/')}/{name}", str(packed))
-    if done.returncode != 0:
-        log((done.stderr or "rclone copyto failed").strip()[-300:])
-        return 1
-    with gzip.open(packed, "rb") as src, open(dest, "wb") as dst:
-        shutil.copyfileobj(src, dst)
-    packed.unlink()
-    dest.chmod(0o640)  # password hashes inside: owner and group only (the API runs as jinyoung:gymrats)
-    result = integrity(dest)
-    log(f"{dest}: integrity {result}")
-    return 0 if result == "ok" else 1
+    packed = dest.with_name(f".{dest.name}.fetch.gz")
+    unpacked = dest.with_name(f".{dest.name}.fetch")
+    # Run by hand, not by the unit: rclone's download must not be readable by others either.
+    old_umask = os.umask(0o027)
+    try:
+        done = run("copyto", f"{remote.rstrip('/')}/{name}", str(packed))
+        if done.returncode != 0:
+            log((done.stderr or "rclone copyto failed").strip()[-300:])
+            return 1
+        fd = os.open(unpacked, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.fchmod(fd, 0o640)  # password hashes inside: owner and group (the API runs as jinyoung:gymrats)
+        with gzip.open(packed, "rb") as src, open(fd, "wb") as dst:
+            shutil.copyfileobj(src, dst)
+        try:
+            result = integrity(unpacked)
+        except sqlite3.DatabaseError as error:  # not a database at all
+            result = str(error)
+        log(f"{name}: integrity {result}")
+        if result != "ok":
+            return 1
+        os.replace(unpacked, dest)
+        log(f"{dest}: replaced")
+        return 0
+    finally:
+        os.umask(old_umask)
+        packed.unlink(missing_ok=True)
+        unpacked.unlink(missing_ok=True)
 
 
 def main(argv=None):
