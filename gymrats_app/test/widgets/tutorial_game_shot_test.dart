@@ -433,9 +433,18 @@ void main() {
 
     test('the still for reduced motion is just after the blow', () {
       final still = TutorialGameScene.online(TutorialGameScene.welcomeStillMs);
+      expect(TutorialGameScene.welcomeStillMs, 1150);
       expect(still.bottom, isTrue);
       expect(still.frame, BattleFxCameraFrame.good);
       expect(still.myScore, 60 + rules.goodPoints);
+      // GOOD fully shown and done popping in, the star up at its full size.
+      expect(still.grade, GameGrade.good);
+      expect(still.bandOpacity, 1);
+      expect(still.bandScale, 1);
+      expect(still.hit, 1);
+      expect(still.starOpacity, 1);
+      expect(still.starScale, closeTo(0.9, 1e-9));
+      expect(still.attacks, isTrue);
     });
   });
 }

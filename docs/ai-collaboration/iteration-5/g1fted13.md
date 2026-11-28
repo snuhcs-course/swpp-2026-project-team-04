@@ -1272,6 +1272,7 @@ These were made from the A5 session at the user's word; their full evidence is i
   - `69bb735`: the game page (`tutorial_welcome.dart`: the online clip, the arcade shot) and way d (the coach talk); the particle fix.
   - `3dc2c2c`: the RepBot mannequin removed.
 - **Review:** the `reviewer` subagent ran ten times (item d), the last after the second rebase (APPROVE, no findings).
+- **PR review:** Codex reviewed `0490bc6` on PR #110 and left two P2 threads (item d); Claude Code made the fix in one commit, and the `reviewer` subagent checked it (run 11).
 - **Checking against the design:** a local capture tool (a test file kept out of git) drew each page with the app's fonts for comparison with the screenshots after every phase; the 22 pages were saved outside the repo for the user.
 - **Not done by AI:** the PM approved the task and its conditions; Woohyun Song confirmed the designs and made every decision above; the phone check is the team's, at the 11/28 meeting.
 
@@ -1292,6 +1293,7 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **The combo mark (run 4, Major):** drawn upright at full width instead of the game's rest (−6°, ×0.72).
 - **Smaller slips:** a whole-picture `IgnorePointer` made `game_panel_fonts_test` fail (found by the full run); the wall stripes slanted the wrong way; a decorative painter swallowed taps; `Rect.width` used in a constant; text styles first resized with `fontSizeFactor` (wiki 2.5.1 rule 3; changed before review).
 - **A literal kept too long:** the design's '푸시업를' and '물렁범가' were kept as "the original"; the user ruled them misspellings.
+- **A design value ported without checking what it shows (Codex on PR #110, two P2):** the game page's still for reduced motion took the design's t=960 (SPEC v1.1), 10 ms after the push-up's bottom, where GOOD is at 6% opacity and 0.21× its size. Ten reviewer runs and the tests checked the still's frame, shoulder line and attack, not the band. The designer fixed SPEC 4 (v1.2) and the design's default to 1150 on 11/28; `welcomeStillMs` follows, and both still tests now pin GOOD at full opacity and size. Cost: one small commit and another Codex round.
 
 ### e. Prompt revisions
 - **The particles:**
@@ -1304,3 +1306,4 @@ These were made from the A5 session at the user's word; their full evidence is i
 
 ### Takeaway
 - Read a design's box model (CSS `border-box`) before porting positions: two of the three Major rounds came from it.
+- When a still is taken from an animation, check every animated value at that moment, not only the ones the spec names.

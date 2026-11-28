@@ -949,3 +949,12 @@ A12 튜토리얼 개편 PR을 올린다. PM 한상우가 11/28에 Unexpected A12
 9. 이어서 pull-request 스킬로 main 대상 PR을 연다. 본문에 다음을 넣는다: 11/28 PM 승인(Unexpected A12) 사실, '공용 파일 변경' 단락(파일·이유·범위, 없으면 '없음'), 장 순서·판정·텔레메트리를 유지했다는 확인과 그 근거(diff 결과), How to test, 테스트 케이스 표, 수용 기준→테스트, HEAD 커밋 기준 결과·커버리지, 그리고 폰 확인 항목(작은 글씨, 무릎 푸시업 기각 장면)은 오늘 회의 때 실기기로 확인 예정이라는 문장. 그다음 현재 HEAD SHA로 독립 Codex 리뷰를 받는다.
 10. 끝나면 PR 번호, HEAD SHA, 검사 결과, 공용 파일 목록을 나에게 보고한다.
 </pasted_content id=\"16e8\">"
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial
+<!-- Left out on purpose: the conversation summary the client inserted at 11-28 13:52 after the context ran out (not the user's text). Its key stays so a later export does not add it again. Added by hand after the 14:08 prompt: the user's typed answer to the question on Codex's two threads (11-28 14:12), which the extractor does not read because it arrives inside a tool result; the text is from the redacted export. -->
+<!-- 6edf15d3 2026-11-28T04:52:42.070Z -->
+
+<!-- 6edf15d3 2026-11-28T05:08:58.275Z -->
+[Woohyun Song, 11-28 14:08] "codex 리뷰 결과 나왔어. 확인해봐"
+
+[Woohyun Song, 11-28 14:12] "t=1150으로 바꿔. 디자이너가 11/28에 SPEC 4절(v1.2)과 디자인 원본(TutShotOnline 기본값)도 1150으로 고쳤어. 그러니 progress.md와 PR 본문에는 '원본에서 벗어남'이 아니라 '11/28 SPEC 수정: 960은 바닥 순간 10ms 뒤라 GOOD이 거의 안 보이던 원본 오류'로 적어. 나머지 절차(새 커밋 하나, push, push 후 검증, @codex review 재요청)는 네가 제안한 대로 진행해."

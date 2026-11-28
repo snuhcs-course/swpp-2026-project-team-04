@@ -2412,3 +2412,24 @@ No server, camera or device is needed: the tests draw the pictures with fixed va
 - 7.8 Removed → help_pictures_test 'nothing draws the RepBot mannequin any more: its file is gone and no app file names it'; design_tokens_test
 - 7.9 Existing tests → `tutorial_viewmodel_test.dart` unchanged and passing; the changed ones listed above
 - The PM's conditions → `git diff origin/main...HEAD` is empty for `tutorial_viewmodel.dart`, its test, `tutorial_page.dart`, `lib/services/`, `battle_rules.dart`, `game_score.dart`; help_screen_test's group '튜토리얼 텔레메트리 (P17)' passes unchanged
+
+#### 2026-11-28 · code at the commit after `0490bc6` (PR #110) · step A12 `feat/iter5-tutorial`, the Codex follow-up
+Codex's review of `0490bc6` (PR #110, two P2 threads on `gymrats_app/lib/widgets/tutorial_game_shot.dart`) found that the game page's still for reduced motion (`TutorialGameScene.welcomeStillMs`) sat at t=960, 10 ms after the push-up's bottom, where the GOOD band is at 6% opacity and 0.21× its size. 960 was an error in the design (SPEC v1.1 and the design's default); the designer fixed SPEC 4 (v1.2) and the design's default to 1150 on 11/28. The still follows: 0.2 s after the blow, GOOD at full opacity and size, the star up at its full size, the frame and the shoulder line still green. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter analyze
+flutter test test/screens/help_screen_test.dart test/widgets/help_rules_test.dart test/widgets/help_pictures_test.dart test/widgets/tutorial_person_test.dart test/widgets/tutorial_setup_scenes_test.dart test/widgets/tutorial_game_shot_test.dart test/widgets/tutorial_draft_test.dart test/widgets/tutorial_welcome_test.dart test/design_tokens_test.dart test/screens/settings_screen_test.dart test/widgets/game_panel_fonts_test.dart test/viewmodels/tutorial_viewmodel_test.dart
+flutter test
+```
+
+- `flutter analyze` found no issues.
+- The 12 A12-related files: 242 passed (one more than on `f03bedd`: #109's design-token row).
+- The full `flutter test`: 5398 passed, 0 failed, 11 skipped.
+- **Coverage:** not measured again on this PC; the change is one constant, its comment and test assertions. The CI comment on `0490bc6` (GitHub Actions run 46110105549, one test file at a time in four shards): Model 99.4% (886/891), ViewModel 98.6% (2692/2729), Service 97.8% (5666/5796), View 98.3% (18686/19017), server 98% (367 passed); every target met. CI posts the same for the new head.
+- **Review:** reviewer run 11 APPROVE with no findings: every value at t=1150 equals the design's script; the new checks fail at 960 and pass at 1150; nothing else reads the still's time. The still holds the score and rep counters mid-bump (about 1.16× and 1.30×), as the design does at 1150.
+
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/tutorial_game_shot_test.dart` (updated) | 'the still for reduced motion is just after the blow': the still at 1150 ms; GOOD at full opacity and size; the star at full opacity and its full size (0.9); the attack |
+| View | `test/widgets/tutorial_welcome_test.dart` (updated) | 'with reduced motion it is one still, just after the blow': GOOD on screen at full opacity and size |

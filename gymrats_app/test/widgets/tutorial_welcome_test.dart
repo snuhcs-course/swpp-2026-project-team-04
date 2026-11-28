@@ -114,6 +114,10 @@ void main() {
       final still = scene(tester);
       expect(still.frame, BattleFxCameraFrame.good);
       expect(still.attacks, isTrue);
+      // GOOD readable in the still: fully shown at its full size.
+      expect(find.text('GOOD'), findsOneWidget);
+      expect(still.bandOpacity, 1);
+      expect(still.bandScale, 1);
       await tester.pump(const Duration(seconds: 2));
       expect(shoulder(tester), 238);
       expect(tester.binding.hasScheduledFrame, isFalse);

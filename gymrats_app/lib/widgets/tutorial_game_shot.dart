@@ -350,8 +350,9 @@ class TutorialGameScene {
   static const _clipBandNarrow = 0.8;
 
   /// Where the welcome clip holds when the device asks for reduced motion:
-  /// just after the blow landed (the design's still, `t` 960).
-  static const welcomeStillMs = 960.0;
+  /// 0.2 s after the blow landed, GOOD at its full size and the star up, the
+  /// frame and the shoulder line still green (the design's still, `t` 1150).
+  static const welcomeStillMs = 1150.0;
 
   /// Whether the user's character attacks.
   bool get attacks => attacking ?? hit > 0;
