@@ -1388,3 +1388,19 @@ These were made from the A5 session at the user's word; their full evidence is i
 ### Takeaway
 - Before calling a part done, run the existing screen's own large-text test on it, not only the spec's sizes.
 - Format only the files a change touches.
+
+### A13 follow-up `feat/iter5-tutorial-tab-edge` – the tutorial tabs' ink edge at the round ends, 2026-11-28
+- **a. Where AI was used:** Woohyun Song found the bug on a Galaxy S26+ release build of `main` and wrote its cause and the fix to copy. Claude Code (Claude Opus 5.5) then did the following:
+  - made the branch and changed A13's branch in the local harness;
+  - wrote the fix in `gymrats_app/lib/screens/help_screen.dart` (`_ExerciseTabs`, L299–L315) and the tests in `test/screens/help_screen_test.dart` (L236–L320), commit `980a565`;
+  - ran the reviewer subagent (run 4 APPROVE, two Minor findings, both fixed) and wrote these notes.
+
+  Woohyun Song did the phone check on a release build of `980a565`.
+- **b. Prompt history:** [Woohyun Song, 11-28] "Container가 테두리 두께만큼 안으로 들인 네모 Row를 그리는데, 둥근 양 끝에서 이 네모의 모서리가 안쪽 곡선 밖으로 나가 테두리를 덮는다." (from the 21:10 prompt; both prompts of this follow-up are in the Prompt Log).
+- **c. What AI did well:** it showed the new test was meaningful, not only green: with the fix stashed, the test failed on the old code. The reviewer also checked the geometry. The stroke is drawn inside the pill (`strokeAlign` −1), so its inner rim and the 2-inset clip are the same stadium (radius 21).
+- **d. Hallucinations / errors:** this was the same fault reviewer run 1 had found in the A13 rankings pills. At that time, the tutorial's tabs were A12's file and read only, so nobody checked them for it, and the fault reached `main`. Cost: one phone round and this follow-up PR. Two smaller slips:
+  - The first edit left the `ClipPath` without its closing bracket. The IDE's analyzer caught it at once.
+  - The first new test did not pin `strokeAlign` (reviewer Minor 1).
+- **e. Prompt revisions:** none; the first prompt named the cause, the file to copy and the checks.
+- **f. Manual fixes and why:** none. No code was edited by hand, so there is no marker.
+- **Takeaway:** when a review finds a drawing fault, search the whole app for the same pattern, including read-only files, and report the matches to their owner.
