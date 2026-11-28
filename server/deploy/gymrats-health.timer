@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the GymRats health check every 30 seconds
+
+[Timer]
+# On the wall clock (:00 and :30), so a slow check never pushes the next one later.
+OnCalendar=*-*-* *:*:00/30
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

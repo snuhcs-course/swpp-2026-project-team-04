@@ -5,6 +5,108 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `507eca3`
+Fix at commits `9381a15` (health check) and `e0b79a5` (procedure). The first Codex run on `507eca3` ended "failed" with
+no result; a second request reviewed it.
+- **Finding 1 (P1):** the restore stopped the backup timer but not a run it had already started at boot → step 2
+  also stops `gymrats-backup.service` (one expected "Terminated" alert) and checks all five units are inactive.
+- **Finding 2 (P2):** a restart systemd could not queue reset the count, so the next try came three checks later
+  (about 185 s) → such a service keeps count 2 and is tried again on the next failed check. Test:
+  `test_a_restart_that_was_not_queued_is_tried_again_on_the_next_failure` (fails on `507eca3`).
+- **Results:** server `pytest` 429 passed, 0 failed (57 in the two files: 25 + 32); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fix for the Codex review of `5736780`
+Fix at commit `e53cd98`.
+- **Finding (P2):** `list` and `fetch` run by hand do not get the unit's `EnvironmentFile=`, so the documented
+  restore stopped with "BACKUP_REMOTE is not set". They now read `BACKUP_REMOTE` and `RCLONE_CONFIG` (only those
+  keys) from `/srv/gymrats/.env` (`--env-file`) when the shell has not set them.
+- **Tests:** `test_list_by_hand_reads_the_remote_and_rclone_config_from_the_env_file` (fails on `5736780`);
+  `test_list_and_fetch_need_a_remote` now points at a missing env file.
+- **Results:** server `pytest` 428 passed, 0 failed (56 in the two files: 24 + 32); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `2b3bad4`
+Fix at commits `0b9a600` (webhook) and `10966a8` (backup).
+- **Findings (P2 ×2):** (1) a webhook that trickles its answer could hold an alert past the unit's limit → the whole
+  POST runs in a thread with a 5 s deadline; (2) at the backup unit's 25 min limit systemd's SIGTERM skipped the
+  cleanup and the alert → a handler raises `Terminated`, so `finally` cleans up and the alert is sent;
+  `TimeoutStopSec=30` leaves time for it. Tests restore pytest's SIGTERM handler after each test (reviewer subagent).
+- **Tests:** `test_a_webhook_that_trickles_its_answer_is_given_up_after_the_limit`,
+  `test_a_stop_by_systemd_cleans_up_and_alerts`, `test_the_command_turns_sigterm_into_a_failure` (all 3 fail on
+  `2b3bad4`). The first webhook test passed on the old code too (the server sent nothing, so the per-read timeout was
+  enough); it was rewritten to send one byte every 50 ms. The handler is called directly; no test sends a real
+  signal.
+- **Results:** server `pytest` 427 passed, 0 failed (55 in the two files: 24 + 31); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `82c2c43`
+Fix at commits `832de3d` (health check) and `79d79e3` (backup).
+- **Findings (P2 ×4):** (1) a slow webhook could delay the second restart → every due restart is requested before any
+  alert; (2) old local copies stayed during a long storage outage → pruning runs after every run; (3) `fetch`
+  overwrote the destination before the integrity check → it unpacks into a temporary file and replaces the
+  destination only when the check passes; (4) the compressed copy was readable by others while being written → it
+  is created at 640 and the unit sets `UMask=0027`. The reviewer subagent added that a hand-run `fetch` downloads
+  under the caller's umask → `fetch` sets 027 while it runs.
+- **Tests:** `test_every_due_restart_is_requested_before_any_alert`,
+  `test_old_local_copies_are_removed_even_when_the_upload_fails`,
+  `test_a_damaged_copy_is_reported_and_does_not_replace_the_database`,
+  `test_a_copy_that_fails_its_check_does_not_replace_the_database`, `test_the_compressed_copy_is_640_while_it_is_written`
+  (all 5 fail on `82c2c43`), `test_the_download_is_not_readable_by_others`.
+- **Results:** server `pytest` 424 passed, 0 failed (52 in the two files: 23 + 29); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `2353bea`
+Fix at commits `c2a1cc0` (health check) and `30c972e` (backup).
+- **Finding 1 (P1):** the 5 s socket timeout applies to each read, so an answer that trickles in could hold the check
+  until systemd killed it, with no failure counted. `check_once` now has a deadline for the whole check (5 s); a
+  probe still running then counts as failed and a late answer is ignored. Test:
+  `test_a_check_past_the_deadline_counts_as_failed` (fails without the fix).
+- **Finding 2 (P2):** a backup that failed partway left an uncompressed `.db` that the 30-day cleanup never removes.
+  Any failure while copying, checking or compressing now removes the partial files (the reviewer subagent extended
+  the fix from the copy step to all three). Tests: `test_a_backup_that_fails_halfway_leaves_no_partial_copy`,
+  `test_a_backup_that_fails_while_compressing_leaves_no_partial_copy`.
+- **Results:** server `pytest` 419 passed, 0 failed (47 in the two files: 22 + 25); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
+#### 2026-11-28 · step P21 follow-up `feat/iter5-failover`: production health check and backup off the server
+PM request after #114 (relayed by the user): health check every 30 s, 5 s limit, restart after 3 failures; a 12 h
+backup off the server with retries, alerts and a restore from the copy. Code at commits `5c1ecbc` (health check),
+`3fda402` (backup), `56ba5e4` (record, `docs/iteration-5/server-health-backup.md`); tests run on 11/29 at `dd53bc2`.
+Commands from `server/` on macOS (Python 3.12).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total (unchanged; the new scripts are outside `accounts`, `matches`, `gymrats`) | 11/29 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+| Server deploy scripts | pytest, pytest-cov, local HTTP servers, fake rclone | 90% | `health_watch.py` 99%, `db_backup.py` 99% (the `sys.exit(main())` line each) | 11/29 | `.venv/bin/python -m pytest tests/test_health_watch.py tests/test_db_backup.py --cov=deploy` |
+
+- **Tests:** server `pytest` 416 passed, 0 failed (44 new: 21 in `test_health_watch.py`, 23 in `test_db_backup.py`).
+  No app change, so `flutter test` was not rerun.
+- **First run hung:** `db_backup.py` bound the real rclone as a default argument, so the command test called the
+  real tool and waited out the retry delays; it now looks rclone up at call time, and a missing rclone counts as a
+  failed upload (test added).
+- **Isolated environment on the team server (not automated):** a freeze right after a passing check was recovered in
+  95.7 s (API) and 95.5 s (battle server), target 3 min; backup 1.4 s; a failing upload retried at +1 and +5 min and
+  then alerted; a restore from the copy off the server brought back the account made before the backup and not the
+  one made after. The copy off the server was an rclone local folder, since the bucket does not exist yet.
+- **Found in the run and fixed:** backup files took the server's umask (664) → 640; a restore must stop the health
+  timer first (`server-failover.md`).
+- **Reviewer subagent (2 rounds, CHANGES_REQUESTED → fixed):** the restart blocked inside a 20 s unit and could
+  skip the alert, and the API's 90 s stop timeout could push recovery past 3 min → count saved first,
+  `systemctl restart --no-block`, `TimeoutStopSec=10` on the API; a broken HTTP answer crashed the check → any error
+  counts as a failure; a snapshot's catch-up backup could upload old data under a new name → the restore stops the
+  backup timer too; the health unit ran as root from the group-writable tree with all secrets → root-owned copy,
+  webhook key only; rclone calls had no time limit and some errors sent no alert → 150 s per call, every error
+  alerts, unit limits sized to the worst case; fetched copy 644 → 640; webhook User-Agent and a log line for
+  undelivered alerts. These came after the isolated run: the SIGTERM-ignoring case and `--no-block` are not
+  rehearsed (worked out as about 1 min 46 s worst case).
+- **Shortfalls:** the real bucket, network and team chat webhook are not tested (they do not exist yet).
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_health_watch.py` | Server (deploy) | 200 is healthy; error status, late answer, closed port, broken HTTP answer are not (and the other service is still checked); two failures do not restart; the third restarts only that service and alerts; the count is saved before the restart; a pass clears the count; a failed, missing or hung restart is reported; a freeze is restarted on the third check; a broken state file counts from zero; alert JSON with User-Agent; no or failing webhook does not raise; an undelivered alert is logged; only the webhook is read from the env file; the command with given services and with the env-file webhook; `systemctl restart --no-block`; the 30 s timer |
+| `server/tests/test_db_backup.py` | Server (deploy) | sqlite URL; backup checked, compressed, uploaded; file mode 640; retries after 1 and 5 min; 3 failures alert; wrong size and unlisted copy fail; no remote alerts; backup that cannot be taken, an unexpected error and a wrong database setting alert; an undelivered alert is logged; failed integrity drops it; 30-day prune keeps deploy backups; restore from the copy off the server (mode 640); fetch missing or damaged copy fails; list/fetch need a remote; the command end to end; missing or hung rclone; rclone call; the 12 h timer |
+
 #### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `706349e`
 Fix at commit `b2942c5`.
 - **Finding (P1):** on a fresh instance step 3 restored into `/srv/gymrats/data` before anything created it. Step 2's

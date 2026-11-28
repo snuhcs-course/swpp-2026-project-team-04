@@ -2,6 +2,8 @@
 
 Owner: ishlove77 · 2026-11-28 · branch `feat/iter5-failover` · plan: P6 "GymRats P6 텔레메트리·서버 복구 계획"
 (shared doc, 2026-11-24 draft: RTO 30 min and RPO 24 h are drafts until P3 confirms them)
+Update 2026-11-28: the PM confirmed RTO 30 min and RPO 24 h for beta; the health check and the backup off the
+server are in `server-health-backup.md`.
 
 The task: from the P6 plan, restart the API and battle processes, rehearse a backup restoration and a manual
 failover in a separate environment, and record the detection and recovery times, the time of the restored data,
@@ -101,12 +103,17 @@ instance from it, attaching the static IP, and the app reaching the new machine.
 
 Procedure for the admin (P6, unchanged), with what this rehearsal adds:
 1. Announce the switch in the team chat.
-2. Create an instance from the latest snapshot (or a fresh instance set up as below; code and DB come in step 3).
-   On a snapshot both services start at boot (`gymrats-battle` is enabled by `install-battle.sh` and pulls in
-   `gymrats-api`), so as soon as it is up run `sudo systemctl stop gymrats-battle gymrats-api` and check both are
-   inactive; after any reboot before step 4, stop them again. Otherwise the battle server's one-time start-up
-   recovery runs against the snapshot's database, and a newer backup restored after it brings back `active` battles
-   that are never voided; the API's open connections would also overlap the restore.
+2. Create an instance from the latest snapshot (or a fresh instance set up as below; code and DB come in step 3). On
+   a snapshot both services start at boot (`gymrats-battle` is enabled by `install-battle.sh` and pulls in
+   `gymrats-api`), so as soon as it is up run `sudo systemctl stop gymrats-health.timer gymrats-backup.timer
+   gymrats-backup.service gymrats-battle gymrats-api` and check all five are inactive (the backup service too: a run
+   the timer already started at boot keeps going when only the timer stops; stopping it sends one expected "DB backup
+   … FAILED: Terminated" alert). Once installed, the health check would restart a service stopped for the restore,
+   and the backup timer, which catches up a missed run at boot, would upload the snapshot's old data under a new time
+   and make it look like the newest copy (see `server-health-backup.md`); after any reboot before step 4, stop them
+   again. Otherwise the battle server's one-time start-up recovery runs against the snapshot's database, and a newer
+   backup restored after it brings back `active` battles that are never voided; the API's open connections would also
+   overlap the restore.
    **A fresh instance first needs what the snapshot would bring:** nginx and `python3-venv` installed; the `gymrats`
    group and the `jinyoung` and `sangwoo` users the units run as, both members of `gymrats`; `/srv/gymrats` with the
    group, and `/srv/gymrats/data` for the database (`sudo install -d -o jinyoung -g gymrats -m 2775
@@ -133,7 +140,8 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
    systemd loads only for the unit: `cd /srv/gymrats/backend && sudo -u jinyoung bash -c 'set -a; . /srv/gymrats/.env;
    set +a; .venv/bin/python manage.py migrate && .venv/bin/python manage.py migrate --check'` (the secrets stay in
    that shell; Django stops without `DJANGO_SECRET_KEY` and `JWT_SECRET`).
-4. Start `gymrats-api` and check its `/health` **before** starting the battle server. Then the battle server: on a
+4. Start `gymrats-api` and check its `/health` **before** starting the battle server (start `gymrats-health.timer`
+   and `gymrats-backup.timer` again only when both are up). Then the battle server: on a
    fresh instance always, and on a snapshot whose battle release is behind, deploy the production commit with
    `server/deploy/install-battle.sh` (run from an upload directory holding that commit's `source.tar`, as the script
    says), which starts it; otherwise `sudo systemctl start gymrats-battle`. Then `sudo nginx -t && sudo systemctl
