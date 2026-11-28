@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 import urllib.request
 from pathlib import Path
 
@@ -98,21 +99,25 @@ def restart(unit):
 
 
 def check_once(services, state_path, webhook, *, probe=healthy, restart_unit=restart,
-               send=notify, host="team server", log=log):
+               send=notify, host="team server", log=log, deadline=TIMEOUT_S):
     """Checks every service once (in parallel) and acts on 3 failures in a row.
 
-    Returns the new failure counts.
+    `deadline` bounds the whole check: the socket timeout in `healthy` applies to each
+    read, so an answer that trickles in could take longer. A probe still running at the
+    deadline counts as failed, and a late answer is ignored. Returns the new counts.
     """
-    results = {name: False for name in services}
+    answers = {}
 
     def run(name, url):
-        results[name] = probe(url)
+        answers[name] = probe(url)
 
-    threads = [threading.Thread(target=run, args=item) for item in services.items()]
+    threads = [threading.Thread(target=run, args=item, daemon=True) for item in services.items()]
     for thread in threads:
         thread.start()
+    end = time.monotonic() + deadline
     for thread in threads:
-        thread.join()
+        thread.join(max(0.0, end - time.monotonic()))
+    results = {name: answers.get(name) is True for name in services}  # read once, at the deadline
 
     state = load_state(state_path)
     counts = {name: (0 if results[name] else state.get(name, 0) + 1) for name in services}

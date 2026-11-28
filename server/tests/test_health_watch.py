@@ -171,6 +171,23 @@ def test_a_frozen_service_is_restarted_on_the_third_check(api, tmp_path):
         assert rec.restarted == ([] if check < 3 else ["gymrats-api"])
 
 
+def test_a_check_past_the_deadline_counts_as_failed(tmp_path):
+    """The socket timeout is per read, so the whole check has its own deadline."""
+    rec, state = Recorder(), tmp_path / "state.json"
+
+    def trickles(url):
+        time.sleep(1.0)  # still answering after the deadline
+        return True
+
+    started = time.monotonic()
+    counts = health_watch.check_once({"gymrats-api": "x", "gymrats-battle": "y"}, state, "",
+                                     probe=lambda u: trickles(u) if u == "x" else True,
+                                     restart_unit=rec.restart, send=rec.send,
+                                     log=rec.lines.append, deadline=0.2)
+    assert time.monotonic() - started < 0.8
+    assert counts == {"gymrats-api": 1, "gymrats-battle": 0}
+
+
 def test_a_broken_state_file_counts_from_zero(api, tmp_path):
     rec, state = Recorder(), tmp_path / "state.json"
     state.write_text("not json")
