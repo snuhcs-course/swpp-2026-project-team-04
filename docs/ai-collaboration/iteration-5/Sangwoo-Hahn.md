@@ -26,3 +26,6 @@ Codex traced the server-managed match and updated the protocol handoff in #103 a
 
 ### 2026-11-27 · P10 protocol merge check
 Codex reconciled the protocol with merged P10. The real client supplies its avatar ID, while the battle server selects the simulated player's character.
+
+### 2026-11-28 · P11 weekly rankings follow-up
+Codex implemented the three PM follow-ups from #108. An independent read-only Codex reviewer checked the four implementation and test files against `375a9b7`, verified migration reversibility and returned APPROVE with no findings. No human code edits were reported.

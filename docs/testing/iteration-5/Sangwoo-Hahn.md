@@ -27,3 +27,6 @@ Compared the revised queue and result contract against #102 at `71fcdc3`, includ
 
 ### 2026-11-27 · P10 protocol merge check
 Checked the protocol against the P10 merge commit `5d7bc6e`. Parsed the simulated result example, checked its fields against OnlinePlayerSerializer and compared the queue/setup timers, avatar selection and fallback name with the battle server. All checks passed.
+
+### 2026-11-28 · P11 weekly rankings follow-up
+The Flutter design-token and app-routing suites passed (118 tests). The new route test opened weekly rankings through the online exercise sheet, observed a global push-up request on the injected repository, and returned to the sheet with system back. The Django suite passed (367 tests), and `makemigrations --check --dry-run` found no model drift. On an in-memory SQLite database with 4,000 match rows, the global weekly ranking query used `match_played_at_idx` for the date range and returned the same five ranked rows before and after migration. An independent reviewer also applied, reversed and reapplied the migration with an existing match.
