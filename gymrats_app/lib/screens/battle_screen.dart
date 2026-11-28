@@ -148,6 +148,11 @@ class _BattleScreenState extends State<BattleScreen>
         characterId: widget.myCharacter,
       );
     }
+    // The report remembers whose battle it was (A10).
+    _viewModel.accountId ??= Provider.of<AuthViewModel?>(
+      context,
+      listen: false,
+    )?.account?.id;
     _shown = _viewModel.state;
     _viewModel.addListener(_onViewModelChanged);
     WidgetsBinding.instance.addObserver(this);

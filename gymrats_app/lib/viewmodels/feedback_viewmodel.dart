@@ -270,12 +270,12 @@ class FeedbackViewModel extends ChangeNotifier {
                 report,
                 analyzer,
                 weightKg: await weight,
-                kept: await keeping,
+                kept: _ownOf(report, await keeping),
               ),
       );
     } on Exception catch (e) {
       final kept = await keeping;
-      final copy = _phoneCopy(kept);
+      final copy = _phoneCopy(kept.all);
       _setState(
         copy != null
             ? _ready(
@@ -283,7 +283,7 @@ class FeedbackViewModel extends ChangeNotifier {
                 analyzer,
                 fromPhone: true,
                 weightKg: await weight,
-                kept: kept,
+                kept: _ownOf(copy, kept),
               )
             : FeedbackState(
                 phase: FeedbackPhase.failed,
@@ -307,7 +307,7 @@ class FeedbackViewModel extends ChangeNotifier {
     }
     _compared = true;
     final reading = _readWeight();
-    final kept = await _kept(report.exercise);
+    final kept = _ownOf(report, await _kept(report.exercise));
     final weight = await reading;
     if (kept.isEmpty && weight == weightKg) return;
     _setState(
@@ -334,31 +334,42 @@ class FeedbackViewModel extends ChangeNotifier {
     }
   }
 
-  /// The battles kept on this phone that are the signed-in account's; none
-  /// when there is no store or it cannot be read.
+  /// Every battle kept on this phone (none when there is no store or it
+  /// cannot be read), with when the account's own [exercise] battles on
+  /// the server ended (null when that cannot be read in [accountWait]).
+  Future<_Kept> _kept(ExerciseType exercise) async {
+    final store = _phoneReports;
+    if (store == null) return (all: const <FormReport>[], mine: null);
+    final reading = _accountBattles(exercise);
+    List<FormReport> all;
+    try {
+      all = await store.list();
+    } on Exception {
+      all = const [];
+    }
+    return (all: all, mine: await reading);
+  }
+
+  /// The kept battles that are [shown]'s account's.
   ///
   /// The phone keeps every account's reports in one place, so a phone
   /// shared by testers would compare one account with another's battles
-  /// (phone check, 2026-11-26). A kept report counts only when the
-  /// account's own [exercise] battles on the server ([FeedbackStatsSource])
-  /// have one that ended at the same moment. Without that list (no source,
-  /// offline, or past [accountWait]) every kept report counts, as before:
-  /// a phone shared offline still mixes accounts.
-  Future<List<FormReport>> _kept(ExerciseType exercise) async {
-    final store = _phoneReports;
-    if (store == null) return const [];
-    final reading = _accountBattles(exercise);
-    List<FormReport> kept;
-    try {
-      kept = await store.list();
-    } on Exception {
-      return const [];
-    }
-    final mine = await reading;
-    if (mine == null) return kept;
+  /// (phone check, 2026-11-26). A10 (PM, 2026-11-27):
+  /// - a report that knows its account counts only for the same account as
+  ///   [shown], offline or not;
+  /// - a report without one (saved before A10), or any report when [shown]
+  ///   has none, counts only when the account's server battles have one
+  ///   that ended at the same moment; without that list it does not count.
+  /// With nothing left the report says 비교 기록 없음.
+  static List<FormReport> _ownOf(FormReport shown, _Kept kept) {
+    final owner = shown.accountId;
+    final mine = kept.mine;
     return [
-      for (final r in kept)
-        if (mine.contains(r.endedAt.millisecondsSinceEpoch)) r,
+      for (final r in kept.all)
+        if (owner != null && r.accountId != null
+            ? r.accountId == owner
+            : mine?.contains(r.endedAt.millisecondsSinceEpoch) ?? false)
+          r,
     ];
   }
 
@@ -401,3 +412,7 @@ class FeedbackViewModel extends ChangeNotifier {
     super.dispose();
   }
 }
+
+/// The phone's kept battles and when the account's own ended on the
+/// server (null when unknown).
+typedef _Kept = ({List<FormReport> all, Set<int>? mine});

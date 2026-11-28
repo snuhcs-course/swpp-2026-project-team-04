@@ -27,4 +27,18 @@ void main() {
     final json = squatReport().toJson()..['exercise'] = 'lunge';
     expect(FormReport.fromJson(json).exercise, ExerciseType.pushUp);
   });
+
+  test('the account that played keeps through JSON; a report saved before '
+      'it was kept, or with a value it does not know, has none (A10)', () {
+    final json = sampleReport(accountId: 7).toJson();
+    expect(json['accountId'], 7);
+    expect(FormReport.fromJson(json).accountId, 7);
+    expect(sampleReport().toJson().containsKey('accountId'), isFalse);
+    expect(FormReport.fromJson(sampleReport().toJson()).accountId, isNull);
+    expect(
+      FormReport.fromJson(sampleReport().toJson()..['accountId'] = 'seven')
+          .accountId,
+      isNull,
+    );
+  });
 }

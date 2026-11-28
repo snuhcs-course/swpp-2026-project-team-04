@@ -355,21 +355,29 @@ void main() {
 
   group('the post-game report numbers (P14)', () {
     /// Earlier battles kept on the phone, [minutes] before the shown one.
-    Future<void> keep(List<(int, int)> validAtMinutesBefore) async {
+    Future<void> keep(
+      List<(int, int)> validAtMinutesBefore, {
+      int? account,
+    }) async {
       for (final (valid, minutes) in validAtMinutesBefore) {
         await phone.save(
           sampleReport(
             valid: valid,
             endedAt: _endedAt.subtract(Duration(minutes: minutes)),
+            accountId: account,
           ),
         );
       }
     }
 
+    /// The shown battle, played by account 7.
+    FormReport mine({int valid = 6}) =>
+        sampleReport(valid: valid, endedAt: _endedAt, accountId: 7);
+
     test('a loaded report comes with its metrics and, with earlier battles '
-        'on the phone, the comparison', () async {
-      await keep([(2, 30), (4, 20)]);
-      repository.reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+        'of its account on the phone, the comparison', () async {
+      await keep([(2, 30), (4, 20)], account: 7);
+      repository.reports = {7: mine()};
       final model = vm(_match());
       await model.load();
       final state = model.state;
@@ -413,12 +421,13 @@ void main() {
     });
 
     test('an account list that takes over two seconds is not waited for: '
-        'every kept battle is compared, as offline', () {
+        "the account's own kept battles are compared, those of no known "
+        'account are not (A10)', () {
       fakeAsync((async) {
-        keep([(2, 30), (4, 20)]);
+        keep([(2, 30)]);
+        keep([(4, 20)], account: 7);
         async.flushMicrotasks();
-        final account = FakeStatsUserRepository()
-          ..reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
+        final account = FakeStatsUserRepository()..reports = {7: mine()};
         account.stats
           ..points = [statsPoint(7, _endedAt)]
           ..gate = Completer<void>();
@@ -434,7 +443,7 @@ void main() {
         expect(model.state.phase, FeedbackPhase.loading);
         async.elapse(const Duration(milliseconds: 2));
         expect(model.state.phase, FeedbackPhase.ready);
-        expect(model.state.history.trend.map((p) => p.validReps), [2, 4, 6]);
+        expect(model.state.history.trend.map((p) => p.validReps), [4, 6]);
       });
     });
 
@@ -455,9 +464,46 @@ void main() {
       expect(model.state.history.trend.map((p) => p.validReps), [2, 6]);
     });
 
-    test("when the account's battles cannot be read, every kept battle is "
-        'compared, as offline', () async {
-      await keep([(2, 30), (4, 20)]);
+    test("after another account played on this phone, offline: only this "
+        "account's kept battles are compared; one saved before accounts "
+        'is not, as its owner is unknown (A10)', () async {
+      await keep([(2, 30)]);
+      await keep([(9, 25)], account: 8);
+      await keep([(4, 20)], account: 7);
+      final account = FakeStatsUserRepository()..reports = {7: mine()};
+      account.stats.error = Exception('offline');
+      final model = FeedbackViewModel(
+        match: _match(),
+        repository: account,
+        phoneReports: phone,
+      );
+      await model.load();
+      expect(model.state.history.trend.map((p) => p.validReps), [4, 6]);
+    });
+
+    test('a battle saved before accounts counts once the server shows it '
+        "was this account's (A10)", () async {
+      await keep([(2, 30), (3, 25)]);
+      await keep([(9, 22)], account: 8);
+      final account = FakeStatsUserRepository()..reports = {7: mine()};
+      account.stats.points = [
+        statsPoint(1, _endedAt.subtract(const Duration(minutes: 30))),
+        statsPoint(7, _endedAt),
+      ];
+      final model = FeedbackViewModel(
+        match: _match(),
+        repository: account,
+        phoneReports: phone,
+      );
+      await model.load();
+      expect(model.state.history.trend.map((p) => p.validReps), [2, 6]);
+    });
+
+    test('a shown report saved before accounts is compared only with '
+        "battles the server shows as this account's; none when it cannot "
+        'tell, so the report says 비교 기록 없음 (A10)', () async {
+      await keep([(2, 30)]);
+      await keep([(4, 20)], account: 7);
       final account = FakeStatsUserRepository()
         ..reports = {7: sampleReport(valid: 6, endedAt: _endedAt)};
       account.stats.error = Exception('offline');
@@ -467,7 +513,17 @@ void main() {
         phoneReports: phone,
       );
       await model.load();
-      expect(model.state.history.trend.map((p) => p.validReps), [2, 4, 6]);
+      expect(model.state.history.hasHistory, isFalse);
+      expect(model.state.history.trend.map((p) => p.validReps), [6]);
+    });
+
+    test('with no other battle of its account the report has nothing to '
+        'compare (A10)', () async {
+      await keep([(9, 20)], account: 8);
+      repository.reports = {7: mine()};
+      final model = vm(_match());
+      await model.load();
+      expect(model.state.history.hasHistory, isFalse);
     });
 
     test('the given body weight is used for the estimates', () async {
@@ -486,8 +542,8 @@ void main() {
     test(
       'offline, the phone copy is compared with the other kept battles',
       () async {
-        await keep([(1, 10)]);
-        final copy = sampleReport(valid: 3, endedAt: _endedAt);
+        await keep([(1, 10)], account: 7);
+        final copy = mine(valid: 3);
         await phone.save(copy);
         repository.feedbackError = const ApiException(ApiErrorKind.network);
         final model = vm(_match());
@@ -497,6 +553,32 @@ void main() {
         expect(model.state.history.meanValidReps, 1);
       },
     );
+
+    test("offline on a shared phone, the phone copy is compared only with "
+        "its own account's kept battles, not another account's nor one "
+        'saved before accounts (A10)', () async {
+      await keep([(2, 30)]);
+      await keep([(9, 25)], account: 8);
+      await keep([(4, 20)], account: 7);
+      await phone.save(mine(valid: 3));
+      repository.feedbackError = const ApiException(ApiErrorKind.network);
+      final model = vm(_match());
+      await model.load();
+      expect(model.state.fromPhone, isTrue);
+      expect(model.state.history.trend.map((p) => p.validReps), [4, 3]);
+    });
+
+    test('offline, a phone copy saved before accounts has nothing it can '
+        'tell is its own: 비교 기록 없음 (A10)', () async {
+      await keep([(2, 30)]);
+      await keep([(4, 20)], account: 7);
+      await phone.save(sampleReport(valid: 3, endedAt: _endedAt));
+      repository.feedbackError = const ApiException(ApiErrorKind.network);
+      final model = vm(_match());
+      await model.load();
+      expect(model.state.fromPhone, isTrue);
+      expect(model.state.history.hasHistory, isFalse);
+    });
 
     test(
       'an unreadable phone store leaves the report without comparison',
@@ -512,11 +594,8 @@ void main() {
 
     test('a report in hand has its metrics at once; load reads the kept '
         'battles once for the comparison', () async {
-      await keep([(4, 5)]);
-      final model = FeedbackViewModel.fromReport(
-        sampleReport(valid: 6, endedAt: _endedAt),
-        phoneReports: phone,
-      );
+      await keep([(4, 5)], account: 7);
+      final model = FeedbackViewModel.fromReport(mine(), phoneReports: phone);
       expect(model.state.metrics!.validReps, 6);
       expect(model.state.history.hasHistory, isFalse);
       var notified = 0;

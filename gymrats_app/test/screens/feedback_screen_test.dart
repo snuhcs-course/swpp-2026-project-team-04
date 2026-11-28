@@ -293,15 +293,21 @@ void main() {
     testWidgets("opened with only a report, it reads the kept battles from the "
         "app's store for the comparison", (tester) async {
       phone(tester, height: 4000);
+      // Both played by account 7: since A10 a report is compared only with
+      // its own account's battles.
+      FormReport mine(FormReport r) =>
+          FormReport.fromJson(r.toJson()..['accountId'] = 7);
       final store = InMemoryFormReportStore();
       for (final r in earlier([4])) {
-        await store.save(r);
+        await store.save(mine(r));
       }
       await tester.pumpWidget(
         Provider<FormReportStore>.value(
           value: store,
           child: app(
-            FeedbackScreen(report: feedbackReport(depths: List.filled(6, 1.2))),
+            FeedbackScreen(
+              report: mine(feedbackReport(depths: List.filled(6, 1.2))),
+            ),
           ),
         ),
       );
