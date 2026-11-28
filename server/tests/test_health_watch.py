@@ -188,6 +188,20 @@ def test_a_check_past_the_deadline_counts_as_failed(tmp_path):
     assert counts == {"gymrats-api": 1, "gymrats-battle": 0}
 
 
+def test_every_due_restart_is_requested_before_any_alert(api, battle, tmp_path):
+    """A slow webhook must not hold up the second restart."""
+    events = []
+    state = tmp_path / "state.json"
+    api.status = battle.status = 500
+    services = {"gymrats-api": api.url, "gymrats-battle": battle.url}
+    for _ in range(3):
+        health_watch.check_once(services, state, "", restart_unit=lambda u: events.append(("restart", u)) or True,
+                                send=lambda w, t: events.append(("alert", t.split()[1])) or True,
+                                log=lambda m: None)
+    assert events == [("restart", "gymrats-api"), ("restart", "gymrats-battle"),
+                      ("alert", "gymrats-api"), ("alert", "gymrats-battle")]
+
+
 def test_a_broken_state_file_counts_from_zero(api, tmp_path):
     rec, state = Recorder(), tmp_path / "state.json"
     state.write_text("not json")
