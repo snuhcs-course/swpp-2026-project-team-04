@@ -89,7 +89,34 @@ class Wire {
   Future<void> close() => socket.close();
 }
 
+class _FailedWriteSocket extends Fake implements WebSocket {
+  _FailedWriteSocket(this.error);
+
+  final Object error;
+  int writes = 0;
+
+  @override
+  int get readyState => WebSocket.open;
+
+  @override
+  void add(dynamic data) {
+    writes++;
+    throw error;
+  }
+}
+
 void main() {
+  test('a failed socket write drops only that frame without retrying', () {
+    for (final error in [
+      StateError('StreamSink is closed'),
+      const SocketException('Connection closed'),
+    ]) {
+      final socket = _FailedWriteSocket(error);
+      sendBattleFrame(socket, {'type': 'session.pong'});
+      expect(socket.writes, 1);
+    }
+  });
+
   test('production battle server defaults to thirty seconds', () async {
     final s = BattleServer(authenticate: (_) => null);
     expect(s.durationMs, 30000);
@@ -139,8 +166,12 @@ void main() {
     },
   );
 
-  Future<(Wire, Wire)> paired(BattleServer s) async {
-    final a = await Wire.open(s, 'alpha'), b = await Wire.open(s, 'beta');
+  Future<(Wire, Wire)> paired(
+    BattleServer s, {
+    String first = 'alpha',
+    String second = 'beta',
+  }) async {
+    final a = await Wire.open(s, first), b = await Wire.open(s, second);
     addTearDown(a.close);
     addTearDown(b.close);
     a.send('queue.join', {'exercise': 'push_up', 'avatar_id': 'avatar_02'});
@@ -968,6 +999,48 @@ void main() {
       );
       again.send('match.leave', {'reason': 'user_exit'});
       expect((await b.next('match.finished'))['payload']['winner_id'], 'b');
+    },
+  );
+  test(
+    'a disconnect in one match lets a second match score and finish',
+    () async {
+      final s = await server(duration: 1800);
+      final (a, b) = await paired(s);
+      final (c, d) = await paired(s, first: 'third', second: 'fourth');
+      expect(c.match, isNot(a.match));
+      await Future.wait([ready(a, b), ready(c, d)]);
+
+      await a.close();
+      final notice = await b.next('match.connection_state');
+      expect(notice['payload']['player_id'], 'a');
+      expect(notice['payload']['state'], 'disconnected');
+
+      c.send('rep.submit', {
+        'rep_seq': 1,
+        'elapsed_ms': 120,
+        'valid': true,
+        'reason': null,
+      });
+      expect((await c.next('rep.accepted'))['payload']['valid_reps'], 1);
+      expect((await d.next('rep.updated'))['payload']['player_id'], 'c');
+
+      final forfeited = await b.next('match.finished');
+      expect(forfeited['payload']['reason'], 'disconnect_timeout');
+      for (final peer in [c, d]) {
+        final result = await peer.next('match.finished');
+        expect(result['match_id'], c.match);
+        expect(result['payload']['reason'], 'time_up');
+        expect(result['payload']['winner_id'], 'c');
+        expect(
+          result['payload']['players'],
+          contains(
+            allOf(
+              containsPair('player_id', 'c'),
+              containsPair('valid_reps', 1),
+            ),
+          ),
+        );
+      }
     },
   );
   test(

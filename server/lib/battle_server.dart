@@ -33,6 +33,22 @@ class BattleIdentity {
 
 typedef BattleAuthenticator = FutureOr<BattleIdentity?> Function(String token);
 
+/// Writes one frame if the peer is still connected. The socket listener owns
+/// disconnect and reconnect handling, including when a write loses the race.
+void sendBattleFrame(WebSocket? socket, Map<String, dynamic> message) {
+  if (socket == null || socket.readyState != WebSocket.open) return;
+  final frame = jsonEncode(message);
+  try {
+    socket.add(frame);
+  } on StateError {
+    // The outgoing sink can be closed before readyState reflects the close.
+    return;
+  } on IOException {
+    // The transport lost the peer before the frame could be written.
+    return;
+  }
+}
+
 class _Player {
   _Player(this.identity);
   final BattleIdentity identity;
@@ -336,19 +352,14 @@ class BattleServer {
     if (matchId ?? p.match?.id case final id?) 'match_id': id,
     'payload': payload,
   };
-  void _raw(_Player p, Map<String, dynamic> message) {
-    if (p.socket?.readyState == WebSocket.open)
-      p.socket!.add(jsonEncode(message));
-  }
-
   void _send(
     _Player p,
     String type,
     Map<String, dynamic> payload, {
     String? requestId,
     String? matchId,
-  }) => _raw(
-    p,
+  }) => sendBattleFrame(
+    p.socket,
     _envelope(p, type, payload, requestId: requestId, matchId: matchId),
   );
   void _broadcast(_Match m, String type, Map<String, dynamic> payload) {
@@ -394,14 +405,14 @@ class BattleServer {
       final signature = _signature(message);
       if (player.requests[requestId] case final old?) {
         if (old.signature != signature) invalid('REQUEST_ID_REUSED');
-        _raw(player, old.response);
+        sendBattleFrame(socket, old.response);
         return;
       }
       final response = _command(player, type, payload, message, requestId);
       if (type != 'session.ping' && type != 'clock.sync') {
         player.requests[requestId] = (signature: signature, response: response);
       }
-      _raw(player, response);
+      sendBattleFrame(socket, response);
     } on BattleProtocolError catch (error) {
       _send(player, 'error', {
         'code': error.code,
