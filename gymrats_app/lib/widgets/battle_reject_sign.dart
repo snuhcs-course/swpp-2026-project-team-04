@@ -303,6 +303,7 @@ class BattleRejectSignView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
     final icon = sign.reason.signIcon;
+    final kneeCue = sign.reason == RejectReason.kneesDown;
     return Semantics(
       container: true,
       label: sign.reason.koreanMessage,
@@ -354,17 +355,20 @@ class BattleRejectSignView extends StatelessWidget {
                     child: OverflowBox(
                       fit: OverflowBoxFit.deferToChild,
                       minWidth: 0,
-                      maxWidth: sign.reason == RejectReason.kneesDown
+                      maxWidth: kneeCue
                           ? BattleFx.stageWidth - 48
                           : double.infinity,
                       child: BattleBand(
-                        text: sign.text,
+                        // Keep each Korean word together on the distance-readable sign.
+                        text: kneeCue
+                            ? sign.text.replaceAll(' ', '\n')
+                            : sign.text,
                         style: theme.stageSignLabel,
                         color: sign.tone.color,
                         sidePadding: _labelSidePadding,
                         topPadding: _labelTopPadding,
                         edge: labelEdge,
-                        wrap: sign.reason == RejectReason.kneesDown,
+                        wrap: kneeCue,
                       ),
                     ),
                   ),

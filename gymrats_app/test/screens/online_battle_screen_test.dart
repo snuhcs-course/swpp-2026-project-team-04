@@ -206,8 +206,8 @@ void main() {
     await pose(tester);
     for (final ms in [150, 200, 200]) {
       await wait(tester, ms);
-      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
-      final label = tester.getRect(find.text('무릎을 바닥에서 떼요'));
+      expect(find.text('무릎을\n바닥에서\n떼요'), findsOneWidget);
+      final label = tester.getRect(find.text('무릎을\n바닥에서\n떼요'));
       final screen = tester.getRect(find.byType(BattleArena));
       expect(label.left, greaterThanOrEqualTo(screen.left));
       expect(label.right, lessThanOrEqualTo(screen.right));

@@ -67,7 +67,7 @@ void main() {
         (TutorialStep.excellent, 'EXCELLENT'),
         (TutorialStep.good, 'GOOD'),
         (TutorialStep.average, 'AVERAGE'),
-        (TutorialStep.fail, '무릎을 바닥에서 떼요'),
+        (TutorialStep.fail, '무릎을\n바닥에서\n떼요'),
       ]) {
         final index = pages.indexWhere(
           (page) => page.exercise == ExerciseType.pushUp && page.step == step,

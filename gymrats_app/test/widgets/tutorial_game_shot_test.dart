@@ -185,7 +185,7 @@ void main() {
         find.byType(BattleRejectSignView),
       );
       expect(sign.sign.reason, RejectReason.kneesDown);
-      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
+      expect(find.text('무릎을\n바닥에서\n떼요'), findsOneWidget);
       expect(find.text('GOOD'), findsNothing);
       expect(camera(tester).frame, BattleFxCameraFrame.rejected);
       expect(

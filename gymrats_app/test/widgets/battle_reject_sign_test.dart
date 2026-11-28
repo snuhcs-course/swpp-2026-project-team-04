@@ -165,7 +165,7 @@ void main() {
       tester,
     ) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown));
-      expect(find.text('무릎을 바닥에서 떼요'), findsOneWidget);
+      expect(find.text('무릎을\n바닥에서\n떼요'), findsOneWidget);
       expect(
         tester.widget<BattleBand>(find.byType(BattleBand)).color,
         AppColors.danger,
@@ -305,12 +305,12 @@ void main() {
     ) async {
       await _pumpSign(tester, _sign(RejectReason.kneesDown));
       final band = tester.getSize(find.byType(BattleBand));
-      final label = tester.getSize(find.text('무릎을 바닥에서 떼요'));
-      final style = tester.widget<Text>(find.text('무릎을 바닥에서 떼요')).style!;
+      final label = tester.getSize(find.text('무릎을\n바닥에서\n떼요'));
+      final style = tester.widget<Text>(find.text('무릎을\n바닥에서\n떼요')).style!;
       expect(style.fontFamily, AppFonts.display);
       expect(style.fontSize, 66);
       // The full sentence wraps at its original size, including on a phone.
-      final bounds = tester.getRect(find.text('무릎을 바닥에서 떼요'));
+      final bounds = tester.getRect(find.text('무릎을\n바닥에서\n떼요'));
       expect(bounds.height, greaterThanOrEqualTo(2 * 66 * 1.12 - 1));
       expect(label.width, lessThanOrEqualTo(BattleFx.stageWidth - 48 - 44));
       expect(band.height, closeTo(label.height + 2 * 2, 0.01));
