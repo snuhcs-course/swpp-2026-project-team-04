@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:gymrats_app/models/battle_rules.dart';
 import 'package:gymrats_app/models/pose_frame.dart';
+import 'package:gymrats_app/models/rep_event.dart';
 import 'package:gymrats_app/models/setup_hint_short.dart';
 import 'package:gymrats_app/screens/online_battle_screen.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
@@ -82,6 +84,7 @@ void main() {
   late _Session session;
   late FakeCameraService camera;
   late FakePoseEstimator estimator;
+  late FakeRepJudge judge;
   late RepCounterViewModel counter;
   PoseFrame? streamPose;
 
@@ -118,10 +121,11 @@ void main() {
     closed = false;
     closedWith = null;
     final clockStart = tester.binding.clock.now();
+    judge = FakeRepJudge();
     counter = RepCounterViewModel(
       camera: camera,
       estimator: estimator,
-      judge: FakeRepJudge(),
+      judge: judge,
       phoneTilt: placedPhone(),
       enablePersonGuard: false,
       clock: () => tester.binding.clock.now().difference(clockStart),
@@ -186,6 +190,40 @@ void main() {
 
   SetupHintShort? cueOf(WidgetTester tester) =>
       tester.widget<BattleCameraArea>(find.byType(BattleCameraArea)).setupCue;
+
+  testWidgets(
+    'a knee push-up shows MISS +0 and the correction in the online arena',
+    (tester) async {
+      await open(tester);
+      session
+        ..rules = battleRules
+        ..phase = OnlinePhase.playing
+        ..startAtMs = session.serverNow
+        ..endAtMs = session.serverNow + 30000
+        ..notifyListeners();
+      await tester.pump();
+      judge.closeRep(reason: RejectReason.kneesDown);
+      await pose(tester);
+      for (final ms in [150, 200, 200]) {
+        await wait(tester, ms);
+        expect(find.text('무릎을\n바닥에서\n떼요'), findsOneWidget);
+        final label = tester.getRect(find.text('무릎을\n바닥에서\n떼요'));
+        final screen = tester.getRect(find.byType(BattleArena));
+        expect(label.left, greaterThanOrEqualTo(screen.left));
+        expect(label.right, lessThanOrEqualTo(screen.right));
+        expect(label.bottom, lessThanOrEqualTo(screen.bottom));
+        expect(find.text('AVERAGE'), findsNothing);
+        expect(find.text('MISS +0'), findsOneWidget);
+        final banner = tester.getRect(find.text('MISS +0'));
+        expect(screen.contains(banner.topLeft), isTrue);
+        expect(screen.contains(banner.bottomRight), isTrue);
+      }
+      final arena = tester.widget<BattleArena>(find.byType(BattleArena));
+      expect(arena.state.myScore, 0);
+      expect(arena.state.myReps, 0);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   group('the setup time (P12)', () {
     testWidgets(

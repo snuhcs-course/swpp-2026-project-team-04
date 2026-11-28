@@ -32,3 +32,12 @@ Codex implemented the three PM follow-ups from #108. An independent read-only Co
 
 ### 2026-11-28 · P20 battle socket follow-up
 Codex implemented the shared WebSocket send guard and two regression tests for the P20 follow-up. The first test run exposed an incorrect assertion on the final result payload. Codex corrected it to check players and reran the three affected suites. An independent read-only Codex reviewer checked the two changed code and test files against 5e607fb and returned APPROVE with no findings. No human code edits were reported.
+
+### 2026-11-28 · P18 pose evaluation
+Codex implemented the landmark replay, applied the published battle scoring rules and compared the results against existing human labels. The report distinguishes measured verdicts and points from the reference score ranges and records the model/data limitations. The team’s recordings and confirmed labels supplied the reference. No new human code edits were reported.
+
+### 2026-11-28 · A1 follow-up · knee feedback in battle
+
+Codex traced the zero-point Average to the shared grader and verified the correction through the online battle screen, server integration and recorded pose replays. The PM specified the exact Korean cue and unlocked the Android test device. Independent Codex review caught stale demo expectations, readability at distance and an order-dependent assertion in the two-client test. Codex applied the fixes. No manual code edits were reported.
+
+The PM clarified the final screen copy to show MISS and +0 alongside the knee correction. Codex revised the player banner, screen regression and motion expectations.

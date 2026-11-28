@@ -55,15 +55,12 @@ void main() {
 
     test('a completed knee push-up earns zero even in fever', () {
       final rep = gameRep(3, reason: RejectReason.kneesDown, minElbowAngle: 90);
-      expect(grade(rep), GameGrade.average);
+      expect(grade(rep), isNull);
       final player = PlayerGameScore();
       player.addValid(GameGrade.good, const Duration(seconds: 20));
-      expect(
-        player
-            .addRep(grade(rep), const Duration(seconds: 21), kneePushup: true)!
-            .points,
-        0,
-      );
+      final before = player.points;
+      expect(player.addRep(grade(rep), const Duration(seconds: 21)), isNull);
+      expect(player.points, before);
       expect(player.combo, 0);
       expect(player.validReps, 1);
     });
@@ -119,7 +116,7 @@ void main() {
       ], passDepth: 1.1);
       expect(counts.excellent, 2);
       expect(counts.good, 3);
-      expect(counts.average, 2);
+      expect(counts.average, 1);
     });
 
     test('goes by the pass depth and the rules it is given', () {

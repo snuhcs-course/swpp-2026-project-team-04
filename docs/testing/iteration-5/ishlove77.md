@@ -5,6 +5,76 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `706349e`
+Fix at commit `b2942c5`.
+- **Finding (P1):** on a fresh instance step 3 restored into `/srv/gymrats/data` before anything created it. Step 2's
+  fresh setup now creates it (`jinyoung:gymrats`, 2775) before any restore, and step 3 says the backup on a fresh
+  instance must come from a copy off the lost machine (none exists yet, finding 3). Reviewer subagent: APPROVE
+  (2 Minor applied). Documentation only; no code or test change.
+- **Results:** unchanged (server `pytest` 372 passed, 98%).
+
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `a724bf4`
+Fix at commit `a05099e`.
+- **Finding (P1):** the `migrate` command added in the previous round had no working directory and no environment,
+  so Django would stop on the missing secrets. Step 3 now runs it as `jinyoung` from `/srv/gymrats/backend` with
+  `/srv/gymrats/.env` loaded in that shell only, after the write check; it also checks `DATABASE_URL` (without it
+  Django falls back to an empty database) and that the service users are in `gymrats`. Reviewer subagent: APPROVE
+  (3 Minor applied). Documentation only; no code or test change.
+- **Results:** unchanged (server `pytest` 372 passed, 98%).
+
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `17dbf12`
+Fix at commit `ed5f1be`.
+- **Finding (P1):** a restored database not writable by the API user (`jinyoung`) would pass `/health`, which does
+  not touch the database, and fail later on writes. The procedure (5, steps 3–4) now gives the owner and modes read
+  from production (`/srv/gymrats/data` 2775, `gymrats.db` 644, both `jinyoung:gymrats`), checks them with
+  `sudo -u jinyoung test -w`, runs `migrate` as `jinyoung`, and logs in and reads history on the machine before the
+  IP moves. Reviewer subagent: APPROVE (2 Minor applied). Documentation only; no code or test change.
+- **Results:** unchanged (server `pytest` 372 passed, 98%).
+
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fixes for the Codex review of `fab012b`
+Fix at commit `25139d3`.
+- **Findings (P1 ×2):** (1) a replacement from a snapshot older than the last deploy kept the old code, so `migrate`
+  saw only the old migrations; (2) a fresh replacement had no IP certificate, so HTTPS and WSS could not work. The
+  procedure (`docs/iteration-5/server-failover.md` 5, steps 2–5, finding 6) now brings the API and battle server to
+  the production release before `migrate` and start, lists the base setup of a fresh instance, checks ports 80 and
+  443, and issues (fresh) or renews (snapshot; the certificates last about 6 days) the certificate after the IP is
+  attached. The reviewer subagent first asked for the fresh-instance nginx setup and the snapshot certificate
+  renewal, then approved. Documentation only; no code or test change.
+- **Results:** unchanged (server `pytest` 372 passed, 98%).
+
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `e4b3411`
+Fix at commit `f00735e` (line wrap in the next commit).
+- **Finding (P1):** the failover procedure restored the backup on a replacement booted from a snapshot without
+  stopping the services first; both start at boot, so the battle server's one-time recovery would run against the
+  snapshot's database and a newer backup could bring back `active` battles that are never voided. The procedure
+  (`docs/iteration-5/server-failover.md` 5, steps 2–3, and finding 5) now stops both services right after boot and
+  restores only with them stopped, and stops them again after any reboot before the start. Documentation only; no code or test change.
+- **Results:** unchanged from the entry below (server `pytest` 372 passed, 98%).
+
+#### 2026-11-28 · step P21 `feat/iter5-failover` (team plan #15): restart, backup restore and failover rehearsal
+Code at commits `63b5dde` (tests) and `0d2266a` (rehearsal record, `docs/iteration-5/server-failover.md`). Server only;
+no app change. Commands from `server/` on macOS (Python 3.12).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total (1055 statements, 20 missed) | 11/28 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** server `pytest` 372 passed, 0 failed (5 new in `tests/test_failover.py`, `transaction=True` so SQLite's
+  backup API sees committed rows). No app change, so `flutter test` was not rerun.
+- **Check that the tests depend on the restore:** with `restore()` turned into a no-op, 4 of the 5 tests fail (the
+  integrity test does not restore).
+- **Rehearsal (not automated; details in `docs/iteration-5/server-failover.md`):** production API restart healthy
+  again through nginx in 0.77 s and battle server in 0.17 s (5 min target); a frozen API in a separate environment detected and
+  restarted in 2 min 20 s (3 min target; worst case about 3 min 16 s with a 65 s check period); backup restore with
+  `migrate` to both services healthy in 2.15 s, restored data time 05:29:15 UTC; history, sign-up and login,
+  matching, result saving and the void of a battle cut by a crash checked on it. Static IP failover not run (Lightsail
+  console is admin-only).
+- **Shortfalls:** none in coverage. The 30 min failover target is not verified (above).
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_failover.py` | Server | a backup of the live database passes the integrity check; a restore brings back the backup and drops what came after; after a restore an existing account logs in with its old password and reads its history; a new account signs up and a result is saved; a battle running at the backup comes back active and the restart voids it with no history rows |
+
 #### 2026-11-28 · step P20 `feat/iter5-matching-load` (PR #111): fixes for the Codex review of `bd2e5f3`
 Code at commit `d691e47`.
 - **Findings:** (1) the test server's skill table had no records for the bots, so every bot used the average estimate

@@ -296,48 +296,57 @@ class _ExerciseTabs extends StatelessWidget {
             // reader hears.
             ExcludeSemantics(
               child: Center(
+                // The ink edge over the halves, which are clipped inside it,
+                // as the rankings' tabs: a clip of the bordered pill alone
+                // let the halves' square corners cover the edge's round ends.
                 child: Container(
                   height: _height,
-                  clipBehavior: Clip.antiAlias,
+                  padding: const EdgeInsets.all(_edge),
                   decoration: const ShapeDecoration(
                     color: AppColors.card,
+                    shape: StadiumBorder(),
+                  ),
+                  foregroundDecoration: const ShapeDecoration(
                     shape: StadiumBorder(
                       side: BorderSide(color: AppColors.ink, width: _edge),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      for (final (index, exercise) in exercises.indexed)
-                        Expanded(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: exercise == selected
-                                  ? AppColors.accent
-                                  : AppColors.card,
-                              border: Border(
-                                left: index > 0 ? split : BorderSide.none,
-                                right: index < exercises.length - 1
-                                    ? split
-                                    : BorderSide.none,
+                  child: ClipPath(
+                    clipper: const ShapeBorderClipper(shape: StadiumBorder()),
+                    child: Row(
+                      children: [
+                        for (final (index, exercise) in exercises.indexed)
+                          Expanded(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: exercise == selected
+                                    ? AppColors.accent
+                                    : AppColors.card,
+                                border: Border(
+                                  left: index > 0 ? split : BorderSide.none,
+                                  right: index < exercises.length - 1
+                                      ? split
+                                      : BorderSide.none,
+                                ),
                               ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                HelpRules.exerciseName(exercise),
-                                maxLines: 1,
-                                // The design's 17: medium, bold when
-                                // chosen.
-                                style: text.authField.copyWith(
-                                  color: AppColors.ink,
-                                  fontWeight: exercise == selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
+                              child: Center(
+                                child: Text(
+                                  HelpRules.exerciseName(exercise),
+                                  maxLines: 1,
+                                  // The design's 17: medium, bold when
+                                  // chosen.
+                                  style: text.authField.copyWith(
+                                    color: AppColors.ink,
+                                    fontWeight: exercise == selected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
