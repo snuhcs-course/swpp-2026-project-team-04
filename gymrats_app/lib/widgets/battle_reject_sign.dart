@@ -313,8 +313,12 @@ class BattleRejectSignView extends StatelessWidget {
             transform: Matrix4.rotationZ(sign.rotation * math.pi / 180)
                 .multiplied(Matrix4.diagonal3Values(sign.scale, sign.scale, 1)),
             origin: _pivot,
-            child: SizedBox.fromSize(
-              size: size,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: size.width,
+                maxWidth: size.width,
+                minHeight: size.height,
+              ),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -343,10 +347,8 @@ class BattleRejectSignView extends StatelessWidget {
                         ),
                       ),
                     ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: labelTop,
+                  Padding(
+                    padding: const EdgeInsets.only(top: labelTop),
                     // A long label is wider than the sign's box.
                     child: OverflowBox(
                       fit: OverflowBoxFit.deferToChild,
