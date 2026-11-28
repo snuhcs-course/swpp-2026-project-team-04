@@ -2529,3 +2529,31 @@ No server, camera or device is needed: the rankings tests use `InMemoryRankingsR
 - 5.6 Overflow → weekly_rankings_screen_test group 'no state overflows' (six states × two sizes), 'fifty rows and a large text size fit a small phone'; help_screen_test 'every page fits …'
 - 5.7 Existing tests → listed above; the data and reload tests pass with their checks unchanged
 - 5.8 Tokens → design_tokens_test
+
+#### 2026-11-28 · code at commit `980a565` (on `origin/main` `1f54fad`, after PR #113 merged) · step A13 follow-up `feat/iter5-tutorial-tab-edge`: the tutorial tabs' ink edge at the round ends
+On a Galaxy S26+ release build of `main`, the tutorial's 푸시업/스쿼트 pill (`_ExerciseTabs` in `gymrats_app/lib/screens/help_screen.dart`, from A12) showed a broken ink edge at its round ends. The edge was drawn in the `Container`'s `decoration`, and the two halves were a square `Row` inset by the border. Clipping the bordered pill (`Clip.antiAlias`) let the halves' square corners cover the inner curve of the edge. The fix copies the rankings tabs (`weekly_rankings_tabs.dart`): the fill and the stadium shape stay in `decoration`, the 2 ink edge moves to `foregroundDecoration`, the padding of 2 is now explicit, and the halves are clipped by `ClipPath(ShapeBorderClipper(StadiumBorder()))`. The height (46), the tap height (`kMinInteractiveDimension`), the split, the text and the semantics are unchanged. The bug fix starts with a test that fails before it: the new test fails on the old code (checked by stashing the fix) and passes on `980a565`. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter analyze
+flutter test test/screens/help_screen_test.dart test/design_tokens_test.dart
+flutter test
+```
+
+- `flutter analyze` found no issues.
+- The two related files: 131 passed, 0 failed.
+- The full `flutter test`: 5588 passed, 0 failed, 10 skipped (the same 10 skipped tests as before, none of them this change's).
+- **Coverage:** not measured on this PC (the local rule; it hangs). The change is in one View file, and the new test runs every new line.
+  TODO(Woohyun Song): copy the per-layer numbers from the PR's CI comment "Tests and coverage (GitHub Actions)" on its head commit.
+- **Review:** reviewer run 4 APPROVE. Minor 1: the test did not pin that the edge is drawn inside the pill (`strokeAlign`), so a stroke moved outward would still pass. Fixed with `BorderSide.strokeAlignInside`. Minor 2: these notes were still missing before the push. Fixed here.
+- **Phone check (Woohyun Song, 2026-11-28):** Galaxy S26+ (SM-S947N), Android 17, release build of `980a565` built in `C:\dev\swpp-arcade-art`. The tutorial's 푸시업/스쿼트 tabs keep their ink edge whole and round at both ends in all three states: the game pages (neither chosen), 푸시업 chosen, and 스쿼트 chosen. A13's own phone check (SPEC 8, above) is still to be done.
+
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/screens/help_screen_test.dart` (updated) | 'the tabs are drawn as the design's pill: 46 high with a 2 ink edge, the chosen half lime and bold, none chosen on the game page' now reads the edge from `foregroundDecoration`; new 'the tabs' ink edge is drawn over the halves, which are clipped to the round pill inside it': a white fill with no edge, the 2 ink edge on top and drawn inside, a `StadiumBorder` clip exactly 2 inside the pill, both halves inside the clip |
+
+Acceptance criteria → tests (the user's bug report; the step is not in the local task.md):
+- The ink edge stays whole at the round ends → 'the tabs' ink edge is drawn over the halves, which are clipped to the round pill inside it'; the phone check above
+- Height, text, weights and the chosen half are unchanged → 'the tabs are drawn as the design's pill: 46 high with a 2 ink edge, the chosen half lime and bold, none chosen on the game page'
+- Taps and screen-reader tabs are unchanged → 'the tabs jump to an exercise and follow the page', 'a screen reader hears the two tabs as tabs of one tab bar, with which is chosen; each takes taps 48 high or more' (unchanged, passing)
+- Tokens only → design_tokens_test

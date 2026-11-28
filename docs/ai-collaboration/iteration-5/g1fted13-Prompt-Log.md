@@ -1090,3 +1090,92 @@ PM 한상우가 2026-11-28 17:49에 A13을 승인했다. 송우현 담당, 11/30
 - 현재 HEAD에서 '@codex review'를 요청한다.
 - 끝나면 PR 번호, HEAD SHA, 검사 결과, 계층별 커버리지, 공용 파일 목록을 보고한다.
 </pasted_content id=\"4fb1\">"
+
+<!-- 34d5c565 2026-11-28T08:36:37.863Z -->
+<!-- 34d5c565 2026-11-28T10:29:28.225Z -->
+<!-- Left out on purpose: the two conversation summaries the client inserted at 11-28 17:36 and 19:29 after the context ran out (not the user's text). Their keys stay so a later export does not add them again. Added on 11-28 with the follow-up `feat/iter5-tutorial-tab-edge`: the last two A13 prompts (19:51, 20:41), which came after this section was written. -->
+
+<!-- 34d5c565 2026-11-28T10:51:10.120Z -->
+[Woohyun Song, 11-28 19:51] "<pasted_content id=\"4fb1\">
+개인 기록 두 곳의 A13 TODO를 아래 내용으로 채워라. 문장은 각 노트의 다른 절과 같은 언어와 형식으로 맞추고, 따옴표 안의 한국어 프롬프트는 그대로 둔다. 프롬프트 로그에 없는 내용이면 노트에만 적는다.
+
+1. AI 협업 노트(docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md): 디자인과 SPEC 출처
+- 만든 곳: claude.ai 채팅(프로젝트 \"소개원실 팀 프로젝트\", Claude Opus 5.5)과 Claude Design 캔버스 \"GymRats 메인 메뉴 시안\", 2026-11-28. 송우현이 방향을 정하고 시안을 골랐다. Claude가 PR #108(주간 랭킹)과 PR #110(A12) 코드를 읽고 시안, SPEC v1.0, 디자인 묶음(a13-bundle)을 만들었다.
+- 튜토리얼 2장: 시안 A·B·C 중 A를 고름 → A를 바탕으로 5안 → 송우현이 온라인 대결 설명에 '1:1 대결, KO승 10점·승리 5점… 점수로 주간 랭킹'을 넣으라고 요청 → 4안 중 A6 확정. 송우현이 손본 것: 아래 설명 문장 삭제, VS가 GYM마우스와 겹치는 것 수정, 의자 자세 아이콘의 벽 기둥 삭제, 시계 위치·크기 조정, 의자 자세 사람 크기를 스쿼트와 맞춤.
+- 주간 랭킹: Claude가 main 2e59012의 P11 코드를 보고 지금 화면을 캔버스에 재현함 → 1차 A·B·C는 채택되지 않음 → 송우현이 다른 게임의 리더보드를 참고 자료로 주고, 점수 규칙 줄을 빼고 '?' 시트로 옮기라고 하고, 이번 주 정보를 크게 하라고 요청 → D1~D5 중 D1 확정 → 친구 탭과 예외 상태를 그린 뒤 확정.
+- 대표 프롬프트(원문 그대로):
+  \"진영이 형 PR 및 코드를 GitHub에서 꼼꼼히 파악해서 랭킹 시스템을 파악하고 나에게 설명해봐. 그리고 그 다음에 두 번째 장을 어떻게 구성할지 claude design으로 시안을 뽑은 후에 claude code 작업으로 옮겨보자.\"
+  \"A~C 모두 'KO승 10점, 승리 5점, ..' 과 같은 규칙이 순위표 바로 위에 있는데 이 부분은 없애줘. '?' 버튼 같은 걸 놓고 눌렀을 때 점수규칙을 볼 수 있게 하는 게 맞아.\"
+- 사람이 바로잡은 AI 산출물:
+  (1) 시안에 '푸시업'을 적었지만 앱 이름표는 '푸쉬업'이라 랭킹 탭은 koreanName을 쓰게 함.
+  (2) SPEC 4절의 \"새 글자 스타일을 만들지 않는다\"가 디자인 토큰 규칙과 맞지 않아서, 송우현이 RankingText 추가로 결정함.
+  (3) 계산을 P11 뷰모델 대신 models/ranking_standing.dart에 두고, 튜토리얼 연결을 한 단계로 묶음.
+
+2. 테스트 노트(docs/testing/iteration-5/[REDACTED:custom_term].md): 폰 확인
+- 폰 확인 TODO를 \"머지 뒤 실기기로 확인 예정(명세 8절 항목)\"으로 바꾸고, 확인할 항목을 명세 8절 그대로 적는다. A12 노트와 같은 방식이다.
+- 확인 결과는 머지 뒤 폰에서 본 다음 내가 알려 주면 그때 채운다.
+
+3. 커밋과 push 시점
+- 두 노트를 고치고 로컬 커밋한다(docs, Conventional Commits, 영어).
+- 지금 42abe74에서 Codex 리뷰가 돌고 있으니 바로 push하지 않는다. Codex와 CI 결과가 나오면 지적 대응 커밋과 함께 한 번에 push한다.
+- push한 뒤에는 새 HEAD에서 '@codex review'를 다시 요청하고, PR 본문의 결과와 Reviews 줄을 새 HEAD로 갱신한다.
+- Codex 지적이 없으면 이 노트 커밋만 push하고 똑같이 다시 요청한다.
+</pasted_content id=\"4fb1\">"
+
+<!-- 34d5c565 2026-11-28T11:41:06.999Z -->
+[Woohyun Song, 11-28 20:41] "Codex 결과와 CI 모두 문제없어"
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial-tab-edge
+<!-- Cut: the client's injected browser notice in front of the 21:10 prompt (not the user's text). -->
+<!-- b65cd53d 2026-11-28T12:10:08.946Z -->
+[Woohyun Song, 11-28 21:10] "<pasted_content id=\"df03\">
+이번 작업은 Iteration 5 A13(튜토리얼 게임 소개 2장 + 주간 랭킹 화면 개편, PR #113, main 머지 커밋 1f54fad)의 머지 뒤 후속 수정이다. 실기기에서 버그 하나를 찾았다.
+
+[버그]
+튜토리얼 화면(HelpScreen) 위쪽의 푸시업·스쿼트 탭에서 알약 모양 잉크 테두리의 양 끝이 깨져 보인다. 둥근 끝에서 테두리 일부가 가려지고 각진 모서리가 드러난다. 기기는 Galaxy S26+이고, 최신 main의 release 빌드에서 확인했다.
+
+[원인]
+gymrats_app/lib/screens/help_screen.dart의 _ExerciseTabs가 원인이다.
+- 지금은 Container의 decoration(ShapeDecoration, StadiumBorder, 2px 잉크 side)으로 테두리를 먼저 그린다.
+- 그 위에 두 칸 색 Row를 child로 그리고, clipBehavior는 Clip.antiAlias다.
+- Container가 테두리 두께만큼 안으로 들인 네모 Row를 그리는데, 둥근 양 끝에서 이 네모의 모서리가 안쪽 곡선 밖으로 나가 테두리를 덮는다.
+- 같은 문제를 A13에서 랭킹 탭(gymrats_app/lib/widgets/weekly_rankings_tabs.dart)이 이미 고쳤다. 그 파일의 방식을 그대로 따른다. main에서 같은 모양으로 짠 곳은 이 탭 한 곳뿐이다.
+
+[순서]
+1. 시작
+- CLAUDE.md Workflow 1번대로 ownership_guard --status, progress.md, task.md를 확인한다.
+- git status로 작업 트리가 깨끗한지 확인한다. 지금 이 폴더는 origin/main(1f54fad)에 detached 상태일 것이다. git fetch origin 후 origin/main이 1f54fad 이후인지 확인한다.
+
+2. 브랜치와 하네스
+- 이 수정은 A13 단계의 후속 수정으로 처리한다. help_screen.dart와 help_screen_test.dart는 ownership.json A13의 allow에 있다.
+- origin/main에서 이 수정용 브랜치를 새로 만든다. 하네스의 브랜치 규칙(단계별 feat/iter5-* 브랜치)을 확인해서 ownership_guard가 받아 주는 이름으로 만든다.
+- 머지된 feat/iter5-ranking-tutorial을 다시 쓸 수 없으면 새 이름을 쓰고, ownership.json의 A13 branch만 바꾼다. 무엇을 바꿨는지 progress.md에 적는다.
+- 고치기 전에 ownership_guard --check-paths로 두 파일을 확인한다. 막히면 멈추고 물어본다.
+
+3. 고치기
+- _ExerciseTabs를 weekly_rankings_tabs.dart와 같은 방식으로 바꾼다.
+  - decoration은 바탕색(AppColors.card)과 StadiumBorder 모양만 둔다.
+  - 테두리(AppColors.ink, 2px StadiumBorder side)는 foregroundDecoration으로 맨 위에 그린다.
+  - 두 칸 Row는 ClipPath(clipper: ShapeBorderClipper(shape: StadiumBorder()))로 감싸 둥근 모양 안으로 자른다.
+- 가운데 칸막이, 글자와 굵기, 탭 높이(46, 누르는 영역 kMinInteractiveDimension), Semantics(탭 바, 탭 위치 문구)는 그대로 둔다.
+- 화면에서 쓰는 값은 app_theme.dart 토큰만 쓴다(design_tokens_test).
+- test/screens/help_screen_test.dart에 테스트를 더한다. weekly_rankings_tabs_test.dart와 같은 식으로, 테두리가 foregroundDecoration에 있고 칸들이 StadiumBorder 모양으로 잘리는지 확인한다.
+
+4. 검사와 커밋
+- gymrats_app/에서 flutter analyze, flutter test를 돌리고, reviewer 서브에이전트로 이 수정만 검토받아 APPROVE까지 고친다. progress.md Review log에 적는다.
+- dart format은 이번에 바꾼 파일에만 돌린다.
+- 로컬 커밋한다. 메시지는 Conventional Commits 영어, 예: fix(tutorial): keep the exercise tabs' ink edge whole at the round ends.
+
+5. 폰 확인을 위해 멈추기
+- 커밋하면 push하기 전에 멈추고 나에게 브랜치 이름과 커밋을 알려 준다. 내가 이 폴더에서 release 빌드를 폰에 깔아 확인한다(flutter 기기 ID R3KL201ERFR).
+
+6. push와 PR(내가 \"괜찮아\"라고 한 뒤)
+- CLAUDE.md Workflow 7번대로 개인 기록 세 가지에 이 수정 절을 짧게 더하고 커밋한다. 세 가지는 docs/testing/iteration-5/[REDACTED:custom_term].md, 세션 내보내기와 프롬프트 로그, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md다.
+- push하고 CLAUDE.md의 push 후 검증을 모두 실행한다.
+- pull-request 스킬로 main 대상 PR을 연다. 본문은 영어로 쓰고, 원인, 바꾼 것, 테스트, 실기기 확인 결과를 넣는다.
+- 현재 HEAD에서 '@codex review'를 요청한다.
+- PR 번호와 HEAD SHA를 보고한다.
+</pasted_content id=\"df03\">"
+
+<!-- b65cd53d 2026-11-28T12:30:18.272Z -->
+[Woohyun Song, 11-28 21:30] "괜찮아. 실기기 확인 결과: Galaxy S26+ (SM-S947N), Android 17, 980a565 release 빌드(C:\dev\swpp-arcade-art에서 빌드). 튜토리얼의 푸시업·스쿼트 탭 양 끝 잉크 테두리가 끊기지 않고 둥글게 보인다. 게임 소개 장(둘 다 안 고름), 푸시업 고름, 스쿼트 고름 세 상태 모두 확인했다. 이 결과를 PR 본문과 테스트 기록에 넣고 6단계를 진행해."
