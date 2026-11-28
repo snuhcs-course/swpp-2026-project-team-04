@@ -958,3 +958,9 @@ A12 튜토리얼 개편 PR을 올린다. PM 한상우가 11/28에 Unexpected A12
 [Woohyun Song, 11-28 14:08] "codex 리뷰 결과 나왔어. 확인해봐"
 
 [Woohyun Song, 11-28 14:12] "t=1150으로 바꿔. 디자이너가 11/28에 SPEC 4절(v1.2)과 디자인 원본(TutShotOnline 기본값)도 1150으로 고쳤어. 그러니 progress.md와 PR 본문에는 '원본에서 벗어남'이 아니라 '11/28 SPEC 수정: 960은 바닥 순간 10ms 뒤라 GOOD이 거의 안 보이던 원본 오류'로 적어. 나머지 절차(새 커밋 하나, push, push 후 검증, @codex review 재요청)는 네가 제안한 대로 진행해."
+
+## 2026-11-28 · Woohyun Song · feat/iter5-tutorial
+<!-- 6edf15d3 2026-11-28T05:45:27.667Z -->
+[Woohyun Song, 11-28 14:45] "영어 말고 한국어로 답해.
+우선 기존 codex 리뷰를 resolve했으면 comment 달고 resolve 처리하던지 해.
+그리고 새로운 codex comment가 왔어. 확인해"

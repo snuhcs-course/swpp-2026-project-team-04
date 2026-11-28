@@ -471,7 +471,11 @@ class TutorialGameShot extends StatelessWidget {
     );
     final starScale = s.starScale ?? (s.hit > 1 ? _hardStar : _goodStar);
     final frame = BattleFxFrame(
-      meetX: meet,
+      // The stage fills the bar up to the meeting point and keeps the lime
+      // inside the bar. On a knockout the bar is all the user's (the design's
+      // KO, `limeW` 306, no edge line), so it is given a point past the bar's
+      // end, the stage's right edge; the fighters stand at [_knockoutMeet].
+      meetX: s.knockout ? BattleFx.stageWidth : meet,
       me: me,
       opponent: opponent,
       myTag: null,

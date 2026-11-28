@@ -2433,3 +2433,23 @@ flutter test
 |---|---|---|
 | View | `test/widgets/tutorial_game_shot_test.dart` (updated) | 'the still for reduced motion is just after the blow': the still at 1150 ms; GOOD at full opacity and size; the star at full opacity and its full size (0.9); the attack |
 | View | `test/widgets/tutorial_welcome_test.dart` (updated) | 'with reduced motion it is one still, just after the blow': GOOD on screen at full opacity and size |
+
+#### 2026-11-28 · code at the commit after `11c81d6` (PR #110) · step A12 `feat/iter5-tutorial`, the second Codex follow-up
+Codex's review of `11c81d6` (PR #110, one P2 thread on `gymrats_app/lib/widgets/tutorial_game_shot.dart`) found that the KO scene's bar stopped at x=280, about 83%, though the scene is a knockout (share 1). The tutorial reuses the battle stage's own bar, which fills up to the fighters' meeting point (`meetX − 27`); the design's KO (`TutGame`) fills it to the end (`limeW` 306, no edge line) with the fighters at 220. The user decided (11/28) to fill only the KO scene to the end: its frame gets a point past the bar's end (the stage's right edge) as the meeting point, which the stage keeps inside the bar, and the fighters keep their own place (220). The other scenes stay as the real game draws them. The real game's bar at a knockout looks the same (about 83%) and is outside A12; the PR notes it for its owner. I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter analyze
+flutter test test/screens/help_screen_test.dart test/widgets/help_rules_test.dart test/widgets/help_pictures_test.dart test/widgets/tutorial_person_test.dart test/widgets/tutorial_setup_scenes_test.dart test/widgets/tutorial_game_shot_test.dart test/widgets/tutorial_draft_test.dart test/widgets/tutorial_welcome_test.dart test/design_tokens_test.dart test/screens/settings_screen_test.dart test/widgets/game_panel_fonts_test.dart test/viewmodels/tutorial_viewmodel_test.dart
+flutter test
+```
+
+- `flutter analyze` found no issues.
+- The 12 A12-related files: 242 passed. The new checks fail on `11c81d6`'s code (the lime 253 wide, not 306) and pass now.
+- The full `flutter test`: 5398 passed, 0 failed, 11 skipped.
+- **Coverage:** not measured again on this PC; the change is the frame's meeting point on a knockout (one line) and test checks. CI posts the per-layer numbers for the new head (on `0490bc6`: Model 99.4%, ViewModel 98.6%, Service 97.8%, View 98.3%, server 98%).
+- **Review:** reviewer run 12 APPROVE: only the bar and the stage's zoom origin (zoom 1) read the frame's meeting point; the fighters, star, banner, chip and scores and the other scenes are unchanged. Two Minor points, both fixed: the first version copied the stage bar's private size (333), now a point past the bar's end that the stage clamps; the test now also checks the edge line lies outside the bar's clipped inside.
+
+| Layer | File | What it covers |
+|---|---|---|
+| View | `test/widgets/tutorial_game_shot_test.dart` (updated) | 'KO: K.O. over the stage, the opponent down, the bar all the user's': the bar's lime drawn across its whole inside (306), its edge line outside the clipped inside, the fighters either side of 220 |

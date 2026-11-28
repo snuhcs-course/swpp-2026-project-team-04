@@ -264,6 +264,34 @@ void main() {
       expect(frame.opponent.pose, BattlePose.knockedOut);
       expect(frame.me.pose, BattlePose.win);
       expect(stage(tester).state.barShare, 1);
+      // The bar drawn full: lime across its whole inside (312 − 2 × 3), its
+      // edge line past the lime outside the clipped inside, so not drawn
+      // (the design's KO); the fighters still where they stood (meeting at
+      // 220).
+      final bar = find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == '체력 바',
+      );
+      ColoredBox colored(Color color) => tester.widget<ColoredBox>(
+        find.descendant(
+          of: bar,
+          matching: find.byWidgetPredicate(
+            (w) => w is ColoredBox && w.color == color,
+          ),
+        ),
+      );
+      Rect rectOf(Widget widget) => tester.getRect(find.byWidget(widget));
+      final inside = rectOf(
+        tester.widget(
+          find.descendant(of: bar, matching: find.byType(ClipRRect)),
+        ),
+      );
+      expect(rectOf(colored(AppColors.accent)).width, 306);
+      expect(
+        rectOf(colored(AppColors.ink)).left,
+        greaterThanOrEqualTo(inside.right),
+      );
+      expect(frame.me.footX, lessThan(220));
+      expect(frame.opponent.footX, greaterThan(220));
       expect(find.text('+${rules.koLead} 앞섬'), findsOneWidget);
       expect(camera(tester).frame, isNull);
     });
