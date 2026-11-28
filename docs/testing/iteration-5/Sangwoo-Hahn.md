@@ -33,3 +33,6 @@ The Flutter design-token and app-routing suites passed (118 tests). The new rout
 
 ### 2026-11-28 · P20 battle socket follow-up
 The three local Flutter suites for online battle integration, friend battles and battle telemetry passed (103 tests). A simulated transport rejected a single write with either a closed-sink StateError or a SocketException. Four loopback WebSocket clients played two simultaneous matches. After one disconnected, its opponent received disconnect_timeout. Both clients in the other match received a rep update or acknowledgement and the same time_up result with the scoring player as winner. Checked the final rep count in the players field of the result. Dart analysis passed and the standalone battle server compiled to a native executable.
+
+### 2026-11-28 · P18 pose evaluation
+Replayed 350 labelled repetitions in 48 existing recordings against d10d0dc with the production battle judges. The five targeted scoring, judging and evaluation suites passed (186 tests). Dart analysis of the new evaluator passed. The [P18 report](../../iteration-5/pose-evaluation.md) lists every clip’s human labels, emitted reasons, counted reps and base points. Frozen push-up M1/M2/M3 were 82.5%/76.3%/42.5%, below the original targets. No new on-device session was performed.
