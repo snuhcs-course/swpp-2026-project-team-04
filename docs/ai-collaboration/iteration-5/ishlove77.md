@@ -138,6 +138,10 @@ Full list: `ishlove77-Prompt-Log.md`.
   on the snapshot's database and leave battles from a newer backup `active` for good. Neither Claude nor the reviewer
   subagent had checked what a snapshot starts at boot. Fixed in the procedure (`f00735e`): stop both right after
   boot, restore, then start the API before the battle server.
+- P21, Codex review of `fab012b` (P1 ×2): the procedure did not bring a stale snapshot's code up to the release
+  before `migrate`, and gave a fresh instance no IP certificate. Claude's first fix said only "run
+  `install-https.sh`"; the reviewer subagent found it stops at its first line on a fresh instance (no nginx site
+  yet) and that a snapshot's 6-day certificate may already be expired. Fixed in `25139d3` after a second review.
 
 - P20, wrong claim on the team server: after the first try through an SSH tunnel failed, Claude told the user the
   test server "died early". It had not: its process shows as `dart:load-serve`, which `ps -C load-server` missed.

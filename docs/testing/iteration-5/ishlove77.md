@@ -5,6 +5,17 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fixes for the Codex review of `fab012b`
+Fix at commit `25139d3`.
+- **Findings (P1 ×2):** (1) a replacement from a snapshot older than the last deploy kept the old code, so `migrate`
+  saw only the old migrations; (2) a fresh replacement had no IP certificate, so HTTPS and WSS could not work. The
+  procedure (`docs/iteration-5/server-failover.md` 5, steps 2–5, finding 6) now brings the API and battle server to
+  the production release before `migrate` and start, lists the base setup of a fresh instance, checks ports 80 and
+  443, and issues (fresh) or renews (snapshot; the certificates last about 6 days) the certificate after the IP is
+  attached. The reviewer subagent first asked for the fresh-instance nginx setup and the snapshot certificate
+  renewal, then approved. Documentation only; no code or test change.
+- **Results:** unchanged (server `pytest` 372 passed, 98%).
+
 #### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `e4b3411`
 Fix at commit `f00735e` (line wrap in the next commit).
 - **Finding (P1):** the failover procedure restored the backup on a replacement booted from a snapshot without
