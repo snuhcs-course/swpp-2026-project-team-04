@@ -13,6 +13,9 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
   for history, sign-up, login, matching, result saving and a battle cut by a crash, the hang watcher, and the timing:
   Claude Code (scripts not committed; the ones run on the server were deleted with the rehearsal folder).
 - `docs/iteration-5/server-failover.md` (`0d2266a`) and `server/tests/test_failover.py` (`63b5dde`): Claude Code.
+- Follow-up (PM request after #114): `server/deploy/health_watch.py`, `db_backup.py`, the two systemd service and
+  timer pairs, `server/tests/test_health_watch.py`, `test_db_backup.py`, `docs/iteration-5/server-health-backup.md`,
+  and the isolated run on the team server (scripts not committed, deleted with the folder): Claude Code.
 - Not used: where each rehearsal ran (production restarts now; a separate environment on the same server once the
   Lightsail console turned out to be admin-only) and leaving the static IP failover as a procedure (the user's
   decisions).
@@ -294,8 +297,25 @@ Full list: `ishlove77-Prompt-Log.md`.
   battle; a hold shorter than a slow setup) and that a network error on 수락 lost the banner for good. The 35 s hold
   was Claude's choice, sized to the app's pairing timeout rather than the battle server's limits; it is now 2 minutes
   and released by the app when the battle ends.
+- P21 follow-up (health check, backup off the server): Claude's first `db_backup.py` bound rclone as a default
+  argument, so a test patched the module but still ran the real tool and hung on the retry waits; found with
+  pytest's faulthandler timeout. The isolated run on the team server then showed two things the unit tests had not:
+  backup files left readable by every user (umask 0002), and that a restore must stop the new health timer or it
+  restarts the stopped services. Claude also stopped a transient unit expecting to start it again, but such units
+  vanish when stopped; the restore timing (about 12 s) is reported as not clean for that reason.
+- P21 follow-up, reviewer subagent (2 rounds): the first version restarted with a blocking `systemctl restart`
+  inside a 20 s unit (a slow stop would skip the alert, and the API's default 90 s stop timeout would push recovery
+  past 3 min), crashed on a broken HTTP answer, let a snapshot's catch-up backup upload old data under a new name, ran
+  as root from the group-writable tree with every secret loaded, and had rclone calls with no time limit. The isolated
+  run had passed because SIGSTOP stops quickly; the run checked the friendly case only. Fixed in `5c1ecbc`, `3fda402`,
+  `56ba5e4`; the SIGTERM-ignoring case is worked out, not rehearsed.
 
 ## 4. Revisions and Decisions
+- P21 follow-up: the PM fixed RTO 30 min / RPO 24 h and asked for the health check and a 12 h backup off the
+  server; the user chose a Lightsail bucket (the admin creates it), a team chat webhook, and installing on
+  production only after merge, then told Claude to decide the rest ("그냥 내가 다 하래 알아서"). Claude chose rclone so
+  the bucket can be swapped, a wall-clock 30 s timer so a slow check never delays the next, and the P21 branch with
+  scope exceptions because the ownership guard accepts only plan branches.
 - P21 environment: temporary Lightsail instance with a new static IP (user, first answer) → the console is admin-only
   → a separate environment on the team server for detection and restore, and the static IP failover as a procedure
   for the admin (user).
