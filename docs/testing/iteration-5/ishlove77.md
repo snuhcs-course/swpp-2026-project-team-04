@@ -5,6 +5,30 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P21 `feat/iter5-failover` (team plan #15): restart, backup restore and failover rehearsal
+Code at commits `63b5dde` (tests) and `0d2266a` (rehearsal record, `docs/iteration-5/server-failover.md`). Server only;
+no app change. Commands from `server/` on macOS (Python 3.12).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total (1055 statements, 20 missed) | 11/28 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** server `pytest` 372 passed, 0 failed (5 new in `tests/test_failover.py`, `transaction=True` so SQLite's
+  backup API sees committed rows). No app change, so `flutter test` was not rerun.
+- **Check that the tests depend on the restore:** with `restore()` turned into a no-op, 4 of the 5 tests fail (the
+  integrity test does not restore).
+- **Rehearsal (not automated; details in `docs/iteration-5/server-failover.md`):** production API restart healthy
+  again through nginx in 0.77 s and battle server in 0.17 s (5 min target); a frozen API in a separate environment detected and
+  restarted in 2 min 20 s (3 min target; worst case about 3 min 16 s with a 65 s check period); backup restore with
+  `migrate` to both services healthy in 2.15 s, restored data time 05:29:15 UTC; history, sign-up and login,
+  matching, result saving and the void of a battle cut by a crash checked on it. Static IP failover not run (Lightsail
+  console is admin-only).
+- **Shortfalls:** none in coverage. The 30 min failover target is not verified (above).
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_failover.py` | Server | a backup of the live database passes the integrity check; a restore brings back the backup and drops what came after; after a restore an existing account logs in with its old password and reads its history; a new account signs up and a result is saved; a battle running at the backup comes back active and the restart voids it with no history rows |
+
 #### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `76fa05c`
 Code at commit `00cc5f6`.
 - **Finding (P2):** a read asked just before Monday 00:00 KST and answered after it kept last week, with no timer

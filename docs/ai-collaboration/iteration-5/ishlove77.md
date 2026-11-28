@@ -7,6 +7,16 @@ These notes cover Jinyoung Park's Iteration 5 steps, items a–f per the guideli
 team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session Exporter before every push).
 
 ## 1. Where AI Was Used
+### P21 `feat/iter5-failover` (team plan #15, restart, backup restoration and failover rehearsal, 2026-11-28)
+- Rehearsal: the commands for the two production restarts (run after the user's OK), the separate environment on the
+  team server (`/srv/gymrats/rehearsal-p21`, restored from the latest backup, deleted afterwards), the check script
+  for history, sign-up, login, matching, result saving and a battle cut by a crash, the hang watcher, and the timing:
+  Claude Code (scripts not committed; the ones run on the server were deleted with the rehearsal folder).
+- `docs/iteration-5/server-failover.md` (`0d2266a`) and `server/tests/test_failover.py` (`63b5dde`): Claude Code.
+- Not used: where each rehearsal ran (production restarts now; a separate environment on the same server once the
+  Lightsail console turned out to be admin-only) and leaving the static IP failover as a procedure (the user's
+  decisions).
+
 ### P7 `feat/iter5-google-auth` (team plan #1, Google sign-in and sign-up, 2026-11-23 ~ 11-24)
 - Server: `server/accounts/google_auth.py` (whole file: ID token check with Google's keys), the Google login view,
   nickname rule and body info view in `server/accounts/views.py`, `serializers.py`, `models.py`, migration
@@ -93,9 +103,25 @@ team report. Prompt log: `ishlove77-Prompt-Log.md` (filled by the course Session
 [Jinyoung Park, 11-27] "너가 recommen한거로 가되 무면 그래도 +3은 줘야지"
 [Jinyoung Park, 11-28] "근데 지금 squatt, pushup별개로 있지?"
 [Jinyoung Park, 11-27] "전체 랭킹에서 내리기 하면 하면 뭔가 이상하게 화면이 되는데 그거랑 그다음에 위에 KO 승 10, 승 5, 무 3, 패 1 이런거 싹다 위에 글 자체를 없애주고, 그리고 지금 승점 제대로 계산된거 맞나"
+[Jinyoung Park, 11-28] "P21 task 수행해"
+[Jinyoung Park, 11-28] "콘솔 작업을 내가 해야함?"
+[Jinyoung Park, 11-28] "관리자라 ㅠㅠ"
 Full list: `ishlove77-Prompt-Log.md`.
 
 ## 3. Problems and How They Were Caught
+- P21, check script: the first three runs against the restored environment stopped on bugs in Claude's own test
+  client, not in the server: no keep-alive ping (closed 4000), no answer to the server's pings while it read the other
+  player's socket (closed 1001), and request ids reused across the two connections (`REQUEST_ID_REUSED`). Each was
+  read from the close code and fixed; the fourth run's numbers are the ones recorded.
+- P21, tests: the first `test_failover.py` restored right after the backup, so the reviewer subagent found the tests
+  still passed with `restore()` doing nothing. They now change the data between backup and restore (a new password,
+  a later battle, a sign-up, a voided battle); with a no-op restore 4 of 5 fail.
+- P21, detection time: Claude first wrote the worst case as about 3 min, counting 60 s per check; the reviewer
+  pointed out that each failed check also waits 5 s, so the checks came 65 s apart and the worst case is about
+  3 min 16 s, above the 3 min draft target.
+- P21, plan: Claude planned the restore and detection on a temporary Lightsail instance that the user would create;
+  only the team admin has the console, so the plan changed to a separate environment on the team server.
+
 - P11, demo data: the first emulator run used rankings typed by hand, and some totals could not come from the point
   rules. When the user asked whether the points were right, Claude replaced them with answers computed by the real
   server code (a seed script posting battles to `/internal/results` on an in-memory database) and checked each total
@@ -214,6 +240,13 @@ Full list: `ishlove77-Prompt-Log.md`.
   and released by the app when the battle ends.
 
 ## 4. Revisions and Decisions
+- P21 environment: temporary Lightsail instance with a new static IP (user, first answer) → the console is admin-only
+  → a separate environment on the team server for detection and restore, and the static IP failover as a procedure
+  for the admin (user).
+- P21 order: the first draft of the failover procedure did not say which service starts first; the reviewer noted
+  that the battle server asks the API once at start-up to void cut battles and ignores a failure, so the procedure
+  now starts the API first and restarts the battle server if the API was not up.
+
 - P11 points: Claude proposed KO win 10, win 5, loss 1, leaving 0 → the user added draw +3. Rules line on the
   rankings screen: shown → removed (user, after the emulator check).
 - P11 exercises: one ranking over push-ups and squats → the user asked whether they were apart, then decided to
@@ -249,7 +282,7 @@ Full list: `ishlove77-Prompt-Log.md`.
   waiting rooms read it every 2 s, and an accepted invite not paired within 30 s ends the wait.
 
 ## 5. Manual Fixes
-None observed in P7, P9, P10 or P11: every code change was made by Claude Code and checked by the user.
+None observed in P7, P9, P10, P11 or P21: every code change was made by Claude Code and checked by the user.
 
 ## 6. Reflection
 TODO(Jinyoung Park): what worked and what to change, at the end of the iteration.
