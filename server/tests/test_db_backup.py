@@ -363,10 +363,26 @@ def test_the_command_turns_sigterm_into_a_failure(monkeypatch):
     assert seen == [(db_backup.signal.SIGTERM, db_backup._on_sigterm)]
 
 
-def test_list_and_fetch_need_a_remote(monkeypatch):
+def test_list_and_fetch_need_a_remote(monkeypatch, tmp_path):
     monkeypatch.delenv("BACKUP_REMOTE", raising=False)
     with pytest.raises(SystemExit):
-        db_backup.main(["list"])
+        db_backup.main(["--env-file", str(tmp_path / "none"), "list"])
+
+
+def test_list_by_hand_reads_the_remote_and_rclone_config_from_the_env_file(database, tmp_path, monkeypatch):
+    fake = FakeRclone(tmp_path / "offsite")
+    run_backup(database, tmp_path, fake, Recorder())
+    for key in ("BACKUP_REMOTE", "RCLONE_CONFIG"):  # unset now, and undone after the test
+        monkeypatch.setenv(key, "")
+        monkeypatch.delenv(key)
+    before = os.environ.get("JWT_SECRET")
+    env = tmp_path / ".env"
+    env.write_text("JWT_SECRET=s\nBACKUP_REMOTE=offsite:gymrats-backups\nRCLONE_CONFIG=/srv/gymrats/rclone.conf\n")
+    monkeypatch.setattr(db_backup, "rclone", fake)
+    assert db_backup.main(["--env-file", str(env), "list"]) == 0
+    assert fake.calls[-1] == ("lsf", "offsite:gymrats-backups")
+    assert os.environ["RCLONE_CONFIG"] == "/srv/gymrats/rclone.conf"
+    assert os.environ.get("JWT_SECRET") == before  # other keys are not read
 
 
 def test_the_command_backs_up_the_configured_database(database, tmp_path, monkeypatch):

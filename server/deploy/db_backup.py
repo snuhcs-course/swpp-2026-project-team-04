@@ -29,7 +29,7 @@ from pathlib import Path
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from health_watch import log, notify  # noqa: E402
+from health_watch import env_value, log, notify  # noqa: E402
 
 RETRY_DELAYS_S = (60, 300)  # 3 tries: now, after 1 min, after 5 more
 RCLONE_TIMEOUT_S = 150  # per rclone call: 3 tries x 2 calls x 150 s + 360 s of waits = 21 min, under the unit's 25 min
@@ -244,7 +244,17 @@ def main(argv=None):
     get.add_argument("name")
     get.add_argument("dest")
     parser.add_argument("--folder", default="/srv/gymrats/data/backups")
+    parser.add_argument("--env-file", default="/srv/gymrats/.env",
+                        help="read BACKUP_REMOTE and RCLONE_CONFIG from here when not set (list, fetch by hand)")
     args = parser.parse_args(argv)
+    if args.command != "backup":
+        # Run by hand, so systemd's EnvironmentFile= does not apply: take the two settings
+        # from the env file (only these keys are read).
+        for key in ("BACKUP_REMOTE", "RCLONE_CONFIG"):
+            if not os.environ.get(key):
+                value = env_value(args.env_file, key)
+                if value:
+                    os.environ[key] = value
     remote = os.environ.get("BACKUP_REMOTE", "")
     if args.command == "backup":
         webhook, host = os.environ.get("ALERT_WEBHOOK_URL", ""), os.uname().nodename
