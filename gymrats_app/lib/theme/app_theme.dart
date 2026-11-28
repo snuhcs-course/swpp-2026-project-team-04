@@ -2455,4 +2455,33 @@ extension RankingText on TextTheme {
   /// "친구 추가하러 가기" on its white button: 14.5 bold.
   TextStyle get rankingButton =>
       _ranking(family: AppFonts.body, size: 14.5, weight: FontWeight.w700);
+
+  // The rank ladder over an online battle's report and its rank chip (A15).
+  // A two-character rank is [rankingRowRankWide], the chip's 위 and the
+  // row's 나 [rankingMeMark], a row's name [rankingName].
+
+  /// A ladder row's week points and a one-character rank: Oxanium 800, 19.
+  TextStyle get ladderNumber =>
+      _ranking(family: AppFonts.number, size: 19, weight: FontWeight.w800);
+
+  /// A ladder rank of three characters or more ("803", "1,204"): Oxanium
+  /// 800, 15.
+  TextStyle get ladderRankNarrow =>
+      _ranking(family: AppFonts.number, size: 15, weight: FontWeight.w800);
+
+  /// My "+10" in my ladder row: Oxanium 800, 13.
+  TextStyle get ladderGain =>
+      _ranking(family: AppFonts.number, size: 13, weight: FontWeight.w800);
+
+  /// The rank chip's rank and week points: Oxanium 800, 14.
+  TextStyle get rankChipNumber =>
+      _ranking(family: AppFonts.number, size: 14, weight: FontWeight.w800);
+
+  /// The rank chip's "+10": Oxanium 800, 11.
+  TextStyle get rankChipGain =>
+      _ranking(family: AppFonts.number, size: 11, weight: FontWeight.w800);
+
+  /// The "점" after the rank chip's points: 10 bold.
+  TextStyle get rankChipUnit =>
+      _ranking(family: AppFonts.body, size: 10, weight: FontWeight.w700);
 }
