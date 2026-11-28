@@ -1126,7 +1126,7 @@ PM 한상우가 2026-11-28 17:49에 A13을 승인했다. 송우현 담당, 11/30
 [Woohyun Song, 11-28 20:41] "Codex 결과와 CI 모두 문제없어"
 
 ## 2026-11-28 · Woohyun Song · feat/iter5-tutorial-tab-edge
-<!-- Cut: the client's injected browser notice in front of the 21:10 prompt (not the user's text). -->
+<!-- Cut: the client's injected browser notice in front of the 21:10 prompt (not the user's text). Redacted by hand: the phone's device ID in the 21:10 prompt. -->
 <!-- b65cd53d 2026-11-28T12:10:08.946Z -->
 [Woohyun Song, 11-28 21:10] "<pasted_content id=\"df03\">
 이번 작업은 Iteration 5 A13(튜토리얼 게임 소개 2장 + 주간 랭킹 화면 개편, PR #113, main 머지 커밋 1f54fad)의 머지 뒤 후속 수정이다. 실기기에서 버그 하나를 찾았다.
@@ -1167,7 +1167,7 @@ gymrats_app/lib/screens/help_screen.dart의 _ExerciseTabs가 원인이다.
 - 로컬 커밋한다. 메시지는 Conventional Commits 영어, 예: fix(tutorial): keep the exercise tabs' ink edge whole at the round ends.
 
 5. 폰 확인을 위해 멈추기
-- 커밋하면 push하기 전에 멈추고 나에게 브랜치 이름과 커밋을 알려 준다. 내가 이 폴더에서 release 빌드를 폰에 깔아 확인한다(flutter 기기 ID R3KL201ERFR).
+- 커밋하면 push하기 전에 멈추고 나에게 브랜치 이름과 커밋을 알려 준다. 내가 이 폴더에서 release 빌드를 폰에 깔아 확인한다(flutter 기기 ID [REDACTED:device_id]).
 
 6. push와 PR(내가 \"괜찮아\"라고 한 뒤)
 - CLAUDE.md Workflow 7번대로 개인 기록 세 가지에 이 수정 절을 짧게 더하고 커밋한다. 세 가지는 docs/testing/iteration-5/[REDACTED:custom_term].md, 세션 내보내기와 프롬프트 로그, docs/ai-collaboration/iteration-5/[REDACTED:custom_term].md다.

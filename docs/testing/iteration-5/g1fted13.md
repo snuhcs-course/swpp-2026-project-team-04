@@ -2542,7 +2542,7 @@ flutter test
 
 - `flutter analyze` found no issues.
 - The two related files: 131 passed, 0 failed.
-- The full `flutter test`: 5588 passed, 0 failed, 10 skipped (the same 10 skipped tests as before, none of them this change's).
+- The full `flutter test`: 5588 passed, 0 failed, 10 skipped, the same tests as before and none of this change's: `public_wss_smoke_test.dart` (runs only with `RUN_PUBLIC_BATTLE_SMOKE`) and 9 recordings in `pushup_error_cases_test.dart` (known judge errors, each with its reason in `knownErrors`), as listed in A2's entry.
 - **Coverage:** not measured on this PC (the local rule; it hangs). The change is in one View file, and the new test runs every new line.
   TODO(Woohyun Song): copy the per-layer numbers from the PR's CI comment "Tests and coverage (GitHub Actions)" on its head commit.
 - **Review:** reviewer run 4 APPROVE. Minor 1: the test did not pin that the edge is drawn inside the pill (`strokeAlign`), so a stroke moved outward would still pass. Fixed with `BorderSide.strokeAlignInside`. Minor 2: these notes were still missing before the push. Fixed here.
