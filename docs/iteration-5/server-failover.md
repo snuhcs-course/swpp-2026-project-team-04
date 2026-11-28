@@ -101,7 +101,7 @@ instance from it, attaching the static IP, and the app reaching the new machine.
 
 Procedure for the admin (P6, unchanged), with what this rehearsal adds:
 1. Announce the switch in the team chat.
-2. Create an instance from the latest snapshot (or a fresh instance with the code and a DB backup restored as in 4).
+2. Create an instance from the latest snapshot (or a fresh instance set up as below; code and DB come in step 3).
    On a snapshot both services start at boot (`gymrats-battle` is enabled by `install-battle.sh` and pulls in
    `gymrats-api`), so as soon as it is up run `sudo systemctl stop gymrats-battle gymrats-api` and check both are
    inactive; after any reboot before step 4, stop them again. Otherwise the battle server's one-time start-up
@@ -109,8 +109,9 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
    that are never voided; the API's open connections would also overlap the restore.
    **A fresh instance first needs what the snapshot would bring:** nginx and `python3-venv` installed; the `gymrats`
    group and the `jinyoung` and `sangwoo` users the units run as, both members of `gymrats`; `/srv/gymrats` with the
-   group; the API code in `/srv/gymrats/backend` with its `.venv` and requirements;
-   `server/deploy/gymrats-api.service` installed and `daemon-reload` (not started);
+   group, and `/srv/gymrats/data` for the database (`sudo install -d -o jinyoung -g gymrats -m 2775
+   /srv/gymrats/data`), before anything is restored into it; the API code in `/srv/gymrats/backend` with its `.venv`
+   and requirements; `server/deploy/gymrats-api.service` installed and `daemon-reload` (not started);
    `server/deploy/nginx-gymrats-http.conf` installed as `/etc/nginx/sites-available/gymrats`, linked into
    `sites-enabled`, `sites-enabled/default` removed (both claim `default_server`), then `nginx -t` and a reload.
    `install-https.sh` in step 5 expects that site to exist.
@@ -120,12 +121,13 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
    release in production** if the snapshot is older than the last deploy (the commit is in the deploy notes): copy
    that commit's `server/` into `/srv/gymrats/backend`, install its requirements, reinstall `gymrats-api.service`
    and `daemon-reload` if the unit changed, without starting the service. With both services stopped, restore the
-   newest DB backup if it is newer than the snapshot and run `pragma integrity_check`.
+   newest DB backup (on a fresh instance always, from a copy off the lost machine, of which none exists yet,
+   finding 3; on a snapshot if it is newer) and run `pragma integrity_check`.
    The API runs as `jinyoung`, so `/srv/gymrats/data` and the restored `gymrats.db` must be writable by it, as on
    production (both owner `jinyoung`, group `gymrats`; directory 2775, file 644; SQLite writes its journal in the
    directory). Check with `sudo -u jinyoung test -w /srv/gymrats/data && sudo -u jinyoung test -w
-   /srv/gymrats/data/gymrats.db`; if it fails, `sudo install -d -o jinyoung -g gymrats -m 2775 /srv/gymrats/data` and
-   `sudo chown jinyoung:gymrats` plus `sudo chmod 644` on the file.
+   /srv/gymrats/data/gymrats.db`; if it fails (a restore copied as root, say), `sudo chown jinyoung:gymrats` and
+   `sudo chmod 2775` the directory and `sudo chown jinyoung:gymrats` plus `sudo chmod 644` the file.
    Only then run **`migrate`** and `migrate --check` with the current code (a backup older than the code needs
    migrations; in 4 three were applied), as `jinyoung` from the backend with the service's environment, which
    systemd loads only for the unit: `cd /srv/gymrats/backend && sudo -u jinyoung bash -c 'set -a; . /srv/gymrats/.env;
