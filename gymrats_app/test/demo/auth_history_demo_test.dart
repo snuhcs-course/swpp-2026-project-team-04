@@ -30,7 +30,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
 
-    await tester.tap(find.text('기록보관소'));
+    await tester.tap(find.text('운동일지'));
     await tester.pumpAndSettle();
     expect(find.byType(HistoryScreen), findsOneWidget);
   });

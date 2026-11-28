@@ -124,9 +124,9 @@ VictoryFrame _seatFrame(WidgetTester tester) {
 void main() {
   group('PM acceptance (A7): an online battle the server ended', () {
     for (final (outcome, verdict, scene, title, row) in const [
-      ('draw', 'DRAW', VictoryResult.draw, '무승부', '푸쉬업 · 무승부'),
-      ('win', 'WIN!', VictoryResult.timeWin, '승리', '푸쉬업 · 승리'),
-      ('loss', 'LOSE', VictoryResult.lose, '패배', '푸쉬업 · 패배'),
+      ('draw', 'DRAW', VictoryResult.draw, '무승부', '무'),
+      ('win', 'WIN!', VictoryResult.timeWin, '승리', '승'),
+      ('loss', 'LOSE', VictoryResult.lose, '패배', '패'),
     ]) {
       final others = {'DRAW', 'WIN!', 'LOSE'}..remove(verdict);
 
@@ -225,7 +225,7 @@ void main() {
         expect(seat.fighters, hasLength(outcome == 'draw' ? 1 : 0));
       });
 
-      testWidgets('$outcome: 기록보관소 reads "$row"; the report opened from '
+      testWidgets('$outcome: 운동일지 reads "$row"; the report opened from '
           'it shows only the end look, titled $title', (tester) async {
         final record = onlineBattleResult(
           _finished(outcome),
@@ -236,14 +236,9 @@ void main() {
           'win' => MatchOutcome.win,
           _ => MatchOutcome.lose,
         });
-        expect(ArchiveMatchRow.resultLine(record), row);
-        await _open(
-          tester,
-          Scaffold(
-            body: ArchiveMatchRow(match: record, now: DateTime(2026, 11, 26)),
-          ),
-        );
-        expect(find.textContaining(row), findsOneWidget);
+        expect(ArchiveMatchRow.chipLabel(record), row);
+        await _open(tester, Scaffold(body: ArchiveMatchRow(match: record)));
+        expect(find.text(row), findsOneWidget);
         if (outcome == 'draw') {
           expect(find.textContaining('패'), findsNothing);
         }
