@@ -41,3 +41,7 @@ Codex implemented the landmark replay, applied the published battle scoring rule
 Codex traced the zero-point Average to the shared grader and verified the correction through the online battle screen, server integration and recorded pose replays. The PM specified the exact Korean cue and unlocked the Android test device. Independent Codex review caught stale demo expectations, readability at distance and an order-dependent assertion in the two-client test. Codex applied the fixes. No manual code edits were reported.
 
 The PM clarified the final screen copy to show MISS and +0 alongside the knee correction. Codex revised the player banner, screen regression and motion expectations.
+
+### 2026-11-29 · A1 follow-up · compact knee sign
+
+The PM supplied the tutorial screenshot as the visual reference. Codex reused the shared one-line sign in live battles and updated the screen and motion expectations. No manual code edits were reported.

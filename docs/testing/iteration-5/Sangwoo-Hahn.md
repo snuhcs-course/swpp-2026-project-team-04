@@ -40,3 +40,7 @@ Replayed 350 labelled repetitions in 48 existing recordings against d10d0dc with
 ### 2026-11-28 · A1 follow-up · knee feedback in battle
 
 A regression on the actual OnlineBattleScreen failed on main before the fix. All 469 tests across eleven focused suites passed at dd9fb1e, including normal/fever scoring, a real two-client WebSocket match, the battle HUD and tutorial text scales 1.0–2.0. Before the PM requested the MISS +0 banner, a Galaxy S22 (SM-S901N) also ran the online route in an isolated QA package with a test session and an injected knee rejection. The Korean cue stayed inside the 360 × 732 logical viewport, both counters stayed at zero, and the grade, +0 and MISS banners were absent. This device check exercised the rendered screen, without a live camera or production service. The P18 landmark replay separately exercised the pose judge.
+
+### 2026-11-29 · A1 follow-up · compact knee sign
+
+Ran ten Flutter suites across the online battle screen, stage, reject sign, demo, tutorial, grader and WebSocket integration. All 467 tests passed. The battle screen showed 무릎 떼기 and MISS +0 together with score and valid reps at zero. The sign kept its full spoken cue and the tutorial retained its original example.
