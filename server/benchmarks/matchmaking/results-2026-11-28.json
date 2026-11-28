@@ -1,0 +1,7155 @@
+{
+ "date": "2026-11-28",
+ "base_commit": "7bc473c (origin/main)",
+ "machine": "Apple M4, 10 cores, 16 GB, macOS 27.2.1; client and server on the same machine over loopback",
+ "scenarios": {
+  "s1": {
+   "what": "steady: 200 users, 20 s ramp, 3 rounds each, production server settings",
+   "client": {
+    "plan": {
+     "url": "ws://127.0.0.1:8090/ws/v1/battle",
+     "users": 200,
+     "ramp_ms": 20000,
+     "seed": 20,
+     "rounds_per_user": 3,
+     "exercises": [
+      "push_up",
+      "squat"
+     ],
+     "pose_interval_ms": 100,
+     "ping_interval_ms": 5000,
+     "setup_ms": [
+      1000,
+      3000
+     ],
+     "ready_ms": [
+      1000,
+      3000
+     ],
+     "think_ms": [
+      2000,
+      8000
+     ],
+     "reps_per_round": [
+      8,
+      25
+     ],
+     "round_timeout_ms": 120000,
+     "stop_after_ms": 900000
+    },
+    "client": {
+     "dart": "3.13.4",
+     "os": "macos",
+     "os_version": "Version 27.2.1 (Build 26B131)",
+     "processors": 10
+    },
+    "wall_ms": 161994,
+    "users": 200,
+    "connected": 200,
+    "connect_errors": {},
+    "peak_connected": 200,
+    "peak_queued": 2,
+    "peak_in_match": 198,
+    "rounds": 600,
+    "succeeded": 600,
+    "failed": 0,
+    "outcomes": {
+     "finished:ko": 395,
+     "finished:time_up": 205
+    },
+    "matched_real": 598,
+    "matched_simulated": 2,
+    "server_errors": {},
+    "unexpected_closes": {},
+    "connect_ms": {
+     "count": 200,
+     "min": 0.0,
+     "p50": 1.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 2.0,
+     "max": 3.0,
+     "mean": 0.82
+    },
+    "queue_wait_ms": {
+     "all": {
+      "count": 600,
+      "min": 0.0,
+      "p50": 8.0,
+      "p90": 517.0,
+      "p95": 808.0,
+      "p99": 1880.0,
+      "max": 10033.0,
+      "mean": 219.98
+     },
+     "real": {
+      "count": 598,
+      "min": 0.0,
+      "p50": 2.0,
+      "p90": 517.0,
+      "p95": 786.0,
+      "p99": 1667.0,
+      "max": 8346.0,
+      "mean": 187.19
+     },
+     "simulated": {
+      "count": 2,
+      "min": 10014.0,
+      "p50": 10014.0,
+      "p90": 10033.0,
+      "p95": 10033.0,
+      "p99": 10033.0,
+      "max": 10033.0,
+      "mean": 10023.5
+     },
+     "buckets": [
+      "<100ms",
+      "100–1000ms",
+      "1000–5000ms",
+      "5000–10000ms",
+      "10000–10500ms",
+      "10500–11000ms",
+      "11000–15000ms",
+      "≥15000ms"
+     ],
+     "histogram_all": [
+      357,
+      223,
+      16,
+      2,
+      2,
+      0,
+      0,
+      0
+     ]
+    },
+    "found_to_start_ms": {
+     "count": 600,
+     "min": 2522.0,
+     "p50": 4467.0,
+     "p90": 5508.0,
+     "p95": 5649.0,
+     "p99": 5800.0,
+     "max": 11695.0,
+     "mean": 4537.03
+    },
+    "rep_ack_ms": {
+     "count": 8051,
+     "min": 0.0,
+     "p50": 0.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 1.0,
+     "max": 7.0,
+     "mean": 0.4
+    },
+    "reps_sent": 8051,
+    "reps_acked": 8051,
+    "poses_sent": 136637,
+    "poses_received": 108875,
+    "timeline": [
+     {
+      "at_ms": 1001,
+      "connected": 10,
+      "queued": 2,
+      "in_match": 8
+     },
+     {
+      "at_ms": 2001,
+      "connected": 20,
+      "queued": 0,
+      "in_match": 20
+     },
+     {
+      "at_ms": 3001,
+      "connected": 30,
+      "queued": 0,
+      "in_match": 30
+     },
+     {
+      "at_ms": 4001,
+      "connected": 40,
+      "queued": 2,
+      "in_match": 38
+     },
+     {
+      "at_ms": 5002,
+      "connected": 50,
+      "queued": 2,
+      "in_match": 48
+     },
+     {
+      "at_ms": 6001,
+      "connected": 60,
+      "queued": 0,
+      "in_match": 60
+     },
+     {
+      "at_ms": 7001,
+      "connected": 70,
+      "queued": 0,
+      "in_match": 70
+     },
+     {
+      "at_ms": 8001,
+      "connected": 80,
+      "queued": 0,
+      "in_match": 80
+     },
+     {
+      "at_ms": 9002,
+      "connected": 90,
+      "queued": 2,
+      "in_match": 88
+     },
+     {
+      "at_ms": 10001,
+      "connected": 100,
+      "queued": 0,
+      "in_match": 100
+     },
+     {
+      "at_ms": 11001,
+      "connected": 110,
+      "queued": 2,
+      "in_match": 108
+     },
+     {
+      "at_ms": 12001,
+      "connected": 120,
+      "queued": 0,
+      "in_match": 120
+     },
+     {
+      "at_ms": 13000,
+      "connected": 130,
+      "queued": 0,
+      "in_match": 130
+     },
+     {
+      "at_ms": 14000,
+      "connected": 140,
+      "queued": 0,
+      "in_match": 140
+     },
+     {
+      "at_ms": 15000,
+      "connected": 150,
+      "queued": 2,
+      "in_match": 148
+     },
+     {
+      "at_ms": 16001,
+      "connected": 160,
+      "queued": 2,
+      "in_match": 158
+     },
+     {
+      "at_ms": 17000,
+      "connected": 170,
+      "queued": 0,
+      "in_match": 170
+     },
+     {
+      "at_ms": 18000,
+      "connected": 180,
+      "queued": 0,
+      "in_match": 180
+     },
+     {
+      "at_ms": 19001,
+      "connected": 190,
+      "queued": 2,
+      "in_match": 188
+     },
+     {
+      "at_ms": 20000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 21000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 22000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 23001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 24000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 194
+     },
+     {
+      "at_ms": 25000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 192
+     },
+     {
+      "at_ms": 26000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 186
+     },
+     {
+      "at_ms": 27000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 182
+     },
+     {
+      "at_ms": 28001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 176
+     },
+     {
+      "at_ms": 29000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 180
+     },
+     {
+      "at_ms": 30001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 180
+     },
+     {
+      "at_ms": 31000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 174
+     },
+     {
+      "at_ms": 32000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 174
+     },
+     {
+      "at_ms": 33001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 174
+     },
+     {
+      "at_ms": 34000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 178
+     },
+     {
+      "at_ms": 35000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 174
+     },
+     {
+      "at_ms": 36001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 170
+     },
+     {
+      "at_ms": 37000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 174
+     },
+     {
+      "at_ms": 38000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 176
+     },
+     {
+      "at_ms": 39001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 168
+     },
+     {
+      "at_ms": 40000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 160
+     },
+     {
+      "at_ms": 41001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 158
+     },
+     {
+      "at_ms": 42001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 154
+     },
+     {
+      "at_ms": 43001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 152
+     },
+     {
+      "at_ms": 44000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 156
+     },
+     {
+      "at_ms": 45000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 160
+     },
+     {
+      "at_ms": 46001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 162
+     },
+     {
+      "at_ms": 47000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 164
+     },
+     {
+      "at_ms": 48001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 166
+     },
+     {
+      "at_ms": 49001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 170
+     },
+     {
+      "at_ms": 50001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 162
+     },
+     {
+      "at_ms": 51001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 164
+     },
+     {
+      "at_ms": 52001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 158
+     },
+     {
+      "at_ms": 53001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 162
+     },
+     {
+      "at_ms": 54001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 158
+     },
+     {
+      "at_ms": 55001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 158
+     },
+     {
+      "at_ms": 56001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 164
+     },
+     {
+      "at_ms": 57001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 170
+     },
+     {
+      "at_ms": 58001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 176
+     },
+     {
+      "at_ms": 59001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 180
+     },
+     {
+      "at_ms": 60001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 178
+     },
+     {
+      "at_ms": 61001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 176
+     },
+     {
+      "at_ms": 62001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 178
+     },
+     {
+      "at_ms": 63000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 182
+     },
+     {
+      "at_ms": 64000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 184
+     },
+     {
+      "at_ms": 65000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 186
+     },
+     {
+      "at_ms": 66001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 184
+     },
+     {
+      "at_ms": 67001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 180
+     },
+     {
+      "at_ms": 68000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 180
+     },
+     {
+      "at_ms": 69000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 178
+     },
+     {
+      "at_ms": 70000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 174
+     },
+     {
+      "at_ms": 71000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 168
+     },
+     {
+      "at_ms": 72001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 170
+     },
+     {
+      "at_ms": 73000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 166
+     },
+     {
+      "at_ms": 74000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 166
+     },
+     {
+      "at_ms": 75000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 166
+     },
+     {
+      "at_ms": 76000,
+      "connected": 198,
+      "queued": 1,
+      "in_match": 156
+     },
+     {
+      "at_ms": 77000,
+      "connected": 198,
+      "queued": 0,
+      "in_match": 162
+     },
+     {
+      "at_ms": 78001,
+      "connected": 198,
+      "queued": 1,
+      "in_match": 162
+     },
+     {
+      "at_ms": 79001,
+      "connected": 198,
+      "queued": 2,
+      "in_match": 162
+     },
+     {
+      "at_ms": 80001,
+      "connected": 198,
+      "queued": 0,
+      "in_match": 168
+     },
+     {
+      "at_ms": 81000,
+      "connected": 197,
+      "queued": 1,
+      "in_match": 166
+     },
+     {
+      "at_ms": 82000,
+      "connected": 197,
+      "queued": 2,
+      "in_match": 164
+     },
+     {
+      "at_ms": 83000,
+      "connected": 197,
+      "queued": 1,
+      "in_match": 164
+     },
+     {
+      "at_ms": 84000,
+      "connected": 196,
+      "queued": 2,
+      "in_match": 170
+     },
+     {
+      "at_ms": 85000,
+      "connected": 192,
+      "queued": 1,
+      "in_match": 168
+     },
+     {
+      "at_ms": 86001,
+      "connected": 192,
+      "queued": 1,
+      "in_match": 166
+     },
+     {
+      "at_ms": 87000,
+      "connected": 192,
+      "queued": 1,
+      "in_match": 170
+     },
+     {
+      "at_ms": 88001,
+      "connected": 189,
+      "queued": 0,
+      "in_match": 166
+     },
+     {
+      "at_ms": 89001,
+      "connected": 189,
+      "queued": 1,
+      "in_match": 168
+     },
+     {
+      "at_ms": 90000,
+      "connected": 187,
+      "queued": 1,
+      "in_match": 162
+     },
+     {
+      "at_ms": 91000,
+      "connected": 183,
+      "queued": 1,
+      "in_match": 158
+     },
+     {
+      "at_ms": 92001,
+      "connected": 181,
+      "queued": 2,
+      "in_match": 160
+     },
+     {
+      "at_ms": 93001,
+      "connected": 179,
+      "queued": 1,
+      "in_match": 156
+     },
+     {
+      "at_ms": 94000,
+      "connected": 175,
+      "queued": 0,
+      "in_match": 160
+     },
+     {
+      "at_ms": 95000,
+      "connected": 172,
+      "queued": 0,
+      "in_match": 154
+     },
+     {
+      "at_ms": 96001,
+      "connected": 172,
+      "queued": 1,
+      "in_match": 154
+     },
+     {
+      "at_ms": 97001,
+      "connected": 168,
+      "queued": 1,
+      "in_match": 150
+     },
+     {
+      "at_ms": 98001,
+      "connected": 166,
+      "queued": 1,
+      "in_match": 152
+     },
+     {
+      "at_ms": 99001,
+      "connected": 159,
+      "queued": 1,
+      "in_match": 146
+     },
+     {
+      "at_ms": 100001,
+      "connected": 156,
+      "queued": 1,
+      "in_match": 146
+     },
+     {
+      "at_ms": 101000,
+      "connected": 151,
+      "queued": 2,
+      "in_match": 140
+     },
+     {
+      "at_ms": 102000,
+      "connected": 151,
+      "queued": 1,
+      "in_match": 144
+     },
+     {
+      "at_ms": 103000,
+      "connected": 149,
+      "queued": 0,
+      "in_match": 146
+     },
+     {
+      "at_ms": 104000,
+      "connected": 147,
+      "queued": 2,
+      "in_match": 144
+     },
+     {
+      "at_ms": 105001,
+      "connected": 145,
+      "queued": 1,
+      "in_match": 144
+     },
+     {
+      "at_ms": 106001,
+      "connected": 145,
+      "queued": 1,
+      "in_match": 144
+     },
+     {
+      "at_ms": 107000,
+      "connected": 139,
+      "queued": 1,
+      "in_match": 138
+     },
+     {
+      "at_ms": 108001,
+      "connected": 133,
+      "queued": 1,
+      "in_match": 132
+     },
+     {
+      "at_ms": 109001,
+      "connected": 129,
+      "queued": 1,
+      "in_match": 128
+     },
+     {
+      "at_ms": 110000,
+      "connected": 123,
+      "queued": 1,
+      "in_match": 122
+     },
+     {
+      "at_ms": 111001,
+      "connected": 116,
+      "queued": 1,
+      "in_match": 114
+     },
+     {
+      "at_ms": 112001,
+      "connected": 110,
+      "queued": 1,
+      "in_match": 108
+     },
+     {
+      "at_ms": 113001,
+      "connected": 100,
+      "queued": 1,
+      "in_match": 98
+     },
+     {
+      "at_ms": 114001,
+      "connected": 92,
+      "queued": 0,
+      "in_match": 91
+     },
+     {
+      "at_ms": 115001,
+      "connected": 88,
+      "queued": 0,
+      "in_match": 87
+     },
+     {
+      "at_ms": 116001,
+      "connected": 76,
+      "queued": 1,
+      "in_match": 75
+     },
+     {
+      "at_ms": 117001,
+      "connected": 70,
+      "queued": 1,
+      "in_match": 69
+     },
+     {
+      "at_ms": 118000,
+      "connected": 62,
+      "queued": 1,
+      "in_match": 61
+     },
+     {
+      "at_ms": 119000,
+      "connected": 54,
+      "queued": 1,
+      "in_match": 53
+     },
+     {
+      "at_ms": 120001,
+      "connected": 46,
+      "queued": 1,
+      "in_match": 45
+     },
+     {
+      "at_ms": 121001,
+      "connected": 46,
+      "queued": 1,
+      "in_match": 45
+     },
+     {
+      "at_ms": 122000,
+      "connected": 42,
+      "queued": 1,
+      "in_match": 41
+     },
+     {
+      "at_ms": 123000,
+      "connected": 38,
+      "queued": 1,
+      "in_match": 37
+     },
+     {
+      "at_ms": 124000,
+      "connected": 36,
+      "queued": 1,
+      "in_match": 35
+     },
+     {
+      "at_ms": 125001,
+      "connected": 30,
+      "queued": 1,
+      "in_match": 29
+     },
+     {
+      "at_ms": 126000,
+      "connected": 28,
+      "queued": 0,
+      "in_match": 28
+     },
+     {
+      "at_ms": 127001,
+      "connected": 22,
+      "queued": 0,
+      "in_match": 22
+     },
+     {
+      "at_ms": 128000,
+      "connected": 22,
+      "queued": 0,
+      "in_match": 22
+     },
+     {
+      "at_ms": 129000,
+      "connected": 18,
+      "queued": 0,
+      "in_match": 18
+     },
+     {
+      "at_ms": 130000,
+      "connected": 14,
+      "queued": 0,
+      "in_match": 14
+     },
+     {
+      "at_ms": 131001,
+      "connected": 12,
+      "queued": 0,
+      "in_match": 12
+     },
+     {
+      "at_ms": 132001,
+      "connected": 12,
+      "queued": 0,
+      "in_match": 12
+     },
+     {
+      "at_ms": 133001,
+      "connected": 8,
+      "queued": 0,
+      "in_match": 8
+     },
+     {
+      "at_ms": 134001,
+      "connected": 8,
+      "queued": 0,
+      "in_match": 8
+     },
+     {
+      "at_ms": 135001,
+      "connected": 8,
+      "queued": 0,
+      "in_match": 8
+     },
+     {
+      "at_ms": 136001,
+      "connected": 8,
+      "queued": 0,
+      "in_match": 8
+     },
+     {
+      "at_ms": 137001,
+      "connected": 6,
+      "queued": 0,
+      "in_match": 6
+     },
+     {
+      "at_ms": 138001,
+      "connected": 6,
+      "queued": 0,
+      "in_match": 6
+     },
+     {
+      "at_ms": 139000,
+      "connected": 6,
+      "queued": 0,
+      "in_match": 6
+     },
+     {
+      "at_ms": 140000,
+      "connected": 4,
+      "queued": 0,
+      "in_match": 4
+     },
+     {
+      "at_ms": 141001,
+      "connected": 4,
+      "queued": 0,
+      "in_match": 4
+     },
+     {
+      "at_ms": 142000,
+      "connected": 4,
+      "queued": 0,
+      "in_match": 4
+     },
+     {
+      "at_ms": 143002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 144002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 145002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 146002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 147002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 148002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 149002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 150001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 151002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 152002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 153001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 154001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 155001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 156002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 157002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 158002,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 159002,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 160002,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 161002,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 161994,
+      "connected": 0,
+      "queued": 0,
+      "in_match": 0
+     }
+    ]
+   },
+   "server": {
+    "server": {
+     "dart": "3.13.4",
+     "os": "macos",
+     "os_version": "Version 27.2.1 (Build 26B131)",
+     "processors": 10,
+     "compiled": "aot",
+     "port": 8090,
+     "accounts": 1000,
+     "virtual_after_ms": 10000,
+     "duration_ms": 30000,
+     "setup_timeout_ms": 20000,
+     "tick_ms": 50
+    },
+    "wall_ms": 164598,
+    "event_loop_lag_ms": {
+     "count": 1645,
+     "min": 0.0,
+     "p50": 0.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 1.0,
+     "max": 8.0,
+     "mean": 0.2
+    },
+    "lag_over_50ms": 0,
+    "max_rss_kb": 46000,
+    "usage": [
+     {
+      "at_ms": 5013,
+      "cpu_percent": 2.1,
+      "rss_kb": 18624
+     },
+     {
+      "at_ms": 10012,
+      "cpu_percent": 1.9,
+      "rss_kb": 22304
+     },
+     {
+      "at_ms": 15014,
+      "cpu_percent": 12.1,
+      "rss_kb": 26576
+     },
+     {
+      "at_ms": 20012,
+      "cpu_percent": 20.9,
+      "rss_kb": 27616
+     },
+     {
+      "at_ms": 25013,
+      "cpu_percent": 29.1,
+      "rss_kb": 28768
+     },
+     {
+      "at_ms": 30012,
+      "cpu_percent": 35.3,
+      "rss_kb": 30064
+     },
+     {
+      "at_ms": 35012,
+      "cpu_percent": 32.1,
+      "rss_kb": 31280
+     },
+     {
+      "at_ms": 40012,
+      "cpu_percent": 28.3,
+      "rss_kb": 32304
+     },
+     {
+      "at_ms": 45013,
+      "cpu_percent": 24.6,
+      "rss_kb": 33360
+     },
+     {
+      "at_ms": 50012,
+      "cpu_percent": 23.2,
+      "rss_kb": 33888
+     },
+     {
+      "at_ms": 55013,
+      "cpu_percent": 22.8,
+      "rss_kb": 34640
+     },
+     {
+      "at_ms": 60014,
+      "cpu_percent": 25.7,
+      "rss_kb": 35936
+     },
+     {
+      "at_ms": 65013,
+      "cpu_percent": 27.0,
+      "rss_kb": 36480
+     },
+     {
+      "at_ms": 70007,
+      "cpu_percent": 30.3,
+      "rss_kb": 37424
+     },
+     {
+      "at_ms": 75012,
+      "cpu_percent": 29.0,
+      "rss_kb": 38000
+     },
+     {
+      "at_ms": 80011,
+      "cpu_percent": 26.7,
+      "rss_kb": 38912
+     },
+     {
+      "at_ms": 85011,
+      "cpu_percent": 23.7,
+      "rss_kb": 39920
+     },
+     {
+      "at_ms": 90013,
+      "cpu_percent": 26.7,
+      "rss_kb": 40720
+     },
+     {
+      "at_ms": 95012,
+      "cpu_percent": 26.4,
+      "rss_kb": 41280
+     },
+     {
+      "at_ms": 100014,
+      "cpu_percent": 25.7,
+      "rss_kb": 42096
+     },
+     {
+      "at_ms": 105014,
+      "cpu_percent": 25.1,
+      "rss_kb": 43632
+     },
+     {
+      "at_ms": 110013,
+      "cpu_percent": 25.4,
+      "rss_kb": 44192
+     },
+     {
+      "at_ms": 115012,
+      "cpu_percent": 22.6,
+      "rss_kb": 44560
+     },
+     {
+      "at_ms": 120013,
+      "cpu_percent": 14.7,
+      "rss_kb": 45232
+     },
+     {
+      "at_ms": 125012,
+      "cpu_percent": 9.5,
+      "rss_kb": 45376
+     },
+     {
+      "at_ms": 130012,
+      "cpu_percent": 5.8,
+      "rss_kb": 45488
+     },
+     {
+      "at_ms": 135013,
+      "cpu_percent": 3.1,
+      "rss_kb": 45600
+     },
+     {
+      "at_ms": 140014,
+      "cpu_percent": 2.1,
+      "rss_kb": 45632
+     },
+     {
+      "at_ms": 145009,
+      "cpu_percent": 2.0,
+      "rss_kb": 45680
+     },
+     {
+      "at_ms": 150008,
+      "cpu_percent": 1.1,
+      "rss_kb": 45696
+     },
+     {
+      "at_ms": 155013,
+      "cpu_percent": 1.1,
+      "rss_kb": 45712
+     },
+     {
+      "at_ms": 160013,
+      "cpu_percent": 1.9,
+      "rss_kb": 45728
+     }
+    ]
+   }
+  },
+  "s2": {
+   "what": "burst: 200 users at once, 1 round each, production server settings",
+   "client": {
+    "plan": {
+     "url": "ws://127.0.0.1:8090/ws/v1/battle",
+     "users": 200,
+     "ramp_ms": 0,
+     "seed": 20,
+     "rounds_per_user": 1,
+     "exercises": [
+      "push_up",
+      "squat"
+     ],
+     "pose_interval_ms": 100,
+     "ping_interval_ms": 5000,
+     "setup_ms": [
+      1000,
+      3000
+     ],
+     "ready_ms": [
+      1000,
+      3000
+     ],
+     "think_ms": [
+      2000,
+      8000
+     ],
+     "reps_per_round": [
+      8,
+      25
+     ],
+     "round_timeout_ms": 120000,
+     "stop_after_ms": 900000
+    },
+    "client": {
+     "dart": "3.13.4",
+     "os": "macos",
+     "os_version": "Version 27.2.1 (Build 26B131)",
+     "processors": 10
+    },
+    "wall_ms": 47582,
+    "users": 200,
+    "connected": 200,
+    "connect_errors": {},
+    "peak_connected": 200,
+    "peak_queued": 2,
+    "peak_in_match": 200,
+    "rounds": 200,
+    "succeeded": 200,
+    "failed": 0,
+    "outcomes": {
+     "finished:ko": 128,
+     "finished:time_up": 72
+    },
+    "matched_real": 198,
+    "matched_simulated": 2,
+    "server_errors": {},
+    "unexpected_closes": {},
+    "connect_ms": {
+     "count": 200,
+     "min": 16.0,
+     "p50": 20.0,
+     "p90": 25.0,
+     "p95": 26.0,
+     "p99": 35.0,
+     "max": 35.0,
+     "mean": 20.95
+    },
+    "queue_wait_ms": {
+     "all": {
+      "count": 200,
+      "min": 0.0,
+      "p50": 9.0,
+      "p90": 10.0,
+      "p95": 11.0,
+      "p99": 11.0,
+      "max": 10047.0,
+      "mean": 109.23
+     },
+     "real": {
+      "count": 198,
+      "min": 0.0,
+      "p50": 9.0,
+      "p90": 10.0,
+      "p95": 10.0,
+      "p99": 11.0,
+      "max": 11.0,
+      "mean": 8.85
+     },
+     "simulated": {
+      "count": 2,
+      "min": 10047.0,
+      "p50": 10047.0,
+      "p90": 10047.0,
+      "p95": 10047.0,
+      "p99": 10047.0,
+      "max": 10047.0,
+      "mean": 10047.0
+     },
+     "buckets": [
+      "<100ms",
+      "100–1000ms",
+      "1000–5000ms",
+      "5000–10000ms",
+      "10000–10500ms",
+      "10500–11000ms",
+      "11000–15000ms",
+      "≥15000ms"
+     ],
+     "histogram_all": [
+      198,
+      0,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0
+     ]
+    },
+    "found_to_start_ms": {
+     "count": 200,
+     "min": 2810.0,
+     "p50": 4462.0,
+     "p90": 5455.0,
+     "p95": 5672.0,
+     "p99": 5889.0,
+     "max": 10348.0,
+     "mean": 4558.02
+    },
+    "rep_ack_ms": {
+     "count": 2753,
+     "min": 0.0,
+     "p50": 0.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 1.0,
+     "max": 11.0,
+     "mean": 0.39
+    },
+    "reps_sent": 2753,
+    "reps_acked": 2753,
+    "poses_sent": 46287,
+    "poses_received": 35920,
+    "timeline": [
+     {
+      "at_ms": 1001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 2002,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 3002,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 4001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 5001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 6002,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 7000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 8000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 9000,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 10001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 11000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 12000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 13001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 14000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 15001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 16001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 17000,
+      "connected": 198,
+      "queued": 0,
+      "in_match": 198
+     },
+     {
+      "at_ms": 18000,
+      "connected": 194,
+      "queued": 0,
+      "in_match": 194
+     },
+     {
+      "at_ms": 19000,
+      "connected": 192,
+      "queued": 0,
+      "in_match": 192
+     },
+     {
+      "at_ms": 20000,
+      "connected": 182,
+      "queued": 0,
+      "in_match": 182
+     },
+     {
+      "at_ms": 21000,
+      "connected": 176,
+      "queued": 0,
+      "in_match": 176
+     },
+     {
+      "at_ms": 22001,
+      "connected": 174,
+      "queued": 0,
+      "in_match": 174
+     },
+     {
+      "at_ms": 23000,
+      "connected": 172,
+      "queued": 0,
+      "in_match": 172
+     },
+     {
+      "at_ms": 24000,
+      "connected": 158,
+      "queued": 0,
+      "in_match": 158
+     },
+     {
+      "at_ms": 25000,
+      "connected": 152,
+      "queued": 0,
+      "in_match": 152
+     },
+     {
+      "at_ms": 26000,
+      "connected": 146,
+      "queued": 0,
+      "in_match": 146
+     },
+     {
+      "at_ms": 27001,
+      "connected": 138,
+      "queued": 0,
+      "in_match": 138
+     },
+     {
+      "at_ms": 28000,
+      "connected": 130,
+      "queued": 0,
+      "in_match": 130
+     },
+     {
+      "at_ms": 29000,
+      "connected": 116,
+      "queued": 0,
+      "in_match": 116
+     },
+     {
+      "at_ms": 30000,
+      "connected": 108,
+      "queued": 0,
+      "in_match": 108
+     },
+     {
+      "at_ms": 31000,
+      "connected": 106,
+      "queued": 0,
+      "in_match": 106
+     },
+     {
+      "at_ms": 32001,
+      "connected": 100,
+      "queued": 0,
+      "in_match": 100
+     },
+     {
+      "at_ms": 33000,
+      "connected": 98,
+      "queued": 0,
+      "in_match": 98
+     },
+     {
+      "at_ms": 34001,
+      "connected": 88,
+      "queued": 0,
+      "in_match": 88
+     },
+     {
+      "at_ms": 35000,
+      "connected": 78,
+      "queued": 0,
+      "in_match": 78
+     },
+     {
+      "at_ms": 36001,
+      "connected": 72,
+      "queued": 0,
+      "in_match": 72
+     },
+     {
+      "at_ms": 37001,
+      "connected": 60,
+      "queued": 0,
+      "in_match": 60
+     },
+     {
+      "at_ms": 38001,
+      "connected": 22,
+      "queued": 0,
+      "in_match": 22
+     },
+     {
+      "at_ms": 39001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 40001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 41001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 42002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 43001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 44002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 45002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 46002,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 47002,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 47582,
+      "connected": 0,
+      "queued": 0,
+      "in_match": 0
+     }
+    ]
+   },
+   "server": {
+    "server": {
+     "dart": "3.13.4",
+     "os": "macos",
+     "os_version": "Version 27.2.1 (Build 26B131)",
+     "processors": 10,
+     "compiled": "aot",
+     "port": 8090,
+     "accounts": 1000,
+     "virtual_after_ms": 10000,
+     "duration_ms": 30000,
+     "setup_timeout_ms": 20000,
+     "tick_ms": 50
+    },
+    "wall_ms": 48626,
+    "event_loop_lag_ms": {
+     "count": 486,
+     "min": 0.0,
+     "p50": 0.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 1.0,
+     "max": 2.0,
+     "mean": 0.21
+    },
+    "lag_over_50ms": 0,
+    "max_rss_kb": 59136,
+    "usage": [
+     {
+      "at_ms": 5011,
+      "cpu_percent": 2.4,
+      "rss_kb": 29392
+     },
+     {
+      "at_ms": 10012,
+      "cpu_percent": 33.8,
+      "rss_kb": 53440
+     },
+     {
+      "at_ms": 15012,
+      "cpu_percent": 35.0,
+      "rss_kb": 54464
+     },
+     {
+      "at_ms": 20011,
+      "cpu_percent": 35.7,
+      "rss_kb": 56032
+     },
+     {
+      "at_ms": 25011,
+      "cpu_percent": 32.6,
+      "rss_kb": 57360
+     },
+     {
+      "at_ms": 30010,
+      "cpu_percent": 24.8,
+      "rss_kb": 57360
+     },
+     {
+      "at_ms": 35011,
+      "cpu_percent": 19.0,
+      "rss_kb": 58896
+     },
+     {
+      "at_ms": 40013,
+      "cpu_percent": 2.3,
+      "rss_kb": 58112
+     },
+     {
+      "at_ms": 45013,
+      "cpu_percent": 0.9,
+      "rss_kb": 58096
+     }
+    ]
+   }
+  },
+  "s3": {
+   "what": "simulated-heavy: as s1 but --virtual-after-ms 0 (not the production 10 s) and --bots 200 (the bots' own records in the skill table); run again after the Codex review of bd2e5f3",
+   "client": {
+    "plan": {
+     "url": "ws://127.0.0.1:8090/ws/v1/battle",
+     "users": 200,
+     "ramp_ms": 20000,
+     "seed": 20,
+     "rounds_per_user": 3,
+     "exercises": [
+      "push_up",
+      "squat"
+     ],
+     "pose_interval_ms": 100,
+     "ping_interval_ms": 5000,
+     "setup_ms": [
+      1000,
+      3000
+     ],
+     "ready_ms": [
+      1000,
+      3000
+     ],
+     "think_ms": [
+      2000,
+      8000
+     ],
+     "reps_per_round": [
+      8,
+      25
+     ],
+     "connect_timeout_ms": 8000,
+     "round_timeout_ms": 120000,
+     "stop_after_ms": 900000
+    },
+    "client": {
+     "dart": "3.13.4",
+     "os": "macos",
+     "os_version": "Version 27.2.1 (Build 26B131)",
+     "processors": 10,
+     "compiled": "aot"
+    },
+    "wall_ms": 163919,
+    "users": 200,
+    "connected": 200,
+    "connect_errors": {},
+    "peak_connected": 200,
+    "peak_queued": 1,
+    "peak_in_match": 200,
+    "rounds": 600,
+    "succeeded": 600,
+    "failed": 0,
+    "outcomes": {
+     "finished:ko": 346,
+     "finished:time_up": 254
+    },
+    "matched_real": 44,
+    "matched_simulated": 556,
+    "simulated_opponents_distinct": 24,
+    "server_errors": {},
+    "unexpected_closes": {},
+    "connect_ms": {
+     "count": 200,
+     "min": 0.0,
+     "p50": 1.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 2.0,
+     "max": 4.0,
+     "mean": 0.7
+    },
+    "queue_wait_ms": {
+     "all": {
+      "count": 600,
+      "min": 0.0,
+      "p50": 17.0,
+      "p90": 44.0,
+      "p95": 48.0,
+      "p99": 51.0,
+      "max": 53.0,
+      "mean": 21.96
+     },
+     "real": {
+      "count": 44,
+      "min": 0.0,
+      "p50": 1.0,
+      "p90": 24.0,
+      "p95": 31.0,
+      "p99": 42.0,
+      "max": 42.0,
+      "mean": 8.55
+     },
+     "simulated": {
+      "count": 556,
+      "min": 0.0,
+      "p50": 17.0,
+      "p90": 44.0,
+      "p95": 48.0,
+      "p99": 51.0,
+      "max": 53.0,
+      "mean": 23.02
+     },
+     "buckets": [
+      "<100ms",
+      "100–1000ms",
+      "1000–5000ms",
+      "5000–10000ms",
+      "10000–10500ms",
+      "10500–11000ms",
+      "11000–15000ms",
+      "≥15000ms"
+     ],
+     "histogram_all": [
+      600,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "found_to_start_ms": {
+     "count": 600,
+     "min": 3386.0,
+     "p50": 9900.0,
+     "p90": 11501.0,
+     "p95": 12049.0,
+     "p99": 12651.0,
+     "max": 12901.0,
+     "mean": 9632.74
+    },
+    "rep_ack_ms": {
+     "count": 8324,
+     "min": 0.0,
+     "p50": 0.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 2.0,
+     "max": 9.0,
+     "mean": 0.39
+    },
+    "reps_sent": 8324,
+    "reps_acked": 8324,
+    "poses_sent": 144762,
+    "poses_received": 7929,
+    "timeline": [
+     {
+      "at_ms": 1002,
+      "connected": 10,
+      "queued": 0,
+      "in_match": 10
+     },
+     {
+      "at_ms": 2002,
+      "connected": 20,
+      "queued": 0,
+      "in_match": 20
+     },
+     {
+      "at_ms": 3002,
+      "connected": 30,
+      "queued": 0,
+      "in_match": 30
+     },
+     {
+      "at_ms": 4002,
+      "connected": 40,
+      "queued": 0,
+      "in_match": 40
+     },
+     {
+      "at_ms": 5002,
+      "connected": 50,
+      "queued": 0,
+      "in_match": 50
+     },
+     {
+      "at_ms": 6001,
+      "connected": 60,
+      "queued": 0,
+      "in_match": 60
+     },
+     {
+      "at_ms": 7001,
+      "connected": 70,
+      "queued": 0,
+      "in_match": 70
+     },
+     {
+      "at_ms": 8002,
+      "connected": 80,
+      "queued": 0,
+      "in_match": 80
+     },
+     {
+      "at_ms": 9002,
+      "connected": 90,
+      "queued": 0,
+      "in_match": 90
+     },
+     {
+      "at_ms": 10002,
+      "connected": 100,
+      "queued": 0,
+      "in_match": 100
+     },
+     {
+      "at_ms": 11002,
+      "connected": 110,
+      "queued": 0,
+      "in_match": 110
+     },
+     {
+      "at_ms": 12001,
+      "connected": 120,
+      "queued": 0,
+      "in_match": 120
+     },
+     {
+      "at_ms": 13002,
+      "connected": 130,
+      "queued": 0,
+      "in_match": 130
+     },
+     {
+      "at_ms": 14002,
+      "connected": 140,
+      "queued": 0,
+      "in_match": 140
+     },
+     {
+      "at_ms": 15002,
+      "connected": 150,
+      "queued": 0,
+      "in_match": 150
+     },
+     {
+      "at_ms": 16001,
+      "connected": 160,
+      "queued": 0,
+      "in_match": 160
+     },
+     {
+      "at_ms": 17002,
+      "connected": 170,
+      "queued": 0,
+      "in_match": 170
+     },
+     {
+      "at_ms": 18002,
+      "connected": 180,
+      "queued": 0,
+      "in_match": 180
+     },
+     {
+      "at_ms": 19002,
+      "connected": 190,
+      "queued": 0,
+      "in_match": 190
+     },
+     {
+      "at_ms": 20002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 21001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 22002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 23001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 24002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 200
+     },
+     {
+      "at_ms": 25002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 199
+     },
+     {
+      "at_ms": 26001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 199
+     },
+     {
+      "at_ms": 27001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 198
+     },
+     {
+      "at_ms": 28002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 198
+     },
+     {
+      "at_ms": 29001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 198
+     },
+     {
+      "at_ms": 30001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 195
+     },
+     {
+      "at_ms": 31001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 194
+     },
+     {
+      "at_ms": 32001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 193
+     },
+     {
+      "at_ms": 33002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 193
+     },
+     {
+      "at_ms": 34002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 194
+     },
+     {
+      "at_ms": 35002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 191
+     },
+     {
+      "at_ms": 36000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 186
+     },
+     {
+      "at_ms": 37002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 177
+     },
+     {
+      "at_ms": 38001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 174
+     },
+     {
+      "at_ms": 39002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 173
+     },
+     {
+      "at_ms": 40001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 168
+     },
+     {
+      "at_ms": 41001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 165
+     },
+     {
+      "at_ms": 42001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 43002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 167
+     },
+     {
+      "at_ms": 44002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 167
+     },
+     {
+      "at_ms": 45000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 165
+     },
+     {
+      "at_ms": 46002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 167
+     },
+     {
+      "at_ms": 47001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 165
+     },
+     {
+      "at_ms": 48002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 165
+     },
+     {
+      "at_ms": 49001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 164
+     },
+     {
+      "at_ms": 50002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 157
+     },
+     {
+      "at_ms": 51002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 160
+     },
+     {
+      "at_ms": 52002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 156
+     },
+     {
+      "at_ms": 53001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 161
+     },
+     {
+      "at_ms": 54002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 160
+     },
+     {
+      "at_ms": 55001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 155
+     },
+     {
+      "at_ms": 56002,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 160
+     },
+     {
+      "at_ms": 57001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 164
+     },
+     {
+      "at_ms": 58001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 166
+     },
+     {
+      "at_ms": 59001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 60002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 170
+     },
+     {
+      "at_ms": 61000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 172
+     },
+     {
+      "at_ms": 62002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 174
+     },
+     {
+      "at_ms": 63001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 179
+     },
+     {
+      "at_ms": 64002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 179
+     },
+     {
+      "at_ms": 65002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 183
+     },
+     {
+      "at_ms": 66001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 185
+     },
+     {
+      "at_ms": 67002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 188
+     },
+     {
+      "at_ms": 68001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 193
+     },
+     {
+      "at_ms": 69001,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 191
+     },
+     {
+      "at_ms": 70000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 194
+     },
+     {
+      "at_ms": 71001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 195
+     },
+     {
+      "at_ms": 72001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 193
+     },
+     {
+      "at_ms": 73001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 192
+     },
+     {
+      "at_ms": 74001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 191
+     },
+     {
+      "at_ms": 75002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 190
+     },
+     {
+      "at_ms": 76002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 190
+     },
+     {
+      "at_ms": 77001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 188
+     },
+     {
+      "at_ms": 78002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 184
+     },
+     {
+      "at_ms": 79001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 180
+     },
+     {
+      "at_ms": 80001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 176
+     },
+     {
+      "at_ms": 81001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 178
+     },
+     {
+      "at_ms": 82001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 180
+     },
+     {
+      "at_ms": 83001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 178
+     },
+     {
+      "at_ms": 84001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 174
+     },
+     {
+      "at_ms": 85002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 86002,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 164
+     },
+     {
+      "at_ms": 87000,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 163
+     },
+     {
+      "at_ms": 88001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 161
+     },
+     {
+      "at_ms": 89001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 161
+     },
+     {
+      "at_ms": 90001,
+      "connected": 200,
+      "queued": 0,
+      "in_match": 161
+     },
+     {
+      "at_ms": 91002,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 164
+     },
+     {
+      "at_ms": 92000,
+      "connected": 200,
+      "queued": 1,
+      "in_match": 165
+     },
+     {
+      "at_ms": 93002,
+      "connected": 199,
+      "queued": 0,
+      "in_match": 165
+     },
+     {
+      "at_ms": 94002,
+      "connected": 199,
+      "queued": 1,
+      "in_match": 166
+     },
+     {
+      "at_ms": 95002,
+      "connected": 199,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 96001,
+      "connected": 199,
+      "queued": 0,
+      "in_match": 173
+     },
+     {
+      "at_ms": 97001,
+      "connected": 198,
+      "queued": 0,
+      "in_match": 174
+     },
+     {
+      "at_ms": 98001,
+      "connected": 196,
+      "queued": 0,
+      "in_match": 171
+     },
+     {
+      "at_ms": 99001,
+      "connected": 196,
+      "queued": 0,
+      "in_match": 167
+     },
+     {
+      "at_ms": 100002,
+      "connected": 195,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 101001,
+      "connected": 193,
+      "queued": 0,
+      "in_match": 174
+     },
+     {
+      "at_ms": 102000,
+      "connected": 193,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 103002,
+      "connected": 192,
+      "queued": 0,
+      "in_match": 168
+     },
+     {
+      "at_ms": 104001,
+      "connected": 188,
+      "queued": 0,
+      "in_match": 167
+     },
+     {
+      "at_ms": 105001,
+      "connected": 187,
+      "queued": 1,
+      "in_match": 168
+     },
+     {
+      "at_ms": 106002,
+      "connected": 186,
+      "queued": 0,
+      "in_match": 168
+     },
+     {
+      "at_ms": 107001,
+      "connected": 186,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 108001,
+      "connected": 185,
+      "queued": 1,
+      "in_match": 168
+     },
+     {
+      "at_ms": 109002,
+      "connected": 185,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 110001,
+      "connected": 183,
+      "queued": 0,
+      "in_match": 169
+     },
+     {
+      "at_ms": 111001,
+      "connected": 182,
+      "queued": 0,
+      "in_match": 171
+     },
+     {
+      "at_ms": 112001,
+      "connected": 180,
+      "queued": 0,
+      "in_match": 170
+     },
+     {
+      "at_ms": 113001,
+      "connected": 180,
+      "queued": 0,
+      "in_match": 173
+     },
+     {
+      "at_ms": 114001,
+      "connected": 178,
+      "queued": 0,
+      "in_match": 172
+     },
+     {
+      "at_ms": 115001,
+      "connected": 174,
+      "queued": 0,
+      "in_match": 172
+     },
+     {
+      "at_ms": 116001,
+      "connected": 173,
+      "queued": 0,
+      "in_match": 171
+     },
+     {
+      "at_ms": 117001,
+      "connected": 169,
+      "queued": 0,
+      "in_match": 167
+     },
+     {
+      "at_ms": 118001,
+      "connected": 159,
+      "queued": 0,
+      "in_match": 157
+     },
+     {
+      "at_ms": 119001,
+      "connected": 156,
+      "queued": 0,
+      "in_match": 155
+     },
+     {
+      "at_ms": 120001,
+      "connected": 155,
+      "queued": 0,
+      "in_match": 154
+     },
+     {
+      "at_ms": 121001,
+      "connected": 154,
+      "queued": 0,
+      "in_match": 154
+     },
+     {
+      "at_ms": 122002,
+      "connected": 149,
+      "queued": 0,
+      "in_match": 149
+     },
+     {
+      "at_ms": 123001,
+      "connected": 145,
+      "queued": 0,
+      "in_match": 145
+     },
+     {
+      "at_ms": 124002,
+      "connected": 140,
+      "queued": 0,
+      "in_match": 140
+     },
+     {
+      "at_ms": 125002,
+      "connected": 136,
+      "queued": 0,
+      "in_match": 136
+     },
+     {
+      "at_ms": 126002,
+      "connected": 130,
+      "queued": 0,
+      "in_match": 130
+     },
+     {
+      "at_ms": 127002,
+      "connected": 126,
+      "queued": 0,
+      "in_match": 126
+     },
+     {
+      "at_ms": 128002,
+      "connected": 121,
+      "queued": 0,
+      "in_match": 121
+     },
+     {
+      "at_ms": 129002,
+      "connected": 111,
+      "queued": 0,
+      "in_match": 111
+     },
+     {
+      "at_ms": 130001,
+      "connected": 106,
+      "queued": 0,
+      "in_match": 106
+     },
+     {
+      "at_ms": 131001,
+      "connected": 101,
+      "queued": 0,
+      "in_match": 101
+     },
+     {
+      "at_ms": 132001,
+      "connected": 97,
+      "queued": 0,
+      "in_match": 97
+     },
+     {
+      "at_ms": 133000,
+      "connected": 92,
+      "queued": 0,
+      "in_match": 92
+     },
+     {
+      "at_ms": 134001,
+      "connected": 82,
+      "queued": 0,
+      "in_match": 82
+     },
+     {
+      "at_ms": 135002,
+      "connected": 78,
+      "queued": 0,
+      "in_match": 78
+     },
+     {
+      "at_ms": 136001,
+      "connected": 74,
+      "queued": 0,
+      "in_match": 74
+     },
+     {
+      "at_ms": 137002,
+      "connected": 71,
+      "queued": 0,
+      "in_match": 71
+     },
+     {
+      "at_ms": 138001,
+      "connected": 67,
+      "queued": 0,
+      "in_match": 67
+     },
+     {
+      "at_ms": 139001,
+      "connected": 64,
+      "queued": 0,
+      "in_match": 64
+     },
+     {
+      "at_ms": 140002,
+      "connected": 54,
+      "queued": 0,
+      "in_match": 54
+     },
+     {
+      "at_ms": 141002,
+      "connected": 50,
+      "queued": 0,
+      "in_match": 50
+     },
+     {
+      "at_ms": 142001,
+      "connected": 48,
+      "queued": 0,
+      "in_match": 48
+     },
+     {
+      "at_ms": 143002,
+      "connected": 44,
+      "queued": 0,
+      "in_match": 44
+     },
+     {
+      "at_ms": 144001,
+      "connected": 42,
+      "queued": 0,
+      "in_match": 42
+     },
+     {
+      "at_ms": 145002,
+      "connected": 32,
+      "queued": 0,
+      "in_match": 32
+     },
+     {
+      "at_ms": 146002,
+      "connected": 26,
+      "queued": 0,
+      "in_match": 26
+     },
+     {
+      "at_ms": 147002,
+      "connected": 23,
+      "queued": 0,
+      "in_match": 23
+     },
+     {
+      "at_ms": 148002,
+      "connected": 19,
+      "queued": 0,
+      "in_match": 19
+     },
+     {
+      "at_ms": 149002,
+      "connected": 17,
+      "queued": 0,
+      "in_match": 17
+     },
+     {
+      "at_ms": 150002,
+      "connected": 16,
+      "queued": 0,
+      "in_match": 16
+     },
+     {
+      "at_ms": 151002,
+      "connected": 12,
+      "queued": 0,
+      "in_match": 12
+     },
+     {
+      "at_ms": 152002,
+      "connected": 8,
+      "queued": 0,
+      "in_match": 8
+     },
+     {
+      "at_ms": 153002,
+      "connected": 6,
+      "queued": 0,
+      "in_match": 6
+     },
+     {
+      "at_ms": 154001,
+      "connected": 6,
+      "queued": 0,
+      "in_match": 6
+     },
+     {
+      "at_ms": 155002,
+      "connected": 5,
+      "queued": 0,
+      "in_match": 5
+     },
+     {
+      "at_ms": 156002,
+      "connected": 4,
+      "queued": 0,
+      "in_match": 4
+     },
+     {
+      "at_ms": 157002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 158002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 159002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 160002,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 161001,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 162001,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 163001,
+      "connected": 1,
+      "queued": 0,
+      "in_match": 1
+     },
+     {
+      "at_ms": 163919,
+      "connected": 0,
+      "queued": 0,
+      "in_match": 0
+     }
+    ]
+   },
+   "server": {
+    "server": {
+     "dart": "3.13.4",
+     "os": "macos",
+     "os_version": "Version 27.2.1 (Build 26B131)",
+     "processors": 10,
+     "compiled": "aot",
+     "port": 8090,
+     "accounts": 1000,
+     "bots_in_skill_table": 200,
+     "virtual_after_ms": 0,
+     "duration_ms": 30000,
+     "setup_timeout_ms": 20000,
+     "tick_ms": 50
+    },
+    "wall_ms": 164883,
+    "event_loop_lag_ms": {
+     "count": 1648,
+     "min": 0.0,
+     "p50": 0.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 1.0,
+     "max": 42.0,
+     "mean": 0.25
+    },
+    "lag_over_50ms": 0,
+    "max_rss_kb": 82400,
+    "usage": [
+     {
+      "at_ms": 5010,
+      "cpu_percent": 2.2,
+      "rss_kb": 20624
+     },
+     {
+      "at_ms": 10011,
+      "cpu_percent": 1.8,
+      "rss_kb": 26256
+     },
+     {
+      "at_ms": 15010,
+      "cpu_percent": 3.9,
+      "rss_kb": 31040
+     },
+     {
+      "at_ms": 20012,
+      "cpu_percent": 7.6,
+      "rss_kb": 54048
+     },
+     {
+      "at_ms": 25012,
+      "cpu_percent": 10.4,
+      "rss_kb": 54800
+     },
+     {
+      "at_ms": 30012,
+      "cpu_percent": 13.1,
+      "rss_kb": 56400
+     },
+     {
+      "at_ms": 35014,
+      "cpu_percent": 16.7,
+      "rss_kb": 58000
+     },
+     {
+      "at_ms": 40012,
+      "cpu_percent": 14.3,
+      "rss_kb": 60016
+     },
+     {
+      "at_ms": 45015,
+      "cpu_percent": 12.1,
+      "rss_kb": 61024
+     },
+     {
+      "at_ms": 50012,
+      "cpu_percent": 12.4,
+      "rss_kb": 62560
+     },
+     {
+      "at_ms": 55011,
+      "cpu_percent": 10.3,
+      "rss_kb": 63072
+     },
+     {
+      "at_ms": 60013,
+      "cpu_percent": 8.8,
+      "rss_kb": 64112
+     },
+     {
+      "at_ms": 65012,
+      "cpu_percent": 11.1,
+      "rss_kb": 65136
+     },
+     {
+      "at_ms": 70011,
+      "cpu_percent": 14.7,
+      "rss_kb": 66208
+     },
+     {
+      "at_ms": 75012,
+      "cpu_percent": 14.7,
+      "rss_kb": 67152
+     },
+     {
+      "at_ms": 80015,
+      "cpu_percent": 13.6,
+      "rss_kb": 68016
+     },
+     {
+      "at_ms": 85011,
+      "cpu_percent": 12.1,
+      "rss_kb": 70016
+     },
+     {
+      "at_ms": 90013,
+      "cpu_percent": 11.4,
+      "rss_kb": 71168
+     },
+     {
+      "at_ms": 95012,
+      "cpu_percent": 8.5,
+      "rss_kb": 72848
+     },
+     {
+      "at_ms": 100012,
+      "cpu_percent": 11.0,
+      "rss_kb": 73872
+     },
+     {
+      "at_ms": 105012,
+      "cpu_percent": 11.0,
+      "rss_kb": 75408
+     },
+     {
+      "at_ms": 110013,
+      "cpu_percent": 13.3,
+      "rss_kb": 75696
+     },
+     {
+      "at_ms": 115013,
+      "cpu_percent": 14.3,
+      "rss_kb": 77056
+     },
+     {
+      "at_ms": 120013,
+      "cpu_percent": 12.6,
+      "rss_kb": 77984
+     },
+     {
+      "at_ms": 125014,
+      "cpu_percent": 13.6,
+      "rss_kb": 79072
+     },
+     {
+      "at_ms": 130013,
+      "cpu_percent": 11.0,
+      "rss_kb": 79296
+     },
+     {
+      "at_ms": 135015,
+      "cpu_percent": 9.1,
+      "rss_kb": 80496
+     },
+     {
+      "at_ms": 140011,
+      "cpu_percent": 6.7,
+      "rss_kb": 81536
+     },
+     {
+      "at_ms": 145013,
+      "cpu_percent": 5.7,
+      "rss_kb": 80768
+     },
+     {
+      "at_ms": 150011,
+      "cpu_percent": 3.1,
+      "rss_kb": 81792
+     },
+     {
+      "at_ms": 155011,
+      "cpu_percent": 1.8,
+      "rss_kb": 81984
+     },
+     {
+      "at_ms": 160011,
+      "cpu_percent": 1.3,
+      "rss_kb": 81968
+     }
+    ]
+   }
+  },
+  "s4": {
+   "what": "headroom: 1000 users, 20 s ramp, 1 round each, production server settings",
+   "client": {
+    "plan": {
+     "url": "ws://127.0.0.1:8090/ws/v1/battle",
+     "users": 1000,
+     "ramp_ms": 20000,
+     "seed": 20,
+     "rounds_per_user": 1,
+     "exercises": [
+      "push_up",
+      "squat"
+     ],
+     "pose_interval_ms": 100,
+     "ping_interval_ms": 5000,
+     "setup_ms": [
+      1000,
+      3000
+     ],
+     "ready_ms": [
+      1000,
+      3000
+     ],
+     "think_ms": [
+      2000,
+      8000
+     ],
+     "reps_per_round": [
+      8,
+      25
+     ],
+     "round_timeout_ms": 120000,
+     "stop_after_ms": 900000
+    },
+    "client": {
+     "dart": "3.13.4",
+     "os": "macos",
+     "os_version": "Version 27.2.1 (Build 26B131)",
+     "processors": 10
+    },
+    "wall_ms": 58333,
+    "users": 1000,
+    "connected": 1000,
+    "connect_errors": {},
+    "peak_connected": 994,
+    "peak_queued": 2,
+    "peak_in_match": 994,
+    "rounds": 1000,
+    "succeeded": 1000,
+    "failed": 0,
+    "outcomes": {
+     "finished:ko": 686,
+     "finished:time_up": 314
+    },
+    "matched_real": 1000,
+    "matched_simulated": 0,
+    "server_errors": {
+     "INVALID_STATE": 1
+    },
+    "unexpected_closes": {},
+    "connect_ms": {
+     "count": 1000,
+     "min": 0.0,
+     "p50": 0.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 2.0,
+     "max": 7.0,
+     "mean": 0.31
+    },
+    "queue_wait_ms": {
+     "all": {
+      "count": 1000,
+      "min": 0.0,
+      "p50": 5.0,
+      "p90": 60.0,
+      "p95": 80.0,
+      "p99": 122.0,
+      "max": 260.0,
+      "mean": 20.25
+     },
+     "real": {
+      "count": 1000,
+      "min": 0.0,
+      "p50": 5.0,
+      "p90": 60.0,
+      "p95": 80.0,
+      "p99": 122.0,
+      "max": 260.0,
+      "mean": 20.25
+     },
+     "simulated": {
+      "count": 0,
+      "min": null,
+      "p50": null,
+      "p90": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "mean": null
+     },
+     "buckets": [
+      "<100ms",
+      "100–1000ms",
+      "1000–5000ms",
+      "5000–10000ms",
+      "10000–10500ms",
+      "10500–11000ms",
+      "11000–15000ms",
+      "≥15000ms"
+     ],
+     "histogram_all": [
+      973,
+      27,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    "found_to_start_ms": {
+     "count": 1000,
+     "min": 2568.0,
+     "p50": 4434.0,
+     "p90": 5374.0,
+     "p95": 5540.0,
+     "p99": 5768.0,
+     "max": 5924.0,
+     "mean": 4477.54
+    },
+    "rep_ack_ms": {
+     "count": 13112,
+     "min": 0.0,
+     "p50": 1.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 2.0,
+     "max": 4.0,
+     "mean": 0.54
+    },
+    "reps_sent": 13113,
+    "reps_acked": 13112,
+    "poses_sent": 223210,
+    "poses_received": 166656,
+    "timeline": [
+     {
+      "at_ms": 1001,
+      "connected": 50,
+      "queued": 2,
+      "in_match": 48
+     },
+     {
+      "at_ms": 2002,
+      "connected": 100,
+      "queued": 0,
+      "in_match": 100
+     },
+     {
+      "at_ms": 3002,
+      "connected": 150,
+      "queued": 2,
+      "in_match": 148
+     },
+     {
+      "at_ms": 4001,
+      "connected": 200,
+      "queued": 2,
+      "in_match": 198
+     },
+     {
+      "at_ms": 5001,
+      "connected": 250,
+      "queued": 2,
+      "in_match": 248
+     },
+     {
+      "at_ms": 6001,
+      "connected": 300,
+      "queued": 2,
+      "in_match": 298
+     },
+     {
+      "at_ms": 7001,
+      "connected": 350,
+      "queued": 0,
+      "in_match": 350
+     },
+     {
+      "at_ms": 8002,
+      "connected": 400,
+      "queued": 0,
+      "in_match": 400
+     },
+     {
+      "at_ms": 9001,
+      "connected": 450,
+      "queued": 0,
+      "in_match": 450
+     },
+     {
+      "at_ms": 10001,
+      "connected": 500,
+      "queued": 0,
+      "in_match": 500
+     },
+     {
+      "at_ms": 11001,
+      "connected": 550,
+      "queued": 2,
+      "in_match": 548
+     },
+     {
+      "at_ms": 12001,
+      "connected": 600,
+      "queued": 0,
+      "in_match": 600
+     },
+     {
+      "at_ms": 13000,
+      "connected": 650,
+      "queued": 0,
+      "in_match": 650
+     },
+     {
+      "at_ms": 14000,
+      "connected": 700,
+      "queued": 2,
+      "in_match": 698
+     },
+     {
+      "at_ms": 15000,
+      "connected": 750,
+      "queued": 0,
+      "in_match": 750
+     },
+     {
+      "at_ms": 16001,
+      "connected": 800,
+      "queued": 2,
+      "in_match": 798
+     },
+     {
+      "at_ms": 17001,
+      "connected": 850,
+      "queued": 0,
+      "in_match": 850
+     },
+     {
+      "at_ms": 18001,
+      "connected": 900,
+      "queued": 0,
+      "in_match": 900
+     },
+     {
+      "at_ms": 19001,
+      "connected": 946,
+      "queued": 0,
+      "in_match": 946
+     },
+     {
+      "at_ms": 20001,
+      "connected": 994,
+      "queued": 0,
+      "in_match": 994
+     },
+     {
+      "at_ms": 21000,
+      "connected": 990,
+      "queued": 0,
+      "in_match": 990
+     },
+     {
+      "at_ms": 22001,
+      "connected": 984,
+      "queued": 0,
+      "in_match": 984
+     },
+     {
+      "at_ms": 23001,
+      "connected": 978,
+      "queued": 0,
+      "in_match": 978
+     },
+     {
+      "at_ms": 24001,
+      "connected": 968,
+      "queued": 0,
+      "in_match": 968
+     },
+     {
+      "at_ms": 25001,
+      "connected": 952,
+      "queued": 0,
+      "in_match": 952
+     },
+     {
+      "at_ms": 26001,
+      "connected": 936,
+      "queued": 0,
+      "in_match": 936
+     },
+     {
+      "at_ms": 27001,
+      "connected": 920,
+      "queued": 0,
+      "in_match": 920
+     },
+     {
+      "at_ms": 28001,
+      "connected": 898,
+      "queued": 0,
+      "in_match": 898
+     },
+     {
+      "at_ms": 29001,
+      "connected": 870,
+      "queued": 0,
+      "in_match": 870
+     },
+     {
+      "at_ms": 30001,
+      "connected": 858,
+      "queued": 0,
+      "in_match": 858
+     },
+     {
+      "at_ms": 31000,
+      "connected": 834,
+      "queued": 0,
+      "in_match": 834
+     },
+     {
+      "at_ms": 32001,
+      "connected": 800,
+      "queued": 0,
+      "in_match": 800
+     },
+     {
+      "at_ms": 33001,
+      "connected": 790,
+      "queued": 0,
+      "in_match": 790
+     },
+     {
+      "at_ms": 34001,
+      "connected": 754,
+      "queued": 0,
+      "in_match": 754
+     },
+     {
+      "at_ms": 35001,
+      "connected": 722,
+      "queued": 0,
+      "in_match": 722
+     },
+     {
+      "at_ms": 36001,
+      "connected": 692,
+      "queued": 0,
+      "in_match": 692
+     },
+     {
+      "at_ms": 37001,
+      "connected": 650,
+      "queued": 0,
+      "in_match": 650
+     },
+     {
+      "at_ms": 38001,
+      "connected": 596,
+      "queued": 0,
+      "in_match": 596
+     },
+     {
+      "at_ms": 39000,
+      "connected": 540,
+      "queued": 0,
+      "in_match": 540
+     },
+     {
+      "at_ms": 40000,
+      "connected": 504,
+      "queued": 0,
+      "in_match": 504
+     },
+     {
+      "at_ms": 41001,
+      "connected": 444,
+      "queued": 0,
+      "in_match": 444
+     },
+     {
+      "at_ms": 42001,
+      "connected": 396,
+      "queued": 0,
+      "in_match": 396
+     },
+     {
+      "at_ms": 43001,
+      "connected": 354,
+      "queued": 0,
+      "in_match": 354
+     },
+     {
+      "at_ms": 44000,
+      "connected": 318,
+      "queued": 0,
+      "in_match": 318
+     },
+     {
+      "at_ms": 45001,
+      "connected": 288,
+      "queued": 0,
+      "in_match": 288
+     },
+     {
+      "at_ms": 46001,
+      "connected": 254,
+      "queued": 0,
+      "in_match": 254
+     },
+     {
+      "at_ms": 47001,
+      "connected": 216,
+      "queued": 0,
+      "in_match": 216
+     },
+     {
+      "at_ms": 48001,
+      "connected": 192,
+      "queued": 0,
+      "in_match": 192
+     },
+     {
+      "at_ms": 49000,
+      "connected": 162,
+      "queued": 0,
+      "in_match": 162
+     },
+     {
+      "at_ms": 50001,
+      "connected": 124,
+      "queued": 0,
+      "in_match": 124
+     },
+     {
+      "at_ms": 51001,
+      "connected": 104,
+      "queued": 0,
+      "in_match": 104
+     },
+     {
+      "at_ms": 52001,
+      "connected": 86,
+      "queued": 0,
+      "in_match": 86
+     },
+     {
+      "at_ms": 53001,
+      "connected": 72,
+      "queued": 0,
+      "in_match": 72
+     },
+     {
+      "at_ms": 54001,
+      "connected": 56,
+      "queued": 0,
+      "in_match": 56
+     },
+     {
+      "at_ms": 55001,
+      "connected": 36,
+      "queued": 0,
+      "in_match": 36
+     },
+     {
+      "at_ms": 56001,
+      "connected": 28,
+      "queued": 0,
+      "in_match": 28
+     },
+     {
+      "at_ms": 57001,
+      "connected": 10,
+      "queued": 0,
+      "in_match": 10
+     },
+     {
+      "at_ms": 58001,
+      "connected": 2,
+      "queued": 0,
+      "in_match": 2
+     },
+     {
+      "at_ms": 58333,
+      "connected": 0,
+      "queued": 0,
+      "in_match": 0
+     }
+    ]
+   },
+   "server": {
+    "server": {
+     "dart": "3.13.4",
+     "os": "macos",
+     "os_version": "Version 27.2.1 (Build 26B131)",
+     "processors": 10,
+     "compiled": "aot",
+     "port": 8090,
+     "accounts": 1000,
+     "virtual_after_ms": 10000,
+     "duration_ms": 30000,
+     "setup_timeout_ms": 20000,
+     "tick_ms": 50
+    },
+    "wall_ms": 59372,
+    "event_loop_lag_ms": {
+     "count": 593,
+     "min": 0.0,
+     "p50": 0.0,
+     "p90": 1.0,
+     "p95": 1.0,
+     "p99": 1.0,
+     "max": 2.0,
+     "mean": 0.25
+    },
+    "lag_over_50ms": 0,
+    "max_rss_kb": 84800,
+    "usage": [
+     {
+      "at_ms": 5008,
+      "cpu_percent": 5.3,
+      "rss_kb": 26304
+     },
+     {
+      "at_ms": 10010,
+      "cpu_percent": 17.5,
+      "rss_kb": 54192
+     },
+     {
+      "at_ms": 15007,
+      "cpu_percent": 41.7,
+      "rss_kb": 58624
+     },
+     {
+      "at_ms": 20006,
+      "cpu_percent": 50.5,
+      "rss_kb": 63184
+     },
+     {
+      "at_ms": 25006,
+      "cpu_percent": 57.7,
+      "rss_kb": 67520
+     },
+     {
+      "at_ms": 30006,
+      "cpu_percent": 60.5,
+      "rss_kb": 73072
+     },
+     {
+      "at_ms": 35006,
+      "cpu_percent": 57.8,
+      "rss_kb": 78592
+     },
+     {
+      "at_ms": 40011,
+      "cpu_percent": 52.6,
+      "rss_kb": 82272
+     },
+     {
+      "at_ms": 45011,
+      "cpu_percent": 48.6,
+      "rss_kb": 84544
+     },
+     {
+      "at_ms": 50011,
+      "cpu_percent": 30.6,
+      "rss_kb": 84528
+     },
+     {
+      "at_ms": 55010,
+      "cpu_percent": 11.2,
+      "rss_kb": 84528
+     }
+    ]
+   }
+  }
+ },
+ "skill_index": [
+  {
+   "accounts": 100,
+   "repeats": 5,
+   "lookups": 10000,
+   "build_us_median": 799.0,
+   "build_us_max": 1143.0,
+   "lookup_us_median": 0.0482,
+   "lookup_us_max": 0.1285
+  },
+  {
+   "accounts": 1000,
+   "repeats": 5,
+   "lookups": 10000,
+   "build_us_median": 2246.0,
+   "build_us_max": 3217.0,
+   "lookup_us_median": 0.0557,
+   "lookup_us_max": 0.0709
+  },
+  {
+   "accounts": 10000,
+   "repeats": 5,
+   "lookups": 10000,
+   "build_us_median": 14535.0,
+   "build_us_max": 16941.0,
+   "lookup_us_median": 0.0654,
+   "lookup_us_max": 0.0659
+  },
+  {
+   "accounts": 100000,
+   "repeats": 5,
+   "lookups": 10000,
+   "build_us_median": 203162.0,
+   "build_us_max": 209029.0,
+   "lookup_us_median": 0.0777,
+   "lookup_us_max": 0.0827
+  }
+ ],
+ "skills_endpoint": [
+  {
+   "accounts": 100,
+   "battle_rows": 4000,
+   "median_ms": 13.3,
+   "max_ms": 13.9,
+   "response_bytes": 10410,
+   "players": 100
+  },
+  {
+   "accounts": 1000,
+   "battle_rows": 40000,
+   "median_ms": 110.6,
+   "max_ms": 131.7,
+   "response_bytes": 106414,
+   "players": 1000
+  },
+  {
+   "accounts": 5000,
+   "battle_rows": 200000,
+   "median_ms": 553.0,
+   "max_ms": 606.2,
+   "response_bytes": 540932,
+   "players": 5000
+  }
+ ],
+ "team_server": {
+  "machine": "team server (AWS Lightsail, Seoul): 2 vCPU Intel Xeon Platinum 8259CL 2.5 GHz, 1.9 GB RAM, Ubuntu 24.04 (Linux 7.0.0-1012-aws); load server and load client both on it over loopback, cross-compiled AOT on the Mac (dart compile exe --target-os linux --target-arch x64, Dart 3.13.4); production gymrats-battle and gymrats-api left running and untouched (0 live battle connections before and after)",
+  "scenarios": {
+   "ts1": {
+    "what": "as s1 (200 users, 20 s ramp, 3 rounds), production server settings",
+    "client": {
+     "plan": {
+      "url": "ws://127.0.0.1:8090/ws/v1/battle",
+      "users": 200,
+      "ramp_ms": 20000,
+      "seed": 20,
+      "rounds_per_user": 3,
+      "exercises": [
+       "push_up",
+       "squat"
+      ],
+      "pose_interval_ms": 100,
+      "ping_interval_ms": 5000,
+      "setup_ms": [
+       1000,
+       3000
+      ],
+      "ready_ms": [
+       1000,
+       3000
+      ],
+      "think_ms": [
+       2000,
+       8000
+      ],
+      "reps_per_round": [
+       8,
+       25
+      ],
+      "round_timeout_ms": 120000,
+      "stop_after_ms": 900000
+     },
+     "client": {
+      "dart": "3.13.4",
+      "os": "linux",
+      "os_version": "Linux 7.0.0-1012-aws #12~24.04.1-Ubuntu SMP PREEMPT Wed Aug 12 14:00:57 UTC 2026",
+      "processors": 2,
+      "compiled": "aot"
+     },
+     "wall_ms": 167176,
+     "users": 200,
+     "connected": 200,
+     "connect_errors": {},
+     "peak_connected": 200,
+     "peak_queued": 3,
+     "peak_in_match": 198,
+     "rounds": 600,
+     "succeeded": 600,
+     "failed": 0,
+     "outcomes": {
+      "finished:ko": 395,
+      "finished:time_up": 205
+     },
+     "matched_real": 598,
+     "matched_simulated": 2,
+     "server_errors": {},
+     "unexpected_closes": {},
+     "connect_ms": {
+      "count": 200,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 3.0,
+      "max": 9.0,
+      "mean": 0.26
+     },
+     "queue_wait_ms": {
+      "all": {
+       "count": 600,
+       "min": 0.0,
+       "p50": 4.0,
+       "p90": 516.0,
+       "p95": 810.0,
+       "p99": 1881.0,
+       "max": 10032.0,
+       "mean": 220.42
+      },
+      "real": {
+       "count": 598,
+       "min": 0.0,
+       "p50": 3.0,
+       "p90": 516.0,
+       "p95": 784.0,
+       "p99": 1613.0,
+       "max": 8342.0,
+       "mean": 187.63
+      },
+      "simulated": {
+       "count": 2,
+       "min": 10014.0,
+       "p50": 10014.0,
+       "p90": 10032.0,
+       "p95": 10032.0,
+       "p99": 10032.0,
+       "max": 10032.0,
+       "mean": 10023.0
+      },
+      "buckets": [
+       "<100ms",
+       "100–1000ms",
+       "1000–5000ms",
+       "5000–10000ms",
+       "10000–10500ms",
+       "10500–11000ms",
+       "11000–15000ms",
+       "≥15000ms"
+      ],
+      "histogram_all": [
+       350,
+       229,
+       17,
+       2,
+       2,
+       0,
+       0,
+       0
+      ]
+     },
+     "found_to_start_ms": {
+      "count": 600,
+      "min": 2522.0,
+      "p50": 4464.0,
+      "p90": 5508.0,
+      "p95": 5650.0,
+      "p99": 5799.0,
+      "max": 10950.0,
+      "mean": 4535.31
+     },
+     "rep_ack_ms": {
+      "count": 8053,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0,
+      "max": 6.0,
+      "mean": 0.3
+     },
+     "reps_sent": 8053,
+     "reps_acked": 8053,
+     "poses_sent": 136662,
+     "poses_received": 132441,
+     "timeline": [
+      {
+       "at_ms": 1000,
+       "connected": 10,
+       "queued": 2,
+       "in_match": 8
+      },
+      {
+       "at_ms": 2000,
+       "connected": 20,
+       "queued": 0,
+       "in_match": 20
+      },
+      {
+       "at_ms": 3000,
+       "connected": 30,
+       "queued": 0,
+       "in_match": 30
+      },
+      {
+       "at_ms": 4000,
+       "connected": 40,
+       "queued": 2,
+       "in_match": 38
+      },
+      {
+       "at_ms": 5000,
+       "connected": 50,
+       "queued": 2,
+       "in_match": 48
+      },
+      {
+       "at_ms": 6000,
+       "connected": 60,
+       "queued": 0,
+       "in_match": 60
+      },
+      {
+       "at_ms": 7000,
+       "connected": 70,
+       "queued": 0,
+       "in_match": 70
+      },
+      {
+       "at_ms": 8000,
+       "connected": 80,
+       "queued": 0,
+       "in_match": 80
+      },
+      {
+       "at_ms": 9000,
+       "connected": 90,
+       "queued": 2,
+       "in_match": 88
+      },
+      {
+       "at_ms": 10000,
+       "connected": 100,
+       "queued": 0,
+       "in_match": 100
+      },
+      {
+       "at_ms": 11000,
+       "connected": 110,
+       "queued": 2,
+       "in_match": 108
+      },
+      {
+       "at_ms": 12000,
+       "connected": 120,
+       "queued": 0,
+       "in_match": 120
+      },
+      {
+       "at_ms": 13000,
+       "connected": 130,
+       "queued": 0,
+       "in_match": 130
+      },
+      {
+       "at_ms": 14000,
+       "connected": 140,
+       "queued": 0,
+       "in_match": 140
+      },
+      {
+       "at_ms": 15000,
+       "connected": 150,
+       "queued": 2,
+       "in_match": 148
+      },
+      {
+       "at_ms": 16000,
+       "connected": 160,
+       "queued": 2,
+       "in_match": 158
+      },
+      {
+       "at_ms": 17000,
+       "connected": 170,
+       "queued": 0,
+       "in_match": 170
+      },
+      {
+       "at_ms": 18000,
+       "connected": 180,
+       "queued": 0,
+       "in_match": 180
+      },
+      {
+       "at_ms": 19000,
+       "connected": 190,
+       "queued": 2,
+       "in_match": 188
+      },
+      {
+       "at_ms": 20000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 21000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 22000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 23000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 24000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 194
+      },
+      {
+       "at_ms": 25000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 192
+      },
+      {
+       "at_ms": 26000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 186
+      },
+      {
+       "at_ms": 27000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 182
+      },
+      {
+       "at_ms": 28000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 176
+      },
+      {
+       "at_ms": 29000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 180
+      },
+      {
+       "at_ms": 30000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 180
+      },
+      {
+       "at_ms": 31000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 174
+      },
+      {
+       "at_ms": 32000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 174
+      },
+      {
+       "at_ms": 33000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 174
+      },
+      {
+       "at_ms": 34000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 176
+      },
+      {
+       "at_ms": 35000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 174
+      },
+      {
+       "at_ms": 36000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 170
+      },
+      {
+       "at_ms": 37000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 174
+      },
+      {
+       "at_ms": 38000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 176
+      },
+      {
+       "at_ms": 39000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 168
+      },
+      {
+       "at_ms": 40000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 160
+      },
+      {
+       "at_ms": 41000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 158
+      },
+      {
+       "at_ms": 42000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 154
+      },
+      {
+       "at_ms": 43000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 152
+      },
+      {
+       "at_ms": 44000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 156
+      },
+      {
+       "at_ms": 45000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 160
+      },
+      {
+       "at_ms": 46000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 162
+      },
+      {
+       "at_ms": 47000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 164
+      },
+      {
+       "at_ms": 48000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 166
+      },
+      {
+       "at_ms": 49000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 170
+      },
+      {
+       "at_ms": 50000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 164
+      },
+      {
+       "at_ms": 51000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 164
+      },
+      {
+       "at_ms": 52000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 158
+      },
+      {
+       "at_ms": 53000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 160
+      },
+      {
+       "at_ms": 54000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 160
+      },
+      {
+       "at_ms": 55000,
+       "connected": 200,
+       "queued": 3,
+       "in_match": 158
+      },
+      {
+       "at_ms": 56000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 164
+      },
+      {
+       "at_ms": 57000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 170
+      },
+      {
+       "at_ms": 58000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 176
+      },
+      {
+       "at_ms": 59000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 180
+      },
+      {
+       "at_ms": 60000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 178
+      },
+      {
+       "at_ms": 61000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 176
+      },
+      {
+       "at_ms": 62000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 178
+      },
+      {
+       "at_ms": 63000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 182
+      },
+      {
+       "at_ms": 64000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 184
+      },
+      {
+       "at_ms": 65000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 186
+      },
+      {
+       "at_ms": 66000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 184
+      },
+      {
+       "at_ms": 67000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 178
+      },
+      {
+       "at_ms": 68000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 180
+      },
+      {
+       "at_ms": 69001,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 178
+      },
+      {
+       "at_ms": 70000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 172
+      },
+      {
+       "at_ms": 71000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 168
+      },
+      {
+       "at_ms": 72000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 170
+      },
+      {
+       "at_ms": 73000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 166
+      },
+      {
+       "at_ms": 74000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 166
+      },
+      {
+       "at_ms": 75000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 166
+      },
+      {
+       "at_ms": 76000,
+       "connected": 198,
+       "queued": 1,
+       "in_match": 158
+      },
+      {
+       "at_ms": 77000,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 162
+      },
+      {
+       "at_ms": 78000,
+       "connected": 198,
+       "queued": 1,
+       "in_match": 162
+      },
+      {
+       "at_ms": 79001,
+       "connected": 198,
+       "queued": 2,
+       "in_match": 162
+      },
+      {
+       "at_ms": 80000,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 168
+      },
+      {
+       "at_ms": 81000,
+       "connected": 197,
+       "queued": 1,
+       "in_match": 166
+      },
+      {
+       "at_ms": 82000,
+       "connected": 197,
+       "queued": 2,
+       "in_match": 164
+      },
+      {
+       "at_ms": 83000,
+       "connected": 197,
+       "queued": 1,
+       "in_match": 166
+      },
+      {
+       "at_ms": 84001,
+       "connected": 196,
+       "queued": 2,
+       "in_match": 170
+      },
+      {
+       "at_ms": 85000,
+       "connected": 192,
+       "queued": 1,
+       "in_match": 168
+      },
+      {
+       "at_ms": 86000,
+       "connected": 192,
+       "queued": 1,
+       "in_match": 166
+      },
+      {
+       "at_ms": 87000,
+       "connected": 192,
+       "queued": 1,
+       "in_match": 170
+      },
+      {
+       "at_ms": 88000,
+       "connected": 189,
+       "queued": 0,
+       "in_match": 166
+      },
+      {
+       "at_ms": 89001,
+       "connected": 189,
+       "queued": 1,
+       "in_match": 168
+      },
+      {
+       "at_ms": 90000,
+       "connected": 187,
+       "queued": 1,
+       "in_match": 162
+      },
+      {
+       "at_ms": 91000,
+       "connected": 183,
+       "queued": 1,
+       "in_match": 158
+      },
+      {
+       "at_ms": 92000,
+       "connected": 181,
+       "queued": 2,
+       "in_match": 160
+      },
+      {
+       "at_ms": 93000,
+       "connected": 179,
+       "queued": 1,
+       "in_match": 156
+      },
+      {
+       "at_ms": 94000,
+       "connected": 175,
+       "queued": 0,
+       "in_match": 160
+      },
+      {
+       "at_ms": 95000,
+       "connected": 172,
+       "queued": 0,
+       "in_match": 154
+      },
+      {
+       "at_ms": 96000,
+       "connected": 172,
+       "queued": 1,
+       "in_match": 154
+      },
+      {
+       "at_ms": 97000,
+       "connected": 168,
+       "queued": 1,
+       "in_match": 150
+      },
+      {
+       "at_ms": 98000,
+       "connected": 166,
+       "queued": 1,
+       "in_match": 152
+      },
+      {
+       "at_ms": 99000,
+       "connected": 159,
+       "queued": 1,
+       "in_match": 146
+      },
+      {
+       "at_ms": 100000,
+       "connected": 156,
+       "queued": 1,
+       "in_match": 146
+      },
+      {
+       "at_ms": 101000,
+       "connected": 151,
+       "queued": 2,
+       "in_match": 140
+      },
+      {
+       "at_ms": 102000,
+       "connected": 151,
+       "queued": 1,
+       "in_match": 144
+      },
+      {
+       "at_ms": 103000,
+       "connected": 149,
+       "queued": 0,
+       "in_match": 146
+      },
+      {
+       "at_ms": 104000,
+       "connected": 147,
+       "queued": 2,
+       "in_match": 144
+      },
+      {
+       "at_ms": 105000,
+       "connected": 145,
+       "queued": 1,
+       "in_match": 144
+      },
+      {
+       "at_ms": 106000,
+       "connected": 145,
+       "queued": 1,
+       "in_match": 144
+      },
+      {
+       "at_ms": 107000,
+       "connected": 139,
+       "queued": 1,
+       "in_match": 138
+      },
+      {
+       "at_ms": 108000,
+       "connected": 133,
+       "queued": 1,
+       "in_match": 132
+      },
+      {
+       "at_ms": 109000,
+       "connected": 129,
+       "queued": 1,
+       "in_match": 128
+      },
+      {
+       "at_ms": 110000,
+       "connected": 123,
+       "queued": 1,
+       "in_match": 122
+      },
+      {
+       "at_ms": 111000,
+       "connected": 118,
+       "queued": 1,
+       "in_match": 116
+      },
+      {
+       "at_ms": 112000,
+       "connected": 110,
+       "queued": 1,
+       "in_match": 108
+      },
+      {
+       "at_ms": 113000,
+       "connected": 100,
+       "queued": 1,
+       "in_match": 98
+      },
+      {
+       "at_ms": 114001,
+       "connected": 92,
+       "queued": 0,
+       "in_match": 91
+      },
+      {
+       "at_ms": 115000,
+       "connected": 88,
+       "queued": 0,
+       "in_match": 87
+      },
+      {
+       "at_ms": 116000,
+       "connected": 76,
+       "queued": 1,
+       "in_match": 75
+      },
+      {
+       "at_ms": 117000,
+       "connected": 70,
+       "queued": 1,
+       "in_match": 69
+      },
+      {
+       "at_ms": 118000,
+       "connected": 62,
+       "queued": 1,
+       "in_match": 61
+      },
+      {
+       "at_ms": 119000,
+       "connected": 54,
+       "queued": 1,
+       "in_match": 53
+      },
+      {
+       "at_ms": 120000,
+       "connected": 46,
+       "queued": 1,
+       "in_match": 45
+      },
+      {
+       "at_ms": 121000,
+       "connected": 46,
+       "queued": 1,
+       "in_match": 45
+      },
+      {
+       "at_ms": 122000,
+       "connected": 42,
+       "queued": 1,
+       "in_match": 41
+      },
+      {
+       "at_ms": 123000,
+       "connected": 38,
+       "queued": 1,
+       "in_match": 37
+      },
+      {
+       "at_ms": 124000,
+       "connected": 36,
+       "queued": 1,
+       "in_match": 35
+      },
+      {
+       "at_ms": 125000,
+       "connected": 30,
+       "queued": 1,
+       "in_match": 29
+      },
+      {
+       "at_ms": 126000,
+       "connected": 28,
+       "queued": 0,
+       "in_match": 28
+      },
+      {
+       "at_ms": 127000,
+       "connected": 22,
+       "queued": 0,
+       "in_match": 22
+      },
+      {
+       "at_ms": 128000,
+       "connected": 22,
+       "queued": 0,
+       "in_match": 22
+      },
+      {
+       "at_ms": 129001,
+       "connected": 18,
+       "queued": 0,
+       "in_match": 18
+      },
+      {
+       "at_ms": 130000,
+       "connected": 14,
+       "queued": 0,
+       "in_match": 14
+      },
+      {
+       "at_ms": 131000,
+       "connected": 12,
+       "queued": 0,
+       "in_match": 12
+      },
+      {
+       "at_ms": 132000,
+       "connected": 12,
+       "queued": 0,
+       "in_match": 12
+      },
+      {
+       "at_ms": 133000,
+       "connected": 8,
+       "queued": 0,
+       "in_match": 8
+      },
+      {
+       "at_ms": 134000,
+       "connected": 8,
+       "queued": 0,
+       "in_match": 8
+      },
+      {
+       "at_ms": 135000,
+       "connected": 8,
+       "queued": 0,
+       "in_match": 8
+      },
+      {
+       "at_ms": 136000,
+       "connected": 8,
+       "queued": 0,
+       "in_match": 8
+      },
+      {
+       "at_ms": 137000,
+       "connected": 6,
+       "queued": 0,
+       "in_match": 6
+      },
+      {
+       "at_ms": 138000,
+       "connected": 6,
+       "queued": 0,
+       "in_match": 6
+      },
+      {
+       "at_ms": 139000,
+       "connected": 6,
+       "queued": 0,
+       "in_match": 6
+      },
+      {
+       "at_ms": 140000,
+       "connected": 4,
+       "queued": 0,
+       "in_match": 4
+      },
+      {
+       "at_ms": 141000,
+       "connected": 4,
+       "queued": 0,
+       "in_match": 4
+      },
+      {
+       "at_ms": 142000,
+       "connected": 4,
+       "queued": 0,
+       "in_match": 4
+      },
+      {
+       "at_ms": 143000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 144001,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 145000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 146000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 147000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 148000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 149000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 150000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 151000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 152000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 153000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 154000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 155000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 156000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 157000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 158000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 159000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 160000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 161000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 162000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 163000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 164000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 165000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 166000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 167000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 167176,
+       "connected": 0,
+       "queued": 0,
+       "in_match": 0
+      }
+     ]
+    },
+    "client_usage": [
+     {
+      "cpu_percent": 0.0,
+      "rss_kb": 8932
+     },
+     {
+      "cpu_percent": 1.1,
+      "rss_kb": 11664
+     },
+     {
+      "cpu_percent": 2.5,
+      "rss_kb": 19876
+     },
+     {
+      "cpu_percent": 7.0,
+      "rss_kb": 46320
+     },
+     {
+      "cpu_percent": 11.8,
+      "rss_kb": 46524
+     },
+     {
+      "cpu_percent": 16.1,
+      "rss_kb": 47704
+     },
+     {
+      "cpu_percent": 19.7,
+      "rss_kb": 47404
+     },
+     {
+      "cpu_percent": 21.8,
+      "rss_kb": 47216
+     },
+     {
+      "cpu_percent": 23.1,
+      "rss_kb": 48608
+     },
+     {
+      "cpu_percent": 23.7,
+      "rss_kb": 50120
+     },
+     {
+      "cpu_percent": 23.9,
+      "rss_kb": 49428
+     },
+     {
+      "cpu_percent": 24.2,
+      "rss_kb": 50084
+     },
+     {
+      "cpu_percent": 24.7,
+      "rss_kb": 50604
+     },
+     {
+      "cpu_percent": 25.1,
+      "rss_kb": 52032
+     },
+     {
+      "cpu_percent": 25.5,
+      "rss_kb": 51592
+     },
+     {
+      "cpu_percent": 25.8,
+      "rss_kb": 52252
+     },
+     {
+      "cpu_percent": 26.0,
+      "rss_kb": 52608
+     },
+     {
+      "cpu_percent": 26.0,
+      "rss_kb": 52124
+     },
+     {
+      "cpu_percent": 26.0,
+      "rss_kb": 54000
+     },
+     {
+      "cpu_percent": 26.1,
+      "rss_kb": 54124
+     },
+     {
+      "cpu_percent": 26.1,
+      "rss_kb": 54780
+     },
+     {
+      "cpu_percent": 26.2,
+      "rss_kb": 54268
+     },
+     {
+      "cpu_percent": 26.3,
+      "rss_kb": 54780
+     },
+     {
+      "cpu_percent": 26.3,
+      "rss_kb": 55292
+     },
+     {
+      "cpu_percent": 25.9,
+      "rss_kb": 55292
+     },
+     {
+      "cpu_percent": 25.3,
+      "rss_kb": 54780
+     },
+     {
+      "cpu_percent": 24.5,
+      "rss_kb": 54780
+     },
+     {
+      "cpu_percent": 23.7,
+      "rss_kb": 54280
+     },
+     {
+      "cpu_percent": 23.0,
+      "rss_kb": 54280
+     },
+     {
+      "cpu_percent": 22.2,
+      "rss_kb": 54280
+     },
+     {
+      "cpu_percent": 21.5,
+      "rss_kb": 54280
+     },
+     {
+      "cpu_percent": 20.8,
+      "rss_kb": 54280
+     },
+     {
+      "cpu_percent": 20.1,
+      "rss_kb": 54280
+     },
+     {
+      "cpu_percent": 19.5,
+      "rss_kb": 54280
+     }
+    ],
+    "server": {
+     "server": {
+      "dart": "3.13.4",
+      "os": "linux",
+      "os_version": "Linux 7.0.0-1012-aws #12~24.04.1-Ubuntu SMP PREEMPT Wed Aug 12 14:00:57 UTC 2026",
+      "processors": 2,
+      "compiled": "aot",
+      "port": 8090,
+      "accounts": 1000,
+      "virtual_after_ms": 10000,
+      "duration_ms": 30000,
+      "setup_timeout_ms": 20000,
+      "tick_ms": 50
+     },
+     "wall_ms": 171309,
+     "event_loop_lag_ms": {
+      "count": 1713,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "max": 2.0,
+      "mean": 0.0
+     },
+     "lag_over_50ms": 0,
+     "max_rss_kb": 39860,
+     "usage": [
+      {
+       "at_ms": 5008,
+       "cpu_percent": 1.1,
+       "rss_kb": 12972
+      },
+      {
+       "at_ms": 10009,
+       "cpu_percent": 1.7,
+       "rss_kb": 19500
+      },
+      {
+       "at_ms": 15010,
+       "cpu_percent": 4.7,
+       "rss_kb": 20816
+      },
+      {
+       "at_ms": 20012,
+       "cpu_percent": 8.6,
+       "rss_kb": 22368
+      },
+      {
+       "at_ms": 25013,
+       "cpu_percent": 12.5,
+       "rss_kb": 23436
+      },
+      {
+       "at_ms": 30012,
+       "cpu_percent": 16.0,
+       "rss_kb": 23760
+      },
+      {
+       "at_ms": 35010,
+       "cpu_percent": 18.2,
+       "rss_kb": 25056
+      },
+      {
+       "at_ms": 40009,
+       "cpu_percent": 19.5,
+       "rss_kb": 25992
+      },
+      {
+       "at_ms": 45010,
+       "cpu_percent": 20.1,
+       "rss_kb": 26932
+      },
+      {
+       "at_ms": 50009,
+       "cpu_percent": 20.4,
+       "rss_kb": 28048
+      },
+      {
+       "at_ms": 55012,
+       "cpu_percent": 20.6,
+       "rss_kb": 28584
+      },
+      {
+       "at_ms": 60012,
+       "cpu_percent": 21.0,
+       "rss_kb": 29464
+      },
+      {
+       "at_ms": 65013,
+       "cpu_percent": 21.4,
+       "rss_kb": 30472
+      },
+      {
+       "at_ms": 70011,
+       "cpu_percent": 21.8,
+       "rss_kb": 31640
+      },
+      {
+       "at_ms": 75011,
+       "cpu_percent": 22.1,
+       "rss_kb": 32664
+      },
+      {
+       "at_ms": 80012,
+       "cpu_percent": 22.3,
+       "rss_kb": 33176
+      },
+      {
+       "at_ms": 85011,
+       "cpu_percent": 22.3,
+       "rss_kb": 34020
+      },
+      {
+       "at_ms": 90013,
+       "cpu_percent": 22.3,
+       "rss_kb": 35440
+      },
+      {
+       "at_ms": 95011,
+       "cpu_percent": 22.4,
+       "rss_kb": 35640
+      },
+      {
+       "at_ms": 100011,
+       "cpu_percent": 22.4,
+       "rss_kb": 36992
+      },
+      {
+       "at_ms": 105011,
+       "cpu_percent": 22.5,
+       "rss_kb": 37512
+      },
+      {
+       "at_ms": 110009,
+       "cpu_percent": 22.6,
+       "rss_kb": 38240
+      },
+      {
+       "at_ms": 115011,
+       "cpu_percent": 22.6,
+       "rss_kb": 39076
+      },
+      {
+       "at_ms": 120009,
+       "cpu_percent": 22.4,
+       "rss_kb": 39280
+      },
+      {
+       "at_ms": 125009,
+       "cpu_percent": 21.9,
+       "rss_kb": 39444
+      },
+      {
+       "at_ms": 130009,
+       "cpu_percent": 21.3,
+       "rss_kb": 39540
+      },
+      {
+       "at_ms": 135009,
+       "cpu_percent": 20.6,
+       "rss_kb": 40112
+      },
+      {
+       "at_ms": 140009,
+       "cpu_percent": 19.9,
+       "rss_kb": 40112
+      },
+      {
+       "at_ms": 145009,
+       "cpu_percent": 19.3,
+       "rss_kb": 40124
+      },
+      {
+       "at_ms": 150009,
+       "cpu_percent": 18.7,
+       "rss_kb": 40124
+      },
+      {
+       "at_ms": 155009,
+       "cpu_percent": 18.1,
+       "rss_kb": 40124
+      },
+      {
+       "at_ms": 160009,
+       "cpu_percent": 17.6,
+       "rss_kb": 40124
+      },
+      {
+       "at_ms": 165009,
+       "cpu_percent": 17.1,
+       "rss_kb": 40128
+      },
+      {
+       "at_ms": 170009,
+       "cpu_percent": 16.6,
+       "rss_kb": 40128
+      }
+     ]
+    }
+   },
+   "ts2": {
+    "what": "as s2 (200 users at once, 1 round), production server settings",
+    "client": {
+     "plan": {
+      "url": "ws://127.0.0.1:8090/ws/v1/battle",
+      "users": 200,
+      "ramp_ms": 0,
+      "seed": 20,
+      "rounds_per_user": 1,
+      "exercises": [
+       "push_up",
+       "squat"
+      ],
+      "pose_interval_ms": 100,
+      "ping_interval_ms": 5000,
+      "setup_ms": [
+       1000,
+       3000
+      ],
+      "ready_ms": [
+       1000,
+       3000
+      ],
+      "think_ms": [
+       2000,
+       8000
+      ],
+      "reps_per_round": [
+       8,
+       25
+      ],
+      "round_timeout_ms": 120000,
+      "stop_after_ms": 900000
+     },
+     "client": {
+      "dart": "3.13.4",
+      "os": "linux",
+      "os_version": "Linux 7.0.0-1012-aws #12~24.04.1-Ubuntu SMP PREEMPT Wed Aug 12 14:00:57 UTC 2026",
+      "processors": 2,
+      "compiled": "aot"
+     },
+     "wall_ms": 44400,
+     "users": 200,
+     "connected": 200,
+     "connect_errors": {},
+     "peak_connected": 200,
+     "peak_queued": 2,
+     "peak_in_match": 200,
+     "rounds": 200,
+     "succeeded": 200,
+     "failed": 0,
+     "outcomes": {
+      "finished:ko": 128,
+      "finished:time_up": 72
+     },
+     "matched_real": 198,
+     "matched_simulated": 2,
+     "server_errors": {},
+     "unexpected_closes": {},
+     "connect_ms": {
+      "count": 200,
+      "min": 48.0,
+      "p50": 65.0,
+      "p90": 85.0,
+      "p95": 88.0,
+      "p99": 131.0,
+      "max": 132.0,
+      "mean": 69.24
+     },
+     "queue_wait_ms": {
+      "all": {
+       "count": 200,
+       "min": 1.0,
+       "p50": 45.0,
+       "p90": 49.0,
+       "p95": 50.0,
+       "p99": 51.0,
+       "max": 10016.0,
+       "mean": 144.84
+      },
+      "real": {
+       "count": 198,
+       "min": 1.0,
+       "p50": 45.0,
+       "p90": 49.0,
+       "p95": 50.0,
+       "p99": 50.0,
+       "max": 51.0,
+       "mean": 45.13
+      },
+      "simulated": {
+       "count": 2,
+       "min": 10016.0,
+       "p50": 10016.0,
+       "p90": 10016.0,
+       "p95": 10016.0,
+       "p99": 10016.0,
+       "max": 10016.0,
+       "mean": 10016.0
+      },
+      "buckets": [
+       "<100ms",
+       "100–1000ms",
+       "1000–5000ms",
+       "5000–10000ms",
+       "10000–10500ms",
+       "10500–11000ms",
+       "11000–15000ms",
+       "≥15000ms"
+      ],
+      "histogram_all": [
+       198,
+       0,
+       0,
+       0,
+       2,
+       0,
+       0,
+       0
+      ]
+     },
+     "found_to_start_ms": {
+      "count": 200,
+      "min": 2808.0,
+      "p50": 4461.0,
+      "p90": 5455.0,
+      "p95": 5671.0,
+      "p99": 5887.0,
+      "max": 10897.0,
+      "mean": 4563.52
+     },
+     "rep_ack_ms": {
+      "count": 2750,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 2.0,
+      "max": 7.0,
+      "mean": 0.25
+     },
+     "reps_sent": 2750,
+     "reps_acked": 2750,
+     "poses_sent": 46218,
+     "poses_received": 43728,
+     "timeline": [
+      {
+       "at_ms": 1000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 2000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 3000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 4001,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 5000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 6000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 7000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 8000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 9000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 10000,
+       "connected": 200,
+       "queued": 2,
+       "in_match": 198
+      },
+      {
+       "at_ms": 11000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 12000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 13000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 14000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 15000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 16000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 17000,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 198
+      },
+      {
+       "at_ms": 18000,
+       "connected": 194,
+       "queued": 0,
+       "in_match": 194
+      },
+      {
+       "at_ms": 19001,
+       "connected": 192,
+       "queued": 0,
+       "in_match": 192
+      },
+      {
+       "at_ms": 20000,
+       "connected": 182,
+       "queued": 0,
+       "in_match": 182
+      },
+      {
+       "at_ms": 21000,
+       "connected": 178,
+       "queued": 0,
+       "in_match": 178
+      },
+      {
+       "at_ms": 22000,
+       "connected": 174,
+       "queued": 0,
+       "in_match": 174
+      },
+      {
+       "at_ms": 23000,
+       "connected": 172,
+       "queued": 0,
+       "in_match": 172
+      },
+      {
+       "at_ms": 24000,
+       "connected": 158,
+       "queued": 0,
+       "in_match": 158
+      },
+      {
+       "at_ms": 25000,
+       "connected": 152,
+       "queued": 0,
+       "in_match": 152
+      },
+      {
+       "at_ms": 26000,
+       "connected": 146,
+       "queued": 0,
+       "in_match": 146
+      },
+      {
+       "at_ms": 27000,
+       "connected": 138,
+       "queued": 0,
+       "in_match": 138
+      },
+      {
+       "at_ms": 28000,
+       "connected": 130,
+       "queued": 0,
+       "in_match": 130
+      },
+      {
+       "at_ms": 29000,
+       "connected": 118,
+       "queued": 0,
+       "in_match": 118
+      },
+      {
+       "at_ms": 30000,
+       "connected": 108,
+       "queued": 0,
+       "in_match": 108
+      },
+      {
+       "at_ms": 31000,
+       "connected": 106,
+       "queued": 0,
+       "in_match": 106
+      },
+      {
+       "at_ms": 32000,
+       "connected": 100,
+       "queued": 0,
+       "in_match": 100
+      },
+      {
+       "at_ms": 33000,
+       "connected": 98,
+       "queued": 0,
+       "in_match": 98
+      },
+      {
+       "at_ms": 34001,
+       "connected": 88,
+       "queued": 0,
+       "in_match": 88
+      },
+      {
+       "at_ms": 35000,
+       "connected": 78,
+       "queued": 0,
+       "in_match": 78
+      },
+      {
+       "at_ms": 36000,
+       "connected": 72,
+       "queued": 0,
+       "in_match": 72
+      },
+      {
+       "at_ms": 37000,
+       "connected": 66,
+       "queued": 0,
+       "in_match": 66
+      },
+      {
+       "at_ms": 38000,
+       "connected": 26,
+       "queued": 0,
+       "in_match": 26
+      },
+      {
+       "at_ms": 39000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 40000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 41000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 42000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 43000,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 44000,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 44400,
+       "connected": 0,
+       "queued": 0,
+       "in_match": 0
+      }
+     ]
+    },
+    "client_usage": [
+     {
+      "cpu_percent": 0.0,
+      "rss_kb": 9580
+     },
+     {
+      "cpu_percent": 5.3,
+      "rss_kb": 24300
+     },
+     {
+      "cpu_percent": 13.3,
+      "rss_kb": 49976
+     },
+     {
+      "cpu_percent": 22.5,
+      "rss_kb": 49996
+     },
+     {
+      "cpu_percent": 26.9,
+      "rss_kb": 51136
+     },
+     {
+      "cpu_percent": 28.8,
+      "rss_kb": 51824
+     },
+     {
+      "cpu_percent": 28.9,
+      "rss_kb": 50804
+     },
+     {
+      "cpu_percent": 28.0,
+      "rss_kb": 51828
+     },
+     {
+      "cpu_percent": 25.7,
+      "rss_kb": 50804
+     }
+    ],
+    "server": {
+     "server": {
+      "dart": "3.13.4",
+      "os": "linux",
+      "os_version": "Linux 7.0.0-1012-aws #12~24.04.1-Ubuntu SMP PREEMPT Wed Aug 12 14:00:57 UTC 2026",
+      "processors": 2,
+      "compiled": "aot",
+      "port": 8090,
+      "accounts": 1000,
+      "virtual_after_ms": 10000,
+      "duration_ms": 30000,
+      "setup_timeout_ms": 20000,
+      "tick_ms": 50
+     },
+     "wall_ms": 46086,
+     "event_loop_lag_ms": {
+      "count": 460,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "max": 34.0,
+      "mean": 0.09
+     },
+     "lag_over_50ms": 0,
+     "max_rss_kb": 51980,
+     "usage": [
+      {
+       "at_ms": 5008,
+       "cpu_percent": 4.1,
+       "rss_kb": 22220
+      },
+      {
+       "at_ms": 10012,
+       "cpu_percent": 8.2,
+       "rss_kb": 47272
+      },
+      {
+       "at_ms": 15012,
+       "cpu_percent": 17.7,
+       "rss_kb": 47316
+      },
+      {
+       "at_ms": 20012,
+       "cpu_percent": 22.4,
+       "rss_kb": 49028
+      },
+      {
+       "at_ms": 25011,
+       "cpu_percent": 24.7,
+       "rss_kb": 49512
+      },
+      {
+       "at_ms": 30011,
+       "cpu_percent": 25.1,
+       "rss_kb": 51420
+      },
+      {
+       "at_ms": 35011,
+       "cpu_percent": 24.5,
+       "rss_kb": 52216
+      },
+      {
+       "at_ms": 40009,
+       "cpu_percent": 22.9,
+       "rss_kb": 51704
+      },
+      {
+       "at_ms": 45009,
+       "cpu_percent": 20.5,
+       "rss_kb": 51704
+      }
+     ]
+    }
+   }
+  },
+  "discarded": "A first attempt ran the client on the Mac through one SSH tunnel to the team server: 47 of 200 connections timed out (10 s), connect p90 8.5 s, 136 sockets closed with 1001; the load server kept running. The tunnel, not the server, is the likely limit but this was not isolated, so the attempt is not reported as a result. A second run then reached that still-running server instead of a fresh one and was discarded too."
+ },
+ "superseded": {
+  "s3_first_run": {
+   "why": "the skill table had no records for the bots, so every bot used the average estimate and its simulated opponent copied the account nearest that average",
+   "run": {
+    "what": "simulated-heavy: as s1 but --virtual-after-ms 0 (not the production 10 s)",
+    "client": {
+     "plan": {
+      "url": "ws://127.0.0.1:8090/ws/v1/battle",
+      "users": 200,
+      "ramp_ms": 20000,
+      "seed": 20,
+      "rounds_per_user": 3,
+      "exercises": [
+       "push_up",
+       "squat"
+      ],
+      "pose_interval_ms": 100,
+      "ping_interval_ms": 5000,
+      "setup_ms": [
+       1000,
+       3000
+      ],
+      "ready_ms": [
+       1000,
+       3000
+      ],
+      "think_ms": [
+       2000,
+       8000
+      ],
+      "reps_per_round": [
+       8,
+       25
+      ],
+      "round_timeout_ms": 120000,
+      "stop_after_ms": 900000
+     },
+     "client": {
+      "dart": "3.13.4",
+      "os": "macos",
+      "os_version": "Version 27.2.1 (Build 26B131)",
+      "processors": 10
+     },
+     "wall_ms": 161438,
+     "users": 200,
+     "connected": 200,
+     "connect_errors": {},
+     "peak_connected": 200,
+     "peak_queued": 1,
+     "peak_in_match": 200,
+     "rounds": 600,
+     "succeeded": 600,
+     "failed": 0,
+     "outcomes": {
+      "finished:ko": 343,
+      "finished:time_up": 257
+     },
+     "matched_real": 46,
+     "matched_simulated": 554,
+     "server_errors": {},
+     "unexpected_closes": {},
+     "connect_ms": {
+      "count": 200,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0,
+      "max": 2.0,
+      "mean": 0.47
+     },
+     "queue_wait_ms": {
+      "all": {
+       "count": 600,
+       "min": 0.0,
+       "p50": 33.0,
+       "p90": 43.0,
+       "p95": 47.0,
+       "p99": 50.0,
+       "max": 51.0,
+       "mean": 27.97
+      },
+      "real": {
+       "count": 46,
+       "min": 0.0,
+       "p50": 1.0,
+       "p90": 27.0,
+       "p95": 34.0,
+       "p99": 46.0,
+       "max": 46.0,
+       "mean": 8.8
+      },
+      "simulated": {
+       "count": 554,
+       "min": 1.0,
+       "p50": 33.0,
+       "p90": 44.0,
+       "p95": 48.0,
+       "p99": 51.0,
+       "max": 51.0,
+       "mean": 29.56
+      },
+      "buckets": [
+       "<100ms",
+       "100–1000ms",
+       "1000–5000ms",
+       "5000–10000ms",
+       "10000–10500ms",
+       "10500–11000ms",
+       "11000–15000ms",
+       "≥15000ms"
+      ],
+      "histogram_all": [
+       600,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ]
+     },
+     "found_to_start_ms": {
+      "count": 600,
+      "min": 3192.0,
+      "p50": 9902.0,
+      "p90": 11752.0,
+      "p95": 12151.0,
+      "p99": 12550.0,
+      "max": 12950.0,
+      "mean": 9643.85
+     },
+     "rep_ack_ms": {
+      "count": 8516,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 3.0,
+      "max": 6.0,
+      "mean": 0.38
+     },
+     "reps_sent": 8516,
+     "reps_acked": 8516,
+     "poses_sent": 148166,
+     "poses_received": 8469,
+     "timeline": [
+      {
+       "at_ms": 1001,
+       "connected": 10,
+       "queued": 0,
+       "in_match": 10
+      },
+      {
+       "at_ms": 2002,
+       "connected": 20,
+       "queued": 0,
+       "in_match": 20
+      },
+      {
+       "at_ms": 3001,
+       "connected": 30,
+       "queued": 0,
+       "in_match": 30
+      },
+      {
+       "at_ms": 4001,
+       "connected": 40,
+       "queued": 0,
+       "in_match": 40
+      },
+      {
+       "at_ms": 5002,
+       "connected": 50,
+       "queued": 0,
+       "in_match": 50
+      },
+      {
+       "at_ms": 6001,
+       "connected": 60,
+       "queued": 0,
+       "in_match": 60
+      },
+      {
+       "at_ms": 7002,
+       "connected": 70,
+       "queued": 0,
+       "in_match": 70
+      },
+      {
+       "at_ms": 8001,
+       "connected": 80,
+       "queued": 0,
+       "in_match": 80
+      },
+      {
+       "at_ms": 9002,
+       "connected": 90,
+       "queued": 0,
+       "in_match": 90
+      },
+      {
+       "at_ms": 10002,
+       "connected": 100,
+       "queued": 0,
+       "in_match": 100
+      },
+      {
+       "at_ms": 11002,
+       "connected": 110,
+       "queued": 0,
+       "in_match": 110
+      },
+      {
+       "at_ms": 12001,
+       "connected": 120,
+       "queued": 0,
+       "in_match": 120
+      },
+      {
+       "at_ms": 13001,
+       "connected": 130,
+       "queued": 0,
+       "in_match": 130
+      },
+      {
+       "at_ms": 14001,
+       "connected": 140,
+       "queued": 0,
+       "in_match": 140
+      },
+      {
+       "at_ms": 15001,
+       "connected": 150,
+       "queued": 0,
+       "in_match": 150
+      },
+      {
+       "at_ms": 16002,
+       "connected": 160,
+       "queued": 0,
+       "in_match": 160
+      },
+      {
+       "at_ms": 17001,
+       "connected": 170,
+       "queued": 0,
+       "in_match": 170
+      },
+      {
+       "at_ms": 18002,
+       "connected": 180,
+       "queued": 0,
+       "in_match": 180
+      },
+      {
+       "at_ms": 19002,
+       "connected": 190,
+       "queued": 0,
+       "in_match": 190
+      },
+      {
+       "at_ms": 20002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 21001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 22001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 23001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 24002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 25001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 200
+      },
+      {
+       "at_ms": 26001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 199
+      },
+      {
+       "at_ms": 27002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 199
+      },
+      {
+       "at_ms": 28001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 199
+      },
+      {
+       "at_ms": 29001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 198
+      },
+      {
+       "at_ms": 30000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 196
+      },
+      {
+       "at_ms": 31000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 196
+      },
+      {
+       "at_ms": 32001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 197
+      },
+      {
+       "at_ms": 33001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 195
+      },
+      {
+       "at_ms": 34001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 192
+      },
+      {
+       "at_ms": 35001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 190
+      },
+      {
+       "at_ms": 36002,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 186
+      },
+      {
+       "at_ms": 37002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 183
+      },
+      {
+       "at_ms": 38002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 179
+      },
+      {
+       "at_ms": 39001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 174
+      },
+      {
+       "at_ms": 40001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 173
+      },
+      {
+       "at_ms": 41001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 173
+      },
+      {
+       "at_ms": 42001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 173
+      },
+      {
+       "at_ms": 43001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 174
+      },
+      {
+       "at_ms": 44001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 174
+      },
+      {
+       "at_ms": 45001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 165
+      },
+      {
+       "at_ms": 46001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 167
+      },
+      {
+       "at_ms": 47002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 162
+      },
+      {
+       "at_ms": 48001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 149
+      },
+      {
+       "at_ms": 49001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 141
+      },
+      {
+       "at_ms": 50002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 144
+      },
+      {
+       "at_ms": 51001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 150
+      },
+      {
+       "at_ms": 52001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 156
+      },
+      {
+       "at_ms": 53001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 156
+      },
+      {
+       "at_ms": 54001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 156
+      },
+      {
+       "at_ms": 55002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 162
+      },
+      {
+       "at_ms": 56001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 165
+      },
+      {
+       "at_ms": 57001,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 165
+      },
+      {
+       "at_ms": 58001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 167
+      },
+      {
+       "at_ms": 59001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 171
+      },
+      {
+       "at_ms": 60000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 176
+      },
+      {
+       "at_ms": 61002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 178
+      },
+      {
+       "at_ms": 62001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 177
+      },
+      {
+       "at_ms": 63001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 177
+      },
+      {
+       "at_ms": 64001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 184
+      },
+      {
+       "at_ms": 65002,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 184
+      },
+      {
+       "at_ms": 66001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 187
+      },
+      {
+       "at_ms": 67000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 191
+      },
+      {
+       "at_ms": 68001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 195
+      },
+      {
+       "at_ms": 69001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 195
+      },
+      {
+       "at_ms": 70001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 197
+      },
+      {
+       "at_ms": 71001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 196
+      },
+      {
+       "at_ms": 72001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 195
+      },
+      {
+       "at_ms": 73002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 194
+      },
+      {
+       "at_ms": 74002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 191
+      },
+      {
+       "at_ms": 75000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 186
+      },
+      {
+       "at_ms": 76001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 185
+      },
+      {
+       "at_ms": 77001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 183
+      },
+      {
+       "at_ms": 78001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 175
+      },
+      {
+       "at_ms": 79001,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 178
+      },
+      {
+       "at_ms": 80002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 178
+      },
+      {
+       "at_ms": 81000,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 179
+      },
+      {
+       "at_ms": 82001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 177
+      },
+      {
+       "at_ms": 83001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 176
+      },
+      {
+       "at_ms": 84001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 173
+      },
+      {
+       "at_ms": 85002,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 177
+      },
+      {
+       "at_ms": 86000,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 170
+      },
+      {
+       "at_ms": 87001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 171
+      },
+      {
+       "at_ms": 88001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 169
+      },
+      {
+       "at_ms": 89001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 162
+      },
+      {
+       "at_ms": 90001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 159
+      },
+      {
+       "at_ms": 91001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 160
+      },
+      {
+       "at_ms": 92001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 161
+      },
+      {
+       "at_ms": 93001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 168
+      },
+      {
+       "at_ms": 94001,
+       "connected": 200,
+       "queued": 0,
+       "in_match": 168
+      },
+      {
+       "at_ms": 95001,
+       "connected": 200,
+       "queued": 1,
+       "in_match": 164
+      },
+      {
+       "at_ms": 96002,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 159
+      },
+      {
+       "at_ms": 97001,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 163
+      },
+      {
+       "at_ms": 98001,
+       "connected": 198,
+       "queued": 1,
+       "in_match": 163
+      },
+      {
+       "at_ms": 99001,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 161
+      },
+      {
+       "at_ms": 100001,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 168
+      },
+      {
+       "at_ms": 101002,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 176
+      },
+      {
+       "at_ms": 102001,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 179
+      },
+      {
+       "at_ms": 103001,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 180
+      },
+      {
+       "at_ms": 104001,
+       "connected": 198,
+       "queued": 0,
+       "in_match": 178
+      },
+      {
+       "at_ms": 105001,
+       "connected": 197,
+       "queued": 0,
+       "in_match": 175
+      },
+      {
+       "at_ms": 106001,
+       "connected": 196,
+       "queued": 0,
+       "in_match": 173
+      },
+      {
+       "at_ms": 107002,
+       "connected": 194,
+       "queued": 0,
+       "in_match": 173
+      },
+      {
+       "at_ms": 108001,
+       "connected": 193,
+       "queued": 0,
+       "in_match": 171
+      },
+      {
+       "at_ms": 109001,
+       "connected": 193,
+       "queued": 0,
+       "in_match": 176
+      },
+      {
+       "at_ms": 110001,
+       "connected": 191,
+       "queued": 0,
+       "in_match": 180
+      },
+      {
+       "at_ms": 111001,
+       "connected": 187,
+       "queued": 0,
+       "in_match": 178
+      },
+      {
+       "at_ms": 112001,
+       "connected": 183,
+       "queued": 0,
+       "in_match": 175
+      },
+      {
+       "at_ms": 113001,
+       "connected": 182,
+       "queued": 0,
+       "in_match": 176
+      },
+      {
+       "at_ms": 114001,
+       "connected": 181,
+       "queued": 0,
+       "in_match": 178
+      },
+      {
+       "at_ms": 115000,
+       "connected": 177,
+       "queued": 0,
+       "in_match": 176
+      },
+      {
+       "at_ms": 116001,
+       "connected": 176,
+       "queued": 0,
+       "in_match": 175
+      },
+      {
+       "at_ms": 117002,
+       "connected": 174,
+       "queued": 0,
+       "in_match": 173
+      },
+      {
+       "at_ms": 118001,
+       "connected": 171,
+       "queued": 0,
+       "in_match": 171
+      },
+      {
+       "at_ms": 119001,
+       "connected": 169,
+       "queued": 0,
+       "in_match": 169
+      },
+      {
+       "at_ms": 120002,
+       "connected": 169,
+       "queued": 0,
+       "in_match": 169
+      },
+      {
+       "at_ms": 121001,
+       "connected": 165,
+       "queued": 0,
+       "in_match": 165
+      },
+      {
+       "at_ms": 122001,
+       "connected": 162,
+       "queued": 0,
+       "in_match": 162
+      },
+      {
+       "at_ms": 123001,
+       "connected": 161,
+       "queued": 0,
+       "in_match": 161
+      },
+      {
+       "at_ms": 124001,
+       "connected": 156,
+       "queued": 0,
+       "in_match": 156
+      },
+      {
+       "at_ms": 125001,
+       "connected": 152,
+       "queued": 0,
+       "in_match": 152
+      },
+      {
+       "at_ms": 126001,
+       "connected": 140,
+       "queued": 0,
+       "in_match": 140
+      },
+      {
+       "at_ms": 127001,
+       "connected": 134,
+       "queued": 0,
+       "in_match": 134
+      },
+      {
+       "at_ms": 128002,
+       "connected": 131,
+       "queued": 0,
+       "in_match": 131
+      },
+      {
+       "at_ms": 129001,
+       "connected": 130,
+       "queued": 0,
+       "in_match": 130
+      },
+      {
+       "at_ms": 130001,
+       "connected": 124,
+       "queued": 0,
+       "in_match": 124
+      },
+      {
+       "at_ms": 131000,
+       "connected": 116,
+       "queued": 0,
+       "in_match": 116
+      },
+      {
+       "at_ms": 132002,
+       "connected": 110,
+       "queued": 0,
+       "in_match": 110
+      },
+      {
+       "at_ms": 133002,
+       "connected": 107,
+       "queued": 0,
+       "in_match": 107
+      },
+      {
+       "at_ms": 134002,
+       "connected": 102,
+       "queued": 0,
+       "in_match": 102
+      },
+      {
+       "at_ms": 135001,
+       "connected": 94,
+       "queued": 0,
+       "in_match": 94
+      },
+      {
+       "at_ms": 136002,
+       "connected": 80,
+       "queued": 0,
+       "in_match": 80
+      },
+      {
+       "at_ms": 137001,
+       "connected": 75,
+       "queued": 0,
+       "in_match": 75
+      },
+      {
+       "at_ms": 138001,
+       "connected": 70,
+       "queued": 0,
+       "in_match": 70
+      },
+      {
+       "at_ms": 139001,
+       "connected": 63,
+       "queued": 0,
+       "in_match": 63
+      },
+      {
+       "at_ms": 140001,
+       "connected": 59,
+       "queued": 0,
+       "in_match": 59
+      },
+      {
+       "at_ms": 141002,
+       "connected": 51,
+       "queued": 0,
+       "in_match": 51
+      },
+      {
+       "at_ms": 142001,
+       "connected": 44,
+       "queued": 0,
+       "in_match": 44
+      },
+      {
+       "at_ms": 143002,
+       "connected": 38,
+       "queued": 0,
+       "in_match": 38
+      },
+      {
+       "at_ms": 144001,
+       "connected": 34,
+       "queued": 0,
+       "in_match": 34
+      },
+      {
+       "at_ms": 145002,
+       "connected": 27,
+       "queued": 0,
+       "in_match": 27
+      },
+      {
+       "at_ms": 146001,
+       "connected": 23,
+       "queued": 0,
+       "in_match": 23
+      },
+      {
+       "at_ms": 147001,
+       "connected": 18,
+       "queued": 0,
+       "in_match": 18
+      },
+      {
+       "at_ms": 148002,
+       "connected": 16,
+       "queued": 0,
+       "in_match": 16
+      },
+      {
+       "at_ms": 149001,
+       "connected": 14,
+       "queued": 0,
+       "in_match": 14
+      },
+      {
+       "at_ms": 150001,
+       "connected": 12,
+       "queued": 0,
+       "in_match": 12
+      },
+      {
+       "at_ms": 151001,
+       "connected": 11,
+       "queued": 0,
+       "in_match": 11
+      },
+      {
+       "at_ms": 152001,
+       "connected": 11,
+       "queued": 0,
+       "in_match": 11
+      },
+      {
+       "at_ms": 153002,
+       "connected": 9,
+       "queued": 0,
+       "in_match": 9
+      },
+      {
+       "at_ms": 154001,
+       "connected": 7,
+       "queued": 0,
+       "in_match": 7
+      },
+      {
+       "at_ms": 155001,
+       "connected": 6,
+       "queued": 0,
+       "in_match": 6
+      },
+      {
+       "at_ms": 156002,
+       "connected": 5,
+       "queued": 0,
+       "in_match": 5
+      },
+      {
+       "at_ms": 157002,
+       "connected": 4,
+       "queued": 0,
+       "in_match": 4
+      },
+      {
+       "at_ms": 158001,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 159001,
+       "connected": 2,
+       "queued": 0,
+       "in_match": 2
+      },
+      {
+       "at_ms": 160002,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 161002,
+       "connected": 1,
+       "queued": 0,
+       "in_match": 1
+      },
+      {
+       "at_ms": 161438,
+       "connected": 0,
+       "queued": 0,
+       "in_match": 0
+      }
+     ]
+    },
+    "server": {
+     "server": {
+      "dart": "3.13.4",
+      "os": "macos",
+      "os_version": "Version 27.2.1 (Build 26B131)",
+      "processors": 10,
+      "compiled": "aot",
+      "port": 8090,
+      "accounts": 1000,
+      "virtual_after_ms": 0,
+      "duration_ms": 30000,
+      "setup_timeout_ms": 20000,
+      "tick_ms": 50
+     },
+     "wall_ms": 162474,
+     "event_loop_lag_ms": {
+      "count": 1624,
+      "min": 0.0,
+      "p50": 0.0,
+      "p90": 1.0,
+      "p95": 1.0,
+      "p99": 1.0,
+      "max": 2.0,
+      "mean": 0.21
+     },
+     "lag_over_50ms": 0,
+     "max_rss_kb": 83152,
+     "usage": [
+      {
+       "at_ms": 5009,
+       "cpu_percent": 1.4,
+       "rss_kb": 20080
+      },
+      {
+       "at_ms": 10011,
+       "cpu_percent": 2.4,
+       "rss_kb": 26112
+      },
+      {
+       "at_ms": 15011,
+       "cpu_percent": 3.6,
+       "rss_kb": 30368
+      },
+      {
+       "at_ms": 20011,
+       "cpu_percent": 7.7,
+       "rss_kb": 53920
+      },
+      {
+       "at_ms": 25007,
+       "cpu_percent": 10.8,
+       "rss_kb": 54720
+      },
+      {
+       "at_ms": 30009,
+       "cpu_percent": 13.6,
+       "rss_kb": 56192
+      },
+      {
+       "at_ms": 35011,
+       "cpu_percent": 16.4,
+       "rss_kb": 57376
+      },
+      {
+       "at_ms": 40013,
+       "cpu_percent": 14.6,
+       "rss_kb": 59472
+      },
+      {
+       "at_ms": 45010,
+       "cpu_percent": 13.5,
+       "rss_kb": 61168
+      },
+      {
+       "at_ms": 50011,
+       "cpu_percent": 10.9,
+       "rss_kb": 62032
+      },
+      {
+       "at_ms": 55013,
+       "cpu_percent": 8.9,
+       "rss_kb": 63072
+      },
+      {
+       "at_ms": 60011,
+       "cpu_percent": 8.2,
+       "rss_kb": 64144
+      },
+      {
+       "at_ms": 65012,
+       "cpu_percent": 11.4,
+       "rss_kb": 65104
+      },
+      {
+       "at_ms": 70015,
+       "cpu_percent": 14.2,
+       "rss_kb": 66032
+      },
+      {
+       "at_ms": 75007,
+       "cpu_percent": 17.8,
+       "rss_kb": 66608
+      },
+      {
+       "at_ms": 80013,
+       "cpu_percent": 17.2,
+       "rss_kb": 69200
+      },
+      {
+       "at_ms": 85012,
+       "cpu_percent": 15.9,
+       "rss_kb": 70112
+      },
+      {
+       "at_ms": 90013,
+       "cpu_percent": 13.8,
+       "rss_kb": 71264
+      },
+      {
+       "at_ms": 95011,
+       "cpu_percent": 12.1,
+       "rss_kb": 71760
+      },
+      {
+       "at_ms": 100011,
+       "cpu_percent": 10.6,
+       "rss_kb": 73264
+      },
+      {
+       "at_ms": 105010,
+       "cpu_percent": 10.3,
+       "rss_kb": 74592
+      },
+      {
+       "at_ms": 110011,
+       "cpu_percent": 11.8,
+       "rss_kb": 75680
+      },
+      {
+       "at_ms": 115012,
+       "cpu_percent": 14.2,
+       "rss_kb": 76896
+      },
+      {
+       "at_ms": 120011,
+       "cpu_percent": 12.9,
+       "rss_kb": 77744
+      },
+      {
+       "at_ms": 125011,
+       "cpu_percent": 15.4,
+       "rss_kb": 78672
+      },
+      {
+       "at_ms": 130012,
+       "cpu_percent": 11.4,
+       "rss_kb": 80464
+      },
+      {
+       "at_ms": 135011,
+       "cpu_percent": 10.9,
+       "rss_kb": 81024
+      },
+      {
+       "at_ms": 140011,
+       "cpu_percent": 8.8,
+       "rss_kb": 81712
+      },
+      {
+       "at_ms": 145012,
+       "cpu_percent": 4.3,
+       "rss_kb": 81968
+      },
+      {
+       "at_ms": 150012,
+       "cpu_percent": 2.2,
+       "rss_kb": 81808
+      },
+      {
+       "at_ms": 155012,
+       "cpu_percent": 2.5,
+       "rss_kb": 82848
+      },
+      {
+       "at_ms": 160011,
+       "cpu_percent": 1.7,
+       "rss_kb": 82880
+      }
+     ]
+    }
+   }
+  }
+ }
+}

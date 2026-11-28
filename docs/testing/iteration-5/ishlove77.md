@@ -5,6 +5,66 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P20 `feat/iter5-matching-load` (PR #111): fixes for the Codex review of `bd2e5f3`
+Code at commit `d691e47`.
+- **Findings:** (1) the test server's skill table had no records for the bots, so every bot used the average estimate
+  and every simulated opponent copied the same account; (2) the bots waited 10 s for an upgrade, the app 8 s. The
+  bots are now in the table under the ids the run gives them (`--bots`), the report counts the accounts the simulated
+  opponents copied, and the connect timeout defaults to 8 s.
+- **Tests:** `bot ids are the same in the run and in the skill table`, `each bot in the table has its own estimate,
+  not the average`, `simulated opponents copy accounts near each bot's own estimate` (with no bots in the table it
+  finds 1 account and fails), and the default timeout in `defaults are the documented 200-user scenario`.
+- **Rerun:** S3 on the Mac with the bots in the table: 600/600 battles, 0 server errors, 556 simulated opponents
+  copying 24 accounts. The other runs had at most 2 simulated battles and were not rerun (see the results document).
+- **Results:** `flutter analyze` no issues; tool tests 29 passed, 0 failed. No app or Python change.
+
+#### 2026-11-28 · step P20 `feat/iter5-matching-load` (PR #111): fixes for the Codex review of `0ea34e2`
+Code at commit `2ef4630`.
+- **Findings:** (P1) an upgrade finishing after the connect timeout stayed open on the server, uncounted; (P2) a bot
+  stopped before or while connecting could still open a socket and keep it; (P2) the load client ignored unknown
+  options, so a typo ran the defaults. The late socket is now closed, a stopped bot closes what opened and counts as
+  connect error `stopped`, and unknown options are refused. Reported results are unaffected (every reported run had
+  0 connect errors and no stop).
+- **Tests:** `an unknown option is refused, not run with the defaults`, `an upgrade that finishes after the connect
+  timeout is closed`, `a bot stopped while connecting closes the socket and counts no connection`, `a bot whose turn
+  comes after the stop time never connects`; all four fail on `0ea34e2` and pass now.
+- **Results:** `flutter analyze` no issues; tool tests 26 passed, 0 failed. No app or Python change (last full runs:
+  `flutter test` 5406 passed, 10 skipped; `pytest` 367 passed; bench 6 passed).
+
+#### 2026-11-28 · step P20 `feat/iter5-matching-load` (team plan #12): matchmaking benchmark and load test
+Load test tools in `server/benchmarks/matchmaking/` and the results in `docs/iteration-5/matchmaking-load.md` (raw
+numbers: `results-2026-11-28.json`). No app or server code changed. Commands from `gymrats_app/` and `server/` on
+macOS (Flutter 3.47.5 / Dart 3.13.4, Python 3.12.15) on code commit `db5948c` (base `main` `7bc473c`).
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model / ViewModel / Service / View | flutter_test | 90 / 90 / 85 / 75% | not affected (no app change) | 11/28 | – |
+| API server | pytest, pytest-django, pytest-cov | 90% | not affected (no change in `accounts`, `matches`, `gymrats`); the bench script `skills_endpoint_bench.py` 99% | 11/28 | `.venv/bin/python -m pytest benchmarks/matchmaking --cov=benchmarks/matchmaking` |
+| Load test tools (Dart, `server/benchmarks/matchmaking/`) | flutter_test, the real `BattleServer` on loopback, a scripted WebSocket server | – | not measured | 11/28 | `flutter test ../server/benchmarks/matchmaking/matchmaking_load_test.dart` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 5406 passed, 0 failed, 10 skipped (the existing opt-in live
+  server and device checks). The tool tests are outside `gymrats_app/test`, so plain `flutter test` and CI do not
+  run them: `flutter test ../server/benchmarks/matchmaking/matchmaking_load_test.dart` 22 passed (4 runs, stable).
+  Server `pytest` 367 passed, 0 failed; `pytest benchmarks/matchmaking` 6 passed (outside `testpaths`, run by path).
+- **Coverage notes:** the Dart tool files are outside the app package, so `flutter test --coverage` writes no lcov
+  for them (`--coverage-package` matches package names only), the same as `server/lib/battle_server.dart`. They are
+  covered by behavior: every outcome the report counts (finished, timeout while queued and in a match, stopped,
+  void on server stop, closed by the server, refused token), the clock offset, the error tally, the statistics and
+  the arguments. `dart analyze` on the test file reports only the unresolved `package:flutter_test` (no pubspec in
+  that folder).
+- **Fail-first checks:** `every server error is counted, one without a code as unknown, …` and `reps follow the
+  server clock from clock.sync` failed on the code before the reviewer's fixes and pass now.
+- **Load test results (measured, no target set in advance):** 200 users × 3 battles on the Mac and on the team
+  server: 600/600 battles finished, 0 server errors, 0 sockets closed by the server; real-opponent wait p50 2–3 ms,
+  p99 1.6–1.7 s. 200 at once and 1000 users: all battles finished. Full tables in the results document.
+- **Shortfalls:** none against a target. Two team-server attempts were discarded (an SSH tunnel limit, then a run
+  against a server left from that attempt); both are described in the results document.
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/benchmarks/matchmaking/matchmaking_load_test.dart` | Tool (load test) | nearest-rank percentiles, single value, empty sample, range errors, histogram edges and labels, summary, tallies; default and parsed arguments, bad arguments; synthetic skills; index bench row; real and simulated pairing, poses to the opponent, rounds in order, refused token, timeout while queued, timeout in a match, stop, server stop; clock offset and error tally against a scripted server |
+| `server/benchmarks/matchmaking/test_skills_endpoint_bench.py` | Tool (server bench) | fill sizes, refill replaces, timing reports every account, one row per size, a database on disk refused before deleting, the environment forced to the in-memory database |
+
 #### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `76fa05c`
 Code at commit `00cc5f6`.
 - **Finding (P2):** a read asked just before Monday 00:00 KST and answered after it kept last week, with no timer
