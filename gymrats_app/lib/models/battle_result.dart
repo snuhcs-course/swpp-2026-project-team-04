@@ -3,6 +3,7 @@ import 'form_report.dart';
 import 'game_score.dart';
 import 'match_record.dart';
 import 'matchup.dart';
+import 'ranking_ladder.dart';
 
 /// How an online battle ended beyond its [GameEnd], for the result's words.
 /// [GameEnd] keeps its two values: other code switches over it.
@@ -35,6 +36,8 @@ class BattleResult {
     this.roundLength = battleDuration,
     this.form,
     this.departure = BattleDeparture.none,
+    this.ranked = false,
+    this.rankingBefore,
   });
 
   final Matchup matchup;
@@ -74,6 +77,14 @@ class BattleResult {
   /// Whether a player leaving ended an online battle; [end] is then
   /// [GameEnd.timeUp].
   final BattleDeparture departure;
+
+  /// Whether the battle counts in the weekly ranking (A15): an online
+  /// battle that is not a friend battle. False for every other battle.
+  final bool ranked;
+
+  /// The global weekly ranking read when a ranked battle started (A15);
+  /// null when it failed or had not come when the result opened.
+  final RankingSnapshot? rankingBefore;
 
   /// What the home screen keeps of this battle.
   MatchRecord get record => MatchRecord(
