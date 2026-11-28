@@ -313,6 +313,9 @@ Full list: `ishlove77-Prompt-Log.md`.
   answer; it is per socket read, so a trickling answer could stall the check (P1). The reviewer subagent had passed
   that code in three rounds. Codex also found a partial backup left on disk when the copy fails (P2). Fixed in
   `c2a1cc0` and `30c972e`.
+- P21 follow-up, Codex review of `82c2c43` (4 × P2): restart order, pruning during an outage, a restore that could
+  overwrite a good database with a bad copy, and file modes while writing. Each was cheap to fix, so all were fixed
+  (`832de3d`, `79d79e3`); five of the six new tests fail on the previous commit.
 
 ## 4. Revisions and Decisions
 - P21 follow-up: the PM fixed RTO 30 min / RPO 24 h and asked for the health check and a 12 h backup off the

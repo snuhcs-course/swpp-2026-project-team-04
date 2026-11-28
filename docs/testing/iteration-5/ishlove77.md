@@ -5,6 +5,22 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `82c2c43`
+Fix at commits `832de3d` (health check) and `79d79e3` (backup).
+- **Findings (P2 ×4):** (1) a slow webhook could delay the second restart → every due restart is requested before any
+  alert; (2) old local copies stayed during a long storage outage → pruning runs after every run; (3) `fetch`
+  overwrote the destination before the integrity check → it unpacks into a temporary file and replaces the
+  destination only when the check passes; (4) the compressed copy was readable by others while being written → it
+  is created at 640 and the unit sets `UMask=0027`. The reviewer subagent added that a hand-run `fetch` downloads
+  under the caller's umask → `fetch` sets 027 while it runs.
+- **Tests:** `test_every_due_restart_is_requested_before_any_alert`,
+  `test_old_local_copies_are_removed_even_when_the_upload_fails`,
+  `test_a_damaged_copy_is_reported_and_does_not_replace_the_database`,
+  `test_a_copy_that_fails_its_check_does_not_replace_the_database`, `test_the_compressed_copy_is_640_while_it_is_written`
+  (all 5 fail on `82c2c43`), `test_the_download_is_not_readable_by_others`.
+- **Results:** server `pytest` 424 passed, 0 failed (52 in the two files: 23 + 29); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
 #### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `2353bea`
 Fix at commits `c2a1cc0` (health check) and `30c972e` (backup).
 - **Finding 1 (P1):** the 5 s socket timeout applies to each read, so an answer that trickles in could hold the check
