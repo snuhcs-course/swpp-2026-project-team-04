@@ -104,6 +104,12 @@ const _checked = [
   'lib/widgets/victory_overlay.dart',
   'lib/widgets/victory_rig_data.dart',
   'lib/widgets/victory_scene.dart',
+  'lib/widgets/weekly_rankings_banner.dart',
+  'lib/widgets/weekly_rankings_empty_card.dart',
+  'lib/widgets/weekly_rankings_my_card.dart',
+  'lib/widgets/weekly_rankings_row.dart',
+  'lib/widgets/weekly_rankings_rules_sheet.dart',
+  'lib/widgets/weekly_rankings_tabs.dart',
 ];
 
 /// Pattern and what it catches.
