@@ -27,6 +27,7 @@ BattleFxSign _sign(
   double rotation = 0,
   double opacity = 1,
 }) => BattleFxSign(
+  fullCorrection: reason == RejectReason.kneesDown,
   reason: reason,
   average: average,
   scale: scale,

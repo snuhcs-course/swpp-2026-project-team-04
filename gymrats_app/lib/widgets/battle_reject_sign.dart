@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import '../models/reject_reason_korean.dart';
-import '../models/rep_event.dart';
 import '../theme/app_theme.dart';
 import 'battle_art_path.dart';
 import 'battle_banner.dart';
@@ -303,7 +302,24 @@ class BattleRejectSignView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
     final icon = sign.reason.signIcon;
-    final kneeCue = sign.reason == RejectReason.kneesDown;
+    final label = OverflowBox(
+      fit: OverflowBoxFit.deferToChild,
+      minWidth: 0,
+      maxWidth: sign.fullCorrection
+          ? BattleFx.stageWidth - 48
+          : double.infinity,
+      child: BattleBand(
+        text: sign.fullCorrection
+            ? sign.text.replaceAll(' ', '\n')
+            : sign.text,
+        style: theme.stageSignLabel,
+        color: sign.tone.color,
+        sidePadding: _labelSidePadding,
+        topPadding: _labelTopPadding,
+        edge: labelEdge,
+        wrap: sign.fullCorrection,
+      ),
+    );
     return Semantics(
       container: true,
       label: sign.reason.koreanMessage,
@@ -319,6 +335,7 @@ class BattleRejectSignView extends StatelessWidget {
                 minWidth: size.width,
                 maxWidth: size.width,
                 minHeight: size.height,
+                maxHeight: sign.fullCorrection ? double.infinity : size.height,
               ),
               child: Stack(
                 alignment: Alignment.topCenter,
@@ -349,29 +366,13 @@ class BattleRejectSignView extends StatelessWidget {
                         ),
                       ),
                     ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: labelTop),
-                    // A long label is wider than the sign's box.
-                    child: OverflowBox(
-                      fit: OverflowBoxFit.deferToChild,
-                      minWidth: 0,
-                      maxWidth: kneeCue
-                          ? BattleFx.stageWidth - 48
-                          : double.infinity,
-                      child: BattleBand(
-                        // Keep each Korean word together on the distance-readable sign.
-                        text: kneeCue
-                            ? sign.text.replaceAll(' ', '\n')
-                            : sign.text,
-                        style: theme.stageSignLabel,
-                        color: sign.tone.color,
-                        sidePadding: _labelSidePadding,
-                        topPadding: _labelTopPadding,
-                        edge: labelEdge,
-                        wrap: kneeCue,
-                      ),
-                    ),
-                  ),
+                  if (sign.fullCorrection)
+                    Padding(
+                      padding: const EdgeInsets.only(top: labelTop),
+                      child: label,
+                    )
+                  else
+                    Positioned(left: 0, right: 0, top: labelTop, child: label),
                 ],
               ),
             ),

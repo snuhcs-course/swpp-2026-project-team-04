@@ -398,6 +398,7 @@ class BattleFxPuff {
 /// short label.
 class BattleFxSign {
   const BattleFxSign({
+    this.fullCorrection = false,
     required this.reason,
     required this.average,
     required this.scale,
@@ -414,9 +415,9 @@ class BattleFxSign {
   final double rotation;
   final double opacity;
 
-  String get text => reason == RejectReason.kneesDown
-      ? reason.koreanMessage
-      : reason.signLabel;
+  /// Live feedback can display the full coaching sentence across several lines.
+  final bool fullCorrection;
+  String get text => fullCorrection ? reason.koreanMessage : reason.signLabel;
 
   BattleFxTone get tone => average ? BattleFxTone.average : BattleFxTone.danger;
 }
@@ -1588,6 +1589,7 @@ class BattleFxTimeline {
     final d = now - sign.at;
     if (d < 0 || d >= BattleFx.signMs) return null;
     return BattleFxSign(
+      fullCorrection: sign.reason == RejectReason.kneesDown,
       reason: sign.reason,
       average: sign.average,
       scale: d < 130 ? 0.6 + 0.4 * BattleFx.back(d / 130) : 1,
@@ -1628,10 +1630,10 @@ class BattleFxTimeline {
             BattleFxBanner(
               text: rep.showZeroOnMiss ? 'MISS +0' : 'MISS',
               top: 155,
-              textSize: 84,
+              textSize: rep.showZeroOnMiss ? 50 : 84,
               tone: BattleFxTone.plain,
               opacity: miss.opacity,
-              dx: rep.showZeroOnMiss ? -24 : -sign * 56,
+              dx: rep.showZeroOnMiss ? 0 : -sign * 56,
               rotation: sign * 7,
               scaleX: 0.78 * miss.scale,
               scaleY: miss.scale,

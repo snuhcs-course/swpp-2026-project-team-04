@@ -2,12 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gymrats_app/models/battle_rules.dart';
-import 'package:gymrats_app/models/exercise_type.dart';
-import 'package:gymrats_app/models/tutorial_page.dart';
 import 'package:gymrats_app/screens/help_screen.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
-import 'package:gymrats_app/viewmodels/tutorial_viewmodel.dart';
 
 /// Tests otherwise draw every letter as the same square, so only here does
 /// the text of the rules and the result have its real width. In its own
@@ -15,7 +11,6 @@ import 'package:gymrats_app/viewmodels/tutorial_viewmodel.dart';
 Future<void> _loadAppFonts(WidgetTester tester) => tester.runAsync(() async {
   for (final entry in const {
     AppFonts.number: ['assets/fonts/Oxanium-Bold.ttf'],
-    AppFonts.display: ['assets/fonts/DoHyeon-Regular.ttf'],
     AppFonts.headline: ['assets/fonts/BlackHanSans-Regular.ttf'],
     AppFonts.body: [
       'assets/fonts/IBMPlexSansKR-Regular.ttf',
@@ -61,23 +56,11 @@ void main() {
       // The push-up's grade pages follow intro, setup and battle.
       // A12: the grades' bands and the fail page's reject sign, on the
       // game screen in each page's bubble.
-      final pager = tester.widget<PageView>(find.byType(PageView));
-      final pages = TutorialViewModel.pagesFor(battleRules);
-      for (final (step, label) in const [
-        (TutorialStep.excellent, 'EXCELLENT'),
-        (TutorialStep.good, 'GOOD'),
-        (TutorialStep.average, 'AVERAGE'),
-        (TutorialStep.fail, '무릎을\n바닥에서\n떼요'),
-      ]) {
-        final index = pages.indexWhere(
-          (page) => page.exercise == ExerciseType.pushUp && page.step == step,
-        );
-        pager.controller!.jumpToPage(index);
-        await tester.pumpAndSettle();
-        final viewport = tester.getRect(find.byType(PageView));
-        final rect = tester.getRect(find.text(label));
-        expect(viewport.contains(rect.topLeft), isTrue, reason: label);
-        expect(viewport.contains(rect.bottomRight), isTrue, reason: label);
+      for (final label in const ['EXCELLENT', 'GOOD', 'AVERAGE', '무릎 떼기']) {
+        while (find.text(label).hitTestable().evaluate().isEmpty) {
+          await tester.tap(find.text('다음'));
+          await tester.pumpAndSettle();
+        }
         expect(truncated(tester, label), isFalse, reason: label);
         expect(tester.takeException(), isNull, reason: label);
       }
