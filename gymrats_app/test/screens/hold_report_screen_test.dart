@@ -187,6 +187,52 @@ void main() {
       expect(holdStarTimes(holdRecord(stars: 0)), isEmpty);
     });
 
+    test('with held spans a star sits where the time held reached it: a '
+        "chair's 5 s entry moves the 10 s star to 15 s (PR #106 Codex "
+        'review)', () {
+      final chair = HoldRecord(
+        endedAt: DateTime(2026, 11, 27, 9),
+        pose: HoldPose.chair,
+        stage: 5,
+        held: const Duration(seconds: 17),
+        elapsed: const Duration(seconds: 24),
+        stars: 2,
+        starSeconds: const [10, 15, 30],
+        heldSpans: const [
+          HoldRecordSpan(
+            start: Duration(seconds: 5),
+            end: Duration(seconds: 17),
+          ),
+          HoldRecordSpan(
+            start: Duration(seconds: 19),
+            end: Duration(seconds: 24),
+          ),
+        ],
+      );
+      // 10 s held at 15 s; 15 s held: 12 s in the first span, 3 s more at 22 s.
+      expect(holdStarTimes(chair), const [
+        Duration(seconds: 15),
+        Duration(seconds: 22),
+      ]);
+      // Spans a frame short of the star: the last moment held.
+      final short = HoldRecord(
+        endedAt: DateTime(2026, 11, 27, 9),
+        pose: HoldPose.chair,
+        stage: 5,
+        held: const Duration(seconds: 10),
+        elapsed: const Duration(seconds: 12),
+        stars: 1,
+        starSeconds: const [10, 15, 30],
+        heldSpans: const [
+          HoldRecordSpan(
+            start: Duration(seconds: 2),
+            end: Duration(milliseconds: 11950),
+          ),
+        ],
+      );
+      expect(holdStarTimes(short), const [Duration(milliseconds: 11950)]);
+    });
+
     test('a moment on the bar, from GO to the end', () {
       final painter = HoldTimelinePainter(
         record: record,

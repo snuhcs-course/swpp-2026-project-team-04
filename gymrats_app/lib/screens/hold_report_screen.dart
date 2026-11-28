@@ -278,9 +278,29 @@ class _ScoreSection extends StatelessWidget {
   }
 }
 
-/// Where the stars were reached, from GO: a star asks for seconds held, and
+/// Where the stars were reached, from GO: a star asks for seconds held. With
+/// the held spans, where the time held reached it; for an older record,
 /// each pause before it moves it later.
 List<Duration> holdStarTimes(HoldRecord r) {
+  // From the held spans when the record has them, so the stars sit where
+  // the bar shows the time reached (PR #106 Codex review).
+  if (r.heldSpans case final spans?) {
+    final sorted = [...spans]..sort((a, b) => a.start.compareTo(b.start));
+    Duration reached(Duration need) {
+      var held = Duration.zero;
+      for (final span in sorted) {
+        if (held + span.length >= need) return span.start + (need - held);
+        held += span.length;
+      }
+      // The spans fall a frame short of the time held: the last moment.
+      return sorted.isEmpty ? need : sorted.last.end;
+    }
+
+    return [
+      for (final (i, s) in r.starSeconds.indexed)
+        if (i < r.stars) reached(Duration(seconds: s)),
+    ];
+  }
   final pauses = [...r.pauses]..sort((a, b) => a.start.compareTo(b.start));
   return [
     for (final (i, s) in r.starSeconds.indexed)
