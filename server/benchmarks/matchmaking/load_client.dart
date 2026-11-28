@@ -36,8 +36,32 @@ Map<String, String> parseArgs(List<String> args) {
   return (parts[0], parts[1]);
 }
 
-/// The plan [args] ask for; the defaults are the documented scenario.
+/// The options [planFrom] reads, plus `out`.
+const clientOptions = {
+  'url',
+  'users',
+  'ramp-ms',
+  'seed',
+  'id-prefix',
+  'stop-after-ms',
+  'rounds',
+  'exercises',
+  'pose-interval-ms',
+  'setup-ms',
+  'ready-ms',
+  'think-ms',
+  'reps',
+  'round-timeout-ms',
+  'out',
+};
+
+/// The plan [args] ask for; the defaults are the documented scenario. An
+/// unknown option is refused, so a typo never runs the defaults instead.
 LoadPlan planFrom(Map<String, String> o) {
+  final unknown = o.keys.where((k) => !clientOptions.contains(k));
+  if (unknown.isNotEmpty) {
+    throw FormatException('Unknown option(s): ${unknown.join(', ')}.');
+  }
   int number(String name, int fallback) =>
       o[name] == null ? fallback : int.parse(o[name]!);
   (int, int) range(String name, (int, int) fallback) =>

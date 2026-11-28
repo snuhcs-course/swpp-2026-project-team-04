@@ -149,6 +149,11 @@ void main() {
       expect(plan.seed, 7);
     });
 
+    test('an unknown option is refused, not run with the defaults', () {
+      expect(() => planFrom({'ram-ms': '0'}), throwsFormatException);
+      expect(planFrom({'out': 'report.json'}).users, 200);
+    });
+
     test('a flag without a value or a bad range is refused', () {
       expect(() => parseArgs(['--users']), throwsFormatException);
       expect(() => parseArgs(['users', '3']), throwsFormatException);
@@ -336,6 +341,81 @@ void main() {
       'match_id': 'm1',
       'payload': payload,
     };
+
+    /// A server that upgrades each socket [delay] after it is asked, and
+    /// completes [closed] when that socket closes.
+    Future<(HttpServer, Completer<void>)> slowUpgrade(Duration delay) async {
+      final closed = Completer<void>();
+      final http = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      http.listen((request) async {
+        await Future<void>.delayed(delay);
+        final socket = await WebSocketTransformer.upgrade(request);
+        socket.listen(
+          (_) {},
+          onDone: () {
+            if (!closed.isCompleted) closed.complete();
+          },
+        );
+      });
+      addTearDown(() => http.close(force: true));
+      return (http, closed);
+    }
+
+    test(
+      'an upgrade that finishes after the connect timeout is closed',
+      () async {
+        final (http, closed) = await slowUpgrade(
+          const Duration(milliseconds: 400),
+        );
+        final record = await LoadBot(
+          config: BotConfig(
+            url: Uri.parse('ws://127.0.0.1:${http.port}/'),
+            connectTimeoutMs: 100,
+          ),
+          playerId: 'bot-3',
+          displayName: 'B',
+          random: Random(5),
+        ).run();
+        expect(record.connectError, 'timeout');
+        expect(record.connectMs, isNull);
+        // Without closing it, the late socket would stay open on the server.
+        await closed.future.timeout(const Duration(seconds: 3));
+      },
+    );
+
+    test('a bot stopped while connecting closes the socket and counts no '
+        'connection', () async {
+      final (http, closed) = await slowUpgrade(
+        const Duration(milliseconds: 400),
+      );
+      final report = await runLoad(
+        LoadPlan(
+          bot: BotConfig(url: Uri.parse('ws://127.0.0.1:${http.port}/')),
+          users: 1,
+          rampMs: 0,
+          stopAfterMs: 100,
+        ),
+      ).timeout(const Duration(seconds: 3));
+      expect(report.connected, 0);
+      expect(report.connectErrors, {'stopped': 1});
+      expect(report.rounds, isEmpty);
+      await closed.future.timeout(const Duration(seconds: 3));
+    });
+
+    test('a bot whose turn comes after the stop time never connects', () async {
+      // The first bot is stopped while connecting; the second never starts.
+      final (http, _) = await slowUpgrade(const Duration(milliseconds: 400));
+      final report = await runLoad(
+        LoadPlan(
+          bot: BotConfig(url: Uri.parse('ws://127.0.0.1:${http.port}/')),
+          users: 2,
+          rampMs: 1000, // the second bot starts at 500 ms
+          stopAfterMs: 100,
+        ),
+      ).timeout(const Duration(seconds: 5));
+      expect(report.connectErrors['stopped'], 2);
+      expect(report.connected, 0);
+    });
 
     test('reps follow the server clock from clock.sync', () async {
       // The server's clock runs a minute ahead of the bot's.

@@ -161,22 +161,46 @@ class LoadBot {
       range.$1 + random.nextInt(range.$2 - range.$1 + 1);
 
   Future<BotRecord> run() async {
+    // Stopped before its turn to start (the run's stop time came first).
+    if (_done.isCompleted) {
+      record.connectError ??= 'stopped';
+      return record;
+    }
     state = BotState.connecting;
     final clock = Stopwatch()..start();
+    final pending = _connect();
     try {
-      _socket = await _connect().timeout(
+      _socket = await pending.timeout(
         Duration(milliseconds: config.connectTimeoutMs),
       );
     } on TimeoutException {
       record.connectError = 'timeout';
+      // The upgrade goes on after the timeout: close it if it still opens,
+      // so no uncounted connection stays on the server.
+      unawaited(
+        pending.then<void>(
+          (late) => late.close(1000, 'timeout'),
+          onError: (_) {},
+        ),
+      );
     } on _Refused catch (e) {
       record.connectError = '${e.status}';
     } catch (e) {
       record.connectError = e.runtimeType.toString();
     }
     final socket = _socket;
-    if (socket == null) {
+    if (socket != null && _done.isCompleted) {
+      // Stopped while connecting: close what opened, count no connection.
+      _socket = null;
+      unawaited(socket.close(1000, 'stopped'));
+      record.connectError = 'stopped';
       state = BotState.done;
+      return record;
+    }
+    if (socket == null) {
+      if (_done.isCompleted) record.connectError ??= 'stopped';
+      state = BotState.done;
+      if (!_done.isCompleted) _done.complete();
       return record;
     }
     record.connectMs = clock.elapsedMilliseconds;
