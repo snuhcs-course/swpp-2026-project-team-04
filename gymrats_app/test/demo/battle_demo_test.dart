@@ -84,10 +84,7 @@ void main() {
       await tester.longPressAt(camera);
       await tester.pump(const Duration(milliseconds: 200));
       // The sign is only ever mine, whatever the bot does meanwhile.
-      final label = reason == RejectReason.kneesDown
-          ? '무릎을\n바닥에서\n떼요'
-          : reason.signLabel;
-      expect(find.text(label), findsOneWidget);
+      expect(find.text(reason.signLabel), findsOneWidget);
       expect(find.bySemanticsLabel(reason.koreanMessage), findsWidgets);
     }
   });
@@ -239,7 +236,7 @@ void main() {
       await open(tester);
       await press(tester, '0점 거절');
       await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text('무릎을\n바닥에서\n떼요'), findsOneWidget);
+      expect(find.text('무릎 떼기'), findsOneWidget);
       expect(state(tester).myScore, 0);
       await press(tester, '0점 거절');
       await tester.pump(const Duration(milliseconds: 200));

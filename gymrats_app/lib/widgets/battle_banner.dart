@@ -33,7 +33,6 @@ class BattleBand extends StatelessWidget {
     this.sidePadding = _koreanSidePadding,
     this.topPadding = 0,
     this.edge = _edge,
-    this.wrap = false,
   }) : height = null,
        textTop = 0;
 
@@ -53,8 +52,7 @@ class BattleBand extends StatelessWidget {
        sidePadding = BattleFx.bandBox(size).padX,
        textTop = BattleFx.bandBox(size).baseline - _numberAscent * size,
        topPadding = 0,
-       edge = _edge,
-       wrap = false;
+       edge = _edge;
 
   /// A band of Korean with text [size] design points tall: as tall as its
   /// line ([BattleFx.koreanBandBox]).
@@ -71,8 +69,7 @@ class BattleBand extends StatelessWidget {
        sidePadding = BattleFx.koreanBandBox(size).padX,
        textTop = 0,
        topPadding = 0,
-       edge = _edge,
-       wrap = false;
+       edge = _edge;
 
   final String text;
   final TextStyle style;
@@ -92,7 +89,6 @@ class BattleBand extends StatelessWidget {
 
   /// The ink edge, inside the band: 3, or the reject sign's 4 (A9 spec 5).
   final double edge;
-  final bool wrap;
 
   /// How far below the top of a line 1.0 tall Oxanium's letters stand: its
   /// ascent, 790 of 1000.
@@ -104,9 +100,8 @@ class BattleBand extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget label = Text(
       text,
-      maxLines: wrap ? null : 1,
-      softWrap: wrap,
-      textAlign: wrap ? TextAlign.center : null,
+      maxLines: 1,
+      softWrap: false,
       textScaler: TextScaler.noScaling,
       style: style,
     );
