@@ -73,6 +73,8 @@ abstract final class HelpRules {
         title: '운동으로 겨루는 1:1 대결',
         body: '온라인 대결과 아케이드에서 겨뤄요.',
       ),
+      // Told by its title and picture alone (A13 spec 2.3).
+      TutorialStep.modes => const HelpPage(title: '온라인 대결과 아케이드', body: ''),
       TutorialStep.intro => HelpPage(
         title: squat ? '스쿼트로 1:1 대결해요' : '푸시업으로 1:1 대결해요',
         body: squat

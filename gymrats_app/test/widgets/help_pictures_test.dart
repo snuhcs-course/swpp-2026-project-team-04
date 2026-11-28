@@ -12,6 +12,7 @@ import 'package:gymrats_app/widgets/tutorial_draft.dart';
 import 'package:gymrats_app/widgets/tutorial_figure_painters.dart';
 import 'package:gymrats_app/widgets/tutorial_game_shot.dart';
 import 'package:gymrats_app/widgets/tutorial_setup_scenes.dart';
+import 'package:gymrats_app/widgets/tutorial_modes.dart';
 import 'package:gymrats_app/widgets/tutorial_welcome.dart';
 
 void main() {
@@ -179,6 +180,17 @@ void main() {
       await show(tester, TutorialPage(exercise, TutorialStep.report));
       expect(find.byType(TutorialCoachTalk), findsOneWidget);
     }
+  });
+
+  testWidgets('game page 2 shows the online battle and arcade picture, '
+      'named as the A13 design names it, on the taller board', (tester) async {
+    await show(tester, TutorialPage.modes);
+    expect(find.byType(TutorialModes), findsOneWidget);
+    expect(HelpPicture.labelOf(TutorialPage.modes), TutorialModes.label);
+    expect(
+      HelpPicture.sizeOf(TutorialPage.modes),
+      const Size(HelpPicture.width, HelpPicture.welcomeHeight),
+    );
   });
 
   test('the game page and the report are named as the design names them '
