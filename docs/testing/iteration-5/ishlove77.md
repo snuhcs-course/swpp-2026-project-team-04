@@ -5,6 +5,15 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fix for the Codex review of `17dbf12`
+Fix at commit `ed5f1be`.
+- **Finding (P1):** a restored database not writable by the API user (`jinyoung`) would pass `/health`, which does
+  not touch the database, and fail later on writes. The procedure (5, steps 3–4) now gives the owner and modes read
+  from production (`/srv/gymrats/data` 2775, `gymrats.db` 644, both `jinyoung:gymrats`), checks them with
+  `sudo -u jinyoung test -w`, runs `migrate` as `jinyoung`, and logs in and reads history on the machine before the
+  IP moves. Reviewer subagent: APPROVE (2 Minor applied). Documentation only; no code or test change.
+- **Results:** unchanged (server `pytest` 372 passed, 98%).
+
 #### 2026-11-28 · step P21 `feat/iter5-failover` (PR #114): fixes for the Codex review of `fab012b`
 Fix at commit `25139d3`.
 - **Findings (P1 ×2):** (1) a replacement from a snapshot older than the last deploy kept the old code, so `migrate`

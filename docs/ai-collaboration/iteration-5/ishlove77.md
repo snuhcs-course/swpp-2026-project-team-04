@@ -142,6 +142,9 @@ Full list: `ishlove77-Prompt-Log.md`.
   before `migrate`, and gave a fresh instance no IP certificate. Claude's first fix said only "run
   `install-https.sh`"; the reviewer subagent found it stops at its first line on a fresh instance (no nginx site
   yet) and that a snapshot's 6-day certificate may already be expired. Fixed in `25139d3` after a second review.
+- P21, Codex review of `17dbf12` (P1): the procedure trusted `/health`, which does not query the database, so a
+  restored file the API cannot write would pass. Claude first proposed a login as the write check; the code showed
+  login does not write, so the check is a permission test plus a login and history read (`ed5f1be`).
 
 - P20, wrong claim on the team server: after the first try through an SSH tunnel failed, Claude told the user the
   test server "died early". It had not: its process shows as `dart:load-serve`, which `ps -C load-server` missed.
