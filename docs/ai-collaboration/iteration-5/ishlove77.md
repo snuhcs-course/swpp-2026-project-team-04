@@ -122,6 +122,10 @@ Full list: `ishlove77-Prompt-Log.md`.
   (S3 ran with the production wait; the server now refuses unknown arguments); `WebSocket.connect` hides the HTTP
   status of a refused upgrade (the bot now upgrades by hand to tell 401 from 503); the error tally lost counts
   without a code; the doc said the countdown was inside found→start. Each was caught by a test or the reviewer.
+- P20, Codex review of PR #111 (`0ea34e2`): a connection finishing after the connect timeout was left open, a bot
+  stopped while connecting could keep its socket, and the client ignored unknown options. None of them showed in
+  the reported runs, but the first two are exactly what an overloaded run (like the discarded tunnel attempt) hits.
+  Fixed in `2ef4630` with four tests that fail on the old code.
 - P20, found in the battle server (not fixed, owner's file): an uncaught `StreamSink is closed` from the `catch`
   path of `BattleServer._receive`, seen only with server and client in one process; reported in the results doc.
 

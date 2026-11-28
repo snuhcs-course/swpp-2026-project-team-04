@@ -5,6 +5,19 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P20 `feat/iter5-matching-load` (PR #111): fixes for the Codex review of `0ea34e2`
+Code at commit `2ef4630`.
+- **Findings:** (P1) an upgrade finishing after the connect timeout stayed open on the server, uncounted; (P2) a bot
+  stopped before or while connecting could still open a socket and keep it; (P2) the load client ignored unknown
+  options, so a typo ran the defaults. The late socket is now closed, a stopped bot closes what opened and counts as
+  connect error `stopped`, and unknown options are refused. Reported results are unaffected (every reported run had
+  0 connect errors and no stop).
+- **Tests:** `an unknown option is refused, not run with the defaults`, `an upgrade that finishes after the connect
+  timeout is closed`, `a bot stopped while connecting closes the socket and counts no connection`, `a bot whose turn
+  comes after the stop time never connects`; all four fail on `0ea34e2` and pass now.
+- **Results:** `flutter analyze` no issues; tool tests 26 passed, 0 failed. No app or Python change (last full runs:
+  `flutter test` 5406 passed, 10 skipped; `pytest` 367 passed; bench 6 passed).
+
 #### 2026-11-28 · step P20 `feat/iter5-matching-load` (team plan #12): matchmaking benchmark and load test
 Load test tools in `server/benchmarks/matchmaking/` and the results in `docs/iteration-5/matchmaking-load.md` (raw
 numbers: `results-2026-11-28.json`). No app or server code changed. Commands from `gymrats_app/` and `server/` on
