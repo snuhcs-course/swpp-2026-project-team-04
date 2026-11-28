@@ -23,8 +23,11 @@ import '../widgets/victory_scene.dart';
 /// Pick the result, my character and the opponent's, then 리포트 열기: the
 /// app's own result screen opens with a made-up online battle. Back returns
 /// here to play it again. "애니메이션 줄이기" opens it as the phone's reduced
-/// motion setting would. It installs as the app does (the same package), so
-/// install the app again after the check.
+/// motion setting would. "순위 경우" (A15) makes it a ranked battle with one
+/// of the rank ladder's cases ([ScoreLadderCase]): its ranking before the
+/// battle, and a made-up server that answers with the ranking after it
+/// ('late' only after 1.5 s; 'none' is a friend battle). It installs as the
+/// app does (the same package), so install the app again after the check.
 void main() {
   runApp(const ResultSceneDemo());
 }
@@ -93,8 +96,14 @@ class ResultScenePicker extends StatefulWidget {
   const ResultScenePicker({super.key});
 
   /// The made-up battle for [result] against [opponentId] (null: not
-  /// known): an online battle against a person, RepBot a bot.
-  static BattleResult battleOf(VictoryResult result, String? opponentId) {
+  /// known): an online battle against a person, RepBot a bot. With
+  /// [ladderCase] (a [ScoreLadderCase.all] key) it is ranked with that
+  /// case's ranking before it, but for 'none', a friend battle.
+  static BattleResult battleOf(
+    VictoryResult result,
+    String? opponentId, {
+    String? ladderCase,
+  }) {
     final (outcome, end, departure) = switch (result) {
       VictoryResult.koWin => (MatchOutcome.win, GameEnd.ko, null),
       VictoryResult.timeWin => (MatchOutcome.win, GameEnd.timeUp, null),
@@ -132,6 +141,10 @@ class ResultScenePicker extends StatefulWidget {
       endedAt: DateTime.now(),
       roundLength: const Duration(seconds: 30),
       departure: departure ?? BattleDeparture.none,
+      ranked: ladderCase != null && ladderCase != 'none',
+      rankingBefore: ladderCase == null || ladderCase == 'none'
+          ? null
+          : ScoreLadderCase.all[ladderCase]!.before,
     );
   }
 
@@ -144,17 +157,34 @@ class _ResultScenePickerState extends State<ResultScenePicker> {
   String? _opponent = 'penguin';
   var _still = false;
 
+  /// The rank ladder's case (A15); null: not a ranked battle, as before.
+  String? _ladderCase;
+
   void _open(BuildContext context) {
-    final battle = ResultScenePicker.battleOf(_result, _opponent);
+    final battle = ResultScenePicker.battleOf(
+      _result,
+      _opponent,
+      ladderCase: _ladderCase,
+    );
+    final ladderCase = _ladderCase;
+    final rankings = ladderCase == null
+        ? null
+        : ScoreLadderCase.all[ladderCase]!.rankings(
+            _result,
+            late: ladderCase == 'late',
+          );
     Navigator.push<void>(
       context,
       MaterialPageRoute(
-        builder: (context) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            disableAnimations:
-                _still || MediaQuery.of(context).disableAnimations,
+        builder: (context) => Provider<RankingsRepository?>.value(
+          value: rankings,
+          child: MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              disableAnimations:
+                  _still || MediaQuery.of(context).disableAnimations,
+            ),
+            child: ResultScreen(result: battle),
           ),
-          child: ResultScreen(result: battle),
         ),
       ),
     );
@@ -229,6 +259,15 @@ class _ResultScenePickerState extends State<ResultScenePicker> {
           FilledButton(
             onPressed: () => _open(context),
             child: const Text('리포트 열기'),
+          ),
+          // Below the button, so the picker above stays as A7 made it.
+          const SizedBox(height: AppSpacing.s20),
+          _chips<String?>(
+            '순위 경우',
+            [null, ...ScoreLadderCase.all.keys],
+            _ladderCase,
+            (name) => name ?? '없음',
+            (name) => setState(() => _ladderCase = name),
           ),
         ],
       ),
@@ -353,6 +392,40 @@ class ScoreLadderCase {
     VictoryResult.lose => RankingPoints.loss,
   };
 
+  /// A made-up server for this case: its ranking after a battle ending in
+  /// [result]; with [late], its ranking before for the first 1.5 s after
+  /// the first read, as when the battle server stores the result late.
+  RankingsRepository rankings(VictoryResult result, {bool late = false}) =>
+      _DemoRankings(
+        before: weeklyOf(before),
+        after: weeklyOf(after(result)),
+        late: late,
+      );
+
+  /// [snapshot] as the server's weekly push-up ranking.
+  static WeeklyRanking weeklyOf(RankingSnapshot snapshot) {
+    RankingEntry entry(LadderEntry e) => RankingEntry(
+      rank: e.rank,
+      userId: e.userId,
+      nickname: e.nickname,
+      points: e.points,
+      battles: e.battles,
+      wins: 0,
+      koWins: 0,
+      isMe: e.userId == myId,
+    );
+    return WeeklyRanking(
+      scope: RankingScope.global,
+      weekStart: DateTime.utc(2026, 11, 29, 15),
+      weekEnd: DateTime.utc(2026, 12, 6, 15),
+      entries: [for (final e in snapshot.entries) entry(e)],
+      me: switch (snapshot.me) {
+        final me? => entry(me),
+        null => null,
+      },
+    );
+  }
+
   /// The ranking before the battle.
   RankingSnapshot get before =>
       _snapshot(old, old == null ? 0 : myBattles, oldRank);
@@ -409,5 +482,29 @@ class ScoreLadderCase {
           )
         : entry(rows.singleWhere((row) => row.userId == myId));
     return RankingSnapshot(entries: entries, me: me);
+  }
+}
+
+/// [ScoreLadderCase.rankings]: the ranking after the battle, or with
+/// [late] the one before it until 1.5 s after the first read.
+class _DemoRankings implements RankingsRepository {
+  _DemoRankings({required this.before, required this.after, this.late = false});
+
+  final WeeklyRanking before;
+  final WeeklyRanking after;
+  final bool late;
+
+  /// How late the battle is stored.
+  static const lateBy = Duration(milliseconds: 1500);
+
+  final _since = Stopwatch();
+
+  @override
+  Future<WeeklyRanking> fetchWeekly(
+    RankingScope scope,
+    ExerciseType exercise,
+  ) async {
+    if (!_since.isRunning) _since.start();
+    return late && _since.elapsed < lateBy ? before : after;
   }
 }
