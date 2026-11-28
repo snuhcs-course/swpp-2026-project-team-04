@@ -1313,7 +1313,15 @@ These were made from the A5 session at the user's word; their full evidence is i
 
 ### a. Where AI was used
 - **The hand-off:** `.claude/design/a13/SPEC.md` v1.0 with its designs (`design/TutModes.dc.html`, `RankD1`, `RankG2`, `RankG3`, `RankF1`–`RankF3`, `RankRules`) and screenshots, local and not committed.
-  - TODO(Woohyun Song): who made the designs and SPEC v1.0, and with which tool (as recorded for A11 and A12).
+- **Where the designs and SPEC came from:** a claude.ai chat (project "소개원실 팀 프로젝트", Claude Opus 5.5) and the Claude Design canvas "GymRats 메인 메뉴 시안", 2026-11-28. Woohyun Song set the direction and chose the designs. Claude read the code of PR #108 (weekly rankings) and PR #110 (A12), then made the designs, SPEC v1.0 and the design bundle (`a13-bundle`).
+  - **Tutorial page 2:**
+    - Woohyun Song chose A of designs A, B and C, and Claude drew five variants on A.
+    - Woohyun Song asked for the online battle's text to say '1:1 대결, KO승 10점·승리 5점… 점수로 주간 랭킹'. Of four new variants, A6 was confirmed.
+    - Woohyun Song's changes to A6 are in item f.
+  - **Weekly rankings:**
+    - Claude redrew the current screen on the canvas from P11's code on `main` `2e59012`. Its first designs, A, B and C, were not taken.
+    - Woohyun Song gave another game's leaderboard as a reference, asked for the points-rules line to move into a '?' sheet, and asked for this week's information to be large.
+    - Of D1–D5, D1 was confirmed. Claude then drew the friends tab and the edge states, and those were confirmed too.
 - **Planning:** Claude Code (Claude Opus 5.5) added the local A13 step, read the spec, the originals and the code, and reported SPEC 7's items before any code. The user answered three questions:
   - The design's text sizes became named styles in a `RankingText` extension (owner's approval).
   - The calculations moved into a plain model file (`ranking_standing.dart`).
@@ -1330,12 +1338,16 @@ These were made from the A5 session at the user's word; their full evidence is i
   - `c4a38b7`: the screen rebuilt from the parts.
 - **Review:** the `reviewer` subagent ran three times (item d).
 - **Checking against the design:** a local capture test (kept out of git) drew the picture, the parts and then the real screen with the app's fonts, compared with `TutG1`, `RankD1`, `RankF2` and `RankRules`. Two fixes came from it: the row's points were moved to the middle, and the exercise tab's name was changed.
-- **Not done by AI:** the PM approved the scope; Woohyun Song made the decisions above and the naming correction below; the phone check is the team's after the merge.
+- **Not done by AI:** the PM approved the scope. Woohyun Song set the designs' direction, chose and changed them, made the decisions above and the corrections in item d. The phone check is the team's, after the merge.
 
 ### b. Prompt history (representative; the input prompts are in the Prompt Log)
-- [Woohyun Song, 11-28] "가 단계부터 시작해라. 단계마다 flutter analyze, flutter test, reviewer APPROVE를 거쳐 로컬 커밋한다. 공유 파일(progress.md, ownership.json, design_tokens_test.dart)은 고치기 직전에 다시 읽고 A13 줄만 고친다."
-- [Woohyun Song, 11-28] "git fetch origin 후 git rebase origin/main 으로 A13 로컬 커밋을 최신 main(지금 5e607fb) 위로 옮긴다. 아직 push하지 않았으니 rebase가 맞다."
-- [Woohyun Song, 11-28] "랭킹 화면의 운동 탭 글자는 '푸시업'을 직접 적지 말고 지금 화면처럼 exercise.koreanName을 쓴다. 앱의 이름표는 '푸쉬업'이다."
+- In the claude.ai chat (the designs and SPEC; not in the Prompt Log, which holds the Claude Code and Codex sessions):
+  - [Woohyun Song, 11-28] "진영이 형 PR 및 코드를 GitHub에서 꼼꼼히 파악해서 랭킹 시스템을 파악하고 나에게 설명해봐. 그리고 그 다음에 두 번째 장을 어떻게 구성할지 claude design으로 시안을 뽑은 후에 claude code 작업으로 옮겨보자."
+  - [Woohyun Song, 11-28] "A~C 모두 'KO승 10점, 승리 5점, ..' 과 같은 규칙이 순위표 바로 위에 있는데 이 부분은 없애줘. '?' 버튼 같은 걸 놓고 눌렀을 때 점수규칙을 볼 수 있게 하는 게 맞아."
+- In Claude Code:
+  - [Woohyun Song, 11-28] "가 단계부터 시작해라. 단계마다 flutter analyze, flutter test, reviewer APPROVE를 거쳐 로컬 커밋한다. 공유 파일(progress.md, ownership.json, design_tokens_test.dart)은 고치기 직전에 다시 읽고 A13 줄만 고친다."
+  - [Woohyun Song, 11-28] "git fetch origin 후 git rebase origin/main 으로 A13 로컬 커밋을 최신 main(지금 5e607fb) 위로 옮긴다. 아직 push하지 않았으니 rebase가 맞다."
+  - [Woohyun Song, 11-28] "랭킹 화면의 운동 탭 글자는 '푸시업'을 직접 적지 말고 지금 화면처럼 exercise.koreanName을 쓴다. 앱의 이름표는 '푸쉬업'이다."
 
 ### c. What AI did well
 - **Pure rules first:** the goal-line rules were written as a plain model with the clock passed in, so ties, the server's 50-row cut and "no battle yet" were each pinned by a unit test before any widget drew them. The screen then needed only getters.
@@ -1346,7 +1358,10 @@ These were made from the A5 session at the user's word; their full evidence is i
 - **Fills over rounded edges (reviewer run 1, Major):** the tab halves, my card's panel, the rank cells and the goal bar painted over the ink edge at the corners. The cause was a `Container` border drawn under a child clipped to the outer shape. Fixed with the edge drawn on top and the content clipped inside it (`WeeklyRankingsOutline`); tests pin the paint order.
 - **A formatter run too wide:** `dart format lib test` rewrote nine files outside A13. They were reverted at once and never committed; since then only changed files are formatted.
 - **Large text not tried at P11's size:** the parts were tested at 1.3×, but P11's own test uses 1.6× on a 320 phone, and the banner flag and my card overflowed there. The full suite caught it. The banner and my card now stop growing at 1.3×, and my rank and points shrink to a share of the card.
-- **Design words taken over the app's:** the exercise tab copied the design's '푸시업'; the user ruled the app's label '푸쉬업' (`koreanName`).
+- **The AI-made designs and SPEC, corrected by Woohyun Song:**
+  - **The exercise name:** the design wrote '푸시업', and the exercise tab copied it. The app's label is '푸쉬업', so the tab now uses `koreanName`.
+  - **Text styles:** SPEC 4's "no new text style constants" did not fit the design-token rule: views may not write `fontSize:`, so the design's sizes had nowhere to go. Woohyun Song decided to add `RankingText`.
+  - **Where the logic lives:** SPEC 3.6 put the calculations in P11's view model. They went into `models/ranking_standing.dart` instead, with getters only in the view model. The tutorial wiring became one phase.
 - **Smaller slips:**
   - wrong expected Mondays in the first week-name tests;
   - a missing `flutter/rendering.dart` import;
@@ -1360,7 +1375,15 @@ These were made from the A5 session at the user's word; their full evidence is i
   - Why it worked: the tab now follows the app's one source for exercise names, and the tutorial keeps its own label on purpose.
 
 ### f. Manual fixes and why
-- None: no code was edited by hand in this step, so there are no manual-fix markers.
+- **Code:** none. No code was edited by hand in this step, so there are no manual-fix markers.
+- **The design, before it was confirmed:** Woohyun Song made these changes to tutorial page 2's A6:
+  - removed the sentence at the bottom;
+  - moved the VS chip off GYM마우스;
+  - removed the wall post from the chair-pose icon;
+  - moved and resized the clocks;
+  - sized the chair-pose person to match the squat's.
+
+  The picture's tests pin the last three: no wall, the clock clear of the people, and the chair pose within 10% of the squat's height.
 
 ### Takeaway
 - Before calling a part done, run the existing screen's own large-text test on it, not only the spec's sizes.

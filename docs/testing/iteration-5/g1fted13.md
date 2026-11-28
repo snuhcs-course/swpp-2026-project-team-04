@@ -2497,15 +2497,15 @@ No server, camera or device is needed: the rankings tests use `InMemoryRankingsR
   - `tutorial_viewmodel_test.dart` (P17): only the page count (22 → 23, 21 → 22 without Average), the indexes and positions ((1, 2), (2, 2), push-ups from 2, squats from 13), the page after the first (`TutorialPage.modes`), and one `pages_total` 23 check.
   - `tutorial_page_test.dart`, `help_rules_test.dart`, `help_pictures_test.dart`, `help_screen_test.dart` (A12's): the step list, the 23 pages' words, the modes page without a body, one more 다음 where a test meant the first push-up page, the second game page's board, the dots' sentence, and the tab finder (page 2's picture also writes '푸시업').
   - `weekly_rankings_screen_test.dart` (P11): the data and reload tests keep their checks; only their finders changed (tabs found inside the tab row, points without '점'), and they now set up `CharacterViewModel`. These tests are: the friends tab reads once, squats in each scope, back from the background in a new week, a failed read and 다시 시도, and the week label. The old-look tests now check the new look: `SegmentedButton` is now one tab row, '(나)' is now the 나 mark, the `Card` list is now 46-high rows, and my row under the list is now my card. The 1.6× small-phone test is kept.
-- **Phone check:** after the merge, with the cable out (SPEC 8):
-  - Tutorial page 2 is not cut, and its points and icon names can be read.
-  - The banner's time left is correct.
-  - The '?' sheet opens and closes.
-  - The tabs change my card and the list.
-  - My character is the one chosen.
-  - The friends tab matches my friends, and '친구 추가하러 가기' opens 친구와의 대전.
-  - Both screens work with large text.
-  - TODO(Woohyun Song): result.
+- **Phone check:** to be done on a real phone after the merge, with the cable out (SPEC 8's items). The result will be added after that check.
+  - **Tutorial page 2:** the picture is not cut; the four point cells and the icon names can be read.
+  - **Rankings:**
+    - The banner's time left matches the real time.
+    - The '?' sheet opens and closes.
+    - Changing the tabs changes my card and the list.
+    - My character is the one chosen now.
+    - The friends tab matches the number of my friends, and '친구 추가하러 가기' goes to the '친구와의 대전' screen.
+  - **Text size:** neither screen overflows with a large system text size.
 
 ### Test cases added or changed in this step
 | Layer | File | What it covers |
