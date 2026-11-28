@@ -23,13 +23,13 @@ Future<void> pumpRow(
   ),
 );
 
-WeeklyRankingsRow entry({
+WeeklyRankingsListRow entry({
   int rank = 2,
   String nickname = '헬스쿼카',
   int points = 23,
   int battles = 4,
   bool isMe = false,
-}) => WeeklyRankingsRow(
+}) => WeeklyRankingsListRow(
   rank: rank,
   nickname: nickname,
   points: points,
@@ -44,7 +44,7 @@ BoxDecoration rowBox(WidgetTester tester) =>
             .widget<Container>(
               find
                   .descendant(
-                    of: find.byType(WeeklyRankingsRow),
+                    of: find.byType(WeeklyRankingsListRow),
                     matching: find.byType(Container),
                   )
                   .first,
@@ -58,7 +58,7 @@ Color edgeOf(WidgetTester tester) =>
                         .widget<Container>(
                           find
                               .descendant(
-                                of: find.byType(WeeklyRankingsRow),
+                                of: find.byType(WeeklyRankingsListRow),
                                 matching: find.byType(Container),
                               )
                               .first,
@@ -78,7 +78,7 @@ void main() {
     tester,
   ) async {
     await pumpRow(tester, entry());
-    expect(tester.getSize(find.byType(WeeklyRankingsRow)).height, 46);
+    expect(tester.getSize(find.byType(WeeklyRankingsListRow)).height, 46);
     expect(find.text('2'), findsOneWidget);
     expect(find.text('헬스쿼카'), findsOneWidget);
     expect(find.text('4전 3승 · KO 1'), findsOneWidget);
@@ -94,11 +94,11 @@ void main() {
     final cell = find
         .ancestor(of: find.text('2'), matching: find.byType(Container))
         .first;
-    expect(tester.getSize(cell).width, WeeklyRankingsRow.rankWidth);
+    expect(tester.getSize(cell).width, WeeklyRankingsListRow.rankWidth);
     // The points sit in the row's middle.
     expect(
       tester.getCenter(find.text('23')).dy,
-      closeTo(tester.getCenter(find.byType(WeeklyRankingsRow)).dy, 6),
+      closeTo(tester.getCenter(find.byType(WeeklyRankingsListRow)).dy, 6),
     );
   });
 
@@ -166,12 +166,12 @@ void main() {
       entry(rank: 4, nickname: '쥐돌이', points: 19, isMe: true),
     );
     expect(
-      tester.getSemantics(find.byType(WeeklyRankingsRow)).label,
+      tester.getSemantics(find.byType(WeeklyRankingsListRow)).label,
       '4위, 쥐돌이 (나), 19점, 4전 3승 · KO 1',
     );
     await pumpRow(tester, entry(nickname: '근육곰', points: 0, battles: 0));
     expect(
-      tester.getSemantics(find.byType(WeeklyRankingsRow)).label,
+      tester.getSemantics(find.byType(WeeklyRankingsListRow)).label,
       '순위 없음, 근육곰, 0점, 이번 주 기록 없음',
     );
   });

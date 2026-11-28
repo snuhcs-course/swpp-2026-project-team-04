@@ -3,12 +3,13 @@ import 'dart:ui' show SemanticsRole;
 import 'package:flutter/material.dart';
 
 import '../models/exercise_type.dart';
+import '../models/exercise_type_korean.dart';
 import '../services/rankings/rankings_repository.dart';
 import '../theme/app_theme.dart';
 
 /// The rankings' two tabs on one line (A13 design `RankD1`): the scope
 /// (전체 · 친구, lime when chosen) filling the room, then the exercise
-/// (푸시업 · 스쿼트, ink when chosen) 136 wide. Each pill is drawn 40 high
+/// (the app's exercise names, ink when chosen) 136 wide. Each pill is drawn 40 high
 /// in a 48-high tap area.
 class WeeklyRankingsTabs extends StatelessWidget {
   const WeeklyRankingsTabs({
@@ -35,12 +36,9 @@ class WeeklyRankingsTabs extends StatelessWidget {
     RankingScope.friends => '친구',
   };
 
-  /// The exercise names as the design writes them ('푸시업', as the
-  /// tutorial; the app's `koreanName` says '푸쉬업').
-  static String exerciseName(ExerciseType exercise) => switch (exercise) {
-    ExerciseType.pushUp => '푸시업',
-    ExerciseType.squat => '스쿼트',
-  };
+  /// The exercise names: the app's labels, as the screen wrote them before
+  /// ('푸쉬업', user 2026-11-28).
+  static String exerciseName(ExerciseType exercise) => exercise.koreanName;
 
   @override
   Widget build(BuildContext context) {

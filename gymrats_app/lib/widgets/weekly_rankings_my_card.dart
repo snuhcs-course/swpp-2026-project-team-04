@@ -10,7 +10,8 @@ import 'weekly_rankings_row.dart';
 /// `RankF3`): my character on a slanted lime panel, the scope over my rank,
 /// my name, record and goal line, and my points. Before my first battle
 /// ([RankingStanding.unranked]) the card is white with a gray panel, '–'
-/// for the rank and 0 points in gray.
+/// for the rank and 0 points in gray. Its words follow the system text
+/// size up to [maxTextScale].
 class WeeklyRankingsMyCard extends StatelessWidget {
   const WeeklyRankingsMyCard({
     super.key,
@@ -40,8 +41,20 @@ class WeeklyRankingsMyCard extends StatelessWidget {
   static const _gap = 10.0;
   static const panelWidth = 84.0;
 
+  /// The most of the card's width my rank, or my points, takes.
+  static const cellShare = 0.22;
+
+  /// The largest system text size the card's words take: past it my rank
+  /// and points would leave my name no room beside my character.
+  static const maxTextScale = 1.3;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => MediaQuery.withClampedTextScaling(
+    maxScaleFactor: maxTextScale,
+    child: Builder(builder: _build),
+  );
+
+  Widget _build(BuildContext context) {
     final unranked = standing.unranked;
     final scope = standing.friends ? '친구' : '전체';
     final rank = standing.rank;
@@ -80,22 +93,45 @@ class WeeklyRankingsMyCard extends StatelessWidget {
                 constraints: const BoxConstraints(
                   minHeight: height - 2 * _edge,
                 ),
-                child: Row(
-                  children: [
-                    WeeklyRankingsMyFigure(characterId: characterId),
-                    const SizedBox(width: _gap),
-                    _Rank(scope: scope, rank: rank),
-                    const SizedBox(width: _gap),
-                    Expanded(
-                      child: _Middle(
-                        name: name,
-                        record: record,
-                        standing: standing,
-                      ),
-                    ),
-                    const SizedBox(width: _gap),
-                    _Points(points: standing.points, gray: unranked),
-                  ],
+                // The rank and the points shrink, each to its share of the
+                // card, before my name runs out of room.
+                child: LayoutBuilder(
+                  builder: (context, box) {
+                    Widget fitted(Widget cell, Alignment alignment) =>
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: box.maxWidth * cellShare,
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: alignment,
+                            child: cell,
+                          ),
+                        );
+                    return Row(
+                      children: [
+                        WeeklyRankingsMyFigure(characterId: characterId),
+                        const SizedBox(width: _gap),
+                        fitted(
+                          _Rank(scope: scope, rank: rank),
+                          Alignment.centerLeft,
+                        ),
+                        const SizedBox(width: _gap),
+                        Expanded(
+                          child: _Middle(
+                            name: name,
+                            record: record,
+                            standing: standing,
+                          ),
+                        ),
+                        const SizedBox(width: _gap),
+                        fitted(
+                          _Points(points: standing.points, gray: unranked),
+                          Alignment.centerRight,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),

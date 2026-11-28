@@ -9,6 +9,9 @@ import 'lobby_parts.dart';
 ///
 /// Without a week ([weekName] null, while the ranking is read or could not
 /// be), the banner keeps its place with an empty bar and no words.
+///
+/// Its words follow the system text size up to [maxTextScale]: past it the
+/// flag would leave no room for the week on a narrow phone.
 class WeeklyRankingsBanner extends StatelessWidget {
   const WeeklyRankingsBanner({
     super.key,
@@ -41,8 +44,16 @@ class WeeklyRankingsBanner extends StatelessWidget {
   static const _nameGap = 2.0;
   static const _trackShade = 0.14;
 
+  /// The largest system text size the banner's words take.
+  static const maxTextScale = 1.3;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => MediaQuery.withClampedTextScaling(
+    maxScaleFactor: maxTextScale,
+    child: Builder(builder: _build),
+  );
+
+  Widget _build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final name = weekName;
     final words = [name, dates, timeLeft].whereType<String>().join(', ');

@@ -11,8 +11,8 @@ import 'lobby_parts.dart';
 /// A row without a battle this week ([battles] 0, the friends tab only)
 /// shows '–' instead of the server's shared rank, in gray; mine stays on
 /// lime even then.
-class WeeklyRankingsRow extends StatelessWidget {
-  const WeeklyRankingsRow({
+class WeeklyRankingsListRow extends StatelessWidget {
+  const WeeklyRankingsListRow({
     super.key,
     required this.rank,
     required this.nickname,

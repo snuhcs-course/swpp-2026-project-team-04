@@ -111,4 +111,16 @@ void main() {
       expect(find.text('6일 23시간 남음'), findsOneWidget);
     }
   });
+
+  testWidgets('its words grow with the system text size only up to 1.3x', (
+    tester,
+  ) async {
+    await pumpBanner(tester, week, width: 280, textScale: 1.6);
+    expect(tester.takeException(), isNull);
+    expect(WeeklyRankingsBanner.maxTextScale, 1.3);
+    expect(
+      MediaQuery.textScalerOf(tester.element(find.text('1일 9시간 남음'))).scale(10),
+      moreOrLessEquals(13),
+    );
+  });
 }

@@ -54,12 +54,12 @@ void main() {
   testWidgets('the scope and exercise tabs on one line, the exercise 136 '
       'wide', (tester) async {
     await pumpTabs(tester);
-    for (final name in ['전체', '친구', '푸시업', '스쿼트']) {
+    for (final name in ['전체', '친구', '푸쉬업', '스쿼트']) {
       expect(find.text(name), findsOneWidget);
     }
     expect(
       tester.getCenter(find.text('전체')).dy,
-      tester.getCenter(find.text('푸시업')).dy,
+      tester.getCenter(find.text('푸쉬업')).dy,
     );
     expect(tester.getSize(find.byType(WeeklyRankingsTabs)).height, 48);
     final pills = find.byWidgetPredicate(
@@ -79,9 +79,9 @@ void main() {
     await pumpTabs(tester, scope: RankingScope.friends);
     expect(fillOf(tester, '친구'), AppColors.accent);
     expect(fillOf(tester, '전체'), AppColors.card);
-    expect(fillOf(tester, '푸시업'), AppColors.ink);
+    expect(fillOf(tester, '푸쉬업'), AppColors.ink);
     expect(fillOf(tester, '스쿼트'), AppColors.card);
-    final chosenName = tester.widget<Text>(find.text('푸시업')).style!;
+    final chosenName = tester.widget<Text>(find.text('푸쉬업')).style!;
     expect(
       (chosenName.color, chosenName.fontWeight),
       (AppColors.onInk, FontWeight.w700),
@@ -100,7 +100,7 @@ void main() {
     await tester.tap(find.text('친구'));
     await tester.tap(find.text('스쿼트'));
     await tester.tap(find.text('전체'));
-    await tester.tap(find.text('푸시업'));
+    await tester.tap(find.text('푸쉬업'));
     expect(chosen, [RankingScope.friends, ExerciseType.squat]);
   });
 
@@ -112,7 +112,7 @@ void main() {
     for (final (name, chosen, position) in const [
       ('전체', true, '탭 2개 중 1번째'),
       ('친구', false, '탭 2개 중 2번째'),
-      ('푸시업', false, '탭 2개 중 1번째'),
+      ('푸쉬업', false, '탭 2개 중 1번째'),
       ('스쿼트', true, '탭 2개 중 2번째'),
     ]) {
       final node = tester.getSemantics(find.bySemanticsLabel(name));
@@ -140,10 +140,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('names the scopes and exercises as the design', () {
+  test('names the scopes as the design and the exercises as the app', () {
     expect(WeeklyRankingsTabs.scopeName(RankingScope.global), '전체');
     expect(WeeklyRankingsTabs.scopeName(RankingScope.friends), '친구');
-    expect(WeeklyRankingsTabs.exerciseName(ExerciseType.pushUp), '푸시업');
+    expect(WeeklyRankingsTabs.exerciseName(ExerciseType.pushUp), '푸쉬업');
     expect(WeeklyRankingsTabs.exerciseName(ExerciseType.squat), '스쿼트');
   });
 

@@ -211,4 +211,32 @@ void main() {
       expect(tester.takeException(), isNull, reason: '$width x$scale');
     }
   });
+
+  testWidgets('a very large text size: words up to 1.3x, the rank and '
+      'points shrunk to their share before my name runs out', (tester) async {
+    final far = RankingStanding.of(
+      me: row(77, 1, me: true),
+      entries: [row(50, 6)],
+      friends: false,
+    );
+    await pumpCard(tester, far, width: 280, textScale: 1.6);
+    expect(tester.takeException(), isNull);
+    expect(WeeklyRankingsMyCard.maxTextScale, 1.3);
+    expect(
+      MediaQuery.textScalerOf(tester.element(find.text('쥐돌이'))).scale(10),
+      moreOrLessEquals(13),
+    );
+    final card = tester.getSize(find.byType(WeeklyRankingsMyCard)).width;
+    for (final text in ['77', '1']) {
+      final cell = find
+          .ancestor(of: find.text(text), matching: find.byType(FittedBox))
+          .first;
+      expect(
+        tester.getSize(cell).width,
+        lessThanOrEqualTo(card * WeeklyRankingsMyCard.cellShare),
+        reason: text,
+      );
+    }
+    expect(tester.getSize(find.text('쥐돌이')).width, greaterThan(0));
+  });
 }
