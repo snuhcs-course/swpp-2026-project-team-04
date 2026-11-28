@@ -112,7 +112,8 @@ removed when stopped, so the first start failed and the units were created again
 3. **The restore must also stop the backup timer.**
    - On a replacement booted from a snapshot, `Persistent=true` makes the missed backup run at boot.
    - That run would upload the snapshot's old data under a new time, and it would then look like the newest copy.
-   - `server-failover.md` step 2 now stops `gymrats-backup.timer` too, and step 4 starts it again.
+   - `server-failover.md` step 2 now stops `gymrats-backup.timer` and a run it already started
+     (`gymrats-backup.service`), and step 4 starts the timer again.
 4. **A copy's name is when it was taken.** Before a restore, pick by the data in it, not only by the name.
    - `fetch` checks integrity.
    - Look at the newest `played_at` in the fetched file before using it.
