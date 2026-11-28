@@ -5,6 +5,19 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `2353bea`
+Fix at commits `c2a1cc0` (health check) and `30c972e` (backup).
+- **Finding 1 (P1):** the 5 s socket timeout applies to each read, so an answer that trickles in could hold the check
+  until systemd killed it, with no failure counted. `check_once` now has a deadline for the whole check (5 s); a
+  probe still running then counts as failed and a late answer is ignored. Test:
+  `test_a_check_past_the_deadline_counts_as_failed` (fails without the fix).
+- **Finding 2 (P2):** a backup that failed partway left an uncompressed `.db` that the 30-day cleanup never removes.
+  Any failure while copying, checking or compressing now removes the partial files (the reviewer subagent extended
+  the fix from the copy step to all three). Tests: `test_a_backup_that_fails_halfway_leaves_no_partial_copy`,
+  `test_a_backup_that_fails_while_compressing_leaves_no_partial_copy`.
+- **Results:** server `pytest` 419 passed, 0 failed (47 in the two files: 22 + 25); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
 #### 2026-11-28 · step P21 follow-up `feat/iter5-failover`: production health check and backup off the server
 PM request after #114 (relayed by the user): health check every 30 s, 5 s limit, restart after 3 failures; a 12 h
 backup off the server with retries, alerts and a restore from the copy. Code at commits `5c1ecbc` (health check),

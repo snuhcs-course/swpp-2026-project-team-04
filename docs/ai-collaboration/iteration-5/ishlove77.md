@@ -309,6 +309,10 @@ Full list: `ishlove77-Prompt-Log.md`.
   as root from the group-writable tree with every secret loaded, and had rclone calls with no time limit. The isolated
   run had passed because SIGSTOP stops quickly; the run checked the friendly case only. Fixed in `5c1ecbc`, `3fda402`,
   `56ba5e4`; the SIGTERM-ignoring case is worked out, not rehearsed.
+- P21 follow-up, Codex review of `2353bea` (PR #118): Claude treated urllib's `timeout=5` as a limit on the whole
+  answer; it is per socket read, so a trickling answer could stall the check (P1). The reviewer subagent had passed
+  that code in three rounds. Codex also found a partial backup left on disk when the copy fails (P2). Fixed in
+  `c2a1cc0` and `30c972e`.
 
 ## 4. Revisions and Decisions
 - P21 follow-up: the PM fixed RTO 30 min / RPO 24 h and asked for the health check and a 12 h backup off the
