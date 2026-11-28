@@ -108,23 +108,29 @@ Procedure for the admin (P6, unchanged), with what this rehearsal adds:
    recovery runs against the snapshot's database, and a newer backup restored after it brings back `active` battles
    that are never voided; the API's open connections would also overlap the restore.
    **A fresh instance first needs what the snapshot would bring:** nginx and `python3-venv` installed; the `gymrats`
-   group and the `jinyoung` and `sangwoo` users the units run as; `/srv/gymrats` with the group; the API code in
-   `/srv/gymrats/backend` with its `.venv` and requirements; `server/deploy/gymrats-api.service` installed and
-   `daemon-reload` (not started); `server/deploy/nginx-gymrats-http.conf` installed as
-   `/etc/nginx/sites-available/gymrats`, linked into `sites-enabled`, `sites-enabled/default` removed (both claim
-   `default_server`), then `nginx -t` and a reload. `install-https.sh` in step 5 expects that site to exist.
+   group and the `jinyoung` and `sangwoo` users the units run as, both members of `gymrats`; `/srv/gymrats` with the
+   group; the API code in `/srv/gymrats/backend` with its `.venv` and requirements;
+   `server/deploy/gymrats-api.service` installed and `daemon-reload` (not started);
+   `server/deploy/nginx-gymrats-http.conf` installed as `/etc/nginx/sites-available/gymrats`, linked into
+   `sites-enabled`, `sites-enabled/default` removed (both claim `default_server`), then `nginx -t` and a reload.
+   `install-https.sh` in step 5 expects that site to exist.
 3. Put `.env` back (it is not in backups; group `gymrats`, mode 640, as the battle server reads it as `sangwoo`;
-   check key names only). **Bring the API up to the release in production** if the snapshot is
-   older than the last deploy (the commit is in the deploy notes): copy that commit's `server/` into
-   `/srv/gymrats/backend`, install its requirements, reinstall `gymrats-api.service` and `daemon-reload` if the unit
-   changed, without starting the service. With both services stopped, restore the newest DB backup if it is newer
-   than the snapshot; run `pragma integrity_check`, then **`migrate`** and `migrate --check` with the current code (a
-   backup older than the code needs migrations; in 4 three were applied). The API runs as `jinyoung`, so
-   `/srv/gymrats/data` and the restored `gymrats.db` must be writable by it, as on production (both owner
-   `jinyoung`, group `gymrats`; directory 2775, file 644; SQLite writes its journal in the directory). Check with
-   `sudo -u jinyoung test -w /srv/gymrats/data && sudo -u jinyoung test -w /srv/gymrats/data/gymrats.db`; if it
-   fails, `sudo install -d -o jinyoung -g gymrats -m 2775 /srv/gymrats/data` and `sudo chown jinyoung:gymrats` plus
-   `sudo chmod 644` on the file. Run `migrate` as `jinyoung` (`sudo -u jinyoung .venv/bin/python manage.py migrate`).
+   check key names only, and that `DATABASE_URL` is `sqlite:////srv/gymrats/data/gymrats.db`, which is not a
+   secret: without it Django falls back to an empty database in the backend folder). **Bring the API up to the
+   release in production** if the snapshot is older than the last deploy (the commit is in the deploy notes): copy
+   that commit's `server/` into `/srv/gymrats/backend`, install its requirements, reinstall `gymrats-api.service`
+   and `daemon-reload` if the unit changed, without starting the service. With both services stopped, restore the
+   newest DB backup if it is newer than the snapshot and run `pragma integrity_check`.
+   The API runs as `jinyoung`, so `/srv/gymrats/data` and the restored `gymrats.db` must be writable by it, as on
+   production (both owner `jinyoung`, group `gymrats`; directory 2775, file 644; SQLite writes its journal in the
+   directory). Check with `sudo -u jinyoung test -w /srv/gymrats/data && sudo -u jinyoung test -w
+   /srv/gymrats/data/gymrats.db`; if it fails, `sudo install -d -o jinyoung -g gymrats -m 2775 /srv/gymrats/data` and
+   `sudo chown jinyoung:gymrats` plus `sudo chmod 644` on the file.
+   Only then run **`migrate`** and `migrate --check` with the current code (a backup older than the code needs
+   migrations; in 4 three were applied), as `jinyoung` from the backend with the service's environment, which
+   systemd loads only for the unit: `cd /srv/gymrats/backend && sudo -u jinyoung bash -c 'set -a; . /srv/gymrats/.env;
+   set +a; .venv/bin/python manage.py migrate && .venv/bin/python manage.py migrate --check'` (the secrets stay in
+   that shell; Django stops without `DJANGO_SECRET_KEY` and `JWT_SECRET`).
 4. Start `gymrats-api` and check its `/health` **before** starting the battle server. Then the battle server: on a
    fresh instance always, and on a snapshot whose battle release is behind, deploy the production commit with
    `server/deploy/install-battle.sh` (run from an upload directory holding that commit's `source.tar`, as the script
