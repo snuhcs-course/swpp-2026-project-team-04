@@ -376,8 +376,9 @@ void main() {
           ?.lastMatch,
       _lastMatch,
     );
-    // P9: 친구와의 대전 replaced the play-again row under the two cards.
-    expect(find.text('친구와의 대전'), findsOneWidget);
+    // P9: 친구와의 대전 replaced the play-again row under the two cards
+    // (A11: its name on two lines).
+    expect(find.text('친구와의\n대전'), findsOneWidget);
   });
 
   testWidgets('캐릭터 opens 캐릭터 선택; back returns home', (tester) async {

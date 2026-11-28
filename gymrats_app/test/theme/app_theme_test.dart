@@ -625,7 +625,7 @@ void main() {
     test('text: the families and sizes of the designs', () {
       final text = theme.textTheme;
       for (final (style, family, size) in [
-        (text.arcadeCardName, AppFonts.display, 26.0),
+        (text.arcadeCardName, AppFonts.display, 30.0),
         (text.arcadeTitle, AppFonts.display, 30.0),
         (text.arcadeTag, AppFonts.number, 11.0),
         (text.arcadeBandName, AppFonts.display, 19.0),
@@ -694,6 +694,93 @@ void main() {
         expect((style.fontFamily, style.fontSize), (AppFonts.display, size));
       }
       for (final style in [text.authLogo, text.authButton, text.authLime]) {
+        expect(style.color, AppColors.ink);
+      }
+    });
+  });
+
+  group('the friend battle screens (A11)', () {
+    test('the colors FrPlay, FrFriends and FrWait add', () {
+      expect(FriendColors.skyShade, const Color(0xFF22D3EE));
+      expect(FriendColors.quiet, const Color(0xFFE3E6EC));
+      // The sky panel's own fill is the palette's cyan.
+      expect(AppColors.fever, const Color(0xFF3DE8FF));
+    });
+
+    test('the text styles: the designs\' families, sizes and weights', () {
+      final text = theme.textTheme;
+      for (final (style, family, size, weight) in [
+        (text.friendCardName, AppFonts.display, 31.0, FontWeight.w400),
+        (text.friendSticker, AppFonts.display, 19.0, FontWeight.w400),
+        (text.friendInviteName, AppFonts.display, 24.0, FontWeight.w400),
+        (text.friendClock, AppFonts.number, 15.0, FontWeight.w700),
+        (text.friendInviteLine, AppFonts.body, 15.0, FontWeight.w700),
+        (text.friendPill, AppFonts.body, 13.0, FontWeight.w700),
+        (text.friendButton, AppFonts.body, 15.0, FontWeight.w700),
+        (text.friendAccept, AppFonts.display, 20.0, FontWeight.w400),
+        (text.friendRowName, AppFonts.display, 21.0, FontWeight.w400),
+        (text.friendRowCode, AppFonts.number, 12.0, FontWeight.w600),
+        (text.friendChallenge, AppFonts.display, 19.0, FontWeight.w400),
+        (text.friendCodeLabel, AppFonts.body, 12.0, FontWeight.w400),
+        (text.friendCode, AppFonts.body, 18.0, FontWeight.w700),
+        (text.friendCodeInput, AppFonts.body, 15.0, FontWeight.w400),
+        (text.friendWaitBack, AppFonts.body, 14.0, FontWeight.w700),
+        (text.friendWaitTag, AppFonts.number, 15.0, FontWeight.w700),
+        (text.friendWaitInfo, AppFonts.body, 14.0, FontWeight.w700),
+        (text.friendWaitTitle, AppFonts.display, 30.0, FontWeight.w400),
+        (text.friendWaitName, AppFonts.display, 28.0, FontWeight.w400),
+        (text.friendMystery, AppFonts.number, 150.0, FontWeight.w800),
+        (text.friendSeconds, AppFonts.number, 32.0, FontWeight.w800),
+        (text.friendVs, AppFonts.number, 34.0, FontWeight.w800),
+        (text.friendPrepTitle, AppFonts.body, 15.0, FontWeight.w700),
+        (text.friendPrepTip, AppFonts.body, 14.0, FontWeight.w400),
+        (text.friendRetry, AppFonts.display, 24.0, FontWeight.w400),
+      ]) {
+        expect(
+          (style.fontFamily, style.fontSize, style.fontWeight),
+          (family, size, weight),
+        );
+      }
+      // The number font parts and the "?"'s edge are named styles too, so
+      // the screens use them as they are (Design Documentation 2.5.1).
+      expect(
+        (text.friendCodeTag.fontFamily, text.friendCodeTag.fontSize),
+        (AppFonts.number, 18),
+      );
+      expect(text.friendCodeTag.fontWeight, FontWeight.w700);
+      expect(
+        (
+          text.friendWaitInfoNumber.fontFamily,
+          text.friendWaitInfoNumber.fontSize,
+          text.friendWaitInfoNumber.color,
+        ),
+        (AppFonts.number, 14, AppColors.textSecondary),
+      );
+      final edge = text.friendMysteryEdge.foreground!;
+      expect(edge.style, PaintingStyle.stroke);
+      expect(edge.strokeWidth, 7);
+      expect(edge.strokeJoin, StrokeJoin.round);
+      expect(edge.color.toARGB32(), AppColors.ink.toARGB32());
+      expect(text.friendMysteryEdge.fontSize, 150);
+      expect(text.friendCardName.height, 1.08);
+      expect(text.friendWaitTitle.height, 36 / 30);
+      expect(text.friendRowName.height, 26 / 21);
+      expect(text.friendWaitTag.letterSpacing, 3);
+      expect(text.friendSeconds.letterSpacing, -1);
+      expect(text.friendRowCode.color, AppColors.textMuted);
+      for (final style in [
+        text.friendCodeLabel,
+        text.friendWaitInfo,
+        text.friendPrepTip,
+      ]) {
+        expect(style.color, AppColors.textSecondary);
+      }
+      for (final style in [
+        text.friendCardName,
+        text.friendClock,
+        text.friendWaitTitle,
+        text.friendAccept,
+      ]) {
         expect(style.color, AppColors.ink);
       }
     });

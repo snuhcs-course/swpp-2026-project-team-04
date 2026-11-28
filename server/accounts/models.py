@@ -109,6 +109,10 @@ class FriendBattleInvite(models.Model):
     # When the friend accepted it: one friend battle at a time per person
     # (accounts.friends_views.ACCEPT_HOLD).
     accepted_at = models.DateTimeField(null=True, blank=True)
+    # The inviter's character id as their app sent it, for the friend's
+    # alert and waiting room (A11); "" when the app sent none (an older
+    # app). Only its shape is checked: each app decides what it draws.
+    character = models.CharField(max_length=32, blank=True, default="")
 
     class Meta:
         constraints = [

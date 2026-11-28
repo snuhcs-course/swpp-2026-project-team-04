@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/exercise_type.dart';
+import '../models/user_profile.dart';
 import '../services/api/api_client.dart';
 import '../services/friends/friend_repository.dart';
+import '../services/user/user_repository.dart';
 
 /// What the friends screen and the friend battle's waiting room say for a
 /// refused friends call, by the server's code.
@@ -28,13 +30,42 @@ String friendErrorMessage(Object error) {
 
 /// The friends screen (P9): my friend code, adding a friend by code, open
 /// requests both ways, battle invites to me, and my friends.
+///
+/// While invites to me are listed, it ticks every [tickEvery] so their
+/// time left ([secondsLeft], from the server's `expires_at`) counts down,
+/// and an invite whose time runs out here leaves the list for good (A11
+/// spec 4; one at 0 from the first sight stays: [_LocalExpiry]).
+/// It also holds the profile the exercise sheet shows the bests from
+/// ([useProfile], [refreshProfile]).
 class FriendsViewModel extends ChangeNotifier {
-  FriendsViewModel({required this._repository});
+  FriendsViewModel({
+    required this._repository,
+    DateTime Function()? now,
+    this.tickEvery = const Duration(seconds: 1),
+  }) : _now = now ?? DateTime.now;
 
   final FriendRepository _repository;
+  final DateTime Function() _now;
+  final Duration tickEvery;
 
   FriendsOverview? overview;
   bool loading = false;
+
+  /// Invites whose time ran out here ([_LocalExpiry]): never listed again,
+  /// even when a read still has them (the device clock may run ahead of
+  /// the server's).
+  final _expired = <int>{};
+  final _expiry = _LocalExpiry();
+  Timer? _tick;
+
+  /// The profile for the exercise sheet's bests; null until one is given
+  /// or read.
+  UserProfile? profile;
+  UserRepository? _users;
+  Future<UserProfile?>? _readingProfile;
+
+  /// Why the last profile read failed; null after one that worked.
+  Object? _profileError;
 
   /// Why the last load failed; null after one that worked.
   String? loadError;
@@ -56,14 +87,100 @@ class FriendsViewModel extends ChangeNotifier {
     loading = true;
     _notify();
     try {
-      overview = await _repository.fetchOverview();
+      overview = _withoutExpired(await _repository.fetchOverview());
       loadError = null;
     } on Object catch (error) {
       loadError = friendErrorMessage(error);
     } finally {
       loading = false;
+      _syncTick();
       _notify();
     }
+  }
+
+  /// The whole seconds [invite] has left, as the alert and the waiting room
+  /// count them ([BattleInvite.secondsLeftAt]).
+  int secondsLeft(BattleInvite invite) => invite.secondsLeftAt(_now());
+
+  /// [read] without the invites whose time is up here ([_LocalExpiry]).
+  FriendsOverview _withoutExpired(FriendsOverview read) {
+    final now = _now();
+    for (final invite in read.invites) {
+      if (_expiry.isOver(invite, now)) _expired.add(invite.id);
+    }
+    if (!read.invites.any((i) => _expired.contains(i.id))) return read;
+    return FriendsOverview(
+      code: read.code,
+      friends: read.friends,
+      incoming: read.incoming,
+      outgoing: read.outgoing,
+      invites: [
+        for (final invite in read.invites)
+          if (!_expired.contains(invite.id)) invite,
+      ],
+    );
+  }
+
+  /// Ticks only while an invite to me is listed.
+  void _syncTick() {
+    final counting = !_disposed && (overview?.invites.isNotEmpty ?? false);
+    if (!counting) {
+      _tick?.cancel();
+      _tick = null;
+    } else {
+      _tick ??= Timer.periodic(tickEvery, (_) => _onTick());
+    }
+  }
+
+  void _onTick() {
+    final shown = overview;
+    if (shown == null) return;
+    overview = _withoutExpired(shown);
+    _syncTick();
+    _notify();
+  }
+
+  /// Takes the profile 게임 시작 passed ([given]), and [users] to read it
+  /// with: now when none was given, and on [refreshProfile].
+  /// Nothing on the page shows the profile, so taking one tells no one.
+  void useProfile(UserProfile? given, {UserRepository? users}) {
+    _users = users;
+    if (given != null) {
+      profile = given;
+    } else {
+      unawaited(refreshProfile());
+    }
+  }
+
+  /// Reads the profile again (after a battle opened from here, the bests
+  /// may be new). A failed read keeps the one held. One read at a time.
+  Future<UserProfile?> refreshProfile() {
+    final users = _users;
+    if (users == null) return Future.value(profile);
+    return _readingProfile ??= () async {
+      try {
+        profile = await users.fetchProfile();
+        _profileError = null;
+        _notify();
+      } on Object catch (error) {
+        // Keep the profile held, if any.
+        _profileError = error;
+      } finally {
+        _readingProfile = null;
+      }
+      return profile;
+    }();
+  }
+
+  /// The profile for the exercise sheet: the one held, or a read when there
+  /// is none yet. Null when none can be had; [actionError] then says why.
+  Future<UserProfile?> profileForSheet() async {
+    final found = profile ?? await refreshProfile();
+    if (found == null) {
+      actionError = friendErrorMessage(_profileError ?? StateError('profile'));
+      _notify();
+    }
+    return found;
   }
 
   /// Sends a friend request to [code]; true when it went through.
@@ -149,7 +266,31 @@ class FriendsViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _tick?.cancel();
     super.dispose();
+  }
+}
+
+/// Which invites are over on this phone by its own clock (A11; user,
+/// 2026-11-27): one whose count reaches 0 after it was first seen here with
+/// time left. One first seen at 0 (the device clock runs over a minute
+/// ahead of the server's) is not over here: it shows 0:00 until the server
+/// stops listing it, at the latest on the next read, and an accept is the
+/// server's to judge.
+class _LocalExpiry {
+  final _seen = <int>{}, _live = <int>{};
+
+  /// Notes [invite] as seen at [now]; whether its time ran out here.
+  bool isOver(BattleInvite invite, DateTime now) {
+    final left = invite.secondsLeftAt(now);
+    if (_seen.add(invite.id) && left > 0) _live.add(invite.id);
+    return left == 0 && _live.contains(invite.id);
+  }
+
+  /// Forget what was seen (another account).
+  void clear() {
+    _seen.clear();
+    _live.clear();
   }
 }
 
@@ -171,17 +312,33 @@ class FriendBattle {
   bool get inviting => accepted == null;
 }
 
+/// How a friend battle's wait ended before the friend came (A11): it picks
+/// the waiting room's band, title and circle.
+enum FriendWaitEnd {
+  /// The friend declined my invite (DECLINED).
+  declined,
+
+  /// My invite's minute ran out: by the server's status, or by the device's
+  /// clock when the server was not reached (TIME OUT).
+  expired,
+
+  /// Anything else: cancelled, not paired in time, or the invite could not
+  /// be sent (CLOSED).
+  other,
+}
+
 /// The friend battle's side of the waiting room, for both players.
-/// Inviting, it sends the invite; invited, it holds the one I accepted.
-/// Then it reads the invite every [pollEvery] until [stop] (the battle server
-/// paired us): a declined, cancelled or expired invite [ended] the wait, and
-/// so does an accepted one whose players are not paired within
-/// [pairWithin] (the other phone went away without a word). [leave]
-/// cancels the invite, so the other waiting room learns it.
+/// Inviting, it sends the invite (with my [character]); invited, it holds
+/// the one I accepted. Then it reads the invite every [pollEvery] until
+/// [stop] (the battle server paired us): a declined, cancelled or expired
+/// invite [ended] the wait, and so does an accepted one whose players are
+/// not paired within [pairWithin] (the other phone went away without a
+/// word). [leave] cancels the invite, so the other waiting room learns it.
 class FriendInviteWaitViewModel extends ChangeNotifier {
   FriendInviteWaitViewModel({
     required this._repository,
     required this.battle,
+    this.character,
     this.pollEvery = const Duration(seconds: 2),
     this.pairWithin = const Duration(seconds: 30),
     DateTime Function()? now,
@@ -189,6 +346,9 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
 
   final FriendRepository _repository;
   final FriendBattle battle;
+
+  /// My character id, sent with my invite for the friend's screens (A11).
+  final String? character;
   final Duration pollEvery, pairWithin;
   final DateTime Function() _now;
 
@@ -197,6 +357,14 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
 
   /// Why the wait is over before the friend came; null while it goes on.
   String? ended;
+
+  /// How it ended ([ended]'s kind); null while it goes on.
+  FriendWaitEnd? endedBy;
+
+  /// The whole seconds my invite has left, from the server's `expires_at`
+  /// ([BattleInvite.secondsLeftAt]): the full minute before it is made.
+  int get secondsLeft =>
+      invite?.secondsLeftAt(_now()) ?? BattleInvite.ttl.inSeconds;
   Timer? _poll;
   DateTime? _acceptedAt;
   bool _stopped = false, _disposed = false, _checking = false, _paired = false;
@@ -216,6 +384,7 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
         final sent = await _repository.invite(
           battle.friend.id,
           battle.exercise,
+          character: character,
         );
         if (_stopped) {
           // Paired before this answer came: the friend may have accepted
@@ -228,7 +397,7 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
         }
         invite = sent;
       } on Object catch (error) {
-        _end(friendErrorMessage(error));
+        _end(friendErrorMessage(error), FriendWaitEnd.other);
         return;
       }
     }
@@ -248,11 +417,11 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
       invite = read;
       switch (read.status) {
         case InviteStatus.declined:
-          _end('$_friend님이 대결 신청을 거절했어요.');
+          _end('$_friend님이 대결 신청을 거절했어요.', FriendWaitEnd.declined);
         case InviteStatus.cancelled:
-          _end('$_friend님이 대결을 취소했어요.');
+          _end('$_friend님이 대결을 취소했어요.', FriendWaitEnd.other);
         case InviteStatus.expired:
-          _end('$_friend님이 1분 안에 수락하지 않았어요.');
+          _end('$_friend님이 1분 안에 수락하지 않았어요.', FriendWaitEnd.expired);
         case InviteStatus.accepted:
           _acceptedAt ??= _now();
         case InviteStatus.pending:
@@ -263,7 +432,7 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
       if (!_stopped &&
           last.status == InviteStatus.pending &&
           !_now().isBefore(last.expiresAt)) {
-        _end('$_friend님이 1분 안에 수락하지 않았어요.');
+        _end('$_friend님이 1분 안에 수락하지 않았어요.', FriendWaitEnd.expired);
       }
     } finally {
       _checking = false;
@@ -273,7 +442,7 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
         acceptedAt != null &&
         _now().difference(acceptedAt) >= pairWithin) {
       unawaited(_cancelQuietly(last.id));
-      _end('$_friend님과 연결하지 못했어요. 다시 신청해 주세요.');
+      _end('$_friend님과 연결하지 못했어요. 다시 신청해 주세요.', FriendWaitEnd.other);
     }
   }
 
@@ -335,9 +504,10 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
     }
   }
 
-  void _end(String why) {
+  void _end(String why, FriendWaitEnd kind) {
     stop();
     ended = why;
+    endedBy = kind;
     if (!_disposed) notifyListeners();
   }
 
@@ -352,18 +522,30 @@ class FriendInviteWaitViewModel extends ChangeNotifier {
 /// The app-wide alert for a friend's battle invite (P9): while signed in and
 /// in front, it reads the invites to me every [pollEvery] and offers the
 /// newest one not yet answered here. [hidden] (a battle, its setup or the
-/// friends page is open) stops the reading and the alert.
+/// friends page is open) stops the reading and the alert. While it offers
+/// one, it ticks every [tickEvery] so the time left ([secondsLeft], from the
+/// server's `expires_at`) counts down; at 0 the invite is over here and the
+/// alert goes (A11 spec 6), unless it was at 0 from the first sight
+/// ([_LocalExpiry]): then it shows 0:00 until the server stops listing it.
 class FriendInviteAlertViewModel extends ChangeNotifier {
   FriendInviteAlertViewModel({
     required this._repository,
     this.pollEvery = const Duration(seconds: 5),
-  });
+    this.tickEvery = const Duration(seconds: 1),
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final FriendRepository _repository;
-  final Duration pollEvery;
+  final Duration pollEvery, tickEvery;
+  final DateTime Function() _now;
+  Timer? _tick;
 
   /// The invite to show; null when there is none.
   BattleInvite? current;
+
+  /// The whole seconds [current] has left ([BattleInvite.secondsLeftAt]);
+  /// 0 without one.
+  int get secondsLeft => current?.secondsLeftAt(_now()) ?? 0;
 
   /// Why the last answer failed, e.g. the invite ran out; cleared by the
   /// next invite or [clearError].
@@ -374,6 +556,7 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
 
   /// Invites answered or found closed here, never offered again.
   final _done = <int>{};
+  final _expiry = _LocalExpiry();
 
   /// Counts sign-ins and sign-outs, so an answer that comes back after one
   /// is dropped: it belongs to the account that sent it.
@@ -391,6 +574,7 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
     _account++;
     if (!signedIn) {
       _done.clear();
+      _expiry.clear();
       current = null;
       error = null;
     }
@@ -433,6 +617,27 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
     _notify();
   }
 
+  /// Ticks only while an invite shows.
+  void _syncTick() {
+    if (_disposed || !visible || current == null) {
+      _tick?.cancel();
+      _tick = null;
+    } else {
+      _tick ??= Timer.periodic(tickEvery, (_) => _onTick());
+    }
+  }
+
+  void _onTick() {
+    final invite = current;
+    // An answer on its way decides it; the server says whether it was late.
+    if (invite == null || answering) return;
+    if (_expiry.isOver(invite, _now())) {
+      _done.add(invite.id);
+      current = null;
+    }
+    _notify();
+  }
+
   /// Reads the invites once. A read that comes back after a sign-in change
   /// belongs to the account that sent it and is dropped.
   Future<void> check() async {
@@ -447,6 +652,12 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
         return;
       }
       if (!_active || answering) return;
+      // One whose time ran out here is over here, whatever the read says
+      // (not one at 0 from the first sight: [_LocalExpiry]).
+      final now = _now();
+      for (final i in overview.invites) {
+        if (_expiry.isOver(i, now)) _done.add(i.id);
+      }
       final next = overview.invites
           .where((i) => !_done.contains(i.id))
           .firstOrNull;
@@ -538,6 +749,7 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
   }
 
   void _notify() {
+    _syncTick();
     if (!_disposed) notifyListeners();
   }
 
@@ -545,6 +757,7 @@ class FriendInviteAlertViewModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _poll?.cancel();
+    _tick?.cancel();
     super.dispose();
   }
 }

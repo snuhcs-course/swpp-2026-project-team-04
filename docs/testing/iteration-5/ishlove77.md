@@ -5,6 +5,234 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `76fa05c`
+Code at commit `00cc5f6`.
+- **Finding (P2):** a read asked just before Monday 00:00 KST and answered after it kept last week, with no timer
+  left. The view model now remembers when it asked; if the week ended while the read was on, it reads once more. An
+  old week asked for after its end (the phone's clock ahead) is kept, so it never loops.
+- **Tests:** `a read that crosses the end of the week reads the new one` (fails without the fix), `an old week again
+  after that is kept, read only twice`.
+- **Results:** `flutter analyze` no issues; `flutter test` 5336 passed, 0 failed, 10 skipped. No server change.
+
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fix for the Codex review of `31dc5ce`
+Code at commit `cb4107b`.
+- **Finding (P2):** a kept ranking was shown for good when the screen stayed open past Monday 00:00 KST. The view
+  model now drops kept rankings whose week has ended when a tab is chosen, reads the shown one again at the week's
+  end (a timer, not set when the week is already over by the phone's clock) and when the app comes back to the
+  front. The view model takes the clock, so the tests no longer depend on today's date.
+- **Tests:** view model `coming back after it reads the shown ranking again`, `a tab kept from the old week is read
+  again when chosen`, `the open screen reads again at the end of the week`, `a week already over by the phone's clock
+  is not read on and on`, `a timer that fires early by the clock waits again`, `a kept tab shown again still reads
+  at the end of the week`, `dispose stops the end-of-week read`; screen `back from the background in a new week, it
+  reads again`. Each new test failed with its part of the fix taken out.
+- **Results:** `flutter analyze` no issues; `flutter test` 5334 passed, 0 failed, 10 skipped; weekly_rankings_viewmodel
+  100%, weekly_rankings_screen 100%. No server change (367 passed).
+
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): fixes for the Codex review of `ae1e9c7`
+Code at commits `a7d6135` (legacy kind) and `d4bc830` (database ranking).
+- **Finding 1 (P2, unknown kind counted as main):** a result without `kind` (an older battle server) and every row
+  stored before migration 0004 were `main`, so a friend battle could score. They are now `legacy` and never score.
+  Tests: `test_a_result_without_a_kind_is_kept_as_legacy`, `test_a_battle_of_unknown_kind_does_not_count` (the
+  rankings test helper now sends `kind: main` by default).
+- **Finding 2 (P2, every row loaded in Python):** the database now picks the scoring rows, sums the points, ranks
+  with a window function and returns the top 50 only; my own row's rank is a count. Test:
+  `test_the_global_ranking_reads_a_fixed_number_of_queries` (at most 5 queries) and
+  `test_a_battle_of_an_id_that_holds_mine_does_not_count` (fails if the id is matched without its quotes). The seeded demo data gives the same
+  answer as before. Not done: an index on `Match.played_at` (outside P11's approved paths; PM follow-up).
+- **Results:** server `pytest` 367 passed, 0 failed, 98% (`matches/rankings.py` 100%). No app change.
+
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (PR #108): rankings split by exercise, no stretch past the end
+Code at commits `8395855` (server), `5ae5975` (app tabs), `148669d` (stretch fix).
+- **Change (user decision, PM approval relayed):** push-ups and squats are ranked apart. The endpoint takes
+  `exercise=push_up|squat` (default `push_up`, unknown value 422) and answers with `exercise`. The screen has the
+  전체/친구 tabs and under them a 푸쉬업/스쿼트 row; it opens on 전체 · 푸쉬업, and each choice keeps the other.
+- **Tests:** server `test_push_ups_and_squats_rank_apart`, `test_friends_rank_each_exercise_apart`,
+  `test_without_an_exercise_the_ranking_is_push_ups`, `test_an_unknown_exercise_is_refused`; repository `asks for the
+  friends scope of squats by name`, `a reply of an exercise it does not know is a server error`; view model
+  `choosing squats reads them in the shown scope and keeps push-ups`, `choosing the shown exercise does nothing`;
+  screen `the exercise tabs sit under the scope tabs, push-ups first`, `squats show their own ranking in each scope`.
+- **Stretch fix:** the user saw the rows stretch on Android when pulling the list past its end (Android 12 stretch
+  overscroll). The list now turns overscroll off; `pulling past the end does not stretch the rows` failed before the
+  fix (it found a `StretchingOverscrollIndicator`) and passes now.
+- **Results:** `flutter analyze` no issues; `flutter test` 5326 passed, 0 failed, 10 skipped. Server `pytest` 364
+  passed, 0 failed, 98% (`matches/rankings.py` 100%). Changed files (reviewer's run over the changed tests):
+  rankings_repository 100%, weekly_rankings_viewmodel 100%, weekly_rankings_screen 100%.
+- **Manual check:** Android emulator, the rankings screen with answers this branch's Django code computed (push-up
+  and squat battles seeded): push-ups unchanged (36, 19, …); squats apart (근손실 20 first; 데모 1+1+3 = 5 tied with
+  단짝 at 2); the friends tab of squats shows squat points only; pulling past the end of the list no longer stretches
+  the rows.
+
+#### 2026-11-28 · step P11 `feat/iter5-weekly-rankings` (team plan #13): weekly global and friends rankings
+`GET /api/matches/rankings/weekly?scope=global|friends` sums this week's points (Monday 00:00 KST) from main online
+battles stored by the battle server: KO win 10, win 5, draw 3, loss 1, own forfeit or disconnect 0, void 0. Friend
+battles are told apart by the new `OnlineBattle.kind`. The online exercise sheet gets a 주간 랭킹 row that opens a
+rankings screen with 전체 and 친구 tabs. Commands from `gymrats_app/` and `server/` on macOS (Flutter 3.47.5 /
+Dart 3.13.4, Python 3.12) on code commit `5b00ab3` (P11 merged with `origin/main` `32d2106`).
+
+| Component | Frameworks | Target | Actual (P11 files) | Date | Command / Report |
+|---|---|---|---|---|---|
+| Service | flutter_test, http MockClient | 85% | rankings_repository 100% | 11/28 | `flutter test --coverage <P11 test files>` + `coverage_by_layer.py --files` |
+| ViewModel | flutter_test, fakes | 90% | weekly_rankings_viewmodel 100% | 11/28 | same run |
+| View | flutter_test (widget) | 75% | weekly_rankings_screen 100%, play_screen 100%, exercise_sheet 97.7% | 11/28 | same run |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total; matches/rankings.py 100% | 11/28 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 5320 passed, 0 failed, 10 skipped (the existing opt-in live
+  server and device checks). Server `pytest` 360 passed, 0 failed (18 in `test_weekly_rankings.py`, 3 new kind cases
+  in `test_results.py`).
+- **Coverage notes:** the full per-file run (`coverage_per_file.sh`, 248 files) was too slow on this Mac and was
+  stopped after 169 files; coverage was measured over the six P11 test files instead (122 tests). Layer totals for the
+  whole app are in the P10 entry below and P11 only adds files at or above the targets. The battle server's
+  `kind` field (`server/lib/battle_server.dart`) is outside lcov and covered by `a friend battle is stored as kind
+  friend` and the main-battle body check in `battle_result_store_test.dart`.
+- **Shortfalls:** none against the targets. `lib/main.dart` wiring of the route is not tested (excluded from
+  coverage; `main_test.dart` is outside P11's paths).
+- **Manual check:** Android emulator (Medium Phone) with a scratchpad entry point: `GymRatsApp` with
+  `ServerRankingsRepository` over a `MockClient` serving answers that this branch's Django code computed on an
+  in-memory database from 20 battles posted to `/internal/results`. Totals matched a hand count (10+5+3+1+0 = 19 and
+  five more players), the friend battle and last week's battle were left out, ties shared a rank, scrolling kept the
+  header fixed, the friends tab showed a 0-point friend, and back returned to the sheet. Not checked: production
+  servers, real battles.
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_weekly_rankings.py` | Server | points per outcome and end reason, week bounds, sums, leaving, this week only, resent result once, app-saved rows, simulated opponent, friend battle, void and unfinished, a battle I was not in, shared ranks, top 50 with my row apart, friends with 0 points, deleted friend, unknown scope 422, login 401 |
+| `server/tests/test_results.py` (updated) | Server | kind kept, no kind is main, unknown kind 422 |
+| `test/services/rankings/rankings_repository_test.dart` | Service | request path, scope and token, parsing, no row of mine, unreadable reply, error status, value equality, point constants, in-memory fake |
+| `test/viewmodels/weekly_rankings_viewmodel_test.dart` | ViewModel | starts on global, no double read, tab switch with cache, slow scope under its own tab, errors and retry, dispose guard |
+| `test/screens/weekly_rankings_screen_test.dart` | View | spinner, list with dates and no rules line, ties, my row fill, friends tab, my row under the list, empty week, only me in friends, error and retry, semantics, 50 rows at text scale 1.6 on 320×640, only rows scroll, short list height, KST week label |
+| `test/widgets/exercise_sheet_test.dart` (updated) | View | no title line, the line when given, rankings row only with a target, its place and podium, semantics, small phone |
+| `test/screens/play_screen_test.dart` (updated) | View | no "온라인 1v1 · 30초", the rankings row opens the rankings and back returns to the sheet |
+| `test/services/online/battle_result_store_test.dart` (updated) | Service (battle server) | `kind` main and friend in the stored body |
+
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): the simulated player's character
+- **Change:** the simulated player no longer always shows the default character. It shows the character the copied
+  account last joined with (kept in the battle server's memory), or else a selectable one at random, never RepBot.
+- **Tests:** new in `test/services/online/skill_matching_test.dart`: `the simulated player shows a character a person
+  may pick`, `it shows the character the copied account last joined with`, `a character no person may pick is not
+  copied`.
+- **Results:** `flutter analyze` no issues; `flutter test test/services/online/ test/shared/` 215 passed, 1 skipped
+  (the opt-in public wss check); `dart compile kernel bin/server.dart` builds. No Django or app change (server 310
+  passed, client full run 5033 passed stand).
+
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fixes for the PM's review of `71fcdc3`
+- **P2 1 (KO length):** a real 9.5 s online KO of 7 reps was left out until the phone's report (time played rounded up
+  to 10 s) arrived, and then counted as 21. `SkillsView` now takes a KO's length from the battle server's start and end
+  when there is one, and from the phone's report only otherwise.
+- **P2 2 (query, also Codex inline 4712457652):** `/internal/skills` loaded every countable row into Python. Countable
+  battles are now chosen in the database and cut to the latest `limit` per account and exercise by a window function,
+  in one query.
+- **Tests (server):** new `test_skills_leaves_out_a_short_online_ko_before_and_after_its_report`,
+  `test_skills_prefers_the_battle_servers_length_to_the_phones`,
+  `test_skills_reads_only_the_latest_battles_that_count_in_one_query`; all three failed on `71fcdc3`.
+- **Results:** server `pytest` 310 passed, 0 failed, 98% (`matches/internal.py` 95%). No Dart or app change, so the
+  client numbers of the entry below stand (5033 passed, 10 skipped).
+
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): the simulated opponent played by the battle server
+After the PM's review of `1a164d6` and the user's decisions (10 s wait, KO battles scaled to 30 s, no difference from
+a real user), the battle server now plays the simulated opponent as a player of a real match, and the result saver
+stores a row for the real player only. The app's own simulated path (match.virtual, AI battle, setup timer) is gone;
+the app keeps `accept_virtual`. Commands from `gymrats_app/` and `server/` on macOS (Flutter 3.47.5 / Dart 3.13.4,
+Python 3.12); commit = the PR head.
+
+| Component | Frameworks | Target | Actual | Date | Command / Report |
+|---|---|---|---|---|---|
+| Model | flutter_test | 90% | 99.4% | 11/27 | `coverage_per_file.sh` + `coverage_by_layer.py` |
+| ViewModel | flutter_test, fakes | 90% | 98.5% | 11/27 | same run |
+| Service | flutter_test, fakes, loopback stand-ins | 85% | 97.6% (online_battle_session 92.4%, battle_protocol 97.9%) | 11/27 | same run |
+| View | flutter_test (widget) | 75% | 97.7% | 11/27 | same run |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% (matches/internal.py 95%, matches/serializers.py 100%) | 11/27 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 4933 passed, 0 failed, 10 skipped (the existing opt-in live
+  server and device checks). Server `pytest` 306 passed, 0 failed (22 in `test_skills.py`, 6 new in
+  `test_results.py`).
+- **Coverage notes:** the per-file runner left out `online_preparation_test`, `social_signup_screen_test`,
+  `online_battle_session_test` and `simulated_player_test` (180 s timeouts; they pass in the plain run). The battle
+  server files (`server/lib/*.dart`) are outside the Flutter package and not in lcov; they are covered by 25
+  server-level tests (`skill_matching_test.dart`), 36 unit tests (`skill_matchmaker_test.dart`,
+  `simulated_player_test.dart`) and the existing battle server suites.
+- **Shortfalls:** none against the targets.
+- **Manual check:** Android emulator (Medium Phone) and Galaxy S23 Ultra over USB, against this branch's Django API
+  and battle server run locally with a throwaway database (app endpoints changed only for the run and reverted).
+  Emulator, push-up: estimate 9 → MATCH FOUND "테스터 vs 근손실" (no AI tag) after 10 s; the online setup screen with
+  "남은 시간" and "상대 · 준비 완료"; after 20 s the online "경기 취소" screen with 다시 매칭; estimate raised to 21 →
+  헬창, lowered to 3 → 초보쥐 (database edited between, battle server restarted to reload). Galaxy, squat (played by
+  the user): a full battle against the simulated player ended in a KO win, stored as the player's online battle only
+  (no row for the copied account). Not checked: two real phones in one match, the production servers.
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `test/services/online/skill_matching_test.dart` (rewritten) | Service (battle server) | real players paired at once, real player within the wait first, simulated match found with the closest account, it opens setup and gets ready, a full battle ends as a real one with the simulated player marked in the stored result, setup timeout, forfeit, KO by it and by the player (no rep after a KO), reconnect and resume, each player's own match, cancel, disconnect, older app, friend battles, `accept_virtual` checks, an app `OnlineBattleSession` playing it to the end, estimate reads, `loadSkills` |
+| `test/services/online/simulated_player_test.dart` (updated) | Service (battle server) | closest account, never the player, average for a new player, RepBot fallback, 1–60 reps, rep plan (count, order, payloads, excellent share, short rounds), sim ids |
+| `server/tests/test_results.py` (updated) | Server | a simulated opponent keeps no record (only the player's online row, nickname as opponent), malformed or unmarked simulated players refused, two simulated players refused |
+| `server/tests/test_skills.py` (updated) | Server | KO scaled to 30 s, online KO length, KO under 10 s and of unknown length left out, left battles left out, five filled from battles that count, unusable report length, bad limit 422 |
+| `test/services/online/online_battle_session_test.dart` (updated) | Service | `accept_virtual` in the main match only |
+| `test/shared/battle_protocol_test.dart` (updated) | Service | 10 s wait |
+
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fix for the Codex review of `6f14022`
+- **Finding (P2):** the tie rule compared account ids as strings, so account 10 came before account 2. Fixed in
+  `server/lib/skill_matchmaker.dart`: `SkillIndex.compareIds` orders them as numbers (shorter first, then text; the ids
+  are integers without leading zeros).
+- **Tests:** new `ids compare as numbers: 2 before 10`; the random full-scan test now checks the tie rule with numeric
+  ids. Both failed with the string comparison and pass now.
+- **Results:** `flutter analyze` no issues; `flutter test` 4938 passed, 0 failed, 10 skipped. Server unchanged
+  (293 passed).
+
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (PR #102): fix for the Codex review of `22ad600`
+- **Finding (P2):** with several accounts at the same estimate just below the player's, `SkillIndex.nearest` took the
+  last of them (the largest id), against the documented tie rule (smaller id). Fixed in
+  `server/lib/skill_matchmaker.dart`: the lower side now goes to the start of that estimate's block by binary search.
+- **Tests:** new `a tie below the skill also goes to the smaller id`; `nearest agrees with a full scan on random data`
+  now uses half-step skills (frequent ties) and checks the chosen id against the tie rule. Both failed on `22ad600`
+  and pass now.
+- **Results:** `flutter analyze` no issues; `flutter test` 4937 passed, 0 failed, 10 skipped. Server unchanged
+  (293 passed). Index cost after the fix (three runs, same setup): build 27.0–31.6 ms, 0.50–0.64 µs per lookup.
+
+#### 2026-11-27 · step P10 `feat/iter5-skill-matching` (team plan #6): simulated users and skill-based matchmaking
+Real players in the main queue are still paired at once (FIFO). A player whose app sends `accept_virtual` and who
+finds no real player within 15 s gets `match.virtual`: a simulated user copying the account whose skill estimate (the
+median valid reps of the latest 5 battles per exercise) is closest to theirs, under that account's nickname. The phone
+plays it as an AI battle at that pace. The battle server reads the estimates from the new loopback-only
+`POST /internal/skills`. Commands from `gymrats_app/` and `server/` on macOS (Flutter 3.47.5 / Dart 3.13.4,
+Python 3.12). The commit is the PR head; see the PR for its hash.
+
+| Component | Frameworks | Target | Actual (P10 files) | Date | Command / Report |
+|---|---|---|---|---|---|
+| Service | flutter_test, fakes, loopback HTTP/WebSocket stand-ins | 85% | bot_matchmaker 100% (13/13), battle_protocol 98.1% (52/53), telemetry_service 88.6% (163/184), online_battle_session 76.2% (400/525, see below) | 11/27 | `coverage_per_file.sh` + `coverage_by_layer.py --files` |
+| View | flutter_test (widget) | 75% | online_lobby_screen 95.7% (242/253) | 11/27 | same run |
+| All client layers | | | Model 99.4%, ViewModel 98.5%, Service 95.7%, View 97.4%, total 97.2% | 11/27 | `coverage_by_layer.py coverage/lcov.info` |
+| API server | pytest, pytest-django, pytest-cov | 90% | 98% total; matches/internal.py 94% | 11/27 | `.venv/bin/python -m pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+- **Tests:** `flutter analyze` no issues. `flutter test` 4936 passed, 0 failed, 10 skipped (the existing opt-in live server and device checks). Server `pytest` 293 passed, 0 failed
+  (15 in `test_skills.py`).
+- **Coverage notes:** `online_battle_session.dart` shows 76.2% because its own test file
+  (`online_battle_session_test.dart`) hit the per-file runner's 180 s timeout and is not in the numbers; the run also
+  left out `ai_eval_test`, two demo tests, `arcade_flow_test`, `online_preparation_test` and
+  `social_signup_screen_test` (timeouts, unchanged by P10). The per-file run was taken before the reviewer's round-2
+  fixes (malformed `match.virtual`, telemetry line). The new battle server files (`server/lib/skill_matchmaker.dart`,
+  `simulated_player.dart`) sit outside the Flutter package and are not reported in lcov; they are covered by 36
+  unit tests and 18 server-level tests.
+- **Shortfalls:** none against the layer targets.
+- **Cost measured for P20** (`skill_matchmaker_test.dart` "measures the build apart from the lookups (P20 setup)",
+  `Random(20)`, 10 000 accounts, 10 000 lookups, Apple M4, JIT): build 20.7–32.5 ms, 0.17–0.59 µs per lookup over
+  four runs; table in `docs/iteration-5/matchmaking.md`.
+- **Manual check:** Android emulator (Medium Phone) against the working-tree Django API and battle server on this Mac
+  with a throwaway database (accounts with medians 9, 9, 20 and 4), app endpoints changed only for the run and
+  reverted: the online push-up search waited 15 s, then MATCH FOUND showed "테스터 vs 근손실 AI" (the closest
+  estimate), the AI battle's pose setup opened, the leave dialog named 근손실, and telemetry stored
+  `matching_finished` with `found` for both searches. Not checked: finishing the AI battle (the emulator camera cannot
+  pass the pose setup) and two real phones.
+
+| Test file | Layer | Cases |
+|---|---|---|
+| `server/tests/test_skills.py` | Server | latest five per exercise newest first, accounts with no battle left out, a time tie goes to the newer row, another limit, bad limits refused, only nicknames and reps sent, secret required, closed through the proxy, from another host and without a configured secret, empty list |
+| `test/services/online/skill_matchmaker_test.dart` | Service (battle server) | median (odd, even, latest five only, outliers, none), record parsing and malformed records, nearest estimate, never the player themself, ties, nobody to copy, average and default for new players, exercises apart, repeated account, rebuild, nearest equals a full scan on random data, build and lookup cost measured apart |
+| `test/services/online/simulated_player_test.dart` | Service (battle server) | copies the closest account by nickname, never the player, new player from the average, RepBot fallback, 1–60 reps, payload without the account id |
+| `test/services/online/skill_matching_test.dart` | Service (battle server) | real players paired at once, a real player within the wait taken first, closest account after the wait, assigned once and never paired, joining again, cancel and disconnect get none, older app keeps waiting, friend battles never get one and may not ask, `accept_virtual` type, estimates read at start and refreshed, failed read keeps them, a slow read does not hold up the start, RepBot at the default skill, `HttpResultStore.loadSkills` request, malformed records, error |
+| `test/services/online/online_battle_session_test.dart` (updated) | Service | `accept_virtual` only in the main match, `match.virtual` ends the search with the opponent, a malformed one ends it as failed, one after a match is ignored |
+| `test/screens/online_lobby_screen_test.dart` (updated) | View | versus screen with the copied nickname tagged AI, AI battle at the copied pace once after the countdown, leaving the versus screen, the search ends as found once (P17), default builder opens the AI battle screen |
+| `test/services/matching/bot_matchmaker_test.dart` (updated) | Service | `SimulatedUserPace` range, at least one rep, a planned round makes about that many reps |
+| `test/shared/battle_protocol_test.dart` (updated) | Service | 15 s wait, `match.virtual` opponent parsing and malformed payloads |
+
 #### 2026-11-24 · step P9 `feat/iter5-friend-battles` (PR #95): fix for the Codex review of `978e092`
 One P2 finding was fixed: on the friends page, a 수락 that comes back after another battle (or the exercise sheet) has
 opened over the page no longer opens a second lobby; the accepted invite is taken back, so the friend's waiting room

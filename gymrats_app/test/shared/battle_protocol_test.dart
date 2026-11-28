@@ -14,4 +14,8 @@ void main() {
       expect(battleReasons, isNot(contains(battleSetupTimeoutReason)));
     });
   });
+
+  test('real players get 10 seconds before a simulated one (P10)', () {
+    expect(battleVirtualWait, const Duration(seconds: 10));
+  });
 }

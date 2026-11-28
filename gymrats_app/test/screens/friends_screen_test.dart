@@ -5,11 +5,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymrats_app/main.dart';
 import 'package:gymrats_app/models/exercise_type.dart';
+import 'package:gymrats_app/models/user_profile.dart';
 import 'package:gymrats_app/screens/friends_screen.dart';
 import 'package:gymrats_app/services/api/api_client.dart';
 import 'package:gymrats_app/services/friends/friend_repository.dart';
+import 'package:gymrats_app/services/user/user_repository.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/viewmodels/friends_viewmodel.dart';
+import 'package:gymrats_app/widgets/arcade_parts.dart';
+import 'package:gymrats_app/widgets/battle_stage_model.dart';
+import 'package:gymrats_app/widgets/character_figure.dart';
+import 'package:gymrats_app/widgets/exercise_sheet.dart';
+import 'package:gymrats_app/widgets/friend_invite_parts.dart';
+import 'package:provider/provider.dart';
 
 import '../support/fakes.dart';
 
@@ -18,7 +26,7 @@ const _friend = FriendPerson(id: 2, nickname: '헬창', code: '헬창#0002');
 const _other = FriendPerson(id: 3, nickname: '근육', code: '근육#0003');
 
 class _Repo extends InMemoryFriendRepository {
-  _Repo() : super(me: _me, people: const [_friend, _other]);
+  _Repo({super.now}) : super(me: _me, people: const [_friend, _other]);
 
   bool fail = false;
   int fetches = 0;
@@ -47,30 +55,43 @@ void main() {
   setUp(() {
     repo = _Repo();
     opened = [];
+    // A11: the invite cards' and the alert's characters idle for as long as
+    // they show, and a page cannot settle under a running ticker; reduced
+    // motion holds them still. The A11 tests at the end turn motion back on
+    // where they check it.
+    final binding = TestWidgetsFlutterBinding.instance;
+    binding.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(binding.platformDispatcher.clearAccessibilityFeaturesTestValue);
   });
 
   Future<void> open(
     WidgetTester tester, {
     Future<ExerciseType?> Function(BuildContext, FriendPerson)? pickExercise,
     Duration refreshEvery = const Duration(hours: 1),
+    UserRepository? users,
   }) async {
     tester.view.physicalSize = const Size(412, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.dark,
-        home: FriendsScreen(
-          createViewModel: () => FriendsViewModel(repository: repo),
-          refreshEvery: refreshEvery,
-          pickExercise: pickExercise,
-        ),
-        onGenerateRoute: (settings) => MaterialPageRoute<void>(
-          settings: settings,
-          builder: (_) {
-            opened.add(settings.arguments);
-            return const Scaffold(body: Text('lobby page'));
-          },
+      // The app's profile source, for the exercise sheet's bests (A11).
+      Provider<UserRepository>.value(
+        value: users ?? FakeUserRepository(),
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: FriendsScreen(
+            createViewModel: () => FriendsViewModel(repository: repo),
+            refreshEvery: refreshEvery,
+            pickExercise: pickExercise,
+          ),
+          onGenerateRoute: (settings) => MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) {
+              opened.add(settings.arguments);
+              return const Scaffold(body: Text('lobby page'));
+            },
+          ),
         ),
       ),
     );
@@ -84,7 +105,7 @@ void main() {
     expect(find.text('친구와의 대전'), findsOneWidget);
     expect(find.text('내 친구 코드'), findsOneWidget);
     expect(find.text('쥐돌이#0001'), findsOneWidget);
-    expect(find.text('친구 코드로 추가'), findsOneWidget);
+    expect(find.text('친구 추가'), findsOneWidget);
     expect(find.text('친구 0'), findsOneWidget);
     expect(find.textContaining('아직 친구가 없어요'), findsOneWidget);
     // No empty sections for requests or invites.
@@ -177,15 +198,20 @@ void main() {
     expect(find.text('친구 0'), findsOneWidget);
   });
 
-  testWidgets('대결 asks for the exercise, then opens the waiting room', (
-    tester,
-  ) async {
+  testWidgets('대결 asks for the exercise on the online battle\'s sheet, then '
+      'opens the waiting room (A11 spec 1)', (tester) async {
     repo.friends.add(_friend);
     await open(tester);
     await tester.tap(find.text('대결'));
     await tester.pumpAndSettle();
-    expect(find.text('헬창님과 무엇으로 대결할까요?'), findsOneWidget);
-    await tester.tap(find.text('스쿼트'));
+    expect(find.byType(ExerciseSheet), findsOneWidget);
+    expect(find.text('헬창님과 친구 1v1 · 30초'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(ExerciseSheet),
+        matching: find.text('스쿼트'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('lobby page'), findsOneWidget);
     final battle = opened.single! as FriendBattle;
@@ -209,7 +235,9 @@ void main() {
     final invite = repo.receiveInvite(_friend, ExerciseType.pushUp);
     await open(tester);
     expect(find.text('받은 대결 신청'), findsOneWidget);
-    expect(find.text('푸쉬업 대결 · 1분 안에 수락'), findsOneWidget);
+    // A11: a card with the exercise on its pill.
+    expect(find.byType(FriendInviteCard), findsOneWidget);
+    expect(find.text('푸쉬업 대결'), findsOneWidget);
     await tester.tap(find.text('수락'));
     await tester.pumpAndSettle();
     final battle = opened.single! as FriendBattle;
@@ -349,15 +377,14 @@ void main() {
       repo.friends.add(_friend);
       repo.receiveInvite(_friend, ExerciseType.squat);
       await openApp(tester);
-      expect(find.text('헬창님이 스쿼트 대결을 신청했어요'), findsOneWidget);
+      // A11: "헬창님이" over "스쿼트 대결을 신청했어요".
+      expect(find.text('헬창님이'), findsOneWidget);
+      expect(find.text('스쿼트 대결을 신청했어요'), findsOneWidget);
       expect(find.text('거절'), findsOneWidget);
       expect(find.text('수락'), findsOneWidget);
       expect(find.text('home page'), findsOneWidget);
       // At the top of the screen.
-      expect(
-        tester.getTopLeft(find.text('헬창님이 스쿼트 대결을 신청했어요')).dy,
-        lessThan(200),
-      );
+      expect(tester.getTopLeft(find.text('헬창님이')).dy, lessThan(200));
     });
 
     testWidgets('an invite that comes later shows on the next read', (
@@ -369,7 +396,7 @@ void main() {
       repo.receiveInvite(_friend, ExerciseType.pushUp);
       await tester.pump(const Duration(seconds: 5));
       await tester.pump();
-      expect(find.text('헬창님이 푸쉬업 대결을 신청했어요'), findsOneWidget);
+      expect(find.text('푸쉬업 대결을 신청했어요'), findsOneWidget);
     });
 
     testWidgets('수락 opens the waiting room with the accepted invite', (
@@ -593,8 +620,570 @@ void main() {
       for (var i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 200));
       }
-      expect(find.text('헬창님이 푸쉬업 대결을 신청했어요'), findsOneWidget);
+      expect(find.text('헬창님이'), findsOneWidget);
+      expect(find.text('푸쉬업 대결을 신청했어요'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('A11: the redesigned page and alert', () {
+    late DateTime clock;
+
+    /// How far the phone's clock runs ahead of the server's ([clock]).
+    late Duration ahead;
+
+    setUp(() {
+      clock = DateTime(2026, 11, 27, 12);
+      ahead = Duration.zero;
+      repo = _Repo(now: () => clock);
+    });
+
+    /// The page on [clock], as [open], at [size].
+    Future<FakeUserRepository> openAt(
+      WidgetTester tester, {
+      Size size = const Size(412, 1400),
+      FakeUserRepository? users,
+      Object? argument,
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final source = users ?? FakeUserRepository();
+      await tester.pumpWidget(
+        Provider<UserRepository>.value(
+          value: source,
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      settings: RouteSettings(
+                        name: GymRatsApp.friendsRoute,
+                        arguments: argument,
+                      ),
+                      builder: (_) => FriendsScreen(
+                        createViewModel: () => FriendsViewModel(
+                          repository: repo,
+                          now: () => clock.add(ahead),
+                        ),
+                        refreshEvery: const Duration(hours: 1),
+                      ),
+                    ),
+                  ),
+                  child: const Text('below'),
+                ),
+              ),
+            ),
+            onGenerateRoute: (settings) => MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) {
+                opened.add(settings.arguments);
+                return const Scaffold(body: Text('lobby page'));
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('below'));
+      await tester.pumpAndSettle();
+      return source;
+    }
+
+    testWidgets('five groups in order: invites, requests to me, friends, '
+        'requests I sent, then my code and the code field (spec 4)', (
+      tester,
+    ) async {
+      repo.friends.add(_friend);
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      repo.incoming.add(const FriendRequestItem(id: 40, person: _other));
+      repo.outgoing.add(
+        const FriendRequestItem(
+          id: 41,
+          person: FriendPerson(id: 9, nickname: '철봉', code: '철봉#0009'),
+        ),
+      );
+      await openAt(tester);
+      final tops = [
+        for (final label in [
+          '받은 대결 신청',
+          '받은 친구 요청',
+          '친구 1',
+          '보낸 친구 요청',
+          '친구 추가',
+          '내 친구 코드',
+        ])
+          tester.getTopLeft(find.text(label)).dy,
+      ];
+      expect(tops, [...tops]..sort());
+      expect(tops.toSet(), hasLength(tops.length));
+      // A label is 20 under what is above it and 8 over its own card.
+      final card = tester.getRect(find.byType(FriendInviteCard));
+      final label = tester.getRect(find.text('받은 친구 요청'));
+      expect(label.top, card.bottom + AppSpacing.s20);
+    });
+
+    testWidgets('an invite card: the inviter\'s character on the pink panel, '
+        'the nickname, 1:00, the exercise pill, a full bar and both buttons '
+        '(spec 4)', (tester) async {
+      repo.receiveInvite(_friend, ExerciseType.squat, character: 'bear');
+      await openAt(tester);
+      final card = find.byType(FriendInviteCard);
+      Finder inCard(Finder of) => find.descendant(of: card, matching: of);
+      final figure = tester.widget<CharacterIdleFigure>(
+        inCard(find.byType(CharacterIdleFigure)).first,
+      );
+      expect((figure.characterId, figure.side), ('bear', BattleSide.opponent));
+      expect(inCard(find.text('헬창')), findsOneWidget);
+      expect(inCard(find.text('1:00')), findsOneWidget);
+      expect(inCard(find.text('스쿼트 대결')), findsOneWidget);
+      expect(
+        tester
+            .widget<FriendTimeBar>(inCard(find.byType(FriendTimeBar)))
+            .fraction,
+        1,
+      );
+      expect(inCard(find.text('거절')), findsOneWidget);
+      expect(inCard(find.text('수락')), findsOneWidget);
+      expect(
+        tester.getSize(inCard(find.byType(FriendInvitePanel))).width,
+        FriendInviteCard.panelWidth,
+      );
+      final frame = tester.widget<Container>(
+        find.descendant(of: card, matching: find.byType(Container)).first,
+      );
+      final decoration = frame.decoration! as BoxDecoration;
+      expect(decoration.border, Border.all(color: AppColors.ink, width: 2));
+      expect(decoration.borderRadius, BorderRadius.circular(18));
+    });
+
+    testWidgets('the time left counts down from expires_at every second, and '
+        'at 0 the card leaves the page (spec 4, 9.3)', (tester) async {
+      repo.receiveInvite(_friend, ExerciseType.pushUp);
+      await openAt(tester);
+      clock = clock.add(const Duration(seconds: 17));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('0:43'), findsOneWidget);
+      expect(
+        tester.widget<FriendTimeBar>(find.byType(FriendTimeBar)).seconds,
+        43,
+      );
+      clock = clock.add(const Duration(seconds: 43));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(FriendInviteCard), findsNothing);
+      expect(find.text('받은 대결 신청'), findsNothing);
+    });
+
+    testWidgets('a phone clock over a minute ahead: the invite shows 0:00 and '
+        'an empty bar until the server stops listing it (user, 2026-11-27)', (
+      tester,
+    ) async {
+      ahead = const Duration(seconds: 61);
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      await openAt(tester);
+      expect(find.byType(FriendInviteCard), findsOneWidget);
+      expect(find.text('0:00'), findsOneWidget);
+      expect(
+        tester.widget<FriendTimeBar>(find.byType(FriendTimeBar)).fraction,
+        0,
+      );
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.byType(FriendInviteCard), findsOneWidget);
+    });
+
+    testWidgets('no character, or one that cannot be picked: GYM마우스 (spec '
+        '7)', (tester) async {
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      repo.receiveInvite(_other, ExerciseType.squat, character: 'dragon');
+      await openAt(tester);
+      expect(
+        tester
+            .widgetList<CharacterIdleFigure>(find.byType(CharacterIdleFigure))
+            .map((f) => f.characterId)
+            .toSet(),
+        {'mouse'},
+      );
+      expect(find.byType(FriendInviteCard), findsNWidgets(2));
+    });
+
+    testWidgets('while an answer is on its way both buttons are off', (
+      tester,
+    ) async {
+      repo.friends.add(_friend);
+      repo.receiveInvite(_friend, ExerciseType.squat);
+      await openAt(tester);
+      repo.holdAccept = Completer<void>();
+      await tester.tap(find.text('수락'));
+      await tester.pump();
+      for (final button in tester.widgetList<OutlinedButton>(
+        find.descendant(
+          of: find.byType(FriendAnswerButtons),
+          matching: find.byType(OutlinedButton),
+        ),
+      )) {
+        expect(button.onPressed, isNull);
+      }
+      repo.holdAccept!.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a friend row: at least 64 high, the nickname in Do Hyeon 21 '
+        'over the code, and a lime 대결 with an arrow (spec 4)', (tester) async {
+      repo.friends.add(_friend);
+      await openAt(tester);
+      final name = tester.widget<Text>(find.text('헬창'));
+      expect(name.style!.fontSize, 21);
+      expect(name.style!.fontFamily, AppFonts.display);
+      final code = tester.widget<Text>(find.text('헬창#0002'));
+      expect(code.style!.fontFamily, AppFonts.number);
+      expect(code.style!.color, AppColors.textMuted);
+      final button = find.ancestor(
+        of: find.text('대결'),
+        matching: find.byType(OutlinedButton),
+      );
+      expect(tester.getSize(button).height, greaterThanOrEqualTo(40));
+      final style = tester.widget<OutlinedButton>(button).style!;
+      expect(style.backgroundColor!.resolve({}), AppColors.accent);
+      expect(
+        find.descendant(of: button, matching: find.byType(ArcadeGlyphIcon)),
+        findsOneWidget,
+      );
+      final row = tester.getRect(find.text('헬창'));
+      expect(
+        tester.getRect(find.text('헬창#0002')).top,
+        greaterThanOrEqualTo(row.bottom),
+      );
+    });
+
+    testWidgets('the sheet shows the bests of the profile 게임 시작 passed, '
+        'with no read; back from a battle, the profile is read again', (
+      tester,
+    ) async {
+      repo.friends.add(_friend);
+      final users = FakeUserRepository();
+      await openAt(
+        tester,
+        users: users,
+        argument: const UserProfile(
+          name: '우현',
+          bests: {ExerciseType.pushUp: PersonalBest(reps: 24, score: 240)},
+        ),
+      );
+      expect(users.fetchCount, 0);
+      await tester.tap(find.text('대결'));
+      await tester.pumpAndSettle();
+      expect(find.text('개인 최고 240점', findRichText: true), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ExerciseSheet),
+          matching: find.text('푸쉬업'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('lobby page'), findsOneWidget);
+      users.profile = const UserProfile(
+        name: '우현',
+        bests: {ExerciseType.pushUp: PersonalBest(reps: 30, score: 300)},
+      );
+      Navigator.pop(tester.element(find.text('lobby page')));
+      await tester.pumpAndSettle();
+      expect(users.fetchCount, 1);
+      await tester.tap(find.text('대결'));
+      await tester.pumpAndSettle();
+      expect(find.text('개인 최고 300점', findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('without the route\'s profile the page reads one; a failed '
+        'read after a battle keeps it', (tester) async {
+      repo.friends.add(_friend);
+      final users = FakeUserRepository()
+        ..profile = const UserProfile(
+          name: '우현',
+          bests: {ExerciseType.squat: PersonalBest(reps: 31)},
+        );
+      await openAt(tester, users: users);
+      expect(users.fetchCount, 1);
+      await tester.tap(find.text('대결'));
+      await tester.pumpAndSettle();
+      expect(find.text('개인 최고 31회', findRichText: true), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ExerciseSheet),
+          matching: find.text('스쿼트'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      users.error = Exception('offline');
+      Navigator.pop(tester.element(find.text('lobby page')));
+      await tester.pumpAndSettle();
+      expect(users.fetchCount, 2);
+      await tester.tap(find.text('대결'));
+      await tester.pumpAndSettle();
+      expect(find.text('개인 최고 31회', findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('no profile at all: 대결 says why and opens nothing', (
+      tester,
+    ) async {
+      repo.friends.add(_friend);
+      final users = FakeUserRepository()
+        ..error = const ApiException(ApiErrorKind.network);
+      await openAt(tester, users: users);
+      await tester.tap(find.text('대결'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ExerciseSheet), findsNothing);
+      expect(opened, isEmpty);
+      expect(find.textContaining('서버에 연결하지 못했어요'), findsOneWidget);
+    });
+
+    testWidgets('my code: 18 bold, its tag in the number font', (tester) async {
+      await openAt(tester);
+      final code = tester.widget<Text>(find.text('쥐돌이#0001'));
+      expect(code.style!.fontSize, 18);
+      expect(code.style!.fontWeight, FontWeight.w700);
+      final spans = (code.textSpan! as TextSpan).children!.cast<TextSpan>();
+      expect([for (final s in spans) s.text], ['쥐돌이', '#0001']);
+      expect(spans.last.style!.fontFamily, AppFonts.number);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).decoration!.hintText,
+        '닉네임#0000',
+      );
+    });
+
+    testWidgets('the code field keeps its name for a screen reader, typed '
+        'into or not', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await openAt(tester);
+      final empty = tester.getSemantics(find.byType(TextField));
+      expect(empty, isSemantics(isTextField: true));
+      expect(empty.label, startsWith('친구 코드로 추가'));
+      await tester.enterText(find.byType(TextField), '헬창#0002');
+      await tester.pump();
+      final typed = tester.getSemantics(find.byType(TextField));
+      expect(typed, isSemantics(isTextField: true));
+      expect(typed.label, startsWith('친구 코드로 추가'));
+      semantics.dispose();
+    });
+
+    testWidgets('the invite card\'s character idles; with reduced motion it '
+        'stands still (spec 4)', (tester) async {
+      repo.receiveInvite(_friend, ExerciseType.squat, character: 'seal');
+      await openAt(tester);
+      expect(tester.hasRunningAnimations, isFalse);
+      tester.platformDispatcher.clearAccessibilityFeaturesTestValue();
+      await tester.pump();
+      expect(tester.hasRunningAnimations, isTrue);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    for (final (size, scale) in const [
+      (Size(360, 780), 1.3),
+      (Size(320, 640), 1.0),
+    ]) {
+      testWidgets('nothing overflows at ${size.width.toInt()} x '
+          '${size.height.toInt()} with $scale times the text (spec 9.10)', (
+        tester,
+      ) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        const long = FriendPerson(
+          id: 8,
+          nickname: '가나다라마바사아자차카타',
+          code: '가나다라마바사아자차카타#0008',
+        );
+        repo.friends.addAll(const [_friend, long]);
+        repo.receiveInvite(long, ExerciseType.squat, character: 'kangaroo');
+        repo.incoming.add(const FriendRequestItem(id: 40, person: _other));
+        await openAt(tester, size: size);
+        expect(tester.takeException(), isNull);
+        await tester.drag(
+          find.byType(SingleChildScrollView),
+          const Offset(0, -2000),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('요청').hitTestable(), findsOneWidget);
+      });
+    }
+
+    group('the alert', () {
+      late FriendInviteAlertViewModel alert;
+
+      Future<void> openAlert(WidgetTester tester, {Size? size}) async {
+        if (size != null) {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.reset);
+        }
+        alert = FriendInviteAlertViewModel(
+          repository: repo,
+          pollEvery: const Duration(seconds: 5),
+          now: () => clock.add(ahead),
+        );
+        final routes = FriendInviteRouteWatch();
+        final navigator = GlobalKey<NavigatorState>();
+        addTearDown(alert.dispose);
+        addTearDown(routes.dispose);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark,
+            navigatorKey: navigator,
+            navigatorObservers: [routes],
+            builder: (context, child) => FriendInviteOverlay(
+              viewModel: alert,
+              routes: routes,
+              navigator: navigator,
+              child: child!,
+            ),
+            home: const Scaffold(body: Center(child: Text('home page'))),
+          ),
+        );
+        alert.setSignedIn(true);
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('the inviter\'s character, "{nickname}님이", the exercise '
+          'line, the time left, its bar and both buttons (spec 6)', (
+        tester,
+      ) async {
+        repo.receiveInvite(_friend, ExerciseType.squat, character: 'kangaroo');
+        await openAlert(tester);
+        final card = find.byType(FriendInviteAlertCard);
+        Finder inCard(Finder of) => find.descendant(of: card, matching: of);
+        final figure = tester.widget<CharacterIdleFigure>(
+          inCard(find.byType(CharacterIdleFigure)).first,
+        );
+        expect(
+          (figure.characterId, figure.side),
+          ('kangaroo', BattleSide.opponent),
+        );
+        expect(inCard(find.text('헬창님이')), findsOneWidget);
+        expect(inCard(find.text('스쿼트 대결을 신청했어요')), findsOneWidget);
+        expect(inCard(find.text('1:00')), findsOneWidget);
+        expect(inCard(find.byType(FriendTimeBar)), findsOneWidget);
+        expect(inCard(find.text('거절')), findsOneWidget);
+        expect(inCard(find.text('수락')), findsOneWidget);
+        // The bar runs along the card's whole bottom.
+        final bar = tester.getRect(inCard(find.byType(FriendTimeBar)));
+        final frame = tester.getRect(card);
+        expect(bar.height, 5);
+        expect(bar.bottom, closeTo(frame.bottom - 2, 0.01));
+        expect(bar.width, closeTo(frame.width - 4, 0.01));
+        expect(
+          tester.getSize(inCard(find.byType(FriendInvitePanel))).width,
+          FriendInviteAlertCard.panelWidth,
+        );
+      });
+
+      testWidgets('its frame: a 2 ink edge, 20 corners and a hard ink shadow, '
+          'no lift; the error card has the same frame', (tester) async {
+        final sent = repo.receiveInvite(_friend, ExerciseType.squat);
+        await openAlert(tester);
+        BoxDecoration frameOf(Finder of) =>
+            tester
+                    .widget<Container>(
+                      find
+                          .descendant(of: of, matching: find.byType(Container))
+                          .first,
+                    )
+                    .decoration!
+                as BoxDecoration;
+        final frame = frameOf(find.byType(FriendInviteAlertCard));
+        expect(frame.border, Border.all(color: AppColors.ink, width: 2));
+        expect(frame.borderRadius, BorderRadius.circular(20));
+        expect(frame.boxShadow!.single.offset, const Offset(3, 4));
+        expect(frame.boxShadow!.single.blurRadius, 0);
+        repo.answer(sent.id, InviteStatus.cancelled);
+        await tester.tap(find.text('수락'));
+        await tester.pump();
+        final error = find.byType(FriendAlertErrorCard);
+        expect(error, findsOneWidget);
+        expect(frameOf(error).border, frame.border);
+        expect(find.byType(FriendInvitePanel), findsNothing);
+        expect(find.text('거절'), findsNothing);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pump();
+      });
+
+      testWidgets('it counts down each second, and at 0 it goes and the '
+          'invite is not offered again (spec 6, 9.7)', (tester) async {
+        repo.receiveInvite(_friend, ExerciseType.pushUp);
+        await openAlert(tester);
+        clock = clock.add(const Duration(seconds: 59));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text('0:01'), findsOneWidget);
+        expect(
+          tester.widget<FriendTimeBar>(find.byType(FriendTimeBar)).seconds,
+          1,
+        );
+        clock = clock.add(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.byType(FriendInviteAlertCard), findsNothing);
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pump();
+        expect(find.byType(FriendInviteAlertCard), findsNothing);
+      });
+
+      testWidgets('a phone clock over a minute ahead: the alert shows 0:00 '
+          'and an empty bar, and goes with the next read that no longer lists '
+          'it (user, 2026-11-27)', (tester) async {
+        ahead = const Duration(seconds: 61);
+        repo.receiveInvite(_friend, ExerciseType.squat);
+        await openAlert(tester);
+        expect(find.byType(FriendInviteAlertCard), findsOneWidget);
+        expect(find.text('0:00'), findsOneWidget);
+        expect(
+          tester.widget<FriendTimeBar>(find.byType(FriendTimeBar)).fraction,
+          0,
+        );
+        await tester.pump(const Duration(seconds: 2));
+        expect(find.byType(FriendInviteAlertCard), findsOneWidget);
+        clock = clock.add(const Duration(minutes: 1));
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pump();
+        expect(find.byType(FriendInviteAlertCard), findsNothing);
+      });
+
+      testWidgets('a screen reader hears the sentence as it comes; the '
+          'picture is not read', (tester) async {
+        final semantics = tester.ensureSemantics();
+        repo.receiveInvite(_friend, ExerciseType.squat);
+        await openAlert(tester);
+        final node = tester.getSemantics(
+          find.bySemanticsLabel('헬창님이 스쿼트 대결을 신청했어요'),
+        );
+        expect(node, isSemantics(isLiveRegion: true));
+        expect(find.bySemanticsLabel('헬창님이'), findsNothing);
+        expect(find.bySemanticsLabel('1:00'), findsNothing);
+        expect(find.bySemanticsLabel('수락'), findsOneWidget);
+        semantics.dispose();
+      });
+
+      for (final (size, scale) in const [
+        (Size(360, 780), 1.3),
+        (Size(320, 640), 1.0),
+      ]) {
+        testWidgets('it fits ${size.width.toInt()} x ${size.height.toInt()} '
+            'with $scale times the text and a long nickname (spec 9.10)', (
+          tester,
+        ) async {
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          repo.receiveInvite(
+            const FriendPerson(
+              id: 8,
+              nickname: '가나다라마바사아자차카타',
+              code: '가나다라마바사아자차카타#0008',
+            ),
+            ExerciseType.squat,
+          );
+          await openAlert(tester, size: size);
+          expect(find.byType(FriendInviteAlertCard), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      }
     });
   });
 }

@@ -253,7 +253,8 @@ void main() {
 
   group("a friend's invite on the arcade (#95's alert)", () {
     const friend = FriendPerson(id: 2, nickname: '헬창', code: '헬창#0002');
-    final invite = find.text('헬창님이 푸쉬업 대결을 신청했어요');
+    // A11: the alert's sentence is two lines ("헬창님이" over this one).
+    final invite = find.text('푸쉬업 대결을 신청했어요');
 
     /// The app with [best] saved for the arcade and a friend's push-up
     /// invite waiting.

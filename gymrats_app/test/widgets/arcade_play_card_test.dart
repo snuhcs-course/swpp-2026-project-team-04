@@ -44,6 +44,34 @@ void main() {
     expect(arrows, [AppColors.accent, AppColors.opponent]);
   });
 
+  testWidgets('the names are Do Hyeon 30, centered in the name room (A11 '
+      'spec 3)', (tester) async {
+    await show(tester);
+    for (final name in ['온라인 대결', '아케이드']) {
+      final text = tester.widget<Text>(find.text(name));
+      expect(text.style!.fontSize, 30);
+      expect(text.style!.fontFamily, AppFonts.display);
+      final card = tester.getRect(
+        find.ancestor(
+          of: find.text(name),
+          matching: find.byType(ArcadePlayCard),
+        ),
+      );
+      expect(
+        tester.getCenter(find.text(name)).dx,
+        closeTo(card.center.dx, 0.5),
+      );
+      // Between the panel and the card's bottom.
+      expect(
+        tester.getCenter(find.text(name)).dy,
+        closeTo(
+          card.top + (ArcadePlayCard.panel.height + card.height) / 2,
+          0.5,
+        ),
+      );
+    }
+  });
+
   testWidgets('a screen reader hears each card\'s name as a button', (
     tester,
   ) async {

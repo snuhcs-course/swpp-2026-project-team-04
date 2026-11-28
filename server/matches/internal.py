@@ -8,11 +8,22 @@ went through /api/ is refused even though it also arrives from 127.0.0.1.
 """
 
 import hmac
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import (
+    DurationField,
+    ExpressionWrapper,
+    F,
+    FloatField,
+    OuterRef,
+    Q,
+    Subquery,
+    Window,
+)
+from django.db.models.fields.json import KT
+from django.db.models.functions import Cast, RowNumber
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -20,7 +31,7 @@ from rest_framework.views import APIView
 
 from accounts.models import User
 
-from .models import Match, OnlineBattle
+from .models import Match, MatchFeedback, OnlineBattle
 from .serializers import (
     OnlineRecoverSerializer,
     OnlineResultSerializer,
@@ -170,16 +181,21 @@ class ResultSaveView(_InternalView):
         battle.result_id = result_id
         battle.status = OnlineBattle.FINISHED
         battle.reason = data["reason"]
+        battle.kind = data["kind"]
         battle.player_ids = [p["player_id"] for p in players]
         battle.ended_at = ended_at
         battle.save()
 
-        users = User.objects.in_bulk([int(p["player_id"]) for p in players])
+        users = User.objects.in_bulk(
+            [int(p["player_id"]) for p in players if not p["simulated"]]
+        )
         # Points need both players, as in POST /matches. Refusing would lose
         # the result, since the battle server does not retry a refusal.
         scored = all("game_score" in p for p in players)
         saved = 0
         for me, other in ((players[0], players[1]), (players[1], players[0])):
+            if me["simulated"]:
+                continue  # P10: only the real player keeps the battle.
             user = users.get(int(me["player_id"]))
             if user is None:
                 continue  # Account deleted since the battle.
@@ -204,3 +220,119 @@ class ResultSaveView(_InternalView):
         return Response(
             {"result_id": result_id, "saved": saved}, status=status.HTTP_201_CREATED
         )
+
+
+# P10: how many battles an estimate is taken over, by default and at most.
+SKILL_RECENT = 5
+SKILL_RECENT_MAX = 10
+# A battle's full length; a KO battle's reps are scaled up to it.
+SKILL_ROUND_MS = 30_000
+# A KO before this says little about pace (the opponent hardly played), and
+# scaling it up would overstate it: it is left out.
+SKILL_MIN_KO_MS = 10_000
+
+
+def _server_length():
+    """A KO battle's length by the battle server's own start and end, for an
+    online battle; null for any other."""
+    return Subquery(
+        OnlineBattle.objects.filter(
+            result_id=OuterRef("client_id"),
+            started_at__isnull=False,
+            ended_at__isnull=False,
+        )
+        .annotate(
+            length=ExpressionWrapper(
+                F("ended_at") - F("started_at"), output_field=DurationField()
+            )
+        )
+        .values("length")[:1],
+        output_field=DurationField(),
+    )
+
+
+def _reported_length():
+    """A KO battle's length by the phone's form report (roundMs, the time
+    played, rounded up to the second), only when it is a number of at least
+    SKILL_MIN_KO_MS; null otherwise. A string or a huge value is not one."""
+    return Subquery(
+        MatchFeedback.objects.filter(
+            user=OuterRef("user"),
+            client_id=OuterRef("client_id"),
+            report__roundMs__gte=SKILL_MIN_KO_MS,
+            report__roundMs__lt=10**9,
+        )
+        .annotate(ms=Cast(KT("report__roundMs"), FloatField()))
+        .values("ms")[:1],
+        output_field=FloatField(),
+    )
+
+
+class SkillsView(_InternalView):
+    """P10: every account's latest battles per exercise, for the battle
+    server's skill estimates. Only nicknames and valid reps leave.
+
+    A battle played to time counts its reps. A KO battle counts its reps
+    scaled to a full round when it lasted at least SKILL_MIN_KO_MS and its
+    length is known, and is left out otherwise; so is a battle a player left
+    (forfeit, disconnect). The latest `limit` battles that count are sent.
+    """
+
+    def handle(self, request):
+        limit = request.data.get("limit", SKILL_RECENT)
+        if (
+            not isinstance(limit, int)
+            or isinstance(limit, bool)
+            or not 1 <= limit <= SKILL_RECENT_MAX
+        ):
+            return Response(
+                {"limit": [f"An integer from 1 to {SKILL_RECENT_MAX}."]},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+        # Battles that count, decided in the database: a KO's length is the
+        # battle server's when it has one, and only else the phone's report.
+        # Then only the latest `limit` of them per account and exercise leave
+        # the database.
+        minimum = timedelta(milliseconds=SKILL_MIN_KO_MS)
+        rows = (
+            Match.objects.filter(
+                exercise__in=["push_up", "squat"], reason__in=["time_up", "ko"]
+            )
+            .annotate(server_length=_server_length(), reported_ms=_reported_length())
+            .filter(
+                Q(reason="time_up")
+                | Q(server_length__gte=minimum)
+                | Q(server_length__isnull=True, reported_ms__isnull=False)
+            )
+            .annotate(
+                rank=Window(
+                    RowNumber(),
+                    partition_by=[F("user_id"), F("exercise")],
+                    order_by=[F("played_at").desc(), F("id").desc()],
+                )
+            )
+            .filter(rank__lte=limit)
+            .order_by("user_id", "exercise", "-played_at", "-id")
+            .values_list(
+                "user_id",
+                "user__nickname",
+                "exercise",
+                "my_reps",
+                "reason",
+                "server_length",
+                "reported_ms",
+            )
+        )
+        players = {}
+        for user_id, nickname, exercise, reps, reason, server, reported in rows:
+            if reason == "ko":
+                ms = server.total_seconds() * 1000 if server is not None else reported
+                value = round(reps * SKILL_ROUND_MS / min(ms, SKILL_ROUND_MS), 2)
+            else:
+                value = reps
+            player = players.setdefault(
+                user_id,
+                {"player_id": str(user_id), "display_name": nickname, "recent": {}},
+            )
+            player["recent"].setdefault(exercise, []).append(value)
+        return Response({"players": list(players.values())})
