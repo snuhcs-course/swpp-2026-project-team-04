@@ -41,7 +41,10 @@ def healthy(url, timeout=TIMEOUT_S):
 
 
 def notify(webhook, text, timeout=5.0):
-    """Posts `text` to a Discord or Slack style webhook; never raises."""
+    """Posts `text` to a Discord or Slack style webhook within `timeout` s in all; never raises.
+
+    The socket timeout is per read, so the whole request runs in a thread with a deadline.
+    """
     if not webhook:
         return False
     body = json.dumps({"content": text, "text": text}).encode()
@@ -49,11 +52,19 @@ def notify(webhook, text, timeout=5.0):
         webhook, data=body, method="POST",
         headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
     )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return 200 <= response.status < 300
-    except Exception:
-        return False
+    outcome = []
+
+    def post():
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                outcome.append(200 <= response.status < 300)
+        except Exception:
+            outcome.append(False)
+
+    thread = threading.Thread(target=post, daemon=True)
+    thread.start()
+    thread.join(timeout)
+    return bool(outcome) and outcome[0]
 
 
 def env_value(path, key):

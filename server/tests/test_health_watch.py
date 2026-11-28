@@ -35,6 +35,7 @@ class Endpoint:
                 self.end_headers()
 
             def do_POST(self):
+                time.sleep(endpoint.delay)
                 length = int(self.headers["Content-Length"])
                 endpoint.agents.append(self.headers["User-Agent"])
                 endpoint.posts.append(json.loads(self.rfile.read(length)))
@@ -215,6 +216,31 @@ def test_the_alert_is_posted_as_json(api):
     assert health_watch.notify(api.url, "hello")
     assert api.posts == [{"content": "hello", "text": "hello"}]
     assert api.agents == ["GymRats-ops/1.0"]
+
+
+def test_a_webhook_that_trickles_its_answer_is_given_up_after_the_limit():
+    """Each byte comes before the socket timeout, but the whole answer takes far longer."""
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen()
+
+    def trickle():
+        conn, _ = listener.accept()
+        conn.recv(4096)
+        try:
+            for byte in b"HTTP/1.1 200 OK\r\nX-Slow: " + b"a" * 40:
+                conn.sendall(bytes([byte]))
+                time.sleep(0.05)
+        except OSError:
+            pass
+        conn.close()
+
+    threading.Thread(target=trickle, daemon=True).start()
+    started = time.monotonic()
+    ok = health_watch.notify(f"http://127.0.0.1:{listener.getsockname()[1]}/hook", "x", timeout=0.3)
+    took = time.monotonic() - started
+    listener.close()
+    assert not ok and took < 1.0
 
 
 def test_no_webhook_or_a_failing_one_does_not_raise(api):
