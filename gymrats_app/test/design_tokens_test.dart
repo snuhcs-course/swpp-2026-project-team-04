@@ -95,6 +95,7 @@ const _checked = [
   'lib/widgets/tutorial_draft.dart',
   'lib/widgets/tutorial_figure_painters.dart',
   'lib/widgets/tutorial_game_shot.dart',
+  'lib/widgets/tutorial_modes.dart',
   'lib/widgets/tutorial_person.dart',
   'lib/widgets/tutorial_setup_scenes.dart',
   'lib/widgets/tutorial_welcome.dart',
@@ -103,6 +104,12 @@ const _checked = [
   'lib/widgets/victory_overlay.dart',
   'lib/widgets/victory_rig_data.dart',
   'lib/widgets/victory_scene.dart',
+  'lib/widgets/weekly_rankings_banner.dart',
+  'lib/widgets/weekly_rankings_empty_card.dart',
+  'lib/widgets/weekly_rankings_my_card.dart',
+  'lib/widgets/weekly_rankings_row.dart',
+  'lib/widgets/weekly_rankings_rules_sheet.dart',
+  'lib/widgets/weekly_rankings_tabs.dart',
 ];
 
 /// Pattern and what it catches.

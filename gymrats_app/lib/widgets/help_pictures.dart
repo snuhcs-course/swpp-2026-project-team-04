@@ -4,6 +4,7 @@ import '../models/exercise_type.dart';
 import '../models/tutorial_page.dart';
 import '../services/feedback/coach_script.dart';
 import 'tutorial_draft.dart';
+import 'tutorial_modes.dart';
 import 'tutorial_setup_scenes.dart';
 import 'tutorial_welcome.dart';
 
@@ -19,14 +20,15 @@ class HelpPicture extends StatelessWidget {
   final TutorialPage page;
 
   /// The board of a page's picture (A12 design `TutDraft`, 316 x 248); the
-  /// page about the game is taller ([welcomeHeight], `TutX` g0).
+  /// two pages about the game are taller ([welcomeHeight], `TutX` g0 and
+  /// A13 `TutModes`).
   static const width = 316.0;
   static const height = 248.0;
   static const welcomeHeight = 326.0;
 
   /// The board [page]'s picture is drawn on.
   static Size sizeOf(TutorialPage page) =>
-      Size(width, page.step == TutorialStep.welcome ? welcomeHeight : height);
+      Size(width, page.exercise == null ? welcomeHeight : height);
 
   /// What a screen reader hears for [page]'s picture: the A12 design's
   /// `aria-label`, its two misspelled particles fitted (user 2026-11-28).
@@ -52,6 +54,7 @@ class HelpPicture extends StatelessWidget {
       TutorialStep.average ||
       TutorialStep.fail => TutorialDraftLabel.wayB(page.exercise!),
       TutorialStep.welcome => TutorialWelcome.label,
+      TutorialStep.modes => TutorialModes.label,
       TutorialStep.report => TutorialCoachTalk.label(
         CoachVoice.of(TutorialCoachTalk.speaker),
       ),
@@ -77,6 +80,7 @@ class HelpPicture extends StatelessWidget {
         step: page.step,
       ),
       TutorialStep.welcome => const TutorialWelcome(),
+      TutorialStep.modes => const TutorialModes(),
       TutorialStep.report => const TutorialCoachTalk(),
     };
     // A drawing scaled as a whole: its words keep the drawing's size

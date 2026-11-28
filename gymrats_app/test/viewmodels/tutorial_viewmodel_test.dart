@@ -10,18 +10,21 @@ void main() {
   const squat = ExerciseType.squat;
 
   group('pages', () {
-    test('the game page, then every push-up page, then every squat page, '
-        'in battle order', () {
+    test('the two game pages, then every push-up page, then every squat '
+        'page, in battle order', () {
       final pages = TutorialViewModel().pages;
+      const game = [TutorialStep.welcome, TutorialStep.modes];
       expect(pages, [
         TutorialPage.welcome,
+        TutorialPage.modes,
         for (final step in TutorialStep.values)
-          if (step != TutorialStep.welcome) TutorialPage(pushUp, step),
+          if (!game.contains(step)) TutorialPage(pushUp, step),
         for (final step in TutorialStep.values)
-          if (step != TutorialStep.welcome && step != TutorialStep.average)
+          if (!game.contains(step) && step != TutorialStep.average)
             TutorialPage(squat, step),
       ]);
-      expect(pages, hasLength(22));
+      expect(pages, hasLength(23));
+      expect(pages[2], const TutorialPage(pushUp, TutorialStep.intro));
       // Combo comes after the grades and before fever, for both.
       for (final exercise in [pushUp, squat]) {
         final steps = [
@@ -49,7 +52,7 @@ void main() {
       expect(TutorialViewModel.earnsAverage(pushUp, rules), isFalse);
       final pages = TutorialViewModel(rules: rules).pages;
       expect(pages.where((page) => page.step == TutorialStep.average), isEmpty);
-      expect(pages, hasLength(21));
+      expect(pages, hasLength(22));
     });
   });
 
@@ -75,7 +78,7 @@ void main() {
 
     test('next and previous turn one page and tell the screen', () {
       expect(tutorial.next(), isTrue);
-      expect(tutorial.page, const TutorialPage(pushUp, TutorialStep.intro));
+      expect(tutorial.page, TutorialPage.modes);
       expect(tutorial.isFirst, isFalse);
       expect(tutorial.previous(), isTrue);
       expect(tutorial.index, 0);
@@ -98,24 +101,25 @@ void main() {
 
     test('an exercise tab jumps to that exercise\'s first page', () {
       expect(tutorial.showExercise(squat), isTrue);
-      expect(tutorial.index, 12);
+      expect(tutorial.index, 13);
       expect(tutorial.page, const TutorialPage(squat, TutorialStep.intro));
       expect(tutorial.exercise, squat);
       expect(tutorial.showExercise(squat), isFalse);
       expect(tutorial.showExercise(pushUp), isTrue);
-      expect(tutorial.index, 1);
+      expect(tutorial.index, 2);
     });
 
     test('counts pages per exercise, as "푸시업 3 / 11" does', () {
-      expect(tutorial.firstIndexOf(pushUp), 1);
-      expect(tutorial.firstIndexOf(squat), 12);
+      expect(tutorial.firstIndexOf(pushUp), 2);
+      expect(tutorial.firstIndexOf(squat), 13);
       expect(tutorial.countOf(pushUp), 11);
       expect(tutorial.countOf(squat), 10);
-      expect(tutorial.positionOf(0), (1, 1));
-      expect(tutorial.positionOf(1), (1, 11));
-      expect(tutorial.positionOf(11), (11, 11));
-      expect(tutorial.positionOf(12), (1, 10));
-      expect(tutorial.positionOf(21), (10, 10));
+      expect(tutorial.positionOf(0), (1, 2));
+      expect(tutorial.positionOf(1), (2, 2));
+      expect(tutorial.positionOf(2), (1, 11));
+      expect(tutorial.positionOf(12), (11, 11));
+      expect(tutorial.positionOf(13), (1, 10));
+      expect(tutorial.positionOf(22), (10, 10));
     });
   });
 
@@ -128,6 +132,7 @@ void main() {
       final start = telemetry.pending.single;
       expect(start['event'], 'tutorial_started');
       expect(start['pages_total'], tutorial.pages.length);
+      expect(start['pages_total'], 23);
     });
 
     test('완료 on the last page is completed with that page', () {

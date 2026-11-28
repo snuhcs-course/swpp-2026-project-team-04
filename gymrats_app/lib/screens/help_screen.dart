@@ -166,10 +166,9 @@ class _HelpScreenState extends State<HelpScreen> {
                     _PageDots(
                       count: count,
                       current: number - 1,
-                      label: _tutorial.exercise == null
-                          ? '${HelpRules.sectionName(null)} 페이지'
-                          : '${HelpRules.sectionName(_tutorial.exercise)} '
-                                '$count장 중 $number장',
+                      label:
+                          '${HelpRules.sectionName(_tutorial.exercise)} '
+                          '$count장 중 $number장',
                     ),
                     if (hint) ...[
                       const SizedBox(height: AppSpacing.s12),

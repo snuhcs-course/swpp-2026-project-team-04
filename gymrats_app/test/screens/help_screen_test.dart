@@ -12,6 +12,7 @@ import 'package:gymrats_app/services/telemetry/telemetry_service.dart';
 import 'package:gymrats_app/theme/app_theme.dart';
 import 'package:gymrats_app/widgets/accent_button.dart';
 import 'package:gymrats_app/widgets/help_pictures.dart';
+import 'package:gymrats_app/widgets/tutorial_modes.dart';
 import 'package:gymrats_app/widgets/help_rules.dart';
 import 'package:gymrats_app/viewmodels/tutorial_viewmodel.dart';
 import 'package:gymrats_app/widgets/sound_cues.dart';
@@ -85,8 +86,8 @@ void main() {
   final order = HelpRules.order;
   final pages = HelpRules.pages;
 
-  testWidgets('다음 turns through the game page, every push-up page, then '
-      'every squat page', (tester) async {
+  testWidgets('다음 turns through the two game pages, every push-up page, '
+      'then every squat page', (tester) async {
     final handle = tester.ensureSemantics();
     await show(tester, HelpScreen(onStart: () {}));
     expect(find.text('게임 규칙'), findsOneWidget);
@@ -101,8 +102,9 @@ void main() {
       if (pages[index].hasBody) {
         expect(find.text(pages[index].body), findsOneWidget);
       } else {
-        // The KO page is told by its title alone: no empty line under it.
-        expect(page.step, TutorialStep.ko);
+        // The KO and modes pages are told by their titles alone: no empty
+        // line under them.
+        expect(page.step, anyOf(TutorialStep.ko, TutorialStep.modes));
         expect(find.text(''), findsNothing);
       }
       expect(
@@ -112,11 +114,7 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.bySemanticsLabel(
-          page.exercise == null
-              ? '$name 페이지'
-              : '$name $count장 중 ${index - first + 1}장',
-        ),
+        find.bySemanticsLabel('$name $count장 중 ${index - first + 1}장'),
         findsOneWidget,
       );
     }
@@ -129,7 +127,7 @@ void main() {
     await show(tester, HelpScreen(onStart: () {}));
     expect(find.text('이전'), findsNothing);
     await tapNext(tester);
-    expect(shownPage(tester).step, TutorialStep.intro);
+    expect(shownPage(tester), TutorialPage.modes);
     await tester.tap(find.text('이전'));
     await tester.pumpAndSettle();
     expect(shownPage(tester), TutorialPage.welcome);
@@ -199,6 +197,7 @@ void main() {
     final handle = tester.ensureSemantics();
     await show(tester, HelpScreen(onStart: () {}), size: const Size(360, 780));
     await tapNext(tester);
+    await tapNext(tester);
     for (final (name, chosen, position) in const [
       ('푸시업', true, '탭 2개 중 1번째'),
       ('스쿼트', false, '탭 2개 중 2번째'),
@@ -256,18 +255,22 @@ void main() {
     expect(edge.width, 2);
 
     /// The fill behind a tab's name, and the name's weight.
+    /// (Page 2's picture names the exercises too; the tab comes first.)
     (Color?, FontWeight?) half(String name) {
+      final tab = find.text(name).first;
       final box = tester.widget<DecoratedBox>(
-        find
-            .ancestor(of: find.text(name), matching: find.byType(DecoratedBox))
-            .first,
+        find.ancestor(of: tab, matching: find.byType(DecoratedBox)).first,
       );
       return (
         (box.decoration as BoxDecoration).color,
-        tester.widget<Text>(find.text(name)).style?.fontWeight,
+        tester.widget<Text>(tab).style?.fontWeight,
       );
     }
 
+    expect(half('푸시업'), (AppColors.card, FontWeight.w500));
+    expect(half('스쿼트'), (AppColors.card, FontWeight.w500));
+    // The second game page belongs to neither exercise either.
+    await tapNext(tester);
     expect(half('푸시업'), (AppColors.card, FontWeight.w500));
     expect(half('스쿼트'), (AppColors.card, FontWeight.w500));
     await tapNext(tester);
@@ -324,7 +327,7 @@ void main() {
   });
 
   testWidgets('at 360 wide the picture fills its card edge to edge: 316×248, '
-      'the game page 316×326', (tester) async {
+      'the two game pages 316×326', (tester) async {
     await show(tester, HelpScreen(onStart: () {}), size: const Size(360, 780));
     Size picture() => tester.getSize(
       find.byWidgetPredicate(
@@ -334,15 +337,19 @@ void main() {
     expect(picture(), const Size(316, 326));
     expect(HelpPicture.sizeOf(TutorialPage.welcome), const Size(316, 326));
     await tapNext(tester);
+    expect(picture(), const Size(316, 326));
+    expect(HelpPicture.sizeOf(TutorialPage.modes), const Size(316, 326));
+    await tapNext(tester);
     expect(picture(), const Size(316, 248));
-    expect(HelpPicture.sizeOf(order[1]), const Size(316, 248));
+    expect(HelpPicture.sizeOf(order[2]), const Size(316, 248));
   });
 
   testWidgets('the current page has the long lime dot with an ink edge; 이전 '
       'is 104×58 beside the one 다음', (tester) async {
     await show(tester, HelpScreen(onStart: () {}), size: const Size(360, 780));
-    await tapNext(tester);
-    await tapNext(tester);
+    for (var page = 0; page < 3; page++) {
+      await tapNext(tester);
+    }
     final dots = find.byType(AnimatedContainer);
     expect(dots, findsNWidgets(11));
     for (var index = 0; index < 11; index++) {
@@ -365,6 +372,26 @@ void main() {
       const Size(104, 58),
     );
     expect(find.byType(AccentButton), findsOneWidget);
+  });
+
+  testWidgets('page 2 about the game: its title alone, 게임 소개, two dots '
+      'with the second on, and the modes picture', (tester) async {
+    final handle = tester.ensureSemantics();
+    await show(tester, HelpScreen(onStart: () {}), size: const Size(360, 780));
+    final dots = find.byType(AnimatedContainer);
+    expect(dots, findsNWidgets(2));
+    expect(find.bySemanticsLabel('게임 소개 2장 중 1장'), findsOneWidget);
+    await tapNext(tester);
+    expect(shownPage(tester), TutorialPage.modes);
+    expect(find.text('온라인 대결과 아케이드'), findsOneWidget);
+    expect(find.text('게임 소개'), findsOneWidget);
+    expect(dots, findsNWidgets(2));
+    expect(tester.getSize(dots.at(0)), const Size(10, 10));
+    expect(tester.getSize(dots.at(1)), const Size(26, 10));
+    expect(find.bySemanticsLabel('게임 소개 2장 중 2장'), findsOneWidget);
+    expect(find.byType(TutorialModes), findsOneWidget);
+    expect(find.bySemanticsLabel(TutorialModes.label), findsOneWidget);
+    handle.dispose();
   });
 
   testWidgets('swiping turns the pages too', (tester) async {

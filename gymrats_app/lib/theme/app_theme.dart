@@ -2345,3 +2345,114 @@ extension FriendText on TextTheme {
   TextStyle get friendRetry =>
       _friend(family: AppFonts.display, size: 24, height: 30 / 24);
 }
+
+/// The text styles of the weekly rankings screen and its rules sheet (A13
+/// design `RankD1`, `RankRules`), made from the theme's body style. The
+/// rankings' big numbers use the number styles that already have their
+/// sizes: [StatsText.statsAverage] (40), [ArchiveText.archiveTotal] (32),
+/// [ArchiveText.archiveGain] (26), [StatsText.statsCount] (20) and
+/// [ArchiveText.archiveScore] (18). Ink unless the screen colors them.
+extension RankingText on TextTheme {
+  TextStyle _ranking({
+    required String family,
+    required double size,
+    FontWeight weight = FontWeight.w400,
+    double? height,
+  }) => bodyMedium!.copyWith(
+    fontFamily: family,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: 0,
+    color: AppColors.ink,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
+
+  /// The week on the ink banner, "11월 4주차": Do Hyeon 21, tight.
+  TextStyle get rankingWeekName =>
+      _ranking(family: AppFonts.display, size: 21, height: 1);
+
+  /// The list's name, "TOP 50", "나와 친구 4명": Do Hyeon 18.
+  TextStyle get rankingListTitle =>
+      _ranking(family: AppFonts.display, size: 18);
+
+  /// "점수 규칙" on the rules sheet: Do Hyeon 28.
+  TextStyle get rankingSheetTitle =>
+      _ranking(family: AppFonts.display, size: 28);
+
+  /// A two-digit rank in a row's rank cell: Oxanium 800, 17 (one digit is
+  /// [StatsText.statsCount], 20).
+  TextStyle get rankingRowRankWide =>
+      _ranking(family: AppFonts.number, size: 17, weight: FontWeight.w800);
+
+  /// The points in the goal line, "3" of "3위까지 3점": Oxanium 800, 11.5.
+  TextStyle get rankingGoalNumber =>
+      _ranking(family: AppFonts.number, size: 11.5, weight: FontWeight.w800);
+
+  /// 전체 and 친구 on the scope tab, and "위" after my rank: 15 (bold when
+  /// chosen).
+  TextStyle get rankingScopeTab =>
+      _ranking(family: AppFonts.body, size: 15, weight: FontWeight.w500);
+
+  /// 푸시업 and 스쿼트 on the exercise tab, and the time left on the orange
+  /// flag: 13.5 (bold when chosen).
+  TextStyle get rankingExerciseTab =>
+      _ranking(family: AppFonts.body, size: 13.5, weight: FontWeight.w500);
+
+  /// A player's name in my card and in a row: 14 bold on 18.
+  TextStyle get rankingName => _ranking(
+    family: AppFonts.body,
+    size: 14,
+    weight: FontWeight.w700,
+    height: 18 / 14,
+  );
+
+  /// A record line, "4전 2승 · KO 1", and my card's goal line without a bar:
+  /// 11 on 14.
+  TextStyle get rankingRecord =>
+      _ranking(family: AppFonts.body, size: 11, height: 14 / 11);
+
+  /// The scope over my rank ("전체"), the goal line beside its bar and the
+  /// "점" on the rules sheet: 10.5 bold.
+  TextStyle get rankingTiny =>
+      _ranking(family: AppFonts.body, size: 10.5, weight: FontWeight.w700);
+
+  /// The week's dates, the list's right-hand note and the "점" after a row's
+  /// points: 11.5.
+  TextStyle get rankingSmall => _ranking(family: AppFonts.body, size: 11.5);
+
+  /// A rule's description on the rules sheet: 11.5 on 15.
+  TextStyle get rankingRuleDetail =>
+      _ranking(family: AppFonts.body, size: 11.5, height: 15 / 11.5);
+
+  /// The "점" after my points, and the rules sheet's lead line: 13.
+  TextStyle get rankingLead => _ranking(family: AppFonts.body, size: 13);
+
+  /// The "나" mark after my name in my row: 9.5 bold.
+  TextStyle get rankingMeMark =>
+      _ranking(family: AppFonts.body, size: 9.5, weight: FontWeight.w700);
+
+  /// The rules sheet's four notes: 12.5 on 17.
+  TextStyle get rankingRuleNote =>
+      _ranking(family: AppFonts.body, size: 12.5, height: 17 / 12.5);
+
+  /// A rule's name on the rules sheet, "KO승": 15 bold.
+  TextStyle get rankingRuleName =>
+      _ranking(family: AppFonts.body, size: 15, weight: FontWeight.w700);
+
+  /// "아직 비교할 친구가 없어요" on the no-friends card: 15 bold on 20.
+  TextStyle get rankingEmptyTitle => _ranking(
+    family: AppFonts.body,
+    size: 15,
+    weight: FontWeight.w700,
+    height: 20 / 15,
+  );
+
+  /// The no-friends card's second line: 12 on 17.
+  TextStyle get rankingEmptyLine =>
+      _ranking(family: AppFonts.body, size: 12, height: 17 / 12);
+
+  /// "친구 추가하러 가기" on its white button: 14.5 bold.
+  TextStyle get rankingButton =>
+      _ranking(family: AppFonts.body, size: 14.5, weight: FontWeight.w700);
+}

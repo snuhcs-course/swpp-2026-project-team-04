@@ -34,6 +34,8 @@ void main() {
     expect(HelpRules.sectionName(null), '게임 소개');
     expect(HelpRules.sectionName(ExerciseType.squat), '스쿼트');
     expect(HelpRules.of(TutorialPage.welcome).body, '온라인 대결과 아케이드에서 겨뤄요.');
+    expect(HelpRules.of(TutorialPage.modes).title, '온라인 대결과 아케이드');
+    expect(HelpRules.of(TutorialPage.modes).hasBody, isFalse);
     expect(HelpRules.comboBonus, battleRules.comboBonus);
     expect(HelpRules.secondsText(const Duration(seconds: 2)), '2');
     expect(HelpRules.secondsText(const Duration(milliseconds: 1500)), '1.5');
@@ -51,15 +53,15 @@ void main() {
     expect(HelpRules.exerciseName(ExerciseType.squat), '스쿼트');
   });
 
-  test('every page has a title and a body but the KO page, told by its title '
-      'alone; the grades with their points', () {
+  test('every page has a title and a body but the KO and modes pages, told '
+      'by their titles alone; the grades with their points', () {
     for (final exercise in ExerciseType.values) {
       for (final step in TutorialStep.values) {
         final page = words(exercise, step);
         expect(page.title, isNotEmpty, reason: '$exercise $step');
         expect(
           page.hasBody,
-          step != TutorialStep.ko,
+          step != TutorialStep.ko && step != TutorialStep.modes,
           reason: '$exercise $step',
         );
         expect(page.body.isNotEmpty, page.hasBody, reason: '$exercise $step');
@@ -121,9 +123,11 @@ void main() {
     }
   });
 
-  test('the 22 pages say what the A12 design says (TutX PAGES)', () {
+  test('the 23 pages say what the A12 design says (TutX PAGES), with the '
+      'A13 page 2', () {
     const design = [
       ('운동으로 겨루는 1:1 대결', '온라인 대결과 아케이드에서 겨뤄요.'),
+      ('온라인 대결과 아케이드', ''),
       ('푸시업으로 1:1 대결해요', '30초 동안 상대와 겨뤄요.'),
       ('초록 선 안에 몸을 맞춰요', '선 안에 들어오면 준비 완료예요.'),
       ('점수로 겨루는 대결이에요', '한 번 할 때마다 체력 바가 밀려요.'),
