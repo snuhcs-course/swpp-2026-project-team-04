@@ -2593,7 +2593,19 @@ No server, camera or device is needed:
     - the still look;
     - the held scene of all five results, and the same scene without the hold;
     - the late chip's curve.
-- **Coverage:** not measured on this PC (the local rule). TODO(g1fted13): fill in the per-layer numbers from the PR's CI comment "Tests and coverage (GitHub Actions)".
+- **Coverage:** not measured on this PC (the local rule). The numbers come from the PR #122 CI comment "Tests and coverage (GitHub Actions)" on `53f5b90` (2026-11-29 03:48 KST, [run 46176525062](https://github.com/snuhcs-course/swpp-2026-project-team-04/actions/runs/46176525062), [comment](https://github.com/snuhcs-course/swpp-2026-project-team-04/pull/122#issuecomment-7244068328)). CI measures one test file at a time in four shards; its app code is the same as `dc17bd7` (`53f5b90` changed only two test-file comments and the notes).
+
+  | Component | Frameworks | Target | Actual | Date | Command / Report |
+  |---|---|---|---|---|---|
+  | Model | flutter_test | 90% | 99.5% (1106/1111) | 11/29 | CI `coverage_per_file.sh` + `coverage_by_layer.py` |
+  | ViewModel | flutter_test, fakes | 90% | 98.8% (3138/3176) | 11/29 | same |
+  | Service | flutter_test, MockClient, fakes | 85% | 97.4% (5773/5926) | 11/29 | same |
+  | View | flutter_test (widget) | 75% | 98.3% (20387/20745) | 11/29 | same |
+  | API server | pytest, pytest-django, pytest-cov | 90% | 98% (429 passed; `server/` unchanged) | 11/29 | CI `pytest --cov=accounts --cov=matches --cov=gymrats` |
+
+  - Every target is met; the total is 98.2% (31059/31640).
+  - CI's `flutter test` gave 5781 passed, 10 skipped, 0 failed.
+  - CI left five files out of the coverage numbers after a 240 s timeout, none of them this change's: `simulated_player_test.dart`, `iter5_pose_evaluation_test.dart`, `arcade_star_judge_test.dart`, `sound_services_test.dart` and `online_battle_session_test.dart`. They ran in its `flutter test`.
 - **Review:** the `reviewer` subagent ran eight times, once or more per phase.
   - 가 (pure model):
     - Run 1: CHANGES_REQUESTED. Major: no "Design doc changes" block. Minor: no three-character rank cell test, a comment about the outside row, no equal-lowest-rows case.
@@ -2634,3 +2646,33 @@ No server, camera or device is needed:
 - 8.8 Screen reader → victory_ladder_test 'chipLabel reads rank, week and battle in one sentence', 'the ladder is decoration: screen readers skip it'
 - 8.9 Tokens → design_tokens_test; app_theme_test
 - Wiring (user, 2026-11-29) → score_ladder_wiring_test 'reads the global ranking once, when match.start sets the start', 'the result opens at once when the ranking fails', '… never comes'; online_battle_result_ranked_test
+
+#### 2026-11-29 · code at commits `a2560a3` and `221401d` (on PR #122 `53f5b90`) · step A15 `feat/iter5-score-ladder`, the Codex follow-up
+Codex's review of `53f5b90` (PR #122, two P2 threads on `gymrats_app/lib/models/ranking_ladder.dart`) found two problems. The user decided to fix both in this PR.
+- **Starting slots (`a2560a3`):** another player may play while my battle runs. Their row's start compared their points after it with mine before it, so it could start on the wrong side of my row. Rows now start by their points in the ranking before (by their points now when they were not in it) and end by their points now. Row picking is unchanged. With the same points before and after, every start is the design's: the design table and the golden pass unchanged.
+- **The week reset (`221401d`):** a battle across Monday 00:00 KST has a ranking before from last week and one after from the new week. `RankingSnapshot` now keeps the ranking's `weekStart`. Across two weeks there is no ladder and nothing of last week is used. The chip shows once the new week has the battle (`after.me.battles == 1`), as on the late path. Rankings of the same week, or of a week not known, work as before.
+
+I ran these on Windows:
+
+```sh
+cd gymrats_app
+flutter analyze
+flutter test test/models/ranking_ladder_test.dart test/viewmodels/ranking_ladder_viewmodel_test.dart test/widgets/victory_ladder_test.dart
+flutter test
+```
+
+- `flutter analyze` found no issues.
+- The three related files: 179 passed, 0 failed.
+- The full `flutter test`: 5793 passed, 0 failed, 11 skipped (the same skips as above).
+- **Coverage:** TODO(g1fted13): the numbers from the CI comment on the pushed head.
+- **Review:** the `reviewer` subagent checked each fix. Starting slots: APPROVE with one Minor (no direct test of the first battle or a newcomer), and two tests were added. The week reset: APPROVE with two Minors (a doc line named the wrong check; no test of the new week without the battle yet), both fixed.
+
+| Layer | File | What it covers |
+|---|---|---|
+| Model | `test/models/ranking_ladder_test.dart` (updated) | a player who played during my battle starts where the ranking before had them; my first battle with rows that moved; a newcomer among rows that moved; across a week reset: the new week's first battle is late (never the ladder) with the new week's chip, one battle more than last week is not this battle, the new week without the battle yet confirms nothing, no row last week is still late, the same week gives the ladder, a week not known counts as the same |
+| ViewModel | `test/viewmodels/ranking_ladder_viewmodel_test.dart` (updated) | across a week reset only the chip with the new week's values, no ladder, no more reads; `snapshotOf` keeps the week |
+| View | `test/widgets/victory_ladder_test.dart` (updated) | across a week reset on screen: no ladder and nothing of last week, the scene ends without the hold, then only the chip '주간 랭킹 7위, 이번 주 10점, 이번 판 10점' |
+
+Acceptance criteria → tests (the user's decision on the two Codex findings):
+- Rows start by their points before, end by their points now → 'a player who played during my battle starts where the ranking before had them', 'my first battle: rows above me start in the order before', 'a newcomer starts by its points now among rows that moved'; unchanged results → the design table and golden tests, unmodified
+- Across a week reset only the chip, no ladder, nothing of last week → "the new week's first battle: late, never the ladder", "across a week reset: only the chip, with the new week's values", "across a week reset: no ladder and nothing of last week, then only the chip with the new week's values"
