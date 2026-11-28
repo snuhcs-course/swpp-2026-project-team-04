@@ -132,6 +132,13 @@ void main() {
       expect(plan.bot.poseIntervalMs, 100);
       expect(plan.bot.thinkMs, (2000, 8000));
       expect(plan.bot.url.toString(), 'ws://127.0.0.1:8090/ws/v1/battle');
+      // The app gives up an upgrade after 8 s (online_battle_session.dart).
+      expect(plan.bot.connectTimeoutMs, 8000);
+      expect(plan.toJson()['connect_timeout_ms'], 8000);
+      expect(
+        planFrom({'connect-timeout-ms': '3000'}).bot.connectTimeoutMs,
+        3000,
+      );
     });
 
     test('options override the plan', () {
@@ -176,6 +183,32 @@ void main() {
       }
     });
 
+    test('bot ids are the same in the run and in the skill table', () {
+      expect(botId('load', 7, 200), 'load-007');
+      expect(botId('load', 7, 1000), 'load-0007');
+      final ids = SyntheticSkills(
+        accounts: 5,
+        bots: 3,
+      ).records().map((r) => r.id);
+      expect(ids, containsAll(['load-001', 'load-002', 'load-003']));
+    });
+
+    test('each bot in the table has its own estimate, not the average', () {
+      final index = SkillIndex.build(
+        SyntheticSkills(accounts: 50, bots: 20).records(),
+      );
+      final estimates = {
+        for (var i = 1; i <= 20; i++)
+          index.estimateOf(botId('load', i, 20), 'push_up'),
+      };
+      // Without the bots' records all twenty would be the one average.
+      expect(estimates.length, greaterThan(3));
+      expect(
+        SyntheticSkills(accounts: 5).records().map((r) => r.id),
+        isNot(contains('load-001')),
+      );
+    });
+
     test('the index bench reports build and lookup cost per size', () {
       final row = measureSize(50, repeats: 1);
       expect(row['accounts'], 50);
@@ -204,11 +237,32 @@ void main() {
       expect(report.queueWait(simulated: true).min, greaterThanOrEqualTo(400));
       expect(report.queueWait(simulated: false).max, lessThan(400));
       expect(report.repAck.count, greaterThan(0));
+      final simulated = report.rounds.singleWhere((r) => r.simulated == true);
+      expect(simulated.opponentName, startsWith('Rat '));
+      expect(report.simulatedOpponents, 1);
       final json = report.toJson();
       expect(json['succeeded'], 3);
       expect((json['queue_wait_ms'] as Map)['histogram_all'], hasLength(8));
       expect(report.summaryLines().first, startsWith('users=3 connected=3'));
     });
+
+    test(
+      'simulated opponents copy accounts near each bot\'s own estimate',
+      () async {
+        // Every bot waits alone (wait 0), so each gets a simulated opponent.
+        final server = await _server(
+          virtualAfterMs: 0,
+          skills: SyntheticSkills(accounts: 200, bots: 12),
+        );
+        addTearDown(server.close);
+        final report = await runLoad(
+          LoadPlan(bot: _bot(server), users: 12, rampMs: 600),
+        );
+        expect(report.matchedSimulated, greaterThanOrEqualTo(6));
+        // With every bot at the average, all would copy the same account.
+        expect(report.simulatedOpponents, greaterThan(2));
+      },
+    );
 
     test('poses go to the real opponent during the round', () async {
       final server = await _server();

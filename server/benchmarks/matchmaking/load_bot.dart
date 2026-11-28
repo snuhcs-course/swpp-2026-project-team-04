@@ -25,7 +25,7 @@ class BotConfig {
     this.readyMs = (1000, 3000),
     this.thinkMs = (2000, 8000),
     this.repsPerRound = (8, 25),
-    this.connectTimeoutMs = 10000,
+    this.connectTimeoutMs = 8000,
     this.roundTimeoutMs = 120000,
   });
 
@@ -50,6 +50,8 @@ class BotConfig {
   /// The valid reps a bot plans in a round.
   final (int, int) repsPerRound;
 
+  /// As the app (`online_battle_session.dart`): an upgrade not done in 8 s
+  /// is given up.
   final int connectTimeoutMs;
 
   /// A round still open this long after its `queue.join` is given up.
@@ -64,8 +66,10 @@ class RoundRecord {
   /// From sending `queue.join` to receiving `match.found`.
   int? queueWaitMs;
 
-  /// Whether the opponent was a simulated player (`sim-` id).
+  /// Whether the opponent was a simulated player (`sim-` id), and the name
+  /// it showed (a simulated one shows the copied account's nickname).
   bool? simulated;
+  String? opponentName;
 
   /// From `match.found` to receiving `match.start`.
   int? foundToStartMs;
@@ -85,6 +89,7 @@ class RoundRecord {
     'exercise': exercise,
     'queue_wait_ms': queueWaitMs,
     'simulated': simulated,
+    'opponent_name': opponentName,
     'found_to_start_ms': foundToStartMs,
     'outcome': outcome,
     'result': result,
@@ -328,10 +333,14 @@ class LoadBot {
         _foundAt = _now;
         _durationMs = payload['duration_ms'] as int? ?? _durationMs;
         round.queueWaitMs = _foundAt - _joinedAt;
-        final players = (payload['players'] as List? ?? const [])
-            .cast<Map>()
-            .map((p) => p['player_id'] as String);
-        round.simulated = players.any(SimulatedPlayer.isSimulatedId);
+        final players = (payload['players'] as List? ?? const []).cast<Map>();
+        final opponent = players.where((p) => p['player_id'] != playerId);
+        round.simulated = opponent.any(
+          (p) => SimulatedPlayer.isSimulatedId(p['player_id'] as String),
+        );
+        round.opponentName = opponent.isEmpty
+            ? null
+            : opponent.first['display_name'] as String?;
         state = BotState.inMatch;
         final setup = _between(config.setupMs);
         _later(setup, () {

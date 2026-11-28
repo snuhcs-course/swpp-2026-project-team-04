@@ -80,3 +80,10 @@ void tally(Map<String, int> counts, String key) =>
 Map<String, int> sortedCounts(Map<String, int> counts) => {
   for (final key in counts.keys.toList()..sort()) key: counts[key]!,
 };
+
+/// Bot [i]'s id in a run of [users] bots (`load-001`, …, or `load-0001` past
+/// 999), so the test server's skill table can hold the same ids.
+String botId(String prefix, int i, int users) {
+  final width = math.max(3, '$users'.length);
+  return '$prefix-${'$i'.padLeft(width, '0')}';
+}

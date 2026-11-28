@@ -52,6 +52,7 @@ const clientOptions = {
   'think-ms',
   'reps',
   'round-timeout-ms',
+  'connect-timeout-ms',
   'out',
 };
 
@@ -83,6 +84,7 @@ LoadPlan planFrom(Map<String, String> o) {
       thinkMs: range('think-ms', defaults.thinkMs),
       repsPerRound: range('reps', defaults.repsPerRound),
       roundTimeoutMs: number('round-timeout-ms', defaults.roundTimeoutMs),
+      connectTimeoutMs: number('connect-timeout-ms', defaults.connectTimeoutMs),
     ),
   );
 }

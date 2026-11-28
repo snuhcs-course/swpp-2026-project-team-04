@@ -49,6 +49,7 @@ class LoadPlan {
     'ready_ms': [bot.readyMs.$1, bot.readyMs.$2],
     'think_ms': [bot.thinkMs.$1, bot.thinkMs.$2],
     'reps_per_round': [bot.repsPerRound.$1, bot.repsPerRound.$2],
+    'connect_timeout_ms': bot.connectTimeoutMs,
     'round_timeout_ms': bot.roundTimeoutMs,
     'stop_after_ms': stopAfterMs,
   };
@@ -140,6 +141,14 @@ class LoadReport {
   int get matchedReal => rounds.where((r) => r.simulated == false).length;
   int get matchedSimulated => rounds.where((r) => r.simulated == true).length;
 
+  /// How many different accounts the simulated opponents copied (by their
+  /// nickname): one or two when every bot falls back to the same average
+  /// estimate, many when each bot's own estimate is used.
+  int get simulatedOpponents => {
+    for (final r in rounds)
+      if (r.simulated == true) ?r.opponentName,
+  }.length;
+
   int _sum(int Function(RoundRecord r) f) =>
       rounds.fold(0, (sum, r) => sum + f(r));
 
@@ -165,6 +174,7 @@ class LoadReport {
     'outcomes': outcomes,
     'matched_real': matchedReal,
     'matched_simulated': matchedSimulated,
+    'simulated_opponents_distinct': simulatedOpponents,
     'server_errors': serverErrors,
     'unexpected_closes': unexpectedCloses,
     'connect_ms': connectMs.toJson(),
@@ -190,7 +200,8 @@ class LoadReport {
         'connect_errors=$connectErrors wall=${wallMs}ms',
     'peak connected=$peakConnected queued=$peakQueued in_match=$peakInMatch',
     'rounds=${rounds.length} succeeded=$succeeded failed=$failed '
-        'real=$matchedReal simulated=$matchedSimulated',
+        'real=$matchedReal simulated=$matchedSimulated '
+        '(copying $simulatedOpponents accounts)',
     'outcomes=$outcomes',
     'server_errors=$serverErrors unexpected_closes=$unexpectedCloses',
     'connect: ${connectMs.summary()}',
@@ -209,13 +220,13 @@ class LoadReport {
 /// Runs [plan] and sums it up.
 Future<LoadReport> runLoad(LoadPlan plan) async {
   final seeds = Random(plan.seed);
-  final width = '${plan.users}'.length < 3 ? 3 : '${plan.users}'.length;
   final bots = [
     for (var i = 1; i <= plan.users; i++)
       LoadBot(
         config: plan.bot,
-        playerId: '${plan.idPrefix}-${'$i'.padLeft(width, '0')}',
-        displayName: 'Load ${'$i'.padLeft(width, '0')}',
+        playerId: botId(plan.idPrefix, i, plan.users),
+        displayName:
+            'Load ${botId(plan.idPrefix, i, plan.users).split('-').last}',
         random: Random(seeds.nextInt(1 << 32)),
       ),
   ];

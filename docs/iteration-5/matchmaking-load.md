@@ -22,9 +22,10 @@ figure was set in advance, so none is judged here. Raw numbers of every run: `se
 |---|---|
 | Machine | S1–S4: Apple M4, 10 cores, 16 GB, macOS 27.2.1. TS1–TS2: the team server (AWS Lightsail, Seoul), 2 vCPU Intel Xeon Platinum 8259CL 2.5 GHz, 1.9 GB RAM, Ubuntu 24.04, next to the live services. **In both, client and server on the same machine over loopback** (no network, no TLS, no nginx). |
 | Dart | 3.13.4 (stable). Server and client both AOT-compiled with `dart compile exe` (for the team server cross-compiled on the Mac with `--target-os linux --target-arch x64`), as production builds the battle server (production: Dart 3.13.5, linux-x64, on the team server). The server's mode is in the JSON (`server.compiled`); the client's was added to the client report after these runs, so for them it is a manual note. |
-| Battle server | `BattleServer` defaults, as above. `--accounts 1000 --seed 20`. S3 only: `--virtual-after-ms 0`. |
+| Battle server | `BattleServer` defaults, as above. `--accounts 1000 --seed 20`. S3 only: `--virtual-after-ms 0 --bots 200` (`--bots`: the bots' own records in the skill table, see the note under the results). |
 | Authentication | Development tokens `dev:load-NNN:Load NNN` (the API server is not called per connection). |
 | Client | `--seed 20`, defaults otherwise (see the table above); the bot ids are `load-001` … |
+| Connect timeout | 8 s, as the app (`online_battle_session.dart`), from the S3 rerun on; 10 s in the earlier runs. No upgrade took more than 132 ms in any reported run, so it changed nothing. |
 | Open file limit | `ulimit -n` 1048576 (not a limit here; manual note, not in the JSON). |
 
 ## How to reproduce
@@ -34,10 +35,11 @@ From the repository root:
 mkdir -p /tmp/p20
 dart compile exe server/benchmarks/matchmaking/load_server.dart -o /tmp/p20/load-server
 dart compile exe server/benchmarks/matchmaking/load_client.dart -o /tmp/p20/load-client
-/tmp/p20/load-server --port 8090 --accounts 1000 --out /tmp/p20/s1-server.json &   # S3: add --virtual-after-ms 0
+/tmp/p20/load-server --port 8090 --accounts 1000 --bots 200 --out /tmp/p20/s1-server.json &   # S3: add --virtual-after-ms 0; --bots = --users
 /tmp/p20/load-client --users 200 --ramp-ms 20000 --rounds 3 --out /tmp/p20/s1-client.json
 kill -INT %1                                   # the server writes its report when stopped
-# S2: --users 200 --ramp-ms 0 --rounds 1     S4: --users 1000 --ramp-ms 20000 --rounds 1
+# S2: --users 200 --ramp-ms 0 --rounds 1     S4: --users 1000 --ramp-ms 20000 --rounds 1 (server --bots 1000)
+# --bots is the default 200 now; the reported S1, S2, S4, TS1, TS2 ran before it existed (no bots in the table)
 dart run server/benchmarks/matchmaking/skill_index_bench.dart
 cd server && .venv/bin/python benchmarks/matchmaking/skills_endpoint_bench.py
 ```
@@ -54,7 +56,7 @@ machine, the counts with the same seed and settings should be close but not iden
 |---|---:|---|---:|---|---|
 | S1 steady | 200 | one every 100 ms (20 s ramp), then 2–8 s between rounds | 3 | production | the task's scenario |
 | S2 burst | 200 | all at once | 1 | production | 200 phones joining in the same second |
-| S3 simulated-heavy | 200 | as S1 | 3 | `--virtual-after-ms 0` (not production) | with 200 users online a real opponent is almost always there (S1: 2 of 600 rounds got a simulated one), so this forces the simulated-player path under the same load |
+| S3 simulated-heavy | 200 | as S1 | 3 | `--virtual-after-ms 0` (not production) `--bots 200` | with 200 users online a real opponent is almost always there (S1: 2 of 600 rounds got a simulated one), so this forces the simulated-player path under the same load |
 | S4 headroom | 1000 | 20 s ramp | 1 | production | how far beyond 200 the same machine goes |
 | TS1, TS2 | 200 | as S1, as S2 | 3, 1 | production | S1 and S2 again on the team server |
 
@@ -66,21 +68,30 @@ machine, the counts with the same seed and settings should be close but not iden
 | Peak connected (1 s samples) | 200 | 200 | 200 | 994 |
 | Peak in a match / queued | 198 / 2 | 200 / 2 | 200 / 1 | 994 / 2 |
 | Rounds / succeeded / failed | 600 / 600 / 0 | 200 / 200 / 0 | 600 / 600 / 0 | 1000 / 1000 / 0 |
-| Ended by KO / time up | 395 / 205 | 128 / 72 | 343 / 257 | 686 / 314 |
-| Opponent real / simulated | 598 / 2 | 198 / 2 | 46 / 554 | 1000 / 0 |
+| Ended by KO / time up | 395 / 205 | 128 / 72 | 346 / 254 | 686 / 314 |
+| Opponent real / simulated | 598 / 2 | 198 / 2 | 44 / 556 | 1000 / 0 |
 | Server `error` messages | 0 | 0 | 0 | 1 (`INVALID_STATE`) |
 | Sockets closed by the server | 0 | 0 | 0 | 0 |
-| Connect (upgrade) p50 / p99 / max | 1 / 2 / 3 ms | 20 / 35 / 35 ms | 0 / 1 / 2 ms | 0 / 2 / 7 ms |
-| Queue wait, all: p50 / p90 / p99 / max | 8 ms / 517 ms / 1.88 s / 10.03 s | 9 / 10 / 11 ms / 10.05 s | 33 / 43 / 50 / 51 ms | 5 / 60 / 122 / 260 ms |
-| Queue wait, real opponent: p50 / p99 / max | 2 ms / 1.67 s / 8.35 s | 9 / 11 / 11 ms | 1 / 46 / 46 ms | 5 / 122 / 260 ms |
-| `match.found` → `match.start` p50 / p99 / max | 4.47 / 5.80 / 11.70 s | 4.46 / 5.89 / 10.35 s | 9.90 / 12.55 / 12.95 s | 4.43 / 5.77 / 5.92 s |
-| `rep.submit` → `rep.accepted` p50 / p99 / max | 0 / 1 / 7 ms | 0 / 1 / 11 ms | 0 / 3 / 6 ms | 1 / 2 / 4 ms |
-| Reps sent / acknowledged | 8051 / 8051 | 2753 / 2753 | 8516 / 8516 | 13113 / 13112 |
-| Pose frames sent / received from the opponent | 136 637 / 108 875 | 46 287 / 35 920 | 148 166 / 8 469 | 223 210 / 166 656 |
-| Server event-loop lag p99 / max | 1 / 8 ms | 1 / 2 ms | 1 / 2 ms | 1 / 2 ms |
-| Server CPU, macOS `ps` %cpu (a decaying average, not the 5 s load), mean / max of 5 s samples | 18.4% / 35.3% | 20.7% / 35.7% | 10.4% / 17.8% | 39.5% / 60.5% |
-| Server resident memory, max | 44 MB | 57 MB | 81 MB | 82 MB |
-| Wall time | 162 s | 48 s | 161 s | 58 s |
+| Connect (upgrade) p50 / p99 / max | 1 / 2 / 3 ms | 20 / 35 / 35 ms | 1 / 2 / 4 ms | 0 / 2 / 7 ms |
+| Queue wait, all: p50 / p90 / p99 / max | 8 ms / 517 ms / 1.88 s / 10.03 s | 9 / 10 / 11 ms / 10.05 s | 17 / 44 / 51 / 53 ms | 5 / 60 / 122 / 260 ms |
+| Queue wait, real opponent: p50 / p99 / max | 2 ms / 1.67 s / 8.35 s | 9 / 11 / 11 ms | 1 / 42 / 42 ms | 5 / 122 / 260 ms |
+| `match.found` → `match.start` p50 / p99 / max | 4.47 / 5.80 / 11.70 s | 4.46 / 5.89 / 10.35 s | 9.90 / 12.65 / 12.90 s | 4.43 / 5.77 / 5.92 s |
+| `rep.submit` → `rep.accepted` p50 / p99 / max | 0 / 1 / 7 ms | 0 / 1 / 11 ms | 0 / 2 / 9 ms | 1 / 2 / 4 ms |
+| Reps sent / acknowledged | 8051 / 8051 | 2753 / 2753 | 8324 / 8324 | 13113 / 13112 |
+| Pose frames sent / received from the opponent | 136 637 / 108 875 | 46 287 / 35 920 | 144 762 / 7 929 | 223 210 / 166 656 |
+| Server event-loop lag p99 / max | 1 / 8 ms | 1 / 2 ms | 1 / 42 ms | 1 / 2 ms |
+| Simulated opponents: different accounts copied | not recorded | not recorded | 24 | – (none) |
+| Server CPU, macOS `ps` %cpu (a decaying average, not the 5 s load), mean / max of 5 s samples | 18.4% / 35.3% | 20.7% / 35.7% | 9.8% / 16.7% | 39.5% / 60.5% |
+| Server resident memory, max | 44 MB | 57 MB | 80 MB | 82 MB |
+| Wall time | 162 s | 48 s | 164 s | 58 s |
+
+S3 was run again on 2026-11-28 after the Codex review of `bd2e5f3`. The first S3 had only the numeric accounts in
+the skill table and none of the bots (`load-001`, …), so every bot fell back to the average estimate and its
+simulated opponent copied the account nearest that average; skill matching per player was not exercised. The test
+server now also puts the bots in the table (`--bots`, with the ids `load_run.dart` gives them), and the S3 column is
+the new run: 556 simulated opponents copied 24 different accounts. S1, S2, TS1 and TS2 had 2 battles each with a
+simulated opponent and S4 none, so they were not run again; those few simulated opponents used the average estimate.
+The opponent's name, and so the count of copied accounts, is recorded only since this fix.
 
 Queue-wait histogram (all rounds):
 
