@@ -31,6 +31,7 @@ const _checked = [
   'lib/screens/result_screen.dart',
   'lib/screens/settings_screen.dart',
   'lib/screens/social_signup_screen.dart',
+  'lib/screens/weekly_rankings_screen.dart',
   'lib/widgets/arcade_hold_music.dart',
   'lib/widgets/arcade_map.dart',
   'lib/widgets/arcade_parts.dart',

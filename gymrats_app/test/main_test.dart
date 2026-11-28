@@ -24,6 +24,7 @@ import 'package:gymrats_app/screens/online_lobby_screen.dart';
 import 'package:gymrats_app/screens/play_screen.dart';
 import 'package:gymrats_app/screens/setup_screen.dart';
 import 'package:gymrats_app/screens/versus_screen.dart';
+import 'package:gymrats_app/screens/weekly_rankings_screen.dart';
 import 'package:gymrats_app/services/arcade/arcade_progress_store.dart';
 import 'package:gymrats_app/services/audio/sound_services.dart';
 import 'package:gymrats_app/services/feedback/goal_store.dart';
@@ -31,6 +32,7 @@ import 'package:gymrats_app/services/friends/friend_repository.dart';
 import 'package:gymrats_app/services/matching/bot_matchmaker.dart';
 import 'package:gymrats_app/services/matching/matchmaker.dart';
 import 'package:gymrats_app/services/online/online_battle_session.dart';
+import 'package:gymrats_app/services/rankings/rankings_repository.dart';
 import 'package:gymrats_app/services/user/character_store.dart';
 import 'package:gymrats_app/services/user/in_memory_user_repository.dart';
 import 'package:gymrats_app/services/user/rules_seen_store.dart';
@@ -230,6 +232,34 @@ void main() {
     // Straight to home.
     expect(find.byType(PlayScreen), findsNothing);
     expect(find.text('GYMMOUSE'), findsOneWidget);
+  });
+
+  testWidgets('the online exercise sheet opens the weekly rankings and stays '
+      'open when the player goes back', (tester) async {
+    final rankings = InMemoryRankingsRepository();
+    await _openApp(
+      tester,
+      GymRatsApp(
+        authRepository: signedInAuth(),
+        userRepository: InMemoryUserRepository(),
+        rankingsRepository: rankings,
+      ),
+    );
+
+    await tapAndSettle(tester, '게임 시작');
+    await tapAndSettle(tester, '온라인 대결');
+    await tapAndSettle(tester, '주간 랭킹');
+
+    expect(find.byType(WeeklyRankingsScreen), findsOneWidget);
+    expect(
+      rankings.reads,
+      contains((RankingScope.global, ExerciseType.pushUp)),
+    );
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(WeeklyRankingsScreen), findsNothing);
+    expect(find.byType(ExerciseSheet), findsOneWidget);
   });
 
   testWidgets('stage 2 opens 펭뚱이\'s squats at AI LV 2 once stage 1 has a '

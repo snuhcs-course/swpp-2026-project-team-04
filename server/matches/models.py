@@ -39,7 +39,10 @@ class Match(models.Model):
                 fields=["user", "client_id"], name="unique_match_per_client_id"
             )
         ]
-        indexes = [models.Index(fields=["user", "-played_at", "-id"])]
+        indexes = [
+            models.Index(fields=["user", "-played_at", "-id"]),
+            models.Index(fields=["played_at"], name="match_played_at_idx"),
+        ]
 
 
 # AI-generated with Claude Code (Opus 5.5), 2026-10-21, reviewed by Jinyoung Park
