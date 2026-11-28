@@ -1179,3 +1179,81 @@ gymrats_app/lib/screens/help_screen.dart의 _ExerciseTabs가 원인이다.
 
 <!-- b65cd53d 2026-11-28T12:30:18.272Z -->
 [Woohyun Song, 11-28 21:30] "괜찮아. 실기기 확인 결과: Galaxy S26+ (SM-S947N), Android 17, 980a565 release 빌드(C:\dev\swpp-arcade-art에서 빌드). 튜토리얼의 푸시업·스쿼트 탭 양 끝 잉크 테두리가 끊기지 않고 둥글게 보인다. 게임 소개 장(둘 다 안 고름), 푸시업 고름, 스쿼트 고름 세 상태 모두 확인했다. 이 결과를 PR 본문과 테스트 기록에 넣고 6단계를 진행해."
+
+## 2026-11-29 · Woohyun Song · feat/iter5-score-ladder
+<!-- Cut: the IDE's <browser_instruction> notice in front of the first prompt. Redacted by hand: the phone's device id. -->
+<!-- b46aa659 2026-11-28T16:25:32.792Z -->
+[Woohyun Song, 11-29 01:25] "<pasted_content id=\"2123\">
+A15 작업을 시작해. PM 상우가 11/29에 승인했어.
+
+[자료]
+- 명세: .claude/design/a15/SPEC.md. 파일에는 \"PM 승인 대기\"라고 적혀 있지만 아래 승인 내용대로 0절이 확정됐어. \"승인 전 규칙\"(push·PR 금지)은 더 이상 적용하지 마.
+- 디자인 원본: .claude/design/a15/design/. INDEX.md부터 읽어. 확정안은 SpScene.dc.html의 v=\"E\"이고, 경우는 sc 값(명세 7절)으로 바꿔. 값은 마크업과 renderVals()에서 그대로 가져오고, 명세와 원본이 다르면 원본이 맞아. SpReport.dc.html은 지금 앱 리포트를 옮겨 그린 참고용이라 구현 대상이 아니야. A~D 시안은 고르지 않은 것이니 무시해.
+
+[PM 승인 내용 (11/29, 상우)]
+- 작업 ID A15(Unexpected), 브랜치 feat/iter5-score-ladder, 마감 12/1(화). 스케줄 시트는 상우가 고친다.
+- 주인이 다른 파일 예외 승인. 모두 줄만 더하고 최소로 고쳐:
+  1) gymrats_app/lib/screens/online_battle_screen.dart: 대결이 시작될 때 경기 전 랭킹을 한 번 받는 호출과 그 값을 결과로 넘기는 줄
+  2) gymrats_app/lib/services/game/online_battle_result.dart, gymrats_app/lib/models/battle_result.dart: 순위 경기 여부(friendId가 없음)와 경기 전 랭킹을 담는 선택 필드
+  3) gymrats_app/lib/screens/result_screen.dart: 랭킹 값을 VictoryOverlay와 VictorySeat로 넘기는 줄. 기존 호출의 인자 순서와 줄바꿈은 건드리지 마
+  4) gymrats_app/lib/main.dart: 결과 화면에 앱의 RankingsRepository를 넘기는 한 곳
+- 랭킹 파일(P11: rankings_repository.dart, ranking_standing.dart, 랭킹 화면·뷰모델)은 읽기만 해. 서버, API, 점수 규칙은 바꾸지 않아.
+
+[코드를 쓰기 전에 할 일]
+1. 최신 origin/main에서 feat/iter5-score-ladder 브랜치를 새로 만들어.
+2. .codex-harness/iteration-5/ownership.json의 steps에 A7·A13과 같은 모양으로 A15 단계를 더해. 명세 0절의 id, owner, branch, after, n, due, allow를 써.
+3. 위 예외 파일들을 ownership-exceptions.txt에 사유 \"PM 승인 11/29 (상우)\"로 적어.
+4. python .claude\hooks\ownership_guard.py --status 를 돌려서 A15가 ready로 나오는지 확인해. 무엇을 더했는지 progress.md에 오늘 날짜로 적어.
+5. 명세 10절의 여섯 가지를 계획으로 보고하고 멈춰. 특히 경기 전 랭킹을 받는 정확한 자리(어느 상태 변화에서 부르는지), 주인이 다른 파일마다 바꾸는 줄 수, 0.88초에 갈래를 정해 HOLD를 기존 VictoryScene 시간표에 넣는 방법을 분명히 적어. 내가 \"진행\"이라고 하면 코드를 써.
+
+[작업 규칙]
+- 단계마다 flutter analyze, flutter test, reviewer APPROVE, 로컬 커밋 순서로 진행해. 커버리지(flutter test --coverage)는 로컬에서 돌리지 말고 PR의 CI 댓글 숫자를 써.
+- golden은 명세 8절 4번대로 node로 SpScene의 renderVals()를 돌려 뽑아. 뽑은 방법은 테스트 파일 머리 주석에 적고, 추출 스크립트와 .dc.html은 커밋하지 마.
+- 명세 7절의 경우 열 가지(base, mid, enter, big, first, solo, top, king, late, none)가 모두 테스트에 들어가야 해. 특히 등수가 1,000 이상인 경우, 이번 주에 나 혼자인 경우, 동점, 4명 이상 추월, 확인이 늦는 경우를 빠뜨리지 마.
+- 기존 승리·패배·무승부 연출 테스트와 리포트 테스트는 고치지 않고 통과해야 해. 순위 경기가 아닌 결과(친구 대전, AI, 아케이드, 기록보관소)는 지금과 똑같아야 해. 리포트의 '상세 리포트 보기'와 캐릭터 카드는 그대로고, 순위 줄이 그것들을 가리면 안 돼.
+- 폰 확인은 머지 뒤에 해. 명세 9절의 폰 데모는 만들어 두고, 실행 명령은 flutter run -d [REDACTED:device_id] 기준으로 PR에 적어. 폰은 케이블을 뺀 채 확인하니 콘솔 확인 항목은 넣지 마.
+- PR 본문은 영어로, 하네스 pull-request 스킬의 팀 형식 그대로 써. 따로 체크리스트 절은 만들지 마. Exceptions 절에 위 예외 파일과 \"approved by PM (Sangwoo) on 11/29\"를 적어.
+- PR을 올린 뒤 Codex 봇이 👍만 남기면 지적이 없다는 뜻이니 @codex review를 다시 요청하지 마.
+</pasted_content id=\"2123\">"
+
+<!-- b46aa659 2026-11-28T16:36:35.381Z -->
+[Woohyun Song, 11-29 01:36] "<pasted_content id=\"2123\">
+계획 확인했어. 아래 내용을 반영해서 진행해. 1단계(가)부터 시작하면 돼.
+
+[PM 조건 반영: 계산 값 갈래 빼기]
+상우가 승인하면서 조건을 붙였어. \"경기 결과가 랭킹에 늦게 반영되더라도 리포트는 바로 열리고, 등수는 서버에서 확인된 값만 표시되게 해 주세요.\" 그래서 명세 2절 4·5번을 이렇게 바꿔.
+- LadderPath에서 estimated를 없애. 갈래는 confirmed, late, none 세 가지야.
+- 0.88초에 확인된 after가 있으면 confirmed다. after 값으로 사다리를 그려.
+- 확인된 after가 없으면 late다. 사다리 없이 지금 연출을 그대로 하고, 6초 안에 확인되면 그때 순위 줄만 나타나게 해. 끝내 확인되지 않으면 아무것도 남기지 마.
+- before에 N을 더해 계산한 등수와 점수는 어디에도 그리지 마.
+- 화면의 등수는 모두 서버 값이어야 해.
+  - 다른 사람의 경기 전 등수는 entries로 다시 세지 말고, before entries에서 같은 userId의 rank를 찾아 써. before에 없는 사람은 경기 전 등수를 경기 뒤 등수와 같게 둬서 바뀌지 않게 해.
+  - 다른 사람의 경기 뒤 등수는 after entries의 rank를 써.
+  - 내 등수는 before.me.rank와 after.me.rank를 써.
+- 줄 고르기(pick, win, startSlot, finalSlot)는 원본 그대로 점수로 해. 등수 글자만 서버 값을 쓰는 거야.
+- 결과 화면 이동과 리포트 열기는 before·after 랭킹을 절대 기다리지 않아야 해. 지금 계획대로 _showResult는 before가 아직 없으면 없는 채로 넘겨.
+- ranking_ladder_test는 이렇게 맞춰.
+  - 갈래는 confirmed, late, none으로 봐. none에는 before 없음, 친구 대전, N=0을 넣어.
+  - late에서는 확인 전까지 순위 줄과 등수가 하나도 그려지지 않는지 확인해.
+  - 화면의 모든 등수가 before·after의 서버 rank와 같은지 확인해.
+- 뷰모델 테스트는 이렇게 맞춰.
+  - \"계산 값 뒤 확인 값이 오면 순위 줄만 바뀐다\"는 빼.
+  - \"랭킹을 받는 동안에도 리포트가 바로 열린다\"를 넣어.
+- golden과 데모에 넣는 경우별 before·after 데이터는 서버 rank 값을 원본 SCN과 같은 결과가 나오게 맞춰 넣어.
+- 이 결정을 progress.md Decisions에 오늘 날짜와 함께 적고, 로컬 .claude/design/a15/SPEC.md의 2절 4·5번도 이 내용으로 고쳐 둬.
+
+[질문 1 답: VictorySeat 줄바꿈]
+dart format이 다섯 줄로 나누는 건 괜찮아. 인자 순서만 지켜. 대신 코드를 쓰기 전에 gh pr list로 열린 PR 가운데 result_screen.dart를 고치는 게 있는지 보고, 있으면 PR 번호와 작성자를 알려줘. PR 본문 Exceptions 절에는 VictorySeat 호출이 dart format 때문에 여러 줄로 나뉜 것뿐이라고 영어로 적어.
+
+[질문 2 답: 예외 파일의 테스트]
+남의 기존 테스트 파일은 고치지 마. 대신 대결 화면·결과 화면 테스트를 victory_ladder_test.dart에 몰아넣지 말고, 새 테스트 파일 두 개를 만들어 A15 allow에 더해.
+- test/services/game/online_battle_result_ranked_test.dart: onlineBattleResult가 ranked(friendId == null)와 rankingBefore를 담는지
+- test/screens/score_ladder_wiring_test.dart: 아래 네 가지를 확인해.
+  - 대결 화면이 scheduled가 될 때 경기 전 랭킹을 한 번만 부르는지
+  - 친구 대전이면 부르지 않는지
+  - 랭킹을 받다 실패하거나 늦어도 결과가 바로 열리는지
+  - 결과 화면이 순위 경기일 때만 사다리 뷰모델을 만들어 VictoryOverlay·VictorySeat에 넘기는지, RankingsRepository Provider가 없으면 지금과 똑같은지
+새 파일이라 남의 파일이 아니니 별도 예외는 필요 없어. --check-paths로 두 경로를 확인하고 progress.md에 적어.
+
+나머지 계획은 그대로 좋아. _onSession의 scheduled에서 경기 전 랭킹 받기, RankingSnapshot, main.dart Provider 한 줄, bt로 HOLD 넣기, VictoryRankChip, 데모 경우 열 가지, 작업 순서 가~마 모두 그대로 진행해.
+</pasted_content id=\"2123\">"
