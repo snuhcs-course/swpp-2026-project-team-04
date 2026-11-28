@@ -95,6 +95,7 @@ const _checked = [
   'lib/widgets/tutorial_draft.dart',
   'lib/widgets/tutorial_figure_painters.dart',
   'lib/widgets/tutorial_game_shot.dart',
+  'lib/widgets/tutorial_modes.dart',
   'lib/widgets/tutorial_person.dart',
   'lib/widgets/tutorial_setup_scenes.dart',
   'lib/widgets/tutorial_welcome.dart',
