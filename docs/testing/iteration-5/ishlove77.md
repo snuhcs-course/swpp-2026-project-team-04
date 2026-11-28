@@ -5,6 +5,17 @@ notes into `docs/testing/Testing-Documentation.md`.
 
 ## Results
 
+#### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fixes for the Codex review of `507eca3`
+Fix at commits `9381a15` (health check) and `e0b79a5` (procedure). The first Codex run on `507eca3` ended "failed" with
+no result; a second request reviewed it.
+- **Finding 1 (P1):** the restore stopped the backup timer but not a run it had already started at boot → step 2
+  also stops `gymrats-backup.service` (one expected "Terminated" alert) and checks all five units are inactive.
+- **Finding 2 (P2):** a restart systemd could not queue reset the count, so the next try came three checks later
+  (about 185 s) → such a service keeps count 2 and is tried again on the next failed check. Test:
+  `test_a_restart_that_was_not_queued_is_tried_again_on_the_next_failure` (fails on `507eca3`).
+- **Results:** server `pytest` 429 passed, 0 failed (57 in the two files: 25 + 32); `health_watch.py` 99%,
+  `db_backup.py` 99%.
+
 #### 2026-11-29 · step P21 follow-up `feat/iter5-failover` (PR #118): fix for the Codex review of `5736780`
 Fix at commit `e53cd98`.
 - **Finding (P2):** `list` and `fetch` run by hand do not get the unit's `EnvironmentFile=`, so the documented

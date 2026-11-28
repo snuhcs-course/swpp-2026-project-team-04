@@ -323,6 +323,8 @@ Full list: `ishlove77-Prompt-Log.md`.
 - P21 follow-up, Codex review of `5736780` (P2): the manual `list`/`fetch` commands had no settings outside the unit;
   the install doc assumed the unit's environment. Fixed in `e53cd98`. Over four Codex rounds on PR #118 (9 findings), each
   round found a narrower case; all were cheap and fixed, with tests that fail on the commit before.
+- P21 follow-up, Codex review of `507eca3` (P1, P2): a running backup not stopped by the restore, and a failed
+  restart request resetting the count. Fixed in `9381a15`, `e0b79a5` (11 Codex findings on PR #118 so far).
 
 ## 4. Revisions and Decisions
 - P21 follow-up: the PM fixed RTO 30 min / RPO 24 h and asked for the health check and a 12 h backup off the
